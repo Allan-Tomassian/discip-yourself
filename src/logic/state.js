@@ -30,20 +30,6 @@ function isDemoMode() {
   }
 }
 
-function handleResetParam() {
-  if (typeof window === "undefined") return false;
-  try {
-    const url = new URL(window.location.href);
-    if (url.searchParams.get("reset") !== "1") return false;
-    clearState();
-    url.searchParams.delete("reset");
-    window.location.replace(url.toString());
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 // -----------------------------
 // V2 (data-only): goal planning
 // -----------------------------
