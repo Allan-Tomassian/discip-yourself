@@ -4,11 +4,8 @@ import { readFileAsDataUrl } from "../utils/helpers";
 import ScreenShell from "./_ScreenShell";
 
 export default function Onboarding({ data, setData, onDone }) {
-  const [name, setName] = useState(data.profile.name || "Allan");
-  const [why, setWhy] = useState(
-    data.profile.whyText ||
-      "Je deviens discipliné pour atteindre mes objectifs et construire une sécurité financière solide."
-  );
+  const [name, setName] = useState(data.profile.name || "");
+  const [why, setWhy] = useState(data.profile.whyText || "");
   const [img, setImg] = useState(data.profile.whyImage || "");
   const [error, setError] = useState("");
   const minChars = 24;

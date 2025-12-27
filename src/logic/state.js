@@ -16,6 +16,34 @@ export const DEFAULT_BLOCKS = [
   { id: "block_goal", type: "GOAL", enabled: true },
 ];
 
+// Demo mode (disabled by default).
+export const DEMO_MODE = false;
+
+function isDemoMode() {
+  if (DEMO_MODE) return true;
+  if (typeof window === "undefined") return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("demo") === "1";
+  } catch {
+    return false;
+  }
+}
+
+function handleResetParam() {
+  if (typeof window === "undefined") return false;
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("reset") !== "1") return false;
+    clearState();
+    url.searchParams.delete("reset");
+    window.location.replace(url.toString());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // -----------------------------
 // V2 (data-only): goal planning
 // -----------------------------
@@ -106,7 +134,7 @@ export function initialData() {
     },
     ui: {
       blocks: DEFAULT_BLOCKS.map((b) => ({ ...b })),
-      selectedCategoryId: DEFAULT_CATEGORIES[0].id,
+      selectedCategoryId: null,
       // V2: per-page theming
       pageThemes: { home: "aurora" },
       pageAccents: { home: "#7C3AED" },
@@ -119,21 +147,47 @@ export function initialData() {
       activeGoalId: null,
       mainGoalId: null,
     },
-    categories: DEFAULT_CATEGORIES.map((c) => ({ ...c })),
+    categories: [],
+    goals: [],
+    habits: [],
+    checks: {},
+  };
+}
+
+export function demoData() {
+  const categories = [
+    { id: "demo_cat_1", name: "Catégorie 1", color: "#7C3AED", wallpaper: "" },
+    { id: "demo_cat_2", name: "Catégorie 2", color: "#06B6D4", wallpaper: "" },
+    { id: "demo_cat_3", name: "Catégorie 3", color: "#22C55E", wallpaper: "" },
+  ];
+
+  return {
+    profile: {
+      name: "Démo",
+      whyText: "Exemple de pourquoi (démo).",
+      whyImage: "",
+      xp: 0,
+      level: 1,
+      rewardClaims: {},
+    },
+    ui: {
+      blocks: DEFAULT_BLOCKS.map((b) => ({ ...b })),
+      selectedCategoryId: categories[0].id,
+      pageThemes: { home: "aurora" },
+      pageAccents: { home: "#7C3AED" },
+      pageThemeHome: "aurora",
+      accentHome: "#7C3AED",
+      activeGoalId: null,
+      mainGoalId: null,
+    },
+    categories: categories.map((c) => ({ ...c })),
     goals: [
-      normalizeGoal(
-        { id: uid(), categoryId: "cat_sport", title: "3 séances / semaine", cadence: "WEEKLY", target: 3 },
-        0
-      ),
-      normalizeGoal(
-        { id: uid(), categoryId: "cat_work", title: "2 blocs focus / jour", cadence: "DAILY", target: 2 },
-        1
-      ),
+      { id: uid(), categoryId: categories[0].id, title: "Objectif A", cadence: "WEEKLY", target: 2 },
+      { id: uid(), categoryId: categories[1].id, title: "Objectif B", cadence: "DAILY", target: 1 },
     ],
     habits: [
-      { id: uid(), categoryId: "cat_sport", title: "Salle / course", cadence: "WEEKLY", target: 3 },
-      { id: uid(), categoryId: "cat_work", title: "Focus 45 min", cadence: "DAILY", target: 2 },
-      { id: uid(), categoryId: "cat_health", title: "2L d’eau", cadence: "DAILY", target: 1 },
+      { id: uid(), categoryId: categories[0].id, title: "Habitude 1", cadence: "WEEKLY", target: 2 },
+      { id: uid(), categoryId: categories[1].id, title: "Habitude 2", cadence: "DAILY", target: 1 },
     ],
     checks: {},
   };
@@ -151,7 +205,9 @@ export function migrate(prev) {
   // ui
   if (!next.ui) next.ui = {};
   if (!Array.isArray(next.ui.blocks) || next.ui.blocks.length === 0) next.ui.blocks = DEFAULT_BLOCKS.map((b) => ({ ...b }));
-  if (!next.ui.selectedCategoryId) next.ui.selectedCategoryId = DEFAULT_CATEGORIES[0].id;
+  if (!next.ui.selectedCategoryId) {
+    next.ui.selectedCategoryId = Array.isArray(next.categories) && next.categories.length ? next.categories[0].id : null;
+  }
 
   // V2: ensure pageThemes/pageAccents exist (used by utils/_theme)
   if (!next.ui.pageThemes || typeof next.ui.pageThemes !== "object") next.ui.pageThemes = {};
@@ -175,7 +231,7 @@ export function migrate(prev) {
   if (typeof next.ui.mainGoalId === "undefined") next.ui.mainGoalId = null;
 
   // categories
-  if (!Array.isArray(next.categories) || next.categories.length === 0) next.categories = DEFAULT_CATEGORIES.map((c) => ({ ...c }));
+  if (!Array.isArray(next.categories)) next.categories = [];
 
   // goals (V2 normalize)
   if (!Array.isArray(next.goals)) next.goals = [];
@@ -194,7 +250,14 @@ export function migrate(prev) {
 
 export function usePersistedState(React) {
   const { useEffect, useState } = React;
-  const [data, setData] = useState(() => migrate(loadState() || initialData()));
-  useEffect(() => saveState(data), [data]);
+  const demoMode = isDemoMode();
+  const [data, setData] = useState(() => {
+    if (demoMode) return migrate(demoData());
+    return migrate(loadState() || initialData());
+  });
+  useEffect(() => {
+    if (demoMode) return;
+    saveState(data);
+  }, [data, demoMode]);
   return [data, setData];
 }

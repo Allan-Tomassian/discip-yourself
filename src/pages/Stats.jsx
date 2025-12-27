@@ -6,6 +6,27 @@ import { computeHabitProgress } from "../logic/habits";
 import { todayKey, startOfWeekKey } from "../utils/dates";
 
 export default function Stats({ data }) {
+  if (!data.categories || data.categories.length === 0) {
+    return (
+      <ScreenShell
+        data={data}
+        pageId="stats"
+        headerTitle="Stats"
+        headerSubtitle="Aucune catégorie"
+        backgroundImage={data?.profile?.whyImage || ""}
+      >
+        <Card accentBorder>
+          <div className="p18">
+            <div className="titleSm">Aucune catégorie</div>
+            <div className="small" style={{ marginTop: 6 }}>
+              Ajoute une première catégorie dans l’onglet Catégories pour commencer.
+            </div>
+          </div>
+        </Card>
+      </ScreenShell>
+    );
+  }
+
   const selected = data.categories.find((c) => c.id === data.ui.selectedCategoryId) || data.categories[0];
   const now = new Date();
 
