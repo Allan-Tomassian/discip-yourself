@@ -70,20 +70,58 @@ function getUnitLabel(unit, count) {
   return count > 1 ? pair[1] : pair[0];
 }
 
+function resolvePlanType(goal) {
+  const rawPlan = typeof goal?.planType === "string" ? goal.planType.toUpperCase() : "";
+  if (rawPlan === "ACTION" || rawPlan === "ONE_OFF" || rawPlan === "STATE") return rawPlan;
+  const rawType = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
+  if (rawType === "ACTION" || rawType === "ONE_OFF" || rawType === "STATE") return rawType;
+  if (goal?.oneOffDate || goal?.freqUnit === "ONCE") return "ONE_OFF";
+  if (goal?.freqUnit || goal?.freqCount || goal?.cadence) return "ACTION";
+  return "STATE";
+}
+
+function resolveGoalType(goal) {
+  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
+  if (raw === "OUTCOME" || raw === "PROCESS") return raw;
+  const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
+  if (legacy === "OUTCOME") return "OUTCOME";
+  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
+  const planType = resolvePlanType(goal);
+  return planType === "STATE" ? "OUTCOME" : "PROCESS";
+}
+
+function formatMetric(metric) {
+  if (!metric || typeof metric !== "object") return "";
+  const target =
+    typeof metric.targetValue === "string" ? Number(metric.targetValue) : metric.targetValue;
+  const current =
+    typeof metric.currentValue === "string" ? Number(metric.currentValue) : metric.currentValue;
+  if (!Number.isFinite(target) || target <= 0) return "";
+  const unit = metric.unit ? ` ${metric.unit}` : "";
+  const curVal = Number.isFinite(current) ? current : 0;
+  return `${curVal}/${target}${unit}`;
+}
+
 function formatGoalMeta(goal) {
-  const type = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
+  const planType = resolvePlanType(goal);
+  const goalType = resolveGoalType(goal);
   const rawCount = typeof goal?.freqCount === "number" ? goal.freqCount : goal?.target;
   const count = Number.isFinite(rawCount) ? Math.max(1, Math.floor(rawCount)) : 1;
   const minutes = Number.isFinite(goal?.sessionMinutes) ? Math.max(5, Math.floor(goal.sessionMinutes)) : null;
+  const metricLabel = goalType === "OUTCOME" ? formatMetric(goal.metric) : "";
 
-  if (type === "ONE_OFF" || goal?.freqUnit === "ONCE") {
+  if (planType === "ONE_OFF") {
     const date = formatDateFr(goal?.oneOffDate || goal?.deadline) || "—";
-    return `1 fois — le ${date}`;
+    const parts = [`1 fois — le ${date}`];
+    if (minutes) parts.push(`${minutes} min`);
+    if (metricLabel) parts.push(metricLabel);
+    return parts.join(" · ");
   }
 
-  if (type === "STATE") {
+  if (planType === "STATE") {
     const parts = ["Suivi via tracker/habitude liée"];
     if (goal?.deadline) parts.push(`deadline ${formatDateFr(goal.deadline)}`);
+    if (metricLabel) parts.push(metricLabel);
     return parts.join(" · ");
   }
 
@@ -97,6 +135,7 @@ function formatGoalMeta(goal) {
     parts.push(`deadline ${formatDateFr(goal.deadline)}`);
   }
   if (minutes) parts.push(`${minutes} min`);
+  if (metricLabel) parts.push(metricLabel);
   return parts.join(" · ");
 }
 

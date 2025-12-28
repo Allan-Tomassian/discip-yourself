@@ -3,9 +3,9 @@ import { todayKey } from "../utils/dates";
 import { normalizeGoal, normalizeResetPolicy } from "./state";
 
 const ALLOWED = new Set(["queued", "active", "done", "invalid"]);
-const GOAL_TYPES = new Set(["ACTION", "ONE_OFF", "STATE"]);
-const GOAL_KINDS = new Set(["ACTION", "OUTCOME"]);
-const MAX_SECONDARY_ACTIVE = 3;
+const PLAN_TYPES = new Set(["ACTION", "ONE_OFF", "STATE"]);
+const GOAL_TYPES = new Set(["PROCESS", "OUTCOME"]);
+const LEGACY_KINDS = new Set(["ACTION", "OUTCOME"]);
 
 // Future flag (do not change behavior elsewhere yet)
 export const allowGlobalSingleActive = false;
@@ -34,27 +34,36 @@ function getGoalSortKey(goal) {
   return typeof key === "string" ? key : "";
 }
 
-function normalizeGoalType(goal) {
-  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
-  if (GOAL_TYPES.has(raw)) return raw;
+function normalizePlanType(goal) {
+  const rawPlan = typeof goal?.planType === "string" ? goal.planType.toUpperCase() : "";
+  if (PLAN_TYPES.has(rawPlan)) return rawPlan;
+  const rawType = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
+  if (PLAN_TYPES.has(rawType)) return rawType;
   if (goal?.oneOffDate || goal?.freqUnit === "ONCE") return "ONE_OFF";
   if (goal?.freqUnit || goal?.freqCount || goal?.cadence) return "ACTION";
   return "STATE";
 }
 
-function normalizeKind(goal, type) {
-  const raw = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
-  if (GOAL_KINDS.has(raw)) return raw;
-  if (type === "STATE") return "OUTCOME";
-  return "ACTION";
+function normalizeGoalType(goal, planType) {
+  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
+  if (GOAL_TYPES.has(raw)) return raw;
+  const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
+  if (LEGACY_KINDS.has(legacy)) return legacy === "OUTCOME" ? "OUTCOME" : "PROCESS";
+  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
+  if (planType === "STATE") return "OUTCOME";
+  return "PROCESS";
 }
 
-function normalizeStartAt(goal, nowLocal, kind) {
+function normalizeLegacyKind(goalType) {
+  return goalType === "OUTCOME" ? "OUTCOME" : "ACTION";
+}
+
+function normalizeStartAt(goal, nowLocal, goalType) {
   const raw = typeof goal?.startAt === "string" ? goal.startAt.trim() : "";
   if (raw) return raw;
   const legacy = typeof goal?.startDate === "string" ? goal.startDate.trim() : "";
   if (legacy) return `${legacy}T09:00`;
-  if (kind === "OUTCOME") return null;
+  if (goalType === "OUTCOME") return null;
   return nowLocal;
 }
 
@@ -72,11 +81,17 @@ function normalizeParentId(goal) {
   return legacy || null;
 }
 
-function normalizeLinkWeight(goal, parentId) {
-  if (!parentId) return undefined;
-  const raw = typeof goal?.linkWeight === "string" ? Number(goal.linkWeight) : goal?.linkWeight;
-  if (!Number.isFinite(raw)) return 100;
-  return Math.max(1, Math.min(100, Math.round(raw)));
+function normalizeWeight(goal, parentId) {
+  const raw =
+    typeof goal?.weight === "string"
+      ? Number(goal.weight)
+      : Number.isFinite(goal?.weight)
+        ? goal.weight
+        : typeof goal?.linkWeight === "string"
+          ? Number(goal.linkWeight)
+          : goal?.linkWeight;
+  if (!Number.isFinite(raw)) return parentId ? 100 : 0;
+  return Math.max(0, Math.min(100, Math.round(raw)));
 }
 
 function computeEndAt(startAt, sessionMinutes) {
@@ -133,6 +148,19 @@ function normalizeSessionMinutes(goal) {
   return value;
 }
 
+function normalizeMetric(goalType, metric) {
+  if (goalType !== "OUTCOME") return null;
+  if (!metric || typeof metric !== "object") return null;
+  const unit = typeof metric.unit === "string" ? metric.unit.trim() : "";
+  const targetRaw =
+    typeof metric.targetValue === "string" ? Number(metric.targetValue) : metric.targetValue;
+  const currentRaw =
+    typeof metric.currentValue === "string" ? Number(metric.currentValue) : metric.currentValue;
+  const targetValue = Number.isFinite(targetRaw) && targetRaw > 0 ? targetRaw : null;
+  const currentValue = Number.isFinite(currentRaw) ? currentRaw : 0;
+  return { unit, targetValue, currentValue };
+}
+
 function pickPreferredActiveId(actives, preferredId) {
   if (!actives.length) return null;
   if (preferredId && actives.some((g) => g?.id === preferredId)) return preferredId;
@@ -180,17 +208,21 @@ export function normalizeGoalsState(state) {
   const normalizedGoals = goals.map((g) => {
     if (!g || typeof g !== "object") return g;
     const next = { ...g, status: normalizeStatus(g.status) };
-    const type = normalizeGoalType(next);
-    const kind = normalizeKind(next, type);
+    const planType = normalizePlanType(next);
+    const goalType = normalizeGoalType(next, planType);
+    const kind = normalizeLegacyKind(goalType);
     const parentId = normalizeParentId(next);
-    const linkWeight = normalizeLinkWeight(next, parentId);
-    const startAt = normalizeStartAt(next, nowLocal, kind);
+    const weight = normalizeWeight(next, parentId);
+    const startAt = normalizeStartAt(next, nowLocal, goalType);
+    const metric = normalizeMetric(goalType, next.metric);
     const sessionMinutesRaw = normalizeSessionMinutes(next);
-    if (type === "ONE_OFF") {
-      const sessionMinutes = kind === "OUTCOME" ? null : sessionMinutesRaw ?? null;
+    const sessionMinutes = goalType === "OUTCOME" ? null : sessionMinutesRaw ?? null;
+
+    if (planType === "ONE_OFF") {
       return {
         ...next,
-        type,
+        type: goalType,
+        planType,
         kind,
         startAt,
         endAt: computeEndAt(startAt, sessionMinutes),
@@ -200,42 +232,52 @@ export function normalizeGoalsState(state) {
         freqCount: undefined,
         sessionMinutes,
         parentId,
+        weight,
+        metric,
         primaryGoalId: parentId,
-        linkWeight,
+        linkWeight: weight,
       };
     }
-    if (type === "STATE") {
-      const sessionMinutes = kind === "OUTCOME" ? null : sessionMinutesRaw ?? null;
+
+    if (planType === "STATE") {
       return {
         ...next,
-        type,
+        type: goalType,
+        planType,
         kind,
         startAt,
         endAt: computeEndAt(startAt, sessionMinutes),
         startDate: undefined,
+        oneOffDate: undefined,
         freqUnit: undefined,
         freqCount: undefined,
         sessionMinutes,
         parentId,
+        weight,
+        metric,
         primaryGoalId: parentId,
-        linkWeight,
+        linkWeight: weight,
       };
     }
+
     const freq = normalizeFrequency(next);
-    const sessionMinutes = kind === "OUTCOME" ? null : sessionMinutesRaw ?? null;
     return {
       ...next,
-      type,
+      type: goalType,
+      planType,
       kind,
       startAt,
       endAt: computeEndAt(startAt, sessionMinutes),
       startDate: undefined,
+      oneOffDate: undefined,
       freqUnit: freq.freqUnit,
       freqCount: freq.freqCount,
       sessionMinutes,
       parentId,
+      weight,
+      metric,
       primaryGoalId: parentId,
-      linkWeight,
+      linkWeight: weight,
     };
   });
 
@@ -301,51 +343,8 @@ export function normalizeGoalsState(state) {
   const mainIsActive = uiMainId && activeNow.some((g) => g?.id === uiMainId);
   let nextMainGoalId = mainIsActive ? uiMainId : null;
   if (!nextMainGoalId && activeNow.length) {
-    nextMainGoalId = pickOldestActiveId(activeNow);
-  }
-
-  if (nextMainGoalId) {
-    nextGoals = nextGoals.map((g) => {
-      if (!g || g.status !== "active") return g;
-      if (g.id === nextMainGoalId) return g;
-      if (g.parentId === nextMainGoalId) return g;
-      return { ...g, status: "queued" };
-    });
-    activeNow = nextGoals.filter((g) => g?.status === "active");
-  }
-
-  const activeChildren = nextMainGoalId
-    ? activeNow.filter((g) => g?.parentId === nextMainGoalId)
-    : [];
-  if (activeChildren.length > MAX_SECONDARY_ACTIVE) {
-    const keep = [...activeChildren]
-      .sort((a, b) => getGoalAgeKey(a).localeCompare(getGoalAgeKey(b)))
-      .slice(0, MAX_SECONDARY_ACTIVE);
-    const keepIds = new Set(keep.map((g) => g.id));
-    nextGoals = nextGoals.map((g) => {
-      if (!g || g.status !== "active") return g;
-      if (g.id === nextMainGoalId) return g;
-      if (keepIds.has(g.id)) return g;
-      if (g.parentId === nextMainGoalId) return { ...g, status: "queued" };
-      return g;
-    });
-    activeNow = nextGoals.filter((g) => g?.status === "active");
-  }
-
-  if (nextMainGoalId) {
-    nextGoals = nextGoals.map((g) => {
-      if (!g || typeof g !== "object") return g;
-      if (g.parentId && g.parentId !== nextMainGoalId) {
-        return { ...g, parentId: null, primaryGoalId: null, linkWeight: undefined };
-      }
-      return g;
-    });
-  } else {
-    nextGoals = nextGoals.map((g) => {
-      if (!g || typeof g !== "object") return g;
-      if (g.parentId) return { ...g, parentId: null, primaryGoalId: null, linkWeight: undefined };
-      return g;
-    });
+    const outcomeActive = activeNow.filter((g) => g?.type === "OUTCOME");
+    nextMainGoalId = pickOldestActiveId(outcomeActive.length ? outcomeActive : activeNow);
   }
 
   nextActiveGoalId = allowGlobalSingleActive
@@ -371,26 +370,44 @@ export function getGoalProgress(goal) {
 
 export function computeAggregateProgress(state, parentId) {
   const goals = Array.isArray(state?.goals) ? state.goals : [];
-  if (!parentId) return { progress: 0, linked: [] };
+  if (!parentId) return { progress: 0, linked: [], aggregate: 0, metric: null };
   const parent = goals.find((g) => g?.id === parentId);
-  if (!parent) return { progress: 0, linked: [] };
-
-  const parentKind = typeof parent.kind === "string" ? parent.kind.toUpperCase() : "ACTION";
-  const includeParent = parentKind === "ACTION";
-  const parentProgress = includeParent ? getGoalProgress(parent) : 0;
+  if (!parent) return { progress: 0, linked: [], aggregate: 0, metric: null };
 
   const linked = goals
-    .filter((g) => g?.parentId === parentId && g?.status !== "invalid")
+    .filter((g) => g?.parentId === parentId)
+    .filter((g) => g?.status === "active" || g?.status === "done")
+    .filter((g) => (g?.type || "").toString().toUpperCase() === "PROCESS")
     .map((g) => {
-      const weight = Number.isFinite(g?.linkWeight) ? Math.max(1, Math.min(100, Math.round(g.linkWeight))) : 100;
+      const rawWeight = typeof g?.weight === "string" ? Number(g.weight) : g?.weight;
+      const weight = Number.isFinite(rawWeight) ? Math.max(0, Math.min(100, Math.round(rawWeight))) : 100;
       return { goal: g, weight, progress: getGoalProgress(g) };
     });
 
-  const totalWeight = (includeParent ? 1 : 0) + linked.reduce((sum, item) => sum + item.weight, 0);
+  const totalWeight = linked.reduce((sum, item) => sum + item.weight, 0);
   const linkedSum = linked.reduce((sum, item) => sum + item.weight * item.progress, 0);
-  const progress = totalWeight ? (parentProgress + linkedSum) / totalWeight : parentProgress;
+  const aggregate = totalWeight ? linkedSum / totalWeight : 0;
 
-  return { progress, linked };
+  let metricProgress = null;
+  if ((parent?.type || "").toString().toUpperCase() === "OUTCOME" && parent?.metric) {
+    const targetRaw =
+      typeof parent.metric.targetValue === "string"
+        ? Number(parent.metric.targetValue)
+        : parent.metric.targetValue;
+    const currentRaw =
+      typeof parent.metric.currentValue === "string"
+        ? Number(parent.metric.currentValue)
+        : parent.metric.currentValue;
+    if (Number.isFinite(targetRaw) && targetRaw > 0) {
+      const current = Number.isFinite(currentRaw) ? currentRaw : 0;
+      metricProgress = Math.max(0, Math.min(1, current / targetRaw));
+    }
+  }
+
+  const progress =
+    metricProgress == null ? aggregate : Math.max(0, Math.min(1, aggregate * 0.7 + metricProgress * 0.3));
+
+  return { progress, linked, aggregate, metric: metricProgress };
 }
 
 // Backward compatibility (deprecated).
@@ -426,7 +443,7 @@ export function createGoal(state, goalInput = {}) {
 
   if (typeof base.order !== "number") base.order = getNextOrder(goals);
   const nextGoal = {
-    ...normalizeGoal(base, goals.length),
+    ...normalizeGoal(base, goals.length, state.categories),
     createdAt: base.createdAt || todayKey(),
   };
 
@@ -495,7 +512,8 @@ export function linkChild(state, childId, parentId, weight) {
   if (!goals.some((g) => g?.id === childId)) return state;
   const cleanParent = typeof parentId === "string" && parentId.trim() ? parentId : null;
   const rawWeight = typeof weight === "string" ? Number(weight) : weight;
-  const linkWeight = cleanParent && Number.isFinite(rawWeight) ? Math.max(1, Math.min(100, Math.round(rawWeight))) : undefined;
+  const cleanWeight =
+    cleanParent && Number.isFinite(rawWeight) ? Math.max(0, Math.min(100, Math.round(rawWeight))) : 0;
 
   const nextGoals = goals.map((g) => {
     if (g?.id !== childId) return g;
@@ -503,7 +521,8 @@ export function linkChild(state, childId, parentId, weight) {
       ...g,
       parentId: cleanParent,
       primaryGoalId: cleanParent,
-      linkWeight,
+      weight: cleanWeight,
+      linkWeight: cleanWeight,
     };
   });
   return normalizeGoalsState({ ...state, goals: nextGoals });
@@ -723,8 +742,9 @@ export function autoActivateScheduledGoals(state, now = new Date()) {
     const candidates = list
       .filter((g) => normalizeStatus(g.status) === "queued")
       .filter((g) => {
-        const type = normalizeGoalType(g);
-        return type === "ACTION" && normalizeKind(g, type) === "ACTION";
+        const planType = normalizePlanType(g);
+        const goalType = normalizeGoalType(g, planType);
+        return planType === "ACTION" && goalType === "PROCESS";
       })
       .map((g) => ({ goal: g, startAt: parseStartAt(g.startAt) ?? nowMs }))
       .filter((g) => g.startAt <= nowMs)

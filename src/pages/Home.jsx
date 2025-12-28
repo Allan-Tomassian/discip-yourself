@@ -75,6 +75,10 @@ export default function Home({ data, setData }) {
     () => computeAggregateProgress({ goals: data.goals || [] }, mainGoal?.id),
     [data.goals, mainGoal?.id]
   );
+  const primaryAggregatePct = Math.round(primaryAggregate.progress * 100);
+  const primaryChildrenPct = Math.round(primaryAggregate.aggregate * 100);
+  const primaryMetricPct =
+    primaryAggregate.metric == null ? null : Math.round(primaryAggregate.metric * 100);
 
   // Thème calculé ici (palier 7.3)
   const accent = getAccentForPage(data, "home");
@@ -312,8 +316,14 @@ export default function Home({ data, setData }) {
                     </div>
 
                     <div className="small" style={{ marginTop: 8, opacity: 0.9 }}>
-                      Progression principale : <b>{Math.round(primaryAggregate.progress * 100)}%</b>
+                      Progression principale : <b>{primaryAggregatePct}%</b>
                     </div>
+                    {primaryMetricPct != null ? (
+                      <div className="small" style={{ marginTop: 4, opacity: 0.85 }}>
+                        Agrégat enfants : <b>{primaryChildrenPct}%</b> · Mesure :{" "}
+                        <b>{primaryMetricPct}%</b>
+                      </div>
+                    ) : null}
 
                     <div style={{ marginTop: 12 }}>
                       <div className="small" style={{ opacity: 0.9 }}>

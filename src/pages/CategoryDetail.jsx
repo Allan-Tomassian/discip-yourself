@@ -26,14 +26,14 @@ const UNIT_LABELS = {
   YEAR: ["an", "ans"],
 };
 
-const GOAL_TYPES = [
+const PLAN_TYPES = [
   { value: "ACTION", label: "Action" },
   { value: "ONE_OFF", label: "Ponctuel" },
   { value: "STATE", label: "État" },
 ];
 
-const GOAL_KINDS = [
-  { value: "ACTION", label: "Action" },
+const GOAL_TYPES = [
+  { value: "PROCESS", label: "Processus" },
   { value: "OUTCOME", label: "Résultat" },
 ];
 
@@ -91,20 +91,24 @@ function getUnitLabel(unit, count) {
   return count > 1 ? pair[1] : pair[0];
 }
 
-function resolveGoalType(goal) {
-  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
-  if (raw === "ACTION" || raw === "ONE_OFF" || raw === "STATE") return raw;
+function resolvePlanType(goal) {
+  const rawPlan = typeof goal?.planType === "string" ? goal.planType.toUpperCase() : "";
+  if (rawPlan === "ACTION" || rawPlan === "ONE_OFF" || rawPlan === "STATE") return rawPlan;
+  const rawType = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
+  if (rawType === "ACTION" || rawType === "ONE_OFF" || rawType === "STATE") return rawType;
   if (goal?.oneOffDate || goal?.freqUnit === "ONCE") return "ONE_OFF";
   if (goal?.freqUnit || goal?.freqCount || goal?.cadence) return "ACTION";
   return "STATE";
 }
 
-function resolveGoalKind(goal) {
-  const raw = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
-  if (raw === "ACTION" || raw === "OUTCOME") return raw;
-  const type = resolveGoalType(goal);
-  if (type === "STATE") return "OUTCOME";
-  return "ACTION";
+function resolveGoalType(goal) {
+  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
+  if (raw === "OUTCOME" || raw === "PROCESS") return raw;
+  const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
+  if (legacy === "OUTCOME") return "OUTCOME";
+  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
+  const planType = resolvePlanType(goal);
+  return planType === "STATE" ? "OUTCOME" : "PROCESS";
 }
 
 function unitFromCadence(cadence) {
@@ -114,20 +118,38 @@ function unitFromCadence(cadence) {
   return "WEEK";
 }
 
+function formatMetric(metric) {
+  if (!metric || typeof metric !== "object") return "";
+  const target =
+    typeof metric.targetValue === "string" ? Number(metric.targetValue) : metric.targetValue;
+  const current =
+    typeof metric.currentValue === "string" ? Number(metric.currentValue) : metric.currentValue;
+  if (!Number.isFinite(target) || target <= 0) return "";
+  const unit = metric.unit ? ` ${metric.unit}` : "";
+  const curVal = Number.isFinite(current) ? current : 0;
+  return `${curVal}/${target}${unit}`;
+}
+
 function formatGoalMeta(goal) {
-  const type = resolveGoalType(goal);
+  const planType = resolvePlanType(goal);
+  const goalType = resolveGoalType(goal);
   const rawCount = typeof goal?.freqCount === "number" ? goal.freqCount : goal?.target;
   const count = Number.isFinite(rawCount) ? Math.max(1, Math.floor(rawCount)) : 1;
   const minutes = Number.isFinite(goal?.sessionMinutes) ? Math.max(5, Math.floor(goal.sessionMinutes)) : null;
+  const metricLabel = goalType === "OUTCOME" ? formatMetric(goal.metric) : "";
 
-  if (type === "ONE_OFF") {
+  if (planType === "ONE_OFF") {
     const date = formatDateFr(goal?.oneOffDate || goal?.deadline) || "—";
-    return `1 fois — le ${date}`;
+    const parts = [`1 fois — le ${date}`];
+    if (minutes) parts.push(`${minutes} min`);
+    if (metricLabel) parts.push(metricLabel);
+    return parts.join(" · ");
   }
 
-  if (type === "STATE") {
+  if (planType === "STATE") {
     const parts = ["Suivi via tracker/habitude liée"];
     if (goal?.deadline) parts.push(`deadline ${formatDateFr(goal.deadline)}`);
+    if (metricLabel) parts.push(metricLabel);
     return parts.join(" · ");
   }
 
@@ -141,6 +163,7 @@ function formatGoalMeta(goal) {
     parts.push(`deadline ${formatDateFr(goal.deadline)}`);
   }
   if (minutes) parts.push(`${minutes} min`);
+  if (metricLabel) parts.push(metricLabel);
   return parts.join(" · ");
 }
 
@@ -156,8 +179,8 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const lastScrollRef = useRef(null);
   const handledEditRef = useRef(null);
   const [isAdding, setIsAdding] = useState(false);
-  const [draftType, setDraftType] = useState("ACTION");
-  const [draftKind, setDraftKind] = useState("ACTION");
+  const [draftPlanType, setDraftPlanType] = useState("ACTION");
+  const [draftGoalType, setDraftGoalType] = useState("PROCESS");
   const [draftTitle, setDraftTitle] = useState("");
   const [draftFreqCount, setDraftFreqCount] = useState("3");
   const [draftFreqUnit, setDraftFreqUnit] = useState("WEEK");
@@ -167,6 +190,9 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const [draftOneOffDate, setDraftOneOffDate] = useState("");
   const [draftNotes, setDraftNotes] = useState("");
   const [draftSessionMinutes, setDraftSessionMinutes] = useState("30");
+  const [draftMetricUnit, setDraftMetricUnit] = useState("");
+  const [draftMetricTarget, setDraftMetricTarget] = useState("");
+  const [draftMetricCurrent, setDraftMetricCurrent] = useState("");
   const [draftResetPolicy, setDraftResetPolicy] = useState("invalidate");
   const [err, setErr] = useState("");
   const [activationError, setActivationError] = useState(null);
@@ -202,6 +228,10 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     () => computeAggregateProgress({ goals: allGoals }, mainGoalId),
     [allGoals, mainGoalId]
   );
+  const primaryAggregatePct = Math.round(primaryAggregate.progress * 100);
+  const primaryChildrenPct = Math.round(primaryAggregate.aggregate * 100);
+  const primaryMetricPct =
+    primaryAggregate.metric == null ? null : Math.round(primaryAggregate.metric * 100);
 
   function updateLinkWeight(goalId, value) {
     setLinkWeightsById((prev) => ({ ...prev, [goalId]: value }));
@@ -209,10 +239,11 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
 
   function getLinkWeightValue(goal) {
     const raw = linkWeightsById[goal.id];
-    const fromGoal = Number.isFinite(goal?.linkWeight) ? goal.linkWeight : 100;
+    if (!goal?.parentId) return 100;
+    const fromGoal = Number.isFinite(goal?.weight) ? goal.weight : 100;
     const n = raw === "" || raw == null ? fromGoal : Number(raw);
     if (!Number.isFinite(n)) return 100;
-    return Math.max(1, Math.min(100, Math.round(n)));
+    return Math.max(0, Math.min(100, Math.round(n)));
   }
 
   function openAdd() {
@@ -220,8 +251,8 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setActivationError(null);
     setOverlapError(null);
     setEditGoalId(null);
-    setDraftType("ACTION");
-    setDraftKind("ACTION");
+    setDraftPlanType("ACTION");
+    setDraftGoalType("PROCESS");
     setDraftTitle("");
     setDraftFreqCount("3");
     setDraftFreqUnit("WEEK");
@@ -231,6 +262,9 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setDraftOneOffDate("");
     setDraftNotes("");
     setDraftSessionMinutes("30");
+    setDraftMetricUnit("");
+    setDraftMetricTarget("");
+    setDraftMetricCurrent("");
     setDraftResetPolicy("invalidate");
     setIsAdding(true);
   }
@@ -241,10 +275,10 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setActivationError(null);
     setOverlapError(null);
     setEditGoalId(goal.id);
-    const nextType = resolveGoalType(goal);
-    const nextKind = resolveGoalKind(goal);
-    setDraftType(nextType);
-    setDraftKind(nextKind);
+    const nextPlanType = resolvePlanType(goal);
+    const nextGoalType = resolveGoalType(goal);
+    setDraftPlanType(nextPlanType);
+    setDraftGoalType(nextGoalType);
     setDraftTitle(goal.title || "");
     setDraftFreqCount(String(typeof goal.freqCount === "number" ? goal.freqCount : goal.target || 1));
     const unit =
@@ -257,7 +291,18 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setDraftOneOffDate(goal.oneOffDate || (goal.freqUnit === "ONCE" ? goal.deadline : "") || "");
     setDraftNotes(goal.notes || "");
     setDraftSessionMinutes(
-      nextKind === "OUTCOME" ? "" : typeof goal.sessionMinutes === "number" ? String(goal.sessionMinutes) : ""
+      nextGoalType === "OUTCOME"
+        ? ""
+        : typeof goal.sessionMinutes === "number"
+          ? String(goal.sessionMinutes)
+          : ""
+    );
+    setDraftMetricUnit(goal?.metric?.unit || "");
+    setDraftMetricTarget(
+      goal?.metric?.targetValue != null ? String(goal.metric.targetValue) : ""
+    );
+    setDraftMetricCurrent(
+      goal?.metric?.currentValue != null ? String(goal.metric.currentValue) : ""
     );
     setDraftResetPolicy(goal.resetPolicy || "invalidate");
     setIsAdding(true);
@@ -325,12 +370,13 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     const startTime = (draftStartTime || "09:00").trim() || "09:00";
     if (!startDate) return setErr("Date de début requise.");
     const startAt = `${startDate}T${startTime}`;
-    const kind = draftKind === "OUTCOME" ? "OUTCOME" : "ACTION";
+    const goalType = draftGoalType === "OUTCOME" ? "OUTCOME" : "PROCESS";
+    const planType = draftPlanType || "ACTION";
 
     let deadline = (draftDeadline || "").trim();
     const oneOffDate = (draftOneOffDate || "").trim();
 
-    if (draftType === "ONE_OFF") {
+    if (planType === "ONE_OFF") {
       if (!oneOffDate) return setErr("Date de réalisation requise.");
       deadline = oneOffDate;
     }
@@ -338,18 +384,37 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       return setErr("La date de début doit être avant la deadline.");
     }
 
+    let metric = null;
+    if (goalType === "OUTCOME") {
+      const unit = (draftMetricUnit || "").trim();
+      const targetRaw = (draftMetricTarget || "").trim();
+      const currentRaw = (draftMetricCurrent || "").trim();
+      if (unit || targetRaw || currentRaw) {
+        const targetValue = Number(targetRaw);
+        if (!Number.isFinite(targetValue) || targetValue <= 0) {
+          return setErr("Valeur cible invalide.");
+        }
+        const currentValue = currentRaw ? Number(currentRaw) : 0;
+        if (!Number.isFinite(currentValue)) {
+          return setErr("Valeur actuelle invalide.");
+        }
+        metric = { unit, targetValue, currentValue };
+      }
+    }
+
     const payload = {
       categoryId: c.id,
       title,
-      kind,
-      type: draftType,
+      type: goalType,
+      planType,
       startAt,
       deadline,
       resetPolicy: draftResetPolicy || "invalidate",
+      metric,
     };
 
     let sessionMinutes = null;
-    if (draftType === "ACTION") {
+    if (planType === "ACTION") {
       const rawCount = Number(draftFreqCount);
       const freqCount = Number.isFinite(rawCount) ? Math.max(1, Math.floor(rawCount)) : 0;
       if (!freqCount) return setErr("Fréquence requise.");
@@ -363,7 +428,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       payload.notes = undefined;
 
       const rawMinutes = (draftSessionMinutes || "").trim();
-      if (rawMinutes && kind === "ACTION") {
+      if (rawMinutes && goalType === "PROCESS") {
         const minutes = Number(rawMinutes);
         if (!Number.isFinite(minutes) || minutes < 5 || minutes > 600) {
           return setErr("Durée invalide (5 à 600 min).");
@@ -373,13 +438,13 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       } else {
         payload.sessionMinutes = null;
       }
-    } else if (draftType === "ONE_OFF") {
+    } else if (planType === "ONE_OFF") {
       payload.oneOffDate = oneOffDate;
       payload.freqCount = undefined;
       payload.freqUnit = undefined;
       payload.sessionMinutes = null;
       payload.notes = undefined;
-    } else if (draftType === "STATE") {
+    } else if (planType === "STATE") {
       payload.notes = (draftNotes || "").trim();
       payload.freqCount = undefined;
       payload.freqUnit = undefined;
@@ -558,8 +623,14 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                             {isMainGoal ? (
                               <>
                                 <div className="small2" style={{ marginTop: 6 }}>
-                                  Progression principale : <b>{Math.round(primaryAggregate.progress * 100)}%</b>
+                                  Progression principale : <b>{primaryAggregatePct}%</b>
                                 </div>
+                                {primaryMetricPct != null ? (
+                                  <div className="small2" style={{ marginTop: 4 }}>
+                                    Agrégat enfants : <b>{primaryChildrenPct}%</b> · Mesure :{" "}
+                                    <b>{primaryMetricPct}%</b>
+                                  </div>
+                                ) : null}
                                 {primaryAggregate.linked.length ? (
                                   <div className="mt6 col">
                                     {primaryAggregate.linked.map((item) => (
@@ -607,7 +678,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                                         <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
                                           <Input
                                             type="number"
-                                            min="1"
+                                            min="0"
                                             max="100"
                                             value={linkWeight}
                                             onChange={(e) => updateLinkWeight(g.id, e.target.value)}
@@ -682,49 +753,42 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                 <div className="mt12 col">
                   <Input value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="Titre" />
                   <Select
-                    value={draftType}
+                    value={draftPlanType}
                     onChange={(e) => {
                       const next = e.target.value;
-                      setDraftType(next);
-                      if (next !== "ACTION") {
-                        setDraftKind("OUTCOME");
+                      setDraftPlanType(next);
+                      if (next === "STATE") {
+                        setDraftGoalType("OUTCOME");
                         setDraftSessionMinutes("");
                       }
                     }}
                   >
-                    {GOAL_TYPES.map((t) => (
+                    {PLAN_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>
                         {t.label}
                       </option>
                     ))}
                   </Select>
 
-                  {draftType === "ACTION" ? (
-                    <Select
-                      value={draftKind}
-                      onChange={(e) => {
-                        const next = e.target.value;
-                        setDraftKind(next);
-                        if (next === "OUTCOME") setDraftSessionMinutes("");
-                      }}
-                    >
-                      {GOAL_KINDS.map((k) => (
+                  {draftPlanType === "STATE" ? (
+                    <div className="small2">Type : Résultat</div>
+                  ) : (
+                    <Select value={draftGoalType} onChange={(e) => setDraftGoalType(e.target.value)}>
+                      {GOAL_TYPES.map((k) => (
                         <option key={k.value} value={k.value}>
                           {k.label}
                         </option>
                       ))}
                     </Select>
-                  ) : (
-                    <div className="small2">Nature : Résultat</div>
                   )}
 
-                  {draftType === "STATE" ? (
+                  {draftPlanType === "STATE" ? (
                     <div className="small2">
                       Cet objectif se suit via un tracker/habitude liée.
                     </div>
                   ) : null}
 
-                  {draftType === "ACTION" ? (
+                  {draftPlanType === "ACTION" ? (
                     <div>
                       <div className="small" style={{ marginBottom: 6 }}>
                         Je m’engage à le faire
@@ -752,7 +816,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                     </div>
                   ) : null}
 
-                  {draftType === "ACTION" && draftKind === "ACTION" ? (
+                  {draftPlanType === "ACTION" && draftGoalType === "PROCESS" ? (
                     <Input
                       type="number"
                       min="5"
@@ -761,6 +825,35 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                       onChange={(e) => setDraftSessionMinutes(e.target.value)}
                       placeholder="Durée par session (min) — optionnel"
                     />
+                  ) : null}
+
+                  {draftGoalType === "OUTCOME" ? (
+                    <div>
+                      <div className="small" style={{ marginBottom: 6 }}>
+                        Mesure (optionnelle)
+                      </div>
+                      <div className="grid3">
+                        <Input
+                          value={draftMetricUnit}
+                          onChange={(e) => setDraftMetricUnit(e.target.value)}
+                          placeholder="Unité (kg, €)"
+                        />
+                        <Input
+                          type="number"
+                          min="1"
+                          value={draftMetricTarget}
+                          onChange={(e) => setDraftMetricTarget(e.target.value)}
+                          placeholder="Cible"
+                        />
+                        <Input
+                          type="number"
+                          min="0"
+                          value={draftMetricCurrent}
+                          onChange={(e) => setDraftMetricCurrent(e.target.value)}
+                          placeholder="Actuel"
+                        />
+                      </div>
+                    </div>
                   ) : null}
 
                   <div>
@@ -781,7 +874,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                     </div>
                   </div>
 
-                  {draftType === "ONE_OFF" ? (
+                  {draftPlanType === "ONE_OFF" ? (
                     <div>
                       <div className="small" style={{ marginBottom: 6 }}>
                         Date de réalisation (obligatoire)
@@ -797,7 +890,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                     </div>
                   )}
 
-                  {draftType === "STATE" ? (
+                  {draftPlanType === "STATE" ? (
                     <Textarea
                       value={draftNotes}
                       onChange={(e) => setDraftNotes(e.target.value)}

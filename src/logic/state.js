@@ -65,11 +65,15 @@ export function normalizeResetPolicy(raw) {
   return "invalidate";
 }
 
-export function normalizeGoal(rawGoal, index = 0) {
+export function normalizeGoal(rawGoal, index = 0, categories = []) {
   const g = rawGoal && typeof rawGoal === "object" ? { ...rawGoal } : {};
 
   if (!g.id) g.id = uid();
-  if (!g.categoryId) g.categoryId = DEFAULT_CATEGORIES[0].id;
+  const fallbackCategoryId =
+    Array.isArray(categories) && categories.length ? categories[0].id : null;
+  if (typeof g.categoryId !== "string" || !g.categoryId.trim()) {
+    if (fallbackCategoryId) g.categoryId = fallbackCategoryId;
+  }
   if (!g.title) g.title = "Objectif";
   if (!g.cadence) g.cadence = "WEEKLY";
   if (typeof g.target !== "number") g.target = 1;
@@ -148,6 +152,8 @@ export function demoData() {
     { id: "demo_cat_2", name: "Catégorie 2", color: "#06B6D4", wallpaper: "" },
     { id: "demo_cat_3", name: "Catégorie 3", color: "#22C55E", wallpaper: "" },
   ];
+  const outcomeId = uid();
+  const processId = uid();
 
   return {
     profile: {
@@ -166,12 +172,34 @@ export function demoData() {
       pageThemeHome: "aurora",
       accentHome: "#7C3AED",
       activeGoalId: null,
-      mainGoalId: null,
+      mainGoalId: outcomeId,
     },
     categories: categories.map((c) => ({ ...c })),
     goals: [
-      { id: uid(), categoryId: categories[0].id, title: "Objectif A", cadence: "WEEKLY", target: 2 },
-      { id: uid(), categoryId: categories[1].id, title: "Objectif B", cadence: "DAILY", target: 1 },
+      {
+        id: outcomeId,
+        categoryId: categories[0].id,
+        title: "Résultat démo",
+        type: "OUTCOME",
+        planType: "STATE",
+        status: "active",
+        deadline: "",
+      },
+      {
+        id: processId,
+        categoryId: categories[1].id,
+        title: "Processus démo",
+        type: "PROCESS",
+        planType: "ACTION",
+        status: "queued",
+        cadence: "WEEKLY",
+        target: 3,
+        freqCount: 3,
+        freqUnit: "WEEK",
+        sessionMinutes: 30,
+        parentId: outcomeId,
+        weight: 100,
+      },
     ],
     habits: [
       { id: uid(), categoryId: categories[0].id, title: "Habitude 1", cadence: "WEEKLY", target: 2 },
@@ -224,7 +252,7 @@ export function migrate(prev) {
 
   // goals (V2 normalize)
   if (!Array.isArray(next.goals)) next.goals = [];
-  next.goals = next.goals.map((g, i) => normalizeGoal(g, i));
+  next.goals = next.goals.map((g, i) => normalizeGoal(g, i, next.categories));
   next.goals = next.goals.map((g) => ({
     ...g,
     status: g.status === "abandoned" ? "invalid" : g.status,
