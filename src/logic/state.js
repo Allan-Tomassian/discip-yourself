@@ -1,6 +1,7 @@
 import { loadState, saveState } from "../utils/storage";
 import { uid } from "../utils/helpers";
 import { normalizeGoalsState } from "./goals";
+import { normalizeReminder } from "./reminders";
 
 export const THEME_PRESETS = ["aurora", "midnight", "sunset", "ocean", "forest"];
 
@@ -136,6 +137,7 @@ export function initialData() {
     categories: [],
     goals: [],
     habits: [],
+    reminders: [],
     checks: {},
   };
 }
@@ -175,6 +177,7 @@ export function demoData() {
       { id: uid(), categoryId: categories[0].id, title: "Habitude 1", cadence: "WEEKLY", target: 2 },
       { id: uid(), categoryId: categories[1].id, title: "Habitude 2", cadence: "DAILY", target: 1 },
     ],
+    reminders: [],
     checks: {},
   };
 }
@@ -229,6 +232,8 @@ export function migrate(prev) {
 
   // habits/checks
   if (!Array.isArray(next.habits)) next.habits = [];
+  if (!Array.isArray(next.reminders)) next.reminders = [];
+  next.reminders = next.reminders.map((r, i) => normalizeReminder(r, i));
   if (!next.checks || typeof next.checks !== "object") next.checks = {};
 
   return normalizeGoalsState(next);

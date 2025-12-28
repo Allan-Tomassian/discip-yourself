@@ -225,3 +225,14 @@ a{ color:inherit; }
   padding:0;
   font-size:12px;
 }
+
+.modalBackdrop{
+  position:fixed;
+  inset:0;
+  z-index:30;
+  background: rgba(0,0,0,.55);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+}

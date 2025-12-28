@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import TopNav from "./components/TopNav";
 import { migrate, usePersistedState } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
+import { getDueReminders, playReminderSound, sendReminderNotification } from "./logic/reminders";
+import { Button, Card } from "./components/UI";
 
 import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
@@ -18,6 +20,18 @@ function runSelfTests() {
 export default function App() {
   const [data, setData] = usePersistedState(React);
   const [tab, setTab] = useState("home");
+  const [activeReminder, setActiveReminder] = useState(null);
+  const dataRef = useRef(data);
+  const lastReminderRef = useRef({});
+  const activeReminderRef = useRef(activeReminder);
+
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  useEffect(() => {
+    activeReminderRef.current = activeReminder;
+  }, [activeReminder]);
 
   useEffect(() => {
     runSelfTests();
@@ -31,6 +45,21 @@ export default function App() {
     }, 60000);
     return () => clearInterval(id);
   }, [setData]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (activeReminderRef.current) return;
+      const current = dataRef.current;
+      const due = getDueReminders(current, new Date(), lastReminderRef.current);
+      if (!due.length) return;
+      const reminder = due[0];
+      const goal = (current.goals || []).find((g) => g.id === reminder.goalId) || null;
+      setActiveReminder({ reminder, goal });
+      playReminderSound();
+      sendReminderNotification(reminder, goal?.title || "");
+    }, 30000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (data?.ui?.openCategoryDetailId) {
@@ -59,6 +88,26 @@ export default function App() {
       )}
 
       <TopNav active={tab} setActive={setTab} />
+
+      {activeReminder ? (
+        <div className="modalBackdrop">
+          <Card accentBorder style={{ maxWidth: 420, width: "100%" }}>
+            <div className="p18">
+              <div className="titleSm">{activeReminder.reminder?.label || "Rappel"}</div>
+              <div className="small2" style={{ marginTop: 6 }}>
+                {activeReminder.goal
+                  ? `Objectif: ${activeReminder.goal.title || "Objectif"}`
+                  : "Ouvre l’app pour continuer."}
+              </div>
+              <div className="row" style={{ marginTop: 12 }}>
+                <Button variant="ghost" onClick={() => setActiveReminder(null)}>
+                  OK
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      ) : null}
     </>
   );
 }

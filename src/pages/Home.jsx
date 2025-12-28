@@ -6,9 +6,10 @@ import { todayKey } from "../utils/dates";
 import { computeHabitProgress } from "../logic/habits";
 import { getBackgroundCss, getAccentForPage } from "../utils/_theme";
 import { computePriorities } from "../logic/priorities";
-import { activateGoal, computePrimaryAggregate, updateGoal } from "../logic/goals";
+import { activateGoal, computeAggregateProgress, scheduleStart } from "../logic/goals";
 
 export default function Home({ data, setData }) {
+  const [showMainWhy, setShowMainWhy] = useState(true);
   function addCategory() {
     const name = prompt("Nom :", "Nouvelle");
     if (!name) return;
@@ -68,12 +69,9 @@ export default function Home({ data, setData }) {
     return data.categories.find((c) => c.id === mainGoal.categoryId) || selectedCategory;
   }, [mainGoal, data.categories, selectedCategory]);
 
-  const secondaryGoals = useMemo(
-    () => activeGoals.filter((g) => g.id !== mainGoal?.id),
-    [activeGoals, mainGoal]
-  );
+  const mainWhy = focusCategory?.whyText || "";
   const primaryAggregate = useMemo(
-    () => computePrimaryAggregate(data.goals || [], mainGoal?.id),
+    () => computeAggregateProgress({ goals: data.goals || [] }, mainGoal?.id),
     [data.goals, mainGoal?.id]
   );
 
@@ -95,6 +93,30 @@ export default function Home({ data, setData }) {
     return { label: first.title || first.name || "Habitude", hint: "Prochaine action" };
   }, [data.habits, focusCategory]);
 
+  function formatStartAtFr(value) {
+    if (!value) return "—";
+    const dt = new Date(value);
+    if (!Number.isNaN(dt.getTime())) {
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()} ${pad(dt.getHours())}:${pad(
+        dt.getMinutes()
+      )}`;
+    }
+    if (typeof value === "string" && value.includes("T")) {
+      const [date, time = ""] = value.split("T");
+      const parts = date.split("-");
+      if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]} ${time.slice(0, 5)}`;
+    }
+    return value;
+  }
+
+  function formatStartAtForUpdate(d) {
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(
+      d.getMinutes()
+    )}`;
+  }
+
   function onStartGoal(goalId) {
     if (!goalId) return;
     const goalForUi = (data.goals || []).find((g) => g.id === goalId);
@@ -110,32 +132,54 @@ export default function Home({ data, setData }) {
               .map((b) => `- ${b.title || b.name || "Objectif"} (${b.startAt || "—"})`)
               .join("\n")}`
           : "";
-      const wantsStartNow = confirm(
-        `${res.reason === "START_IN_FUTURE" ? "Date de début future." : "Activation bloquée."}${blockers}\n\nDémarrer maintenant ?`
-      );
-      if (wantsStartNow) {
-        setData((prev) => {
-          const startAt = new Date();
-          const updated = updateGoal(prev, goalId, {
-            startAt: `${startAt.getFullYear()}-${String(startAt.getMonth() + 1).padStart(2, "0")}-${String(
-              startAt.getDate()
-            ).padStart(2, "0")}T${String(startAt.getHours()).padStart(2, "0")}:${String(
-              startAt.getMinutes()
-            ).padStart(2, "0")}`,
+      const conflicts =
+        res.conflicts && res.conflicts.length
+          ? `\n\nChevauchements:\n${res.conflicts
+              .map((c) => `- ${c.title || "Objectif"} (${formatStartAtFr(c.startAt)} → ${formatStartAtFr(c.endAt)})`)
+              .join("\n")}`
+          : "";
+
+      if (res.reason === "START_IN_FUTURE") {
+        const wantsStartNow = confirm(`Date de début future.${blockers}\n\nDémarrer maintenant ?`);
+        if (wantsStartNow) {
+          let res2;
+          setData((prev) => {
+            const now = new Date();
+            const scheduled = scheduleStart(prev, goalId, formatStartAtForUpdate(now), goalForUi?.sessionMinutes);
+            if (!scheduled.ok) {
+              res2 = { ok: false, reason: "OVERLAP", conflicts: scheduled.conflicts, state: prev };
+              return prev;
+            }
+            res2 = activateGoal(scheduled.state, goalId, { navigate: true, now });
+            return res2.state;
           });
-          const res2 = activateGoal(updated, goalId, { navigate: true, now: startAt });
-          return res2.state;
-        });
+          if (res2 && !res2.ok) {
+            const overlapList =
+              res2.conflicts && res2.conflicts.length
+                ? `\n\nChevauchements:\n${res2.conflicts
+                    .map((c) => `- ${c.title || "Objectif"} (${formatStartAtFr(c.startAt)} → ${formatStartAtFr(c.endAt)})`)
+                    .join("\n")}`
+                : "";
+            alert(`Chevauchement détecté.${overlapList}`);
+            return;
+          }
+          return;
+        }
+      } else if (res.reason === "OVERLAP") {
+        alert(`Chevauchement détecté.${conflicts}`);
       } else {
-        setData((prev) => ({
-          ...prev,
-          ui: {
-            ...prev.ui,
-            openCategoryDetailId: goalForUi?.categoryId || focusCategory?.id || prev.ui.selectedCategoryId,
-            openGoalEditId: goalId,
-          },
-        }));
+        const wantsEdit = confirm(`Activation bloquée.${blockers}\n\nModifier la date ?`);
+        if (!wantsEdit) return;
       }
+
+      setData((prev) => ({
+        ...prev,
+        ui: {
+          ...prev.ui,
+          openCategoryDetailId: goalForUi?.categoryId || focusCategory?.id || prev.ui.selectedCategoryId,
+          openGoalEditId: goalId,
+        },
+      }));
     }
   }
 
@@ -223,6 +267,20 @@ export default function Home({ data, setData }) {
               <div style={{ marginTop: 12 }}>
                 {mainGoal ? (
                   <>
+                    <div className="listItem" style={{ marginBottom: 12 }}>
+                      <div className="row">
+                        <div className="small">Pourquoi principal</div>
+                        <button className="linkBtn" onClick={() => setShowMainWhy((v) => !v)}>
+                          {showMainWhy ? "Masquer" : "Afficher"}
+                        </button>
+                      </div>
+                      {showMainWhy ? (
+                        <div className="small2" style={{ marginTop: 6 }}>
+                          {mainWhy || "Ajoute un mini-why dans la catégorie principale."}
+                        </div>
+                      ) : null}
+                    </div>
+
                     <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                       <div
                         className="dot"
@@ -255,25 +313,6 @@ export default function Home({ data, setData }) {
                     <div className="small" style={{ marginTop: 8, opacity: 0.9 }}>
                       Progression principale : <b>{Math.round(primaryAggregate.progress * 100)}%</b>
                     </div>
-                    {primaryAggregate.linked.length ? (
-                      <div className="mt6 col">
-                        {primaryAggregate.linked.map((item) => (
-                          <div key={item.goal.id} className="small2">
-                            • {item.goal.title || "Objectif"} · poids {item.weight}% ·{" "}
-                            {Math.round(item.progress * 100)}%
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-
-                    <div style={{ marginTop: 12 }}>
-                      <div className="small" style={{ opacity: 0.9 }}>
-                        Pourquoi
-                      </div>
-                      <div style={{ marginTop: 6, fontWeight: 650 }}>
-                        {data?.profile?.whyText || "Définis ton pourquoi dans Mon pourquoi."}
-                      </div>
-                    </div>
 
                     <div style={{ marginTop: 12 }}>
                       <div className="small" style={{ opacity: 0.9 }}>
@@ -282,6 +321,10 @@ export default function Home({ data, setData }) {
                       <div style={{ marginTop: 6, fontWeight: 700 }}>
                         {nextAction ? nextAction.label : "Ajoute au moins une habitude dans cette catégorie."}
                       </div>
+                    </div>
+
+                    <div className="small" style={{ marginTop: 10, opacity: 0.9 }}>
+                      Prochaine session : <b>{formatStartAtFr(mainGoal.startAt)}</b>
                     </div>
 
                     <div className="row" style={{ marginTop: 14, gap: 10, flexWrap: "wrap" }}>
@@ -322,23 +365,28 @@ export default function Home({ data, setData }) {
                       </Button>
                     </div>
 
-                    {secondaryGoals.length ? (
-                      <div style={{ marginTop: 16 }}>
-                        <div className="small" style={{ opacity: 0.9 }}>
-                          Secondaires
-                        </div>
+                    <div style={{ marginTop: 16 }}>
+                      <div className="small" style={{ opacity: 0.9 }}>
+                        Enfants liés
+                      </div>
+                      {primaryAggregate.linked.length ? (
                         <div className="mt8 col">
-                          {secondaryGoals.map((g) => {
-                            const cat = data.categories.find((x) => x.id === g.categoryId);
+                          {primaryAggregate.linked.map((item) => {
+                            const child = item.goal;
+                            const cat = data.categories.find((x) => x.id === child.categoryId);
                             return (
-                              <div key={g.id} className="small2">
-                                • {g.title || g.name || "Objectif"} · {cat?.name || "—"}
+                              <div key={child.id} className="small2">
+                                • {child.title || "Objectif"} · {cat?.name || "—"} · poids {item.weight}%
                               </div>
                             );
                           })}
                         </div>
-                      </div>
-                    ) : null}
+                      ) : (
+                        <div className="small2" style={{ opacity: 0.7 }}>
+                          Aucun enfant lié.
+                        </div>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <>

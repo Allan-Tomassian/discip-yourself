@@ -6,10 +6,14 @@ import { todayKey } from "../utils/dates";
 import {
   abandonGoal,
   activateGoal,
-  computePrimaryAggregate,
+  computeAggregateProgress,
   createGoal,
   deleteGoal,
   finishGoal,
+  linkChild,
+  preventOverlap,
+  scheduleStart,
+  setMainGoal,
   updateGoal,
 } from "../logic/goals";
 
@@ -25,6 +29,11 @@ const GOAL_TYPES = [
   { value: "ACTION", label: "Action" },
   { value: "ONE_OFF", label: "Ponctuel" },
   { value: "STATE", label: "État" },
+];
+
+const GOAL_KINDS = [
+  { value: "ACTION", label: "Action" },
+  { value: "OUTCOME", label: "Résultat" },
 ];
 
 function formatCadence(cadence) {
@@ -89,6 +98,14 @@ function resolveGoalType(goal) {
   return "STATE";
 }
 
+function resolveGoalKind(goal) {
+  const raw = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
+  if (raw === "ACTION" || raw === "OUTCOME") return raw;
+  const type = resolveGoalType(goal);
+  if (type === "STATE") return "OUTCOME";
+  return "ACTION";
+}
+
 function unitFromCadence(cadence) {
   if (cadence === "DAILY") return "DAY";
   if (cadence === "WEEKLY") return "WEEK";
@@ -139,6 +156,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const handledEditRef = useRef(null);
   const [isAdding, setIsAdding] = useState(false);
   const [draftType, setDraftType] = useState("ACTION");
+  const [draftKind, setDraftKind] = useState("ACTION");
   const [draftTitle, setDraftTitle] = useState("");
   const [draftFreqCount, setDraftFreqCount] = useState("3");
   const [draftFreqUnit, setDraftFreqUnit] = useState("WEEK");
@@ -151,6 +169,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const [draftResetPolicy, setDraftResetPolicy] = useState("invalidate");
   const [err, setErr] = useState("");
   const [activationError, setActivationError] = useState(null);
+  const [overlapError, setOverlapError] = useState(null);
   const [linkWeightsById, setLinkWeightsById] = useState({});
 
   function addCategory() {
@@ -179,7 +198,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const goals = c ? allGoals.filter((g) => g.categoryId === c.id) : [];
   const mainGoal = allGoals.find((g) => g.id === mainGoalId) || null;
   const primaryAggregate = useMemo(
-    () => computePrimaryAggregate(allGoals, mainGoalId),
+    () => computeAggregateProgress({ goals: allGoals }, mainGoalId),
     [allGoals, mainGoalId]
   );
 
@@ -189,17 +208,19 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
 
   function getLinkWeightValue(goal) {
     const raw = linkWeightsById[goal.id];
-    const fromGoal = Number.isFinite(goal?.linkWeight) ? goal.linkWeight : 25;
+    const fromGoal = Number.isFinite(goal?.linkWeight) ? goal.linkWeight : 100;
     const n = raw === "" || raw == null ? fromGoal : Number(raw);
-    if (!Number.isFinite(n)) return 25;
+    if (!Number.isFinite(n)) return 100;
     return Math.max(1, Math.min(100, Math.round(n)));
   }
 
   function openAdd() {
     setErr("");
     setActivationError(null);
+    setOverlapError(null);
     setEditGoalId(null);
     setDraftType("ACTION");
+    setDraftKind("ACTION");
     setDraftTitle("");
     setDraftFreqCount("3");
     setDraftFreqUnit("WEEK");
@@ -217,8 +238,12 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     if (!goal?.id) return;
     setErr("");
     setActivationError(null);
+    setOverlapError(null);
     setEditGoalId(goal.id);
-    setDraftType(resolveGoalType(goal));
+    const nextType = resolveGoalType(goal);
+    const nextKind = resolveGoalKind(goal);
+    setDraftType(nextType);
+    setDraftKind(nextKind);
     setDraftTitle(goal.title || "");
     setDraftFreqCount(String(typeof goal.freqCount === "number" ? goal.freqCount : goal.target || 1));
     const unit =
@@ -231,7 +256,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setDraftOneOffDate(goal.oneOffDate || (goal.freqUnit === "ONCE" ? goal.deadline : "") || "");
     setDraftNotes(goal.notes || "");
     setDraftSessionMinutes(
-      typeof goal.sessionMinutes === "number" ? String(goal.sessionMinutes) : ""
+      nextKind === "OUTCOME" ? "" : typeof goal.sessionMinutes === "number" ? String(goal.sessionMinutes) : ""
     );
     setDraftResetPolicy(goal.resetPolicy || "invalidate");
     setIsAdding(true);
@@ -288,6 +313,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setIsAdding(false);
     setEditGoalId(null);
     setErr("");
+    setOverlapError(null);
     lastScrollRef.current = null;
   }
 
@@ -298,6 +324,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     const startTime = (draftStartTime || "09:00").trim() || "09:00";
     if (!startDate) return setErr("Date de début requise.");
     const startAt = `${startDate}T${startTime}`;
+    const kind = draftKind === "OUTCOME" ? "OUTCOME" : "ACTION";
 
     let deadline = (draftDeadline || "").trim();
     const oneOffDate = (draftOneOffDate || "").trim();
@@ -313,12 +340,14 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     const payload = {
       categoryId: c.id,
       title,
+      kind,
       type: draftType,
       startAt,
       deadline,
       resetPolicy: draftResetPolicy || "invalidate",
     };
 
+    let sessionMinutes = null;
     if (draftType === "ACTION") {
       const rawCount = Number(draftFreqCount);
       const freqCount = Number.isFinite(rawCount) ? Math.max(1, Math.floor(rawCount)) : 0;
@@ -333,28 +362,36 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       payload.notes = undefined;
 
       const rawMinutes = (draftSessionMinutes || "").trim();
-      if (rawMinutes) {
+      if (rawMinutes && kind === "ACTION") {
         const minutes = Number(rawMinutes);
         if (!Number.isFinite(minutes) || minutes < 5 || minutes > 600) {
           return setErr("Durée invalide (5 à 600 min).");
         }
-        payload.sessionMinutes = Math.floor(minutes);
+        sessionMinutes = Math.floor(minutes);
+        payload.sessionMinutes = sessionMinutes;
       } else {
-        payload.sessionMinutes = undefined;
+        payload.sessionMinutes = null;
       }
     } else if (draftType === "ONE_OFF") {
       payload.oneOffDate = oneOffDate;
       payload.freqCount = undefined;
       payload.freqUnit = undefined;
-      payload.sessionMinutes = undefined;
+      payload.sessionMinutes = null;
       payload.notes = undefined;
     } else if (draftType === "STATE") {
       payload.notes = (draftNotes || "").trim();
       payload.freqCount = undefined;
       payload.freqUnit = undefined;
-      payload.sessionMinutes = undefined;
+      payload.sessionMinutes = null;
       payload.oneOffDate = undefined;
     }
+
+    const overlap = preventOverlap(data, editGoalId || null, startAt, sessionMinutes);
+    if (!overlap.ok) {
+      setOverlapError(overlap.conflicts);
+      return;
+    }
+    setOverlapError(null);
 
     setData((prev) =>
       editGoalId ? updateGoal(prev, editGoalId, payload) : createGoal(prev, payload)
@@ -393,8 +430,12 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     const now = new Date();
     setData((prev) => {
       const startAt = formatStartAtForUpdate(now);
-      const updated = updateGoal(prev, goalId, { startAt });
-      res = activateGoal(updated, goalId, { navigate: true, now });
+      const scheduled = scheduleStart(prev, goalId, startAt);
+      if (!scheduled.ok) {
+        res = { ok: false, reason: "OVERLAP", conflicts: scheduled.conflicts, state: prev };
+        return prev;
+      }
+      res = activateGoal(scheduled.state, goalId, { navigate: true, now });
       return res.state;
     });
     if (res && !res.ok) {
@@ -455,21 +496,32 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                     if (!errGoal) return null;
                     return (
                       <div className="listItem">
-                        <div style={{ fontWeight: 800 }}>Activation bloquée</div>
-                        <div className="small2" style={{ marginTop: 6 }}>
-                          {activationError.reason === "START_IN_FUTURE"
-                            ? "La date de début est dans le futur."
+                      <div style={{ fontWeight: 800 }}>Activation bloquée</div>
+                      <div className="small2" style={{ marginTop: 6 }}>
+                        {activationError.reason === "START_IN_FUTURE"
+                          ? "La date de début est dans le futur."
+                          : activationError.reason === "OVERLAP"
+                            ? "Chevauchement détecté."
                             : "Un autre objectif bloque l’activation."}
+                      </div>
+                      {activationError.blockers && activationError.blockers.length ? (
+                        <div className="mt10 col">
+                          {activationError.blockers.map((b) => (
+                            <div key={b.id} className="small2">
+                              • {b.title || b.name || "Objectif"} — {formatStartAtFr(b.startAt)}
+                            </div>
+                          ))}
                         </div>
-                        {activationError.blockers && activationError.blockers.length ? (
-                          <div className="mt10 col">
-                            {activationError.blockers.map((b) => (
-                              <div key={b.id} className="small2">
-                                • {b.title || b.name || "Objectif"} — {formatStartAtFr(b.startAt)}
-                              </div>
-                            ))}
-                          </div>
-                        ) : null}
+                      ) : null}
+                      {activationError.conflicts && activationError.conflicts.length ? (
+                        <div className="mt10 col">
+                          {activationError.conflicts.map((c) => (
+                            <div key={c.goalId} className="small2">
+                              • {c.title || "Objectif"} — {formatStartAtFr(c.startAt)} → {formatStartAtFr(c.endAt)}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                         <div className="row" style={{ marginTop: 10, justifyContent: "flex-end" }}>
                           <Button variant="ghost" onClick={() => openEdit(errGoal)}>
                             Modifier la date
@@ -484,9 +536,9 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                   <div className="listItem">Aucun objectif.</div>
                 ) : (
                   goals.map((g) => {
-                    const isMainGoal = mainGoalId && g.id === mainGoalId;
-                    const isLinked = Boolean(mainGoalId && g.primaryGoalId === mainGoalId);
-                    const linkWeight = getLinkWeightValue(g);
+                  const isMainGoal = mainGoalId && g.id === mainGoalId;
+                  const isLinked = Boolean(mainGoalId && g.parentId === mainGoalId);
+                  const linkWeight = getLinkWeightValue(g);
                     return (
                       <div key={g.id} className="listItem">
                         <div className="row" style={{ alignItems: "flex-start" }}>
@@ -541,15 +593,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                                   </div>
                                 ) : (
                                   <>
-                                    <Button
-                                      variant="ghost"
-                                      onClick={() =>
-                                        setData((prev) => ({
-                                          ...prev,
-                                          ui: { ...(prev.ui || {}), mainGoalId: g.id },
-                                        }))
-                                      }
-                                    >
+                                    <Button variant="ghost" onClick={() => setData((prev) => setMainGoal(prev, g.id))}>
                                       Définir comme objectif principal
                                     </Button>
                                     {mainGoalId ? (
@@ -571,12 +615,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                                           <Button
                                             variant="ghost"
                                             onClick={() =>
-                                              setData((prev) =>
-                                                updateGoal(prev, g.id, {
-                                                  primaryGoalId: mainGoalId,
-                                                  linkWeight,
-                                                })
-                                              )
+                                              setData((prev) => linkChild(prev, g.id, mainGoalId, linkWeight))
                                             }
                                           >
                                             {isLinked ? "Mettre à jour" : "Lier"}
@@ -585,12 +624,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                                             <Button
                                               variant="ghost"
                                               onClick={() =>
-                                                setData((prev) =>
-                                                  updateGoal(prev, g.id, {
-                                                    primaryGoalId: null,
-                                                    linkWeight: undefined,
-                                                  })
-                                                )
+                                                setData((prev) => linkChild(prev, g.id, null))
                                               }
                                             >
                                               Retirer
@@ -651,7 +685,10 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                     onChange={(e) => {
                       const next = e.target.value;
                       setDraftType(next);
-                      if (next === "ONE_OFF") setDraftSessionMinutes("");
+                      if (next !== "ACTION") {
+                        setDraftKind("OUTCOME");
+                        setDraftSessionMinutes("");
+                      }
                     }}
                   >
                     {GOAL_TYPES.map((t) => (
@@ -660,6 +697,25 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                       </option>
                     ))}
                   </Select>
+
+                  {draftType === "ACTION" ? (
+                    <Select
+                      value={draftKind}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setDraftKind(next);
+                        if (next === "OUTCOME") setDraftSessionMinutes("");
+                      }}
+                    >
+                      {GOAL_KINDS.map((k) => (
+                        <option key={k.value} value={k.value}>
+                          {k.label}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <div className="small2">Nature : Résultat</div>
+                  )}
 
                   {draftType === "STATE" ? (
                     <div className="small2">
@@ -695,7 +751,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                     </div>
                   ) : null}
 
-                  {draftType === "ACTION" ? (
+                  {draftType === "ACTION" && draftKind === "ACTION" ? (
                     <Input
                       type="number"
                       min="5"
@@ -753,6 +809,18 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                     <option value="reset">Abandon = reset</option>
                   </Select>
                   {err ? <div style={{ color: "rgba(255,120,120,.95)", fontSize: 13 }}>{err}</div> : null}
+                  {overlapError && overlapError.length ? (
+                    <div className="small2" style={{ color: "rgba(255,140,140,.95)" }}>
+                      Chevauchement détecté :
+                      <div className="mt6 col">
+                        {overlapError.map((c) => (
+                          <div key={c.goalId}>
+                            • {c.title || "Objectif"} — {formatStartAtFr(c.startAt)} → {formatStartAtFr(c.endAt)}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="row">
                     <Button variant="ghost" onClick={closeForm}>
                       Annuler

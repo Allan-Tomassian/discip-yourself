@@ -3,7 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import CategoryDetail from "./CategoryDetail";
 import { Badge, Button, Card, Input, Textarea } from "../components/UI";
 import { uid } from "../utils/helpers";
-import { activateGoal, updateGoal } from "../logic/goals";
+import { activateGoal, scheduleStart } from "../logic/goals";
 
 const WHY_LIMIT = 150;
 
@@ -285,8 +285,12 @@ export default function Categories({ data, setData }) {
     const now = new Date();
     setData((prev) => {
       const startAt = formatStartAtForUpdate(now);
-      const updated = updateGoal(prev, goalId, { startAt });
-      res = activateGoal(updated, goalId, { navigate: true, now });
+      const scheduled = scheduleStart(prev, goalId, startAt);
+      if (!scheduled.ok) {
+        res = { ok: false, reason: "OVERLAP", conflicts: scheduled.conflicts, state: prev };
+        return prev;
+      }
+      res = activateGoal(scheduled.state, goalId, { navigate: true, now });
       return res.state;
     });
     if (res && !res.ok) {
@@ -446,13 +450,24 @@ export default function Categories({ data, setData }) {
                         <div className="small2" style={{ marginTop: 6 }}>
                           {activationError.reason === "START_IN_FUTURE"
                             ? "La date de début est dans le futur."
-                            : "Un autre objectif bloque l’activation."}
+                            : activationError.reason === "OVERLAP"
+                              ? "Chevauchement détecté."
+                              : "Un autre objectif bloque l’activation."}
                         </div>
                         {activationError.blockers && activationError.blockers.length ? (
                           <div className="mt10 col">
                             {activationError.blockers.map((b) => (
                               <div key={b.id} className="small2">
                                 • {b.title || b.name || "Objectif"} — {formatStartAtFr(b.startAt)}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                        {activationError.conflicts && activationError.conflicts.length ? (
+                          <div className="mt10 col">
+                            {activationError.conflicts.map((c) => (
+                              <div key={c.goalId} className="small2">
+                                • {c.title || "Objectif"} — {formatStartAtFr(c.startAt)} → {formatStartAtFr(c.endAt)}
                               </div>
                             ))}
                           </div>

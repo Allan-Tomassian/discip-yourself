@@ -4,6 +4,7 @@ import { normalizeGoal, normalizeResetPolicy } from "./state";
 
 const ALLOWED = new Set(["queued", "active", "done", "invalid"]);
 const GOAL_TYPES = new Set(["ACTION", "ONE_OFF", "STATE"]);
+const GOAL_KINDS = new Set(["ACTION", "OUTCOME"]);
 const MAX_SECONDARY_ACTIVE = 3;
 
 // Future flag (do not change behavior elsewhere yet)
@@ -41,11 +42,19 @@ function normalizeGoalType(goal) {
   return "STATE";
 }
 
-function normalizeStartAt(goal, nowLocal) {
+function normalizeKind(goal, type) {
+  const raw = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
+  if (GOAL_KINDS.has(raw)) return raw;
+  if (type === "STATE") return "OUTCOME";
+  return "ACTION";
+}
+
+function normalizeStartAt(goal, nowLocal, kind) {
   const raw = typeof goal?.startAt === "string" ? goal.startAt.trim() : "";
   if (raw) return raw;
   const legacy = typeof goal?.startDate === "string" ? goal.startDate.trim() : "";
   if (legacy) return `${legacy}T09:00`;
+  if (kind === "OUTCOME") return null;
   return nowLocal;
 }
 
@@ -55,6 +64,36 @@ function normalizeOneOffDate(goal) {
   const fallback = typeof goal?.deadline === "string" ? goal.deadline.trim() : "";
   return fallback;
 }
+
+function normalizeParentId(goal) {
+  const raw = typeof goal?.parentId === "string" ? goal.parentId.trim() : "";
+  if (raw) return raw;
+  const legacy = typeof goal?.primaryGoalId === "string" ? goal.primaryGoalId.trim() : "";
+  return legacy || null;
+}
+
+function normalizeLinkWeight(goal, parentId) {
+  if (!parentId) return undefined;
+  const raw = typeof goal?.linkWeight === "string" ? Number(goal.linkWeight) : goal?.linkWeight;
+  if (!Number.isFinite(raw)) return 100;
+  return Math.max(1, Math.min(100, Math.round(raw)));
+}
+
+function computeEndAt(startAt, sessionMinutes) {
+  if (!startAt || !sessionMinutes) return null;
+  const startMs = parseStartAt(startAt);
+  if (!startMs) return null;
+  const endMs = startMs + sessionMinutes * 60 * 1000;
+  return formatLocalDateTime(new Date(endMs));
+}
+
+function resolveGoalEndAt(goal) {
+  const raw = typeof goal?.endAt === "string" ? goal.endAt.trim() : "";
+  if (raw) return raw;
+  if (!goal?.sessionMinutes) return null;
+  return computeEndAt(goal.startAt, goal.sessionMinutes);
+}
+
 
 function deriveFrequencyFromLegacy(goal) {
   const rawTarget = typeof goal?.target === "number" ? goal.target : 1;
@@ -141,50 +180,62 @@ export function normalizeGoalsState(state) {
   const normalizedGoals = goals.map((g) => {
     if (!g || typeof g !== "object") return g;
     const next = { ...g, status: normalizeStatus(g.status) };
-    const primaryGoalId = typeof next.primaryGoalId === "string" ? next.primaryGoalId : null;
-    const rawWeight = typeof next.linkWeight === "string" ? Number(next.linkWeight) : next.linkWeight;
-    const linkWeight = Number.isFinite(rawWeight) ? Math.max(1, Math.min(100, Math.round(rawWeight))) : 1;
     const type = normalizeGoalType(next);
-    const startAt = normalizeStartAt(next, nowLocal);
+    const kind = normalizeKind(next, type);
+    const parentId = normalizeParentId(next);
+    const linkWeight = normalizeLinkWeight(next, parentId);
+    const startAt = normalizeStartAt(next, nowLocal, kind);
+    const sessionMinutesRaw = normalizeSessionMinutes(next);
     if (type === "ONE_OFF") {
+      const sessionMinutes = kind === "OUTCOME" ? null : sessionMinutesRaw ?? null;
       return {
         ...next,
         type,
+        kind,
         startAt,
+        endAt: computeEndAt(startAt, sessionMinutes),
         startDate: undefined,
         oneOffDate: normalizeOneOffDate(next),
         freqUnit: undefined,
         freqCount: undefined,
-        sessionMinutes: undefined,
-        primaryGoalId,
-        linkWeight: primaryGoalId ? linkWeight : undefined,
+        sessionMinutes,
+        parentId,
+        primaryGoalId: parentId,
+        linkWeight,
       };
     }
     if (type === "STATE") {
+      const sessionMinutes = kind === "OUTCOME" ? null : sessionMinutesRaw ?? null;
       return {
         ...next,
         type,
+        kind,
         startAt,
+        endAt: computeEndAt(startAt, sessionMinutes),
         startDate: undefined,
         freqUnit: undefined,
         freqCount: undefined,
-        sessionMinutes: undefined,
-        primaryGoalId,
-        linkWeight: primaryGoalId ? linkWeight : undefined,
+        sessionMinutes,
+        parentId,
+        primaryGoalId: parentId,
+        linkWeight,
       };
     }
     const freq = normalizeFrequency(next);
-    const sessionMinutes = normalizeSessionMinutes(next);
+    const sessionMinutes = kind === "OUTCOME" ? null : sessionMinutesRaw ?? null;
     return {
       ...next,
       type,
+      kind,
       startAt,
+      endAt: computeEndAt(startAt, sessionMinutes),
       startDate: undefined,
       freqUnit: freq.freqUnit,
       freqCount: freq.freqCount,
       sessionMinutes,
-      primaryGoalId,
-      linkWeight: primaryGoalId ? linkWeight : undefined,
+      parentId,
+      primaryGoalId: parentId,
+      linkWeight,
     };
   });
 
@@ -253,9 +304,21 @@ export function normalizeGoalsState(state) {
     nextMainGoalId = pickOldestActiveId(activeNow);
   }
 
-  const secondaryActives = activeNow.filter((g) => g?.id !== nextMainGoalId);
-  if (secondaryActives.length > MAX_SECONDARY_ACTIVE) {
-    const keep = [...secondaryActives]
+  if (nextMainGoalId) {
+    nextGoals = nextGoals.map((g) => {
+      if (!g || g.status !== "active") return g;
+      if (g.id === nextMainGoalId) return g;
+      if (g.parentId === nextMainGoalId) return g;
+      return { ...g, status: "queued" };
+    });
+    activeNow = nextGoals.filter((g) => g?.status === "active");
+  }
+
+  const activeChildren = nextMainGoalId
+    ? activeNow.filter((g) => g?.parentId === nextMainGoalId)
+    : [];
+  if (activeChildren.length > MAX_SECONDARY_ACTIVE) {
+    const keep = [...activeChildren]
       .sort((a, b) => getGoalAgeKey(a).localeCompare(getGoalAgeKey(b)))
       .slice(0, MAX_SECONDARY_ACTIVE);
     const keepIds = new Set(keep.map((g) => g.id));
@@ -263,30 +326,33 @@ export function normalizeGoalsState(state) {
       if (!g || g.status !== "active") return g;
       if (g.id === nextMainGoalId) return g;
       if (keepIds.has(g.id)) return g;
-      return { ...g, status: "queued" };
+      if (g.parentId === nextMainGoalId) return { ...g, status: "queued" };
+      return g;
     });
     activeNow = nextGoals.filter((g) => g?.status === "active");
-    nextActiveGoalId = pickPreferredActiveId(activeNow, uiActiveId);
-    if (nextMainGoalId && !activeNow.some((g) => g?.id === nextMainGoalId)) {
-      nextMainGoalId = pickOldestActiveId(activeNow);
-    }
   }
 
   if (nextMainGoalId) {
     nextGoals = nextGoals.map((g) => {
       if (!g || typeof g !== "object") return g;
-      if (g.primaryGoalId && g.primaryGoalId !== nextMainGoalId) {
-        return { ...g, primaryGoalId: null, linkWeight: undefined };
+      if (g.parentId && g.parentId !== nextMainGoalId) {
+        return { ...g, parentId: null, primaryGoalId: null, linkWeight: undefined };
       }
       return g;
     });
   } else {
     nextGoals = nextGoals.map((g) => {
       if (!g || typeof g !== "object") return g;
-      if (g.primaryGoalId) return { ...g, primaryGoalId: null, linkWeight: undefined };
+      if (g.parentId) return { ...g, parentId: null, primaryGoalId: null, linkWeight: undefined };
       return g;
     });
   }
+
+  nextActiveGoalId = allowGlobalSingleActive
+    ? activeNow.length
+      ? activeNow[0].id || null
+      : null
+    : pickPreferredActiveId(activeNow, uiActiveId);
 
   return {
     ...state,
@@ -303,23 +369,33 @@ export function getGoalProgress(goal) {
   return Math.max(0, Math.min(1, raw));
 }
 
-export function computePrimaryAggregate(goals = [], primaryId) {
-  if (!primaryId) return { progress: 0, linked: [] };
-  const primary = goals.find((g) => g?.id === primaryId);
-  if (!primary) return { progress: 0, linked: [] };
+export function computeAggregateProgress(state, parentId) {
+  const goals = Array.isArray(state?.goals) ? state.goals : [];
+  if (!parentId) return { progress: 0, linked: [] };
+  const parent = goals.find((g) => g?.id === parentId);
+  if (!parent) return { progress: 0, linked: [] };
+
+  const parentKind = typeof parent.kind === "string" ? parent.kind.toUpperCase() : "ACTION";
+  const includeParent = parentKind === "ACTION";
+  const parentProgress = includeParent ? getGoalProgress(parent) : 0;
+
   const linked = goals
-    .filter((g) => g?.primaryGoalId === primaryId && g?.status === "active")
+    .filter((g) => g?.parentId === parentId && g?.status !== "invalid")
     .map((g) => {
-      const weight = Number.isFinite(g?.linkWeight) ? Math.max(1, Math.min(100, Math.round(g.linkWeight))) : 1;
+      const weight = Number.isFinite(g?.linkWeight) ? Math.max(1, Math.min(100, Math.round(g.linkWeight))) : 100;
       return { goal: g, weight, progress: getGoalProgress(g) };
     });
 
-  const primaryProgress = getGoalProgress(primary);
-  const totalWeight = 1 + linked.reduce((sum, item) => sum + item.weight, 0);
+  const totalWeight = (includeParent ? 1 : 0) + linked.reduce((sum, item) => sum + item.weight, 0);
   const linkedSum = linked.reduce((sum, item) => sum + item.weight * item.progress, 0);
-  const progress = totalWeight ? (primaryProgress + linkedSum) / totalWeight : primaryProgress;
+  const progress = totalWeight ? (parentProgress + linkedSum) / totalWeight : parentProgress;
 
   return { progress, linked };
+}
+
+// Backward compatibility (deprecated).
+export function computePrimaryAggregate(goals = [], primaryId) {
+  return computeAggregateProgress({ goals }, primaryId);
 }
 
 function getNextOrder(goals) {
@@ -369,17 +445,112 @@ export function updateGoal(state, goalId, updates = {}) {
   return normalizeGoalsState({ ...state, goals: nextGoals });
 }
 
+export function preventOverlap(state, candidateGoalId, newStartAt, sessionMinutesOverride) {
+  if (!state || !newStartAt) return { ok: true, conflicts: [] };
+  const goals = Array.isArray(state.goals) ? state.goals : [];
+  const candidate = candidateGoalId ? goals.find((g) => g?.id === candidateGoalId) : null;
+  const minutes = Number.isFinite(sessionMinutesOverride)
+    ? sessionMinutesOverride
+    : Number.isFinite(candidate?.sessionMinutes)
+      ? candidate.sessionMinutes
+      : null;
+
+  if (!minutes) return { ok: true, conflicts: [] };
+  const startMs = parseStartAt(newStartAt);
+  if (!startMs) return { ok: true, conflicts: [] };
+  const endMs = startMs + minutes * 60 * 1000;
+
+  const conflicts = [];
+  for (const g of goals) {
+    if (!g || g.id === candidateGoalId) continue;
+    if (normalizeStatus(g.status) !== "active") continue;
+    const gStart = parseStartAt(g.startAt);
+    const gEnd = parseStartAt(resolveGoalEndAt(g));
+    if (!gStart || !gEnd) continue;
+    const overlaps = startMs < gEnd && gStart < endMs;
+    if (overlaps) {
+      conflicts.push({
+        goalId: g.id,
+        title: g.title || g.name || "Objectif",
+        startAt: g.startAt || null,
+        endAt: resolveGoalEndAt(g),
+      });
+    }
+  }
+
+  return { ok: conflicts.length === 0, conflicts };
+}
+
+export function setMainGoal(state, goalId) {
+  if (!state) return state;
+  const goals = Array.isArray(state.goals) ? state.goals : [];
+  const hasGoal = goalId && goals.some((g) => g?.id === goalId);
+  const nextUi = { ...(state.ui || {}), mainGoalId: hasGoal ? goalId : null };
+  return normalizeGoalsState({ ...state, ui: nextUi });
+}
+
+export function linkChild(state, childId, parentId, weight) {
+  if (!state || !childId) return state;
+  const goals = Array.isArray(state.goals) ? state.goals : [];
+  if (!goals.some((g) => g?.id === childId)) return state;
+  const cleanParent = typeof parentId === "string" && parentId.trim() ? parentId : null;
+  const rawWeight = typeof weight === "string" ? Number(weight) : weight;
+  const linkWeight = cleanParent && Number.isFinite(rawWeight) ? Math.max(1, Math.min(100, Math.round(rawWeight))) : undefined;
+
+  const nextGoals = goals.map((g) => {
+    if (g?.id !== childId) return g;
+    return {
+      ...g,
+      parentId: cleanParent,
+      primaryGoalId: cleanParent,
+      linkWeight,
+    };
+  });
+  return normalizeGoalsState({ ...state, goals: nextGoals });
+}
+
+export function scheduleStart(state, goalId, startAt, sessionMinutes) {
+  if (!state || !goalId) return { ok: false, conflicts: [], state };
+  const goals = Array.isArray(state.goals) ? state.goals : [];
+  const goal = goals.find((g) => g?.id === goalId);
+  if (!goal) return { ok: false, conflicts: [], state };
+
+  const cleanStartAt = typeof startAt === "string" ? startAt.trim() : "";
+  if (!cleanStartAt) return { ok: false, conflicts: [], state };
+
+  const minutes = Number.isFinite(sessionMinutes)
+    ? sessionMinutes
+    : Number.isFinite(goal?.sessionMinutes)
+      ? goal.sessionMinutes
+      : null;
+
+  const overlap = preventOverlap(state, goalId, cleanStartAt, minutes);
+  if (!overlap.ok) return { ok: false, conflicts: overlap.conflicts, state };
+
+  const nextGoals = goals.map((g) => {
+    if (g?.id !== goalId) return g;
+    return {
+      ...g,
+      startAt: cleanStartAt,
+      sessionMinutes: Number.isFinite(sessionMinutes) ? sessionMinutes : g.sessionMinutes,
+      endAt: computeEndAt(cleanStartAt, Number.isFinite(sessionMinutes) ? sessionMinutes : g.sessionMinutes),
+    };
+  });
+
+  return { ok: true, state: normalizeGoalsState({ ...state, goals: nextGoals }) };
+}
+
 /**
  * Action centrale : activer un objectif
  * - 1 seul "active" par catégorie
  * - interdit si goal = done/invalid
  */
 export function activateGoal(state, goalId, opts = { navigate: true }) {
-  if (!state) return { ok: false, reason: "NO_STATE", blockers: [], state };
+  if (!state) return { ok: false, reason: "NO_STATE", blockers: [], conflicts: [], state };
   const goals = Array.isArray(state.goals) ? state.goals : [];
   const goal = goals.find((g) => g?.id === goalId);
-  if (!goal || !goalId) return { ok: false, reason: "NOT_FOUND", blockers: [], state };
-  if (!canActivate(goal)) return { ok: false, reason: "INVALID_STATUS", blockers: [], state };
+  if (!goal || !goalId) return { ok: false, reason: "NOT_FOUND", blockers: [], conflicts: [], state };
+  if (!canActivate(goal)) return { ok: false, reason: "INVALID_STATUS", blockers: [], conflicts: [], state };
   if (goal.status === "active") return { ok: true, state };
 
   const now = opts?.now instanceof Date ? opts.now : new Date();
@@ -401,6 +572,18 @@ export function activateGoal(state, goalId, opts = { navigate: true }) {
       ok: false,
       reason: inFuture ? "START_IN_FUTURE" : "BLOCKED",
       blockers,
+      conflicts: [],
+      state,
+    };
+  }
+
+  const overlap = preventOverlap(state, goalId, goal.startAt, goal.sessionMinutes);
+  if (!overlap.ok) {
+    return {
+      ok: false,
+      reason: "OVERLAP",
+      blockers: [],
+      conflicts: overlap.conflicts,
       state,
     };
   }
@@ -539,7 +722,10 @@ export function autoActivateScheduledGoals(state, now = new Date()) {
 
     const candidates = list
       .filter((g) => normalizeStatus(g.status) === "queued")
-      .filter((g) => normalizeGoalType(g) === "ACTION")
+      .filter((g) => {
+        const type = normalizeGoalType(g);
+        return type === "ACTION" && normalizeKind(g, type) === "ACTION";
+      })
       .map((g) => ({ goal: g, startAt: parseStartAt(g.startAt) ?? nowMs }))
       .filter((g) => g.startAt <= nowMs)
       .sort((a, b) => a.startAt - b.startAt);
