@@ -4,6 +4,7 @@ import { normalizeGoal, normalizeResetPolicy } from "./state";
 
 const ALLOWED = new Set(["queued", "active", "done", "invalid"]);
 const GOAL_TYPES = new Set(["ACTION", "ONE_OFF", "STATE"]);
+const MAX_SECONDARY_ACTIVE = 3;
 
 // Future flag (do not change behavior elsewhere yet)
 export const allowGlobalSingleActive = false;
@@ -140,6 +141,9 @@ export function normalizeGoalsState(state) {
   const normalizedGoals = goals.map((g) => {
     if (!g || typeof g !== "object") return g;
     const next = { ...g, status: normalizeStatus(g.status) };
+    const primaryGoalId = typeof next.primaryGoalId === "string" ? next.primaryGoalId : null;
+    const rawWeight = typeof next.linkWeight === "string" ? Number(next.linkWeight) : next.linkWeight;
+    const linkWeight = Number.isFinite(rawWeight) ? Math.max(1, Math.min(100, Math.round(rawWeight))) : 1;
     const type = normalizeGoalType(next);
     const startAt = normalizeStartAt(next, nowLocal);
     if (type === "ONE_OFF") {
@@ -152,6 +156,8 @@ export function normalizeGoalsState(state) {
         freqUnit: undefined,
         freqCount: undefined,
         sessionMinutes: undefined,
+        primaryGoalId,
+        linkWeight: primaryGoalId ? linkWeight : undefined,
       };
     }
     if (type === "STATE") {
@@ -163,6 +169,8 @@ export function normalizeGoalsState(state) {
         freqUnit: undefined,
         freqCount: undefined,
         sessionMinutes: undefined,
+        primaryGoalId,
+        linkWeight: primaryGoalId ? linkWeight : undefined,
       };
     }
     const freq = normalizeFrequency(next);
@@ -175,6 +183,8 @@ export function normalizeGoalsState(state) {
       freqUnit: freq.freqUnit,
       freqCount: freq.freqCount,
       sessionMinutes,
+      primaryGoalId,
+      linkWeight: primaryGoalId ? linkWeight : undefined,
     };
   });
 
@@ -229,7 +239,7 @@ export function normalizeGoalsState(state) {
     });
   }
 
-  const activeNow = nextGoals.filter((g) => g?.status === "active");
+  let activeNow = nextGoals.filter((g) => g?.status === "active");
   if (allowGlobalSingleActive) {
     nextActiveGoalId = activeNow.length ? activeNow[0].id || null : null;
   } else {
@@ -243,11 +253,73 @@ export function normalizeGoalsState(state) {
     nextMainGoalId = pickOldestActiveId(activeNow);
   }
 
+  const secondaryActives = activeNow.filter((g) => g?.id !== nextMainGoalId);
+  if (secondaryActives.length > MAX_SECONDARY_ACTIVE) {
+    const keep = [...secondaryActives]
+      .sort((a, b) => getGoalAgeKey(a).localeCompare(getGoalAgeKey(b)))
+      .slice(0, MAX_SECONDARY_ACTIVE);
+    const keepIds = new Set(keep.map((g) => g.id));
+    nextGoals = nextGoals.map((g) => {
+      if (!g || g.status !== "active") return g;
+      if (g.id === nextMainGoalId) return g;
+      if (keepIds.has(g.id)) return g;
+      return { ...g, status: "queued" };
+    });
+    activeNow = nextGoals.filter((g) => g?.status === "active");
+    nextActiveGoalId = pickPreferredActiveId(activeNow, uiActiveId);
+    if (nextMainGoalId && !activeNow.some((g) => g?.id === nextMainGoalId)) {
+      nextMainGoalId = pickOldestActiveId(activeNow);
+    }
+  }
+
+  if (nextMainGoalId) {
+    nextGoals = nextGoals.map((g) => {
+      if (!g || typeof g !== "object") return g;
+      if (g.primaryGoalId && g.primaryGoalId !== nextMainGoalId) {
+        return { ...g, primaryGoalId: null, linkWeight: undefined };
+      }
+      return g;
+    });
+  } else {
+    nextGoals = nextGoals.map((g) => {
+      if (!g || typeof g !== "object") return g;
+      if (g.primaryGoalId) return { ...g, primaryGoalId: null, linkWeight: undefined };
+      return g;
+    });
+  }
+
   return {
     ...state,
     goals: nextGoals,
     ui: { ...(state.ui || {}), activeGoalId: nextActiveGoalId, mainGoalId: nextMainGoalId },
   };
+}
+
+export function getGoalProgress(goal) {
+  if (!goal || typeof goal !== "object") return 0;
+  if (goal.status === "done") return 1;
+  const raw = typeof goal.progress === "string" ? Number(goal.progress) : goal.progress;
+  if (!Number.isFinite(raw)) return 0;
+  return Math.max(0, Math.min(1, raw));
+}
+
+export function computePrimaryAggregate(goals = [], primaryId) {
+  if (!primaryId) return { progress: 0, linked: [] };
+  const primary = goals.find((g) => g?.id === primaryId);
+  if (!primary) return { progress: 0, linked: [] };
+  const linked = goals
+    .filter((g) => g?.primaryGoalId === primaryId && g?.status === "active")
+    .map((g) => {
+      const weight = Number.isFinite(g?.linkWeight) ? Math.max(1, Math.min(100, Math.round(g.linkWeight))) : 1;
+      return { goal: g, weight, progress: getGoalProgress(g) };
+    });
+
+  const primaryProgress = getGoalProgress(primary);
+  const totalWeight = 1 + linked.reduce((sum, item) => sum + item.weight, 0);
+  const linkedSum = linked.reduce((sum, item) => sum + item.weight * item.progress, 0);
+  const progress = totalWeight ? (primaryProgress + linkedSum) / totalWeight : primaryProgress;
+
+  return { progress, linked };
 }
 
 function getNextOrder(goals) {

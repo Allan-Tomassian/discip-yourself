@@ -144,8 +144,40 @@ a{ color:inherit; }
   border-radius:16px;
   padding:12px 14px;
   outline:none;
+  font-size:16px;
 }
 .textarea{ resize:none; min-height:92px; }
+
+.scrollTarget{ scroll-margin-top:120px; }
+
+.focusHalo{
+  position:relative;
+  border-radius:18px;
+}
+.focusHalo::after{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  border-radius:inherit;
+  opacity:0;
+  pointer-events:none;
+  z-index:0;
+  box-shadow: 0 0 0 1px var(--catColor, #7C3AED), 0 0 22px var(--catColor, #7C3AED);
+  transition: opacity .2s ease;
+}
+.focusHalo > *{
+  position:relative;
+  z-index:1;
+}
+.focusHalo:focus-within::after{
+  opacity:.65;
+  animation: haloPulse 1.6s ease-out infinite;
+}
+@keyframes haloPulse{
+  0%{ transform: scale(.985); opacity:.45; }
+  60%{ transform: scale(1.01); opacity:.7; }
+  100%{ transform: scale(1.02); opacity:0; }
+}
 
 .hr{
   height:1px;

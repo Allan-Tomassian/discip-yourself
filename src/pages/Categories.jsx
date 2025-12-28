@@ -367,6 +367,7 @@ export default function Categories({ data, setData }) {
               accentBorder
               style={{
                 borderColor: isActive ? c.color || "rgba(255,255,255,.25)" : "rgba(255,255,255,.16)",
+                "--catColor": c.color || "#7C3AED",
               }}
             >
               <div className="p18">
@@ -424,7 +425,7 @@ export default function Categories({ data, setData }) {
                             <div className="small2" style={{ marginTop: 4 }}>
                               Écris la réussite comme si elle était déjà là. Exemple: « Parce que je veux un corps sculpté ».
                             </div>
-                            <div className="mt10">
+                            <div className="mt10 focusHalo">
                               <Textarea
                                 value={whyVal}
                                 maxLength={WHY_LIMIT}
@@ -585,7 +586,7 @@ export default function Categories({ data, setData }) {
                       </div>
 
                       {manageOpen ? (
-                        <div className="mt10 col">
+                        <div className="mt10 col focusHalo">
                           <Input
                             value={c.name || ""}
                             onChange={(e) => updateCategory(c.id, { name: e.target.value })}

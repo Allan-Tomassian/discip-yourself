@@ -6,7 +6,7 @@ import { todayKey } from "../utils/dates";
 import { computeHabitProgress } from "../logic/habits";
 import { getBackgroundCss, getAccentForPage } from "../utils/_theme";
 import { computePriorities } from "../logic/priorities";
-import { activateGoal, updateGoal } from "../logic/goals";
+import { activateGoal, computePrimaryAggregate, updateGoal } from "../logic/goals";
 
 export default function Home({ data, setData }) {
   function addCategory() {
@@ -71,6 +71,10 @@ export default function Home({ data, setData }) {
   const secondaryGoals = useMemo(
     () => activeGoals.filter((g) => g.id !== mainGoal?.id),
     [activeGoals, mainGoal]
+  );
+  const primaryAggregate = useMemo(
+    () => computePrimaryAggregate(data.goals || [], mainGoal?.id),
+    [data.goals, mainGoal?.id]
   );
 
   // Thème calculé ici (palier 7.3)
@@ -247,6 +251,20 @@ export default function Home({ data, setData }) {
                         </span>
                       ) : null}
                     </div>
+
+                    <div className="small" style={{ marginTop: 8, opacity: 0.9 }}>
+                      Progression principale : <b>{Math.round(primaryAggregate.progress * 100)}%</b>
+                    </div>
+                    {primaryAggregate.linked.length ? (
+                      <div className="mt6 col">
+                        {primaryAggregate.linked.map((item) => (
+                          <div key={item.goal.id} className="small2">
+                            • {item.goal.title || "Objectif"} · poids {item.weight}% ·{" "}
+                            {Math.round(item.progress * 100)}%
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
 
                     <div style={{ marginTop: 12 }}>
                       <div className="small" style={{ opacity: 0.9 }}>

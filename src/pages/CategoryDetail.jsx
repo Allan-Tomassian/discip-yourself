@@ -1,9 +1,17 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Badge, Button, Card, Input, Select, Textarea } from "../components/UI";
 import { uid } from "../utils/helpers";
 import { todayKey } from "../utils/dates";
-import { abandonGoal, activateGoal, createGoal, deleteGoal, finishGoal, updateGoal } from "../logic/goals";
+import {
+  abandonGoal,
+  activateGoal,
+  computePrimaryAggregate,
+  createGoal,
+  deleteGoal,
+  finishGoal,
+  updateGoal,
+} from "../logic/goals";
 
 const UNIT_LABELS = {
   DAY: ["jour", "jours"],
@@ -126,6 +134,8 @@ function cadenceFromUnit(unit) {
 
 export default function CategoryDetail({ data, setData, categoryId, onBack, onSelectCategory, initialEditGoalId }) {
   const [editGoalId, setEditGoalId] = useState(null);
+  const editFormRef = useRef(null);
+  const lastScrollRef = useRef(null);
   const handledEditRef = useRef(null);
   const [isAdding, setIsAdding] = useState(false);
   const [draftType, setDraftType] = useState("ACTION");
@@ -141,6 +151,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const [draftResetPolicy, setDraftResetPolicy] = useState("invalidate");
   const [err, setErr] = useState("");
   const [activationError, setActivationError] = useState(null);
+  const [linkWeightsById, setLinkWeightsById] = useState({});
 
   function addCategory() {
     const name = prompt("Nom :", "Nouvelle");
@@ -161,10 +172,28 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   }
 
   const categories = Array.isArray(data.categories) ? data.categories : [];
+  const allGoals = Array.isArray(data.goals) ? data.goals : [];
   const activeCategoryId = categoryId || data.ui?.selectedCategoryId || categories[0]?.id;
   const c = categories.find((x) => x.id === activeCategoryId) || categories[0];
   const mainGoalId = data.ui?.mainGoalId || null;
-  const goals = Array.isArray(data.goals) && c ? data.goals.filter((g) => g.categoryId === c.id) : [];
+  const goals = c ? allGoals.filter((g) => g.categoryId === c.id) : [];
+  const mainGoal = allGoals.find((g) => g.id === mainGoalId) || null;
+  const primaryAggregate = useMemo(
+    () => computePrimaryAggregate(allGoals, mainGoalId),
+    [allGoals, mainGoalId]
+  );
+
+  function updateLinkWeight(goalId, value) {
+    setLinkWeightsById((prev) => ({ ...prev, [goalId]: value }));
+  }
+
+  function getLinkWeightValue(goal) {
+    const raw = linkWeightsById[goal.id];
+    const fromGoal = Number.isFinite(goal?.linkWeight) ? goal.linkWeight : 25;
+    const n = raw === "" || raw == null ? fromGoal : Number(raw);
+    if (!Number.isFinite(n)) return 25;
+    return Math.max(1, Math.min(100, Math.round(n)));
+  }
 
   function openAdd() {
     setErr("");
@@ -218,6 +247,19 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     }
   }, [initialEditGoalId, goals]);
 
+  useEffect(() => {
+    if (!isAdding || !editFormRef.current) return;
+    const key = `${c?.id || "cat"}:${editGoalId || "new"}`;
+    if (lastScrollRef.current === key) return;
+    lastScrollRef.current = key;
+    const el = editFormRef.current;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  }, [isAdding, editGoalId, c?.id]);
+
   if (categories.length === 0) {
     return (
       <ScreenShell
@@ -246,6 +288,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setIsAdding(false);
     setEditGoalId(null);
     setErr("");
+    lastScrollRef.current = null;
   }
 
   function saveGoal() {
@@ -369,160 +412,237 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       headerSubtitle="Objectifs de la catégorie"
       backgroundImage={c.wallpaper || data.profile.whyImage || ""}
     >
-      <div className="row">
-        <Button variant="ghost" onClick={onBack}>
-          ← Retour
-        </Button>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <Select
-            value={c.id}
-            onChange={(e) => {
-              const nextId = e.target.value;
-              if (!nextId || nextId === c.id) return;
-              setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), selectedCategoryId: nextId } }));
-              if (typeof onSelectCategory === "function") onSelectCategory(nextId);
-            }}
-          >
-            {data.categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </Select>
-          <Badge>{goals.length} objectifs</Badge>
+      <div style={{ "--catColor": c.color || "#7C3AED" }}>
+        <div className="row">
+          <Button variant="ghost" onClick={onBack}>
+            ← Retour
+          </Button>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <Select
+              value={c.id}
+              onChange={(e) => {
+                const nextId = e.target.value;
+                if (!nextId || nextId === c.id) return;
+                setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), selectedCategoryId: nextId } }));
+                if (typeof onSelectCategory === "function") onSelectCategory(nextId);
+              }}
+            >
+              {data.categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </Select>
+            <Badge>{goals.length} objectifs</Badge>
+          </div>
         </div>
-      </div>
 
-      <div className="mt16">
-        <Card accentBorder>
-          <div className="p18">
-            <div className="row">
-              <div>
-                <div className="titleSm">{c.name}</div>
-                <div className="small">Objectifs associés.</div>
+        <div className="mt16">
+          <Card accentBorder>
+            <div className="p18">
+              <div className="row">
+                <div>
+                  <div className="titleSm">{c.name}</div>
+                  <div className="small">Objectifs associés.</div>
+                </div>
+                <span className="dot" style={{ background: c.color }} />
               </div>
-              <span className="dot" style={{ background: c.color }} />
-            </div>
 
-            <div className="mt12 col">
-              {activationError && activationError.goalId ? (
-                (() => {
-                  const errGoal = goals.find((g) => g.id === activationError.goalId);
-                  if (!errGoal) return null;
-                  return (
-                    <div className="listItem">
-                      <div style={{ fontWeight: 800 }}>Activation bloquée</div>
-                      <div className="small2" style={{ marginTop: 6 }}>
-                        {activationError.reason === "START_IN_FUTURE"
-                          ? "La date de début est dans le futur."
-                          : "Un autre objectif bloque l’activation."}
+              <div className="mt12 col">
+                {activationError && activationError.goalId ? (
+                  (() => {
+                    const errGoal = goals.find((g) => g.id === activationError.goalId);
+                    if (!errGoal) return null;
+                    return (
+                      <div className="listItem">
+                        <div style={{ fontWeight: 800 }}>Activation bloquée</div>
+                        <div className="small2" style={{ marginTop: 6 }}>
+                          {activationError.reason === "START_IN_FUTURE"
+                            ? "La date de début est dans le futur."
+                            : "Un autre objectif bloque l’activation."}
+                        </div>
+                        {activationError.blockers && activationError.blockers.length ? (
+                          <div className="mt10 col">
+                            {activationError.blockers.map((b) => (
+                              <div key={b.id} className="small2">
+                                • {b.title || b.name || "Objectif"} — {formatStartAtFr(b.startAt)}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                        <div className="row" style={{ marginTop: 10, justifyContent: "flex-end" }}>
+                          <Button variant="ghost" onClick={() => openEdit(errGoal)}>
+                            Modifier la date
+                          </Button>
+                          <Button onClick={() => startNow(errGoal.id)}>Démarrer maintenant</Button>
+                        </div>
                       </div>
-                      {activationError.blockers && activationError.blockers.length ? (
-                        <div className="mt10 col">
-                          {activationError.blockers.map((b) => (
-                            <div key={b.id} className="small2">
-                              • {b.title || b.name || "Objectif"} — {formatStartAtFr(b.startAt)}
+                    );
+                  })()
+                ) : null}
+                {goals.length === 0 ? (
+                  <div className="listItem">Aucun objectif.</div>
+                ) : (
+                  goals.map((g) => {
+                    const isMainGoal = mainGoalId && g.id === mainGoalId;
+                    const isLinked = Boolean(mainGoalId && g.primaryGoalId === mainGoalId);
+                    const linkWeight = getLinkWeightValue(g);
+                    return (
+                      <div key={g.id} className="listItem">
+                        <div className="row" style={{ alignItems: "flex-start" }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div className="row" style={{ gap: 10 }}>
+                              <div style={{ fontWeight: 800 }}>{g.title}</div>
+                              <Badge>{g.status || "queued"}</Badge>
+                              {isMainGoal ? <Badge>PRINCIPAL</Badge> : null}
                             </div>
-                          ))}
-                        </div>
-                      ) : null}
-                      <div className="row" style={{ marginTop: 10, justifyContent: "flex-end" }}>
-                        <Button variant="ghost" onClick={() => openEdit(errGoal)}>
-                          Modifier la date
-                        </Button>
-                        <Button onClick={() => startNow(errGoal.id)}>Démarrer maintenant</Button>
-                      </div>
-                    </div>
-                  );
-                })()
-              ) : null}
-              {goals.length === 0 ? (
-                <div className="listItem">Aucun objectif.</div>
-              ) : (
-                goals.map((g) => {
-                  const isMainGoal = mainGoalId && g.id === mainGoalId;
-                  return (
-                    <div key={g.id} className="listItem">
-                      <div className="row" style={{ alignItems: "flex-start" }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div className="row" style={{ gap: 10 }}>
-                            <div style={{ fontWeight: 800 }}>{g.title}</div>
-                            <Badge>{g.status || "queued"}</Badge>
-                            {isMainGoal ? <Badge>PRINCIPAL</Badge> : null}
-                          </div>
-                          <div className="small2">
-                            {formatGoalMeta(g)}
-                          </div>
-                          <div className="small2" style={{ opacity: 0.9 }}>
-                            resetPolicy : <b>{g.resetPolicy || "invalidate"}</b>
-                          </div>
-                        </div>
-
-                        <div className="col" style={{ gap: 8, alignItems: "flex-end" }}>
-                          {g.status === "active" ? (
-                            <>
-                              <Button onClick={() => onFinishGoal(g)}>Terminer</Button>
-                              <Button variant="danger" onClick={() => onAbandonGoal(g)}>
-                                Abandonner
-                              </Button>
-                              <Button variant="ghost" onClick={() => openEdit(g)}>
-                                Modifier
-                              </Button>
-                              {isMainGoal ? (
-                                <div className="small2" style={{ opacity: 0.75 }}>
-                                  Objectif principal
+                            <div className="small2">
+                              {formatGoalMeta(g)}
+                            </div>
+                            <div className="small2" style={{ opacity: 0.9 }}>
+                              resetPolicy : <b>{g.resetPolicy || "invalidate"}</b>
+                            </div>
+                            {isMainGoal ? (
+                              <>
+                                <div className="small2" style={{ marginTop: 6 }}>
+                                  Progression principale : <b>{Math.round(primaryAggregate.progress * 100)}%</b>
                                 </div>
-                              ) : (
+                                {primaryAggregate.linked.length ? (
+                                  <div className="mt6 col">
+                                    {primaryAggregate.linked.map((item) => (
+                                      <div key={item.goal.id} className="small2">
+                                        • {item.goal.title || "Objectif"} · poids {item.weight}% ·{" "}
+                                        {Math.round(item.progress * 100)}%
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="small2" style={{ opacity: 0.7 }}>
+                                    Aucun secondaire lié.
+                                  </div>
+                                )}
+                              </>
+                            ) : null}
+                          </div>
+
+                          <div className="col" style={{ gap: 8, alignItems: "flex-end" }}>
+                            {g.status === "active" ? (
+                              <>
+                                <Button onClick={() => onFinishGoal(g)}>Terminer</Button>
+                                <Button variant="danger" onClick={() => onAbandonGoal(g)}>
+                                  Abandonner
+                                </Button>
+                                <Button variant="ghost" onClick={() => openEdit(g)}>
+                                  Modifier
+                                </Button>
+                                {isMainGoal ? (
+                                  <div className="small2" style={{ opacity: 0.75 }}>
+                                    Objectif principal
+                                  </div>
+                                ) : (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      onClick={() =>
+                                        setData((prev) => ({
+                                          ...prev,
+                                          ui: { ...(prev.ui || {}), mainGoalId: g.id },
+                                        }))
+                                      }
+                                    >
+                                      Définir comme objectif principal
+                                    </Button>
+                                    {mainGoalId ? (
+                                      <div className="col" style={{ gap: 6, alignItems: "flex-end" }}>
+                                        <div className="small2" style={{ opacity: 0.75 }}>
+                                          {isLinked
+                                            ? `Lié à ${mainGoal?.title || "principal"}`
+                                            : "Lier au principal"}
+                                        </div>
+                                        <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
+                                          <Input
+                                            type="number"
+                                            min="1"
+                                            max="100"
+                                            value={linkWeight}
+                                            onChange={(e) => updateLinkWeight(g.id, e.target.value)}
+                                            style={{ width: 86 }}
+                                          />
+                                          <Button
+                                            variant="ghost"
+                                            onClick={() =>
+                                              setData((prev) =>
+                                                updateGoal(prev, g.id, {
+                                                  primaryGoalId: mainGoalId,
+                                                  linkWeight,
+                                                })
+                                              )
+                                            }
+                                          >
+                                            {isLinked ? "Mettre à jour" : "Lier"}
+                                          </Button>
+                                          {isLinked ? (
+                                            <Button
+                                              variant="ghost"
+                                              onClick={() =>
+                                                setData((prev) =>
+                                                  updateGoal(prev, g.id, {
+                                                    primaryGoalId: null,
+                                                    linkWeight: undefined,
+                                                  })
+                                                )
+                                              }
+                                            >
+                                              Retirer
+                                            </Button>
+                                          ) : null}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="small2" style={{ opacity: 0.7 }}>
+                                        Définis un objectif principal pour lier.
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <Button variant="ghost" onClick={() => onMakeActive(g)}>
+                                  Mettre actif
+                                </Button>
+                                <Button variant="ghost" onClick={() => openEdit(g)}>
+                                  Modifier
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   onClick={() =>
-                                    setData((prev) => ({
-                                      ...prev,
-                                      ui: { ...(prev.ui || {}), mainGoalId: g.id },
-                                    }))
+                                    setData((prev) => deleteGoal(prev, g.id))
                                   }
                                 >
-                                  Définir comme objectif principal
+                                  Supprimer
                                 </Button>
-                              )}
-                            </>
-                          ) : (
-                            <>
-                              <Button variant="ghost" onClick={() => onMakeActive(g)}>
-                                Mettre actif
-                              </Button>
-                              <Button variant="ghost" onClick={() => openEdit(g)}>
-                                Modifier
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                onClick={() =>
-                                  setData((prev) => deleteGoal(prev, g.id))
-                                }
-                              >
-                                Supprimer
-                              </Button>
-                              {!isMainGoal ? (
-                                <div className="small2" style={{ opacity: 0.7 }}>
-                                  Il doit être actif pour devenir principal.
-                                </div>
-                              ) : null}
-                            </>
-                          )}
+                                {!isMainGoal ? (
+                                  <div className="small2" style={{ opacity: 0.7 }}>
+                                    Il doit être actif pour devenir principal.
+                                  </div>
+                                ) : null}
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+                    );
+                  })
+                )}
+              </div>
 
             <div className="mt12">
               <Button onClick={openAdd}>+ Ajouter un objectif</Button>
             </div>
 
             {isAdding ? (
-              <div className="mt12 listItem">
+              <div ref={editFormRef} className="mt12 listItem focusHalo scrollTarget">
                 <div style={{ fontWeight: 800 }}>{editGoalId ? "Modifier l’objectif" : "Nouvel objectif"}</div>
                 <div className="mt12 col">
                   <Input value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="Titre" />
@@ -644,6 +764,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
             ) : null}
           </div>
         </Card>
+      </div>
       </div>
     </ScreenShell>
   );
