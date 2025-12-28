@@ -340,11 +340,22 @@ export function normalizeGoalsState(state) {
   }
 
   const uiMainId = state.ui?.mainGoalId || null;
-  const mainIsActive = uiMainId && activeNow.some((g) => g?.id === uiMainId);
-  let nextMainGoalId = mainIsActive ? uiMainId : null;
-  if (!nextMainGoalId && activeNow.length) {
-    const outcomeActive = activeNow.filter((g) => g?.type === "OUTCOME");
-    nextMainGoalId = pickOldestActiveId(outcomeActive.length ? outcomeActive : activeNow);
+  const goalsById = new Map(nextGoals.map((g) => [g.id, g]));
+  const nextCategories = (state.categories || []).map((cat) => {
+    const raw = typeof cat.mainGoalId === "string" ? cat.mainGoalId : null;
+    const goal = raw ? goalsById.get(raw) : null;
+    if (!goal || goal.categoryId !== cat.id) return { ...cat, mainGoalId: null };
+    const t = (goal.type || goal.kind || "").toString().toUpperCase();
+    if (t !== "OUTCOME" && t !== "STATE") return { ...cat, mainGoalId: null };
+    return cat;
+  });
+  const selectedCategoryId = state.ui?.selectedCategoryId || null;
+  const selectedCategory = nextCategories.find((cat) => cat.id === selectedCategoryId) || null;
+  let nextMainGoalId = null;
+  if (selectedCategory?.mainGoalId && goalsById.has(selectedCategory.mainGoalId)) {
+    nextMainGoalId = selectedCategory.mainGoalId;
+  } else if (uiMainId && goalsById.has(uiMainId)) {
+    nextMainGoalId = uiMainId;
   }
 
   nextActiveGoalId = allowGlobalSingleActive
@@ -356,6 +367,7 @@ export function normalizeGoalsState(state) {
   return {
     ...state,
     goals: nextGoals,
+    categories: nextCategories,
     ui: { ...(state.ui || {}), activeGoalId: nextActiveGoalId, mainGoalId: nextMainGoalId },
   };
 }
@@ -501,9 +513,17 @@ export function preventOverlap(state, candidateGoalId, newStartAt, sessionMinute
 export function setMainGoal(state, goalId) {
   if (!state) return state;
   const goals = Array.isArray(state.goals) ? state.goals : [];
-  const hasGoal = goalId && goals.some((g) => g?.id === goalId);
-  const nextUi = { ...(state.ui || {}), mainGoalId: hasGoal ? goalId : null };
-  return normalizeGoalsState({ ...state, ui: nextUi });
+  const goal = goalId ? goals.find((g) => g?.id === goalId) : null;
+  const hasGoal = Boolean(goal);
+  const nextCategories = (state.categories || []).map((cat) =>
+    hasGoal && goal?.categoryId === cat.id ? { ...cat, mainGoalId: goalId } : cat
+  );
+  const nextUi = {
+    ...(state.ui || {}),
+    mainGoalId: hasGoal ? goalId : null,
+    selectedCategoryId: hasGoal ? goal.categoryId : state.ui?.selectedCategoryId || null,
+  };
+  return normalizeGoalsState({ ...state, categories: nextCategories, ui: nextUi });
 }
 
 export function linkChild(state, childId, parentId, weight) {

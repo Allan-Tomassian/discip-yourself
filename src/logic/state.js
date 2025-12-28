@@ -6,9 +6,9 @@ import { normalizeReminder } from "./reminders";
 export const THEME_PRESETS = ["aurora", "midnight", "sunset", "ocean", "forest"];
 
 export const DEFAULT_CATEGORIES = [
-  { id: "cat_sport", name: "Sport", color: "#7C3AED", wallpaper: "" },
-  { id: "cat_work", name: "Travail", color: "#06B6D4", wallpaper: "" },
-  { id: "cat_health", name: "Santé", color: "#22C55E", wallpaper: "" },
+  { id: "cat_sport", name: "Sport", color: "#7C3AED", wallpaper: "", mainGoalId: null },
+  { id: "cat_work", name: "Travail", color: "#06B6D4", wallpaper: "", mainGoalId: null },
+  { id: "cat_health", name: "Santé", color: "#22C55E", wallpaper: "", mainGoalId: null },
 ];
 
 export const DEFAULT_BLOCKS = [
@@ -148,9 +148,9 @@ export function initialData() {
 
 export function demoData() {
   const categories = [
-    { id: "demo_cat_1", name: "Catégorie 1", color: "#7C3AED", wallpaper: "" },
-    { id: "demo_cat_2", name: "Catégorie 2", color: "#06B6D4", wallpaper: "" },
-    { id: "demo_cat_3", name: "Catégorie 3", color: "#22C55E", wallpaper: "" },
+    { id: "demo_cat_1", name: "Catégorie 1", color: "#7C3AED", wallpaper: "", mainGoalId: null },
+    { id: "demo_cat_2", name: "Catégorie 2", color: "#06B6D4", wallpaper: "", mainGoalId: null },
+    { id: "demo_cat_3", name: "Catégorie 3", color: "#22C55E", wallpaper: "", mainGoalId: null },
   ];
   const outcomeId = uid();
   const processId = uid();
@@ -174,7 +174,7 @@ export function demoData() {
       activeGoalId: null,
       mainGoalId: outcomeId,
     },
-    categories: categories.map((c) => ({ ...c })),
+    categories: categories.map((c, idx) => ({ ...c, mainGoalId: idx === 0 ? outcomeId : c.mainGoalId })),
     goals: [
       {
         id: outcomeId,
@@ -249,6 +249,10 @@ export function migrate(prev) {
 
   // categories
   if (!Array.isArray(next.categories)) next.categories = [];
+  next.categories = next.categories.map((cat) => ({
+    ...cat,
+    mainGoalId: typeof cat.mainGoalId === "string" && cat.mainGoalId.trim() ? cat.mainGoalId : null,
+  }));
 
   // goals (V2 normalize)
   if (!Array.isArray(next.goals)) next.goals = [];
@@ -257,6 +261,33 @@ export function migrate(prev) {
     ...g,
     status: g.status === "abandoned" ? "invalid" : g.status,
   }));
+
+  const goalsById = new Map(next.goals.map((g) => [g.id, g]));
+  const uiMainId = typeof next.ui.mainGoalId === "string" ? next.ui.mainGoalId : null;
+  const uiMainGoal = uiMainId ? goalsById.get(uiMainId) : null;
+  next.categories = next.categories.map((cat) => {
+    let mainId = cat.mainGoalId;
+    let mainGoal = mainId ? goalsById.get(mainId) : null;
+    if ((!mainGoal || mainGoal.categoryId !== cat.id) && uiMainGoal?.categoryId === cat.id && !mainId) {
+      mainId = uiMainGoal.id;
+      mainGoal = uiMainGoal;
+    }
+    if (mainGoal && mainGoal.categoryId !== cat.id) {
+      mainId = null;
+      mainGoal = null;
+    }
+    if (mainGoal) {
+      const t = (mainGoal.type || mainGoal.kind || "").toString().toUpperCase();
+      if (t !== "OUTCOME" && t !== "STATE") {
+        mainId = null;
+      }
+    }
+    return { ...cat, mainGoalId: mainId || null };
+  });
+
+  const selectedCategory =
+    next.categories.find((cat) => cat.id === next.ui?.selectedCategoryId) || next.categories[0] || null;
+  next.ui.mainGoalId = selectedCategory?.mainGoalId || null;
 
   // habits/checks
   if (!Array.isArray(next.habits)) next.habits = [];
