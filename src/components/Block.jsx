@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { Badge, Button, Card, ProgressRing } from "./UI";
 import { clamp } from "../utils/helpers";
 import { computeHabitProgress, incHabit, decHabit } from "../logic/habits";
+import { safePrompt } from "../utils/dialogs";
 import { addXp } from "../logic/xp";
 
 // Reserved for future composition; currently unused.
@@ -33,7 +34,7 @@ export default function Block({
               <button
                 className="linkBtn"
                 onClick={() => {
-                  const next = prompt("Modifie ton pourquoi :", data.profile.whyText);
+                  const next = safePrompt("Modifie ton pourquoi :", data.profile.whyText);
                   if (!next) return;
                   setData((prev) => ({ ...prev, profile: { ...prev.profile, whyText: next.trim() } }));
                 }}

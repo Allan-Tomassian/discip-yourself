@@ -7,15 +7,16 @@ import { computeHabitProgress } from "../logic/habits";
 import { getBackgroundCss, getAccentForPage } from "../utils/_theme";
 import { computePriorities } from "../logic/priorities";
 import { activateGoal, computeAggregateProgress, scheduleStart } from "../logic/goals";
+import { safeAlert, safeConfirm, safePrompt } from "../utils/dialogs";
 
 export default function Home({ data, setData }) {
   const [showMainWhy, setShowMainWhy] = useState(true);
   function addCategory() {
-    const name = prompt("Nom :", "Nouvelle");
+    const name = safePrompt("Nom :", "Nouvelle");
     if (!name) return;
     const cleanName = name.trim();
     if (!cleanName) return;
-    const color = prompt("Couleur HEX :", "#FFFFFF") || "#FFFFFF";
+    const color = safePrompt("Couleur HEX :", "#FFFFFF") || "#FFFFFF";
     const cleanColor = color.trim();
     const id = uid();
 
@@ -140,7 +141,7 @@ export default function Home({ data, setData }) {
           : "";
 
       if (res.reason === "START_IN_FUTURE") {
-        const wantsStartNow = confirm(`Date de début future.${blockers}\n\nDémarrer maintenant ?`);
+        const wantsStartNow = safeConfirm(`Date de début future.${blockers}\n\nDémarrer maintenant ?`);
         if (wantsStartNow) {
           let res2;
           setData((prev) => {
@@ -160,15 +161,15 @@ export default function Home({ data, setData }) {
                     .map((c) => `- ${c.title || "Objectif"} (${formatStartAtFr(c.startAt)} → ${formatStartAtFr(c.endAt)})`)
                     .join("\n")}`
                 : "";
-            alert(`Chevauchement détecté.${overlapList}`);
+            safeAlert(`Chevauchement détecté.${overlapList}`);
             return;
           }
           return;
         }
       } else if (res.reason === "OVERLAP") {
-        alert(`Chevauchement détecté.${conflicts}`);
+        safeAlert(`Chevauchement détecté.${conflicts}`);
       } else {
-        const wantsEdit = confirm(`Activation bloquée.${blockers}\n\nModifier la date ?`);
+        const wantsEdit = safeConfirm(`Activation bloquée.${blockers}\n\nModifier la date ?`);
         if (!wantsEdit) return;
       }
 

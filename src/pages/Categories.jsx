@@ -4,6 +4,7 @@ import CategoryDetail from "./CategoryDetail";
 import { Badge, Button, Card, Input, Textarea } from "../components/UI";
 import { uid } from "../utils/helpers";
 import { activateGoal, scheduleStart } from "../logic/goals";
+import { safeConfirm, safePrompt } from "../utils/dialogs";
 
 const WHY_LIMIT = 150;
 
@@ -161,11 +162,11 @@ export default function Categories({ data, setData }) {
   }, [goals]);
 
   function addCategory() {
-    const name = prompt("Nom :", "Nouvelle");
+    const name = safePrompt("Nom :", "Nouvelle");
     if (!name) return;
     const cleanName = name.trim();
     if (!cleanName) return;
-    const color = prompt("Couleur HEX :", "#FFFFFF") || "#FFFFFF";
+    const color = safePrompt("Couleur HEX :", "#FFFFFF") || "#FFFFFF";
     const cleanColor = color.trim();
     const id = uid();
 
@@ -303,7 +304,7 @@ export default function Categories({ data, setData }) {
   function onDeleteCategory(category) {
     if (!category?.id) return;
     const name = category.name || "cette catégorie";
-    if (!confirm(`Supprimer "${name}" ?`)) return;
+    if (!safeConfirm(`Supprimer "${name}" ?`)) return;
 
     setData((prev) => {
       const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];

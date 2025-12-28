@@ -4,6 +4,7 @@ import { migrate, usePersistedState } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
 import { getDueReminders, playReminderSound, sendReminderNotification } from "./logic/reminders";
 import { Button, Card } from "./components/UI";
+import { markIOSRootClass } from "./utils/dialogs";
 
 import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
@@ -36,6 +37,7 @@ export default function App() {
   useEffect(() => {
     runSelfTests();
     setData((prev) => migrate(prev));
+    markIOSRootClass();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

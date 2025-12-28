@@ -16,6 +16,7 @@ import {
   setMainGoal,
   updateGoal,
 } from "../logic/goals";
+import { safePrompt } from "../utils/dialogs";
 
 const UNIT_LABELS = {
   DAY: ["jour", "jours"],
@@ -173,11 +174,11 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const [linkWeightsById, setLinkWeightsById] = useState({});
 
   function addCategory() {
-    const name = prompt("Nom :", "Nouvelle");
+    const name = safePrompt("Nom :", "Nouvelle");
     if (!name) return;
     const cleanName = name.trim();
     if (!cleanName) return;
-    const color = prompt("Couleur HEX :", "#FFFFFF") || "#FFFFFF";
+    const color = safePrompt("Couleur HEX :", "#FFFFFF") || "#FFFFFF";
     const cleanColor = color.trim();
     const id = uid();
 

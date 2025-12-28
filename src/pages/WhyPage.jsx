@@ -4,6 +4,7 @@ import { Badge, Button, Card, Input, Textarea } from "../components/UI";
 import { readFileAsDataUrl, uid } from "../utils/helpers";
 import { computeGlobalAvgForDay, computeGlobalAvgForWeek, computeStreakDays } from "../logic/habits";
 import { REWARDS, isRewardUnlocked, isRewardClaimed } from "../logic/rewards";
+import { safeAlert, safePrompt } from "../utils/dialogs";
 
 async function shareText(text) {
   try {
@@ -14,21 +15,21 @@ async function shareText(text) {
   } catch {}
   try {
     await navigator.clipboard.writeText(text);
-    alert("Copié dans le presse-papier.");
+    safeAlert("Copié dans le presse-papier.");
     return true;
   } catch {
-    alert(text);
+    safeAlert(text);
     return false;
   }
 }
 
 export default function WhyPage({ data, setData }) {
   function addCategory() {
-    const name = prompt("Nom :", "Nouvelle");
+    const name = safePrompt("Nom :", "Nouvelle");
     if (!name) return;
     const cleanName = name.trim();
     if (!cleanName) return;
-    const color = prompt("Couleur HEX :", "#FFFFFF") || "#FFFFFF";
+    const color = safePrompt("Couleur HEX :", "#FFFFFF") || "#FFFFFF";
     const cleanColor = color.trim();
     const id = uid();
 

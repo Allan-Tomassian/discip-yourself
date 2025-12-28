@@ -6,6 +6,7 @@ import { clearState } from "../utils/storage";
 import { initialData } from "../logic/state";
 import { uid } from "../utils/helpers";
 import { requestReminderPermission } from "../logic/reminders";
+import { safePrompt } from "../utils/dialogs";
 
 export default function Settings({ data, setData }) {
   const [notifStatus, setNotifStatus] = useState(
@@ -13,11 +14,11 @@ export default function Settings({ data, setData }) {
   );
 
   function addCategory() {
-    const name = prompt("Nom :", "Nouvelle");
+    const name = safePrompt("Nom :", "Nouvelle");
     if (!name) return;
     const cleanName = name.trim();
     if (!cleanName) return;
-    const color = prompt("Couleur HEX :", "#FFFFFF") || "#FFFFFF";
+    const color = safePrompt("Couleur HEX :", "#FFFFFF") || "#FFFFFF";
     const cleanColor = color.trim();
     const id = uid();
 
