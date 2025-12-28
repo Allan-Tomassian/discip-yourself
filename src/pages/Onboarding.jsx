@@ -177,7 +177,7 @@ export default function Onboarding({ data, setData, onDone }) {
                     const newCategoryId = uid();
                     nextCategories = [
                       ...prevCategories,
-                      { id: newCategoryId, name: cleanCategory, color: "#7C3AED", wallpaper: "" },
+                      { id: newCategoryId, name: cleanCategory, color: "#7C3AED", wallpaper: "", mainGoalId: null },
                     ];
                     selectedCategoryId = newCategoryId;
                   }
@@ -234,11 +234,21 @@ export default function Onboarding({ data, setData, onDone }) {
                     });
                   }
 
+                  const mainGoalId = outcomeId || existingOutcome?.id || null;
+                  if (baseCategoryId && mainGoalId) {
+                    nextState = {
+                      ...nextState,
+                      categories: (nextState.categories || []).map((cat) =>
+                        cat.id === baseCategoryId ? { ...cat, mainGoalId } : cat
+                      ),
+                    };
+                  }
+
                   return {
                     ...nextState,
                     ui: {
                       ...(nextState.ui || {}),
-                      mainGoalId: nextState.ui?.mainGoalId || outcomeId || existingOutcome?.id || null,
+                      mainGoalId: nextState.ui?.mainGoalId || mainGoalId || null,
                     },
                   };
                 });
