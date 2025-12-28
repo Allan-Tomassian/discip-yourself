@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "./UI";
 
-export default function AdvancedDrawer({ open, onClose, title = "Advanced", children }) {
+export default function AdvancedDrawer({ open, onClose, title = "Avancé", children }) {
   if (!open) return null;
 
   return (

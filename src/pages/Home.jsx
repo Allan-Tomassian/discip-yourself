@@ -36,7 +36,7 @@ export default function Home({ data, onOpenLibrary }) {
         accent={getAccentForPage(safeData, "home")}
         backgroundCss={getBackgroundCss({ data: safeData, pageId: "home", image: profile.whyImage || "" })}
         backgroundImage={profile.whyImage || ""}
-        headerTitle="Today"
+        headerTitle="Aujourd’hui"
         headerSubtitle="Aucune catégorie"
       >
         <Card accentBorder>
@@ -62,7 +62,7 @@ export default function Home({ data, onOpenLibrary }) {
         accent={getAccentForPage(safeData, "home")}
         backgroundCss={getBackgroundCss({ data: safeData, pageId: "home", image: profile.whyImage || "" })}
         backgroundImage={profile.whyImage || ""}
-        headerTitle="Today"
+        headerTitle="Aujourd’hui"
         headerSubtitle="Aucun objectif"
       >
         <Card accentBorder>
@@ -106,14 +106,14 @@ export default function Home({ data, onOpenLibrary }) {
         accent={getAccentForPage(safeData, "home")}
         backgroundCss={getBackgroundCss({ data: safeData, pageId: "home", image: profile.whyImage || "" })}
         backgroundImage={profile.whyImage || ""}
-        headerTitle="Today"
+        headerTitle="Aujourd’hui"
         headerSubtitle="Aucune action active"
       >
         <Card accentBorder>
           <div className="p18">
             <div className="titleSm">Aucune action active</div>
             <div className="small" style={{ marginTop: 6 }}>
-              Active un PROCESS dans Plan pour le voir ici.
+              Active un processus dans Plan pour le voir ici.
             </div>
             <div className="mt12">
               <Button onClick={() => (typeof onOpenLibrary === "function" ? onOpenLibrary() : null)}>
@@ -147,7 +147,7 @@ export default function Home({ data, onOpenLibrary }) {
       accent={accent}
       backgroundCss={backgroundCss}
       backgroundImage={backgroundImage}
-      headerTitle="Today"
+      headerTitle="Aujourd’hui"
       headerSubtitle="Priorité unique"
     >
       <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
@@ -182,7 +182,7 @@ export default function Home({ data, onOpenLibrary }) {
 
               <div className="mt12 row" style={{ alignItems: "center", justifyContent: "space-between" }}>
                 <Button onClick={() => setStartedGoalId((prev) => (prev === primary.id ? null : primary.id))}>
-                  Start
+                  Démarrer
                 </Button>
                 {startedGoalId === primary.id ? (
                   <div className="small2">Session en cours…</div>
@@ -199,7 +199,7 @@ export default function Home({ data, onOpenLibrary }) {
         <div className="p18">
           <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
             <div>
-              <div className="titleSm">Progression OUTCOME</div>
+              <div className="titleSm">Progression résultat</div>
               <div className="small2">Agrégat principal</div>
             </div>
             <div style={{ fontWeight: 800 }}>{progressPct}%</div>

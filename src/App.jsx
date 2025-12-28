@@ -143,7 +143,7 @@ export default function App() {
 
       <TopNav active={tab} setActive={setTab} onOpenAdvanced={() => setAdvancedOpen(true)} />
 
-      <AdvancedDrawer open={advancedOpen} onClose={() => setAdvancedOpen(false)} title="Advanced">
+      <AdvancedDrawer open={advancedOpen} onClose={() => setAdvancedOpen(false)} title="Avancé">
         <SettingsAdvanced data={data} setData={setData} />
       </AdvancedDrawer>
 

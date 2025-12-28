@@ -116,7 +116,7 @@ export default function Onboarding({ data, setData, onDone }) {
                   <Input
                     value={outcomeTitle}
                     onChange={(e) => setOutcomeTitle(e.target.value)}
-                    placeholder="Objectif résultat (OUTCOME)"
+                    placeholder="Objectif résultat"
                   />
                 ) : (
                   <div className="small2">Objectif résultat : {outcomeGoal?.title || "OK"}</div>
@@ -126,7 +126,7 @@ export default function Onboarding({ data, setData, onDone }) {
                   <Input
                     value={processTitle}
                     onChange={(e) => setProcessTitle(e.target.value)}
-                    placeholder="Première action liée (PROCESS)"
+                    placeholder="Première action liée"
                   />
                 ) : (
                   <div className="small2">Action liée : OK</div>

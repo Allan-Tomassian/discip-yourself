@@ -13,10 +13,11 @@ export function SettingsAdvanced({ data, setData }) {
     typeof Notification !== "undefined" ? Notification.permission : "unsupported"
   );
 
-  const reminders = Array.isArray(data.reminders) ? data.reminders : [];
-  const goals = Array.isArray(data.goals) ? data.goals : [];
-  const habits = Array.isArray(data.habits) ? data.habits : [];
-  const categories = Array.isArray(data.categories) ? data.categories : [];
+  const safeData = data && typeof data === "object" ? data : {};
+  const reminders = Array.isArray(safeData.reminders) ? safeData.reminders : [];
+  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+  const habits = Array.isArray(safeData.habits) ? safeData.habits : [];
+  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
 
   const DAYS = [
     { id: 1, label: "L" },
@@ -75,7 +76,7 @@ export function SettingsAdvanced({ data, setData }) {
                 <Input
                   value={r.label || ""}
                   onChange={(e) => updateReminder(r.id, { label: e.target.value })}
-                  placeholder="Label"
+                  placeholder="Libellé"
                 />
                 <div className="grid2">
                   <Input
@@ -131,13 +132,13 @@ export function SettingsAdvanced({ data, setData }) {
                 <div className="mt10">
                   <div className="small2">Canal</div>
                   <Select value={r.channel || "IN_APP"} onChange={(e) => updateReminder(r.id, { channel: e.target.value })}>
-                    <option value="IN_APP">In-app</option>
+                    <option value="IN_APP">Dans l’app</option>
                     <option value="NOTIFICATION">Notification navigateur</option>
                   </Select>
                 </div>
                 <div className="row" style={{ marginTop: 10 }}>
                   <Button variant={r.enabled ? "primary" : "ghost"} onClick={() => updateReminder(r.id, { enabled: !r.enabled })}>
-                    {r.enabled ? "ON" : "OFF"}
+                    {r.enabled ? "Actif" : "Inactif"}
                   </Button>
                   <Button variant="ghost" onClick={() => removeReminder(r.id)}>
                     Supprimer
@@ -171,6 +172,8 @@ export function SettingsAdvanced({ data, setData }) {
 }
 
 export default function Settings({ data, setData }) {
+  const safeData = data && typeof data === "object" ? data : {};
+
   function addCategory() {
     const name = safePrompt("Nom :", "Nouvelle");
     if (!name) return;
@@ -189,14 +192,14 @@ export default function Settings({ data, setData }) {
     });
   }
 
-  if (!data.categories || data.categories.length === 0) {
+  if (!safeData.categories || safeData.categories.length === 0) {
     return (
       <ScreenShell
-        data={data}
+        data={safeData}
         pageId="settings"
-        headerTitle="Settings"
+        headerTitle="Réglages"
         headerSubtitle="Aucune catégorie"
-        backgroundImage={data?.profile?.whyImage || ""}
+        backgroundImage={safeData?.profile?.whyImage || ""}
       >
         <Card accentBorder>
           <div className="p18">
@@ -213,24 +216,25 @@ export default function Settings({ data, setData }) {
     );
   }
 
-  const selected = data.categories.find((c) => c.id === data.ui.selectedCategoryId) || data.categories[0];
+  const selected =
+    safeData.categories.find((c) => c.id === safeData.ui?.selectedCategoryId) || safeData.categories[0];
 
   return (
     <ScreenShell
-      data={data}
+      data={safeData}
       pageId="settings"
-      headerTitle="Settings"
-      headerSubtitle="Basic"
-      backgroundImage={selected.wallpaper || data.profile.whyImage || ""}
+      headerTitle="Réglages"
+      headerSubtitle="Essentiel"
+      backgroundImage={selected?.wallpaper || safeData.profile?.whyImage || ""}
     >
       <div className="col">
         <ThemePicker data={data} setData={setData} />
 
         <Card accentBorder style={{ marginTop: 14 }}>
           <div className="p18">
-            <div style={{ fontWeight: 900 }}>Advanced</div>
+            <div style={{ fontWeight: 900 }}>Avancé</div>
             <div className="small2" style={{ marginTop: 6 }}>
-              Ouvre le drawer via l’icône ⚙ pour les réglages avancés.
+              Ouvre le tiroir via l’icône ⚙ pour les réglages avancés.
             </div>
           </div>
         </Card>
@@ -248,7 +252,7 @@ export default function Settings({ data, setData }) {
                 setData(initialData());
               }}
             >
-              Reset
+              Réinitialiser
             </Button>
           </div>
         </Card>

@@ -6,6 +6,14 @@ import { todayKey } from "../utils/dates";
 import { createGoal } from "../logic/goals";
 import { safePrompt } from "../utils/dialogs";
 
+const UNIT_LABELS = {
+  DAY: "jour",
+  WEEK: "semaine",
+  MONTH: "mois",
+  QUARTER: "trimestre",
+  YEAR: "an",
+};
+
 function templateSet(categoryName) {
   const name = (categoryName || "").toLowerCase();
   if (name.includes("sport")) {
@@ -59,7 +67,7 @@ function templateSet(categoryName) {
   return [
     {
       id: "default-1",
-      label: "Template rapide",
+      label: "Modèle rapide",
       outcomeTitle: `Progresser dans ${categoryName || "cet axe"}`,
       processTitle: "Action régulière",
       freqCount: 3,
@@ -71,10 +79,15 @@ function templateSet(categoryName) {
 
 export default function Categories({ data, setData, onOpenPlan }) {
   const [libraryCategoryId, setLibraryCategoryId] = useState(null);
-  const categories = Array.isArray(data.categories) ? data.categories : [];
-  const goals = Array.isArray(data.goals) ? data.goals : [];
+  const safeData = data && typeof data === "object" ? data : {};
+  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
+  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
 
   const activeCategory = categories.find((c) => c.id === libraryCategoryId) || null;
+  const templates = useMemo(
+    () => (activeCategory ? templateSet(activeCategory.name) : []),
+    [activeCategory?.name]
+  );
 
   function addCategory() {
     const name = safePrompt("Nom :", "Nouvelle");
@@ -131,11 +144,11 @@ export default function Categories({ data, setData, onOpenPlan }) {
   if (categories.length === 0) {
     return (
       <ScreenShell
-        data={data}
+        data={safeData}
         pageId="categories"
-        headerTitle="Library"
+        headerTitle="Bibliothèque"
         headerSubtitle="Aucune catégorie"
-        backgroundImage={data?.profile?.whyImage || ""}
+        backgroundImage={safeData?.profile?.whyImage || ""}
       >
         <Card accentBorder>
           <div className="p18">
@@ -152,14 +165,40 @@ export default function Categories({ data, setData, onOpenPlan }) {
     );
   }
 
+  if (!activeCategory && libraryCategoryId) {
+    return (
+      <ScreenShell
+        data={safeData}
+        pageId="categories"
+        headerTitle="Bibliothèque"
+        headerSubtitle="État invalide"
+        backgroundImage={safeData?.profile?.whyImage || ""}
+      >
+        <Card accentBorder>
+          <div className="p18">
+            <div className="titleSm">État invalide</div>
+            <div className="small" style={{ marginTop: 6 }}>
+              La catégorie demandée est introuvable.
+            </div>
+            <div className="mt12">
+              <Button variant="ghost" onClick={() => setLibraryCategoryId(null)}>
+                Retour à la bibliothèque
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </ScreenShell>
+    );
+  }
+
   if (!activeCategory) {
     return (
       <ScreenShell
-        data={data}
+        data={safeData}
         pageId="categories"
-        headerTitle="Library"
+        headerTitle="Bibliothèque"
         headerSubtitle="Choisis une catégorie"
-        backgroundImage={data?.profile?.whyImage || ""}
+        backgroundImage={safeData?.profile?.whyImage || ""}
       >
         <div className="col">
           {categories.map((c) => {
@@ -202,21 +241,19 @@ export default function Categories({ data, setData, onOpenPlan }) {
     );
   }
 
-  const templates = useMemo(() => templateSet(activeCategory.name), [activeCategory.name]);
-
   return (
     <ScreenShell
-      data={data}
+      data={safeData}
       pageId="categories"
-      headerTitle="Library"
+      headerTitle="Bibliothèque"
       headerSubtitle={activeCategory.name}
-      backgroundImage={activeCategory.wallpaper || data?.profile?.whyImage || ""}
+      backgroundImage={activeCategory.wallpaper || safeData?.profile?.whyImage || ""}
     >
       <Card accentBorder style={{ borderColor: activeCategory.color || undefined }}>
         <div className="p18">
           <div className="row" style={{ justifyContent: "space-between" }}>
             <div>
-              <div className="titleSm">Templates</div>
+              <div className="titleSm">Modèles</div>
               <div className="small2">Un point de départ rapide.</div>
             </div>
             <Button variant="ghost" onClick={() => setLibraryCategoryId(null)}>
@@ -229,11 +266,13 @@ export default function Categories({ data, setData, onOpenPlan }) {
               <div key={tpl.id} className="listItem">
                 <div style={{ fontWeight: 700 }}>{tpl.label}</div>
                 <div className="small2" style={{ marginTop: 4 }}>
-                  OUTCOME : {tpl.outcomeTitle}
+                  RÉSULTAT : {tpl.outcomeTitle}
                 </div>
-                <div className="small2">PROCESS : {tpl.processTitle}</div>
+                <div className="small2">PROCESSUS : {tpl.processTitle}</div>
                 <div className="mt10 row" style={{ justifyContent: "space-between" }}>
-                  <Badge>{tpl.freqCount} / {tpl.freqUnit}</Badge>
+                  <Badge>
+                    {tpl.freqCount} / {(UNIT_LABELS[tpl.freqUnit] || tpl.freqUnit || "").toLowerCase()}
+                  </Badge>
                   <Button variant="ghost" onClick={() => createFromTemplate(activeCategory, tpl)}>
                     Utiliser
                   </Button>

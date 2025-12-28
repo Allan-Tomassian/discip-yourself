@@ -6,20 +6,25 @@ import { computeHabitProgress } from "../logic/habits";
 import { todayKey, startOfWeekKey } from "../utils/dates";
 
 export default function Stats({ data }) {
-  if (!data.categories || data.categories.length === 0) {
+  const safeData = data && typeof data === "object" ? data : {};
+  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
+  const habits = Array.isArray(safeData.habits) ? safeData.habits : [];
+  const checks = safeData.checks && typeof safeData.checks === "object" ? safeData.checks : {};
+
+  if (categories.length === 0) {
     return (
       <ScreenShell
-        data={data}
+        data={safeData}
         pageId="stats"
-        headerTitle="Stats"
+        headerTitle="Statistiques"
         headerSubtitle="Aucune catégorie"
-        backgroundImage={data?.profile?.whyImage || ""}
+        backgroundImage={safeData?.profile?.whyImage || ""}
       >
         <Card accentBorder>
           <div className="p18">
             <div className="titleSm">Aucune catégorie</div>
             <div className="small" style={{ marginTop: 6 }}>
-              Ajoute une première catégorie dans l’onglet Catégories pour commencer.
+              Ajoute une première catégorie dans l’onglet Bibliothèque pour commencer.
             </div>
           </div>
         </Card>
@@ -27,32 +32,32 @@ export default function Stats({ data }) {
     );
   }
 
-  const selected = data.categories.find((c) => c.id === data.ui.selectedCategoryId) || data.categories[0];
+  const selected = categories.find((c) => c.id === safeData.ui?.selectedCategoryId) || categories[0];
   const now = new Date();
 
   const dailyAvg = useMemo(() => {
-    const list = data.habits.filter((h) => h.cadence === "DAILY");
+    const list = habits.filter((h) => h.cadence === "DAILY");
     if (!list.length) return 0;
     let s = 0;
-    for (const h of list) s += clamp(computeHabitProgress(h, data.checks, now).ratio, 0, 1);
+    for (const h of list) s += clamp(computeHabitProgress(h, checks, now).ratio, 0, 1);
     return s / list.length;
-  }, [data.habits, data.checks]);
+  }, [habits, checks]);
 
   const weeklyAvg = useMemo(() => {
-    const list = data.habits.filter((h) => h.cadence === "WEEKLY");
+    const list = habits.filter((h) => h.cadence === "WEEKLY");
     if (!list.length) return 0;
     let s = 0;
-    for (const h of list) s += clamp(computeHabitProgress(h, data.checks, now).ratio, 0, 1);
+    for (const h of list) s += clamp(computeHabitProgress(h, checks, now).ratio, 0, 1);
     return s / list.length;
-  }, [data.habits, data.checks]);
+  }, [habits, checks]);
 
   return (
     <ScreenShell
-      data={data}
+      data={safeData}
       pageId="stats"
-      headerTitle="Stats"
+      headerTitle="Statistiques"
       headerSubtitle={`Semaine: ${startOfWeekKey(now)} · Jour: ${todayKey(now)}`}
-      backgroundImage={selected.wallpaper || data.profile.whyImage || ""}
+      backgroundImage={selected?.wallpaper || safeData.profile?.whyImage || ""}
     >
       <div className="grid2">
         <Card accentBorder>
@@ -62,7 +67,7 @@ export default function Stats({ data }) {
               <div style={{ fontSize: 28, fontWeight: 900 }}>{Math.round(dailyAvg * 100)}%</div>
               <ProgressRing value={dailyAvg} />
             </div>
-            <div className="small2">Moyenne des habitudes DAILY</div>
+            <div className="small2">Moyenne des habitudes quotidiennes</div>
           </div>
         </Card>
 
@@ -73,22 +78,22 @@ export default function Stats({ data }) {
               <div style={{ fontSize: 28, fontWeight: 900 }}>{Math.round(weeklyAvg * 100)}%</div>
               <ProgressRing value={weeklyAvg} />
             </div>
-            <div className="small2">Moyenne des habitudes WEEKLY</div>
+            <div className="small2">Moyenne des habitudes hebdomadaires</div>
           </div>
         </Card>
       </div>
 
       <Card accentBorder style={{ marginTop: 14 }}>
         <div className="p18">
-          <div className="row">
-            <div>
-              <div style={{ fontWeight: 900 }}>Niveau</div>
-              <div className="small2">XP en temps réel</div>
+            <div className="row">
+              <div>
+                <div style={{ fontWeight: 900 }}>Niveau</div>
+                <div className="small2">XP en temps réel</div>
+              </div>
+            <Badge>N{safeData.profile?.level || 0} · XP {safeData.profile?.xp || 0}</Badge>
             </div>
-            <Badge>N{data.profile.level} · XP {data.profile.xp}</Badge>
           </div>
-        </div>
-      </Card>
-    </ScreenShell>
+        </Card>
+      </ScreenShell>
   );
 }

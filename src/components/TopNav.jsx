@@ -2,11 +2,11 @@ import React from "react";
 
 export default function TopNav({ active, setActive, onOpenAdvanced }) {
   const items = [
-    { id: "today", label: "Today" },
+    { id: "today", label: "Aujourd’hui" },
     { id: "plan", label: "Plan" },
-    { id: "library", label: "Library" },
-    { id: "stats", label: "Stats" },
-    { id: "settings", label: "Settings" },
+    { id: "library", label: "Bibliothèque" },
+    { id: "stats", label: "Statistiques" },
+    { id: "settings", label: "Réglages" },
   ];
 
   return (
@@ -28,8 +28,8 @@ export default function TopNav({ active, setActive, onOpenAdvanced }) {
             className="navGear"
             type="button"
             onClick={() => (typeof onOpenAdvanced === "function" ? onOpenAdvanced() : null)}
-            aria-label="Advanced"
-            title="Advanced"
+            aria-label="Avancé"
+            title="Avancé"
           >
             ⚙
           </button>

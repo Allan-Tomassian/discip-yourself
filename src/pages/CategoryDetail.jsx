@@ -170,6 +170,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const [activationError, setActivationError] = useState(null);
   const [overlapError, setOverlapError] = useState(null);
   const [linkWeightsById, setLinkWeightsById] = useState({});
+  const safeData = data && typeof data === "object" ? data : {};
 
   function addCategory() {
     const name = safePrompt("Nom :", "Nouvelle");
@@ -189,11 +190,11 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     });
   }
 
-  const categories = Array.isArray(data.categories) ? data.categories : [];
-  const allGoals = Array.isArray(data.goals) ? data.goals : [];
-  const activeCategoryId = categoryId || data.ui?.selectedCategoryId || categories[0]?.id;
-  const c = categories.find((x) => x.id === activeCategoryId) || categories[0];
-  const mainGoalId = data.ui?.mainGoalId || null;
+  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
+  const allGoals = Array.isArray(safeData.goals) ? safeData.goals : [];
+  const requestedCategoryId = categoryId || safeData.ui?.selectedCategoryId || null;
+  const c = categories.find((x) => x.id === requestedCategoryId) || null;
+  const mainGoalId = safeData.ui?.mainGoalId || null;
   const goals = c ? allGoals.filter((g) => g.categoryId === c.id) : [];
   const outcomeGoals = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
   const processGoals = goals.filter((g) => resolveGoalType(g) === "PROCESS");
@@ -207,7 +208,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const outcomePct = Math.round(outcomeAggregate.progress * 100);
 
   const today = todayKey();
-  const todayChecks = data.ui?.processChecks || {};
+  const todayChecks = safeData.ui?.processChecks || {};
 
   function toggleTodayCheck(goalId) {
     setData((prev) => {
@@ -332,11 +333,11 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   if (categories.length === 0) {
     return (
       <ScreenShell
-        data={data}
+        data={safeData}
         pageId="categories"
         headerTitle="Plan"
         headerSubtitle="Aucune catégorie"
-        backgroundImage={data?.profile?.whyImage || ""}
+        backgroundImage={safeData?.profile?.whyImage || ""}
       >
         <Card accentBorder>
           <div className="p18">
@@ -346,6 +347,38 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
             </div>
             <div className="mt12">
               <Button onClick={addCategory}>+ Ajouter une catégorie</Button>
+            </div>
+          </div>
+        </Card>
+      </ScreenShell>
+    );
+  }
+
+  if (!c) {
+    return (
+      <ScreenShell
+        data={safeData}
+        pageId="categories"
+        headerTitle="Plan"
+        headerSubtitle="État invalide"
+        backgroundImage={safeData?.profile?.whyImage || ""}
+      >
+        <Card accentBorder>
+          <div className="p18">
+            <div className="titleSm">État invalide</div>
+            <div className="small" style={{ marginTop: 6 }}>
+              La catégorie demandée est introuvable.
+            </div>
+            <div className="mt12">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), selectedCategoryId: null } }));
+                  if (typeof onBack === "function") onBack();
+                }}
+              >
+                Retour à la bibliothèque
+              </Button>
             </div>
           </div>
         </Card>
@@ -450,7 +483,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       payload.oneOffDate = undefined;
     }
 
-    const overlap = preventOverlap(data, editGoalId || null, startAt, sessionMinutes);
+    const overlap = preventOverlap(safeData, editGoalId || null, startAt, sessionMinutes);
     if (!overlap.ok) {
       setOverlapError(overlap.conflicts);
       return;
@@ -513,13 +546,13 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       pageId="categories"
       headerTitle="Plan"
       headerSubtitle={c?.name || "Catégorie"}
-      backgroundImage={c?.wallpaper || data.profile.whyImage || ""}
+      backgroundImage={c?.wallpaper || safeData.profile?.whyImage || ""}
     >
       <div style={{ "--catColor": c?.color || "#7C3AED" }}>
         <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
           {onBack ? (
             <Button variant="ghost" onClick={onBack}>
-              ← Library
+              ← Bibliothèque
             </Button>
           ) : (
             <div />
@@ -533,7 +566,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
               if (typeof onSelectCategory === "function") onSelectCategory(nextId);
             }}
           >
-            {data.categories.map((cat) => (
+            {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.name}
               </option>
@@ -545,7 +578,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
           <div className="p18">
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <div className="titleSm">OUTCOME</div>
+                <div className="titleSm">Résultat</div>
                 <div className="small2">Progression agrégée</div>
               </div>
               <div style={{ fontWeight: 800 }}>{outcomePct}%</div>
@@ -563,10 +596,10 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
               </div>
             ) : (
               <div className="mt12">
-                <div className="small2">Aucun OUTCOME dans cette catégorie.</div>
+                <div className="small2">Aucun résultat dans cette catégorie.</div>
                 <div className="mt10">
                   <Button variant="ghost" onClick={openAddOutcome}>
-                    Créer un OUTCOME
+                    Créer un résultat
                   </Button>
                 </div>
               </div>
@@ -578,7 +611,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
           <div className="p18">
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <div className="titleSm">PROCESS actifs</div>
+                <div className="titleSm">Processus actifs</div>
                 <div className="small2">Max 3 affichés</div>
               </div>
               <Badge>{activeProcesses.length}</Badge>
@@ -591,7 +624,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                   return (
                     <div key={g.id} className="listItem">
                       <div className="row" style={{ justifyContent: "space-between" }}>
-                        <div style={{ fontWeight: 700 }}>{g.title || "Process"}</div>
+                        <div style={{ fontWeight: 700 }}>{g.title || "Processus"}</div>
                         <label className="small2" style={{ display: "flex", gap: 6, alignItems: "center" }}>
                           <input
                             type="checkbox"
@@ -608,7 +641,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                   );
                 })
               ) : (
-                <div className="small2">Aucun PROCESS actif.</div>
+                <div className="small2">Aucun processus actif.</div>
               )}
               {activeProcesses.length > 3 ? (
                 <div className="small2" style={{ opacity: 0.7 }}>
@@ -618,14 +651,16 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
             </div>
 
             <div className="mt12">
-              <Button onClick={() => openAdd({ planType: "ACTION", goalType: "PROCESS" })}>+ Ajouter un PROCESS</Button>
+              <Button onClick={() => openAdd({ planType: "ACTION", goalType: "PROCESS" })}>
+                + Ajouter un processus
+              </Button>
             </div>
           </div>
         </Card>
 
         <div className="mt12">
           <button className="linkBtn" onClick={() => setAdvancedOpen((v) => !v)}>
-            {advancedOpen ? "Masquer Advanced" : "Advanced"}
+            {advancedOpen ? "Masquer avancé" : "Avancé"}
           </button>
         </div>
 
