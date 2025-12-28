@@ -46,7 +46,7 @@ export default function Home({ data, onOpenLibrary }) {
               Ajoute une première catégorie pour commencer.
             </div>
             <div className="mt12">
-              <Button onClick={() => (typeof onOpenLibrary === \"function\" ? onOpenLibrary() : null)}>
+              <Button onClick={() => (typeof onOpenLibrary === "function" ? onOpenLibrary() : null)}>
                 Ouvrir la bibliothèque
               </Button>
             </div>
