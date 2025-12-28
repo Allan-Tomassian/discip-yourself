@@ -164,6 +164,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const [isAdding, setIsAdding] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
+  const [showAllHabits, setShowAllHabits] = useState(false);
   const [draftPlanType, setDraftPlanType] = useState("ACTION");
   const [draftGoalType, setDraftGoalType] = useState("PROCESS");
   const [draftTitle, setDraftTitle] = useState("");
@@ -187,6 +188,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
 
   useEffect(() => {
     setGoalPickerOpen(false);
+    setShowAllHabits(false);
   }, [categoryId, safeData.ui?.selectedCategoryId]);
 
   function addCategory() {
@@ -222,6 +224,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const mainGoalId = c?.mainGoalId || fallbackMainId || null;
   const mainGoal = mainGoalId ? goals.find((g) => g.id === mainGoalId) : null;
   const linkedHabits = mainGoalId ? processGoals.filter((g) => g.parentId === mainGoalId) : [];
+  const visibleHabits = showAllHabits ? linkedHabits : linkedHabits.slice(0, 3);
   const outcomeAggregate = useMemo(
     () => computeAggregateProgress({ goals: allGoals }, mainGoal?.id),
     [allGoals, mainGoal?.id]
@@ -630,7 +633,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                     Modifier
                   </Button>
                   <Button variant="ghost" onClick={() => setGoalPickerOpen((v) => !v)}>
-                    {goalPickerOpen ? "Fermer" : "Changer"}
+                    {goalPickerOpen ? "Fermer" : "Changer d’objectif"}
                   </Button>
                 </div>
               </div>
@@ -693,12 +696,11 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
               </div>
             ) : linkedHabits.length ? (
               <div className="mt12 col">
-                {linkedHabits.map((g) => (
+                {visibleHabits.map((g) => (
                   <div key={g.id} className="listItem">
                     <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
                       <div>
                         <div style={{ fontWeight: 700 }}>{g.title || "Habitude"}</div>
-                        <div className="small2">{formatStatusLabel(g.status)}</div>
                       </div>
                       <div className="row">
                         {g.status !== "active" ? (
@@ -717,6 +719,14 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
             ) : (
               <div className="mt12 small2">Aucune habitude liée.</div>
             )}
+
+            {linkedHabits.length > 3 ? (
+              <div className="mt10">
+                <Button variant="ghost" onClick={() => setShowAllHabits((v) => !v)}>
+                  {showAllHabits ? "Voir moins" : `Voir plus (${linkedHabits.length - 3})`}
+                </Button>
+              </div>
+            ) : null}
 
             {mainGoal ? (
               <div className="mt12">

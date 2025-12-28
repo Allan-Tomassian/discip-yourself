@@ -36,7 +36,6 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
   }, [categories, goals, safeData.ui?.selectedCategoryId]);
 
   const mainGoalId = focusCategory?.mainGoalId || null;
-  const mainGoal = mainGoalId ? goals.find((g) => g.id === mainGoalId) : null;
   const habits = goals.filter(
     (g) =>
       g.categoryId === focusCategory?.id &&
@@ -127,15 +126,15 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
           style={{
             flex: 1,
             minWidth: 0,
-            whiteSpace: showWhy ? "normal" : "nowrap",
+            whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
           }}
         >
-          {whyDisplay}
+          {showWhy ? whyDisplay : "Pourquoi masqué"}
         </div>
         <button className="linkBtn" onClick={() => setShowWhy((v) => !v)} aria-label="Afficher ou masquer le pourquoi">
-          {showWhy ? "👁" : "👁‍🗨"}
+          {showWhy ? "Masquer 👁" : "Afficher 👁"}
         </button>
       </div>
 
@@ -144,7 +143,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
           categories={categories}
           value={focusCategory?.id || ""}
           onChange={setFocusCategory}
-          label="Catégorie focus"
+          label="Focus sur une catégorie"
           emptyLabel="Catégorie à configurer"
         />
       </div>
@@ -152,27 +151,12 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
       <Card accentBorder style={{ marginTop: 12, borderColor: accent }}>
         <div className="p18">
           <div className="titleSm">Action du jour</div>
-          <div className="small2" style={{ marginTop: 4 }}>
-            {focusCategory?.name || "Catégorie"}
-          </div>
-
-          {!mainGoal ? (
-            <div className="mt12 col">
-              <div className="small2">Catégorie à configurer.</div>
-              <div className="mt10">
-                <Button onClick={() => openPlanWith(focusCategory?.id, "__new_outcome__")}>Créer un objectif</Button>
-              </div>
-            </div>
-          ) : nextHabit ? (
+          {nextHabit ? (
             <div className="mt12 col">
               <div style={{ fontWeight: 800, fontSize: 18 }}>{nextHabit.title || "Habitude"}</div>
               <div className="mt12 row" style={{ alignItems: "center", justifyContent: "space-between" }}>
                 <Button onClick={() => markDoneToday(nextHabit.id)} disabled={nextHabitDone}>
-                  {nextHabitDone ? "Déjà fait" : "Fait"}
-                </Button>
-                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, "__new_process__")}
-                >
-                  Ajouter une habitude
+                  {nextHabitDone ? "Déjà validé" : "Valider"}
                 </Button>
               </div>
             </div>
@@ -180,7 +164,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
             <div className="mt12 col">
               <div className="small2">Aucune action aujourd’hui.</div>
               <div className="mt10">
-                <Button onClick={() => openPlanWith(focusCategory?.id, "__new_process__")}>Ajouter une habitude</Button>
+                <Button onClick={() => openPlanWith(focusCategory?.id, null)}>Ajouter une habitude</Button>
               </div>
             </div>
           )}
