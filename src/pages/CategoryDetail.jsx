@@ -111,45 +111,20 @@ function resolveGoalType(goal) {
   return planType === "STATE" ? "OUTCOME" : "PROCESS";
 }
 
-function unitFromCadence(cadence) {
-  if (cadence === "DAILY") return "DAY";
-  if (cadence === "WEEKLY") return "WEEK";
-  if (cadence === "YEARLY") return "YEAR";
-  return "WEEK";
-}
-
-function formatMetric(metric) {
-  if (!metric || typeof metric !== "object") return "";
-  const target =
-    typeof metric.targetValue === "string" ? Number(metric.targetValue) : metric.targetValue;
-  const current =
-    typeof metric.currentValue === "string" ? Number(metric.currentValue) : metric.currentValue;
-  if (!Number.isFinite(target) || target <= 0) return "";
-  const unit = metric.unit ? ` ${metric.unit}` : "";
-  const curVal = Number.isFinite(current) ? current : 0;
-  return `${curVal}/${target}${unit}`;
-}
-
 function formatGoalMeta(goal) {
   const planType = resolvePlanType(goal);
-  const goalType = resolveGoalType(goal);
   const rawCount = typeof goal?.freqCount === "number" ? goal.freqCount : goal?.target;
   const count = Number.isFinite(rawCount) ? Math.max(1, Math.floor(rawCount)) : 1;
   const minutes = Number.isFinite(goal?.sessionMinutes) ? Math.max(5, Math.floor(goal.sessionMinutes)) : null;
-  const metricLabel = goalType === "OUTCOME" ? formatMetric(goal.metric) : "";
 
   if (planType === "ONE_OFF") {
     const date = formatDateFr(goal?.oneOffDate || goal?.deadline) || "—";
-    const parts = [`1 fois — le ${date}`];
-    if (minutes) parts.push(`${minutes} min`);
-    if (metricLabel) parts.push(metricLabel);
-    return parts.join(" · ");
+    return `1 fois — le ${date}`;
   }
 
   if (planType === "STATE") {
     const parts = ["Suivi via tracker/habitude liée"];
     if (goal?.deadline) parts.push(`deadline ${formatDateFr(goal.deadline)}`);
-    if (metricLabel) parts.push(metricLabel);
     return parts.join(" · ");
   }
 
@@ -159,11 +134,7 @@ function formatGoalMeta(goal) {
   } else {
     parts.push(formatCadence(goal?.cadence));
   }
-  if (goal?.deadline) {
-    parts.push(`deadline ${formatDateFr(goal.deadline)}`);
-  }
   if (minutes) parts.push(`${minutes} min`);
-  if (metricLabel) parts.push(metricLabel);
   return parts.join(" · ");
 }
 
@@ -179,6 +150,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const lastScrollRef = useRef(null);
   const handledEditRef = useRef(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [draftPlanType, setDraftPlanType] = useState("ACTION");
   const [draftGoalType, setDraftGoalType] = useState("PROCESS");
   const [draftTitle, setDraftTitle] = useState("");
@@ -223,15 +195,37 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const c = categories.find((x) => x.id === activeCategoryId) || categories[0];
   const mainGoalId = data.ui?.mainGoalId || null;
   const goals = c ? allGoals.filter((g) => g.categoryId === c.id) : [];
-  const mainGoal = allGoals.find((g) => g.id === mainGoalId) || null;
-  const primaryAggregate = useMemo(
-    () => computeAggregateProgress({ goals: allGoals }, mainGoalId),
-    [allGoals, mainGoalId]
+  const outcomeGoals = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
+  const processGoals = goals.filter((g) => resolveGoalType(g) === "PROCESS");
+  const outcomeGoal = outcomeGoals.find((g) => g.status === "active") || outcomeGoals[0] || null;
+  const activeProcesses = processGoals.filter((g) => g.status === "active");
+  const topProcesses = activeProcesses.slice(0, 3);
+  const outcomeAggregate = useMemo(
+    () => computeAggregateProgress({ goals: allGoals }, outcomeGoal?.id),
+    [allGoals, outcomeGoal?.id]
   );
-  const primaryAggregatePct = Math.round(primaryAggregate.progress * 100);
-  const primaryChildrenPct = Math.round(primaryAggregate.aggregate * 100);
-  const primaryMetricPct =
-    primaryAggregate.metric == null ? null : Math.round(primaryAggregate.metric * 100);
+  const outcomePct = Math.round(outcomeAggregate.progress * 100);
+
+  const today = todayKey();
+  const todayChecks = data.ui?.processChecks || {};
+
+  function toggleTodayCheck(goalId) {
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      const prevChecks = prevUi.processChecks || {};
+      const current = Boolean(prevChecks?.[goalId]?.[today]);
+      const nextGoalChecks = { ...(prevChecks[goalId] || {}) };
+      if (current) delete nextGoalChecks[today];
+      else nextGoalChecks[today] = true;
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          processChecks: { ...prevChecks, [goalId]: nextGoalChecks },
+        },
+      };
+    });
+  }
 
   function updateLinkWeight(goalId, value) {
     setLinkWeightsById((prev) => ({ ...prev, [goalId]: value }));
@@ -246,13 +240,14 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     return Math.max(0, Math.min(100, Math.round(n)));
   }
 
-  function openAdd() {
+  function openAdd(options = {}) {
     setErr("");
     setActivationError(null);
     setOverlapError(null);
+    setAdvancedOpen(true);
     setEditGoalId(null);
-    setDraftPlanType("ACTION");
-    setDraftGoalType("PROCESS");
+    setDraftPlanType(options.planType || "ACTION");
+    setDraftGoalType(options.goalType || "PROCESS");
     setDraftTitle("");
     setDraftFreqCount("3");
     setDraftFreqUnit("WEEK");
@@ -269,11 +264,16 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setIsAdding(true);
   }
 
+  function openAddOutcome() {
+    openAdd({ planType: "STATE", goalType: "OUTCOME" });
+  }
+
   function openEdit(goal) {
     if (!goal?.id) return;
     setErr("");
     setActivationError(null);
     setOverlapError(null);
+    setAdvancedOpen(true);
     setEditGoalId(goal.id);
     const nextPlanType = resolvePlanType(goal);
     const nextGoalType = resolveGoalType(goal);
@@ -281,9 +281,8 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setDraftGoalType(nextGoalType);
     setDraftTitle(goal.title || "");
     setDraftFreqCount(String(typeof goal.freqCount === "number" ? goal.freqCount : goal.target || 1));
-    const unit =
-      typeof goal.freqUnit === "string" ? goal.freqUnit.toUpperCase() : "";
-    setDraftFreqUnit(unit && unit !== "ONCE" ? unit : unitFromCadence(goal.cadence));
+    const unit = typeof goal.freqUnit === "string" ? goal.freqUnit.toUpperCase() : "";
+    setDraftFreqUnit(unit && unit !== "ONCE" ? unit : "WEEK");
     const parsed = parseStartAt(goal.startAt || goal.startDate || "");
     setDraftStartDate(parsed.date || todayKey());
     setDraftStartTime(parsed.time || "09:00");
@@ -291,19 +290,11 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setDraftOneOffDate(goal.oneOffDate || (goal.freqUnit === "ONCE" ? goal.deadline : "") || "");
     setDraftNotes(goal.notes || "");
     setDraftSessionMinutes(
-      nextGoalType === "OUTCOME"
-        ? ""
-        : typeof goal.sessionMinutes === "number"
-          ? String(goal.sessionMinutes)
-          : ""
+      nextGoalType === "OUTCOME" ? "" : typeof goal.sessionMinutes === "number" ? String(goal.sessionMinutes) : ""
     );
     setDraftMetricUnit(goal?.metric?.unit || "");
-    setDraftMetricTarget(
-      goal?.metric?.targetValue != null ? String(goal.metric.targetValue) : ""
-    );
-    setDraftMetricCurrent(
-      goal?.metric?.currentValue != null ? String(goal.metric.currentValue) : ""
-    );
+    setDraftMetricTarget(goal?.metric?.targetValue != null ? String(goal.metric.targetValue) : "");
+    setDraftMetricCurrent(goal?.metric?.currentValue != null ? String(goal.metric.currentValue) : "");
     setDraftResetPolicy(goal.resetPolicy || "invalidate");
     setIsAdding(true);
   }
@@ -311,12 +302,19 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   useEffect(() => {
     if (!initialEditGoalId) return;
     if (handledEditRef.current === initialEditGoalId) return;
+    if (initialEditGoalId === "__new_process__") {
+      openAdd({ planType: "ACTION", goalType: "PROCESS" });
+      handledEditRef.current = initialEditGoalId;
+      setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), openGoalEditId: null } }));
+      return;
+    }
     const goal = goals.find((g) => g.id === initialEditGoalId);
     if (goal) {
       openEdit(goal);
       handledEditRef.current = initialEditGoalId;
+      setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), openGoalEditId: null } }));
     }
-  }, [initialEditGoalId, goals]);
+  }, [initialEditGoalId, goals, setData]);
 
   useEffect(() => {
     if (!isAdding || !editFormRef.current) return;
@@ -336,7 +334,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       <ScreenShell
         data={data}
         pageId="categories"
-        headerTitle="Catégories"
+        headerTitle="Plan"
         headerSubtitle="Aucune catégorie"
         backgroundImage={data?.profile?.whyImage || ""}
       >
@@ -459,9 +457,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     }
     setOverlapError(null);
 
-    setData((prev) =>
-      editGoalId ? updateGoal(prev, editGoalId, payload) : createGoal(prev, payload)
-    );
+    setData((prev) => (editGoalId ? updateGoal(prev, editGoalId, payload) : createGoal(prev, payload)));
     closeForm();
   }
 
@@ -515,44 +511,132 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     <ScreenShell
       data={data}
       pageId="categories"
-      headerTitle={c.name}
-      headerSubtitle="Objectifs de la catégorie"
-      backgroundImage={c.wallpaper || data.profile.whyImage || ""}
+      headerTitle="Plan"
+      headerSubtitle={c?.name || "Catégorie"}
+      backgroundImage={c?.wallpaper || data.profile.whyImage || ""}
     >
-      <div style={{ "--catColor": c.color || "#7C3AED" }}>
-        <div className="row">
-          <Button variant="ghost" onClick={onBack}>
-            ← Retour
-          </Button>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <Select
-              value={c.id}
-              onChange={(e) => {
-                const nextId = e.target.value;
-                if (!nextId || nextId === c.id) return;
-                setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), selectedCategoryId: nextId } }));
-                if (typeof onSelectCategory === "function") onSelectCategory(nextId);
-              }}
-            >
-              {data.categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </Select>
-            <Badge>{goals.length} objectifs</Badge>
-          </div>
+      <div style={{ "--catColor": c?.color || "#7C3AED" }}>
+        <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+          {onBack ? (
+            <Button variant="ghost" onClick={onBack}>
+              ← Library
+            </Button>
+          ) : (
+            <div />
+          )}
+          <Select
+            value={c?.id}
+            onChange={(e) => {
+              const nextId = e.target.value;
+              if (!nextId || nextId === c?.id) return;
+              setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), selectedCategoryId: nextId } }));
+              if (typeof onSelectCategory === "function") onSelectCategory(nextId);
+            }}
+          >
+            {data.categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </Select>
         </div>
 
-        <div className="mt16">
-          <Card accentBorder>
+        <Card accentBorder style={{ marginTop: 14, borderColor: c?.color || undefined }}>
+          <div className="p18">
+            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div className="titleSm">OUTCOME</div>
+                <div className="small2">Progression agrégée</div>
+              </div>
+              <div style={{ fontWeight: 800 }}>{outcomePct}%</div>
+            </div>
+
+            {outcomeGoal ? (
+              <div className="mt12 col">
+                <div style={{ fontWeight: 800, fontSize: 18 }}>{outcomeGoal.title || "Résultat"}</div>
+                <div className="small2">
+                  Deadline : {outcomeGoal.deadline ? formatDateFr(outcomeGoal.deadline) : "—"}
+                </div>
+                <div className="progressTrack" style={{ marginTop: 10 }}>
+                  <div className="progressFill" style={{ width: `${outcomePct}%` }} />
+                </div>
+              </div>
+            ) : (
+              <div className="mt12">
+                <div className="small2">Aucun OUTCOME dans cette catégorie.</div>
+                <div className="mt10">
+                  <Button variant="ghost" onClick={openAddOutcome}>
+                    Créer un OUTCOME
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        <Card accentBorder style={{ marginTop: 14 }}>
+          <div className="p18">
+            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div className="titleSm">PROCESS actifs</div>
+                <div className="small2">Max 3 affichés</div>
+              </div>
+              <Badge>{activeProcesses.length}</Badge>
+            </div>
+
+            <div className="mt12 col">
+              {topProcesses.length ? (
+                topProcesses.map((g) => {
+                  const checked = Boolean(todayChecks?.[g.id]?.[today]);
+                  return (
+                    <div key={g.id} className="listItem">
+                      <div className="row" style={{ justifyContent: "space-between" }}>
+                        <div style={{ fontWeight: 700 }}>{g.title || "Process"}</div>
+                        <label className="small2" style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleTodayCheck(g.id)}
+                          />
+                          Aujourd’hui
+                        </label>
+                      </div>
+                      <div className="small2" style={{ marginTop: 4 }}>
+                        {formatGoalMeta(g)}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="small2">Aucun PROCESS actif.</div>
+              )}
+              {activeProcesses.length > 3 ? (
+                <div className="small2" style={{ opacity: 0.7 }}>
+                  {activeProcesses.length - 3} autres actifs non affichés.
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mt12">
+              <Button onClick={() => openAdd({ planType: "ACTION", goalType: "PROCESS" })}>+ Ajouter un PROCESS</Button>
+            </div>
+          </div>
+        </Card>
+
+        <div className="mt12">
+          <button className="linkBtn" onClick={() => setAdvancedOpen((v) => !v)}>
+            {advancedOpen ? "Masquer Advanced" : "Advanced"}
+          </button>
+        </div>
+
+        {advancedOpen ? (
+          <Card accentBorder style={{ marginTop: 12 }}>
             <div className="p18">
               <div className="row">
                 <div>
-                  <div className="titleSm">{c.name}</div>
-                  <div className="small">Objectifs associés.</div>
+                  <div className="titleSm">Gestion avancée</div>
+                  <div className="small2">Poids, métrique, liens et édition complète.</div>
                 </div>
-                <span className="dot" style={{ background: c.color }} />
               </div>
 
               <div className="mt12 col">
@@ -562,32 +646,32 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                     if (!errGoal) return null;
                     return (
                       <div className="listItem">
-                      <div style={{ fontWeight: 800 }}>Activation bloquée</div>
-                      <div className="small2" style={{ marginTop: 6 }}>
-                        {activationError.reason === "START_IN_FUTURE"
-                          ? "La date de début est dans le futur."
-                          : activationError.reason === "OVERLAP"
-                            ? "Chevauchement détecté."
-                            : "Un autre objectif bloque l’activation."}
-                      </div>
-                      {activationError.blockers && activationError.blockers.length ? (
-                        <div className="mt10 col">
-                          {activationError.blockers.map((b) => (
-                            <div key={b.id} className="small2">
-                              • {b.title || b.name || "Objectif"} — {formatStartAtFr(b.startAt)}
-                            </div>
-                          ))}
+                        <div style={{ fontWeight: 800 }}>Activation bloquée</div>
+                        <div className="small2" style={{ marginTop: 6 }}>
+                          {activationError.reason === "START_IN_FUTURE"
+                            ? "La date de début est dans le futur."
+                            : activationError.reason === "OVERLAP"
+                              ? "Chevauchement détecté."
+                              : "Un autre objectif bloque l’activation."}
                         </div>
-                      ) : null}
-                      {activationError.conflicts && activationError.conflicts.length ? (
-                        <div className="mt10 col">
-                          {activationError.conflicts.map((c) => (
-                            <div key={c.goalId} className="small2">
-                              • {c.title || "Objectif"} — {formatStartAtFr(c.startAt)} → {formatStartAtFr(c.endAt)}
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
+                        {activationError.blockers && activationError.blockers.length ? (
+                          <div className="mt10 col">
+                            {activationError.blockers.map((b) => (
+                              <div key={b.id} className="small2">
+                                • {b.title || b.name || "Objectif"} — {formatStartAtFr(b.startAt)}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                        {activationError.conflicts && activationError.conflicts.length ? (
+                          <div className="mt10 col">
+                            {activationError.conflicts.map((c) => (
+                              <div key={c.goalId} className="small2">
+                                • {c.title || "Objectif"} — {formatStartAtFr(c.startAt)} → {formatStartAtFr(c.endAt)}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
                         <div className="row" style={{ marginTop: 10, justifyContent: "flex-end" }}>
                           <Button variant="ghost" onClick={() => openEdit(errGoal)}>
                             Modifier la date
@@ -598,13 +682,14 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                     );
                   })()
                 ) : null}
+
                 {goals.length === 0 ? (
                   <div className="listItem">Aucun objectif.</div>
                 ) : (
                   goals.map((g) => {
-                  const isMainGoal = mainGoalId && g.id === mainGoalId;
-                  const isLinked = Boolean(mainGoalId && g.parentId === mainGoalId);
-                  const linkWeight = getLinkWeightValue(g);
+                    const isMainGoal = mainGoalId && g.id === mainGoalId;
+                    const isLinked = Boolean(mainGoalId && g.parentId === mainGoalId);
+                    const linkWeight = getLinkWeightValue(g);
                     return (
                       <div key={g.id} className="listItem">
                         <div className="row" style={{ alignItems: "flex-start" }}>
@@ -614,38 +699,14 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                               <Badge>{g.status || "queued"}</Badge>
                               {isMainGoal ? <Badge>PRINCIPAL</Badge> : null}
                             </div>
-                            <div className="small2">
-                              {formatGoalMeta(g)}
-                            </div>
+                            <div className="small2">{formatGoalMeta(g)}</div>
                             <div className="small2" style={{ opacity: 0.9 }}>
                               resetPolicy : <b>{g.resetPolicy || "invalidate"}</b>
                             </div>
                             {isMainGoal ? (
-                              <>
-                                <div className="small2" style={{ marginTop: 6 }}>
-                                  Progression principale : <b>{primaryAggregatePct}%</b>
-                                </div>
-                                {primaryMetricPct != null ? (
-                                  <div className="small2" style={{ marginTop: 4 }}>
-                                    Agrégat enfants : <b>{primaryChildrenPct}%</b> · Mesure :{" "}
-                                    <b>{primaryMetricPct}%</b>
-                                  </div>
-                                ) : null}
-                                {primaryAggregate.linked.length ? (
-                                  <div className="mt6 col">
-                                    {primaryAggregate.linked.map((item) => (
-                                      <div key={item.goal.id} className="small2">
-                                        • {item.goal.title || "Objectif"} · poids {item.weight}% ·{" "}
-                                        {Math.round(item.progress * 100)}%
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <div className="small2" style={{ opacity: 0.7 }}>
-                                    Aucun secondaire lié.
-                                  </div>
-                                )}
-                              </>
+                              <div className="small2" style={{ marginTop: 6 }}>
+                                Progression principale : <b>{outcomePct}%</b>
+                              </div>
                             ) : null}
                           </div>
 
@@ -671,9 +732,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                                     {mainGoalId ? (
                                       <div className="col" style={{ gap: 6, alignItems: "flex-end" }}>
                                         <div className="small2" style={{ opacity: 0.75 }}>
-                                          {isLinked
-                                            ? `Lié à ${mainGoal?.title || "principal"}`
-                                            : "Lier au principal"}
+                                          {isLinked ? `Lié à ${outcomeGoal?.title || "principal"}` : "Lier au principal"}
                                         </div>
                                         <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
                                           <Input
@@ -686,19 +745,12 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                                           />
                                           <Button
                                             variant="ghost"
-                                            onClick={() =>
-                                              setData((prev) => linkChild(prev, g.id, mainGoalId, linkWeight))
-                                            }
+                                            onClick={() => setData((prev) => linkChild(prev, g.id, mainGoalId, linkWeight))}
                                           >
                                             {isLinked ? "Mettre à jour" : "Lier"}
                                           </Button>
                                           {isLinked ? (
-                                            <Button
-                                              variant="ghost"
-                                              onClick={() =>
-                                                setData((prev) => linkChild(prev, g.id, null))
-                                              }
-                                            >
+                                            <Button variant="ghost" onClick={() => setData((prev) => linkChild(prev, g.id, null))}>
                                               Retirer
                                             </Button>
                                           ) : null}
@@ -720,12 +772,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                                 <Button variant="ghost" onClick={() => openEdit(g)}>
                                   Modifier
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  onClick={() =>
-                                    setData((prev) => deleteGoal(prev, g.id))
-                                  }
-                                >
+                                <Button variant="ghost" onClick={() => setData((prev) => deleteGoal(prev, g.id))}>
                                   Supprimer
                                 </Button>
                                 {!isMainGoal ? (
@@ -743,190 +790,174 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                 )}
               </div>
 
-            <div className="mt12">
-              <Button onClick={openAdd}>+ Ajouter un objectif</Button>
-            </div>
+              <div className="mt12">
+                <Button onClick={() => openAdd({ planType: "ACTION", goalType: "PROCESS" })}>
+                  + Ajouter un objectif
+                </Button>
+              </div>
 
-            {isAdding ? (
-              <div ref={editFormRef} className="mt12 listItem focusHalo scrollTarget">
-                <div style={{ fontWeight: 800 }}>{editGoalId ? "Modifier l’objectif" : "Nouvel objectif"}</div>
-                <div className="mt12 col">
-                  <Input value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="Titre" />
-                  <Select
-                    value={draftPlanType}
-                    onChange={(e) => {
-                      const next = e.target.value;
-                      setDraftPlanType(next);
-                      if (next === "STATE") {
-                        setDraftGoalType("OUTCOME");
-                        setDraftSessionMinutes("");
-                      }
-                    }}
-                  >
-                    {PLAN_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </Select>
-
-                  {draftPlanType === "STATE" ? (
-                    <div className="small2">Type : Résultat</div>
-                  ) : (
-                    <Select value={draftGoalType} onChange={(e) => setDraftGoalType(e.target.value)}>
-                      {GOAL_TYPES.map((k) => (
-                        <option key={k.value} value={k.value}>
-                          {k.label}
+              {isAdding ? (
+                <div ref={editFormRef} className="mt12 listItem focusHalo scrollTarget">
+                  <div style={{ fontWeight: 800 }}>{editGoalId ? "Modifier l’objectif" : "Nouvel objectif"}</div>
+                  <div className="mt12 col">
+                    <Input value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="Titre" />
+                    <Select
+                      value={draftPlanType}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setDraftPlanType(next);
+                        if (next === "STATE") {
+                          setDraftGoalType("OUTCOME");
+                          setDraftSessionMinutes("");
+                        }
+                      }}
+                    >
+                      {PLAN_TYPES.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
                         </option>
                       ))}
                     </Select>
-                  )}
 
-                  {draftPlanType === "STATE" ? (
-                    <div className="small2">
-                      Cet objectif se suit via un tracker/habitude liée.
-                    </div>
-                  ) : null}
-
-                  {draftPlanType === "ACTION" ? (
-                    <div>
-                      <div className="small" style={{ marginBottom: 6 }}>
-                        Je m’engage à le faire
-                      </div>
-                      <div className="row" style={{ gap: 10 }}>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={draftFreqCount}
-                          onChange={(e) => setDraftFreqCount(e.target.value)}
-                          placeholder="Fréquence"
-                        />
-                        <Select value={draftFreqUnit} onChange={(e) => setDraftFreqUnit(e.target.value)}>
-                          <option value="DAY">par jour</option>
-                          <option value="WEEK">par semaine</option>
-                          <option value="MONTH">par mois</option>
-                          <option value="QUARTER">par trimestre</option>
-                          <option value="YEAR">par an</option>
-                        </Select>
-                      </div>
-                      <div className="small2" style={{ marginTop: 6 }}>
-                        Exemple: {Math.max(1, Number(draftFreqCount) || 1)} fois par{" "}
-                        {getUnitLabel(draftFreqUnit, Math.max(1, Number(draftFreqCount) || 1))}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {draftPlanType === "ACTION" && draftGoalType === "PROCESS" ? (
-                    <Input
-                      type="number"
-                      min="5"
-                      max="600"
-                      value={draftSessionMinutes}
-                      onChange={(e) => setDraftSessionMinutes(e.target.value)}
-                      placeholder="Durée par session (min) — optionnel"
-                    />
-                  ) : null}
-
-                  {draftGoalType === "OUTCOME" ? (
-                    <div>
-                      <div className="small" style={{ marginBottom: 6 }}>
-                        Mesure (optionnelle)
-                      </div>
-                      <div className="grid3">
-                        <Input
-                          value={draftMetricUnit}
-                          onChange={(e) => setDraftMetricUnit(e.target.value)}
-                          placeholder="Unité (kg, €)"
-                        />
-                        <Input
-                          type="number"
-                          min="1"
-                          value={draftMetricTarget}
-                          onChange={(e) => setDraftMetricTarget(e.target.value)}
-                          placeholder="Cible"
-                        />
-                        <Input
-                          type="number"
-                          min="0"
-                          value={draftMetricCurrent}
-                          onChange={(e) => setDraftMetricCurrent(e.target.value)}
-                          placeholder="Actuel"
-                        />
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <div>
-                    <div className="small" style={{ marginBottom: 6 }}>
-                      Date de début
-                    </div>
-                    <div className="grid2">
-                      <Input
-                        type="date"
-                        value={draftStartDate}
-                        onChange={(e) => setDraftStartDate(e.target.value)}
-                      />
-                      <Input
-                        type="time"
-                        value={draftStartTime}
-                        onChange={(e) => setDraftStartTime(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {draftPlanType === "ONE_OFF" ? (
-                    <div>
-                      <div className="small" style={{ marginBottom: 6 }}>
-                        Date de réalisation (obligatoire)
-                      </div>
-                      <Input type="date" value={draftOneOffDate} onChange={(e) => setDraftOneOffDate(e.target.value)} />
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="small" style={{ marginBottom: 6 }}>
-                        Deadline (optionnelle)
-                      </div>
-                      <Input type="date" value={draftDeadline} onChange={(e) => setDraftDeadline(e.target.value)} />
-                    </div>
-                  )}
-
-                  {draftPlanType === "STATE" ? (
-                    <Textarea
-                      value={draftNotes}
-                      onChange={(e) => setDraftNotes(e.target.value)}
-                      placeholder="Notes (optionnel)"
-                    />
-                  ) : null}
-
-                  <Select value={draftResetPolicy} onChange={(e) => setDraftResetPolicy(e.target.value)}>
-                    <option value="invalidate">Abandon = invalider</option>
-                    <option value="reset">Abandon = reset</option>
-                  </Select>
-                  {err ? <div style={{ color: "rgba(255,120,120,.95)", fontSize: 13 }}>{err}</div> : null}
-                  {overlapError && overlapError.length ? (
-                    <div className="small2" style={{ color: "rgba(255,140,140,.95)" }}>
-                      Chevauchement détecté :
-                      <div className="mt6 col">
-                        {overlapError.map((c) => (
-                          <div key={c.goalId}>
-                            • {c.title || "Objectif"} — {formatStartAtFr(c.startAt)} → {formatStartAtFr(c.endAt)}
-                          </div>
+                    {draftPlanType === "STATE" ? (
+                      <div className="small2">Type : Résultat</div>
+                    ) : (
+                      <Select value={draftGoalType} onChange={(e) => setDraftGoalType(e.target.value)}>
+                        {GOAL_TYPES.map((k) => (
+                          <option key={k.value} value={k.value}>
+                            {k.label}
+                          </option>
                         ))}
+                      </Select>
+                    )}
+
+                    {draftPlanType === "STATE" ? (
+                      <div className="small2">Cet objectif se suit via un tracker/habitude liée.</div>
+                    ) : null}
+
+                    {draftPlanType === "ACTION" ? (
+                      <div>
+                        <div className="small" style={{ marginBottom: 6 }}>
+                          Je m’engage à le faire
+                        </div>
+                        <div className="row" style={{ gap: 10 }}>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={draftFreqCount}
+                            onChange={(e) => setDraftFreqCount(e.target.value)}
+                            placeholder="Fréquence"
+                          />
+                          <Select value={draftFreqUnit} onChange={(e) => setDraftFreqUnit(e.target.value)}>
+                            <option value="DAY">par jour</option>
+                            <option value="WEEK">par semaine</option>
+                            <option value="MONTH">par mois</option>
+                            <option value="QUARTER">par trimestre</option>
+                            <option value="YEAR">par an</option>
+                          </Select>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {draftPlanType === "ACTION" && draftGoalType === "PROCESS" ? (
+                      <Input
+                        type="number"
+                        min="5"
+                        max="600"
+                        value={draftSessionMinutes}
+                        onChange={(e) => setDraftSessionMinutes(e.target.value)}
+                        placeholder="Durée par session (min) — optionnel"
+                      />
+                    ) : null}
+
+                    {draftGoalType === "OUTCOME" ? (
+                      <div>
+                        <div className="small" style={{ marginBottom: 6 }}>
+                          Mesure (optionnelle)
+                        </div>
+                        <div className="grid3">
+                          <Input
+                            value={draftMetricUnit}
+                            onChange={(e) => setDraftMetricUnit(e.target.value)}
+                            placeholder="Unité (kg, €)"
+                          />
+                          <Input
+                            type="number"
+                            min="1"
+                            value={draftMetricTarget}
+                            onChange={(e) => setDraftMetricTarget(e.target.value)}
+                            placeholder="Cible"
+                          />
+                          <Input
+                            type="number"
+                            min="0"
+                            value={draftMetricCurrent}
+                            onChange={(e) => setDraftMetricCurrent(e.target.value)}
+                            placeholder="Actuel"
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div>
+                      <div className="small" style={{ marginBottom: 6 }}>
+                        Date de début
+                      </div>
+                      <div className="grid2">
+                        <Input type="date" value={draftStartDate} onChange={(e) => setDraftStartDate(e.target.value)} />
+                        <Input type="time" value={draftStartTime} onChange={(e) => setDraftStartTime(e.target.value)} />
                       </div>
                     </div>
-                  ) : null}
-                  <div className="row">
-                    <Button variant="ghost" onClick={closeForm}>
-                      Annuler
-                    </Button>
-                    <Button onClick={saveGoal}>{editGoalId ? "Enregistrer" : "Ajouter"}</Button>
+
+                    {draftPlanType === "ONE_OFF" ? (
+                      <div>
+                        <div className="small" style={{ marginBottom: 6 }}>
+                          Date de réalisation (obligatoire)
+                        </div>
+                        <Input type="date" value={draftOneOffDate} onChange={(e) => setDraftOneOffDate(e.target.value)} />
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="small" style={{ marginBottom: 6 }}>
+                          Deadline (optionnelle)
+                        </div>
+                        <Input type="date" value={draftDeadline} onChange={(e) => setDraftDeadline(e.target.value)} />
+                      </div>
+                    )}
+
+                    {draftPlanType === "STATE" ? (
+                      <Textarea value={draftNotes} onChange={(e) => setDraftNotes(e.target.value)} placeholder="Notes (optionnel)" />
+                    ) : null}
+
+                    <Select value={draftResetPolicy} onChange={(e) => setDraftResetPolicy(e.target.value)}>
+                      <option value="invalidate">Abandon = invalider</option>
+                      <option value="reset">Abandon = reset</option>
+                    </Select>
+                    {err ? <div style={{ color: "rgba(255,120,120,.95)", fontSize: 13 }}>{err}</div> : null}
+                    {overlapError && overlapError.length ? (
+                      <div className="small2" style={{ color: "rgba(255,140,140,.95)" }}>
+                        Chevauchement détecté :
+                        <div className="mt6 col">
+                          {overlapError.map((c) => (
+                            <div key={c.goalId}>
+                              • {c.title || "Objectif"} — {formatStartAtFr(c.startAt)} → {formatStartAtFr(c.endAt)}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    <div className="row">
+                      <Button variant="ghost" onClick={closeForm}>
+                        Annuler
+                      </Button>
+                      <Button onClick={saveGoal}>{editGoalId ? "Enregistrer" : "Ajouter"}</Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : null}
-          </div>
-        </Card>
-      </div>
+              ) : null}
+            </div>
+          </Card>
+        ) : null}
       </div>
     </ScreenShell>
   );

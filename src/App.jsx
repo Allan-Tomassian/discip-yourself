@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import TopNav from "./components/TopNav";
+import AdvancedDrawer from "./components/AdvancedDrawer";
 import { migrate, usePersistedState } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
 import { getDueReminders, playReminderSound, sendReminderNotification } from "./logic/reminders";
@@ -9,9 +10,9 @@ import { markIOSRootClass } from "./utils/dialogs";
 import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
 import Categories from "./pages/Categories";
-import WhyPage from "./pages/WhyPage";
 import Stats from "./pages/Stats";
-import Settings from "./pages/Settings";
+import Settings, { SettingsAdvanced } from "./pages/Settings";
+import CategoryDetail from "./pages/CategoryDetail";
 
 function runSelfTests() {
   // minimal sanity
@@ -46,8 +47,9 @@ function isOnboarded(data) {
 
 export default function App() {
   const [data, setData] = usePersistedState(React);
-  const [tab, setTab] = useState("home");
+  const [tab, setTab] = useState("today");
   const [activeReminder, setActiveReminder] = useState(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const dataRef = useRef(data);
   const lastReminderRef = useRef({});
   const activeReminderRef = useRef(activeReminder);
@@ -93,32 +95,57 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (data?.ui?.openCategoryDetailId) {
-      setTab("categories");
-    }
-  }, [data?.ui?.openCategoryDetailId]);
+    if (!data?.ui?.openCategoryDetailId) return;
+    setTab("plan");
+    setData((prev) => ({
+      ...prev,
+      ui: { ...(prev.ui || {}), openCategoryDetailId: null },
+    }));
+  }, [data?.ui?.openCategoryDetailId, setData]);
 
   const onboarded = isOnboarded(data);
 
   if (!onboarded) {
-    return <Onboarding data={data} setData={setData} onDone={() => setTab("home")} />;
+    return <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />;
   }
 
   return (
     <>
-      {tab === "home" ? (
-        <Home data={data} setData={setData} />
-      ) : tab === "categories" ? (
-        <Categories data={data} setData={setData} />
-      ) : tab === "why" ? (
-        <WhyPage data={data} setData={setData} />
+      {tab === "today" ? (
+        <Home data={data} onOpenLibrary={() => setTab("library")} />
+      ) : tab === "plan" ? (
+        <CategoryDetail
+          data={data}
+          setData={setData}
+          categoryId={data?.ui?.selectedCategoryId}
+          onBack={() => setTab("library")}
+          initialEditGoalId={data?.ui?.openGoalEditId || null}
+          onSelectCategory={(nextId) => {
+            setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), selectedCategoryId: nextId } }));
+          }}
+        />
+      ) : tab === "library" ? (
+        <Categories
+          data={data}
+          setData={setData}
+          onOpenPlan={(categoryId) => {
+            setData((prev) => ({
+              ...prev,
+              ui: { ...(prev.ui || {}), selectedCategoryId: categoryId, openCategoryDetailId: categoryId },
+            }));
+          }}
+        />
       ) : tab === "stats" ? (
         <Stats data={data} />
       ) : (
         <Settings data={data} setData={setData} />
       )}
 
-      <TopNav active={tab} setActive={setTab} />
+      <TopNav active={tab} setActive={setTab} onOpenAdvanced={() => setAdvancedOpen(true)} />
+
+      <AdvancedDrawer open={advancedOpen} onClose={() => setAdvancedOpen(false)} title="Advanced">
+        <SettingsAdvanced data={data} setData={setData} />
+      </AdvancedDrawer>
 
       {activeReminder ? (
         <div className="modalBackdrop">

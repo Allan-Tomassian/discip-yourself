@@ -1,27 +1,38 @@
 import React from "react";
 
-export default function TopNav({ active, setActive }) {
+export default function TopNav({ active, setActive, onOpenAdvanced }) {
   const items = [
-    { id: "home", label: "Accueil" },
-    { id: "categories", label: "Catégories" },
-    { id: "why", label: "Mon pourquoi" },
+    { id: "today", label: "Today" },
+    { id: "plan", label: "Plan" },
+    { id: "library", label: "Library" },
     { id: "stats", label: "Stats" },
-    { id: "settings", label: "Réglages" },
+    { id: "settings", label: "Settings" },
   ];
 
   return (
     <div className="navTop">
       <div className="navWrap">
-        <div className="navGrid">
-          {items.map((it) => (
-            <button
-              key={it.id}
-              onClick={() => setActive(it.id)}
-              className={`navBtn ${active === it.id ? "navBtnActive" : ""}`}
-            >
-              {it.label}
-            </button>
-          ))}
+        <div className="navRow">
+          <div className="navGrid">
+            {items.map((it) => (
+              <button
+                key={it.id}
+                onClick={() => setActive(it.id)}
+                className={`navBtn ${active === it.id ? "navBtnActive" : ""}`}
+              >
+                {it.label}
+              </button>
+            ))}
+          </div>
+          <button
+            className="navGear"
+            type="button"
+            onClick={() => (typeof onOpenAdvanced === "function" ? onOpenAdvanced() : null)}
+            aria-label="Advanced"
+            title="Advanced"
+          >
+            ⚙
+          </button>
         </div>
       </div>
     </div>
