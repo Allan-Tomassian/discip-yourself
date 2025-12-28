@@ -18,6 +18,32 @@ function runSelfTests() {
   console.assert(typeof window !== "undefined", "browser env");
 }
 
+function resolveGoalType(goal) {
+  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
+  if (raw === "OUTCOME" || raw === "PROCESS") return raw;
+  if (raw === "STATE") return "OUTCOME";
+  if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
+  const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
+  if (legacy === "OUTCOME") return "OUTCOME";
+  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
+  return "PROCESS";
+}
+
+function isOnboarded(data) {
+  const nameOk = Boolean((data?.profile?.name || "").trim());
+  const whyOk = Boolean((data?.profile?.whyText || "").trim());
+  const categories = Array.isArray(data?.categories) ? data.categories : [];
+  if (!nameOk || !whyOk || categories.length === 0) return false;
+  const goals = Array.isArray(data?.goals) ? data.goals : [];
+  const outcomes = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
+  if (!outcomes.length) return false;
+  const outcomeIds = new Set(outcomes.map((g) => g.id));
+  const hasProcess = goals.some(
+    (g) => resolveGoalType(g) === "PROCESS" && g.parentId && outcomeIds.has(g.parentId)
+  );
+  return hasProcess;
+}
+
 export default function App() {
   const [data, setData] = usePersistedState(React);
   const [tab, setTab] = useState("home");
@@ -72,7 +98,7 @@ export default function App() {
     }
   }, [data?.ui?.openCategoryDetailId]);
 
-  const onboarded = Boolean((data?.profile?.whyText || "").trim());
+  const onboarded = isOnboarded(data);
 
   if (!onboarded) {
     return <Onboarding data={data} setData={setData} onDone={() => setTab("home")} />;
