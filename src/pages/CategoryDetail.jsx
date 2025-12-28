@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Badge, Button, Card, Input, Select, Textarea } from "../components/UI";
+import FocusCategoryPicker from "../components/FocusCategoryPicker";
 import { uid } from "../utils/helpers";
 import { todayKey } from "../utils/dates";
 import {
@@ -13,7 +14,6 @@ import {
   linkChild,
   preventOverlap,
   scheduleStart,
-  setMainGoal,
   updateGoal,
 } from "../logic/goals";
 import { safePrompt } from "../utils/dialogs";
@@ -33,8 +33,8 @@ const PLAN_TYPES = [
 ];
 
 const GOAL_TYPES = [
-  { value: "PROCESS", label: "Processus" },
-  { value: "OUTCOME", label: "Résultat" },
+  { value: "PROCESS", label: "Habitude" },
+  { value: "OUTCOME", label: "Objectif" },
 ];
 
 function formatCadence(cadence) {
@@ -123,8 +123,8 @@ function formatGoalMeta(goal) {
   }
 
   if (planType === "STATE") {
-    const parts = ["Suivi via tracker/habitude liée"];
-    if (goal?.deadline) parts.push(`deadline ${formatDateFr(goal.deadline)}`);
+    const parts = ["Suivi via une habitude liée"];
+    if (goal?.deadline) parts.push(`date limite ${formatDateFr(goal.deadline)}`);
     return parts.join(" · ");
   }
 
@@ -136,6 +136,18 @@ function formatGoalMeta(goal) {
   }
   if (minutes) parts.push(`${minutes} min`);
   return parts.join(" · ");
+}
+
+function formatStatusLabel(status) {
+  const raw = (status || "").toString().toLowerCase();
+  if (raw === "active") return "En cours";
+  if (raw === "done") return "Terminé";
+  if (raw === "invalid") return "Abandonné";
+  return "En attente";
+}
+
+function formatResetPolicy(value) {
+  return value === "reset" ? "réinitialiser" : "invalider";
 }
 
 function cadenceFromUnit(unit) {
@@ -151,6 +163,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const handledEditRef = useRef(null);
   const [isAdding, setIsAdding] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [goalPickerOpen, setGoalPickerOpen] = useState(false);
   const [draftPlanType, setDraftPlanType] = useState("ACTION");
   const [draftGoalType, setDraftGoalType] = useState("PROCESS");
   const [draftTitle, setDraftTitle] = useState("");
@@ -172,6 +185,10 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const [linkWeightsById, setLinkWeightsById] = useState({});
   const safeData = data && typeof data === "object" ? data : {};
 
+  useEffect(() => {
+    setGoalPickerOpen(false);
+  }, [categoryId, safeData.ui?.selectedCategoryId]);
+
   function addCategory() {
     const name = safePrompt("Nom :", "Nouvelle");
     if (!name) return;
@@ -183,7 +200,10 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
 
     setData((prev) => {
       const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
-      const nextCategories = [...prevCategories, { id, name: cleanName, color: cleanColor, wallpaper: "" }];
+      const nextCategories = [
+        ...prevCategories,
+        { id, name: cleanName, color: cleanColor, wallpaper: "", mainGoalId: null },
+      ];
       const prevUi = prev.ui || {};
       const nextSelected = prevCategories.length === 0 ? id : prevUi.selectedCategoryId || id;
       return { ...prev, categories: nextCategories, ui: { ...prevUi, selectedCategoryId: nextSelected } };
@@ -194,39 +214,19 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const allGoals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const requestedCategoryId = categoryId || safeData.ui?.selectedCategoryId || null;
   const c = categories.find((x) => x.id === requestedCategoryId) || null;
-  const mainGoalId = safeData.ui?.mainGoalId || null;
   const goals = c ? allGoals.filter((g) => g.categoryId === c.id) : [];
   const outcomeGoals = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
   const processGoals = goals.filter((g) => resolveGoalType(g) === "PROCESS");
-  const outcomeGoal = outcomeGoals.find((g) => g.status === "active") || outcomeGoals[0] || null;
-  const activeProcesses = processGoals.filter((g) => g.status === "active");
-  const topProcesses = activeProcesses.slice(0, 3);
+  const fallbackMainId =
+    safeData.ui?.mainGoalId && goals.some((g) => g.id === safeData.ui?.mainGoalId) ? safeData.ui.mainGoalId : null;
+  const mainGoalId = c?.mainGoalId || fallbackMainId || null;
+  const mainGoal = mainGoalId ? goals.find((g) => g.id === mainGoalId) : null;
+  const linkedHabits = mainGoalId ? processGoals.filter((g) => g.parentId === mainGoalId) : [];
   const outcomeAggregate = useMemo(
-    () => computeAggregateProgress({ goals: allGoals }, outcomeGoal?.id),
-    [allGoals, outcomeGoal?.id]
+    () => computeAggregateProgress({ goals: allGoals }, mainGoal?.id),
+    [allGoals, mainGoal?.id]
   );
   const outcomePct = Math.round(outcomeAggregate.progress * 100);
-
-  const today = todayKey();
-  const todayChecks = safeData.ui?.processChecks || {};
-
-  function toggleTodayCheck(goalId) {
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      const prevChecks = prevUi.processChecks || {};
-      const current = Boolean(prevChecks?.[goalId]?.[today]);
-      const nextGoalChecks = { ...(prevChecks[goalId] || {}) };
-      if (current) delete nextGoalChecks[today];
-      else nextGoalChecks[today] = true;
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          processChecks: { ...prevChecks, [goalId]: nextGoalChecks },
-        },
-      };
-    });
-  }
 
   function updateLinkWeight(goalId, value) {
     setLinkWeightsById((prev) => ({ ...prev, [goalId]: value }));
@@ -239,6 +239,20 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     const n = raw === "" || raw == null ? fromGoal : Number(raw);
     if (!Number.isFinite(n)) return 100;
     return Math.max(0, Math.min(100, Math.round(n)));
+  }
+
+  function setCategoryMainGoal(goalId) {
+    if (!c?.id) return;
+    setData((prev) => {
+      const nextCategories = (prev.categories || []).map((cat) =>
+        cat.id === c.id ? { ...cat, mainGoalId: goalId || null } : cat
+      );
+      return {
+        ...prev,
+        categories: nextCategories,
+        ui: { ...(prev.ui || {}), mainGoalId: goalId || null, selectedCategoryId: c.id },
+      };
+    });
   }
 
   function openAdd(options = {}) {
@@ -305,6 +319,12 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     if (handledEditRef.current === initialEditGoalId) return;
     if (initialEditGoalId === "__new_process__") {
       openAdd({ planType: "ACTION", goalType: "PROCESS" });
+      handledEditRef.current = initialEditGoalId;
+      setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), openGoalEditId: null } }));
+      return;
+    }
+    if (initialEditGoalId === "__new_outcome__") {
+      openAdd({ planType: "STATE", goalType: "OUTCOME" });
       handledEditRef.current = initialEditGoalId;
       setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), openGoalEditId: null } }));
       return;
@@ -412,7 +432,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       deadline = oneOffDate;
     }
     if (deadline && startDate > deadline) {
-      return setErr("La date de début doit être avant la deadline.");
+      return setErr("La date de début doit être avant la date limite.");
     }
 
     let metric = null;
@@ -443,6 +463,8 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       resetPolicy: draftResetPolicy || "invalidate",
       metric,
     };
+    const createId = editGoalId ? null : uid();
+    if (createId) payload.id = createId;
 
     let sessionMinutes = null;
     if (planType === "ACTION") {
@@ -483,6 +505,11 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       payload.oneOffDate = undefined;
     }
 
+    if (!editGoalId && goalType === "PROCESS" && mainGoalId) {
+      payload.parentId = mainGoalId;
+      payload.primaryGoalId = mainGoalId;
+    }
+
     const overlap = preventOverlap(safeData, editGoalId || null, startAt, sessionMinutes);
     if (!overlap.ok) {
       setOverlapError(overlap.conflicts);
@@ -490,7 +517,20 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     }
     setOverlapError(null);
 
-    setData((prev) => (editGoalId ? updateGoal(prev, editGoalId, payload) : createGoal(prev, payload)));
+    setData((prev) => {
+      let next = editGoalId ? updateGoal(prev, editGoalId, payload) : createGoal(prev, payload);
+      if (!editGoalId && goalType === "OUTCOME" && !mainGoalId && c?.id && createId) {
+        const nextCategories = (next.categories || []).map((cat) =>
+          cat.id === c.id ? { ...cat, mainGoalId: createId } : cat
+        );
+        next = {
+          ...next,
+          categories: nextCategories,
+          ui: { ...(next.ui || {}), mainGoalId: createId, selectedCategoryId: c.id },
+        };
+      }
+      return next;
+    });
     closeForm();
   }
 
@@ -542,119 +582,149 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
 
   return (
     <ScreenShell
-      data={data}
+      data={safeData}
       pageId="categories"
       headerTitle="Plan"
       headerSubtitle={c?.name || "Catégorie"}
       backgroundImage={c?.wallpaper || safeData.profile?.whyImage || ""}
     >
       <div style={{ "--catColor": c?.color || "#7C3AED" }}>
-        <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-          {onBack ? (
-            <Button variant="ghost" onClick={onBack}>
-              ← Bibliothèque
-            </Button>
-          ) : (
-            <div />
-          )}
-          <Select
-            value={c?.id}
-            onChange={(e) => {
-              const nextId = e.target.value;
+        {onBack ? (
+          <Button variant="ghost" onClick={onBack}>
+            Bibliothèque
+          </Button>
+        ) : null}
+
+        <div className="mt12">
+          <FocusCategoryPicker
+            categories={categories}
+            value={c?.id || ""}
+            onChange={(nextId) => {
               if (!nextId || nextId === c?.id) return;
               setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), selectedCategoryId: nextId } }));
               if (typeof onSelectCategory === "function") onSelectCategory(nextId);
             }}
-          >
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </Select>
+            label="Catégorie"
+            emptyLabel="À configurer"
+          />
         </div>
 
-        <Card accentBorder style={{ marginTop: 14, borderColor: c?.color || undefined }}>
+        <Card accentBorder style={{ marginTop: 12, borderColor: c?.color || undefined }}>
           <div className="p18">
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <div className="titleSm">Résultat</div>
-                <div className="small2">Progression agrégée</div>
+                <div className="titleSm">Objectif principal</div>
+                <div className="small2">{mainGoal ? "Sélectionné" : "À configurer"}</div>
               </div>
-              <div style={{ fontWeight: 800 }}>{outcomePct}%</div>
+              {mainGoal ? <Badge>Principal</Badge> : null}
             </div>
 
-            {outcomeGoal ? (
+            {mainGoal ? (
               <div className="mt12 col">
-                <div style={{ fontWeight: 800, fontSize: 18 }}>{outcomeGoal.title || "Résultat"}</div>
+                <div style={{ fontWeight: 800, fontSize: 18 }}>{mainGoal.title || "Objectif"}</div>
                 <div className="small2">
-                  Deadline : {outcomeGoal.deadline ? formatDateFr(outcomeGoal.deadline) : "—"}
+                  Date cible : {mainGoal.deadline ? formatDateFr(mainGoal.deadline) : "—"}
                 </div>
-                <div className="progressTrack" style={{ marginTop: 10 }}>
-                  <div className="progressFill" style={{ width: `${outcomePct}%` }} />
-                </div>
-              </div>
-            ) : (
-              <div className="mt12">
-                <div className="small2">Aucun résultat dans cette catégorie.</div>
-                <div className="mt10">
-                  <Button variant="ghost" onClick={openAddOutcome}>
-                    Créer un résultat
+                <div className="row" style={{ marginTop: 10, justifyContent: "flex-end" }}>
+                  <Button variant="ghost" onClick={() => openEdit(mainGoal)}>
+                    Modifier
+                  </Button>
+                  <Button variant="ghost" onClick={() => setGoalPickerOpen((v) => !v)}>
+                    {goalPickerOpen ? "Fermer" : "Changer"}
                   </Button>
                 </div>
               </div>
+            ) : (
+              <div className="mt12 col">
+                <div className="small2">Aucun objectif principal défini.</div>
+                <div className="row" style={{ marginTop: 10 }}>
+                  {outcomeGoals.length ? (
+                    <Button variant="ghost" onClick={() => setGoalPickerOpen((v) => !v)}>
+                      Choisir un objectif
+                    </Button>
+                  ) : null}
+                  <Button onClick={openAddOutcome}>Créer un objectif</Button>
+                </div>
+              </div>
             )}
+
+            {goalPickerOpen ? (
+              <div className="mt10">
+                <Select
+                  value={mainGoal?.id || ""}
+                  onChange={(e) => {
+                    const nextId = e.target.value;
+                    if (!nextId) return;
+                    setCategoryMainGoal(nextId);
+                    setGoalPickerOpen(false);
+                  }}
+                  style={{ fontSize: 16 }}
+                >
+                  <option value="" disabled>
+                    Choisir un objectif
+                  </option>
+                  {outcomeGoals.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.title || "Objectif"}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            ) : null}
           </div>
         </Card>
 
-        <Card accentBorder style={{ marginTop: 14 }}>
+        <Card accentBorder style={{ marginTop: 12 }}>
           <div className="p18">
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <div className="titleSm">Processus actifs</div>
-                <div className="small2">Max 3 affichés</div>
+                <div className="titleSm">Habitudes</div>
+                <div className="small2">Liées à l’objectif principal</div>
               </div>
-              <Badge>{activeProcesses.length}</Badge>
+              <Badge>{linkedHabits.length}</Badge>
             </div>
 
-            <div className="mt12 col">
-              {topProcesses.length ? (
-                topProcesses.map((g) => {
-                  const checked = Boolean(todayChecks?.[g.id]?.[today]);
-                  return (
-                    <div key={g.id} className="listItem">
-                      <div className="row" style={{ justifyContent: "space-between" }}>
-                        <div style={{ fontWeight: 700 }}>{g.title || "Processus"}</div>
-                        <label className="small2" style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleTodayCheck(g.id)}
-                          />
-                          Aujourd’hui
-                        </label>
+            {!mainGoal ? (
+              <div className="mt12 col">
+                <div className="small2">Définis d’abord l’objectif principal.</div>
+                <div className="mt10">
+                  <Button onClick={openAddOutcome}>Créer un objectif</Button>
+                </div>
+              </div>
+            ) : linkedHabits.length ? (
+              <div className="mt12 col">
+                {linkedHabits.map((g) => (
+                  <div key={g.id} className="listItem">
+                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{g.title || "Habitude"}</div>
+                        <div className="small2">{formatStatusLabel(g.status)}</div>
                       </div>
-                      <div className="small2" style={{ marginTop: 4 }}>
-                        {formatGoalMeta(g)}
+                      <div className="row">
+                        {g.status !== "active" ? (
+                          <Button variant="ghost" onClick={() => onMakeActive(g)}>
+                            Activer
+                          </Button>
+                        ) : null}
+                        <Button variant="ghost" onClick={() => openEdit(g)}>
+                          Modifier
+                        </Button>
                       </div>
                     </div>
-                  );
-                })
-              ) : (
-                <div className="small2">Aucun processus actif.</div>
-              )}
-              {activeProcesses.length > 3 ? (
-                <div className="small2" style={{ opacity: 0.7 }}>
-                  {activeProcesses.length - 3} autres actifs non affichés.
-                </div>
-              ) : null}
-            </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt12 small2">Aucune habitude liée.</div>
+            )}
 
-            <div className="mt12">
-              <Button onClick={() => openAdd({ planType: "ACTION", goalType: "PROCESS" })}>
-                + Ajouter un processus
-              </Button>
-            </div>
+            {mainGoal ? (
+              <div className="mt12">
+                <Button onClick={() => openAdd({ planType: "ACTION", goalType: "PROCESS" })}>
+                  + Ajouter une habitude
+                </Button>
+              </div>
+            ) : null}
           </div>
         </Card>
 
@@ -669,8 +739,8 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
             <div className="p18">
               <div className="row">
                 <div>
-                  <div className="titleSm">Gestion avancée</div>
-                  <div className="small2">Poids, métrique, liens et édition complète.</div>
+                  <div className="titleSm">Détails avancés</div>
+                  <div className="small2">Fréquence, minutes, métriques, liens et édition complète.</div>
                 </div>
               </div>
 
@@ -731,12 +801,12 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div className="row" style={{ gap: 10 }}>
                               <div style={{ fontWeight: 800 }}>{g.title}</div>
-                              <Badge>{g.status || "queued"}</Badge>
-                              {isMainGoal ? <Badge>PRINCIPAL</Badge> : null}
+                              <Badge>{formatStatusLabel(g.status)}</Badge>
+                              {isMainGoal ? <Badge>Principal</Badge> : null}
                             </div>
                             <div className="small2">{formatGoalMeta(g)}</div>
                             <div className="small2" style={{ opacity: 0.9 }}>
-                              resetPolicy : <b>{g.resetPolicy || "invalidate"}</b>
+                              Réinitialisation : <b>{formatResetPolicy(g.resetPolicy)}</b>
                             </div>
                             {isMainGoal ? (
                               <div className="small2" style={{ marginTop: 6 }}>
@@ -761,13 +831,13 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                                   </div>
                                 ) : (
                                   <>
-                                    <Button variant="ghost" onClick={() => setData((prev) => setMainGoal(prev, g.id))}>
+                                    <Button variant="ghost" onClick={() => setCategoryMainGoal(g.id)}>
                                       Définir comme objectif principal
                                     </Button>
                                     {mainGoalId ? (
                                       <div className="col" style={{ gap: 6, alignItems: "flex-end" }}>
                                         <div className="small2" style={{ opacity: 0.75 }}>
-                                          {isLinked ? `Lié à ${outcomeGoal?.title || "principal"}` : "Lier au principal"}
+                                          {isLinked ? `Liée à ${mainGoal?.title || "principal"}` : "Lier au principal"}
                                         </div>
                                         <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
                                           <Input
@@ -802,7 +872,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                             ) : (
                               <>
                                 <Button variant="ghost" onClick={() => onMakeActive(g)}>
-                                  Mettre actif
+                                  Activer
                                 </Button>
                                 <Button variant="ghost" onClick={() => openEdit(g)}>
                                   Modifier
@@ -825,9 +895,13 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                 )}
               </div>
 
-              <div className="mt12">
-                <Button onClick={() => openAdd({ planType: "ACTION", goalType: "PROCESS" })}>
-                  + Ajouter un objectif
+              <div className="mt12 row" style={{ gap: 10, flexWrap: "wrap" }}>
+                <Button onClick={() => openAdd({ planType: "STATE", goalType: "OUTCOME" })}>+ Nouvel objectif</Button>
+                <Button
+                  disabled={!mainGoal}
+                  onClick={() => openAdd({ planType: "ACTION", goalType: "PROCESS" })}
+                >
+                  + Nouvelle habitude
                 </Button>
               </div>
 
@@ -855,7 +929,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                     </Select>
 
                     {draftPlanType === "STATE" ? (
-                      <div className="small2">Type : Résultat</div>
+                      <div className="small2">Type : Objectif</div>
                     ) : (
                       <Select value={draftGoalType} onChange={(e) => setDraftGoalType(e.target.value)}>
                         {GOAL_TYPES.map((k) => (
@@ -954,7 +1028,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                     ) : (
                       <div>
                         <div className="small" style={{ marginBottom: 6 }}>
-                          Deadline (optionnelle)
+                          Date limite (optionnelle)
                         </div>
                         <Input type="date" value={draftDeadline} onChange={(e) => setDraftDeadline(e.target.value)} />
                       </div>
@@ -966,7 +1040,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
 
                     <Select value={draftResetPolicy} onChange={(e) => setDraftResetPolicy(e.target.value)}>
                       <option value="invalidate">Abandon = invalider</option>
-                      <option value="reset">Abandon = reset</option>
+                      <option value="reset">Abandon = réinitialiser</option>
                     </Select>
                     {err ? <div style={{ color: "rgba(255,120,120,.95)", fontSize: 13 }}>{err}</div> : null}
                     {overlapError && overlapError.length ? (

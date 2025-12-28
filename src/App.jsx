@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import TopNav from "./components/TopNav";
-import AdvancedDrawer from "./components/AdvancedDrawer";
 import { migrate, usePersistedState } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
 import { getDueReminders, playReminderSound, sendReminderNotification } from "./logic/reminders";
@@ -10,8 +9,7 @@ import { markIOSRootClass } from "./utils/dialogs";
 import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
 import Categories from "./pages/Categories";
-import Stats from "./pages/Stats";
-import Settings, { SettingsAdvanced } from "./pages/Settings";
+import Settings from "./pages/Settings";
 import CategoryDetail from "./pages/CategoryDetail";
 
 function runSelfTests() {
@@ -49,7 +47,6 @@ export default function App() {
   const [data, setData] = usePersistedState(React);
   const [tab, setTab] = useState("today");
   const [activeReminder, setActiveReminder] = useState(null);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const dataRef = useRef(data);
   const lastReminderRef = useRef({});
   const activeReminderRef = useRef(activeReminder);
@@ -112,7 +109,7 @@ export default function App() {
   return (
     <>
       {tab === "today" ? (
-        <Home data={data} onOpenLibrary={() => setTab("library")} />
+        <Home data={data} setData={setData} onOpenLibrary={() => setTab("library")} onOpenPlan={() => setTab("plan")} />
       ) : tab === "plan" ? (
         <CategoryDetail
           data={data}
@@ -135,17 +132,15 @@ export default function App() {
             }));
           }}
         />
-      ) : tab === "stats" ? (
-        <Stats data={data} />
       ) : (
         <Settings data={data} setData={setData} />
       )}
 
-      <TopNav active={tab} setActive={setTab} onOpenAdvanced={() => setAdvancedOpen(true)} />
-
-      <AdvancedDrawer open={advancedOpen} onClose={() => setAdvancedOpen(false)} title="Avancé">
-        <SettingsAdvanced data={data} setData={setData} />
-      </AdvancedDrawer>
+      <TopNav
+        active={tab}
+        setActive={(next) => setTab(next)}
+        onOpenSettings={() => setTab("settings")}
+      />
 
       {activeReminder ? (
         <div className="modalBackdrop">

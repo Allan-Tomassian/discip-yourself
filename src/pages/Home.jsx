@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
+import FocusCategoryPicker from "../components/FocusCategoryPicker";
 import { todayKey } from "../utils/dates";
-import { computeAggregateProgress } from "../logic/goals";
 import { getBackgroundCss, getAccentForPage } from "../utils/_theme";
 
 function resolveGoalType(goal) {
@@ -16,21 +16,72 @@ function resolveGoalType(goal) {
   return "PROCESS";
 }
 
-function goalDateKey(goal) {
-  if (!goal?.startAt || typeof goal.startAt !== "string") return "";
-  return goal.startAt.slice(0, 10);
-}
-
-export default function Home({ data, onOpenLibrary }) {
+export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
   const [showWhy, setShowWhy] = useState(true);
-  const [showSecondary, setShowSecondary] = useState(false);
-  const [startedGoalId, setStartedGoalId] = useState(null);
   const safeData = data && typeof data === "object" ? data : {};
   const profile = safeData.profile || {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+  const today = todayKey();
+  const todayChecks = safeData.ui?.processChecks || {};
 
-  if (categories.length === 0) {
+  const focusCategory = useMemo(() => {
+    if (!categories.length) return null;
+    const selected = categories.find((c) => c.id === safeData.ui?.selectedCategoryId) || null;
+    if (selected) return selected;
+    const withGoal = categories.find((c) =>
+      goals.some((g) => g.categoryId === c.id && resolveGoalType(g) === "OUTCOME")
+    );
+    return withGoal || categories[0] || null;
+  }, [categories, goals, safeData.ui?.selectedCategoryId]);
+
+  const mainGoalId = focusCategory?.mainGoalId || null;
+  const mainGoal = mainGoalId ? goals.find((g) => g.id === mainGoalId) : null;
+  const habits = goals.filter(
+    (g) =>
+      g.categoryId === focusCategory?.id &&
+      resolveGoalType(g) === "PROCESS" &&
+      (mainGoalId ? g.parentId === mainGoalId : true)
+  );
+  const activeHabits = habits.filter((g) => g.status === "active");
+  const nextHabit = activeHabits.find((g) => !todayChecks?.[g.id]?.[today]) || null;
+  const nextHabitDone = nextHabit ? Boolean(todayChecks?.[nextHabit.id]?.[today]) : false;
+
+  function setFocusCategory(nextId) {
+    if (!nextId || typeof setData !== "function") return;
+    setData((prev) => ({
+      ...prev,
+      ui: { ...(prev.ui || {}), selectedCategoryId: nextId },
+    }));
+  }
+
+  function openPlanWith(categoryId, openGoalEditId) {
+    if (!categoryId || typeof setData !== "function") return;
+    setData((prev) => ({
+      ...prev,
+      ui: { ...(prev.ui || {}), selectedCategoryId: categoryId, openGoalEditId },
+    }));
+    if (typeof onOpenPlan === "function") onOpenPlan();
+  }
+
+  function markDoneToday(goalId) {
+    if (!goalId || typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      const prevChecks = prevUi.processChecks || {};
+      const nextGoalChecks = { ...(prevChecks[goalId] || {}) };
+      nextGoalChecks[today] = true;
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          processChecks: { ...prevChecks, [goalId]: nextGoalChecks },
+        },
+      };
+    });
+  }
+
+  if (!categories.length) {
     return (
       <ScreenShell
         accent={getAccentForPage(safeData, "home")}
@@ -56,91 +107,11 @@ export default function Home({ data, onOpenLibrary }) {
     );
   }
 
-  if (goals.length === 0) {
-    return (
-      <ScreenShell
-        accent={getAccentForPage(safeData, "home")}
-        backgroundCss={getBackgroundCss({ data: safeData, pageId: "home", image: profile.whyImage || "" })}
-        backgroundImage={profile.whyImage || ""}
-        headerTitle="Aujourd’hui"
-        headerSubtitle="Aucun objectif"
-      >
-        <Card accentBorder>
-          <div className="p18">
-            <div className="titleSm">Aucun objectif</div>
-            <div className="small" style={{ marginTop: 6 }}>
-              Crée un premier objectif pour commencer.
-            </div>
-            <div className="mt12">
-              <Button onClick={() => (typeof onOpenLibrary === "function" ? onOpenLibrary() : null)}>
-                Ouvrir la bibliothèque
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </ScreenShell>
-    );
-  }
-
-  const outcomes = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
-  const activeOutcomes = outcomes.filter((g) => g.status === "active");
-  const mainOutcome = activeOutcomes[0] || outcomes[0] || null;
-
-  const aggregate = useMemo(
-    () => computeAggregateProgress({ goals }, mainOutcome?.id),
-    [goals, mainOutcome?.id]
-  );
-
-  const processActives = goals.filter((g) => g.status === "active" && resolveGoalType(g) === "PROCESS");
-  const today = todayKey();
-  const dueToday = processActives.filter((g) => goalDateKey(g) === today);
-
-  let primary = dueToday[0] || null;
-  if (!primary && processActives.length) {
-    primary = [...processActives].sort((a, b) => (Number(b.weight || 0) - Number(a.weight || 0)))[0];
-  }
-
-  if (!primary) {
-    return (
-      <ScreenShell
-        accent={getAccentForPage(safeData, "home")}
-        backgroundCss={getBackgroundCss({ data: safeData, pageId: "home", image: profile.whyImage || "" })}
-        backgroundImage={profile.whyImage || ""}
-        headerTitle="Aujourd’hui"
-        headerSubtitle="Aucune action active"
-      >
-        <Card accentBorder>
-          <div className="p18">
-            <div className="titleSm">Aucune action active</div>
-            <div className="small" style={{ marginTop: 6 }}>
-              Active un processus dans Plan pour le voir ici.
-            </div>
-            <div className="mt12">
-              <Button onClick={() => (typeof onOpenLibrary === "function" ? onOpenLibrary() : null)}>
-                Ouvrir la bibliothèque
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </ScreenShell>
-    );
-  }
-
-  const secondary = processActives.filter((g) => g.id !== primary?.id).slice(0, 2);
-
   const accent = getAccentForPage(safeData, "home");
   const backgroundImage = profile.whyImage || "";
   const backgroundCss = getBackgroundCss({ data: safeData, pageId: "home", image: backgroundImage });
   const whyText = (profile.whyText || "").trim();
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
-  const progressPct = Math.round(aggregate.progress * 100);
-
-  const primaryDateKey = primary ? goalDateKey(primary) : "";
-  const primaryDateLabel = primaryDateKey
-    ? primaryDateKey === today
-      ? "Aujourd’hui"
-      : `Planifié: ${primaryDateKey}`
-    : "";
 
   return (
     <ScreenShell
@@ -148,7 +119,7 @@ export default function Home({ data, onOpenLibrary }) {
       backgroundCss={backgroundCss}
       backgroundImage={backgroundImage}
       headerTitle="Aujourd’hui"
-      headerSubtitle="Priorité unique"
+      headerSubtitle="Exécution"
     >
       <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
         <div
@@ -163,72 +134,58 @@ export default function Home({ data, onOpenLibrary }) {
         >
           {whyDisplay}
         </div>
-        <button className="linkBtn" onClick={() => setShowWhy((v) => !v)}>
-          {showWhy ? "Masquer" : "Afficher"}
+        <button className="linkBtn" onClick={() => setShowWhy((v) => !v)} aria-label="Afficher ou masquer le pourquoi">
+          {showWhy ? "👁" : "👁‍🗨"}
         </button>
+      </div>
+
+      <div className="mt12">
+        <FocusCategoryPicker
+          categories={categories}
+          value={focusCategory?.id || ""}
+          onChange={setFocusCategory}
+          label="Catégorie focus"
+          emptyLabel="Catégorie à configurer"
+        />
       </div>
 
       <Card accentBorder style={{ marginTop: 12, borderColor: accent }}>
         <div className="p18">
-          <div className="titleSm">Action principale du jour</div>
+          <div className="titleSm">Action du jour</div>
           <div className="small2" style={{ marginTop: 4 }}>
-            {primary ? "Priorité unique" : "Aucune action active"}
+            {focusCategory?.name || "Catégorie"}
           </div>
 
-          {primary ? (
-              <div className="mt12 col">
-                <div style={{ fontWeight: 800, fontSize: 18 }}>{primary.title || "Action"}</div>
-                {primaryDateLabel ? <div className="small2">{primaryDateLabel}</div> : null}
-
+          {!mainGoal ? (
+            <div className="mt12 col">
+              <div className="small2">Catégorie à configurer.</div>
+              <div className="mt10">
+                <Button onClick={() => openPlanWith(focusCategory?.id, "__new_outcome__")}>Créer un objectif</Button>
+              </div>
+            </div>
+          ) : nextHabit ? (
+            <div className="mt12 col">
+              <div style={{ fontWeight: 800, fontSize: 18 }}>{nextHabit.title || "Habitude"}</div>
               <div className="mt12 row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                <Button onClick={() => setStartedGoalId((prev) => (prev === primary.id ? null : primary.id))}>
-                  Démarrer
+                <Button onClick={() => markDoneToday(nextHabit.id)} disabled={nextHabitDone}>
+                  {nextHabitDone ? "Déjà fait" : "Fait"}
                 </Button>
-                {startedGoalId === primary.id ? (
-                  <div className="small2">Session en cours…</div>
-                ) : null}
+                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, "__new_process__")}
+                >
+                  Ajouter une habitude
+                </Button>
               </div>
             </div>
           ) : (
-            <div className="mt12 small2">Active une action dans Plan.</div>
+            <div className="mt12 col">
+              <div className="small2">Aucune action aujourd’hui.</div>
+              <div className="mt10">
+                <Button onClick={() => openPlanWith(focusCategory?.id, "__new_process__")}>Ajouter une habitude</Button>
+              </div>
+            </div>
           )}
         </div>
       </Card>
-
-      <Card accentBorder style={{ marginTop: 12 }}>
-        <div className="p18">
-          <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              <div className="titleSm">Progression résultat</div>
-              <div className="small2">Agrégat principal</div>
-            </div>
-            <div style={{ fontWeight: 800 }}>{progressPct}%</div>
-          </div>
-          <div className="progressTrack" style={{ marginTop: 12 }}>
-            <div className="progressFill" style={{ width: `${progressPct}%` }} />
-          </div>
-        </div>
-      </Card>
-
-      <div className="mt12">
-        <button className="linkBtn" onClick={() => setShowSecondary((v) => !v)}>
-          {showSecondary ? "Masquer" : `Secondaires (${secondary.length})`}
-        </button>
-        {showSecondary ? (
-          <div className="mt10 col">
-            {secondary.length ? (
-              secondary.map((g) => (
-                <div key={g.id} className="listItem">
-                  <div style={{ fontWeight: 700 }}>{g.title || "Action"}</div>
-                  <div className="small2">{g.startAt ? `Planifié: ${goalDateKey(g)}` : "Planifié"}</div>
-                </div>
-              ))
-            ) : (
-              <div className="small2">Aucune action secondaire.</div>
-            )}
-          </div>
-        ) : null}
-      </div>
     </ScreenShell>
   );
 }

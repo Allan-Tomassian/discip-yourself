@@ -28,6 +28,14 @@ export function SettingsAdvanced({ data, setData }) {
     { id: 6, label: "S" },
     { id: 7, label: "D" },
   ];
+  const notifLabel =
+    notifStatus === "granted"
+      ? "autorisées"
+      : notifStatus === "denied"
+        ? "refusées"
+        : notifStatus === "default"
+          ? "à autoriser"
+          : "non supportées";
 
   function addReminder() {
     const id = uid();
@@ -153,7 +161,7 @@ export function SettingsAdvanced({ data, setData }) {
       </div>
 
       <div className="mt12 row">
-        <div className="small2">Notifications : {notifStatus}</div>
+        <div className="small2">Notifications : {notifLabel}</div>
         <Button
           variant="ghost"
           onClick={async () => {
@@ -173,6 +181,9 @@ export function SettingsAdvanced({ data, setData }) {
 
 export default function Settings({ data, setData }) {
   const safeData = data && typeof data === "object" ? data : {};
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const themeData =
+    safeData.ui && typeof safeData.ui === "object" ? safeData : { ...safeData, ui: {} };
 
   function addCategory() {
     const name = safePrompt("Nom :", "Nouvelle");
@@ -185,7 +196,10 @@ export default function Settings({ data, setData }) {
 
     setData((prev) => {
       const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
-      const nextCategories = [...prevCategories, { id, name: cleanName, color: cleanColor, wallpaper: "" }];
+      const nextCategories = [
+        ...prevCategories,
+        { id, name: cleanName, color: cleanColor, wallpaper: "", mainGoalId: null },
+      ];
       const prevUi = prev.ui || {};
       const nextSelected = prevCategories.length === 0 ? id : prevUi.selectedCategoryId || id;
       return { ...prev, categories: nextCategories, ui: { ...prevUi, selectedCategoryId: nextSelected } };
@@ -228,14 +242,26 @@ export default function Settings({ data, setData }) {
       backgroundImage={selected?.wallpaper || safeData.profile?.whyImage || ""}
     >
       <div className="col">
-        <ThemePicker data={data} setData={setData} />
+        <ThemePicker data={themeData} setData={setData} />
 
         <Card accentBorder style={{ marginTop: 14 }}>
           <div className="p18">
-            <div style={{ fontWeight: 900 }}>Avancé</div>
-            <div className="small2" style={{ marginTop: 6 }}>
-              Ouvre le tiroir via l’icône ⚙ pour les réglages avancés.
+            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontWeight: 900 }}>Avancé</div>
+                <div className="small2" style={{ marginTop: 6 }}>
+                  Rappels et réglages techniques.
+                </div>
+              </div>
+              <Button variant="ghost" onClick={() => setAdvancedOpen((v) => !v)}>
+                {advancedOpen ? "Masquer" : "Afficher"}
+              </Button>
             </div>
+            {advancedOpen ? (
+              <div className="mt12">
+                <SettingsAdvanced data={safeData} setData={setData} />
+              </div>
+            ) : null}
           </div>
         </Card>
 

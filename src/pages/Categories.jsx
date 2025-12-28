@@ -100,7 +100,10 @@ export default function Categories({ data, setData, onOpenPlan }) {
 
     setData((prev) => {
       const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
-      const nextCategories = [...prevCategories, { id, name: cleanName, color: cleanColor, wallpaper: "" }];
+      const nextCategories = [
+        ...prevCategories,
+        { id, name: cleanName, color: cleanColor, wallpaper: "", mainGoalId: null },
+      ];
       const prevUi = prev.ui || {};
       const nextSelected = prevCategories.length === 0 ? id : prevUi.selectedCategoryId || id;
       return { ...prev, categories: nextCategories, ui: { ...prevUi, selectedCategoryId: nextSelected } };
@@ -111,6 +114,7 @@ export default function Categories({ data, setData, onOpenPlan }) {
     if (!category) return;
     const now = `${todayKey()}T09:00`;
     const outcomeId = uid();
+    const shouldSetMain = !category.mainGoalId;
     setData((prev) => {
       let next = createGoal(prev, {
         id: outcomeId,
@@ -137,7 +141,18 @@ export default function Categories({ data, setData, onOpenPlan }) {
         parentId: outcomeId,
         weight: 100,
       });
-      return { ...next, ui: { ...(next.ui || {}), selectedCategoryId: category.id } };
+      const nextCategories = (next.categories || []).map((cat) =>
+        cat.id === category.id && !cat.mainGoalId ? { ...cat, mainGoalId: outcomeId } : cat
+      );
+      return {
+        ...next,
+        categories: nextCategories,
+        ui: {
+          ...(next.ui || {}),
+          selectedCategoryId: category.id,
+          mainGoalId: shouldSetMain ? outcomeId : next.ui?.mainGoalId || null,
+        },
+      };
     });
   }
 
@@ -266,9 +281,9 @@ export default function Categories({ data, setData, onOpenPlan }) {
               <div key={tpl.id} className="listItem">
                 <div style={{ fontWeight: 700 }}>{tpl.label}</div>
                 <div className="small2" style={{ marginTop: 4 }}>
-                  RÉSULTAT : {tpl.outcomeTitle}
+                  OBJECTIF : {tpl.outcomeTitle}
                 </div>
-                <div className="small2">PROCESSUS : {tpl.processTitle}</div>
+                <div className="small2">HABITUDE : {tpl.processTitle}</div>
                 <div className="mt10 row" style={{ justifyContent: "space-between" }}>
                   <Badge>
                     {tpl.freqCount} / {(UNIT_LABELS[tpl.freqUnit] || tpl.freqUnit || "").toLowerCase()}
@@ -288,7 +303,7 @@ export default function Categories({ data, setData, onOpenPlan }) {
                 else setLibraryCategoryId(null);
               }}
             >
-              Créer mon objectif
+              Créer le mien
             </Button>
           </div>
         </div>

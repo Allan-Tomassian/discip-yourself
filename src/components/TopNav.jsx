@@ -1,12 +1,10 @@
 import React from "react";
 
-export default function TopNav({ active, setActive, onOpenAdvanced }) {
+export default function TopNav({ active, setActive, onOpenSettings }) {
   const items = [
     { id: "today", label: "Aujourd’hui" },
     { id: "plan", label: "Plan" },
     { id: "library", label: "Bibliothèque" },
-    { id: "stats", label: "Statistiques" },
-    { id: "settings", label: "Réglages" },
   ];
 
   return (
@@ -27,9 +25,9 @@ export default function TopNav({ active, setActive, onOpenAdvanced }) {
           <button
             className="navGear"
             type="button"
-            onClick={() => (typeof onOpenAdvanced === "function" ? onOpenAdvanced() : null)}
-            aria-label="Avancé"
-            title="Avancé"
+            onClick={() => (typeof onOpenSettings === "function" ? onOpenSettings() : null)}
+            aria-label="Réglages"
+            title="Réglages"
           >
             ⚙
           </button>
