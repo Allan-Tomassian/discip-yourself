@@ -56,9 +56,12 @@ export default function App() {
       if (!due.length) return;
       const reminder = due[0];
       const goal = (current.goals || []).find((g) => g.id === reminder.goalId) || null;
-      setActiveReminder({ reminder, goal });
+      const habit = !goal ? (current.habits || []).find((h) => h.id === reminder.goalId) || null : null;
+      setActiveReminder({ reminder, goal, habit });
       playReminderSound();
-      sendReminderNotification(reminder, goal?.title || "");
+      if ((reminder.channel || "IN_APP") === "NOTIFICATION") {
+        sendReminderNotification(reminder, goal?.title || habit?.title || "");
+      }
     }, 30000);
     return () => clearInterval(id);
   }, []);
@@ -99,7 +102,9 @@ export default function App() {
               <div className="small2" style={{ marginTop: 6 }}>
                 {activeReminder.goal
                   ? `Objectif: ${activeReminder.goal.title || "Objectif"}`
-                  : "Ouvre l’app pour continuer."}
+                  : activeReminder.habit
+                    ? `Habitude: ${activeReminder.habit.title || "Habitude"}`
+                    : "Ouvre l’app pour continuer."}
               </div>
               <div className="row" style={{ marginTop: 12 }}>
                 <Button variant="ghost" onClick={() => setActiveReminder(null)}>

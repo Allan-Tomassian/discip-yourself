@@ -1,5 +1,7 @@
 import { uid } from "../utils/helpers";
 
+export const ENABLE_WEB_NOTIFICATIONS = false;
+
 function parseTime(value) {
   if (typeof value !== "string") return null;
   const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
@@ -18,6 +20,19 @@ function formatNowKey(now) {
   )}`;
 }
 
+function normalizeDays(days) {
+  if (!Array.isArray(days) || days.length === 0) return [1, 2, 3, 4, 5, 6, 7];
+  const cleaned = days
+    .map((d) => Number(d))
+    .filter((d) => Number.isFinite(d) && d >= 1 && d <= 7);
+  return cleaned.length ? cleaned : [1, 2, 3, 4, 5, 6, 7];
+}
+
+function normalizeChannel(raw) {
+  const ch = typeof raw === "string" ? raw.toUpperCase() : "";
+  return ch === "NOTIFICATION" ? "NOTIFICATION" : "IN_APP";
+}
+
 export function normalizeReminder(raw, index = 0) {
   const r = raw && typeof raw === "object" ? { ...raw } : {};
   if (!r.id) r.id = uid();
@@ -25,6 +40,8 @@ export function normalizeReminder(raw, index = 0) {
   r.time = typeof r.time === "string" ? r.time : "09:00";
   r.label = typeof r.label === "string" ? r.label : `Rappel ${index + 1}`;
   r.goalId = typeof r.goalId === "string" ? r.goalId : "";
+  r.days = normalizeDays(r.days);
+  r.channel = normalizeChannel(r.channel);
   return r;
 }
 
@@ -33,6 +50,8 @@ export function getDueReminders(state, now, lastFiredMap) {
   if (!reminders.length) return [];
   const timeKey = formatNowKey(now);
   const nowHM = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const jsDow = now.getDay(); // 0=Sun..6=Sat
+  const appDow = jsDow === 0 ? 7 : jsDow;
   const due = [];
 
   for (const r of reminders) {
@@ -40,6 +59,8 @@ export function getDueReminders(state, now, lastFiredMap) {
     const parsed = parseTime(r.time);
     if (!parsed) continue;
     if (`${String(parsed.h).padStart(2, "0")}:${String(parsed.min).padStart(2, "0")}` !== nowHM) continue;
+    const days = normalizeDays(r.days);
+    if (!days.includes(appDow)) continue;
     if (lastFiredMap && lastFiredMap[r.id] === timeKey) continue;
     due.push(r);
     if (lastFiredMap) lastFiredMap[r.id] = timeKey;
@@ -68,19 +89,28 @@ export function playReminderSound() {
   } catch {}
 }
 
-export function sendReminderNotification(reminder, goalTitle = "") {
+export function sendReminderNotification(reminder, targetTitle = "") {
+  if (!ENABLE_WEB_NOTIFICATIONS) return;
   try {
     if (!("Notification" in window)) return;
     if (Notification.permission !== "granted") return;
     const title = reminder?.label || "Rappel";
-    const body = goalTitle ? `Objectif: ${goalTitle}` : "Ouvre l’app pour continuer.";
+    const body = targetTitle ? `Cible: ${targetTitle}` : "Ouvre l’app pour continuer.";
     // eslint-disable-next-line no-new
     new Notification(title, { body, silent: true });
   } catch {}
 }
 
-export function requestReminderPermission() {
-  if (!("Notification" in window)) return Promise.resolve("unsupported");
-  if (Notification.permission === "granted") return Promise.resolve("granted");
+export async function requestReminderPermission() {
+  if (!ENABLE_WEB_NOTIFICATIONS) return "disabled";
+  if (typeof window === "undefined") return "unsupported";
+  if (!("Notification" in window)) return "unsupported";
+  if (!("serviceWorker" in navigator)) return "unsupported";
+  try {
+    await navigator.serviceWorker.ready;
+  } catch {
+    return "unsupported";
+  }
+  if (Notification.permission === "granted") return "granted";
   return Notification.requestPermission();
 }

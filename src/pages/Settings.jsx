@@ -58,10 +58,29 @@ export default function Settings({ data, setData }) {
   const selected = data.categories.find((c) => c.id === data.ui.selectedCategoryId) || data.categories[0];
   const reminders = Array.isArray(data.reminders) ? data.reminders : [];
   const goals = Array.isArray(data.goals) ? data.goals : [];
+  const habits = Array.isArray(data.habits) ? data.habits : [];
+
+  const DAYS = [
+    { id: 1, label: "L" },
+    { id: 2, label: "M" },
+    { id: 3, label: "M" },
+    { id: 4, label: "J" },
+    { id: 5, label: "V" },
+    { id: 6, label: "S" },
+    { id: 7, label: "D" },
+  ];
 
   function addReminder() {
     const id = uid();
-    const next = { id, label: "Rappel", time: "09:00", enabled: true, goalId: "" };
+    const next = {
+      id,
+      label: "Rappel",
+      time: "09:00",
+      enabled: true,
+      goalId: "",
+      days: [1, 2, 3, 4, 5, 6, 7],
+      channel: "IN_APP",
+    };
     setData((prev) => ({ ...prev, reminders: [...(prev.reminders || []), next] }));
   }
 
@@ -103,7 +122,10 @@ export default function Settings({ data, setData }) {
               {reminders.length ? (
                 reminders.map((r) => {
                   const goal = goals.find((g) => g.id === r.goalId);
-                  const cat = data.categories.find((c) => c.id === goal?.categoryId);
+                  const habit = !goal ? habits.find((h) => h.id === r.goalId) : null;
+                  const target = goal || habit;
+                  const cat = data.categories.find((c) => c.id === target?.categoryId);
+                  const days = Array.isArray(r.days) ? r.days : [];
                   return (
                     <div key={r.id} className="listItem focusHalo" style={{ "--catColor": cat?.color || "#7C3AED" }}>
                       <Input
@@ -121,12 +143,58 @@ export default function Settings({ data, setData }) {
                           value={r.goalId || ""}
                           onChange={(e) => updateReminder(r.id, { goalId: e.target.value })}
                         >
-                          <option value="">Aucun objectif</option>
-                          {goals.map((g) => (
-                            <option key={g.id} value={g.id}>
-                              {g.title || "Objectif"}
-                            </option>
-                          ))}
+                          <option value="">Aucune cible</option>
+                          {goals.length ? (
+                            <optgroup label="Objectifs">
+                              {goals.map((g) => (
+                                <option key={g.id} value={g.id}>
+                                  {g.title || "Objectif"}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ) : null}
+                          {habits.length ? (
+                            <optgroup label="Habitudes">
+                              {habits.map((h) => (
+                                <option key={h.id} value={h.id}>
+                                  {h.title || "Habitude"}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ) : null}
+                        </Select>
+                      </div>
+                      <div className="mt10">
+                        <div className="small2">Jours</div>
+                        <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                          {DAYS.map((d) => {
+                            const active = days.includes(d.id);
+                            return (
+                              <button
+                                key={d.id}
+                                className={active ? "btn" : "btn btnGhost"}
+                                style={{ padding: "4px 8px", fontSize: 12 }}
+                                onClick={() => {
+                                  const nextDays = active
+                                    ? days.filter((x) => x !== d.id)
+                                    : [...days, d.id].sort((a, b) => a - b);
+                                  updateReminder(r.id, { days: nextDays });
+                                }}
+                              >
+                                {d.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="mt10">
+                        <div className="small2">Canal</div>
+                        <Select
+                          value={r.channel || "IN_APP"}
+                          onChange={(e) => updateReminder(r.id, { channel: e.target.value })}
+                        >
+                          <option value="IN_APP">In-app</option>
+                          <option value="NOTIFICATION">Notification navigateur</option>
                         </Select>
                       </div>
                       <div className="row" style={{ marginTop: 10 }}>
