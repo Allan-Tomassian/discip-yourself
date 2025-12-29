@@ -150,6 +150,12 @@ function formatResetPolicy(value) {
   return value === "reset" ? "réinitialiser" : "invalider";
 }
 
+function formatFormTitle({ isEditing, planType, goalType }) {
+  const isHabit = planType === "ACTION" && goalType === "PROCESS";
+  const label = isHabit ? "habitude" : "objectif";
+  return isEditing ? `Modifier l’${label}` : `Nouvelle ${label}`;
+}
+
 function cadenceFromUnit(unit) {
   if (unit === "DAY") return "DAILY";
   if (unit === "WEEK") return "WEEKLY";
@@ -917,7 +923,13 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
 
               {isAdding ? (
                 <div ref={editFormRef} className="mt12 listItem focusHalo scrollTarget">
-                  <div style={{ fontWeight: 800 }}>{editGoalId ? "Modifier l’objectif" : "Nouvel objectif"}</div>
+                  <div style={{ fontWeight: 800 }}>
+                    {formatFormTitle({
+                      isEditing: Boolean(editGoalId),
+                      planType: draftPlanType,
+                      goalType: draftGoalType,
+                    })}
+                  </div>
                   <div className="mt12 col">
                     <Input value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="Titre" />
                     <Select
