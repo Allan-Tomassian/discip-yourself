@@ -4,6 +4,7 @@ import { Badge, Button, Card, Input, Select, Textarea } from "../components/UI";
 import FocusCategoryPicker from "../components/FocusCategoryPicker";
 import { uid } from "../utils/helpers";
 import { todayKey } from "../utils/dates";
+import { CATEGORY_TEMPLATES, GOAL_TEMPLATES, HABIT_TEMPLATES } from "../logic/templates";
 import {
   abandonGoal,
   activateGoal,
@@ -25,6 +26,15 @@ const UNIT_LABELS = {
   QUARTER: ["trimestre", "trimestres"],
   YEAR: ["an", "ans"],
 };
+
+function getCategoryTemplateKey(category) {
+  const rawId = typeof category?.templateId === "string" ? category.templateId.trim() : "";
+  if (rawId && CATEGORY_TEMPLATES.some((t) => t.id === rawId)) return rawId;
+  const label = (category?.name || "").trim().toLowerCase();
+  if (!label) return null;
+  const match = CATEGORY_TEMPLATES.find((t) => t.label.toLowerCase() === label);
+  return match ? match.id : null;
+}
 
 function formatCadence(cadence) {
   if (cadence === "DAILY") return "Quotidien";
@@ -245,6 +255,11 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const [draftMetricTarget, setDraftMetricTarget] = useState("");
   const [draftMetricCurrent, setDraftMetricCurrent] = useState("");
   const [draftResetPolicy, setDraftResetPolicy] = useState("invalidate");
+  const [draftTemplateId, setDraftTemplateId] = useState(null);
+  const [goalSuggestionsOpen, setGoalSuggestionsOpen] = useState(false);
+  const [habitSuggestionsOpen, setHabitSuggestionsOpen] = useState(false);
+  const [goalSuggestionQuery, setGoalSuggestionQuery] = useState("");
+  const [habitSuggestionQuery, setHabitSuggestionQuery] = useState("");
   const [err, setErr] = useState("");
   const [activationError, setActivationError] = useState(null);
   const [overlapError, setOverlapError] = useState(null);
@@ -310,6 +325,25 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     [allGoals, mainGoal?.id]
   );
   const outcomePct = Math.round(outcomeAggregate.progress * 100);
+  const categoryTemplateKey = getCategoryTemplateKey(c);
+  const goalTemplatesForCategory = GOAL_TEMPLATES.filter((t) => t.categoryKey === categoryTemplateKey);
+  const goalTemplatesSource = goalTemplatesForCategory.length ? goalTemplatesForCategory : GOAL_TEMPLATES;
+  const goalTemplatesFiltered = goalTemplatesSource.filter((t) => {
+    const query = (goalSuggestionQuery || "").trim().toLowerCase();
+    if (!query) return true;
+    return t.label.toLowerCase().includes(query);
+  });
+
+  const habitTemplatesByGoal = mainGoal?.templateId
+    ? HABIT_TEMPLATES.filter((t) => t.goalTemplateId === mainGoal.templateId)
+    : HABIT_TEMPLATES.filter((t) => !t.goalTemplateId);
+  const habitTemplatesFallback = HABIT_TEMPLATES.filter((t) => !t.goalTemplateId);
+  const habitTemplatesSource = habitTemplatesByGoal.length ? habitTemplatesByGoal : habitTemplatesFallback;
+  const habitTemplatesFiltered = habitTemplatesSource.filter((t) => {
+    const query = (habitSuggestionQuery || "").trim().toLowerCase();
+    if (!query) return true;
+    return t.label.toLowerCase().includes(query);
+  });
 
   function updateLinkWeight(goalId, value) {
     setLinkWeightsById((prev) => ({ ...prev, [goalId]: value }));
@@ -344,6 +378,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setOverlapError(null);
     setAdvancedOpen(true);
     setEditGoalId(null);
+    setDraftTemplateId(null);
     setDraftTitle("");
     setDraftFreqCount("3");
     setDraftFreqUnit("WEEK");
@@ -357,6 +392,10 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setDraftMetricTarget("");
     setDraftMetricCurrent("");
     setDraftResetPolicy("invalidate");
+    setGoalSuggestionsOpen(false);
+    setHabitSuggestionsOpen(false);
+    setGoalSuggestionQuery("");
+    setHabitSuggestionQuery("");
     setIsAdding(true);
   }
 
@@ -404,6 +443,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setDraftMetricTarget(goal?.metric?.targetValue != null ? String(goal.metric.targetValue) : "");
     setDraftMetricCurrent(goal?.metric?.currentValue != null ? String(goal.metric.currentValue) : "");
     setDraftResetPolicy(goal.resetPolicy || "invalidate");
+    setDraftTemplateId(typeof goal.templateId === "string" ? goal.templateId : null);
     setIsAdding(true);
   }
 
@@ -562,6 +602,8 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       deadline,
       resetPolicy: draftResetPolicy || "invalidate",
       metric,
+      templateId: draftTemplateId || null,
+      templateType: goalType === "OUTCOME" ? "GOAL" : "HABIT",
     };
     const createId = editGoalId ? null : uid();
     if (createId) payload.id = createId;
@@ -1016,6 +1058,125 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                 <div ref={editFormRef} className="mt12 listItem focusHalo scrollTarget">
                   <div style={{ fontWeight: 800 }}>{formTitle}</div>
                   <div className="mt12 col">
+                    {isObjectiveForm ? (
+                      <div className="listItem">
+                        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <div className="titleSm">Suggestions</div>
+                            <div className="small2">Objectifs proposés pour cette catégorie.</div>
+                          </div>
+                          <button className="linkBtn" onClick={() => setGoalSuggestionsOpen((v) => !v)}>
+                            {goalSuggestionsOpen ? "Masquer" : "Afficher"}
+                          </button>
+                        </div>
+                        {goalSuggestionsOpen ? (
+                          <div className="mt10 col">
+                            <Input
+                              value={goalSuggestionQuery}
+                              onChange={(e) => setGoalSuggestionQuery(e.target.value)}
+                              placeholder="Rechercher une suggestion"
+                            />
+                            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                              {goalTemplatesFiltered.slice(0, 12).map((t) => (
+                                <button
+                                  key={t.id}
+                                  className="btn btnGhost"
+                                  onClick={() => {
+                                    setDraftTemplateId(t.id);
+                                    setDraftTitle(t.label);
+                                    if (t.metric?.unit) {
+                                      setDraftMetricUnit(t.metric.unit);
+                                      setDraftMetricTarget(
+                                        t.defaultTarget != null ? String(t.defaultTarget) : ""
+                                      );
+                                      setDraftMetricCurrent("");
+                                    } else {
+                                      setDraftMetricUnit("");
+                                      setDraftMetricTarget("");
+                                      setDraftMetricCurrent("");
+                                    }
+                                  }}
+                                >
+                                  {t.label}
+                                </button>
+                              ))}
+                              {!goalTemplatesFiltered.length ? (
+                                <div className="small2">Aucune suggestion trouvée.</div>
+                              ) : null}
+                            </div>
+                            <div className="row" style={{ justifyContent: "flex-end" }}>
+                              <Button
+                                variant="ghost"
+                                onClick={() => {
+                                  setDraftTemplateId(null);
+                                  setGoalSuggestionQuery("");
+                                }}
+                              >
+                                Texte libre
+                              </Button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="listItem">
+                        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <div className="titleSm">Suggestions</div>
+                            <div className="small2">Habitudes proposées pour cet objectif.</div>
+                          </div>
+                          <button className="linkBtn" onClick={() => setHabitSuggestionsOpen((v) => !v)}>
+                            {habitSuggestionsOpen ? "Masquer" : "Afficher"}
+                          </button>
+                        </div>
+                        {habitSuggestionsOpen ? (
+                          <div className="mt10 col">
+                            <Input
+                              value={habitSuggestionQuery}
+                              onChange={(e) => setHabitSuggestionQuery(e.target.value)}
+                              placeholder="Rechercher une suggestion"
+                            />
+                            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                              {habitTemplatesFiltered.slice(0, 12).map((t) => (
+                                <button
+                                  key={t.id}
+                                  className="btn btnGhost"
+                                  onClick={() => {
+                                    setDraftTemplateId(t.id);
+                                    setDraftTitle(t.label);
+                                    if (t.defaultFreq?.count) {
+                                      setDraftFreqCount(String(t.defaultFreq.count));
+                                    }
+                                    if (t.defaultFreq?.unit) {
+                                      setDraftFreqUnit(t.defaultFreq.unit);
+                                    }
+                                    if (t.defaultFreq?.minutes) {
+                                      setDraftSessionMinutes(String(t.defaultFreq.minutes));
+                                    }
+                                  }}
+                                >
+                                  {t.label}
+                                </button>
+                              ))}
+                              {!habitTemplatesFiltered.length ? (
+                                <div className="small2">Aucune suggestion trouvée.</div>
+                              ) : null}
+                            </div>
+                            <div className="row" style={{ justifyContent: "flex-end" }}>
+                              <Button
+                                variant="ghost"
+                                onClick={() => {
+                                  setDraftTemplateId(null);
+                                  setHabitSuggestionQuery("");
+                                }}
+                              >
+                                Texte libre
+                              </Button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
                     {isObjectiveForm ? (
                       <ObjectiveForm
                         title={draftTitle}

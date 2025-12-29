@@ -3,6 +3,7 @@ import { Badge, Button, Card, Input, Textarea } from "../components/UI";
 import { uid } from "../utils/helpers";
 import { todayKey } from "../utils/dates";
 import { createGoal } from "../logic/goals";
+import { CATEGORY_TEMPLATES, findCategoryTemplateByLabel } from "../logic/templates";
 import ScreenShell from "./_ScreenShell";
 
 function resolveGoalType(goal) {
@@ -50,6 +51,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
   const [step1Error, setStep1Error] = useState("");
 
   const [categoryName, setCategoryName] = useState("");
+  const [categoryTemplateId, setCategoryTemplateId] = useState(null);
   const [outcomeTitle, setOutcomeTitle] = useState("");
   const [habitTitle, setHabitTitle] = useState("");
   const [step2Error, setStep2Error] = useState("");
@@ -101,6 +103,9 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
   const cleanCategory = (categoryName || "").trim();
   const cleanOutcome = (outcomeTitle || "").trim();
   const cleanHabit = (habitTitle || "").trim();
+  const selectedCategoryTemplate = categoryTemplateId
+    ? CATEGORY_TEMPLATES.find((t) => t.id === categoryTemplateId)
+    : null;
 
   const step1Valid = Boolean(cleanFirstName && cleanLastName && cleanWhy);
   const step2Ready =
@@ -198,11 +203,38 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
               <div className="listItem">
                 <div className="titleSm">Créer ta première catégorie</div>
                 {needsCategory ? (
-                  <Input
-                    value={categoryName}
-                    onChange={(e) => setCategoryName(e.target.value)}
-                    placeholder="Nom de la catégorie"
-                  />
+                  <>
+                    <Input
+                      list="category-templates-onboarding"
+                      value={categoryName}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setCategoryName(value);
+                        const match = findCategoryTemplateByLabel(value);
+                        setCategoryTemplateId(match ? match.id : null);
+                      }}
+                      placeholder="Nom de la catégorie"
+                    />
+                    <datalist id="category-templates-onboarding">
+                      {CATEGORY_TEMPLATES.map((t) => (
+                        <option key={t.id} value={t.label} />
+                      ))}
+                    </datalist>
+                    {selectedCategoryTemplate ? (
+                      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                        <div className="small2">Suggestion : {selectedCategoryTemplate.label}</div>
+                        <button
+                          className="linkBtn"
+                          onClick={() => {
+                            setCategoryTemplateId(null);
+                            setCategoryName("");
+                          }}
+                        >
+                          Créer la mienne
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
                 ) : (
                   <div className="small2">Catégorie : {baseCategory?.name || "OK"}</div>
                 )}
@@ -255,7 +287,14 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
                       const newCategoryId = uid();
                       nextCategories = [
                         ...prevCategories,
-                        { id: newCategoryId, name: cleanCategory, color: "#7C3AED", wallpaper: "", mainGoalId: null },
+                        {
+                          id: newCategoryId,
+                          name: cleanCategory,
+                          color: "#7C3AED",
+                          wallpaper: "",
+                          mainGoalId: null,
+                          templateId: categoryTemplateId,
+                        },
                       ];
                       categoryId = newCategoryId;
                     }

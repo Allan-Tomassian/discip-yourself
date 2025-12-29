@@ -77,6 +77,13 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
   if (!g.title) g.title = "Objectif";
   if (!g.cadence) g.cadence = "WEEKLY";
   if (typeof g.target !== "number") g.target = 1;
+  if (typeof g.templateId !== "string") g.templateId = null;
+  if (typeof g.templateType !== "string") {
+    const raw = (g.type || g.planType || g.kind || "").toString().toUpperCase();
+    if (raw === "OUTCOME" || raw === "STATE") g.templateType = "GOAL";
+    else if (raw === "PROCESS" || raw === "ACTION" || raw === "ONE_OFF") g.templateType = "HABIT";
+    else g.templateType = null;
+  }
 
   // Optional but strongly recommended: deadline as ISO date (YYYY-MM-DD)
   // Empty string means "no deadline yet".
@@ -273,6 +280,7 @@ export function migrate(prev) {
   next.categories = next.categories.map((cat) => ({
     ...cat,
     mainGoalId: typeof cat.mainGoalId === "string" && cat.mainGoalId.trim() ? cat.mainGoalId : null,
+    templateId: typeof cat.templateId === "string" && cat.templateId.trim() ? cat.templateId : null,
   }));
 
   // goals (V2 normalize)
