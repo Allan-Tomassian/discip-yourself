@@ -18,6 +18,7 @@ function resolveGoalType(goal) {
 
 export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
   const [showWhy, setShowWhy] = useState(true);
+  const [whyExpanded, setWhyExpanded] = useState(false);
   const safeData = data && typeof data === "object" ? data : {};
   const profile = safeData.profile || {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
@@ -111,6 +112,10 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
   const backgroundCss = getBackgroundCss({ data: safeData, pageId: "home", image: backgroundImage });
   const whyText = (profile.whyText || "").trim();
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
+  const WHY_LIMIT = 140;
+  const hasLongWhy = whyDisplay.length > WHY_LIMIT;
+  const visibleWhy =
+    !showWhy ? "Pourquoi masqué" : whyExpanded || !hasLongWhy ? whyDisplay : `${whyDisplay.slice(0, WHY_LIMIT)}…`;
 
   return (
     <ScreenShell
@@ -126,17 +131,24 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
           style={{
             flex: 1,
             minWidth: 0,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
+            whiteSpace: showWhy && whyExpanded ? "normal" : "nowrap",
+            overflow: showWhy && whyExpanded ? "visible" : "hidden",
+            textOverflow: showWhy && whyExpanded ? "clip" : "ellipsis",
           }}
         >
-          {showWhy ? whyDisplay : "Pourquoi masqué"}
+          {visibleWhy}
         </div>
         <button className="linkBtn" onClick={() => setShowWhy((v) => !v)} aria-label="Afficher ou masquer le pourquoi">
           {showWhy ? "Masquer 👁" : "Afficher 👁"}
         </button>
       </div>
+      {showWhy && hasLongWhy ? (
+        <div className="row" style={{ justifyContent: "flex-end", marginTop: 6 }}>
+          <button className="linkBtn" onClick={() => setWhyExpanded((v) => !v)}>
+            {whyExpanded ? "Réduire" : "Afficher plus"}
+          </button>
+        </div>
+      ) : null}
 
       <div className="mt12">
         <FocusCategoryPicker

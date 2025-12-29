@@ -158,7 +158,11 @@ export default function App() {
   const safeData = data && typeof data === "object" ? data : {};
   const onboarded = isOnboarded(safeData);
   const onboardingCompleted = Boolean(safeData.ui?.onboardingCompleted);
+  const showPlanStep = Boolean(safeData.ui?.showPlanStep);
 
+  if (showPlanStep && onboardingCompleted) {
+    return <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />;
+  }
   if (!onboardingCompleted) {
     return <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />;
   }

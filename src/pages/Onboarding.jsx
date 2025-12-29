@@ -1,265 +1,405 @@
-import React, { useState } from "react";
-import { Button, Card, Input, Textarea, Badge } from "../components/UI";
-import { uid, readFileAsDataUrl } from "../utils/helpers";
+import React, { useEffect, useState } from "react";
+import { Badge, Button, Card, Input, Textarea } from "../components/UI";
+import { uid } from "../utils/helpers";
 import { todayKey } from "../utils/dates";
 import { createGoal } from "../logic/goals";
 import ScreenShell from "./_ScreenShell";
 
-export default function Onboarding({ data, setData, onDone }) {
-  const [name, setName] = useState(data.profile.name || "");
-  const [why, setWhy] = useState(data.profile.whyText || "");
-  const [img, setImg] = useState(data.profile.whyImage || "");
-  const [error, setError] = useState("");
-  const minChars = 24;
+function resolveGoalType(goal) {
+  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
+  if (raw === "OUTCOME" || raw === "PROCESS") return raw;
+  if (raw === "STATE") return "OUTCOME";
+  if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
+  const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
+  if (legacy === "OUTCOME") return "OUTCOME";
+  if (legacy === "ACTION") return "PROCESS";
+  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
+  return "PROCESS";
+}
+
+function cadenceFromUnit(unit) {
+  if (unit === "DAY") return "DAILY";
+  if (unit === "WEEK") return "WEEKLY";
+  return "YEARLY";
+}
+
+function clampStep(value) {
+  const v = Number.isFinite(value) ? value : 1;
+  return Math.min(3, Math.max(1, v));
+}
+
+export default function Onboarding({ data, setData, onDone, planOnly = false }) {
+  const safeData = data && typeof data === "object" ? data : {};
+  const profile = safeData.profile || {};
+  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
+  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+
+  const [step, setStep] = useState(() => {
+    if (planOnly) return 3;
+    const rawStep = Number(safeData.ui?.onboardingStep) || 1;
+    return clampStep(rawStep);
+  });
+
+  useEffect(() => {
+    if (planOnly) setStep(3);
+  }, [planOnly]);
+
+  const [firstName, setFirstName] = useState(profile.name || "");
+  const [lastName, setLastName] = useState(profile.lastName || "");
+  const [why, setWhy] = useState(profile.whyText || "");
+  const [step1Error, setStep1Error] = useState("");
+
   const [categoryName, setCategoryName] = useState("");
   const [outcomeTitle, setOutcomeTitle] = useState("");
-  const [processTitle, setProcessTitle] = useState("");
+  const [habitTitle, setHabitTitle] = useState("");
+  const [step2Error, setStep2Error] = useState("");
 
-  const categories = Array.isArray(data.categories) ? data.categories : [];
-  const goals = Array.isArray(data.goals) ? data.goals : [];
+  const [planChoice, setPlanChoice] = useState(profile.plan === "premium" ? "premium" : "free");
 
-  function resolveGoalType(goal) {
-    const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
-    if (raw === "OUTCOME" || raw === "PROCESS") return raw;
-    if (raw === "STATE") return "OUTCOME";
-    if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
-    const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
-    if (legacy === "OUTCOME") return "OUTCOME";
-    if (legacy === "ACTION") return "PROCESS";
-    if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
-    return "PROCESS";
+  let baseCategory = null;
+  let baseOutcome = null;
+  let baseHasHabit = false;
+
+  for (const cat of categories) {
+    const outcome = goals.find((g) => resolveGoalType(g) === "OUTCOME" && g.categoryId === cat.id) || null;
+    if (!outcome) continue;
+    const hasHabit = goals.some(
+      (g) => resolveGoalType(g) === "PROCESS" && g.categoryId === cat.id && g.parentId === outcome.id
+    );
+    if (hasHabit) {
+      baseCategory = cat;
+      baseOutcome = outcome;
+      baseHasHabit = true;
+      break;
+    }
   }
 
-  const outcomeGoal = goals.find((g) => resolveGoalType(g) === "OUTCOME") || null;
+  if (!baseCategory && categories.length) {
+    baseCategory =
+      categories.find((c) => c.id === safeData.ui?.selectedCategoryId) ||
+      categories[0] ||
+      null;
+  }
+
+  if (baseCategory && !baseOutcome) {
+    baseOutcome = goals.find((g) => resolveGoalType(g) === "OUTCOME" && g.categoryId === baseCategory.id) || null;
+  }
+
+  if (baseCategory && baseOutcome && !baseHasHabit) {
+    baseHasHabit = goals.some(
+      (g) => resolveGoalType(g) === "PROCESS" && g.categoryId === baseCategory.id && g.parentId === baseOutcome.id
+    );
+  }
+
   const needsCategory = categories.length === 0;
-  const needsOutcome = !outcomeGoal;
-  const needsProcess = !goals.some(
-    (g) => resolveGoalType(g) === "PROCESS" && g.parentId && g.parentId === outcomeGoal?.id
-  );
+  const needsOutcome = !baseOutcome;
+  const needsHabit = !baseHasHabit;
 
-  function cadenceFromUnit(unit) {
-    if (unit === "DAY") return "DAILY";
-    if (unit === "WEEK") return "WEEKLY";
-    return "YEARLY";
+  const cleanFirstName = (firstName || "").trim();
+  const cleanLastName = (lastName || "").trim();
+  const cleanWhy = (why || "").trim();
+  const cleanCategory = (categoryName || "").trim();
+  const cleanOutcome = (outcomeTitle || "").trim();
+  const cleanHabit = (habitTitle || "").trim();
+
+  const step1Valid = Boolean(cleanFirstName && cleanLastName && cleanWhy);
+  const step2Ready =
+    (!needsCategory || cleanCategory) && (!needsOutcome || cleanOutcome) && (!needsHabit || cleanHabit);
+
+  const headerTitle = planOnly ? "Abonnement" : "Inscription";
+  const headerSubtitle = planOnly ? "Choisis ton plan" : `Étape ${step}/3`;
+
+  if (step === 1 && !planOnly) {
+    return (
+      <ScreenShell data={safeData} pageId="onboarding" headerTitle={headerTitle} headerSubtitle={headerSubtitle}>
+        <Card accentBorder>
+          <div className="p18">
+            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div className="titleSm">Engagement</div>
+                <div className="small">Pas de discipline sans objectif. Écris pourquoi tu t’engages.</div>
+              </div>
+              <Badge>1/3</Badge>
+            </div>
+
+            <div className="mt14 col">
+              <div>
+                <div className="small" style={{ marginBottom: 6 }}>
+                  Prénom
+                </div>
+                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+              </div>
+              <div>
+                <div className="small" style={{ marginBottom: 6 }}>
+                  Nom
+                </div>
+                <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              </div>
+              <div>
+                <div className="small" style={{ marginBottom: 6 }}>
+                  Pourquoi
+                </div>
+                <Textarea value={why} onChange={(e) => setWhy(e.target.value)} placeholder="Ton pourquoi" />
+              </div>
+
+              {step1Error ? <div className="small" style={{ color: "#ff9a9a" }}>{step1Error}</div> : null}
+
+              <Button
+                disabled={!step1Valid}
+                onClick={() => {
+                  if (!step1Valid) {
+                    setStep1Error("Tous les champs sont requis.");
+                    return;
+                  }
+                  setStep1Error("");
+                  const nowIso = new Date().toISOString();
+                  setData((prev) => {
+                    const prevUi = prev.ui || {};
+                    return {
+                      ...prev,
+                      profile: {
+                        ...prev.profile,
+                        name: cleanFirstName,
+                        lastName: cleanLastName,
+                        whyText: cleanWhy,
+                        whyUpdatedAt: nowIso,
+                      },
+                      ui: { ...prevUi, onboardingStep: 2 },
+                    };
+                  });
+                  setStep(2);
+                }}
+              >
+                Suivant
+              </Button>
+
+              <div className="small2">Stocké localement (localStorage).</div>
+            </div>
+          </div>
+        </Card>
+      </ScreenShell>
+    );
   }
 
-  return (
-    <ScreenShell
-      data={data}
-      pageId="onboarding"
-      headerTitle="Ton Pourquoi"
-      headerSubtitle="Inscription (obligatoire)"
-      backgroundImage={img || ""}
-    >
-      <Card accentBorder>
-        <div className="p18">
-          <div className="row">
-            <div>
-              <div className="titleSm">Phrase d’engagement</div>
-              <div className="small">Pas de discipline sans sens. Tu dois l’écrire.</div>
-            </div>
-            <Badge>V2</Badge>
-          </div>
-
-          <div className="mt14 col">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ton prénom" />
-            <Textarea value={why} onChange={(e) => setWhy(e.target.value)} placeholder="Écris ton pourquoi" />
-
-            <div className="listItem">
-              <div className="row">
-                <div>
-                  <div className="titleSm">Image du pourquoi (optionnelle)</div>
-                  <div className="small">Une image qui te rappelle ce que tu veux vraiment.</div>
-                </div>
-                <Badge>{img ? "Ajoutée" : "—"}</Badge>
+  if (step === 2 && !planOnly) {
+    return (
+      <ScreenShell data={safeData} pageId="onboarding" headerTitle={headerTitle} headerSubtitle={headerSubtitle}>
+        <Card accentBorder>
+          <div className="p18">
+            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div className="titleSm">Démonstration guidée</div>
+                <div className="small">Crée la base minimale pour commencer.</div>
               </div>
-
-              <div className="mt12" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <label className="btn btnGhost" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                  Importer
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ display: "none" }}
-                    onChange={async (e) => {
-                      const f = e.target.files?.[0];
-                      if (!f) return;
-                      setImg(await readFileAsDataUrl(f));
-                    }}
-                  />
-                </label>
-                <Button variant="ghost" onClick={() => setImg("")}>Retirer</Button>
-              </div>
+              <Badge>2/3</Badge>
             </div>
 
-            <div className="listItem">
-              <div className="row">
-                <div>
-                  <div className="titleSm">Base minimale</div>
-                  <div className="small">1 catégorie · 1 objectif résultat · 1 action liée.</div>
-                </div>
-                <Badge>Requis</Badge>
-              </div>
-
-              <div className="mt12 col">
+            <div className="mt14 col">
+              <div className="listItem">
+                <div className="titleSm">Créer ta première catégorie</div>
                 {needsCategory ? (
                   <Input
                     value={categoryName}
                     onChange={(e) => setCategoryName(e.target.value)}
-                    placeholder="Nom de la première catégorie"
+                    placeholder="Nom de la catégorie"
                   />
                 ) : (
-                  <div className="small2">Catégorie : {categories[0]?.name || "OK"}</div>
+                  <div className="small2">Catégorie : {baseCategory?.name || "OK"}</div>
                 )}
+              </div>
 
+              <div className="listItem">
+                <div className="titleSm">Créer ton premier objectif</div>
                 {needsOutcome ? (
                   <Input
                     value={outcomeTitle}
                     onChange={(e) => setOutcomeTitle(e.target.value)}
-                    placeholder="Objectif résultat"
+                    placeholder="Nom de l’objectif"
                   />
                 ) : (
-                  <div className="small2">Objectif résultat : {outcomeGoal?.title || "OK"}</div>
-                )}
-
-                {needsProcess ? (
-                  <Input
-                    value={processTitle}
-                    onChange={(e) => setProcessTitle(e.target.value)}
-                    placeholder="Première action liée"
-                  />
-                ) : (
-                  <div className="small2">Action liée : OK</div>
+                  <div className="small2">Objectif : {baseOutcome?.title || "OK"}</div>
                 )}
               </div>
+
+              <div className="listItem">
+                <div className="titleSm">Créer ta première habitude</div>
+                {needsHabit ? (
+                  <Input
+                    value={habitTitle}
+                    onChange={(e) => setHabitTitle(e.target.value)}
+                    placeholder="Nom de l’habitude"
+                  />
+                ) : (
+                  <div className="small2">Habitude : OK</div>
+                )}
+              </div>
+
+              {step2Error ? <div className="small" style={{ color: "#ff9a9a" }}>{step2Error}</div> : null}
+
+              <Button
+                disabled={!step2Ready}
+                onClick={() => {
+                  if (!step2Ready) {
+                    setStep2Error("Complète tous les champs requis.");
+                    return;
+                  }
+                  setStep2Error("");
+                  setData((prev) => {
+                    const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
+                    const prevUi = prev.ui || {};
+
+                    let nextCategories = prevCategories;
+                    let categoryId = baseCategory?.id || prevUi.selectedCategoryId || prevCategories[0]?.id || null;
+
+                    if (needsCategory) {
+                      const newCategoryId = uid();
+                      nextCategories = [
+                        ...prevCategories,
+                        { id: newCategoryId, name: cleanCategory, color: "#7C3AED", wallpaper: "", mainGoalId: null },
+                      ];
+                      categoryId = newCategoryId;
+                    }
+
+                    let nextState = {
+                      ...prev,
+                      categories: nextCategories,
+                      ui: { ...prevUi, selectedCategoryId: categoryId, onboardingStep: 3 },
+                    };
+
+                    let outcomeId = baseOutcome?.id || null;
+                    if (needsOutcome && categoryId) {
+                      outcomeId = uid();
+                      nextState = createGoal(nextState, {
+                        id: outcomeId,
+                        categoryId,
+                        title: cleanOutcome,
+                        type: "OUTCOME",
+                        planType: "STATE",
+                        status: "queued",
+                        startAt: `${todayKey()}T09:00`,
+                        deadline: "",
+                        weight: 0,
+                        metric: null,
+                      });
+                    }
+
+                    if (needsHabit && categoryId) {
+                      const parentId = outcomeId || baseOutcome?.id || null;
+                      if (parentId) {
+                        const habitId = uid();
+                        nextState = createGoal(nextState, {
+                          id: habitId,
+                          categoryId,
+                          title: cleanHabit,
+                          type: "PROCESS",
+                          planType: "ACTION",
+                          status: "queued",
+                          startAt: `${todayKey()}T09:00`,
+                          freqCount: 3,
+                          freqUnit: "WEEK",
+                          cadence: cadenceFromUnit("WEEK"),
+                          target: 3,
+                          sessionMinutes: 30,
+                          parentId,
+                          weight: 100,
+                        });
+                      }
+                    }
+
+                    const mainGoalId = outcomeId || baseOutcome?.id || null;
+                    if (categoryId && mainGoalId) {
+                      nextState = {
+                        ...nextState,
+                        categories: (nextState.categories || []).map((cat) =>
+                          cat.id === categoryId ? { ...cat, mainGoalId } : cat
+                        ),
+                      };
+                    }
+
+                    return {
+                      ...nextState,
+                      ui: {
+                        ...(nextState.ui || {}),
+                        selectedCategoryId: categoryId || nextState.ui?.selectedCategoryId || null,
+                        mainGoalId: nextState.ui?.mainGoalId || mainGoalId || null,
+                        onboardingStep: 3,
+                      },
+                    };
+                  });
+                  setStep(3);
+                }}
+              >
+                Terminer l’inscription
+              </Button>
             </div>
+          </div>
+        </Card>
+      </ScreenShell>
+    );
+  }
 
-            {error ? <div style={{ color: "rgba(255,120,120,.95)", fontSize: 13 }}>{error}</div> : null}
+  return (
+    <ScreenShell data={safeData} pageId="onboarding" headerTitle={headerTitle} headerSubtitle={headerSubtitle}>
+      <Card accentBorder>
+        <div className="p18">
+          <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <div className="titleSm">Choisis ton plan</div>
+              <div className="small">Aucune facturation ici. Tu pourras changer plus tard.</div>
+            </div>
+            <Badge>3/3</Badge>
+          </div>
 
+          <div className="mt14 grid2">
+            <Card accentBorder style={{ borderColor: planChoice === "free" ? "#7C3AED" : "rgba(255,255,255,.16)" }}>
+              <div className="p18 col">
+                <div className="titleSm">Gratuit</div>
+                <div className="small2">L’essentiel pour démarrer.</div>
+                <Button
+                  variant={planChoice === "free" ? "primary" : "ghost"}
+                  onClick={() => setPlanChoice("free")}
+                >
+                  {planChoice === "free" ? "Sélectionné" : "Choisir Gratuit"}
+                </Button>
+              </div>
+            </Card>
+
+            <Card accentBorder style={{ borderColor: planChoice === "premium" ? "#7C3AED" : "rgba(255,255,255,.16)" }}>
+              <div className="p18 col">
+                <div className="titleSm">Premium</div>
+                <div className="small2">Liberté totale et réglages avancés.</div>
+                <Button
+                  variant={planChoice === "premium" ? "primary" : "ghost"}
+                  onClick={() => setPlanChoice("premium")}
+                >
+                  {planChoice === "premium" ? "Sélectionné" : "Choisir Premium"}
+                </Button>
+              </div>
+            </Card>
+          </div>
+
+          <div className="mt12">
             <Button
               onClick={() => {
-                const cleanName = (name || "").trim();
-                const cleanWhy = (why || "").trim();
-                const cleanCategory = (categoryName || "").trim();
-                const cleanOutcome = (outcomeTitle || "").trim();
-                const cleanProcess = (processTitle || "").trim();
-
-                if (!cleanName) {
-                  setError("Prénom requis.");
-                  return;
-                }
-                if (cleanWhy.length < minChars) {
-                  setError(`Ton pourquoi doit faire au moins ${minChars} caractères.`);
-                  return;
-                }
-                if (needsCategory && !cleanCategory) {
-                  setError("Nom de catégorie requis.");
-                  return;
-                }
-                if (needsOutcome && !cleanOutcome) {
-                  setError("Objectif résultat requis.");
-                  return;
-                }
-                if (needsProcess && !cleanProcess) {
-                  setError("Action liée requise.");
-                  return;
-                }
-                setError("");
-
                 setData((prev) => {
-                  const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
-                  const prevGoals = Array.isArray(prev.goals) ? prev.goals : [];
                   const prevUi = prev.ui || {};
-                  let nextCategories = prevCategories;
-                  let selectedCategoryId = prevUi.selectedCategoryId || prevCategories[0]?.id || null;
-
-                  if (needsCategory) {
-                    const newCategoryId = uid();
-                    nextCategories = [
-                      ...prevCategories,
-                      { id: newCategoryId, name: cleanCategory, color: "#7C3AED", wallpaper: "", mainGoalId: null },
-                    ];
-                    selectedCategoryId = newCategoryId;
-                  }
-
-                  const baseCategoryId = selectedCategoryId || prevCategories[0]?.id || null;
-                  const existingOutcome =
-                    prevGoals.find((g) => resolveGoalType(g) === "OUTCOME") || null;
-                  let nextState = {
-                    ...prev,
-                    categories: nextCategories,
-                    ui: { ...prevUi, selectedCategoryId: baseCategoryId },
-                    profile: {
-                      ...prev.profile,
-                      name: cleanName,
-                      whyText: cleanWhy,
-                      whyImage: img || prev.profile.whyImage || "",
-                    },
-                  };
-
-                  let outcomeId = existingOutcome?.id || null;
-                  if (needsOutcome) {
-                    outcomeId = uid();
-                    nextState = createGoal(nextState, {
-                      id: outcomeId,
-                      categoryId: baseCategoryId,
-                      title: cleanOutcome,
-                      type: "OUTCOME",
-                      planType: "STATE",
-                      status: "queued",
-                      startAt: `${todayKey()}T09:00`,
-                      deadline: "",
-                      weight: 0,
-                      metric: null,
-                    });
-                  }
-
-                  if (needsProcess) {
-                    const processId = uid();
-                    nextState = createGoal(nextState, {
-                      id: processId,
-                      categoryId: baseCategoryId,
-                      title: cleanProcess,
-                      type: "PROCESS",
-                      planType: "ACTION",
-                      status: "queued",
-                      startAt: `${todayKey()}T09:00`,
-                      freqCount: 3,
-                      freqUnit: "WEEK",
-                      cadence: cadenceFromUnit("WEEK"),
-                      target: 3,
-                      sessionMinutes: 30,
-                      parentId: outcomeId || existingOutcome?.id || null,
-                      weight: 100,
-                    });
-                  }
-
-                  const mainGoalId = outcomeId || existingOutcome?.id || null;
-                  if (baseCategoryId && mainGoalId) {
-                    nextState = {
-                      ...nextState,
-                      categories: (nextState.categories || []).map((cat) =>
-                        cat.id === baseCategoryId ? { ...cat, mainGoalId } : cat
-                      ),
-                    };
-                  }
-
+                  const nextProfile = { ...prev.profile, plan: planChoice };
                   return {
-                    ...nextState,
+                    ...prev,
+                    profile: nextProfile,
                     ui: {
-                      ...(nextState.ui || {}),
-                      mainGoalId: nextState.ui?.mainGoalId || mainGoalId || null,
-                      onboardingCompleted: true,
+                      ...prevUi,
+                      onboardingCompleted: planOnly ? prevUi.onboardingCompleted : true,
+                      onboardingStep: 3,
+                      showPlanStep: false,
                     },
                   };
                 });
-                onDone();
+                if (typeof onDone === "function") onDone();
               }}
             >
-              Continuer
+              Accéder à l’app
             </Button>
-
-            <div className="small2">Stocké localement (localStorage).</div>
           </div>
         </div>
       </Card>

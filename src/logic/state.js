@@ -117,8 +117,11 @@ export function initialData() {
   return {
     profile: {
       name: "",
+      lastName: "",
       whyText: "",
       whyImage: "",
+      whyUpdatedAt: "",
+      plan: "free",
       xp: 0,
       level: 1,
       rewardClaims: {},
@@ -138,6 +141,8 @@ export function initialData() {
       activeGoalId: null,
       mainGoalId: null,
       onboardingCompleted: false,
+      onboardingStep: 1,
+      showPlanStep: false,
       soundEnabled: false,
     },
     categories: [],
@@ -160,8 +165,11 @@ export function demoData() {
   return {
     profile: {
       name: "Démo",
+      lastName: "",
       whyText: "Exemple de pourquoi (démo).",
       whyImage: "",
+      whyUpdatedAt: "",
+      plan: "free",
       xp: 0,
       level: 1,
       rewardClaims: {},
@@ -176,6 +184,8 @@ export function demoData() {
       activeGoalId: null,
       mainGoalId: outcomeId,
       onboardingCompleted: true,
+      onboardingStep: 3,
+      showPlanStep: false,
       soundEnabled: false,
     },
     categories: categories.map((c, idx) => ({ ...c, mainGoalId: idx === 0 ? outcomeId : c.mainGoalId })),
@@ -219,9 +229,12 @@ export function migrate(prev) {
 
   // profile
   if (!next.profile) next.profile = {};
+  if (typeof next.profile.lastName !== "string") next.profile.lastName = "";
   if (typeof next.profile.xp !== "number") next.profile.xp = 0;
   if (typeof next.profile.level !== "number") next.profile.level = 1;
   if (!next.profile.rewardClaims || typeof next.profile.rewardClaims !== "object") next.profile.rewardClaims = {};
+  if (typeof next.profile.whyUpdatedAt !== "string") next.profile.whyUpdatedAt = "";
+  if (typeof next.profile.plan !== "string") next.profile.plan = "free";
 
   // ui
   if (!next.ui) next.ui = {};
@@ -252,6 +265,8 @@ export function migrate(prev) {
   if (typeof next.ui.mainGoalId === "undefined") next.ui.mainGoalId = null;
   if (typeof next.ui.soundEnabled === "undefined") next.ui.soundEnabled = false;
   if (typeof next.ui.onboardingCompleted === "undefined") next.ui.onboardingCompleted = false;
+  if (typeof next.ui.onboardingStep === "undefined") next.ui.onboardingStep = 1;
+  if (typeof next.ui.showPlanStep === "undefined") next.ui.showPlanStep = false;
 
   // categories
   if (!Array.isArray(next.categories)) next.categories = [];
@@ -296,6 +311,7 @@ export function migrate(prev) {
   next.ui.mainGoalId = selectedCategory?.mainGoalId || null;
 
   if (!next.ui.onboardingCompleted) {
+    const step = Number(next.ui.onboardingStep) || 1;
     const nameOk = Boolean((next.profile?.name || "").trim());
     const whyOk = Boolean((next.profile?.whyText || "").trim());
     const hasCategory = next.categories.length > 0;
@@ -308,7 +324,7 @@ export function migrate(prev) {
     const hasHabit = next.goals.some(
       (g) => (g?.type || g?.kind || "").toString().toUpperCase() === "PROCESS" && outcomeIds.has(g.parentId)
     );
-    if (nameOk && whyOk && hasCategory && hasOutcome && hasHabit) {
+    if (step < 3 && nameOk && whyOk && hasCategory && hasOutcome && hasHabit) {
       next.ui.onboardingCompleted = true;
     }
   }

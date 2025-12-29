@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import ThemePicker from "../components/ThemePicker";
-import { Button, Card, Input, Select } from "../components/UI";
+import { Button, Card, Input, Select, Textarea } from "../components/UI";
 import { clearState } from "../utils/storage";
 import { initialData } from "../logic/state";
 import { uid } from "../utils/helpers";
@@ -195,6 +195,82 @@ export function SettingsAdvanced({ data, setData }) {
   );
 }
 
+function AccountSection({ data, setData }) {
+  const profile = data?.profile || {};
+  const plan = profile.plan === "premium" ? "premium" : "free";
+  const planLabel = plan === "premium" ? "Premium" : "Gratuit";
+  const [whyDraft, setWhyDraft] = useState(profile.whyText || "");
+
+  useEffect(() => {
+    setWhyDraft(profile.whyText || "");
+  }, [profile.whyText]);
+
+  const lastUpdatedMs = profile.whyUpdatedAt ? Date.parse(profile.whyUpdatedAt) : 0;
+  const daysSince = lastUpdatedMs ? Math.floor((Date.now() - lastUpdatedMs) / (24 * 60 * 60 * 1000)) : 999;
+  const daysLeft = plan === "premium" ? 0 : Math.max(0, 30 - daysSince);
+  const canEditWhy = plan === "premium" || daysLeft === 0;
+  const cleanWhy = (whyDraft || "").trim();
+  const whyChanged = cleanWhy !== (profile.whyText || "").trim();
+
+  return (
+    <Card accentBorder style={{ marginTop: 14 }}>
+      <div className="p18 col">
+        <div style={{ fontWeight: 900 }}>Compte</div>
+        <div className="small2" style={{ marginTop: 6 }}>
+          Plan actuel : {planLabel}
+        </div>
+        <div className="mt10">
+          <Button
+            variant="ghost"
+            onClick={() =>
+              setData((prev) => ({
+                ...prev,
+                ui: { ...(prev.ui || {}), showPlanStep: true, onboardingStep: 3 },
+              }))
+            }
+          >
+            Changer d’abonnement
+          </Button>
+        </div>
+
+        <div className="mt14">
+          <div style={{ fontWeight: 900 }}>Pourquoi</div>
+          <div className="small2" style={{ marginTop: 6 }}>
+            Modifiable tous les 30 jours (Premium : illimité).
+          </div>
+          <div className="mt10 col">
+            <Textarea
+              value={whyDraft}
+              onChange={(e) => setWhyDraft(e.target.value)}
+              placeholder="Ton pourquoi"
+              disabled={!canEditWhy}
+            />
+            {!canEditWhy ? (
+              <div className="small2">Tu pourras modifier ton pourquoi dans {daysLeft} jours.</div>
+            ) : null}
+            <Button
+              variant={canEditWhy ? "primary" : "ghost"}
+              disabled={!canEditWhy || !cleanWhy || !whyChanged}
+              onClick={() =>
+                setData((prev) => ({
+                  ...prev,
+                  profile: {
+                    ...prev.profile,
+                    whyText: cleanWhy,
+                    whyUpdatedAt: new Date().toISOString(),
+                  },
+                }))
+              }
+            >
+              Enregistrer
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export default function Settings({ data, setData }) {
   const safeData = data && typeof data === "object" ? data : {};
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -231,17 +307,20 @@ export default function Settings({ data, setData }) {
         headerSubtitle="Aucune catégorie"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
-        <Card accentBorder>
-          <div className="p18">
-            <div className="titleSm">Aucune catégorie</div>
-            <div className="small" style={{ marginTop: 6 }}>
-              Ajoute une première catégorie pour commencer.
+        <div className="col">
+          <AccountSection data={safeData} setData={setData} />
+          <Card accentBorder style={{ marginTop: 14 }}>
+            <div className="p18">
+              <div className="titleSm">Aucune catégorie</div>
+              <div className="small" style={{ marginTop: 6 }}>
+                Ajoute une première catégorie pour commencer.
+              </div>
+              <div className="mt12">
+                <Button onClick={addCategory}>+ Ajouter une catégorie</Button>
+              </div>
             </div>
-            <div className="mt12">
-              <Button onClick={addCategory}>+ Ajouter une catégorie</Button>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
       </ScreenShell>
     );
   }
@@ -259,6 +338,7 @@ export default function Settings({ data, setData }) {
     >
       <div className="col">
         <ThemePicker data={themeData} setData={setData} />
+        <AccountSection data={safeData} setData={setData} />
 
         <Card accentBorder style={{ marginTop: 14 }}>
           <div className="p18">
