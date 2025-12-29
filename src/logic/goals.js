@@ -350,7 +350,13 @@ export function normalizeGoalsState(state) {
     return cat;
   });
   const selectedCategoryId = state.ui?.selectedCategoryId || null;
-  const selectedCategory = nextCategories.find((cat) => cat.id === selectedCategoryId) || null;
+  const resolvedCategoryId =
+    selectedCategoryId && nextCategories.some((cat) => cat.id === selectedCategoryId)
+      ? selectedCategoryId
+      : nextCategories[0]?.id || null;
+  const selectedCategory = resolvedCategoryId
+    ? nextCategories.find((cat) => cat.id === resolvedCategoryId) || null
+    : null;
   let nextMainGoalId = null;
   if (selectedCategory?.mainGoalId && goalsById.has(selectedCategory.mainGoalId)) {
     nextMainGoalId = selectedCategory.mainGoalId;
@@ -368,7 +374,12 @@ export function normalizeGoalsState(state) {
     ...state,
     goals: nextGoals,
     categories: nextCategories,
-    ui: { ...(state.ui || {}), activeGoalId: nextActiveGoalId, mainGoalId: nextMainGoalId },
+    ui: {
+      ...(state.ui || {}),
+      activeGoalId: nextActiveGoalId,
+      mainGoalId: nextMainGoalId,
+      selectedCategoryId: resolvedCategoryId,
+    },
   };
 }
 
@@ -726,10 +737,9 @@ export function deleteGoal(state, goalId) {
   if (!goals.some((g) => g?.id === goalId)) return state;
 
   const nextGoals = goals.filter((g) => g?.id !== goalId);
-  const nextUi = {
-    ...(state.ui || {}),
-    activeGoalId: state.ui?.activeGoalId === goalId ? null : state.ui?.activeGoalId,
-  };
+  const nextUi = { ...(state.ui || {}) };
+  if (nextUi.activeGoalId === goalId) nextUi.activeGoalId = null;
+  if (nextUi.openGoalEditId === goalId) nextUi.openGoalEditId = null;
 
   return normalizeGoalsState({
     ...state,

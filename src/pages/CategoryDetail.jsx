@@ -431,6 +431,12 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   }, [initialEditGoalId, goals, setData]);
 
   useEffect(() => {
+    if (!editGoalId) return;
+    if (goals.some((g) => g.id === editGoalId)) return;
+    closeForm();
+  }, [editGoalId, goals]);
+
+  useEffect(() => {
     if (!isAdding || !editFormRef.current) return;
     const key = `${c?.id || "cat"}:${editGoalId || "new"}`;
     if (lastScrollRef.current === key) return;
