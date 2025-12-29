@@ -18,6 +18,7 @@ export function SettingsAdvanced({ data, setData }) {
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const habits = Array.isArray(safeData.habits) ? safeData.habits : [];
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
+  const soundEnabled = Boolean(safeData.ui?.soundEnabled);
 
   const DAYS = [
     { id: 1, label: "L" },
@@ -173,6 +174,21 @@ export function SettingsAdvanced({ data, setData }) {
         </Button>
         <Button variant="ghost" onClick={addReminder}>
           + Ajouter
+        </Button>
+      </div>
+
+      <div className="mt12 row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+        <div className="small2">Sons de rappel</div>
+        <Button
+          variant={soundEnabled ? "primary" : "ghost"}
+          onClick={() =>
+            setData((prev) => ({
+              ...prev,
+              ui: { ...(prev.ui || {}), soundEnabled: !soundEnabled },
+            }))
+          }
+        >
+          {soundEnabled ? "Activés" : "Désactivés"}
         </Button>
       </div>
     </div>

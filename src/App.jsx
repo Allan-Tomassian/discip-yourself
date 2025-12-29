@@ -82,8 +82,9 @@ export default function App() {
       const reminder = due[0];
       const goal = (current.goals || []).find((g) => g.id === reminder.goalId) || null;
       const habit = !goal ? (current.habits || []).find((h) => h.id === reminder.goalId) || null : null;
+      const soundEnabled = Boolean(current?.ui?.soundEnabled);
       setActiveReminder({ reminder, goal, habit });
-      playReminderSound();
+      if (soundEnabled) playReminderSound();
       if ((reminder.channel || "IN_APP") === "NOTIFICATION") {
         sendReminderNotification(reminder, goal?.title || habit?.title || "");
       }
@@ -143,20 +144,44 @@ export default function App() {
       />
 
       {activeReminder ? (
-        <div className="modalBackdrop">
-          <Card accentBorder style={{ maxWidth: 420, width: "100%" }}>
+        <div className="modalBackdrop reminderOverlay" onClick={() => setActiveReminder(null)}>
+          <Card
+            accentBorder
+            className="reminderCard reminderPulse"
+            style={{ maxWidth: 420, width: "100%" }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p18">
               <div className="titleSm">{activeReminder.reminder?.label || "Rappel"}</div>
               <div className="small2" style={{ marginTop: 6 }}>
-                {activeReminder.goal
-                  ? `Objectif: ${activeReminder.goal.title || "Objectif"}`
-                  : activeReminder.habit
-                    ? `Habitude: ${activeReminder.habit.title || "Habitude"}`
-                    : "Ouvre l’app pour continuer."}
+                {activeReminder.goal?.title || activeReminder.habit?.title || "Habitude"}
               </div>
-              <div className="row" style={{ marginTop: 12 }}>
+              <div className="small2" style={{ marginTop: 4 }}>
+                {(() => {
+                  const target = activeReminder.goal || activeReminder.habit;
+                  const catId = target?.categoryId || null;
+                  const cat = (data?.categories || []).find((c) => c.id === catId);
+                  return cat?.name ? `Catégorie : ${cat.name}` : "Catégorie : —";
+                })()}
+              </div>
+              <div className="row" style={{ marginTop: 12, justifyContent: "flex-end" }}>
                 <Button variant="ghost" onClick={() => setActiveReminder(null)}>
-                  OK
+                  Plus tard
+                </Button>
+                <Button
+                  onClick={() => {
+                    const target = activeReminder.goal || activeReminder.habit;
+                    if (target?.categoryId) {
+                      setData((prev) => ({
+                        ...prev,
+                        ui: { ...(prev.ui || {}), selectedCategoryId: target.categoryId },
+                      }));
+                      setTab("plan");
+                    }
+                    setActiveReminder(null);
+                  }}
+                >
+                  Commencer
                 </Button>
               </div>
             </div>

@@ -137,6 +137,7 @@ export function initialData() {
       // V2: one active goal at a time
       activeGoalId: null,
       mainGoalId: null,
+      soundEnabled: false,
     },
     categories: [],
     goals: [],
@@ -173,6 +174,7 @@ export function demoData() {
       accentHome: "#7C3AED",
       activeGoalId: null,
       mainGoalId: outcomeId,
+      soundEnabled: false,
     },
     categories: categories.map((c, idx) => ({ ...c, mainGoalId: idx === 0 ? outcomeId : c.mainGoalId })),
     goals: [
@@ -246,6 +248,7 @@ export function migrate(prev) {
 
   if (typeof next.ui.activeGoalId === "undefined") next.ui.activeGoalId = null;
   if (typeof next.ui.mainGoalId === "undefined") next.ui.mainGoalId = null;
+  if (typeof next.ui.soundEnabled === "undefined") next.ui.soundEnabled = false;
 
   // categories
   if (!Array.isArray(next.categories)) next.categories = [];
