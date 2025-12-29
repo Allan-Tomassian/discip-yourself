@@ -4,6 +4,7 @@ import { migrate, usePersistedState } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
 import { getDueReminders, playReminderSound, sendReminderNotification } from "./logic/reminders";
 import { Button, Card } from "./components/UI";
+import ScreenShell from "./pages/_ScreenShell";
 import { markIOSRootClass } from "./utils/dialogs";
 
 import Onboarding from "./pages/Onboarding";
@@ -41,6 +42,59 @@ function isOnboarded(data) {
     (g) => resolveGoalType(g) === "PROCESS" && g.parentId && outcomeIds.has(g.parentId)
   );
   return hasProcess;
+}
+
+function getEmptyStateConfig(data) {
+  const safe = data && typeof data === "object" ? data : {};
+  const categories = Array.isArray(safe.categories) ? safe.categories : [];
+  const goals = Array.isArray(safe.goals) ? safe.goals : [];
+  const outcomes = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
+  const outcomeIds = new Set(outcomes.map((g) => g.id));
+  const hasOutcome = outcomes.length > 0;
+  const hasHabit = goals.some(
+    (g) => resolveGoalType(g) === "PROCESS" && g.parentId && outcomeIds.has(g.parentId)
+  );
+  const firstCategoryId = categories[0]?.id || null;
+  const outcomeCategoryId = outcomes[0]?.categoryId || firstCategoryId;
+
+  if (!categories.length) {
+    return {
+      title: "Aucune catégorie",
+      subtitle: "Crée une catégorie pour reprendre.",
+      cta: "Créer une catégorie",
+      targetTab: "library",
+      categoryId: null,
+      openGoalEditId: null,
+    };
+  }
+  if (!hasOutcome) {
+    return {
+      title: "Aucun objectif",
+      subtitle: "Crée un objectif principal pour cette catégorie.",
+      cta: "Créer un objectif",
+      targetTab: "plan",
+      categoryId: firstCategoryId,
+      openGoalEditId: "__new_outcome__",
+    };
+  }
+  if (!hasHabit) {
+    return {
+      title: "Aucune habitude",
+      subtitle: "Crée une habitude liée à ton objectif principal.",
+      cta: "Créer une habitude",
+      targetTab: "plan",
+      categoryId: outcomeCategoryId,
+      openGoalEditId: "__new_process__",
+    };
+  }
+  return {
+    title: "État incomplet",
+    subtitle: "Complète la configuration pour continuer.",
+    cta: "Ouvrir la bibliothèque",
+    targetTab: "library",
+    categoryId: firstCategoryId,
+    openGoalEditId: null,
+  };
 }
 
 export default function App() {
@@ -101,10 +155,52 @@ export default function App() {
     }));
   }, [data?.ui?.openCategoryDetailId, setData]);
 
-  const onboarded = isOnboarded(data);
+  const safeData = data && typeof data === "object" ? data : {};
+  const onboarded = isOnboarded(safeData);
+  const onboardingCompleted = Boolean(safeData.ui?.onboardingCompleted);
 
-  if (!onboarded) {
+  if (!onboardingCompleted) {
     return <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />;
+  }
+  if (!onboarded) {
+    const empty = getEmptyStateConfig(safeData);
+    return (
+      <ScreenShell
+        data={safeData}
+        pageId="home"
+        headerTitle="Aujourd’hui"
+        headerSubtitle={empty.title}
+        backgroundImage={safeData?.profile?.whyImage || ""}
+      >
+        <Card accentBorder>
+          <div className="p18">
+            <div className="titleSm">{empty.title}</div>
+            <div className="small" style={{ marginTop: 6 }}>
+              {empty.subtitle}
+            </div>
+            <div className="mt12">
+              <Button
+                onClick={() => {
+                  if (empty.categoryId) {
+                    setData((prev) => ({
+                      ...prev,
+                      ui: {
+                        ...(prev.ui || {}),
+                        selectedCategoryId: empty.categoryId,
+                        openGoalEditId: empty.openGoalEditId,
+                      },
+                    }));
+                  }
+                  setTab(empty.targetTab);
+                }}
+              >
+                {empty.cta}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </ScreenShell>
+    );
   }
 
   return (

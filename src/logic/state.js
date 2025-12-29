@@ -137,6 +137,7 @@ export function initialData() {
       // V2: one active goal at a time
       activeGoalId: null,
       mainGoalId: null,
+      onboardingCompleted: false,
       soundEnabled: false,
     },
     categories: [],
@@ -174,6 +175,7 @@ export function demoData() {
       accentHome: "#7C3AED",
       activeGoalId: null,
       mainGoalId: outcomeId,
+      onboardingCompleted: true,
       soundEnabled: false,
     },
     categories: categories.map((c, idx) => ({ ...c, mainGoalId: idx === 0 ? outcomeId : c.mainGoalId })),
@@ -249,6 +251,7 @@ export function migrate(prev) {
   if (typeof next.ui.activeGoalId === "undefined") next.ui.activeGoalId = null;
   if (typeof next.ui.mainGoalId === "undefined") next.ui.mainGoalId = null;
   if (typeof next.ui.soundEnabled === "undefined") next.ui.soundEnabled = false;
+  if (typeof next.ui.onboardingCompleted === "undefined") next.ui.onboardingCompleted = false;
 
   // categories
   if (!Array.isArray(next.categories)) next.categories = [];
@@ -291,6 +294,24 @@ export function migrate(prev) {
   const selectedCategory =
     next.categories.find((cat) => cat.id === next.ui?.selectedCategoryId) || next.categories[0] || null;
   next.ui.mainGoalId = selectedCategory?.mainGoalId || null;
+
+  if (!next.ui.onboardingCompleted) {
+    const nameOk = Boolean((next.profile?.name || "").trim());
+    const whyOk = Boolean((next.profile?.whyText || "").trim());
+    const hasCategory = next.categories.length > 0;
+    const outcomeIds = new Set(
+      next.goals
+        .filter((g) => (g?.type || g?.kind || "").toString().toUpperCase() === "OUTCOME")
+        .map((g) => g.id)
+    );
+    const hasOutcome = outcomeIds.size > 0;
+    const hasHabit = next.goals.some(
+      (g) => (g?.type || g?.kind || "").toString().toUpperCase() === "PROCESS" && outcomeIds.has(g.parentId)
+    );
+    if (nameOk && whyOk && hasCategory && hasOutcome && hasHabit) {
+      next.ui.onboardingCompleted = true;
+    }
+  }
 
   // habits/checks
   if (!Array.isArray(next.habits)) next.habits = [];

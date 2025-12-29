@@ -249,6 +249,7 @@ export default function Onboarding({ data, setData, onDone }) {
                     ui: {
                       ...(nextState.ui || {}),
                       mainGoalId: nextState.ui?.mainGoalId || mainGoalId || null,
+                      onboardingCompleted: true,
                     },
                   };
                 });
