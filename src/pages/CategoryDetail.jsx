@@ -26,17 +26,6 @@ const UNIT_LABELS = {
   YEAR: ["an", "ans"],
 };
 
-const PLAN_TYPES = [
-  { value: "ACTION", label: "Action" },
-  { value: "ONE_OFF", label: "Ponctuel" },
-  { value: "STATE", label: "État" },
-];
-
-const GOAL_TYPES = [
-  { value: "PROCESS", label: "Habitude" },
-  { value: "OUTCOME", label: "Objectif" },
-];
-
 function formatCadence(cadence) {
   if (cadence === "DAILY") return "Quotidien";
   if (cadence === "YEARLY") return "Annuel";
@@ -150,16 +139,85 @@ function formatResetPolicy(value) {
   return value === "reset" ? "réinitialiser" : "invalider";
 }
 
-function formatFormTitle({ isEditing, planType, goalType }) {
-  const isHabit = planType === "ACTION" && goalType === "PROCESS";
-  const label = isHabit ? "habitude" : "objectif";
-  return isEditing ? `Modifier l’${label}` : `Nouvelle ${label}`;
-}
-
 function cadenceFromUnit(unit) {
   if (unit === "DAY") return "DAILY";
   if (unit === "WEEK") return "WEEKLY";
   return "YEARLY";
+}
+
+function ObjectiveForm({ title, onTitleChange, deadline, onDeadlineChange, notes, onNotesChange }) {
+  return (
+    <>
+      <Input value={title} onChange={onTitleChange} placeholder="Nom de l’objectif" />
+      <div>
+        <div className="small" style={{ marginBottom: 6 }}>
+          Date cible (optionnelle)
+        </div>
+        <Input type="date" value={deadline} onChange={onDeadlineChange} />
+      </div>
+      <Textarea value={notes} onChange={onNotesChange} placeholder="Notes (optionnel)" />
+    </>
+  );
+}
+
+function HabitForm({
+  title,
+  onTitleChange,
+  planType,
+  freqCount,
+  onFreqCountChange,
+  freqUnit,
+  onFreqUnitChange,
+  sessionMinutes,
+  onSessionMinutesChange,
+  startDate,
+  onStartDateChange,
+  startTime,
+  onStartTimeChange,
+}) {
+  return (
+    <>
+      <Input value={title} onChange={onTitleChange} placeholder="Nom de l’habitude" />
+      {planType === "ACTION" ? (
+        <div>
+          <div className="small" style={{ marginBottom: 6 }}>
+            Fréquence
+          </div>
+          <div className="row" style={{ gap: 10 }}>
+            <Input type="number" min="1" value={freqCount} onChange={onFreqCountChange} placeholder="Nombre" />
+            <Select value={freqUnit} onChange={onFreqUnitChange}>
+              <option value="DAY">par jour</option>
+              <option value="WEEK">par semaine</option>
+              <option value="MONTH">par mois</option>
+              <option value="QUARTER">par trimestre</option>
+              <option value="YEAR">par an</option>
+            </Select>
+          </div>
+        </div>
+      ) : null}
+
+      {planType === "ACTION" ? (
+        <Input
+          type="number"
+          min="5"
+          max="600"
+          value={sessionMinutes}
+          onChange={onSessionMinutesChange}
+          placeholder="Durée par session (min)"
+        />
+      ) : null}
+
+      <div>
+        <div className="small" style={{ marginBottom: 6 }}>
+          Début
+        </div>
+        <div className="grid2">
+          <Input type="date" value={startDate} onChange={onStartDateChange} />
+          <Input type="time" value={startTime} onChange={onStartTimeChange} />
+        </div>
+      </div>
+    </>
+  );
 }
 
 export default function CategoryDetail({ data, setData, categoryId, onBack, onSelectCategory, initialEditGoalId }) {
@@ -171,6 +229,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
   const [showAllHabits, setShowAllHabits] = useState(false);
+  const [formKind, setFormKind] = useState(null);
   const [draftPlanType, setDraftPlanType] = useState("ACTION");
   const [draftGoalType, setDraftGoalType] = useState("PROCESS");
   const [draftTitle, setDraftTitle] = useState("");
@@ -231,6 +290,21 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const mainGoal = mainGoalId ? goals.find((g) => g.id === mainGoalId) : null;
   const linkedHabits = mainGoalId ? processGoals.filter((g) => g.parentId === mainGoalId) : [];
   const visibleHabits = showAllHabits ? linkedHabits : linkedHabits.slice(0, 3);
+  const isObjectiveForm = formKind === "objective";
+  const formTitle = isObjectiveForm
+    ? editGoalId
+      ? "Modifier l’objectif"
+      : "Nouvel objectif"
+    : editGoalId
+      ? "Modifier l’habitude"
+      : "Nouvelle habitude";
+  const formSaveLabel = isObjectiveForm
+    ? editGoalId
+      ? "Enregistrer l’objectif"
+      : "Ajouter l’objectif"
+    : editGoalId
+      ? "Enregistrer l’habitude"
+      : "Ajouter l’habitude";
   const outcomeAggregate = useMemo(
     () => computeAggregateProgress({ goals: allGoals }, mainGoal?.id),
     [allGoals, mainGoal?.id]
@@ -264,14 +338,12 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     });
   }
 
-  function openAdd(options = {}) {
+  function resetDraft() {
     setErr("");
     setActivationError(null);
     setOverlapError(null);
     setAdvancedOpen(true);
     setEditGoalId(null);
-    setDraftPlanType(options.planType || "ACTION");
-    setDraftGoalType(options.goalType || "PROCESS");
     setDraftTitle("");
     setDraftFreqCount("3");
     setDraftFreqUnit("WEEK");
@@ -288,8 +360,18 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setIsAdding(true);
   }
 
-  function openAddOutcome() {
-    openAdd({ planType: "STATE", goalType: "OUTCOME" });
+  function openAddObjective() {
+    resetDraft();
+    setFormKind("objective");
+    setDraftPlanType("STATE");
+    setDraftGoalType("OUTCOME");
+  }
+
+  function openAddHabit() {
+    resetDraft();
+    setFormKind("habit");
+    setDraftPlanType("ACTION");
+    setDraftGoalType("PROCESS");
   }
 
   function openEdit(goal) {
@@ -301,8 +383,10 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setEditGoalId(goal.id);
     const nextPlanType = resolvePlanType(goal);
     const nextGoalType = resolveGoalType(goal);
+    const nextFormKind = nextGoalType === "OUTCOME" ? "objective" : "habit";
     setDraftPlanType(nextPlanType);
     setDraftGoalType(nextGoalType);
+    setFormKind(nextFormKind);
     setDraftTitle(goal.title || "");
     setDraftFreqCount(String(typeof goal.freqCount === "number" ? goal.freqCount : goal.target || 1));
     const unit = typeof goal.freqUnit === "string" ? goal.freqUnit.toUpperCase() : "";
@@ -327,13 +411,13 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     if (!initialEditGoalId) return;
     if (handledEditRef.current === initialEditGoalId) return;
     if (initialEditGoalId === "__new_process__") {
-      openAdd({ planType: "ACTION", goalType: "PROCESS" });
+      openAddHabit();
       handledEditRef.current = initialEditGoalId;
       setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), openGoalEditId: null } }));
       return;
     }
     if (initialEditGoalId === "__new_outcome__") {
-      openAdd({ planType: "STATE", goalType: "OUTCOME" });
+      openAddObjective();
       handledEditRef.current = initialEditGoalId;
       setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), openGoalEditId: null } }));
       return;
@@ -418,6 +502,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   function closeForm() {
     setIsAdding(false);
     setEditGoalId(null);
+    setFormKind(null);
     setErr("");
     setOverlapError(null);
     lastScrollRef.current = null;
@@ -652,7 +737,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                       Choisir un objectif
                     </Button>
                   ) : null}
-                  <Button onClick={openAddOutcome}>Créer un objectif</Button>
+                  <Button onClick={openAddObjective}>Créer un objectif</Button>
                 </div>
               </div>
             )}
@@ -697,7 +782,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
               <div className="mt12 col">
                 <div className="small2">Définis d’abord l’objectif principal.</div>
                 <div className="mt10">
-                  <Button onClick={openAddOutcome}>Créer un objectif</Button>
+                  <Button onClick={openAddObjective}>Créer un objectif</Button>
                 </div>
               </div>
             ) : linkedHabits.length ? (
@@ -736,7 +821,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
 
             {mainGoal ? (
               <div className="mt12">
-                <Button onClick={() => openAdd({ planType: "ACTION", goalType: "PROCESS" })}>
+                <Button onClick={openAddHabit}>
                   + Ajouter une habitude
                 </Button>
               </div>
@@ -912,10 +997,10 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
               </div>
 
               <div className="mt12 row" style={{ gap: 10, flexWrap: "wrap" }}>
-                <Button onClick={() => openAdd({ planType: "STATE", goalType: "OUTCOME" })}>+ Nouvel objectif</Button>
+                <Button onClick={openAddObjective}>+ Nouvel objectif</Button>
                 <Button
                   disabled={!mainGoal}
-                  onClick={() => openAdd({ planType: "ACTION", goalType: "PROCESS" })}
+                  onClick={openAddHabit}
                 >
                   + Nouvelle habitude
                 </Button>
@@ -923,147 +1008,34 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
 
               {isAdding ? (
                 <div ref={editFormRef} className="mt12 listItem focusHalo scrollTarget">
-                  <div style={{ fontWeight: 800 }}>
-                    {formatFormTitle({
-                      isEditing: Boolean(editGoalId),
-                      planType: draftPlanType,
-                      goalType: draftGoalType,
-                    })}
-                  </div>
+                  <div style={{ fontWeight: 800 }}>{formTitle}</div>
                   <div className="mt12 col">
-                    <Input value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="Titre" />
-                    <Select
-                      value={draftPlanType}
-                      onChange={(e) => {
-                        const next = e.target.value;
-                        setDraftPlanType(next);
-                        if (next === "STATE") {
-                          setDraftGoalType("OUTCOME");
-                          setDraftSessionMinutes("");
-                        }
-                      }}
-                    >
-                      {PLAN_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </Select>
-
-                    {draftPlanType === "STATE" ? (
-                      <div className="small2">Type : Objectif</div>
-                    ) : (
-                      <Select value={draftGoalType} onChange={(e) => setDraftGoalType(e.target.value)}>
-                        {GOAL_TYPES.map((k) => (
-                          <option key={k.value} value={k.value}>
-                            {k.label}
-                          </option>
-                        ))}
-                      </Select>
-                    )}
-
-                    {draftPlanType === "STATE" ? (
-                      <div className="small2">Cet objectif se suit via un tracker/habitude liée.</div>
-                    ) : null}
-
-                    {draftPlanType === "ACTION" ? (
-                      <div>
-                        <div className="small" style={{ marginBottom: 6 }}>
-                          Je m’engage à le faire
-                        </div>
-                        <div className="row" style={{ gap: 10 }}>
-                          <Input
-                            type="number"
-                            min="1"
-                            value={draftFreqCount}
-                            onChange={(e) => setDraftFreqCount(e.target.value)}
-                            placeholder="Fréquence"
-                          />
-                          <Select value={draftFreqUnit} onChange={(e) => setDraftFreqUnit(e.target.value)}>
-                            <option value="DAY">par jour</option>
-                            <option value="WEEK">par semaine</option>
-                            <option value="MONTH">par mois</option>
-                            <option value="QUARTER">par trimestre</option>
-                            <option value="YEAR">par an</option>
-                          </Select>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {draftPlanType === "ACTION" && draftGoalType === "PROCESS" ? (
-                      <Input
-                        type="number"
-                        min="5"
-                        max="600"
-                        value={draftSessionMinutes}
-                        onChange={(e) => setDraftSessionMinutes(e.target.value)}
-                        placeholder="Durée par session (min) — optionnel"
+                    {isObjectiveForm ? (
+                      <ObjectiveForm
+                        title={draftTitle}
+                        onTitleChange={(e) => setDraftTitle(e.target.value)}
+                        deadline={draftDeadline}
+                        onDeadlineChange={(e) => setDraftDeadline(e.target.value)}
+                        notes={draftNotes}
+                        onNotesChange={(e) => setDraftNotes(e.target.value)}
                       />
-                    ) : null}
-
-                    {draftGoalType === "OUTCOME" ? (
-                      <div>
-                        <div className="small" style={{ marginBottom: 6 }}>
-                          Mesure (optionnelle)
-                        </div>
-                        <div className="grid3">
-                          <Input
-                            value={draftMetricUnit}
-                            onChange={(e) => setDraftMetricUnit(e.target.value)}
-                            placeholder="Unité (kg, €)"
-                          />
-                          <Input
-                            type="number"
-                            min="1"
-                            value={draftMetricTarget}
-                            onChange={(e) => setDraftMetricTarget(e.target.value)}
-                            placeholder="Cible"
-                          />
-                          <Input
-                            type="number"
-                            min="0"
-                            value={draftMetricCurrent}
-                            onChange={(e) => setDraftMetricCurrent(e.target.value)}
-                            placeholder="Actuel"
-                          />
-                        </div>
-                      </div>
-                    ) : null}
-
-                    <div>
-                      <div className="small" style={{ marginBottom: 6 }}>
-                        Date de début
-                      </div>
-                      <div className="grid2">
-                        <Input type="date" value={draftStartDate} onChange={(e) => setDraftStartDate(e.target.value)} />
-                        <Input type="time" value={draftStartTime} onChange={(e) => setDraftStartTime(e.target.value)} />
-                      </div>
-                    </div>
-
-                    {draftPlanType === "ONE_OFF" ? (
-                      <div>
-                        <div className="small" style={{ marginBottom: 6 }}>
-                          Date de réalisation (obligatoire)
-                        </div>
-                        <Input type="date" value={draftOneOffDate} onChange={(e) => setDraftOneOffDate(e.target.value)} />
-                      </div>
                     ) : (
-                      <div>
-                        <div className="small" style={{ marginBottom: 6 }}>
-                          Date limite (optionnelle)
-                        </div>
-                        <Input type="date" value={draftDeadline} onChange={(e) => setDraftDeadline(e.target.value)} />
-                      </div>
+                      <HabitForm
+                        title={draftTitle}
+                        onTitleChange={(e) => setDraftTitle(e.target.value)}
+                        planType={draftPlanType}
+                        freqCount={draftFreqCount}
+                        onFreqCountChange={(e) => setDraftFreqCount(e.target.value)}
+                        freqUnit={draftFreqUnit}
+                        onFreqUnitChange={(e) => setDraftFreqUnit(e.target.value)}
+                        sessionMinutes={draftSessionMinutes}
+                        onSessionMinutesChange={(e) => setDraftSessionMinutes(e.target.value)}
+                        startDate={draftStartDate}
+                        onStartDateChange={(e) => setDraftStartDate(e.target.value)}
+                        startTime={draftStartTime}
+                        onStartTimeChange={(e) => setDraftStartTime(e.target.value)}
+                      />
                     )}
-
-                    {draftPlanType === "STATE" ? (
-                      <Textarea value={draftNotes} onChange={(e) => setDraftNotes(e.target.value)} placeholder="Notes (optionnel)" />
-                    ) : null}
-
-                    <Select value={draftResetPolicy} onChange={(e) => setDraftResetPolicy(e.target.value)}>
-                      <option value="invalidate">Abandon = invalider</option>
-                      <option value="reset">Abandon = réinitialiser</option>
-                    </Select>
                     {err ? <div style={{ color: "rgba(255,120,120,.95)", fontSize: 13 }}>{err}</div> : null}
                     {overlapError && overlapError.length ? (
                       <div className="small2" style={{ color: "rgba(255,140,140,.95)" }}>
@@ -1081,7 +1053,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                       <Button variant="ghost" onClick={closeForm}>
                         Annuler
                       </Button>
-                      <Button onClick={saveGoal}>{editGoalId ? "Enregistrer" : "Ajouter"}</Button>
+                      <Button onClick={saveGoal}>{formSaveLabel}</Button>
                     </div>
                   </div>
                 </div>
