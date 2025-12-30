@@ -21,7 +21,7 @@ function formatCount(count, singular, plural) {
   return `${count} ${plural}`;
 }
 
-export default function Categories({ data, setData, onOpenCategory }) {
+export default function Categories({ data, setData, onOpenLibraryCategory }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -66,14 +66,16 @@ export default function Categories({ data, setData, onOpenCategory }) {
 
   function openCategory(categoryId) {
     if (!categoryId) return;
-    if (typeof onOpenCategory === "function") {
-      onOpenCategory(categoryId);
+    if (typeof setData === "function") {
+      setData((prev) => ({
+        ...prev,
+        ui: { ...(prev.ui || {}), selectedCategoryId: categoryId },
+      }));
+    }
+    if (typeof onOpenLibraryCategory === "function") {
+      onOpenLibraryCategory(categoryId);
       return;
     }
-    setData((prev) => ({
-      ...prev,
-      ui: { ...(prev.ui || {}), selectedCategoryId: categoryId },
-    }));
   }
 
   if (categories.length === 0) {

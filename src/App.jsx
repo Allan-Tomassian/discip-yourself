@@ -12,6 +12,7 @@ import Home from "./pages/Home";
 import Categories from "./pages/Categories";
 import Settings from "./pages/Settings";
 import CategoryDetail from "./pages/CategoryDetail";
+import CategoryView from "./pages/CategoryView";
 
 function runSelfTests() {
   // minimal sanity
@@ -105,6 +106,7 @@ function normalizeTab(t) {
 export default function App() {
   const [data, setData] = usePersistedState(React);
   const [tab, _setTab] = useState("today");
+  const [libraryCategoryId, setLibraryCategoryId] = useState(null);
   const [activeReminder, setActiveReminder] = useState(null);
   const dataRef = useRef(data);
   const lastReminderRef = useRef({});
@@ -230,7 +232,10 @@ export default function App() {
         <Home
           data={data}
           setData={setData}
-          onOpenLibrary={() => setTab("library")}
+          onOpenLibrary={() => {
+            setLibraryCategoryId(null);
+            setTab("library");
+          }}
           onOpenPlan={() => {
             const firstCatId = data?.ui?.selectedCategoryId || data?.categories?.[0]?.id || null;
             if (firstCatId) {
@@ -239,18 +244,7 @@ export default function App() {
                 ui: { ...(prev.ui || {}), selectedCategoryId: firstCatId },
               }));
             }
-            setTab("plan");
-          }}
-        />
-      ) : tab === "library" ? (
-        <Categories
-          data={data}
-          setData={setData}
-          onOpenPlan={(categoryId) => {
-            setData((prev) => ({
-              ...prev,
-              ui: { ...(prev.ui || {}), selectedCategoryId: categoryId },
-            }));
+            setLibraryCategoryId(null);
             setTab("plan");
           }}
         />
@@ -259,10 +253,33 @@ export default function App() {
           data={data}
           setData={setData}
           categoryId={data?.ui?.selectedCategoryId || data?.categories?.[0]?.id || null}
-          onBack={() => setTab("library")}
+          onBack={() => {
+            setLibraryCategoryId(null);
+            setTab("library");
+          }}
           initialEditGoalId={data?.ui?.openGoalEditId || null}
           onSelectCategory={(nextId) => {
             setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), selectedCategoryId: nextId } }));
+          }}
+        />
+      ) : tab === "library" && libraryCategoryId ? (
+        <CategoryView
+          data={data}
+          setData={setData}
+          categoryId={libraryCategoryId}
+          onBack={() => setLibraryCategoryId(null)}
+          onOpenPlan={() => {
+            setLibraryCategoryId(null);
+            setTab("plan");
+          }}
+        />
+      ) : tab === "library" ? (
+        <Categories
+          data={data}
+          setData={setData}
+          onOpenLibraryCategory={(categoryId) => {
+            setLibraryCategoryId(categoryId);
+            setTab("library");
           }}
         />
       ) : (
@@ -271,7 +288,10 @@ export default function App() {
 
       <TopNav
         active={tab}
-        setActive={(next) => setTab(next)}
+        setActive={(next) => {
+          if (next === "library") setLibraryCategoryId(null);
+          setTab(next);
+        }}
         onOpenSettings={() => setTab("settings")}
       />
 
