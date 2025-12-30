@@ -17,7 +17,6 @@ import {
   scheduleStart,
   updateGoal,
 } from "../logic/goals";
-import { safePrompt } from "../utils/dialogs";
 
 const UNIT_LABELS = {
   DAY: ["jour", "jours"],
@@ -264,6 +263,9 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const [activationError, setActivationError] = useState(null);
   const [overlapError, setOverlapError] = useState(null);
   const [linkWeightsById, setLinkWeightsById] = useState({});
+  const [addCatName, setAddCatName] = useState("Nouvelle");
+  const [addCatColor, setAddCatColor] = useState("#FFFFFF");
+  const [addCatErr, setAddCatErr] = useState("");
   const safeData = data && typeof data === "object" ? data : {};
 
   useEffect(() => {
@@ -271,23 +273,34 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setShowAllHabits(false);
   }, [categoryId, safeData.ui?.selectedCategoryId]);
 
+  function isValidHexColor(v) {
+    if (typeof v !== "string") return false;
+    const s = v.trim();
+    return /^#[0-9A-Fa-f]{6}$/.test(s);
+  }
+
   function addCategory() {
-    const name = safePrompt("Nom :", "Nouvelle");
-    if (!name) return;
-    const cleanName = name.trim();
-    if (!cleanName) return;
-    const color = safePrompt("Couleur HEX :", "#FFFFFF") || "#FFFFFF";
-    const cleanColor = color.trim();
+    const cleanName = (addCatName || "").trim();
+    if (!cleanName) {
+      setAddCatErr("Nom requis.");
+      return;
+    }
+    const cleanColor = (addCatColor || "").trim() || "#FFFFFF";
+    if (!isValidHexColor(cleanColor)) {
+      setAddCatErr("Couleur invalide. Format attendu : #RRGGBB");
+      return;
+    }
+    setAddCatErr("");
     const id = uid();
 
     setData((prev) => {
       const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
       const nextCategories = [
         ...prevCategories,
-        { id, name: cleanName, color: cleanColor, wallpaper: "", mainGoalId: null },
+        { id, name: cleanName, color: cleanColor.toUpperCase(), wallpaper: "", mainGoalId: null },
       ];
       const prevUi = prev.ui || {};
-      const nextSelected = prevCategories.length === 0 ? id : prevUi.selectedCategoryId || id;
+      const nextSelected = id;
       return { ...prev, categories: nextCategories, ui: { ...prevUi, selectedCategoryId: nextSelected } };
     });
   }
@@ -504,7 +517,20 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
             <div className="small" style={{ marginTop: 6 }}>
               Ajoute une première catégorie pour commencer.
             </div>
-            <div className="mt12">
+            <div className="mt12 col" style={{ gap: 10 }}>
+              <Input
+                value={addCatName}
+                onChange={(e) => setAddCatName(e.target.value)}
+                placeholder="Nom de catégorie"
+              />
+              <Input
+                value={addCatColor}
+                onChange={(e) => setAddCatColor(e.target.value)}
+                placeholder="#RRGGBB"
+              />
+              {addCatErr ? (
+                <div style={{ color: "rgba(255,120,120,.95)", fontSize: 13 }}>{addCatErr}</div>
+              ) : null}
               <Button onClick={addCategory}>+ Ajouter une catégorie</Button>
             </div>
           </div>
@@ -538,6 +564,27 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
               >
                 Retour à la bibliothèque
               </Button>
+            </div>
+            <div className="mt12">
+              <div className="small" style={{ marginBottom: 8 }}>
+                Ou crée une nouvelle catégorie :
+              </div>
+              <div className="col" style={{ gap: 10 }}>
+                <Input
+                  value={addCatName}
+                  onChange={(e) => setAddCatName(e.target.value)}
+                  placeholder="Nom de catégorie"
+                />
+                <Input
+                  value={addCatColor}
+                  onChange={(e) => setAddCatColor(e.target.value)}
+                  placeholder="#RRGGBB"
+                />
+                {addCatErr ? (
+                  <div style={{ color: "rgba(255,120,120,.95)", fontSize: 13 }}>{addCatErr}</div>
+                ) : null}
+                <Button onClick={addCategory}>+ Ajouter une catégorie</Button>
+              </div>
             </div>
           </div>
         </Card>

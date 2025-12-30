@@ -2,7 +2,6 @@ import React, { useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input } from "../components/UI";
 import { uid } from "../utils/helpers";
-import { safePrompt } from "../utils/dialogs";
 import { CATEGORY_TEMPLATES, findCategoryTemplateByLabel } from "../logic/templates";
 
 function resolveGoalType(goal) {
@@ -27,6 +26,7 @@ export default function Categories({ data, setData, onOpenPlan }) {
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryColor, setNewCategoryColor] = useState("#FFFFFF");
   const [newCategoryTemplateId, setNewCategoryTemplateId] = useState(null);
   const [categorySuggestionsOpen, setCategorySuggestionsOpen] = useState(false);
   const [categoryQuery, setCategoryQuery] = useState("");
@@ -34,8 +34,17 @@ export default function Categories({ data, setData, onOpenPlan }) {
   function addCategory() {
     const cleanName = (newCategoryName || "").trim();
     if (!cleanName) return;
-    const color = safePrompt("Couleur HEX :", "#FFFFFF") || "#FFFFFF";
-    const cleanColor = color.trim();
+
+    const template = newCategoryTemplateId
+      ? CATEGORY_TEMPLATES.find((t) => t.id === newCategoryTemplateId)
+      : null;
+
+    // Color: user input > template default (if any) > white
+    const rawColor = (newCategoryColor || "").trim();
+    const templateColor = template?.color || template?.defaultColor || "";
+    const picked = rawColor || templateColor || "#FFFFFF";
+    const cleanColor = /^#([0-9A-Fa-f]{6})$/.test(picked) ? picked : "#FFFFFF";
+
     const id = uid();
 
     setData((prev) => {
@@ -48,9 +57,11 @@ export default function Categories({ data, setData, onOpenPlan }) {
       const nextSelected = prevCategories.length === 0 ? id : prevUi.selectedCategoryId || id;
       return { ...prev, categories: nextCategories, ui: { ...prevUi, selectedCategoryId: nextSelected } };
     });
+
     setNewCategoryName("");
     setNewCategoryTemplateId(null);
     setCategoryQuery("");
+    setNewCategoryColor("#FFFFFF");
   }
 
   function openCategory(categoryId) {
@@ -97,6 +108,11 @@ export default function Categories({ data, setData, onOpenPlan }) {
                   <option key={t.id} value={t.label} />
                 ))}
               </datalist>
+              <Input
+                value={newCategoryColor}
+                onChange={(e) => setNewCategoryColor(e.target.value)}
+                placeholder="Couleur HEX (ex: #7C3AED)"
+              />
               <Button onClick={addCategory}>+ Ajouter une catégorie</Button>
             </div>
           </div>
@@ -111,6 +127,14 @@ export default function Categories({ data, setData, onOpenPlan }) {
     return CATEGORY_TEMPLATES.filter((t) => t.label.toLowerCase().includes(query)).slice(0, 12);
   }, [categoryQuery]);
 
+  const selectedCategoryId = safeData?.ui?.selectedCategoryId || null;
+  const sortedCategories = useMemo(() => {
+    if (!selectedCategoryId) return categories;
+    const copy = categories.slice();
+    copy.sort((a, b) => (a.id === selectedCategoryId ? -1 : b.id === selectedCategoryId ? 1 : 0));
+    return copy;
+  }, [categories, selectedCategoryId]);
+
   return (
     <ScreenShell
       data={safeData}
@@ -120,7 +144,7 @@ export default function Categories({ data, setData, onOpenPlan }) {
       backgroundImage={safeData?.profile?.whyImage || ""}
     >
       <div className="col">
-        {categories.map((c) => {
+        {sortedCategories.map((c) => {
           const categoryGoals = goals.filter((g) => g.categoryId === c.id);
           const objectives = categoryGoals.filter((g) => resolveGoalType(g) === "OUTCOME").length;
           const habits = categoryGoals.filter((g) => resolveGoalType(g) === "PROCESS").length;
@@ -166,6 +190,11 @@ export default function Categories({ data, setData, onOpenPlan }) {
                 <option key={t.id} value={t.label} />
               ))}
             </datalist>
+            <Input
+              value={newCategoryColor}
+              onChange={(e) => setNewCategoryColor(e.target.value)}
+              placeholder="Couleur HEX (ex: #7C3AED)"
+            />
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <button className="linkBtn" onClick={() => setCategorySuggestionsOpen((v) => !v)}>
                 {categorySuggestionsOpen ? "Masquer les suggestions" : "Suggestions"}
@@ -187,6 +216,8 @@ export default function Categories({ data, setData, onOpenPlan }) {
                       onClick={() => {
                         setNewCategoryName(t.label);
                         setNewCategoryTemplateId(t.id);
+                        const c = t.color || t.defaultColor;
+                        if (c) setNewCategoryColor(c);
                       }}
                     >
                       {t.label}

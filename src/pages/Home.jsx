@@ -112,7 +112,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
   const backgroundCss = getBackgroundCss({ data: safeData, pageId: "home", image: backgroundImage });
   const whyText = (profile.whyText || "").trim();
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
-  const WHY_LIMIT = 140;
+  const WHY_LIMIT = 150;
   const hasLongWhy = whyDisplay.length > WHY_LIMIT;
   const visibleWhy =
     !showWhy ? "Pourquoi masqué" : whyExpanded || !hasLongWhy ? whyDisplay : `${whyDisplay.slice(0, WHY_LIMIT)}…`;
@@ -159,6 +159,23 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
           emptyLabel="Catégorie à configurer"
         />
       </div>
+      <div className="mt12 row" style={{ gap: 10, flexWrap: "wrap" }}>
+        <Button
+          variant="ghost"
+          onClick={() => (typeof onOpenLibrary === "function" ? onOpenLibrary() : null)}
+        >
+          Bibliothèque
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={() => {
+            if (typeof onOpenPlan === "function") onOpenPlan();
+            else openPlanWith(focusCategory?.id, null);
+          }}
+        >
+          Plan
+        </Button>
+      </div>
 
       <Card accentBorder style={{ marginTop: 12, borderColor: accent }}>
         <div className="p18">
@@ -176,7 +193,14 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
             <div className="mt12 col">
               <div className="small2">Aucune action aujourd’hui.</div>
               <div className="mt10">
-                <Button onClick={() => openPlanWith(focusCategory?.id, null)}>Ajouter une habitude</Button>
+                <Button
+                  onClick={() => {
+                    if (typeof onOpenPlan === "function") onOpenPlan();
+                    else openPlanWith(focusCategory?.id, null);
+                  }}
+                >
+                  Ajouter une habitude
+                </Button>
               </div>
             </div>
           )}

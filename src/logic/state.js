@@ -65,6 +65,18 @@ export function normalizeResetPolicy(raw) {
   return "invalidate";
 }
 
+export function normalizeCategory(rawCat, index = 0) {
+  const c = rawCat && typeof rawCat === "object" ? { ...rawCat } : {};
+  if (!c.id) c.id = uid();
+  if (typeof c.name !== "string" || !c.name.trim()) c.name = `Catégorie ${index + 1}`;
+  if (typeof c.color !== "string" || !c.color.trim()) c.color = "#7C3AED";
+  if (typeof c.wallpaper !== "string") c.wallpaper = "";
+  if (typeof c.whyText !== "string") c.whyText = "";
+  if (typeof c.templateId !== "string" || !c.templateId.trim()) c.templateId = null;
+  c.mainGoalId = typeof c.mainGoalId === "string" && c.mainGoalId.trim() ? c.mainGoalId : null;
+  return c;
+}
+
 export function normalizeGoal(rawGoal, index = 0, categories = []) {
   const g = rawGoal && typeof rawGoal === "object" ? { ...rawGoal } : {};
 
@@ -277,11 +289,13 @@ export function migrate(prev) {
 
   // categories
   if (!Array.isArray(next.categories)) next.categories = [];
-  next.categories = next.categories.map((cat) => ({
-    ...cat,
-    mainGoalId: typeof cat.mainGoalId === "string" && cat.mainGoalId.trim() ? cat.mainGoalId : null,
-    templateId: typeof cat.templateId === "string" && cat.templateId.trim() ? cat.templateId : null,
-  }));
+  next.categories = next.categories.map((cat, i) => normalizeCategory(cat, i));
+
+  // Ensure selectedCategoryId always points to an existing category (or null)
+  if (next.ui?.selectedCategoryId) {
+    const exists = next.categories.some((c) => c.id === next.ui.selectedCategoryId);
+    if (!exists) next.ui.selectedCategoryId = next.categories[0]?.id || null;
+  }
 
   // goals (V2 normalize)
   if (!Array.isArray(next.goals)) next.goals = [];
@@ -294,23 +308,58 @@ export function migrate(prev) {
   const goalsById = new Map(next.goals.map((g) => [g.id, g]));
   const uiMainId = typeof next.ui.mainGoalId === "string" ? next.ui.mainGoalId : null;
   const uiMainGoal = uiMainId ? goalsById.get(uiMainId) : null;
+
+  // Enforce: 1 main OUTCOME goal per category (categories store mainGoalId)
+  // If multiple OUTCOME goals exist in a category, keep the best candidate as main and clear others from being main.
+  const outcomeByCategory = new Map();
+  for (const g of next.goals) {
+    const t = (g?.type || g?.kind || "").toString().toUpperCase();
+    if (t !== "OUTCOME") continue;
+    if (!g.categoryId) continue;
+    const prevBest = outcomeByCategory.get(g.categoryId);
+    if (!prevBest) {
+      outcomeByCategory.set(g.categoryId, g);
+      continue;
+    }
+    // Prefer active over queued, then earlier order, then createdAt/activeSince if present.
+    const score = (x) => {
+      const s1 = x.status === "active" ? 3 : x.status === "queued" ? 2 : 1;
+      const s2 = typeof x.order === "number" ? -x.order : 0;
+      const ts = Date.parse(x.activeSince || x.createdAt || "") || 0;
+      return s1 * 1_000_000 + s2 * 1_000 + ts;
+    };
+    if (score(g) > score(prevBest)) outcomeByCategory.set(g.categoryId, g);
+  }
+
   next.categories = next.categories.map((cat) => {
     let mainId = cat.mainGoalId;
     let mainGoal = mainId ? goalsById.get(mainId) : null;
+
+    // If category has no valid main, try ui.mainGoalId if it matches the category.
     if ((!mainGoal || mainGoal.categoryId !== cat.id) && uiMainGoal?.categoryId === cat.id && !mainId) {
       mainId = uiMainGoal.id;
       mainGoal = uiMainGoal;
     }
-    if (mainGoal && mainGoal.categoryId !== cat.id) {
+
+    // If still invalid, choose best OUTCOME for that category.
+    const bestOutcome = outcomeByCategory.get(cat.id) || null;
+    if (!mainGoal && bestOutcome) {
+      mainId = bestOutcome.id;
+      mainGoal = bestOutcome;
+    }
+
+    // Validate main goal must be OUTCOME and belong to the category.
+    if (mainGoal && mainGoal.categoryId === cat.id) {
+      const t = (mainGoal.type || mainGoal.kind || "").toString().toUpperCase();
+      if (t !== "OUTCOME") {
+        mainId = null;
+        mainGoal = null;
+      }
+    } else {
       mainId = null;
       mainGoal = null;
     }
-    if (mainGoal) {
-      const t = (mainGoal.type || mainGoal.kind || "").toString().toUpperCase();
-      if (t !== "OUTCOME" && t !== "STATE") {
-        mainId = null;
-      }
-    }
+
     return { ...cat, mainGoalId: mainId || null };
   });
 
@@ -318,21 +367,27 @@ export function migrate(prev) {
     next.categories.find((cat) => cat.id === next.ui?.selectedCategoryId) || next.categories[0] || null;
   next.ui.mainGoalId = selectedCategory?.mainGoalId || null;
 
+  // Onboarding completion rule:
+  // - Never mark completed before step 3.
+  // - Only mark completed at/after step 3 if the minimal dataset exists.
   if (!next.ui.onboardingCompleted) {
     const step = Number(next.ui.onboardingStep) || 1;
     const nameOk = Boolean((next.profile?.name || "").trim());
     const whyOk = Boolean((next.profile?.whyText || "").trim());
     const hasCategory = next.categories.length > 0;
+
     const outcomeIds = new Set(
       next.goals
         .filter((g) => (g?.type || g?.kind || "").toString().toUpperCase() === "OUTCOME")
         .map((g) => g.id)
     );
     const hasOutcome = outcomeIds.size > 0;
-    const hasHabit = next.goals.some(
+
+    const hasProcess = next.goals.some(
       (g) => (g?.type || g?.kind || "").toString().toUpperCase() === "PROCESS" && outcomeIds.has(g.parentId)
     );
-    if (step < 3 && nameOk && whyOk && hasCategory && hasOutcome && hasHabit) {
+
+    if (step >= 3 && nameOk && whyOk && hasCategory && hasOutcome && hasProcess) {
       next.ui.onboardingCompleted = true;
     }
   }
