@@ -399,12 +399,14 @@ export function normalizeGoalsState(state) {
 
   const uiMainId = state.ui?.mainGoalId || null;
   const goalsById = new Map(nextGoals.map((g) => [g.id, g]));
+
+  // Main goal is strictly an OUTCOME that belongs to the category.
   const nextCategories = (state.categories || []).map((cat) => {
     const raw = typeof cat.mainGoalId === "string" ? cat.mainGoalId : null;
     const goal = raw ? goalsById.get(raw) : null;
     if (!goal || goal.categoryId !== cat.id) return { ...cat, mainGoalId: null };
     const t = (goal.type || goal.kind || "").toString().toUpperCase();
-    if (t !== "OUTCOME" && t !== "STATE") return { ...cat, mainGoalId: null };
+    if (t !== "OUTCOME") return { ...cat, mainGoalId: null };
     return cat;
   });
   const selectedCategoryId = state.ui?.selectedCategoryId || null;
@@ -415,11 +417,16 @@ export function normalizeGoalsState(state) {
   const selectedCategory = resolvedCategoryId
     ? nextCategories.find((cat) => cat.id === resolvedCategoryId) || null
     : null;
+
+  // ui.mainGoalId must always reflect the currently selected category only.
   let nextMainGoalId = null;
   if (selectedCategory?.mainGoalId && goalsById.has(selectedCategory.mainGoalId)) {
     nextMainGoalId = selectedCategory.mainGoalId;
-  } else if (uiMainId && goalsById.has(uiMainId)) {
-    nextMainGoalId = uiMainId;
+  } else if (uiMainId) {
+    const g = goalsById.get(uiMainId);
+    if (g && g.categoryId === resolvedCategoryId && (g.type || g.kind || "").toString().toUpperCase() === "OUTCOME") {
+      nextMainGoalId = uiMainId;
+    }
   }
 
   nextActiveGoalId = allowGlobalSingleActive
@@ -593,16 +600,37 @@ export function preventOverlap(state, candidateGoalId, newStartAt, sessionMinute
 export function setMainGoal(state, goalId) {
   if (!state) return state;
   const goals = Array.isArray(state.goals) ? state.goals : [];
-  const goal = goalId ? goals.find((g) => g?.id === goalId) : null;
-  const hasGoal = Boolean(goal);
+
+  // Clear main goal for the currently selected category.
+  if (!goalId) {
+    const catId = state.ui?.selectedCategoryId || null;
+    if (!catId) return normalizeGoalsState({ ...state, ui: { ...(state.ui || {}), mainGoalId: null } });
+
+    const nextCategories = (state.categories || []).map((cat) =>
+      cat.id === catId ? { ...cat, mainGoalId: null } : cat
+    );
+    const nextUi = { ...(state.ui || {}), mainGoalId: null, selectedCategoryId: catId };
+    return normalizeGoalsState({ ...state, categories: nextCategories, ui: nextUi });
+  }
+
+  const goal = goals.find((g) => g?.id === goalId) || null;
+  if (!goal || !goal.categoryId) return state;
+
+  // Only OUTCOME goals can be set as main.
+  const t = (goal.type || goal.kind || "").toString().toUpperCase();
+  if (t !== "OUTCOME") return state;
+
+  // One main goal per category: overwrite category.mainGoalId.
   const nextCategories = (state.categories || []).map((cat) =>
-    hasGoal && goal?.categoryId === cat.id ? { ...cat, mainGoalId: goalId } : cat
+    goal.categoryId === cat.id ? { ...cat, mainGoalId: goalId } : cat
   );
+
   const nextUi = {
     ...(state.ui || {}),
-    mainGoalId: hasGoal ? goalId : null,
-    selectedCategoryId: hasGoal ? goal.categoryId : state.ui?.selectedCategoryId || null,
+    mainGoalId: goalId,
+    selectedCategoryId: goal.categoryId,
   };
+
   return normalizeGoalsState({ ...state, categories: nextCategories, ui: nextUi });
 }
 

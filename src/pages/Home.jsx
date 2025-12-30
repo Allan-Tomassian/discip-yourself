@@ -3,7 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
 import FocusCategoryPicker from "../components/FocusCategoryPicker";
 import { todayKey } from "../utils/dates";
-import { setMainGoal } from "../logic/goals";
+import { activateGoal, setMainGoal } from "../logic/goals";
 import { getBackgroundCss, getAccentForPage } from "../utils/_theme";
 
 function resolveGoalType(goal) {
@@ -20,14 +20,16 @@ function resolveGoalType(goal) {
 export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
   const [showWhy, setShowWhy] = useState(true);
   const [whyExpanded, setWhyExpanded] = useState(false);
+
   const safeData = data && typeof data === "object" ? data : {};
   const profile = safeData.profile || {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+
   const today = todayKey();
   const todayChecks = safeData.ui?.processChecks || {};
 
-  // NEW: per-view category selection for Home (fallback to legacy)
+  // per-view category selection for Home (fallback to legacy)
   const homeSelectedCategoryId =
     safeData.ui?.selectedCategoryByView?.home || safeData.ui?.selectedCategoryId || null;
 
@@ -60,14 +62,22 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
     return goals.filter((g) => g.categoryId === focusCategory.id && resolveGoalType(g) === "PROCESS");
   }, [goals, focusCategory?.id]);
 
+  // Habitudes liées à l’objectif sélectionné (peuvent être queued/active)
   const linkedHabits = useMemo(() => {
     if (!selectedGoal?.id) return [];
     return processGoals.filter((g) => g.parentId === selectedGoal.id);
   }, [processGoals, selectedGoal?.id]);
 
-  const habits = linkedHabits;
-  const activeHabits = habits.filter((g) => g.status === "active");
-  const nextHabit = activeHabits.find((g) => !todayChecks?.[g.id]?.[today]) || null;
+  // Habitudes actives uniquement (celles qui doivent apparaître sur Aujourd’hui > Action du jour)
+  const activeHabits = useMemo(() => {
+    return linkedHabits.filter((g) => g.status === "active");
+  }, [linkedHabits]);
+
+  // Next habit to do today among ACTIVE only
+  const nextHabit = useMemo(() => {
+    if (!activeHabits.length) return null;
+    return activeHabits.find((g) => !todayChecks?.[g.id]?.[today]) || null;
+  }, [activeHabits, todayChecks, today]);
 
   // Cursor habit (small selector for "Action du jour")
   const [habitCursorId, setHabitCursorId] = useState(null);
@@ -102,7 +112,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
     setHabitCursorId(activeHabits[nextIdx].id);
   }
 
-  // NEW: Home focus change should NOT overwrite legacy selectedCategoryId
+  // Home focus change should NOT overwrite legacy selectedCategoryId
   function setFocusCategory(nextId) {
     if (!nextId || typeof setData !== "function") return;
     setData((prev) => {
@@ -124,8 +134,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
     });
   }
 
-  // Keep legacy selectedCategoryId for pages not migrated yet,
-  // and also set a plan-specific selection for later migration.
+  // Open Plan with category context (+ optional openGoalEditId)
   function openPlanWith(categoryId, openGoalEditId) {
     if (!categoryId || typeof setData !== "function") return;
     setData((prev) => {
@@ -169,10 +178,17 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
 
   function setCategoryMainGoal(nextGoalId) {
     if (!nextGoalId || typeof setData !== "function") return;
-    // Safety: ensure the selected goal belongs to the current focus category.
     const g = goals.find((x) => x.id === nextGoalId) || null;
     if (!g || !focusCategory?.id || g.categoryId !== focusCategory.id) return;
     setData((prev) => setMainGoal(prev, nextGoalId));
+  }
+
+  function activateHabitNow(goalId) {
+    if (!goalId || typeof setData !== "function") return;
+    setData((prev) => {
+      const res = activateGoal(prev, goalId, { navigate: false, now: new Date() });
+      return res?.state || prev;
+    });
   }
 
   if (!categories.length) {
@@ -204,6 +220,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
   const accent = focusCategory && focusCategory.color ? focusCategory.color : getAccentForPage(safeData, "home");
   const backgroundImage = profile.whyImage || "";
   const backgroundCss = getBackgroundCss({ data: safeData, pageId: "home", image: backgroundImage });
+
   const whyText = (profile.whyText || "").trim();
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
   const WHY_LIMIT = 150;
@@ -211,8 +228,17 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
   const visibleWhy =
     !showWhy ? "Pourquoi masqué" : whyExpanded || !hasLongWhy ? whyDisplay : `${whyDisplay.slice(0, WHY_LIMIT)}…`;
 
+  const hasLinkedHabits = linkedHabits.length > 0;
+  const hasActiveHabits = activeHabits.length > 0;
+
   return (
-    <ScreenShell accent={accent} backgroundCss={backgroundCss} backgroundImage={backgroundImage} headerTitle="Aujourd’hui" headerSubtitle="Exécution">
+    <ScreenShell
+      accent={accent}
+      backgroundCss={backgroundCss}
+      backgroundImage={backgroundImage}
+      headerTitle="Aujourd’hui"
+      headerSubtitle="Exécution"
+    >
       <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
         <div
           className="small2"
@@ -230,6 +256,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
           {showWhy ? "Masquer 👁" : "Afficher 👁"}
         </button>
       </div>
+
       {showWhy && hasLongWhy ? (
         <div className="row" style={{ justifyContent: "flex-end", marginTop: 6 }}>
           <button className="linkBtn" onClick={() => setWhyExpanded((v) => !v)}>
@@ -252,6 +279,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
         <div className="p18">
           <div className="titleSm">Objectif</div>
           <div className="small2">Sélectionné pour aujourd’hui</div>
+
           {selectedGoal ? (
             <div className="mt12 col">
               <div style={{ fontWeight: 800, fontSize: 18 }}>{selectedGoal.title || "Objectif"}</div>
@@ -281,7 +309,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
 
               <div className="mt10">
                 <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
-                  Modifier dans Plan
+                  Gérer dans Plan
                 </Button>
               </div>
             </div>
@@ -296,30 +324,61 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
         </div>
       </Card>
 
-      <Card accentBorder style={{ marginTop: 12 }}>
+      <Card accentBorder style={{ marginTop: 12, borderColor: accent }}>
         <div className="p18">
           <div className="titleSm">Habitudes</div>
           <div className="small2">Liées à l’objectif sélectionné</div>
-          {habits.length ? (
-            <div className="mt12 col">
-              {habits.map((h) => (
-                <div key={h.id} className="listItem">
-                  <div style={{ fontWeight: 700 }}>{h.title || "Habitude"}</div>
+
+          {hasLinkedHabits ? (
+            <div className="mt12 col" style={{ gap: 10 }}>
+              {linkedHabits.map((h) => {
+                const isActive = h.status === "active";
+                return (
+                  <div
+                    key={h.id}
+                    className="listItem"
+                    style={{
+                      borderLeft: `3px solid ${isActive ? accent : "rgba(255,255,255,.18)"}`,
+                      paddingLeft: 12,
+                    }}
+                  >
+                    <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {h.title || "Habitude"}
+                        </div>
+                        <div className="small2" style={{ opacity: 0.85 }}>
+                          {isActive ? "Active" : "À activer"}
+                        </div>
+                      </div>
+
+                      {!isActive ? (
+                        <Button variant="ghost" onClick={() => activateHabitNow(h.id)}>
+                          Activer
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {!hasActiveHabits ? (
+                <div className="small2" style={{ opacity: 0.9 }}>
+                  Active au moins une habitude pour l’exécuter dans “Action du jour”.
                 </div>
-              ))}
+              ) : null}
+
+              <div className="mt10">
+                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
+                  Gérer dans Plan
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="mt12 col">
               <div className="small2">Aucune habitude liée.</div>
               <div className="mt10">
-                <Button
-                  onClick={() =>
-                    openPlanWith(
-                      focusCategory?.id,
-                      selectedGoal ? "__new_process__" : "__new_outcome__"
-                    )
-                  }
-                >
+                <Button onClick={() => openPlanWith(focusCategory?.id, selectedGoal ? "__new_process__" : "__new_outcome__")}>
                   Passer à l’action
                 </Button>
               </div>
@@ -331,6 +390,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
       <Card accentBorder style={{ marginTop: 12, borderColor: accent }}>
         <div className="p18">
           <div className="titleSm">Action du jour</div>
+
           {currentHabit ? (
             <div className="mt12 col">
               <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -346,6 +406,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
                 >
                   {currentHabit.title || "Habitude"}
                 </div>
+
                 {activeHabits.length > 1 ? (
                   <div className="row" style={{ gap: 6 }}>
                     <button className="btn btnGhost" onClick={() => cycleHabit(-1)} aria-label="Habitude précédente">
@@ -363,7 +424,16 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
                   {currentHabitDone ? "Déjà validé" : "Valider"}
                 </Button>
                 <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
-                  Plan
+                  Voir dans Plan
+                </Button>
+              </div>
+            </div>
+          ) : hasLinkedHabits ? (
+            <div className="mt12 col">
+              <div className="small2">Aucune action disponible : active d’abord une habitude liée ci-dessus.</div>
+              <div className="mt10">
+                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
+                  Gérer dans Plan
                 </Button>
               </div>
             </div>
@@ -371,14 +441,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
             <div className="mt12 col">
               <div className="small2">Aucune action aujourd’hui.</div>
               <div className="mt10">
-                <Button
-                  onClick={() =>
-                    openPlanWith(
-                      focusCategory?.id,
-                      selectedGoal ? "__new_process__" : "__new_outcome__"
-                    )
-                  }
-                >
+                <Button onClick={() => openPlanWith(focusCategory?.id, selectedGoal ? "__new_process__" : "__new_outcome__")}>
                   Passer à l’action
                 </Button>
               </div>

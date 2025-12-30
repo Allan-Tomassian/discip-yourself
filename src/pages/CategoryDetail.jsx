@@ -282,7 +282,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   useEffect(() => {
     setGoalPickerOpen(false);
     setShowAllHabits(false);
-  }, [categoryId, safeData.ui?.selectedCategoryId]);
+  }, [categoryId, safeData.ui?.selectedCategoryByView?.plan]);
 
   function isValidHexColor(v) {
     if (typeof v !== "string") return false;
@@ -311,14 +311,31 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
         { id, name: cleanName, color: cleanColor.toUpperCase(), wallpaper: "", mainGoalId: null },
       ];
       const prevUi = prev.ui || {};
+      const prevSel = (prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object")
+        ? prevUi.selectedCategoryByView
+        : {};
       const nextSelected = id;
-      return { ...prev, categories: nextCategories, ui: { ...prevUi, selectedCategoryId: nextSelected } };
+      return {
+        ...prev,
+        categories: nextCategories,
+        ui: {
+          ...prevUi,
+          // Plan context
+          selectedCategoryByView: { ...prevSel, plan: nextSelected },
+          // legacy sync
+          selectedCategoryId: nextSelected,
+        },
+      };
     });
   }
 
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const allGoals = Array.isArray(safeData.goals) ? safeData.goals : [];
-  const requestedCategoryId = categoryId || safeData.ui?.selectedCategoryId || null;
+  const requestedCategoryId =
+    categoryId ||
+    safeData.ui?.selectedCategoryByView?.plan ||
+    safeData.ui?.selectedCategoryId ||
+    null;
   const c = categories.find((x) => x.id === requestedCategoryId) || null;
   const goals = c ? allGoals.filter((g) => g.categoryId === c.id) : [];
   const outcomeGoals = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
@@ -388,10 +405,20 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       const nextCategories = (prev.categories || []).map((cat) =>
         cat.id === c.id ? { ...cat, mainGoalId: goalId || null } : cat
       );
+      const prevUi = prev.ui || {};
+      const prevSel = (prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object")
+        ? prevUi.selectedCategoryByView
+        : {};
       return {
         ...prev,
         categories: nextCategories,
-        ui: { ...(prev.ui || {}), mainGoalId: goalId || null, selectedCategoryId: c.id },
+        ui: {
+          ...prevUi,
+          // keep Plan context on this category
+          selectedCategoryByView: { ...prevSel, plan: c.id },
+          // legacy sync
+          selectedCategoryId: c.id,
+        },
       };
     });
   }
@@ -582,7 +609,20 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
               <Button
                 variant="ghost"
                 onClick={() => {
-                  setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), selectedCategoryId: null } }));
+                  setData((prev) => {
+                    const prevUi = prev.ui || {};
+                    const prevSel = (prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object")
+                      ? prevUi.selectedCategoryByView
+                      : {};
+                    return {
+                      ...prev,
+                      ui: {
+                        ...prevUi,
+                        selectedCategoryByView: { ...prevSel, plan: null },
+                        selectedCategoryId: null,
+                      },
+                    };
+                  });
                   if (typeof onBack === "function") onBack();
                 }}
               >
@@ -849,7 +889,20 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
             value={c?.id || ""}
             onChange={(nextId) => {
               if (!nextId || nextId === c?.id) return;
-              setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), selectedCategoryId: nextId } }));
+              setData((prev) => {
+                const prevUi = prev.ui || {};
+                const prevSel = (prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object")
+                  ? prevUi.selectedCategoryByView
+                  : {};
+                return {
+                  ...prev,
+                  ui: {
+                    ...prevUi,
+                    selectedCategoryByView: { ...prevSel, plan: nextId },
+                    selectedCategoryId: nextId,
+                  },
+                };
+              });
               if (typeof onSelectCategory === "function") onSelectCategory(nextId);
             }}
             label="Catégorie"
@@ -920,7 +973,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
           </div>
         </Card>
 
-        <Card accentBorder style={{ marginTop: 12 }}>
+        <Card accentBorder style={{ marginTop: 12, borderColor: c?.color || undefined }}>
           <div className="p18">
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div>
@@ -974,16 +1027,10 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
               </div>
             ) : null}
 
-            {mainGoal ? (
-              <div className="mt12">
-                <Button onClick={openAddHabit}>+ Ajouter une habitude</Button>
-              </div>
-            ) : null}
-
             <div className="mt12 row" style={{ gap: 10, flexWrap: "wrap" }}>
-              <Button onClick={openAddObjective}>+ Nouvel objectif</Button>
+              <Button onClick={openAddObjective}>Créer un objectif</Button>
               <Button disabled={!mainGoal} onClick={openAddHabit}>
-                + Nouvelle habitude
+                Créer une habitude
               </Button>
             </div>
           </div>
@@ -1156,12 +1203,6 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                 )}
               </div>
 
-              <div className="mt12 row" style={{ gap: 10, flexWrap: "wrap" }}>
-                <Button onClick={openAddObjective}>+ Nouvel objectif</Button>
-                <Button disabled={!mainGoal} onClick={openAddHabit}>
-                  + Nouvelle habitude
-                </Button>
-              </div>
 
               {isAdding ? (
                 <div ref={editFormRef} className="mt12 listItem focusHalo scrollTarget">

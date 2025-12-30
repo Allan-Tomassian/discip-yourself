@@ -421,6 +421,7 @@ export function migrate(prev) {
   next.categories = next.categories.map((cat, i) => normalizeCategory(cat, i));
 
   // Ensure selectedCategoryId always points to an existing category (or null)
+  // NOTE: This legacy field is only kept for backward compatibility and should NOT drive per-view selection anymore.
   if (next.ui?.selectedCategoryId) {
     const exists = next.categories.some((c) => c.id === next.ui.selectedCategoryId);
     if (!exists) next.ui.selectedCategoryId = next.categories[0]?.id || null;
@@ -509,9 +510,12 @@ export function migrate(prev) {
     return { ...cat, mainGoalId: mainId || null };
   });
 
-  const selectedCategory =
-    next.categories.find((cat) => cat.id === next.ui?.selectedCategoryId) || next.categories[0] || null;
-  next.ui.mainGoalId = selectedCategory?.mainGoalId || null;
+  // `mainGoalId` is a UI convenience, but it must follow the Today (home) context,
+  // not the legacy global `selectedCategoryId` (which is kept for backward compatibility).
+  const homeCategoryId = next.ui?.selectedCategoryByView?.home || next.ui?.selectedCategoryId || null;
+  const homeCategoryForMain =
+    next.categories.find((cat) => cat.id === homeCategoryId) || next.categories[0] || null;
+  next.ui.mainGoalId = homeCategoryForMain?.mainGoalId || null;
 
   // Onboarding completion rule:
   if (!next.ui.onboardingCompleted) {
@@ -554,10 +558,18 @@ export function migrate(prev) {
   const safeLibrary = scv.library && cats.some((c) => c.id === scv.library) ? scv.library : first;
   const safePlan = scv.plan && cats.some((c) => c.id === scv.plan) ? scv.plan : first;
 
+  // Keep legacy `selectedCategoryId` as the Plan context to avoid coupling Today/Library to it.
+  const legacySelectedCategoryId = safePlan || null;
+
+  const homeCategoryForUi = safeHome ? cats.find((c) => c.id === safeHome) || null : null;
+  const nextMainGoalId = homeCategoryForUi?.mainGoalId || null;
+
   return {
     ...normalized,
     ui: {
       ...(normalized.ui || {}),
+      selectedCategoryId: legacySelectedCategoryId,
+      mainGoalId: nextMainGoalId,
       selectedCategoryByView: {
         home: safeHome,
         library: safeLibrary,
