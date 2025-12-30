@@ -163,7 +163,8 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
     if (typeof g.schedule.remindBeforeMinutes !== "number")
       g.schedule.remindBeforeMinutes = createDefaultGoalSchedule().remindBeforeMinutes;
     if (typeof g.schedule.allowSnooze !== "boolean") g.schedule.allowSnooze = createDefaultGoalSchedule().allowSnooze;
-    if (typeof g.schedule.snoozeMinutes !== "number") g.schedule.snoozeMinutes = createDefaultGoalSchedule().snoozeMinutes;
+    if (typeof g.schedule.snoozeMinutes !== "number")
+      g.schedule.snoozeMinutes = createDefaultGoalSchedule().snoozeMinutes;
     if (typeof g.schedule.remindersEnabled !== "boolean")
       g.schedule.remindersEnabled = createDefaultGoalSchedule().remindersEnabled;
   }
@@ -249,8 +250,8 @@ export function demoData() {
 
       selectedCategoryByView: {
         home: categories[0].id,
-        library: null,
-        plan: null,
+        library: categories[0].id,
+        plan: categories[0].id,
       },
 
       pageThemes: { home: "aurora" },
@@ -315,7 +316,8 @@ export function migrate(prev) {
 
   // ui
   if (!next.ui) next.ui = {};
-  if (!Array.isArray(next.ui.blocks) || next.ui.blocks.length === 0) next.ui.blocks = DEFAULT_BLOCKS.map((b) => ({ ...b }));
+  if (!Array.isArray(next.ui.blocks) || next.ui.blocks.length === 0)
+    next.ui.blocks = DEFAULT_BLOCKS.map((b) => ({ ...b }));
   if (!next.ui.selectedCategoryId) {
     next.ui.selectedCategoryId = Array.isArray(next.categories) && next.categories.length ? next.categories[0].id : null;
   }
@@ -344,7 +346,7 @@ export function migrate(prev) {
     next.ui.selectedGoalByCategory = {};
   }
 
-  // V3: per-view selected category (decouple Today/Library/Plan later)
+  // V3: per-view selected category (decouple Today/Library/Plan)
   if (!next.ui.selectedCategoryByView || typeof next.ui.selectedCategoryByView !== "object") {
     next.ui.selectedCategoryByView = { home: null, library: null, plan: null };
   } else {
@@ -353,9 +355,16 @@ export function migrate(prev) {
     if (typeof next.ui.selectedCategoryByView.plan === "undefined") next.ui.selectedCategoryByView.plan = null;
   }
 
-  // Backfill home focus from legacy selectedCategoryId (do NOT force library/plan)
+  // Backfill per-view focus from legacy selectedCategoryId (one-time initialization)
+  // Goal: views can diverge later without being coupled via selectedCategoryId.
   if (!next.ui.selectedCategoryByView.home) {
     next.ui.selectedCategoryByView.home = next.ui.selectedCategoryId || null;
+  }
+  if (!next.ui.selectedCategoryByView.library) {
+    next.ui.selectedCategoryByView.library = next.ui.selectedCategoryId || null;
+  }
+  if (!next.ui.selectedCategoryByView.plan) {
+    next.ui.selectedCategoryByView.plan = next.ui.selectedCategoryId || null;
   }
 
   if (typeof next.ui.soundEnabled === "undefined") next.ui.soundEnabled = false;
@@ -379,6 +388,18 @@ export function migrate(prev) {
     if (!exists) next.ui.selectedCategoryByView.home = next.categories[0]?.id || null;
   }
 
+  // Ensure per-view library selection is valid
+  if (next.ui?.selectedCategoryByView?.library) {
+    const exists = next.categories.some((c) => c.id === next.ui.selectedCategoryByView.library);
+    if (!exists) next.ui.selectedCategoryByView.library = next.categories[0]?.id || null;
+  }
+
+  // Ensure per-view plan selection is valid
+  if (next.ui?.selectedCategoryByView?.plan) {
+    const exists = next.categories.some((c) => c.id === next.ui.selectedCategoryByView.plan);
+    if (!exists) next.ui.selectedCategoryByView.plan = next.categories[0]?.id || null;
+  }
+
   // goals (V2 normalize)
   if (!Array.isArray(next.goals)) next.goals = [];
   next.goals = next.goals.map((g, i) => normalizeGoal(g, i, next.categories));
@@ -392,7 +413,6 @@ export function migrate(prev) {
   const uiMainGoal = uiMainId ? goalsById.get(uiMainId) : null;
 
   // Enforce: 1 main OUTCOME goal per category (categories store mainGoalId)
-  // If multiple OUTCOME goals exist in a category, keep the best candidate as main and clear others from being main.
   const outcomeByCategory = new Map();
   for (const g of next.goals) {
     const t = (g?.type || g?.kind || "").toString().toUpperCase();
@@ -450,8 +470,6 @@ export function migrate(prev) {
   next.ui.mainGoalId = selectedCategory?.mainGoalId || null;
 
   // Onboarding completion rule:
-  // - Never mark completed before step 3.
-  // - Only mark completed at/after step 3 if the minimal dataset exists.
   if (!next.ui.onboardingCompleted) {
     const step = Number(next.ui.onboardingStep) || 1;
     const nameOk = Boolean((next.profile?.name || "").trim());
@@ -480,7 +498,29 @@ export function migrate(prev) {
   next.reminders = next.reminders.map((r, i) => normalizeReminder(r, i));
   if (!next.checks || typeof next.checks !== "object") next.checks = {};
 
-  return normalizeGoalsState(next);
+  const normalized = normalizeGoalsState(next);
+
+  // Re-validate per-view selections after normalizeGoalsState
+  const cats = Array.isArray(normalized.categories) ? normalized.categories : [];
+  const first = cats[0]?.id || null;
+
+  const scv = normalized.ui?.selectedCategoryByView || { home: null, library: null, plan: null };
+
+  const safeHome = scv.home && cats.some((c) => c.id === scv.home) ? scv.home : first;
+  const safeLibrary = scv.library && cats.some((c) => c.id === scv.library) ? scv.library : first;
+  const safePlan = scv.plan && cats.some((c) => c.id === scv.plan) ? scv.plan : first;
+
+  return {
+    ...normalized,
+    ui: {
+      ...(normalized.ui || {}),
+      selectedCategoryByView: {
+        home: safeHome,
+        library: safeLibrary,
+        plan: safePlan,
+      },
+    },
+  };
 }
 
 export function usePersistedState(React) {

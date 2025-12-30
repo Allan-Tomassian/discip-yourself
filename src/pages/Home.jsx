@@ -26,15 +26,19 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
   const today = todayKey();
   const todayChecks = safeData.ui?.processChecks || {};
 
+  // NEW: per-view category selection for Home (fallback to legacy)
+  const homeSelectedCategoryId =
+    safeData.ui?.selectedCategoryByView?.home || safeData.ui?.selectedCategoryId || null;
+
   const focusCategory = useMemo(() => {
     if (!categories.length) return null;
-    const selected = categories.find((c) => c.id === safeData.ui?.selectedCategoryId) || null;
+    const selected = categories.find((c) => c.id === homeSelectedCategoryId) || null;
     if (selected) return selected;
     const withGoal = categories.find((c) =>
       goals.some((g) => g.categoryId === c.id && resolveGoalType(g) === "OUTCOME")
     );
     return withGoal || categories[0] || null;
-  }, [categories, goals, safeData.ui?.selectedCategoryId]);
+  }, [categories, goals, homeSelectedCategoryId]);
 
   const outcomeGoals = useMemo(() => {
     if (!focusCategory?.id) return [];
@@ -63,19 +67,16 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
   const habits = linkedHabits;
   const activeHabits = habits.filter((g) => g.status === "active");
   const nextHabit = activeHabits.find((g) => !todayChecks?.[g.id]?.[today]) || null;
-  const nextHabitDone = nextHabit ? Boolean(todayChecks?.[nextHabit.id]?.[today]) : false;
 
   // Cursor habit (small selector for "Action du jour")
   const [habitCursorId, setHabitCursorId] = useState(null);
 
   useEffect(() => {
-    // Reset cursor when category/goal changes or list changes
     const ids = activeHabits.map((h) => h.id);
     if (!ids.length) {
       setHabitCursorId(null);
       return;
     }
-    // Prefer nextHabit, otherwise keep current if still valid, otherwise first
     if (nextHabit?.id) {
       setHabitCursorId(nextHabit.id);
       return;
@@ -100,20 +101,51 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
     setHabitCursorId(activeHabits[nextIdx].id);
   }
 
+  // NEW: Home focus change should NOT overwrite legacy selectedCategoryId
   function setFocusCategory(nextId) {
     if (!nextId || typeof setData !== "function") return;
-    setData((prev) => ({
-      ...prev,
-      ui: { ...(prev.ui || {}), selectedCategoryId: nextId },
-    }));
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      const prevByView =
+        prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+          ? prevUi.selectedCategoryByView
+          : {};
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          selectedCategoryByView: {
+            ...prevByView,
+            home: nextId,
+          },
+        },
+      };
+    });
   }
 
+  // Keep legacy selectedCategoryId for pages not migrated yet,
+  // and also set a plan-specific selection for later migration.
   function openPlanWith(categoryId, openGoalEditId) {
     if (!categoryId || typeof setData !== "function") return;
-    setData((prev) => ({
-      ...prev,
-      ui: { ...(prev.ui || {}), selectedCategoryId: categoryId, openGoalEditId },
-    }));
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      const prevByView =
+        prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+          ? prevUi.selectedCategoryByView
+          : {};
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          selectedCategoryId: categoryId,
+          openGoalEditId,
+          selectedCategoryByView: {
+            ...prevByView,
+            plan: categoryId,
+          },
+        },
+      };
+    });
     if (typeof onOpenPlan === "function") onOpenPlan();
   }
 
@@ -160,7 +192,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
     );
   }
 
-  const accent = (focusCategory && focusCategory.color) ? focusCategory.color : getAccentForPage(safeData, "home");
+  const accent = focusCategory && focusCategory.color ? focusCategory.color : getAccentForPage(safeData, "home");
   const backgroundImage = profile.whyImage || "";
   const backgroundCss = getBackgroundCss({ data: safeData, pageId: "home", image: backgroundImage });
   const whyText = (profile.whyText || "").trim();
@@ -171,13 +203,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
     !showWhy ? "Pourquoi masqué" : whyExpanded || !hasLongWhy ? whyDisplay : `${whyDisplay.slice(0, WHY_LIMIT)}…`;
 
   return (
-    <ScreenShell
-      accent={accent}
-      backgroundCss={backgroundCss}
-      backgroundImage={backgroundImage}
-      headerTitle="Aujourd’hui"
-      headerSubtitle="Exécution"
-    >
+    <ScreenShell accent={accent} backgroundCss={backgroundCss} backgroundImage={backgroundImage} headerTitle="Aujourd’hui" headerSubtitle="Exécution">
       <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
         <div
           className="small2"
@@ -256,11 +282,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
             <div className="mt12 col">
               <div className="small2">Aucune habitude liée.</div>
               <div className="mt10">
-                <Button
-                  onClick={() =>
-                    openPlanWith(focusCategory?.id, selectedGoal ? "__new_process__" : "__new_outcome__")
-                  }
-                >
+                <Button onClick={() => openPlanWith(focusCategory?.id, selectedGoal ? "__new_process__" : "__new_outcome__")}>
                   {selectedGoal ? "Créer une habitude" : "Créer un objectif"}
                 </Button>
               </div>
@@ -275,7 +297,16 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
           {currentHabit ? (
             <div className="mt12 col">
               <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                <div style={{ fontWeight: 800, fontSize: 18, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div
+                  style={{
+                    fontWeight: 800,
+                    fontSize: 18,
+                    minWidth: 0,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   {currentHabit.title || "Habitude"}
                 </div>
                 {activeHabits.length > 1 ? (

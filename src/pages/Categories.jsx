@@ -1,3 +1,4 @@
+// src/pages/Categories.jsx
 import React, { useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input } from "../components/UI";
@@ -25,6 +26,12 @@ export default function Categories({ data, setData, onOpenLibraryCategory }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+
+  // IMPORTANT:
+  // This page must not mutate ui.selectedCategoryId (used by Plan / CategoryDetail).
+  // We isolate the Library selection using ui.librarySelectedCategoryId.
+  const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
+
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryColor, setNewCategoryColor] = useState("#FFFFFF");
   const [newCategoryTemplateId, setNewCategoryTemplateId] = useState(null);
@@ -53,9 +60,17 @@ export default function Categories({ data, setData, onOpenLibraryCategory }) {
         ...prevCategories,
         { id, name: cleanName, color: cleanColor, wallpaper: "", mainGoalId: null, templateId: newCategoryTemplateId },
       ];
+
       const prevUi = prev.ui || {};
-      const nextSelected = prevCategories.length === 0 ? id : prevUi.selectedCategoryId || id;
-      return { ...prev, categories: nextCategories, ui: { ...prevUi, selectedCategoryId: nextSelected } };
+      const isFirst = prevCategories.length === 0;
+
+      // If it's the very first category of the whole app: set both selections so app has a valid base.
+      // Otherwise: only update librarySelectedCategoryId (do not touch selectedCategoryId).
+      const nextUi = isFirst
+        ? { ...prevUi, selectedCategoryId: id, librarySelectedCategoryId: id }
+        : { ...prevUi, librarySelectedCategoryId: id };
+
+      return { ...prev, categories: nextCategories, ui: nextUi };
     });
 
     setNewCategoryName("");
@@ -66,15 +81,18 @@ export default function Categories({ data, setData, onOpenLibraryCategory }) {
 
   function openCategory(categoryId) {
     if (!categoryId) return;
+
+    // Keep Library selection local to Library page only
     if (typeof setData === "function") {
       setData((prev) => ({
         ...prev,
-        ui: { ...(prev.ui || {}), selectedCategoryId: categoryId },
+        ui: { ...(prev.ui || {}), librarySelectedCategoryId: categoryId },
       }));
     }
+
+    // Navigation callback stays the same (parent decides what to do)
     if (typeof onOpenLibraryCategory === "function") {
       onOpenLibraryCategory(categoryId);
-      return;
     }
   }
 
@@ -129,13 +147,12 @@ export default function Categories({ data, setData, onOpenLibraryCategory }) {
     return CATEGORY_TEMPLATES.filter((t) => t.label.toLowerCase().includes(query)).slice(0, 12);
   }, [categoryQuery]);
 
-  const selectedCategoryId = safeData?.ui?.selectedCategoryId || null;
   const sortedCategories = useMemo(() => {
-    if (!selectedCategoryId) return categories;
+    if (!librarySelectedCategoryId) return categories;
     const copy = categories.slice();
-    copy.sort((a, b) => (a.id === selectedCategoryId ? -1 : b.id === selectedCategoryId ? 1 : 0));
+    copy.sort((a, b) => (a.id === librarySelectedCategoryId ? -1 : b.id === librarySelectedCategoryId ? 1 : 0));
     return copy;
-  }, [categories, selectedCategoryId]);
+  }, [categories, librarySelectedCategoryId]);
 
   return (
     <ScreenShell

@@ -1,3 +1,4 @@
+// src/pages/CategoryDetail.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Badge, Button, Card, Input, Select, Textarea } from "../components/UI";
@@ -110,10 +111,20 @@ function resolveGoalType(goal) {
 }
 
 function formatGoalMeta(goal) {
+  const goalType = resolveGoalType(goal);
   const planType = resolvePlanType(goal);
   const rawCount = typeof goal?.freqCount === "number" ? goal.freqCount : goal?.target;
   const count = Number.isFinite(rawCount) ? Math.max(1, Math.floor(rawCount)) : 1;
   const minutes = Number.isFinite(goal?.sessionMinutes) ? Math.max(5, Math.floor(goal.sessionMinutes)) : null;
+
+  if (goalType === "OUTCOME") {
+    const parts = ["Objectif"];
+    if (goal?.deadline) parts.push(`date cible ${formatDateFr(goal.deadline)}`);
+    if (goal?.metric?.unit && Number.isFinite(goal?.metric?.targetValue)) {
+      parts.push(`${goal.metric.targetValue} ${goal.metric.unit}`);
+    }
+    return parts.join(" · ");
+  }
 
   if (planType === "ONE_OFF") {
     const date = formatDateFr(goal?.oneOffDate || goal?.deadline) || "—";
@@ -236,6 +247,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const handledEditRef = useRef(null);
   const [isAdding, setIsAdding] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [goalPickerOpen, setGoalPickerOpen] = useState(false);
   const [showAllHabits, setShowAllHabits] = useState(false);
   const [formKind, setFormKind] = useState(null);
   const [draftPlanType, setDraftPlanType] = useState("ACTION");
@@ -268,6 +280,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const safeData = data && typeof data === "object" ? data : {};
 
   useEffect(() => {
+    setGoalPickerOpen(false);
     setShowAllHabits(false);
   }, [categoryId, safeData.ui?.selectedCategoryId]);
 
@@ -431,28 +444,50 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setOverlapError(null);
     setAdvancedOpen(true);
     setEditGoalId(goal.id);
-    const nextPlanType = resolvePlanType(goal);
+
     const nextGoalType = resolveGoalType(goal);
     const nextFormKind = nextGoalType === "OUTCOME" ? "objective" : "habit";
+    const nextPlanType = nextGoalType === "OUTCOME" ? "STATE" : resolvePlanType(goal);
+
     setDraftPlanType(nextPlanType);
     setDraftGoalType(nextGoalType);
     setFormKind(nextFormKind);
+
     setDraftTitle(goal.title || "");
-    setDraftFreqCount(String(typeof goal.freqCount === "number" ? goal.freqCount : goal.target || 1));
-    const unit = typeof goal.freqUnit === "string" ? goal.freqUnit.toUpperCase() : "";
-    setDraftFreqUnit(unit && unit !== "ONCE" ? unit : "WEEK");
-    const parsed = parseStartAt(goal.startAt || goal.startDate || "");
-    setDraftStartDate(parsed.date || todayKey());
-    setDraftStartTime(parsed.time || "09:00");
-    setDraftDeadline(goal.deadline || "");
-    setDraftOneOffDate(goal.oneOffDate || (goal.freqUnit === "ONCE" ? goal.deadline : "") || "");
-    setDraftNotes(goal.notes || "");
-    setDraftSessionMinutes(
-      nextGoalType === "OUTCOME" ? "" : typeof goal.sessionMinutes === "number" ? String(goal.sessionMinutes) : ""
-    );
-    setDraftMetricUnit(goal?.metric?.unit || "");
-    setDraftMetricTarget(goal?.metric?.targetValue != null ? String(goal.metric.targetValue) : "");
-    setDraftMetricCurrent(goal?.metric?.currentValue != null ? String(goal.metric.currentValue) : "");
+
+    // PROCESS-only fields
+    if (nextGoalType === "PROCESS") {
+      setDraftFreqCount(String(typeof goal.freqCount === "number" ? goal.freqCount : goal.target || 1));
+      const unit = typeof goal.freqUnit === "string" ? goal.freqUnit.toUpperCase() : "";
+      setDraftFreqUnit(unit && unit !== "ONCE" ? unit : "WEEK");
+      const parsed = parseStartAt(goal.startAt || goal.startDate || "");
+      setDraftStartDate(parsed.date || todayKey());
+      setDraftStartTime(parsed.time || "09:00");
+      setDraftSessionMinutes(typeof goal.sessionMinutes === "number" ? String(goal.sessionMinutes) : "30");
+
+      setDraftOneOffDate(goal.oneOffDate || (goal.freqUnit === "ONCE" ? goal.deadline : "") || "");
+      setDraftDeadline(""); // ignored for habits
+      setDraftNotes(""); // not used for habits in this UI
+      setDraftMetricUnit("");
+      setDraftMetricTarget("");
+      setDraftMetricCurrent("");
+    } else {
+      // OUTCOME-only fields
+      setDraftFreqCount("3");
+      setDraftFreqUnit("WEEK");
+      setDraftSessionMinutes("30");
+      const parsed = parseStartAt(goal.startAt || goal.startDate || "");
+      setDraftStartDate(parsed.date || todayKey());
+      setDraftStartTime(parsed.time || "09:00");
+
+      setDraftDeadline(goal.deadline || "");
+      setDraftOneOffDate("");
+      setDraftNotes(goal.notes || "");
+      setDraftMetricUnit(goal?.metric?.unit || "");
+      setDraftMetricTarget(goal?.metric?.targetValue != null ? String(goal.metric.targetValue) : "");
+      setDraftMetricCurrent(goal?.metric?.currentValue != null ? String(goal.metric.currentValue) : "");
+    }
+
     setDraftResetPolicy(goal.resetPolicy || "invalidate");
     setDraftTemplateId(typeof goal.templateId === "string" ? goal.templateId : null);
     setIsAdding(true);
@@ -516,19 +551,9 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
               Ajoute une première catégorie pour commencer.
             </div>
             <div className="mt12 col" style={{ gap: 10 }}>
-              <Input
-                value={addCatName}
-                onChange={(e) => setAddCatName(e.target.value)}
-                placeholder="Nom de catégorie"
-              />
-              <Input
-                value={addCatColor}
-                onChange={(e) => setAddCatColor(e.target.value)}
-                placeholder="#RRGGBB"
-              />
-              {addCatErr ? (
-                <div style={{ color: "rgba(255,120,120,.95)", fontSize: 13 }}>{addCatErr}</div>
-              ) : null}
+              <Input value={addCatName} onChange={(e) => setAddCatName(e.target.value)} placeholder="Nom de catégorie" />
+              <Input value={addCatColor} onChange={(e) => setAddCatColor(e.target.value)} placeholder="#RRGGBB" />
+              {addCatErr ? <div style={{ color: "rgba(255,120,120,.95)", fontSize: 13 }}>{addCatErr}</div> : null}
               <Button onClick={addCategory}>+ Ajouter une catégorie</Button>
             </div>
           </div>
@@ -568,19 +593,9 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                 Ou crée une nouvelle catégorie :
               </div>
               <div className="col" style={{ gap: 10 }}>
-                <Input
-                  value={addCatName}
-                  onChange={(e) => setAddCatName(e.target.value)}
-                  placeholder="Nom de catégorie"
-                />
-                <Input
-                  value={addCatColor}
-                  onChange={(e) => setAddCatColor(e.target.value)}
-                  placeholder="#RRGGBB"
-                />
-                {addCatErr ? (
-                  <div style={{ color: "rgba(255,120,120,.95)", fontSize: 13 }}>{addCatErr}</div>
-                ) : null}
+                <Input value={addCatName} onChange={(e) => setAddCatName(e.target.value)} placeholder="Nom de catégorie" />
+                <Input value={addCatColor} onChange={(e) => setAddCatColor(e.target.value)} placeholder="#RRGGBB" />
+                {addCatErr ? <div style={{ color: "rgba(255,120,120,.95)", fontSize: 13 }}>{addCatErr}</div> : null}
                 <Button onClick={addCategory}>+ Ajouter une catégorie</Button>
               </div>
             </div>
@@ -602,118 +617,156 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   function saveGoal() {
     const title = (draftTitle || "").trim();
     if (!title) return setErr("Titre requis.");
+
     const goalType = draftGoalType === "OUTCOME" ? "OUTCOME" : "PROCESS";
     const planType = goalType === "OUTCOME" ? "STATE" : draftPlanType || "ACTION";
-    let startAt = null;
-    let startDate = "";
 
-    if (goalType === "PROCESS") {
-      startDate = (draftStartDate || todayKey()).trim();
-      const startTime = (draftStartTime || "09:00").trim() || "09:00";
-      if (!startDate) return setErr("Date de début requise.");
-      startAt = `${startDate}T${startTime}`;
-    }
+    // startAt only matters for PROCESS in overlap engine and activation scheduling
+    const startDate = (draftStartDate || todayKey()).trim();
+    const startTime = (draftStartTime || "09:00").trim() || "09:00";
+    const startAt = `${startDate}T${startTime}`;
 
-    let deadline = goalType === "OUTCOME" ? (draftDeadline || "").trim() : "";
-    const oneOffDate = (draftOneOffDate || "").trim();
+    let payload = {
+      categoryId: c.id,
+      title,
+      type: goalType,
+      planType,
+      resetPolicy: draftResetPolicy || "invalidate",
+      templateId: draftTemplateId || null,
+      templateType: goalType === "OUTCOME" ? "GOAL" : "HABIT",
+    };
 
-    if (planType === "ONE_OFF" && goalType === "PROCESS") {
-      if (!oneOffDate) return setErr("Date de réalisation requise.");
-    }
-    if (deadline && startDate && startDate > deadline) {
-      return setErr("La date de début doit être avant la date limite.");
-    }
+    const createId = editGoalId ? null : uid();
+    if (createId) payload.id = createId;
 
-    let metric = null;
+    // OUTCOME: allow deadline + metric. No habit fields, no parent links.
     if (goalType === "OUTCOME") {
+      let deadline = (draftDeadline || "").trim();
+      if (deadline && startDate && startDate > deadline) {
+        return setErr("La date de début doit être avant la date limite.");
+      }
+
+      let metric = null;
       const unit = (draftMetricUnit || "").trim();
       const targetRaw = (draftMetricTarget || "").trim();
       const currentRaw = (draftMetricCurrent || "").trim();
       if (unit || targetRaw || currentRaw) {
         const targetValue = Number(targetRaw);
-        if (!Number.isFinite(targetValue) || targetValue <= 0) {
-          return setErr("Valeur cible invalide.");
-        }
+        if (!Number.isFinite(targetValue) || targetValue <= 0) return setErr("Valeur cible invalide.");
         const currentValue = currentRaw ? Number(currentRaw) : 0;
-        if (!Number.isFinite(currentValue)) {
-          return setErr("Valeur actuelle invalide.");
-        }
+        if (!Number.isFinite(currentValue)) return setErr("Valeur actuelle invalide.");
         metric = { unit, targetValue, currentValue };
       }
-    }
 
-    const payload = {
-      categoryId: c.id,
-      title,
-      type: goalType,
-      planType,
-      startAt,
-      deadline,
-      resetPolicy: draftResetPolicy || "invalidate",
-      metric,
-      templateId: draftTemplateId || null,
-      templateType: goalType === "OUTCOME" ? "GOAL" : "HABIT",
-    };
-    const createId = editGoalId ? null : uid();
-    if (createId) payload.id = createId;
+      payload = {
+        ...payload,
+        deadline,
+        metric,
+        notes: (draftNotes || "").trim(),
+        // keep clean
+        parentId: null,
+        primaryGoalId: null,
+        weight: 0,
+        cadence: undefined,
+        target: undefined,
+        freqCount: undefined,
+        freqUnit: undefined,
+        sessionMinutes: null,
+        oneOffDate: undefined,
+        startAt: undefined,
+      };
+    } else {
+      // PROCESS: frequency/session/startAt. No metric/deadline/notes.
+      if (!startDate) return setErr("Date de début requise.");
 
-    let sessionMinutes = null;
-    if (planType === "ACTION") {
-      const rawCount = Number(draftFreqCount);
-      const freqCount = Number.isFinite(rawCount) ? Math.max(1, Math.floor(rawCount)) : 0;
-      if (!freqCount) return setErr("Fréquence requise.");
-      const freqUnit = draftFreqUnit || "WEEK";
-      const cadence = cadenceFromUnit(freqUnit);
-      payload.freqCount = freqCount;
-      payload.freqUnit = freqUnit;
-      payload.cadence = cadence;
-      payload.target = freqCount;
-      payload.oneOffDate = undefined;
-      payload.notes = undefined;
+      let sessionMinutes = null;
 
-      const rawMinutes = (draftSessionMinutes || "").trim();
-      if (rawMinutes && goalType === "PROCESS") {
-        const minutes = Number(rawMinutes);
-        if (!Number.isFinite(minutes) || minutes < 5 || minutes > 600) {
-          return setErr("Durée invalide (5 à 600 min).");
+      if (planType === "ACTION") {
+        const rawCount = Number(draftFreqCount);
+        const freqCount = Number.isFinite(rawCount) ? Math.max(1, Math.floor(rawCount)) : 0;
+        if (!freqCount) return setErr("Fréquence requise.");
+        const freqUnit = draftFreqUnit || "WEEK";
+        const cadence = cadenceFromUnit(freqUnit);
+
+        const rawMinutes = (draftSessionMinutes || "").trim();
+        if (rawMinutes) {
+          const minutes = Number(rawMinutes);
+          if (!Number.isFinite(minutes) || minutes < 5 || minutes > 600) return setErr("Durée invalide (5 à 600 min).");
+          sessionMinutes = Math.floor(minutes);
+        } else {
+          sessionMinutes = null;
         }
-        sessionMinutes = Math.floor(minutes);
-        payload.sessionMinutes = sessionMinutes;
+
+        payload = {
+          ...payload,
+          startAt,
+          freqCount,
+          freqUnit,
+          cadence,
+          target: freqCount,
+          sessionMinutes,
+          deadline: "",
+          metric: null,
+          notes: undefined,
+          oneOffDate: undefined,
+        };
+      } else if (planType === "ONE_OFF") {
+        const oneOffDate = (draftOneOffDate || "").trim();
+        if (!oneOffDate) return setErr("Date de réalisation requise.");
+        payload = {
+          ...payload,
+          startAt,
+          oneOffDate,
+          freqCount: undefined,
+          freqUnit: undefined,
+          cadence: undefined,
+          target: undefined,
+          sessionMinutes: null,
+          deadline: "",
+          metric: null,
+          notes: undefined,
+        };
       } else {
-        payload.sessionMinutes = null;
+        // PROCESS never uses STATE in our separation model; convert to ACTION baseline
+        const rawCount = Number(draftFreqCount);
+        const freqCount = Number.isFinite(rawCount) ? Math.max(1, Math.floor(rawCount)) : 3;
+        const freqUnit = draftFreqUnit || "WEEK";
+        const cadence = cadenceFromUnit(freqUnit);
+        payload = {
+          ...payload,
+          planType: "ACTION",
+          startAt,
+          freqCount,
+          freqUnit,
+          cadence,
+          target: freqCount,
+          sessionMinutes: null,
+          deadline: "",
+          metric: null,
+          notes: undefined,
+          oneOffDate: undefined,
+        };
       }
-    } else if (planType === "ONE_OFF") {
-      payload.oneOffDate = oneOffDate;
-      payload.freqCount = undefined;
-      payload.freqUnit = undefined;
-      payload.sessionMinutes = null;
-      payload.notes = undefined;
-    } else if (planType === "STATE") {
-      payload.notes = (draftNotes || "").trim();
-      payload.freqCount = undefined;
-      payload.freqUnit = undefined;
-      payload.sessionMinutes = null;
-      payload.oneOffDate = undefined;
-    }
 
-    if (!editGoalId && goalType === "PROCESS" && mainGoalId) {
-      payload.parentId = mainGoalId;
-      payload.primaryGoalId = mainGoalId;
-    }
+      // Auto-link new habits to main goal
+      if (!editGoalId && mainGoalId) {
+        payload.parentId = mainGoalId;
+        payload.primaryGoalId = mainGoalId;
+        payload.weight = 100;
+      }
 
-    const overlap = preventOverlap(safeData, editGoalId || null, startAt, sessionMinutes);
-    if (!overlap.ok) {
-      setOverlapError(overlap.conflicts);
-      return;
+      const overlap = preventOverlap(safeData, editGoalId || null, startAt, sessionMinutes);
+      if (!overlap.ok) {
+        setOverlapError(overlap.conflicts);
+        return;
+      }
+      setOverlapError(null);
     }
-    setOverlapError(null);
 
     setData((prev) => {
       let next = editGoalId ? updateGoal(prev, editGoalId, payload) : createGoal(prev, payload);
       if (!editGoalId && goalType === "OUTCOME" && !mainGoalId && c?.id && createId) {
-        const nextCategories = (next.categories || []).map((cat) =>
-          cat.id === c.id ? { ...cat, mainGoalId: createId } : cat
-        );
+        const nextCategories = (next.categories || []).map((cat) => (cat.id === c.id ? { ...cat, mainGoalId: createId } : cat));
         next = {
           ...next,
           categories: nextCategories,
@@ -722,6 +775,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       }
       return next;
     });
+
     closeForm();
   }
 
@@ -813,17 +867,13 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
             {mainGoal ? (
               <div className="mt12 col">
                 <div style={{ fontWeight: 800, fontSize: 18 }}>{mainGoal.title || "Objectif"}</div>
-                <div className="small2">
-                  Date cible : {mainGoal.deadline ? formatDateFr(mainGoal.deadline) : "—"}
-                </div>
+                <div className="small2">Date cible : {mainGoal.deadline ? formatDateFr(mainGoal.deadline) : "—"}</div>
                 <div className="row" style={{ marginTop: 10, justifyContent: "flex-end" }}>
                   <Button variant="ghost" onClick={() => openEdit(mainGoal)}>
                     Modifier
                   </Button>
-                </div>
-                <div className="row" style={{ marginTop: 10, justifyContent: "flex-end" }}>
-                  <Button variant="ghost" onClick={openAddObjective}>
-                    + Nouvel objectif
+                  <Button variant="ghost" onClick={() => setGoalPickerOpen((v) => !v)}>
+                    {goalPickerOpen ? "Fermer" : "Changer d’objectif"}
                   </Button>
                 </div>
               </div>
@@ -831,10 +881,39 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
               <div className="mt12 col">
                 <div className="small2">Aucun objectif principal défini.</div>
                 <div className="row" style={{ marginTop: 10 }}>
+                  {outcomeGoals.length ? (
+                    <Button variant="ghost" onClick={() => setGoalPickerOpen((v) => !v)}>
+                      Choisir un objectif
+                    </Button>
+                  ) : null}
                   <Button onClick={openAddObjective}>Créer un objectif</Button>
                 </div>
               </div>
             )}
+
+            {goalPickerOpen ? (
+              <div className="mt10">
+                <Select
+                  value={mainGoal?.id || ""}
+                  onChange={(e) => {
+                    const nextId = e.target.value;
+                    if (!nextId) return;
+                    setCategoryMainGoal(nextId);
+                    setGoalPickerOpen(false);
+                  }}
+                  style={{ fontSize: 16 }}
+                >
+                  <option value="" disabled>
+                    Choisir un objectif
+                  </option>
+                  {outcomeGoals.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.title || "Objectif"}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            ) : null}
           </div>
         </Card>
 
@@ -862,6 +941,9 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                     <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
                       <div>
                         <div style={{ fontWeight: 700 }}>{g.title || "Habitude"}</div>
+                        <div className="small2" style={{ opacity: 0.9 }}>
+                          {formatGoalMeta(g)}
+                        </div>
                       </div>
                       <div className="row">
                         {g.status !== "active" ? (
@@ -891,9 +973,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
 
             {mainGoal ? (
               <div className="mt12">
-                <Button onClick={openAddHabit}>
-                  + Ajouter une habitude
-                </Button>
+                <Button onClick={openAddHabit}>+ Ajouter une habitude</Button>
               </div>
             ) : null}
           </div>
@@ -927,8 +1007,8 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                           {activationError.reason === "START_IN_FUTURE"
                             ? "La date de début est dans le futur."
                             : activationError.reason === "OVERLAP"
-                              ? "Chevauchement détecté."
-                              : "Un autre objectif bloque l’activation."}
+                            ? "Chevauchement détecté."
+                            : "Un autre objectif bloque l’activation."}
                         </div>
                         {activationError.blockers && activationError.blockers.length ? (
                           <div className="mt10 col">
@@ -963,8 +1043,9 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                   <div className="listItem">Aucun objectif.</div>
                 ) : (
                   goals.map((g) => {
+                    const type = resolveGoalType(g);
                     const isMainGoal = mainGoalId && g.id === mainGoalId;
-                    const isLinked = Boolean(mainGoalId && g.parentId === mainGoalId);
+                    const isLinked = Boolean(mainGoalId && type === "PROCESS" && g.parentId === mainGoalId);
                     const linkWeight = getLinkWeightValue(g);
                     return (
                       <div key={g.id} className="listItem">
@@ -974,6 +1055,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                               <div style={{ fontWeight: 800 }}>{g.title}</div>
                               <Badge>{formatStatusLabel(g.status)}</Badge>
                               {isMainGoal ? <Badge>Principal</Badge> : null}
+                              <Badge>{type === "OUTCOME" ? "Objectif" : "Habitude"}</Badge>
                             </div>
                             <div className="small2">{formatGoalMeta(g)}</div>
                             <div className="small2" style={{ opacity: 0.9 }}>
@@ -996,49 +1078,47 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                                 <Button variant="ghost" onClick={() => openEdit(g)}>
                                   Modifier
                                 </Button>
-                                {isMainGoal ? (
-                                  <div className="small2" style={{ opacity: 0.75 }}>
-                                    Objectif principal
-                                  </div>
-                                ) : (
-                                  <>
-                                    <Button variant="ghost" onClick={() => setCategoryMainGoal(g.id)}>
-                                      Définir comme objectif principal
-                                    </Button>
-                                    {mainGoalId ? (
-                                      <div className="col" style={{ gap: 6, alignItems: "flex-end" }}>
-                                        <div className="small2" style={{ opacity: 0.75 }}>
-                                          {isLinked ? `Liée à ${mainGoal?.title || "principal"}` : "Lier au principal"}
-                                        </div>
-                                        <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
-                                          <Input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            value={linkWeight}
-                                            onChange={(e) => updateLinkWeight(g.id, e.target.value)}
-                                            style={{ width: 86 }}
-                                          />
-                                          <Button
-                                            variant="ghost"
-                                            onClick={() => setData((prev) => linkChild(prev, g.id, mainGoalId, linkWeight))}
-                                          >
-                                            {isLinked ? "Mettre à jour" : "Lier"}
+
+                                {!isMainGoal && type === "OUTCOME" ? (
+                                  <Button variant="ghost" onClick={() => setCategoryMainGoal(g.id)}>
+                                    Définir comme objectif principal
+                                  </Button>
+                                ) : null}
+
+                                {!isMainGoal && type === "PROCESS" ? (
+                                  mainGoalId ? (
+                                    <div className="col" style={{ gap: 6, alignItems: "flex-end" }}>
+                                      <div className="small2" style={{ opacity: 0.75 }}>
+                                        {isLinked ? `Liée à ${mainGoal?.title || "principal"}` : "Lier au principal"}
+                                      </div>
+                                      <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          max="100"
+                                          value={linkWeight}
+                                          onChange={(e) => updateLinkWeight(g.id, e.target.value)}
+                                          style={{ width: 86 }}
+                                        />
+                                        <Button
+                                          variant="ghost"
+                                          onClick={() => setData((prev) => linkChild(prev, g.id, mainGoalId, linkWeight))}
+                                        >
+                                          {isLinked ? "Mettre à jour" : "Lier"}
+                                        </Button>
+                                        {isLinked ? (
+                                          <Button variant="ghost" onClick={() => setData((prev) => linkChild(prev, g.id, null))}>
+                                            Retirer
                                           </Button>
-                                          {isLinked ? (
-                                            <Button variant="ghost" onClick={() => setData((prev) => linkChild(prev, g.id, null))}>
-                                              Retirer
-                                            </Button>
-                                          ) : null}
-                                        </div>
+                                        ) : null}
                                       </div>
-                                    ) : (
-                                      <div className="small2" style={{ opacity: 0.7 }}>
-                                        Définis un objectif principal pour lier.
-                                      </div>
-                                    )}
-                                  </>
-                                )}
+                                    </div>
+                                  ) : (
+                                    <div className="small2" style={{ opacity: 0.7 }}>
+                                      Définis un objectif principal pour lier.
+                                    </div>
+                                  )
+                                ) : null}
                               </>
                             ) : (
                               <>
@@ -1051,7 +1131,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                                 <Button variant="ghost" onClick={() => setData((prev) => deleteGoal(prev, g.id))}>
                                   Supprimer
                                 </Button>
-                                {!isMainGoal ? (
+                                {type === "OUTCOME" && !isMainGoal ? (
                                   <div className="small2" style={{ opacity: 0.7 }}>
                                     Il doit être actif pour devenir principal.
                                   </div>
@@ -1068,10 +1148,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
 
               <div className="mt12 row" style={{ gap: 10, flexWrap: "wrap" }}>
                 <Button onClick={openAddObjective}>+ Nouvel objectif</Button>
-                <Button
-                  disabled={!mainGoal}
-                  onClick={openAddHabit}
-                >
+                <Button disabled={!mainGoal} onClick={openAddHabit}>
                   + Nouvelle habitude
                 </Button>
               </div>
@@ -1108,9 +1185,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                                     setDraftTitle(t.label);
                                     if (t.metric?.unit) {
                                       setDraftMetricUnit(t.metric.unit);
-                                      setDraftMetricTarget(
-                                        t.defaultTarget != null ? String(t.defaultTarget) : ""
-                                      );
+                                      setDraftMetricTarget(t.defaultTarget != null ? String(t.defaultTarget) : "");
                                       setDraftMetricCurrent("");
                                     } else {
                                       setDraftMetricUnit("");
@@ -1122,9 +1197,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                                   {t.label}
                                 </button>
                               ))}
-                              {!goalTemplatesFiltered.length ? (
-                                <div className="small2">Aucune suggestion trouvée.</div>
-                              ) : null}
+                              {!goalTemplatesFiltered.length ? <div className="small2">Aucune suggestion trouvée.</div> : null}
                             </div>
                             <div className="row" style={{ justifyContent: "flex-end" }}>
                               <Button
@@ -1166,23 +1239,15 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                                   onClick={() => {
                                     setDraftTemplateId(t.id);
                                     setDraftTitle(t.label);
-                                    if (t.defaultFreq?.count) {
-                                      setDraftFreqCount(String(t.defaultFreq.count));
-                                    }
-                                    if (t.defaultFreq?.unit) {
-                                      setDraftFreqUnit(t.defaultFreq.unit);
-                                    }
-                                    if (t.defaultFreq?.minutes) {
-                                      setDraftSessionMinutes(String(t.defaultFreq.minutes));
-                                    }
+                                    if (t.defaultFreq?.count) setDraftFreqCount(String(t.defaultFreq.count));
+                                    if (t.defaultFreq?.unit) setDraftFreqUnit(t.defaultFreq.unit);
+                                    if (t.defaultFreq?.minutes) setDraftSessionMinutes(String(t.defaultFreq.minutes));
                                   }}
                                 >
                                   {t.label}
                                 </button>
                               ))}
-                              {!habitTemplatesFiltered.length ? (
-                                <div className="small2">Aucune suggestion trouvée.</div>
-                              ) : null}
+                              {!habitTemplatesFiltered.length ? <div className="small2">Aucune suggestion trouvée.</div> : null}
                             </div>
                             <div className="row" style={{ justifyContent: "flex-end" }}>
                               <Button
@@ -1199,6 +1264,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                         ) : null}
                       </div>
                     )}
+
                     {isObjectiveForm ? (
                       <ObjectiveForm
                         title={draftTitle}
@@ -1225,6 +1291,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                         onStartTimeChange={(e) => setDraftStartTime(e.target.value)}
                       />
                     )}
+
                     {err ? <div style={{ color: "rgba(255,120,120,.95)", fontSize: 13 }}>{err}</div> : null}
                     {overlapError && overlapError.length ? (
                       <div className="small2" style={{ color: "rgba(255,140,140,.95)" }}>
@@ -1238,6 +1305,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                         </div>
                       </div>
                     ) : null}
+
                     <div className="row">
                       <Button variant="ghost" onClick={closeForm}>
                         Annuler
