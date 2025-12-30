@@ -311,9 +311,10 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
         { id, name: cleanName, color: cleanColor.toUpperCase(), wallpaper: "", mainGoalId: null },
       ];
       const prevUi = prev.ui || {};
-      const prevSel = (prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object")
-        ? prevUi.selectedCategoryByView
-        : {};
+      const prevSel =
+        prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+          ? prevUi.selectedCategoryByView
+          : {};
       const nextSelected = id;
       return {
         ...prev,
@@ -332,10 +333,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const allGoals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const requestedCategoryId =
-    categoryId ||
-    safeData.ui?.selectedCategoryByView?.plan ||
-    safeData.ui?.selectedCategoryId ||
-    null;
+    categoryId || safeData.ui?.selectedCategoryByView?.plan || safeData.ui?.selectedCategoryId || null;
   const c = categories.find((x) => x.id === requestedCategoryId) || null;
   const goals = c ? allGoals.filter((g) => g.categoryId === c.id) : [];
   const outcomeGoals = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
@@ -403,13 +401,12 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   function setCategoryMainGoal(goalId) {
     if (!c?.id) return;
     setData((prev) => {
-      const nextCategories = (prev.categories || []).map((cat) =>
-        cat.id === c.id ? { ...cat, mainGoalId: goalId || null } : cat
-      );
+      const nextCategories = (prev.categories || []).map((cat) => (cat.id === c.id ? { ...cat, mainGoalId: goalId || null } : cat));
       const prevUi = prev.ui || {};
-      const prevSel = (prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object")
-        ? prevUi.selectedCategoryByView
-        : {};
+      const prevSel =
+        prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+          ? prevUi.selectedCategoryByView
+          : {};
       return {
         ...prev,
         categories: nextCategories,
@@ -566,13 +563,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
 
   if (categories.length === 0) {
     return (
-      <ScreenShell
-        data={safeData}
-        pageId="categories"
-        headerTitle="Plan"
-        headerSubtitle="Aucune catégorie"
-        backgroundImage={safeData?.profile?.whyImage || ""}
-      >
+      <ScreenShell data={safeData} pageId="categories" headerTitle="Plan" headerSubtitle="Aucune catégorie" backgroundImage={safeData?.profile?.whyImage || ""}>
         <Card accentBorder>
           <div className="p18">
             <div className="titleSm">Aucune catégorie</div>
@@ -593,13 +584,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
 
   if (!c) {
     return (
-      <ScreenShell
-        data={safeData}
-        pageId="categories"
-        headerTitle="Plan"
-        headerSubtitle="État invalide"
-        backgroundImage={safeData?.profile?.whyImage || ""}
-      >
+      <ScreenShell data={safeData} pageId="categories" headerTitle="Plan" headerSubtitle="État invalide" backgroundImage={safeData?.profile?.whyImage || ""}>
         <Card accentBorder>
           <div className="p18">
             <div className="titleSm">État invalide</div>
@@ -612,9 +597,10 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                 onClick={() => {
                   setData((prev) => {
                     const prevUi = prev.ui || {};
-                    const prevSel = (prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object")
-                      ? prevUi.selectedCategoryByView
-                      : {};
+                    const prevSel =
+                      prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+                        ? prevUi.selectedCategoryByView
+                        : {};
                     return {
                       ...prev,
                       ui: {
@@ -808,9 +794,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setData((prev) => {
       let next = editGoalId ? updateGoal(prev, editGoalId, payload) : createGoal(prev, payload);
       if (!editGoalId && goalType === "OUTCOME" && !mainGoalId && c?.id && createId) {
-        const nextCategories = (next.categories || []).map((cat) =>
-          cat.id === c.id ? { ...cat, mainGoalId: createId } : cat
-        );
+        const nextCategories = (next.categories || []).map((cat) => (cat.id === c.id ? { ...cat, mainGoalId: createId } : cat));
         next = {
           ...next,
           categories: nextCategories,
@@ -835,11 +819,22 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setActivationError(null);
   }
 
-  function onMakeActive(goal) {
+  function deactivate(goal) {
     if (!goal?.id) return;
+    setData((prev) => updateGoal(prev, goal.id, { status: "queued", activeSince: null }));
+    setActivationError(null);
+  }
+
+  function onToggleActive(goal) {
+    if (!goal?.id) return;
+
+    if ((goal.status || "").toString().toLowerCase() === "active") {
+      deactivate(goal);
+      return;
+    }
+
     let res;
     setData((prev) => {
-      // activateGoal may return either `{ ok, state, ... }` or the next state directly.
       const r = activateGoal(prev, goal.id, { navigate: true, now: new Date() });
       res = r;
       const next = r && typeof r === "object" && "state" in r ? r.state : r;
@@ -898,9 +893,10 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
               if (!nextId || nextId === c?.id) return;
               setData((prev) => {
                 const prevUi = prev.ui || {};
-                const prevSel = (prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object")
-                  ? prevUi.selectedCategoryByView
-                  : {};
+                const prevSel =
+                  prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+                    ? prevUi.selectedCategoryByView
+                    : {};
                 return {
                   ...prev,
                   ui: {
@@ -1010,11 +1006,9 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                       </div>
                       <div className="col" style={{ alignItems: "flex-end" }}>
                         <div className="row">
-                          {g.status !== "active" ? (
-                            <Button variant="ghost" onClick={() => onMakeActive(g)}>
-                              Activer
-                            </Button>
-                          ) : null}
+                          <Button variant="ghost" onClick={() => onToggleActive(g)}>
+                            {g.status === "active" ? "Désactiver" : "Activer"}
+                          </Button>
                           <Button variant="ghost" onClick={() => openEdit(g)}>
                             Modifier
                           </Button>
@@ -1023,9 +1017,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                         {activationError && activationError.goalId === g.id ? (
                           <div className="mt10" style={{ width: "100%" }}>
                             <div className="small2" style={{ color: "rgba(255,140,140,.95)" }}>
-                              {activationError.reason === "START_IN_FUTURE"
-                                ? "Activation bloquée : la date de début est dans le futur."
-                                : activationError.reason === "OVERLAP"
+                              {activationError.reason === "OVERLAP"
                                 ? "Activation bloquée : chevauchement détecté."
                                 : "Activation bloquée."}
                             </div>
@@ -1106,9 +1098,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                       <div className="listItem">
                         <div style={{ fontWeight: 800 }}>Activation bloquée</div>
                         <div className="small2" style={{ marginTop: 6 }}>
-                          {activationError.reason === "START_IN_FUTURE"
-                            ? "La date de début est dans le futur."
-                            : activationError.reason === "OVERLAP"
+                          {activationError.reason === "OVERLAP"
                             ? "Chevauchement détecté."
                             : "Un autre objectif bloque l’activation."}
                         </div>
@@ -1181,6 +1171,12 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                                   Modifier
                                 </Button>
 
+                                {resolveGoalType(g) === "PROCESS" ? (
+                                  <Button variant="ghost" onClick={() => deactivate(g)}>
+                                    Désactiver
+                                  </Button>
+                                ) : null}
+
                                 {!isMainGoal && type === "OUTCOME" ? (
                                   <Button variant="ghost" onClick={() => setCategoryMainGoal(g.id)}>
                                     Définir comme objectif principal
@@ -1229,9 +1225,11 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                                     Définir comme objectif principal
                                   </Button>
                                 ) : null}
-                                <Button variant="ghost" onClick={() => onMakeActive(g)}>
+
+                                <Button variant="ghost" onClick={() => onToggleActive(g)}>
                                   Activer
                                 </Button>
+
                                 <Button variant="ghost" onClick={() => openEdit(g)}>
                                   Modifier
                                 </Button>
@@ -1247,7 +1245,6 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                   })
                 )}
               </div>
-
 
               {isAdding ? (
                 <div ref={editFormRef} className="mt12 listItem focusHalo scrollTarget">

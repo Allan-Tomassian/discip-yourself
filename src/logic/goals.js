@@ -166,7 +166,6 @@ function resolveGoalEndAt(goal) {
   return computeEndAt(goal.startAt, goal.sessionMinutes);
 }
 
-
 function deriveFrequencyFromLegacy(goal) {
   const rawTarget = typeof goal?.target === "number" ? goal.target : 1;
   const target = Math.max(1, Math.floor(rawTarget));
@@ -209,10 +208,8 @@ function normalizeMetric(goalType, metric) {
   if (goalType !== "OUTCOME") return null;
   if (!metric || typeof metric !== "object") return null;
   const unit = typeof metric.unit === "string" ? metric.unit.trim() : "";
-  const targetRaw =
-    typeof metric.targetValue === "string" ? Number(metric.targetValue) : metric.targetValue;
-  const currentRaw =
-    typeof metric.currentValue === "string" ? Number(metric.currentValue) : metric.currentValue;
+  const targetRaw = typeof metric.targetValue === "string" ? Number(metric.targetValue) : metric.targetValue;
+  const currentRaw = typeof metric.currentValue === "string" ? Number(metric.currentValue) : metric.currentValue;
   const targetValue = Number.isFinite(targetRaw) && targetRaw > 0 ? targetRaw : null;
   const currentValue = Number.isFinite(currentRaw) ? currentRaw : 0;
   return { unit, targetValue, currentValue };
@@ -262,6 +259,7 @@ export function normalizeGoalsState(state) {
   if (!state || typeof state !== "object") return state;
   const goals = Array.isArray(state.goals) ? state.goals : [];
   const nowLocal = formatLocalDateTime(new Date());
+
   const normalizedGoals = goals.map((g) => {
     if (!g || typeof g !== "object") return g;
     const next = { ...g, status: normalizeStatus(g.status) };
@@ -346,8 +344,10 @@ export function normalizeGoalsState(state) {
   let nextActiveGoalId = uiActiveValid ? uiActiveId : null;
 
   let nextGoals = normalizedGoals;
+  const isProcessGoal = (g) => (g?.type || g?.kind || "").toString().toUpperCase() === "PROCESS";
+
   if (allowGlobalSingleActive) {
-    const activeGoals = normalizedGoals.filter((g) => g?.status === "active");
+    const activeGoals = normalizedGoals.filter((g) => g?.status === "active" && isProcessGoal(g));
     let activeId = null;
     if (activeGoals.length === 1) activeId = activeGoals[0].id || null;
     if (activeGoals.length > 1) activeId = pickPreferredActiveId(activeGoals, uiActiveId);
@@ -355,6 +355,7 @@ export function normalizeGoalsState(state) {
 
     nextGoals = normalizedGoals.map((g) => {
       if (!g || typeof g !== "object") return g;
+      if (!isProcessGoal(g)) return g;
       if (activeId && g.id === activeId) {
         const next = { ...g, status: "active" };
         if (!next.activeSince) next.activeSince = todayKey();
@@ -364,40 +365,15 @@ export function normalizeGoalsState(state) {
       return g;
     });
   } else {
-    const activeByCategory = new Map();
-    for (const g of normalizedGoals) {
-      if (g?.status !== "active") continue;
-      const key = g?.categoryId || "__none__";
-      const list = activeByCategory.get(key) || [];
-      list.push(g);
-      activeByCategory.set(key, list);
-    }
-
-    const chosenActiveIds = new Set();
-    for (const [key, list] of activeByCategory.entries()) {
-      const preferred = list.some((g) => g?.id === uiActiveId) ? uiActiveId : null;
-      const picked = pickPreferredActiveId(list, preferred);
-      if (picked) chosenActiveIds.add(picked);
-    }
-
-    nextGoals = normalizedGoals.map((g) => {
-      if (!g || typeof g !== "object") return g;
-      if (g.status !== "active") return g;
-      if (chosenActiveIds.has(g.id)) {
-        const next = { ...g, status: "active" };
-        if (!next.activeSince) next.activeSince = todayKey();
-        return next;
-      }
-      return { ...g, status: "queued" };
-    });
+    // Multiple active goals are allowed (especially multiple PROCESS habits).
+    nextGoals = normalizedGoals;
   }
 
-  let activeNow = nextGoals.filter((g) => g?.status === "active");
-  if (allowGlobalSingleActive) {
-    nextActiveGoalId = activeNow.length ? activeNow[0].id || null : null;
-  } else {
-    nextActiveGoalId = pickPreferredActiveId(activeNow, uiActiveId);
-  }
+  const activeNow = nextGoals.filter((g) => g?.status === "active");
+  const activeProcess = activeNow.filter((g) => (g?.type || "").toString().toUpperCase() === "PROCESS");
+  nextActiveGoalId = allowGlobalSingleActive
+    ? (activeNow.length ? activeNow[0].id || null : null)
+    : pickPreferredActiveId(activeProcess.length ? activeProcess : activeNow, uiActiveId);
 
   const uiMainId = state.ui?.mainGoalId || null;
   const goalsById = new Map(nextGoals.map((g) => [g.id, g]));
@@ -411,11 +387,13 @@ export function normalizeGoalsState(state) {
     if (t !== "OUTCOME") return { ...cat, mainGoalId: null };
     return cat;
   });
+
   const selectedCategoryId = state.ui?.selectedCategoryId || null;
   const resolvedCategoryId =
     selectedCategoryId && nextCategories.some((cat) => cat.id === selectedCategoryId)
       ? selectedCategoryId
       : nextCategories[0]?.id || null;
+
   const selectedCategory = resolvedCategoryId
     ? nextCategories.find((cat) => cat.id === resolvedCategoryId) || null
     : null;
@@ -430,12 +408,6 @@ export function normalizeGoalsState(state) {
       nextMainGoalId = uiMainId;
     }
   }
-
-  nextActiveGoalId = allowGlobalSingleActive
-    ? activeNow.length
-      ? activeNow[0].id || null
-      : null
-    : pickPreferredActiveId(activeNow, uiActiveId);
 
   return {
     ...state,
@@ -560,6 +532,7 @@ export function updateGoal(state, goalId, updates = {}) {
     const prepared = { ...candidate, planType, type: goalType };
     return goalType === "OUTCOME" ? sanitizeOutcome(prepared) : sanitizeProcess(prepared);
   });
+
   return normalizeGoalsState({ ...state, goals: nextGoals });
 }
 
@@ -690,9 +663,9 @@ export function scheduleStart(state, goalId, startAt, sessionMinutes) {
 }
 
 /**
- * Action centrale : activer un objectif
- * - 1 seul "active" par catégorie
- * - interdit si goal = done/invalid
+ * Action centrale : activer un objectif/habitude
+ * - Plusieurs actifs autorisés (notamment plusieurs PROCESS)
+ * - Unicité "single active" (si activée un jour) ne concerne que PROCESS.
  */
 export function activateGoal(state, goalId, opts = { navigate: true }) {
   if (!state) return { ok: false, reason: "NO_STATE", blockers: [], conflicts: [], state };
@@ -702,26 +675,20 @@ export function activateGoal(state, goalId, opts = { navigate: true }) {
   if (!canActivate(goal)) return { ok: false, reason: "INVALID_STATUS", blockers: [], conflicts: [], state };
   if (goal.status === "active") return { ok: true, state };
 
-  const now = opts?.now instanceof Date ? opts.now : new Date();
-  const nowMs = now.getTime();
-  const startAtMs = parseStartAt(goal.startAt) ?? nowMs;
-  const inFuture = startAtMs > nowMs;
+  const planType = normalizePlanType(goal);
+  const goalType = normalizeGoalType(goal, planType);
+  const isProcess = goalType === "PROCESS";
+  const isProcessGoal = (x) => (x?.type || x?.kind || "").toString().toUpperCase() === "PROCESS";
 
-  const blockers = goals.filter((g) => {
-    if (!g || g.id === goalId) return false;
-    if (!g.categoryId || g.categoryId !== goal.categoryId) return false;
-    return normalizeStatus(g.status) === "active";
-  });
-
-  if (inFuture) {
-    return {
-      ok: false,
-      reason: "START_IN_FUTURE",
-      blockers: [],
-      conflicts: [],
-      state,
-    };
-  }
+  // If we ever enforce a global single active goal, it only makes sense for PROCESS goals (habits/actions).
+  const blockers =
+    isProcess && allowGlobalSingleActive
+      ? goals.filter((g) => {
+          if (!g || g.id === goalId) return false;
+          if (!isProcessGoal(g)) return false;
+          return normalizeStatus(g.status) === "active";
+        })
+      : [];
 
   if (blockers.length > 0) {
     return {
@@ -733,15 +700,18 @@ export function activateGoal(state, goalId, opts = { navigate: true }) {
     };
   }
 
-  const overlap = preventOverlap(state, goalId, goal.startAt, goal.sessionMinutes);
-  if (!overlap.ok) {
-    return {
-      ok: false,
-      reason: "OVERLAP",
-      blockers: [],
-      conflicts: overlap.conflicts,
-      state,
-    };
+  // Time overlap checks apply to PROCESS (scheduled action sessions), not OUTCOME.
+  if (isProcess) {
+    const overlap = preventOverlap(state, goalId, goal.startAt, goal.sessionMinutes);
+    if (!overlap.ok) {
+      return {
+        ok: false,
+        reason: "OVERLAP",
+        blockers: [],
+        conflicts: overlap.conflicts,
+        state,
+      };
+    }
   }
 
   const nextGoals = goals.map((g) => {
@@ -749,9 +719,8 @@ export function activateGoal(state, goalId, opts = { navigate: true }) {
     if (g.id === goalId) {
       return { ...g, status: "active", activeSince: g.activeSince || todayKey() };
     }
-    if (normalizeStatus(g.status) === "active") {
-      if (allowGlobalSingleActive) return { ...g, status: "queued" };
-      if (g.categoryId === goal.categoryId) return { ...g, status: "queued" };
+    if (allowGlobalSingleActive && isProcess && isProcessGoal(g) && normalizeStatus(g.status) === "active") {
+      return { ...g, status: "queued" };
     }
     return g;
   });
@@ -872,7 +841,11 @@ export function autoActivateScheduledGoals(state, now = new Date()) {
   let nextGoals = goals.map((g) => ({ ...g }));
 
   for (const [categoryId, list] of byCategory.entries()) {
-    const hasActive = list.some((g) => normalizeStatus(g.status) === "active");
+    const hasActive = list.some(
+      (g) =>
+        normalizeStatus(g.status) === "active" &&
+        (g?.type || g?.kind || "").toString().toUpperCase() === "PROCESS"
+    );
     if (hasActive) continue;
 
     const candidates = list
