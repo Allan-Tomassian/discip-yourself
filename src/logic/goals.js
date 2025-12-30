@@ -78,6 +78,7 @@ export function sanitizeOutcome(goal) {
   // OUTCOME does not need a start/end time in the planner.
   next.startAt = null;
   next.endAt = null;
+  next.schedule = undefined;
 
   return next;
 }
@@ -104,6 +105,7 @@ export function sanitizeProcess(goal) {
     next.target = undefined;
     next.freqUnit = undefined;
     next.freqCount = undefined;
+    next.schedule = undefined;
   }
 
   return next;
@@ -707,17 +709,24 @@ export function activateGoal(state, goalId, opts = { navigate: true }) {
 
   const blockers = goals.filter((g) => {
     if (!g || g.id === goalId) return false;
-    if (g.categoryId !== goal.categoryId) return false;
-    if (normalizeStatus(g.status) === "active") return true;
-    if (normalizeStatus(g.status) !== "queued") return false;
-    const gStart = parseStartAt(g.startAt) ?? nowMs;
-    return gStart <= nowMs;
+    if (!g.categoryId || g.categoryId !== goal.categoryId) return false;
+    return normalizeStatus(g.status) === "active";
   });
 
-  if (inFuture || blockers.length > 0) {
+  if (inFuture) {
     return {
       ok: false,
-      reason: inFuture ? "START_IN_FUTURE" : "BLOCKED",
+      reason: "START_IN_FUTURE",
+      blockers: [],
+      conflicts: [],
+      state,
+    };
+  }
+
+  if (blockers.length > 0) {
+    return {
+      ok: false,
+      reason: "BLOCKED",
       blockers,
       conflicts: [],
       state,

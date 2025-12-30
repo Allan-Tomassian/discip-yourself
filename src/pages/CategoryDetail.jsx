@@ -838,10 +838,14 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     if (!goal?.id) return;
     let res;
     setData((prev) => {
-      res = activateGoal(prev, goal.id, { navigate: true, now: new Date() });
-      return res.state;
+      // activateGoal may return either `{ ok, state, ... }` or the next state directly.
+      const r = activateGoal(prev, goal.id, { navigate: true, now: new Date() });
+      res = r;
+      const next = r && typeof r === "object" && "state" in r ? r.state : r;
+      return next && typeof next === "object" ? next : prev;
     });
-    if (res && !res.ok) {
+
+    if (res && typeof res === "object" && res.ok === false) {
       setActivationError({ ...res, goalId: goal.id });
       return;
     }
@@ -858,10 +862,12 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
         res = { ok: false, reason: "OVERLAP", conflicts: scheduled.conflicts, state: prev };
         return prev;
       }
-      res = activateGoal(scheduled.state, goalId, { navigate: true, now });
-      return res.state;
+      const r = activateGoal(scheduled.state, goalId, { navigate: true, now });
+      res = r;
+      const next = r && typeof r === "object" && "state" in r ? r.state : r;
+      return next && typeof next === "object" ? next : scheduled.state;
     });
-    if (res && !res.ok) {
+    if (res && typeof res === "object" && res.ok === false) {
       setActivationError({ ...res, goalId });
       return;
     }
@@ -1001,15 +1007,53 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                           {formatGoalMeta(g)}
                         </div>
                       </div>
-                      <div className="row">
-                        {g.status !== "active" ? (
-                          <Button variant="ghost" onClick={() => onMakeActive(g)}>
-                            Activer
+                      <div className="col" style={{ alignItems: "flex-end" }}>
+                        <div className="row">
+                          {g.status !== "active" ? (
+                            <Button variant="ghost" onClick={() => onMakeActive(g)}>
+                              Activer
+                            </Button>
+                          ) : null}
+                          <Button variant="ghost" onClick={() => openEdit(g)}>
+                            Modifier
                           </Button>
+                        </div>
+
+                        {activationError && activationError.goalId === g.id ? (
+                          <div className="mt10" style={{ width: "100%" }}>
+                            <div className="small2" style={{ color: "rgba(255,140,140,.95)" }}>
+                              {activationError.reason === "START_IN_FUTURE"
+                                ? "Activation bloquée : la date de début est dans le futur."
+                                : activationError.reason === "OVERLAP"
+                                ? "Activation bloquée : chevauchement détecté."
+                                : "Activation bloquée."}
+                            </div>
+                            {activationError.blockers && activationError.blockers.length ? (
+                              <div className="mt6 col" style={{ gap: 4 }}>
+                                {activationError.blockers.slice(0, 4).map((b) => (
+                                  <div key={b.id} className="small2" style={{ opacity: 0.9 }}>
+                                    • {b.title || b.name || "Objectif"} — {formatStartAtFr(b.startAt)}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                            {activationError.conflicts && activationError.conflicts.length ? (
+                              <div className="mt6 col" style={{ gap: 4 }}>
+                                {activationError.conflicts.slice(0, 4).map((c) => (
+                                  <div key={c.goalId} className="small2" style={{ opacity: 0.9 }}>
+                                    • {c.title || "Objectif"} — {formatStartAtFr(c.startAt)} → {formatStartAtFr(c.endAt)}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                            <div className="row" style={{ marginTop: 8, justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
+                              <Button variant="ghost" onClick={() => openEdit(g)}>
+                                Modifier la date
+                              </Button>
+                              <Button onClick={() => startNow(g.id)}>Démarrer maintenant</Button>
+                            </div>
+                          </div>
                         ) : null}
-                        <Button variant="ghost" onClick={() => openEdit(g)}>
-                          Modifier
-                        </Button>
                       </div>
                     </div>
                   </div>

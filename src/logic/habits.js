@@ -50,13 +50,25 @@ export function computeStreakDays(data, now = new Date()) {
   return streak;
 }
 
+function resolveHabit(data, habitId) {
+  const list = Array.isArray(data?.habits) ? data.habits : [];
+  const direct = list.find((h) => h.id === habitId);
+  if (direct) return direct;
+  const goals = Array.isArray(data?.goals) ? data.goals : [];
+  const goal = goals.find((g) => g?.id === habitId);
+  if (!goal) return null;
+  const raw = (goal.type || goal.kind || goal.planType || "").toString().toUpperCase();
+  const isProcess = raw === "PROCESS" || raw === "ACTION" || raw === "ONE_OFF";
+  return isProcess ? goal : null;
+}
+
 export function incHabit(data, habitId) {
   const now = new Date();
   const dKey = todayKey(now);
   const wKey = startOfWeekKey(now);
   const yKey = yearKey(now);
 
-  const habit = data.habits.find((h) => h.id === habitId);
+  const habit = resolveHabit(data, habitId);
   if (!habit) return data;
 
   const checks = { ...data.checks };
@@ -83,7 +95,7 @@ export function decHabit(data, habitId) {
   const wKey = startOfWeekKey(now);
   const yKey = yearKey(now);
 
-  const habit = data.habits.find((h) => h.id === habitId);
+  const habit = resolveHabit(data, habitId);
   if (!habit) return data;
 
   const checks = { ...data.checks };

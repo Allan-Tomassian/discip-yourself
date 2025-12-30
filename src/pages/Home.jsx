@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
 import FocusCategoryPicker from "../components/FocusCategoryPicker";
-import { todayKey } from "../utils/dates";
+import { startOfWeekKey, todayKey, yearKey } from "../utils/dates";
 import { activateGoal, setMainGoal } from "../logic/goals";
+import { incHabit } from "../logic/habits";
 import { getBackgroundCss, getAccentForPage } from "../utils/_theme";
 
 function resolveGoalType(goal) {
@@ -17,9 +18,45 @@ function resolveGoalType(goal) {
   return "PROCESS";
 }
 
+const DEFAULT_DAYS = [1, 2, 3, 4, 5, 6, 7];
+const DEFAULT_SLOTS = ["09:00"];
+
+function getDayIndex(d) {
+  const day = d.getDay();
+  return day === 0 ? 7 : day;
+}
+
+function getScheduleSlots(habit, now) {
+  const schedule = habit?.schedule;
+  if (!schedule || typeof schedule !== "object") return ["Aujourd’hui"];
+  const days =
+    Array.isArray(schedule.daysOfWeek) && schedule.daysOfWeek.length ? schedule.daysOfWeek : DEFAULT_DAYS;
+  const slots = Array.isArray(schedule.timeSlots) ? schedule.timeSlots.filter(Boolean) : [];
+  const dayIndex = getDayIndex(now);
+  if (days.length && !days.includes(dayIndex)) return [];
+  if (!slots.length) return ["Aujourd’hui"];
+  return slots;
+}
+
+function getHabitCountForToday(habit, checks, now) {
+  const cadence = habit?.cadence || "DAILY";
+  const bucket = checks?.[habit.id] || { daily: {}, weekly: {}, yearly: {} };
+  if (cadence === "DAILY") {
+    const k = todayKey(now);
+    return bucket.daily?.[k] || 0;
+  }
+  if (cadence === "YEARLY") {
+    const y = yearKey(now);
+    return bucket.yearly?.[y] || 0;
+  }
+  const wk = startOfWeekKey(now);
+  return bucket.weekly?.[wk] || 0;
+}
+
 export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
   const [showWhy, setShowWhy] = useState(true);
   const [whyExpanded, setWhyExpanded] = useState(false);
+  const [activationByHabitId, setActivationByHabitId] = useState({});
 
   const safeData = data && typeof data === "object" ? data : {};
   const profile = safeData.profile || {};
@@ -78,6 +115,23 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
     if (!activeHabits.length) return null;
     return activeHabits.find((g) => !todayChecks?.[g.id]?.[today]) || null;
   }, [activeHabits, todayChecks, today]);
+
+  const slotItems = useMemo(() => {
+    const now = new Date();
+    const checks = safeData.checks || {};
+    return activeHabits.flatMap((habit) => {
+      const slots = getScheduleSlots(habit, now);
+      if (!slots.length) return [];
+      const count = getHabitCountForToday(habit, checks, now);
+      return slots.map((slot, index) => ({
+        id: `${habit.id}:${index}`,
+        habit,
+        label: slot,
+        index,
+        done: count >= index + 1,
+      }));
+    });
+  }, [activeHabits, safeData.checks]);
 
   // Cursor habit (small selector for "Action du jour")
   const [habitCursorId, setHabitCursorId] = useState(null);
@@ -161,6 +215,8 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
 
   function markDoneToday(goalId) {
     if (!goalId || typeof setData !== "function") return;
+    const g = goals.find((x) => x.id === goalId) || null;
+    if (!g || resolveGoalType(g) !== "PROCESS") return;
     setData((prev) => {
       const prevUi = prev.ui || {};
       const prevChecks = prevUi.processChecks || {};
@@ -185,10 +241,93 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
 
   function activateHabitNow(goalId) {
     if (!goalId || typeof setData !== "function") return;
+
+    const now = new Date();
+    let activationMeta = null;
+
     setData((prev) => {
-      const res = activateGoal(prev, goalId, { navigate: false, now: new Date() });
-      return res?.state || prev;
+      const res = activateGoal(prev, goalId, { navigate: false, now });
+
+      // Extract activation feedback (blocked/reason/conflicts) from either shape
+      if (res && typeof res === "object" && !Array.isArray(res)) {
+        const blocked = Boolean(res.blocked);
+        const reason = typeof res.reason === "string" ? res.reason : "";
+        const conflicts = Array.isArray(res.conflicts) ? res.conflicts : [];
+        activationMeta = blocked || reason || conflicts.length ? { blocked, reason, conflicts, at: now.toISOString() } : null;
+      }
+
+      // Support both return shapes:
+      // - legacy: { state: nextState, ... }
+      // - direct: nextState
+      if (res && typeof res === "object" && res.state && typeof res.state === "object") return res.state;
+      if (res && typeof res === "object" && (res.goals || res.categories || res.ui)) return res;
+      return prev;
     });
+
+    // Update local UI feedback OUTSIDE the setData updater (React-safe)
+    if (activationMeta) {
+      setActivationByHabitId((m) => ({
+        ...(m && typeof m === "object" ? m : {}),
+        [goalId]: activationMeta,
+      }));
+    } else {
+      setActivationByHabitId((m) => {
+        if (!m || typeof m !== "object") return {};
+        const next = { ...m };
+        delete next[goalId];
+        return next;
+      });
+    }
+  }
+
+  function startHabitNow(goalId) {
+    if (!goalId || typeof setData !== "function") return;
+
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    // Keep startAt consistent with the rest of the app (ex: 2025-12-30T09:00)
+    const nowLocal = `${todayKey(now)}T${hh}:${mm}`;
+
+    let activationMeta = null;
+
+    setData((prev) => {
+      const prevGoals = Array.isArray(prev.goals) ? prev.goals : [];
+      const nextGoals = prevGoals.map((g) => (g.id === goalId ? { ...g, startAt: nowLocal } : g));
+      const seeded = { ...prev, goals: nextGoals };
+
+      const res = activateGoal(seeded, goalId, { navigate: false, now });
+
+      // Extract activation feedback (blocked/reason/conflicts) from either shape
+      if (res && typeof res === "object" && !Array.isArray(res)) {
+        const blocked = Boolean(res.blocked);
+        const reason = typeof res.reason === "string" ? res.reason : "";
+        const conflicts = Array.isArray(res.conflicts) ? res.conflicts : [];
+        activationMeta = blocked || reason || conflicts.length ? { blocked, reason, conflicts, at: now.toISOString() } : null;
+      }
+
+      // Support both return shapes:
+      // - legacy: { state: nextState, ... }
+      // - direct: nextState
+      if (res && typeof res === "object" && res.state && typeof res.state === "object") return res.state;
+      if (res && typeof res === "object" && (res.goals || res.categories || res.ui)) return res;
+      return seeded;
+    });
+
+    // Update local UI feedback OUTSIDE the setData updater (React-safe)
+    if (activationMeta) {
+      setActivationByHabitId((m) => ({
+        ...(m && typeof m === "object" ? m : {}),
+        [goalId]: activationMeta,
+      }));
+    } else {
+      setActivationByHabitId((m) => {
+        if (!m || typeof m !== "object") return {};
+        const next = { ...m };
+        delete next[goalId];
+        return next;
+      });
+    }
   }
 
   if (!categories.length) {
@@ -351,16 +490,72 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
                           {isActive ? "Active" : "À activer"}
                         </div>
                       </div>
-
                       {!isActive ? (
                         <Button variant="ghost" onClick={() => activateHabitNow(h.id)}>
                           Activer
                         </Button>
                       ) : null}
                     </div>
+                    {/* Activation feedback UI */}
+                    {!isActive && activationByHabitId?.[h.id]?.blocked ? (
+                      <div className="mt10" style={{ opacity: 0.95 }}>
+                        <div className="small2" style={{ marginBottom: 8 }}>
+                          Activation bloquée
+                          {activationByHabitId[h.id].reason ? ` · ${activationByHabitId[h.id].reason}` : ""}
+                        </div>
+                        {activationByHabitId[h.id].conflicts?.length ? (
+                          <div className="small2" style={{ opacity: 0.9, marginBottom: 8 }}>
+                            {activationByHabitId[h.id].conflicts.slice(0, 4).map((c, idx) => (
+                              <div key={idx}>• {String(c)}</div>
+                            ))}
+                          </div>
+                        ) : null}
+                        <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                          <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, h.id)}>
+                            Modifier la date
+                          </Button>
+                          <Button onClick={() => startHabitNow(h.id)}>Démarrer maintenant</Button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
+
+              {hasActiveHabits ? (
+                <div className="mt6 col">
+                  <div className="small2">Micro-actions du jour</div>
+                  {slotItems.length ? (
+                    <div className="mt10 col">
+                      {slotItems.map((item) => (
+                        <div key={item.id} className="listItem">
+                          <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                            <div className="small2" style={{ flex: 1, minWidth: 0 }}>
+                              {item.label && item.label !== "Aujourd’hui"
+                                ? `${item.label} · ${item.habit.title || "Habitude"}`
+                                : `Aujourd’hui · ${item.habit.title || "Habitude"}`}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              disabled={item.done}
+                              onClick={() =>
+                                setData((prev) => {
+                                  const next = incHabit(prev, item.habit.id);
+                                  return next && typeof next === "object" ? next : prev;
+                                })
+                              }
+                            >
+                              {item.done ? "Validé" : "Valider"}
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt10 small2">Aucune micro-action aujourd’hui.</div>
+                  )}
+                </div>
+              ) : null}
 
               {!hasActiveHabits ? (
                 <div className="small2" style={{ opacity: 0.9 }}>

@@ -47,8 +47,8 @@ export function createDefaultGoalSchedule() {
 
     // Weekly defaults (user will later edit in UI)
     // 1 = Monday ... 7 = Sunday
-    daysOfWeek: [1, 3, 5],
-    timeSlots: ["08:30"], // HH:mm
+    daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+    timeSlots: ["09:00"], // HH:mm
 
     // Session / reminders (data-only for now)
     durationMinutes: 60,
@@ -192,25 +192,30 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
   // status: queued | active | done | invalid
   if (!g.status) g.status = "queued";
   if (typeof g.order !== "number") g.order = index + 1;
-  if (!g.schedule || typeof g.schedule !== "object") {
-    g.schedule = createDefaultGoalSchedule();
+  const shouldHaveSchedule = isProcess && g.planType === "ACTION";
+  if (shouldHaveSchedule) {
+    if (!g.schedule || typeof g.schedule !== "object") {
+      g.schedule = createDefaultGoalSchedule();
+    } else {
+      // Merge with defaults to be resilient to future schema changes.
+      g.schedule = { ...createDefaultGoalSchedule(), ...g.schedule };
+
+      if (!Array.isArray(g.schedule.daysOfWeek)) g.schedule.daysOfWeek = createDefaultGoalSchedule().daysOfWeek;
+      if (!Array.isArray(g.schedule.timeSlots)) g.schedule.timeSlots = createDefaultGoalSchedule().timeSlots;
+      if (typeof g.schedule.timezone !== "string") g.schedule.timezone = createDefaultGoalSchedule().timezone;
+
+      if (typeof g.schedule.durationMinutes !== "number")
+        g.schedule.durationMinutes = createDefaultGoalSchedule().durationMinutes;
+      if (typeof g.schedule.remindBeforeMinutes !== "number")
+        g.schedule.remindBeforeMinutes = createDefaultGoalSchedule().remindBeforeMinutes;
+      if (typeof g.schedule.allowSnooze !== "boolean") g.schedule.allowSnooze = createDefaultGoalSchedule().allowSnooze;
+      if (typeof g.schedule.snoozeMinutes !== "number")
+        g.schedule.snoozeMinutes = createDefaultGoalSchedule().snoozeMinutes;
+      if (typeof g.schedule.remindersEnabled !== "boolean")
+        g.schedule.remindersEnabled = createDefaultGoalSchedule().remindersEnabled;
+    }
   } else {
-    // Merge with defaults to be resilient to future schema changes.
-    g.schedule = { ...createDefaultGoalSchedule(), ...g.schedule };
-
-    if (!Array.isArray(g.schedule.daysOfWeek)) g.schedule.daysOfWeek = createDefaultGoalSchedule().daysOfWeek;
-    if (!Array.isArray(g.schedule.timeSlots)) g.schedule.timeSlots = createDefaultGoalSchedule().timeSlots;
-    if (typeof g.schedule.timezone !== "string") g.schedule.timezone = createDefaultGoalSchedule().timezone;
-
-    if (typeof g.schedule.durationMinutes !== "number")
-      g.schedule.durationMinutes = createDefaultGoalSchedule().durationMinutes;
-    if (typeof g.schedule.remindBeforeMinutes !== "number")
-      g.schedule.remindBeforeMinutes = createDefaultGoalSchedule().remindBeforeMinutes;
-    if (typeof g.schedule.allowSnooze !== "boolean") g.schedule.allowSnooze = createDefaultGoalSchedule().allowSnooze;
-    if (typeof g.schedule.snoozeMinutes !== "number")
-      g.schedule.snoozeMinutes = createDefaultGoalSchedule().snoozeMinutes;
-    if (typeof g.schedule.remindersEnabled !== "boolean")
-      g.schedule.remindersEnabled = createDefaultGoalSchedule().remindersEnabled;
+    g.schedule = undefined;
   }
 
   g.resetPolicy = normalizeResetPolicy(g.resetPolicy);
