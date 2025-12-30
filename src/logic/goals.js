@@ -54,6 +54,33 @@ function normalizeGoalType(goal, planType) {
   return "PROCESS";
 }
 
+export function sanitizeOutcome(goal) {
+  if (!goal || typeof goal !== "object") return goal;
+  const next = { ...goal };
+  next.planType = "STATE";
+  next.parentId = null;
+  next.primaryGoalId = null;
+  next.weight = null;
+  next.linkWeight = null;
+  next.cadence = undefined;
+  next.target = undefined;
+  next.freqUnit = undefined;
+  next.freqCount = undefined;
+  next.oneOffDate = undefined;
+  next.sessionMinutes = null;
+  return next;
+}
+
+export function sanitizeProcess(goal) {
+  if (!goal || typeof goal !== "object") return goal;
+  const next = { ...goal };
+  if (next.planType !== "ACTION" && next.planType !== "ONE_OFF") next.planType = "ACTION";
+  next.metric = null;
+  next.deadline = "";
+  next.notes = undefined;
+  return next;
+}
+
 function normalizeLegacyKind(goalType) {
   return goalType === "OUTCOME" ? "OUTCOME" : "ACTION";
 }
@@ -219,7 +246,7 @@ export function normalizeGoalsState(state) {
     const sessionMinutes = goalType === "OUTCOME" ? null : sessionMinutesRaw ?? null;
 
     if (planType === "ONE_OFF") {
-      return {
+      const base = {
         ...next,
         type: goalType,
         planType,
@@ -237,10 +264,11 @@ export function normalizeGoalsState(state) {
         primaryGoalId: parentId,
         linkWeight: weight,
       };
+      return goalType === "OUTCOME" ? sanitizeOutcome(base) : sanitizeProcess(base);
     }
 
     if (planType === "STATE") {
-      return {
+      const base = {
         ...next,
         type: goalType,
         planType,
@@ -258,10 +286,11 @@ export function normalizeGoalsState(state) {
         primaryGoalId: parentId,
         linkWeight: weight,
       };
+      return goalType === "OUTCOME" ? sanitizeOutcome(base) : sanitizeProcess(base);
     }
 
     const freq = normalizeFrequency(next);
-    return {
+    const base = {
       ...next,
       type: goalType,
       planType,
@@ -279,6 +308,7 @@ export function normalizeGoalsState(state) {
       primaryGoalId: parentId,
       linkWeight: weight,
     };
+    return goalType === "OUTCOME" ? sanitizeOutcome(base) : sanitizeProcess(base);
   });
 
   const uiActiveId = state.ui?.activeGoalId || null;
@@ -465,10 +495,14 @@ export function createGoal(state, goalInput = {}) {
   const base = { ...goalInput };
 
   if (typeof base.order !== "number") base.order = getNextOrder(goals);
-  const nextGoal = {
+  const normalized = {
     ...normalizeGoal(base, goals.length, state.categories),
     createdAt: base.createdAt || todayKey(),
   };
+  const planType = normalizePlanType(normalized);
+  const goalType = normalizeGoalType(normalized, planType);
+  const prepared = { ...normalized, planType, type: goalType };
+  const nextGoal = goalType === "OUTCOME" ? sanitizeOutcome(prepared) : sanitizeProcess(prepared);
 
   return normalizeGoalsState({
     ...state,
@@ -481,7 +515,14 @@ export function updateGoal(state, goalId, updates = {}) {
   const goals = Array.isArray(state.goals) ? state.goals : [];
   if (!goals.some((g) => g?.id === goalId)) return state;
 
-  const nextGoals = goals.map((g) => (g?.id === goalId ? { ...g, ...updates } : g));
+  const nextGoals = goals.map((g) => {
+    if (g?.id !== goalId) return g;
+    const candidate = { ...g, ...updates };
+    const planType = normalizePlanType(candidate);
+    const goalType = normalizeGoalType(candidate, planType);
+    const prepared = { ...candidate, planType, type: goalType };
+    return goalType === "OUTCOME" ? sanitizeOutcome(prepared) : sanitizeProcess(prepared);
+  });
   return normalizeGoalsState({ ...state, goals: nextGoals });
 }
 

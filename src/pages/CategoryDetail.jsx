@@ -604,21 +604,25 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   function saveGoal() {
     const title = (draftTitle || "").trim();
     if (!title) return setErr("Titre requis.");
-    const startDate = (draftStartDate || todayKey()).trim();
-    const startTime = (draftStartTime || "09:00").trim() || "09:00";
-    if (!startDate) return setErr("Date de début requise.");
-    const startAt = `${startDate}T${startTime}`;
     const goalType = draftGoalType === "OUTCOME" ? "OUTCOME" : "PROCESS";
-    const planType = draftPlanType || "ACTION";
+    const planType = goalType === "OUTCOME" ? "STATE" : draftPlanType || "ACTION";
+    let startAt = null;
+    let startDate = "";
 
-    let deadline = (draftDeadline || "").trim();
+    if (goalType === "PROCESS") {
+      startDate = (draftStartDate || todayKey()).trim();
+      const startTime = (draftStartTime || "09:00").trim() || "09:00";
+      if (!startDate) return setErr("Date de début requise.");
+      startAt = `${startDate}T${startTime}`;
+    }
+
+    let deadline = goalType === "OUTCOME" ? (draftDeadline || "").trim() : "";
     const oneOffDate = (draftOneOffDate || "").trim();
 
-    if (planType === "ONE_OFF") {
+    if (planType === "ONE_OFF" && goalType === "PROCESS") {
       if (!oneOffDate) return setErr("Date de réalisation requise.");
-      deadline = oneOffDate;
     }
-    if (deadline && startDate > deadline) {
+    if (deadline && startDate && startDate > deadline) {
       return setErr("La date de début doit être avant la date limite.");
     }
 

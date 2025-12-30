@@ -86,20 +86,35 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
   if (typeof g.categoryId !== "string" || !g.categoryId.trim()) {
     if (fallbackCategoryId) g.categoryId = fallbackCategoryId;
   }
+  const rawType = (g.type || g.planType || g.kind || "").toString().toUpperCase();
+  const hasMetric = g.metric && typeof g.metric === "object";
+  const isOutcome = rawType === "OUTCOME" || rawType === "STATE" || hasMetric;
+  const isProcess = rawType === "PROCESS" || rawType === "ACTION" || rawType === "ONE_OFF";
+
   if (!g.title) g.title = "Objectif";
-  if (!g.cadence) g.cadence = "WEEKLY";
-  if (typeof g.target !== "number") g.target = 1;
-  if (typeof g.templateId !== "string") g.templateId = null;
-  if (typeof g.templateType !== "string") {
-    const raw = (g.type || g.planType || g.kind || "").toString().toUpperCase();
-    if (raw === "OUTCOME" || raw === "STATE") g.templateType = "GOAL";
-    else if (raw === "PROCESS" || raw === "ACTION" || raw === "ONE_OFF") g.templateType = "HABIT";
-    else g.templateType = null;
+  if (!isOutcome) {
+    if (!g.cadence) g.cadence = "WEEKLY";
+    if (typeof g.target !== "number") g.target = 1;
   }
+  if (typeof g.templateId !== "string") g.templateId = null;
+  if (isOutcome) g.templateType = "GOAL";
+  else if (isProcess) g.templateType = "HABIT";
+  else if (typeof g.templateType !== "string") g.templateType = null;
 
   // Optional but strongly recommended: deadline as ISO date (YYYY-MM-DD)
   // Empty string means "no deadline yet".
   if (typeof g.deadline !== "string") g.deadline = "";
+  if (isProcess) {
+    g.deadline = "";
+    g.metric = null;
+  }
+  if (isOutcome) {
+    g.cadence = undefined;
+    g.target = undefined;
+    g.freqUnit = undefined;
+    g.freqCount = undefined;
+    g.sessionMinutes = null;
+  }
 
   // Optional: link strength to main WHY (0..1). Used by priorities engine when available.
   if (typeof g.whyLink !== "number") g.whyLink = 0;

@@ -307,20 +307,19 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
 
                     let outcomeId = baseOutcome?.id || null;
                     if (needsOutcome && categoryId) {
-                      outcomeId = uid();
-                      nextState = createGoal(nextState, {
-                        id: outcomeId,
-                        categoryId,
-                        title: cleanOutcome,
-                        type: "OUTCOME",
-                        planType: "STATE",
-                        status: "queued",
-                        startAt: `${todayKey()}T09:00`,
-                        deadline: "",
-                        weight: 0,
-                        metric: null,
-                      });
-                    }
+                    outcomeId = uid();
+                    nextState = createGoal(nextState, {
+                      id: outcomeId,
+                      categoryId,
+                      title: cleanOutcome,
+                      type: "OUTCOME",
+                      planType: "STATE",
+                      status: "queued",
+                      deadline: "",
+                      weight: 0,
+                      metric: null,
+                    });
+                  }
 
                     if (needsHabit && categoryId) {
                       const parentId = outcomeId || baseOutcome?.id || null;
