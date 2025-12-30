@@ -146,14 +146,6 @@ export default function App() {
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    if (!data?.ui?.openCategoryDetailId) return;
-    setTab("plan");
-    setData((prev) => ({
-      ...prev,
-      ui: { ...(prev.ui || {}), openCategoryDetailId: null },
-    }));
-  }, [data?.ui?.openCategoryDetailId, setData]);
 
   const safeData = data && typeof data === "object" ? data : {};
   const onboarded = isOnboarded(safeData);
@@ -211,12 +203,26 @@ export default function App() {
   return (
     <>
       {tab === "today" ? (
-        <Home data={data} setData={setData} onOpenLibrary={() => setTab("library")} onOpenPlan={() => setTab("plan")} />
+        <Home
+          data={data}
+          setData={setData}
+          onOpenLibrary={() => setTab("library")}
+          onOpenPlan={() => {
+            const firstCatId = data?.ui?.selectedCategoryId || data?.categories?.[0]?.id || null;
+            if (firstCatId) {
+              setData((prev) => ({
+                ...prev,
+                ui: { ...(prev.ui || {}), selectedCategoryId: firstCatId },
+              }));
+            }
+            setTab("plan");
+          }}
+        />
       ) : tab === "plan" ? (
         <CategoryDetail
           data={data}
           setData={setData}
-          categoryId={data?.ui?.selectedCategoryId}
+          categoryId={data?.ui?.selectedCategoryId || data?.categories?.[0]?.id || null}
           onBack={() => setTab("library")}
           initialEditGoalId={data?.ui?.openGoalEditId || null}
           onSelectCategory={(nextId) => {
@@ -230,8 +236,9 @@ export default function App() {
           onOpenPlan={(categoryId) => {
             setData((prev) => ({
               ...prev,
-              ui: { ...(prev.ui || {}), selectedCategoryId: categoryId, openCategoryDetailId: categoryId },
+              ui: { ...(prev.ui || {}), selectedCategoryId: categoryId },
             }));
+            setTab("plan");
           }}
         />
       ) : (

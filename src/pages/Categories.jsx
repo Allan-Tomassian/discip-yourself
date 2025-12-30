@@ -21,7 +21,7 @@ function formatCount(count, singular, plural) {
   return `${count} ${plural}`;
 }
 
-export default function Categories({ data, setData, onOpenPlan }) {
+export default function Categories({ data, setData, onOpenCategory }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -66,8 +66,8 @@ export default function Categories({ data, setData, onOpenPlan }) {
 
   function openCategory(categoryId) {
     if (!categoryId) return;
-    if (typeof onOpenPlan === "function") {
-      onOpenPlan(categoryId);
+    if (typeof onOpenCategory === "function") {
+      onOpenCategory(categoryId);
       return;
     }
     setData((prev) => ({
