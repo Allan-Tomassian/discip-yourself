@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card } from "../components/UI";
+import { Button, Card, Select } from "../components/UI";
 import FocusCategoryPicker from "../components/FocusCategoryPicker";
 import { todayKey } from "../utils/dates";
 import { getBackgroundCss, getAccentForPage } from "../utils/_theme";
@@ -36,13 +36,36 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
     return withGoal || categories[0] || null;
   }, [categories, goals, safeData.ui?.selectedCategoryId]);
 
-  const mainGoalId = focusCategory?.mainGoalId || null;
-  const habits = goals.filter(
-    (g) =>
-      g.categoryId === focusCategory?.id &&
-      resolveGoalType(g) === "PROCESS" &&
-      (mainGoalId ? g.parentId === mainGoalId : true)
-  );
+  const selectedGoalByCategory =
+    safeData.ui?.selectedGoalByCategory && typeof safeData.ui.selectedGoalByCategory === "object"
+      ? safeData.ui.selectedGoalByCategory
+      : {};
+
+  const outcomeGoals = useMemo(() => {
+    if (!focusCategory?.id) return [];
+    return goals.filter((g) => g.categoryId === focusCategory.id && resolveGoalType(g) === "OUTCOME");
+  }, [goals, focusCategory?.id]);
+
+  const selectedGoal = useMemo(() => {
+    if (!focusCategory?.id) return null;
+    const storedId = selectedGoalByCategory[focusCategory.id] || null;
+    const stored = storedId ? outcomeGoals.find((g) => g.id === storedId) : null;
+    if (stored) return stored;
+    const active = outcomeGoals.find((g) => g.status === "active") || null;
+    return active || outcomeGoals[0] || null;
+  }, [focusCategory?.id, outcomeGoals, selectedGoalByCategory]);
+
+  const processGoals = useMemo(() => {
+    if (!focusCategory?.id) return [];
+    return goals.filter((g) => g.categoryId === focusCategory.id && resolveGoalType(g) === "PROCESS");
+  }, [goals, focusCategory?.id]);
+
+  const linkedHabits = useMemo(() => {
+    if (!selectedGoal?.id) return [];
+    return processGoals.filter((g) => g.parentId === selectedGoal.id);
+  }, [processGoals, selectedGoal?.id]);
+
+  const habits = linkedHabits.length ? linkedHabits : processGoals;
   const activeHabits = habits.filter((g) => g.status === "active");
   const nextHabit = activeHabits.find((g) => !todayChecks?.[g.id]?.[today]) || null;
   const nextHabitDone = nextHabit ? Boolean(todayChecks?.[nextHabit.id]?.[today]) : false;
@@ -53,6 +76,24 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
       ...prev,
       ui: { ...(prev.ui || {}), selectedCategoryId: nextId },
     }));
+  }
+
+  function setSelectedGoal(goalId) {
+    if (!focusCategory?.id || typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      const prevMap =
+        prevUi.selectedGoalByCategory && typeof prevUi.selectedGoalByCategory === "object"
+          ? prevUi.selectedGoalByCategory
+          : {};
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          selectedGoalByCategory: { ...prevMap, [focusCategory.id]: goalId || null },
+        },
+      };
+    });
   }
 
   function openPlanWith(categoryId, openGoalEditId) {
@@ -159,11 +200,9 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
           emptyLabel="Catégorie à configurer"
         />
       </div>
-      <div className="mt12 row" style={{ gap: 10, flexWrap: "wrap" }}>
-        <Button
-          variant="ghost"
-          onClick={() => (typeof onOpenLibrary === "function" ? onOpenLibrary() : null)}
-        >
+
+      <div className="mt12 row" style={{ gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <Button variant="ghost" onClick={() => (typeof onOpenLibrary === "function" ? onOpenLibrary() : null)}>
           Bibliothèque
         </Button>
         <Button
@@ -179,6 +218,66 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
 
       <Card accentBorder style={{ marginTop: 12, borderColor: accent }}>
         <div className="p18">
+          <div className="titleSm">Objectif</div>
+          <div className="small2">Sélectionné pour aujourd’hui</div>
+          {outcomeGoals.length ? (
+            <div className="mt12 col">
+              <Select value={selectedGoal?.id || ""} onChange={(e) => setSelectedGoal(e.target.value)}>
+                <option value="" disabled>
+                  Choisir un objectif
+                </option>
+                {outcomeGoals.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.title || "Objectif"}
+                  </option>
+                ))}
+              </Select>
+              <div className="small2" style={{ marginTop: 8 }}>
+                {selectedGoal?.title || "Objectif"}
+              </div>
+            </div>
+          ) : (
+            <div className="mt12 col">
+              <div className="small2">Aucun objectif dans cette catégorie.</div>
+              <div className="mt10">
+                <Button onClick={() => openPlanWith(focusCategory?.id, "__new_outcome__")}>Créer un objectif</Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <Card accentBorder style={{ marginTop: 12 }}>
+        <div className="p18">
+          <div className="titleSm">Habitudes</div>
+          <div className="small2">Liées à l’objectif sélectionné</div>
+          {habits.length ? (
+            <div className="mt12 col">
+              {habits.map((h) => (
+                <div key={h.id} className="listItem">
+                  <div style={{ fontWeight: 700 }}>{h.title || "Habitude"}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt12 col">
+              <div className="small2">Aucune habitude liée.</div>
+              <div className="mt10">
+                <Button
+                  onClick={() =>
+                    openPlanWith(focusCategory?.id, selectedGoal ? "__new_process__" : "__new_outcome__")
+                  }
+                >
+                  {selectedGoal ? "Créer une habitude" : "Créer un objectif"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <Card accentBorder style={{ marginTop: 12, borderColor: accent }}>
+        <div className="p18">
           <div className="titleSm">Action du jour</div>
           {nextHabit ? (
             <div className="mt12 col">
@@ -187,18 +286,16 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
                 <Button onClick={() => markDoneToday(nextHabit.id)} disabled={nextHabitDone}>
                   {nextHabitDone ? "Déjà validé" : "Valider"}
                 </Button>
+                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
+                  Gérer
+                </Button>
               </div>
             </div>
           ) : (
             <div className="mt12 col">
               <div className="small2">Aucune action aujourd’hui.</div>
               <div className="mt10">
-                <Button
-                  onClick={() => {
-                    if (typeof onOpenPlan === "function") onOpenPlan();
-                    else openPlanWith(focusCategory?.id, null);
-                  }}
-                >
+                <Button onClick={() => openPlanWith(focusCategory?.id, selectedGoal ? "__new_process__" : null)}>
                   Ajouter une habitude
                 </Button>
               </div>

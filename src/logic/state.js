@@ -159,6 +159,7 @@ export function initialData() {
       // V2: one active goal at a time
       activeGoalId: null,
       mainGoalId: null,
+      selectedGoalByCategory: {},
       onboardingCompleted: false,
       onboardingStep: 1,
       showPlanStep: false,
@@ -202,6 +203,7 @@ export function demoData() {
       accentHome: "#7C3AED",
       activeGoalId: null,
       mainGoalId: outcomeId,
+      selectedGoalByCategory: {},
       onboardingCompleted: true,
       onboardingStep: 3,
       showPlanStep: false,
@@ -282,6 +284,9 @@ export function migrate(prev) {
 
   if (typeof next.ui.activeGoalId === "undefined") next.ui.activeGoalId = null;
   if (typeof next.ui.mainGoalId === "undefined") next.ui.mainGoalId = null;
+  if (!next.ui.selectedGoalByCategory || typeof next.ui.selectedGoalByCategory !== "object") {
+    next.ui.selectedGoalByCategory = {};
+  }
   if (typeof next.ui.soundEnabled === "undefined") next.ui.soundEnabled = false;
   if (typeof next.ui.onboardingCompleted === "undefined") next.ui.onboardingCompleted = false;
   if (typeof next.ui.onboardingStep === "undefined") next.ui.onboardingStep = 1;
