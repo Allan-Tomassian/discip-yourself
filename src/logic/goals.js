@@ -57,27 +57,55 @@ function normalizeGoalType(goal, planType) {
 export function sanitizeOutcome(goal) {
   if (!goal || typeof goal !== "object") return goal;
   const next = { ...goal };
+
+  // OUTCOME = état/objectif mesurable, pas une action planifiée.
   next.planType = "STATE";
+
+  // Never linked as a child.
   next.parentId = null;
   next.primaryGoalId = null;
   next.weight = null;
   next.linkWeight = null;
+
+  // Remove habit/action scheduling fields.
   next.cadence = undefined;
   next.target = undefined;
   next.freqUnit = undefined;
   next.freqCount = undefined;
   next.oneOffDate = undefined;
   next.sessionMinutes = null;
+
+  // OUTCOME does not need a start/end time in the planner.
+  next.startAt = null;
+  next.endAt = null;
+
   return next;
 }
 
 export function sanitizeProcess(goal) {
   if (!goal || typeof goal !== "object") return goal;
   const next = { ...goal };
+
+  // PROCESS = action/habit (ACTION) or one-shot action (ONE_OFF)
   if (next.planType !== "ACTION" && next.planType !== "ONE_OFF") next.planType = "ACTION";
+
+  // No metric/deadline/notes on PROCESS to avoid hybrids.
   next.metric = null;
   next.deadline = "";
   next.notes = undefined;
+
+  // Keep schedule coherent.
+  if (next.planType === "ACTION") {
+    next.oneOffDate = undefined;
+  }
+  if (next.planType === "ONE_OFF") {
+    // One-off actions are dated via oneOffDate, not via recurring frequency.
+    next.cadence = undefined;
+    next.target = undefined;
+    next.freqUnit = undefined;
+    next.freqCount = undefined;
+  }
+
   return next;
 }
 

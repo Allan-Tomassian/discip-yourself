@@ -92,6 +92,21 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
   const isOutcome = rawType === "OUTCOME" || rawType === "STATE" || hasMetric;
   const isProcess = rawType === "PROCESS" || rawType === "ACTION" || rawType === "ONE_OFF";
 
+  const inferredPlanType = rawType === "ONE_OFF" ? "ONE_OFF" : isProcess ? "ACTION" : "STATE";
+
+  // Canonical semantics:
+  // - OUTCOME = objective (STATE) : can carry metric/deadline/notes, but never scheduling/frequency/session/parent.
+  // - PROCESS = habit (ACTION or ONE_OFF) : can carry frequency/session/oneOffDate, but never metric/deadline/notes.
+  if (isOutcome) {
+    g.type = "OUTCOME";
+    g.planType = "STATE";
+    g.kind = "OUTCOME";
+  } else if (isProcess) {
+    g.type = "PROCESS";
+    g.planType = inferredPlanType;
+    g.kind = "ACTION";
+  }
+
   if (!g.title) g.title = "Objectif";
   if (!isOutcome) {
     if (!g.cadence) g.cadence = "WEEKLY";
@@ -103,29 +118,57 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
   else if (isProcess) g.templateType = "HABIT";
   else if (typeof g.templateType !== "string") g.templateType = null;
 
-  // Optional but strongly recommended: deadline as ISO date (YYYY-MM-DD)
-  // Empty string means "no deadline yet".
+  // Optional: deadline as ISO date (YYYY-MM-DD). Empty string means "no deadline yet".
   if (typeof g.deadline !== "string") g.deadline = "";
+  if (typeof g.notes !== "string") g.notes = "";
 
   // Strict separation:
-  // - OUTCOME: no habit fields, no parent link
-  // - PROCESS: no metric/deadline
-  if (isProcess) {
-    g.deadline = "";
-    g.metric = null;
-  }
+  // OUTCOME (objective): keep metric/deadline/notes, but remove any habit/scheduling fields.
+  // PROCESS (habit): keep planning/frequency fields, but remove any outcome fields.
   if (isOutcome) {
+    // Remove habit fields
     g.cadence = undefined;
     g.target = undefined;
     g.freqUnit = undefined;
     g.freqCount = undefined;
     g.sessionMinutes = null;
+    g.oneOffDate = undefined;
+
+    // Remove scheduling remnants
+    g.startAt = null;
+    g.endAt = null;
+    g.startDate = undefined;
 
     // Outcome is the parent, never a child
     g.parentId = null;
     g.primaryGoalId = null;
     g.weight = 0;
     g.linkWeight = 0;
+  }
+
+  if (isProcess) {
+    // Remove outcome fields
+    g.deadline = "";
+    g.metric = null;
+    g.notes = "";
+
+    // Ensure planType coherence
+    if (g.planType === "ONE_OFF") {
+      // oneOffDate is the only date carrier for ONE_OFF habits
+      if (typeof g.oneOffDate !== "string" || !g.oneOffDate.trim()) {
+        // allow legacy fallback if any
+        const legacy = typeof rawGoal?.deadline === "string" ? rawGoal.deadline.trim() : "";
+        g.oneOffDate = legacy || "";
+      }
+      g.cadence = undefined;
+      g.target = undefined;
+      g.freqUnit = undefined;
+      g.freqCount = undefined;
+      g.sessionMinutes = null;
+    } else {
+      // ACTION habit must not carry oneOffDate
+      g.oneOffDate = undefined;
+    }
   }
 
   // If a PROCESS has no valid parentId, keep it null (linking is optional)
@@ -136,6 +179,7 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
       const rawPrimary = g.primaryGoalId.trim();
       g.primaryGoalId = rawPrimary ? rawPrimary : null;
     }
+    if (!g.parentId) g.weight = Number.isFinite(g.weight) ? g.weight : 100;
   }
 
   // Optional: link strength to main WHY (0..1). Used by priorities engine when available.

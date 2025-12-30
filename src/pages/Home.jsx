@@ -3,6 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
 import FocusCategoryPicker from "../components/FocusCategoryPicker";
 import { todayKey } from "../utils/dates";
+import { setMainGoal } from "../logic/goals";
 import { getBackgroundCss, getAccentForPage } from "../utils/_theme";
 
 function resolveGoalType(goal) {
@@ -84,7 +85,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
     if (habitCursorId && ids.includes(habitCursorId)) return;
     setHabitCursorId(ids[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusCategory?.id, selectedGoal?.id, activeHabits.length, nextHabit?.id]);
+  }, [focusCategory?.id, selectedGoal?.id, activeHabits, nextHabit?.id]);
 
   const currentHabit = useMemo(() => {
     if (!activeHabits.length) return null;
@@ -164,6 +165,14 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
         },
       };
     });
+  }
+
+  function setCategoryMainGoal(nextGoalId) {
+    if (!nextGoalId || typeof setData !== "function") return;
+    // Safety: ensure the selected goal belongs to the current focus category.
+    const g = goals.find((x) => x.id === nextGoalId) || null;
+    if (!g || !focusCategory?.id || g.categoryId !== focusCategory.id) return;
+    setData((prev) => setMainGoal(prev, nextGoalId));
   }
 
   if (!categories.length) {
@@ -246,9 +255,30 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
           {selectedGoal ? (
             <div className="mt12 col">
               <div style={{ fontWeight: 800, fontSize: 18 }}>{selectedGoal.title || "Objectif"}</div>
-              <div className="small2" style={{ marginTop: 6, opacity: 0.9 }}>
-                Objectif principal de la catégorie
-              </div>
+
+              {outcomeGoals.length > 1 ? (
+                <div className="mt10">
+                  <div className="small" style={{ marginBottom: 6 }}>
+                    Objectif principal de la catégorie
+                  </div>
+                  <Select
+                    value={selectedGoal.id}
+                    onChange={(e) => setCategoryMainGoal(e.target.value)}
+                    style={{ fontSize: 16 }}
+                  >
+                    {outcomeGoals.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.title || "Objectif"}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              ) : (
+                <div className="small2" style={{ marginTop: 6, opacity: 0.9 }}>
+                  Objectif principal de la catégorie
+                </div>
+              )}
+
               <div className="mt10">
                 <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
                   Modifier dans Plan
@@ -282,8 +312,15 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
             <div className="mt12 col">
               <div className="small2">Aucune habitude liée.</div>
               <div className="mt10">
-                <Button onClick={() => openPlanWith(focusCategory?.id, selectedGoal ? "__new_process__" : "__new_outcome__")}>
-                  {selectedGoal ? "Créer une habitude" : "Créer un objectif"}
+                <Button
+                  onClick={() =>
+                    openPlanWith(
+                      focusCategory?.id,
+                      selectedGoal ? "__new_process__" : "__new_outcome__"
+                    )
+                  }
+                >
+                  Passer à l’action
                 </Button>
               </div>
             </div>
@@ -326,7 +363,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
                   {currentHabitDone ? "Déjà validé" : "Valider"}
                 </Button>
                 <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
-                  Gérer
+                  Plan
                 </Button>
               </div>
             </div>
@@ -334,7 +371,14 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
             <div className="mt12 col">
               <div className="small2">Aucune action aujourd’hui.</div>
               <div className="mt10">
-                <Button onClick={() => openPlanWith(focusCategory?.id, selectedGoal ? "__new_process__" : null)}>
+                <Button
+                  onClick={() =>
+                    openPlanWith(
+                      focusCategory?.id,
+                      selectedGoal ? "__new_process__" : "__new_outcome__"
+                    )
+                  }
+                >
                   Passer à l’action
                 </Button>
               </div>

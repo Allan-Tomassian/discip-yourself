@@ -335,15 +335,15 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       ? "Modifier l’objectif"
       : "Nouvel objectif"
     : editGoalId
-      ? "Modifier l’habitude"
-      : "Nouvelle habitude";
+    ? "Modifier l’habitude"
+    : "Nouvelle habitude";
   const formSaveLabel = isObjectiveForm
     ? editGoalId
       ? "Enregistrer l’objectif"
       : "Ajouter l’objectif"
     : editGoalId
-      ? "Enregistrer l’habitude"
-      : "Ajouter l’habitude";
+    ? "Enregistrer l’habitude"
+    : "Ajouter l’habitude";
   const outcomeAggregate = useMemo(
     () => computeAggregateProgress({ goals: allGoals }, mainGoal?.id),
     [allGoals, mainGoal?.id]
@@ -400,6 +400,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setErr("");
     setActivationError(null);
     setOverlapError(null);
+    // Keep Advanced open when editing, but we also expose creation buttons outside Advanced.
     setAdvancedOpen(true);
     setEditGoalId(null);
     setDraftTemplateId(null);
@@ -766,7 +767,9 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setData((prev) => {
       let next = editGoalId ? updateGoal(prev, editGoalId, payload) : createGoal(prev, payload);
       if (!editGoalId && goalType === "OUTCOME" && !mainGoalId && c?.id && createId) {
-        const nextCategories = (next.categories || []).map((cat) => (cat.id === c.id ? { ...cat, mainGoalId: createId } : cat));
+        const nextCategories = (next.categories || []).map((cat) =>
+          cat.id === c.id ? { ...cat, mainGoalId: createId } : cat
+        );
         next = {
           ...next,
           categories: nextCategories,
@@ -976,6 +979,13 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                 <Button onClick={openAddHabit}>+ Ajouter une habitude</Button>
               </div>
             ) : null}
+
+            <div className="mt12 row" style={{ gap: 10, flexWrap: "wrap" }}>
+              <Button onClick={openAddObjective}>+ Nouvel objectif</Button>
+              <Button disabled={!mainGoal} onClick={openAddHabit}>
+                + Nouvelle habitude
+              </Button>
+            </div>
           </div>
         </Card>
 
@@ -1122,6 +1132,11 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                               </>
                             ) : (
                               <>
+                                {type === "OUTCOME" && !isMainGoal ? (
+                                  <Button variant="ghost" onClick={() => setCategoryMainGoal(g.id)}>
+                                    Définir comme objectif principal
+                                  </Button>
+                                ) : null}
                                 <Button variant="ghost" onClick={() => onMakeActive(g)}>
                                   Activer
                                 </Button>
@@ -1131,11 +1146,6 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                                 <Button variant="ghost" onClick={() => setData((prev) => deleteGoal(prev, g.id))}>
                                   Supprimer
                                 </Button>
-                                {type === "OUTCOME" && !isMainGoal ? (
-                                  <div className="small2" style={{ opacity: 0.7 }}>
-                                    Il doit être actif pour devenir principal.
-                                  </div>
-                                ) : null}
                               </>
                             )}
                           </div>
