@@ -340,9 +340,10 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const goals = c ? allGoals.filter((g) => g.categoryId === c.id) : [];
   const outcomeGoals = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
   const processGoals = goals.filter((g) => resolveGoalType(g) === "PROCESS");
-  const fallbackMainId =
-    safeData.ui?.mainGoalId && goals.some((g) => g.id === safeData.ui?.mainGoalId) ? safeData.ui.mainGoalId : null;
-  const mainGoalId = c?.mainGoalId || fallbackMainId || null;
+
+  // Source of truth: only the category can define its main goal.
+  // Never fallback to a global ui.mainGoalId, to avoid cross-category parentId corruption.
+  const mainGoalId = c?.mainGoalId || null;
   const mainGoal = mainGoalId ? goals.find((g) => g.id === mainGoalId) : null;
   const linkedHabits = mainGoalId ? processGoals.filter((g) => g.parentId === mainGoalId) : [];
   const visibleHabits = showAllHabits ? linkedHabits : linkedHabits.slice(0, 3);
