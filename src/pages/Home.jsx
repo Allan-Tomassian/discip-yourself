@@ -36,11 +36,6 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
     return withGoal || categories[0] || null;
   }, [categories, goals, safeData.ui?.selectedCategoryId]);
 
-  const selectedGoalByCategory =
-    safeData.ui?.selectedGoalByCategory && typeof safeData.ui.selectedGoalByCategory === "object"
-      ? safeData.ui.selectedGoalByCategory
-      : {};
-
   const outcomeGoals = useMemo(() => {
     if (!focusCategory?.id) return [];
     return goals.filter((g) => g.categoryId === focusCategory.id && resolveGoalType(g) === "OUTCOME");
@@ -48,12 +43,12 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
 
   const selectedGoal = useMemo(() => {
     if (!focusCategory?.id) return null;
-    const storedId = selectedGoalByCategory[focusCategory.id] || null;
-    const stored = storedId ? outcomeGoals.find((g) => g.id === storedId) : null;
-    if (stored) return stored;
+    const mainId = typeof focusCategory?.mainGoalId === "string" ? focusCategory.mainGoalId : null;
+    const main = mainId ? outcomeGoals.find((g) => g.id === mainId) : null;
+    if (main) return main;
     const active = outcomeGoals.find((g) => g.status === "active") || null;
     return active || outcomeGoals[0] || null;
-  }, [focusCategory?.id, outcomeGoals, selectedGoalByCategory]);
+  }, [focusCategory?.id, focusCategory?.mainGoalId, outcomeGoals]);
 
   const processGoals = useMemo(() => {
     if (!focusCategory?.id) return [];
@@ -65,7 +60,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
     return processGoals.filter((g) => g.parentId === selectedGoal.id);
   }, [processGoals, selectedGoal?.id]);
 
-  const habits = linkedHabits.length ? linkedHabits : processGoals;
+  const habits = linkedHabits;
   const activeHabits = habits.filter((g) => g.status === "active");
   const nextHabit = activeHabits.find((g) => !todayChecks?.[g.id]?.[today]) || null;
   const nextHabitDone = nextHabit ? Boolean(todayChecks?.[nextHabit.id]?.[today]) : false;
@@ -111,24 +106,6 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
       ...prev,
       ui: { ...(prev.ui || {}), selectedCategoryId: nextId },
     }));
-  }
-
-  function setSelectedGoal(goalId) {
-    if (!focusCategory?.id || typeof setData !== "function") return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      const prevMap =
-        prevUi.selectedGoalByCategory && typeof prevUi.selectedGoalByCategory === "object"
-          ? prevUi.selectedGoalByCategory
-          : {};
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          selectedGoalByCategory: { ...prevMap, [focusCategory.id]: goalId || null },
-        },
-      };
-    });
   }
 
   function openPlanWith(categoryId, openGoalEditId) {
@@ -240,20 +217,16 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
         <div className="p18">
           <div className="titleSm">Objectif</div>
           <div className="small2">Sélectionné pour aujourd’hui</div>
-          {outcomeGoals.length ? (
+          {selectedGoal ? (
             <div className="mt12 col">
-              <Select value={selectedGoal?.id || ""} onChange={(e) => setSelectedGoal(e.target.value)}>
-                <option value="" disabled>
-                  Choisir un objectif
-                </option>
-                {outcomeGoals.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.title || "Objectif"}
-                  </option>
-                ))}
-              </Select>
-              <div className="small2" style={{ marginTop: 8 }}>
-                {selectedGoal?.title || "Objectif"}
+              <div style={{ fontWeight: 800, fontSize: 18 }}>{selectedGoal.title || "Objectif"}</div>
+              <div className="small2" style={{ marginTop: 6, opacity: 0.9 }}>
+                Objectif principal de la catégorie
+              </div>
+              <div className="mt10">
+                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
+                  Modifier dans Plan
+                </Button>
               </div>
             </div>
           ) : (
@@ -331,7 +304,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
               <div className="small2">Aucune action aujourd’hui.</div>
               <div className="mt10">
                 <Button onClick={() => openPlanWith(focusCategory?.id, selectedGoal ? "__new_process__" : null)}>
-                  Ajouter une habitude
+                  Passer à l’action
                 </Button>
               </div>
             </div>

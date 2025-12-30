@@ -236,7 +236,6 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const handledEditRef = useRef(null);
   const [isAdding, setIsAdding] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [goalPickerOpen, setGoalPickerOpen] = useState(false);
   const [showAllHabits, setShowAllHabits] = useState(false);
   const [formKind, setFormKind] = useState(null);
   const [draftPlanType, setDraftPlanType] = useState("ACTION");
@@ -269,7 +268,6 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const safeData = data && typeof data === "object" ? data : {};
 
   useEffect(() => {
-    setGoalPickerOpen(false);
     setShowAllHabits(false);
   }, [categoryId, safeData.ui?.selectedCategoryId]);
 
@@ -822,8 +820,10 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                   <Button variant="ghost" onClick={() => openEdit(mainGoal)}>
                     Modifier
                   </Button>
-                  <Button variant="ghost" onClick={() => setGoalPickerOpen((v) => !v)}>
-                    {goalPickerOpen ? "Fermer" : "Changer d’objectif"}
+                </div>
+                <div className="row" style={{ marginTop: 10, justifyContent: "flex-end" }}>
+                  <Button variant="ghost" onClick={openAddObjective}>
+                    + Nouvel objectif
                   </Button>
                 </div>
               </div>
@@ -831,39 +831,10 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
               <div className="mt12 col">
                 <div className="small2">Aucun objectif principal défini.</div>
                 <div className="row" style={{ marginTop: 10 }}>
-                  {outcomeGoals.length ? (
-                    <Button variant="ghost" onClick={() => setGoalPickerOpen((v) => !v)}>
-                      Choisir un objectif
-                    </Button>
-                  ) : null}
                   <Button onClick={openAddObjective}>Créer un objectif</Button>
                 </div>
               </div>
             )}
-
-            {goalPickerOpen ? (
-              <div className="mt10">
-                <Select
-                  value={mainGoal?.id || ""}
-                  onChange={(e) => {
-                    const nextId = e.target.value;
-                    if (!nextId) return;
-                    setCategoryMainGoal(nextId);
-                    setGoalPickerOpen(false);
-                  }}
-                  style={{ fontSize: 16 }}
-                >
-                  <option value="" disabled>
-                    Choisir un objectif
-                  </option>
-                  {outcomeGoals.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.title || "Objectif"}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            ) : null}
           </div>
         </Card>
 

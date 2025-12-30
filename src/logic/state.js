@@ -1,3 +1,4 @@
+// src/logic/state.js
 import { loadState, saveState } from "../utils/storage";
 import { uid } from "../utils/helpers";
 import { normalizeGoalsState } from "./goals";
@@ -81,11 +82,11 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
   const g = rawGoal && typeof rawGoal === "object" ? { ...rawGoal } : {};
 
   if (!g.id) g.id = uid();
-  const fallbackCategoryId =
-    Array.isArray(categories) && categories.length ? categories[0].id : null;
+  const fallbackCategoryId = Array.isArray(categories) && categories.length ? categories[0].id : null;
   if (typeof g.categoryId !== "string" || !g.categoryId.trim()) {
     if (fallbackCategoryId) g.categoryId = fallbackCategoryId;
   }
+
   const rawType = (g.type || g.planType || g.kind || "").toString().toUpperCase();
   const hasMetric = g.metric && typeof g.metric === "object";
   const isOutcome = rawType === "OUTCOME" || rawType === "STATE" || hasMetric;
@@ -96,6 +97,7 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
     if (!g.cadence) g.cadence = "WEEKLY";
     if (typeof g.target !== "number") g.target = 1;
   }
+
   if (typeof g.templateId !== "string") g.templateId = null;
   if (isOutcome) g.templateType = "GOAL";
   else if (isProcess) g.templateType = "HABIT";
@@ -104,6 +106,10 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
   // Optional but strongly recommended: deadline as ISO date (YYYY-MM-DD)
   // Empty string means "no deadline yet".
   if (typeof g.deadline !== "string") g.deadline = "";
+
+  // Strict separation:
+  // - OUTCOME: no habit fields, no parent link
+  // - PROCESS: no metric/deadline
   if (isProcess) {
     g.deadline = "";
     g.metric = null;
@@ -114,6 +120,22 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
     g.freqUnit = undefined;
     g.freqCount = undefined;
     g.sessionMinutes = null;
+
+    // Outcome is the parent, never a child
+    g.parentId = null;
+    g.primaryGoalId = null;
+    g.weight = 0;
+    g.linkWeight = 0;
+  }
+
+  // If a PROCESS has no valid parentId, keep it null (linking is optional)
+  if (isProcess) {
+    const rawParent = typeof g.parentId === "string" ? g.parentId.trim() : "";
+    g.parentId = rawParent ? rawParent : null;
+    if (typeof g.primaryGoalId === "string") {
+      const rawPrimary = g.primaryGoalId.trim();
+      g.primaryGoalId = rawPrimary ? rawPrimary : null;
+    }
   }
 
   // Optional: link strength to main WHY (0..1). Used by priorities engine when available.
@@ -136,12 +158,16 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
     if (!Array.isArray(g.schedule.timeSlots)) g.schedule.timeSlots = createDefaultGoalSchedule().timeSlots;
     if (typeof g.schedule.timezone !== "string") g.schedule.timezone = createDefaultGoalSchedule().timezone;
 
-    if (typeof g.schedule.durationMinutes !== "number") g.schedule.durationMinutes = createDefaultGoalSchedule().durationMinutes;
-    if (typeof g.schedule.remindBeforeMinutes !== "number") g.schedule.remindBeforeMinutes = createDefaultGoalSchedule().remindBeforeMinutes;
+    if (typeof g.schedule.durationMinutes !== "number")
+      g.schedule.durationMinutes = createDefaultGoalSchedule().durationMinutes;
+    if (typeof g.schedule.remindBeforeMinutes !== "number")
+      g.schedule.remindBeforeMinutes = createDefaultGoalSchedule().remindBeforeMinutes;
     if (typeof g.schedule.allowSnooze !== "boolean") g.schedule.allowSnooze = createDefaultGoalSchedule().allowSnooze;
     if (typeof g.schedule.snoozeMinutes !== "number") g.schedule.snoozeMinutes = createDefaultGoalSchedule().snoozeMinutes;
-    if (typeof g.schedule.remindersEnabled !== "boolean") g.schedule.remindersEnabled = createDefaultGoalSchedule().remindersEnabled;
+    if (typeof g.schedule.remindersEnabled !== "boolean")
+      g.schedule.remindersEnabled = createDefaultGoalSchedule().remindersEnabled;
   }
+
   g.resetPolicy = normalizeResetPolicy(g.resetPolicy);
 
   return g;
@@ -163,6 +189,14 @@ export function initialData() {
     ui: {
       blocks: DEFAULT_BLOCKS.map((b) => ({ ...b })),
       selectedCategoryId: null,
+
+      // V3: per-view focus (used to decouple Today/Library/Plan later)
+      selectedCategoryByView: {
+        home: null,
+        library: null,
+        plan: null,
+      },
+
       // V2: per-page theming
       pageThemes: { home: "aurora" },
       pageAccents: { home: "#7C3AED" },
@@ -212,6 +246,13 @@ export function demoData() {
     ui: {
       blocks: DEFAULT_BLOCKS.map((b) => ({ ...b })),
       selectedCategoryId: categories[0].id,
+
+      selectedCategoryByView: {
+        home: categories[0].id,
+        library: null,
+        plan: null,
+      },
+
       pageThemes: { home: "aurora" },
       pageAccents: { home: "#7C3AED" },
       pageThemeHome: "aurora",
@@ -302,6 +343,21 @@ export function migrate(prev) {
   if (!next.ui.selectedGoalByCategory || typeof next.ui.selectedGoalByCategory !== "object") {
     next.ui.selectedGoalByCategory = {};
   }
+
+  // V3: per-view selected category (decouple Today/Library/Plan later)
+  if (!next.ui.selectedCategoryByView || typeof next.ui.selectedCategoryByView !== "object") {
+    next.ui.selectedCategoryByView = { home: null, library: null, plan: null };
+  } else {
+    if (typeof next.ui.selectedCategoryByView.home === "undefined") next.ui.selectedCategoryByView.home = null;
+    if (typeof next.ui.selectedCategoryByView.library === "undefined") next.ui.selectedCategoryByView.library = null;
+    if (typeof next.ui.selectedCategoryByView.plan === "undefined") next.ui.selectedCategoryByView.plan = null;
+  }
+
+  // Backfill home focus from legacy selectedCategoryId (do NOT force library/plan)
+  if (!next.ui.selectedCategoryByView.home) {
+    next.ui.selectedCategoryByView.home = next.ui.selectedCategoryId || null;
+  }
+
   if (typeof next.ui.soundEnabled === "undefined") next.ui.soundEnabled = false;
   if (typeof next.ui.onboardingCompleted === "undefined") next.ui.onboardingCompleted = false;
   if (typeof next.ui.onboardingStep === "undefined") next.ui.onboardingStep = 1;
@@ -315,6 +371,12 @@ export function migrate(prev) {
   if (next.ui?.selectedCategoryId) {
     const exists = next.categories.some((c) => c.id === next.ui.selectedCategoryId);
     if (!exists) next.ui.selectedCategoryId = next.categories[0]?.id || null;
+  }
+
+  // Ensure per-view home selection is valid as well
+  if (next.ui?.selectedCategoryByView?.home) {
+    const exists = next.categories.some((c) => c.id === next.ui.selectedCategoryByView.home);
+    if (!exists) next.ui.selectedCategoryByView.home = next.categories[0]?.id || null;
   }
 
   // goals (V2 normalize)
