@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
 import FocusCategoryPicker from "../components/FocusCategoryPicker";
@@ -69,6 +69,41 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
   const activeHabits = habits.filter((g) => g.status === "active");
   const nextHabit = activeHabits.find((g) => !todayChecks?.[g.id]?.[today]) || null;
   const nextHabitDone = nextHabit ? Boolean(todayChecks?.[nextHabit.id]?.[today]) : false;
+
+  // Cursor habit (small selector for "Action du jour")
+  const [habitCursorId, setHabitCursorId] = useState(null);
+
+  useEffect(() => {
+    // Reset cursor when category/goal changes or list changes
+    const ids = activeHabits.map((h) => h.id);
+    if (!ids.length) {
+      setHabitCursorId(null);
+      return;
+    }
+    // Prefer nextHabit, otherwise keep current if still valid, otherwise first
+    if (nextHabit?.id) {
+      setHabitCursorId(nextHabit.id);
+      return;
+    }
+    if (habitCursorId && ids.includes(habitCursorId)) return;
+    setHabitCursorId(ids[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusCategory?.id, selectedGoal?.id, activeHabits.length, nextHabit?.id]);
+
+  const currentHabit = useMemo(() => {
+    if (!activeHabits.length) return null;
+    if (habitCursorId) return activeHabits.find((h) => h.id === habitCursorId) || activeHabits[0];
+    return nextHabit || activeHabits[0];
+  }, [activeHabits, habitCursorId, nextHabit]);
+
+  const currentHabitDone = currentHabit ? Boolean(todayChecks?.[currentHabit.id]?.[today]) : false;
+
+  function cycleHabit(dir) {
+    if (!activeHabits.length) return;
+    const idx = Math.max(0, activeHabits.findIndex((h) => h.id === (currentHabit?.id || "")));
+    const nextIdx = (idx + dir + activeHabits.length) % activeHabits.length;
+    setHabitCursorId(activeHabits[nextIdx].id);
+  }
 
   function setFocusCategory(nextId) {
     if (!nextId || typeof setData !== "function") return;
@@ -148,7 +183,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
     );
   }
 
-  const accent = getAccentForPage(safeData, "home");
+  const accent = (focusCategory && focusCategory.color) ? focusCategory.color : getAccentForPage(safeData, "home");
   const backgroundImage = profile.whyImage || "";
   const backgroundCss = getBackgroundCss({ data: safeData, pageId: "home", image: backgroundImage });
   const whyText = (profile.whyText || "").trim();
@@ -199,21 +234,6 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
           label="Focus sur une catégorie"
           emptyLabel="Catégorie à configurer"
         />
-      </div>
-
-      <div className="mt12 row" style={{ gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <Button variant="ghost" onClick={() => (typeof onOpenLibrary === "function" ? onOpenLibrary() : null)}>
-          Bibliothèque
-        </Button>
-        <Button
-          variant="ghost"
-          onClick={() => {
-            if (typeof onOpenPlan === "function") onOpenPlan();
-            else openPlanWith(focusCategory?.id, null);
-          }}
-        >
-          Plan
-        </Button>
       </div>
 
       <Card accentBorder style={{ marginTop: 12, borderColor: accent }}>
@@ -279,12 +299,27 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
       <Card accentBorder style={{ marginTop: 12, borderColor: accent }}>
         <div className="p18">
           <div className="titleSm">Action du jour</div>
-          {nextHabit ? (
+          {currentHabit ? (
             <div className="mt12 col">
-              <div style={{ fontWeight: 800, fontSize: 18 }}>{nextHabit.title || "Habitude"}</div>
+              <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                <div style={{ fontWeight: 800, fontSize: 18, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {currentHabit.title || "Habitude"}
+                </div>
+                {activeHabits.length > 1 ? (
+                  <div className="row" style={{ gap: 6 }}>
+                    <button className="btn btnGhost" onClick={() => cycleHabit(-1)} aria-label="Habitude précédente">
+                      ▲
+                    </button>
+                    <button className="btn btnGhost" onClick={() => cycleHabit(1)} aria-label="Habitude suivante">
+                      ▼
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
               <div className="mt12 row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                <Button onClick={() => markDoneToday(nextHabit.id)} disabled={nextHabitDone}>
-                  {nextHabitDone ? "Déjà validé" : "Valider"}
+                <Button onClick={() => markDoneToday(currentHabit.id)} disabled={currentHabitDone}>
+                  {currentHabitDone ? "Déjà validé" : "Valider"}
                 </Button>
                 <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
                   Gérer

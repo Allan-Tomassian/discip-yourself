@@ -97,13 +97,28 @@ function getEmptyStateConfig(data) {
   };
 }
 
+const TABS = new Set(["today", "library", "plan", "settings"]);
+function normalizeTab(t) {
+  return TABS.has(t) ? t : "today";
+}
+
 export default function App() {
   const [data, setData] = usePersistedState(React);
-  const [tab, setTab] = useState("today");
+  const [tab, _setTab] = useState("today");
   const [activeReminder, setActiveReminder] = useState(null);
   const dataRef = useRef(data);
   const lastReminderRef = useRef({});
   const activeReminderRef = useRef(activeReminder);
+
+  const setTab = (next) => {
+    const t = normalizeTab(next);
+    _setTab(t);
+    // persist last tab for better UX (non-blocking)
+    setData((prev) => ({
+      ...prev,
+      ui: { ...(prev.ui || {}), lastTab: t },
+    }));
+  };
 
   useEffect(() => {
     dataRef.current = data;
@@ -144,10 +159,19 @@ export default function App() {
       }
     }, 30000);
     return () => clearInterval(id);
-  }, []);
+  }, [setData]);
 
 
   const safeData = data && typeof data === "object" ? data : {};
+  useEffect(() => {
+    // Do not restore tab during onboarding flows.
+    const completed = Boolean(safeData?.ui?.onboardingCompleted);
+    if (!completed) return;
+    const last = normalizeTab(safeData?.ui?.lastTab);
+    // keep current if already valid
+    _setTab((cur) => (normalizeTab(cur) === last ? cur : last));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const onboarded = isOnboarded(safeData);
   const onboardingCompleted = Boolean(safeData.ui?.onboardingCompleted);
   const showPlanStep = Boolean(safeData.ui?.showPlanStep);
@@ -218,17 +242,6 @@ export default function App() {
             setTab("plan");
           }}
         />
-      ) : tab === "plan" ? (
-        <CategoryDetail
-          data={data}
-          setData={setData}
-          categoryId={data?.ui?.selectedCategoryId || data?.categories?.[0]?.id || null}
-          onBack={() => setTab("library")}
-          initialEditGoalId={data?.ui?.openGoalEditId || null}
-          onSelectCategory={(nextId) => {
-            setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), selectedCategoryId: nextId } }));
-          }}
-        />
       ) : tab === "library" ? (
         <Categories
           data={data}
@@ -239,6 +252,17 @@ export default function App() {
               ui: { ...(prev.ui || {}), selectedCategoryId: categoryId },
             }));
             setTab("plan");
+          }}
+        />
+      ) : tab === "plan" ? (
+        <CategoryDetail
+          data={data}
+          setData={setData}
+          categoryId={data?.ui?.selectedCategoryId || data?.categories?.[0]?.id || null}
+          onBack={() => setTab("library")}
+          initialEditGoalId={data?.ui?.openGoalEditId || null}
+          onSelectCategory={(nextId) => {
+            setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), selectedCategoryId: nextId } }));
           }}
         />
       ) : (

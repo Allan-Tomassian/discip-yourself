@@ -3,8 +3,8 @@ import React from "react";
 export default function TopNav({ active, setActive, onOpenSettings }) {
   const items = [
     { id: "today", label: "Aujourd’hui" },
-    { id: "plan", label: "Plan" },
     { id: "library", label: "Bibliothèque" },
+    { id: "plan", label: "Plan" },
   ];
 
   return (
