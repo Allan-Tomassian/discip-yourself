@@ -141,12 +141,10 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
   }, [activeHabits, checks]);
 
   // Micro-action slots based on schedule + count (data.checks)
+  // NOTE: startAt must NOT block execution; it will later drive reminders/notifications.
   const slotItems = useMemo(() => {
     const now = new Date();
-    const nowMs = now.getTime();
     return activeHabits.flatMap((habit) => {
-      const startAtMs = parseStartAtMs(habit?.startAt);
-      if (startAtMs && startAtMs > nowMs) return [];
       const slots = getScheduleSlots(habit, now);
       if (!slots.length) return [];
       const count = getHabitCountForToday(habit, checks, now);
@@ -340,6 +338,24 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
     else clearActivationFeedback(goalId);
   }
 
+  function deactivateHabitNow(goalId) {
+    if (!goalId || typeof setData !== "function") return;
+    clearActivationFeedback(goalId);
+    setData((prev) => {
+      const prevGoals = Array.isArray(prev.goals) ? prev.goals : [];
+      const nextGoals = prevGoals.map((g) => {
+        if (g.id !== goalId) return g;
+        // Minimal, UI-safe deactivation: back to queued. Do not delete history.
+        return {
+          ...g,
+          status: "queued",
+          activeSince: "",
+        };
+      });
+      return { ...prev, goals: nextGoals };
+    });
+  }
+
   if (!categories.length) {
     return (
       <ScreenShell
@@ -485,7 +501,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
                 const startAtMs = parseStartAtMs(h.startAt);
                 const hasFutureStart = Boolean(isActive && startAtMs && startAtMs > Date.now());
                 const startLabel = hasFutureStart ? formatStartDateFr(h.startAt) : "";
-                const statusLabel = hasFutureStart && startLabel ? `Commence le ${startLabel}` : isActive ? "Active" : "À activer";
+                const statusLabel = hasFutureStart && startLabel ? `Planifiée (début : ${startLabel})` : isActive ? "Active" : "À activer";
                 const fb = activationByHabitId?.[h.id] || null;
                 const isBlocked = Boolean(fb && fb.reason && fb.reason !== "START_IN_FUTURE");
 
@@ -512,7 +528,11 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
                         <Button variant="ghost" onClick={() => activateHabitNow(h.id)}>
                           Activer
                         </Button>
-                      ) : null}
+                      ) : (
+                        <Button variant="ghost" onClick={() => deactivateHabitNow(h.id)}>
+                          Désactiver
+                        </Button>
+                      )}
                     </div>
 
                     {!isActive && isBlocked ? (
@@ -590,7 +610,10 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
                 </div>
               ) : null}
 
-              <div className="mt10">
+              <div className="mt10 row" style={{ gap: 10, flexWrap: "wrap" }}>
+                <Button onClick={() => openPlanWith(focusCategory?.id, selectedGoal ? "__new_process__" : "__new_outcome__")}>
+                  Passer à l’action
+                </Button>
                 <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
                   Gérer dans Plan
                 </Button>

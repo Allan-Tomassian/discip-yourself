@@ -274,6 +274,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const [activationError, setActivationError] = useState(null);
   const [overlapError, setOverlapError] = useState(null);
   const [linkWeightsById, setLinkWeightsById] = useState({});
+  const [linkPanelGoalId, setLinkPanelGoalId] = useState(null);
   const [addCatName, setAddCatName] = useState("Nouvelle");
   const [addCatColor, setAddCatColor] = useState("#FFFFFF");
   const [addCatErr, setAddCatErr] = useState("");
@@ -820,33 +821,34 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   }
 
   function deactivate(goal) {
-    if (!goal?.id) return;
-    setData((prev) => updateGoal(prev, goal.id, { status: "queued", activeSince: null }));
-    setActivationError(null);
+  if (!goal?.id) return;
+  setData((prev) => updateGoal(prev, goal.id, { status: "queued", activeSince: null }));
+  setActivationError(null);
+}
+
+function onToggleActive(goal) {
+  if (!goal?.id) return;
+
+  const statusRaw = (goal.status || "").toString().toLowerCase();
+  if (statusRaw === "active") {
+    deactivate(goal);
+    return;
   }
 
-  function onToggleActive(goal) {
-    if (!goal?.id) return;
+  let res;
+  setData((prev) => {
+    const r = activateGoal(prev, goal.id, { navigate: true, now: new Date() });
+    res = r;
+    const next = r && typeof r === "object" && "state" in r ? r.state : r;
+    return next && typeof next === "object" ? next : prev;
+  });
 
-    if ((goal.status || "").toString().toLowerCase() === "active") {
-      deactivate(goal);
-      return;
-    }
-
-    let res;
-    setData((prev) => {
-      const r = activateGoal(prev, goal.id, { navigate: true, now: new Date() });
-      res = r;
-      const next = r && typeof r === "object" && "state" in r ? r.state : r;
-      return next && typeof next === "object" ? next : prev;
-    });
-
-    if (res && typeof res === "object" && res.ok === false) {
-      setActivationError({ ...res, goalId: goal.id });
-      return;
-    }
-    setActivationError(null);
+  if (res && typeof res === "object" && res.ok === false) {
+    setActivationError({ ...res, goalId: goal.id });
+    return;
   }
+  setActivationError(null);
+}
 
   function startNow(goalId) {
     let res;
@@ -1074,8 +1076,14 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
         </Card>
 
         <div className="mt12">
-          <button className="linkBtn" onClick={() => setAdvancedOpen((v) => !v)}>
-            {advancedOpen ? "Masquer avancé" : "Avancé"}
+          <button
+            className="linkBtn"
+            onClick={() => {
+              setAdvancedOpen((v) => !v);
+              setLinkPanelGoalId(null);
+            }}
+          >
+            {advancedOpen ? "Masquer réglages experts" : "Réglages experts"}
           </button>
         </div>
 
@@ -1085,7 +1093,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
               <div className="row">
                 <div>
                   <div className="titleSm">Détails avancés</div>
-                  <div className="small2">Fréquence, minutes, métriques, liens et édition complète.</div>
+                  <div className="small2">Configuration avancée (liens, métriques, édition complète). Ne sert pas à exécuter.</div>
                 </div>
               </div>
 
@@ -1134,115 +1142,163 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                 {goals.length === 0 ? (
                   <div className="listItem">Aucun objectif.</div>
                 ) : (
-                  goals.map((g) => {
-                    const type = resolveGoalType(g);
-                    const isMainGoal = mainGoalId && g.id === mainGoalId;
-                    const isLinked = Boolean(mainGoalId && type === "PROCESS" && g.parentId === mainGoalId);
-                    const linkWeight = getLinkWeightValue(g);
-                    return (
-                      <div key={g.id} className="listItem">
-                        <div className="row" style={{ alignItems: "flex-start" }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div className="row" style={{ gap: 10 }}>
-                              <div style={{ fontWeight: 800 }}>{g.title}</div>
-                              <Badge>{formatStatusLabel(g.status)}</Badge>
-                              {isMainGoal ? <Badge>Principal</Badge> : null}
-                              <Badge>{type === "OUTCOME" ? "Objectif" : "Habitude"}</Badge>
-                            </div>
-                            <div className="small2">{formatGoalMeta(g)}</div>
-                            <div className="small2" style={{ opacity: 0.9 }}>
-                              Réinitialisation : <b>{formatResetPolicy(g.resetPolicy)}</b>
-                            </div>
-                            {isMainGoal ? (
-                              <div className="small2" style={{ marginTop: 6 }}>
-                                Progression principale : <b>{outcomePct}%</b>
+                  <>
+                    {/* OBJECTIFS (OUTCOME) */}
+                    <div className="mt6" style={{ paddingLeft: 4 }}>
+                      <div className="titleSm">Objectifs</div>
+                      <div className="small2" style={{ opacity: 0.85 }}>
+                        Finalité (1 principal par catégorie). Pas d’activation ici.
+                      </div>
+                    </div>
+
+                    {outcomeGoals.length === 0 ? (
+                      <div className="listItem">Aucun objectif dans cette catégorie.</div>
+                    ) : (
+                      outcomeGoals.map((g) => {
+                        const isMainGoal = mainGoalId && g.id === mainGoalId;
+                        const statusRaw = (g.status || "").toString().toLowerCase();
+                        const isActive = statusRaw === "active";
+
+                        return (
+                          <div key={g.id} className="listItem">
+                            <div className="row" style={{ alignItems: "flex-start" }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div className="row" style={{ gap: 10 }}>
+                                  <div style={{ fontWeight: 800 }}>{g.title}</div>
+                                  <Badge>{formatStatusLabel(g.status)}</Badge>
+                                  {isMainGoal ? <Badge>Principal</Badge> : null}
+                                  <Badge>Objectif</Badge>
+                                </div>
+                                <div className="small2">{formatGoalMeta(g)}</div>
+                                <div className="small2" style={{ opacity: 0.9 }}>
+                                  Réinitialisation : <b>{formatResetPolicy(g.resetPolicy)}</b>
+                                </div>
+                                {isMainGoal ? (
+                                  <div className="small2" style={{ marginTop: 6 }}>
+                                    Progression principale : <b>{outcomePct}%</b>
+                                  </div>
+                                ) : null}
                               </div>
-                            ) : null}
+
+                              <div className="col" style={{ gap: 8, alignItems: "flex-end" }}>
+                                {/* Objectifs: pas d’Activer/Désactiver */}
+                                {isActive ? (
+                                  <>
+                                    <Button onClick={() => onFinishGoal(g)}>Terminer</Button>
+                                    <Button variant="danger" onClick={() => onAbandonGoal(g)}>
+                                      Abandonner
+                                    </Button>
+                                    <Button variant="ghost" onClick={() => openEdit(g)}>
+                                      Modifier
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    {!isMainGoal ? (
+                                      <Button variant="ghost" onClick={() => setCategoryMainGoal(g.id)}>
+                                        Définir comme objectif principal
+                                      </Button>
+                                    ) : null}
+                                    <Button variant="ghost" onClick={() => openEdit(g)}>
+                                      Modifier
+                                    </Button>
+                                    <Button variant="ghost" onClick={() => setData((prev) => deleteGoal(prev, g.id))}>
+                                      Supprimer
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
                           </div>
+                        );
+                      })
+                    )}
 
-                          <div className="col" style={{ gap: 8, alignItems: "flex-end" }}>
-                            {g.status === "active" ? (
-                              <>
-                                <Button onClick={() => onFinishGoal(g)}>Terminer</Button>
-                                <Button variant="danger" onClick={() => onAbandonGoal(g)}>
-                                  Abandonner
-                                </Button>
-                                <Button variant="ghost" onClick={() => openEdit(g)}>
-                                  Modifier
-                                </Button>
+                    {/* HABITUDES (PROCESS) */}
+                    <div className="mt12" style={{ paddingLeft: 4 }}>
+                      <div className="titleSm">Habitudes</div>
+                      <div className="small2" style={{ opacity: 0.85 }}>
+                        Moyens (liées à un objectif). Activation possible ici.
+                      </div>
+                    </div>
 
-                                {resolveGoalType(g) === "PROCESS" ? (
-                                  <Button variant="ghost" onClick={() => deactivate(g)}>
-                                    Désactiver
-                                  </Button>
-                                ) : null}
+                    {processGoals.length === 0 ? (
+                      <div className="listItem">Aucune habitude dans cette catégorie.</div>
+                    ) : (
+                      processGoals.map((g) => {
+                        const statusRaw = (g.status || "").toString().toLowerCase();
+                        const isActive = statusRaw === "active";
+                        const isLinkedToMain = Boolean(mainGoalId && g.parentId === mainGoalId);
+                        const parent = g.parentId ? goals.find((x) => x.id === g.parentId) : null;
+                        const linkWeight = getLinkWeightValue(g);
 
-                                {!isMainGoal && type === "OUTCOME" ? (
-                                  <Button variant="ghost" onClick={() => setCategoryMainGoal(g.id)}>
-                                    Définir comme objectif principal
-                                  </Button>
-                                ) : null}
+                        return (
+                          <div key={g.id} className="listItem">
+                            <div className="row" style={{ alignItems: "flex-start" }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div className="row" style={{ gap: 10 }}>
+                                  <div style={{ fontWeight: 800 }}>{g.title}</div>
+                                  <Badge>{formatStatusLabel(g.status)}</Badge>
+                                  <Badge>Habitude</Badge>
+                                </div>
+                                <div className="small2">{formatGoalMeta(g)}</div>
+                                <div className="small2" style={{ opacity: 0.9 }}>
+                                  Liée à : <b>{parent?.title || (g.parentId ? "Objectif" : "—")}</b>
+                                </div>
+                              </div>
 
-                                {!isMainGoal && type === "PROCESS" ? (
-                                  mainGoalId ? (
-                                    <div className="col" style={{ gap: 6, alignItems: "flex-end" }}>
-                                      <div className="small2" style={{ opacity: 0.75 }}>
-                                        {isLinked ? `Liée à ${mainGoal?.title || "principal"}` : "Lier au principal"}
-                                      </div>
-                                      <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
-                                        <Input
-                                          type="number"
-                                          min="0"
-                                          max="100"
-                                          value={linkWeight}
-                                          onChange={(e) => updateLinkWeight(g.id, e.target.value)}
-                                          style={{ width: 86 }}
-                                        />
-                                        <Button
-                                          variant="ghost"
-                                          onClick={() => setData((prev) => linkChild(prev, g.id, mainGoalId, linkWeight))}
-                                        >
-                                          {isLinked ? "Mettre à jour" : "Lier"}
-                                        </Button>
-                                        {isLinked ? (
-                                          <Button variant="ghost" onClick={() => setData((prev) => linkChild(prev, g.id, null))}>
-                                            Retirer
-                                          </Button>
-                                        ) : null}
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="small2" style={{ opacity: 0.7 }}>
-                                      Définis un objectif principal pour lier.
-                                    </div>
-                                  )
-                                ) : null}
-                              </>
-                            ) : (
-                              <>
-                                {type === "OUTCOME" && !isMainGoal ? (
-                                  <Button variant="ghost" onClick={() => setCategoryMainGoal(g.id)}>
-                                    Définir comme objectif principal
-                                  </Button>
-                                ) : null}
-
+                              <div className="col" style={{ gap: 8, alignItems: "flex-end" }}>
                                 <Button variant="ghost" onClick={() => onToggleActive(g)}>
-                                  Activer
+                                  {isActive ? "Désactiver" : "Activer"}
                                 </Button>
-
                                 <Button variant="ghost" onClick={() => openEdit(g)}>
                                   Modifier
                                 </Button>
+
+                                {/* Lien au principal */}
+                                {mainGoalId ? (
+                                  <div className="col" style={{ gap: 6, alignItems: "flex-end" }}>
+                                    <div className="small2" style={{ opacity: 0.75 }}>
+                                      {isLinkedToMain ? `Liée à ${mainGoal?.title || "principal"}` : "Lier au principal"}
+                                    </div>
+                                    <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={linkWeight}
+                                        onChange={(e) => updateLinkWeight(g.id, e.target.value)}
+                                        style={{ width: 86 }}
+                                      />
+                                      <Button
+                                        variant="ghost"
+                                        onClick={() => setData((prev) => linkChild(prev, g.id, mainGoalId, linkWeight))}
+                                      >
+                                        {isLinkedToMain ? "Mettre à jour" : "Lier"}
+                                      </Button>
+                                      {isLinkedToMain ? (
+                                        <Button variant="ghost" onClick={() => setData((prev) => linkChild(prev, g.id, null))}>
+                                          Retirer
+                                        </Button>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="small2" style={{ opacity: 0.7 }}>
+                                    Définis un objectif principal pour lier.
+                                  </div>
+                                )}
+
                                 <Button variant="ghost" onClick={() => setData((prev) => deleteGoal(prev, g.id))}>
                                   Supprimer
                                 </Button>
-                              </>
-                            )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    );
-                  })
+                        );
+                      })
+                    )}
+                  </>
                 )}
               </div>
 

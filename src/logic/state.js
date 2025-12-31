@@ -458,61 +458,83 @@ export function migrate(prev) {
     status: g.status === "abandoned" ? "invalid" : g.status,
   }));
 
-  const goalsById = new Map(next.goals.map((g) => [g.id, g]));
-  const uiMainId = typeof next.ui.mainGoalId === "string" ? next.ui.mainGoalId : null;
-  const uiMainGoal = uiMainId ? goalsById.get(uiMainId) : null;
+  // --- Semantic cleanup: prevent cross-category / invalid parent links (PROCESS -> OUTCOME only)
+  {
+    const byId = new Map(next.goals.map((g) => [g.id, g]));
+    next.goals = next.goals.map((g) => {
+      if (!g || typeof g !== "object") return g;
+      const t = (g.type || g.kind || "").toString().toUpperCase();
+      if (t !== "PROCESS") return g;
 
-  // Enforce: 1 main OUTCOME goal per category (categories store mainGoalId)
+      const rawParent = typeof g.parentId === "string" ? g.parentId.trim() : "";
+      if (!rawParent) {
+        // Ensure both legacy fields are aligned
+        return { ...g, parentId: null, primaryGoalId: null };
+      }
+
+      const parent = byId.get(rawParent);
+      const parentType = (parent?.type || parent?.kind || "").toString().toUpperCase();
+      const parentOk = Boolean(parent && parentType === "OUTCOME" && parent.categoryId && parent.categoryId === g.categoryId);
+
+      if (!parentOk) {
+        // Do NOT delete the habit; just detach it.
+        return { ...g, parentId: null, primaryGoalId: null };
+      }
+
+      // Keep both fields consistent
+      return { ...g, parentId: parent.id, primaryGoalId: parent.id };
+    });
+  }
+
+  const goalsById = new Map(next.goals.map((g) => [g.id, g]));
+
+  // Enforce: exactly 1 main OUTCOME goal per category (categories store mainGoalId)
+  // Rules:
+  // - mainGoalId must point to an OUTCOME belonging to the category
+  // - if invalid/missing, pick the best OUTCOME in that category
+  // - never use ui.mainGoalId as a cross-category fallback
+
   const outcomeByCategory = new Map();
   for (const g of next.goals) {
     const t = (g?.type || g?.kind || "").toString().toUpperCase();
     if (t !== "OUTCOME") continue;
     if (!g.categoryId) continue;
+
     const prevBest = outcomeByCategory.get(g.categoryId);
     if (!prevBest) {
       outcomeByCategory.set(g.categoryId, g);
       continue;
     }
-    // Prefer active over queued, then earlier order, then createdAt/activeSince if present.
+
+    // Prefer active over queued, then earlier order, then most recent activity/creation.
     const score = (x) => {
       const s1 = x.status === "active" ? 3 : x.status === "queued" ? 2 : 1;
       const s2 = typeof x.order === "number" ? -x.order : 0;
       const ts = Date.parse(x.activeSince || x.createdAt || "") || 0;
       return s1 * 1_000_000 + s2 * 1_000 + ts;
     };
+
     if (score(g) > score(prevBest)) outcomeByCategory.set(g.categoryId, g);
   }
 
   next.categories = next.categories.map((cat) => {
-    let mainId = cat.mainGoalId;
-    let mainGoal = mainId ? goalsById.get(mainId) : null;
+    const rawMainId = typeof cat.mainGoalId === "string" ? cat.mainGoalId.trim() : "";
+    const mainId = rawMainId || "";
+    const candidate = mainId ? goalsById.get(mainId) : null;
 
-    // If category has no valid main, try ui.mainGoalId if it matches the category.
-    if ((!mainGoal || mainGoal.categoryId !== cat.id) && uiMainGoal?.categoryId === cat.id && !mainId) {
-      mainId = uiMainGoal.id;
-      mainGoal = uiMainGoal;
+    const candidateType = (candidate?.type || candidate?.kind || "").toString().toUpperCase();
+    const candidateOk = Boolean(candidate && candidateType === "OUTCOME" && candidate.categoryId === cat.id);
+
+    if (candidateOk) {
+      return { ...cat, mainGoalId: candidate.id };
     }
 
-    // If still invalid, choose best OUTCOME for that category.
     const bestOutcome = outcomeByCategory.get(cat.id) || null;
-    if (!mainGoal && bestOutcome) {
-      mainId = bestOutcome.id;
-      mainGoal = bestOutcome;
+    if (bestOutcome) {
+      return { ...cat, mainGoalId: bestOutcome.id };
     }
 
-    // Validate main goal must be OUTCOME and belong to the category.
-    if (mainGoal && mainGoal.categoryId === cat.id) {
-      const t = (mainGoal.type || mainGoal.kind || "").toString().toUpperCase();
-      if (t !== "OUTCOME") {
-        mainId = null;
-        mainGoal = null;
-      }
-    } else {
-      mainId = null;
-      mainGoal = null;
-    }
-
-    return { ...cat, mainGoalId: mainId || null };
+    return { ...cat, mainGoalId: null };
   });
 
   // `mainGoalId` is a UI convenience, but it must follow the Today (home) context,
@@ -553,6 +575,44 @@ export function migrate(prev) {
 
   const normalized = normalizeGoalsState(next);
 
+  // Defensive re-validation after normalizeGoalsState
+  {
+    const cats = Array.isArray(normalized.categories) ? normalized.categories : [];
+    const goals = Array.isArray(normalized.goals) ? normalized.goals : [];
+    const byId = new Map(goals.map((g) => [g.id, g]));
+
+    const fixedCategories = cats.map((cat) => {
+      const raw = typeof cat.mainGoalId === "string" ? cat.mainGoalId.trim() : "";
+      const g = raw ? byId.get(raw) : null;
+      const t = (g?.type || g?.kind || "").toString().toUpperCase();
+      if (g && t === "OUTCOME" && g.categoryId === cat.id) return cat;
+
+      // pick best OUTCOME if needed
+      const outcomes = goals.filter((x) => (x?.type || x?.kind || "").toString().toUpperCase() === "OUTCOME" && x.categoryId === cat.id);
+      if (!outcomes.length) return { ...cat, mainGoalId: null };
+
+      const score = (x) => {
+        const s1 = x.status === "active" ? 3 : x.status === "queued" ? 2 : 1;
+        const s2 = typeof x.order === "number" ? -x.order : 0;
+        const ts = Date.parse(x.activeSince || x.createdAt || "") || 0;
+        return s1 * 1_000_000 + s2 * 1_000 + ts;
+      };
+
+      let best = outcomes[0];
+      for (const o of outcomes.slice(1)) if (score(o) > score(best)) best = o;
+      return { ...cat, mainGoalId: best.id };
+    });
+
+    normalized.categories = fixedCategories;
+
+    const homeCatId = normalized.ui?.selectedCategoryByView?.home || normalized.ui?.selectedCategoryId || fixedCategories[0]?.id || null;
+    const homeCat = homeCatId ? fixedCategories.find((c) => c.id === homeCatId) || null : null;
+    normalized.ui = {
+      ...(normalized.ui || {}),
+      mainGoalId: homeCat?.mainGoalId || null,
+    };
+  }
+
   // Re-validate per-view selections after normalizeGoalsState
   const cats = Array.isArray(normalized.categories) ? normalized.categories : [];
   const first = cats[0]?.id || null;
@@ -566,15 +626,12 @@ export function migrate(prev) {
   // Keep legacy `selectedCategoryId` as the Plan context to avoid coupling Today/Library to it.
   const legacySelectedCategoryId = safePlan || null;
 
-  const homeCategoryForUi = safeHome ? cats.find((c) => c.id === safeHome) || null : null;
-  const nextMainGoalId = homeCategoryForUi?.mainGoalId || null;
-
   return {
     ...normalized,
     ui: {
       ...(normalized.ui || {}),
       selectedCategoryId: legacySelectedCategoryId,
-      mainGoalId: nextMainGoalId,
+      mainGoalId: normalized.ui?.mainGoalId || null,
       selectedCategoryByView: {
         home: safeHome,
         library: safeLibrary,
