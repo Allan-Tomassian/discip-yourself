@@ -38,7 +38,9 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
         >
           <div className="p18 row" style={{ justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <div className="titleSm">Catégorie</div>
+              <div className="titleSm">
+                <span style={{ opacity: 0.6 }}>1.</span> Catégorie
+              </div>
               <div className="small2">Créer une nouvelle catégorie.</div>
             </div>
             <Button variant="ghost" onClick={() => (typeof onOpenCategory === "function" ? onOpenCategory() : null)}>
@@ -62,7 +64,9 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
         >
           <div className="p18 row" style={{ justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <div className="titleSm">Objectif</div>
+              <div className="titleSm">
+                <span style={{ opacity: 0.6 }}>2.</span> Objectif
+              </div>
               <div className="small2">Créer un objectif lié à une catégorie.</div>
             </div>
             <Button variant="ghost" onClick={() => (typeof onOpenGoal === "function" ? onOpenGoal() : null)}>
@@ -86,7 +90,9 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
         >
           <div className="p18 row" style={{ justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <div className="titleSm">Habitude</div>
+              <div className="titleSm">
+                <span style={{ opacity: 0.6 }}>3.</span> Habitude
+              </div>
               <div className="small2">Créer une habitude liée à un objectif.</div>
             </div>
             <Button variant="ghost" onClick={() => (typeof onOpenHabit === "function" ? onOpenHabit() : null)}>

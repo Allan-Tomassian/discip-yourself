@@ -44,7 +44,11 @@ export default function CreateCategory({ data, setData, onCancel, onDone }) {
       data={safeData}
       pageId="categories"
       headerTitle="Créer"
-      headerSubtitle="Catégorie"
+      headerSubtitle={
+        <>
+          <span style={{ opacity: 0.6 }}>1.</span> Catégorie
+        </>
+      }
       headerRight={
         <Button variant="ghost" onClick={() => (typeof onCancel === "function" ? onCancel() : null)}>
           Retour

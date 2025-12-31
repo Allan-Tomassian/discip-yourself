@@ -80,7 +80,11 @@ export default function CreateHabit({ data, setData, onCancel, onDone }) {
       data={safeData}
       pageId="categories"
       headerTitle="Créer"
-      headerSubtitle="Habitude"
+      headerSubtitle={
+        <>
+          <span style={{ opacity: 0.6 }}>3.</span> Habitude
+        </>
+      }
       headerRight={
         <Button variant="ghost" onClick={() => (typeof onCancel === "function" ? onCancel() : null)}>
           Retour

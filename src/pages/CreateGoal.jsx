@@ -58,7 +58,11 @@ export default function CreateGoal({ data, setData, onCancel, onDone }) {
       data={safeData}
       pageId="categories"
       headerTitle="Créer"
-      headerSubtitle="Objectif"
+      headerSubtitle={
+        <>
+          <span style={{ opacity: 0.6 }}>2.</span> Objectif
+        </>
+      }
       headerRight={
         <Button variant="ghost" onClick={() => (typeof onCancel === "function" ? onCancel() : null)}>
           Retour
