@@ -115,3 +115,26 @@ export function decHabit(data, habitId) {
   checks[habitId] = bucket;
   return { ...data, checks };
 }
+
+export function toggleHabitOnce(data, habitId) {
+  const now = new Date();
+  const dKey = todayKey(now);
+  const wKey = startOfWeekKey(now);
+  const yKey = yearKey(now);
+
+  const habit = resolveHabit(data, habitId);
+  if (!habit) return data;
+
+  const bucket = data.checks?.[habitId] || { daily: {}, weekly: {}, yearly: {} };
+
+  let cur = 0;
+  if (habit.cadence === "DAILY") {
+    cur = bucket.daily?.[dKey] || 0;
+  } else if (habit.cadence === "YEARLY") {
+    cur = bucket.yearly?.[yKey] || 0;
+  } else {
+    cur = bucket.weekly?.[wKey] || 0;
+  }
+
+  return cur > 0 ? decHabit(data, habitId) : incHabit(data, habitId);
+}

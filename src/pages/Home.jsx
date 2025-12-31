@@ -4,7 +4,7 @@ import { Button, Card, Select } from "../components/UI";
 import FocusCategoryPicker from "../components/FocusCategoryPicker";
 import { startOfWeekKey, todayKey, yearKey } from "../utils/dates";
 import { activateGoal, setMainGoal } from "../logic/goals";
-import { incHabit } from "../logic/habits";
+import { incHabit, decHabit } from "../logic/habits";
 import { getBackgroundCss, getAccentForPage } from "../utils/_theme";
 
 function resolveGoalType(goal) {
@@ -148,13 +148,16 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
       const slots = getScheduleSlots(habit, now);
       if (!slots.length) return [];
       const count = getHabitCountForToday(habit, checks, now);
-      return slots.map((slot, index) => ({
-        id: `${habit.id}:${index}`,
-        habit,
-        label: slot,
-        index,
-        done: count >= index + 1,
-      }));
+      return slots.map((slot, index) => {
+        const done = count >= index + 1;
+        return {
+          id: `${habit.id}:${index}`,
+          habit,
+          label: slot,
+          index,
+          done,
+        };
+      });
     });
   }, [activeHabits, checks]);
 
@@ -474,7 +477,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
 
               <div className="mt10">
                 <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
-                  Gérer dans Plan
+                  Gérer dans Outils
                 </Button>
               </div>
             </div>
@@ -482,7 +485,81 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
             <div className="mt12 col">
               <div className="small2">Aucun objectif dans cette catégorie.</div>
               <div className="mt10">
-                <Button onClick={() => openPlanWith(focusCategory?.id, "__new_outcome__")}>Créer un objectif</Button>
+                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
+                  Ouvrir Outils
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <Card accentBorder style={{ marginTop: 12, borderColor: accent }}>
+        <div className="p18">
+          <div className="titleSm">Action du jour</div>
+
+          {currentHabit ? (
+            <div className="mt12 col">
+              <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                <div
+                  style={{
+                    fontWeight: 800,
+                    fontSize: 18,
+                    minWidth: 0,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {currentHabit.title || "Habitude"}
+                </div>
+
+                {activeHabits.length > 1 ? (
+                  <div className="row" style={{ gap: 6 }}>
+                    <button className="btn btnGhost" onClick={() => cycleHabit(-1)} aria-label="Habitude précédente">
+                      ▲
+                    </button>
+                    <button className="btn btnGhost" onClick={() => cycleHabit(1)} aria-label="Habitude suivante">
+                      ▼
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="mt12 row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+                <Button
+                  onClick={() =>
+                    setData((prev) => {
+                      const fn = currentHabitDone ? decHabit : incHabit;
+                      const next = fn(prev, currentHabit.id);
+                      return next && typeof next === "object" ? next : prev;
+                    })
+                  }
+                >
+                  {currentHabitDone ? "Annuler" : "Valider"}
+                </Button>
+
+                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
+                  Voir dans Outils
+                </Button>
+              </div>
+            </div>
+          ) : hasLinkedHabits ? (
+            <div className="mt12 col">
+              <div className="small2">Aucune action disponible : active d’abord une habitude liée ci-dessus.</div>
+              <div className="mt10">
+                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
+                  Gérer dans Outils
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt12 col">
+              <div className="small2">Aucune action aujourd’hui.</div>
+              <div className="mt10">
+                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
+                  Ouvrir Outils
+                </Button>
               </div>
             </div>
           )}
@@ -584,15 +661,15 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
                             </div>
                             <Button
                               variant="ghost"
-                              disabled={item.done}
                               onClick={() =>
                                 setData((prev) => {
-                                  const next = incHabit(prev, item.habit.id);
+                                  const fn = item.done ? decHabit : incHabit;
+                                  const next = fn(prev, item.habit.id);
                                   return next && typeof next === "object" ? next : prev;
                                 })
                               }
                             >
-                              {item.done ? "Validé" : "Valider"}
+                              {item.done ? "Annuler" : "Valider"}
                             </Button>
                           </div>
                         </div>
@@ -611,11 +688,8 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
               ) : null}
 
               <div className="mt10 row" style={{ gap: 10, flexWrap: "wrap" }}>
-                <Button onClick={() => openPlanWith(focusCategory?.id, selectedGoal ? "__new_process__" : "__new_outcome__")}>
-                  Passer à l’action
-                </Button>
                 <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
-                  Gérer dans Plan
+                  Gérer dans Outils
                 </Button>
               </div>
             </div>
@@ -623,8 +697,8 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
             <div className="mt12 col">
               <div className="small2">Aucune habitude liée.</div>
               <div className="mt10">
-                <Button onClick={() => openPlanWith(focusCategory?.id, selectedGoal ? "__new_process__" : "__new_outcome__")}>
-                  Passer à l’action
+                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
+                  Ouvrir Outils
                 </Button>
               </div>
             </div>
@@ -632,77 +706,6 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
         </div>
       </Card>
 
-      <Card accentBorder style={{ marginTop: 12, borderColor: accent }}>
-        <div className="p18">
-          <div className="titleSm">Action du jour</div>
-
-          {currentHabit ? (
-            <div className="mt12 col">
-              <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                <div
-                  style={{
-                    fontWeight: 800,
-                    fontSize: 18,
-                    minWidth: 0,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {currentHabit.title || "Habitude"}
-                </div>
-
-                {activeHabits.length > 1 ? (
-                  <div className="row" style={{ gap: 6 }}>
-                    <button className="btn btnGhost" onClick={() => cycleHabit(-1)} aria-label="Habitude précédente">
-                      ▲
-                    </button>
-                    <button className="btn btnGhost" onClick={() => cycleHabit(1)} aria-label="Habitude suivante">
-                      ▼
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="mt12 row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                <Button
-                  onClick={() =>
-                    setData((prev) => {
-                      const next = incHabit(prev, currentHabit.id);
-                      return next && typeof next === "object" ? next : prev;
-                    })
-                  }
-                  disabled={false}
-                >
-                  {currentHabitDone ? "Re-valider" : "Valider"}
-                </Button>
-
-                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
-                  Voir dans Plan
-                </Button>
-              </div>
-            </div>
-          ) : hasLinkedHabits ? (
-            <div className="mt12 col">
-              <div className="small2">Aucune action disponible : active d’abord une habitude liée ci-dessus.</div>
-              <div className="mt10">
-                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
-                  Gérer dans Plan
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="mt12 col">
-              <div className="small2">Aucune action aujourd’hui.</div>
-              <div className="mt10">
-                <Button onClick={() => openPlanWith(focusCategory?.id, selectedGoal ? "__new_process__" : "__new_outcome__")}>
-                  Passer à l’action
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </Card>
     </ScreenShell>
   );
 }

@@ -4,7 +4,7 @@ export default function TopNav({ active, setActive, onOpenSettings }) {
   const items = [
     { id: "today", label: "Aujourd’hui" },
     { id: "library", label: "Bibliothèque" },
-    { id: "plan", label: "Plan" },
+    { id: "plan", label: "Outils" },
   ];
 
   return (

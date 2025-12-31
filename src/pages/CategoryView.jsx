@@ -172,7 +172,9 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
               <div className="mt12 col">
                 <div className="small2">Aucun objectif dans cette catégorie.</div>
                 <div className="mt10">
-                  <Button onClick={() => openPlan(category.id, "__new_outcome__")}>Créer un objectif</Button>
+                  <Button variant="ghost" onClick={() => openPlan(category.id, null)}>
+                    Ouvrir Outils
+                  </Button>
                 </div>
               </div>
             )}
@@ -194,7 +196,9 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
               <div className="mt12 col">
                 <div className="small2">Aucune habitude liée.</div>
                 <div className="mt10">
-                  <Button onClick={() => openPlan(category.id, "__new_process__")}>Créer une habitude</Button>
+                  <Button variant="ghost" onClick={() => openPlan(category.id, null)}>
+                    Ouvrir Outils
+                  </Button>
                 </div>
               </div>
             )}

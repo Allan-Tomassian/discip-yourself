@@ -37,6 +37,7 @@ export default function Categories({ data, setData, onOpenLibraryCategory }) {
   const [newCategoryTemplateId, setNewCategoryTemplateId] = useState(null);
   const [categorySuggestionsOpen, setCategorySuggestionsOpen] = useState(false);
   const [categoryQuery, setCategoryQuery] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
 
   function addCategory() {
     const cleanName = (newCategoryName || "").trim();
@@ -77,6 +78,7 @@ export default function Categories({ data, setData, onOpenLibraryCategory }) {
     setNewCategoryTemplateId(null);
     setCategoryQuery("");
     setNewCategoryColor("#FFFFFF");
+    setShowCreate(false);
   }
 
   function openCategory(categoryId) {
@@ -112,28 +114,41 @@ export default function Categories({ data, setData, onOpenLibraryCategory }) {
               Ajoute une première catégorie pour commencer.
             </div>
             <div className="mt12 col">
-              <Input
-                list="category-templates-library-empty"
-                value={newCategoryName}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setNewCategoryName(value);
-                  const match = findCategoryTemplateByLabel(value);
-                  setNewCategoryTemplateId(match ? match.id : null);
-                }}
-                placeholder="Nom de la catégorie"
-              />
-              <datalist id="category-templates-library-empty">
-                {CATEGORY_TEMPLATES.map((t) => (
-                  <option key={t.id} value={t.label} />
-                ))}
-              </datalist>
-              <Input
-                value={newCategoryColor}
-                onChange={(e) => setNewCategoryColor(e.target.value)}
-                placeholder="Couleur HEX (ex: #7C3AED)"
-              />
-              <Button onClick={addCategory}>+ Ajouter une catégorie</Button>
+              {!showCreate ? (
+                <Button variant="ghost" onClick={() => setShowCreate(true)}>
+                  Créer
+                </Button>
+              ) : (
+                <>
+                  <Input
+                    list="category-templates-library-empty"
+                    value={newCategoryName}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setNewCategoryName(value);
+                      const match = findCategoryTemplateByLabel(value);
+                      setNewCategoryTemplateId(match ? match.id : null);
+                    }}
+                    placeholder="Nom de la catégorie"
+                  />
+                  <datalist id="category-templates-library-empty">
+                    {CATEGORY_TEMPLATES.map((t) => (
+                      <option key={t.id} value={t.label} />
+                    ))}
+                  </datalist>
+                  <Input
+                    value={newCategoryColor}
+                    onChange={(e) => setNewCategoryColor(e.target.value)}
+                    placeholder="Couleur HEX (ex: #7C3AED)"
+                  />
+                  <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
+                    <Button variant="ghost" onClick={() => setShowCreate(false)}>
+                      Annuler
+                    </Button>
+                    <Button onClick={addCategory}>+ Ajouter une catégorie</Button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </Card>
@@ -187,77 +202,90 @@ export default function Categories({ data, setData, onOpenLibraryCategory }) {
           );
         })}
 
-        <Card accentBorder>
-          <div className="p18 col" style={{ gap: 10 }}>
-            <div>
-              <div className="titleSm">Nouvelle catégorie</div>
-              <div className="small2">Ajoute un nouvel axe.</div>
-            </div>
-            <Input
-              list="category-templates-library"
-              value={newCategoryName}
-              onChange={(e) => {
-                const value = e.target.value;
-                setNewCategoryName(value);
-                const match = findCategoryTemplateByLabel(value);
-                setNewCategoryTemplateId(match ? match.id : null);
-              }}
-              placeholder="Nom de la catégorie"
-            />
-            <datalist id="category-templates-library">
-              {CATEGORY_TEMPLATES.map((t) => (
-                <option key={t.id} value={t.label} />
-              ))}
-            </datalist>
-            <Input
-              value={newCategoryColor}
-              onChange={(e) => setNewCategoryColor(e.target.value)}
-              placeholder="Couleur HEX (ex: #7C3AED)"
-            />
-            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-              <button className="linkBtn" onClick={() => setCategorySuggestionsOpen((v) => !v)}>
-                {categorySuggestionsOpen ? "Masquer les suggestions" : "Suggestions"}
-              </button>
-              <Button onClick={addCategory}>+ Ajouter</Button>
-            </div>
-            {categorySuggestionsOpen ? (
-              <div className="col" style={{ gap: 8 }}>
-                <Input
-                  value={categoryQuery}
-                  onChange={(e) => setCategoryQuery(e.target.value)}
-                  placeholder="Rechercher une suggestion"
-                />
-                <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                  {filteredCategoryTemplates.map((t) => (
-                    <button
-                      key={t.id}
-                      className="btn btnGhost"
-                      onClick={() => {
-                        setNewCategoryName(t.label);
-                        setNewCategoryTemplateId(t.id);
-                        const c = t.color || t.defaultColor;
-                        if (c) setNewCategoryColor(c);
-                      }}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="row" style={{ justifyContent: "flex-end" }}>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setNewCategoryTemplateId(null);
-                      setCategoryQuery("");
-                    }}
-                  >
-                    Créer la mienne
+        {!showCreate ? (
+          <div className="row" style={{ justifyContent: "flex-end" }}>
+            <Button variant="ghost" onClick={() => setShowCreate(true)}>
+              Créer
+            </Button>
+          </div>
+        ) : (
+          <Card accentBorder>
+            <div className="p18 col" style={{ gap: 10 }}>
+              <div>
+                <div className="titleSm">Nouvelle catégorie</div>
+                <div className="small2">Ajoute un nouvel axe.</div>
+              </div>
+              <Input
+                list="category-templates-library"
+                value={newCategoryName}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setNewCategoryName(value);
+                  const match = findCategoryTemplateByLabel(value);
+                  setNewCategoryTemplateId(match ? match.id : null);
+                }}
+                placeholder="Nom de la catégorie"
+              />
+              <datalist id="category-templates-library">
+                {CATEGORY_TEMPLATES.map((t) => (
+                  <option key={t.id} value={t.label} />
+                ))}
+              </datalist>
+              <Input
+                value={newCategoryColor}
+                onChange={(e) => setNewCategoryColor(e.target.value)}
+                placeholder="Couleur HEX (ex: #7C3AED)"
+              />
+              <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+                <button className="linkBtn" onClick={() => setCategorySuggestionsOpen((v) => !v)}>
+                  {categorySuggestionsOpen ? "Masquer les suggestions" : "Suggestions"}
+                </button>
+                <div className="row" style={{ gap: 8 }}>
+                  <Button variant="ghost" onClick={() => setShowCreate(false)}>
+                    Annuler
                   </Button>
+                  <Button onClick={addCategory}>+ Ajouter</Button>
                 </div>
               </div>
-            ) : null}
-          </div>
-        </Card>
+              {categorySuggestionsOpen ? (
+                <div className="col" style={{ gap: 8 }}>
+                  <Input
+                    value={categoryQuery}
+                    onChange={(e) => setCategoryQuery(e.target.value)}
+                    placeholder="Rechercher une suggestion"
+                  />
+                  <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                    {filteredCategoryTemplates.map((t) => (
+                      <button
+                        key={t.id}
+                        className="btn btnGhost"
+                        onClick={() => {
+                          setNewCategoryName(t.label);
+                          setNewCategoryTemplateId(t.id);
+                          const c = t.color || t.defaultColor;
+                          if (c) setNewCategoryColor(c);
+                        }}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="row" style={{ justifyContent: "flex-end" }}>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setNewCategoryTemplateId(null);
+                        setCategoryQuery("");
+                      }}
+                    >
+                      Créer la mienne
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </Card>
+        )}
       </div>
     </ScreenShell>
   );
