@@ -10,6 +10,7 @@ import { markIOSRootClass } from "./utils/dialogs";
 import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
 import Categories from "./pages/Categories";
+import Create from "./pages/Create";
 import Settings from "./pages/Settings";
 import CategoryDetail from "./pages/CategoryDetail";
 import CategoryView from "./pages/CategoryView";
@@ -98,7 +99,7 @@ function getEmptyStateConfig(data) {
   };
 }
 
-const TABS = new Set(["today", "library", "plan", "settings"]);
+const TABS = new Set(["today", "library", "plan", "create", "settings"]);
 function normalizeTab(t) {
   return TABS.has(t) ? t : "today";
 }
@@ -279,6 +280,18 @@ export default function App() {
           setData={setData}
           onOpenLibraryCategory={(categoryId) => {
             setLibraryCategoryId(categoryId);
+            setTab("library");
+          }}
+          onOpenCreate={() => {
+            setLibraryCategoryId(null);
+            setTab("create");
+          }}
+        />
+      ) : tab === "create" ? (
+        <Create
+          data={data}
+          onBack={() => {
+            setLibraryCategoryId(null);
             setTab("library");
           }}
         />
