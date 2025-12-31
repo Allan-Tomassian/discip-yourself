@@ -17,12 +17,16 @@ export function getBgPresetCss(preset) {
 }
 
 export function getThemeForPage(data, pageId) {
-  if (pageId === "home" && data?.ui?.pageThemes?.home) return data.ui.pageThemes.home;
+  if (pageId === "home") {
+    return data?.ui?.pageThemes?.home || data?.ui?.pageThemeHome || "aurora";
+  }
   return "aurora";
 }
 
 export function getAccentForPage(data, pageId) {
-  if (pageId === "home" && data?.ui?.pageAccents?.home) return data.ui.pageAccents.home;
+  if (pageId === "home") {
+    return data?.ui?.pageAccents?.home || data?.ui?.accentHome || "#FFFFFF";
+  }
   return "#FFFFFF";
 }
 

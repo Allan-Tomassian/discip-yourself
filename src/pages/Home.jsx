@@ -5,7 +5,7 @@ import FocusCategoryPicker from "../components/FocusCategoryPicker";
 import { startOfWeekKey, todayKey, yearKey } from "../utils/dates";
 import { activateGoal, setMainGoal } from "../logic/goals";
 import { incHabit, decHabit } from "../logic/habits";
-import { getBackgroundCss, getAccentForPage } from "../utils/_theme";
+import { getAccentForPage, getThemeForPage } from "../utils/_theme";
 
 function resolveGoalType(goal) {
   const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
@@ -88,6 +88,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenC
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const checks = safeData.checks || {};
+  const homeTheme = getThemeForPage(safeData, "home");
 
   // per-view category selection for Home (fallback to legacy)
   const homeSelectedCategoryId =
@@ -365,33 +366,33 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenC
 
   if (!categories.length) {
     return (
-      <ScreenShell
-        accent={getAccentForPage(safeData, "home")}
-        backgroundCss={getBackgroundCss({ data: safeData, pageId: "home", image: profile.whyImage || "" })}
-        backgroundImage={profile.whyImage || ""}
-        headerTitle="Aujourd’hui"
-        headerSubtitle="Aucune catégorie"
-      >
-        <Card accentBorder>
-          <div className="p18">
-            <div className="titleSm">Aucune catégorie</div>
-            <div className="small" style={{ marginTop: 6 }}>
-              Ajoute une première catégorie pour commencer.
+      <div className={`theme-${homeTheme}`}>
+        <ScreenShell
+          accent={getAccentForPage(safeData, "home")}
+          backgroundImage={profile.whyImage || ""}
+          headerTitle="Aujourd’hui"
+          headerSubtitle="Aucune catégorie"
+        >
+          <Card accentBorder>
+            <div className="p18">
+              <div className="titleSm">Aucune catégorie</div>
+              <div className="small" style={{ marginTop: 6 }}>
+                Ajoute une première catégorie pour commencer.
+              </div>
+              <div className="mt12">
+                <Button onClick={() => (typeof onOpenLibrary === "function" ? onOpenLibrary() : null)}>
+                  Ouvrir la bibliothèque
+                </Button>
+              </div>
             </div>
-            <div className="mt12">
-              <Button onClick={() => (typeof onOpenLibrary === "function" ? onOpenLibrary() : null)}>
-                Ouvrir la bibliothèque
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </ScreenShell>
+          </Card>
+        </ScreenShell>
+      </div>
     );
   }
 
   const accent = focusCategory && focusCategory.color ? focusCategory.color : getAccentForPage(safeData, "home");
   const backgroundImage = profile.whyImage || "";
-  const backgroundCss = getBackgroundCss({ data: safeData, pageId: "home", image: backgroundImage });
 
   const whyText = (profile.whyText || "").trim();
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
@@ -404,13 +405,13 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenC
   const hasActiveHabits = activeHabits.length > 0;
 
   return (
-    <ScreenShell
-      accent={accent}
-      backgroundCss={backgroundCss}
-      backgroundImage={backgroundImage}
-      headerTitle="Aujourd’hui"
-      headerSubtitle="Exécution"
-    >
+    <div className={`theme-${homeTheme}`}>
+      <ScreenShell
+        accent={accent}
+        backgroundImage={backgroundImage}
+        headerTitle="Aujourd’hui"
+        headerSubtitle="Exécution"
+      >
       <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
         <div
           className="small2"
@@ -710,6 +711,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenC
         </div>
       </Card>
 
-    </ScreenShell>
+      </ScreenShell>
+    </div>
   );
 }
