@@ -75,10 +75,15 @@ export default function Settings({ data, setData }) {
         <ThemePicker data={themeData} setData={setData} />
         <MotivationSection data={safeData} setData={setData} />
         <Card accentBorder style={{ marginTop: 14 }}>
-          <div className="p18">
+          <div className="p18 col">
             <div className="titleSm">Notifications</div>
             <div className="small2" style={{ marginTop: 6 }}>
-              Bientôt disponible.
+              Les notifications système (son/vibration) nécessitent une version PWA. À venir.
+            </div>
+            <div className="mt10">
+              <Button disabled variant="ghost">
+                Activer · Bientôt
+              </Button>
             </div>
           </div>
         </Card>
