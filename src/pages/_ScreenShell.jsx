@@ -8,6 +8,7 @@ export default function ScreenShell({
   headerTitle,
   headerSubtitle,
   headerRight,
+  headerAlign = "center",
   children,
 }) {
   return (
@@ -20,7 +21,10 @@ export default function ScreenShell({
 
       <div className="container">
         {headerRight ? (
-          <div className="hdrRow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <div
+            className="hdrRow"
+            style={{ display: "flex", justifyContent: "space-between", alignItems: headerAlign, gap: 12 }}
+          >
             <div>
               <div className="hdrSub">{headerSubtitle}</div>
               <div className="hdrTitle">{headerTitle}</div>

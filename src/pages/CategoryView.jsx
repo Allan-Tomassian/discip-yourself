@@ -14,7 +14,7 @@ function resolveGoalType(goal) {
   return "PROCESS";
 }
 
-export default function CategoryView({ data, setData, categoryId, onBack, onOpenPlan }) {
+export default function CategoryView({ data, setData, categoryId, onBack, onOpenPlan, onOpenCreate }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -172,8 +172,8 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
               <div className="mt12 col">
                 <div className="small2">Aucun objectif dans cette catégorie.</div>
                 <div className="mt10">
-                  <Button variant="ghost" onClick={() => openPlan(category.id, null)}>
-                    Ouvrir Outils
+                  <Button variant="ghost" onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}>
+                    Créer
                   </Button>
                 </div>
               </div>
@@ -196,8 +196,8 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
               <div className="mt12 col">
                 <div className="small2">Aucune habitude liée.</div>
                 <div className="mt10">
-                  <Button variant="ghost" onClick={() => openPlan(category.id, null)}>
-                    Ouvrir Outils
+                  <Button variant="ghost" onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}>
+                    Créer
                   </Button>
                 </div>
               </div>

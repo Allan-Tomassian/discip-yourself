@@ -11,6 +11,9 @@ import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
 import Categories from "./pages/Categories";
 import Create from "./pages/Create";
+import CreateCategory from "./pages/CreateCategory";
+import CreateGoal from "./pages/CreateGoal";
+import CreateHabit from "./pages/CreateHabit";
 import Settings from "./pages/Settings";
 import CategoryDetail from "./pages/CategoryDetail";
 import CategoryView from "./pages/CategoryView";
@@ -99,7 +102,7 @@ function getEmptyStateConfig(data) {
   };
 }
 
-const TABS = new Set(["today", "library", "plan", "create", "settings"]);
+const TABS = new Set(["today", "library", "plan", "create", "create-category", "create-goal", "create-habit", "settings"]);
 function normalizeTab(t) {
   return TABS.has(t) ? t : "today";
 }
@@ -237,6 +240,10 @@ export default function App() {
             setLibraryCategoryId(null);
             setTab("library");
           }}
+          onOpenCreate={() => {
+            setLibraryCategoryId(null);
+            setTab("create");
+          }}
           onOpenPlan={() => {
             const firstCatId = data?.ui?.selectedCategoryId || data?.categories?.[0]?.id || null;
             if (firstCatId) {
@@ -273,6 +280,10 @@ export default function App() {
             setLibraryCategoryId(null);
             setTab("plan");
           }}
+          onOpenCreate={() => {
+            setLibraryCategoryId(null);
+            setTab("create");
+          }}
         />
       ) : tab === "library" ? (
         <Categories
@@ -291,6 +302,39 @@ export default function App() {
         <Create
           data={data}
           onBack={() => {
+            setLibraryCategoryId(null);
+            setTab("library");
+          }}
+          onOpenCategory={() => setTab("create-category")}
+          onOpenGoal={() => setTab("create-goal")}
+          onOpenHabit={() => setTab("create-habit")}
+        />
+      ) : tab === "create-category" ? (
+        <CreateCategory
+          data={data}
+          setData={setData}
+          onCancel={() => setTab("create")}
+          onDone={() => {
+            setLibraryCategoryId(null);
+            setTab("library");
+          }}
+        />
+      ) : tab === "create-goal" ? (
+        <CreateGoal
+          data={data}
+          setData={setData}
+          onCancel={() => setTab("create")}
+          onDone={() => {
+            setLibraryCategoryId(null);
+            setTab("library");
+          }}
+        />
+      ) : tab === "create-habit" ? (
+        <CreateHabit
+          data={data}
+          setData={setData}
+          onCancel={() => setTab("create")}
+          onDone={() => {
             setLibraryCategoryId(null);
             setTab("library");
           }}

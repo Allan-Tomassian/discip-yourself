@@ -75,7 +75,7 @@ function formatStartDateFr(value) {
   return formatDateFr(datePart);
 }
 
-export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
+export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenCreate }) {
   const [showWhy, setShowWhy] = useState(true);
   const [whyExpanded, setWhyExpanded] = useState(false);
 
@@ -243,6 +243,10 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
       };
     });
     if (typeof onOpenPlan === "function") onOpenPlan();
+  }
+
+  function openCreateHub() {
+    if (typeof onOpenCreate === "function") onOpenCreate();
   }
 
   function setCategoryMainGoal(nextGoalId) {
@@ -485,8 +489,8 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
             <div className="mt12 col">
               <div className="small2">Aucun objectif dans cette catégorie.</div>
               <div className="mt10">
-                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
-                  Ouvrir Outils
+                <Button variant="ghost" onClick={openCreateHub}>
+                  Créer
                 </Button>
               </div>
             </div>
@@ -557,8 +561,8 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
             <div className="mt12 col">
               <div className="small2">Aucune action aujourd’hui.</div>
               <div className="mt10">
-                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
-                  Ouvrir Outils
+                <Button variant="ghost" onClick={openCreateHub}>
+                  Créer
                 </Button>
               </div>
             </div>
@@ -697,8 +701,8 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan }) {
             <div className="mt12 col">
               <div className="small2">Aucune habitude liée.</div>
               <div className="mt10">
-                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
-                  Ouvrir Outils
+                <Button variant="ghost" onClick={openCreateHub}>
+                  Créer
                 </Button>
               </div>
             </div>
