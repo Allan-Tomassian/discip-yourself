@@ -1,204 +1,10 @@
 import React, { useEffect, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import ThemePicker from "../components/ThemePicker";
-import { Button, Card, Input, Select, Textarea } from "../components/UI";
-import { clearState } from "../utils/storage";
-import { initialData } from "../logic/state";
-import { uid } from "../utils/helpers";
-import { requestReminderPermission } from "../logic/reminders";
-import { safePrompt } from "../utils/dialogs";
+import { Button, Card, Textarea } from "../components/UI";
 
-export function SettingsAdvanced({ data, setData }) {
-  const [notifStatus, setNotifStatus] = useState(
-    typeof Notification !== "undefined" ? Notification.permission : "unsupported"
-  );
-
-  const safeData = data && typeof data === "object" ? data : {};
-  const reminders = Array.isArray(safeData.reminders) ? safeData.reminders : [];
-  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
-  const habits = Array.isArray(safeData.habits) ? safeData.habits : [];
-  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
-  const soundEnabled = Boolean(safeData.ui?.soundEnabled);
-
-  const DAYS = [
-    { id: 1, label: "L" },
-    { id: 2, label: "M" },
-    { id: 3, label: "M" },
-    { id: 4, label: "J" },
-    { id: 5, label: "V" },
-    { id: 6, label: "S" },
-    { id: 7, label: "D" },
-  ];
-  const notifLabel =
-    notifStatus === "granted"
-      ? "autorisées"
-      : notifStatus === "denied"
-        ? "refusées"
-        : notifStatus === "default"
-          ? "à autoriser"
-          : "non supportées";
-
-  function addReminder() {
-    const id = uid();
-    const next = {
-      id,
-      label: "Rappel",
-      time: "09:00",
-      enabled: true,
-      goalId: "",
-      days: [1, 2, 3, 4, 5, 6, 7],
-      channel: "IN_APP",
-    };
-    setData((prev) => ({ ...prev, reminders: [...(prev.reminders || []), next] }));
-  }
-
-  function updateReminder(id, updates) {
-    setData((prev) => ({
-      ...prev,
-      reminders: (prev.reminders || []).map((r) => (r.id === id ? { ...r, ...updates } : r)),
-    }));
-  }
-
-  function removeReminder(id) {
-    setData((prev) => ({ ...prev, reminders: (prev.reminders || []).filter((r) => r.id !== id) }));
-  }
-
-  if (!categories.length) {
-    return <div className="small2">Ajoute d’abord une catégorie pour configurer les rappels.</div>;
-  }
-
-  return (
-    <div className="col">
-      <div className="titleSm">Rappels</div>
-      <div className="small2">In-app + notifications navigateur (si autorisée).</div>
-
-      <div className="mt12 col">
-        {reminders.length ? (
-          reminders.map((r) => {
-            const goal = goals.find((g) => g.id === r.goalId);
-            const habit = !goal ? habits.find((h) => h.id === r.goalId) : null;
-            const target = goal || habit;
-            const cat = categories.find((c) => c.id === target?.categoryId);
-            const days = Array.isArray(r.days) ? r.days : [];
-            return (
-              <div key={r.id} className="listItem focusHalo" style={{ "--catColor": cat?.color || "#7C3AED" }}>
-                <Input
-                  value={r.label || ""}
-                  onChange={(e) => updateReminder(r.id, { label: e.target.value })}
-                  placeholder="Libellé"
-                />
-                <div className="grid2">
-                  <Input
-                    type="time"
-                    value={r.time || "09:00"}
-                    onChange={(e) => updateReminder(r.id, { time: e.target.value })}
-                  />
-                  <Select value={r.goalId || ""} onChange={(e) => updateReminder(r.id, { goalId: e.target.value })}>
-                    <option value="">Aucune cible</option>
-                    {goals.length ? (
-                      <optgroup label="Objectifs">
-                        {goals.map((g) => (
-                          <option key={g.id} value={g.id}>
-                            {g.title || "Objectif"}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ) : null}
-                    {habits.length ? (
-                      <optgroup label="Habitudes">
-                        {habits.map((h) => (
-                          <option key={h.id} value={h.id}>
-                            {h.title || "Habitude"}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ) : null}
-                  </Select>
-                </div>
-                <div className="mt10">
-                  <div className="small2">Jours</div>
-                  <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-                    {DAYS.map((d) => {
-                      const active = days.includes(d.id);
-                      return (
-                        <button
-                          key={d.id}
-                          className={active ? "btn" : "btn btnGhost"}
-                          style={{ padding: "4px 8px", fontSize: 12 }}
-                          onClick={() => {
-                            const nextDays = active
-                              ? days.filter((x) => x !== d.id)
-                              : [...days, d.id].sort((a, b) => a - b);
-                            updateReminder(r.id, { days: nextDays });
-                          }}
-                        >
-                          {d.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div className="mt10">
-                  <div className="small2">Canal</div>
-                  <Select value={r.channel || "IN_APP"} onChange={(e) => updateReminder(r.id, { channel: e.target.value })}>
-                    <option value="IN_APP">Dans l’app</option>
-                    <option value="NOTIFICATION">Notification navigateur</option>
-                  </Select>
-                </div>
-                <div className="row" style={{ marginTop: 10 }}>
-                  <Button variant={r.enabled ? "primary" : "ghost"} onClick={() => updateReminder(r.id, { enabled: !r.enabled })}>
-                    {r.enabled ? "Actif" : "Inactif"}
-                  </Button>
-                  <Button variant="ghost" onClick={() => removeReminder(r.id)}>
-                    Supprimer
-                  </Button>
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <div className="small2">Aucun rappel pour l’instant.</div>
-        )}
-      </div>
-
-      <div className="mt12 row">
-        <div className="small2">Notifications : {notifLabel}</div>
-        <Button
-          variant="ghost"
-          onClick={async () => {
-            const res = await requestReminderPermission();
-            setNotifStatus(res);
-          }}
-        >
-          Autoriser
-        </Button>
-        <Button variant="ghost" onClick={addReminder}>
-          + Ajouter
-        </Button>
-      </div>
-
-      <div className="mt12 row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-        <div className="small2">Sons de rappel</div>
-        <Button
-          variant={soundEnabled ? "primary" : "ghost"}
-          onClick={() =>
-            setData((prev) => ({
-              ...prev,
-              ui: { ...(prev.ui || {}), soundEnabled: !soundEnabled },
-            }))
-          }
-        >
-          {soundEnabled ? "Activés" : "Désactivés"}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function AccountSection({ data, setData }) {
+function MotivationSection({ data, setData }) {
   const profile = data?.profile || {};
-  const plan = profile.plan === "premium" ? "premium" : "free";
-  const planLabel = plan === "premium" ? "Premium" : "Gratuit";
   const [whyDraft, setWhyDraft] = useState(profile.whyText || "");
 
   useEffect(() => {
@@ -207,64 +13,44 @@ function AccountSection({ data, setData }) {
 
   const lastUpdatedMs = profile.whyUpdatedAt ? Date.parse(profile.whyUpdatedAt) : 0;
   const daysSince = lastUpdatedMs ? Math.floor((Date.now() - lastUpdatedMs) / (24 * 60 * 60 * 1000)) : 999;
-  const daysLeft = plan === "premium" ? 0 : Math.max(0, 30 - daysSince);
-  const canEditWhy = plan === "premium" || daysLeft === 0;
+  const daysLeft = profile.plan === "premium" ? 0 : Math.max(0, 30 - daysSince);
+  const canEditWhy = profile.plan === "premium" || daysLeft === 0;
   const cleanWhy = (whyDraft || "").trim();
   const whyChanged = cleanWhy !== (profile.whyText || "").trim();
 
   return (
     <Card accentBorder style={{ marginTop: 14 }}>
       <div className="p18 col">
-        <div style={{ fontWeight: 900 }}>Compte</div>
+        <div className="titleSm">Pourquoi</div>
         <div className="small2" style={{ marginTop: 6 }}>
-          Plan actuel : {planLabel}
+          Modifiable tous les 30 jours.
         </div>
-        <div className="mt10">
+        <div className="mt10 col">
+          <Textarea
+            value={whyDraft}
+            onChange={(e) => setWhyDraft(e.target.value)}
+            placeholder="Ton pourquoi"
+            disabled={!canEditWhy}
+          />
+          {!canEditWhy ? (
+            <div className="small2">Tu pourras modifier ton pourquoi dans {daysLeft} jours.</div>
+          ) : null}
           <Button
-            variant="ghost"
+            variant={canEditWhy ? "primary" : "ghost"}
+            disabled={!canEditWhy || !cleanWhy || !whyChanged}
             onClick={() =>
               setData((prev) => ({
                 ...prev,
-                ui: { ...(prev.ui || {}), showPlanStep: true, onboardingStep: 3 },
+                profile: {
+                  ...prev.profile,
+                  whyText: cleanWhy,
+                  whyUpdatedAt: new Date().toISOString(),
+                },
               }))
             }
           >
-            Changer d’abonnement
+            Enregistrer
           </Button>
-        </div>
-
-        <div className="mt14">
-          <div style={{ fontWeight: 900 }}>Pourquoi</div>
-          <div className="small2" style={{ marginTop: 6 }}>
-            Modifiable tous les 30 jours (Premium : illimité).
-          </div>
-          <div className="mt10 col">
-            <Textarea
-              value={whyDraft}
-              onChange={(e) => setWhyDraft(e.target.value)}
-              placeholder="Ton pourquoi"
-              disabled={!canEditWhy}
-            />
-            {!canEditWhy ? (
-              <div className="small2">Tu pourras modifier ton pourquoi dans {daysLeft} jours.</div>
-            ) : null}
-            <Button
-              variant={canEditWhy ? "primary" : "ghost"}
-              disabled={!canEditWhy || !cleanWhy || !whyChanged}
-              onClick={() =>
-                setData((prev) => ({
-                  ...prev,
-                  profile: {
-                    ...prev.profile,
-                    whyText: cleanWhy,
-                    whyUpdatedAt: new Date().toISOString(),
-                  },
-                }))
-              }
-            >
-              Enregistrer
-            </Button>
-          </div>
         </div>
       </div>
     </Card>
@@ -273,60 +59,9 @@ function AccountSection({ data, setData }) {
 
 export default function Settings({ data, setData }) {
   const safeData = data && typeof data === "object" ? data : {};
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const themeData =
-    safeData.ui && typeof safeData.ui === "object" ? safeData : { ...safeData, ui: {} };
-
-  function addCategory() {
-    const name = safePrompt("Nom :", "Nouvelle");
-    if (!name) return;
-    const cleanName = name.trim();
-    if (!cleanName) return;
-    const color = safePrompt("Couleur HEX :", "#FFFFFF") || "#FFFFFF";
-    const cleanColor = color.trim();
-    const id = uid();
-
-    setData((prev) => {
-      const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
-      const nextCategories = [
-        ...prevCategories,
-        { id, name: cleanName, color: cleanColor, wallpaper: "", mainGoalId: null },
-      ];
-      const prevUi = prev.ui || {};
-      const nextSelected = prevCategories.length === 0 ? id : prevUi.selectedCategoryId || id;
-      return { ...prev, categories: nextCategories, ui: { ...prevUi, selectedCategoryId: nextSelected } };
-    });
-  }
-
-  if (!safeData.categories || safeData.categories.length === 0) {
-    return (
-      <ScreenShell
-        data={safeData}
-        pageId="settings"
-        headerTitle="Réglages"
-        headerSubtitle="Aucune catégorie"
-        backgroundImage={safeData?.profile?.whyImage || ""}
-      >
-        <div className="col">
-          <AccountSection data={safeData} setData={setData} />
-          <Card accentBorder style={{ marginTop: 14 }}>
-            <div className="p18">
-              <div className="titleSm">Aucune catégorie</div>
-              <div className="small" style={{ marginTop: 6 }}>
-                Ajoute une première catégorie pour commencer.
-              </div>
-              <div className="mt12">
-                <Button onClick={addCategory}>+ Ajouter une catégorie</Button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      </ScreenShell>
-    );
-  }
-
-  const selected =
-    safeData.categories.find((c) => c.id === safeData.ui?.selectedCategoryId) || safeData.categories[0];
+  const themeData = safeData.ui && typeof safeData.ui === "object" ? safeData : { ...safeData, ui: {} };
+  const fallbackWallpaper = Array.isArray(safeData.categories) ? safeData.categories[0]?.wallpaper : "";
+  const backgroundImage = fallbackWallpaper || safeData.profile?.whyImage || "";
 
   return (
     <ScreenShell
@@ -334,48 +69,17 @@ export default function Settings({ data, setData }) {
       pageId="settings"
       headerTitle="Réglages"
       headerSubtitle="Essentiel"
-      backgroundImage={selected?.wallpaper || safeData.profile?.whyImage || ""}
+      backgroundImage={backgroundImage}
     >
       <div className="col">
         <ThemePicker data={themeData} setData={setData} />
-        <AccountSection data={safeData} setData={setData} />
-
+        <MotivationSection data={safeData} setData={setData} />
         <Card accentBorder style={{ marginTop: 14 }}>
           <div className="p18">
-            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontWeight: 900 }}>Avancé</div>
-                <div className="small2" style={{ marginTop: 6 }}>
-                  Rappels et réglages techniques.
-                </div>
-              </div>
-              <Button variant="ghost" onClick={() => setAdvancedOpen((v) => !v)}>
-                {advancedOpen ? "Masquer" : "Afficher"}
-              </Button>
+            <div className="titleSm">Notifications</div>
+            <div className="small2" style={{ marginTop: 6 }}>
+              Bientôt disponible.
             </div>
-            {advancedOpen ? (
-              <div className="mt12">
-                <SettingsAdvanced data={safeData} setData={setData} />
-              </div>
-            ) : null}
-          </div>
-        </Card>
-
-        <Card accentBorder style={{ marginTop: 14 }}>
-          <div className="p18 row">
-            <div>
-              <div style={{ fontWeight: 900 }}>Réinitialiser</div>
-              <div className="small2">Efface tout (localStorage).</div>
-            </div>
-            <Button
-              variant="danger"
-              onClick={() => {
-                clearState();
-                setData(initialData());
-              }}
-            >
-              Réinitialiser
-            </Button>
           </div>
         </Card>
       </div>

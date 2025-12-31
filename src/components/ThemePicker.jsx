@@ -16,7 +16,7 @@ export default function ThemePicker({ data, setData }) {
       <div className="p18">
         <div className="row">
           <div>
-            <div className="titleSm">Thème Accueil</div>
+            <div className="titleSm">Ambiance Accueil</div>
             <div className="small">Uniquement pour la page Accueil.</div>
           </div>
           <Badge>Accueil</Badge>
