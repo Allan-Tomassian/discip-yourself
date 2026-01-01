@@ -6,11 +6,11 @@ export function Badge({ children }) {
   return <span className="badge">{children}</span>;
 }
 
-export function Card({ children, accentBorder = false, style, ...props }) {
+export function Card({ children, accentBorder = false, style, className = "", ...props }) {
   const { accent } = React.useContext(AccentContext);
   return (
     <div
-      className="card"
+      className={`card${className ? ` ${className}` : ""}`}
       style={{
         borderColor: accentBorder ? accent : "rgba(255,255,255,.16)",
         ...(style || {}),

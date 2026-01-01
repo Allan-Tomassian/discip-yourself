@@ -5,6 +5,7 @@ import { startOfWeekKey, todayKey, yearKey } from "../utils/dates";
 import { setMainGoal } from "../logic/goals";
 import { incHabit, decHabit } from "../logic/habits";
 import { getAccentForPage } from "../utils/_theme";
+import { getCategoryAccentVars } from "../utils/categoryAccent";
 
 function resolveGoalType(goal) {
   const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
@@ -30,18 +31,6 @@ function getHabitCountForToday(habit, checks, now) {
   }
   const wk = startOfWeekKey(now);
   return bucket.weekly?.[wk] || 0;
-}
-
-function hexToRgba(hex, alpha) {
-  if (typeof hex !== "string") return null;
-  const clean = hex.replace("#", "").trim();
-  if (clean.length !== 6) return null;
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
-  if ([r, g, b].some((v) => Number.isNaN(v))) return null;
-  const a = typeof alpha === "number" ? alpha : 0.24;
-  return `rgba(${r},${g},${b},${a})`;
 }
 
 const MICRO_ACTIONS = [
@@ -197,7 +186,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate }) {
             </div>
             <div className="mt12">
               <Button onClick={openCreateFlow}>
-                Créer
+                Créer une catégorie
               </Button>
             </div>
           </div>
@@ -208,8 +197,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate }) {
 
   const accent = focusCategory && focusCategory.color ? focusCategory.color : getAccentForPage(safeData, "home");
   const backgroundImage = profile.whyImage || "";
-  const catGlow = hexToRgba(accent, 0.25) || "rgba(124,58,237,.25)";
-  const catAccentVars = useMemo(() => ({ "--catColor": accent, "--catGlow": catGlow }), [accent, catGlow]);
+  const catAccentVars = useMemo(() => getCategoryAccentVars(accent), [accent]);
 
   const whyText = (profile.whyText || "").trim();
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";

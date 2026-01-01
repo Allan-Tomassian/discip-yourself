@@ -1,6 +1,8 @@
 :root{
   --bg:#05060A;
   --background:radial-gradient(1200px 600px at 20% 0%, rgba(124,58,237,0.35), transparent 60%), radial-gradient(900px 500px at 100% 30%, rgba(6,182,212,0.25), transparent 55%), radial-gradient(700px 500px at 40% 100%, rgba(34,197,94,0.18), transparent 55%), linear-gradient(180deg, #05060A, #05060A);
+  --accent:#F7931A;
+  --accentGlow:rgba(247,147,26,.35);
   --text:#fff;
   --muted:rgba(255,255,255,.65);
   --muted2:rgba(255,255,255,.45);
@@ -131,9 +133,9 @@ a{ color:inherit; }
 }
 
 .btn{
-  border:1px solid rgba(255,255,255,.16);
-  background: rgba(255,255,255,.92);
-  color:#000;
+  border:1px solid var(--accent);
+  background: var(--accent);
+  color:#1b1206;
   border-radius:16px;
   padding:10px 14px;
   cursor:pointer;
@@ -161,6 +163,10 @@ a{ color:inherit; }
   padding:12px 14px;
   outline:none;
   font-size:16px;
+}
+.input:focus, .textarea:focus, .select:focus{
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 16px var(--accentGlow);
 }
 .textarea{ resize:none; min-height:92px; }
 
@@ -237,6 +243,10 @@ a{ color:inherit; }
 .catAccentField .select{
   border-color: var(--catColor, rgba(255,255,255,.35));
   box-shadow: 0 0 0 1px var(--catColor, rgba(255,255,255,.35)), 0 0 16px var(--catGlow, rgba(124,58,237,.25));
+}
+.catAccentField .select:focus{
+  border-color: var(--catColor, rgba(255,255,255,.35));
+  box-shadow: 0 0 0 1px var(--catColor, rgba(255,255,255,.35)), 0 0 18px var(--catGlow, rgba(124,58,237,.25));
 }
 
 .catAccentRow{

@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Badge, Button, Card, Input, Select, Textarea } from "../components/UI";
 import FocusCategoryPicker from "../components/FocusCategoryPicker";
+import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { uid } from "../utils/helpers";
 import { todayKey } from "../utils/dates";
 import { CATEGORY_TEMPLATES, GOAL_TEMPLATES, HABIT_TEMPLATES } from "../logic/templates";
@@ -880,7 +881,7 @@ function onToggleActive(goal) {
       headerSubtitle={c?.name || "Catégorie"}
       backgroundImage={c?.wallpaper || safeData.profile?.whyImage || ""}
     >
-      <div style={{ "--catColor": c?.color || "#7C3AED" }}>
+      <div style={getCategoryAccentVars(c?.color)}>
         {onBack ? (
           <Button variant="ghost" onClick={onBack}>
             Bibliothèque

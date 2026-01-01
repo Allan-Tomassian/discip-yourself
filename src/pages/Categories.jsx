@@ -2,6 +2,7 @@
 import React, { useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
+import { getCategoryAccentVars } from "../utils/categoryAccent";
 
 function resolveGoalType(goal) {
   const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
@@ -110,7 +111,7 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
               : "Aucun élément";
 
           return (
-            <Card key={c.id} accentBorder style={{ marginBottom: 12, borderColor: c.color || undefined }}>
+            <Card key={c.id} className="catAccentRow" style={{ marginBottom: 12, ...getCategoryAccentVars(c.color) }}>
               <div className="p18 row" style={{ justifyContent: "space-between" }}>
                 <div>
                   <div className="titleSm">{c.name}</div>

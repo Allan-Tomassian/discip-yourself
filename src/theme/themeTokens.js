@@ -1,4 +1,6 @@
 const DEFAULT_THEME = "aurora";
+const BITCOIN_ACCENT = "#F7931A";
+const BITCOIN_GLOW = "rgba(247,147,26,.35)";
 
 const THEME_TOKENS = {
   aurora: {
@@ -11,8 +13,8 @@ const THEME_TOKENS = {
     border: "rgba(255,255,255,.16)",
     glass: "rgba(255,255,255,.08)",
     glass2: "rgba(255,255,255,.12)",
-    accent: "#7C3AED",
-    glow: "rgba(124,58,237,.35)",
+    accent: BITCOIN_ACCENT,
+    glow: BITCOIN_GLOW,
   },
   midnight: {
     background:
@@ -24,8 +26,8 @@ const THEME_TOKENS = {
     border: "rgba(237,239,243,.14)",
     glass: "rgba(255,255,255,.06)",
     glass2: "rgba(255,255,255,.10)",
-    accent: "#A3BFFA",
-    glow: "rgba(163,191,250,.28)",
+    accent: BITCOIN_ACCENT,
+    glow: BITCOIN_GLOW,
   },
   sunset: {
     background:
@@ -37,8 +39,8 @@ const THEME_TOKENS = {
     border: "rgba(255,247,241,.14)",
     glass: "rgba(255,255,255,.08)",
     glass2: "rgba(255,255,255,.12)",
-    accent: "#F97316",
-    glow: "rgba(249,115,22,.30)",
+    accent: BITCOIN_ACCENT,
+    glow: BITCOIN_GLOW,
   },
   ocean: {
     background:
@@ -50,8 +52,8 @@ const THEME_TOKENS = {
     border: "rgba(242,250,255,.14)",
     glass: "rgba(255,255,255,.07)",
     glass2: "rgba(255,255,255,.11)",
-    accent: "#38BDF8",
-    glow: "rgba(56,189,248,.30)",
+    accent: BITCOIN_ACCENT,
+    glow: BITCOIN_GLOW,
   },
   forest: {
     background:
@@ -63,8 +65,8 @@ const THEME_TOKENS = {
     border: "rgba(242,255,246,.14)",
     glass: "rgba(255,255,255,.07)",
     glass2: "rgba(255,255,255,.11)",
-    accent: "#22C55E",
-    glow: "rgba(34,197,94,.30)",
+    accent: BITCOIN_ACCENT,
+    glow: BITCOIN_GLOW,
   },
 };
 

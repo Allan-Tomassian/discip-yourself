@@ -17,7 +17,7 @@ import CreateHabit from "./pages/CreateHabit";
 import Settings from "./pages/Settings";
 import CategoryDetail from "./pages/CategoryDetail";
 import CategoryView from "./pages/CategoryView";
-import { applyThemeTokens, getThemeAccent, getThemeName } from "./theme/themeTokens";
+import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
 
 function runSelfTests() {
   // minimal sanity
@@ -171,11 +171,10 @@ export default function App() {
 
   const safeData = data && typeof data === "object" ? data : {};
   const themeName = getThemeName(safeData);
-  const themeAccent = getThemeAccent(safeData);
 
   useEffect(() => {
-    applyThemeTokens(themeName, themeAccent);
-  }, [themeName, themeAccent]);
+    applyThemeTokens(themeName);
+  }, [themeName]);
   useEffect(() => {
     // Do not restore tab during onboarding flows.
     const completed = Boolean(safeData?.ui?.onboardingCompleted);
