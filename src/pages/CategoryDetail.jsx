@@ -912,24 +912,25 @@ function onToggleActive(goal) {
             }}
             label="Catégorie"
             emptyLabel="À configurer"
+            selectWrapperClassName="catAccentField"
           />
         </div>
 
-        <Card accentBorder style={{ marginTop: 12, borderColor: c?.color || undefined }}>
+        <Card style={{ marginTop: 12 }}>
           <div className="p18">
             <div className="titleSm">Timer</div>
             <div className="small2">Bientôt disponible.</div>
           </div>
         </Card>
 
-        <Card accentBorder style={{ marginTop: 12, borderColor: c?.color || undefined }}>
+        <Card style={{ marginTop: 12 }}>
           <div className="p18">
             <div className="titleSm">Notifications</div>
             <div className="small2">Bientôt disponible.</div>
           </div>
         </Card>
 
-        <Card accentBorder style={{ marginTop: 12, borderColor: c?.color || undefined }}>
+        <Card style={{ marginTop: 12 }}>
           <div className="p18">
             <div className="titleSm">Calendrier</div>
             <div className="small2">Bientôt disponible.</div>

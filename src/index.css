@@ -234,6 +234,16 @@ a{ color:inherit; }
   padding:14px;
 }
 
+.catAccentField .select{
+  border-color: var(--catColor, rgba(255,255,255,.35));
+  box-shadow: 0 0 0 1px var(--catColor, rgba(255,255,255,.35)), 0 0 16px var(--catGlow, rgba(124,58,237,.25));
+}
+
+.catAccentRow{
+  border-color: var(--catColor, rgba(255,255,255,.35));
+  box-shadow: 0 0 0 1px var(--catColor, rgba(255,255,255,.35)), 0 0 16px var(--catGlow, rgba(124,58,237,.25));
+}
+
 .dragHandle{
   border:0;
   background: rgba(255,255,255,.06);

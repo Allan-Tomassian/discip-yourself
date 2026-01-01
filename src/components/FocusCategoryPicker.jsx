@@ -7,6 +7,8 @@ export default function FocusCategoryPicker({
   onChange,
   label = "Catégorie focus",
   emptyLabel = "Aucune catégorie",
+  selectWrapperClassName = "",
+  selectWrapperStyle,
 }) {
   const list = Array.isArray(categories) ? categories : [];
   const active = list.find((c) => c.id === value) || null;
@@ -24,7 +26,7 @@ export default function FocusCategoryPicker({
         </Button>
       </div>
       {open ? (
-        <div className="mt10">
+        <div className={`mt10 ${selectWrapperClassName}`} style={selectWrapperStyle}>
           <Select
             value={active?.id || ""}
             onChange={(e) => {

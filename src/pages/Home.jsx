@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
-import FocusCategoryPicker from "../components/FocusCategoryPicker";
 import { startOfWeekKey, todayKey, yearKey } from "../utils/dates";
-import { activateGoal, setMainGoal } from "../logic/goals";
+import { setMainGoal } from "../logic/goals";
 import { incHabit, decHabit } from "../logic/habits";
 import { getAccentForPage } from "../utils/_theme";
 
@@ -16,26 +15,6 @@ function resolveGoalType(goal) {
   if (legacy === "OUTCOME") return "OUTCOME";
   if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
   return "PROCESS";
-}
-
-const DEFAULT_DAYS = [1, 2, 3, 4, 5, 6, 7];
-const DEFAULT_SLOTS = ["09:00"];
-
-function getDayIndex(d) {
-  const day = d.getDay();
-  return day === 0 ? 7 : day;
-}
-
-function getScheduleSlots(habit, now) {
-  const schedule = habit?.schedule;
-  if (!schedule || typeof schedule !== "object") return ["Aujourd’hui"];
-  const days =
-    Array.isArray(schedule.daysOfWeek) && schedule.daysOfWeek.length ? schedule.daysOfWeek : DEFAULT_DAYS;
-  const slots = Array.isArray(schedule.timeSlots) ? schedule.timeSlots.filter(Boolean) : [];
-  const dayIndex = getDayIndex(now);
-  if (days.length && !days.includes(dayIndex)) return [];
-  if (!slots.length) return ["Aujourd’hui"];
-  return slots;
 }
 
 function getHabitCountForToday(habit, checks, now) {
@@ -53,35 +32,41 @@ function getHabitCountForToday(habit, checks, now) {
   return bucket.weekly?.[wk] || 0;
 }
 
-function parseStartAtMs(value) {
-  if (!value || typeof value !== "string") return null;
-  const dt = new Date(value);
-  const ts = dt.getTime();
-  return Number.isNaN(ts) ? null : ts;
+function hexToRgba(hex, alpha) {
+  if (typeof hex !== "string") return null;
+  const clean = hex.replace("#", "").trim();
+  if (clean.length !== 6) return null;
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  if ([r, g, b].some((v) => Number.isNaN(v))) return null;
+  const a = typeof alpha === "number" ? alpha : 0.24;
+  return `rgba(${r},${g},${b},${a})`;
 }
 
-function formatDateFr(value) {
-  if (!value || typeof value !== "string") return "";
-  const parts = value.split("-");
-  if (parts.length !== 3) return value;
-  const [y, m, d] = parts;
-  if (!y || !m || !d) return value;
-  return `${d}/${m}/${y}`;
-}
+const MICRO_ACTIONS = [
+  { id: "micro_flexions", label: "Faire 10 flexions" },
+  { id: "micro_mot", label: "Apprendre un mot" },
+  { id: "micro_respiration", label: "10 respirations" },
+  { id: "micro_eau", label: "Boire un verre d’eau" },
+  { id: "micro_rangement", label: "Ranger 2 minutes" },
+  { id: "micro_etirements", label: "Étirements rapides" },
+];
 
-function formatStartDateFr(value) {
-  if (!value || typeof value !== "string") return "";
-  const datePart = value.includes("T") ? value.split("T")[0] : value;
-  return formatDateFr(datePart);
-}
-
-export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenCreate }) {
+export default function Home({ data, setData, onOpenLibrary, onOpenCreate }) {
   const [showWhy, setShowWhy] = useState(true);
   const [whyExpanded, setWhyExpanded] = useState(false);
-
-  // activation feedback per habit
-  // shape: { [goalId]: { ok:false, reason, blockers, conflicts, at } }
-  const [activationByHabitId, setActivationByHabitId] = useState({});
+  const [microState, setMicroState] = useState(() => {
+    const dayKey = todayKey(new Date());
+    return {
+      dayKey,
+      cursor: Math.min(3, MICRO_ACTIONS.length),
+      items: MICRO_ACTIONS.slice(0, 3).map((item, idx) => ({
+        uid: `${item.id}-${dayKey}-${idx}`,
+        label: item.label,
+      })),
+    };
+  });
 
   const safeData = data && typeof data === "object" ? data : {};
   const profile = safeData.profile || {};
@@ -103,19 +88,17 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenC
     return withGoal || categories[0] || null;
   }, [categories, goals, homeSelectedCategoryId]);
 
+  const mainGoalId = typeof focusCategory?.mainGoalId === "string" ? focusCategory.mainGoalId : null;
+
   const outcomeGoals = useMemo(() => {
     if (!focusCategory?.id) return [];
     return goals.filter((g) => g.categoryId === focusCategory.id && resolveGoalType(g) === "OUTCOME");
   }, [goals, focusCategory?.id]);
 
   const selectedGoal = useMemo(() => {
-    if (!focusCategory?.id) return null;
-    const mainId = typeof focusCategory?.mainGoalId === "string" ? focusCategory.mainGoalId : null;
-    const main = mainId ? outcomeGoals.find((g) => g.id === mainId) : null;
-    if (main) return main;
-    const active = outcomeGoals.find((g) => g.status === "active") || null;
-    return active || outcomeGoals[0] || null;
-  }, [focusCategory?.id, focusCategory?.mainGoalId, outcomeGoals]);
+    if (!focusCategory?.id || !mainGoalId) return null;
+    return outcomeGoals.find((g) => g.id === mainGoalId) || null;
+  }, [focusCategory?.id, mainGoalId, outcomeGoals]);
 
   const processGoals = useMemo(() => {
     if (!focusCategory?.id) return [];
@@ -124,79 +107,41 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenC
 
   // Habitudes liées à l’objectif sélectionné (queued/active)
   const linkedHabits = useMemo(() => {
-    if (!selectedGoal?.id) return [];
-    return processGoals.filter((g) => g.parentId === selectedGoal.id);
-  }, [processGoals, selectedGoal?.id]);
+    if (!mainGoalId) return [];
+    return processGoals.filter((g) => g.parentId === mainGoalId);
+  }, [processGoals, mainGoalId]);
 
   // Habitudes actives uniquement
   const activeHabits = useMemo(() => {
     return linkedHabits.filter((g) => g.status === "active");
   }, [linkedHabits]);
 
-  // Next habit to do today among ACTIVE only: first with count=0 today
-  const nextHabit = useMemo(() => {
-    if (!activeHabits.length) return null;
+  const dayProgress = useMemo(() => {
     const now = new Date();
-    return activeHabits.find((g) => getHabitCountForToday(g, checks, now) <= 0) || null;
+    const total = activeHabits.length;
+    const done = activeHabits.reduce(
+      (sum, h) => sum + (getHabitCountForToday(h, checks, now) > 0 ? 1 : 0),
+      0
+    );
+    return { total, done, ratio: total ? done / total : 0 };
   }, [activeHabits, checks]);
 
-  // Micro-action slots based on schedule + count (data.checks)
-  // NOTE: startAt must NOT block execution; it will later drive reminders/notifications.
-  const slotItems = useMemo(() => {
-    const now = new Date();
-    return activeHabits.flatMap((habit) => {
-      const slots = getScheduleSlots(habit, now);
-      if (!slots.length) return [];
-      const count = getHabitCountForToday(habit, checks, now);
-      return slots.map((slot, index) => {
-        const done = count >= index + 1;
-        return {
-          id: `${habit.id}:${index}`,
-          habit,
-          label: slot,
-          index,
-          done,
-        };
-      });
-    });
-  }, [activeHabits, checks]);
-
-  // Cursor habit (small selector for "Action du jour")
-  const [habitCursorId, setHabitCursorId] = useState(null);
+  const microItems = useMemo(() => {
+    return microState.items;
+  }, [microState.items]);
 
   useEffect(() => {
-    const ids = activeHabits.map((h) => h.id);
-    if (!ids.length) {
-      setHabitCursorId(null);
-      return;
-    }
-    if (nextHabit?.id) {
-      setHabitCursorId(nextHabit.id);
-      return;
-    }
-    if (habitCursorId && ids.includes(habitCursorId)) return;
-    setHabitCursorId(ids[0]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusCategory?.id, selectedGoal?.id, activeHabits, nextHabit?.id]);
-
-  const currentHabit = useMemo(() => {
-    if (!activeHabits.length) return null;
-    if (habitCursorId) return activeHabits.find((h) => h.id === habitCursorId) || activeHabits[0];
-    return nextHabit || activeHabits[0];
-  }, [activeHabits, habitCursorId, nextHabit]);
-
-  const currentHabitDone = useMemo(() => {
-    if (!currentHabit) return false;
-    const now = new Date();
-    return getHabitCountForToday(currentHabit, checks, now) >= 1;
-  }, [currentHabit, checks]);
-
-  function cycleHabit(dir) {
-    if (!activeHabits.length) return;
-    const idx = Math.max(0, activeHabits.findIndex((h) => h.id === (currentHabit?.id || "")));
-    const nextIdx = (idx + dir + activeHabits.length) % activeHabits.length;
-    setHabitCursorId(activeHabits[nextIdx].id);
-  }
+    const today = todayKey(new Date());
+    if (microState.dayKey === today) return;
+    setMicroState({
+      dayKey: today,
+      cursor: Math.min(3, MICRO_ACTIONS.length),
+      items: MICRO_ACTIONS.slice(0, 3).map((item, idx) => ({
+        uid: `${item.id}-${today}-${idx}`,
+        label: item.label,
+      })),
+    });
+  }, [microState.dayKey]);
 
   // Home focus change should NOT overwrite legacy selectedCategoryId
   function setFocusCategory(nextId) {
@@ -220,33 +165,12 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenC
     });
   }
 
-  // Open Plan with category context (+ optional openGoalEditId)
-  function openPlanWith(categoryId, openGoalEditId) {
-    if (!categoryId || typeof setData !== "function") return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      const prevByView =
-        prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-          ? prevUi.selectedCategoryByView
-          : {};
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          selectedCategoryId: categoryId,
-          openGoalEditId,
-          selectedCategoryByView: {
-            ...prevByView,
-            plan: categoryId,
-          },
-        },
-      };
-    });
-    if (typeof onOpenPlan === "function") onOpenPlan();
-  }
-
-  function openCreateHub() {
-    if (typeof onOpenCreate === "function") onOpenCreate();
+  function openCreateFlow() {
+    if (typeof onOpenCreate === "function") {
+      onOpenCreate();
+      return;
+    }
+    if (typeof onOpenLibrary === "function") onOpenLibrary();
   }
 
   function setCategoryMainGoal(nextGoalId) {
@@ -256,112 +180,6 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenC
     setData((prev) => setMainGoal(prev, nextGoalId));
   }
 
-  function clearActivationFeedback(goalId) {
-    setActivationByHabitId((m) => {
-      if (!m || typeof m !== "object") return {};
-      if (!m[goalId]) return m;
-      const next = { ...m };
-      delete next[goalId];
-      return next;
-    });
-  }
-
-  function setActivationFeedback(goalId, meta) {
-    setActivationByHabitId((m) => ({
-      ...(m && typeof m === "object" ? m : {}),
-      [goalId]: meta,
-    }));
-  }
-
-  function activateHabitNow(goalId) {
-    if (!goalId || typeof setData !== "function") return;
-
-    const now = new Date();
-    let feedback = null;
-
-    setData((prev) => {
-      const res = activateGoal(prev, goalId, { navigate: false, now });
-
-      // normalize return shapes + capture feedback
-      if (res && typeof res === "object" && !Array.isArray(res)) {
-        const ok = typeof res.ok === "boolean" ? res.ok : true;
-        if (!ok) {
-          feedback = {
-            ok: false,
-            reason: typeof res.reason === "string" ? res.reason : "",
-            blockers: Array.isArray(res.blockers) ? res.blockers : [],
-            conflicts: Array.isArray(res.conflicts) ? res.conflicts : [],
-            at: now.toISOString(),
-          };
-        }
-      }
-
-      if (res && typeof res === "object" && res.state && typeof res.state === "object") return res.state;
-      if (res && typeof res === "object" && (res.goals || res.categories || res.ui)) return res;
-      return prev;
-    });
-
-    if (feedback) setActivationFeedback(goalId, feedback);
-    else clearActivationFeedback(goalId);
-  }
-
-  function startHabitNow(goalId) {
-    if (!goalId || typeof setData !== "function") return;
-
-    const now = new Date();
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mm = String(now.getMinutes()).padStart(2, "0");
-    const nowLocal = `${todayKey(now)}T${hh}:${mm}`;
-
-    let feedback = null;
-
-    setData((prev) => {
-      // Seed startAt to now to align schedule rendering
-      const prevGoals = Array.isArray(prev.goals) ? prev.goals : [];
-      const nextGoals = prevGoals.map((g) => (g.id === goalId ? { ...g, startAt: nowLocal } : g));
-      const seeded = { ...prev, goals: nextGoals };
-
-      const res = activateGoal(seeded, goalId, { navigate: false, now });
-
-      if (res && typeof res === "object" && !Array.isArray(res)) {
-        const ok = typeof res.ok === "boolean" ? res.ok : true;
-        if (!ok) {
-          feedback = {
-            ok: false,
-            reason: typeof res.reason === "string" ? res.reason : "",
-            blockers: Array.isArray(res.blockers) ? res.blockers : [],
-            conflicts: Array.isArray(res.conflicts) ? res.conflicts : [],
-            at: now.toISOString(),
-          };
-        }
-      }
-
-      if (res && typeof res === "object" && res.state && typeof res.state === "object") return res.state;
-      if (res && typeof res === "object" && (res.goals || res.categories || res.ui)) return res;
-      return seeded;
-    });
-
-    if (feedback) setActivationFeedback(goalId, feedback);
-    else clearActivationFeedback(goalId);
-  }
-
-  function deactivateHabitNow(goalId) {
-    if (!goalId || typeof setData !== "function") return;
-    clearActivationFeedback(goalId);
-    setData((prev) => {
-      const prevGoals = Array.isArray(prev.goals) ? prev.goals : [];
-      const nextGoals = prevGoals.map((g) => {
-        if (g.id !== goalId) return g;
-        // Minimal, UI-safe deactivation: back to queued. Do not delete history.
-        return {
-          ...g,
-          status: "queued",
-          activeSince: "",
-        };
-      });
-      return { ...prev, goals: nextGoals };
-    });
-  }
 
   if (!categories.length) {
     return (
@@ -378,8 +196,8 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenC
               Ajoute une première catégorie pour commencer.
             </div>
             <div className="mt12">
-              <Button onClick={() => (typeof onOpenLibrary === "function" ? onOpenLibrary() : null)}>
-                Ouvrir la bibliothèque
+              <Button onClick={openCreateFlow}>
+                Créer
               </Button>
             </div>
           </div>
@@ -390,6 +208,8 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenC
 
   const accent = focusCategory && focusCategory.color ? focusCategory.color : getAccentForPage(safeData, "home");
   const backgroundImage = profile.whyImage || "";
+  const catGlow = hexToRgba(accent, 0.25) || "rgba(124,58,237,.25)";
+  const catAccentVars = useMemo(() => ({ "--catColor": accent, "--catGlow": catGlow }), [accent, catGlow]);
 
   const whyText = (profile.whyText || "").trim();
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
@@ -398,8 +218,36 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenC
   const visibleWhy =
     !showWhy ? "Pourquoi masqué" : whyExpanded || !hasLongWhy ? whyDisplay : `${whyDisplay.slice(0, WHY_LIMIT)}…`;
 
-  const hasLinkedHabits = linkedHabits.length > 0;
-  const hasActiveHabits = activeHabits.length > 0;
+  const headerRight = categories.length ? (
+    <div style={{ minWidth: 160 }}>
+      <div className="small2" style={{ textAlign: "right" }}>
+        Progression du jour
+      </div>
+      <div className="row" style={{ alignItems: "center", gap: 8, marginTop: 4 }}>
+        <div
+          style={{
+            flex: 1,
+            height: 6,
+            background: "rgba(255,255,255,.12)",
+            borderRadius: 999,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              width: `${Math.round(dayProgress.ratio * 100)}%`,
+              height: "100%",
+              background: "var(--muted)",
+              borderRadius: 999,
+            }}
+          />
+        </div>
+        <div className="small2" style={{ minWidth: 36, textAlign: "right" }}>
+          {dayProgress.done}/{dayProgress.total || 0}
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <ScreenShell
@@ -407,6 +255,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenC
       backgroundImage={backgroundImage}
       headerTitle="Aujourd’hui"
       headerSubtitle="Exécution"
+      headerRight={headerRight}
     >
       <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
         <div
@@ -434,59 +283,54 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenC
         </div>
       ) : null}
 
-      <div className="mt12">
-        <FocusCategoryPicker
-          categories={categories}
-          value={focusCategory?.id || ""}
-          onChange={setFocusCategory}
-          label="Focus sur une catégorie"
-          emptyLabel="Catégorie à configurer"
-        />
-      </div>
-
-      <Card accentBorder style={{ marginTop: 12, borderColor: accent }}>
+      <Card style={{ marginTop: 12 }}>
         <div className="p18">
-          <div className="titleSm">Objectif</div>
-          <div className="small2">Sélectionné pour aujourd’hui</div>
+          <div className="titleSm">Focus catégorie</div>
+          <div className="mt10 catAccentField" style={catAccentVars}>
+            <Select
+              value={focusCategory?.id || ""}
+              onChange={(e) => setFocusCategory(e.target.value)}
+              style={{ fontSize: 16 }}
+            >
+              <option value="" disabled>
+                Choisir une catégorie
+              </option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+      </Card>
 
-          {selectedGoal ? (
-            <div className="mt12 col">
-              <div style={{ fontWeight: 800, fontSize: 18 }}>{selectedGoal.title || "Objectif"}</div>
+      <Card style={{ marginTop: 12 }}>
+        <div className="p18">
+          <div className="titleSm">Objectif principal</div>
 
-              {outcomeGoals.length > 1 ? (
-                <div className="mt10">
-                  <div className="small" style={{ marginBottom: 6 }}>
-                    Objectif principal de la catégorie
-                  </div>
-                  <Select
-                    value={selectedGoal.id}
-                    onChange={(e) => setCategoryMainGoal(e.target.value)}
-                    style={{ fontSize: 16 }}
-                  >
-                    {outcomeGoals.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.title || "Objectif"}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-              ) : (
-                <div className="small2" style={{ marginTop: 6, opacity: 0.9 }}>
-                  Objectif principal de la catégorie
-                </div>
-              )}
-
-              <div className="mt10">
-                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
-                  Gérer dans Outils
-                </Button>
-              </div>
+          {outcomeGoals.length ? (
+            <div className="mt10 catAccentField" style={catAccentVars}>
+              <Select
+                value={selectedGoal?.id || ""}
+                onChange={(e) => setCategoryMainGoal(e.target.value)}
+                style={{ fontSize: 16 }}
+              >
+                <option value="" disabled>
+                  Choisir un objectif
+                </option>
+                {outcomeGoals.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.title || "Objectif"}
+                  </option>
+                ))}
+              </Select>
             </div>
           ) : (
             <div className="mt12 col">
-              <div className="small2">Aucun objectif dans cette catégorie.</div>
+              <div className="small2">Aucun objectif principal.</div>
               <div className="mt10">
-                <Button variant="ghost" onClick={openCreateHub}>
+                <Button variant="ghost" onClick={openCreateFlow}>
                   Créer
                 </Button>
               </div>
@@ -495,201 +339,101 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenC
         </div>
       </Card>
 
-      <Card accentBorder style={{ marginTop: 12, borderColor: accent }}>
-        <div className="p18">
-          <div className="titleSm">Action du jour</div>
-
-          {currentHabit ? (
-            <div className="mt12 col">
-              <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                <div
-                  style={{
-                    fontWeight: 800,
-                    fontSize: 18,
-                    minWidth: 0,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {currentHabit.title || "Habitude"}
-                </div>
-
-                {activeHabits.length > 1 ? (
-                  <div className="row" style={{ gap: 6 }}>
-                    <button className="btn btnGhost" onClick={() => cycleHabit(-1)} aria-label="Habitude précédente">
-                      ▲
-                    </button>
-                    <button className="btn btnGhost" onClick={() => cycleHabit(1)} aria-label="Habitude suivante">
-                      ▼
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="mt12 row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                <Button
-                  onClick={() =>
-                    setData((prev) => {
-                      const fn = currentHabitDone ? decHabit : incHabit;
-                      const next = fn(prev, currentHabit.id);
-                      return next && typeof next === "object" ? next : prev;
-                    })
-                  }
-                >
-                  {currentHabitDone ? "Annuler" : "Valider"}
-                </Button>
-
-              </div>
-            </div>
-          ) : hasLinkedHabits ? (
-            <div className="mt12 col">
-              <div className="small2">Aucune action disponible : active d’abord une habitude liée ci-dessous.</div>
-            </div>
-          ) : (
-            <div className="mt12 col">
-              <div className="small2">Aucune action aujourd’hui.</div>
-              <div className="mt10">
-                <Button variant="ghost" onClick={openCreateHub}>
-                  Créer
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </Card>
-
-      <Card accentBorder style={{ marginTop: 12, borderColor: accent }}>
+      <Card style={{ marginTop: 12 }}>
         <div className="p18">
           <div className="titleSm">Habitudes</div>
-          <div className="small2">Liées à l’objectif sélectionné</div>
+          <div className="small2">Du jour</div>
 
-          {hasLinkedHabits ? (
-            <div className="mt12 col" style={{ gap: 10 }}>
-              {linkedHabits.map((h) => {
-                const isActive = h.status === "active";
-                const startAtMs = parseStartAtMs(h.startAt);
-                const hasFutureStart = Boolean(isActive && startAtMs && startAtMs > Date.now());
-                const startLabel = hasFutureStart ? formatStartDateFr(h.startAt) : "";
-                const statusLabel = hasFutureStart && startLabel ? `Planifiée (début : ${startLabel})` : isActive ? "Active" : "À activer";
-                const fb = activationByHabitId?.[h.id] || null;
-                const isBlocked = Boolean(fb && fb.reason && fb.reason !== "START_IN_FUTURE");
-
-                return (
-                  <div
-                    key={h.id}
-                    className="listItem"
-                    style={{
-                      borderLeft: `3px solid ${isActive ? accent : "rgba(255,255,255,.18)"}`,
-                      paddingLeft: 12,
-                    }}
-                  >
-                    <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {h.title || "Habitude"}
+          {selectedGoal ? (
+            activeHabits.length ? (
+              <div className="mt12 col" style={{ gap: 10 }}>
+                {activeHabits.map((h) => {
+                  const done = getHabitCountForToday(h, checks, new Date()) > 0;
+                  return (
+                    <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
+                      <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {h.title || "Habitude"}
+                          </div>
                         </div>
-                        <div className="small2" style={{ opacity: 0.85 }}>
-                          {statusLabel}
-                        </div>
-                      </div>
-
-                      {!isActive ? (
-                        <Button variant="ghost" onClick={() => activateHabitNow(h.id)}>
-                          Activer
+                        <Button
+                          variant="ghost"
+                          onClick={() =>
+                            setData((prev) => {
+                              const fn = done ? decHabit : incHabit;
+                              const next = fn(prev, h.id);
+                              return next && typeof next === "object" ? next : prev;
+                            })
+                          }
+                        >
+                          {done ? "Annuler" : "Valider"}
                         </Button>
-                      ) : (
-                        <Button variant="ghost" onClick={() => deactivateHabitNow(h.id)}>
-                          Désactiver
-                        </Button>
-                      )}
-                    </div>
-
-                    {!isActive && isBlocked ? (
-                      <div className="mt10" style={{ opacity: 0.95 }}>
-                        <div className="small2" style={{ marginBottom: 8 }}>
-                          Activation bloquée{fb.reason ? ` · ${fb.reason}` : ""}
-                        </div>
-
-                        {fb.blockers?.length ? (
-                          <div className="small2" style={{ opacity: 0.9, marginBottom: 8 }}>
-                            {fb.blockers.slice(0, 4).map((b) => (
-                              <div key={b.id}>• {b.title || b.name || "Objectif"}</div>
-                            ))}
-                          </div>
-                        ) : null}
-
-                        {fb.conflicts?.length ? (
-                          <div className="small2" style={{ opacity: 0.9, marginBottom: 8 }}>
-                            {fb.conflicts.slice(0, 4).map((c, idx) => (
-                              <div key={idx}>• {c.title || String(c)}</div>
-                            ))}
-                          </div>
-                        ) : null}
-
-                        <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                          <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, h.id)}>
-                            Modifier la date
-                          </Button>
-                          <Button onClick={() => startHabitNow(h.id)}>Démarrer maintenant</Button>
-                        </div>
                       </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-
-              {hasActiveHabits ? (
-                <div className="mt6 col">
-                  <div className="small2">Micro-actions du jour</div>
-                  {slotItems.length ? (
-                    <div className="mt10 col">
-                      {slotItems.map((item) => (
-                        <div key={item.id} className="listItem">
-                          <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                            <div className="small2" style={{ flex: 1, minWidth: 0 }}>
-                              {item.label && item.label !== "Aujourd’hui"
-                                ? `${item.label} · ${item.habit.title || "Habitude"}`
-                                : `Aujourd’hui · ${item.habit.title || "Habitude"}`}
-                            </div>
-                            <Button
-                              variant="ghost"
-                              onClick={() =>
-                                setData((prev) => {
-                                  const fn = item.done ? decHabit : incHabit;
-                                  const next = fn(prev, item.habit.id);
-                                  return next && typeof next === "object" ? next : prev;
-                                })
-                              }
-                            >
-                              {item.done ? "Annuler" : "Valider"}
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
                     </div>
-                  ) : (
-                    <div className="mt10 small2">Aucune micro-action aujourd’hui.</div>
-                  )}
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt12 col">
+                <div className="small2">Aucune habitude active liée à l’objectif.</div>
+                <div className="mt10">
+                  <Button variant="ghost" onClick={openCreateFlow}>
+                    Créer
+                  </Button>
                 </div>
-              ) : null}
-
-              {!hasActiveHabits ? (
-                <div className="small2" style={{ opacity: 0.9 }}>
-                  Active au moins une habitude pour l’exécuter dans “Action du jour”.
-                </div>
-              ) : null}
-            </div>
+              </div>
+            )
           ) : (
             <div className="mt12 col">
-              <div className="small2">Aucune habitude liée.</div>
+              <div className="small2">Sélectionne un objectif principal pour afficher les habitudes.</div>
               <div className="mt10">
-                <Button variant="ghost" onClick={openCreateHub}>
+                <Button variant="ghost" onClick={openCreateFlow}>
                   Créer
                 </Button>
               </div>
             </div>
           )}
+        </div>
+      </Card>
+
+      <Card style={{ marginTop: 12 }}>
+        <div className="p18">
+          <div className="titleSm">Micro-actions</div>
+          <div className="small2">Trois impulsions simples</div>
+          <div className="mt12 col" style={{ gap: 10 }}>
+            {microItems.map((item) => (
+              <div key={item.uid} className="listItem catAccentRow" style={catAccentVars}>
+                <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <div className="small2" style={{ flex: 1, minWidth: 0 }}>
+                    {item.label}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    onClick={() =>
+                      setMicroState((prev) => {
+                        const remaining = prev.items.filter((i) => i.uid !== item.uid);
+                        const nextItem = MICRO_ACTIONS[prev.cursor % MICRO_ACTIONS.length];
+                        const next = nextItem
+                          ? {
+                              uid: `${nextItem.id}-${prev.dayKey}-${Date.now()}`,
+                              label: nextItem.label,
+                            }
+                          : null;
+                        return {
+                          ...prev,
+                          cursor: (prev.cursor + 1) % MICRO_ACTIONS.length,
+                          items: next ? [...remaining, next] : remaining,
+                        };
+                      })
+                    }
+                  >
+                    +1
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </Card>
 

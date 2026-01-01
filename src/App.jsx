@@ -251,17 +251,6 @@ export default function App() {
             setLibraryCategoryId(null);
             setTab("create");
           }}
-          onOpenPlan={() => {
-            const firstCatId = data?.ui?.selectedCategoryId || data?.categories?.[0]?.id || null;
-            if (firstCatId) {
-              setData((prev) => ({
-                ...prev,
-                ui: { ...(prev.ui || {}), selectedCategoryId: firstCatId },
-              }));
-            }
-            setLibraryCategoryId(null);
-            setTab("plan");
-          }}
         />
       ) : tab === "plan" ? (
         <CategoryDetail
