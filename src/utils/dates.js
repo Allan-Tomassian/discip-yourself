@@ -2,6 +2,16 @@ export function todayKey(d = new Date()) {
   return d.toISOString().slice(0, 10);
 }
 
+export function dayKey(d = new Date()) {
+  return todayKey(d);
+}
+
+export function addDays(d, n) {
+  const dd = new Date(d);
+  dd.setDate(dd.getDate() + n);
+  return dd;
+}
+
 export function startOfWeekKey(d = new Date()) {
   const dd = new Date(d);
   const day = dd.getDay();
@@ -12,4 +22,15 @@ export function startOfWeekKey(d = new Date()) {
 
 export function yearKey(d = new Date()) {
   return String(d.getFullYear());
+}
+
+export function isSameDayKey(aKey, bKey) {
+  return Boolean(aKey && bKey && aKey === bKey);
+}
+
+export function dayStatus(selectedKey, now = new Date()) {
+  const today = todayKey(now);
+  if (!selectedKey) return "today";
+  if (selectedKey === today) return "today";
+  return selectedKey < today ? "past" : "future";
 }

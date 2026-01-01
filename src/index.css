@@ -264,6 +264,41 @@ a{ color:inherit; }
   box-shadow: 0 0 0 1px var(--catColor, rgba(255,255,255,.35)), 0 0 16px var(--catGlow, rgba(124,58,237,.25));
 }
 
+.dayRail{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.dayPill{
+  width:54px;
+  height:54px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:var(--glass);
+  color:var(--text);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+  cursor:pointer;
+}
+.dayPillActive{
+  border-color:var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 14px var(--accentGlow);
+}
+.dayPillDay{ font-size:14px; font-weight:700; line-height:1; }
+.dayPillMonth{ font-size:11px; color:var(--muted2); line-height:1; }
+
+@media (max-width: 420px){
+  .dayRailWrap{ flex-direction:column; }
+  .dayRail{
+    flex-direction:row;
+    overflow-x:auto;
+  }
+  .dayPill{ width:52px; height:52px; }
+}
+
 .dragHandle{
   border:0;
   background: rgba(255,255,255,.06);

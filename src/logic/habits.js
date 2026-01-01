@@ -62,11 +62,10 @@ function resolveHabit(data, habitId) {
   return isProcess ? goal : null;
 }
 
-export function incHabit(data, habitId) {
-  const now = new Date();
-  const dKey = todayKey(now);
-  const wKey = startOfWeekKey(now);
-  const yKey = yearKey(now);
+export function incHabit(data, habitId, at = new Date()) {
+  const dKey = todayKey(at);
+  const wKey = startOfWeekKey(at);
+  const yKey = yearKey(at);
 
   const habit = resolveHabit(data, habitId);
   if (!habit) return data;
@@ -89,11 +88,10 @@ export function incHabit(data, habitId) {
   return { ...data, checks };
 }
 
-export function decHabit(data, habitId) {
-  const now = new Date();
-  const dKey = todayKey(now);
-  const wKey = startOfWeekKey(now);
-  const yKey = yearKey(now);
+export function decHabit(data, habitId, at = new Date()) {
+  const dKey = todayKey(at);
+  const wKey = startOfWeekKey(at);
+  const yKey = yearKey(at);
 
   const habit = resolveHabit(data, habitId);
   if (!habit) return data;

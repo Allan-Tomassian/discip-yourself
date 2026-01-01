@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
-import { startOfWeekKey, todayKey, yearKey } from "../utils/dates";
+import { addDays, dayKey, dayStatus, startOfWeekKey, todayKey, yearKey } from "../utils/dates";
 import { setMainGoal } from "../logic/goals";
 import { incHabit, decHabit } from "../logic/habits";
 import { getAccentForPage } from "../utils/_theme";
@@ -42,21 +42,29 @@ const MICRO_ACTIONS = [
   { id: "micro_etirements", label: "Étirements rapides" },
 ];
 
-export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpenCreateCategory }) {
-  const [showWhy, setShowWhy] = useState(true);
-  const [microState, setMicroState] = useState(() => {
-    const dayKey = todayKey(new Date());
-    return {
-      dayKey,
-      cursor: Math.min(3, MICRO_ACTIONS.length),
-      items: MICRO_ACTIONS.slice(0, 3).map((item, idx) => ({
-        uid: `${item.id}-${dayKey}-${idx}`,
-        label: item.label,
-      })),
-    };
-  });
+function initMicroState(dayKeyValue) {
+  const key = dayKeyValue || todayKey(new Date());
+  return {
+    dayKey: key,
+    cursor: Math.min(3, MICRO_ACTIONS.length),
+    items: MICRO_ACTIONS.slice(0, 3).map((item, idx) => ({
+      uid: `${item.id}-${key}-${idx}`,
+      id: item.id,
+      label: item.label,
+    })),
+  };
+}
 
+export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpenCreateCategory }) {
   const safeData = data && typeof data === "object" ? data : {};
+  const selectedDateKey = safeData.ui?.selectedDate || todayKey();
+  const selectedDate = new Date(`${selectedDateKey}T12:00:00`);
+  const selectedStatus = dayStatus(selectedDateKey, new Date());
+  const canValidate = selectedStatus === "today";
+  const canEdit = selectedStatus !== "past";
+
+  const [showWhy, setShowWhy] = useState(true);
+  const [microState, setMicroState] = useState(() => initMicroState(selectedDateKey));
   const profile = safeData.profile || {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -105,31 +113,38 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
   }, [linkedHabits]);
 
   const dayProgress = useMemo(() => {
-    const now = new Date();
     const total = activeHabits.length;
     const done = activeHabits.reduce(
-      (sum, h) => sum + (getHabitCountForToday(h, checks, now) > 0 ? 1 : 0),
+      (sum, h) => sum + (getHabitCountForToday(h, checks, selectedDate) > 0 ? 1 : 0),
       0
     );
     return { total, done, ratio: total ? done / total : 0 };
-  }, [activeHabits, checks]);
+  }, [activeHabits, checks, selectedDateKey]);
 
   const microItems = useMemo(() => {
     return microState.items;
   }, [microState.items]);
 
-  useEffect(() => {
-    const today = todayKey(new Date());
-    if (microState.dayKey === today) return;
-    setMicroState({
-      dayKey: today,
-      cursor: Math.min(3, MICRO_ACTIONS.length),
-      items: MICRO_ACTIONS.slice(0, 3).map((item, idx) => ({
-        uid: `${item.id}-${today}-${idx}`,
-        label: item.label,
-      })),
+  const railItems = useMemo(() => {
+    const offsets = [-3, -2, -1, 0, 1, 2, 3];
+    return offsets.map((offset) => {
+      const d = addDays(selectedDate, offset);
+      const key = dayKey(d);
+      const parts = key.split("-");
+      return {
+        key,
+        day: parts[2] || "",
+        month: parts[1] || "",
+        isSelected: key === selectedDateKey,
+        status: dayStatus(key, new Date()),
+      };
     });
-  }, [microState.dayKey]);
+  }, [selectedDateKey]);
+
+  useEffect(() => {
+    if (microState.dayKey === selectedDateKey) return;
+    setMicroState(initMicroState(selectedDateKey));
+  }, [microState.dayKey, selectedDateKey]);
 
   // Home focus change should NOT overwrite legacy selectedCategoryId
   function setFocusCategory(nextId) {
@@ -151,6 +166,14 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
         },
       };
     });
+  }
+
+  function setSelectedDate(nextKey) {
+    if (!nextKey || typeof setData !== "function") return;
+    setData((prev) => ({
+      ...prev,
+      ui: { ...(prev.ui || {}), selectedDate: nextKey },
+    }));
   }
 
   function openCreateFlow(kind) {
@@ -188,9 +211,10 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
               Ajoute une première catégorie pour commencer.
             </div>
             <div className="mt12">
-              <Button onClick={() => openCreateFlow("category")}>
+              <Button onClick={() => openCreateFlow("category")} disabled={!canEdit}>
                 Créer une catégorie
               </Button>
+              {!canEdit ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
             </div>
           </div>
         </Card>
@@ -201,6 +225,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
   const accent = focusCategory && focusCategory.color ? focusCategory.color : getAccentForPage(safeData, "home");
   const backgroundImage = profile.whyImage || "";
   const catAccentVars = useMemo(() => getCategoryAccentVars(accent), [accent]);
+  const lockMessage = selectedStatus === "past" ? "Lecture seule" : "Disponible le jour J";
 
   const whyText = (profile.whyText || "").trim();
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
@@ -244,169 +269,204 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
       headerSubtitle="Exécution"
       headerRight={headerRight}
     >
-      <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-        <div className="small2" style={{ flex: 1, minWidth: 0, whiteSpace: "normal" }}>
-          {showWhy ? whyDisplay : "Pourquoi masqué"}
-        </div>
-        <button className="linkBtn" onClick={() => setShowWhy((v) => !v)} aria-label="Afficher ou masquer le pourquoi">
-          {showWhy ? "Masquer 👁" : "Afficher 👁"}
-        </button>
-      </div>
-
-      <Card style={{ marginTop: 12 }}>
-        <div className="p18">
-          <div className="sectionTitle textAccent">Focus catégorie</div>
-          <div className="mt10 catAccentField" style={catAccentVars}>
-            <Select
-              value={focusCategory?.id || ""}
-              onChange={(e) => setFocusCategory(e.target.value)}
-              style={{ fontSize: 16 }}
-            >
-              <option value="" disabled>
-                Choisir une catégorie
-              </option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </div>
-      </Card>
-
-      <Card style={{ marginTop: 12 }}>
-        <div className="p18">
-          <div className="sectionTitle textAccent">Objectif principal</div>
-
-          {outcomeGoals.length ? (
-            <div className="mt10 catAccentField" style={catAccentVars}>
-              <Select
-                value={selectedGoal?.id || ""}
-                onChange={(e) => setCategoryMainGoal(e.target.value)}
-                style={{ fontSize: 16 }}
-              >
-                <option value="" disabled>
-                  Choisir un objectif
-                </option>
-                {outcomeGoals.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.title || "Objectif"}
-                  </option>
-                ))}
-              </Select>
+      <div className="row dayRailWrap" style={{ alignItems: "flex-start", gap: 12 }}>
+        <div className="col" style={{ flex: 1, minWidth: 0 }}>
+          <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+            <div className="small2" style={{ flex: 1, minWidth: 0, whiteSpace: "normal" }}>
+              {showWhy ? whyDisplay : "Pourquoi masqué"}
             </div>
-          ) : (
-            <div className="mt12 col">
+            <button className="linkBtn" onClick={() => setShowWhy((v) => !v)} aria-label="Afficher ou masquer le pourquoi">
+              {showWhy ? "Masquer 👁" : "Afficher 👁"}
+            </button>
+          </div>
+
+          <Card style={{ marginTop: 12 }}>
+            <div className="p18">
+              <div className="sectionTitle textAccent">Focus catégorie</div>
+              <div className="mt10 catAccentField" style={catAccentVars}>
+                <Select
+                  value={focusCategory?.id || ""}
+                  onChange={(e) => setFocusCategory(e.target.value)}
+                  style={{ fontSize: 16 }}
+                  disabled={!canEdit}
+                >
+                  <option value="" disabled>
+                    Choisir une catégorie
+                  </option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+          </Card>
+
+          <Card style={{ marginTop: 12 }}>
+            <div className="p18">
+              <div className="sectionTitle textAccent">Objectif principal</div>
+
+              {outcomeGoals.length ? (
+                <div className="mt10 catAccentField" style={catAccentVars}>
+                  <Select
+                    value={selectedGoal?.id || ""}
+                    onChange={(e) => setCategoryMainGoal(e.target.value)}
+                    style={{ fontSize: 16 }}
+                    disabled={!canEdit}
+                  >
+                    <option value="" disabled>
+                      Choisir un objectif
+                    </option>
+                    {outcomeGoals.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.title || "Objectif"}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              ) : (
+                <div className="mt12 col">
               <div className="small2">Aucun objectif principal.</div>
               <div className="mt10">
-                <Button variant="ghost" onClick={openCreateFlow}>
+                <Button variant="ghost" onClick={openCreateFlow} disabled={!canEdit}>
                   Créer
                 </Button>
+                {!canEdit ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
               </div>
             </div>
-          )}
-        </div>
-      </Card>
+              )}
+            </div>
+          </Card>
 
-      <Card style={{ marginTop: 12 }}>
-        <div className="p18">
-          <div className="sectionTitle textAccent">Habitudes</div>
-          <div className="sectionSub">Du jour</div>
+          <Card style={{ marginTop: 12 }}>
+            <div className="p18">
+              <div className="sectionTitle textAccent">Habitudes</div>
+              <div className="sectionSub">Du jour</div>
 
-          {selectedGoal ? (
-            activeHabits.length ? (
-              <div className="mt12 col" style={{ gap: 10 }}>
-                {activeHabits.map((h) => {
-                  const done = getHabitCountForToday(h, checks, new Date()) > 0;
-                  return (
-                    <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
-                      <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                        <div style={{ minWidth: 0 }}>
-                          <div className="itemTitle" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {h.title || "Habitude"}
+              {selectedGoal ? (
+                activeHabits.length ? (
+                  <div className="mt12 col" style={{ gap: 10 }}>
+                    {activeHabits.map((h) => {
+                      const done = getHabitCountForToday(h, checks, selectedDate) > 0;
+                      return (
+                        <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
+                          <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div className="itemTitle" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {h.title || "Habitude"}
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              disabled={!canValidate}
+                              onClick={() =>
+                                setData((prev) => {
+                                  const fn = done ? decHabit : incHabit;
+                                  const next = fn(prev, h.id, selectedDate);
+                                  return next && typeof next === "object" ? next : prev;
+                                })
+                              }
+                            >
+                              {done ? "Annuler" : "Valider"}
+                            </Button>
                           </div>
+                          {!canValidate ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
                         </div>
-                        <Button
-                          variant="ghost"
-                          onClick={() =>
-                            setData((prev) => {
-                              const fn = done ? decHabit : incHabit;
-                              const next = fn(prev, h.id);
-                              return next && typeof next === "object" ? next : prev;
-                            })
-                          }
-                        >
-                          {done ? "Annuler" : "Valider"}
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="mt12 col">
-                <div className="small2">Aucune habitude active liée à l’objectif.</div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="mt12 col">
+                  <div className="small2">Aucune habitude active liée à l’objectif.</div>
+                  <div className="mt10">
+                      <Button variant="ghost" onClick={openCreateFlow} disabled={!canEdit}>
+                        Créer
+                      </Button>
+                      {!canEdit ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
+                  </div>
+                </div>
+                )
+              ) : (
+                <div className="mt12 col">
+                <div className="small2">Sélectionne un objectif principal pour afficher les habitudes.</div>
                 <div className="mt10">
-                  <Button variant="ghost" onClick={openCreateFlow}>
-                    Créer
-                  </Button>
+                    <Button variant="ghost" onClick={openCreateFlow} disabled={!canEdit}>
+                      Créer
+                    </Button>
+                    {!canEdit ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
                 </div>
               </div>
-            )
-          ) : (
-            <div className="mt12 col">
-              <div className="small2">Sélectionne un objectif principal pour afficher les habitudes.</div>
-              <div className="mt10">
-                <Button variant="ghost" onClick={openCreateFlow}>
-                  Créer
-                </Button>
+              )}
+            </div>
+          </Card>
+
+          <Card style={{ marginTop: 12 }}>
+            <div className="p18">
+              <div className="sectionTitle textAccent">Micro-actions</div>
+              <div className="sectionSub">Trois impulsions simples</div>
+              <div className="mt12 col" style={{ gap: 10 }}>
+                {microItems.map((item) => (
+                  <div key={item.uid} className="listItem catAccentRow" style={catAccentVars}>
+                    <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                      <div className="itemTitle" style={{ flex: 1, minWidth: 0 }}>
+                        {item.label}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        disabled={!canValidate}
+                        onClick={() => {
+                          setData((prev) => {
+                            const checks = { ...(prev.checks || {}) };
+                            const bucket = checks[item.id] || { daily: {}, weekly: {}, yearly: {} };
+                            const cur = bucket.daily?.[selectedDateKey] || 0;
+                            bucket.daily = { ...bucket.daily, [selectedDateKey]: cur + 1 };
+                            checks[item.id] = bucket;
+                            return { ...prev, checks };
+                          });
+                          setMicroState((prev) => {
+                            const remaining = prev.items.filter((i) => i.uid !== item.uid);
+                            const nextItem = MICRO_ACTIONS[prev.cursor % MICRO_ACTIONS.length];
+                            const next = nextItem
+                              ? {
+                                  uid: `${nextItem.id}-${selectedDateKey}-${Date.now()}`,
+                                  id: nextItem.id,
+                                  label: nextItem.label,
+                                }
+                              : null;
+                            return {
+                              ...prev,
+                              cursor: (prev.cursor + 1) % MICRO_ACTIONS.length,
+                              items: next ? [...remaining, next] : remaining,
+                            };
+                          });
+                        }}
+                      >
+                        +1
+                      </Button>
+                    </div>
+                    {!canValidate ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
+                  </div>
+                ))}
               </div>
             </div>
-          )}
+          </Card>
         </div>
-      </Card>
 
-      <Card style={{ marginTop: 12 }}>
-        <div className="p18">
-          <div className="sectionTitle textAccent">Micro-actions</div>
-          <div className="sectionSub">Trois impulsions simples</div>
-          <div className="mt12 col" style={{ gap: 10 }}>
-            {microItems.map((item) => (
-              <div key={item.uid} className="listItem catAccentRow" style={catAccentVars}>
-                <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                  <div className="itemTitle" style={{ flex: 1, minWidth: 0 }}>
-                    {item.label}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    onClick={() =>
-                      setMicroState((prev) => {
-                        const remaining = prev.items.filter((i) => i.uid !== item.uid);
-                        const nextItem = MICRO_ACTIONS[prev.cursor % MICRO_ACTIONS.length];
-                        const next = nextItem
-                          ? {
-                              uid: `${nextItem.id}-${prev.dayKey}-${Date.now()}`,
-                              label: nextItem.label,
-                            }
-                          : null;
-                        return {
-                          ...prev,
-                          cursor: (prev.cursor + 1) % MICRO_ACTIONS.length,
-                          items: next ? [...remaining, next] : remaining,
-                        };
-                      })
-                    }
-                  >
-                    +1
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="dayRail">
+          {railItems.map((item) => (
+            <button
+              key={item.key}
+              className={`dayPill${item.isSelected ? " dayPillActive" : ""}`}
+              onClick={() => setSelectedDate(item.key)}
+              type="button"
+            >
+              <div className="dayPillDay">{item.day}</div>
+              <div className="dayPillMonth">/{item.month}</div>
+            </button>
+          ))}
         </div>
-      </Card>
-
+      </div>
     </ScreenShell>
   );
 }

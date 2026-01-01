@@ -3,6 +3,7 @@ import { loadState, saveState } from "../utils/storage";
 import { uid } from "../utils/helpers";
 import { normalizeGoalsState } from "./goals";
 import { normalizeReminder } from "./reminders";
+import { todayKey } from "../utils/dates";
 
 export const THEME_PRESETS = ["aurora", "midnight", "sunset", "ocean", "forest"];
 
@@ -263,6 +264,7 @@ export function initialData() {
       onboardingStep: 1,
       showPlanStep: false,
       soundEnabled: false,
+      selectedDate: todayKey(),
     },
     categories: [],
     goals: [],
@@ -314,6 +316,7 @@ export function demoData() {
       onboardingStep: 3,
       showPlanStep: false,
       soundEnabled: false,
+      selectedDate: todayKey(),
     },
     categories: categories.map((c, idx) => ({ ...c, mainGoalId: idx === 0 ? outcomeId : c.mainGoalId })),
     goals: [
@@ -420,6 +423,12 @@ export function migrate(prev) {
   if (typeof next.ui.onboardingCompleted === "undefined") next.ui.onboardingCompleted = false;
   if (typeof next.ui.onboardingStep === "undefined") next.ui.onboardingStep = 1;
   if (typeof next.ui.showPlanStep === "undefined") next.ui.showPlanStep = false;
+  {
+    const raw = typeof next.ui.selectedDate === "string" ? next.ui.selectedDate : "";
+    const parsed = raw ? new Date(`${raw}T12:00:00`) : null;
+    const normalized = parsed && !Number.isNaN(parsed.getTime()) ? todayKey(parsed) : todayKey();
+    next.ui.selectedDate = normalized;
+  }
 
   // categories
   if (!Array.isArray(next.categories)) next.categories = [];
