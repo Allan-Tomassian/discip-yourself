@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { THEME_PRESETS } from "../logic/state";
-import { Button, Card, Input, Select, Badge } from "./UI";
+import { Button, Card, Input, Select } from "./UI";
 
 export default function ThemePicker({ data, setData }) {
   const [pendingTheme, setPendingTheme] = useState(data.ui.pageThemes?.home || data.ui.pageThemeHome || "aurora");
@@ -16,10 +16,9 @@ export default function ThemePicker({ data, setData }) {
       <div className="p18">
         <div className="row">
           <div>
-            <div className="titleSm">Ambiance Accueil</div>
-            <div className="small">Uniquement pour la page Accueil.</div>
+            <div className="titleSm">Apparence</div>
+            <div className="small">Thème global de l’app.</div>
           </div>
-          <Badge>Accueil</Badge>
         </div>
 
         <div className="mt14 col">
