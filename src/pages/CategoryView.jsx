@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
-import { getAccentForPage, getBackgroundCss } from "../utils/_theme";
+import { getAccentForPage } from "../utils/_theme";
 
 function resolveGoalType(goal) {
   const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
@@ -118,14 +118,12 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
 
   const accent = getAccentForPage(safeData, "home");
   const backgroundImage = category.wallpaper || safeData.profile?.whyImage || "";
-  const backgroundCss = getBackgroundCss({ data: safeData, pageId: "categories", image: backgroundImage });
   const whyText = (category.whyText || "").trim();
   const whyDisplay = whyText || "Aucun mini-why pour cette catégorie.";
 
   return (
     <ScreenShell
       accent={accent}
-      backgroundCss={backgroundCss}
       backgroundImage={backgroundImage}
       headerTitle="Bibliothèque"
       headerSubtitle={category.name || "Catégorie"}
