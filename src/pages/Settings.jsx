@@ -21,8 +21,8 @@ function MotivationSection({ data, setData }) {
   return (
     <Card accentBorder style={{ marginTop: 14 }}>
       <div className="p18 col">
-        <div className="titleSm">Pourquoi</div>
-        <div className="small2" style={{ marginTop: 6 }}>
+        <div className="sectionTitle textAccent">Pourquoi</div>
+        <div className="sectionSub" style={{ marginTop: 6 }}>
           Modifiable tous les 30 jours.
         </div>
         <div className="mt10 col">
@@ -67,7 +67,7 @@ export default function Settings({ data, setData }) {
     <ScreenShell
       data={safeData}
       pageId="settings"
-      headerTitle="Réglages"
+      headerTitle={<span className="textAccent">Réglages</span>}
       headerSubtitle="Essentiel"
       backgroundImage={backgroundImage}
     >
@@ -76,8 +76,8 @@ export default function Settings({ data, setData }) {
         <MotivationSection data={safeData} setData={setData} />
         <Card accentBorder style={{ marginTop: 14 }}>
           <div className="p18 col">
-            <div className="titleSm">Notifications</div>
-            <div className="small2" style={{ marginTop: 6 }}>
+            <div className="sectionTitle textAccent">Notifications</div>
+            <div className="sectionSub" style={{ marginTop: 6 }}>
               Les notifications système (son/vibration) nécessitent une version PWA. À venir.
             </div>
             <div className="mt10">

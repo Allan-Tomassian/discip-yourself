@@ -8,11 +8,12 @@ export function Badge({ children }) {
 
 export function Card({ children, accentBorder = false, style, className = "", ...props }) {
   const { accent } = React.useContext(AccentContext);
+  const borderStyle = accentBorder ? { borderColor: accent } : {};
   return (
     <div
       className={`card${className ? ` ${className}` : ""}`}
       style={{
-        borderColor: accentBorder ? accent : "rgba(255,255,255,.16)",
+        ...borderStyle,
         ...(style || {}),
       }}
       {...props}

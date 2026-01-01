@@ -250,6 +250,10 @@ export default function App() {
             setLibraryCategoryId(null);
             setTab("create");
           }}
+          onOpenCreateCategory={() => {
+            setLibraryCategoryId(null);
+            setTab("create-category");
+          }}
         />
       ) : tab === "plan" ? (
         <CategoryDetail

@@ -42,9 +42,8 @@ const MICRO_ACTIONS = [
   { id: "micro_etirements", label: "Étirements rapides" },
 ];
 
-export default function Home({ data, setData, onOpenLibrary, onOpenCreate }) {
+export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpenCreateCategory }) {
   const [showWhy, setShowWhy] = useState(true);
-  const [whyExpanded, setWhyExpanded] = useState(false);
   const [microState, setMicroState] = useState(() => {
     const dayKey = todayKey(new Date());
     return {
@@ -154,7 +153,11 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate }) {
     });
   }
 
-  function openCreateFlow() {
+  function openCreateFlow(kind) {
+    if (kind === "category" && typeof onOpenCreateCategory === "function") {
+      onOpenCreateCategory();
+      return;
+    }
     if (typeof onOpenCreate === "function") {
       onOpenCreate();
       return;
@@ -175,7 +178,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate }) {
       <ScreenShell
         accent={getAccentForPage(safeData, "home")}
         backgroundImage={profile.whyImage || ""}
-        headerTitle="Aujourd’hui"
+        headerTitle={<span className="textAccent">Aujourd’hui</span>}
         headerSubtitle="Aucune catégorie"
       >
         <Card accentBorder>
@@ -185,7 +188,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate }) {
               Ajoute une première catégorie pour commencer.
             </div>
             <div className="mt12">
-              <Button onClick={openCreateFlow}>
+              <Button onClick={() => openCreateFlow("category")}>
                 Créer une catégorie
               </Button>
             </div>
@@ -201,10 +204,6 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate }) {
 
   const whyText = (profile.whyText || "").trim();
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
-  const WHY_LIMIT = 150;
-  const hasLongWhy = whyDisplay.length > WHY_LIMIT;
-  const visibleWhy =
-    !showWhy ? "Pourquoi masqué" : whyExpanded || !hasLongWhy ? whyDisplay : `${whyDisplay.slice(0, WHY_LIMIT)}…`;
 
   const headerRight = categories.length ? (
     <div style={{ minWidth: 160 }}>
@@ -241,39 +240,22 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate }) {
     <ScreenShell
       accent={accent}
       backgroundImage={backgroundImage}
-      headerTitle="Aujourd’hui"
+      headerTitle={<span className="textAccent">Aujourd’hui</span>}
       headerSubtitle="Exécution"
       headerRight={headerRight}
     >
       <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-        <div
-          className="small2"
-          style={{
-            flex: 1,
-            minWidth: 0,
-            whiteSpace: showWhy && whyExpanded ? "normal" : "nowrap",
-            overflow: showWhy && whyExpanded ? "visible" : "hidden",
-            textOverflow: showWhy && whyExpanded ? "clip" : "ellipsis",
-          }}
-        >
-          {visibleWhy}
+        <div className="small2" style={{ flex: 1, minWidth: 0, whiteSpace: "normal" }}>
+          {showWhy ? whyDisplay : "Pourquoi masqué"}
         </div>
         <button className="linkBtn" onClick={() => setShowWhy((v) => !v)} aria-label="Afficher ou masquer le pourquoi">
           {showWhy ? "Masquer 👁" : "Afficher 👁"}
         </button>
       </div>
 
-      {showWhy && hasLongWhy ? (
-        <div className="row" style={{ justifyContent: "flex-end", marginTop: 6 }}>
-          <button className="linkBtn" onClick={() => setWhyExpanded((v) => !v)}>
-            {whyExpanded ? "Réduire" : "Afficher plus"}
-          </button>
-        </div>
-      ) : null}
-
       <Card style={{ marginTop: 12 }}>
         <div className="p18">
-          <div className="titleSm">Focus catégorie</div>
+          <div className="sectionTitle textAccent">Focus catégorie</div>
           <div className="mt10 catAccentField" style={catAccentVars}>
             <Select
               value={focusCategory?.id || ""}
@@ -295,7 +277,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate }) {
 
       <Card style={{ marginTop: 12 }}>
         <div className="p18">
-          <div className="titleSm">Objectif principal</div>
+          <div className="sectionTitle textAccent">Objectif principal</div>
 
           {outcomeGoals.length ? (
             <div className="mt10 catAccentField" style={catAccentVars}>
@@ -329,8 +311,8 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate }) {
 
       <Card style={{ marginTop: 12 }}>
         <div className="p18">
-          <div className="titleSm">Habitudes</div>
-          <div className="small2">Du jour</div>
+          <div className="sectionTitle textAccent">Habitudes</div>
+          <div className="sectionSub">Du jour</div>
 
           {selectedGoal ? (
             activeHabits.length ? (
@@ -341,7 +323,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate }) {
                     <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
                       <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <div className="itemTitle" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {h.title || "Habitude"}
                           </div>
                         </div>
@@ -387,13 +369,13 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate }) {
 
       <Card style={{ marginTop: 12 }}>
         <div className="p18">
-          <div className="titleSm">Micro-actions</div>
-          <div className="small2">Trois impulsions simples</div>
+          <div className="sectionTitle textAccent">Micro-actions</div>
+          <div className="sectionSub">Trois impulsions simples</div>
           <div className="mt12 col" style={{ gap: 10 }}>
             {microItems.map((item) => (
               <div key={item.uid} className="listItem catAccentRow" style={catAccentVars}>
                 <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                  <div className="small2" style={{ flex: 1, minWidth: 0 }}>
+                  <div className="itemTitle" style={{ flex: 1, minWidth: 0 }}>
                     {item.label}
                   </div>
                   <Button

@@ -115,6 +115,7 @@ export function applyThemeTokens(themeName, accentOverride) {
   Object.entries(finalTokens).forEach(([key, value]) => {
     root.style.setProperty(`--${key}`, value);
   });
+  root.style.setProperty("--accentGlow", finalTokens.glow);
   root.dataset.theme = themeName;
 }
 

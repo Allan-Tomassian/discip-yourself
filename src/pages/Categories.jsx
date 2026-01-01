@@ -53,7 +53,7 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
       <ScreenShell
         data={safeData}
         pageId="categories"
-        headerTitle="Bibliothèque"
+        headerTitle={<span className="textAccent">Bibliothèque</span>}
         headerSubtitle="Aucune catégorie"
         headerRight={
           <Button
@@ -88,7 +88,7 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
     <ScreenShell
       data={safeData}
       pageId="categories"
-      headerTitle="Bibliothèque"
+      headerTitle={<span className="textAccent">Bibliothèque</span>}
       headerSubtitle="Catégories"
       headerRight={
         <Button
@@ -114,8 +114,8 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
             <Card key={c.id} className="catAccentRow" style={{ marginBottom: 12, ...getCategoryAccentVars(c.color) }}>
               <div className="p18 row" style={{ justifyContent: "space-between" }}>
                 <div>
-                  <div className="titleSm">{c.name}</div>
-                  <div className="small2">{summary}</div>
+                  <div className="itemTitle">{c.name}</div>
+                  <div className="itemSub">{summary}</div>
                 </div>
                 <Button variant="ghost" onClick={() => openCategory(c.id)}>
                   Ouvrir

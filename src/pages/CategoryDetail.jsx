@@ -565,7 +565,13 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
 
   if (categories.length === 0) {
     return (
-      <ScreenShell data={safeData} pageId="categories" headerTitle="Outils" headerSubtitle="Aucune catégorie" backgroundImage={safeData?.profile?.whyImage || ""}>
+      <ScreenShell
+        data={safeData}
+        pageId="categories"
+        headerTitle={<span className="textAccent">Outils</span>}
+        headerSubtitle="Aucune catégorie"
+        backgroundImage={safeData?.profile?.whyImage || ""}
+      >
         <Card accentBorder>
           <div className="p18">
             <div className="titleSm">Aucune catégorie</div>
@@ -586,7 +592,13 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
 
   if (!c) {
     return (
-      <ScreenShell data={safeData} pageId="categories" headerTitle="Outils" headerSubtitle="État invalide" backgroundImage={safeData?.profile?.whyImage || ""}>
+      <ScreenShell
+        data={safeData}
+        pageId="categories"
+        headerTitle={<span className="textAccent">Outils</span>}
+        headerSubtitle="État invalide"
+        backgroundImage={safeData?.profile?.whyImage || ""}
+      >
         <Card accentBorder>
           <div className="p18">
             <div className="titleSm">État invalide</div>
@@ -877,17 +889,11 @@ function onToggleActive(goal) {
     <ScreenShell
       data={safeData}
       pageId="categories"
-      headerTitle="Outils"
+      headerTitle={<span className="textAccent">Outils</span>}
       headerSubtitle={c?.name || "Catégorie"}
       backgroundImage={c?.wallpaper || safeData.profile?.whyImage || ""}
     >
       <div style={getCategoryAccentVars(c?.color)}>
-        {onBack ? (
-          <Button variant="ghost" onClick={onBack}>
-            Bibliothèque
-          </Button>
-        ) : null}
-
         <div className="mt12">
           <FocusCategoryPicker
             categories={categories}
@@ -914,27 +920,28 @@ function onToggleActive(goal) {
             label="Catégorie"
             emptyLabel="À configurer"
             selectWrapperClassName="catAccentField"
+            containerClassName="catAccentRow"
           />
         </div>
 
-        <Card style={{ marginTop: 12 }}>
+        <Card className="catAccentRow" style={{ marginTop: 12 }}>
           <div className="p18">
-            <div className="titleSm">Timer</div>
-            <div className="small2">Bientôt disponible.</div>
+            <div className="sectionTitle">Timer</div>
+            <div className="sectionSub">Bientôt disponible.</div>
           </div>
         </Card>
 
-        <Card style={{ marginTop: 12 }}>
+        <Card className="catAccentRow" style={{ marginTop: 12 }}>
           <div className="p18">
-            <div className="titleSm">Notifications</div>
-            <div className="small2">Bientôt disponible.</div>
+            <div className="sectionTitle">Notifications</div>
+            <div className="sectionSub">Bientôt disponible.</div>
           </div>
         </Card>
 
-        <Card style={{ marginTop: 12 }}>
+        <Card className="catAccentRow" style={{ marginTop: 12 }}>
           <div className="p18">
-            <div className="titleSm">Calendrier</div>
-            <div className="small2">Bientôt disponible.</div>
+            <div className="sectionTitle">Calendrier</div>
+            <div className="sectionSub">Bientôt disponible.</div>
           </div>
         </Card>
       </div>

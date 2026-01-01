@@ -10,17 +10,17 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
     <ScreenShell
       data={safeData}
       pageId="categories"
-      headerTitle="Créer"
+      headerTitle={<span className="textAccent">Créer</span>}
       headerSubtitle="Bibliothèque"
       backgroundImage={backgroundImage}
-    >
-      {onBack ? (
-        <div className="row" style={{ justifyContent: "flex-end", marginBottom: 12 }}>
+      headerRight={
+        onBack ? (
           <Button variant="ghost" onClick={onBack}>
             Retour
           </Button>
-        </div>
-      ) : null}
+        ) : null
+      }
+    >
 
       <div className="col">
         <Card
@@ -39,7 +39,10 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
           <div className="p18 row" style={{ justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <div className="titleSm">
-                <span style={{ opacity: 0.6 }}>1.</span> Catégorie
+                <span className="textAccent" style={{ opacity: 0.9 }}>
+                  1.
+                </span>{" "}
+                Catégorie
               </div>
               <div className="small2">Créer une nouvelle catégorie.</div>
             </div>
@@ -65,7 +68,10 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
           <div className="p18 row" style={{ justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <div className="titleSm">
-                <span style={{ opacity: 0.6 }}>2.</span> Objectif
+                <span className="textAccent" style={{ opacity: 0.9 }}>
+                  2.
+                </span>{" "}
+                Objectif
               </div>
               <div className="small2">Créer un objectif lié à une catégorie.</div>
             </div>
@@ -91,7 +97,10 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
           <div className="p18 row" style={{ justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <div className="titleSm">
-                <span style={{ opacity: 0.6 }}>3.</span> Habitude
+                <span className="textAccent" style={{ opacity: 0.9 }}>
+                  3.
+                </span>{" "}
+                Habitude
               </div>
               <div className="small2">Créer une habitude liée à un objectif.</div>
             </div>

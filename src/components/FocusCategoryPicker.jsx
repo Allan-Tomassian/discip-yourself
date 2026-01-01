@@ -7,6 +7,8 @@ export default function FocusCategoryPicker({
   onChange,
   label = "Catégorie focus",
   emptyLabel = "Aucune catégorie",
+  containerClassName = "",
+  containerStyle,
   selectWrapperClassName = "",
   selectWrapperStyle,
 }) {
@@ -15,11 +17,11 @@ export default function FocusCategoryPicker({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="listItem">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+    <div className={`listItem${containerClassName ? ` ${containerClassName}` : ""}`} style={containerStyle}>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <div className="small2">{label}</div>
-          <div style={{ fontWeight: 800 }}>{active?.name || emptyLabel}</div>
+          <div className="sectionSub">{label}</div>
+          <div className="itemTitle">{active?.name || emptyLabel}</div>
         </div>
         <Button variant="ghost" onClick={() => setOpen((v) => !v)} disabled={!list.length}>
           {open ? "Fermer" : "Changer"}

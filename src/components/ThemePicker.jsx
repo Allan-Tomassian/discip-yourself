@@ -1,23 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { THEME_PRESETS } from "../logic/state";
-import { Button, Card, Input, Select } from "./UI";
+import { Button, Card, Select } from "./UI";
 
 export default function ThemePicker({ data, setData }) {
   const [pendingTheme, setPendingTheme] = useState(data.ui.pageThemes?.home || data.ui.pageThemeHome || "aurora");
-  const [pendingAccent, setPendingAccent] = useState(data.ui.pageAccents?.home || data.ui.accentHome || "#7C3AED");
 
   useEffect(() => {
     setPendingTheme(data.ui.pageThemes?.home || data.ui.pageThemeHome || "aurora");
-    setPendingAccent(data.ui.pageAccents?.home || data.ui.accentHome || "#7C3AED");
-  }, [data.ui.pageThemes?.home, data.ui.pageAccents?.home, data.ui.pageThemeHome, data.ui.accentHome]);
+  }, [data.ui.pageThemes?.home, data.ui.pageThemeHome]);
 
   return (
     <Card accentBorder>
       <div className="p18">
         <div className="row">
           <div>
-            <div className="titleSm">Apparence</div>
-            <div className="small">Thème global de l’app.</div>
+            <div className="sectionTitle textAccent">Apparence</div>
+            <div className="sectionSub">Thème global de l’app.</div>
           </div>
         </div>
 
@@ -30,22 +28,18 @@ export default function ThemePicker({ data, setData }) {
             ))}
           </Select>
 
-          <Input value={pendingAccent} onChange={(e) => setPendingAccent(e.target.value)} placeholder="#RRGGBB" />
-
           <Button
             onClick={() => {
-              const nextAccent = (pendingAccent || "").trim() || "#7C3AED";
               setData((prev) => ({
                 ...prev,
                 ui: {
                   ...prev.ui,
                   pageThemes: { ...(prev.ui?.pageThemes || {}), home: pendingTheme },
-                  pageAccents: { ...(prev.ui?.pageAccents || {}), home: nextAccent },
                 },
               }));
             }}
           >
-            Appliquer à l’accueil
+            Appliquer
           </Button>
         </div>
       </div>

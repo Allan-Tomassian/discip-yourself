@@ -69,7 +69,7 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
       <ScreenShell
         data={safeData}
         pageId="categories"
-        headerTitle="Bibliothèque"
+        headerTitle={<span className="textAccent">Bibliothèque</span>}
         headerSubtitle="Aucune catégorie"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
@@ -95,7 +95,7 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
       <ScreenShell
         data={safeData}
         pageId="categories"
-        headerTitle="Bibliothèque"
+        headerTitle={<span className="textAccent">Bibliothèque</span>}
         headerSubtitle="Catégorie introuvable"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
@@ -125,7 +125,7 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
     <ScreenShell
       accent={accent}
       backgroundImage={backgroundImage}
-      headerTitle="Bibliothèque"
+      headerTitle={<span className="textAccent">Bibliothèque</span>}
       headerSubtitle={category.name || "Catégorie"}
     >
       <div style={{ "--catColor": category.color || "#7C3AED" }}>

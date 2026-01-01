@@ -98,6 +98,12 @@ a{ color:inherit; }
 
 .hdrSub{ font-size:13px; color:rgba(255,255,255,.60); }
 .hdrTitle{ margin-top:6px; font-size:24px; font-weight:700; letter-spacing:-.02em; }
+.textAccent{ color:var(--accent); }
+
+.sectionTitle{ font-size:14px; font-weight:700; letter-spacing:-.01em; }
+.sectionSub{ font-size:12px; color:var(--muted2); }
+.itemTitle{ font-size:14px; font-weight:700; color:var(--text); }
+.itemSub{ font-size:12px; color:var(--muted); }
 
 .card{
   border:1px solid var(--border);
@@ -143,6 +149,10 @@ a{ color:inherit; }
   font-weight:600;
 }
 .btn:hover{ filter:brightness(.98); }
+.btn:focus-visible{
+  outline:none;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 18px var(--accentGlow);
+}
 .btnGhost{
   background: rgba(255,255,255,.10);
   color:#fff;
