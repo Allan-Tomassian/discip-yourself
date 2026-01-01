@@ -544,19 +544,11 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenC
                   {currentHabitDone ? "Annuler" : "Valider"}
                 </Button>
 
-                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
-                  Voir dans Outils
-                </Button>
               </div>
             </div>
           ) : hasLinkedHabits ? (
             <div className="mt12 col">
-              <div className="small2">Aucune action disponible : active d’abord une habitude liée ci-dessus.</div>
-              <div className="mt10">
-                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
-                  Gérer dans Outils
-                </Button>
-              </div>
+              <div className="small2">Aucune action disponible : active d’abord une habitude liée ci-dessous.</div>
             </div>
           ) : (
             <div className="mt12 col">
@@ -691,12 +683,6 @@ export default function Home({ data, setData, onOpenLibrary, onOpenPlan, onOpenC
                   Active au moins une habitude pour l’exécuter dans “Action du jour”.
                 </div>
               ) : null}
-
-              <div className="mt10 row" style={{ gap: 10, flexWrap: "wrap" }}>
-                <Button variant="ghost" onClick={() => openPlanWith(focusCategory?.id, null)}>
-                  Gérer dans Outils
-                </Button>
-              </div>
             </div>
           ) : (
             <div className="mt12 col">
