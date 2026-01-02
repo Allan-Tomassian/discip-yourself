@@ -3,6 +3,7 @@ import { loadState, saveState } from "../utils/storage";
 import { uid } from "../utils/helpers";
 import { normalizeGoalsState } from "./goals";
 import { normalizeReminder } from "./reminders";
+import { normalizeSession } from "./sessions";
 import { todayKey } from "../utils/dates";
 
 export const THEME_PRESETS = ["aurora", "midnight", "sunset", "ocean", "forest"];
@@ -270,6 +271,7 @@ export function initialData() {
     goals: [],
     habits: [],
     reminders: [],
+    sessions: [],
     checks: {},
   };
 }
@@ -350,6 +352,7 @@ export function demoData() {
       { id: uid(), categoryId: categories[1].id, title: "Habitude 2", cadence: "DAILY", target: 1 },
     ],
     reminders: [],
+    sessions: [],
     checks: {},
   };
 }
@@ -580,6 +583,8 @@ export function migrate(prev) {
   if (!Array.isArray(next.habits)) next.habits = [];
   if (!Array.isArray(next.reminders)) next.reminders = [];
   next.reminders = next.reminders.map((r, i) => normalizeReminder(r, i));
+  if (!Array.isArray(next.sessions)) next.sessions = [];
+  next.sessions = next.sessions.map((s) => normalizeSession(s));
   if (!next.checks || typeof next.checks !== "object") next.checks = {};
 
   const normalized = normalizeGoalsState(next);

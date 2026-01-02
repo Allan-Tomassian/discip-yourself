@@ -4,6 +4,7 @@ import { Button, Card, Select } from "../components/UI";
 import { addDays, dayKey, getDayStatus, todayKey } from "../utils/dates";
 import { setMainGoal } from "../logic/goals";
 import { incHabit, decHabit } from "../logic/habits";
+import { finishSession, skipSession, getDoneSessionsForDate } from "../logic/sessions";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 
@@ -55,6 +56,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
   const profile = safeData.profile || {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+  const sessions = Array.isArray(safeData.sessions) ? safeData.sessions : [];
   const checks = safeData.checks || {};
   const dayChecks = useMemo(() => {
     const bucket = checks?.[selectedDateKey];
@@ -62,6 +64,17 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
     const micro = Array.isArray(bucket?.micro) ? bucket.micro : [];
     return { habits, micro };
   }, [checks, selectedDateKey]);
+  const dayDoneSessions = useMemo(
+    () => getDoneSessionsForDate(sessions, selectedDateKey),
+    [sessions, selectedDateKey]
+  );
+  const doneHabitIds = useMemo(() => {
+    const ids = new Set(dayChecks.habits);
+    for (const s of dayDoneSessions) {
+      if (s?.habitId) ids.add(s.habitId);
+    }
+    return ids;
+  }, [dayChecks.habits, dayDoneSessions]);
 
   // per-view category selection for Home (fallback to legacy)
   const homeSelectedCategoryId =
@@ -111,7 +124,6 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
 
   const coreProgress = useMemo(() => {
     const activeIds = new Set(activeHabits.map((h) => h.id));
-    const doneHabitIds = new Set(dayChecks.habits);
     const doneHabitsCount = Array.from(activeIds).reduce(
       (sum, id) => sum + (doneHabitIds.has(id) ? 1 : 0),
       0
@@ -122,7 +134,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
     const done = doneHabitsCount + (goalDone ? 1 : 0);
     const ratio = total ? done / total : 0;
     return { total, done, ratio };
-  }, [activeHabits, dayChecks, selectedGoal]);
+  }, [activeHabits, doneHabitIds, selectedGoal]);
 
   const disciplineStats = useMemo(() => {
     const todayUnique = new Set(Array.isArray(dayChecks.micro) ? dayChecks.micro : []);
@@ -366,7 +378,9 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
                 activeHabits.length ? (
                   <div className="mt12 col" style={{ gap: 10 }}>
                     {activeHabits.map((h) => {
-                      const done = dayChecks.habits.includes(h.id);
+                      const done = doneHabitIds.has(h.id);
+                      const objectiveId = typeof h.parentId === "string" ? h.parentId : selectedGoal?.id || null;
+                      const sessionMinutes = Number.isFinite(h.sessionMinutes) ? h.sessionMinutes : null;
                       return (
                         <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
                           <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -380,10 +394,22 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
                               disabled={!canValidate}
                               onClick={() =>
                                 setData((prev) => {
-                                  const fn = done ? decHabit : incHabit;
-                                  const base = fn(prev, h.id, selectedDate);
-                                  if (!base || typeof base !== "object") return prev;
-                                  const nextChecks = { ...(base.checks || {}) };
+                                  let next = prev;
+                                  if (done) {
+                                    next = skipSession(next, h.id, selectedDateKey);
+                                    next = decHabit(next, h.id, selectedDate);
+                                  } else {
+                                    next = finishSession(
+                                      next,
+                                      h.id,
+                                      selectedDateKey,
+                                      objectiveId,
+                                      sessionMinutes
+                                    );
+                                    next = incHabit(next, h.id, selectedDate);
+                                  }
+                                  if (!next || typeof next !== "object") return prev;
+                                  const nextChecks = { ...(next.checks || {}) };
                                   const rawBucket = nextChecks[selectedDateKey];
                                   const dayBucket =
                                     rawBucket && typeof rawBucket === "object" ? { ...rawBucket } : {};
@@ -394,7 +420,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
                                       ? habitIds
                                       : [...habitIds, h.id];
                                   nextChecks[selectedDateKey] = dayBucket;
-                                  return { ...base, checks: nextChecks };
+                                  return { ...next, checks: nextChecks };
                                 })
                               }
                             >

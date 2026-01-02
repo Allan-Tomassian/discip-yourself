@@ -3,6 +3,7 @@ import TopNav from "./components/TopNav";
 import { migrate, usePersistedState } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
 import { getDueReminders, playReminderSound, sendReminderNotification } from "./logic/reminders";
+import { startSession } from "./logic/sessions";
 import { Button, Card } from "./components/UI";
 import ScreenShell from "./pages/_ScreenShell";
 import { markIOSRootClass } from "./utils/dialogs";
@@ -18,6 +19,7 @@ import Settings from "./pages/Settings";
 import CategoryDetail from "./pages/CategoryDetail";
 import CategoryView from "./pages/CategoryView";
 import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
+import { todayKey } from "./utils/dates";
 
 function runSelfTests() {
   // minimal sanity
@@ -379,6 +381,20 @@ export default function App() {
                 <Button
                   onClick={() => {
                     const target = activeReminder.goal || activeReminder.habit;
+                    const isProcess =
+                      target &&
+                      (target.type || target.kind || target.planType || "").toString().toUpperCase() !== "OUTCOME";
+                    if (isProcess && target?.id) {
+                      setData((prev) =>
+                        startSession(
+                          prev,
+                          target.id,
+                          todayKey(),
+                          typeof target.parentId === "string" ? target.parentId : null,
+                          Number.isFinite(target.sessionMinutes) ? target.sessionMinutes : null
+                        )
+                      );
+                    }
                     if (target?.categoryId) {
                       setData((prev) => ({
                         ...prev,
