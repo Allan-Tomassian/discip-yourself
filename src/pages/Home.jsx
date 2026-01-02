@@ -4,7 +4,7 @@ import { Button, Card, Select } from "../components/UI";
 import { addDays, dayKey, getDayStatus, todayKey } from "../utils/dates";
 import { setMainGoal } from "../logic/goals";
 import { incHabit, decHabit } from "../logic/habits";
-import { finishSession, skipSession, getDoneSessionsForDate } from "../logic/sessions";
+import { startSession, finishSession, skipSession, getDoneSessionsForDate } from "../logic/sessions";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 
@@ -68,6 +68,18 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
     () => getDoneSessionsForDate(sessions, selectedDateKey),
     [sessions, selectedDateKey]
   );
+  const activeSession = useMemo(() => {
+    const list = sessions.filter((s) => s?.date === selectedDateKey && s.status === "partial");
+    return list.length ? list[list.length - 1] : null;
+  }, [sessions, selectedDateKey]);
+  const doneSession = useMemo(() => {
+    const list = sessions.filter((s) => s?.date === selectedDateKey && s.status === "done" && s.startedAt);
+    return list.length ? list[list.length - 1] : null;
+  }, [sessions, selectedDateKey]);
+  const activeSessionHabit = useMemo(() => {
+    if (!activeSession?.habitId) return null;
+    return goals.find((g) => g.id === activeSession.habitId) || null;
+  }, [activeSession, goals]);
   const doneHabitIds = useMemo(() => {
     const ids = new Set(dayChecks.habits);
     for (const s of dayDoneSessions) {
@@ -122,6 +134,9 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
     return microState.items;
   }, [microState.items]);
 
+  const actionHabit = activeHabits[0] || null;
+  const canStartSession = Boolean(selectedGoal && actionHabit);
+
   const coreProgress = useMemo(() => {
     const activeIds = new Set(activeHabits.map((h) => h.id));
     const doneHabitsCount = Array.from(activeIds).reduce(
@@ -150,6 +165,22 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
     const disciplinePct = Math.round((microDoneLast7 / 21) * 100);
     return { microDoneToday, microDoneLast7, disciplinePct };
   }, [checks, dayChecks.micro, selectedDateKey]);
+
+  const sessionBadgeLabel = useMemo(() => {
+    const session = activeSession || doneSession;
+    if (!session) return "";
+    const habit =
+      (activeSession && activeSessionHabit) ||
+      (session?.habitId ? goals.find((g) => g.id === session.habitId) || null : null);
+    const sessionMinutes = Number.isFinite(habit?.sessionMinutes) ? habit.sessionMinutes : null;
+    if (activeSession) {
+      if (sessionMinutes) return `En cours · ${sessionMinutes} min`;
+      return "Session active";
+    }
+    if (Number.isFinite(session?.duration)) return `Terminé · ${session.duration} min`;
+    if (sessionMinutes) return `Terminé · ${sessionMinutes} min`;
+    return "Terminé";
+  }, [activeSession, activeSessionHabit, doneSession, goals]);
 
   const railItems = useMemo(() => {
     const offsets = [-3, -2, -1, 0, 1, 2, 3];
@@ -288,6 +319,13 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
           Discipline · {disciplineStats.microDoneToday}/3
         </button>
       </div>
+      {sessionBadgeLabel ? (
+        <div className="mt10" style={{ display: "flex", justifyContent: "flex-end" }}>
+          <span className="badge" style={{ borderColor: "var(--accent)", color: "var(--accent)" }}>
+            {sessionBadgeLabel}
+          </span>
+        </div>
+      ) : null}
     </div>
   ) : null;
 
@@ -338,23 +376,89 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
               <div className="sectionTitle textAccent">Objectif principal</div>
 
               {outcomeGoals.length ? (
-                <div className="mt10 catAccentField" style={catAccentVars}>
-                  <Select
-                    value={selectedGoal?.id || ""}
-                    onChange={(e) => setCategoryMainGoal(e.target.value)}
-                    style={{ fontSize: 16 }}
-                    disabled={!canEdit}
-                  >
-                    <option value="" disabled>
-                      Choisir un objectif
-                    </option>
-                    {outcomeGoals.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.title || "Objectif"}
+                <>
+                  <div className="mt10 catAccentField" style={catAccentVars}>
+                    <Select
+                      value={selectedGoal?.id || ""}
+                      onChange={(e) => setCategoryMainGoal(e.target.value)}
+                      style={{ fontSize: 16 }}
+                      disabled={!canEdit}
+                    >
+                      <option value="" disabled>
+                        Choisir un objectif
                       </option>
-                    ))}
-                  </Select>
-                </div>
+                      {outcomeGoals.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.title || "Objectif"}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  {selectedGoal && canStartSession ? (
+                    <div className="mt12 row" style={{ justifyContent: "flex-start", gap: 10 }}>
+                      <Button
+                        onClick={() => {
+                          if (!canValidate || !actionHabit) return;
+                          setData((prev) =>
+                            startSession(
+                              prev,
+                              actionHabit.id,
+                              selectedDateKey,
+                              typeof actionHabit.parentId === "string" ? actionHabit.parentId : selectedGoal.id,
+                              Number.isFinite(actionHabit.sessionMinutes) ? actionHabit.sessionMinutes : null
+                            )
+                          );
+                        }}
+                        disabled={!canValidate}
+                      >
+                        Passer à l’action
+                      </Button>
+                      {activeSession ? (
+                        <Button
+                          variant="ghost"
+                          disabled={!canValidate}
+                          onClick={() => {
+                            if (!canValidate || !activeSession?.habitId) return;
+                            setData((prev) => {
+                              const habitId = activeSession.habitId;
+                              const objectiveId =
+                                typeof activeSession.objectiveId === "string"
+                                  ? activeSession.objectiveId
+                                  : typeof activeSessionHabit?.parentId === "string"
+                                    ? activeSessionHabit.parentId
+                                    : selectedGoal?.id || null;
+                              let next = finishSession(
+                                prev,
+                                habitId,
+                                selectedDateKey,
+                                objectiveId,
+                                Number.isFinite(activeSessionHabit?.sessionMinutes)
+                                  ? activeSessionHabit.sessionMinutes
+                                  : null
+                              );
+                              if (!next || typeof next !== "object") return prev;
+                              if (!doneHabitIds.has(habitId)) {
+                                next = incHabit(next, habitId, selectedDate);
+                              }
+                              const nextChecks = { ...(next.checks || {}) };
+                              const rawBucket = nextChecks[selectedDateKey];
+                              const dayBucket =
+                                rawBucket && typeof rawBucket === "object" ? { ...rawBucket } : {};
+                              const habitIds = Array.isArray(dayBucket.habits) ? [...dayBucket.habits] : [];
+                              if (!habitIds.includes(habitId)) habitIds.push(habitId);
+                              dayBucket.habits = habitIds;
+                              nextChecks[selectedDateKey] = dayBucket;
+                              return { ...next, checks: nextChecks };
+                            });
+                          }}
+                        >
+                          Terminer
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {!canValidate ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
+                </>
               ) : (
                 <div className="mt12 col">
               <div className="small2">Aucun objectif principal.</div>
@@ -425,6 +529,18 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
                               }
                             >
                               {done ? "Annuler" : "Valider"}
+                              {activeSession?.habitId === h.id ? (
+                                <span
+                                  style={{
+                                    display: "inline-block",
+                                    width: 6,
+                                    height: 6,
+                                    marginLeft: 6,
+                                    borderRadius: 999,
+                                    background: "var(--accent)",
+                                  }}
+                                />
+                              ) : null}
                             </Button>
                           </div>
                           {!canValidate ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
