@@ -349,6 +349,14 @@ a{ color:inherit; }
   animation: reminderPulse 1.8s ease-in-out infinite;
   pointer-events:none;
 }
+.disciplineOverlay{
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.disciplineCard{
+  width:min(360px, 100%);
+  padding:18px;
+}
 .drawerBackdrop{
   justify-content:flex-end;
   align-items:stretch;

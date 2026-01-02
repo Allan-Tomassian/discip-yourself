@@ -28,9 +28,14 @@ export function isSameDayKey(aKey, bKey) {
   return Boolean(aKey && bKey && aKey === bKey);
 }
 
-export function dayStatus(selectedKey, now = new Date()) {
+export function getDayStatus(selectedKey, now = new Date()) {
   const today = todayKey(now);
   if (!selectedKey) return "today";
   if (selectedKey === today) return "today";
   return selectedKey < today ? "past" : "future";
+}
+
+// Backward-compatible alias
+export function dayStatus(selectedKey, now = new Date()) {
+  return getDayStatus(selectedKey, now);
 }

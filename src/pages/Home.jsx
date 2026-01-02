@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
-import { addDays, dayKey, dayStatus, startOfWeekKey, todayKey, yearKey } from "../utils/dates";
+import { addDays, dayKey, getDayStatus, todayKey } from "../utils/dates";
 import { setMainGoal } from "../logic/goals";
 import { incHabit, decHabit } from "../logic/habits";
 import { getAccentForPage } from "../utils/_theme";
@@ -16,21 +16,6 @@ function resolveGoalType(goal) {
   if (legacy === "OUTCOME") return "OUTCOME";
   if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
   return "PROCESS";
-}
-
-function getHabitCountForToday(habit, checks, now) {
-  const cadence = habit?.cadence || "DAILY";
-  const bucket = checks?.[habit.id] || { daily: {}, weekly: {}, yearly: {} };
-  if (cadence === "DAILY") {
-    const k = todayKey(now);
-    return bucket.daily?.[k] || 0;
-  }
-  if (cadence === "YEARLY") {
-    const y = yearKey(now);
-    return bucket.yearly?.[y] || 0;
-  }
-  const wk = startOfWeekKey(now);
-  return bucket.weekly?.[wk] || 0;
 }
 
 const MICRO_ACTIONS = [
@@ -59,16 +44,24 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
   const safeData = data && typeof data === "object" ? data : {};
   const selectedDateKey = safeData.ui?.selectedDate || todayKey();
   const selectedDate = new Date(`${selectedDateKey}T12:00:00`);
-  const selectedStatus = dayStatus(selectedDateKey, new Date());
+  const selectedStatus = getDayStatus(selectedDateKey, new Date());
   const canValidate = selectedStatus === "today";
   const canEdit = selectedStatus !== "past";
+  const lockMessage = selectedStatus === "past" ? "Lecture seule" : "Disponible le jour J";
 
   const [showWhy, setShowWhy] = useState(true);
   const [microState, setMicroState] = useState(() => initMicroState(selectedDateKey));
+  const [showDiscipline, setShowDiscipline] = useState(false);
   const profile = safeData.profile || {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const checks = safeData.checks || {};
+  const dayChecks = useMemo(() => {
+    const bucket = checks?.[selectedDateKey];
+    const habits = Array.isArray(bucket?.habits) ? bucket.habits : [];
+    const micro = Array.isArray(bucket?.micro) ? bucket.micro : [];
+    return { habits, micro };
+  }, [checks, selectedDateKey]);
 
   // per-view category selection for Home (fallback to legacy)
   const homeSelectedCategoryId =
@@ -112,18 +105,39 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
     return linkedHabits.filter((g) => g.status === "active");
   }, [linkedHabits]);
 
-  const dayProgress = useMemo(() => {
-    const total = activeHabits.length;
-    const done = activeHabits.reduce(
-      (sum, h) => sum + (getHabitCountForToday(h, checks, selectedDate) > 0 ? 1 : 0),
-      0
-    );
-    return { total, done, ratio: total ? done / total : 0 };
-  }, [activeHabits, checks, selectedDateKey]);
-
   const microItems = useMemo(() => {
     return microState.items;
   }, [microState.items]);
+
+  const coreProgress = useMemo(() => {
+    const activeIds = new Set(activeHabits.map((h) => h.id));
+    const doneHabitIds = new Set(dayChecks.habits);
+    const doneHabitsCount = Array.from(activeIds).reduce(
+      (sum, id) => sum + (doneHabitIds.has(id) ? 1 : 0),
+      0
+    );
+    const hasMainGoal = Boolean(selectedGoal);
+    const goalDone = Boolean(selectedGoal && selectedGoal.status === "done");
+    const total = activeHabits.length + (hasMainGoal ? 1 : 0);
+    const done = doneHabitsCount + (goalDone ? 1 : 0);
+    const ratio = total ? done / total : 0;
+    return { total, done, ratio };
+  }, [activeHabits, dayChecks, selectedGoal]);
+
+  const disciplineStats = useMemo(() => {
+    const todayUnique = new Set(Array.isArray(dayChecks.micro) ? dayChecks.micro : []);
+    const microDoneToday = Math.min(3, todayUnique.size);
+    let microDoneLast7 = 0;
+    for (let i = 0; i < 7; i += 1) {
+      const key = dayKey(addDays(selectedDate, -i));
+      const bucket = checks?.[key];
+      const list = Array.isArray(bucket?.micro) ? bucket.micro : [];
+      const unique = new Set(list);
+      microDoneLast7 += Math.min(3, unique.size);
+    }
+    const disciplinePct = Math.round((microDoneLast7 / 21) * 100);
+    return { microDoneToday, microDoneLast7, disciplinePct };
+  }, [checks, dayChecks.micro, selectedDateKey]);
 
   const railItems = useMemo(() => {
     const offsets = [-3, -2, -1, 0, 1, 2, 3];
@@ -136,7 +150,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
         day: parts[2] || "",
         month: parts[1] || "",
         isSelected: key === selectedDateKey,
-        status: dayStatus(key, new Date()),
+        status: getDayStatus(key, new Date()),
       };
     });
   }, [selectedDateKey]);
@@ -224,8 +238,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
 
   const accent = focusCategory && focusCategory.color ? focusCategory.color : getAccentForPage(safeData, "home");
   const backgroundImage = profile.whyImage || "";
-  const catAccentVars = useMemo(() => getCategoryAccentVars(accent), [accent]);
-  const lockMessage = selectedStatus === "past" ? "Lecture seule" : "Disponible le jour J";
+  const catAccentVars = getCategoryAccentVars(accent);
 
   const whyText = (profile.whyText || "").trim();
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
@@ -247,7 +260,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
         >
           <div
             style={{
-              width: `${Math.round(dayProgress.ratio * 100)}%`,
+              width: `${Math.round(coreProgress.ratio * 100)}%`,
               height: "100%",
               background: "var(--muted)",
               borderRadius: 999,
@@ -255,8 +268,13 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
           />
         </div>
         <div className="small2" style={{ minWidth: 36, textAlign: "right" }}>
-          {dayProgress.done}/{dayProgress.total || 0}
+          {coreProgress.done}/{coreProgress.total || 0}
         </div>
+      </div>
+      <div className="mt10" style={{ display: "flex", justifyContent: "flex-end" }}>
+        <button className="linkBtn" onClick={() => setShowDiscipline(true)} type="button">
+          Discipline · {disciplineStats.microDoneToday}/3
+        </button>
       </div>
     </div>
   ) : null;
@@ -348,7 +366,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
                 activeHabits.length ? (
                   <div className="mt12 col" style={{ gap: 10 }}>
                     {activeHabits.map((h) => {
-                      const done = getHabitCountForToday(h, checks, selectedDate) > 0;
+                      const done = dayChecks.habits.includes(h.id);
                       return (
                         <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
                           <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -363,8 +381,20 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
                               onClick={() =>
                                 setData((prev) => {
                                   const fn = done ? decHabit : incHabit;
-                                  const next = fn(prev, h.id, selectedDate);
-                                  return next && typeof next === "object" ? next : prev;
+                                  const base = fn(prev, h.id, selectedDate);
+                                  if (!base || typeof base !== "object") return prev;
+                                  const nextChecks = { ...(base.checks || {}) };
+                                  const rawBucket = nextChecks[selectedDateKey];
+                                  const dayBucket =
+                                    rawBucket && typeof rawBucket === "object" ? { ...rawBucket } : {};
+                                  const habitIds = Array.isArray(dayBucket.habits) ? [...dayBucket.habits] : [];
+                                  dayBucket.habits = done
+                                    ? habitIds.filter((id) => id !== h.id)
+                                    : habitIds.includes(h.id)
+                                      ? habitIds
+                                      : [...habitIds, h.id];
+                                  nextChecks[selectedDateKey] = dayBucket;
+                                  return { ...base, checks: nextChecks };
                                 })
                               }
                             >
@@ -406,48 +436,57 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
               <div className="sectionTitle textAccent">Micro-actions</div>
               <div className="sectionSub">Trois impulsions simples</div>
               <div className="mt12 col" style={{ gap: 10 }}>
-                {microItems.map((item) => (
-                  <div key={item.uid} className="listItem catAccentRow" style={catAccentVars}>
-                    <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                      <div className="itemTitle" style={{ flex: 1, minWidth: 0 }}>
-                        {item.label}
+                {microItems.map((item) => {
+                  const isMicroDone = dayChecks.micro.includes(item.id);
+                  const canAddMicro = canValidate && disciplineStats.microDoneToday < 3 && !isMicroDone;
+                  return (
+                    <div key={item.uid} className="listItem catAccentRow" style={catAccentVars}>
+                      <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                        <div className="itemTitle" style={{ flex: 1, minWidth: 0 }}>
+                          {item.label}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          disabled={!canAddMicro}
+                          onClick={() => {
+                            if (!canAddMicro) return;
+                            setData((prev) => {
+                              const nextChecks = { ...(prev.checks || {}) };
+                              const rawBucket = nextChecks[selectedDateKey];
+                              const dayBucket =
+                                rawBucket && typeof rawBucket === "object" ? { ...rawBucket } : {};
+                              const microIds = Array.isArray(dayBucket.micro) ? [...dayBucket.micro] : [];
+                              const unique = new Set(microIds);
+                              if (unique.size >= 3 || unique.has(item.id)) return prev;
+                              dayBucket.micro = [...microIds, item.id];
+                              nextChecks[selectedDateKey] = dayBucket;
+                              return { ...prev, checks: nextChecks };
+                            });
+                            setMicroState((prev) => {
+                              const remaining = prev.items.filter((i) => i.uid !== item.uid);
+                              const nextItem = MICRO_ACTIONS[prev.cursor % MICRO_ACTIONS.length];
+                              const next = nextItem
+                                ? {
+                                    uid: `${nextItem.id}-${selectedDateKey}-${Date.now()}`,
+                                    id: nextItem.id,
+                                    label: nextItem.label,
+                                  }
+                                : null;
+                              return {
+                                ...prev,
+                                cursor: (prev.cursor + 1) % MICRO_ACTIONS.length,
+                                items: next ? [...remaining, next] : remaining,
+                              };
+                            });
+                          }}
+                        >
+                          +1
+                        </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        disabled={!canValidate}
-                        onClick={() => {
-                          setData((prev) => {
-                            const checks = { ...(prev.checks || {}) };
-                            const bucket = checks[item.id] || { daily: {}, weekly: {}, yearly: {} };
-                            const cur = bucket.daily?.[selectedDateKey] || 0;
-                            bucket.daily = { ...bucket.daily, [selectedDateKey]: cur + 1 };
-                            checks[item.id] = bucket;
-                            return { ...prev, checks };
-                          });
-                          setMicroState((prev) => {
-                            const remaining = prev.items.filter((i) => i.uid !== item.uid);
-                            const nextItem = MICRO_ACTIONS[prev.cursor % MICRO_ACTIONS.length];
-                            const next = nextItem
-                              ? {
-                                  uid: `${nextItem.id}-${selectedDateKey}-${Date.now()}`,
-                                  id: nextItem.id,
-                                  label: nextItem.label,
-                                }
-                              : null;
-                            return {
-                              ...prev,
-                              cursor: (prev.cursor + 1) % MICRO_ACTIONS.length,
-                              items: next ? [...remaining, next] : remaining,
-                            };
-                          });
-                        }}
-                      >
-                        +1
-                      </Button>
+                      {!canValidate ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
                     </div>
-                    {!canValidate ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </Card>
@@ -467,6 +506,32 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
           ))}
         </div>
       </div>
+      {showDiscipline ? (
+        <div className="modalBackdrop disciplineOverlay" onClick={() => setShowDiscipline(false)}>
+          <Card className="disciplineCard" onClick={(e) => e.stopPropagation()}>
+            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+              <div className="titleSm">Discipline</div>
+              <button className="linkBtn" type="button" onClick={() => setShowDiscipline(false)}>
+                Fermer
+              </button>
+            </div>
+            <div className="mt12 col" style={{ gap: 10 }}>
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <div className="small2">Aujourd’hui</div>
+                <div className="titleSm">{disciplineStats.microDoneToday}/3</div>
+              </div>
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <div className="small2">7 jours</div>
+                <div className="titleSm">{disciplineStats.microDoneLast7}/21</div>
+              </div>
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <div className="small2">Pourcentage</div>
+                <div className="titleSm">{disciplineStats.disciplinePct}%</div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      ) : null}
     </ScreenShell>
   );
 }
