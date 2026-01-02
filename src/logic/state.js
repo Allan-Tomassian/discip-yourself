@@ -266,6 +266,9 @@ export function initialData() {
       showPlanStep: false,
       soundEnabled: false,
       selectedDate: todayKey(),
+      selectedHabits: {},
+      sessionDraft: null,
+      activeSession: null,
     },
     categories: [],
     goals: [],
@@ -319,6 +322,9 @@ export function demoData() {
       showPlanStep: false,
       soundEnabled: false,
       selectedDate: todayKey(),
+      selectedHabits: {},
+      sessionDraft: null,
+      activeSession: null,
     },
     categories: categories.map((c, idx) => ({ ...c, mainGoalId: idx === 0 ? outcomeId : c.mainGoalId })),
     goals: [
@@ -426,6 +432,9 @@ export function migrate(prev) {
   if (typeof next.ui.onboardingCompleted === "undefined") next.ui.onboardingCompleted = false;
   if (typeof next.ui.onboardingStep === "undefined") next.ui.onboardingStep = 1;
   if (typeof next.ui.showPlanStep === "undefined") next.ui.showPlanStep = false;
+  if (!next.ui.selectedHabits || typeof next.ui.selectedHabits !== "object") next.ui.selectedHabits = {};
+  if (typeof next.ui.sessionDraft === "undefined") next.ui.sessionDraft = null;
+  if (typeof next.ui.activeSession === "undefined") next.ui.activeSession = null;
   {
     const raw = typeof next.ui.selectedDate === "string" ? next.ui.selectedDate : "";
     const parsed = raw ? new Date(`${raw}T12:00:00`) : null;

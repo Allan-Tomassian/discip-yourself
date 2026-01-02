@@ -318,6 +318,31 @@ a{ color:inherit; }
   padding:0;
   font-size:12px;
 }
+.statButton{
+  width:100%;
+  border:0;
+  background:transparent;
+  text-align:right;
+  padding:0;
+  cursor:pointer;
+}
+.statButton:focus-visible{
+  outline:none;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 18px var(--accentGlow);
+  border-radius:10px;
+}
+.includeToggle{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  color:var(--text);
+}
+.includeToggle input{
+  width:16px;
+  height:16px;
+  accent-color: var(--accent);
+}
 
 .modalBackdrop{
   position:fixed;

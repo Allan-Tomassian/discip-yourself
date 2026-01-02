@@ -3,8 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
 import { addDays, dayKey, getDayStatus, todayKey } from "../utils/dates";
 import { setMainGoal } from "../logic/goals";
-import { incHabit, decHabit } from "../logic/habits";
-import { startSession, finishSession, skipSession, getDoneSessionsForDate } from "../logic/sessions";
+import { getDoneSessionsForDate } from "../logic/sessions";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 
@@ -41,7 +40,14 @@ function initMicroState(dayKeyValue) {
   };
 }
 
-export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpenCreateCategory }) {
+export default function Home({
+  data,
+  setData,
+  onOpenLibrary,
+  onOpenCreate,
+  onOpenCreateCategory,
+  onOpenSession,
+}) {
   const safeData = data && typeof data === "object" ? data : {};
   const selectedDateKey = safeData.ui?.selectedDate || todayKey();
   const selectedDate = new Date(`${selectedDateKey}T12:00:00`);
@@ -52,7 +58,8 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
 
   const [showWhy, setShowWhy] = useState(true);
   const [microState, setMicroState] = useState(() => initMicroState(selectedDateKey));
-  const [showDiscipline, setShowDiscipline] = useState(false);
+  const [showDayStats, setShowDayStats] = useState(false);
+  const [showDisciplineStats, setShowDisciplineStats] = useState(false);
   const profile = safeData.profile || {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -68,22 +75,19 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
     () => getDoneSessionsForDate(sessions, selectedDateKey),
     [sessions, selectedDateKey]
   );
-  const activeSession = useMemo(() => {
-    const list = sessions.filter((s) => s?.date === selectedDateKey && s.status === "partial");
-    return list.length ? list[list.length - 1] : null;
-  }, [sessions, selectedDateKey]);
-  const doneSession = useMemo(() => {
-    const list = sessions.filter((s) => s?.date === selectedDateKey && s.status === "done" && s.startedAt);
-    return list.length ? list[list.length - 1] : null;
-  }, [sessions, selectedDateKey]);
+  const activeSession = safeData.ui?.activeSession || null;
   const activeSessionHabit = useMemo(() => {
-    if (!activeSession?.habitId) return null;
-    return goals.find((g) => g.id === activeSession.habitId) || null;
-  }, [activeSession, goals]);
+    if (!activeSession?.habitIds?.length) return null;
+    const firstId = activeSession.habitIds[0];
+    return firstId ? goals.find((g) => g.id === firstId) || null : null;
+  }, [activeSession?.habitIds, goals]);
   const doneHabitIds = useMemo(() => {
     const ids = new Set(dayChecks.habits);
     for (const s of dayDoneSessions) {
       if (s?.habitId) ids.add(s.habitId);
+      if (Array.isArray(s?.doneHabitIds)) {
+        for (const id of s.doneHabitIds) ids.add(id);
+      }
     }
     return ids;
   }, [dayChecks.habits, dayDoneSessions]);
@@ -114,6 +118,18 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
     return outcomeGoals.find((g) => g.id === mainGoalId) || null;
   }, [focusCategory?.id, mainGoalId, outcomeGoals]);
 
+  const selectedHabits = useMemo(() => {
+    const byDate = safeData.ui?.selectedHabits || {};
+    const dateBucket = byDate && typeof byDate === "object" ? byDate[selectedDateKey] : null;
+    const objectiveId = selectedGoal?.id || "";
+    const list =
+      dateBucket && typeof dateBucket === "object" && objectiveId
+        ? dateBucket[objectiveId] || []
+        : [];
+    return Array.isArray(list) ? list : [];
+  }, [safeData.ui?.selectedHabits, selectedDateKey, selectedGoal?.id]);
+  const selectedHabitIds = useMemo(() => new Set(selectedHabits), [selectedHabits]);
+
   const processGoals = useMemo(() => {
     if (!focusCategory?.id) return [];
     return goals.filter((g) => g.categoryId === focusCategory.id && resolveGoalType(g) === "PROCESS");
@@ -134,8 +150,13 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
     return microState.items;
   }, [microState.items]);
 
-  const actionHabit = activeHabits[0] || null;
-  const canStartSession = Boolean(selectedGoal && actionHabit);
+  const microDoneToday = useMemo(() => {
+    const unique = new Set(Array.isArray(dayChecks.micro) ? dayChecks.micro : []);
+    return Math.min(3, unique.size);
+  }, [dayChecks.micro]);
+
+  const hasActiveSession = Boolean(activeSession && activeSession.dateKey === selectedDateKey);
+  const canOpenSession = Boolean(canValidate && selectedGoal && selectedHabits.length && !hasActiveSession);
 
   const coreProgress = useMemo(() => {
     const activeIds = new Set(activeHabits.map((h) => h.id));
@@ -150,37 +171,91 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
     const ratio = total ? done / total : 0;
     return { total, done, ratio };
   }, [activeHabits, doneHabitIds, selectedGoal]);
+  const goalDone = Boolean(selectedGoal && selectedGoal.status === "done");
+  const habitsDoneCount = Math.max(0, coreProgress.done - (goalDone ? 1 : 0));
 
-  const disciplineStats = useMemo(() => {
-    const todayUnique = new Set(Array.isArray(dayChecks.micro) ? dayChecks.micro : []);
-    const microDoneToday = Math.min(3, todayUnique.size);
-    let microDoneLast7 = 0;
-    for (let i = 0; i < 7; i += 1) {
-      const key = dayKey(addDays(selectedDate, -i));
+  const disciplineBreakdown = useMemo(() => {
+    const now = new Date();
+    const processAll = goals.filter((g) => resolveGoalType(g) === "PROCESS" && g.status === "active");
+    const processIds = processAll.map((g) => g.id);
+    const plannedPerDay = processIds.length;
+
+    function getDoneIdsForDate(key) {
+      const bucket = checks?.[key];
+      const ids = new Set(Array.isArray(bucket?.habits) ? bucket.habits : []);
+      for (const s of sessions || []) {
+        if (!s || s.date !== key || s.status !== "done") continue;
+        if (s.habitId) ids.add(s.habitId);
+        if (Array.isArray(s.doneHabitIds)) {
+          for (const id of s.doneHabitIds) ids.add(id);
+        }
+      }
+      return ids;
+    }
+
+    function countDoneForWindow(days) {
+      let done = 0;
+      for (let i = 0; i < days; i += 1) {
+        const key = dayKey(addDays(now, -i));
+        const doneIds = getDoneIdsForDate(key);
+        for (const id of processIds) if (doneIds.has(id)) done += 1;
+      }
+      const planned = plannedPerDay * days;
+      return { done, planned, ratio: planned ? done / planned : 0 };
+    }
+
+    const habit14 = countDoneForWindow(14);
+    const habit90 = countDoneForWindow(90);
+
+    let microDone14 = 0;
+    for (let i = 0; i < 14; i += 1) {
+      const key = dayKey(addDays(now, -i));
       const bucket = checks?.[key];
       const list = Array.isArray(bucket?.micro) ? bucket.micro : [];
       const unique = new Set(list);
-      microDoneLast7 += Math.min(3, unique.size);
+      microDone14 += Math.min(3, unique.size);
     }
-    const disciplinePct = Math.round((microDoneLast7 / 21) * 100);
-    return { microDoneToday, microDoneLast7, disciplinePct };
-  }, [checks, dayChecks.micro, selectedDateKey]);
+    const microMax14 = 14 * 3;
+    const microRatio14 = microMax14 ? microDone14 / microMax14 : 0;
+
+    const outcomes = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
+    const cutoff = addDays(now, -89).getTime();
+    const outcomesDone90 = outcomes.filter((g) => {
+      if (g.status !== "done") return false;
+      const key = typeof g.completedAt === "string" ? g.completedAt : "";
+      if (!key) return false;
+      const ts = new Date(`${key}T12:00:00`).getTime();
+      return Number.isFinite(ts) && ts >= cutoff;
+    }).length;
+    const outcomeRatio90 = outcomes.length ? outcomesDone90 / outcomes.length : 0;
+    const reliabilityRatio = outcomes.length ? (habit90.ratio + outcomeRatio90) / 2 : habit90.ratio;
+
+    const scoreRaw = habit14.ratio * 0.7 + microRatio14 * 0.1 + reliabilityRatio * 0.2;
+    const score = Math.round(Math.max(0, Math.min(1, scoreRaw)) * 100);
+    const ratio = score / 100;
+
+    return {
+      score,
+      ratio,
+      habit14,
+      habit90,
+      microDone14,
+      microMax14,
+      microRatio14,
+      outcomesDone90,
+      outcomesTotal: outcomes.length,
+      reliabilityRatio,
+    };
+  }, [checks, goals, sessions]);
 
   const sessionBadgeLabel = useMemo(() => {
-    const session = activeSession || doneSession;
-    if (!session) return "";
-    const habit =
-      (activeSession && activeSessionHabit) ||
-      (session?.habitId ? goals.find((g) => g.id === session.habitId) || null : null);
-    const sessionMinutes = Number.isFinite(habit?.sessionMinutes) ? habit.sessionMinutes : null;
-    if (activeSession) {
-      if (sessionMinutes) return `En cours · ${sessionMinutes} min`;
-      return "Session active";
-    }
-    if (Number.isFinite(session?.duration)) return `Terminé · ${session.duration} min`;
-    if (sessionMinutes) return `Terminé · ${sessionMinutes} min`;
-    return "Terminé";
-  }, [activeSession, activeSessionHabit, doneSession, goals]);
+    if (!activeSession || activeSession?.dateKey !== selectedDateKey) return "";
+    const sessionMinutes = Number.isFinite(activeSessionHabit?.sessionMinutes)
+      ? activeSessionHabit.sessionMinutes
+      : null;
+    if (sessionMinutes) return `Session en cours · ${sessionMinutes} min`;
+    return "Session en cours";
+  }, [activeSession, activeSessionHabit, selectedDateKey]);
 
   const railItems = useMemo(() => {
     const offsets = [-3, -2, -1, 0, 1, 2, 3];
@@ -245,6 +320,40 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
     if (typeof onOpenLibrary === "function") onOpenLibrary();
   }
 
+  function toggleHabitSelection(habitId, nextChecked) {
+    if (!habitId || typeof setData !== "function" || !selectedGoal?.id) return;
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      const byDate = prevUi.selectedHabits && typeof prevUi.selectedHabits === "object" ? { ...prevUi.selectedHabits } : {};
+      const dateBucket = byDate[selectedDateKey] && typeof byDate[selectedDateKey] === "object" ? { ...byDate[selectedDateKey] } : {};
+      const existing = Array.isArray(dateBucket[selectedGoal.id]) ? [...dateBucket[selectedGoal.id]] : [];
+      const nextList = nextChecked
+        ? existing.includes(habitId)
+          ? existing
+          : [...existing, habitId]
+        : existing.filter((id) => id !== habitId);
+      dateBucket[selectedGoal.id] = nextList;
+      byDate[selectedDateKey] = dateBucket;
+      return { ...prev, ui: { ...prevUi, selectedHabits: byDate } };
+    });
+  }
+
+  function openSessionFlow() {
+    if (!selectedGoal?.id || !selectedHabits.length || typeof setData !== "function") return;
+    setData((prev) => ({
+      ...prev,
+      ui: {
+        ...(prev.ui || {}),
+        sessionDraft: {
+          dateKey: selectedDateKey,
+          objectiveId: selectedGoal.id,
+          habitIds: selectedHabits,
+        },
+      },
+    }));
+    if (typeof onOpenSession === "function") onOpenSession();
+  }
+
   function setCategoryMainGoal(nextGoalId) {
     if (!nextGoalId || typeof setData !== "function") return;
     const g = goals.find((x) => x.id === nextGoalId) || null;
@@ -287,38 +396,65 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
 
   const headerRight = categories.length ? (
-    <div style={{ minWidth: 160 }}>
-      <div className="small2" style={{ textAlign: "right" }}>
-        Progression du jour
-      </div>
-      <div className="row" style={{ alignItems: "center", gap: 8, marginTop: 4 }}>
-        <div
-          style={{
-            flex: 1,
-            height: 6,
-            background: "rgba(255,255,255,.12)",
-            borderRadius: 999,
-            overflow: "hidden",
-          }}
-        >
+    <div style={{ minWidth: 180 }}>
+      <button className="statButton" type="button" onClick={() => setShowDayStats(true)}>
+        <div className="small2" style={{ textAlign: "right" }}>
+          Progression du jour
+        </div>
+        <div className="row" style={{ alignItems: "center", gap: 8, marginTop: 4 }}>
           <div
             style={{
-              width: `${Math.round(coreProgress.ratio * 100)}%`,
-              height: "100%",
-              background: "var(--muted)",
+              flex: 1,
+              height: 6,
+              background: "rgba(255,255,255,.12)",
               borderRadius: 999,
+              overflow: "hidden",
             }}
-          />
+          >
+            <div
+              style={{
+                width: `${Math.round(coreProgress.ratio * 100)}%`,
+                height: "100%",
+                background: "var(--muted)",
+                borderRadius: 999,
+              }}
+            />
+          </div>
+          <div className="small2" style={{ minWidth: 36, textAlign: "right" }}>
+            {coreProgress.done}/{coreProgress.total || 0}
+          </div>
         </div>
-        <div className="small2" style={{ minWidth: 36, textAlign: "right" }}>
-          {coreProgress.done}/{coreProgress.total || 0}
+      </button>
+
+      <button className="statButton mt10" type="button" onClick={() => setShowDisciplineStats(true)}>
+        <div className="small2" style={{ textAlign: "right" }}>
+          Discipline
         </div>
-      </div>
-      <div className="mt10" style={{ display: "flex", justifyContent: "flex-end" }}>
-        <button className="linkBtn" onClick={() => setShowDiscipline(true)} type="button">
-          Discipline · {disciplineStats.microDoneToday}/3
-        </button>
-      </div>
+        <div className="row" style={{ alignItems: "center", gap: 8, marginTop: 4 }}>
+          <div
+            style={{
+              flex: 1,
+              height: 6,
+              background: "rgba(255,255,255,.12)",
+              borderRadius: 999,
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                width: `${Math.round(disciplineBreakdown.ratio * 100)}%`,
+                height: "100%",
+                background: "var(--accent)",
+                borderRadius: 999,
+              }}
+            />
+          </div>
+          <div className="small2" style={{ minWidth: 36, textAlign: "right" }}>
+            {disciplineBreakdown.score}%
+          </div>
+        </div>
+      </button>
+
       {sessionBadgeLabel ? (
         <div className="mt10" style={{ display: "flex", justifyContent: "flex-end" }}>
           <span className="badge" style={{ borderColor: "var(--accent)", color: "var(--accent)" }}>
@@ -394,67 +530,9 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
                       ))}
                     </Select>
                   </div>
-                  {selectedGoal && canStartSession ? (
-                    <div className="mt12 row" style={{ justifyContent: "flex-start", gap: 10 }}>
-                      <Button
-                        onClick={() => {
-                          if (!canValidate || !actionHabit) return;
-                          setData((prev) =>
-                            startSession(
-                              prev,
-                              actionHabit.id,
-                              selectedDateKey,
-                              typeof actionHabit.parentId === "string" ? actionHabit.parentId : selectedGoal.id,
-                              Number.isFinite(actionHabit.sessionMinutes) ? actionHabit.sessionMinutes : null
-                            )
-                          );
-                        }}
-                        disabled={!canValidate}
-                      >
-                        Passer à l’action
-                      </Button>
-                      {activeSession ? (
-                        <Button
-                          variant="ghost"
-                          disabled={!canValidate}
-                          onClick={() => {
-                            if (!canValidate || !activeSession?.habitId) return;
-                            setData((prev) => {
-                              const habitId = activeSession.habitId;
-                              const objectiveId =
-                                typeof activeSession.objectiveId === "string"
-                                  ? activeSession.objectiveId
-                                  : typeof activeSessionHabit?.parentId === "string"
-                                    ? activeSessionHabit.parentId
-                                    : selectedGoal?.id || null;
-                              let next = finishSession(
-                                prev,
-                                habitId,
-                                selectedDateKey,
-                                objectiveId,
-                                Number.isFinite(activeSessionHabit?.sessionMinutes)
-                                  ? activeSessionHabit.sessionMinutes
-                                  : null
-                              );
-                              if (!next || typeof next !== "object") return prev;
-                              if (!doneHabitIds.has(habitId)) {
-                                next = incHabit(next, habitId, selectedDate);
-                              }
-                              const nextChecks = { ...(next.checks || {}) };
-                              const rawBucket = nextChecks[selectedDateKey];
-                              const dayBucket =
-                                rawBucket && typeof rawBucket === "object" ? { ...rawBucket } : {};
-                              const habitIds = Array.isArray(dayBucket.habits) ? [...dayBucket.habits] : [];
-                              if (!habitIds.includes(habitId)) habitIds.push(habitId);
-                              dayBucket.habits = habitIds;
-                              nextChecks[selectedDateKey] = dayBucket;
-                              return { ...next, checks: nextChecks };
-                            });
-                          }}
-                        >
-                          Terminer
-                        </Button>
-                      ) : null}
+                  {canOpenSession ? (
+                    <div className="mt12">
+                      <Button onClick={openSessionFlow}>Passer à l’action</Button>
                     </div>
                   ) : null}
                   {!canValidate ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
@@ -483,8 +561,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
                   <div className="mt12 col" style={{ gap: 10 }}>
                     {activeHabits.map((h) => {
                       const done = doneHabitIds.has(h.id);
-                      const objectiveId = typeof h.parentId === "string" ? h.parentId : selectedGoal?.id || null;
-                      const sessionMinutes = Number.isFinite(h.sessionMinutes) ? h.sessionMinutes : null;
+                      const isSelected = selectedHabitIds.has(h.id);
                       return (
                         <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
                           <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -492,56 +569,17 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
                               <div className="itemTitle" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {h.title || "Habitude"}
                               </div>
+                              {done ? <div className="sectionSub">Fait aujourd’hui</div> : null}
                             </div>
-                            <Button
-                              variant="ghost"
-                              disabled={!canValidate}
-                              onClick={() =>
-                                setData((prev) => {
-                                  let next = prev;
-                                  if (done) {
-                                    next = skipSession(next, h.id, selectedDateKey);
-                                    next = decHabit(next, h.id, selectedDate);
-                                  } else {
-                                    next = finishSession(
-                                      next,
-                                      h.id,
-                                      selectedDateKey,
-                                      objectiveId,
-                                      sessionMinutes
-                                    );
-                                    next = incHabit(next, h.id, selectedDate);
-                                  }
-                                  if (!next || typeof next !== "object") return prev;
-                                  const nextChecks = { ...(next.checks || {}) };
-                                  const rawBucket = nextChecks[selectedDateKey];
-                                  const dayBucket =
-                                    rawBucket && typeof rawBucket === "object" ? { ...rawBucket } : {};
-                                  const habitIds = Array.isArray(dayBucket.habits) ? [...dayBucket.habits] : [];
-                                  dayBucket.habits = done
-                                    ? habitIds.filter((id) => id !== h.id)
-                                    : habitIds.includes(h.id)
-                                      ? habitIds
-                                      : [...habitIds, h.id];
-                                  nextChecks[selectedDateKey] = dayBucket;
-                                  return { ...next, checks: nextChecks };
-                                })
-                              }
-                            >
-                              {done ? "Annuler" : "Valider"}
-                              {activeSession?.habitId === h.id ? (
-                                <span
-                                  style={{
-                                    display: "inline-block",
-                                    width: 6,
-                                    height: 6,
-                                    marginLeft: 6,
-                                    borderRadius: 999,
-                                    background: "var(--accent)",
-                                  }}
-                                />
-                              ) : null}
-                            </Button>
+                            <label className="includeToggle">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                disabled={!canValidate}
+                                onChange={(e) => toggleHabitSelection(h.id, e.target.checked)}
+                              />
+                              <span>{isSelected ? "Incluse" : "Inclure"}</span>
+                            </label>
                           </div>
                           {!canValidate ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
                         </div>
@@ -580,7 +618,7 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
               <div className="mt12 col" style={{ gap: 10 }}>
                 {microItems.map((item) => {
                   const isMicroDone = dayChecks.micro.includes(item.id);
-                  const canAddMicro = canValidate && disciplineStats.microDoneToday < 3 && !isMicroDone;
+                  const canAddMicro = canValidate && microDoneToday < 3 && !isMicroDone;
                   return (
                     <div key={item.uid} className="listItem catAccentRow" style={catAccentVars}>
                       <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -648,27 +686,72 @@ export default function Home({ data, setData, onOpenLibrary, onOpenCreate, onOpe
           ))}
         </div>
       </div>
-      {showDiscipline ? (
-        <div className="modalBackdrop disciplineOverlay" onClick={() => setShowDiscipline(false)}>
+      {showDayStats ? (
+        <div className="modalBackdrop disciplineOverlay" onClick={() => setShowDayStats(false)}>
           <Card className="disciplineCard" onClick={(e) => e.stopPropagation()}>
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-              <div className="titleSm">Discipline</div>
-              <button className="linkBtn" type="button" onClick={() => setShowDiscipline(false)}>
+              <div className="titleSm">Progression du jour</div>
+              <button className="linkBtn" type="button" onClick={() => setShowDayStats(false)}>
                 Fermer
               </button>
             </div>
             <div className="mt12 col" style={{ gap: 10 }}>
               <div className="row" style={{ justifyContent: "space-between" }}>
-                <div className="small2">Aujourd’hui</div>
-                <div className="titleSm">{disciplineStats.microDoneToday}/3</div>
+                <div className="small2">Date</div>
+                <div className="titleSm">{selectedDateKey}</div>
               </div>
               <div className="row" style={{ justifyContent: "space-between" }}>
-                <div className="small2">7 jours</div>
-                <div className="titleSm">{disciplineStats.microDoneLast7}/21</div>
+                <div className="small2">Objectif principal</div>
+                <div className="titleSm">
+                  {selectedGoal ? (goalDone ? "Terminé" : "En cours") : "—"}
+                </div>
               </div>
               <div className="row" style={{ justifyContent: "space-between" }}>
-                <div className="small2">Pourcentage</div>
-                <div className="titleSm">{disciplineStats.disciplinePct}%</div>
+                <div className="small2">Habitudes du jour</div>
+                <div className="titleSm">{habitsDoneCount}/{activeHabits.length}</div>
+              </div>
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <div className="small2">Total</div>
+                <div className="titleSm">
+                  {coreProgress.done}/{coreProgress.total || 0}
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      ) : null}
+
+      {showDisciplineStats ? (
+        <div className="modalBackdrop disciplineOverlay" onClick={() => setShowDisciplineStats(false)}>
+          <Card className="disciplineCard" onClick={(e) => e.stopPropagation()}>
+            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+              <div className="titleSm">Discipline</div>
+              <button className="linkBtn" type="button" onClick={() => setShowDisciplineStats(false)}>
+                Fermer
+              </button>
+            </div>
+            <div className="mt12 col" style={{ gap: 10 }}>
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <div className="small2">Assiduité (14j)</div>
+                <div className="titleSm">
+                  {disciplineBreakdown.habit14.done}/{disciplineBreakdown.habit14.planned || 0}
+                </div>
+              </div>
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <div className="small2">Micro-actions (14j)</div>
+                <div className="titleSm">
+                  {disciplineBreakdown.microDone14}/{disciplineBreakdown.microMax14}
+                </div>
+              </div>
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <div className="small2">Fiabilité (90j)</div>
+                <div className="titleSm">
+                  {Math.round(disciplineBreakdown.reliabilityRatio * 100)}%
+                </div>
+              </div>
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <div className="small2">Score</div>
+                <div className="titleSm">{disciplineBreakdown.score}%</div>
               </div>
             </div>
           </Card>

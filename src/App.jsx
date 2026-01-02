@@ -18,6 +18,7 @@ import CreateHabit from "./pages/CreateHabit";
 import Settings from "./pages/Settings";
 import CategoryDetail from "./pages/CategoryDetail";
 import CategoryView from "./pages/CategoryView";
+import Session from "./pages/Session";
 import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
 import { todayKey } from "./utils/dates";
 
@@ -105,7 +106,17 @@ function getEmptyStateConfig(data) {
   };
 }
 
-const TABS = new Set(["today", "library", "plan", "create", "create-category", "create-goal", "create-habit", "settings"]);
+const TABS = new Set([
+  "today",
+  "library",
+  "plan",
+  "create",
+  "create-category",
+  "create-goal",
+  "create-habit",
+  "session",
+  "settings",
+]);
 function normalizeTab(t) {
   return TABS.has(t) ? t : "today";
 }
@@ -256,6 +267,7 @@ export default function App() {
             setLibraryCategoryId(null);
             setTab("create-category");
           }}
+          onOpenSession={() => setTab("session")}
         />
       ) : tab === "plan" ? (
         <CategoryDetail
@@ -338,6 +350,15 @@ export default function App() {
           onDone={() => {
             setLibraryCategoryId(null);
             setTab("library");
+          }}
+        />
+      ) : tab === "session" ? (
+        <Session
+          data={data}
+          setData={setData}
+          onBack={() => {
+            setLibraryCategoryId(null);
+            setTab("today");
           }}
         />
       ) : (

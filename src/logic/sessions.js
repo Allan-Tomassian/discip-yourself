@@ -17,13 +17,24 @@ function normalizeDuration(raw) {
 export function normalizeSession(rawSession) {
   const s = rawSession && typeof rawSession === "object" ? { ...rawSession } : {};
   if (!s.id) s.id = uid();
-  if (typeof s.habitId !== "string") s.habitId = "";
+  if (typeof s.habitId !== "string") s.habitId = s.habitId ? String(s.habitId) : "";
   if (typeof s.objectiveId !== "string") s.objectiveId = null;
   if (typeof s.date !== "string" || !s.date.trim()) s.date = todayKey();
   s.status = normalizeStatus(s.status);
   s.duration = normalizeDuration(s.duration);
   if (typeof s.note !== "string") s.note = "";
   if (typeof s.startedAt !== "string") s.startedAt = "";
+  if (typeof s.finishedAt !== "string") s.finishedAt = "";
+  if (Array.isArray(s.habitIds)) {
+    s.habitIds = s.habitIds.filter((id) => typeof id === "string" && id.trim());
+  } else if (s.habitIds != null) {
+    s.habitIds = [];
+  }
+  if (Array.isArray(s.doneHabitIds)) {
+    s.doneHabitIds = s.doneHabitIds.filter((id) => typeof id === "string" && id.trim());
+  } else if (s.doneHabitIds != null) {
+    s.doneHabitIds = [];
+  }
   return s;
 }
 
@@ -79,6 +90,7 @@ export function finishSession(state, habitId, dateKey, objectiveId, fallbackMinu
       objectiveId: typeof objectiveId === "string" ? objectiveId : current.objectiveId || null,
       status: "done",
       duration: resolveDuration(current.startedAt, durationOverride, fallbackMinutes),
+      finishedAt: new Date().toISOString(),
     };
     const nextSessions = sessions.slice();
     nextSessions[existingIndex] = normalizeSession(finished);
@@ -91,6 +103,7 @@ export function finishSession(state, habitId, dateKey, objectiveId, fallbackMinu
     date: dateKey,
     status: "done",
     duration: resolveDuration("", durationOverride, fallbackMinutes),
+    finishedAt: new Date().toISOString(),
   });
 
   return { ...state, sessions: [...sessions, session] };
