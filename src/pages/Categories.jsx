@@ -118,7 +118,7 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
                   <div className="itemSub">{summary}</div>
                 </div>
                 <Button variant="ghost" onClick={() => openCategory(c.id)}>
-                  Ouvrir
+                  Gérer
                 </Button>
               </div>
             </Card>

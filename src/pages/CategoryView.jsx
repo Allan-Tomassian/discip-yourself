@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
 import { getAccentForPage } from "../utils/_theme";
+import { safeConfirm, safePrompt } from "../utils/dialogs";
 
 function resolveGoalType(goal) {
   const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
@@ -64,12 +65,100 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
     if (typeof onOpenPlan === "function") onOpenPlan();
   }
 
+  function renameCategory() {
+    if (!category?.id || typeof setData !== "function") return;
+    const nextName = safePrompt("Renommer la catégorie :", category.name || "");
+    if (!nextName || !nextName.trim()) return;
+    setData((prev) => ({
+      ...prev,
+      categories: (prev.categories || []).map((cat) =>
+        cat.id === category.id ? { ...cat, name: nextName.trim() } : cat
+      ),
+    }));
+  }
+
+  function deleteCategory() {
+    if (!category?.id || typeof setData !== "function") return;
+    const ok = safeConfirm("Supprimer cette catégorie et tous ses éléments ?");
+    if (!ok) return;
+    setData((prev) => {
+      const nextCategories = (prev.categories || []).filter((cat) => cat.id !== category.id);
+      const nextGoals = (prev.goals || []).filter((g) => g.categoryId !== category.id);
+      const nextHabits = (prev.habits || []).filter((h) => h.categoryId !== category.id);
+      const nextUi = { ...(prev.ui || {}) };
+      const nextSelected = nextCategories[0]?.id || null;
+      if (nextUi.selectedCategoryId === category.id) nextUi.selectedCategoryId = nextSelected;
+      if (nextUi.selectedCategoryByView) {
+        const scv = { ...nextUi.selectedCategoryByView };
+        if (scv.library === category.id) scv.library = nextSelected;
+        if (scv.plan === category.id) scv.plan = nextSelected;
+        if (scv.home === category.id) scv.home = nextSelected;
+        nextUi.selectedCategoryByView = scv;
+      }
+      if (nextUi.sessionDraft?.objectiveId) {
+        const stillExists = nextGoals.some((g) => g.id === nextUi.sessionDraft.objectiveId);
+        if (!stillExists) nextUi.sessionDraft = null;
+      }
+      if (nextUi.activeSession?.habitIds) {
+        const kept = nextUi.activeSession.habitIds.filter((id) => nextGoals.some((g) => g.id === id));
+        if (!kept.length) nextUi.activeSession = null;
+        else nextUi.activeSession = { ...nextUi.activeSession, habitIds: kept };
+      }
+      return {
+        ...prev,
+        categories: nextCategories,
+        goals: nextGoals,
+        habits: nextHabits,
+        ui: nextUi,
+      };
+    });
+    if (typeof onBack === "function") onBack();
+  }
+
+  function renameGoal(goalId) {
+    if (!goalId || typeof setData !== "function") return;
+    const goal = goals.find((g) => g.id === goalId);
+    const nextTitle = safePrompt("Renommer :", goal?.title || "");
+    if (!nextTitle || !nextTitle.trim()) return;
+    setData((prev) => ({
+      ...prev,
+      goals: (prev.goals || []).map((g) => (g.id === goalId ? { ...g, title: nextTitle.trim() } : g)),
+    }));
+  }
+
+  function deleteGoal(goalId) {
+    if (!goalId || typeof setData !== "function") return;
+    const ok = safeConfirm("Supprimer cet élément ?");
+    if (!ok) return;
+    setData((prev) => {
+      const goal = (prev.goals || []).find((g) => g.id === goalId);
+      const isOutcome = resolveGoalType(goal) === "OUTCOME";
+      let nextGoals = (prev.goals || []).filter((g) => g.id !== goalId);
+      if (isOutcome) nextGoals = nextGoals.filter((g) => g.parentId !== goalId);
+      const nextCategories = (prev.categories || []).map((cat) =>
+        cat.mainGoalId === goalId ? { ...cat, mainGoalId: null } : cat
+      );
+      const nextUi = { ...(prev.ui || {}) };
+      if (nextUi.sessionDraft?.objectiveId === goalId) nextUi.sessionDraft = null;
+      if (nextUi.activeSession?.habitIds) {
+        const kept = nextUi.activeSession.habitIds.filter((id) => nextGoals.some((g) => g.id === id));
+        nextUi.activeSession = kept.length ? { ...nextUi.activeSession, habitIds: kept } : null;
+      }
+      return {
+        ...prev,
+        goals: nextGoals,
+        categories: nextCategories,
+        ui: nextUi,
+      };
+    });
+  }
+
   if (!categories.length) {
     return (
       <ScreenShell
         data={safeData}
         pageId="categories"
-        headerTitle={<span className="textAccent">Bibliothèque</span>}
+        headerTitle={<span className="textAccent">Gérer</span>}
         headerSubtitle="Aucune catégorie"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
@@ -95,7 +184,7 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
       <ScreenShell
         data={safeData}
         pageId="categories"
-        headerTitle={<span className="textAccent">Bibliothèque</span>}
+        headerTitle={<span className="textAccent">Gérer</span>}
         headerSubtitle="Catégorie introuvable"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
@@ -125,13 +214,32 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
     <ScreenShell
       accent={accent}
       backgroundImage={backgroundImage}
-      headerTitle={<span className="textAccent">Bibliothèque</span>}
+      headerTitle={<span className="textAccent">Gérer</span>}
       headerSubtitle={category.name || "Catégorie"}
     >
       <div style={{ "--catColor": category.color || "#7C3AED" }}>
         <Button variant="ghost" onClick={onBack}>
           ← Bibliothèque
         </Button>
+
+        <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }}>
+          <div className="p18">
+            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div className="titleSm">Catégorie</div>
+                <div className="small2">{category.name || "Catégorie"}</div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <Button variant="ghost" onClick={renameCategory}>
+                  Renommer
+                </Button>
+                <Button variant="danger" onClick={deleteCategory}>
+                  Supprimer
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
 
         <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }}>
           <div className="p18">
@@ -150,21 +258,27 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
 
         <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }}>
           <div className="p18">
-            <div className="titleSm">Objectif</div>
+            <div className="titleSm">Objectifs</div>
             {outcomeGoals.length ? (
               <div className="mt12 col">
-                {outcomeGoals.length > 1 ? (
-                  <Select value={selectedOutcomeId || ""} onChange={(e) => setSelectedOutcomeId(e.target.value)}>
-                    {outcomeGoals.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.title || "Objectif"}
-                      </option>
-                    ))}
-                  </Select>
-                ) : null}
-                <div className="small2" style={{ marginTop: outcomeGoals.length > 1 ? 8 : 0 }}>
-                  {selectedOutcome?.title || outcomeGoals[0]?.title || "Objectif"}
-                </div>
+                {outcomeGoals.map((g) => (
+                  <div key={g.id} className="listItem">
+                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{g.title || "Objectif"}</div>
+                        <div className="small2">{g.id === category.mainGoalId ? "Principal" : "Secondaire"}</div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <Button variant="ghost" onClick={() => renameGoal(g.id)}>
+                          Renommer
+                        </Button>
+                        <Button variant="danger" onClick={() => deleteGoal(g.id)}>
+                          Supprimer
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="mt12 col">
@@ -186,7 +300,17 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
               <div className="mt12 col">
                 {habits.map((h) => (
                   <div key={h.id} className="listItem">
-                    <div style={{ fontWeight: 700 }}>{h.title || "Habitude"}</div>
+                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ fontWeight: 700 }}>{h.title || "Habitude"}</div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <Button variant="ghost" onClick={() => renameGoal(h.id)}>
+                          Renommer
+                        </Button>
+                        <Button variant="danger" onClick={() => deleteGoal(h.id)}>
+                          Supprimer
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -200,6 +324,20 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
                 </div>
               </div>
             )}
+          </div>
+        </Card>
+
+        <Card accentBorder style={{ marginTop: 12 }}>
+          <div className="p18">
+            <div className="titleSm">Outils</div>
+            <div className="small2" style={{ marginTop: 6 }}>
+              Timer, notifications et calendrier (bientôt).
+            </div>
+            <div className="mt10">
+              <Button variant="ghost" onClick={() => openPlan(category.id)}>
+                Ouvrir les outils
+              </Button>
+            </div>
           </div>
         </Card>
       </div>

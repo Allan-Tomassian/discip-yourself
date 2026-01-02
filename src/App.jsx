@@ -71,7 +71,7 @@ function getEmptyStateConfig(data) {
       title: "Aucune catégorie",
       subtitle: "Crée une catégorie pour reprendre.",
       cta: "Créer une catégorie",
-      targetTab: "library",
+      targetTab: "create-category",
       categoryId: null,
       openGoalEditId: null,
     };
@@ -81,9 +81,9 @@ function getEmptyStateConfig(data) {
       title: "Aucun objectif",
       subtitle: "Crée un objectif principal pour cette catégorie.",
       cta: "Créer un objectif",
-      targetTab: "plan",
+      targetTab: "create-goal",
       categoryId: firstCategoryId,
-      openGoalEditId: "__new_outcome__",
+      openGoalEditId: null,
     };
   }
   if (!hasHabit) {
@@ -91,9 +91,9 @@ function getEmptyStateConfig(data) {
       title: "Aucune habitude",
       subtitle: "Crée une habitude liée à ton objectif principal.",
       cta: "Créer une habitude",
-      targetTab: "plan",
+      targetTab: "create-habit",
       categoryId: outcomeCategoryId,
-      openGoalEditId: "__new_process__",
+      openGoalEditId: null,
     };
   }
   return {
@@ -227,16 +227,11 @@ export default function App() {
             <div className="mt12">
               <Button
                 onClick={() => {
-                  if (empty.categoryId) {
-                    setData((prev) => ({
-                      ...prev,
-                      ui: {
-                        ...(prev.ui || {}),
-                        selectedCategoryId: empty.categoryId,
-                        openGoalEditId: empty.openGoalEditId,
-                      },
-                    }));
-                  }
+                  setData((prev) => {
+                    const nextUi = { ...(prev.ui || {}), openGoalEditId: null };
+                    if (empty.categoryId) nextUi.selectedCategoryId = empty.categoryId;
+                    return { ...prev, ui: nextUi };
+                  });
                   setTab(empty.targetTab);
                 }}
               >

@@ -118,18 +118,6 @@ export default function Home({
     return outcomeGoals.find((g) => g.id === mainGoalId) || null;
   }, [focusCategory?.id, mainGoalId, outcomeGoals]);
 
-  const selectedHabits = useMemo(() => {
-    const byDate = safeData.ui?.selectedHabits || {};
-    const dateBucket = byDate && typeof byDate === "object" ? byDate[selectedDateKey] : null;
-    const objectiveId = selectedGoal?.id || "";
-    const list =
-      dateBucket && typeof dateBucket === "object" && objectiveId
-        ? dateBucket[objectiveId] || []
-        : [];
-    return Array.isArray(list) ? list : [];
-  }, [safeData.ui?.selectedHabits, selectedDateKey, selectedGoal?.id]);
-  const selectedHabitIds = useMemo(() => new Set(selectedHabits), [selectedHabits]);
-
   const processGoals = useMemo(() => {
     if (!focusCategory?.id) return [];
     return goals.filter((g) => g.categoryId === focusCategory.id && resolveGoalType(g) === "PROCESS");
@@ -156,7 +144,7 @@ export default function Home({
   }, [dayChecks.micro]);
 
   const hasActiveSession = Boolean(activeSession && activeSession.dateKey === selectedDateKey);
-  const canOpenSession = Boolean(canValidate && selectedGoal && selectedHabits.length && !hasActiveSession);
+  const canOpenSession = Boolean(canValidate && selectedGoal && activeHabits.length && !hasActiveSession);
 
   const coreProgress = useMemo(() => {
     const activeIds = new Set(activeHabits.map((h) => h.id));
@@ -195,13 +183,24 @@ export default function Home({
 
     function countDoneForWindow(days) {
       let done = 0;
+      let keptDays = 0;
       for (let i = 0; i < days; i += 1) {
         const key = dayKey(addDays(now, -i));
         const doneIds = getDoneIdsForDate(key);
+        let kept = true;
         for (const id of processIds) if (doneIds.has(id)) done += 1;
+        if (processIds.length) {
+          for (const id of processIds) {
+            if (!doneIds.has(id)) {
+              kept = false;
+              break;
+            }
+          }
+          if (kept) keptDays += 1;
+        }
       }
       const planned = plannedPerDay * days;
-      return { done, planned, ratio: planned ? done / planned : 0 };
+      return { done, planned, ratio: planned ? done / planned : 0, keptDays };
     }
 
     const habit14 = countDoneForWindow(14);
@@ -245,6 +244,7 @@ export default function Home({
       outcomesDone90,
       outcomesTotal: outcomes.length,
       reliabilityRatio,
+      habitDaysKept14: habit14.keptDays,
     };
   }, [checks, goals, sessions]);
 
@@ -320,26 +320,8 @@ export default function Home({
     if (typeof onOpenLibrary === "function") onOpenLibrary();
   }
 
-  function toggleHabitSelection(habitId, nextChecked) {
-    if (!habitId || typeof setData !== "function" || !selectedGoal?.id) return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      const byDate = prevUi.selectedHabits && typeof prevUi.selectedHabits === "object" ? { ...prevUi.selectedHabits } : {};
-      const dateBucket = byDate[selectedDateKey] && typeof byDate[selectedDateKey] === "object" ? { ...byDate[selectedDateKey] } : {};
-      const existing = Array.isArray(dateBucket[selectedGoal.id]) ? [...dateBucket[selectedGoal.id]] : [];
-      const nextList = nextChecked
-        ? existing.includes(habitId)
-          ? existing
-          : [...existing, habitId]
-        : existing.filter((id) => id !== habitId);
-      dateBucket[selectedGoal.id] = nextList;
-      byDate[selectedDateKey] = dateBucket;
-      return { ...prev, ui: { ...prevUi, selectedHabits: byDate } };
-    });
-  }
-
   function openSessionFlow() {
-    if (!selectedGoal?.id || !selectedHabits.length || typeof setData !== "function") return;
+    if (!selectedGoal?.id || !activeHabits.length || typeof setData !== "function") return;
     setData((prev) => ({
       ...prev,
       ui: {
@@ -347,7 +329,7 @@ export default function Home({
         sessionDraft: {
           dateKey: selectedDateKey,
           objectiveId: selectedGoal.id,
-          habitIds: selectedHabits,
+          habitIds: activeHabits.map((h) => h.id),
         },
       },
     }));
@@ -415,7 +397,7 @@ export default function Home({
               style={{
                 width: `${Math.round(coreProgress.ratio * 100)}%`,
                 height: "100%",
-                background: "var(--muted)",
+                background: accent,
                 borderRadius: 999,
               }}
             />
@@ -486,34 +468,32 @@ export default function Home({
 
           <Card style={{ marginTop: 12 }}>
             <div className="p18">
-              <div className="sectionTitle textAccent">Focus catégorie</div>
-              <div className="mt10 catAccentField" style={catAccentVars}>
-                <Select
-                  value={focusCategory?.id || ""}
-                  onChange={(e) => setFocusCategory(e.target.value)}
-                  style={{ fontSize: 16 }}
-                  disabled={!canEdit}
-                >
-                  <option value="" disabled>
-                    Choisir une catégorie
-                  </option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
+              <div className="sectionTitle textAccent">Focus du jour</div>
+              <div className="mt12">
+                <div className="small2">Catégorie</div>
+                <div className="mt8 catAccentField" style={catAccentVars}>
+                  <Select
+                    value={focusCategory?.id || ""}
+                    onChange={(e) => setFocusCategory(e.target.value)}
+                    style={{ fontSize: 16 }}
+                    disabled={!canEdit}
+                  >
+                    <option value="" disabled>
+                      Choisir une catégorie
                     </option>
-                  ))}
-                </Select>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
               </div>
-            </div>
-          </Card>
 
-          <Card style={{ marginTop: 12 }}>
-            <div className="p18">
-              <div className="sectionTitle textAccent">Objectif principal</div>
-
-              {outcomeGoals.length ? (
-                <>
-                  <div className="mt10 catAccentField" style={catAccentVars}>
+              <div className="mt12">
+                <div className="small2">Objectif principal</div>
+                {outcomeGoals.length ? (
+                  <div className="mt8 catAccentField" style={catAccentVars}>
                     <Select
                       value={selectedGoal?.id || ""}
                       onChange={(e) => setCategoryMainGoal(e.target.value)}
@@ -530,24 +510,22 @@ export default function Home({
                       ))}
                     </Select>
                   </div>
-                  {canOpenSession ? (
-                    <div className="mt12">
-                      <Button onClick={openSessionFlow}>Passer à l’action</Button>
-                    </div>
-                  ) : null}
-                  {!canValidate ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
-                </>
-              ) : (
-                <div className="mt12 col">
-              <div className="small2">Aucun objectif principal.</div>
-              <div className="mt10">
-                <Button variant="ghost" onClick={openCreateFlow} disabled={!canEdit}>
-                  Créer
-                </Button>
-                {!canEdit ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
+                ) : (
+                  <div className="mt8 small2">Aucun objectif principal pour cette catégorie.</div>
+                )}
               </div>
-            </div>
-              )}
+
+              <div className="mt12">
+                <Button onClick={openSessionFlow} disabled={!canOpenSession}>
+                  Passer à l’action
+                </Button>
+                {!activeHabits.length ? (
+                  <div className="sectionSub" style={{ marginTop: 8 }}>
+                    Ajoute une habitude dans Bibliothèque &gt; Gérer.
+                  </div>
+                ) : null}
+                {!canValidate ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
+              </div>
             </div>
           </Card>
 
@@ -561,7 +539,6 @@ export default function Home({
                   <div className="mt12 col" style={{ gap: 10 }}>
                     {activeHabits.map((h) => {
                       const done = doneHabitIds.has(h.id);
-                      const isSelected = selectedHabitIds.has(h.id);
                       return (
                         <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
                           <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -569,17 +546,9 @@ export default function Home({
                               <div className="itemTitle" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {h.title || "Habitude"}
                               </div>
-                              {done ? <div className="sectionSub">Fait aujourd’hui</div> : null}
+                              <div className="sectionSub">{done ? "Fait aujourd’hui" : "À faire"}</div>
                             </div>
-                            <label className="includeToggle">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                disabled={!canValidate}
-                                onChange={(e) => toggleHabitSelection(h.id, e.target.checked)}
-                              />
-                              <span>{isSelected ? "Incluse" : "Inclure"}</span>
-                            </label>
+                            <span className="badge">{done ? "Fait" : "À faire"}</span>
                           </div>
                           {!canValidate ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
                         </div>
@@ -708,13 +677,11 @@ export default function Home({
               </div>
               <div className="row" style={{ justifyContent: "space-between" }}>
                 <div className="small2">Habitudes du jour</div>
-                <div className="titleSm">{habitsDoneCount}/{activeHabits.length}</div>
+                <div className="titleSm">Tu as validé {habitsDoneCount} sur {activeHabits.length}</div>
               </div>
               <div className="row" style={{ justifyContent: "space-between" }}>
                 <div className="small2">Total</div>
-                <div className="titleSm">
-                  {coreProgress.done}/{coreProgress.total || 0}
-                </div>
+                <div className="titleSm">{coreProgress.done}/{coreProgress.total || 0}</div>
               </div>
             </div>
           </Card>
@@ -733,21 +700,15 @@ export default function Home({
             <div className="mt12 col" style={{ gap: 10 }}>
               <div className="row" style={{ justifyContent: "space-between" }}>
                 <div className="small2">Assiduité (14j)</div>
-                <div className="titleSm">
-                  {disciplineBreakdown.habit14.done}/{disciplineBreakdown.habit14.planned || 0}
-                </div>
+                <div className="titleSm">{disciplineBreakdown.habitDaysKept14} jours tenus</div>
               </div>
               <div className="row" style={{ justifyContent: "space-between" }}>
                 <div className="small2">Micro-actions (14j)</div>
-                <div className="titleSm">
-                  {disciplineBreakdown.microDone14}/{disciplineBreakdown.microMax14}
-                </div>
+                <div className="titleSm">{disciplineBreakdown.microDone14}/{disciplineBreakdown.microMax14}</div>
               </div>
               <div className="row" style={{ justifyContent: "space-between" }}>
                 <div className="small2">Fiabilité (90j)</div>
-                <div className="titleSm">
-                  {Math.round(disciplineBreakdown.reliabilityRatio * 100)}%
-                </div>
+                <div className="titleSm">{Math.round(disciplineBreakdown.reliabilityRatio * 100)}%</div>
               </div>
               <div className="row" style={{ justifyContent: "space-between" }}>
                 <div className="small2">Score</div>
