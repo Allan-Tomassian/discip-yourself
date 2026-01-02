@@ -1,4 +1,5 @@
 import { uid } from "../utils/helpers";
+import { incHabit } from "./habits";
 import { todayKey } from "../utils/dates";
 
 const STATUSES = new Set(["done", "partial", "skipped"]);
@@ -8,10 +9,28 @@ function normalizeStatus(raw) {
   return STATUSES.has(v) ? v : "done";
 }
 
+function normalizeDateKey(raw) {
+  const v = typeof raw === "string" ? raw.trim() : "";
+  return v || todayKey();
+}
+
 function normalizeDuration(raw) {
   if (!Number.isFinite(raw)) return null;
   const value = Math.round(raw);
   return value >= 0 ? value : null;
+}
+
+function normalizeDurationSec(raw) {
+  if (!Number.isFinite(raw)) return null;
+  const value = Math.round(raw);
+  return value >= 0 ? value : null;
+}
+
+function normalizeIdList(list) {
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter((id) => typeof id === "string" && id.trim())
+    .map((id) => id.trim());
 }
 
 export function normalizeSession(rawSession) {
@@ -19,22 +38,25 @@ export function normalizeSession(rawSession) {
   if (!s.id) s.id = uid();
   if (typeof s.habitId !== "string") s.habitId = s.habitId ? String(s.habitId) : "";
   if (typeof s.objectiveId !== "string") s.objectiveId = null;
-  if (typeof s.date !== "string" || !s.date.trim()) s.date = todayKey();
+  const dateKey = normalizeDateKey(s.dateKey || s.date);
+  s.date = dateKey;
+  s.dateKey = dateKey;
   s.status = normalizeStatus(s.status);
   s.duration = normalizeDuration(s.duration);
+  if (typeof s.durationSec !== "number") {
+    s.durationSec = s.duration != null ? normalizeDurationSec(s.duration * 60) : null;
+  } else {
+    s.durationSec = normalizeDurationSec(s.durationSec);
+  }
   if (typeof s.note !== "string") s.note = "";
-  if (typeof s.startedAt !== "string") s.startedAt = "";
+  if (typeof s.startedAt !== "string") s.startedAt = typeof s.startAt === "string" ? s.startAt : "";
   if (typeof s.finishedAt !== "string") s.finishedAt = "";
-  if (Array.isArray(s.habitIds)) {
-    s.habitIds = s.habitIds.filter((id) => typeof id === "string" && id.trim());
-  } else if (s.habitIds != null) {
-    s.habitIds = [];
-  }
-  if (Array.isArray(s.doneHabitIds)) {
-    s.doneHabitIds = s.doneHabitIds.filter((id) => typeof id === "string" && id.trim());
-  } else if (s.doneHabitIds != null) {
-    s.doneHabitIds = [];
-  }
+  s.startAt = s.startedAt;
+  s.habitIds = normalizeIdList(s.habitIds);
+  const doneBase = Array.isArray(s.doneHabits) ? s.doneHabits : s.doneHabitIds;
+  const doneNormalized = normalizeIdList(doneBase);
+  s.doneHabitIds = doneNormalized;
+  s.doneHabits = doneNormalized;
   return s;
 }
 
@@ -58,6 +80,155 @@ function resolveDuration(startedAt, overrideMinutes, fallbackMinutes) {
   }
   if (Number.isFinite(fallbackMinutes)) return normalizeDuration(fallbackMinutes);
   return null;
+}
+
+function getSessionTimestamp(session) {
+  if (!session) return 0;
+  const raw = session.finishedAt || session.startedAt || session.startAt || "";
+  const ts = new Date(raw).getTime();
+  return Number.isFinite(ts) ? ts : 0;
+}
+
+function getStatusPriority(status) {
+  if (status === "partial") return 3;
+  if (status === "done") return 2;
+  if (status === "skipped") return 1;
+  return 0;
+}
+
+function findSessionIndexByDate(sessions, dateKey, objectiveId, status) {
+  for (let i = sessions.length - 1; i >= 0; i -= 1) {
+    const s = sessions[i];
+    if (!s || s.date !== dateKey) continue;
+    if (objectiveId && s.objectiveId !== objectiveId) continue;
+    if (status && s.status !== status) continue;
+    return i;
+  }
+  return -1;
+}
+
+function applyDoneHabitsToChecks(state, dateKey, doneHabitIds) {
+  let next = state;
+  const dateRef = new Date(`${dateKey}T12:00:00`);
+  for (const id of doneHabitIds) {
+    const latestChecks = next.checks || {};
+    const latestBucket = latestChecks[dateKey];
+    const dayBucket = latestBucket && typeof latestBucket === "object" ? { ...latestBucket } : {};
+    const existingHabits = Array.isArray(dayBucket.habits) ? [...dayBucket.habits] : [];
+    if (existingHabits.includes(id)) continue;
+
+    next = incHabit(next, id, dateRef);
+
+    const refreshedChecks = { ...(next.checks || {}) };
+    dayBucket.habits = [...existingHabits, id];
+    refreshedChecks[dateKey] = dayBucket;
+    next.checks = refreshedChecks;
+  }
+  return next;
+}
+
+export function getSessionsForDate(state, dateKey) {
+  if (!state) return [];
+  const list = Array.isArray(state.sessions) ? state.sessions : [];
+  const key = normalizeDateKey(dateKey);
+  return list.filter((s) => s && (s.dateKey || s.date) === key);
+}
+
+export function getSessionByDate(state, dateKey, objectiveId) {
+  const key = normalizeDateKey(dateKey);
+  const list = getSessionsForDate(state, key).filter(
+    (s) => !objectiveId || s.objectiveId === objectiveId
+  );
+  if (!list.length) return null;
+  return list.reduce((best, cur) => {
+    if (!best) return cur;
+    const pCur = getStatusPriority(cur.status);
+    const pBest = getStatusPriority(best.status);
+    if (pCur !== pBest) return pCur > pBest ? cur : best;
+    return getSessionTimestamp(cur) >= getSessionTimestamp(best) ? cur : best;
+  }, null);
+}
+
+export function startSessionForDate(state, dateKey, payload = {}) {
+  if (!state) return state;
+  const key = normalizeDateKey(dateKey);
+  const objectiveId = typeof payload.objectiveId === "string" ? payload.objectiveId : null;
+  const habitIds = normalizeIdList(payload.habitIds);
+  if (!objectiveId || habitIds.length === 0) return state;
+  const existing = getSessionByDate(state, key, objectiveId);
+  if (existing) return state;
+  const list = Array.isArray(state.sessions) ? state.sessions : [];
+  const session = normalizeSession({
+    id: uid(),
+    date: key,
+    objectiveId,
+    habitIds,
+    doneHabitIds: [],
+    status: "partial",
+    startedAt: new Date().toISOString(),
+  });
+  return { ...state, sessions: [...list, session] };
+}
+
+export function toggleSessionHabit(state, dateKey, habitId, nextValue, objectiveId) {
+  if (!state || !habitId) return state;
+  const key = normalizeDateKey(dateKey);
+  const list = Array.isArray(state.sessions) ? state.sessions : [];
+  const idx = findSessionIndexByDate(list, key, objectiveId, "partial");
+  if (idx < 0) return state;
+  const current = normalizeSession(list[idx]);
+  const set = new Set(current.doneHabitIds);
+  if (nextValue) set.add(habitId);
+  else set.delete(habitId);
+  const nextSession = normalizeSession({ ...current, doneHabitIds: Array.from(set) });
+  const nextSessions = list.slice();
+  nextSessions[idx] = nextSession;
+  return { ...state, sessions: nextSessions };
+}
+
+export function finishSessionForDate(state, dateKey, payload = {}) {
+  if (!state) return state;
+  const key = normalizeDateKey(dateKey);
+  const list = Array.isArray(state.sessions) ? state.sessions : [];
+  const objectiveId = typeof payload.objectiveId === "string" ? payload.objectiveId : null;
+  const idx = findSessionIndexByDate(list, key, objectiveId, "partial");
+  if (idx < 0) return state;
+  const current = normalizeSession(list[idx]);
+  const doneHabitIds = normalizeIdList(payload.doneHabitIds || current.doneHabitIds);
+  const durationSec = normalizeDurationSec(payload.durationSec);
+  const duration = durationSec != null ? normalizeDuration(durationSec / 60) : current.duration;
+  const finished = normalizeSession({
+    ...current,
+    status: "done",
+    finishedAt: new Date().toISOString(),
+    durationSec,
+    duration,
+    doneHabitIds,
+  });
+  const nextSessions = list.slice();
+  nextSessions[idx] = finished;
+  const nextState = { ...state, sessions: nextSessions };
+  return applyDoneHabitsToChecks(nextState, key, doneHabitIds);
+}
+
+export function skipSessionForDate(state, dateKey, payload = {}) {
+  if (!state) return state;
+  const key = normalizeDateKey(dateKey);
+  const list = Array.isArray(state.sessions) ? state.sessions : [];
+  const objectiveId = typeof payload.objectiveId === "string" ? payload.objectiveId : null;
+  const idx = findSessionIndexByDate(list, key, objectiveId, "partial");
+  if (idx < 0) return state;
+  const current = normalizeSession(list[idx]);
+  const skipped = normalizeSession({
+    ...current,
+    status: "skipped",
+    finishedAt: new Date().toISOString(),
+    durationSec: 0,
+    duration: 0,
+  });
+  const nextSessions = list.slice();
+  nextSessions[idx] = skipped;
+  return { ...state, sessions: nextSessions };
 }
 
 export function startSession(state, habitId, dateKey, objectiveId, fallbackMinutes) {

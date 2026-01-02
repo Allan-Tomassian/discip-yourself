@@ -123,7 +123,9 @@ function normalizeTab(t) {
 
 export default function App() {
   const [data, setData] = usePersistedState(React);
-  const [tab, _setTab] = useState("today");
+  const initialTab =
+    typeof window !== "undefined" && window.location.pathname.startsWith("/session") ? "session" : "today";
+  const [tab, _setTab] = useState(initialTab);
   const [libraryCategoryId, setLibraryCategoryId] = useState(null);
   const [activeReminder, setActiveReminder] = useState(null);
   const dataRef = useRef(data);
@@ -138,6 +140,10 @@ export default function App() {
       ...prev,
       ui: { ...(prev.ui || {}), lastTab: t },
     }));
+    if (typeof window !== "undefined") {
+      const nextPath = t === "session" ? "/session" : "/";
+      if (window.location.pathname !== nextPath) window.history.pushState({}, "", nextPath);
+    }
   };
 
   useEffect(() => {
@@ -192,6 +198,7 @@ export default function App() {
     // Do not restore tab during onboarding flows.
     const completed = Boolean(safeData?.ui?.onboardingCompleted);
     if (!completed) return;
+    if (typeof window !== "undefined" && window.location.pathname.startsWith("/session")) return;
     const last = normalizeTab(safeData?.ui?.lastTab);
     // keep current if already valid
     _setTab((cur) => (normalizeTab(cur) === last ? cur : last));
@@ -354,6 +361,10 @@ export default function App() {
           onBack={() => {
             setLibraryCategoryId(null);
             setTab("today");
+          }}
+          onOpenLibrary={() => {
+            setLibraryCategoryId(null);
+            setTab("library");
           }}
         />
       ) : (

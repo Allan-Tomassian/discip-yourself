@@ -1,10 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
-import { uid } from "../utils/helpers";
 import { todayKey } from "../utils/dates";
-import { normalizeSession } from "../logic/sessions";
-import { incHabit } from "../logic/habits";
+import { finishSessionForDate, getSessionByDate, skipSessionForDate, toggleSessionHabit } from "../logic/sessions";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 
@@ -16,49 +14,35 @@ function formatElapsed(ms) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-export default function Session({ data, setData, onBack }) {
+export default function Session({ data, setData, onBack, onOpenLibrary }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
-  const sessionDraft = safeData.ui?.sessionDraft || null;
-  const activeSession = safeData.ui?.activeSession || null;
+  const sessions = Array.isArray(safeData.sessions) ? safeData.sessions : [];
+  const selectedDateKey = safeData.ui?.selectedDate || todayKey();
 
   const [tick, setTick] = useState(Date.now());
 
+  const session = useMemo(
+    () => getSessionByDate({ sessions }, selectedDateKey, null),
+    [sessions, selectedDateKey]
+  );
+  const isRunning = Boolean(session && session.status === "partial");
   useEffect(() => {
+    if (!isRunning) return;
     const t = setInterval(() => setTick(Date.now()), 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [isRunning]);
 
-  useEffect(() => {
-    if (activeSession || !sessionDraft || typeof setData !== "function") return;
-    const dateKey = typeof sessionDraft.dateKey === "string" ? sessionDraft.dateKey : todayKey();
-    const habitIds = Array.isArray(sessionDraft.habitIds) ? sessionDraft.habitIds : [];
-    const objectiveId = typeof sessionDraft.objectiveId === "string" ? sessionDraft.objectiveId : null;
-    const nextSession = {
-      id: uid(),
-      dateKey,
-      objectiveId,
-      habitIds,
-      doneHabitIds: [],
-      startedAt: new Date().toISOString(),
-    };
-    setData((prev) => ({
-      ...prev,
-      ui: { ...(prev.ui || {}), activeSession: nextSession, sessionDraft: null },
-    }));
-  }, [activeSession, sessionDraft, setData]);
-
-  const session = activeSession || null;
-  const dateKey = session?.dateKey || (typeof sessionDraft?.dateKey === "string" ? sessionDraft.dateKey : todayKey());
+  const dateKey = session?.dateKey || session?.date || selectedDateKey;
   const objectiveId = typeof session?.objectiveId === "string" ? session.objectiveId : null;
   const objective = objectiveId ? goals.find((g) => g.id === objectiveId) || null : null;
-  const habitIds = Array.isArray(session?.habitIds)
-    ? session.habitIds
-    : Array.isArray(sessionDraft?.habitIds)
-      ? sessionDraft.habitIds
+  const habitIds = Array.isArray(session?.habitIds) ? session.habitIds : [];
+  const doneHabitIds = Array.isArray(session?.doneHabitIds)
+    ? session.doneHabitIds
+    : Array.isArray(session?.doneHabits)
+      ? session.doneHabits
       : [];
-  const doneHabitIds = Array.isArray(session?.doneHabitIds) ? session.doneHabitIds : [];
   const doneSet = useMemo(() => new Set(doneHabitIds), [doneHabitIds]);
   const habits = habitIds.map((id) => goals.find((g) => g.id === id)).filter(Boolean);
   const categoryId = objective?.categoryId || habits[0]?.categoryId || null;
@@ -67,76 +51,37 @@ export default function Session({ data, setData, onBack }) {
   const catAccentVars = getCategoryAccentVars(accent);
 
   const startedAtMs = session?.startedAt ? new Date(session.startedAt).getTime() : NaN;
-  const elapsedMs = Number.isFinite(startedAtMs) ? tick - startedAtMs : 0;
+  const elapsedMs = isRunning && Number.isFinite(startedAtMs) ? tick - startedAtMs : 0;
   const elapsedLabel = formatElapsed(elapsedMs);
+  const hasHabits = habits.length > 0;
+  const isFinal = Boolean(session && (session.status === "done" || session.status === "skipped"));
 
   function toggleDone(habitId, checked) {
     if (!habitId || typeof setData !== "function") return;
-    setData((prev) => {
-      const prevSession = prev.ui?.activeSession;
-      if (!prevSession) return prev;
-      const list = Array.isArray(prevSession.doneHabitIds) ? [...prevSession.doneHabitIds] : [];
-      const nextList = checked ? (list.includes(habitId) ? list : [...list, habitId]) : list.filter((id) => id !== habitId);
-      return {
-        ...prev,
-        ui: { ...(prev.ui || {}), activeSession: { ...prevSession, doneHabitIds: nextList } },
-      };
-    });
+    setData((prev) => toggleSessionHabit(prev, dateKey, habitId, checked, objectiveId));
   }
 
   function endSession() {
-    if (!session || typeof setData !== "function") return;
-    const finishedAt = new Date().toISOString();
-    const duration = Math.max(0, Math.round(elapsedMs / 60000));
-    const record = normalizeSession({
-      id: uid(),
-      objectiveId: objectiveId,
-      date: dateKey,
-      status: "done",
-      duration,
-      startedAt: session.startedAt,
-      finishedAt,
-      habitIds: habitIds,
-      doneHabitIds: doneHabitIds,
-    });
-
-    setData((prev) => {
-      let next = {
-        ...prev,
-        sessions: [...(prev.sessions || []), record],
-        ui: { ...(prev.ui || {}), activeSession: null, sessionDraft: null },
-      };
-
-      const dateRef = new Date(`${dateKey}T12:00:00`);
-      for (const id of doneHabitIds) {
-        const latestChecks = next.checks || {};
-        const latestBucket = latestChecks[dateKey];
-        const dayBucket =
-          latestBucket && typeof latestBucket === "object" ? { ...latestBucket } : {};
-        const existingHabits = Array.isArray(dayBucket.habits) ? [...dayBucket.habits] : [];
-        if (existingHabits.includes(id)) continue;
-
-        next = incHabit(next, id, dateRef);
-
-        const refreshedChecks = { ...(next.checks || {}) };
-        dayBucket.habits = [...existingHabits, id];
-        refreshedChecks[dateKey] = dayBucket;
-        next.checks = refreshedChecks;
-      }
-
-      return next;
-    });
+    if (!session || typeof setData !== "function" || !hasHabits) return;
+    const durationSec = Math.max(0, Math.floor(elapsedMs / 1000));
+    setData((prev) =>
+      finishSessionForDate(prev, dateKey, {
+        objectiveId,
+        durationSec,
+        doneHabitIds,
+      })
+    );
 
     if (typeof onBack === "function") onBack();
   }
 
   function cancelSession() {
     if (typeof setData !== "function") return;
-    setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), activeSession: null, sessionDraft: null } }));
+    setData((prev) => skipSessionForDate(prev, dateKey, { objectiveId }));
     if (typeof onBack === "function") onBack();
   }
 
-  if (!session && !sessionDraft) {
+  if (!session) {
     return (
       <ScreenShell
         accent={getAccentForPage(safeData, "home")}
@@ -150,8 +95,40 @@ export default function Session({ data, setData, onBack }) {
               Lance une session depuis Aujourd’hui.
             </div>
             <div className="mt12">
+              {typeof onOpenLibrary === "function" ? (
+                <Button variant="ghost" onClick={onOpenLibrary}>
+                  Aller à Bibliothèque
+                </Button>
+              ) : (
+                <Button variant="ghost" onClick={onBack}>
+                  ← Retour
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
+      </ScreenShell>
+    );
+  }
+
+  if (isFinal) {
+    const statusLabel = session.status === "done" ? "Session terminée" : "Session annulée";
+    return (
+      <ScreenShell
+        accent={accent}
+        headerTitle={<span className="textAccent">Session</span>}
+        headerSubtitle={`${category?.name || "Catégorie"} · ${objective?.title || "Objectif"}`}
+        backgroundImage={category?.wallpaper || safeData.profile?.whyImage || ""}
+      >
+        <Card accentBorder>
+          <div className="p18">
+            <div className="titleSm">{statusLabel}</div>
+            <div className="small2" style={{ marginTop: 6 }}>
+              Date : {dateKey}
+            </div>
+            <div className="mt12">
               <Button variant="ghost" onClick={onBack}>
-                ← Retour
+                Revenir à Aujourd’hui
               </Button>
             </div>
           </div>
@@ -164,7 +141,7 @@ export default function Session({ data, setData, onBack }) {
     <ScreenShell
       accent={accent}
       headerTitle={<span className="textAccent">Session</span>}
-      headerSubtitle={category?.name || "Action"}
+      headerSubtitle={`${category?.name || "Catégorie"} · ${objective?.title || "Objectif"}`}
       backgroundImage={category?.wallpaper || safeData.profile?.whyImage || ""}
     >
       <div style={catAccentVars}>
@@ -188,8 +165,13 @@ export default function Session({ data, setData, onBack }) {
           <div className="p18">
             <div className="sectionTitle">Timer</div>
             <div className="titleSm" style={{ marginTop: 6 }}>
-              {elapsedLabel}
+              {isRunning ? elapsedLabel : "00:00"}
             </div>
+            {!isRunning ? (
+              <div className="small2" style={{ marginTop: 6 }}>
+                La session démarre quand tu passes à l’action.
+              </div>
+            ) : null}
           </div>
         </Card>
 
@@ -206,6 +188,7 @@ export default function Session({ data, setData, onBack }) {
                         <input
                           type="checkbox"
                           checked={doneSet.has(h.id)}
+                          disabled={!isRunning}
                           onChange={(e) => toggleDone(h.id, e.target.checked)}
                         />
                         <span>{doneSet.has(h.id) ? "Fait" : "À faire"}</span>
@@ -215,18 +198,35 @@ export default function Session({ data, setData, onBack }) {
                 ))}
               </div>
             ) : (
-              <div className="mt12 small2">Aucune habitude sélectionnée.</div>
+              <div className="mt12 col">
+                <div className="small2">Aucune habitude disponible pour cette session.</div>
+                <div className="mt10">
+                  <Button variant="ghost" onClick={typeof onOpenLibrary === "function" ? onOpenLibrary : onBack}>
+                    Aller à Bibliothèque
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
         </Card>
 
         <div className="mt12 row" style={{ justifyContent: "flex-end", gap: 10 }}>
-          <Button variant="ghost" onClick={cancelSession}>
+          <Button variant="ghost" onClick={cancelSession} disabled={!hasHabits || !isRunning}>
             Annuler la session
           </Button>
-          <Button onClick={endSession}>Terminer la session</Button>
+          <Button onClick={endSession} disabled={!hasHabits || !isRunning}>
+            Terminer la session
+          </Button>
         </div>
       </div>
     </ScreenShell>
   );
 }
+
+/* Tests manuels
+1) Démarrer session, voir le timer tourner.
+2) Cocher une habitude => reflété au retour sur Aujourd’hui.
+3) Terminer la session => progression mise à jour.
+4) Annuler la session => état annulé, retour Aujourd’hui.
+5) Revenir sur /session après fin => “Session terminée”.
+*/

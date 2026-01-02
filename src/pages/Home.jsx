@@ -3,7 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
 import { addDays, dayKey, getDayStatus, todayKey } from "../utils/dates";
 import { setMainGoal } from "../logic/goals";
-import { getDoneSessionsForDate } from "../logic/sessions";
+import { getDoneSessionsForDate, getSessionByDate, startSessionForDate } from "../logic/sessions";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 
@@ -71,16 +71,46 @@ export default function Home({
     const micro = Array.isArray(bucket?.micro) ? bucket.micro : [];
     return { habits, micro };
   }, [checks, selectedDateKey]);
+
+  // per-view category selection for Home (fallback to legacy)
+const homeSelectedCategoryId =
+  safeData.ui?.selectedCategoryByView?.home || safeData.ui?.selectedCategoryId || null;
+
+const focusCategory = useMemo(() => {
+  if (!categories.length) return null;
+  const selected = categories.find((c) => c.id === homeSelectedCategoryId) || null;
+  if (selected) return selected;
+  const withGoal = categories.find((c) =>
+    goals.some((g) => g.categoryId === c.id && resolveGoalType(g) === "OUTCOME")
+  );
+  return withGoal || categories[0] || null;
+}, [categories, goals, homeSelectedCategoryId]);
+
+const mainGoalId = typeof focusCategory?.mainGoalId === "string" ? focusCategory.mainGoalId : null;
+
+const outcomeGoals = useMemo(() => {
+  if (!focusCategory?.id) return [];
+  return goals.filter((g) => g.categoryId === focusCategory.id && resolveGoalType(g) === "OUTCOME");
+}, [goals, focusCategory?.id]);
+
+const selectedGoal = useMemo(() => {
+  if (!focusCategory?.id || !mainGoalId) return null;
+  return outcomeGoals.find((g) => g.id === mainGoalId) || null;
+}, [focusCategory?.id, mainGoalId, outcomeGoals]);
+
   const dayDoneSessions = useMemo(
     () => getDoneSessionsForDate(sessions, selectedDateKey),
     [sessions, selectedDateKey]
   );
-  const activeSession = safeData.ui?.activeSession || null;
-  const activeSessionHabit = useMemo(() => {
-    if (!activeSession?.habitIds?.length) return null;
-    const firstId = activeSession.habitIds[0];
+  const sessionForDay = useMemo(
+    () => getSessionByDate({ sessions }, selectedDateKey, selectedGoal?.id || null),
+    [sessions, selectedDateKey, selectedGoal?.id]
+  );
+  const sessionHabit = useMemo(() => {
+    if (!sessionForDay?.habitIds?.length) return null;
+    const firstId = sessionForDay.habitIds[0];
     return firstId ? goals.find((g) => g.id === firstId) || null : null;
-  }, [activeSession?.habitIds, goals]);
+  }, [sessionForDay?.habitIds, goals]);
   const doneHabitIds = useMemo(() => {
     const ids = new Set(dayChecks.habits);
     for (const s of dayDoneSessions) {
@@ -91,32 +121,6 @@ export default function Home({
     }
     return ids;
   }, [dayChecks.habits, dayDoneSessions]);
-
-  // per-view category selection for Home (fallback to legacy)
-  const homeSelectedCategoryId =
-    safeData.ui?.selectedCategoryByView?.home || safeData.ui?.selectedCategoryId || null;
-
-  const focusCategory = useMemo(() => {
-    if (!categories.length) return null;
-    const selected = categories.find((c) => c.id === homeSelectedCategoryId) || null;
-    if (selected) return selected;
-    const withGoal = categories.find((c) =>
-      goals.some((g) => g.categoryId === c.id && resolveGoalType(g) === "OUTCOME")
-    );
-    return withGoal || categories[0] || null;
-  }, [categories, goals, homeSelectedCategoryId]);
-
-  const mainGoalId = typeof focusCategory?.mainGoalId === "string" ? focusCategory.mainGoalId : null;
-
-  const outcomeGoals = useMemo(() => {
-    if (!focusCategory?.id) return [];
-    return goals.filter((g) => g.categoryId === focusCategory.id && resolveGoalType(g) === "OUTCOME");
-  }, [goals, focusCategory?.id]);
-
-  const selectedGoal = useMemo(() => {
-    if (!focusCategory?.id || !mainGoalId) return null;
-    return outcomeGoals.find((g) => g.id === mainGoalId) || null;
-  }, [focusCategory?.id, mainGoalId, outcomeGoals]);
 
   const processGoals = useMemo(() => {
     if (!focusCategory?.id) return [];
@@ -143,8 +147,8 @@ export default function Home({
     return Math.min(3, unique.size);
   }, [dayChecks.micro]);
 
-  const hasActiveSession = Boolean(activeSession && activeSession.dateKey === selectedDateKey);
-  const canOpenSession = Boolean(canValidate && selectedGoal && activeHabits.length && !hasActiveSession);
+  const hasActiveSession = Boolean(sessionForDay && sessionForDay.status === "partial");
+  const canOpenSession = Boolean(canValidate && selectedGoal && activeHabits.length);
 
   const coreProgress = useMemo(() => {
     const activeIds = new Set(activeHabits.map((h) => h.id));
@@ -249,13 +253,13 @@ export default function Home({
   }, [checks, goals, sessions]);
 
   const sessionBadgeLabel = useMemo(() => {
-    if (!activeSession || activeSession?.dateKey !== selectedDateKey) return "";
-    const sessionMinutes = Number.isFinite(activeSessionHabit?.sessionMinutes)
-      ? activeSessionHabit.sessionMinutes
+    if (!sessionForDay || sessionForDay?.status !== "partial") return "";
+    const sessionMinutes = Number.isFinite(sessionHabit?.sessionMinutes)
+      ? sessionHabit.sessionMinutes
       : null;
     if (sessionMinutes) return `Session en cours · ${sessionMinutes} min`;
     return "Session en cours";
-  }, [activeSession, activeSessionHabit, selectedDateKey]);
+  }, [sessionForDay, sessionHabit]);
 
   const railItems = useMemo(() => {
     const offsets = [-3, -2, -1, 0, 1, 2, 3];
@@ -271,7 +275,7 @@ export default function Home({
         status: getDayStatus(key, new Date()),
       };
     });
-  }, [selectedDateKey]);
+  }, [selectedDate, selectedDateKey]);
 
   useEffect(() => {
     if (microState.dayKey === selectedDateKey) return;
@@ -322,17 +326,12 @@ export default function Home({
 
   function openSessionFlow() {
     if (!selectedGoal?.id || !activeHabits.length || typeof setData !== "function") return;
-    setData((prev) => ({
-      ...prev,
-      ui: {
-        ...(prev.ui || {}),
-        sessionDraft: {
-          dateKey: selectedDateKey,
-          objectiveId: selectedGoal.id,
-          habitIds: activeHabits.map((h) => h.id),
-        },
-      },
-    }));
+    setData((prev) =>
+      startSessionForDate(prev, selectedDateKey, {
+        objectiveId: selectedGoal.id,
+        habitIds: activeHabits.map((h) => h.id),
+      })
+    );
     if (typeof onOpenSession === "function") onOpenSession();
   }
 
