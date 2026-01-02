@@ -1,7 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
-import { addDays, dayKey, getDayStatus, todayKey } from "../utils/dates";
+import {
+  addDays,
+  addMonths,
+  buildMonthGrid,
+  dayKey,
+  getDayStatus,
+  getMonthLabelFR,
+  startOfMonth,
+  todayKey,
+} from "../utils/dates";
 import { setMainGoal } from "../logic/goals";
 import { getDoneSessionsForDate, getSessionByDate, startSessionForDate } from "../logic/sessions";
 import { getAccentForPage } from "../utils/_theme";
@@ -60,6 +69,9 @@ export default function Home({
   const [microState, setMicroState] = useState(() => initMicroState(selectedDateKey));
   const [showDayStats, setShowDayStats] = useState(false);
   const [showDisciplineStats, setShowDisciplineStats] = useState(false);
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [monthCursor, setMonthCursor] = useState(() => startOfMonth(selectedDate));
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const profile = safeData.profile || {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -262,13 +274,15 @@ const selectedGoal = useMemo(() => {
   }, [sessionForDay, sessionHabit]);
 
   const railItems = useMemo(() => {
-    const offsets = [-3, -2, -1, 0, 1, 2, 3];
+    const offsets = [];
+    for (let i = -30; i <= 30; i += 1) offsets.push(i);
     return offsets.map((offset) => {
       const d = addDays(selectedDate, offset);
       const key = dayKey(d);
       const parts = key.split("-");
       return {
         key,
+        date: d,
         day: parts[2] || "",
         month: parts[1] || "",
         isSelected: key === selectedDateKey,
@@ -277,10 +291,25 @@ const selectedGoal = useMemo(() => {
     });
   }, [selectedDate, selectedDateKey]);
 
+  const calendarRangeLabel = useMemo(() => {
+    if (!railItems.length) return "";
+    const first = railItems[0].date;
+    const last = railItems[railItems.length - 1].date;
+    const firstLabel = getMonthLabelFR(first);
+    const lastLabel = getMonthLabelFR(last);
+    return firstLabel === lastLabel ? firstLabel : `${firstLabel} → ${lastLabel}`;
+  }, [railItems]);
+
+  const monthGrid = useMemo(() => buildMonthGrid(monthCursor), [monthCursor]);
+
   useEffect(() => {
     if (microState.dayKey === selectedDateKey) return;
     setMicroState(initMicroState(selectedDateKey));
   }, [microState.dayKey, selectedDateKey]);
+
+  useEffect(() => {
+    setMonthCursor(startOfMonth(selectedDate));
+  }, [selectedDateKey]);
 
   // Home focus change should NOT overwrite legacy selectedCategoryId
   function setFocusCategory(nextId) {
@@ -370,6 +399,7 @@ const selectedGoal = useMemo(() => {
   }
 
   const accent = focusCategory && focusCategory.color ? focusCategory.color : getAccentForPage(safeData, "home");
+  const goalAccent = selectedGoal?.color || accent;
   const backgroundImage = profile.whyImage || "";
   const catAccentVars = getCategoryAccentVars(accent);
 
@@ -396,7 +426,7 @@ const selectedGoal = useMemo(() => {
               style={{
                 width: `${Math.round(coreProgress.ratio * 100)}%`,
                 height: "100%",
-                background: accent,
+                background: goalAccent,
                 borderRadius: 999,
               }}
             />
@@ -454,8 +484,7 @@ const selectedGoal = useMemo(() => {
       headerSubtitle="Exécution"
       headerRight={headerRight}
     >
-      <div className="row dayRailWrap" style={{ alignItems: "flex-start", gap: 12 }}>
-        <div className="col" style={{ flex: 1, minWidth: 0 }}>
+      <div className="col" style={{ maxWidth: 720, margin: "0 auto" }}>
           <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
             <div className="small2" style={{ flex: 1, minWidth: 0, whiteSpace: "normal" }}>
               {showWhy ? whyDisplay : "Pourquoi masqué"}
@@ -470,23 +499,45 @@ const selectedGoal = useMemo(() => {
               <div className="sectionTitle textAccent">Focus du jour</div>
               <div className="mt12">
                 <div className="small2">Catégorie</div>
-                <div className="mt8 catAccentField" style={catAccentVars}>
-                  <Select
-                    value={focusCategory?.id || ""}
-                    onChange={(e) => setFocusCategory(e.target.value)}
-                    style={{ fontSize: 16 }}
+                <div className="mt8 row" style={{ alignItems: "center", gap: 8 }}>
+                  <div
+                    className="listItem catAccentRow"
+                    style={{ ...catAccentVars, flex: 1, minWidth: 0 }}
+                  >
+                    <div className="itemTitle" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {focusCategory?.name || "Choisir une catégorie"}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowCategoryPicker((v) => !v)}
                     disabled={!canEdit}
                   >
-                    <option value="" disabled>
-                      Choisir une catégorie
-                    </option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </Select>
+                    {showCategoryPicker ? "Fermer" : "Changer"}
+                  </Button>
                 </div>
+                {showCategoryPicker ? (
+                  <div className="mt10 catAccentField" style={catAccentVars}>
+                    <Select
+                      value={focusCategory?.id || ""}
+                      onChange={(e) => {
+                        setFocusCategory(e.target.value);
+                        setShowCategoryPicker(false);
+                      }}
+                      style={{ fontSize: 16 }}
+                      disabled={!canEdit}
+                    >
+                      <option value="" disabled>
+                        Choisir une catégorie
+                      </option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                ) : null}
               </div>
 
               <div className="mt12">
@@ -518,64 +569,64 @@ const selectedGoal = useMemo(() => {
                 <Button onClick={openSessionFlow} disabled={!canOpenSession}>
                   Passer à l’action
                 </Button>
-                {!activeHabits.length ? (
+                {!selectedGoal ? (
+                  <div className="sectionSub" style={{ marginTop: 8 }}>
+                    Choisis un objectif principal.
+                  </div>
+                ) : !activeHabits.length ? (
                   <div className="sectionSub" style={{ marginTop: 8 }}>
                     Ajoute une habitude dans Bibliothèque &gt; Gérer.
                   </div>
+                ) : !canValidate ? (
+                  <div className="sectionSub" style={{ marginTop: 8 }}>
+                    Lecture seule.
+                  </div>
                 ) : null}
-                {!canValidate ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
               </div>
             </div>
           </Card>
 
           <Card style={{ marginTop: 12 }}>
             <div className="p18">
-              <div className="sectionTitle textAccent">Habitudes</div>
-              <div className="sectionSub">Du jour</div>
-
-              {selectedGoal ? (
-                activeHabits.length ? (
-                  <div className="mt12 col" style={{ gap: 10 }}>
-                    {activeHabits.map((h) => {
-                      const done = doneHabitIds.has(h.id);
-                      return (
-                        <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
-                          <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                            <div style={{ minWidth: 0 }}>
-                              <div className="itemTitle" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {h.title || "Habitude"}
-                              </div>
-                              <div className="sectionSub">{done ? "Fait aujourd’hui" : "À faire"}</div>
-                            </div>
-                            <span className="badge">{done ? "Fait" : "À faire"}</span>
-                          </div>
-                          {!canValidate ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="mt12 col">
-                  <div className="small2">Aucune habitude active liée à l’objectif.</div>
-                  <div className="mt10">
-                      <Button variant="ghost" onClick={openCreateFlow} disabled={!canEdit}>
-                        Créer
-                      </Button>
-                      {!canEdit ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
+              <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div className="sectionTitle textAccent">Calendrier</div>
+                  <div className="small2 mt8">
+                    Période rapide : {calendarRangeLabel || "—"}
                   </div>
                 </div>
-                )
-              ) : (
-                <div className="mt12 col">
-                <div className="small2">Sélectionne un objectif principal pour afficher les habitudes.</div>
-                <div className="mt10">
-                    <Button variant="ghost" onClick={openCreateFlow} disabled={!canEdit}>
-                      Créer
-                    </Button>
-                    {!canEdit ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
-                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowMonthPicker(true)}
+                  style={{ borderRadius: 999, width: 36, height: 36, padding: 0 }}
+                >
+                  +
+                </Button>
               </div>
-              )}
+              <div
+                className="dayRail mt12 scrollNoBar"
+                style={{ flexDirection: "row", gap: 8, overflowX: "auto", paddingBottom: 4 }}
+              >
+                {railItems.map((item) => (
+                  <button
+                    key={item.key}
+                    className={`dayPill${item.isSelected ? " dayPillActive" : ""}`}
+                    onClick={() => setSelectedDate(item.key)}
+                    type="button"
+                    style={{
+                      minWidth: 52,
+                      padding: "10px 0",
+                      opacity: item.status === "past" ? 0.6 : 1,
+                    }}
+                  >
+                    <div className="dayPillDay">{item.day}</div>
+                    <div className="dayPillMonth">/{item.month}</div>
+                  </button>
+                ))}
+              </div>
+              <div className="sectionSub" style={{ marginTop: 8 }}>
+                {selectedStatus === "past" ? "Lecture seule" : selectedStatus === "today" ? "Aujourd’hui" : "À venir"}
+              </div>
             </div>
           </Card>
 
@@ -638,21 +689,6 @@ const selectedGoal = useMemo(() => {
               </div>
             </div>
           </Card>
-        </div>
-
-        <div className="dayRail">
-          {railItems.map((item) => (
-            <button
-              key={item.key}
-              className={`dayPill${item.isSelected ? " dayPillActive" : ""}`}
-              onClick={() => setSelectedDate(item.key)}
-              type="button"
-            >
-              <div className="dayPillDay">{item.day}</div>
-              <div className="dayPillMonth">/{item.month}</div>
-            </button>
-          ))}
-        </div>
       </div>
       {showDayStats ? (
         <div className="modalBackdrop disciplineOverlay" onClick={() => setShowDayStats(false)}>
@@ -713,6 +749,65 @@ const selectedGoal = useMemo(() => {
                 <div className="small2">Score</div>
                 <div className="titleSm">{disciplineBreakdown.score}%</div>
               </div>
+            </div>
+          </Card>
+        </div>
+      ) : null}
+      {showMonthPicker ? (
+        <div className="modalBackdrop disciplineOverlay" onClick={() => setShowMonthPicker(false)}>
+          <Card className="disciplineCard" onClick={(e) => e.stopPropagation()}>
+            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+              <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                <Button variant="ghost" onClick={() => setMonthCursor((d) => addMonths(d, -1))}>
+                  ←
+                </Button>
+                <div className="titleSm" style={{ minWidth: 140, textAlign: "center" }}>
+                  {getMonthLabelFR(monthCursor)}
+                </div>
+                <Button variant="ghost" onClick={() => setMonthCursor((d) => addMonths(d, 1))}>
+                  →
+                </Button>
+              </div>
+              <button className="linkBtn" type="button" onClick={() => setShowMonthPicker(false)}>
+                Fermer
+              </button>
+            </div>
+            <div className="small2 mt10">Période rapide: {calendarRangeLabel || "—"}</div>
+            <div
+              className="mt12"
+              style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, textAlign: "center" }}
+            >
+              {["L", "M", "M", "J", "V", "S", "D"].map((label, idx) => (
+                <div key={`${label}-${idx}`} className="small2">
+                  {label}
+                </div>
+              ))}
+              {monthGrid.map((cell) => {
+                const key = cell.key;
+                const isSelected = key === selectedDateKey;
+                const isCurrentMonth = cell.inMonth;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`dayPill${isSelected ? " dayPillActive" : ""}`}
+                    onClick={() => {
+                      if (!key) return;
+                      setSelectedDate(key);
+                      setShowMonthPicker(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      height: 44,
+                      borderRadius: 12,
+                      padding: 0,
+                      opacity: isCurrentMonth ? 1 : 0.4,
+                    }}
+                  >
+                    <div className="dayPillDay">{cell.dayNumber}</div>
+                  </button>
+                );
+              })}
             </div>
           </Card>
         </div>

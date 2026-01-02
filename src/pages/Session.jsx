@@ -2,7 +2,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import { todayKey } from "../utils/dates";
-import { finishSessionForDate, getSessionByDate, skipSessionForDate, toggleSessionHabit } from "../logic/sessions";
+import {
+  finishSessionForDate,
+  getSessionByDate,
+  skipSessionForDate,
+  toggleSessionHabit,
+  updateSessionTimerForDate,
+} from "../logic/sessions";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 
@@ -27,7 +33,8 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {
     () => getSessionByDate({ sessions }, selectedDateKey, null),
     [sessions, selectedDateKey]
   );
-  const isRunning = Boolean(session && session.status === "partial");
+  const isRunning = Boolean(session && session.status === "partial" && session.timerRunning);
+  const isEditable = Boolean(session && session.status === "partial");
   useEffect(() => {
     if (!isRunning) return;
     const t = setInterval(() => setTick(Date.now()), 1000);
@@ -50,20 +57,70 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {
   const accent = category?.color || getAccentForPage(safeData, "home");
   const catAccentVars = getCategoryAccentVars(accent);
 
-  const startedAtMs = session?.startedAt ? new Date(session.startedAt).getTime() : NaN;
-  const elapsedMs = isRunning && Number.isFinite(startedAtMs) ? tick - startedAtMs : 0;
-  const elapsedLabel = formatElapsed(elapsedMs);
+  const timerAccumulatedSec = Number.isFinite(session?.timerAccumulatedSec) ? session.timerAccumulatedSec : 0;
+  const startedAtMs = session?.timerStartedAt ? new Date(session.timerStartedAt).getTime() : NaN;
+  const runningDeltaSec =
+    isRunning && Number.isFinite(startedAtMs) ? Math.max(0, Math.floor((tick - startedAtMs) / 1000)) : 0;
+  const elapsedSec = Math.max(0, timerAccumulatedSec + runningDeltaSec);
+  const elapsedLabel = formatElapsed(elapsedSec * 1000);
+  const sessionMinutes =
+    Number.isFinite(objective?.sessionMinutes) ? objective.sessionMinutes : null;
+  const habitMinutes = habits.find((h) => Number.isFinite(h.sessionMinutes))?.sessionMinutes;
+  const targetMinutes = Number.isFinite(sessionMinutes) ? sessionMinutes : habitMinutes ?? null;
+  const remainingSec =
+    Number.isFinite(targetMinutes) && targetMinutes != null
+      ? Math.max(0, Math.round(targetMinutes * 60 - elapsedSec))
+      : null;
+  const remainingLabel = remainingSec != null ? formatElapsed(remainingSec * 1000) : "";
   const hasHabits = habits.length > 0;
   const isFinal = Boolean(session && (session.status === "done" || session.status === "skipped"));
 
   function toggleDone(habitId, checked) {
-    if (!habitId || typeof setData !== "function") return;
+    if (!habitId || typeof setData !== "function" || !isEditable) return;
     setData((prev) => toggleSessionHabit(prev, dateKey, habitId, checked, objectiveId));
   }
 
-  function endSession() {
+  function startTimer() {
     if (!session || typeof setData !== "function" || !hasHabits) return;
-    const durationSec = Math.max(0, Math.floor(elapsedMs / 1000));
+    const nowIso = new Date().toISOString();
+    setData((prev) =>
+      updateSessionTimerForDate(prev, dateKey, {
+        objectiveId,
+        timerStartedAt: nowIso,
+        timerAccumulatedSec,
+        timerRunning: true,
+      })
+    );
+  }
+
+  function pauseTimer() {
+    if (!session || typeof setData !== "function") return;
+    setData((prev) =>
+      updateSessionTimerForDate(prev, dateKey, {
+        objectiveId,
+        timerStartedAt: "",
+        timerAccumulatedSec: elapsedSec,
+        timerRunning: false,
+      })
+    );
+  }
+
+  function resumeTimer() {
+    if (!session || typeof setData !== "function" || !hasHabits) return;
+    const nowIso = new Date().toISOString();
+    setData((prev) =>
+      updateSessionTimerForDate(prev, dateKey, {
+        objectiveId,
+        timerStartedAt: nowIso,
+        timerAccumulatedSec,
+        timerRunning: true,
+      })
+    );
+  }
+
+  function endSession() {
+    if (!session || typeof setData !== "function" || !hasHabits || !isEditable) return;
+    const durationSec = Math.max(0, Math.floor(elapsedSec));
     setData((prev) =>
       finishSessionForDate(prev, dateKey, {
         objectiveId,
@@ -76,7 +133,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {
   }
 
   function cancelSession() {
-    if (typeof setData !== "function") return;
+    if (typeof setData !== "function" || !isEditable) return;
     setData((prev) => skipSessionForDate(prev, dateKey, { objectiveId }));
     if (typeof onBack === "function") onBack();
   }
@@ -165,13 +222,29 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {
           <div className="p18">
             <div className="sectionTitle">Timer</div>
             <div className="titleSm" style={{ marginTop: 6 }}>
-              {isRunning ? elapsedLabel : "00:00"}
+              {elapsedLabel}
             </div>
-            {!isRunning ? (
+            {remainingLabel ? (
               <div className="small2" style={{ marginTop: 6 }}>
-                La session démarre quand tu passes à l’action.
+                Reste : {remainingLabel}
               </div>
             ) : null}
+            {!isRunning ? (
+              <div className="small2" style={{ marginTop: 6 }}>
+                {elapsedSec > 0 ? "Reprends quand tu es prêt." : "Appuie sur Démarrer pour lancer le timer."}
+              </div>
+            ) : null}
+            <div className="mt12 row" style={{ gap: 10 }}>
+              {isRunning ? (
+                <Button variant="ghost" onClick={pauseTimer}>
+                  Pause
+                </Button>
+              ) : (
+                <Button onClick={elapsedSec > 0 ? resumeTimer : startTimer} disabled={!hasHabits}>
+                  {elapsedSec > 0 ? "Reprendre" : "Démarrer"}
+                </Button>
+              )}
+            </div>
           </div>
         </Card>
 
@@ -188,7 +261,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {
                         <input
                           type="checkbox"
                           checked={doneSet.has(h.id)}
-                          disabled={!isRunning}
+                          disabled={!isEditable}
                           onChange={(e) => toggleDone(h.id, e.target.checked)}
                         />
                         <span>{doneSet.has(h.id) ? "Fait" : "À faire"}</span>
@@ -211,10 +284,10 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {
         </Card>
 
         <div className="mt12 row" style={{ justifyContent: "flex-end", gap: 10 }}>
-          <Button variant="ghost" onClick={cancelSession} disabled={!hasHabits || !isRunning}>
+          <Button variant="ghost" onClick={cancelSession} disabled={!hasHabits || !isEditable}>
             Annuler la session
           </Button>
-          <Button onClick={endSession} disabled={!hasHabits || !isRunning}>
+          <Button onClick={endSession} disabled={!hasHabits || !isEditable}>
             Terminer la session
           </Button>
         </div>

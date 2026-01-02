@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import TopNav from "./components/TopNav";
 import { migrate, usePersistedState } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
@@ -18,6 +18,7 @@ import CreateHabit from "./pages/CreateHabit";
 import Settings from "./pages/Settings";
 import CategoryDetail from "./pages/CategoryDetail";
 import CategoryView from "./pages/CategoryView";
+import CategoryDetailView from "./pages/CategoryDetailView";
 import Session from "./pages/Session";
 import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
 import { todayKey } from "./utils/dates";
@@ -115,17 +116,40 @@ const TABS = new Set([
   "create-goal",
   "create-habit",
   "session",
+  "category-detail",
   "settings",
 ]);
 function normalizeTab(t) {
   return TABS.has(t) ? t : "today";
 }
 
+function ensureOrder(order, categories) {
+  const ids = categories.map((c) => c.id);
+  const base = Array.isArray(order) ? order.filter((id) => ids.includes(id)) : [];
+  const missing = ids.filter((id) => !base.includes(id));
+  return [...base, ...missing];
+}
+
+function isSameOrder(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) if (a[i] !== b[i]) return false;
+  return true;
+}
+
 export default function App() {
   const [data, setData] = usePersistedState(React);
-  const initialTab =
-    typeof window !== "undefined" && window.location.pathname.startsWith("/session") ? "session" : "today";
+  const initialPath = typeof window !== "undefined" ? window.location.pathname : "/";
+  const initialCategoryDetailId = initialPath.startsWith("/category/")
+    ? decodeURIComponent(initialPath.split("/")[2] || "")
+    : null;
+  const initialTab = initialPath.startsWith("/session")
+    ? "session"
+    : initialPath.startsWith("/category")
+      ? "category-detail"
+      : "today";
   const [tab, _setTab] = useState(initialTab);
+  const [categoryDetailId, setCategoryDetailId] = useState(initialCategoryDetailId);
   const [libraryCategoryId, setLibraryCategoryId] = useState(null);
   const [activeReminder, setActiveReminder] = useState(null);
   const dataRef = useRef(data);
@@ -141,7 +165,14 @@ export default function App() {
       ui: { ...(prev.ui || {}), lastTab: t },
     }));
     if (typeof window !== "undefined") {
-      const nextPath = t === "session" ? "/session" : "/";
+      const nextPath =
+        t === "session"
+          ? "/session"
+          : t === "category-detail"
+            ? categoryDetailId
+              ? `/category/${categoryDetailId}`
+              : "/category"
+            : "/";
       if (window.location.pathname !== nextPath) window.history.pushState({}, "", nextPath);
     }
   };
@@ -190,15 +221,46 @@ export default function App() {
 
   const safeData = data && typeof data === "object" ? data : {};
   const themeName = getThemeName(safeData);
+  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
+  const categoryRailOrder = useMemo(
+    () => ensureOrder(safeData?.ui?.categoryRailOrder, categories),
+    [safeData?.ui?.categoryRailOrder, categories]
+  );
+  const orderedCategories = useMemo(() => {
+    const map = new Map(categories.map((c) => [c.id, c]));
+    return categoryRailOrder.map((id) => map.get(id)).filter(Boolean);
+  }, [categories, categoryRailOrder]);
+  const railSelectedId =
+    tab === "category-detail"
+      ? categoryDetailId
+      : safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
 
   useEffect(() => {
     applyThemeTokens(themeName);
   }, [themeName]);
   useEffect(() => {
+    if (!isSameOrder(categoryRailOrder, safeData?.ui?.categoryRailOrder || [])) {
+      setData((prev) => ({
+        ...prev,
+        ui: { ...(prev.ui || {}), categoryRailOrder },
+      }));
+    }
+  }, [categoryRailOrder, safeData?.ui?.categoryRailOrder, setData]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (tab !== "category-detail") return;
+    const nextPath = categoryDetailId ? `/category/${categoryDetailId}` : "/category";
+    if (window.location.pathname !== nextPath) window.history.pushState({}, "", nextPath);
+  }, [tab, categoryDetailId]);
+  useEffect(() => {
     // Do not restore tab during onboarding flows.
     const completed = Boolean(safeData?.ui?.onboardingCompleted);
     if (!completed) return;
-    if (typeof window !== "undefined" && window.location.pathname.startsWith("/session")) return;
+    if (
+      typeof window !== "undefined" &&
+      (window.location.pathname.startsWith("/session") || window.location.pathname.startsWith("/category"))
+    )
+      return;
     const last = normalizeTab(safeData?.ui?.lastTab);
     // keep current if already valid
     _setTab((cur) => (normalizeTab(cur) === last ? cur : last));
@@ -270,6 +332,26 @@ export default function App() {
             setTab("create-category");
           }}
           onOpenSession={() => setTab("session")}
+        />
+      ) : tab === "category-detail" ? (
+        <CategoryDetailView
+          data={data}
+          categoryId={
+            categoryDetailId ||
+            data?.ui?.selectedCategoryByView?.home ||
+            data?.ui?.selectedCategoryId ||
+            data?.categories?.[0]?.id ||
+            null
+          }
+          onBack={() => {
+            setCategoryDetailId(null);
+            setTab("today");
+          }}
+          onOpenLibrary={() => {
+            setCategoryDetailId(null);
+            setLibraryCategoryId(null);
+            setTab("library");
+          }}
         />
       ) : tab === "plan" ? (
         <CategoryDetail
@@ -378,6 +460,46 @@ export default function App() {
           setTab(next);
         }}
         onOpenSettings={() => setTab("settings")}
+        categories={orderedCategories}
+        categoryOrder={categoryRailOrder}
+        selectedCategoryId={railSelectedId}
+        onSelectCategory={(categoryId) => {
+          if (!categoryId) return;
+          if (tab === "today") {
+            setData((prev) => {
+              const prevUi = prev.ui || {};
+              const prevSel =
+                prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+                  ? prevUi.selectedCategoryByView
+                  : {};
+              return {
+                ...prev,
+                ui: {
+                  ...prevUi,
+                  selectedCategoryId: categoryId,
+                  selectedCategoryByView: { ...prevSel, home: categoryId },
+                },
+              };
+            });
+            return;
+          }
+          setCategoryDetailId(categoryId);
+          setTab("category-detail");
+        }}
+        onOpenCategoryDetail={(categoryId) => {
+          if (!categoryId) return;
+          setCategoryDetailId(categoryId);
+          setTab("category-detail");
+        }}
+        onReorderCategory={(nextOrder) => {
+          setData((prev) => ({
+            ...prev,
+            ui: {
+              ...(prev.ui || {}),
+              categoryRailOrder: ensureOrder(nextOrder, Array.isArray(prev.categories) ? prev.categories : []),
+            },
+          }));
+        }}
       />
 
       {activeReminder ? (

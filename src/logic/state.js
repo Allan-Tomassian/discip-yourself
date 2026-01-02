@@ -261,6 +261,7 @@ export function initialData() {
       activeGoalId: null,
       mainGoalId: null,
       selectedGoalByCategory: {},
+      categoryRailOrder: [],
       onboardingCompleted: false,
       onboardingStep: 1,
       showPlanStep: false,
@@ -317,6 +318,7 @@ export function demoData() {
       activeGoalId: null,
       mainGoalId: outcomeId,
       selectedGoalByCategory: {},
+      categoryRailOrder: [],
       onboardingCompleted: true,
       onboardingStep: 3,
       showPlanStep: false,
@@ -406,6 +408,7 @@ export function migrate(prev) {
   if (!next.ui.selectedGoalByCategory || typeof next.ui.selectedGoalByCategory !== "object") {
     next.ui.selectedGoalByCategory = {};
   }
+  if (!Array.isArray(next.ui.categoryRailOrder)) next.ui.categoryRailOrder = [];
 
   // V3: per-view selected category (decouple Today/Library/Plan)
   if (!next.ui.selectedCategoryByView || typeof next.ui.selectedCategoryByView !== "object") {

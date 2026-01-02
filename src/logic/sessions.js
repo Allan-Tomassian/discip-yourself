@@ -57,6 +57,19 @@ export function normalizeSession(rawSession) {
   const doneNormalized = normalizeIdList(doneBase);
   s.doneHabitIds = doneNormalized;
   s.doneHabits = doneNormalized;
+  const timer = s.timer && typeof s.timer === "object" ? s.timer : null;
+  if (typeof s.timerStartedAt !== "string")
+    s.timerStartedAt = typeof timer?.startedAt === "string" ? timer.startedAt : "";
+  if (!Number.isFinite(s.timerAccumulatedSec)) {
+    const rawAccum = timer?.accumulatedSec;
+    s.timerAccumulatedSec = Number.isFinite(rawAccum) ? normalizeDurationSec(rawAccum) : 0;
+  } else {
+    s.timerAccumulatedSec = normalizeDurationSec(s.timerAccumulatedSec);
+  }
+  if (typeof s.timerRunning !== "boolean") {
+    const inferred = typeof timer?.isRunning === "boolean" ? timer.isRunning : false;
+    s.timerRunning = inferred || (s.status === "partial" && Boolean(s.timerStartedAt));
+  }
   return s;
 }
 
@@ -165,9 +178,39 @@ export function startSessionForDate(state, dateKey, payload = {}) {
     habitIds,
     doneHabitIds: [],
     status: "partial",
-    startedAt: new Date().toISOString(),
+    startedAt: "",
+    timerStartedAt: "",
+    timerAccumulatedSec: 0,
+    timerRunning: false,
   });
   return { ...state, sessions: [...list, session] };
+}
+
+export function updateSessionTimerForDate(state, dateKey, payload = {}) {
+  if (!state) return state;
+  const key = normalizeDateKey(dateKey);
+  const list = Array.isArray(state.sessions) ? state.sessions : [];
+  const objectiveId = typeof payload.objectiveId === "string" ? payload.objectiveId : null;
+  const idx = findSessionIndexByDate(list, key, objectiveId, "partial");
+  if (idx < 0) return state;
+  const current = normalizeSession(list[idx]);
+  const timerStartedAt =
+    typeof payload.timerStartedAt === "string" ? payload.timerStartedAt : current.timerStartedAt;
+  const timerAccumulatedSec = Number.isFinite(payload.timerAccumulatedSec)
+    ? normalizeDurationSec(payload.timerAccumulatedSec)
+    : current.timerAccumulatedSec;
+  const timerRunning =
+    typeof payload.timerRunning === "boolean" ? payload.timerRunning : current.timerRunning;
+  const next = normalizeSession({
+    ...current,
+    timerStartedAt,
+    timerAccumulatedSec,
+    timerRunning,
+    startedAt: timerStartedAt || current.startedAt || "",
+  });
+  const nextSessions = list.slice();
+  nextSessions[idx] = next;
+  return { ...state, sessions: nextSessions };
 }
 
 export function toggleSessionHabit(state, dateKey, habitId, nextValue, objectiveId) {
@@ -204,6 +247,9 @@ export function finishSessionForDate(state, dateKey, payload = {}) {
     durationSec,
     duration,
     doneHabitIds,
+    timerRunning: false,
+    timerStartedAt: "",
+    timerAccumulatedSec: durationSec != null ? durationSec : current.timerAccumulatedSec,
   });
   const nextSessions = list.slice();
   nextSessions[idx] = finished;
@@ -225,6 +271,9 @@ export function skipSessionForDate(state, dateKey, payload = {}) {
     finishedAt: new Date().toISOString(),
     durationSec: 0,
     duration: 0,
+    timerRunning: false,
+    timerStartedAt: "",
+    timerAccumulatedSec: current.timerAccumulatedSec || 0,
   });
   const nextSessions = list.slice();
   nextSessions[idx] = skipped;

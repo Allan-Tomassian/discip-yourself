@@ -56,6 +56,11 @@ a{ color:inherit; }
   padding:8px;
   box-shadow: 0 18px 60px rgba(0,0,0,.35);
 }
+.navWrapRail{
+  border:0;
+  box-shadow:none;
+  background:var(--glass);
+}
 .navRow{
   display:flex;
   align-items:center;
@@ -290,6 +295,23 @@ a{ color:inherit; }
 .dayPillDay{ font-size:14px; font-weight:700; line-height:1; }
 .dayPillMonth{ font-size:11px; color:var(--muted2); line-height:1; }
 
+.hideScrollbar{
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hideScrollbar::-webkit-scrollbar{
+  display: none;
+}
+
+.scrollNoBar{
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollNoBar::-webkit-scrollbar{
+  display: none;
+  height: 0;
+}
+
 @media (max-width: 420px){
   .dayRailWrap{ flex-direction:column; }
   .dayRail{
@@ -424,4 +446,11 @@ a{ color:inherit; }
   0%{ opacity:.2; transform:scale(.98); }
   60%{ opacity:.6; transform:scale(1.02); }
   100%{ opacity:.2; transform:scale(.98); }
+}
+.hideScrollbar {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;    /* Firefox */
+}
+.hideScrollbar::-webkit-scrollbar {
+  display: none;            /* Chrome/Safari */
 }

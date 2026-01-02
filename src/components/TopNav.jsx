@@ -1,6 +1,17 @@
 import React from "react";
+import CategoryRail from "./CategoryRail";
 
-export default function TopNav({ active, setActive, onOpenSettings }) {
+export default function TopNav({
+  active,
+  setActive,
+  onOpenSettings,
+  categories = [],
+  categoryOrder = [],
+  selectedCategoryId = null,
+  onSelectCategory,
+  onOpenCategoryDetail,
+  onReorderCategory,
+}) {
   const items = [
     { id: "today", label: "Aujourd’hui" },
     { id: "library", label: "Bibliothèque" },
@@ -33,6 +44,18 @@ export default function TopNav({ active, setActive, onOpenSettings }) {
           </button>
         </div>
       </div>
+      {categories.length ? (
+        <div className="navWrap navWrapRail" style={{ marginTop: 8 }}>
+          <CategoryRail
+            categories={categories}
+            order={categoryOrder}
+            selectedId={selectedCategoryId}
+            onSelect={onSelectCategory}
+            onOpenDetail={onOpenCategoryDetail}
+            onReorder={onReorderCategory}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
