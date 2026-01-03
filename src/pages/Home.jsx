@@ -5,11 +5,8 @@ import {
   addDays,
   addMonths,
   buildMonthGrid,
-  dayKey,
-  getDayStatus,
   getMonthLabelFR,
   startOfMonth,
-  todayKey,
 } from "../utils/dates";
 import { setMainGoal } from "../logic/goals";
 import { getDoneSessionsForDate, getSessionByDate, startSessionForDate } from "../logic/sessions";
@@ -37,7 +34,7 @@ const MICRO_ACTIONS = [
 ];
 
 function initMicroState(dayKeyValue) {
-  const key = dayKeyValue || todayKey(new Date());
+  const key = dayKeyValue || toLocalDateKey(new Date());
   return {
     dayKey: key,
     cursor: Math.min(3, MICRO_ACTIONS.length),
@@ -49,6 +46,23 @@ function initMicroState(dayKeyValue) {
   };
 }
 
+// Build a local date key without UTC shift (timezone-safe).
+function toLocalDateKey(d) {
+  if (!(d instanceof Date)) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// Parse a local date key at midday to avoid DST edge cases.
+function fromLocalDateKey(key) {
+  if (typeof key !== "string") return new Date();
+  const [y, m, d] = key.split("-").map((v) => parseInt(v, 10));
+  if (!y || !m || !d) return new Date();
+  return new Date(y, m - 1, d, 12, 0, 0);
+}
+
 export default function Home({
   data,
   setData,
@@ -58,9 +72,11 @@ export default function Home({
   onOpenSession,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
-  const selectedDateKey = safeData.ui?.selectedDate || todayKey();
-  const selectedDate = new Date(`${selectedDateKey}T12:00:00`);
-  const selectedStatus = getDayStatus(selectedDateKey, new Date());
+  const selectedDateKey = safeData.ui?.selectedDate || toLocalDateKey(new Date());
+  const selectedDate = fromLocalDateKey(selectedDateKey);
+  const localTodayKey = toLocalDateKey(new Date());
+  const selectedStatus =
+    selectedDateKey === localTodayKey ? "today" : selectedDateKey < localTodayKey ? "past" : "future";
   const canValidate = selectedStatus === "today";
   const canEdit = selectedStatus !== "past";
   const lockMessage = selectedStatus === "past" ? "Lecture seule" : "Disponible le jour J";
@@ -71,8 +87,11 @@ export default function Home({
   const [showDisciplineStats, setShowDisciplineStats] = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(selectedDate));
-  const todayKeyRef = useRef(todayKey(new Date()));
+  const todayKeyRef = useRef(localTodayKey);
   const railRef = useRef(null);
+  const railItemRefs = useRef(new Map());
+  const railScrollTimer = useRef(null);
+  const skipAutoCenterRef = useRef(false);
   const profile = safeData.profile || {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -90,14 +109,14 @@ export default function Home({
     if (safeData.ui?.selectedDate) return;
     setData((prev) => ({
       ...prev,
-      ui: { ...(prev.ui || {}), selectedDate: todayKey(new Date()) },
+      ui: { ...(prev.ui || {}), selectedDate: toLocalDateKey(new Date()) },
     }));
   }, [safeData.ui?.selectedDate, setData]);
 
   useEffect(() => {
     if (typeof setData !== "function") return;
     const id = setInterval(() => {
-      const nowKey = todayKey(new Date());
+      const nowKey = toLocalDateKey(new Date());
       if (nowKey === todayKeyRef.current) return;
       const prevKey = todayKeyRef.current;
       todayKeyRef.current = nowKey;
@@ -227,7 +246,7 @@ const selectedGoal = useMemo(() => {
       let done = 0;
       let keptDays = 0;
       for (let i = 0; i < days; i += 1) {
-        const key = dayKey(addDays(now, -i));
+        const key = toLocalDateKey(addDays(now, -i));
         const doneIds = getDoneIdsForDate(key);
         let kept = true;
         for (const id of processIds) if (doneIds.has(id)) done += 1;
@@ -250,7 +269,7 @@ const selectedGoal = useMemo(() => {
 
     let microDone14 = 0;
     for (let i = 0; i < 14; i += 1) {
-      const key = dayKey(addDays(now, -i));
+      const key = toLocalDateKey(addDays(now, -i));
       const bucket = checks?.[key];
       const list = Array.isArray(bucket?.micro) ? bucket.micro : [];
       const unique = new Set(list);
@@ -299,11 +318,12 @@ const selectedGoal = useMemo(() => {
     return "Session en cours";
   }, [sessionForDay, sessionHabit]);
 
+  const railAnchorDate = useMemo(() => fromLocalDateKey(localTodayKey), [localTodayKey]);
   const railItems = useMemo(() => {
-    const offsets = Array.from({ length: 15 }, (_, i) => i - 7);
+    const offsets = Array.from({ length: 31 }, (_, i) => i - 15);
     return offsets.map((offset) => {
-      const d = addDays(selectedDate, offset);
-      const key = dayKey(d);
+      const d = addDays(railAnchorDate, offset);
+      const key = toLocalDateKey(d);
       const parts = key.split("-");
       return {
         key,
@@ -311,10 +331,10 @@ const selectedGoal = useMemo(() => {
         day: parts[2] || "",
         month: parts[1] || "",
         isSelected: key === selectedDateKey,
-        status: getDayStatus(key, new Date()),
+        status: key === localTodayKey ? "today" : key < localTodayKey ? "past" : "future",
       };
     });
-  }, [selectedDate, selectedDateKey]);
+  }, [railAnchorDate, selectedDateKey, localTodayKey]);
 
   const calendarRangeLabel = useMemo(() => {
     try {
@@ -344,18 +364,22 @@ const selectedGoal = useMemo(() => {
     setMonthCursor(startOfMonth(selectedDate));
   }, [selectedDateKey]);
 
-  function setSelectedDate(nextKey) {
-    if (!nextKey || typeof setData !== "function") return;
-    setData((prev) => ({
-      ...prev,
-      ui: { ...(prev.ui || {}), selectedDate: nextKey },
-    }));
-  }
+  const setSelectedDate = useCallback(
+    (nextKey) => {
+      if (!nextKey || typeof setData !== "function") return;
+      setData((prev) => ({
+        ...prev,
+        ui: { ...(prev.ui || {}), selectedDate: nextKey },
+      }));
+    },
+    [setData]
+  );
 
   const scrollRailToKey = useCallback((dateKeyValue, behavior = "smooth") => {
     const container = railRef.current;
     if (!container || !dateKeyValue) return;
-    const el = container.querySelector(`[data-datekey="${dateKeyValue}"]`);
+    const refEl = railItemRefs.current.get(dateKeyValue);
+    const el = refEl || container.querySelector(`[data-datekey="${dateKeyValue}"]`);
     if (!el) return;
     const targetLeft = el.offsetLeft - (container.clientWidth / 2 - el.clientWidth / 2);
     if (Number.isFinite(targetLeft)) {
@@ -367,10 +391,48 @@ const selectedGoal = useMemo(() => {
     }
   }, []);
 
+  const updateSelectedFromScroll = useCallback(() => {
+    const container = railRef.current;
+    if (!container || !railItemRefs.current.size) return;
+    const centerX = container.scrollLeft + container.clientWidth / 2;
+    let closestKey = null;
+    let minDist = Number.POSITIVE_INFINITY;
+    railItemRefs.current.forEach((el, key) => {
+      if (!el) return;
+      const itemCenter = el.offsetLeft + el.offsetWidth / 2;
+      const dist = Math.abs(itemCenter - centerX);
+      if (dist < minDist) {
+        minDist = dist;
+        closestKey = key;
+      }
+    });
+    if (closestKey && closestKey !== selectedDateKey) {
+      skipAutoCenterRef.current = true;
+      setSelectedDate(closestKey);
+    }
+  }, [selectedDateKey, setSelectedDate]);
+
+  const handleRailScroll = useCallback(() => {
+    if (railScrollTimer.current) clearTimeout(railScrollTimer.current);
+    railScrollTimer.current = setTimeout(() => {
+      updateSelectedFromScroll();
+    }, 80);
+  }, [updateSelectedFromScroll]);
+
   useEffect(() => {
     if (!selectedDateKey) return;
+    if (skipAutoCenterRef.current) {
+      skipAutoCenterRef.current = false;
+      return;
+    }
     requestAnimationFrame(() => scrollRailToKey(selectedDateKey, "auto"));
   }, [scrollRailToKey, selectedDateKey, railItems.length]);
+
+  useEffect(() => {
+    return () => {
+      if (railScrollTimer.current) clearTimeout(railScrollTimer.current);
+    };
+  }, []);
 
   function openCreateFlow(kind) {
     if (kind === "category" && typeof onOpenCreateCategory === "function") {
@@ -596,7 +658,7 @@ const selectedGoal = useMemo(() => {
                   <Button
                     variant="ghost"
                     onClick={() => {
-                      const today = todayKey(new Date());
+                      const today = toLocalDateKey(new Date());
                       setSelectedDate(today);
                       requestAnimationFrame(() => scrollRailToKey(today));
                     }}
@@ -612,31 +674,42 @@ const selectedGoal = useMemo(() => {
                   </Button>
                 </div>
               </div>
-              <div
-                className="dayRail mt12 scrollNoBar"
-                style={{ flexDirection: "row", gap: 8, overflowX: "auto", paddingBottom: 4 }}
-                ref={railRef}
-              >
-                {railItems.map((item) => (
-                  <button
-                    key={item.key}
-                    className={`dayPill${item.isSelected ? " dayPillActive" : ""}`}
-                    data-datekey={item.key}
-                    onClick={() => {
-                      setSelectedDate(item.key);
-                      scrollRailToKey(item.key);
-                    }}
-                    type="button"
-                    style={{
-                      minWidth: 52,
-                      padding: "10px 0",
-                      opacity: item.status === "past" ? 0.6 : 1,
-                    }}
-                  >
-                    <div className="dayPillDay">{item.day}</div>
-                    <div className="dayPillMonth">/{item.month}</div>
-                  </button>
-                ))}
+              <div className="calendarRailWrap mt12">
+                <div className="calendarSelector" aria-hidden="true">
+                  <span className="calendarSelectorDot" />
+                </div>
+                <div
+                  className="calendarRail scrollNoBar"
+                  ref={railRef}
+                  onScroll={handleRailScroll}
+                >
+                  {railItems.map((item) => (
+                    <button
+                      key={item.key}
+                      ref={(el) => {
+                        if (el) railItemRefs.current.set(item.key, el);
+                        else railItemRefs.current.delete(item.key);
+                      }}
+                      className={`dayPill calendarItem ${
+                        item.key === selectedDateKey
+                          ? "is-current"
+                          : item.key < selectedDateKey
+                            ? "is-past"
+                            : "is-future"
+                      }`}
+                      data-datekey={item.key}
+                      data-status={item.status}
+                      onClick={() => {
+                        scrollRailToKey(item.key);
+                        setSelectedDate(item.key);
+                      }}
+                      type="button"
+                    >
+                      <div className="dayPillDay">{item.day}</div>
+                      <div className="dayPillMonth">/{item.month}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="sectionSub" style={{ marginTop: 8 }}>
                 {selectedStatus === "past" ? "Lecture seule" : selectedStatus === "today" ? "Aujourd’hui" : "À venir"}
@@ -797,17 +870,17 @@ const selectedGoal = useMemo(() => {
                 </div>
               ))}
               {monthGrid.map((cell) => {
-                const key = cell.key;
-                const isSelected = key === selectedDateKey;
+                const localKey = toLocalDateKey(cell.dateObj);
+                const isSelected = localKey === selectedDateKey;
                 const isCurrentMonth = cell.inMonth;
                 return (
                   <button
-                    key={key}
+                    key={localKey}
                     type="button"
                     className={`dayPill${isSelected ? " dayPillActive" : ""}`}
                     onClick={() => {
-                      if (!key) return;
-                      setSelectedDate(key);
+                      if (!localKey) return;
+                      setSelectedDate(localKey);
                       setShowMonthPicker(false);
                     }}
                     style={{
