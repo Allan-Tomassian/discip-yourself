@@ -8,7 +8,7 @@ export default function ScreenShell({
   headerTitle,
   headerSubtitle,
   headerRight,
-  headerAlign = "center",
+  headerAlign = "left",
   children,
 }) {
   const textAlign = headerAlign === "left" ? "left" : headerAlign === "right" ? "right" : "center";

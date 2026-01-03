@@ -205,13 +205,16 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
     );
   }
 
+  const sessionTitle = objective?.title || "Objectif";
+  const sessionSubtitle = category?.name || "Catégorie";
+
   if (isFinal) {
     const statusLabel = session.status === "done" ? "Session terminée" : "Session annulée";
     return (
       <ScreenShell
         accent={accent}
-        headerTitle={<span className="textAccent">Session</span>}
-        headerSubtitle={`${category?.name || "Catégorie"} · ${objective?.title || "Objectif"}`}
+        headerTitle={<span className="textAccent">{sessionTitle}</span>}
+        headerSubtitle={sessionSubtitle}
         backgroundImage={category?.wallpaper || safeData.profile?.whyImage || ""}
       >
         <Card accentBorder>
@@ -234,8 +237,8 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
   return (
     <ScreenShell
       accent={accent}
-      headerTitle={<span className="textAccent">Session</span>}
-      headerSubtitle={`${category?.name || "Catégorie"} · ${objective?.title || "Objectif"}`}
+      headerTitle={<span className="textAccent">{sessionTitle}</span>}
+      headerSubtitle={sessionSubtitle}
       backgroundImage={category?.wallpaper || safeData.profile?.whyImage || ""}
     >
       <div style={catAccentVars}>
@@ -287,13 +290,13 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
 
         <Card accentBorder style={{ marginTop: 12 }}>
           <div className="p18">
-            <div className="sectionTitle">Habitudes</div>
+            <div className="sectionTitle">Actions</div>
             {habits.length ? (
               <div className="mt12 col" style={{ gap: 10 }}>
                 {habits.map((h) => (
                   <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
                     <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                      <div className="itemTitle">{h.title || "Habitude"}</div>
+                      <div className="itemTitle">{h.title || "Action"}</div>
                       <label className="includeToggle">
                         <input
                           type="checkbox"
@@ -309,7 +312,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
               </div>
             ) : (
               <div className="mt12 col">
-                <div className="small2">Aucune habitude disponible pour cette session.</div>
+                <div className="small2">Aucune action disponible pour cette session.</div>
                 <div className="mt10">
                   <Button variant="ghost" onClick={typeof onOpenLibrary === "function" ? onOpenLibrary : onBack}>
                     Aller à Bibliothèque

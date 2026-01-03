@@ -367,7 +367,23 @@ export default function App() {
   return (
     <>
       <TopNav
-        active={tab}
+        active={
+          tab === "session"
+            ? "today"
+            : tab === "library" ||
+                tab === "create" ||
+                tab === "create-category" ||
+                tab === "create-goal" ||
+                tab === "create-habit" ||
+                tab === "category-detail" ||
+                tab === "category-progress"
+              ? "library"
+              : tab === "plan"
+                ? "plan"
+                : tab === "settings"
+                  ? "settings"
+                  : tab
+        }
         setActive={(next) => {
           if (next === "library") setLibraryCategoryId(null);
           setTab(next);

@@ -165,6 +165,7 @@ export default function Home({
   const [showDayStats, setShowDayStats] = useState(false);
   const [showDisciplineStats, setShowDisciplineStats] = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [microOpen, setMicroOpen] = useState(true);
   const [dailyNote, setDailyNote] = useState("");
   const [blockOrder, setBlockOrder] = useState(() => {
     try {
@@ -180,7 +181,7 @@ export default function Home({
   const todayKeyRef = useRef(localTodayKey);
   const railRef = useRef(null);
   const railItemRefs = useRef(new Map());
-  const railScrollTimer = useRef(null);
+  const railScrollRaf = useRef(null);
   const skipAutoCenterRef = useRef(false);
 
   // Data slices
@@ -526,10 +527,11 @@ export default function Home({
   }, [selectedDateKey, setSelectedDate]);
 
   const handleRailScroll = useCallback(() => {
-    if (railScrollTimer.current) clearTimeout(railScrollTimer.current);
-    railScrollTimer.current = setTimeout(() => {
+    if (railScrollRaf.current) return;
+    railScrollRaf.current = requestAnimationFrame(() => {
+      railScrollRaf.current = null;
       updateSelectedFromScroll();
-    }, 80);
+    });
   }, [updateSelectedFromScroll]);
 
   useEffect(() => {
@@ -543,7 +545,7 @@ export default function Home({
 
   useEffect(() => {
     return () => {
-      if (railScrollTimer.current) clearTimeout(railScrollTimer.current);
+      if (railScrollRaf.current) cancelAnimationFrame(railScrollRaf.current);
     };
   }, []);
 
@@ -733,13 +735,13 @@ export default function Home({
                     return (
                       <Card style={{ marginTop: 12 }}>
                         <div className="p18">
-                          <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                          <div className="row rowStart" style={{ alignItems: "center", gap: 8 }}>
                             <DragHandle
                               attributes={attributes}
                               listeners={listeners}
                               setActivatorNodeRef={setActivatorNodeRef}
                             />
-                            <div className="sectionTitle textAccent">Focus du jour</div>
+                            <div className="sectionTitle">Focus du jour</div>
                           </div>
                           <div className="mt12">
                             <div className="small2">Catégorie</div>
@@ -803,14 +805,14 @@ export default function Home({
                       <Card style={{ marginTop: 12 }}>
                         <div className="p18">
                           <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                            <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                            <div className="row rowStart" style={{ alignItems: "center", gap: 8 }}>
                               <DragHandle
                                 attributes={attributes}
                                 listeners={listeners}
                                 setActivatorNodeRef={setActivatorNodeRef}
                               />
                               <div>
-                                <div className="sectionTitle textAccent">Calendrier</div>
+                                <div className="sectionTitle">Calendrier</div>
                                 <div className="small2 mt8">
                                   {selectedDateLabel || "—"}
                                 </div>
@@ -885,68 +887,89 @@ export default function Home({
                     return (
                       <Card style={{ marginTop: 12 }}>
                         <div className="p18">
-                          <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                          <div className="row rowStart" style={{ alignItems: "center", gap: 8 }}>
                             <DragHandle
                               attributes={attributes}
                               listeners={listeners}
                               setActivatorNodeRef={setActivatorNodeRef}
                             />
-                            <div className="sectionTitle textAccent">Micro-actions</div>
+                            <div className="sectionTitle">Micro-actions</div>
+                            <button
+                              className="linkBtn microToggle"
+                              type="button"
+                              onClick={() => setMicroOpen((v) => !v)}
+                              style={{ marginLeft: "auto" }}
+                            >
+                              {microOpen ? "-" : "+"}
+                            </button>
                           </div>
-                          <div className="sectionSub">Trois impulsions simples</div>
-                          <div className="mt12 col" style={{ gap: 10 }}>
-                            {microItems.map((item) => {
-                              const isMicroDone = dayChecks.micro.includes(item.id);
-                              const canAddMicro = canValidate && microDoneToday < 3 && !isMicroDone;
-                              return (
-                                <div key={item.uid} className="listItem catAccentRow" style={catAccentVars}>
-                                  <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                                    <div className="itemTitle" style={{ flex: 1, minWidth: 0 }}>
-                                      {item.label}
+                          {microOpen ? (
+                            <>
+                              <div className="sectionSub">Trois impulsions simples</div>
+                              <div className="mt12 col" style={{ gap: 10 }}>
+                                {microItems.map((item) => {
+                                  const isMicroDone = dayChecks.micro.includes(item.id);
+                                  const canAddMicro = canValidate && microDoneToday < 3 && !isMicroDone;
+                                  return (
+                                    <div key={item.uid} className="listItem catAccentRow" style={catAccentVars}>
+                                      <div
+                                        className="row"
+                                        style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}
+                                      >
+                                        <div className="itemTitle" style={{ flex: 1, minWidth: 0 }}>
+                                          {item.label}
+                                        </div>
+                                        <Button
+                                          variant="ghost"
+                                          disabled={!canAddMicro}
+                                          onClick={() => {
+                                            if (!canAddMicro) return;
+                                            setData((prev) => {
+                                              const nextChecks = { ...(prev.checks || {}) };
+                                              const rawBucket = nextChecks[selectedDateKey];
+                                              const dayBucket =
+                                                rawBucket && typeof rawBucket === "object" ? { ...rawBucket } : {};
+                                              const microIds = Array.isArray(dayBucket.micro)
+                                                ? [...dayBucket.micro]
+                                                : [];
+                                              const unique = new Set(microIds);
+                                              if (unique.size >= 3 || unique.has(item.id)) return prev;
+                                              dayBucket.micro = [...microIds, item.id];
+                                              nextChecks[selectedDateKey] = dayBucket;
+                                              return { ...prev, checks: nextChecks };
+                                            });
+                                            setMicroState((prev) => {
+                                              const remaining = prev.items.filter((i) => i.uid !== item.uid);
+                                              const nextItem = MICRO_ACTIONS[prev.cursor % MICRO_ACTIONS.length];
+                                              const next = nextItem
+                                                ? {
+                                                    uid: `${nextItem.id}-${selectedDateKey}-${Date.now()}`,
+                                                    id: nextItem.id,
+                                                    label: nextItem.label,
+                                                  }
+                                                : null;
+                                              return {
+                                                ...prev,
+                                                cursor: (prev.cursor + 1) % MICRO_ACTIONS.length,
+                                                items: next ? [...remaining, next] : remaining,
+                                              };
+                                            });
+                                          }}
+                                        >
+                                          +1
+                                        </Button>
+                                      </div>
+                                      {!canValidate ? (
+                                        <div className="sectionSub" style={{ marginTop: 8 }}>
+                                          {lockMessage}
+                                        </div>
+                                      ) : null}
                                     </div>
-                                    <Button
-                                      variant="ghost"
-                                      disabled={!canAddMicro}
-                                      onClick={() => {
-                                        if (!canAddMicro) return;
-                                        setData((prev) => {
-                                          const nextChecks = { ...(prev.checks || {}) };
-                                          const rawBucket = nextChecks[selectedDateKey];
-                                          const dayBucket =
-                                            rawBucket && typeof rawBucket === "object" ? { ...rawBucket } : {};
-                                          const microIds = Array.isArray(dayBucket.micro) ? [...dayBucket.micro] : [];
-                                          const unique = new Set(microIds);
-                                          if (unique.size >= 3 || unique.has(item.id)) return prev;
-                                          dayBucket.micro = [...microIds, item.id];
-                                          nextChecks[selectedDateKey] = dayBucket;
-                                          return { ...prev, checks: nextChecks };
-                                        });
-                                        setMicroState((prev) => {
-                                          const remaining = prev.items.filter((i) => i.uid !== item.uid);
-                                          const nextItem = MICRO_ACTIONS[prev.cursor % MICRO_ACTIONS.length];
-                                          const next = nextItem
-                                            ? {
-                                                uid: `${nextItem.id}-${selectedDateKey}-${Date.now()}`,
-                                                id: nextItem.id,
-                                                label: nextItem.label,
-                                              }
-                                            : null;
-                                          return {
-                                            ...prev,
-                                            cursor: (prev.cursor + 1) % MICRO_ACTIONS.length,
-                                            items: next ? [...remaining, next] : remaining,
-                                          };
-                                        });
-                                      }}
-                                    >
-                                      +1
-                                    </Button>
-                                  </div>
-                                  {!canValidate ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
-                                </div>
-                              );
-                            })}
-                          </div>
+                                  );
+                                })}
+                              </div>
+                            </>
+                          ) : null}
                         </div>
                       </Card>
                     );
@@ -955,13 +978,13 @@ export default function Home({
                   return (
                     <Card style={{ marginTop: 12 }}>
                       <div className="p18">
-                        <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                        <div className="row rowStart" style={{ alignItems: "center", gap: 8 }}>
                           <DragHandle
                             attributes={attributes}
                             listeners={listeners}
                             setActivatorNodeRef={setActivatorNodeRef}
                           />
-                          <div className="sectionTitle textAccent">Note du jour</div>
+                          <div className="sectionTitle">Note du jour</div>
                         </div>
                         <div className="mt12">
                           <Textarea

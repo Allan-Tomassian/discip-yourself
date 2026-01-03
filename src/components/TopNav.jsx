@@ -63,7 +63,7 @@ export default function TopNav({
             ))}
           </div>
           <button
-            className="navGear"
+            className={`navGear${active === "settings" ? " navGearActive" : ""}`}
             type="button"
             onClick={() => (typeof onOpenSettings === "function" ? onOpenSettings() : null)}
             aria-label="Réglages"
