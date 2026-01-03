@@ -51,8 +51,6 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
   if (categories.length === 0) {
     return (
       <ScreenShell
-        data={safeData}
-        pageId="categories"
         headerTitle={<span className="textAccent">Bibliothèque</span>}
         headerSubtitle="Aucune catégorie"
         headerRight={
@@ -84,10 +82,21 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
     return copy;
   }, [categories, librarySelectedCategoryId]);
 
+  const countsByCategory = useMemo(() => {
+    const map = new Map();
+    for (const g of goals) {
+      if (!g || !g.categoryId) continue;
+      const type = resolveGoalType(g);
+      const entry = map.get(g.categoryId) || { habits: 0, objectives: 0 };
+      if (type === "OUTCOME") entry.objectives += 1;
+      if (type === "PROCESS") entry.habits += 1;
+      map.set(g.categoryId, entry);
+    }
+    return map;
+  }, [goals]);
+
   return (
     <ScreenShell
-      data={safeData}
-      pageId="categories"
       headerTitle={<span className="textAccent">Bibliothèque</span>}
       headerSubtitle="Catégories"
       headerRight={
@@ -102,9 +111,9 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
     >
       <div className="col">
         {sortedCategories.map((c) => {
-          const categoryGoals = goals.filter((g) => g.categoryId === c.id);
-          const objectives = categoryGoals.filter((g) => resolveGoalType(g) === "OUTCOME").length;
-          const habits = categoryGoals.filter((g) => resolveGoalType(g) === "PROCESS").length;
+          const counts = countsByCategory.get(c.id) || { habits: 0, objectives: 0 };
+          const objectives = counts.objectives;
+          const habits = counts.habits;
           const summary =
             objectives || habits
               ? `${formatCount(habits, "habitude", "habitudes")} · ${formatCount(objectives, "objectif", "objectifs")}`

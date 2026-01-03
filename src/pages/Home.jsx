@@ -29,6 +29,7 @@ import { getDoneSessionsForDate, getSessionByDate, startSessionForDate } from ".
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 
+// ---- Helpers
 function resolveGoalType(goal) {
   const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
   if (raw === "OUTCOME" || raw === "PROCESS") return raw;
@@ -40,6 +41,7 @@ function resolveGoalType(goal) {
   return "PROCESS";
 }
 
+// ---- Micro-actions
 const MICRO_ACTIONS = [
   { id: "micro_flexions", label: "Faire 10 flexions" },
   { id: "micro_mot", label: "Apprendre un mot" },
@@ -89,6 +91,7 @@ function normalizeBlockOrder(raw) {
   return cleaned.length ? cleaned : [...DEFAULT_BLOCK_ORDER];
 }
 
+// ---- Drag & drop
 function DragHandle({ setActivatorNodeRef, listeners, attributes }) {
   return (
     <button
@@ -156,6 +159,7 @@ export default function Home({
   const canEdit = selectedStatus !== "past";
   const lockMessage = selectedStatus === "past" ? "Lecture seule" : "Disponible le jour J";
 
+  // State
   const [showWhy, setShowWhy] = useState(true);
   const [microState, setMicroState] = useState(() => initMicroState(selectedDateKey));
   const [showDayStats, setShowDayStats] = useState(false);
@@ -171,11 +175,15 @@ export default function Home({
     }
   });
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(selectedDate));
+
+  // Refs
   const todayKeyRef = useRef(localTodayKey);
   const railRef = useRef(null);
   const railItemRefs = useRef(new Map());
   const railScrollTimer = useRef(null);
   const skipAutoCenterRef = useRef(false);
+
+  // Data slices
   const profile = safeData.profile || {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -188,6 +196,7 @@ export default function Home({
     return { habits, micro };
   }, [checks, selectedDateKey]);
 
+  // Effects
   useEffect(() => {
     if (typeof setData !== "function") return;
     if (safeData.ui?.selectedDate) return;
@@ -231,31 +240,32 @@ export default function Home({
     return () => clearInterval(id);
   }, [setData]);
 
+  // Derived data
   // per-view category selection for Home (fallback to legacy)
-const homeSelectedCategoryId =
-  safeData.ui?.selectedCategoryByView?.home || safeData.ui?.selectedCategoryId || null;
+  const homeSelectedCategoryId =
+    safeData.ui?.selectedCategoryByView?.home || safeData.ui?.selectedCategoryId || null;
 
-const focusCategory = useMemo(() => {
-  if (!categories.length) return null;
-  const selected = categories.find((c) => c.id === homeSelectedCategoryId) || null;
-  if (selected) return selected;
-  const withGoal = categories.find((c) =>
-    goals.some((g) => g.categoryId === c.id && resolveGoalType(g) === "OUTCOME")
-  );
-  return withGoal || categories[0] || null;
-}, [categories, goals, homeSelectedCategoryId]);
+  const focusCategory = useMemo(() => {
+    if (!categories.length) return null;
+    const selected = categories.find((c) => c.id === homeSelectedCategoryId) || null;
+    if (selected) return selected;
+    const withGoal = categories.find((c) =>
+      goals.some((g) => g.categoryId === c.id && resolveGoalType(g) === "OUTCOME")
+    );
+    return withGoal || categories[0] || null;
+  }, [categories, goals, homeSelectedCategoryId]);
 
-const mainGoalId = typeof focusCategory?.mainGoalId === "string" ? focusCategory.mainGoalId : null;
+  const mainGoalId = typeof focusCategory?.mainGoalId === "string" ? focusCategory.mainGoalId : null;
 
-const outcomeGoals = useMemo(() => {
-  if (!focusCategory?.id) return [];
-  return goals.filter((g) => g.categoryId === focusCategory.id && resolveGoalType(g) === "OUTCOME");
-}, [goals, focusCategory?.id]);
+  const outcomeGoals = useMemo(() => {
+    if (!focusCategory?.id) return [];
+    return goals.filter((g) => g.categoryId === focusCategory.id && resolveGoalType(g) === "OUTCOME");
+  }, [goals, focusCategory?.id]);
 
-const selectedGoal = useMemo(() => {
-  if (!focusCategory?.id || !mainGoalId) return null;
-  return outcomeGoals.find((g) => g.id === mainGoalId) || null;
-}, [focusCategory?.id, mainGoalId, outcomeGoals]);
+  const selectedGoal = useMemo(() => {
+    if (!focusCategory?.id || !mainGoalId) return null;
+    return outcomeGoals.find((g) => g.id === mainGoalId) || null;
+  }, [focusCategory?.id, mainGoalId, outcomeGoals]);
 
   const dayDoneSessions = useMemo(
     () => getDoneSessionsForDate(sessions, selectedDateKey),
@@ -466,6 +476,7 @@ const selectedGoal = useMemo(() => {
     setMonthCursor(startOfMonth(selectedDate));
   }, [selectedDateKey]);
 
+  // Handlers
   const setSelectedDate = useCallback(
     (nextKey) => {
       if (!nextKey || typeof setData !== "function") return;
@@ -585,6 +596,7 @@ const selectedGoal = useMemo(() => {
   }, []);
 
 
+  // Render
   if (!categories.length) {
     return (
       <ScreenShell

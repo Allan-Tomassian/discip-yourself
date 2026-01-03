@@ -20,6 +20,7 @@ body{
   background:var(--bg);
   color:var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  overflow-x:hidden;
 }
 
 a{ color:inherit; }
@@ -31,6 +32,7 @@ a{ color:inherit; }
   min-height:100vh;
   overflow:visible;
   padding-bottom:80px;
+  overflow-x:hidden;
 }
 .pageContent{
   margin-top: 0;
@@ -38,6 +40,24 @@ a{ color:inherit; }
 .pageContent > :first-child{
   margin-top: 0;
 }
+
+/* === PAGE LAYOUT SYSTEM === */
+.pageHeader{
+  margin-bottom:24px;
+}
+.pageTitle{
+  margin-top:0;
+}
+.pageSubtitle{
+  margin-top:8px;
+}
+.pageSection{
+  margin-top:16px;
+}
+.pageSectionTitle{
+  margin-bottom:8px;
+}
+.pageSectionContent{}
 
 .bg{
   position:fixed; inset:0; z-index:-2;
@@ -151,8 +171,25 @@ a{ color:inherit; }
   font-size:13px;
 }
 
-.hdrSub{ font-size:13px; color:rgba(255,255,255,.60); }
-.hdrTitle{ margin-top:6px; font-size:26px; font-weight:700; letter-spacing:-.02em; }
+.hdrRow{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+.hdrLeft{ flex:1 1 auto; min-width:0; }
+.hdrRight{ flex:0 1 auto; min-width:0; max-width:260px; overflow:hidden; }
+.hdrSub{
+  font-size:13px;
+  color:rgba(255,255,255,.60);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.hdrTitle{
+  margin-top:6px;
+  font-size:26px;
+  font-weight:700;
+  letter-spacing:-.02em;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
 .textAccent{ color:var(--accent); }
 
 .sectionTitle{
@@ -504,6 +541,7 @@ a{ color:inherit; }
 }
 
 @media (max-width: 420px){
+  .hdrRight{ max-width:45vw; }
   .dayRailWrap{ flex-direction:column; }
   .dayRail{
     flex-direction:row;

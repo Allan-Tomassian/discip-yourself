@@ -173,8 +173,6 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
   if (!categories.length) {
     return (
       <ScreenShell
-        data={safeData}
-        pageId="categories"
         headerTitle={<span className="textAccent">Gérer</span>}
         headerSubtitle="Aucune catégorie"
         backgroundImage={safeData?.profile?.whyImage || ""}
@@ -187,7 +185,7 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
             </div>
             <div className="mt12">
               <Button variant="ghost" onClick={onBack}>
-                ← Bibliothèque
+                ← Retour
               </Button>
             </div>
           </div>
@@ -199,8 +197,6 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
   if (!category) {
     return (
       <ScreenShell
-        data={safeData}
-        pageId="categories"
         headerTitle={<span className="textAccent">Gérer</span>}
         headerSubtitle="Catégorie introuvable"
         backgroundImage={safeData?.profile?.whyImage || ""}
@@ -213,7 +209,7 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
             </div>
             <div className="mt12">
               <Button variant="ghost" onClick={onBack}>
-                ← Bibliothèque
+                ← Retour
               </Button>
             </div>
           </div>
@@ -226,40 +222,36 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
   const backgroundImage = category.wallpaper || safeData.profile?.whyImage || "";
   const whyText = (category.whyText || "").trim();
   const whyDisplay = whyText || "Aucun mini-why pour cette catégorie.";
-  const headerGauges = outcomeGoals.length ? (
-    <div className="manageHeaderRight">
-      {gaugeSlice.map((g) => (
-        <div key={g.id} className="manageGaugeRow">
-          <Gauge
-            className="manageGauge"
-            label={g.title || "Objectif"}
-            currentValue={g.currentValue}
-            targetValue={g.targetValue}
-            unit={MEASURE_UNITS[g.measureType] || ""}
-            accentColor={category.color || accent}
-          />
-        </div>
-      ))}
-      <button
-        className="linkBtn manageGaugeChevron"
-        type="button"
-        onClick={() => (typeof onOpenProgress === "function" ? onOpenProgress(category.id) : null)}
-        aria-label="Voir la progression"
-      >
-        →
-      </button>
-    </div>
-  ) : null;
-  const headerContent = (
-    <div className="manageHeader">
-      <div className="manageHeaderLeft">
-        <div className="manageHeaderTitle textAccent">Gérer</div>
-        <div className="manageHeaderSubtitle">{category.name || "Catégorie"}</div>
+  const headerRight = (
+    <div style={{ minWidth: 0, maxWidth: 320, width: "100%" }}>
+      <div className="col" style={{ gap: 8, alignItems: "flex-end" }}>
         <Button variant="ghost" className="btnBackCompact" onClick={onBack}>
           ← Retour
         </Button>
+        {outcomeGoals.length ? (
+          <div className="col" style={{ gap: 8, alignItems: "flex-end", width: "100%" }}>
+            {gaugeSlice.map((g) => (
+              <Gauge
+                key={g.id}
+                className="manageGauge"
+                label={g.title || "Objectif"}
+                currentValue={g.currentValue}
+                targetValue={g.targetValue}
+                unit={MEASURE_UNITS[g.measureType] || ""}
+                accentColor={category.color || accent}
+              />
+            ))}
+            <button
+              className="linkBtn"
+              type="button"
+              onClick={() => (typeof onOpenProgress === "function" ? onOpenProgress(category.id) : null)}
+              aria-label="Voir la progression"
+            >
+              →
+            </button>
+          </div>
+        ) : null}
       </div>
-      {headerGauges ? <div className="manageHeaderRightWrap">{headerGauges}</div> : null}
     </div>
   );
 
@@ -267,8 +259,9 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
     <ScreenShell
       accent={accent}
       backgroundImage={backgroundImage}
-      headerTitle={headerContent}
-      headerSubtitle={null}
+      headerTitle={<span className="textAccent">Gérer</span>}
+      headerSubtitle={category.name || "Catégorie"}
+      headerRight={headerRight}
     >
       <div style={{ "--catColor": category.color || "#7C3AED" }}>
         <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }}>

@@ -1,21 +1,19 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 
 export default function CategoryRail({ categories = [], selectedCategoryId = null, onSelect }) {
-  const items = useMemo(() => categories, [categories]);
-
   return (
     <div className="categoryRailScroll scrollNoBar">
-      {items.map((c) => {
-        const isActive = c.id === selectedCategoryId;
+      {categories.map((c) => {
+        const isSelected = c.id === selectedCategoryId;
         const accentVars = getCategoryAccentVars(c.color);
         return (
           <button
             key={c.id}
             type="button"
-            className={`listItem${isActive ? " catAccentRow" : ""}`}
+            className={`listItem${isSelected ? " catAccentRow" : ""}`}
             style={{
-              ...(isActive ? accentVars : null),
+              ...(isSelected ? accentVars : null),
               minWidth: "max-content",
               padding: "8px 12px",
               borderRadius: 14,

@@ -11,6 +11,8 @@ export default function ScreenShell({
   headerAlign = "center",
   children,
 }) {
+  const textAlign = headerAlign === "left" ? "left" : headerAlign === "right" ? "right" : "center";
+
   return (
     <AccentContext.Provider value={{ accent }}>
       {/* Background preset (gradient) */}
@@ -20,27 +22,22 @@ export default function ScreenShell({
       {backgroundImage ? <div className="bgImg" style={{ backgroundImage: `url(${backgroundImage})` }} /> : null}
 
       <div className="container">
-        {headerRight ? (
-          <div
-            className="hdrRow"
-            style={{ display: "flex", justifyContent: "space-between", alignItems: headerAlign, gap: 12 }}
-          >
-            <div>
-              <div className="hdrTitle">{headerTitle}</div>
-              <div className="hdrSub" style={{ marginTop: 4 }}>
-                {headerSubtitle}
+        <div className="pageHeader">
+          {headerRight ? (
+            <div className="hdrRow">
+              <div className="hdrLeft" style={{ textAlign }}>
+                <div className="hdrTitle pageTitle">{headerTitle}</div>
+                <div className="hdrSub pageSubtitle">{headerSubtitle}</div>
               </div>
+              <div className="hdrRight">{headerRight}</div>
             </div>
-            <div>{headerRight}</div>
-          </div>
-        ) : (
-          <>
-            <div className="hdrTitle">{headerTitle}</div>
-            <div className="hdrSub" style={{ marginTop: 4 }}>
-              {headerSubtitle}
+          ) : (
+            <div className="hdrLeft" style={{ textAlign }}>
+              <div className="hdrTitle pageTitle">{headerTitle}</div>
+              <div className="hdrSub pageSubtitle">{headerSubtitle}</div>
             </div>
-          </>
-        )}
+          )}
+        </div>
         <div className="pageContent">{children}</div>
       </div>
     </AccentContext.Provider>
