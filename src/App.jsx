@@ -315,6 +315,59 @@ export default function App() {
 
   return (
     <>
+      <TopNav
+        active={tab}
+        setActive={(next) => {
+          if (next === "library") setLibraryCategoryId(null);
+          setTab(next);
+        }}
+        onOpenSettings={() => setTab("settings")}
+        onCreateCategory={() => {
+          setLibraryCategoryId(null);
+          setTab("create-category");
+        }}
+        categories={orderedCategories}
+        categoryOrder={categoryRailOrder}
+        selectedCategoryId={railSelectedId}
+        onSelectCategory={(categoryId) => {
+          if (!categoryId) return;
+          if (tab === "today") {
+            setData((prev) => {
+              const prevUi = prev.ui || {};
+              const prevSel =
+                prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+                  ? prevUi.selectedCategoryByView
+                  : {};
+              return {
+                ...prev,
+                ui: {
+                  ...prevUi,
+                  selectedCategoryId: categoryId,
+                  selectedCategoryByView: { ...prevSel, home: categoryId },
+                },
+              };
+            });
+            return;
+          }
+          setCategoryDetailId(categoryId);
+          setTab("category-detail");
+        }}
+        onOpenCategoryDetail={(categoryId) => {
+          if (!categoryId) return;
+          setCategoryDetailId(categoryId);
+          setTab("category-detail");
+        }}
+        onReorderCategory={(nextOrder) => {
+          setData((prev) => ({
+            ...prev,
+            ui: {
+              ...(prev.ui || {}),
+              categoryRailOrder: ensureOrder(nextOrder, Array.isArray(prev.categories) ? prev.categories : []),
+            },
+          }));
+        }}
+      />
+
       {tab === "today" ? (
         <Home
           data={data}
@@ -452,59 +505,6 @@ export default function App() {
       ) : (
         <Settings data={data} setData={setData} />
       )}
-
-      <TopNav
-        active={tab}
-        setActive={(next) => {
-          if (next === "library") setLibraryCategoryId(null);
-          setTab(next);
-        }}
-        onOpenSettings={() => setTab("settings")}
-        onCreateCategory={() => {
-          setLibraryCategoryId(null);
-          setTab("create-category");
-        }}
-        categories={orderedCategories}
-        categoryOrder={categoryRailOrder}
-        selectedCategoryId={railSelectedId}
-        onSelectCategory={(categoryId) => {
-          if (!categoryId) return;
-          if (tab === "today") {
-            setData((prev) => {
-              const prevUi = prev.ui || {};
-              const prevSel =
-                prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-                  ? prevUi.selectedCategoryByView
-                  : {};
-              return {
-                ...prev,
-                ui: {
-                  ...prevUi,
-                  selectedCategoryId: categoryId,
-                  selectedCategoryByView: { ...prevSel, home: categoryId },
-                },
-              };
-            });
-            return;
-          }
-          setCategoryDetailId(categoryId);
-          setTab("category-detail");
-        }}
-        onOpenCategoryDetail={(categoryId) => {
-          if (!categoryId) return;
-          setCategoryDetailId(categoryId);
-          setTab("category-detail");
-        }}
-        onReorderCategory={(nextOrder) => {
-          setData((prev) => ({
-            ...prev,
-            ui: {
-              ...(prev.ui || {}),
-              categoryRailOrder: ensureOrder(nextOrder, Array.isArray(prev.categories) ? prev.categories : []),
-            },
-          }));
-        }}
-      />
 
       {activeReminder ? (
         <div className="modalBackdrop reminderOverlay" onClick={() => setActiveReminder(null)}>

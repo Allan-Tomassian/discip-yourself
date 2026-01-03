@@ -20,14 +20,11 @@ export default function TopNav({
     if (typeof window === "undefined") return;
     const update = () => {
       const topEl = navTopRef.current;
-      const barEl = navBarRef.current;
       if (topEl) {
         const h = Math.ceil(topEl.getBoundingClientRect().height);
         document.documentElement.style.setProperty("--navOffset", `${h}px`);
-      }
-      if (barEl) {
-        const h = Math.ceil(barEl.getBoundingClientRect().height);
-        document.documentElement.style.setProperty("--navTopH", `${h}px`);
+      } else {
+        document.documentElement.style.setProperty("--navOffset", "0px");
       }
     };
     update();
@@ -54,7 +51,7 @@ export default function TopNav({
   ];
 
   return (
-    <div className="navTop" ref={navTopRef}>
+    <div className="navTop stickyStack" ref={navTopRef}>
       <div className="navWrap" ref={navBarRef}>
         <div className="navRow">
           <div className="navGrid">
@@ -80,7 +77,7 @@ export default function TopNav({
         </div>
       </div>
       {categories.length ? (
-        <div className="navWrap navWrapRail stickyRailWrap" style={{ marginTop: 8 }}>
+        <div className="navRailWrap">
           <CategoryRail
             categories={categories}
             order={categoryOrder}

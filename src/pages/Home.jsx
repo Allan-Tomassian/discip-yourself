@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
 import {
@@ -72,6 +72,7 @@ export default function Home({
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(selectedDate));
   const todayKeyRef = useRef(todayKey(new Date()));
+  const railRef = useRef(null);
   const profile = safeData.profile || {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -316,13 +317,21 @@ const selectedGoal = useMemo(() => {
   }, [selectedDate, selectedDateKey]);
 
   const calendarRangeLabel = useMemo(() => {
-    if (!railItems.length) return "";
-    const first = railItems[0].date;
-    const last = railItems[railItems.length - 1].date;
-    const firstLabel = getMonthLabelFR(first);
-    const lastLabel = getMonthLabelFR(last);
-    return firstLabel === lastLabel ? firstLabel : `${firstLabel} → ${lastLabel}`;
-  }, [railItems]);
+    try {
+      const fmt = new Intl.DateTimeFormat("fr-FR", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      return fmt.format(selectedDate);
+    } catch {
+      return selectedDateKey || "";
+    }
+  }, [selectedDate, selectedDateKey]);
+
+  const selectedDateLabel =
+    selectedStatus === "today" ? `${calendarRangeLabel} · Aujourd’hui` : calendarRangeLabel;
 
   const monthGrid = useMemo(() => buildMonthGrid(monthCursor), [monthCursor]);
 
@@ -342,6 +351,26 @@ const selectedGoal = useMemo(() => {
       ui: { ...(prev.ui || {}), selectedDate: nextKey },
     }));
   }
+
+  const scrollRailToKey = useCallback((dateKeyValue, behavior = "smooth") => {
+    const container = railRef.current;
+    if (!container || !dateKeyValue) return;
+    const el = container.querySelector(`[data-datekey="${dateKeyValue}"]`);
+    if (!el) return;
+    const targetLeft = el.offsetLeft - (container.clientWidth / 2 - el.clientWidth / 2);
+    if (Number.isFinite(targetLeft)) {
+      container.scrollTo({ left: Math.max(0, targetLeft), behavior });
+      return;
+    }
+    if (typeof el.scrollIntoView === "function") {
+      el.scrollIntoView({ behavior, inline: "center", block: "nearest" });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!selectedDateKey) return;
+    requestAnimationFrame(() => scrollRailToKey(selectedDateKey, "auto"));
+  }, [scrollRailToKey, selectedDateKey, railItems.length]);
 
   function openCreateFlow(kind) {
     if (kind === "category" && typeof onOpenCreateCategory === "function") {
@@ -560,11 +589,18 @@ const selectedGoal = useMemo(() => {
                 <div>
                   <div className="sectionTitle textAccent">Calendrier</div>
                   <div className="small2 mt8">
-                    Période rapide : {calendarRangeLabel || "—"}
+                    {selectedDateLabel || "—"}
                   </div>
                 </div>
                 <div className="row" style={{ gap: 8 }}>
-                  <Button variant="ghost" onClick={() => setSelectedDate(todayKey(new Date()))}>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      const today = todayKey(new Date());
+                      setSelectedDate(today);
+                      requestAnimationFrame(() => scrollRailToKey(today));
+                    }}
+                  >
                     Aujourd’hui
                   </Button>
                   <Button
@@ -579,12 +615,17 @@ const selectedGoal = useMemo(() => {
               <div
                 className="dayRail mt12 scrollNoBar"
                 style={{ flexDirection: "row", gap: 8, overflowX: "auto", paddingBottom: 4 }}
+                ref={railRef}
               >
                 {railItems.map((item) => (
                   <button
                     key={item.key}
                     className={`dayPill${item.isSelected ? " dayPillActive" : ""}`}
-                    onClick={() => setSelectedDate(item.key)}
+                    data-datekey={item.key}
+                    onClick={() => {
+                      setSelectedDate(item.key);
+                      scrollRailToKey(item.key);
+                    }}
                     type="button"
                     style={{
                       minWidth: 52,

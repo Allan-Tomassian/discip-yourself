@@ -41,7 +41,7 @@ export default function ScreenShell({
             </div>
           </>
         )}
-        <div className="mt16">{children}</div>
+        <div className="pageContent">{children}</div>
       </div>
     </AccentContext.Provider>
   );
