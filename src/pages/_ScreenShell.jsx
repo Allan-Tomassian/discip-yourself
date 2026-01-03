@@ -26,15 +26,19 @@ export default function ScreenShell({
             style={{ display: "flex", justifyContent: "space-between", alignItems: headerAlign, gap: 12 }}
           >
             <div>
-              <div className="hdrSub">{headerSubtitle}</div>
               <div className="hdrTitle">{headerTitle}</div>
+              <div className="hdrSub" style={{ marginTop: 4 }}>
+                {headerSubtitle}
+              </div>
             </div>
             <div>{headerRight}</div>
           </div>
         ) : (
           <>
-            <div className="hdrSub">{headerSubtitle}</div>
             <div className="hdrTitle">{headerTitle}</div>
+            <div className="hdrSub" style={{ marginTop: 4 }}>
+              {headerSubtitle}
+            </div>
           </>
         )}
         <div className="mt16">{children}</div>

@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useLayoutEffect, useRef } from "react";
 import CategoryRail from "./CategoryRail";
 
 export default function TopNav({
   active,
   setActive,
   onOpenSettings,
+  onCreateCategory,
   categories = [],
   categoryOrder = [],
   selectedCategoryId = null,
@@ -12,6 +13,40 @@ export default function TopNav({
   onOpenCategoryDetail,
   onReorderCategory,
 }) {
+  const navTopRef = useRef(null);
+  const navBarRef = useRef(null);
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    const update = () => {
+      const topEl = navTopRef.current;
+      const barEl = navBarRef.current;
+      if (topEl) {
+        const h = Math.ceil(topEl.getBoundingClientRect().height);
+        document.documentElement.style.setProperty("--navOffset", `${h}px`);
+      }
+      if (barEl) {
+        const h = Math.ceil(barEl.getBoundingClientRect().height);
+        document.documentElement.style.setProperty("--navTopH", `${h}px`);
+      }
+    };
+    update();
+    let ro;
+    if (window.ResizeObserver) {
+      ro = new ResizeObserver(update);
+      if (navTopRef.current) ro.observe(navTopRef.current);
+      if (navBarRef.current && navBarRef.current !== navTopRef.current) {
+        ro.observe(navBarRef.current);
+      }
+    } else {
+      window.addEventListener("resize", update);
+    }
+    return () => {
+      if (ro) ro.disconnect();
+      else window.removeEventListener("resize", update);
+    };
+  }, [categories.length]);
+
   const items = [
     { id: "today", label: "Aujourd’hui" },
     { id: "library", label: "Bibliothèque" },
@@ -19,8 +54,8 @@ export default function TopNav({
   ];
 
   return (
-    <div className="navTop">
-      <div className="navWrap">
+    <div className="navTop" ref={navTopRef}>
+      <div className="navWrap" ref={navBarRef}>
         <div className="navRow">
           <div className="navGrid">
             {items.map((it) => (
@@ -45,13 +80,14 @@ export default function TopNav({
         </div>
       </div>
       {categories.length ? (
-        <div className="navWrap navWrapRail" style={{ marginTop: 8 }}>
+        <div className="navWrap navWrapRail stickyRailWrap" style={{ marginTop: 8 }}>
           <CategoryRail
             categories={categories}
             order={categoryOrder}
             selectedId={selectedCategoryId}
             onSelect={onSelectCategory}
             onOpenDetail={onOpenCategoryDetail}
+            onCreate={onCreateCategory}
             onReorder={onReorderCategory}
           />
         </div>

@@ -17,6 +17,7 @@ export default function CategoryRail({
   selectedId,
   onSelect,
   onOpenDetail,
+  onCreate,
   onReorder,
 }) {
   const [localOrder, setLocalOrder] = useState(order);
@@ -98,51 +99,58 @@ export default function CategoryRail({
   }
 
   return (
-    <div
-      className="scrollNoBar"
-      style={{
-        display: "flex",
-        gap: 8,
-        overflowX: "auto",
-        paddingBottom: 4,
-        touchAction: draggingId ? "none" : "pan-x",
-      }}
-    >
-      {items.map((c) => {
-        const isActive = c.id === selectedId;
-        const accentVars = getCategoryAccentVars(c.color);
-        return (
-          <button
-            key={c.id}
-            ref={(el) => {
-              if (el) itemRefs.current.set(c.id, el);
-            }}
-            type="button"
-            className={`listItem${isActive ? " catAccentRow" : ""}`}
-            style={{
-              ...(isActive ? accentVars : null),
-              minWidth: "max-content",
-              padding: "8px 12px",
-              borderRadius: 14,
-              whiteSpace: "nowrap",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              opacity: draggingId && draggingId !== c.id ? 0.7 : 1,
-              cursor: draggingId ? "grabbing" : "pointer",
-            }}
-            onPointerDown={(e) => handlePointerDown(e, c.id)}
-            onPointerMove={handlePointerMove}
-            onPointerUp={(e) => handlePointerUp(e, c.id)}
-            onPointerCancel={handlePointerCancel}
-            onDoubleClick={() => {
-              if (typeof onOpenDetail === "function") onOpenDetail(c.id);
-            }}
-          >
-            <span className="itemTitle">{c.name || "Catégorie"}</span>
-          </button>
-        );
-      })}
+    <div className="categoryRailRow">
+      <div
+        className="categoryRailScroll scrollNoBar"
+        style={{ touchAction: draggingId ? "none" : "pan-x" }}
+      >
+        {items.map((c) => {
+          const isActive = c.id === selectedId;
+          const accentVars = getCategoryAccentVars(c.color);
+          return (
+            <button
+              key={c.id}
+              ref={(el) => {
+                if (el) itemRefs.current.set(c.id, el);
+              }}
+              type="button"
+              className={`listItem${isActive ? " catAccentRow" : ""}`}
+              style={{
+                ...(isActive ? accentVars : null),
+                minWidth: "max-content",
+                padding: "8px 12px",
+                borderRadius: 14,
+                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                opacity: draggingId && draggingId !== c.id ? 0.7 : 1,
+                cursor: draggingId ? "grabbing" : "pointer",
+              }}
+              onPointerDown={(e) => handlePointerDown(e, c.id)}
+              onPointerMove={handlePointerMove}
+              onPointerUp={(e) => handlePointerUp(e, c.id)}
+              onPointerCancel={handlePointerCancel}
+              onDoubleClick={() => {
+                if (typeof onOpenDetail === "function") onOpenDetail(c.id);
+              }}
+            >
+              <span className="itemTitle">{c.name || "Catégorie"}</span>
+            </button>
+          );
+        })}
+      </div>
+      {typeof onCreate === "function" ? (
+        <button
+          type="button"
+          className="categoryRailAdd"
+          onClick={onCreate}
+          aria-label="Créer une catégorie"
+          title="Créer une catégorie"
+        >
+          +
+        </button>
+      ) : null}
     </div>
   );
 }

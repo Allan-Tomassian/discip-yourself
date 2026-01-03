@@ -460,6 +460,10 @@ export default function App() {
           setTab(next);
         }}
         onOpenSettings={() => setTab("settings")}
+        onCreateCategory={() => {
+          setLibraryCategoryId(null);
+          setTab("create-category");
+        }}
         categories={orderedCategories}
         categoryOrder={categoryRailOrder}
         selectedCategoryId={railSelectedId}

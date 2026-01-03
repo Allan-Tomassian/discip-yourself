@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
 import {
@@ -71,7 +71,7 @@ export default function Home({
   const [showDisciplineStats, setShowDisciplineStats] = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(selectedDate));
-  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const todayKeyRef = useRef(todayKey(new Date()));
   const profile = safeData.profile || {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -83,6 +83,31 @@ export default function Home({
     const micro = Array.isArray(bucket?.micro) ? bucket.micro : [];
     return { habits, micro };
   }, [checks, selectedDateKey]);
+
+  useEffect(() => {
+    if (typeof setData !== "function") return;
+    if (safeData.ui?.selectedDate) return;
+    setData((prev) => ({
+      ...prev,
+      ui: { ...(prev.ui || {}), selectedDate: todayKey(new Date()) },
+    }));
+  }, [safeData.ui?.selectedDate, setData]);
+
+  useEffect(() => {
+    if (typeof setData !== "function") return;
+    const id = setInterval(() => {
+      const nowKey = todayKey(new Date());
+      if (nowKey === todayKeyRef.current) return;
+      const prevKey = todayKeyRef.current;
+      todayKeyRef.current = nowKey;
+      setData((prev) => {
+        const prevUi = prev.ui || {};
+        if (prevUi.selectedDate !== prevKey) return prev;
+        return { ...prev, ui: { ...prevUi, selectedDate: nowKey } };
+      });
+    }, 60000);
+    return () => clearInterval(id);
+  }, [setData]);
 
   // per-view category selection for Home (fallback to legacy)
 const homeSelectedCategoryId =
@@ -274,8 +299,7 @@ const selectedGoal = useMemo(() => {
   }, [sessionForDay, sessionHabit]);
 
   const railItems = useMemo(() => {
-    const offsets = [];
-    for (let i = -30; i <= 30; i += 1) offsets.push(i);
+    const offsets = Array.from({ length: 15 }, (_, i) => i - 7);
     return offsets.map((offset) => {
       const d = addDays(selectedDate, offset);
       const key = dayKey(d);
@@ -310,28 +334,6 @@ const selectedGoal = useMemo(() => {
   useEffect(() => {
     setMonthCursor(startOfMonth(selectedDate));
   }, [selectedDateKey]);
-
-  // Home focus change should NOT overwrite legacy selectedCategoryId
-  function setFocusCategory(nextId) {
-    if (!nextId || typeof setData !== "function") return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      const prevByView =
-        prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-          ? prevUi.selectedCategoryByView
-          : {};
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          selectedCategoryByView: {
-            ...prevByView,
-            home: nextId,
-          },
-        },
-      };
-    });
-  }
 
   function setSelectedDate(nextKey) {
     if (!nextKey || typeof setData !== "function") return;
@@ -499,45 +501,11 @@ const selectedGoal = useMemo(() => {
               <div className="sectionTitle textAccent">Focus du jour</div>
               <div className="mt12">
                 <div className="small2">Catégorie</div>
-                <div className="mt8 row" style={{ alignItems: "center", gap: 8 }}>
-                  <div
-                    className="listItem catAccentRow"
-                    style={{ ...catAccentVars, flex: 1, minWidth: 0 }}
-                  >
-                    <div className="itemTitle" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {focusCategory?.name || "Choisir une catégorie"}
-                    </div>
+                <div className="mt8 listItem catAccentRow" style={catAccentVars}>
+                  <div className="itemTitle" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {focusCategory?.name || "Catégorie"}
                   </div>
-                  <Button
-                    variant="ghost"
-                    onClick={() => setShowCategoryPicker((v) => !v)}
-                    disabled={!canEdit}
-                  >
-                    {showCategoryPicker ? "Fermer" : "Changer"}
-                  </Button>
                 </div>
-                {showCategoryPicker ? (
-                  <div className="mt10 catAccentField" style={catAccentVars}>
-                    <Select
-                      value={focusCategory?.id || ""}
-                      onChange={(e) => {
-                        setFocusCategory(e.target.value);
-                        setShowCategoryPicker(false);
-                      }}
-                      style={{ fontSize: 16 }}
-                      disabled={!canEdit}
-                    >
-                      <option value="" disabled>
-                        Choisir une catégorie
-                      </option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                ) : null}
               </div>
 
               <div className="mt12">
@@ -595,13 +563,18 @@ const selectedGoal = useMemo(() => {
                     Période rapide : {calendarRangeLabel || "—"}
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  onClick={() => setShowMonthPicker(true)}
-                  style={{ borderRadius: 999, width: 36, height: 36, padding: 0 }}
-                >
-                  +
-                </Button>
+                <div className="row" style={{ gap: 8 }}>
+                  <Button variant="ghost" onClick={() => setSelectedDate(todayKey(new Date()))}>
+                    Aujourd’hui
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowMonthPicker(true)}
+                    style={{ borderRadius: 999, width: 36, height: 36, padding: 0 }}
+                  >
+                    +
+                  </Button>
+                </div>
               </div>
               <div
                 className="dayRail mt12 scrollNoBar"
