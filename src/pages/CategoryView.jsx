@@ -25,7 +25,7 @@ const MEASURE_UNITS = {
   weight: "kg",
 };
 
-export default function CategoryView({ data, setData, categoryId, onBack, onOpenPlan, onOpenCreate }) {
+export default function CategoryView({ data, setData, categoryId, onBack, onOpenPlan, onOpenCreate, onOpenProgress }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -67,18 +67,11 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
   const habits = linkedHabits.length ? linkedHabits : processGoals;
 
   const gaugeGoals = useMemo(() => {
-    const measured = outcomeGoals.filter(
-      (g) =>
-        typeof g.measureType === "string" &&
-        Number.isFinite(g.targetValue) &&
-        Number.isFinite(g.currentValue)
-    );
-    const main = category?.mainGoalId ? measured.find((g) => g.id === category.mainGoalId) : null;
-    const rest = main ? measured.filter((g) => g.id !== main.id) : measured;
-    return main ? [main, ...rest] : rest;
+    const main = category?.mainGoalId ? outcomeGoals.find((g) => g.id === category.mainGoalId) : null;
+    const rest = main ? outcomeGoals.filter((g) => g.id !== main.id) : outcomeGoals;
+    return main ? [main, ...rest] : outcomeGoals;
   }, [outcomeGoals, category?.mainGoalId]);
   const gaugeSlice = gaugeGoals.slice(0, 2);
-  const hasMoreGauges = gaugeGoals.length > 2;
 
   function openPlan(categoryIdValue, openGoalEditId) {
     if (!categoryIdValue || typeof setData !== "function") return;
@@ -233,19 +226,51 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
   const backgroundImage = category.wallpaper || safeData.profile?.whyImage || "";
   const whyText = (category.whyText || "").trim();
   const whyDisplay = whyText || "Aucun mini-why pour cette catégorie.";
+  const headerGauges = outcomeGoals.length ? (
+    <div className="manageHeaderRight">
+      {gaugeSlice.map((g) => (
+        <div key={g.id} className="manageGaugeRow">
+          <Gauge
+            className="manageGauge"
+            label={g.title || "Objectif"}
+            currentValue={g.currentValue}
+            targetValue={g.targetValue}
+            unit={MEASURE_UNITS[g.measureType] || ""}
+            accentColor={category.color || accent}
+          />
+        </div>
+      ))}
+      <button
+        className="linkBtn manageGaugeChevron"
+        type="button"
+        onClick={() => (typeof onOpenProgress === "function" ? onOpenProgress(category.id) : null)}
+        aria-label="Voir la progression"
+      >
+        →
+      </button>
+    </div>
+  ) : null;
+  const headerContent = (
+    <div className="manageHeader">
+      <div className="manageHeaderLeft">
+        <div className="manageHeaderTitle textAccent">Gérer</div>
+        <div className="manageHeaderSubtitle">{category.name || "Catégorie"}</div>
+        <Button variant="ghost" onClick={onBack}>
+          ← Bibliothèque
+        </Button>
+      </div>
+      {headerGauges}
+    </div>
+  );
 
   return (
     <ScreenShell
       accent={accent}
       backgroundImage={backgroundImage}
-      headerTitle={<span className="textAccent">Gérer</span>}
-      headerSubtitle={category.name || "Catégorie"}
+      headerTitle={headerContent}
+      headerSubtitle={null}
     >
       <div style={{ "--catColor": category.color || "#7C3AED" }}>
-        <Button variant="ghost" onClick={onBack}>
-          ← Bibliothèque
-        </Button>
-
         <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }}>
           <div className="p18">
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
@@ -277,35 +302,6 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
               </button>
             </div>
             {showWhy ? <div className="mt12 small2">{whyDisplay}</div> : null}
-          </div>
-        </Card>
-
-        <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }}>
-          <div className="p18">
-            <div className="titleSm">Progression</div>
-            {gaugeSlice.length ? (
-              <div className="mt12 col" style={{ gap: 12 }}>
-                {gaugeSlice.map((g) => (
-                  <Gauge
-                    key={g.id}
-                    label={g.title || "Objectif"}
-                    currentValue={g.currentValue}
-                    targetValue={g.targetValue}
-                    unit={MEASURE_UNITS[g.measureType] || ""}
-                    accentColor={category.color || accent}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="small2 mt10">Aucune jauge configurée.</div>
-            )}
-            {hasMoreGauges ? (
-              <div className="mt10">
-                <Button variant="ghost" onClick={() => {}}>
-                  → Voir tous les objectifs
-                </Button>
-              </div>
-            ) : null}
           </div>
         </Card>
 

@@ -1,22 +1,27 @@
 import React from "react";
 
-export default function Gauge({ label, currentValue, targetValue, unit, accentColor }) {
-  const current = Number.isFinite(currentValue) ? currentValue : null;
-  const target = Number.isFinite(targetValue) ? targetValue : null;
-  if (!target || target <= 0 || current == null) return null;
-
-  const progress = Math.min(current / target, 1);
+export default function Gauge({ label, currentValue, targetValue, unit, accentColor, className }) {
+  const hasTarget = Number.isFinite(targetValue) && targetValue > 0;
+  const current = Number.isFinite(currentValue) && currentValue >= 0 ? currentValue : 0;
+  const target = hasTarget ? targetValue : 0;
+  const progress = hasTarget ? Math.min(current / target, 1) : 0;
   const displayUnit = unit ? ` ${unit}` : "";
   const fillColor = accentColor || "var(--accent)";
 
   return (
-    <div className="col" style={{ gap: 6 }}>
+    <div className={`col${className ? ` ${className}` : ""}`} style={{ gap: 6 }}>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div className="small2">{label}</div>
         <div className="small2">
-          {current}
-          {displayUnit} / {target}
-          {displayUnit}
+          {hasTarget ? (
+            <>
+              {current}
+              {displayUnit} / {target}
+              {displayUnit}
+            </>
+          ) : (
+            "Non configuré"
+          )}
         </div>
       </div>
       <div
@@ -37,6 +42,11 @@ export default function Gauge({ label, currentValue, targetValue, unit, accentCo
           }}
         />
       </div>
+      {!hasTarget ? (
+        <div className="small2" style={{ opacity: 0.7 }}>
+          Définir une cible pour activer la jauge
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -19,6 +19,7 @@ import Settings from "./pages/Settings";
 import CategoryDetail from "./pages/CategoryDetail";
 import CategoryView from "./pages/CategoryView";
 import CategoryDetailView from "./pages/CategoryDetailView";
+import CategoryProgress from "./pages/CategoryProgress";
 import Session from "./pages/Session";
 import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
 import { todayKey } from "./utils/dates";
@@ -116,6 +117,7 @@ const TABS = new Set([
   "create-goal",
   "create-habit",
   "session",
+  "category-progress",
   "category-detail",
   "settings",
 ]);
@@ -142,16 +144,23 @@ export default function App() {
   const initialPath = typeof window !== "undefined" ? window.location.pathname : "/";
   const initialSearch =
     typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-  const initialCategoryDetailId = initialPath.startsWith("/category/")
-    ? decodeURIComponent(initialPath.split("/")[2] || "")
-    : null;
+  const pathParts = initialPath.split("/").filter(Boolean);
+  const initialCategoryProgressId =
+    pathParts[0] === "category" && pathParts[2] === "progress"
+      ? decodeURIComponent(pathParts[1] || "")
+      : null;
+  const initialCategoryDetailId =
+    pathParts[0] === "category" && pathParts.length === 2 ? decodeURIComponent(pathParts[1] || "") : null;
   const initialTab = initialPath.startsWith("/session")
     ? "session"
-    : initialPath.startsWith("/category")
-      ? "category-detail"
-      : "today";
+    : initialCategoryProgressId
+      ? "category-progress"
+      : initialCategoryDetailId
+        ? "category-detail"
+        : "today";
   const [tab, _setTab] = useState(initialTab);
   const [categoryDetailId, setCategoryDetailId] = useState(initialCategoryDetailId);
+  const [categoryProgressId, setCategoryProgressId] = useState(initialCategoryProgressId);
   const [libraryCategoryId, setLibraryCategoryId] = useState(null);
   const [sessionCategoryId, setSessionCategoryId] = useState(initialSearch?.get("cat") || null);
   const [sessionDateKey, setSessionDateKey] = useState(initialSearch?.get("date") || null);
@@ -166,6 +175,8 @@ export default function App() {
       typeof opts.sessionCategoryId === "string" ? opts.sessionCategoryId : sessionCategoryId;
     const nextSessionDateKey =
       typeof opts.sessionDateKey === "string" ? opts.sessionDateKey : sessionDateKey;
+    const nextCategoryProgressId =
+      typeof opts.categoryProgressId === "string" ? opts.categoryProgressId : categoryProgressId;
     if (t === "session" && typeof opts.sessionCategoryId === "string") {
       setSessionCategoryId(opts.sessionCategoryId);
     } else if (t === "session" && opts.sessionCategoryId === null) {
@@ -175,6 +186,11 @@ export default function App() {
       setSessionDateKey(opts.sessionDateKey);
     } else if (t === "session" && opts.sessionDateKey === null) {
       setSessionDateKey(null);
+    }
+    if (t === "category-progress" && typeof opts.categoryProgressId === "string") {
+      setCategoryProgressId(opts.categoryProgressId);
+    } else if (t === "category-progress" && opts.categoryProgressId === null) {
+      setCategoryProgressId(null);
     }
     _setTab(t);
     // persist last tab for better UX (non-blocking)
@@ -193,6 +209,10 @@ export default function App() {
                 .filter(Boolean)
                 .join("&")}`
             : "/session"
+          : t === "category-progress"
+            ? nextCategoryProgressId
+              ? `/category/${nextCategoryProgressId}/progress`
+              : "/category"
           : t === "category-detail"
             ? categoryDetailId
               ? `/category/${categoryDetailId}`
@@ -439,6 +459,28 @@ export default function App() {
             setTab("library");
           }}
         />
+      ) : tab === "category-progress" ? (
+        <CategoryProgress
+          data={data}
+          categoryId={
+            categoryProgressId ||
+            data?.ui?.selectedCategoryByView?.library ||
+            data?.ui?.selectedCategoryId ||
+            data?.categories?.[0]?.id ||
+            null
+          }
+          onBack={() => {
+            const fallbackId =
+              categoryProgressId ||
+              data?.ui?.selectedCategoryByView?.library ||
+              data?.ui?.selectedCategoryId ||
+              data?.categories?.[0]?.id ||
+              null;
+            setCategoryProgressId(null);
+            setLibraryCategoryId(fallbackId);
+            setTab("library");
+          }}
+        />
       ) : tab === "plan" ? (
         <CategoryDetail
           data={data}
@@ -466,6 +508,11 @@ export default function App() {
           onOpenCreate={() => {
             setLibraryCategoryId(null);
             setTab("create");
+          }}
+          onOpenProgress={(categoryIdValue) => {
+            if (!categoryIdValue) return;
+            setCategoryProgressId(categoryIdValue);
+            setTab("category-progress", { categoryProgressId: categoryIdValue });
           }}
         />
       ) : tab === "library" ? (
