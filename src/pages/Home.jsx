@@ -454,7 +454,9 @@ const selectedGoal = useMemo(() => {
         habitIds: activeHabits.map((h) => h.id),
       })
     );
-    if (typeof onOpenSession === "function") onOpenSession();
+    if (typeof onOpenSession === "function") {
+      onOpenSession({ categoryId: focusCategory?.id || null, dateKey: selectedDateKey });
+    }
   }
 
   function setCategoryMainGoal(nextGoalId) {
@@ -626,7 +628,7 @@ const selectedGoal = useMemo(() => {
 
               <div className="mt12">
                 <Button onClick={openSessionFlow} disabled={!canOpenSession}>
-                  Passer à l’action
+                  GO
                 </Button>
                 {!selectedGoal ? (
                   <div className="sectionSub" style={{ marginTop: 8 }}>

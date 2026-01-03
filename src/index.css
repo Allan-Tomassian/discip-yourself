@@ -384,21 +384,21 @@ a{ color:inherit; }
   width:44px;
   height:44px;
   border-radius:999px;
-  border:2px solid var(--accent);
-  box-shadow: 0 0 0 1px var(--accent), 0 0 14px var(--accentGlow);
+  border:0;
+  box-shadow:none;
   pointer-events:none;
 }
 .calendarSelectorDot{
   position:absolute;
   left:50%;
   top:100%;
-  margin-top:6px;
+  margin-top:10px;
   transform: translateX(-50%);
-  width:4px;
-  height:4px;
+  width:7px;
+  height:7px;
   border-radius:999px;
   background: var(--accent);
-  opacity: 0.65;
+  opacity: 0.85;
   pointer-events:none;
 }
 

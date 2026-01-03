@@ -7,11 +7,8 @@ export default function TopNav({
   onOpenSettings,
   onCreateCategory,
   categories = [],
-  categoryOrder = [],
   selectedCategoryId = null,
   onSelectCategory,
-  onOpenCategoryDetail,
-  onReorderCategory,
 }) {
   const navTopRef = useRef(null);
   const navBarRef = useRef(null);
@@ -78,15 +75,24 @@ export default function TopNav({
       </div>
       {categories.length ? (
         <div className="navRailWrap">
-          <CategoryRail
-            categories={categories}
-            order={categoryOrder}
-            selectedId={selectedCategoryId}
-            onSelect={onSelectCategory}
-            onOpenDetail={onOpenCategoryDetail}
-            onCreate={onCreateCategory}
-            onReorder={onReorderCategory}
-          />
+          <div className="categoryRailRow">
+            <CategoryRail
+              categories={categories}
+              selectedCategoryId={selectedCategoryId}
+              onSelect={onSelectCategory}
+            />
+            {typeof onCreateCategory === "function" ? (
+              <button
+                type="button"
+                className="categoryRailAdd"
+                onClick={onCreateCategory}
+                aria-label="Créer une catégorie"
+                title="Créer une catégorie"
+              >
+                +
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>

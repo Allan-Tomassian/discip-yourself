@@ -140,6 +140,8 @@ function isSameOrder(a, b) {
 export default function App() {
   const [data, setData] = usePersistedState(React);
   const initialPath = typeof window !== "undefined" ? window.location.pathname : "/";
+  const initialSearch =
+    typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const initialCategoryDetailId = initialPath.startsWith("/category/")
     ? decodeURIComponent(initialPath.split("/")[2] || "")
     : null;
@@ -151,13 +153,29 @@ export default function App() {
   const [tab, _setTab] = useState(initialTab);
   const [categoryDetailId, setCategoryDetailId] = useState(initialCategoryDetailId);
   const [libraryCategoryId, setLibraryCategoryId] = useState(null);
+  const [sessionCategoryId, setSessionCategoryId] = useState(initialSearch?.get("cat") || null);
+  const [sessionDateKey, setSessionDateKey] = useState(initialSearch?.get("date") || null);
   const [activeReminder, setActiveReminder] = useState(null);
   const dataRef = useRef(data);
   const lastReminderRef = useRef({});
   const activeReminderRef = useRef(activeReminder);
 
-  const setTab = (next) => {
+  const setTab = (next, opts = {}) => {
     const t = normalizeTab(next);
+    const nextSessionCategoryId =
+      typeof opts.sessionCategoryId === "string" ? opts.sessionCategoryId : sessionCategoryId;
+    const nextSessionDateKey =
+      typeof opts.sessionDateKey === "string" ? opts.sessionDateKey : sessionDateKey;
+    if (t === "session" && typeof opts.sessionCategoryId === "string") {
+      setSessionCategoryId(opts.sessionCategoryId);
+    } else if (t === "session" && opts.sessionCategoryId === null) {
+      setSessionCategoryId(null);
+    }
+    if (t === "session" && typeof opts.sessionDateKey === "string") {
+      setSessionDateKey(opts.sessionDateKey);
+    } else if (t === "session" && opts.sessionDateKey === null) {
+      setSessionDateKey(null);
+    }
     _setTab(t);
     // persist last tab for better UX (non-blocking)
     setData((prev) => ({
@@ -167,13 +185,26 @@ export default function App() {
     if (typeof window !== "undefined") {
       const nextPath =
         t === "session"
-          ? "/session"
+          ? nextSessionCategoryId || nextSessionDateKey
+            ? `/session?${[
+                nextSessionCategoryId ? `cat=${encodeURIComponent(nextSessionCategoryId)}` : "",
+                nextSessionDateKey ? `date=${encodeURIComponent(nextSessionDateKey)}` : "",
+              ]
+                .filter(Boolean)
+                .join("&")}`
+            : "/session"
           : t === "category-detail"
             ? categoryDetailId
               ? `/category/${categoryDetailId}`
               : "/category"
             : "/";
-      if (window.location.pathname !== nextPath) window.history.pushState({}, "", nextPath);
+      if (window.location.pathname !== nextPath) {
+        const state =
+          t === "session"
+            ? { categoryId: nextSessionCategoryId || null, date: nextSessionDateKey || null }
+            : {};
+        window.history.pushState(state, "", nextPath);
+      }
     }
   };
 
@@ -327,7 +358,6 @@ export default function App() {
           setTab("create-category");
         }}
         categories={orderedCategories}
-        categoryOrder={categoryRailOrder}
         selectedCategoryId={railSelectedId}
         onSelectCategory={(categoryId) => {
           if (!categoryId) return;
@@ -349,22 +379,23 @@ export default function App() {
             });
             return;
           }
-          setCategoryDetailId(categoryId);
-          setTab("category-detail");
-        }}
-        onOpenCategoryDetail={(categoryId) => {
-          if (!categoryId) return;
-          setCategoryDetailId(categoryId);
-          setTab("category-detail");
-        }}
-        onReorderCategory={(nextOrder) => {
-          setData((prev) => ({
-            ...prev,
-            ui: {
-              ...(prev.ui || {}),
-              categoryRailOrder: ensureOrder(nextOrder, Array.isArray(prev.categories) ? prev.categories : []),
-            },
-          }));
+          if (tab === "library") {
+            setData((prev) => ({
+              ...prev,
+              ui: { ...(prev.ui || {}), librarySelectedCategoryId: categoryId },
+            }));
+            return;
+          }
+          if (tab === "plan") {
+            setData((prev) => ({
+              ...prev,
+              ui: { ...(prev.ui || {}), selectedCategoryId: categoryId },
+            }));
+            return;
+          }
+          if (tab === "session") {
+            setSessionCategoryId(categoryId);
+          }
         }}
       />
 
@@ -384,7 +415,9 @@ export default function App() {
             setLibraryCategoryId(null);
             setTab("create-category");
           }}
-          onOpenSession={() => setTab("session")}
+          onOpenSession={({ categoryId, dateKey }) =>
+            setTab("session", { sessionCategoryId: categoryId || null, sessionDateKey: dateKey || null })
+          }
         />
       ) : tab === "category-detail" ? (
         <CategoryDetailView
@@ -493,6 +526,8 @@ export default function App() {
         <Session
           data={data}
           setData={setData}
+          categoryId={sessionCategoryId}
+          dateKey={sessionDateKey}
           onBack={() => {
             setLibraryCategoryId(null);
             setTab("today");

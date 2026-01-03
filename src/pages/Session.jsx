@@ -20,19 +20,46 @@ function formatElapsed(ms) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-export default function Session({ data, setData, onBack, onOpenLibrary }) {
-  const safeData = data && typeof data === "object" ? data : {};
+function resolveGoalType(goal) {
+  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
+  if (raw === "OUTCOME" || raw === "PROCESS") return raw;
+  if (raw === "STATE") return "OUTCOME";
+  if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
+  const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
+  if (legacy === "OUTCOME") return "OUTCOME";
+  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
+  return "PROCESS";
+}
+
+export default function Session({ data, setData, onBack, onOpenLibrary }) {  const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const sessions = Array.isArray(safeData.sessions) ? safeData.sessions : [];
-  const selectedDateKey = safeData.ui?.selectedDate || todayKey();
+  const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const urlCategoryId = urlParams?.get("cat") || null;
+  const urlDateKey = urlParams?.get("date") || null;
+  const selectedDateKey = dateKey || urlDateKey || safeData.ui?.selectedDate || todayKey();
+  const sessionCategoryId =
+    categoryId || urlCategoryId || safeData.ui?.selectedCategoryId || categories[0]?.id || null;
+
+  const objectiveIdForSession = useMemo(() => {
+    if (!sessionCategoryId) return null;
+    const category = categories.find((c) => c.id === sessionCategoryId) || null;
+    if (category?.mainGoalId) return category.mainGoalId;
+    const outcome =
+      goals.find((g) => g.categoryId === sessionCategoryId && resolveGoalType(g) === "OUTCOME") ||
+      null;
+    return outcome?.id || null;
+  }, [categories, goals, sessionCategoryId]);
 
   const [tick, setTick] = useState(Date.now());
 
-  const session = useMemo(
-    () => getSessionByDate({ sessions }, selectedDateKey, null),
-    [sessions, selectedDateKey]
-  );
+  const session = useMemo(() => {
+    if (objectiveIdForSession) {
+      return getSessionByDate({ sessions }, selectedDateKey, objectiveIdForSession);
+    }
+    return getSessionByDate({ sessions }, selectedDateKey, null);
+  }, [sessions, selectedDateKey, objectiveIdForSession]);
   const isRunning = Boolean(session && session.status === "partial" && session.timerRunning);
   const isEditable = Boolean(session && session.status === "partial");
   useEffect(() => {
@@ -41,8 +68,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {
     return () => clearInterval(t);
   }, [isRunning]);
 
-  const dateKey = session?.dateKey || session?.date || selectedDateKey;
-  const objectiveId = typeof session?.objectiveId === "string" ? session.objectiveId : null;
+const effectiveDateKey = session?.dateKey || session?.date || selectedDateKey;  const objectiveId = typeof session?.objectiveId === "string" ? session.objectiveId : null;
   const objective = objectiveId ? goals.find((g) => g.id === objectiveId) || null : null;
   const habitIds = Array.isArray(session?.habitIds) ? session.habitIds : [];
   const doneHabitIds = Array.isArray(session?.doneHabitIds)
@@ -52,8 +78,8 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {
       : [];
   const doneSet = useMemo(() => new Set(doneHabitIds), [doneHabitIds]);
   const habits = habitIds.map((id) => goals.find((g) => g.id === id)).filter(Boolean);
-  const categoryId = objective?.categoryId || habits[0]?.categoryId || null;
-  const category = categories.find((c) => c.id === categoryId) || null;
+  const effectiveCategoryId = objective?.categoryId || habits[0]?.categoryId || null;
+const category = categories.find((c) => c.id === effectiveCategoryId) || null;
   const accent = category?.color || getAccentForPage(safeData, "home");
   const catAccentVars = getCategoryAccentVars(accent);
 
@@ -77,14 +103,14 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {
 
   function toggleDone(habitId, checked) {
     if (!habitId || typeof setData !== "function" || !isEditable) return;
-    setData((prev) => toggleSessionHabit(prev, dateKey, habitId, checked, objectiveId));
+    setData((prev) => toggleSessionHabit(prev, effectiveDateKey, habitId, checked, objectiveId));
   }
 
   function startTimer() {
     if (!session || typeof setData !== "function" || !hasHabits) return;
     const nowIso = new Date().toISOString();
     setData((prev) =>
-      updateSessionTimerForDate(prev, dateKey, {
+      updateSessionTimerForDate(prev, effectiveDateKey, {
         objectiveId,
         timerStartedAt: nowIso,
         timerAccumulatedSec,
@@ -96,7 +122,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {
   function pauseTimer() {
     if (!session || typeof setData !== "function") return;
     setData((prev) =>
-      updateSessionTimerForDate(prev, dateKey, {
+      updateSessionTimerForDate(prev, effectiveDateKey, {
         objectiveId,
         timerStartedAt: "",
         timerAccumulatedSec: elapsedSec,
@@ -109,7 +135,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {
     if (!session || typeof setData !== "function" || !hasHabits) return;
     const nowIso = new Date().toISOString();
     setData((prev) =>
-      updateSessionTimerForDate(prev, dateKey, {
+      updateSessionTimerForDate(prev, effectiveDateKey, {
         objectiveId,
         timerStartedAt: nowIso,
         timerAccumulatedSec,
@@ -122,7 +148,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {
     if (!session || typeof setData !== "function" || !hasHabits || !isEditable) return;
     const durationSec = Math.max(0, Math.floor(elapsedSec));
     setData((prev) =>
-      finishSessionForDate(prev, dateKey, {
+      finishSessionForDate(prev, effectiveDateKey, {
         objectiveId,
         durationSec,
         doneHabitIds,
@@ -134,7 +160,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {
 
   function cancelSession() {
     if (typeof setData !== "function" || !isEditable) return;
-    setData((prev) => skipSessionForDate(prev, dateKey, { objectiveId }));
+    setData((prev) => skipSessionForDate(prev, effectiveDateKey, { objectiveId }));
     if (typeof onBack === "function") onBack();
   }
 
@@ -181,7 +207,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {
           <div className="p18">
             <div className="titleSm">{statusLabel}</div>
             <div className="small2" style={{ marginTop: 6 }}>
-              Date : {dateKey}
+              Date : {effectiveDateKey}
             </div>
             <div className="mt12">
               <Button variant="ghost" onClick={onBack}>
@@ -213,7 +239,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {
               {objective?.title || "Objectif principal"}
             </div>
             <div className="sectionSub" style={{ marginTop: 6 }}>
-              Date : {dateKey}
+              Date : {effectiveDateKey}
             </div>
           </div>
         </Card>
