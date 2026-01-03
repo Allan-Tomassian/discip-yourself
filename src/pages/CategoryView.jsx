@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
+import Gauge from "../components/Gauge";
 import { getAccentForPage } from "../utils/_theme";
 import { safeConfirm, safePrompt } from "../utils/dialogs";
 
@@ -14,6 +15,15 @@ function resolveGoalType(goal) {
   if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
   return "PROCESS";
 }
+
+const MEASURE_UNITS = {
+  money: "€",
+  counter: "",
+  time: "min",
+  energy: "pts",
+  distance: "km",
+  weight: "kg",
+};
 
 export default function CategoryView({ data, setData, categoryId, onBack, onOpenPlan, onOpenCreate }) {
   const safeData = data && typeof data === "object" ? data : {};
@@ -55,6 +65,20 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
 
   const linkedHabits = selectedOutcome ? processGoals.filter((g) => g.parentId === selectedOutcome.id) : [];
   const habits = linkedHabits.length ? linkedHabits : processGoals;
+
+  const gaugeGoals = useMemo(() => {
+    const measured = outcomeGoals.filter(
+      (g) =>
+        typeof g.measureType === "string" &&
+        Number.isFinite(g.targetValue) &&
+        Number.isFinite(g.currentValue)
+    );
+    const main = category?.mainGoalId ? measured.find((g) => g.id === category.mainGoalId) : null;
+    const rest = main ? measured.filter((g) => g.id !== main.id) : measured;
+    return main ? [main, ...rest] : rest;
+  }, [outcomeGoals, category?.mainGoalId]);
+  const gaugeSlice = gaugeGoals.slice(0, 2);
+  const hasMoreGauges = gaugeGoals.length > 2;
 
   function openPlan(categoryIdValue, openGoalEditId) {
     if (!categoryIdValue || typeof setData !== "function") return;
@@ -253,6 +277,35 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
               </button>
             </div>
             {showWhy ? <div className="mt12 small2">{whyDisplay}</div> : null}
+          </div>
+        </Card>
+
+        <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }}>
+          <div className="p18">
+            <div className="titleSm">Progression</div>
+            {gaugeSlice.length ? (
+              <div className="mt12 col" style={{ gap: 12 }}>
+                {gaugeSlice.map((g) => (
+                  <Gauge
+                    key={g.id}
+                    label={g.title || "Objectif"}
+                    currentValue={g.currentValue}
+                    targetValue={g.targetValue}
+                    unit={MEASURE_UNITS[g.measureType] || ""}
+                    accentColor={category.color || accent}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="small2 mt10">Aucune jauge configurée.</div>
+            )}
+            {hasMoreGauges ? (
+              <div className="mt10">
+                <Button variant="ghost" onClick={() => {}}>
+                  → Voir tous les objectifs
+                </Button>
+              </div>
+            ) : null}
           </div>
         </Card>
 

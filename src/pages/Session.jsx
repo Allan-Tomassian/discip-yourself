@@ -31,14 +31,24 @@ function resolveGoalType(goal) {
   return "PROCESS";
 }
 
-export default function Session({ data, setData, onBack, onOpenLibrary }) {  const safeData = data && typeof data === "object" ? data : {};
+export default function Session({ data, setData, onBack, onOpenLibrary, categoryId, dateKey }) {
+  const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const sessions = Array.isArray(safeData.sessions) ? safeData.sessions : [];
   const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const urlCategoryId = urlParams?.get("cat") || null;
   const urlDateKey = urlParams?.get("date") || null;
-  const selectedDateKey = dateKey || urlDateKey || safeData.ui?.selectedDate || todayKey();
+  const effectiveDateKey =
+    typeof dateKey === "string" && dateKey
+      ? dateKey
+      : typeof urlDateKey === "string" && urlDateKey
+        ? urlDateKey
+        : typeof data?.selectedDateKey === "string" && data.selectedDateKey
+          ? data.selectedDateKey
+          : typeof safeData.ui?.selectedDate === "string" && safeData.ui.selectedDate
+            ? safeData.ui.selectedDate
+            : new Date().toISOString().slice(0, 10);
   const sessionCategoryId =
     categoryId || urlCategoryId || safeData.ui?.selectedCategoryId || categories[0]?.id || null;
 
@@ -56,10 +66,10 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {  con
 
   const session = useMemo(() => {
     if (objectiveIdForSession) {
-      return getSessionByDate({ sessions }, selectedDateKey, objectiveIdForSession);
+      return getSessionByDate({ sessions }, effectiveDateKey, objectiveIdForSession);
     }
-    return getSessionByDate({ sessions }, selectedDateKey, null);
-  }, [sessions, selectedDateKey, objectiveIdForSession]);
+    return getSessionByDate({ sessions }, effectiveDateKey, null);
+  }, [sessions, effectiveDateKey, objectiveIdForSession]);
   const isRunning = Boolean(session && session.status === "partial" && session.timerRunning);
   const isEditable = Boolean(session && session.status === "partial");
   useEffect(() => {
@@ -68,7 +78,8 @@ export default function Session({ data, setData, onBack, onOpenLibrary }) {  con
     return () => clearInterval(t);
   }, [isRunning]);
 
-const effectiveDateKey = session?.dateKey || session?.date || selectedDateKey;  const objectiveId = typeof session?.objectiveId === "string" ? session.objectiveId : null;
+  const resolvedDateKey = session?.dateKey || session?.date || effectiveDateKey;
+  const objectiveId = typeof session?.objectiveId === "string" ? session.objectiveId : null;
   const objective = objectiveId ? goals.find((g) => g.id === objectiveId) || null : null;
   const habitIds = Array.isArray(session?.habitIds) ? session.habitIds : [];
   const doneHabitIds = Array.isArray(session?.doneHabitIds)
@@ -79,7 +90,7 @@ const effectiveDateKey = session?.dateKey || session?.date || selectedDateKey;  
   const doneSet = useMemo(() => new Set(doneHabitIds), [doneHabitIds]);
   const habits = habitIds.map((id) => goals.find((g) => g.id === id)).filter(Boolean);
   const effectiveCategoryId = objective?.categoryId || habits[0]?.categoryId || null;
-const category = categories.find((c) => c.id === effectiveCategoryId) || null;
+  const category = categories.find((c) => c.id === effectiveCategoryId) || null;
   const accent = category?.color || getAccentForPage(safeData, "home");
   const catAccentVars = getCategoryAccentVars(accent);
 
@@ -103,14 +114,14 @@ const category = categories.find((c) => c.id === effectiveCategoryId) || null;
 
   function toggleDone(habitId, checked) {
     if (!habitId || typeof setData !== "function" || !isEditable) return;
-    setData((prev) => toggleSessionHabit(prev, effectiveDateKey, habitId, checked, objectiveId));
+    setData((prev) => toggleSessionHabit(prev, resolvedDateKey, habitId, checked, objectiveId));
   }
 
   function startTimer() {
     if (!session || typeof setData !== "function" || !hasHabits) return;
     const nowIso = new Date().toISOString();
     setData((prev) =>
-      updateSessionTimerForDate(prev, effectiveDateKey, {
+      updateSessionTimerForDate(prev, resolvedDateKey, {
         objectiveId,
         timerStartedAt: nowIso,
         timerAccumulatedSec,
@@ -122,7 +133,7 @@ const category = categories.find((c) => c.id === effectiveCategoryId) || null;
   function pauseTimer() {
     if (!session || typeof setData !== "function") return;
     setData((prev) =>
-      updateSessionTimerForDate(prev, effectiveDateKey, {
+      updateSessionTimerForDate(prev, resolvedDateKey, {
         objectiveId,
         timerStartedAt: "",
         timerAccumulatedSec: elapsedSec,
@@ -135,7 +146,7 @@ const category = categories.find((c) => c.id === effectiveCategoryId) || null;
     if (!session || typeof setData !== "function" || !hasHabits) return;
     const nowIso = new Date().toISOString();
     setData((prev) =>
-      updateSessionTimerForDate(prev, effectiveDateKey, {
+      updateSessionTimerForDate(prev, resolvedDateKey, {
         objectiveId,
         timerStartedAt: nowIso,
         timerAccumulatedSec,
@@ -148,7 +159,7 @@ const category = categories.find((c) => c.id === effectiveCategoryId) || null;
     if (!session || typeof setData !== "function" || !hasHabits || !isEditable) return;
     const durationSec = Math.max(0, Math.floor(elapsedSec));
     setData((prev) =>
-      finishSessionForDate(prev, effectiveDateKey, {
+      finishSessionForDate(prev, resolvedDateKey, {
         objectiveId,
         durationSec,
         doneHabitIds,
@@ -160,7 +171,7 @@ const category = categories.find((c) => c.id === effectiveCategoryId) || null;
 
   function cancelSession() {
     if (typeof setData !== "function" || !isEditable) return;
-    setData((prev) => skipSessionForDate(prev, effectiveDateKey, { objectiveId }));
+    setData((prev) => skipSessionForDate(prev, resolvedDateKey, { objectiveId }));
     if (typeof onBack === "function") onBack();
   }
 

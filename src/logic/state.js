@@ -20,6 +20,8 @@ export const DEFAULT_BLOCKS = [
   { id: "block_goal", type: "GOAL", enabled: true },
 ];
 
+const MEASURE_TYPES = new Set(["money", "counter", "time", "energy", "distance", "weight"]);
+
 // Demo mode (disabled by default).
 export const DEMO_MODE = false;
 
@@ -124,6 +126,15 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
   if (typeof g.deadline !== "string") g.deadline = "";
   if (typeof g.notes !== "string") g.notes = "";
 
+  // Optional: measurement fields for OUTCOME goals.
+  const rawMeasure = typeof g.measureType === "string" ? g.measureType.trim() : "";
+  g.measureType = MEASURE_TYPES.has(rawMeasure) ? rawMeasure : null;
+  const rawTarget = typeof g.targetValue === "string" ? Number(g.targetValue) : g.targetValue;
+  const rawCurrent = typeof g.currentValue === "string" ? Number(g.currentValue) : g.currentValue;
+  g.targetValue = Number.isFinite(rawTarget) && rawTarget > 0 ? rawTarget : null;
+  g.currentValue = Number.isFinite(rawCurrent) && rawCurrent >= 0 ? rawCurrent : null;
+  if (!g.targetValue) g.currentValue = null;
+
   // Strict separation:
   // OUTCOME (objective): keep metric/deadline/notes, but remove any habit/scheduling fields.
   // PROCESS (habit): keep planning/frequency fields, but remove any outcome fields.
@@ -146,6 +157,11 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
     g.primaryGoalId = null;
     g.weight = 0;
     g.linkWeight = 0;
+
+    if (!g.measureType) {
+      g.targetValue = null;
+      g.currentValue = null;
+    }
   }
 
   if (isProcess) {
@@ -153,6 +169,9 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
     g.deadline = "";
     g.metric = null;
     g.notes = "";
+    g.measureType = null;
+    g.targetValue = null;
+    g.currentValue = null;
 
     // Ensure planType coherence
     if (g.planType === "ONE_OFF") {

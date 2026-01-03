@@ -4,6 +4,25 @@ import { Button, Card, Input, Select } from "../components/UI";
 import { uid } from "../utils/helpers";
 import { createGoal } from "../logic/goals";
 
+const MEASURE_OPTIONS = [
+  { value: "money", label: "💰 Argent" },
+  { value: "counter", label: "🔢 Compteur" },
+  { value: "time", label: "⏱️ Temps" },
+  { value: "energy", label: "⚡ Énergie" },
+  { value: "distance", label: "📏 Distance" },
+  { value: "weight", label: "⚖️ Poids" },
+];
+
+function getMeasurePlaceholder(type) {
+  if (type === "money") return "€";
+  if (type === "time") return "minutes";
+  if (type === "energy") return "0 – 100";
+  if (type === "distance") return "km";
+  if (type === "weight") return "kg";
+  if (type === "counter") return "nombre";
+  return "Valeur";
+}
+
 export default function CreateGoal({ data, setData, onCancel, onDone }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
@@ -11,6 +30,8 @@ export default function CreateGoal({ data, setData, onCancel, onDone }) {
   const [categoryId, setCategoryId] = useState(categories[0]?.id || "");
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [measureType, setMeasureType] = useState("");
+  const [targetValue, setTargetValue] = useState("");
 
   useEffect(() => {
     if (categoryId) return;
@@ -23,6 +44,10 @@ export default function CreateGoal({ data, setData, onCancel, onDone }) {
     if (!canSubmit || typeof setData !== "function") return;
     const cleanTitle = title.trim();
     const cleanDeadline = (deadline || "").trim();
+    const cleanMeasure = (measureType || "").trim();
+    const targetRaw = (targetValue || "").trim();
+    const parsedTarget = Number(targetRaw);
+    const hasTarget = Number.isFinite(parsedTarget) && parsedTarget > 0;
     const id = uid();
 
     setData((prev) => {
@@ -33,6 +58,9 @@ export default function CreateGoal({ data, setData, onCancel, onDone }) {
         type: "OUTCOME",
         planType: "STATE",
         deadline: cleanDeadline,
+        measureType: cleanMeasure || null,
+        targetValue: hasTarget && cleanMeasure ? parsedTarget : null,
+        currentValue: hasTarget && cleanMeasure ? 0 : null,
       });
 
       const hasMain = categories.find((c) => c.id === categoryId)?.mainGoalId;
@@ -85,6 +113,22 @@ export default function CreateGoal({ data, setData, onCancel, onDone }) {
           </Select>
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nom de l’objectif" />
           <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+          <Select value={measureType} onChange={(e) => setMeasureType(e.target.value)} style={{ fontSize: 16 }}>
+            <option value="">Type de mesure</option>
+            {MEASURE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </Select>
+          {measureType ? (
+            <Input
+              type="number"
+              value={targetValue}
+              onChange={(e) => setTargetValue(e.target.value)}
+              placeholder={getMeasurePlaceholder(measureType)}
+            />
+          ) : null}
 
           {!categories.length ? (
             <div className="small2">Aucune catégorie disponible.</div>

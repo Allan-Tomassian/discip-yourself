@@ -94,6 +94,9 @@ export function sanitizeProcess(goal) {
   next.metric = null;
   next.deadline = "";
   next.notes = undefined;
+  next.measureType = null;
+  next.targetValue = null;
+  next.currentValue = null;
 
   // Keep schedule coherent.
   if (next.planType === "ACTION") {

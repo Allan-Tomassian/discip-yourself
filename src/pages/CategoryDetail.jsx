@@ -28,6 +28,25 @@ const UNIT_LABELS = {
   YEAR: ["an", "ans"],
 };
 
+const MEASURE_OPTIONS = [
+  { value: "money", label: "💰 Argent" },
+  { value: "counter", label: "🔢 Compteur" },
+  { value: "time", label: "⏱️ Temps" },
+  { value: "energy", label: "⚡ Énergie" },
+  { value: "distance", label: "📏 Distance" },
+  { value: "weight", label: "⚖️ Poids" },
+];
+
+function getMeasurePlaceholder(type) {
+  if (type === "money") return "€";
+  if (type === "time") return "minutes";
+  if (type === "energy") return "0 – 100";
+  if (type === "distance") return "km";
+  if (type === "weight") return "kg";
+  if (type === "counter") return "nombre";
+  return "Valeur";
+}
+
 function getCategoryTemplateKey(category) {
   const rawId = typeof category?.templateId === "string" ? category.templateId.trim() : "";
   if (rawId && CATEGORY_TEMPLATES.some((t) => t.id === rawId)) return rawId;
@@ -166,10 +185,42 @@ function cadenceFromUnit(unit) {
   return "YEARLY";
 }
 
-function ObjectiveForm({ title, onTitleChange, deadline, onDeadlineChange, notes, onNotesChange }) {
+function ObjectiveForm({
+  title,
+  onTitleChange,
+  deadline,
+  onDeadlineChange,
+  notes,
+  onNotesChange,
+  measureType,
+  onMeasureTypeChange,
+  targetValue,
+  onTargetValueChange,
+}) {
   return (
     <>
       <Input value={title} onChange={onTitleChange} placeholder="Nom de l’objectif" />
+      <div>
+        <div className="small" style={{ marginBottom: 6 }}>
+          Type de mesure
+        </div>
+        <Select value={measureType} onChange={onMeasureTypeChange} style={{ fontSize: 16 }}>
+          <option value="">Sélectionner un type</option>
+          {MEASURE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </Select>
+      </div>
+      {measureType ? (
+        <Input
+          type="number"
+          value={targetValue}
+          onChange={onTargetValueChange}
+          placeholder={getMeasurePlaceholder(measureType)}
+        />
+      ) : null}
       <div>
         <div className="small" style={{ marginBottom: 6 }}>
           Date cible (optionnelle)
@@ -265,6 +316,8 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
   const [draftMetricUnit, setDraftMetricUnit] = useState("");
   const [draftMetricTarget, setDraftMetricTarget] = useState("");
   const [draftMetricCurrent, setDraftMetricCurrent] = useState("");
+  const [draftMeasureType, setDraftMeasureType] = useState("");
+  const [draftTargetValue, setDraftTargetValue] = useState("");
   const [draftResetPolicy, setDraftResetPolicy] = useState("invalidate");
   const [draftTemplateId, setDraftTemplateId] = useState(null);
   const [goalSuggestionsOpen, setGoalSuggestionsOpen] = useState(false);
@@ -443,6 +496,8 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
     setDraftMetricUnit("");
     setDraftMetricTarget("");
     setDraftMetricCurrent("");
+    setDraftMeasureType("");
+    setDraftTargetValue("");
     setDraftResetPolicy("invalidate");
     setGoalSuggestionsOpen(false);
     setHabitSuggestionsOpen(false);
@@ -499,6 +554,8 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       setDraftMetricUnit("");
       setDraftMetricTarget("");
       setDraftMetricCurrent("");
+      setDraftMeasureType("");
+      setDraftTargetValue("");
     } else {
       // OUTCOME-only fields
       setDraftFreqCount("3");
@@ -514,6 +571,8 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       setDraftMetricUnit(goal?.metric?.unit || "");
       setDraftMetricTarget(goal?.metric?.targetValue != null ? String(goal.metric.targetValue) : "");
       setDraftMetricCurrent(goal?.metric?.currentValue != null ? String(goal.metric.currentValue) : "");
+      setDraftMeasureType(goal?.measureType || "");
+      setDraftTargetValue(goal?.targetValue != null ? String(goal.targetValue) : "");
     }
 
     setDraftResetPolicy(goal.resetPolicy || "invalidate");
@@ -662,6 +721,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
 
     const goalType = draftGoalType === "OUTCOME" ? "OUTCOME" : "PROCESS";
     const planType = goalType === "OUTCOME" ? "STATE" : draftPlanType || "ACTION";
+    const existingGoal = editGoalId ? goals.find((g) => g.id === editGoalId) || null : null;
 
     // startAt only matters for PROCESS in overlap engine and activation scheduling
     const startDate = (draftStartDate || todayKey()).trim();
@@ -700,10 +760,23 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
         metric = { unit, targetValue, currentValue };
       }
 
+      const measureType = (draftMeasureType || "").trim();
+      const measureTargetRaw = (draftTargetValue || "").trim();
+      const measureTarget = Number(measureTargetRaw);
+      const hasMeasure = Boolean(measureType);
+      if (hasMeasure && (!Number.isFinite(measureTarget) || measureTarget <= 0)) {
+        return setErr("Valeur cible invalide.");
+      }
+      const existingCurrent =
+        existingGoal && Number.isFinite(existingGoal.currentValue) ? existingGoal.currentValue : 0;
+
       payload = {
         ...payload,
         deadline,
         metric,
+        measureType: hasMeasure ? measureType : null,
+        targetValue: hasMeasure ? measureTarget : null,
+        currentValue: hasMeasure ? existingCurrent : null,
         notes: (draftNotes || "").trim(),
         // keep clean
         parentId: null,

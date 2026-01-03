@@ -1,6 +1,22 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, Select } from "../components/UI";
+import { Button, Card, Select, Textarea } from "../components/UI";
 import {
   addDays,
   addMonths,
@@ -32,6 +48,7 @@ const MICRO_ACTIONS = [
   { id: "micro_rangement", label: "Ranger 2 minutes" },
   { id: "micro_etirements", label: "Étirements rapides" },
 ];
+const DEFAULT_BLOCK_ORDER = ["focus", "calendar", "micro", "notes"];
 
 function initMicroState(dayKeyValue) {
   const key = dayKeyValue || toLocalDateKey(new Date());
@@ -63,6 +80,64 @@ function fromLocalDateKey(key) {
   return new Date(y, m - 1, d, 12, 0, 0);
 }
 
+function normalizeBlockOrder(raw) {
+  if (!Array.isArray(raw)) return [...DEFAULT_BLOCK_ORDER];
+  const cleaned = raw.filter((id) => DEFAULT_BLOCK_ORDER.includes(id));
+  for (const id of DEFAULT_BLOCK_ORDER) {
+    if (!cleaned.includes(id)) cleaned.push(id);
+  }
+  return cleaned.length ? cleaned : [...DEFAULT_BLOCK_ORDER];
+}
+
+function DragHandle({ setActivatorNodeRef, listeners, attributes }) {
+  return (
+    <button
+      ref={setActivatorNodeRef}
+      type="button"
+      aria-label="Réorganiser"
+      {...listeners}
+      {...attributes}
+      style={{
+        width: 18,
+        height: 18,
+        padding: 0,
+        border: 0,
+        borderRadius: 6,
+        background: "transparent",
+        color: "rgba(255,255,255,0.5)",
+        fontSize: 12,
+        lineHeight: 1,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "grab",
+      }}
+    >
+      ⋮⋮
+    </button>
+  );
+}
+
+function SortableBlock({ id, children }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+  const scale = isDragging ? 1.02 : 1;
+  const transformString = CSS.Transform.toString(transform);
+  const style = {
+    transform: transformString ? `${transformString} scale(${scale})` : `scale(${scale})`,
+    transition,
+    boxShadow: isDragging ? "0 16px 28px rgba(0,0,0,0.25)" : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      {typeof children === "function"
+        ? children({ attributes, listeners, setActivatorNodeRef, isDragging })
+        : children}
+    </div>
+  );
+}
+
 export default function Home({
   data,
   setData,
@@ -86,6 +161,15 @@ export default function Home({
   const [showDayStats, setShowDayStats] = useState(false);
   const [showDisciplineStats, setShowDisciplineStats] = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [dailyNote, setDailyNote] = useState("");
+  const [blockOrder, setBlockOrder] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("todayBlocksOrder"));
+      return normalizeBlockOrder(stored);
+    } catch (_) {
+      return [...DEFAULT_BLOCK_ORDER];
+    }
+  });
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(selectedDate));
   const todayKeyRef = useRef(localTodayKey);
   const railRef = useRef(null);
@@ -112,6 +196,24 @@ export default function Home({
       ui: { ...(prev.ui || {}), selectedDate: toLocalDateKey(new Date()) },
     }));
   }, [safeData.ui?.selectedDate, setData]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("todayBlocksOrder", JSON.stringify(blockOrder));
+    } catch (_) {
+      // Ignore storage failures.
+    }
+  }, [blockOrder]);
+
+  useEffect(() => {
+    let next = "";
+    try {
+      next = localStorage.getItem(`dailyNote:${selectedDateKey}`) || "";
+    } catch (_) {
+      next = "";
+    }
+    setDailyNote(next);
+  }, [selectedDateKey]);
 
   useEffect(() => {
     if (typeof setData !== "function") return;
@@ -466,6 +568,22 @@ const selectedGoal = useMemo(() => {
     setData((prev) => setMainGoal(prev, nextGoalId));
   }
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } })
+  );
+
+  const handleDragEnd = useCallback((event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setBlockOrder((items) => {
+      const oldIndex = items.indexOf(active.id);
+      const newIndex = items.indexOf(over.id);
+      if (oldIndex === -1 || newIndex === -1) return items;
+      return arrayMove(items, oldIndex, newIndex);
+    });
+  }, []);
+
 
   if (!categories.length) {
     return (
@@ -589,195 +707,274 @@ const selectedGoal = useMemo(() => {
             </button>
           </div>
 
-          <Card style={{ marginTop: 12 }}>
-            <div className="p18">
-              <div className="sectionTitle textAccent">Focus du jour</div>
-              <div className="mt12">
-                <div className="small2">Catégorie</div>
-                <div className="mt8 listItem catAccentRow" style={catAccentVars}>
-                  <div className="itemTitle" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {focusCategory?.name || "Catégorie"}
-                  </div>
-                </div>
-              </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+        >
+          <SortableContext items={blockOrder} strategy={verticalListSortingStrategy}>
+            {blockOrder.map((blockId) => (
+              <SortableBlock key={blockId} id={blockId}>
+                {({ attributes, listeners, setActivatorNodeRef }) => {
+                  if (blockId === "focus") {
+                    return (
+                      <Card style={{ marginTop: 12 }}>
+                        <div className="p18">
+                          <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                            <DragHandle
+                              attributes={attributes}
+                              listeners={listeners}
+                              setActivatorNodeRef={setActivatorNodeRef}
+                            />
+                            <div className="sectionTitle textAccent">Focus du jour</div>
+                          </div>
+                          <div className="mt12">
+                            <div className="small2">Catégorie</div>
+                            <div className="mt8 listItem catAccentRow" style={catAccentVars}>
+                              <div className="itemTitle" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {focusCategory?.name || "Catégorie"}
+                              </div>
+                            </div>
+                          </div>
 
-              <div className="mt12">
-                <div className="small2">Objectif principal</div>
-                {outcomeGoals.length ? (
-                  <div className="mt8 catAccentField" style={catAccentVars}>
-                    <Select
-                      value={selectedGoal?.id || ""}
-                      onChange={(e) => setCategoryMainGoal(e.target.value)}
-                      style={{ fontSize: 16 }}
-                      disabled={!canEdit}
-                    >
-                      <option value="" disabled>
-                        Choisir un objectif
-                      </option>
-                      {outcomeGoals.map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.title || "Objectif"}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                ) : (
-                  <div className="mt8 small2">Aucun objectif principal pour cette catégorie.</div>
-                )}
-              </div>
+                          <div className="mt12">
+                            <div className="small2">Objectif principal</div>
+                            {outcomeGoals.length ? (
+                              <div className="mt8 catAccentField" style={catAccentVars}>
+                                <Select
+                                  value={selectedGoal?.id || ""}
+                                  onChange={(e) => setCategoryMainGoal(e.target.value)}
+                                  style={{ fontSize: 16 }}
+                                  disabled={!canEdit}
+                                >
+                                  <option value="" disabled>
+                                    Choisir un objectif
+                                  </option>
+                                  {outcomeGoals.map((g) => (
+                                    <option key={g.id} value={g.id}>
+                                      {g.title || "Objectif"}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </div>
+                            ) : (
+                              <div className="mt8 small2">Aucun objectif principal pour cette catégorie.</div>
+                            )}
+                          </div>
 
-              <div className="mt12">
-                <Button onClick={openSessionFlow} disabled={!canOpenSession}>
-                  GO
-                </Button>
-                {!selectedGoal ? (
-                  <div className="sectionSub" style={{ marginTop: 8 }}>
-                    Choisis un objectif principal.
-                  </div>
-                ) : !activeHabits.length ? (
-                  <div className="sectionSub" style={{ marginTop: 8 }}>
-                    Ajoute une habitude dans Bibliothèque &gt; Gérer.
-                  </div>
-                ) : !canValidate ? (
-                  <div className="sectionSub" style={{ marginTop: 8 }}>
-                    Lecture seule.
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </Card>
-
-          <Card style={{ marginTop: 12 }}>
-            <div className="p18">
-              <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <div className="sectionTitle textAccent">Calendrier</div>
-                  <div className="small2 mt8">
-                    {selectedDateLabel || "—"}
-                  </div>
-                </div>
-                <div className="row" style={{ gap: 8 }}>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      const today = toLocalDateKey(new Date());
-                      setSelectedDate(today);
-                      requestAnimationFrame(() => scrollRailToKey(today));
-                    }}
-                  >
-                    Aujourd’hui
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => setShowMonthPicker(true)}
-                    style={{ borderRadius: 999, width: 36, height: 36, padding: 0 }}
-                  >
-                    +
-                  </Button>
-                </div>
-              </div>
-              <div className="calendarRailWrap mt12">
-                <div className="calendarSelector" aria-hidden="true">
-                  <span className="calendarSelectorDot" />
-                </div>
-                <div
-                  className="calendarRail scrollNoBar"
-                  ref={railRef}
-                  onScroll={handleRailScroll}
-                >
-                  {railItems.map((item) => (
-                    <button
-                      key={item.key}
-                      ref={(el) => {
-                        if (el) railItemRefs.current.set(item.key, el);
-                        else railItemRefs.current.delete(item.key);
-                      }}
-                      className={`dayPill calendarItem ${
-                        item.key === selectedDateKey
-                          ? "is-current"
-                          : item.key < selectedDateKey
-                            ? "is-past"
-                            : "is-future"
-                      }`}
-                      data-datekey={item.key}
-                      data-status={item.status}
-                      onClick={() => {
-                        scrollRailToKey(item.key);
-                        setSelectedDate(item.key);
-                      }}
-                      type="button"
-                    >
-                      <div className="dayPillDay">{item.day}</div>
-                      <div className="dayPillMonth">/{item.month}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="sectionSub" style={{ marginTop: 8 }}>
-                {selectedStatus === "past" ? "Lecture seule" : selectedStatus === "today" ? "Aujourd’hui" : "À venir"}
-              </div>
-            </div>
-          </Card>
-
-          <Card style={{ marginTop: 12 }}>
-            <div className="p18">
-              <div className="sectionTitle textAccent">Micro-actions</div>
-              <div className="sectionSub">Trois impulsions simples</div>
-              <div className="mt12 col" style={{ gap: 10 }}>
-                {microItems.map((item) => {
-                  const isMicroDone = dayChecks.micro.includes(item.id);
-                  const canAddMicro = canValidate && microDoneToday < 3 && !isMicroDone;
-                  return (
-                    <div key={item.uid} className="listItem catAccentRow" style={catAccentVars}>
-                      <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                        <div className="itemTitle" style={{ flex: 1, minWidth: 0 }}>
-                          {item.label}
+                          <div className="mt12">
+                            <Button onClick={openSessionFlow} disabled={!canOpenSession}>
+                              GO
+                            </Button>
+                            {!selectedGoal ? (
+                              <div className="sectionSub" style={{ marginTop: 8 }}>
+                                Choisis un objectif principal.
+                              </div>
+                            ) : !activeHabits.length ? (
+                              <div className="sectionSub" style={{ marginTop: 8 }}>
+                                Ajoute une habitude dans Bibliothèque &gt; Gérer.
+                              </div>
+                            ) : !canValidate ? (
+                              <div className="sectionSub" style={{ marginTop: 8 }}>
+                                Lecture seule.
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          disabled={!canAddMicro}
-                          onClick={() => {
-                            if (!canAddMicro) return;
-                            setData((prev) => {
-                              const nextChecks = { ...(prev.checks || {}) };
-                              const rawBucket = nextChecks[selectedDateKey];
-                              const dayBucket =
-                                rawBucket && typeof rawBucket === "object" ? { ...rawBucket } : {};
-                              const microIds = Array.isArray(dayBucket.micro) ? [...dayBucket.micro] : [];
-                              const unique = new Set(microIds);
-                              if (unique.size >= 3 || unique.has(item.id)) return prev;
-                              dayBucket.micro = [...microIds, item.id];
-                              nextChecks[selectedDateKey] = dayBucket;
-                              return { ...prev, checks: nextChecks };
-                            });
-                            setMicroState((prev) => {
-                              const remaining = prev.items.filter((i) => i.uid !== item.uid);
-                              const nextItem = MICRO_ACTIONS[prev.cursor % MICRO_ACTIONS.length];
-                              const next = nextItem
-                                ? {
-                                    uid: `${nextItem.id}-${selectedDateKey}-${Date.now()}`,
-                                    id: nextItem.id,
-                                    label: nextItem.label,
-                                  }
-                                : null;
-                              return {
-                                ...prev,
-                                cursor: (prev.cursor + 1) % MICRO_ACTIONS.length,
-                                items: next ? [...remaining, next] : remaining,
-                              };
-                            });
-                          }}
-                        >
-                          +1
-                        </Button>
+                      </Card>
+                    );
+                  }
+
+                  if (blockId === "calendar") {
+                    return (
+                      <Card style={{ marginTop: 12 }}>
+                        <div className="p18">
+                          <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+                            <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                              <DragHandle
+                                attributes={attributes}
+                                listeners={listeners}
+                                setActivatorNodeRef={setActivatorNodeRef}
+                              />
+                              <div>
+                                <div className="sectionTitle textAccent">Calendrier</div>
+                                <div className="small2 mt8">
+                                  {selectedDateLabel || "—"}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="row" style={{ gap: 8 }}>
+                              <Button
+                                variant="ghost"
+                                onClick={() => {
+                                  const today = toLocalDateKey(new Date());
+                                  setSelectedDate(today);
+                                  requestAnimationFrame(() => scrollRailToKey(today));
+                                }}
+                              >
+                                Aujourd’hui
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                onClick={() => setShowMonthPicker(true)}
+                                style={{ borderRadius: 999, width: 36, height: 36, padding: 0 }}
+                              >
+                                +
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="calendarRailWrap mt12">
+                            <div className="calendarSelector" aria-hidden="true">
+                              <span className="calendarSelectorDot" />
+                            </div>
+                            <div
+                              className="calendarRail scrollNoBar"
+                              ref={railRef}
+                              onScroll={handleRailScroll}
+                            >
+                              {railItems.map((item) => (
+                                <button
+                                  key={item.key}
+                                  ref={(el) => {
+                                    if (el) railItemRefs.current.set(item.key, el);
+                                    else railItemRefs.current.delete(item.key);
+                                  }}
+                                  className={`dayPill calendarItem ${
+                                    item.key === selectedDateKey
+                                      ? "is-current"
+                                      : item.key < selectedDateKey
+                                        ? "is-past"
+                                        : "is-future"
+                                  }`}
+                                  data-datekey={item.key}
+                                  data-status={item.status}
+                                  onClick={() => {
+                                    scrollRailToKey(item.key);
+                                    setSelectedDate(item.key);
+                                  }}
+                                  type="button"
+                                >
+                                  <div className="dayPillDay">{item.day}</div>
+                                  <div className="dayPillMonth">/{item.month}</div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="sectionSub" style={{ marginTop: 8 }}>
+                            {selectedStatus === "past" ? "Lecture seule" : selectedStatus === "today" ? "Aujourd’hui" : "À venir"}
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  }
+
+                  if (blockId === "micro") {
+                    return (
+                      <Card style={{ marginTop: 12 }}>
+                        <div className="p18">
+                          <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                            <DragHandle
+                              attributes={attributes}
+                              listeners={listeners}
+                              setActivatorNodeRef={setActivatorNodeRef}
+                            />
+                            <div className="sectionTitle textAccent">Micro-actions</div>
+                          </div>
+                          <div className="sectionSub">Trois impulsions simples</div>
+                          <div className="mt12 col" style={{ gap: 10 }}>
+                            {microItems.map((item) => {
+                              const isMicroDone = dayChecks.micro.includes(item.id);
+                              const canAddMicro = canValidate && microDoneToday < 3 && !isMicroDone;
+                              return (
+                                <div key={item.uid} className="listItem catAccentRow" style={catAccentVars}>
+                                  <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                                    <div className="itemTitle" style={{ flex: 1, minWidth: 0 }}>
+                                      {item.label}
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      disabled={!canAddMicro}
+                                      onClick={() => {
+                                        if (!canAddMicro) return;
+                                        setData((prev) => {
+                                          const nextChecks = { ...(prev.checks || {}) };
+                                          const rawBucket = nextChecks[selectedDateKey];
+                                          const dayBucket =
+                                            rawBucket && typeof rawBucket === "object" ? { ...rawBucket } : {};
+                                          const microIds = Array.isArray(dayBucket.micro) ? [...dayBucket.micro] : [];
+                                          const unique = new Set(microIds);
+                                          if (unique.size >= 3 || unique.has(item.id)) return prev;
+                                          dayBucket.micro = [...microIds, item.id];
+                                          nextChecks[selectedDateKey] = dayBucket;
+                                          return { ...prev, checks: nextChecks };
+                                        });
+                                        setMicroState((prev) => {
+                                          const remaining = prev.items.filter((i) => i.uid !== item.uid);
+                                          const nextItem = MICRO_ACTIONS[prev.cursor % MICRO_ACTIONS.length];
+                                          const next = nextItem
+                                            ? {
+                                                uid: `${nextItem.id}-${selectedDateKey}-${Date.now()}`,
+                                                id: nextItem.id,
+                                                label: nextItem.label,
+                                              }
+                                            : null;
+                                          return {
+                                            ...prev,
+                                            cursor: (prev.cursor + 1) % MICRO_ACTIONS.length,
+                                            items: next ? [...remaining, next] : remaining,
+                                          };
+                                        });
+                                      }}
+                                    >
+                                      +1
+                                    </Button>
+                                  </div>
+                                  {!canValidate ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  }
+
+                  return (
+                    <Card style={{ marginTop: 12 }}>
+                      <div className="p18">
+                        <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                          <DragHandle
+                            attributes={attributes}
+                            listeners={listeners}
+                            setActivatorNodeRef={setActivatorNodeRef}
+                          />
+                          <div className="sectionTitle textAccent">Note du jour</div>
+                        </div>
+                        <div className="mt12">
+                          <Textarea
+                            rows={3}
+                            value={dailyNote}
+                            onChange={(e) => {
+                              const next = e.target.value;
+                              setDailyNote(next);
+                              try {
+                                localStorage.setItem(`dailyNote:${selectedDateKey}`, next);
+                              } catch (_) {
+                                // Ignore storage failures (private mode, quota, etc.)
+                              }
+                            }}
+                            placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
+                          />
+                        </div>
                       </div>
-                      {!canValidate ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
-                    </div>
+                    </Card>
                   );
-                })}
-              </div>
-            </div>
-          </Card>
+                }}
+              </SortableBlock>
+            ))}
+          </SortableContext>
+        </DndContext>
       </div>
       {showDayStats ? (
         <div className="modalBackdrop disciplineOverlay" onClick={() => setShowDayStats(false)}>
