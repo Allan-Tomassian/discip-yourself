@@ -146,6 +146,11 @@ a{ color:inherit; }
 }
 .navGear:hover{ background: rgba(255,255,255,.18); }
 
+.btnBackCompact{
+  padding:8px 12px;
+  font-size:13px;
+}
+
 .hdrSub{ font-size:13px; color:rgba(255,255,255,.60); }
 .hdrTitle{ margin-top:6px; font-size:26px; font-weight:700; letter-spacing:-.02em; }
 .textAccent{ color:var(--accent); }
@@ -193,11 +198,51 @@ a{ color:inherit; }
   grid-column:3;
   align-self:flex-start;
 }
+.manageHeaderRightWrap{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overflow:hidden;
+}
 @media (max-width: 720px){
   .manageHeader{ flex-direction:column; }
   .manageHeaderRight{ align-items:flex-start; min-width:0; width:100%; }
   .manageGauge{ width:100%; }
   .manageGaugeRow{ grid-template-columns: 1fr auto auto; }
+}
+
+.gaugeWrap{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.gaugeTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  width:100%;
+  min-width:0;
+}
+.gaugeTitle{
+  flex:1;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.gaugeValue{
+  flex:0 0 auto;
+  white-space:nowrap;
+  opacity:.85;
+}
+.gaugeBarRow{
+  width:100%;
+  max-width:100%;
 }
 
 .card{

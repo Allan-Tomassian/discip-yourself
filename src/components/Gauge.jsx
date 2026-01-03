@@ -9,10 +9,13 @@ export default function Gauge({ label, currentValue, targetValue, unit, accentCo
   const fillColor = accentColor || "var(--accent)";
 
   return (
-    <div className={`col${className ? ` ${className}` : ""}`} style={{ gap: 6 }}>
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-        <div className="small2">{label}</div>
-        <div className="small2">
+    <div
+      className={`gaugeWrap${className ? ` ${className}` : ""}`}
+      style={{ gap: 6 }}
+    >
+      <div className="gaugeTop">
+        <div className="small2 gaugeTitle">{label}</div>
+        <div className="small2 gaugeValue">
           {hasTarget ? (
             <>
               {current}
@@ -24,9 +27,8 @@ export default function Gauge({ label, currentValue, targetValue, unit, accentCo
           )}
         </div>
       </div>
-      <div
+      <div className="gaugeBarRow"
         style={{
-          width: "100%",
           height: 6,
           borderRadius: 999,
           background: "rgba(255,255,255,.12)",

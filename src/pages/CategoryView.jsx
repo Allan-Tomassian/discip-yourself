@@ -255,11 +255,11 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
       <div className="manageHeaderLeft">
         <div className="manageHeaderTitle textAccent">Gérer</div>
         <div className="manageHeaderSubtitle">{category.name || "Catégorie"}</div>
-        <Button variant="ghost" onClick={onBack}>
-          ← Bibliothèque
+        <Button variant="ghost" className="btnBackCompact" onClick={onBack}>
+          ← Retour
         </Button>
       </div>
-      {headerGauges}
+      {headerGauges ? <div className="manageHeaderRightWrap">{headerGauges}</div> : null}
     </div>
   );
 
