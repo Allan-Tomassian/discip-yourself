@@ -15,20 +15,29 @@ function resolveGoalType(goal) {
   return "PROCESS";
 }
 
-export default function CreateHabit({ data, setData, onCancel, onDone }) {
+export default function CreateHabit({ data, setData, onCancel, onDone, initialCategoryId, initialGoalId }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
 
-  const [categoryId, setCategoryId] = useState(categories[0]?.id || "");
-  const [parentId, setParentId] = useState("");
+  const [categoryId, setCategoryId] = useState(() => initialCategoryId || categories[0]?.id || "");
+  const [parentId, setParentId] = useState(() => initialGoalId || "");
   const [title, setTitle] = useState("");
 
   useEffect(() => {
-    if (categoryId) return;
-    if (categories.length) setCategoryId(categories[0].id);
-  }, [categories, categoryId]);
+    if (!initialGoalId) return;
+    if (parentId !== initialGoalId) setParentId(initialGoalId);
+  }, [initialGoalId, parentId]);
+
+  useEffect(() => {
+    if (!categories.length) return;
+    if (initialCategoryId && categories.some((c) => c.id === initialCategoryId)) {
+      if (categoryId !== initialCategoryId) setCategoryId(initialCategoryId);
+      return;
+    }
+    if (!categoryId) setCategoryId(categories[0].id);
+  }, [categories, categoryId, initialCategoryId]);
 
   const outcomeGoals = useMemo(() => {
     if (!categoryId) return [];
@@ -41,13 +50,14 @@ export default function CreateHabit({ data, setData, onCancel, onDone }) {
   }, [categories, categoryId]);
 
   useEffect(() => {
+    if (initialGoalId && parentId === initialGoalId) return;
     if (parentId && outcomeGoals.some((g) => g.id === parentId)) return;
     if (mainGoalId) {
       setParentId(mainGoalId);
       return;
     }
     setParentId(outcomeGoals[0]?.id || "");
-  }, [outcomeGoals, parentId, mainGoalId]);
+  }, [outcomeGoals, parentId, mainGoalId, initialGoalId]);
 
   const canSubmit = Boolean(categoryId && parentId && title.trim());
 
@@ -72,7 +82,7 @@ export default function CreateHabit({ data, setData, onCancel, onDone }) {
       })
     );
 
-    if (typeof onDone === "function") onDone();
+    if (typeof onDone === "function") onDone({ habitId: id, categoryId, parentId });
   }
 
   return (
@@ -90,7 +100,7 @@ export default function CreateHabit({ data, setData, onCancel, onDone }) {
           Retour
         </Button>
       }
-      headerAlign="flex-end"
+      headerAlign="right"
       backgroundImage={backgroundImage}
     >
       <Card accentBorder>

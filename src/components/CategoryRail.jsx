@@ -15,8 +15,8 @@ export default function CategoryRail({ categories = [], selectedCategoryId = nul
             style={{
               ...(isSelected ? accentVars : null),
               minWidth: "max-content",
-              padding: "8px 12px",
-              borderRadius: 14,
+              padding: "6px 10px",
+              borderRadius: 12,
               whiteSpace: "nowrap",
               display: "flex",
               alignItems: "center",
@@ -26,7 +26,9 @@ export default function CategoryRail({ categories = [], selectedCategoryId = nul
               if (typeof onSelect === "function") onSelect(c.id);
             }}
           >
-            <span className="itemTitle">{c.name || "Catégorie"}</span>
+            <span className="itemTitle" style={{ fontSize: 13, lineHeight: 1 }}>
+              {c.name || "Catégorie"}
+            </span>
           </button>
         );
       })}

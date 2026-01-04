@@ -23,6 +23,7 @@ import CategoryProgress from "./pages/CategoryProgress";
 import Session from "./pages/Session";
 import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
 import { todayKey } from "./utils/dates";
+import { normalizePriorities } from "./logic/priority";
 
 function runSelfTests() {
   // minimal sanity
@@ -38,6 +39,19 @@ function resolveGoalType(goal) {
   if (legacy === "OUTCOME") return "OUTCOME";
   if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
   return "PROCESS";
+}
+
+function parseLocalDateKey(key) {
+  if (typeof key !== "string") return new Date();
+  const [y, m, d] = key.split("-").map((v) => parseInt(v, 10));
+  if (!y || !m || !d) return new Date();
+  return new Date(y, m - 1, d, 12, 0, 0);
+}
+
+function appDowFromDateKey(key) {
+  const d = parseLocalDateKey(key);
+  const js = d.getDay(); // 0..6 (Sun..Sat)
+  return js === 0 ? 7 : js; // 1..7 (Mon..Sun)
 }
 
 function isOnboarded(data) {
@@ -165,6 +179,8 @@ export default function App() {
   const [sessionCategoryId, setSessionCategoryId] = useState(initialSearch?.get("cat") || null);
   const [sessionDateKey, setSessionDateKey] = useState(initialSearch?.get("date") || null);
   const [activeReminder, setActiveReminder] = useState(null);
+  const [createFlowCategoryId, setCreateFlowCategoryId] = useState(null);
+  const [createFlowGoalId, setCreateFlowGoalId] = useState(null);
   const dataRef = useRef(data);
   const lastReminderRef = useRef({});
   const activeReminderRef = useRef(activeReminder);
@@ -237,8 +253,14 @@ export default function App() {
   }, [activeReminder]);
 
   useEffect(() => {
+    if (tab === "create-category" || tab === "create-goal" || tab === "create-habit") return;
+    setCreateFlowCategoryId(null);
+    setCreateFlowGoalId(null);
+  }, [tab]);
+
+  useEffect(() => {
     runSelfTests();
-    setData((prev) => migrate(prev));
+    setData((prev) => normalizePriorities(migrate(prev)));
     markIOSRootClass();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -273,6 +295,7 @@ export default function App() {
   const safeData = data && typeof data === "object" ? data : {};
   const themeName = getThemeName(safeData);
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
+  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const categoryRailOrder = useMemo(
     () => ensureOrder(safeData?.ui?.categoryRailOrder, categories),
     [safeData?.ui?.categoryRailOrder, categories]
@@ -281,6 +304,23 @@ export default function App() {
     const map = new Map(categories.map((c) => [c.id, c]));
     return categoryRailOrder.map((id) => map.get(id)).filter(Boolean);
   }, [categories, categoryRailOrder]);
+  const railDateKey = safeData?.ui?.selectedDate || todayKey(new Date());
+  const railDow = useMemo(() => appDowFromDateKey(railDateKey), [railDateKey]);
+  const plannedCategoryIds = useMemo(() => {
+    if (!goals.length) return new Set();
+    const ids = new Set();
+    for (const g of goals) {
+      if (resolveGoalType(g) !== "PROCESS") continue;
+      if (g.status && g.status !== "active") continue;
+      const days = Array.isArray(g?.schedule?.daysOfWeek) ? g.schedule.daysOfWeek : null;
+      const plannedToday = !days || days.length === 0 ? true : days.includes(railDow);
+      if (plannedToday && g.categoryId) ids.add(g.categoryId);
+    }
+    return ids;
+  }, [goals, railDow]);
+  const railCategories = useMemo(() => {
+    return orderedCategories.filter((c) => plannedCategoryIds.has(c.id));
+  }, [orderedCategories, plannedCategoryIds]);
   const railSelectedId =
     tab === "category-detail"
       ? categoryDetailId
@@ -393,7 +433,7 @@ export default function App() {
           setLibraryCategoryId(null);
           setTab("create-category");
         }}
-        categories={orderedCategories}
+        categories={railCategories}
         selectedCategoryId={railSelectedId}
         onSelectCategory={(categoryId) => {
           if (!categoryId) return;
@@ -560,27 +600,47 @@ export default function App() {
           data={data}
           setData={setData}
           onCancel={() => setTab("create")}
-          onDone={() => {
-            setLibraryCategoryId(null);
-            setTab("library");
+          onDone={({ categoryId }) => {
+            setCreateFlowCategoryId(categoryId || null);
+            setCreateFlowGoalId(null);
+            setTab("create-goal");
           }}
         />
       ) : tab === "create-goal" ? (
         <CreateGoal
           data={data}
           setData={setData}
-          onCancel={() => setTab("create")}
-          onDone={() => {
-            setLibraryCategoryId(null);
-            setTab("library");
+          initialCategoryId={createFlowCategoryId}
+          onCancel={() => {
+            if (createFlowCategoryId) {
+              setCreateFlowGoalId(null);
+              setTab("create-category");
+              return;
+            }
+            setTab("create");
+          }}
+          onDone={({ goalId, categoryId }) => {
+            setCreateFlowCategoryId(categoryId || createFlowCategoryId || null);
+            setCreateFlowGoalId(goalId || null);
+            setTab("create-habit");
           }}
         />
       ) : tab === "create-habit" ? (
         <CreateHabit
           data={data}
           setData={setData}
-          onCancel={() => setTab("create")}
+          initialCategoryId={createFlowCategoryId}
+          initialGoalId={createFlowGoalId}
+          onCancel={() => {
+            if (createFlowGoalId) {
+              setTab("create-goal");
+              return;
+            }
+            setTab("create");
+          }}
           onDone={() => {
+            setCreateFlowCategoryId(null);
+            setCreateFlowGoalId(null);
             setLibraryCategoryId(null);
             setTab("library");
           }}

@@ -3,6 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input, Select } from "../components/UI";
 import { uid } from "../utils/helpers";
 import { createGoal } from "../logic/goals";
+import { setPrimaryGoalForCategory } from "../logic/priority";
 
 const MEASURE_OPTIONS = [
   { value: "money", label: "💰 Argent" },
@@ -23,20 +24,25 @@ function getMeasurePlaceholder(type) {
   return "Valeur";
 }
 
-export default function CreateGoal({ data, setData, onCancel, onDone }) {
+export default function CreateGoal({ data, setData, onCancel, onDone, initialCategoryId }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
-  const [categoryId, setCategoryId] = useState(categories[0]?.id || "");
+  const [categoryId, setCategoryId] = useState(() => initialCategoryId || categories[0]?.id || "");
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState("");
   const [measureType, setMeasureType] = useState("");
   const [targetValue, setTargetValue] = useState("");
+  const [isPriority, setIsPriority] = useState(false);
 
   useEffect(() => {
-    if (categoryId) return;
-    if (categories.length) setCategoryId(categories[0].id);
-  }, [categories, categoryId]);
+    if (!categories.length) return;
+    if (initialCategoryId && categories.some((c) => c.id === initialCategoryId)) {
+      if (categoryId !== initialCategoryId) setCategoryId(initialCategoryId);
+      return;
+    }
+    if (!categoryId) setCategoryId(categories[0].id);
+  }, [categories, categoryId, initialCategoryId]);
 
   const canSubmit = Boolean(categoryId && title.trim());
 
@@ -61,6 +67,7 @@ export default function CreateGoal({ data, setData, onCancel, onDone }) {
         measureType: cleanMeasure || null,
         targetValue: hasTarget && cleanMeasure ? parsedTarget : null,
         currentValue: hasTarget && cleanMeasure ? 0 : null,
+        priorityLevel: isPriority ? "primary" : "secondary",
       });
 
       const hasMain = categories.find((c) => c.id === categoryId)?.mainGoalId;
@@ -75,10 +82,13 @@ export default function CreateGoal({ data, setData, onCancel, onDone }) {
         };
       }
 
+      if (isPriority) {
+        next = setPrimaryGoalForCategory(next, categoryId, id);
+      }
       return next;
     });
 
-    if (typeof onDone === "function") onDone();
+    if (typeof onDone === "function") onDone({ goalId: id, categoryId });
   }
 
   return (
@@ -96,7 +106,7 @@ export default function CreateGoal({ data, setData, onCancel, onDone }) {
           Retour
         </Button>
       }
-      headerAlign="flex-end"
+      headerAlign="right"
       backgroundImage={backgroundImage}
     >
       <Card accentBorder>
@@ -129,6 +139,10 @@ export default function CreateGoal({ data, setData, onCancel, onDone }) {
               placeholder={getMeasurePlaceholder(measureType)}
             />
           ) : null}
+          <label className="includeToggle">
+            <input type="checkbox" checked={isPriority} onChange={(e) => setIsPriority(e.target.checked)} />
+            <span>Prioritaire</span>
+          </label>
 
           {!categories.length ? (
             <div className="small2">Aucune catégorie disponible.</div>

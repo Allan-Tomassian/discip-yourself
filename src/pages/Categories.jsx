@@ -3,6 +3,7 @@ import React, { useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
+import { isPrimaryCategory } from "../logic/priority";
 
 function resolveGoalType(goal) {
   const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
@@ -109,7 +110,7 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
       }
       backgroundImage={safeData?.profile?.whyImage || ""}
     >
-      <div className="col">
+      <div className="stack stackGap12">
         {sortedCategories.map((c) => {
           const counts = countsByCategory.get(c.id) || { habits: 0, objectives: 0 };
           const objectives = counts.objectives;
@@ -120,10 +121,17 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
               : "Aucun élément";
 
           return (
-            <Card key={c.id} className="catAccentRow" style={{ marginBottom: 12, ...getCategoryAccentVars(c.color) }}>
+            <Card key={c.id} className="catAccentRow" style={getCategoryAccentVars(c.color)}>
               <div className="p18 row" style={{ justifyContent: "space-between" }}>
                 <div>
-                  <div className="itemTitle">{c.name}</div>
+                  <div className="itemTitle">
+                    {c.name}
+                    {isPrimaryCategory(c) ? (
+                      <span className="badge" style={{ marginLeft: 8, borderColor: "var(--accent)", color: "var(--accent)" }}>
+                        Prioritaire
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="itemSub">{summary}</div>
                 </div>
                 <Button variant="ghost" onClick={() => openCategory(c.id)}>

@@ -28,6 +28,7 @@ import { setMainGoal } from "../logic/goals";
 import { getDoneSessionsForDate, getSessionByDate, startSessionForDate } from "../logic/sessions";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
+import { isPrimaryCategory, isPrimaryGoal } from "../logic/priority";
 
 // ---- Helpers
 function resolveGoalType(goal) {
@@ -250,6 +251,8 @@ export default function Home({
     if (!categories.length) return null;
     const selected = categories.find((c) => c.id === homeSelectedCategoryId) || null;
     if (selected) return selected;
+    const primary = categories.find((c) => isPrimaryCategory(c)) || null;
+    if (primary) return primary;
     const withGoal = categories.find((c) =>
       goals.some((g) => g.categoryId === c.id && resolveGoalType(g) === "OUTCOME")
     );
@@ -264,8 +267,13 @@ export default function Home({
   }, [goals, focusCategory?.id]);
 
   const selectedGoal = useMemo(() => {
-    if (!focusCategory?.id || !mainGoalId) return null;
-    return outcomeGoals.find((g) => g.id === mainGoalId) || null;
+    if (!focusCategory?.id || !outcomeGoals.length) return null;
+    if (mainGoalId) {
+      const main = outcomeGoals.find((g) => g.id === mainGoalId) || null;
+      if (main) return main;
+    }
+    const primary = outcomeGoals.find((g) => isPrimaryGoal(g)) || null;
+    return primary || outcomeGoals[0] || null;
   }, [focusCategory?.id, mainGoalId, outcomeGoals]);
 
   const dayDoneSessions = useMemo(
@@ -711,15 +719,19 @@ export default function Home({
       headerSubtitle="Exécution"
       headerRight={headerRight}
     >
-      <div className="col" style={{ maxWidth: 720, margin: "0 auto" }}>
-          <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-            <div className="small2" style={{ flex: 1, minWidth: 0, whiteSpace: "normal" }}>
-              {showWhy ? whyDisplay : "Pourquoi masqué"}
-            </div>
-            <button className="linkBtn" onClick={() => setShowWhy((v) => !v)} aria-label="Afficher ou masquer le pourquoi">
-              {showWhy ? "Masquer 👁" : "Afficher 👁"}
-            </button>
+      <div className="stack stackGap12" style={{ maxWidth: 720, margin: "0 auto" }}>
+        <div className="row">
+          <div className="small2" style={{ flex: 1, minWidth: 0, whiteSpace: "normal" }}>
+            {showWhy ? whyDisplay : "Pourquoi masqué"}
           </div>
+          <button
+            className="linkBtn"
+            onClick={() => setShowWhy((v) => !v)}
+            aria-label="Afficher ou masquer le pourquoi"
+          >
+            {showWhy ? "Masquer 👁" : "Afficher 👁"}
+          </button>
+        </div>
 
         <DndContext
           sensors={sensors}
@@ -728,73 +740,77 @@ export default function Home({
           modifiers={[restrictToVerticalAxis, restrictToParentElement]}
         >
           <SortableContext items={blockOrder} strategy={verticalListSortingStrategy}>
-            {blockOrder.map((blockId) => (
-              <SortableBlock key={blockId} id={blockId}>
-                {({ attributes, listeners, setActivatorNodeRef }) => {
-                  if (blockId === "focus") {
-                    return (
-                      <Card style={{ marginTop: 12 }}>
-                        <div className="p18">
-                          <div className="row rowStart" style={{ alignItems: "center", gap: 8 }}>
-                            <DragHandle
-                              attributes={attributes}
-                              listeners={listeners}
-                              setActivatorNodeRef={setActivatorNodeRef}
-                            />
-                            <div className="sectionTitle">Focus du jour</div>
-                          </div>
-                          <div className="mt12">
-                            <div className="small2">Catégorie</div>
-                            <div className="mt8 listItem catAccentRow" style={catAccentVars}>
-                              <div className="itemTitle" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                {focusCategory?.name || "Catégorie"}
+            <div className="stack stackGap12">
+              {blockOrder.map((blockId) => (
+                <SortableBlock key={blockId} id={blockId}>
+                  {({ attributes, listeners, setActivatorNodeRef }) => {
+                    if (blockId === "focus") {
+                      return (
+                        <Card>
+                          <div className="p18">
+                            <div className="cardSectionTitleRow">
+                              <DragHandle
+                                attributes={attributes}
+                                listeners={listeners}
+                                setActivatorNodeRef={setActivatorNodeRef}
+                              />
+                              <div className="cardSectionTitle">Focus du jour</div>
+                            </div>
+                            <div className="mt12">
+                              <div className="small2">Catégorie</div>
+                              <div className="mt8 listItem catAccentRow" style={catAccentVars}>
+                                <div
+                                  className="itemTitle"
+                                  style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                                >
+                                  {focusCategory?.name || "Catégorie"}
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          <div className="mt12">
-                            <div className="small2">Objectif principal</div>
-                            {outcomeGoals.length ? (
-                              <div className="mt8 catAccentField" style={catAccentVars}>
-                                <Select
-                                  value={selectedGoal?.id || ""}
-                                  onChange={(e) => setCategoryMainGoal(e.target.value)}
-                                  style={{ fontSize: 16 }}
-                                  disabled={!canEdit}
-                                >
-                                  <option value="" disabled>
-                                    Choisir un objectif
-                                  </option>
-                                  {outcomeGoals.map((g) => (
-                                    <option key={g.id} value={g.id}>
-                                      {g.title || "Objectif"}
+                            <div className="mt12">
+                              <div className="small2">Objectif principal</div>
+                              {outcomeGoals.length ? (
+                                <div className="mt8 catAccentField" style={catAccentVars}>
+                                  <Select
+                                    value={selectedGoal?.id || ""}
+                                    onChange={(e) => setCategoryMainGoal(e.target.value)}
+                                    style={{ fontSize: 16 }}
+                                    disabled={!canEdit}
+                                  >
+                                    <option value="" disabled>
+                                      Choisir un objectif
                                     </option>
-                                  ))}
-                                </Select>
-                              </div>
-                            ) : (
-                              <div className="mt8 small2">Aucun objectif principal pour cette catégorie.</div>
-                            )}
-                          </div>
+                                    {outcomeGoals.map((g) => (
+                                      <option key={g.id} value={g.id}>
+                                        {g.title || "Objectif"}
+                                      </option>
+                                    ))}
+                                  </Select>
+                                </div>
+                              ) : (
+                                <div className="mt8 small2">Aucun objectif principal pour cette catégorie.</div>
+                              )}
+                            </div>
 
-                          <div className="mt12">
-                            <Button onClick={openSessionFlow} disabled={!canOpenSession}>
-                              GO
-                            </Button>
-                            {!selectedGoal ? (
-                              <div className="sectionSub" style={{ marginTop: 8 }}>
-                                Choisis un objectif principal.
-                              </div>
-                            ) : !activeHabits.length ? (
-                              <div className="sectionSub" style={{ marginTop: 8 }}>
-                                Ajoute une habitude dans Bibliothèque &gt; Gérer.
-                              </div>
-                            ) : !canValidate ? (
-                              <div className="sectionSub" style={{ marginTop: 8 }}>
-                                Lecture seule.
-                              </div>
-                            ) : null}
-                          </div>
+                            <div className="mt12">
+                              <Button onClick={openSessionFlow} disabled={!canOpenSession}>
+                                GO
+                              </Button>
+                              {!selectedGoal ? (
+                                <div className="sectionSub" style={{ marginTop: 8 }}>
+                                  Choisis un objectif principal.
+                                </div>
+                              ) : !activeHabits.length ? (
+                                <div className="sectionSub" style={{ marginTop: 8 }}>
+                                  Ajoute une habitude dans Bibliothèque &gt; Gérer.
+                                </div>
+                              ) : !canValidate ? (
+                                <div className="sectionSub" style={{ marginTop: 8 }}>
+                                  Lecture seule.
+                                </div>
+                              ) : null}
+                            </div>
                         </div>
                       </Card>
                     );
@@ -802,20 +818,18 @@ export default function Home({
 
                   if (blockId === "calendar") {
                     return (
-                      <Card style={{ marginTop: 12 }}>
+                      <Card>
                         <div className="p18">
-                          <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                            <div className="row rowStart" style={{ alignItems: "center", gap: 8 }}>
+                          <div className="row">
+                            <div className="cardSectionTitleRow">
                               <DragHandle
                                 attributes={attributes}
                                 listeners={listeners}
                                 setActivatorNodeRef={setActivatorNodeRef}
                               />
                               <div>
-                                <div className="sectionTitle">Calendrier</div>
-                                <div className="small2 mt8">
-                                  {selectedDateLabel || "—"}
-                                </div>
+                                <div className="cardSectionTitle">Calendrier</div>
+                                <div className="small2 mt8">{selectedDateLabel || "—"}</div>
                               </div>
                             </div>
                             <div className="row" style={{ gap: 8 }}>
@@ -842,11 +856,7 @@ export default function Home({
                             <div className="calendarSelector" aria-hidden="true">
                               <span className="calendarSelectorDot" />
                             </div>
-                            <div
-                              className="calendarRail scrollNoBar"
-                              ref={railRef}
-                              onScroll={handleRailScroll}
-                            >
+                            <div className="calendarRail scrollNoBar" ref={railRef} onScroll={handleRailScroll}>
                               {railItems.map((item) => (
                                 <button
                                   key={item.key}
@@ -876,7 +886,11 @@ export default function Home({
                             </div>
                           </div>
                           <div className="sectionSub" style={{ marginTop: 8 }}>
-                            {selectedStatus === "past" ? "Lecture seule" : selectedStatus === "today" ? "Aujourd’hui" : "À venir"}
+                            {selectedStatus === "past"
+                              ? "Lecture seule"
+                              : selectedStatus === "today"
+                                ? "Aujourd’hui"
+                                : "À venir"}
                           </div>
                         </div>
                       </Card>
@@ -885,20 +899,21 @@ export default function Home({
 
                   if (blockId === "micro") {
                     return (
-                      <Card style={{ marginTop: 12 }}>
+                      <Card>
                         <div className="p18">
-                          <div className="row rowStart" style={{ alignItems: "center", gap: 8 }}>
-                            <DragHandle
-                              attributes={attributes}
-                              listeners={listeners}
-                              setActivatorNodeRef={setActivatorNodeRef}
-                            />
-                            <div className="sectionTitle">Micro-actions</div>
+                          <div className="row">
+                            <div className="cardSectionTitleRow">
+                              <DragHandle
+                                attributes={attributes}
+                                listeners={listeners}
+                                setActivatorNodeRef={setActivatorNodeRef}
+                              />
+                              <div className="cardSectionTitle">Micro-actions</div>
+                            </div>
                             <button
                               className="linkBtn microToggle"
                               type="button"
                               onClick={() => setMicroOpen((v) => !v)}
-                              style={{ marginLeft: "auto" }}
                             >
                               {microOpen ? "-" : "+"}
                             </button>
@@ -976,15 +991,15 @@ export default function Home({
                   }
 
                   return (
-                    <Card style={{ marginTop: 12 }}>
+                    <Card>
                       <div className="p18">
-                        <div className="row rowStart" style={{ alignItems: "center", gap: 8 }}>
+                        <div className="cardSectionTitleRow">
                           <DragHandle
                             attributes={attributes}
                             listeners={listeners}
                             setActivatorNodeRef={setActivatorNodeRef}
                           />
-                          <div className="sectionTitle">Note du jour</div>
+                          <div className="cardSectionTitle">Note du jour</div>
                         </div>
                         <div className="mt12">
                           <Textarea
@@ -1005,9 +1020,10 @@ export default function Home({
                       </div>
                     </Card>
                   );
-                }}
-              </SortableBlock>
-            ))}
+                  }}
+                </SortableBlock>
+              ))}
+            </div>
           </SortableContext>
         </DndContext>
       </div>

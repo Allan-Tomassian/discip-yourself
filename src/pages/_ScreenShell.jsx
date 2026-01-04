@@ -11,7 +11,12 @@ export default function ScreenShell({
   headerAlign = "left",
   children,
 }) {
-  const textAlign = headerAlign === "left" ? "left" : headerAlign === "right" ? "right" : "center";
+  const alignClass =
+    headerAlign === "left"
+      ? "pageHeaderAlignLeft"
+      : headerAlign === "right"
+        ? "pageHeaderAlignRight"
+        : "pageHeaderAlignCenter";
 
   return (
     <AccentContext.Provider value={{ accent }}>
@@ -23,20 +28,11 @@ export default function ScreenShell({
 
       <div className="container">
         <div className="pageHeader">
-          {headerRight ? (
-            <div className="hdrRow">
-              <div className="hdrLeft" style={{ textAlign }}>
-                <div className="hdrTitle pageTitle">{headerTitle}</div>
-                <div className="hdrSub pageSubtitle">{headerSubtitle}</div>
-              </div>
-              <div className="hdrRight">{headerRight}</div>
-            </div>
-          ) : (
-            <div className="hdrLeft" style={{ textAlign }}>
-              <div className="hdrTitle pageTitle">{headerTitle}</div>
-              <div className="hdrSub pageSubtitle">{headerSubtitle}</div>
-            </div>
-          )}
+          <div className={`pageHeaderLeft ${alignClass}`}>
+            <div className="pageTitle">{headerTitle}</div>
+            <div className="pageSubtitle">{headerSubtitle}</div>
+          </div>
+          {headerRight ? <div className="pageHeaderRight">{headerRight}</div> : null}
         </div>
         <div className="pageContent">{children}</div>
       </div>

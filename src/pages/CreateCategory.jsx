@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input, Textarea } from "../components/UI";
 import { uid } from "../utils/helpers";
+import { setPrimaryCategory } from "../logic/priority";
 
 export default function CreateCategory({ data, setData, onCancel, onDone }) {
   const safeData = data && typeof data === "object" ? data : {};
@@ -9,6 +10,7 @@ export default function CreateCategory({ data, setData, onCancel, onDone }) {
   const [name, setName] = useState("");
   const [color, setColor] = useState("#7C3AED");
   const [whyText, setWhyText] = useState("");
+  const [isPriority, setIsPriority] = useState(false);
 
   const canSubmit = Boolean(name.trim());
   const safeColor = /^#([0-9A-Fa-f]{6})$/.test(color || "") ? color : "#7C3AED";
@@ -24,7 +26,15 @@ export default function CreateCategory({ data, setData, onCancel, onDone }) {
       const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
       const nextCategories = [
         ...prevCategories,
-        { id, name: cleanName, color: cleanColor, wallpaper: "", whyText: cleanWhy, mainGoalId: null },
+        {
+          id,
+          name: cleanName,
+          color: cleanColor,
+          wallpaper: "",
+          whyText: cleanWhy,
+          mainGoalId: null,
+          priorityLevel: isPriority ? "primary" : "normal",
+        },
       ];
 
       const prevUi = prev.ui || {};
@@ -33,10 +43,12 @@ export default function CreateCategory({ data, setData, onCancel, onDone }) {
         ? { ...prevUi, selectedCategoryId: id, librarySelectedCategoryId: id }
         : { ...prevUi, librarySelectedCategoryId: id };
 
-      return { ...prev, categories: nextCategories, ui: nextUi };
+      let next = { ...prev, categories: nextCategories, ui: nextUi };
+      if (isPriority) next = setPrimaryCategory(next, id);
+      return next;
     });
 
-    if (typeof onDone === "function") onDone();
+    if (typeof onDone === "function") onDone({ categoryId: id });
   }
 
   return (
@@ -54,7 +66,7 @@ export default function CreateCategory({ data, setData, onCancel, onDone }) {
           Retour
         </Button>
       }
-      headerAlign="flex-end"
+      headerAlign="right"
       backgroundImage={backgroundImage}
     >
       <Card accentBorder>
@@ -103,6 +115,10 @@ export default function CreateCategory({ data, setData, onCancel, onDone }) {
             onChange={(e) => setWhyText(e.target.value)}
             placeholder="Mini-why (optionnel)"
           />
+          <label className="includeToggle">
+            <input type="checkbox" checked={isPriority} onChange={(e) => setIsPriority(e.target.checked)} />
+            <span>Prioritaire</span>
+          </label>
           <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
             <Button variant="ghost" onClick={() => (typeof onCancel === "function" ? onCancel() : null)}>
               Annuler

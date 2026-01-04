@@ -23,16 +23,28 @@ export function Card({ children, accentBorder = false, style, className = "", ..
   );
 }
 
-export function Button({ children, variant = "primary", className = "", ...props }) {
+export function Button({ children, variant = "primary", className = "", type = "button", ...props }) {
   const cls =
     variant === "ghost"
       ? "btn btnGhost"
       : variant === "danger"
         ? "btn btnDanger"
         : "btn";
+  const mergedClassName = className ? `${cls} ${className}` : cls;
   return (
-    <button className={`${cls} ${className}`} {...props}>
+    <button className={mergedClassName} type={type} {...props}>
       {children}
+    </button>
+  );
+}
+
+export function IconButton({ icon, children, className = "", type = "button", ...props }) {
+  const iconMap = { gear: "⚙︎", close: "×" };
+  const content = children || iconMap[icon] || icon;
+  const mergedClassName = className ? `iconBtn ${className}` : "iconBtn";
+  return (
+    <button className={mergedClassName} type={type} {...props}>
+      {content}
     </button>
   );
 }

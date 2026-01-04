@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, Select } from "../components/UI";
+import { Button, Card, IconButton, Select } from "../components/UI";
 import Gauge from "../components/Gauge";
 import { getAccentForPage } from "../utils/_theme";
 import { safeConfirm, safePrompt } from "../utils/dialogs";
+import { isPrimaryCategory, isPrimaryGoal, setPrimaryCategory, setPrimaryGoalForCategory } from "../logic/priority";
 
 function resolveGoalType(goal) {
   const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
@@ -32,6 +33,9 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
   const category = categories.find((c) => c.id === categoryId) || null;
   const [showWhy, setShowWhy] = useState(true);
   const [selectedOutcomeId, setSelectedOutcomeId] = useState(null);
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
+  const [goalMenuOpenId, setGoalMenuOpenId] = useState(null);
+  const [habitMenuOpenId, setHabitMenuOpenId] = useState(null);
 
   const outcomeGoals = useMemo(() => {
     if (!category?.id) return [];
@@ -92,6 +96,11 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
         cat.id === category.id ? { ...cat, name: nextName.trim() } : cat
       ),
     }));
+  }
+
+  function setCategoryPriority() {
+    if (!category?.id || typeof setData !== "function") return;
+    setData((prev) => setPrimaryCategory(prev, category.id));
   }
 
   function deleteCategory() {
@@ -168,6 +177,11 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
         ui: nextUi,
       };
     });
+  }
+
+  function setGoalPriority(goalId) {
+    if (!goalId || !category?.id || typeof setData !== "function") return;
+    setData((prev) => setPrimaryGoalForCategory(prev, category.id, goalId));
   }
 
   if (!categories.length) {
@@ -269,17 +283,56 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div className="titleSm">Catégorie</div>
-                <div className="small2">{category.name || "Catégorie"}</div>
+                <div className="small2">
+                  {category.name || "Catégorie"}
+                  {isPrimaryCategory(category) ? (
+                    <span className="badge" style={{ marginLeft: 8, borderColor: "var(--accent)", color: "var(--accent)" }}>
+                      Prioritaire
+                    </span>
+                  ) : null}
+                </div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <Button variant="ghost" onClick={renameCategory}>
-                  Renommer
-                </Button>
-                <Button variant="danger" onClick={deleteCategory}>
-                  Supprimer
-                </Button>
+                <IconButton
+                  icon="gear"
+                  aria-label="Paramètres catégorie"
+                  onClick={() => {
+                    setCategoryMenuOpen((prev) => !prev);
+                    setGoalMenuOpenId(null);
+                    setHabitMenuOpenId(null);
+                  }}
+                />
+                <IconButton
+                  icon="close"
+                  className="iconBtnDanger"
+                  aria-label="Supprimer la catégorie"
+                  onClick={deleteCategory}
+                />
               </div>
             </div>
+            {categoryMenuOpen ? (
+              <div className="mt12 col" style={{ gap: 8 }}>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    renameCategory();
+                    setCategoryMenuOpen(false);
+                  }}
+                >
+                  Renommer
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setCategoryPriority();
+                    setCategoryMenuOpen(false);
+                  }}
+                  disabled={isPrimaryCategory(category)}
+                >
+                  {isPrimaryCategory(category) ? "Prioritaire" : "Définir comme prioritaire"}
+                </Button>
+              </div>
+            ) : null}
           </div>
         </Card>
 
@@ -307,18 +360,60 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
                   <div key={g.id} className="listItem">
                     <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
                       <div>
-                        <div style={{ fontWeight: 700 }}>{g.title || "Objectif"}</div>
+                        <div style={{ fontWeight: 700 }}>
+                          {g.title || "Objectif"}
+                          {isPrimaryGoal(g) ? (
+                            <span
+                              className="badge"
+                              style={{ marginLeft: 8, borderColor: "var(--accent)", color: "var(--accent)" }}
+                            >
+                              Prioritaire
+                            </span>
+                          ) : null}
+                        </div>
                         <div className="small2">{g.id === category.mainGoalId ? "Principal" : "Secondaire"}</div>
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <Button variant="ghost" onClick={() => renameGoal(g.id)}>
-                          Renommer
-                        </Button>
-                        <Button variant="danger" onClick={() => deleteGoal(g.id)}>
-                          Supprimer
-                        </Button>
+                        <IconButton
+                          icon="gear"
+                          aria-label="Paramètres objectif"
+                          onClick={() => {
+                            setGoalMenuOpenId((prev) => (prev === g.id ? null : g.id));
+                            setCategoryMenuOpen(false);
+                            setHabitMenuOpenId(null);
+                          }}
+                        />
+                        <IconButton
+                          icon="close"
+                          className="iconBtnDanger"
+                          aria-label="Supprimer l'objectif"
+                          onClick={() => deleteGoal(g.id)}
+                        />
                       </div>
                     </div>
+                    {goalMenuOpenId === g.id ? (
+                      <div className="mt12 col" style={{ gap: 8 }}>
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            renameGoal(g.id);
+                            setGoalMenuOpenId(null);
+                          }}
+                        >
+                          Renommer
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setGoalPriority(g.id);
+                            setGoalMenuOpenId(null);
+                          }}
+                          disabled={isPrimaryGoal(g)}
+                        >
+                          {isPrimaryGoal(g) ? "Prioritaire" : "Définir comme prioritaire"}
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -345,14 +440,36 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
                     <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
                       <div style={{ fontWeight: 700 }}>{h.title || "Habitude"}</div>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <Button variant="ghost" onClick={() => renameGoal(h.id)}>
-                          Renommer
-                        </Button>
-                        <Button variant="danger" onClick={() => deleteGoal(h.id)}>
-                          Supprimer
-                        </Button>
+                        <IconButton
+                          icon="gear"
+                          aria-label="Paramètres habitude"
+                          onClick={() => {
+                            setHabitMenuOpenId((prev) => (prev === h.id ? null : h.id));
+                            setCategoryMenuOpen(false);
+                            setGoalMenuOpenId(null);
+                          }}
+                        />
+                        <IconButton
+                          icon="close"
+                          className="iconBtnDanger"
+                          aria-label="Supprimer l'habitude"
+                          onClick={() => deleteGoal(h.id)}
+                        />
                       </div>
                     </div>
+                    {habitMenuOpenId === h.id ? (
+                      <div className="mt12 col" style={{ gap: 8 }}>
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            renameGoal(h.id);
+                            setHabitMenuOpenId(null);
+                          }}
+                        >
+                          Renommer
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>
