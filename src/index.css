@@ -726,6 +726,27 @@ a{ color:inherit; }
   height:16px;
   accent-color: var(--accent);
 }
+.sessionCheck{
+  appearance: none;
+  border: 1px solid var(--border, rgba(255,255,255,.35));
+  background: rgba(255,255,255,.08);
+  border-radius: 4px;
+  display: inline-grid;
+  place-items: center;
+}
+.sessionCheck:checked{
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.sessionCheck:checked::after{
+  content:"";
+  width:8px;
+  height:4px;
+  border:2px solid #111;
+  border-top:none;
+  border-right:none;
+  transform: rotate(-45deg);
+}
 
 .modalBackdrop{
   position:fixed;

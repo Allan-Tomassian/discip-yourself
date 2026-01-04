@@ -3,6 +3,17 @@ import { todayKey } from "../utils/dates";
 
 export const ENABLE_WEB_NOTIFICATIONS = false;
 
+function resolveGoalType(goal) {
+  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
+  if (raw === "OUTCOME" || raw === "PROCESS") return raw;
+  if (raw === "STATE") return "OUTCOME";
+  if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
+  const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
+  if (legacy === "OUTCOME") return "OUTCOME";
+  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
+  return "PROCESS";
+}
+
 function parseTime(value) {
   if (typeof value !== "string") return null;
   const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
@@ -51,7 +62,6 @@ export function getDueReminders(state, now, lastFiredMap) {
   if (!reminders.length) return [];
   const occurrences = Array.isArray(state?.occurrences) ? state.occurrences : [];
   const goals = Array.isArray(state?.goals) ? state.goals : [];
-  const habits = Array.isArray(state?.habits) ? state.habits : [];
   const timeKey = formatNowKey(now);
   const nowHM = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const jsDow = now.getDay(); // 0=Sun..6=Sat
@@ -70,8 +80,8 @@ export function getDueReminders(state, now, lastFiredMap) {
     if (!r || r.enabled === false) continue;
     const goalId = typeof r.goalId === "string" ? r.goalId : "";
     const goal = goalId ? goals.find((g) => g?.id === goalId) || null : null;
-    const habit = !goal && goalId ? habits.find((h) => h?.id === goalId) || null : null;
-    const target = goal || habit;
+    if (!goal || resolveGoalType(goal) !== "PROCESS") continue;
+    const target = goal;
     const goalOccurrences = goalId ? occurrencesByGoal.get(goalId) || [] : [];
     const hasOccurrences = goalOccurrences.length > 0;
 

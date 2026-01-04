@@ -21,6 +21,7 @@ export const DEFAULT_BLOCKS = [
 ];
 
 const MEASURE_TYPES = new Set(["money", "counter", "time", "energy", "distance", "weight"]);
+const GOAL_PRIORITY_VALUES = new Set(["prioritaire", "secondaire", "bonus"]);
 
 // Demo mode (disabled by default).
 export const DEMO_MODE = false;
@@ -74,6 +75,11 @@ function normalizeCadence(raw) {
   const v = typeof raw === "string" ? raw.toUpperCase() : "";
   if (v === "DAILY" || v === "WEEKLY" || v === "YEARLY") return v;
   return "";
+}
+
+function normalizeGoalPriority(raw) {
+  const v = typeof raw === "string" ? raw.toLowerCase() : "";
+  return GOAL_PRIORITY_VALUES.has(v) ? v : "";
 }
 
 function cadenceToFreqUnit(cadence) {
@@ -147,6 +153,18 @@ function backfillGoalLegacyFields(rawGoal) {
     }
     if (!Number.isFinite(g.currentValue) && Number.isFinite(g.metric.currentValue)) {
       g.currentValue = g.metric.currentValue;
+    }
+  }
+
+  if (!normalizeGoalPriority(g.priority)) {
+    const level = typeof g.priorityLevel === "string" ? g.priorityLevel.toLowerCase() : "";
+    if (level === "primary") g.priority = "prioritaire";
+    else if (level === "secondary") g.priority = "secondaire";
+    else {
+      const tier = typeof g.priorityTier === "string" ? g.priorityTier.toLowerCase() : "";
+      if (tier === "essential") g.priority = "prioritaire";
+      else if (tier === "optional" || tier === "someday") g.priority = "bonus";
+      else g.priority = "secondaire";
     }
   }
 
@@ -701,53 +719,38 @@ export function migrate(prev) {
 
   const goalsById = new Map(next.goals.map((g) => [g.id, g]));
 
-  // Enforce: exactly 1 main OUTCOME goal per category (categories store mainGoalId)
-  // Rules:
-  // - mainGoalId must point to an OUTCOME belonging to the category
-  // - if invalid/missing, pick the best OUTCOME in that category
-  // - never use ui.mainGoalId as a cross-category fallback
-
-  const outcomeByCategory = new Map();
+  // Enforce: mainGoalId reflects only the OUTCOME with priority === "prioritaire"
+  const prioritaireByCategory = new Map();
   for (const g of next.goals) {
     const t = (g?.type || g?.kind || "").toString().toUpperCase();
     if (t !== "OUTCOME") continue;
     if (!g.categoryId) continue;
+    if (g.priority !== "prioritaire") continue;
 
-    const prevBest = outcomeByCategory.get(g.categoryId);
+    const prevBest = prioritaireByCategory.get(g.categoryId);
     if (!prevBest) {
-      outcomeByCategory.set(g.categoryId, g);
+      prioritaireByCategory.set(g.categoryId, g);
       continue;
     }
 
-    // Prefer active over queued, then earlier order, then most recent activity/creation.
-    const score = (x) => {
-      const s1 = x.status === "active" ? 3 : x.status === "queued" ? 2 : 1;
-      const s2 = typeof x.order === "number" ? -x.order : 0;
-      const ts = Date.parse(x.activeSince || x.createdAt || "") || 0;
-      return s1 * 1_000_000 + s2 * 1_000 + ts;
-    };
+    const orderScore = (x) => (typeof x.order === "number" ? x.order : Number.POSITIVE_INFINITY);
+    if (orderScore(g) < orderScore(prevBest)) prioritaireByCategory.set(g.categoryId, g);
+  }
 
-    if (score(g) > score(prevBest)) outcomeByCategory.set(g.categoryId, g);
+  if (prioritaireByCategory.size) {
+    next.goals = next.goals.map((g) => {
+      const t = (g?.type || g?.kind || "").toString().toUpperCase();
+      if (t !== "OUTCOME") return g;
+      if (!g.categoryId || g.priority !== "prioritaire") return g;
+      const picked = prioritaireByCategory.get(g.categoryId);
+      if (picked && picked.id === g.id) return g;
+      return { ...g, priority: "secondaire" };
+    });
   }
 
   next.categories = next.categories.map((cat) => {
-    const rawMainId = typeof cat.mainGoalId === "string" ? cat.mainGoalId.trim() : "";
-    const mainId = rawMainId || "";
-    const candidate = mainId ? goalsById.get(mainId) : null;
-
-    const candidateType = (candidate?.type || candidate?.kind || "").toString().toUpperCase();
-    const candidateOk = Boolean(candidate && candidateType === "OUTCOME" && candidate.categoryId === cat.id);
-
-    if (candidateOk) {
-      return { ...cat, mainGoalId: candidate.id };
-    }
-
-    const bestOutcome = outcomeByCategory.get(cat.id) || null;
-    if (bestOutcome) {
-      return { ...cat, mainGoalId: bestOutcome.id };
-    }
-
-    return { ...cat, mainGoalId: null };
+    const picked = prioritaireByCategory.get(cat.id) || null;
+    return { ...cat, mainGoalId: picked ? picked.id : null };
   });
 
   // `mainGoalId` is a UI convenience, but it must follow the Today (home) context,
@@ -797,24 +800,17 @@ export function migrate(prev) {
     const byId = new Map(goals.map((g) => [g.id, g]));
 
     const fixedCategories = cats.map((cat) => {
-      const raw = typeof cat.mainGoalId === "string" ? cat.mainGoalId.trim() : "";
-      const g = raw ? byId.get(raw) : null;
-      const t = (g?.type || g?.kind || "").toString().toUpperCase();
-      if (g && t === "OUTCOME" && g.categoryId === cat.id) return cat;
-
-      // pick best OUTCOME if needed
-      const outcomes = goals.filter((x) => (x?.type || x?.kind || "").toString().toUpperCase() === "OUTCOME" && x.categoryId === cat.id);
+      const outcomes = goals.filter(
+        (x) =>
+          (x?.type || x?.kind || "").toString().toUpperCase() === "OUTCOME" &&
+          x.categoryId === cat.id &&
+          x.priority === "prioritaire"
+      );
       if (!outcomes.length) return { ...cat, mainGoalId: null };
 
-      const score = (x) => {
-        const s1 = x.status === "active" ? 3 : x.status === "queued" ? 2 : 1;
-        const s2 = typeof x.order === "number" ? -x.order : 0;
-        const ts = Date.parse(x.activeSince || x.createdAt || "") || 0;
-        return s1 * 1_000_000 + s2 * 1_000 + ts;
-      };
-
+      const orderScore = (x) => (typeof x.order === "number" ? x.order : Number.POSITIVE_INFINITY);
       let best = outcomes[0];
-      for (const o of outcomes.slice(1)) if (score(o) > score(best)) best = o;
+      for (const o of outcomes.slice(1)) if (orderScore(o) < orderScore(best)) best = o;
       return { ...cat, mainGoalId: best.id };
     });
 

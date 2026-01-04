@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, IconButton } from "../components/UI";
+import CategoryRail from "../components/CategoryRail";
 import EditItemPanel from "../components/EditItemPanel";
 import Gauge from "../components/Gauge";
 import { getAccentForPage } from "../utils/_theme";
@@ -21,6 +22,13 @@ function resolveGoalType(goal) {
   return "PROCESS";
 }
 
+function ensureOrder(order, categories) {
+  const ids = categories.map((c) => c.id);
+  const base = Array.isArray(order) ? order.filter((id) => ids.includes(id)) : [];
+  const missing = ids.filter((id) => !base.includes(id));
+  return [...base, ...missing];
+}
+
 const MEASURE_UNITS = {
   money: "€",
   counter: "",
@@ -36,11 +44,45 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const sessions = Array.isArray(safeData.sessions) ? safeData.sessions : [];
   const checks = safeData.checks && typeof safeData.checks === "object" ? safeData.checks : {};
-  const category = categories.find((c) => c.id === categoryId) || null;
+  const railOrder = useMemo(() => ensureOrder(safeData?.ui?.categoryRailOrder, categories), [
+    safeData?.ui?.categoryRailOrder,
+    categories,
+  ]);
+  const orderedCategories = useMemo(() => {
+    const map = new Map(categories.map((c) => [c.id, c]));
+    return railOrder.map((id) => map.get(id)).filter(Boolean);
+  }, [categories, railOrder]);
+  const uiLibraryCategoryId =
+    safeData?.ui?.selectedCategoryByView?.library || safeData?.ui?.librarySelectedCategoryId || null;
+  const resolvedCategoryId =
+    (uiLibraryCategoryId && categories.some((c) => c.id === uiLibraryCategoryId) && uiLibraryCategoryId) ||
+    (categoryId && categories.some((c) => c.id === categoryId) && categoryId) ||
+    categories[0]?.id ||
+    null;
+  const category = categories.find((c) => c.id === resolvedCategoryId) || null;
   const [showWhy, setShowWhy] = useState(true);
   const [selectedOutcomeId, setSelectedOutcomeId] = useState(null);
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
+
+  function handleSelectCategory(nextId) {
+    if (!nextId || typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      const prevSel =
+        prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+          ? prevUi.selectedCategoryByView
+          : {};
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          librarySelectedCategoryId: nextId,
+          selectedCategoryByView: { ...prevSel, library: nextId },
+        },
+      };
+    });
+  }
 
   const outcomeGoals = useMemo(() => {
     if (!category?.id) return [];
@@ -258,27 +300,82 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
     setEditTarget({ item: { ...item, _reminders: itemReminders, _occurrences: itemOccurrences }, type });
   }
 
-  function updateRemindersForGoal(prevReminders, goalId, config, fallbackLabel) {
-    const base = Array.isArray(prevReminders) ? prevReminders : [];
-    const others = base.filter((r) => r.goalId !== goalId);
-    if (!config || !config.enabled) return others;
-    const times = Array.isArray(config.times) ? config.times : [];
-    if (!times.length) return others;
+  function buildOccurrencesByGoal(list) {
+    const entries = Array.isArray(list) ? list : [];
+    const map = new Map();
+    for (const occ of entries) {
+      if (!occ || typeof occ.goalId !== "string") continue;
+      const bucket = map.get(occ.goalId) || [];
+      bucket.push(occ);
+      map.set(occ.goalId, bucket);
+    }
+    return map;
+  }
 
-    const days = Array.isArray(config.days) && config.days.length ? config.days : [1, 2, 3, 4, 5, 6, 7];
+  function buildPlanSignature(goal, occurrencesByGoal) {
+    if (!goal) return "";
+    const schedule = goal.schedule && typeof goal.schedule === "object" ? goal.schedule : null;
+    const scheduleSig = schedule
+      ? JSON.stringify({
+          daysOfWeek: Array.isArray(schedule.daysOfWeek) ? schedule.daysOfWeek : [],
+          timeSlots: Array.isArray(schedule.timeSlots) ? schedule.timeSlots : [],
+          durationMinutes: Number.isFinite(schedule.durationMinutes) ? schedule.durationMinutes : null,
+          windowStart: schedule.windowStart || "",
+          windowEnd: schedule.windowEnd || "",
+        })
+      : "";
+    const occurrences = occurrencesByGoal?.get(goal.id) || [];
+    const occurrenceSig = occurrences
+      .map((occ) => `${occ?.date || ""}|${occ?.start || ""}|${occ?.status || ""}`)
+      .sort()
+      .join(",");
+    return `${goal.planType || ""}|${goal.startAt || ""}|${scheduleSig}|${occurrenceSig}`;
+  }
+
+  function updateRemindersForGoal(state, goalId, config, fallbackLabel, options = {}) {
+    const base = Array.isArray(state?.reminders) ? state.reminders : [];
+    const others = base.filter((r) => r.goalId !== goalId);
+    const goal = Array.isArray(state?.goals) ? state.goals.find((g) => g?.id === goalId) : null;
+    const goalType = resolveGoalType(goal);
+    if (goalType !== "PROCESS") return others;
+
+    const occurrences = Array.isArray(state?.occurrences) ? state.occurrences : [];
+    const goalOccurrences = occurrences.filter((occ) => occ?.goalId === goalId);
+    const hasOccurrences = goalOccurrences.length > 0;
+    const schedule = goal && typeof goal.schedule === "object" ? goal.schedule : null;
+    const scheduleSlots = Array.isArray(schedule?.timeSlots) ? schedule.timeSlots : [];
+    const scheduleDays =
+      Array.isArray(schedule?.daysOfWeek) && schedule.daysOfWeek.length ? schedule.daysOfWeek : [1, 2, 3, 4, 5, 6, 7];
+    const canUseReminders = hasOccurrences || scheduleSlots.length > 0;
+    if (!config || !config.enabled || !canUseReminders) return others;
+
     const channel = config.channel === "NOTIFICATION" ? "NOTIFICATION" : "IN_APP";
     const label = config.label || fallbackLabel || "Rappel";
-    const existing = base.filter((r) => r.goalId === goalId);
+    const requestedTimes = Array.isArray(config.times) ? config.times : [];
+    const occurrenceTimes = [
+      ...new Set(goalOccurrences.map((occ) => (typeof occ?.start === "string" ? occ.start : "")).filter(Boolean)),
+    ];
+    const times = hasOccurrences
+      ? occurrenceTimes.length
+        ? occurrenceTimes
+        : requestedTimes.length
+          ? requestedTimes
+          : ["09:00"]
+      : scheduleSlots;
+    const safeTimes = times.filter((t) => typeof t === "string" && t.trim().length);
+    if (!safeTimes.length) return others;
 
-    const nextForGoal = times.map((time, index) => {
-      const prev = existing[index] || null;
+    const existing = base.filter((r) => r.goalId === goalId);
+    const forceNewIds = options?.forceNewIds === true;
+    const nextForGoal = safeTimes.map((time, index) => {
+      const prev = !forceNewIds ? existing[index] : null;
       return {
         id: prev?.id || uid(),
         goalId,
         time,
         enabled: true,
         channel,
-        days,
+        days: scheduleDays,
         label: prev?.label || label,
       };
     });
@@ -294,13 +391,23 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
     const reminderConfig = payload?.reminderConfig || null;
 
     setData((prev) => {
+      const prevOccurrencesByGoal = buildOccurrencesByGoal(prev?.occurrences);
+      const prevGoal = Array.isArray(prev?.goals) ? prev.goals.find((g) => g?.id === goalId) : null;
+      const prevPlanSig = buildPlanSignature(prevGoal, prevOccurrencesByGoal);
+
       let next = updateGoal(prev, goalId, updates);
       if (editTarget.type === "OUTCOME" && updates.priorityLevel === "primary" && categoryId) {
         next = setPrimaryGoalForCategory(next, categoryId, goalId);
       }
+
+      const nextOccurrencesByGoal = buildOccurrencesByGoal(next?.occurrences);
+      const nextGoal = Array.isArray(next?.goals) ? next.goals.find((g) => g?.id === goalId) : null;
+      const nextPlanSig = buildPlanSignature(nextGoal, nextOccurrencesByGoal);
+      const planChanged = prevPlanSig !== nextPlanSig;
+
       if (reminderConfig) {
         const label = updates.title || editTarget.item.title || "Rappel";
-        const nextReminders = updateRemindersForGoal(next.reminders, goalId, reminderConfig, label);
+        const nextReminders = updateRemindersForGoal(next, goalId, reminderConfig, label, { forceNewIds: planChanged });
         next = { ...next, reminders: nextReminders };
       }
       return next;
@@ -408,6 +515,13 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
       headerRowAlign="start"
     >
       <div style={{ "--catColor": category.color || "#7C3AED" }}>
+        <div className="categoryRailRow" style={{ marginBottom: 12 }}>
+          <CategoryRail
+            categories={orderedCategories}
+            selectedCategoryId={category?.id || null}
+            onSelect={handleSelectCategory}
+          />
+        </div>
         <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }}>
           <div className="p18">
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>

@@ -296,14 +296,15 @@ export default function App() {
   const themeName = getThemeName(safeData);
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+  const categoryIdsKey = categories.map((c) => c.id).join("|");
   const categoryRailOrder = useMemo(
     () => ensureOrder(safeData?.ui?.categoryRailOrder, categories),
-    [safeData?.ui?.categoryRailOrder, categories]
+    [safeData?.ui?.categoryRailOrder, categoryIdsKey]
   );
   const orderedCategories = useMemo(() => {
     const map = new Map(categories.map((c) => [c.id, c]));
     return categoryRailOrder.map((id) => map.get(id)).filter(Boolean);
-  }, [categories, categoryRailOrder]);
+  }, [categoryIdsKey, categoryRailOrder]);
   const railDateKey = safeData?.ui?.selectedDate || todayKey(new Date());
   const railDow = useMemo(() => appDowFromDateKey(railDateKey), [railDateKey]);
   const plannedCategoryIds = useMemo(() => {
@@ -353,7 +354,7 @@ export default function App() {
         ui: { ...(prev.ui || {}), categoryRailOrder },
       }));
     }
-  }, [categoryRailOrder, safeData?.ui?.categoryRailOrder, setData]);
+  }, [categoryIdsKey, categoryRailOrder, safeData?.ui?.categoryRailOrder, setData]);
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (tab !== "category-detail") return;

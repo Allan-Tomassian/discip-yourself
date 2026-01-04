@@ -67,24 +67,10 @@ export default function CreateGoal({ data, setData, onCancel, onDone, initialCat
         measureType: cleanMeasure || null,
         targetValue: hasTarget && cleanMeasure ? parsedTarget : null,
         currentValue: hasTarget && cleanMeasure ? 0 : null,
-        priorityLevel: isPriority ? "primary" : "secondary",
+        priority: isPriority ? "prioritaire" : "secondaire",
       });
 
-      const hasMain = categories.find((c) => c.id === categoryId)?.mainGoalId;
-      if (!hasMain) {
-        const nextCategories = (next.categories || []).map((cat) =>
-          cat.id === categoryId ? { ...cat, mainGoalId: id } : cat
-        );
-        next = {
-          ...next,
-          categories: nextCategories,
-          ui: { ...(next.ui || {}), mainGoalId: id, selectedCategoryId: categoryId },
-        };
-      }
-
-      if (isPriority) {
-        next = setPrimaryGoalForCategory(next, categoryId, id);
-      }
+      if (isPriority) next = setPrimaryGoalForCategory(next, categoryId, id);
       return next;
     });
 

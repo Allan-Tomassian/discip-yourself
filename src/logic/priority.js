@@ -3,7 +3,7 @@ export function isPrimaryCategory(category) {
 }
 
 export function isPrimaryGoal(goal) {
-  return goal?.priorityLevel === "primary";
+  return goal?.priority === "prioritaire";
 }
 
 export function normalizePriorities(data) {
@@ -39,17 +39,17 @@ export function normalizePriorities(data) {
   goals.forEach((goal, index) => {
     if (!goal || typeof goal !== "object") return;
     const catId = goal.categoryId || null;
-    let nextLevel = goal.priorityLevel === "primary" ? "primary" : "secondary";
-    if (nextLevel === "primary") {
-      if (primaryByCategory.has(catId)) nextLevel = "secondary";
+    let nextPriority = goal.priority === "prioritaire" || goal.priority === "bonus" ? goal.priority : "secondaire";
+    if (nextPriority === "prioritaire") {
+      if (primaryByCategory.has(catId)) nextPriority = "secondaire";
       else primaryByCategory.add(catId);
     }
-    if (goal.priorityLevel !== nextLevel) {
+    if (goal.priority !== nextPriority) {
       if (!goalsChanged) {
         nextGoals = goals.slice();
         goalsChanged = true;
       }
-      nextGoals[index] = { ...goal, priorityLevel: nextLevel };
+      nextGoals[index] = { ...goal, priority: nextPriority };
     }
   });
 
@@ -92,14 +92,17 @@ export function setPrimaryGoalForCategory(data, categoryId, goalId) {
   const nextGoals = goals.map((goal) => {
     if (!goal || typeof goal !== "object") return goal;
     if (goal.categoryId !== categoryId) return goal;
-    const nextLevel = goal.id === goalId ? "primary" : "secondary";
+    const nextPriority = goal.id === goalId ? "prioritaire" : goal.priority === "prioritaire" ? "secondaire" : goal.priority || "secondaire";
     if (goal.id === goalId) found = true;
-    if (goal.priorityLevel !== nextLevel || !goal.priorityLevel) {
+    if (goal.priority !== nextPriority || !goal.priority) {
       changed = true;
-      return { ...goal, priorityLevel: nextLevel };
+      return { ...goal, priority: nextPriority };
     }
     return goal;
   });
   if (!found || !changed) return data;
-  return { ...data, goals: nextGoals };
+  const nextCategories = (data.categories || []).map((cat) =>
+    cat.id === categoryId ? { ...cat, mainGoalId: goalId } : cat
+  );
+  return { ...data, goals: nextGoals, categories: nextCategories };
 }

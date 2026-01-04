@@ -342,21 +342,39 @@ export function normalizeGoalsState(state) {
     return goalType === "OUTCOME" ? sanitizeOutcome(base) : sanitizeProcess(base);
   });
 
+  const orderScore = (x) => (typeof x.order === "number" ? x.order : Number.POSITIVE_INFINITY);
+  const prioritaireByCategory = new Map();
+  for (const g of normalizedGoals) {
+    if (!g || g.type !== "OUTCOME") continue;
+    if (!g.categoryId) continue;
+    if (g.priority !== "prioritaire") continue;
+    const prevBest = prioritaireByCategory.get(g.categoryId);
+    if (!prevBest || orderScore(g) < orderScore(prevBest)) prioritaireByCategory.set(g.categoryId, g);
+  }
+
+  const priorityNormalizedGoals = normalizedGoals.map((g) => {
+    if (!g || g.type !== "OUTCOME") return g;
+    if (g.priority !== "prioritaire" || !g.categoryId) return g;
+    const pick = prioritaireByCategory.get(g.categoryId);
+    if (pick && pick.id === g.id) return g;
+    return { ...g, priority: "secondaire" };
+  });
+
   const uiActiveId = state.ui?.activeGoalId || null;
-  const uiActiveValid = uiActiveId && normalizedGoals.some((g) => g?.id === uiActiveId);
+  const uiActiveValid = uiActiveId && priorityNormalizedGoals.some((g) => g?.id === uiActiveId);
   let nextActiveGoalId = uiActiveValid ? uiActiveId : null;
 
-  let nextGoals = normalizedGoals;
+  let nextGoals = priorityNormalizedGoals;
   const isProcessGoal = (g) => (g?.type || g?.kind || "").toString().toUpperCase() === "PROCESS";
 
   if (allowGlobalSingleActive) {
-    const activeGoals = normalizedGoals.filter((g) => g?.status === "active" && isProcessGoal(g));
+    const activeGoals = priorityNormalizedGoals.filter((g) => g?.status === "active" && isProcessGoal(g));
     let activeId = null;
     if (activeGoals.length === 1) activeId = activeGoals[0].id || null;
     if (activeGoals.length > 1) activeId = pickPreferredActiveId(activeGoals, uiActiveId);
     nextActiveGoalId = activeId || null;
 
-    nextGoals = normalizedGoals.map((g) => {
+    nextGoals = priorityNormalizedGoals.map((g) => {
       if (!g || typeof g !== "object") return g;
       if (!isProcessGoal(g)) return g;
       if (activeId && g.id === activeId) {
@@ -369,7 +387,7 @@ export function normalizeGoalsState(state) {
     });
   } else {
     // Multiple active goals are allowed (especially multiple PROCESS habits).
-    nextGoals = normalizedGoals;
+    nextGoals = priorityNormalizedGoals;
   }
 
   const activeNow = nextGoals.filter((g) => g?.status === "active");
@@ -381,14 +399,16 @@ export function normalizeGoalsState(state) {
   const uiMainId = state.ui?.mainGoalId || null;
   const goalsById = new Map(nextGoals.map((g) => [g.id, g]));
 
-  // Main goal is strictly an OUTCOME that belongs to the category.
+  // Main goal is the OUTCOME with priority === "prioritaire" (or null).
   const nextCategories = (state.categories || []).map((cat) => {
-    const raw = typeof cat.mainGoalId === "string" ? cat.mainGoalId : null;
-    const goal = raw ? goalsById.get(raw) : null;
-    if (!goal || goal.categoryId !== cat.id) return { ...cat, mainGoalId: null };
-    const t = (goal.type || goal.kind || "").toString().toUpperCase();
-    if (t !== "OUTCOME") return { ...cat, mainGoalId: null };
-    return cat;
+    const candidates = nextGoals
+      .filter((g) => g && g.categoryId === cat.id)
+      .filter((g) => (g?.type || g?.kind || "").toString().toUpperCase() === "OUTCOME")
+      .filter((g) => g.priority === "prioritaire");
+    if (!candidates.length) return { ...cat, mainGoalId: null };
+    let best = candidates[0];
+    for (const c of candidates.slice(1)) if (orderScore(c) < orderScore(best)) best = c;
+    return { ...cat, mainGoalId: best.id };
   });
 
   const selectedCategoryId = state.ui?.selectedCategoryId || null;
@@ -408,7 +428,7 @@ export function normalizeGoalsState(state) {
   } else if (uiMainId) {
     const g = goalsById.get(uiMainId);
     if (g && g.categoryId === resolvedCategoryId && (g.type || g.kind || "").toString().toUpperCase() === "OUTCOME") {
-      nextMainGoalId = uiMainId;
+      nextMainGoalId = g.priority === "prioritaire" ? uiMainId : null;
     }
   }
 
@@ -536,7 +556,23 @@ export function updateGoal(state, goalId, updates = {}) {
     return goalType === "OUTCOME" ? sanitizeOutcome(prepared) : sanitizeProcess(prepared);
   });
 
-  return normalizeGoalsState({ ...state, goals: nextGoals });
+  let adjustedGoals = nextGoals;
+  if (updates?.priority === "prioritaire") {
+    const updated = nextGoals.find((g) => g?.id === goalId) || null;
+    const isOutcome = (updated?.type || updated?.kind || "").toString().toUpperCase() === "OUTCOME";
+    if (isOutcome && updated?.categoryId) {
+      adjustedGoals = nextGoals.map((g) => {
+        if (!g || g.id === goalId) return g;
+        if (g.categoryId !== updated.categoryId) return g;
+        const t = (g.type || g.kind || "").toString().toUpperCase();
+        if (t !== "OUTCOME") return g;
+        if (g.priority === "prioritaire") return { ...g, priority: "secondaire" };
+        return g;
+      });
+    }
+  }
+
+  return normalizeGoalsState({ ...state, goals: adjustedGoals });
 }
 
 export function preventOverlap(state, candidateGoalId, newStartAt, sessionMinutesOverride) {
@@ -587,8 +623,13 @@ export function setMainGoal(state, goalId) {
     const nextCategories = (state.categories || []).map((cat) =>
       cat.id === catId ? { ...cat, mainGoalId: null } : cat
     );
+    const nextGoals = goals.map((g) => {
+      if (!g || g.categoryId !== catId) return g;
+      if (g.priority === "prioritaire") return { ...g, priority: "secondaire" };
+      return g;
+    });
     const nextUi = { ...(state.ui || {}), mainGoalId: null, selectedCategoryId: catId };
-    return normalizeGoalsState({ ...state, categories: nextCategories, ui: nextUi });
+    return normalizeGoalsState({ ...state, categories: nextCategories, goals: nextGoals, ui: nextUi });
   }
 
   const goal = goals.find((g) => g?.id === goalId) || null;
@@ -598,10 +639,13 @@ export function setMainGoal(state, goalId) {
   const t = (goal.type || goal.kind || "").toString().toUpperCase();
   if (t !== "OUTCOME") return state;
 
-  // One main goal per category: overwrite category.mainGoalId.
-  const nextCategories = (state.categories || []).map((cat) =>
-    goal.categoryId === cat.id ? { ...cat, mainGoalId: goalId } : cat
-  );
+  // One "prioritaire" per category.
+  const nextGoals = goals.map((g) => {
+    if (!g || g.categoryId !== goal.categoryId) return g;
+    if (g.id === goalId) return { ...g, priority: "prioritaire" };
+    if (g.priority === "prioritaire") return { ...g, priority: "secondaire" };
+    return g;
+  });
 
   const nextUi = {
     ...(state.ui || {}),
@@ -609,7 +653,7 @@ export function setMainGoal(state, goalId) {
     selectedCategoryId: goal.categoryId,
   };
 
-  return normalizeGoalsState({ ...state, categories: nextCategories, ui: nextUi });
+  return normalizeGoalsState({ ...state, goals: nextGoals, ui: nextUi });
 }
 
 export function linkChild(state, childId, parentId, weight) {

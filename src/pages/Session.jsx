@@ -289,6 +289,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
                       <label className="includeToggle">
                         <input
                           type="checkbox"
+                          className="sessionCheck"
                           checked={doneSet.has(h.id)}
                           disabled={!isEditable}
                           onChange={(e) => toggleDone(h.id, e.target.checked)}

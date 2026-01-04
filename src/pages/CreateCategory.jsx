@@ -38,10 +38,12 @@ export default function CreateCategory({ data, setData, onCancel, onDone }) {
       ];
 
       const prevUi = prev.ui || {};
+      const prevOrder = Array.isArray(prevUi.categoryRailOrder) ? prevUi.categoryRailOrder : [];
+      const nextOrder = prevOrder.includes(id) ? prevOrder : [...prevOrder, id];
       const isFirst = prevCategories.length === 0;
       const nextUi = isFirst
-        ? { ...prevUi, selectedCategoryId: id, librarySelectedCategoryId: id }
-        : { ...prevUi, librarySelectedCategoryId: id };
+        ? { ...prevUi, selectedCategoryId: id, librarySelectedCategoryId: id, categoryRailOrder: nextOrder }
+        : { ...prevUi, librarySelectedCategoryId: id, categoryRailOrder: nextOrder };
 
       let next = { ...prev, categories: nextCategories, ui: nextUi };
       if (isPriority) next = setPrimaryCategory(next, id);

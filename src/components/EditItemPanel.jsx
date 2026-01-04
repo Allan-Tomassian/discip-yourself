@@ -4,10 +4,9 @@ import { todayKey } from "../utils/dates";
 import { createDefaultGoalSchedule } from "../logic/state";
 
 const PRIORITY_OPTIONS = [
-  { value: "essential", label: "Essentiel" },
-  { value: "important", label: "Important" },
-  { value: "optional", label: "Optionnel" },
-  { value: "someday", label: "Un jour" },
+  { value: "prioritaire", label: "Prioritaire" },
+  { value: "secondaire", label: "Secondaire" },
+  { value: "bonus", label: "Bonus" },
 ];
 
 const MEASURE_OPTIONS = [
@@ -120,15 +119,21 @@ function normalizeTimes(times) {
   return out;
 }
 
-function resolvePriorityTier(item) {
-  const raw = typeof item?.priorityTier === "string" ? item.priorityTier : "";
+function resolvePriority(item) {
+  const raw = typeof item?.priority === "string" ? item.priority : "";
   if (PRIORITY_OPTIONS.some((opt) => opt.value === raw)) return raw;
-  return item?.priorityLevel === "primary" ? "essential" : "important";
+  const level = typeof item?.priorityLevel === "string" ? item.priorityLevel.toLowerCase() : "";
+  if (level === "primary") return "prioritaire";
+  if (level === "secondary") return "secondaire";
+  const tier = typeof item?.priorityTier === "string" ? item.priorityTier.toLowerCase() : "";
+  if (tier === "essential") return "prioritaire";
+  if (tier === "optional" || tier === "someday") return "bonus";
+  return "secondaire";
 }
 
 export default function EditItemPanel({ item, type, onSave, onDelete, onClose }) {
   const [title, setTitle] = useState("");
-  const [priorityTier, setPriorityTier] = useState("important");
+  const [priority, setPriority] = useState("secondaire");
   const [planType, setPlanType] = useState("ACTION");
   const [freqCount, setFreqCount] = useState("1");
   const [freqUnit, setFreqUnit] = useState("WEEK");
@@ -178,7 +183,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
     const windowEndValue = schedule.windowEnd || timeSlots[1] || "18:00";
 
     setTitle(item.title || "");
-    setPriorityTier(resolvePriorityTier(item));
+    setPriority(resolvePriority(item));
     setPlanType(resolvedPlan);
     setFreqCount(String(freq.count || 1));
     setFreqUnit(freq.unit || "WEEK");
@@ -236,7 +241,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
 
     const updates = {
       title: cleanTitle,
-      priorityTier,
+      priority,
     };
 
     if (isProcess) {
@@ -292,7 +297,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
           : 0
         : null;
       updates.notes = (notes || "").trim();
-      updates.priorityLevel = priorityTier === "essential" ? "primary" : "secondary";
+      updates.priority = priority;
     }
 
     if (typeof onSave === "function") {
@@ -325,7 +330,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
             <div className="editSectionTitle">Identité</div>
             <div className="editSectionBody">
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titre" />
-              <Select value={priorityTier} onChange={(e) => setPriorityTier(e.target.value)}>
+              <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
                 {PRIORITY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
