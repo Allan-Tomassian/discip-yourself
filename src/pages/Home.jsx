@@ -149,6 +149,8 @@ export default function Home({
   onOpenCreate,
   onOpenCreateCategory,
   onOpenSession,
+  onDayOpen,
+  onAddOccurrence,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
   const selectedDateKey = safeData.ui?.selectedDate || toLocalDateKey(new Date());
@@ -165,7 +167,7 @@ export default function Home({
   const [microState, setMicroState] = useState(() => initMicroState(selectedDateKey));
   const [showDayStats, setShowDayStats] = useState(false);
   const [showDisciplineStats, setShowDisciplineStats] = useState(false);
-  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [calendarView, setCalendarView] = useState("day");
   const [microOpen, setMicroOpen] = useState(false);
   const [dailyNote, setDailyNote] = useState("");
   const [noteMeta, setNoteMeta] = useState({ forme: "", humeur: "", motivation: "" });
@@ -193,12 +195,58 @@ export default function Home({
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const sessions = Array.isArray(safeData.sessions) ? safeData.sessions : [];
   const checks = safeData.checks || {};
+  const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
   const dayChecks = useMemo(() => {
     const bucket = checks?.[selectedDateKey];
     const habits = Array.isArray(bucket?.habits) ? bucket.habits : [];
     const micro = Array.isArray(bucket?.micro) ? bucket.micro : [];
     return { habits, micro };
   }, [checks, selectedDateKey]);
+  const plannedByDate = useMemo(() => {
+    const map = new Map();
+    for (const occ of occurrences) {
+      if (!occ || typeof occ.date !== "string") continue;
+      if (occ.status !== "planned") continue;
+      map.set(occ.date, (map.get(occ.date) || 0) + 1);
+    }
+    return map;
+  }, [occurrences]);
+  const doneByDate = useMemo(() => {
+    const map = new Map();
+    const addId = (key, id) => {
+      if (!key || !id) return;
+      const set = map.get(key) || new Set();
+      set.add(id);
+      map.set(key, set);
+    };
+    if (checks && typeof checks === "object") {
+      for (const [key, bucket] of Object.entries(checks)) {
+        const habits = Array.isArray(bucket?.habits) ? bucket.habits : [];
+        for (const id of habits) addId(key, id);
+      }
+    }
+    for (const s of sessions) {
+      if (!s || s.status !== "done") continue;
+      const key = typeof s.dateKey === "string" ? s.dateKey : typeof s.date === "string" ? s.date : "";
+      if (!key) continue;
+      const doneIds = Array.isArray(s.doneHabitIds)
+        ? s.doneHabitIds
+        : Array.isArray(s.doneHabits)
+          ? s.doneHabits
+          : [];
+      if (doneIds.length) {
+        for (const id of doneIds) addId(key, id);
+      } else {
+        if (s.habitId) addId(key, s.habitId);
+        if (Array.isArray(s.habitIds)) {
+          for (const id of s.habitIds) addId(key, id);
+        }
+      }
+    }
+    const counts = new Map();
+    for (const [key, set] of map.entries()) counts.set(key, set.size);
+    return counts;
+  }, [checks, sessions]);
 
   // Effects
   useEffect(() => {
@@ -517,6 +565,23 @@ export default function Home({
       }));
     },
     [setData]
+  );
+  const handleDayOpen = useCallback(
+    (nextKey) => {
+      if (!nextKey) return;
+      setSelectedDate(nextKey);
+      if (typeof onDayOpen === "function") onDayOpen(nextKey);
+    },
+    [onDayOpen, setSelectedDate]
+  );
+  const handleAddOccurrence = useCallback(
+    (nextKey, goalId) => {
+      if (!nextKey) return;
+      if (typeof onAddOccurrence === "function") {
+        onAddOccurrence(nextKey, goalId || null);
+      }
+    },
+    [onAddOccurrence]
   );
 
   const scrollRailToKey = useCallback((dateKeyValue, behavior = "smooth") => {
@@ -987,54 +1052,132 @@ export default function Home({
                                 variant="ghost"
                                 onClick={() => {
                                   const today = toLocalDateKey(new Date());
-                                  setSelectedDate(today);
-                                  requestAnimationFrame(() => scrollRailToKey(today));
+                                  handleDayOpen(today);
+                                  if (calendarView === "day") {
+                                    requestAnimationFrame(() => scrollRailToKey(today));
+                                  }
                                 }}
                               >
                                 Aujourd’hui
                               </Button>
                               <Button
                                 variant="ghost"
-                                onClick={() => setShowMonthPicker(true)}
-                                style={{ borderRadius: 999, width: 36, height: 36, padding: 0 }}
+                                onClick={() => setCalendarView("day")}
+                                disabled={calendarView === "day"}
                               >
-                                +
+                                Jour
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                onClick={() => setCalendarView("month")}
+                                disabled={calendarView === "month"}
+                              >
+                                Mois
                               </Button>
                             </div>
                           </div>
-                          <div className="calendarRailWrap mt12">
-                            <div className="calendarSelector" aria-hidden="true">
-                              <span className="calendarSelectorDot" />
+                          {calendarView === "day" ? (
+                            <div className="calendarRailWrap mt12">
+                              <div className="calendarSelector" aria-hidden="true">
+                                <span className="calendarSelectorDot" />
+                              </div>
+                              <div className="calendarRail scrollNoBar" ref={railRef} onScroll={handleRailScroll}>
+                                {railItems.map((item) => {
+                                  const plannedCount = plannedByDate.get(item.key) || 0;
+                                  const doneCount = doneByDate.get(item.key) || 0;
+                                  return (
+                                    <button
+                                      key={item.key}
+                                      ref={(el) => {
+                                        if (el) railItemRefs.current.set(item.key, el);
+                                        else railItemRefs.current.delete(item.key);
+                                      }}
+                                      className={`dayPill calendarItem ${
+                                        item.key === selectedDateKey
+                                          ? "is-current"
+                                          : item.key < selectedDateKey
+                                            ? "is-past"
+                                            : "is-future"
+                                      }`}
+                                      data-datekey={item.key}
+                                      data-status={item.status}
+                                      data-planned={plannedCount}
+                                      data-done={doneCount}
+                                      onClick={() => {
+                                        scrollRailToKey(item.key);
+                                        handleDayOpen(item.key);
+                                      }}
+                                      type="button"
+                                    >
+                                      <div className="dayPillDay">{item.day}</div>
+                                      <div className="dayPillMonth">/{item.month}</div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
-                            <div className="calendarRail scrollNoBar" ref={railRef} onScroll={handleRailScroll}>
-                              {railItems.map((item) => (
-                                <button
-                                  key={item.key}
-                                  ref={(el) => {
-                                    if (el) railItemRefs.current.set(item.key, el);
-                                    else railItemRefs.current.delete(item.key);
-                                  }}
-                                  className={`dayPill calendarItem ${
-                                    item.key === selectedDateKey
-                                      ? "is-current"
-                                      : item.key < selectedDateKey
-                                        ? "is-past"
-                                        : "is-future"
-                                  }`}
-                                  data-datekey={item.key}
-                                  data-status={item.status}
-                                  onClick={() => {
-                                    scrollRailToKey(item.key);
-                                    setSelectedDate(item.key);
-                                  }}
-                                  type="button"
-                                >
-                                  <div className="dayPillDay">{item.day}</div>
-                                  <div className="dayPillMonth">/{item.month}</div>
-                                </button>
-                              ))}
+                          ) : (
+                            <div className="mt12">
+                              <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+                                <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                                  <Button variant="ghost" onClick={() => setMonthCursor((d) => addMonths(d, -1))}>
+                                    ←
+                                  </Button>
+                                  <div className="titleSm" style={{ minWidth: 140, textAlign: "center" }}>
+                                    {getMonthLabelFR(monthCursor)}
+                                  </div>
+                                  <Button variant="ghost" onClick={() => setMonthCursor((d) => addMonths(d, 1))}>
+                                    →
+                                  </Button>
+                                </div>
+                                {typeof onAddOccurrence === "function" ? (
+                                  <Button
+                                    variant="ghost"
+                                    onClick={() => handleAddOccurrence(selectedDateKey, selectedGoal?.id || null)}
+                                  >
+                                    Ajouter
+                                  </Button>
+                                ) : null}
+                              </div>
+                              <div
+                                className="mt10"
+                                style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, textAlign: "center" }}
+                              >
+                                {["L", "M", "M", "J", "V", "S", "D"].map((label, idx) => (
+                                  <div key={`${label}-${idx}`} className="small2">
+                                    {label}
+                                  </div>
+                                ))}
+                                {monthGrid.map((cell) => {
+                                  const dayKey = toLocalDateKey(cell.dateObj);
+                                  const plannedCount = plannedByDate.get(dayKey) || 0;
+                                  const doneCount = doneByDate.get(dayKey) || 0;
+                                  const isSelected = dayKey === selectedDateKey;
+                                  return (
+                                    <button
+                                      key={dayKey}
+                                      type="button"
+                                      className={`dayPill${isSelected ? " dayPillActive" : ""}`}
+                                      data-datekey={dayKey}
+                                      data-planned={plannedCount}
+                                      data-done={doneCount}
+                                      onClick={() => handleDayOpen(dayKey)}
+                                      style={{
+                                        width: "100%",
+                                        minHeight: 56,
+                                        borderRadius: 12,
+                                        padding: 6,
+                                        opacity: cell.inMonth ? 1 : 0.4,
+                                      }}
+                                    >
+                                      <div className="dayPillDay">{cell.dayNumber}</div>
+                                      <div className="small2">P:{plannedCount} · F:{doneCount}</div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </div>
+                          )}
                           <div className="sectionSub" style={{ marginTop: 8 }}>
                             {selectedStatus === "past"
                               ? "Lecture seule"
@@ -1296,65 +1439,6 @@ export default function Home({
                 <div className="small2">Score</div>
                 <div className="titleSm">{disciplineBreakdown.score}%</div>
               </div>
-            </div>
-          </Card>
-        </div>
-      ) : null}
-      {showMonthPicker ? (
-        <div className="modalBackdrop disciplineOverlay" onClick={() => setShowMonthPicker(false)}>
-          <Card className="disciplineCard" onClick={(e) => e.stopPropagation()}>
-            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-              <div className="row" style={{ alignItems: "center", gap: 8 }}>
-                <Button variant="ghost" onClick={() => setMonthCursor((d) => addMonths(d, -1))}>
-                  ←
-                </Button>
-                <div className="titleSm" style={{ minWidth: 140, textAlign: "center" }}>
-                  {getMonthLabelFR(monthCursor)}
-                </div>
-                <Button variant="ghost" onClick={() => setMonthCursor((d) => addMonths(d, 1))}>
-                  →
-                </Button>
-              </div>
-              <button className="linkBtn" type="button" onClick={() => setShowMonthPicker(false)}>
-                Fermer
-              </button>
-            </div>
-            <div className="small2 mt10">Période rapide: {calendarRangeLabel || "—"}</div>
-            <div
-              className="mt12"
-              style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, textAlign: "center" }}
-            >
-              {["L", "M", "M", "J", "V", "S", "D"].map((label, idx) => (
-                <div key={`${label}-${idx}`} className="small2">
-                  {label}
-                </div>
-              ))}
-              {monthGrid.map((cell) => {
-                const localKey = toLocalDateKey(cell.dateObj);
-                const isSelected = localKey === selectedDateKey;
-                const isCurrentMonth = cell.inMonth;
-                return (
-                  <button
-                    key={localKey}
-                    type="button"
-                    className={`dayPill${isSelected ? " dayPillActive" : ""}`}
-                    onClick={() => {
-                      if (!localKey) return;
-                      setSelectedDate(localKey);
-                      setShowMonthPicker(false);
-                    }}
-                    style={{
-                      width: "100%",
-                      height: 44,
-                      borderRadius: 12,
-                      padding: 0,
-                      opacity: isCurrentMonth ? 1 : 0.4,
-                    }}
-                  >
-                    <div className="dayPillDay">{cell.dayNumber}</div>
-                  </button>
-                );
-              })}
             </div>
           </Card>
         </div>

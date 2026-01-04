@@ -6,6 +6,7 @@ import Gauge from "../components/Gauge";
 import { getAccentForPage } from "../utils/_theme";
 import { safeConfirm, safePrompt } from "../utils/dialogs";
 import { uid } from "../utils/helpers";
+import { addDays, startOfWeekKey, todayKey } from "../utils/dates";
 import { updateGoal } from "../logic/goals";
 import { isPrimaryCategory, isPrimaryGoal, setPrimaryCategory, setPrimaryGoalForCategory } from "../logic/priority";
 
@@ -33,6 +34,8 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+  const sessions = Array.isArray(safeData.sessions) ? safeData.sessions : [];
+  const checks = safeData.checks && typeof safeData.checks === "object" ? safeData.checks : {};
   const category = categories.find((c) => c.id === categoryId) || null;
   const [showWhy, setShowWhy] = useState(true);
   const [selectedOutcomeId, setSelectedOutcomeId] = useState(null);
@@ -79,6 +82,70 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
   }, [outcomeGoals, category?.mainGoalId]);
   const gaugeSlice = gaugeGoals.slice(0, 2);
   const reminders = Array.isArray(safeData.reminders) ? safeData.reminders : [];
+  const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
+  const habitWeekStats = useMemo(() => {
+    const stats = new Map();
+    if (!habits.length) return stats;
+    const weekStartKey = startOfWeekKey(new Date());
+    const weekStartDate = new Date(`${weekStartKey}T12:00:00`);
+    const weekKeys = Array.from({ length: 7 }, (_, i) => todayKey(addDays(weekStartDate, i)));
+    const weekSet = new Set(weekKeys);
+
+    const doneDatesByHabit = new Map();
+    const addDone = (habitId, dateKey) => {
+      if (!habitId || !dateKey) return;
+      const set = doneDatesByHabit.get(habitId) || new Set();
+      set.add(dateKey);
+      doneDatesByHabit.set(habitId, set);
+    };
+
+    for (const key of weekKeys) {
+      const bucket = checks?.[key];
+      const ids = Array.isArray(bucket?.habits) ? bucket.habits : [];
+      for (const id of ids) addDone(id, key);
+    }
+
+    for (const s of sessions) {
+      if (!s || s.status !== "done") continue;
+      const key = typeof s.dateKey === "string" ? s.dateKey : typeof s.date === "string" ? s.date : "";
+      if (!weekSet.has(key)) continue;
+      const doneIds = Array.isArray(s.doneHabitIds)
+        ? s.doneHabitIds
+        : Array.isArray(s.doneHabits)
+          ? s.doneHabits
+          : [];
+      if (doneIds.length) {
+        for (const id of doneIds) addDone(id, key);
+      } else {
+        if (s.habitId) addDone(s.habitId, key);
+        if (Array.isArray(s.habitIds)) {
+          for (const id of s.habitIds) addDone(id, key);
+        }
+      }
+    }
+
+    const occurrenceStats = new Map();
+    for (const occ of occurrences) {
+      if (!occ || typeof occ.goalId !== "string" || typeof occ.date !== "string") continue;
+      if (!weekSet.has(occ.date)) continue;
+      const entry = occurrenceStats.get(occ.goalId) || { planned: 0, done: 0 };
+      const status = occ.status || "planned";
+      if (status !== "skipped") entry.planned += 1;
+      if (status === "done") entry.done += 1;
+      occurrenceStats.set(occ.goalId, entry);
+    }
+
+    for (const h of habits) {
+      const occ = occurrenceStats.get(h.id) || { planned: 0, done: 0 };
+      const doneFallback = doneDatesByHabit.get(h.id)?.size || 0;
+      const hasOccurrences = occ.planned > 0 || occ.done > 0;
+      const done = hasOccurrences ? Math.max(occ.done, doneFallback) : doneFallback;
+      const planned = hasOccurrences ? occ.planned : 0;
+      const ratio = planned ? Math.min(1, done / planned) : 0;
+      stats.set(h.id, { planned, done, ratio });
+    }
+    return stats;
+  }, [habits, occurrences, sessions, checks]);
 
   function openPlan(categoryIdValue, openGoalEditId) {
     if (!categoryIdValue || typeof setData !== "function") return;
@@ -187,7 +254,8 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
     if (!item) return;
     const type = resolveGoalType(item);
     const itemReminders = reminders.filter((r) => r.goalId === item.id);
-    setEditTarget({ item: { ...item, _reminders: itemReminders }, type });
+    const itemOccurrences = occurrences.filter((o) => o && o.goalId === item.id);
+    setEditTarget({ item: { ...item, _reminders: itemReminders, _occurrences: itemOccurrences }, type });
   }
 
   function updateRemindersForGoal(prevReminders, goalId, config, fallbackLabel) {
@@ -464,7 +532,9 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
             <div className="titleSm">Habitudes</div>
             {habits.length ? (
               <div className="mt12 col">
-                {habits.map((h) => (
+                {habits.map((h) => {
+                  const stat = habitWeekStats.get(h.id) || { planned: 0, done: 0, ratio: 0 };
+                  return (
                   <div key={h.id} className="listItem">
                     <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
                       <div style={{ fontWeight: 700 }}>{h.title || "Habitude"}</div>
@@ -476,8 +546,20 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
                         />
                       </div>
                     </div>
+                    <div className="small2" style={{ marginTop: 6 }}>
+                      {`Cette semaine : ${stat.done} terminées · ${stat.done}/${stat.planned}`}
+                    </div>
+                    <div className="progressTrack" style={{ marginTop: 6 }}>
+                      <div
+                        className="progressFill"
+                        style={{
+                          width: `${Math.round(stat.ratio * 100)}%`,
+                        }}
+                      />
+                    </div>
                   </div>
-                ))}
+                );
+                })}
               </div>
             ) : (
               <div className="mt12 col">

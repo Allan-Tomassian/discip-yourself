@@ -2,13 +2,13 @@ import React, { useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Badge, Card, ProgressRing } from "../components/UI";
 import { clamp } from "../utils/helpers";
-import { computeHabitProgress } from "../logic/habits";
+import { computeHabitProgress, getHabitList } from "../logic/habits";
 import { todayKey, startOfWeekKey } from "../utils/dates";
 
 export default function Stats({ data }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
-  const habits = Array.isArray(safeData.habits) ? safeData.habits : [];
+  const habits = getHabitList(safeData);
   const checks = safeData.checks && typeof safeData.checks === "object" ? safeData.checks : {};
 
   if (categories.length === 0) {

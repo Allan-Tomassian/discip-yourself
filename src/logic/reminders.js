@@ -1,4 +1,5 @@
 import { uid } from "../utils/helpers";
+import { todayKey } from "../utils/dates";
 
 export const ENABLE_WEB_NOTIFICATIONS = false;
 
@@ -48,19 +49,58 @@ export function normalizeReminder(raw, index = 0) {
 export function getDueReminders(state, now, lastFiredMap) {
   const reminders = Array.isArray(state?.reminders) ? state.reminders : [];
   if (!reminders.length) return [];
+  const occurrences = Array.isArray(state?.occurrences) ? state.occurrences : [];
+  const goals = Array.isArray(state?.goals) ? state.goals : [];
+  const habits = Array.isArray(state?.habits) ? state.habits : [];
   const timeKey = formatNowKey(now);
   const nowHM = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const jsDow = now.getDay(); // 0=Sun..6=Sat
   const appDow = jsDow === 0 ? 7 : jsDow;
   const due = [];
+  const occurrencesByGoal = new Map();
+  for (const occ of occurrences) {
+    if (!occ || typeof occ.goalId !== "string") continue;
+    const list = occurrencesByGoal.get(occ.goalId) || [];
+    list.push(occ);
+    occurrencesByGoal.set(occ.goalId, list);
+  }
+  const today = todayKey(now);
 
   for (const r of reminders) {
     if (!r || r.enabled === false) continue;
-    const parsed = parseTime(r.time);
-    if (!parsed) continue;
-    if (`${String(parsed.h).padStart(2, "0")}:${String(parsed.min).padStart(2, "0")}` !== nowHM) continue;
-    const days = normalizeDays(r.days);
-    if (!days.includes(appDow)) continue;
+    const goalId = typeof r.goalId === "string" ? r.goalId : "";
+    const goal = goalId ? goals.find((g) => g?.id === goalId) || null : null;
+    const habit = !goal && goalId ? habits.find((h) => h?.id === goalId) || null : null;
+    const target = goal || habit;
+    const goalOccurrences = goalId ? occurrencesByGoal.get(goalId) || [] : [];
+    const hasOccurrences = goalOccurrences.length > 0;
+
+    if (hasOccurrences) {
+      const dueOccurrence = goalOccurrences.some((occ) => {
+        if (!occ || typeof occ.date !== "string" || typeof occ.start !== "string") return false;
+        const status = occ.status || "planned";
+        if (status === "done" || status === "skipped") return false;
+        if (occ.date !== today) return false;
+        return occ.start === nowHM;
+      });
+      if (!dueOccurrence) continue;
+      if (lastFiredMap && lastFiredMap[r.id] === timeKey) continue;
+      due.push(r);
+      if (lastFiredMap) lastFiredMap[r.id] = timeKey;
+      continue;
+    }
+
+    const schedule = target && typeof target.schedule === "object" ? target.schedule : null;
+    const timeSlots = Array.isArray(schedule?.timeSlots) ? schedule.timeSlots : [];
+    if (!timeSlots.length) continue;
+    const days = Array.isArray(schedule?.daysOfWeek) && schedule.daysOfWeek.length ? schedule.daysOfWeek : null;
+    if (days && !days.includes(appDow)) continue;
+    const slotMatch = timeSlots.some((slot) => {
+      const parsed = parseTime(slot);
+      if (!parsed) return false;
+      return `${String(parsed.h).padStart(2, "0")}:${String(parsed.min).padStart(2, "0")}` === nowHM;
+    });
+    if (!slotMatch) continue;
     if (lastFiredMap && lastFiredMap[r.id] === timeKey) continue;
     due.push(r);
     if (lastFiredMap) lastFiredMap[r.id] = timeKey;

@@ -70,6 +70,170 @@ export function normalizeResetPolicy(raw) {
   return "invalidate";
 }
 
+function normalizeCadence(raw) {
+  const v = typeof raw === "string" ? raw.toUpperCase() : "";
+  if (v === "DAILY" || v === "WEEKLY" || v === "YEARLY") return v;
+  return "";
+}
+
+function cadenceToFreqUnit(cadence) {
+  if (cadence === "DAILY") return "DAY";
+  if (cadence === "YEARLY") return "YEAR";
+  return "WEEK";
+}
+
+function inferMeasureTypeFromUnit(unit) {
+  const raw = typeof unit === "string" ? unit.trim().toLowerCase() : "";
+  if (!raw) return "";
+  if (raw === "€" || raw === "eur" || raw === "euro" || raw === "euros") return "money";
+  if (raw === "kg" || raw === "kilo" || raw === "kilos") return "weight";
+  if (raw === "km" || raw === "kilometre") return "distance";
+  if (raw === "min" || raw === "minute" || raw === "minutes" || raw === "h" || raw === "heure" || raw === "heures")
+    return "time";
+  if (raw === "pas" || raw === "step" || raw === "steps" || raw === "rep" || raw === "reps") return "counter";
+  if (raw === "pt" || raw === "pts" || raw === "point" || raw === "points") return "energy";
+  if (raw === "%") return "counter";
+  if (MEASURE_TYPES.has(raw)) return raw;
+  return "";
+}
+
+function backfillGoalLegacyFields(rawGoal) {
+  if (!rawGoal || typeof rawGoal !== "object") return rawGoal;
+  const g = { ...rawGoal };
+  const rawKind = typeof g.kind === "string" ? g.kind.toUpperCase() : "";
+  const rawType = typeof g.type === "string" ? g.type.toUpperCase() : "";
+  const rawPlan = typeof g.planType === "string" ? g.planType.toUpperCase() : "";
+
+  if (!rawType) {
+    if (rawKind === "OUTCOME") g.type = "OUTCOME";
+    else if (rawKind === "ACTION") g.type = "PROCESS";
+    else if (rawPlan === "STATE") g.type = "OUTCOME";
+    else if (rawPlan === "ACTION" || rawPlan === "ONE_OFF") g.type = "PROCESS";
+  }
+
+  if (!rawPlan) {
+    if (g.type === "OUTCOME") g.planType = "STATE";
+    else if (g.type === "PROCESS") g.planType = g.oneOffDate ? "ONE_OFF" : "ACTION";
+  }
+
+  if (!g.freqUnit || !Number.isFinite(g.freqCount)) {
+    const cadence = normalizeCadence(g.cadence);
+    if (!g.freqUnit && cadence) g.freqUnit = cadenceToFreqUnit(cadence);
+    if (!Number.isFinite(g.freqCount)) {
+      const rawTarget = typeof g.target === "string" ? Number(g.target) : g.target;
+      const target = Number.isFinite(rawTarget) && rawTarget > 0 ? Math.floor(rawTarget) : 1;
+      g.freqCount = target;
+    }
+  }
+
+  if (!g.startAt && typeof g.startDate === "string" && g.startDate.trim()) {
+    g.startAt = `${g.startDate.trim()}T09:00`;
+  }
+
+  if (!g.parentId && typeof g.primaryGoalId === "string" && g.primaryGoalId.trim()) {
+    g.parentId = g.primaryGoalId.trim();
+  }
+  if (!Number.isFinite(g.weight) && Number.isFinite(g.linkWeight)) {
+    g.weight = g.linkWeight;
+  }
+
+  if (g.metric && typeof g.metric === "object") {
+    if (!g.measureType) {
+      const inferred = inferMeasureTypeFromUnit(g.metric.unit);
+      if (inferred) g.measureType = inferred;
+    }
+    if (!Number.isFinite(g.targetValue) && Number.isFinite(g.metric.targetValue)) {
+      g.targetValue = g.metric.targetValue;
+    }
+    if (!Number.isFinite(g.currentValue) && Number.isFinite(g.metric.currentValue)) {
+      g.currentValue = g.metric.currentValue;
+    }
+  }
+
+  return g;
+}
+
+function normalizeLegacyHabit(rawHabit, index = 0) {
+  const h = rawHabit && typeof rawHabit === "object" ? { ...rawHabit } : {};
+  if (!h.id) h.id = uid();
+  if (typeof h.title !== "string" || !h.title.trim()) {
+    if (typeof h.name === "string" && h.name.trim()) h.title = h.name.trim();
+    else h.title = `Habitude ${index + 1}`;
+  }
+  if (typeof h.cadence !== "string") h.cadence = "WEEKLY";
+  if (!Number.isFinite(h.target)) h.target = 1;
+  if (typeof h.categoryId !== "string") h.categoryId = "";
+  return h;
+}
+
+function resolveGoalTypeLegacy(goal) {
+  const raw = (goal?.type || goal?.planType || goal?.kind || "").toString().toUpperCase();
+  if (raw === "OUTCOME" || raw === "PROCESS") return raw;
+  if (raw === "STATE") return "OUTCOME";
+  if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
+  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
+  return "";
+}
+
+function mergeLegacyHabitsIntoGoals(state) {
+  if (!state || typeof state !== "object") return state;
+  const goals = Array.isArray(state.goals) ? state.goals : [];
+  const habits = Array.isArray(state.habits) ? state.habits : [];
+  if (!habits.length) return state;
+
+  const existingGoalIds = new Set(goals.map((g) => g?.id).filter(Boolean));
+  const existingProcessIds = new Set(
+    goals.filter((g) => resolveGoalTypeLegacy(g) === "PROCESS").map((g) => g?.id).filter(Boolean)
+  );
+
+  const categories = Array.isArray(state.categories) ? state.categories : [];
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+  const goalsById = new Map(goals.map((g) => [g.id, g]));
+
+  const additions = [];
+  for (const habit of habits) {
+    if (!habit || !habit.id) continue;
+    if (existingProcessIds.has(habit.id)) continue;
+    if (existingGoalIds.has(habit.id)) continue;
+
+    const cadence = normalizeCadence(habit.cadence);
+    const freqUnit = cadence ? cadenceToFreqUnit(cadence) : "WEEK";
+    const rawTarget = typeof habit.target === "string" ? Number(habit.target) : habit.target;
+    const freqCount = Number.isFinite(rawTarget) && rawTarget > 0 ? Math.floor(rawTarget) : 1;
+    const categoryId = typeof habit.categoryId === "string" ? habit.categoryId : "";
+    const category = categoryId ? categoryById.get(categoryId) : null;
+
+    let parentId = null;
+    if (typeof habit.parentId === "string" && habit.parentId.trim()) parentId = habit.parentId.trim();
+    if (!parentId && typeof habit.primaryGoalId === "string" && habit.primaryGoalId.trim()) {
+      parentId = habit.primaryGoalId.trim();
+    }
+    if (!parentId && category?.mainGoalId) parentId = category.mainGoalId;
+    if (parentId && goalsById.has(parentId)) {
+      const parent = goalsById.get(parentId);
+      if (resolveGoalTypeLegacy(parent) !== "OUTCOME" || parent?.categoryId !== categoryId) parentId = null;
+    }
+
+    additions.push({
+      id: habit.id,
+      categoryId,
+      title: habit.title || "Habitude",
+      type: "PROCESS",
+      planType: "ACTION",
+      kind: "ACTION",
+      cadence: cadence || "WEEKLY",
+      target: freqCount,
+      freqUnit,
+      freqCount,
+      parentId,
+      primaryGoalId: parentId,
+    });
+  }
+
+  if (!additions.length) return state;
+  return { ...state, goals: [...goals, ...additions] };
+}
+
 export function normalizeCategory(rawCat, index = 0) {
   const c = rawCat && typeof rawCat === "object" ? { ...rawCat } : {};
   if (!c.id) c.id = uid();
@@ -295,6 +459,7 @@ export function initialData() {
     habits: [],
     reminders: [],
     sessions: [],
+    occurrences: [],
     checks: {},
   };
 }
@@ -385,7 +550,7 @@ export function demoData() {
 }
 
 export function migrate(prev) {
-  const next = prev && typeof prev === "object" ? { ...prev } : initialData();
+  let next = prev && typeof prev === "object" ? { ...prev } : initialData();
 
   // profile
   if (!next.profile) next.profile = {};
@@ -495,6 +660,11 @@ export function migrate(prev) {
 
   // goals (V2 normalize)
   if (!Array.isArray(next.goals)) next.goals = [];
+  if (!Array.isArray(next.habits)) next.habits = [];
+  next.habits = next.habits.map((h, i) => normalizeLegacyHabit(h, i));
+  next.goals = next.goals.map((g) => backfillGoalLegacyFields(g));
+  next = mergeLegacyHabitsIntoGoals(next);
+  next.goals = next.goals.map((g) => backfillGoalLegacyFields(g));
   next.goals = next.goals.map((g, i) => normalizeGoal(g, i, next.categories));
   next.goals = next.goals.map((g) => ({
     ...g,
@@ -611,11 +781,11 @@ export function migrate(prev) {
   }
 
   // habits/checks
-  if (!Array.isArray(next.habits)) next.habits = [];
   if (!Array.isArray(next.reminders)) next.reminders = [];
   next.reminders = next.reminders.map((r, i) => normalizeReminder(r, i));
   if (!Array.isArray(next.sessions)) next.sessions = [];
   next.sessions = next.sessions.map((s) => normalizeSession(s));
+  if (!Array.isArray(next.occurrences)) next.occurrences = [];
   if (!next.checks || typeof next.checks !== "object") next.checks = {};
 
   const normalized = normalizeGoalsState(next);
@@ -661,6 +831,7 @@ export function migrate(prev) {
   // Re-validate per-view selections after normalizeGoalsState
   const cats = Array.isArray(normalized.categories) ? normalized.categories : [];
   const first = cats[0]?.id || null;
+  const goalList = Array.isArray(normalized.goals) ? normalized.goals : [];
 
   const scv = normalized.ui?.selectedCategoryByView || { home: null, library: null, plan: null };
 
@@ -670,6 +841,10 @@ export function migrate(prev) {
 
   // Keep legacy `selectedCategoryId` as the Plan context to avoid coupling Today/Library to it.
   const legacySelectedCategoryId = safePlan || null;
+  const rawLibrarySelected = normalized.ui?.librarySelectedCategoryId || null;
+  const safeLibrarySelected = rawLibrarySelected && cats.some((c) => c.id === rawLibrarySelected) ? rawLibrarySelected : null;
+  const rawOpenGoalEditId = normalized.ui?.openGoalEditId || null;
+  const safeOpenGoalEditId = rawOpenGoalEditId && goalList.some((g) => g.id === rawOpenGoalEditId) ? rawOpenGoalEditId : null;
 
   return {
     ...normalized,
@@ -677,6 +852,8 @@ export function migrate(prev) {
       ...(normalized.ui || {}),
       selectedCategoryId: legacySelectedCategoryId,
       mainGoalId: normalized.ui?.mainGoalId || null,
+      librarySelectedCategoryId: safeLibrarySelected,
+      openGoalEditId: safeOpenGoalEditId,
       selectedCategoryByView: {
         home: safeHome,
         library: safeLibrary,

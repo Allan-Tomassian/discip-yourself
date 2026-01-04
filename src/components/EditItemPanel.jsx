@@ -151,6 +151,10 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
   const [planOpen, setPlanOpen] = useState(false);
 
   const isProcess = type === "PROCESS";
+  const hasOccurrenceSource = Array.isArray(item?._occurrences) && item._occurrences.length > 0;
+  const hasScheduleSource =
+    isProcess && item?.schedule && Array.isArray(item.schedule.timeSlots) && item.schedule.timeSlots.length > 0;
+  const canUseReminders = hasOccurrenceSource || hasScheduleSource;
 
   useEffect(() => {
     if (!item) return;
@@ -192,7 +196,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
     setDaysOfWeek(scheduleDays);
     setWindowStart(windowStartValue);
     setWindowEnd(windowEndValue);
-    setRemindersEnabled(reminderEnabled);
+    setRemindersEnabled(reminderEnabled && canUseReminders);
     setReminderTimes(reminderTimesClean.length ? reminderTimesClean : ["09:00"]);
     setReminderChannel(reminderChannelRaw);
     setNotes(isProcess ? item.habitNotes || "" : item.notes || "");
@@ -201,7 +205,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
     setTargetValue(item.targetValue != null ? String(item.targetValue) : "");
     setError("");
     setPlanOpen(false);
-  }, [item, isProcess]);
+  }, [item, isProcess, canUseReminders]);
 
   const normalizedReminderTimes = useMemo(() => normalizeTimes(reminderTimes), [reminderTimes]);
 
@@ -292,10 +296,11 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
     }
 
     if (typeof onSave === "function") {
+      const enabled = remindersEnabled && canUseReminders;
       onSave({
         updates,
         reminderConfig: {
-          enabled: remindersEnabled,
+          enabled,
           times: normalizedReminderTimes,
           channel: reminderChannel,
           days: normalizeDays(daysOfWeek),
@@ -480,6 +485,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
                   type="checkbox"
                   checked={remindersEnabled}
                   onChange={(e) => setRemindersEnabled(e.target.checked)}
+                  disabled={!canUseReminders}
                 />
                 <span>Activer les rappels</span>
               </label>

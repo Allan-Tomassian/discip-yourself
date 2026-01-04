@@ -1,6 +1,25 @@
 import { todayKey, startOfWeekKey, yearKey } from "../utils/dates";
 import { clamp } from "../utils/helpers";
 
+function resolveGoalType(goal) {
+  const raw = (goal?.type || goal?.planType || goal?.kind || "").toString().toUpperCase();
+  if (raw === "PROCESS") return "PROCESS";
+  if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
+  if (raw === "OUTCOME" || raw === "STATE") return "OUTCOME";
+  return "";
+}
+
+function getProcessGoals(data) {
+  const goals = Array.isArray(data?.goals) ? data.goals : [];
+  return goals.filter((g) => resolveGoalType(g) === "PROCESS");
+}
+
+export function getHabitList(data) {
+  const process = getProcessGoals(data);
+  if (process.length) return process;
+  return Array.isArray(data?.habits) ? data.habits : [];
+}
+
 export function computeHabitProgress(habit, checks, now = new Date()) {
   const h = checks[habit.id] || { daily: {}, weekly: {}, yearly: {} };
 
@@ -21,7 +40,7 @@ export function computeHabitProgress(habit, checks, now = new Date()) {
 }
 
 export function computeGlobalAvgForDay(data, d = new Date()) {
-  const list = data.habits;
+  const list = getHabitList(data);
   if (!list.length) return 0;
   let sum = 0;
   for (const h of list) sum += clamp(computeHabitProgress(h, data.checks, d).ratio, 0, 1);
@@ -30,7 +49,7 @@ export function computeGlobalAvgForDay(data, d = new Date()) {
 
 export function computeGlobalAvgForWeek(data, d = new Date()) {
   // V2: simplifié: on calcule comme une moyenne des ratios “du moment”
-  const list = data.habits;
+  const list = getHabitList(data);
   if (!list.length) return 0;
   let sum = 0;
   for (const h of list) sum += clamp(computeHabitProgress(h, data.checks, d).ratio, 0, 1);
@@ -51,15 +70,10 @@ export function computeStreakDays(data, now = new Date()) {
 }
 
 function resolveHabit(data, habitId) {
-  const list = Array.isArray(data?.habits) ? data.habits : [];
+  const list = getHabitList(data);
   const direct = list.find((h) => h.id === habitId);
   if (direct) return direct;
-  const goals = Array.isArray(data?.goals) ? data.goals : [];
-  const goal = goals.find((g) => g?.id === habitId);
-  if (!goal) return null;
-  const raw = (goal.type || goal.kind || goal.planType || "").toString().toUpperCase();
-  const isProcess = raw === "PROCESS" || raw === "ACTION" || raw === "ONE_OFF";
-  return isProcess ? goal : null;
+  return null;
 }
 
 export function incHabit(data, habitId, at = new Date()) {
