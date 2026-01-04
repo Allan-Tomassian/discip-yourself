@@ -16,7 +16,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, Select, Textarea } from "../components/UI";
+import { Button, Card, IconButton, Select, Textarea } from "../components/UI";
 import {
   addDays,
   addMonths,
@@ -166,8 +166,10 @@ export default function Home({
   const [showDayStats, setShowDayStats] = useState(false);
   const [showDisciplineStats, setShowDisciplineStats] = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
-  const [microOpen, setMicroOpen] = useState(true);
+  const [microOpen, setMicroOpen] = useState(false);
   const [dailyNote, setDailyNote] = useState("");
+  const [noteMeta, setNoteMeta] = useState({ forme: "", humeur: "", motivation: "" });
+  const [showNotesHistory, setShowNotesHistory] = useState(false);
   const [blockOrder, setBlockOrder] = useState(() => {
     try {
       const stored = JSON.parse(localStorage.getItem("todayBlocksOrder"));
@@ -224,6 +226,26 @@ export default function Home({
       next = "";
     }
     setDailyNote(next);
+  }, [selectedDateKey]);
+
+  useEffect(() => {
+    let next = { forme: "", humeur: "", motivation: "" };
+    try {
+      const raw = localStorage.getItem(`dailyNoteMeta:${selectedDateKey}`) || "";
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          next = {
+            forme: typeof parsed.forme === "string" ? parsed.forme : "",
+            humeur: typeof parsed.humeur === "string" ? parsed.humeur : "",
+            motivation: typeof parsed.motivation === "string" ? parsed.motivation : "",
+          };
+        }
+      }
+    } catch (_) {
+      // Ignore storage failures.
+    }
+    setNoteMeta(next);
   }, [selectedDateKey]);
 
   useEffect(() => {
@@ -605,6 +627,133 @@ export default function Home({
     });
   }, []);
 
+  const noteHistoryItems = useMemo(() => {
+    if (!showNotesHistory) return [];
+    try {
+      const items = [];
+      let history = [];
+      try {
+        const raw = localStorage.getItem("dailyNoteHistory") || "";
+        const parsed = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(parsed)) history = parsed;
+      } catch (_) {
+        history = [];
+      }
+      history.forEach((entry, index) => {
+        if (!entry || typeof entry !== "object") return;
+        const dateKey = typeof entry.dateKey === "string" ? entry.dateKey : "";
+        const note = typeof entry.note === "string" ? entry.note : "";
+        const meta = entry.meta && typeof entry.meta === "object" ? entry.meta : {};
+        const savedAt = Number(entry.savedAt) || 0;
+        const hasNote = Boolean(note.trim());
+        const hasMeta = Boolean(meta.forme || meta.humeur || meta.motivation);
+        if (!hasNote && !hasMeta) return;
+        items.push({
+          id: savedAt ? `${dateKey}-${savedAt}` : `${dateKey}-${index}`,
+          dateKey,
+          note,
+          meta,
+          savedAt,
+        });
+      });
+
+      const entries = new Map();
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        if (key.startsWith("dailyNote:")) {
+          const dateKey = key.replace("dailyNote:", "");
+          const note = localStorage.getItem(key) || "";
+          const entry = entries.get(dateKey) || { dateKey, note: "", meta: {} };
+          entry.note = note;
+          entries.set(dateKey, entry);
+        }
+        if (key.startsWith("dailyNoteMeta:")) {
+          const dateKey = key.replace("dailyNoteMeta:", "");
+          let meta = {};
+          try {
+            const raw = localStorage.getItem(key) || "";
+            const parsed = raw ? JSON.parse(raw) : null;
+            if (parsed && typeof parsed === "object") meta = parsed;
+          } catch (_) {
+            meta = {};
+          }
+          const entry = entries.get(dateKey) || { dateKey, note: "", meta: {} };
+          entry.meta = { ...entry.meta, ...meta };
+          entries.set(dateKey, entry);
+        }
+      }
+
+      Array.from(entries.values()).forEach((item) => {
+        const hasNote = Boolean((item.note || "").trim());
+        const meta = item.meta || {};
+        const hasMeta = Boolean(meta.forme || meta.humeur || meta.motivation);
+        if (!hasNote && !hasMeta) return;
+        items.push({
+          id: `current-${item.dateKey}`,
+          dateKey: item.dateKey,
+          note: item.note,
+          meta: item.meta,
+          savedAt: 0,
+        });
+      });
+
+      return items.sort((a, b) => {
+        const aTime = a.savedAt || 0;
+        const bTime = b.savedAt || 0;
+        if (aTime && bTime) return bTime - aTime;
+        if (aTime) return -1;
+        if (bTime) return 1;
+        return (b.dateKey || "").localeCompare(a.dateKey || "");
+      });
+    } catch (_) {
+      return [];
+    }
+  }, [showNotesHistory]);
+
+  function updateNoteMeta(patch) {
+    setNoteMeta((prev) => {
+      const next = { ...prev, ...patch };
+      try {
+        localStorage.setItem(`dailyNoteMeta:${selectedDateKey}`, JSON.stringify(next));
+      } catch (_) {
+        // Ignore storage failures.
+      }
+      return next;
+    });
+  }
+
+  function addNoteToHistory() {
+    const trimmedNote = (dailyNote || "").trim();
+    const meta = noteMeta || {};
+    const hasMeta = Boolean(meta.forme || meta.humeur || meta.motivation);
+    if (!trimmedNote && !hasMeta) return;
+    const entry = {
+      dateKey: selectedDateKey,
+      note: trimmedNote,
+      meta: { ...meta },
+      savedAt: Date.now(),
+    };
+    try {
+      const raw = localStorage.getItem("dailyNoteHistory") || "";
+      const parsed = raw ? JSON.parse(raw) : [];
+      const history = Array.isArray(parsed) ? parsed : [];
+      history.unshift(entry);
+      localStorage.setItem("dailyNoteHistory", JSON.stringify(history));
+    } catch (_) {
+      // Ignore storage failures.
+    }
+    setDailyNote("");
+    const nextMeta = { forme: "", humeur: "", motivation: "" };
+    setNoteMeta(nextMeta);
+    try {
+      localStorage.setItem(`dailyNote:${selectedDateKey}`, "");
+      localStorage.setItem(`dailyNoteMeta:${selectedDateKey}`, JSON.stringify(nextMeta));
+    } catch (_) {
+      // Ignore storage failures.
+    }
+  }
+
 
   // Render
   if (!categories.length) {
@@ -718,6 +867,7 @@ export default function Home({
       headerTitle={<span className="textAccent">Aujourd’hui</span>}
       headerSubtitle="Exécution"
       headerRight={headerRight}
+      headerRowAlign="start"
     >
       <div className="stack stackGap12" style={{ maxWidth: 720, margin: "0 auto" }}>
         <div className="row">
@@ -770,13 +920,13 @@ export default function Home({
 
                             <div className="mt12">
                               <div className="small2">Objectif principal</div>
-                              {outcomeGoals.length ? (
-                                <div className="mt8 catAccentField" style={catAccentVars}>
-                                  <Select
-                                    value={selectedGoal?.id || ""}
-                                    onChange={(e) => setCategoryMainGoal(e.target.value)}
-                                    style={{ fontSize: 16 }}
-                                    disabled={!canEdit}
+                            {outcomeGoals.length ? (
+                              <div className="mt8 catAccentField liquidSelect" style={catAccentVars}>
+                                <Select
+                                  value={selectedGoal?.id || ""}
+                                  onChange={(e) => setCategoryMainGoal(e.target.value)}
+                                  style={{ fontSize: 16 }}
+                                  disabled={!canEdit}
                                   >
                                     <option value="" disabled>
                                       Choisir un objectif
@@ -915,7 +1065,7 @@ export default function Home({
                               type="button"
                               onClick={() => setMicroOpen((v) => !v)}
                             >
-                              {microOpen ? "-" : "+"}
+                              {microOpen ? "▾" : "▸"}
                             </button>
                           </div>
                           {microOpen ? (
@@ -990,36 +1140,96 @@ export default function Home({
                     );
                   }
 
-                  return (
-                    <Card>
-                      <div className="p18">
-                        <div className="cardSectionTitleRow">
-                          <DragHandle
-                            attributes={attributes}
-                            listeners={listeners}
-                            setActivatorNodeRef={setActivatorNodeRef}
-                          />
-                          <div className="cardSectionTitle">Note du jour</div>
+                    return (
+                      <Card>
+                        <div className="p18">
+                          <div className="row">
+                            <div className="cardSectionTitleRow">
+                              <DragHandle
+                                attributes={attributes}
+                                listeners={listeners}
+                                setActivatorNodeRef={setActivatorNodeRef}
+                              />
+                              <div className="cardSectionTitle">Note du jour</div>
+                            </div>
+                            <div className="row" style={{ gap: 8 }}>
+                              <IconButton aria-label="Ajouter à l'historique" onClick={addNoteToHistory}>
+                                Ajouter
+                              </IconButton>
+                              <IconButton
+                                aria-label="Historique des notes"
+                                onClick={() => setShowNotesHistory(true)}
+                              >
+                                +
+                              </IconButton>
+                            </div>
+                          </div>
+                          <div className="mt12">
+                            <Textarea
+                              rows={3}
+                              value={dailyNote}
+                              onChange={(e) => {
+                                const next = e.target.value;
+                                setDailyNote(next);
+                                try {
+                                  localStorage.setItem(`dailyNote:${selectedDateKey}`, next);
+                                } catch (_) {
+                                  // Ignore storage failures (private mode, quota, etc.)
+                                }
+                              }}
+                              placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
+                            />
+                          </div>
+                          <div className="mt12">
+                            <div className="small2">Check-in rapide</div>
+                            <div className="noteMetaGrid mt8">
+                              <div>
+                                <div className="small2">Forme</div>
+                                <Select
+                                  value={noteMeta.forme || ""}
+                                  onChange={(e) => updateNoteMeta({ forme: e.target.value })}
+                                >
+                                  <option value="" disabled>
+                                    Choisir
+                                  </option>
+                                  <option value="Excellente">Excellente</option>
+                                  <option value="Bonne">Bonne</option>
+                                  <option value="Moyenne">Moyenne</option>
+                                  <option value="Faible">Faible</option>
+                                </Select>
+                              </div>
+                              <div>
+                                <div className="small2">Humeur</div>
+                                <Select
+                                  value={noteMeta.humeur || ""}
+                                  onChange={(e) => updateNoteMeta({ humeur: e.target.value })}
+                                >
+                                  <option value="" disabled>
+                                    Choisir
+                                  </option>
+                                  <option value="Positif">Positif</option>
+                                  <option value="Neutre">Neutre</option>
+                                  <option value="Basse">Basse</option>
+                                </Select>
+                              </div>
+                              <div>
+                                <div className="small2">Motivation</div>
+                                <input
+                                  className="input"
+                                  type="number"
+                                  min="0"
+                                  max="10"
+                                  step="1"
+                                  value={noteMeta.motivation || ""}
+                                  onChange={(e) => updateNoteMeta({ motivation: e.target.value })}
+                                  placeholder="0-10"
+                                />
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="mt12">
-                          <Textarea
-                            rows={3}
-                            value={dailyNote}
-                            onChange={(e) => {
-                              const next = e.target.value;
-                              setDailyNote(next);
-                              try {
-                                localStorage.setItem(`dailyNote:${selectedDateKey}`, next);
-                              } catch (_) {
-                                // Ignore storage failures (private mode, quota, etc.)
-                              }
-                            }}
-                            placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
-                          />
-                        </div>
-                      </div>
-                    </Card>
-                  );
+                      </Card>
+                    );
                   }}
                 </SortableBlock>
               ))}
@@ -1145,6 +1355,38 @@ export default function Home({
                   </button>
                 );
               })}
+            </div>
+          </Card>
+        </div>
+      ) : null}
+      {showNotesHistory ? (
+        <div className="modalBackdrop disciplineOverlay" onClick={() => setShowNotesHistory(false)}>
+          <Card className="disciplineCard" onClick={(e) => e.stopPropagation()}>
+            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+              <div className="titleSm">Historique des notes</div>
+              <button className="linkBtn" type="button" onClick={() => setShowNotesHistory(false)}>
+                Fermer
+              </button>
+            </div>
+            <div className="mt12 col" style={{ gap: 10, maxHeight: 320, overflow: "auto" }}>
+              {noteHistoryItems.length ? (
+                noteHistoryItems.map((item) => {
+                  const meta = item.meta || {};
+                  const metaParts = [];
+                  if (meta.forme) metaParts.push(`Forme: ${meta.forme}`);
+                  if (meta.humeur) metaParts.push(`Humeur: ${meta.humeur}`);
+                  if (meta.motivation) metaParts.push(`Motivation: ${meta.motivation}/10`);
+                  return (
+                    <div key={item.dateKey} className="listItem">
+                      <div className="small2">{item.dateKey}</div>
+                      {metaParts.length ? <div className="small2 mt8">{metaParts.join(" · ")}</div> : null}
+                      {item.note ? <div className="small2 mt8">{item.note}</div> : null}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="small2">Aucune note enregistrée.</div>
+              )}
             </div>
           </Card>
         </div>

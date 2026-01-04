@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, IconButton, Select } from "../components/UI";
+import { Button, Card, IconButton } from "../components/UI";
+import EditItemPanel from "../components/EditItemPanel";
 import Gauge from "../components/Gauge";
 import { getAccentForPage } from "../utils/_theme";
 import { safeConfirm, safePrompt } from "../utils/dialogs";
+import { uid } from "../utils/helpers";
+import { updateGoal } from "../logic/goals";
 import { isPrimaryCategory, isPrimaryGoal, setPrimaryCategory, setPrimaryGoalForCategory } from "../logic/priority";
 
 function resolveGoalType(goal) {
@@ -34,8 +37,7 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
   const [showWhy, setShowWhy] = useState(true);
   const [selectedOutcomeId, setSelectedOutcomeId] = useState(null);
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
-  const [goalMenuOpenId, setGoalMenuOpenId] = useState(null);
-  const [habitMenuOpenId, setHabitMenuOpenId] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
 
   const outcomeGoals = useMemo(() => {
     if (!category?.id) return [];
@@ -76,13 +78,25 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
     return main ? [main, ...rest] : outcomeGoals;
   }, [outcomeGoals, category?.mainGoalId]);
   const gaugeSlice = gaugeGoals.slice(0, 2);
+  const reminders = Array.isArray(safeData.reminders) ? safeData.reminders : [];
 
   function openPlan(categoryIdValue, openGoalEditId) {
     if (!categoryIdValue || typeof setData !== "function") return;
-    setData((prev) => ({
-      ...prev,
-      ui: { ...(prev.ui || {}), selectedCategoryId: categoryIdValue, openGoalEditId },
-    }));
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      const prevSel =
+        prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+          ? prevUi.selectedCategoryByView
+          : {};
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          openGoalEditId,
+          selectedCategoryByView: { ...prevSel, plan: categoryIdValue },
+        },
+      };
+    });
     if (typeof onOpenPlan === "function") onOpenPlan();
   }
 
@@ -141,21 +155,10 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
     if (typeof onBack === "function") onBack();
   }
 
-  function renameGoal(goalId) {
-    if (!goalId || typeof setData !== "function") return;
-    const goal = goals.find((g) => g.id === goalId);
-    const nextTitle = safePrompt("Renommer :", goal?.title || "");
-    if (!nextTitle || !nextTitle.trim()) return;
-    setData((prev) => ({
-      ...prev,
-      goals: (prev.goals || []).map((g) => (g.id === goalId ? { ...g, title: nextTitle.trim() } : g)),
-    }));
-  }
-
   function deleteGoal(goalId) {
-    if (!goalId || typeof setData !== "function") return;
+    if (!goalId || typeof setData !== "function") return false;
     const ok = safeConfirm("Supprimer cet élément ?");
-    if (!ok) return;
+    if (!ok) return false;
     setData((prev) => {
       const goal = (prev.goals || []).find((g) => g.id === goalId);
       const isOutcome = resolveGoalType(goal) === "OUTCOME";
@@ -177,11 +180,65 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
         ui: nextUi,
       };
     });
+    return true;
   }
 
-  function setGoalPriority(goalId) {
-    if (!goalId || !category?.id || typeof setData !== "function") return;
-    setData((prev) => setPrimaryGoalForCategory(prev, category.id, goalId));
+  function openEditItem(item) {
+    if (!item) return;
+    const type = resolveGoalType(item);
+    const itemReminders = reminders.filter((r) => r.goalId === item.id);
+    setEditTarget({ item: { ...item, _reminders: itemReminders }, type });
+  }
+
+  function updateRemindersForGoal(prevReminders, goalId, config, fallbackLabel) {
+    const base = Array.isArray(prevReminders) ? prevReminders : [];
+    const others = base.filter((r) => r.goalId !== goalId);
+    if (!config || !config.enabled) return others;
+    const times = Array.isArray(config.times) ? config.times : [];
+    if (!times.length) return others;
+
+    const days = Array.isArray(config.days) && config.days.length ? config.days : [1, 2, 3, 4, 5, 6, 7];
+    const channel = config.channel === "NOTIFICATION" ? "NOTIFICATION" : "IN_APP";
+    const label = config.label || fallbackLabel || "Rappel";
+    const existing = base.filter((r) => r.goalId === goalId);
+
+    const nextForGoal = times.map((time, index) => {
+      const prev = existing[index] || null;
+      return {
+        id: prev?.id || uid(),
+        goalId,
+        time,
+        enabled: true,
+        channel,
+        days,
+        label: prev?.label || label,
+      };
+    });
+
+    return [...others, ...nextForGoal];
+  }
+
+  function handleSaveEdit(payload) {
+    if (!editTarget?.item?.id || typeof setData !== "function") return;
+    const goalId = editTarget.item.id;
+    const categoryId = editTarget.item.categoryId;
+    const updates = payload?.updates || {};
+    const reminderConfig = payload?.reminderConfig || null;
+
+    setData((prev) => {
+      let next = updateGoal(prev, goalId, updates);
+      if (editTarget.type === "OUTCOME" && updates.priorityLevel === "primary" && categoryId) {
+        next = setPrimaryGoalForCategory(next, categoryId, goalId);
+      }
+      if (reminderConfig) {
+        const label = updates.title || editTarget.item.title || "Rappel";
+        const nextReminders = updateRemindersForGoal(next.reminders, goalId, reminderConfig, label);
+        next = { ...next, reminders: nextReminders };
+      }
+      return next;
+    });
+
+    setEditTarget(null);
   }
 
   if (!categories.length) {
@@ -198,7 +255,7 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
               Ajoute une première catégorie pour commencer.
             </div>
             <div className="mt12">
-              <Button variant="ghost" onClick={onBack}>
+              <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
                 ← Retour
               </Button>
             </div>
@@ -222,7 +279,7 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
               Cette catégorie n’existe plus.
             </div>
             <div className="mt12">
-              <Button variant="ghost" onClick={onBack}>
+              <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
                 ← Retour
               </Button>
             </div>
@@ -239,9 +296,6 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
   const headerRight = (
     <div style={{ minWidth: 0, maxWidth: 320, width: "100%" }}>
       <div className="col" style={{ gap: 8, alignItems: "flex-end" }}>
-        <Button variant="ghost" className="btnBackCompact" onClick={onBack}>
-          ← Retour
-        </Button>
         {outcomeGoals.length ? (
           <div className="col" style={{ gap: 8, alignItems: "flex-end", width: "100%" }}>
             {gaugeSlice.map((g) => (
@@ -274,8 +328,16 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
       accent={accent}
       backgroundImage={backgroundImage}
       headerTitle={<span className="textAccent">Gérer</span>}
-      headerSubtitle={category.name || "Catégorie"}
+      headerSubtitle={
+        <div className="stack stackGap12">
+          <div>{category.name || "Catégorie"}</div>
+          <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+            ← Retour
+          </Button>
+        </div>
+      }
       headerRight={headerRight}
+      headerRowAlign="start"
     >
       <div style={{ "--catColor": category.color || "#7C3AED" }}>
         <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }}>
@@ -377,43 +439,10 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
                         <IconButton
                           icon="gear"
                           aria-label="Paramètres objectif"
-                          onClick={() => {
-                            setGoalMenuOpenId((prev) => (prev === g.id ? null : g.id));
-                            setCategoryMenuOpen(false);
-                            setHabitMenuOpenId(null);
-                          }}
-                        />
-                        <IconButton
-                          icon="close"
-                          className="iconBtnDanger"
-                          aria-label="Supprimer l'objectif"
-                          onClick={() => deleteGoal(g.id)}
+                          onClick={() => openEditItem(g)}
                         />
                       </div>
                     </div>
-                    {goalMenuOpenId === g.id ? (
-                      <div className="mt12 col" style={{ gap: 8 }}>
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            renameGoal(g.id);
-                            setGoalMenuOpenId(null);
-                          }}
-                        >
-                          Renommer
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            setGoalPriority(g.id);
-                            setGoalMenuOpenId(null);
-                          }}
-                          disabled={isPrimaryGoal(g)}
-                        >
-                          {isPrimaryGoal(g) ? "Prioritaire" : "Définir comme prioritaire"}
-                        </Button>
-                      </div>
-                    ) : null}
                   </div>
                 ))}
               </div>
@@ -443,33 +472,10 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
                         <IconButton
                           icon="gear"
                           aria-label="Paramètres habitude"
-                          onClick={() => {
-                            setHabitMenuOpenId((prev) => (prev === h.id ? null : h.id));
-                            setCategoryMenuOpen(false);
-                            setGoalMenuOpenId(null);
-                          }}
-                        />
-                        <IconButton
-                          icon="close"
-                          className="iconBtnDanger"
-                          aria-label="Supprimer l'habitude"
-                          onClick={() => deleteGoal(h.id)}
+                          onClick={() => openEditItem(h)}
                         />
                       </div>
                     </div>
-                    {habitMenuOpenId === h.id ? (
-                      <div className="mt12 col" style={{ gap: 8 }}>
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            renameGoal(h.id);
-                            setHabitMenuOpenId(null);
-                          }}
-                        >
-                          Renommer
-                        </Button>
-                      </div>
-                    ) : null}
                   </div>
                 ))}
               </div>
@@ -500,6 +506,18 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
           </div>
         </Card>
       </div>
+      {editTarget ? (
+        <EditItemPanel
+          item={editTarget.item}
+          type={editTarget.type}
+          onSave={handleSaveEdit}
+          onDelete={() => {
+            const removed = deleteGoal(editTarget.item.id);
+            if (removed) setEditTarget(null);
+          }}
+          onClose={() => setEditTarget(null)}
+        />
+      ) : null}
     </ScreenShell>
   );
 }

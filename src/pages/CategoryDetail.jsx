@@ -378,8 +378,6 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
           ...prevUi,
           // Plan context
           selectedCategoryByView: { ...prevSel, plan: nextSelected },
-          // legacy sync
-          selectedCategoryId: nextSelected,
         },
       };
     });
@@ -469,8 +467,6 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
           ...prevUi,
           // keep Plan context on this category
           selectedCategoryByView: { ...prevSel, plan: c.id },
-          // legacy sync
-          selectedCategoryId: c.id,
         },
       };
     });
@@ -667,6 +663,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
             <div className="mt12">
               <Button
                 variant="ghost"
+                className="btnBackCompact backBtn"
                 onClick={() => {
                   setData((prev) => {
                     const prevUi = prev.ui || {};
@@ -679,14 +676,13 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
                       ui: {
                         ...prevUi,
                         selectedCategoryByView: { ...prevSel, plan: null },
-                        selectedCategoryId: null,
                       },
                     };
                   });
                   if (typeof onBack === "function") onBack();
                 }}
               >
-                Retour à la bibliothèque
+                ← Retour
               </Button>
             </div>
             <div className="mt12">
@@ -885,7 +881,7 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
         next = {
           ...next,
           categories: nextCategories,
-          ui: { ...(next.ui || {}), mainGoalId: createId, selectedCategoryId: c.id },
+          ui: { ...(next.ui || {}), mainGoalId: createId },
         };
       }
       return next;
@@ -984,7 +980,6 @@ function onToggleActive(goal) {
                   ui: {
                     ...prevUi,
                     selectedCategoryByView: { ...prevSel, plan: nextId },
-                    selectedCategoryId: nextId,
                   },
                 };
               });

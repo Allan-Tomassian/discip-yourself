@@ -61,16 +61,18 @@ export default function CreateCategory({ data, setData, onCancel, onDone }) {
           <span style={{ opacity: 0.6 }}>1.</span> Catégorie
         </>
       }
-      headerRight={
-        <Button variant="ghost" onClick={() => (typeof onCancel === "function" ? onCancel() : null)}>
-          Retour
-        </Button>
-      }
-      headerAlign="right"
       backgroundImage={backgroundImage}
     >
-      <Card accentBorder>
-        <div className="p18 col" style={{ gap: 10 }}>
+      <div className="col">
+        <Button
+          variant="ghost"
+          className="btnBackCompact backBtn"
+          onClick={() => (typeof onCancel === "function" ? onCancel() : null)}
+        >
+          ← Retour
+        </Button>
+        <Card accentBorder>
+          <div className="p18 col" style={{ gap: 10 }}>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de la catégorie" />
           <div
             className="row"
@@ -127,8 +129,9 @@ export default function CreateCategory({ data, setData, onCancel, onDone }) {
               Créer
             </Button>
           </div>
-        </div>
-      </Card>
+          </div>
+        </Card>
+      </div>
     </ScreenShell>
   );
 }

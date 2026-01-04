@@ -321,10 +321,27 @@ export default function App() {
   const railCategories = useMemo(() => {
     return orderedCategories.filter((c) => plannedCategoryIds.has(c.id));
   }, [orderedCategories, plannedCategoryIds]);
+  const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
   const railSelectedId =
     tab === "category-detail"
       ? categoryDetailId
-      : safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
+      : tab === "category-progress"
+        ? categoryProgressId
+        : tab === "library" ||
+            tab === "create" ||
+            tab === "create-category" ||
+            tab === "create-goal" ||
+            tab === "create-habit"
+          ? librarySelectedCategoryId ||
+            safeData?.ui?.selectedCategoryByView?.home ||
+            safeData?.ui?.selectedCategoryId ||
+            null
+          : tab === "plan"
+            ? safeData?.ui?.selectedCategoryByView?.plan ||
+              safeData?.ui?.selectedCategoryId ||
+              safeData?.ui?.selectedCategoryByView?.home ||
+              null
+            : safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
 
   useEffect(() => {
     applyThemeTokens(themeName);
@@ -433,7 +450,14 @@ export default function App() {
           setLibraryCategoryId(null);
           setTab("create-category");
         }}
-        categories={railCategories}
+        categories={
+          tab === "create" ||
+          tab === "create-category" ||
+          tab === "create-goal" ||
+          tab === "create-habit"
+            ? []
+            : railCategories
+        }
         selectedCategoryId={railSelectedId}
         onSelectCategory={(categoryId) => {
           if (!categoryId) return;
@@ -463,10 +487,17 @@ export default function App() {
             return;
           }
           if (tab === "plan") {
-            setData((prev) => ({
-              ...prev,
-              ui: { ...(prev.ui || {}), selectedCategoryId: categoryId },
-            }));
+            setData((prev) => {
+              const prevUi = prev.ui || {};
+              const prevSel =
+                prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+                  ? prevUi.selectedCategoryByView
+                  : {};
+              return {
+                ...prev,
+                ui: { ...prevUi, selectedCategoryByView: { ...prevSel, plan: categoryId } },
+              };
+            });
             return;
           }
           if (tab === "session") {
@@ -541,14 +572,29 @@ export default function App() {
         <CategoryDetail
           data={data}
           setData={setData}
-          categoryId={data?.ui?.selectedCategoryId || data?.categories?.[0]?.id || null}
+          categoryId={
+            data?.ui?.selectedCategoryByView?.plan ||
+            data?.ui?.selectedCategoryId ||
+            data?.categories?.[0]?.id ||
+            null
+          }
           onBack={() => {
             setLibraryCategoryId(null);
             setTab("library");
           }}
           initialEditGoalId={data?.ui?.openGoalEditId || null}
           onSelectCategory={(nextId) => {
-            setData((prev) => ({ ...prev, ui: { ...(prev.ui || {}), selectedCategoryId: nextId } }));
+            setData((prev) => {
+              const prevUi = prev.ui || {};
+              const prevSel =
+                prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+                  ? prevUi.selectedCategoryByView
+                  : {};
+              return {
+                ...prev,
+                ui: { ...prevUi, selectedCategoryByView: { ...prevSel, plan: nextId } },
+              };
+            });
           }}
         />
       ) : tab === "library" && libraryCategoryId ? (

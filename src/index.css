@@ -68,6 +68,8 @@ a{ color:inherit; }
   justify-content:space-between;
   gap:var(--space-12);
 }
+.pageHeaderRowStart{ align-items:flex-start; }
+.pageHeaderRowEnd{ align-items:flex-end; }
 .pageHeaderLeft{
   min-width:0;
   flex:1 1 auto;
@@ -118,6 +120,27 @@ a{ color:inherit; }
   letter-spacing:-.01em;
   color:var(--accent);
   opacity:.78;
+}
+.liquidSelect .select{
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 14px 30px rgba(0,0,0,.28);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.liquidSelect .select:focus{
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 18px var(--accentGlow);
+}
+.noteMetaGrid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap:10px;
+}
+@media (max-width: 420px){
+  .noteMetaGrid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .bg{
@@ -239,6 +262,11 @@ a{ color:inherit; }
 .btnBackCompact{
   padding:8px 12px;
   font-size:13px;
+}
+.backBtn{
+  align-self:flex-start;
+  display:inline-flex;
+  align-items:center;
 }
 
 .hdrRow{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
@@ -759,6 +787,89 @@ a{ color:inherit; }
   align-items:center;
   justify-content:space-between;
   gap:10px;
+}
+.editPanel{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.editPanelBody{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-top:12px;
+}
+.editSection{
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.04);
+  border-radius:14px;
+  padding:12px;
+}
+.editSectionTitle{
+  font-size:13px;
+  font-weight:700;
+  margin-bottom:8px;
+}
+.editSectionToggle{
+  width:100%;
+  border:0;
+  background:transparent;
+  color:var(--text);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  font-size:13px;
+  font-weight:700;
+  padding:0;
+  cursor:pointer;
+}
+.editSectionBody{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:10px;
+}
+.editPanelFooter{
+  position:sticky;
+  bottom:-1px;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding-top:12px;
+  margin-top:12px;
+  background: rgba(5,6,10,.6);
+  backdrop-filter: blur(10px);
+  border-top:1px solid rgba(255,255,255,.12);
+}
+.editDaysRow{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.editDayOption{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  border:1px solid var(--border);
+  background: rgba(255,255,255,.06);
+  border-radius:10px;
+  padding:6px 8px;
+  font-size:12px;
+}
+.editDayOption input{
+  width:14px;
+  height:14px;
+  accent-color: var(--accent);
+}
+.editTimeList{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.editTimeRow{
+  display:flex;
+  align-items:center;
+  gap:8px;
 }
 .ios .modalBackdrop{
   position:absolute;

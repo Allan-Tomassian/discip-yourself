@@ -43,7 +43,7 @@ export default function CategoryDetailView({ data, categoryId, onBack, onOpenLib
             <div className="titleSm">Catégorie introuvable</div>
             <div className="small2 mt8">Cette catégorie n’existe plus.</div>
             <div className="mt12">
-              <Button variant="ghost" onClick={onBack}>
+              <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
                 ← Retour
               </Button>
             </div>
@@ -65,7 +65,7 @@ export default function CategoryDetailView({ data, categoryId, onBack, onOpenLib
       headerSubtitle="Détail catégorie"
     >
       <div className="row" style={{ gap: 10 }}>
-        <Button variant="ghost" onClick={onBack}>
+        <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
           ← Retour
         </Button>
         {typeof onOpenLibrary === "function" ? (

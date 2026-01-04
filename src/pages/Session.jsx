@@ -142,6 +142,10 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
     );
   }
 
+  function confirmPause() {
+    pauseTimer();
+  }
+
   function resumeTimer() {
     if (!session || typeof setData !== "function" || !hasHabits) return;
     const nowIso = new Date().toISOString();
@@ -194,7 +198,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
                   Aller à Bibliothèque
                 </Button>
               ) : (
-                <Button variant="ghost" onClick={onBack}>
+                <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
                   ← Retour
                 </Button>
               )}
@@ -224,8 +228,8 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
               Date : {effectiveDateKey}
             </div>
             <div className="mt12">
-              <Button variant="ghost" onClick={onBack}>
-                Revenir à Aujourd’hui
+              <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+                ← Retour
               </Button>
             </div>
           </div>
@@ -242,21 +246,9 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
       backgroundImage={category?.wallpaper || safeData.profile?.whyImage || ""}
     >
       <div style={catAccentVars}>
-        <Button variant="ghost" onClick={onBack}>
+        <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
           ← Retour
         </Button>
-
-        <Card accentBorder style={{ marginTop: 12 }}>
-          <div className="p18">
-            <div className="sectionTitle">Objectif</div>
-            <div className="titleSm" style={{ marginTop: 6 }}>
-              {objective?.title || "Objectif principal"}
-            </div>
-            <div className="sectionSub" style={{ marginTop: 6 }}>
-              Date : {effectiveDateKey}
-            </div>
-          </div>
-        </Card>
 
         <Card accentBorder style={{ marginTop: 12 }}>
           <div className="p18">
@@ -275,15 +267,12 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
               </div>
             ) : null}
             <div className="mt12 row" style={{ gap: 10 }}>
-              {isRunning ? (
-                <Button variant="ghost" onClick={pauseTimer}>
-                  Pause
-                </Button>
-              ) : (
-                <Button onClick={elapsedSec > 0 ? resumeTimer : startTimer} disabled={!hasHabits}>
-                  {elapsedSec > 0 ? "Reprendre" : "Démarrer"}
-                </Button>
-              )}
+              <Button variant="ghost" onClick={confirmPause} disabled={!hasHabits || !isEditable}>
+                Pause
+              </Button>
+              <Button onClick={elapsedSec > 0 ? resumeTimer : startTimer} disabled={!hasHabits}>
+                {elapsedSec > 0 ? "Reprendre" : "Démarrer"}
+              </Button>
             </div>
           </div>
         </Card>
@@ -323,12 +312,12 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
           </div>
         </Card>
 
-        <div className="mt12 row" style={{ justifyContent: "flex-end", gap: 10 }}>
+        <div className="mt12 row" style={{ gap: 10 }}>
           <Button variant="ghost" onClick={cancelSession} disabled={!hasHabits || !isEditable}>
-            Annuler la session
+            Annuler
           </Button>
-          <Button onClick={endSession} disabled={!hasHabits || !isEditable}>
-            Terminer la session
+          <Button variant="ghost" onClick={endSession} disabled={!hasHabits || !isEditable}>
+            Terminer
           </Button>
         </div>
       </div>

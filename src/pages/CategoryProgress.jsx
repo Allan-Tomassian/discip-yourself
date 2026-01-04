@@ -47,7 +47,7 @@ export default function CategoryProgress({ data, categoryId, onBack }) {
             <div className="titleSm">Catégorie introuvable</div>
             <div className="small2 mt8">Cette catégorie n’existe plus.</div>
             <div className="mt12">
-              <Button variant="ghost" onClick={onBack}>
+              <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
                 ← Retour
               </Button>
             </div>
@@ -66,8 +66,8 @@ export default function CategoryProgress({ data, categoryId, onBack }) {
       headerTitle={<span className="textAccent">Progression</span>}
       headerSubtitle={category.name || "Catégorie"}
     >
-      <Button variant="ghost" onClick={onBack}>
-        ← Gérer
+      <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+        ← Retour
       </Button>
 
       <Card accentBorder style={{ marginTop: 12, borderColor: accent }}>

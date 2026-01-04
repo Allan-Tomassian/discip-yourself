@@ -13,16 +13,13 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
       headerTitle={<span className="textAccent">Créer</span>}
       headerSubtitle="Bibliothèque"
       backgroundImage={backgroundImage}
-      headerRight={
-        onBack ? (
-          <Button variant="ghost" onClick={onBack}>
-            Retour
-          </Button>
-        ) : null
-      }
     >
-
       <div className="col">
+        {onBack ? (
+          <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+            ← Retour
+          </Button>
+        ) : null}
         <Card
           accentBorder
           style={{ marginBottom: 12, cursor: "pointer" }}

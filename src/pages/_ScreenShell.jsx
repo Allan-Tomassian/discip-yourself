@@ -9,6 +9,7 @@ export default function ScreenShell({
   headerSubtitle,
   headerRight,
   headerAlign = "left",
+  headerRowAlign = "end",
   children,
 }) {
   const alignClass =
@@ -17,6 +18,7 @@ export default function ScreenShell({
       : headerAlign === "right"
         ? "pageHeaderAlignRight"
         : "pageHeaderAlignCenter";
+  const rowAlignClass = headerRowAlign === "start" ? "pageHeaderRowStart" : "pageHeaderRowEnd";
 
   return (
     <AccentContext.Provider value={{ accent }}>
@@ -27,7 +29,7 @@ export default function ScreenShell({
       {backgroundImage ? <div className="bgImg" style={{ backgroundImage: `url(${backgroundImage})` }} /> : null}
 
       <div className="container">
-        <div className="pageHeader">
+        <div className={`pageHeader ${rowAlignClass}`}>
           <div className={`pageHeaderLeft ${alignClass}`}>
             <div className="pageTitle">{headerTitle}</div>
             <div className="pageSubtitle">{headerSubtitle}</div>

@@ -101,16 +101,18 @@ export default function CreateGoal({ data, setData, onCancel, onDone, initialCat
           <span style={{ opacity: 0.6 }}>2.</span> Objectif
         </>
       }
-      headerRight={
-        <Button variant="ghost" onClick={() => (typeof onCancel === "function" ? onCancel() : null)}>
-          Retour
-        </Button>
-      }
-      headerAlign="right"
       backgroundImage={backgroundImage}
     >
-      <Card accentBorder>
-        <div className="p18 col" style={{ gap: 10 }}>
+      <div className="col">
+        <Button
+          variant="ghost"
+          className="btnBackCompact backBtn"
+          onClick={() => (typeof onCancel === "function" ? onCancel() : null)}
+        >
+          ← Retour
+        </Button>
+        <Card accentBorder>
+          <div className="p18 col" style={{ gap: 10 }}>
           <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} style={{ fontSize: 16 }}>
             <option value="" disabled>
               Sélectionner une catégorie
@@ -156,8 +158,9 @@ export default function CreateGoal({ data, setData, onCancel, onDone, initialCat
               Créer
             </Button>
           </div>
-        </div>
-      </Card>
+          </div>
+        </Card>
+      </div>
     </ScreenShell>
   );
 }
