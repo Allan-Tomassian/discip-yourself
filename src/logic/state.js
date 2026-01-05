@@ -468,6 +468,9 @@ export function initialData() {
       onboardingStep: 1,
       tutorialEnabled: false,
       tutorialStep: null,
+      tourSeenVersion: 0,
+      tourStepIndex: 0,
+      tourForceStart: false,
       permissions: {
         notifications: "unknown",
         calendar: "unknown",
@@ -534,6 +537,9 @@ export function demoData() {
       onboardingStep: 3,
       tutorialEnabled: false,
       tutorialStep: null,
+      tourSeenVersion: 0,
+      tourStepIndex: 0,
+      tourForceStart: false,
       permissions: {
         notifications: "unknown",
         calendar: "unknown",
@@ -655,6 +661,9 @@ export function migrate(prev) {
   if (typeof next.ui.onboardingStep === "undefined") next.ui.onboardingStep = 1;
   if (typeof next.ui.tutorialEnabled === "undefined") next.ui.tutorialEnabled = false;
   if (typeof next.ui.tutorialStep === "undefined") next.ui.tutorialStep = null;
+  if (typeof next.ui.tourSeenVersion !== "number") next.ui.tourSeenVersion = 0;
+  if (typeof next.ui.tourStepIndex !== "number") next.ui.tourStepIndex = 0;
+  if (typeof next.ui.tourForceStart !== "boolean") next.ui.tourForceStart = false;
   if (!next.ui.permissions || typeof next.ui.permissions !== "object") next.ui.permissions = {};
   if (typeof next.ui.permissions.notifications !== "string") next.ui.permissions.notifications = "unknown";
   if (typeof next.ui.permissions.calendar !== "string") next.ui.permissions.calendar = "unknown";

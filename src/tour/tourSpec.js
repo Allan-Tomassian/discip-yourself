@@ -1,10 +1,8 @@
 // FIRST_USE_TOUR rationale:
-// - today-title: explains what the app is (Today focus).
-// - today-focus-card: shows the daily focus area (action context).
-// - today-focus-goal-select: teaches selecting the main goal (action setup).
-// - today-go: shows how to start acting today (primary action).
-// - library-create: shows where to create items (entry to creation).
-// - create-title: confirms the creation flow location (next step).
+// - Minimal first-use tour designed for an empty app state (no categories).
+// - Anchors are guaranteed to exist on Today empty state only.
+// - Deeper navigation (Library/Create/Manage/Pilotage/Settings) is handled later.
+// - Uses a safe lookup to avoid crashes if anchors are missing.
 export const TOUR_VERSION = 1;
 
 export const TOUR_STEPS = [
@@ -1012,11 +1010,11 @@ export const TOUR_STEPS = [
   },
 ];
 
-export const FIRST_USE_TOUR_STEPS = [
-  TOUR_STEPS.find((step) => step.id === "today-title"),
-  TOUR_STEPS.find((step) => step.id === "today-focus-card"),
-  TOUR_STEPS.find((step) => step.id === "today-focus-goal-select"),
-  TOUR_STEPS.find((step) => step.id === "today-go"),
-  TOUR_STEPS.find((step) => step.id === "library-create"),
-  TOUR_STEPS.find((step) => step.id === "create-title"),
+const FIRST_USE_TOUR_STEP_IDS = [
+  "today-title",
+  "today-empty-create-category",
 ];
+
+export const FIRST_USE_TOUR_STEPS = FIRST_USE_TOUR_STEP_IDS
+  .map((id) => TOUR_STEPS.find((step) => step.id === id))
+  .filter(Boolean);

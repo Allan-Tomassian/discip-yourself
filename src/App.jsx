@@ -26,6 +26,9 @@ import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
 import { todayKey } from "./utils/dates";
 import { normalizePriorities } from "./logic/priority";
 import { getCategoryCounts } from "./logic/pilotage";
+import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
+import { useTour } from "./tour/useTour";
+import TourOverlay from "./tour/TourOverlay";
 
 function runSelfTests() {
   // minimal sanity
@@ -192,6 +195,7 @@ export default function App() {
   const dataRef = useRef(data);
   const lastReminderRef = useRef({});
   const activeReminderRef = useRef(activeReminder);
+  const tour = useTour({ data, setData, steps: FIRST_USE_TOUR_STEPS, tourVersion: TOUR_VERSION });
 
   const setTab = (next, opts = {}) => {
     const t = normalizeTab(next);
@@ -460,6 +464,7 @@ export default function App() {
   const onboardingCompleted = Boolean(safeData.ui?.onboardingCompleted);
   const showPlanStep = Boolean(safeData.ui?.showPlanStep);
   const shouldShowEmpty = !onboarded && !showPlanStep && tab === "today";
+  const showTourOverlay = onboardingCompleted;
   const handlePlanCategory = (categoryId) => {
     const fallbackId = categories[0]?.id || null;
     const targetId = categoryId || fallbackId;
@@ -505,36 +510,51 @@ export default function App() {
   if (shouldShowEmpty) {
     const empty = getEmptyStateConfig(safeData);
     return (
-      <ScreenShell
-        data={safeData}
-        pageId="home"
-        headerTitle="Aujourd’hui"
-        headerSubtitle={empty.title}
-        backgroundImage={safeData?.profile?.whyImage || ""}
-      >
-        <Card accentBorder>
-          <div className="p18">
-            <div className="titleSm">{empty.title}</div>
-            <div className="small" style={{ marginTop: 6 }}>
-              {empty.subtitle}
+      <>
+        <ScreenShell
+          data={safeData}
+          pageId="home"
+          headerTitle="Aujourd’hui"
+          headerSubtitle={empty.title}
+          backgroundImage={safeData?.profile?.whyImage || ""}
+        >
+          <Card accentBorder>
+            <div className="p18">
+              <div className="titleSm">{empty.title}</div>
+              <div className="small" style={{ marginTop: 6 }}>
+                {empty.subtitle}
+              </div>
+              <div className="mt12">
+                <Button
+                  onClick={() => {
+                    setData((prev) => {
+                      const nextUi = { ...(prev.ui || {}), openGoalEditId: null };
+                      if (empty.categoryId) nextUi.selectedCategoryId = empty.categoryId;
+                      return { ...prev, ui: nextUi };
+                    });
+                    setTab(empty.targetTab);
+                  }}
+                >
+                  {empty.cta}
+                </Button>
+              </div>
             </div>
-            <div className="mt12">
-              <Button
-                onClick={() => {
-                  setData((prev) => {
-                    const nextUi = { ...(prev.ui || {}), openGoalEditId: null };
-                    if (empty.categoryId) nextUi.selectedCategoryId = empty.categoryId;
-                    return { ...prev, ui: nextUi };
-                  });
-                  setTab(empty.targetTab);
-                }}
-              >
-                {empty.cta}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </ScreenShell>
+          </Card>
+        </ScreenShell>
+        {showTourOverlay ? (
+          <TourOverlay
+            isActive={tour.isActive}
+            step={tour.step}
+            stepIndex={tour.stepIndex}
+            totalSteps={tour.totalSteps}
+            onNext={tour.next}
+            onPrev={tour.prev}
+            onSkip={tour.skip}
+            onMissingAnchor={tour.handleMissingAnchor}
+            onAnchorFound={tour.handleAnchorFound}
+          />
+        ) : null}
+      </>
     );
   }
 
@@ -871,6 +891,19 @@ export default function App() {
             </div>
           </Card>
         </div>
+      ) : null}
+      {showTourOverlay ? (
+        <TourOverlay
+          isActive={tour.isActive}
+          step={tour.step}
+          stepIndex={tour.stepIndex}
+          totalSteps={tour.totalSteps}
+          onNext={tour.next}
+          onPrev={tour.prev}
+          onSkip={tour.skip}
+          onMissingAnchor={tour.handleMissingAnchor}
+          onAnchorFound={tour.handleAnchorFound}
+        />
       ) : null}
     </>
   );

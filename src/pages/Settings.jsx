@@ -111,6 +111,8 @@ export default function Settings({ data, setData }) {
                       ...(prev.ui || {}),
                       tutorialEnabled: true,
                       tutorialStep: 0,
+                      tourForceStart: true,
+                      tourStepIndex: 0,
                     },
                   }))
                 }
