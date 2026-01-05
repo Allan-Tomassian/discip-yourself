@@ -4,6 +4,10 @@ import { Button, Card, Input, Select } from "../components/UI";
 import { uid } from "../utils/helpers";
 import { createGoal } from "../logic/goals";
 
+// TOUR MAP:
+// - primary_action: create action
+// - key_elements: category select, goal select, title input, submit/cancel
+// - optional_elements: empty state hints
 function resolveGoalType(goal) {
   const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
   if (raw === "OUTCOME" || raw === "PROCESS") return raw;
@@ -89,7 +93,7 @@ export default function CreateHabit({ data, setData, onCancel, onDone, initialCa
     <ScreenShell
       data={safeData}
       pageId="categories"
-      headerTitle="Créer"
+      headerTitle={<span data-tour-id="create-action-title">Créer</span>}
       headerSubtitle={
         <>
           <span style={{ opacity: 0.6 }}>3.</span> Action
@@ -102,53 +106,69 @@ export default function CreateHabit({ data, setData, onCancel, onDone, initialCa
           variant="ghost"
           className="btnBackCompact backBtn"
           onClick={() => (typeof onCancel === "function" ? onCancel() : null)}
+          data-tour-id="create-action-back"
         >
           ← Retour
         </Button>
         <Card accentBorder>
           <div className="p18 col" style={{ gap: 10 }}>
-          <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} style={{ fontSize: 16 }}>
-            <option value="" disabled>
-              Sélectionner une catégorie
-            </option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name || "Catégorie"}
+            <Select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              style={{ fontSize: 16 }}
+              data-tour-id="create-action-category"
+            >
+              <option value="" disabled>
+                Sélectionner une catégorie
               </option>
-            ))}
-          </Select>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name || "Catégorie"}
+                </option>
+              ))}
+            </Select>
 
-          <Select
-            value={parentId}
-            onChange={(e) => setParentId(e.target.value)}
-            style={{ fontSize: 16 }}
-            disabled={!outcomeGoals.length}
-          >
-            <option value="" disabled>
-              Sélectionner un objectif
-            </option>
-            {outcomeGoals.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.title || "Objectif"}
+            <Select
+              value={parentId}
+              onChange={(e) => setParentId(e.target.value)}
+              style={{ fontSize: 16 }}
+              disabled={!outcomeGoals.length}
+              data-tour-id="create-action-goal"
+            >
+              <option value="" disabled>
+                Sélectionner un objectif
               </option>
-            ))}
-          </Select>
+              {outcomeGoals.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.title || "Objectif"}
+                </option>
+              ))}
+            </Select>
 
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nom de l’action" />
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Nom de l’action"
+              data-tour-id="create-action-title-input"
+            />
 
-          {!categories.length ? <div className="small2">Aucune catégorie disponible.</div> : null}
-          {categories.length && !outcomeGoals.length ? (
-            <div className="small2">Aucun objectif dans cette catégorie.</div>
-          ) : null}
+            {!categories.length ? <div className="small2">Aucune catégorie disponible.</div> : null}
+            {categories.length && !outcomeGoals.length ? (
+              <div className="small2">Aucun objectif dans cette catégorie.</div>
+            ) : null}
 
-          <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
-            <Button variant="ghost" onClick={() => (typeof onCancel === "function" ? onCancel() : null)}>
-              Annuler
-            </Button>
-            <Button onClick={handleCreate} disabled={!canSubmit}>
-              Créer
-            </Button>
-          </div>
+            <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
+              <Button
+                variant="ghost"
+                onClick={() => (typeof onCancel === "function" ? onCancel() : null)}
+                data-tour-id="create-action-cancel"
+              >
+                Annuler
+              </Button>
+              <Button onClick={handleCreate} disabled={!canSubmit} data-tour-id="create-action-submit">
+                Créer
+              </Button>
+            </div>
           </div>
         </Card>
       </div>

@@ -2,6 +2,10 @@ import React from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 
+// TOUR MAP:
+// - primary_action: choose a creation step (category/goal/action)
+// - key_elements: back button, step cards, open buttons
+// - optional_elements: none
 export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpenHabit }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
@@ -10,13 +14,13 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
     <ScreenShell
       data={safeData}
       pageId="categories"
-      headerTitle={<span className="textAccent">Créer</span>}
+      headerTitle={<span className="textAccent" data-tour-id="create-title">Créer</span>}
       headerSubtitle="Bibliothèque"
       backgroundImage={backgroundImage}
     >
       <div className="col">
         {onBack ? (
-          <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+          <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack} data-tour-id="create-back">
             ← Retour
           </Button>
         ) : null}
@@ -26,6 +30,7 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
           onClick={() => (typeof onOpenCategory === "function" ? onOpenCategory() : null)}
           role="button"
           tabIndex={0}
+          data-tour-id="create-step-category"
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
@@ -43,7 +48,11 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
               </div>
               <div className="small2">Créer une nouvelle catégorie.</div>
             </div>
-            <Button variant="ghost" onClick={() => (typeof onOpenCategory === "function" ? onOpenCategory() : null)}>
+            <Button
+              variant="ghost"
+              onClick={() => (typeof onOpenCategory === "function" ? onOpenCategory() : null)}
+              data-tour-id="create-open-category"
+            >
               Ouvrir
             </Button>
           </div>
@@ -55,6 +64,7 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
           onClick={() => (typeof onOpenGoal === "function" ? onOpenGoal() : null)}
           role="button"
           tabIndex={0}
+          data-tour-id="create-step-goal"
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
@@ -72,7 +82,11 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
               </div>
               <div className="small2">Créer un objectif lié à une catégorie.</div>
             </div>
-            <Button variant="ghost" onClick={() => (typeof onOpenGoal === "function" ? onOpenGoal() : null)}>
+            <Button
+              variant="ghost"
+              onClick={() => (typeof onOpenGoal === "function" ? onOpenGoal() : null)}
+              data-tour-id="create-open-goal"
+            >
               Ouvrir
             </Button>
           </div>
@@ -84,6 +98,7 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
           onClick={() => (typeof onOpenHabit === "function" ? onOpenHabit() : null)}
           role="button"
           tabIndex={0}
+          data-tour-id="create-step-action"
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
@@ -101,7 +116,11 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
               </div>
               <div className="small2">Créer une action liée à un objectif.</div>
             </div>
-            <Button variant="ghost" onClick={() => (typeof onOpenHabit === "function" ? onOpenHabit() : null)}>
+            <Button
+              variant="ghost"
+              onClick={() => (typeof onOpenHabit === "function" ? onOpenHabit() : null)}
+              data-tour-id="create-open-action"
+            >
               Ouvrir
             </Button>
           </div>

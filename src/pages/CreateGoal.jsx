@@ -5,6 +5,10 @@ import { uid } from "../utils/helpers";
 import { createGoal } from "../logic/goals";
 import { setPrimaryGoalForCategory } from "../logic/priority";
 
+// TOUR MAP:
+// - primary_action: create objective
+// - key_elements: category select, title input, priority toggle, submit/cancel
+// - optional_elements: deadline and measure inputs
 const MEASURE_OPTIONS = [
   { value: "money", label: "💰 Argent" },
   { value: "counter", label: "🔢 Compteur" },
@@ -81,7 +85,7 @@ export default function CreateGoal({ data, setData, onCancel, onDone, initialCat
     <ScreenShell
       data={safeData}
       pageId="categories"
-      headerTitle="Créer"
+      headerTitle={<span data-tour-id="create-goal-title">Créer</span>}
       headerSubtitle={
         <>
           <span style={{ opacity: 0.6 }}>2.</span> Objectif
@@ -94,56 +98,82 @@ export default function CreateGoal({ data, setData, onCancel, onDone, initialCat
           variant="ghost"
           className="btnBackCompact backBtn"
           onClick={() => (typeof onCancel === "function" ? onCancel() : null)}
+          data-tour-id="create-goal-back"
         >
           ← Retour
         </Button>
         <Card accentBorder>
           <div className="p18 col" style={{ gap: 10 }}>
-          <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} style={{ fontSize: 16 }}>
-            <option value="" disabled>
-              Sélectionner une catégorie
-            </option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name || "Catégorie"}
+            <Select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              style={{ fontSize: 16 }}
+              data-tour-id="create-goal-category"
+            >
+              <option value="" disabled>
+                Sélectionner une catégorie
               </option>
-            ))}
-          </Select>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nom de l’objectif" />
-          <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
-          <Select value={measureType} onChange={(e) => setMeasureType(e.target.value)} style={{ fontSize: 16 }}>
-            <option value="">Type de mesure</option>
-            {MEASURE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </Select>
-          {measureType ? (
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name || "Catégorie"}
+                </option>
+              ))}
+            </Select>
             <Input
-              type="number"
-              value={targetValue}
-              onChange={(e) => setTargetValue(e.target.value)}
-              placeholder={getMeasurePlaceholder(measureType)}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Nom de l’objectif"
+              data-tour-id="create-goal-title-input"
             />
-          ) : null}
-          <label className="includeToggle">
-            <input type="checkbox" checked={isPriority} onChange={(e) => setIsPriority(e.target.checked)} />
-            <span>Prioritaire</span>
-          </label>
+            <Input
+              type="date"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              data-tour-id="create-goal-deadline"
+            />
+            <Select
+              value={measureType}
+              onChange={(e) => setMeasureType(e.target.value)}
+              style={{ fontSize: 16 }}
+              data-tour-id="create-goal-measure"
+            >
+              <option value="">Type de mesure</option>
+              {MEASURE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+            {measureType ? (
+              <Input
+                type="number"
+                value={targetValue}
+                onChange={(e) => setTargetValue(e.target.value)}
+                placeholder={getMeasurePlaceholder(measureType)}
+                data-tour-id="create-goal-target"
+              />
+            ) : null}
+            <label className="includeToggle" data-tour-id="create-goal-priority">
+              <input type="checkbox" checked={isPriority} onChange={(e) => setIsPriority(e.target.checked)} />
+              <span>Prioritaire</span>
+            </label>
 
           {!categories.length ? (
             <div className="small2">Aucune catégorie disponible.</div>
           ) : null}
 
-          <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
-            <Button variant="ghost" onClick={() => (typeof onCancel === "function" ? onCancel() : null)}>
-              Annuler
-            </Button>
-            <Button onClick={handleCreate} disabled={!canSubmit}>
-              Créer
-            </Button>
-          </div>
+            <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
+              <Button
+                variant="ghost"
+                onClick={() => (typeof onCancel === "function" ? onCancel() : null)}
+                data-tour-id="create-goal-cancel"
+              >
+                Annuler
+              </Button>
+              <Button onClick={handleCreate} disabled={!canSubmit} data-tour-id="create-goal-submit">
+                Créer
+              </Button>
+            </div>
           </div>
         </Card>
       </div>

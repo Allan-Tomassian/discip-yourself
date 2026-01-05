@@ -464,7 +464,15 @@ export function initialData() {
       selectedGoalByCategory: {},
       categoryRailOrder: [],
       onboardingCompleted: false,
+      onboardingSeenVersion: 0,
       onboardingStep: 1,
+      tutorialEnabled: false,
+      tutorialStep: null,
+      permissions: {
+        notifications: "unknown",
+        calendar: "unknown",
+        health: "unknown",
+      },
       showPlanStep: false,
       soundEnabled: false,
       selectedDate: todayKey(),
@@ -522,7 +530,15 @@ export function demoData() {
       selectedGoalByCategory: {},
       categoryRailOrder: [],
       onboardingCompleted: true,
+      onboardingSeenVersion: 2,
       onboardingStep: 3,
+      tutorialEnabled: false,
+      tutorialStep: null,
+      permissions: {
+        notifications: "unknown",
+        calendar: "unknown",
+        health: "unknown",
+      },
       showPlanStep: false,
       soundEnabled: false,
       selectedDate: todayKey(),
@@ -635,7 +651,14 @@ export function migrate(prev) {
 
   if (typeof next.ui.soundEnabled === "undefined") next.ui.soundEnabled = false;
   if (typeof next.ui.onboardingCompleted === "undefined") next.ui.onboardingCompleted = false;
+  if (typeof next.ui.onboardingSeenVersion !== "number") next.ui.onboardingSeenVersion = 0;
   if (typeof next.ui.onboardingStep === "undefined") next.ui.onboardingStep = 1;
+  if (typeof next.ui.tutorialEnabled === "undefined") next.ui.tutorialEnabled = false;
+  if (typeof next.ui.tutorialStep === "undefined") next.ui.tutorialStep = null;
+  if (!next.ui.permissions || typeof next.ui.permissions !== "object") next.ui.permissions = {};
+  if (typeof next.ui.permissions.notifications !== "string") next.ui.permissions.notifications = "unknown";
+  if (typeof next.ui.permissions.calendar !== "string") next.ui.permissions.calendar = "unknown";
+  if (typeof next.ui.permissions.health !== "string") next.ui.permissions.health = "unknown";
   if (typeof next.ui.showPlanStep === "undefined") next.ui.showPlanStep = false;
   if (!next.ui.selectedHabits || typeof next.ui.selectedHabits !== "object") next.ui.selectedHabits = {};
   if (typeof next.ui.sessionDraft === "undefined") next.ui.sessionDraft = null;

@@ -1,6 +1,10 @@
 import React, { useLayoutEffect, useRef } from "react";
 import CategoryRail from "./CategoryRail";
 
+// TOUR MAP:
+// - primary_action: top navigation tabs
+// - key_elements: settings gear, category rail, add category
+// - optional_elements: none
 const NAV_ITEMS = [
   { id: "today", label: "Aujourd’hui" },
   { id: "library", label: "Bibliothèque" },
@@ -48,15 +52,16 @@ export default function TopNav({
   }, [categories.length]);
 
   return (
-    <div className="navTop stickyStack" ref={navTopRef}>
+    <div className="navTop stickyStack" ref={navTopRef} data-tour-id="topnav">
       <div className="navWrap" ref={navBarRef}>
-        <div className="navRow">
-          <div className="navGrid">
+        <div className="navRow" data-tour-id="topnav-row">
+          <div className="navGrid" data-tour-id="topnav-tabs">
             {NAV_ITEMS.map((it) => (
               <button
                 key={it.id}
                 onClick={() => setActive(it.id)}
                 className={`navBtn ${active === it.id ? "navBtnActive" : ""}`}
+                data-tour-id={`topnav-tab-${it.id}`}
               >
                 {it.label}
               </button>
@@ -68,13 +73,14 @@ export default function TopNav({
             onClick={() => (typeof onOpenSettings === "function" ? onOpenSettings() : null)}
             aria-label="Réglages"
             title="Réglages"
+            data-tour-id="topnav-settings"
           >
             ⚙
           </button>
         </div>
       </div>
       {categories.length ? (
-        <div className="navRailWrap">
+        <div className="navRailWrap" data-tour-id="topnav-rail">
           <div className="categoryRailRow">
             <CategoryRail
               categories={categories}
@@ -88,6 +94,7 @@ export default function TopNav({
                 onClick={onCreateCategory}
                 aria-label="Créer une catégorie"
                 title="Créer une catégorie"
+                data-tour-id="topnav-category-add"
               >
                 +
               </button>

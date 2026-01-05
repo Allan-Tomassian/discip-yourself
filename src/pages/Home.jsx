@@ -30,6 +30,10 @@ import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { isPrimaryCategory, isPrimaryGoal } from "../logic/priority";
 
+// TOUR MAP:
+// - primary_action: start session (GO) for today
+// - key_elements: focus section, calendar, micro-actions, daily note
+// - optional_elements: day stats/discipline stats modals
 // ---- Helpers
 function resolveGoalType(goal) {
   const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
@@ -826,8 +830,8 @@ export default function Home({
       <ScreenShell
         accent={getAccentForPage(safeData, "home")}
         backgroundImage={profile.whyImage || ""}
-        headerTitle={<span className="textAccent">Aujourd’hui</span>}
-        headerSubtitle="Aucune catégorie"
+        headerTitle={<span className="textAccent" data-tour-id="today-title">Aujourd’hui</span>}
+        headerSubtitle={<span data-tour-id="today-empty-subtitle">Aucune catégorie</span>}
       >
         <Card accentBorder>
           <div className="p18">
@@ -836,7 +840,11 @@ export default function Home({
               Ajoute une première catégorie pour commencer.
             </div>
             <div className="mt12">
-              <Button onClick={() => openCreateFlow("category")} disabled={!canEdit}>
+              <Button
+                onClick={() => openCreateFlow("category")}
+                disabled={!canEdit}
+                data-tour-id="today-empty-create-category"
+              >
                 Créer une catégorie
               </Button>
               {!canEdit ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
@@ -857,7 +865,12 @@ export default function Home({
 
   const headerRight = categories.length ? (
     <div style={{ minWidth: 180 }}>
-      <button className="statButton" type="button" onClick={() => setShowDayStats(true)}>
+      <button
+        className="statButton"
+        type="button"
+        onClick={() => setShowDayStats(true)}
+        data-tour-id="today-stats-day"
+      >
         <div className="small2" style={{ textAlign: "right" }}>
           Progression du jour
         </div>
@@ -886,7 +899,12 @@ export default function Home({
         </div>
       </button>
 
-      <button className="statButton mt10" type="button" onClick={() => setShowDisciplineStats(true)}>
+      <button
+        className="statButton mt10"
+        type="button"
+        onClick={() => setShowDisciplineStats(true)}
+        data-tour-id="today-stats-discipline"
+      >
         <div className="small2" style={{ textAlign: "right" }}>
           Discipline
         </div>
@@ -929,20 +947,25 @@ export default function Home({
     <ScreenShell
       accent={accent}
       backgroundImage={backgroundImage}
-      headerTitle={<span className="textAccent">Aujourd’hui</span>}
-      headerSubtitle="Exécution"
+      headerTitle={<span className="textAccent" data-tour-id="today-title">Aujourd’hui</span>}
+      headerSubtitle={<span data-tour-id="today-subtitle">Exécution</span>}
       headerRight={headerRight}
       headerRowAlign="start"
     >
       <div className="stack stackGap12" style={{ maxWidth: 720, margin: "0 auto" }}>
         <div className="row">
-          <div className="small2" style={{ flex: 1, minWidth: 0, whiteSpace: "normal" }}>
+          <div
+            className="small2"
+            style={{ flex: 1, minWidth: 0, whiteSpace: "normal" }}
+            data-tour-id="today-why-text"
+          >
             {showWhy ? whyDisplay : "Pourquoi masqué"}
           </div>
           <button
             className="linkBtn"
             onClick={() => setShowWhy((v) => !v)}
             aria-label="Afficher ou masquer le pourquoi"
+            data-tour-id="today-why-toggle"
           >
             {showWhy ? "Masquer 👁" : "Afficher 👁"}
           </button>
@@ -961,7 +984,7 @@ export default function Home({
                   {({ attributes, listeners, setActivatorNodeRef }) => {
                     if (blockId === "focus") {
                       return (
-                        <Card>
+                        <Card data-tour-id="today-focus-card">
                           <div className="p18">
                             <div className="cardSectionTitleRow">
                               <DragHandle
@@ -973,7 +996,11 @@ export default function Home({
                             </div>
                             <div className="mt12">
                               <div className="small2">Catégorie</div>
-                              <div className="mt8 listItem catAccentRow" style={catAccentVars}>
+                              <div
+                                className="mt8 listItem catAccentRow"
+                                style={catAccentVars}
+                                data-tour-id="today-focus-category"
+                              >
                                 <div
                                   className="itemTitle"
                                   style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
@@ -992,6 +1019,7 @@ export default function Home({
                                   onChange={(e) => setCategoryMainGoal(e.target.value)}
                                   style={{ fontSize: 16 }}
                                   disabled={!canEdit}
+                                  data-tour-id="today-focus-goal-select"
                                   >
                                     <option value="" disabled>
                                       Choisir un objectif
@@ -1009,7 +1037,7 @@ export default function Home({
                             </div>
 
                             <div className="mt12">
-                              <Button onClick={openSessionFlow} disabled={!canOpenSession}>
+                              <Button onClick={openSessionFlow} disabled={!canOpenSession} data-tour-id="today-go">
                                 GO
                               </Button>
                               {!selectedGoal ? (
@@ -1033,7 +1061,7 @@ export default function Home({
 
                   if (blockId === "calendar") {
                     return (
-                      <Card>
+                      <Card data-tour-id="today-calendar-card">
                         <div className="p18">
                           <div className="row">
                             <div className="cardSectionTitleRow">
@@ -1057,6 +1085,7 @@ export default function Home({
                                     requestAnimationFrame(() => scrollRailToKey(today));
                                   }
                                 }}
+                                data-tour-id="today-calendar-today"
                               >
                                 Aujourd’hui
                               </Button>
@@ -1064,6 +1093,7 @@ export default function Home({
                                 variant="ghost"
                                 onClick={() => setCalendarView("day")}
                                 disabled={calendarView === "day"}
+                                data-tour-id="today-calendar-day"
                               >
                                 Jour
                               </Button>
@@ -1071,6 +1101,7 @@ export default function Home({
                                 variant="ghost"
                                 onClick={() => setCalendarView("month")}
                                 disabled={calendarView === "month"}
+                                data-tour-id="today-calendar-month"
                               >
                                 Mois
                               </Button>
@@ -1081,7 +1112,12 @@ export default function Home({
                               <div className="calendarSelector" aria-hidden="true">
                                 <span className="calendarSelectorDot" />
                               </div>
-                              <div className="calendarRail scrollNoBar" ref={railRef} onScroll={handleRailScroll}>
+                              <div
+                                className="calendarRail scrollNoBar"
+                                ref={railRef}
+                                onScroll={handleRailScroll}
+                                data-tour-id="today-calendar-rail"
+                              >
                                 {railItems.map((item) => {
                                   const plannedCount = plannedByDate.get(item.key) || 0;
                                   const doneCount = doneByDate.get(item.key) || 0;
@@ -1134,6 +1170,7 @@ export default function Home({
                                   <Button
                                     variant="ghost"
                                     onClick={() => handleAddOccurrence(selectedDateKey, selectedGoal?.id || null)}
+                                    data-tour-id="today-calendar-add-occurrence"
                                   >
                                     Ajouter
                                   </Button>
@@ -1142,6 +1179,7 @@ export default function Home({
                               <div
                                 className="mt10"
                                 style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, textAlign: "center" }}
+                                data-tour-id="today-calendar-month-grid"
                               >
                                 {["L", "M", "M", "J", "V", "S", "D"].map((label, idx) => (
                                   <div key={`${label}-${idx}`} className="small2">

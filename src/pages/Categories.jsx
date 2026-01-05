@@ -6,6 +6,10 @@ import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { isPrimaryCategory } from "../logic/priority";
 import { getCategoryCounts } from "../logic/pilotage";
 
+// TOUR MAP:
+// - primary_action: open manage for selected category
+// - key_elements: create button, category list, category cards
+// - optional_elements: priority badge
 function formatCount(count, singular, plural) {
   if (count === 0) return `0 ${plural}`;
   if (count === 1) return `1 ${singular}`;
@@ -59,16 +63,17 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
   if (categories.length === 0) {
     return (
       <ScreenShell
-        headerTitle={<span className="textAccent">Bibliothèque</span>}
+        headerTitle={<span className="textAccent" data-tour-id="library-title">Bibliothèque</span>}
         headerSubtitle="Aucune catégorie"
         headerRight={
           <div className="row" style={{ gap: 8 }}>
-            <Button variant="ghost" onClick={handleOpenManage} disabled={!categories.length}>
+            <Button variant="ghost" onClick={handleOpenManage} disabled={!categories.length} data-tour-id="library-manage">
               Gérer
             </Button>
             <Button
               variant="ghost"
               onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
+              data-tour-id="library-create"
             >
               Créer
             </Button>
@@ -106,16 +111,17 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
 
   return (
     <ScreenShell
-      headerTitle={<span className="textAccent">Bibliothèque</span>}
+      headerTitle={<span className="textAccent" data-tour-id="library-title">Bibliothèque</span>}
       headerSubtitle="Catégories"
       headerRight={
         <div className="row" style={{ gap: 8 }}>
-          <Button variant="ghost" onClick={handleOpenManage} disabled={!categories.length}>
+          <Button variant="ghost" onClick={handleOpenManage} disabled={!categories.length} data-tour-id="library-manage">
             Gérer
           </Button>
           <Button
             variant="ghost"
             onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
+            data-tour-id="library-create"
           >
             Créer
           </Button>
@@ -123,7 +129,7 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
       }
       backgroundImage={safeData?.profile?.whyImage || ""}
     >
-      <div className="stack stackGap12">
+      <div className="stack stackGap12" data-tour-id="library-category-list">
         {sortedCategories.map((c) => {
           const counts = countsByCategory.get(c.id) || { habits: 0, objectives: 0 };
           const objectives = counts.objectives;

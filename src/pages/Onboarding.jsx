@@ -1,373 +1,272 @@
-import React, { useEffect, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Badge, Button, Card, Input, Textarea } from "../components/UI";
-import { uid } from "../utils/helpers";
-import { todayKey } from "../utils/dates";
-import { createGoal } from "../logic/goals";
-import { CATEGORY_TEMPLATES, findCategoryTemplateByLabel } from "../logic/templates";
 import ScreenShell from "./_ScreenShell";
 
-function resolveGoalType(goal) {
-  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
-  if (raw === "OUTCOME" || raw === "PROCESS") return raw;
-  if (raw === "STATE") return "OUTCOME";
-  if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
-  const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
-  if (legacy === "OUTCOME") return "OUTCOME";
-  if (legacy === "ACTION") return "PROCESS";
-  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
-  return "PROCESS";
+function normalizePermission(value) {
+  if (value === "granted" || value === "denied") return value;
+  return "unknown";
 }
 
-function cadenceFromUnit(unit) {
-  if (unit === "DAY") return "DAILY";
-  if (unit === "WEEK") return "WEEKLY";
-  return "YEARLY";
-}
-
-function clampStep(value) {
-  const v = Number.isFinite(value) ? value : 1;
-  return Math.min(3, Math.max(1, v));
+function permissionLabel(value) {
+  if (value === "granted") return "Autorisé";
+  if (value === "denied") return "Refusé";
+  return "En attente";
 }
 
 export default function Onboarding({ data, setData, onDone, planOnly = false }) {
   const safeData = data && typeof data === "object" ? data : {};
   const profile = safeData.profile || {};
-  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
-  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+  const ui = safeData.ui || {};
 
-  const [step, setStep] = useState(() => {
-    if (planOnly) return 3;
-    const rawStep = Number(safeData.ui?.onboardingStep) || 1;
-    return clampStep(rawStep);
-  });
-
-  useEffect(() => {
-    if (planOnly) setStep(3);
-  }, [planOnly]);
-
+  const [step, setStep] = useState(0);
   const [firstName, setFirstName] = useState(profile.name || "");
-  const [lastName, setLastName] = useState(profile.lastName || "");
   const [why, setWhy] = useState(profile.whyText || "");
-  const [step1Error, setStep1Error] = useState("");
-
-  const [categoryName, setCategoryName] = useState("");
-  const [categoryTemplateId, setCategoryTemplateId] = useState(null);
-  const [outcomeTitle, setOutcomeTitle] = useState("");
-  const [habitTitle, setHabitTitle] = useState("");
-  const [step2Error, setStep2Error] = useState("");
-
   const [planChoice, setPlanChoice] = useState(profile.plan === "premium" ? "premium" : "free");
+  const [permissions, setPermissions] = useState(() => ({
+    notifications: normalizePermission(ui.permissions?.notifications),
+    calendar: normalizePermission(ui.permissions?.calendar),
+    health: normalizePermission(ui.permissions?.health),
+  }));
 
-  let baseCategory = null;
-  let baseOutcome = null;
-  let baseHasHabit = false;
-
-  for (const cat of categories) {
-    const outcome = goals.find((g) => resolveGoalType(g) === "OUTCOME" && g.categoryId === cat.id) || null;
-    if (!outcome) continue;
-    const hasHabit = goals.some(
-      (g) => resolveGoalType(g) === "PROCESS" && g.categoryId === cat.id && g.parentId === outcome.id
-    );
-    if (hasHabit) {
-      baseCategory = cat;
-      baseOutcome = outcome;
-      baseHasHabit = true;
-      break;
-    }
-  }
-
-  if (!baseCategory && categories.length) {
-    baseCategory =
-      categories.find((c) => c.id === safeData.ui?.selectedCategoryId) ||
-      categories[0] ||
-      null;
-  }
-
-  if (baseCategory && !baseOutcome) {
-    baseOutcome = goals.find((g) => resolveGoalType(g) === "OUTCOME" && g.categoryId === baseCategory.id) || null;
-  }
-
-  if (baseCategory && baseOutcome && !baseHasHabit) {
-    baseHasHabit = goals.some(
-      (g) => resolveGoalType(g) === "PROCESS" && g.categoryId === baseCategory.id && g.parentId === baseOutcome.id
-    );
-  }
-
-  const needsCategory = categories.length === 0;
-  const needsOutcome = !baseOutcome;
-  const needsHabit = !baseHasHabit;
-
-  const cleanFirstName = (firstName || "").trim();
-  const cleanLastName = (lastName || "").trim();
-  const cleanWhy = (why || "").trim();
-  const cleanCategory = (categoryName || "").trim();
-  const cleanOutcome = (outcomeTitle || "").trim();
-  const cleanHabit = (habitTitle || "").trim();
-  const selectedCategoryTemplate = categoryTemplateId
-    ? CATEGORY_TEMPLATES.find((t) => t.id === categoryTemplateId)
-    : null;
-
-  const step1Valid = Boolean(cleanFirstName && cleanLastName && cleanWhy);
-  const step2Ready =
-    (!needsCategory || cleanCategory) && (!needsOutcome || cleanOutcome) && (!needsHabit || cleanHabit);
-
-  const headerTitle = planOnly ? "Abonnement" : "Inscription";
-  const headerSubtitle = planOnly ? "Choisis ton plan" : `Étape ${step}/3`;
-
-  if (step === 1 && !planOnly) {
-    return (
-      <ScreenShell data={safeData} pageId="onboarding" headerTitle={headerTitle} headerSubtitle={headerSubtitle}>
-        <Card accentBorder>
-          <div className="p18">
-            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <div className="titleSm">Engagement</div>
-                <div className="small">Pas de discipline sans objectif. Écris pourquoi tu t’engages.</div>
-              </div>
-              <Badge>1/3</Badge>
-            </div>
-
-            <div className="mt14 col">
-              <div>
-                <div className="small" style={{ marginBottom: 6 }}>
-                  Prénom
-                </div>
-                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-              </div>
-              <div>
-                <div className="small" style={{ marginBottom: 6 }}>
-                  Nom
-                </div>
-                <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
-              </div>
-              <div>
-                <div className="small" style={{ marginBottom: 6 }}>
-                  Pourquoi
-                </div>
-                <Textarea value={why} onChange={(e) => setWhy(e.target.value)} placeholder="Ton pourquoi" />
-              </div>
-
-              {step1Error ? <div className="small" style={{ color: "#ff9a9a" }}>{step1Error}</div> : null}
-
-              <Button
-                disabled={!step1Valid}
-                onClick={() => {
-                  if (!step1Valid) {
-                    setStep1Error("Tous les champs sont requis.");
-                    return;
-                  }
-                  setStep1Error("");
-                  const nowIso = new Date().toISOString();
-                  setData((prev) => {
-                    const prevUi = prev.ui || {};
-                    return {
-                      ...prev,
-                      profile: {
-                        ...prev.profile,
-                        name: cleanFirstName,
-                        lastName: cleanLastName,
-                        whyText: cleanWhy,
-                        whyUpdatedAt: nowIso,
-                      },
-                      ui: { ...prevUi, onboardingStep: 2 },
-                    };
-                  });
-                  setStep(2);
-                }}
-              >
-                Suivant
-              </Button>
-
-              <div className="small2">Stocké localement (localStorage).</div>
+  const slides = useMemo(
+    () => [
+      {
+        key: "welcome",
+        title: "Bienvenue",
+        subtitle: "Une vision claire",
+        content: (
+          <div className="col">
+            <div className="titleSm">Reste concentré sur l’essentiel.</div>
+            <div className="small" style={{ marginTop: 6 }}>
+              Discip-Yourself t’aide à transformer l’intention en exécution quotidienne.
             </div>
           </div>
-        </Card>
-      </ScreenShell>
-    );
-  }
+        ),
+      },
+      {
+        key: "why",
+        title: "Pourquoi l’app existe",
+        subtitle: "Moins d’hésitation, plus d’action",
+        content: (
+          <div className="col">
+            <div className="titleSm">Clarifier, planifier, agir.</div>
+            <div className="small" style={{ marginTop: 6 }}>
+              Tu poses un cadre simple, puis tu avances sans friction.
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: "how",
+        title: "Comment ça marche",
+        subtitle: "Catégorie → Objectif → Action → Aujourd’hui",
+        content: (
+          <div className="col">
+            <div className="listItem">
+              <div className="titleSm">1. Catégorie</div>
+              <div className="small">Le domaine de ta vie.</div>
+            </div>
+            <div className="listItem">
+              <div className="titleSm">2. Objectif</div>
+              <div className="small">Le résultat à atteindre.</div>
+            </div>
+            <div className="listItem">
+              <div className="titleSm">3. Action</div>
+              <div className="small">Ce que tu fais concrètement.</div>
+            </div>
+            <div className="listItem">
+              <div className="titleSm">4. Aujourd’hui</div>
+              <div className="small">Exécute la session du jour.</div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: "permissions",
+        title: "Autorisations",
+        subtitle: "Tu restes maître",
+        content: (
+          <div className="col">
+            {[
+              {
+                key: "notifications",
+                title: "Notifications",
+                description: "Rappels doux dans l’app.",
+              },
+              {
+                key: "calendar",
+                title: "Calendrier",
+                description: "Synchronisation future des séances.",
+              },
+              {
+                key: "health",
+                title: "Santé",
+                description: "Données d’activité (optionnel).",
+              },
+            ].map((item) => {
+              const status = permissions[item.key];
+              return (
+                <div key={item.key} className="listItem">
+                  <div>
+                    <div className="titleSm">{item.title}</div>
+                    <div className="small">{item.description}</div>
+                    <div className="small2">Statut : {permissionLabel(status)}</div>
+                  </div>
+                  <div className="row" style={{ gap: 8, alignItems: "center" }}>
+                    <Button
+                      variant={status === "granted" ? "primary" : "ghost"}
+                      onClick={() =>
+                        setPermissions((prev) => ({ ...prev, [item.key]: "granted" }))
+                      }
+                    >
+                      Autoriser
+                    </Button>
+                    <Button
+                      variant={status === "unknown" ? "primary" : "ghost"}
+                      onClick={() =>
+                        setPermissions((prev) => ({ ...prev, [item.key]: "unknown" }))
+                      }
+                    >
+                      Plus tard
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ),
+      },
+      {
+        key: "engagement",
+        title: "Engagement",
+        subtitle: "Une phrase pour toi",
+        content: (
+          <div className="col">
+            <div>
+              <div className="small" style={{ marginBottom: 6 }}>
+                Prénom
+              </div>
+              <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+            </div>
+            <div>
+              <div className="small" style={{ marginBottom: 6 }}>
+                Pourquoi
+              </div>
+              <Textarea
+                value={why}
+                onChange={(e) => setWhy(e.target.value)}
+                placeholder="Écris une phrase simple."
+              />
+            </div>
+          </div>
+        ),
+      },
+    ],
+    [firstName, why, permissions]
+  );
 
-  if (step === 2 && !planOnly) {
+  const totalSteps = slides.length;
+  const current = slides[step];
+  const cleanFirstName = (firstName || "").trim();
+  const cleanWhy = (why || "").trim();
+  const canFinish = Boolean(cleanFirstName && cleanWhy);
+
+  const finishOnboarding = () => {
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      const nextProfile = { ...(prev.profile || {}) };
+      if (cleanFirstName) nextProfile.name = cleanFirstName;
+      if (cleanWhy) {
+        nextProfile.whyText = cleanWhy;
+        nextProfile.whyUpdatedAt = new Date().toISOString();
+      }
+      return {
+        ...prev,
+        profile: nextProfile,
+        ui: {
+          ...prevUi,
+          onboardingCompleted: true,
+          onboardingSeenVersion: 2,
+          tutorialEnabled: true,
+          tutorialStep: 0,
+          permissions: {
+            notifications: permissions.notifications,
+            calendar: permissions.calendar,
+            health: permissions.health,
+          },
+          onboardingStep: 3,
+          showPlanStep: false,
+        },
+      };
+    });
+    if (typeof onDone === "function") onDone();
+  };
+
+  if (planOnly) {
     return (
-      <ScreenShell data={safeData} pageId="onboarding" headerTitle={headerTitle} headerSubtitle={headerSubtitle}>
+      <ScreenShell data={safeData} pageId="onboarding" headerTitle="Abonnement" headerSubtitle="Choisis ton plan">
         <Card accentBorder>
           <div className="p18">
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <div className="titleSm">Démonstration guidée</div>
-                <div className="small">Crée la base minimale pour commencer.</div>
+                <div className="titleSm">Choisis ton plan</div>
+                <div className="small">Aucune facturation ici. Tu pourras changer plus tard.</div>
               </div>
-              <Badge>2/3</Badge>
+              <Badge>Plan</Badge>
             </div>
 
-            <div className="mt14 col">
-              <div className="listItem">
-                <div className="titleSm">Créer ta première catégorie</div>
-                {needsCategory ? (
-                  <>
-                    <Input
-                      list="category-templates-onboarding"
-                      value={categoryName}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setCategoryName(value);
-                        const match = findCategoryTemplateByLabel(value);
-                        setCategoryTemplateId(match ? match.id : null);
-                      }}
-                      placeholder="Nom de la catégorie"
-                    />
-                    <datalist id="category-templates-onboarding">
-                      {CATEGORY_TEMPLATES.map((t) => (
-                        <option key={t.id} value={t.label} />
-                      ))}
-                    </datalist>
-                    {selectedCategoryTemplate ? (
-                      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                        <div className="small2">Suggestion : {selectedCategoryTemplate.label}</div>
-                        <button
-                          className="linkBtn"
-                          onClick={() => {
-                            setCategoryTemplateId(null);
-                            setCategoryName("");
-                          }}
-                        >
-                          Créer la mienne
-                        </button>
-                      </div>
-                    ) : null}
-                  </>
-                ) : (
-                  <div className="small2">Catégorie : {baseCategory?.name || "OK"}</div>
-                )}
-              </div>
+            <div className="mt14 grid2">
+              <Card accentBorder style={{ borderColor: planChoice === "free" ? "#7C3AED" : "rgba(255,255,255,.16)" }}>
+                <div className="p18 col">
+                  <div className="titleSm">Gratuit</div>
+                  <div className="small2">L’essentiel pour démarrer.</div>
+                  <Button
+                    variant={planChoice === "free" ? "primary" : "ghost"}
+                    onClick={() => setPlanChoice("free")}
+                  >
+                    {planChoice === "free" ? "Sélectionné" : "Choisir Gratuit"}
+                  </Button>
+                </div>
+              </Card>
 
-              <div className="listItem">
-                <div className="titleSm">Créer ton premier objectif</div>
-                {needsOutcome ? (
-                  <Input
-                    value={outcomeTitle}
-                    onChange={(e) => setOutcomeTitle(e.target.value)}
-                    placeholder="Nom de l’objectif"
-                  />
-                ) : (
-                  <div className="small2">Objectif : {baseOutcome?.title || "OK"}</div>
-                )}
-              </div>
+              <Card
+                accentBorder
+                style={{ borderColor: planChoice === "premium" ? "#7C3AED" : "rgba(255,255,255,.16)" }}
+              >
+                <div className="p18 col">
+                  <div className="titleSm">Premium</div>
+                  <div className="small2">Liberté totale et réglages avancés.</div>
+                  <Button
+                    variant={planChoice === "premium" ? "primary" : "ghost"}
+                    onClick={() => setPlanChoice("premium")}
+                  >
+                    {planChoice === "premium" ? "Sélectionné" : "Choisir Premium"}
+                  </Button>
+                </div>
+              </Card>
+            </div>
 
-              <div className="listItem">
-                <div className="titleSm">Créer ta première action</div>
-                {needsHabit ? (
-                  <Input
-                    value={habitTitle}
-                    onChange={(e) => setHabitTitle(e.target.value)}
-                    placeholder="Nom de l’action"
-                  />
-                ) : (
-                  <div className="small2">Action : OK</div>
-                )}
-              </div>
-
-              {step2Error ? <div className="small" style={{ color: "#ff9a9a" }}>{step2Error}</div> : null}
-
+            <div className="mt12">
               <Button
-                disabled={!step2Ready}
                 onClick={() => {
-                  if (!step2Ready) {
-                    setStep2Error("Complète tous les champs requis.");
-                    return;
-                  }
-                  setStep2Error("");
                   setData((prev) => {
-                    const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
                     const prevUi = prev.ui || {};
-
-                    let nextCategories = prevCategories;
-                    let categoryId = baseCategory?.id || prevUi.selectedCategoryId || prevCategories[0]?.id || null;
-
-                    if (needsCategory) {
-                      const newCategoryId = uid();
-                      nextCategories = [
-                        ...prevCategories,
-                        {
-                          id: newCategoryId,
-                          name: cleanCategory,
-                          color: "#7C3AED",
-                          wallpaper: "",
-                          mainGoalId: null,
-                          templateId: categoryTemplateId,
-                        },
-                      ];
-                      categoryId = newCategoryId;
-                    }
-
-                    let nextState = {
-                      ...prev,
-                      categories: nextCategories,
-                      ui: { ...prevUi, selectedCategoryId: categoryId, onboardingStep: 3 },
-                    };
-
-                    let outcomeId = baseOutcome?.id || null;
-                    if (needsOutcome && categoryId) {
-                    outcomeId = uid();
-                    nextState = createGoal(nextState, {
-                      id: outcomeId,
-                      categoryId,
-                      title: cleanOutcome,
-                      type: "OUTCOME",
-                      planType: "STATE",
-                      status: "queued",
-                      deadline: "",
-                      weight: 0,
-                      metric: null,
-                    });
-                  }
-
-                    if (needsHabit && categoryId) {
-                      const parentId = outcomeId || baseOutcome?.id || null;
-                      if (parentId) {
-                        const habitId = uid();
-                        nextState = createGoal(nextState, {
-                          id: habitId,
-                          categoryId,
-                          title: cleanHabit,
-                          type: "PROCESS",
-                          planType: "ACTION",
-                          status: "queued",
-                          startAt: `${todayKey()}T09:00`,
-                          freqCount: 3,
-                          freqUnit: "WEEK",
-                          cadence: cadenceFromUnit("WEEK"),
-                          target: 3,
-                          sessionMinutes: 30,
-                          parentId,
-                          weight: 100,
-                        });
-                      }
-                    }
-
-                    const mainGoalId = outcomeId || baseOutcome?.id || null;
-                    if (categoryId && mainGoalId) {
-                      nextState = {
-                        ...nextState,
-                        categories: (nextState.categories || []).map((cat) =>
-                          cat.id === categoryId ? { ...cat, mainGoalId } : cat
-                        ),
-                      };
-                    }
-
+                    const nextProfile = { ...(prev.profile || {}), plan: planChoice };
                     return {
-                      ...nextState,
+                      ...prev,
+                      profile: nextProfile,
                       ui: {
-                        ...(nextState.ui || {}),
-                        selectedCategoryId: categoryId || nextState.ui?.selectedCategoryId || null,
-                        mainGoalId: nextState.ui?.mainGoalId || mainGoalId || null,
+                        ...prevUi,
+                        onboardingCompleted: prevUi.onboardingCompleted,
                         onboardingStep: 3,
+                        showPlanStep: false,
                       },
                     };
                   });
-                  setStep(3);
+                  if (typeof onDone === "function") onDone();
                 }}
               >
-                Terminer l’inscription
+                Accéder à l’app
               </Button>
             </div>
           </div>
@@ -377,66 +276,36 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
   }
 
   return (
-    <ScreenShell data={safeData} pageId="onboarding" headerTitle={headerTitle} headerSubtitle={headerSubtitle}>
+    <ScreenShell
+      data={safeData}
+      pageId="onboarding"
+      headerTitle={current.title}
+      headerSubtitle={`${current.subtitle} · ${step + 1}/${totalSteps}`}
+    >
       <Card accentBorder>
-        <div className="p18">
-          <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              <div className="titleSm">Choisis ton plan</div>
-              <div className="small">Aucune facturation ici. Tu pourras changer plus tard.</div>
+        <div className="p18 col">
+          {current.content}
+          {step === totalSteps - 1 && !canFinish ? (
+            <div className="small2" style={{ marginTop: 10 }}>
+              Remplis ton prénom et une phrase pour terminer.
             </div>
-            <Badge>3/3</Badge>
-          </div>
-
-          <div className="mt14 grid2">
-            <Card accentBorder style={{ borderColor: planChoice === "free" ? "#7C3AED" : "rgba(255,255,255,.16)" }}>
-              <div className="p18 col">
-                <div className="titleSm">Gratuit</div>
-                <div className="small2">L’essentiel pour démarrer.</div>
-                <Button
-                  variant={planChoice === "free" ? "primary" : "ghost"}
-                  onClick={() => setPlanChoice("free")}
-                >
-                  {planChoice === "free" ? "Sélectionné" : "Choisir Gratuit"}
-                </Button>
-              </div>
-            </Card>
-
-            <Card accentBorder style={{ borderColor: planChoice === "premium" ? "#7C3AED" : "rgba(255,255,255,.16)" }}>
-              <div className="p18 col">
-                <div className="titleSm">Premium</div>
-                <div className="small2">Liberté totale et réglages avancés.</div>
-                <Button
-                  variant={planChoice === "premium" ? "primary" : "ghost"}
-                  onClick={() => setPlanChoice("premium")}
-                >
-                  {planChoice === "premium" ? "Sélectionné" : "Choisir Premium"}
-                </Button>
-              </div>
-            </Card>
-          </div>
-
-          <div className="mt12">
+          ) : null}
+          <div className="row" style={{ marginTop: 14, justifyContent: "space-between", alignItems: "center" }}>
+            <Button variant="ghost" onClick={finishOnboarding}>
+              Passer
+            </Button>
             <Button
+              disabled={step === totalSteps - 1 && !canFinish}
               onClick={() => {
-                setData((prev) => {
-                  const prevUi = prev.ui || {};
-                  const nextProfile = { ...prev.profile, plan: planChoice };
-                  return {
-                    ...prev,
-                    profile: nextProfile,
-                    ui: {
-                      ...prevUi,
-                      onboardingCompleted: planOnly ? prevUi.onboardingCompleted : true,
-                      onboardingStep: 3,
-                      showPlanStep: false,
-                    },
-                  };
-                });
-                if (typeof onDone === "function") onDone();
+                if (step < totalSteps - 1) {
+                  setStep(step + 1);
+                  return;
+                }
+                if (!canFinish) return;
+                finishOnboarding();
               }}
             >
-              Accéder à l’app
+              Continuer
             </Button>
           </div>
         </div>

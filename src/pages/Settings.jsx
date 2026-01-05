@@ -3,6 +3,10 @@ import ScreenShell from "./_ScreenShell";
 import ThemePicker from "../components/ThemePicker";
 import { Button, Card, Textarea } from "../components/UI";
 
+// TOUR MAP:
+// - primary_action: adjust settings and replay onboarding/tutorial
+// - key_elements: theme picker, motivation editor, intro actions, notifications info
+// - optional_elements: none
 function MotivationSection({ data, setData }) {
   const profile = data?.profile || {};
   const [whyDraft, setWhyDraft] = useState(profile.whyText || "");
@@ -19,7 +23,7 @@ function MotivationSection({ data, setData }) {
   const whyChanged = cleanWhy !== (profile.whyText || "").trim();
 
   return (
-    <Card accentBorder style={{ marginTop: 14 }}>
+    <Card accentBorder style={{ marginTop: 14 }} data-tour-id="settings-why">
       <div className="p18 col">
         <div className="sectionTitle textAccent">Pourquoi</div>
         <div className="sectionSub" style={{ marginTop: 6 }}>
@@ -67,14 +71,57 @@ export default function Settings({ data, setData }) {
     <ScreenShell
       data={safeData}
       pageId="settings"
-      headerTitle={<span className="textAccent">Réglages</span>}
+      headerTitle={<span className="textAccent" data-tour-id="settings-title">Réglages</span>}
       headerSubtitle="Essentiel"
       backgroundImage={backgroundImage}
     >
       <div className="col">
-        <ThemePicker data={themeData} setData={setData} />
+        <div data-tour-id="settings-theme">
+          <ThemePicker data={themeData} setData={setData} />
+        </div>
         <MotivationSection data={safeData} setData={setData} />
         <Card accentBorder style={{ marginTop: 14 }}>
+          <div className="p18 col">
+            <div className="sectionTitle textAccent">Introduction</div>
+            <div className="sectionSub" style={{ marginTop: 6 }}>
+              Revoir l’accueil et relancer le tutoriel.
+            </div>
+            <div className="mt10 col">
+              <Button
+                onClick={() =>
+                  setData((prev) => ({
+                    ...prev,
+                    ui: {
+                      ...(prev.ui || {}),
+                      onboardingSeenVersion: 0,
+                      onboardingCompleted: false,
+                    },
+                  }))
+                }
+                data-tour-id="settings-replay-onboarding"
+              >
+                Revoir l’introduction
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  setData((prev) => ({
+                    ...prev,
+                    ui: {
+                      ...(prev.ui || {}),
+                      tutorialEnabled: true,
+                      tutorialStep: 0,
+                    },
+                  }))
+                }
+                data-tour-id="settings-restart-tutorial"
+              >
+                Relancer le tutoriel
+              </Button>
+            </div>
+          </div>
+        </Card>
+        <Card accentBorder style={{ marginTop: 14 }} data-tour-id="settings-notifications">
           <div className="p18 col">
             <div className="sectionTitle textAccent">Notifications</div>
             <div className="sectionSub" style={{ marginTop: 6 }}>
