@@ -1010,30 +1010,9 @@ export const TOUR_STEPS = [
   },
 ];
 
-// FIRST_USE_TOUR rationale:
-// - today-title: situer l'utilisateur sur Aujourd'hui (état vide).
-// - today-empty-create-category: inviter à créer la première catégorie.
-// - create-category-name: saisir le nom de la catégorie.
-// - create-category-submit: valider la création de la catégorie.
-// - create-goal-title-input: saisir le premier objectif.
-// - create-goal-submit: valider la création de l'objectif.
-// - create-action-title-input: saisir la première action.
-// - create-action-submit: valider la création de l'action.
-// - library-title: confirmer l'arrivée dans Bibliothèque (post-création).
-// - topnav-tab-today: revenir sur Aujourd'hui.
-// - today-go: lancer la session du jour.
 const FIRST_USE_TOUR_STEP_IDS = [
   "today-title",
   "today-empty-create-category",
-  "create-category-name",
-  "create-category-submit",
-  "create-goal-title-input",
-  "create-goal-submit",
-  "create-action-title-input",
-  "create-action-submit",
-  "library-title",
-  "topnav-tab-today",
-  "today-go",
 ];
 
 export const FIRST_USE_TOUR_STEPS = FIRST_USE_TOUR_STEP_IDS
