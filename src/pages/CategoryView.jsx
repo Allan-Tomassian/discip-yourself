@@ -32,7 +32,7 @@ export default function CategoryView({
   setData,
   categoryId,
   onBack,
-  onOpenPlan,
+  onOpenPilotage,
   onOpenCreate,
   onOpenProgress,
   onEditItem,
@@ -158,24 +158,8 @@ export default function CategoryView({
     return stats;
   }, [habits, occurrences, sessions, checks]);
 
-  function openPlan(categoryIdValue, openGoalEditId) {
-    if (!categoryIdValue || typeof setData !== "function") return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      const prevSel =
-        prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-          ? prevUi.selectedCategoryByView
-          : {};
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          openGoalEditId,
-          selectedCategoryByView: { ...prevSel, plan: categoryIdValue },
-        },
-      };
-    });
-    if (typeof onOpenPlan === "function") onOpenPlan();
+  function openPilotage() {
+    if (typeof onOpenPilotage === "function") onOpenPilotage();
   }
 
   function renameCategory() {
@@ -461,7 +445,7 @@ export default function CategoryView({
 
         <Card accentBorder style={{ marginTop: 12 }}>
           <div className="p18">
-            <div className="titleSm">Habitudes</div>
+            <div className="titleSm">Actions</div>
             {habits.length ? (
               <div className="mt12 col">
                 {habits.map((h) => {
@@ -469,11 +453,11 @@ export default function CategoryView({
                   return (
                   <div key={h.id} className="listItem">
                     <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ fontWeight: 700 }}>{h.title || "Habitude"}</div>
+                      <div style={{ fontWeight: 700 }}>{h.title || "Action"}</div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <IconButton
                           icon="gear"
-                          aria-label="Paramètres habitude"
+                          aria-label="Paramètres action"
                           onClick={() => openEditItem(h)}
                         />
                       </div>
@@ -495,7 +479,7 @@ export default function CategoryView({
               </div>
             ) : (
               <div className="mt12 col">
-                <div className="small2">Aucune habitude liée.</div>
+                <div className="small2">Aucune action liée.</div>
                 <div className="mt10">
                   <Button variant="ghost" onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}>
                     Créer
@@ -508,13 +492,13 @@ export default function CategoryView({
 
         <Card accentBorder style={{ marginTop: 12 }}>
           <div className="p18">
-            <div className="titleSm">Outils</div>
+            <div className="titleSm">Pilotage</div>
             <div className="small2" style={{ marginTop: 6 }}>
-              Timer, notifications et calendrier (bientôt).
+              Etat, charge et discipline (lecture seule).
             </div>
             <div className="mt10">
-              <Button variant="ghost" onClick={() => openPlan(category.id)}>
-                Ouvrir les outils
+              <Button variant="ghost" onClick={openPilotage}>
+                Ouvrir le pilotage
               </Button>
             </div>
           </div>

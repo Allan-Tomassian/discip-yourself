@@ -97,9 +97,9 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
                 <span className="textAccent" style={{ opacity: 0.9 }}>
                   3.
                 </span>{" "}
-                Habitude
+                Action
               </div>
-              <div className="small2">Créer une habitude liée à un objectif.</div>
+              <div className="small2">Créer une action liée à un objectif.</div>
             </div>
             <Button variant="ghost" onClick={() => (typeof onOpenHabit === "function" ? onOpenHabit() : null)}>
               Ouvrir

@@ -254,15 +254,15 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
               </div>
 
               <div className="listItem">
-                <div className="titleSm">Créer ta première habitude</div>
+                <div className="titleSm">Créer ta première action</div>
                 {needsHabit ? (
                   <Input
                     value={habitTitle}
                     onChange={(e) => setHabitTitle(e.target.value)}
-                    placeholder="Nom de l’habitude"
+                    placeholder="Nom de l’action"
                   />
                 ) : (
-                  <div className="small2">Habitude : OK</div>
+                  <div className="small2">Action : OK</div>
                 )}
               </div>
 

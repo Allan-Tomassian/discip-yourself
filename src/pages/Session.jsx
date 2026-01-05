@@ -184,7 +184,16 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
       <ScreenShell
         accent={getAccentForPage(safeData, "home")}
         headerTitle={<span className="textAccent">Session</span>}
-        headerSubtitle="Aucune session"
+        headerSubtitle={
+          <div className="stack stackGap12">
+            <div>Aucune session</div>
+            {typeof onOpenLibrary === "function" ? null : (
+              <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+                ← Retour
+              </Button>
+            )}
+          </div>
+        }
       >
         <Card accentBorder>
           <div className="p18">
@@ -192,17 +201,13 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
             <div className="small2" style={{ marginTop: 6 }}>
               Lance une session depuis Aujourd’hui.
             </div>
-            <div className="mt12">
-              {typeof onOpenLibrary === "function" ? (
+            {typeof onOpenLibrary === "function" ? (
+              <div className="mt12">
                 <Button variant="ghost" onClick={onOpenLibrary}>
                   Aller à Bibliothèque
                 </Button>
-              ) : (
-                <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
-                  ← Retour
-                </Button>
-              )}
-            </div>
+              </div>
+            ) : null}
           </div>
         </Card>
       </ScreenShell>
@@ -218,7 +223,14 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
       <ScreenShell
         accent={accent}
         headerTitle={<span className="textAccent">{sessionTitle}</span>}
-        headerSubtitle={sessionSubtitle}
+        headerSubtitle={
+          <div className="stack stackGap12">
+            <div>{sessionSubtitle}</div>
+            <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+              ← Retour
+            </Button>
+          </div>
+        }
         backgroundImage={category?.wallpaper || safeData.profile?.whyImage || ""}
       >
         <Card accentBorder>
@@ -226,11 +238,6 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
             <div className="titleSm">{statusLabel}</div>
             <div className="small2" style={{ marginTop: 6 }}>
               Date : {effectiveDateKey}
-            </div>
-            <div className="mt12">
-              <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
-                ← Retour
-              </Button>
             </div>
           </div>
         </Card>
@@ -242,14 +249,17 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
     <ScreenShell
       accent={accent}
       headerTitle={<span className="textAccent">{sessionTitle}</span>}
-      headerSubtitle={sessionSubtitle}
+      headerSubtitle={
+        <div className="stack stackGap12">
+          <div>{sessionSubtitle}</div>
+          <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+            ← Retour
+          </Button>
+        </div>
+      }
       backgroundImage={category?.wallpaper || safeData.profile?.whyImage || ""}
     >
       <div style={catAccentVars}>
-        <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
-          ← Retour
-        </Button>
-
         <Card accentBorder style={{ marginTop: 12 }}>
           <div className="p18">
             <div className="sectionTitle">Timer</div>
@@ -328,7 +338,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
 
 /* Tests manuels
 1) Démarrer session, voir le timer tourner.
-2) Cocher une habitude => reflété au retour sur Aujourd’hui.
+2) Cocher une action => reflété au retour sur Aujourd’hui.
 3) Terminer la session => progression mise à jour.
 4) Annuler la session => état annulé, retour Aujourd’hui.
 5) Revenir sur /session après fin => “Session terminée”.

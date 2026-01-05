@@ -55,14 +55,14 @@ export default function Block({
           <div className="row">
             <div>
               <div className="small">Aujourd’hui</div>
-              <div className="titleSm" style={{ color: accent }}>Habitudes — {selectedCategory.name}</div>
+              <div className="titleSm" style={{ color: accent }}>Actions — {selectedCategory.name}</div>
             </div>
             <Badge>{habitsForCategory.length} items</Badge>
           </div>
 
           <div className="mt12 col">
             {habitsForCategory.length === 0 ? (
-              <div className="listItem">Aucune habitude dans cette catégorie.</div>
+              <div className="listItem">Aucune action dans cette catégorie.</div>
             ) : (
               habitsForCategory.map((h) => {
                 const p = computeHabitProgress(h, data.checks);

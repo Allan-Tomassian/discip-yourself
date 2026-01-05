@@ -16,15 +16,16 @@ import CreateCategory from "./pages/CreateCategory";
 import CreateGoal from "./pages/CreateGoal";
 import CreateHabit from "./pages/CreateHabit";
 import Settings from "./pages/Settings";
-import CategoryDetail from "./pages/CategoryDetail";
 import CategoryView from "./pages/CategoryView";
 import EditItem from "./pages/EditItem";
 import CategoryDetailView from "./pages/CategoryDetailView";
 import CategoryProgress from "./pages/CategoryProgress";
 import Session from "./pages/Session";
+import Pilotage from "./pages/Pilotage";
 import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
 import { todayKey } from "./utils/dates";
 import { normalizePriorities } from "./logic/priority";
+import { getCategoryCounts } from "./logic/pilotage";
 
 function runSelfTests() {
   // minimal sanity
@@ -105,9 +106,9 @@ function getEmptyStateConfig(data) {
   }
   if (!hasHabit) {
     return {
-      title: "Aucune habitude",
-      subtitle: "Crée une habitude liée à ton objectif principal.",
-      cta: "Créer une habitude",
+      title: "Aucune action",
+      subtitle: "Crée une action liée à ton objectif principal.",
+      cta: "Créer une action",
       targetTab: "create-habit",
       categoryId: outcomeCategoryId,
       openGoalEditId: null,
@@ -126,7 +127,7 @@ function getEmptyStateConfig(data) {
 const TABS = new Set([
   "today",
   "library",
-  "plan",
+  "pilotage",
   "create",
   "create-category",
   "create-goal",
@@ -138,6 +139,7 @@ const TABS = new Set([
   "settings",
 ]);
 function normalizeTab(t) {
+  if (t === "tools" || t === "plan") return "pilotage";
   return TABS.has(t) ? t : "today";
 }
 
@@ -167,13 +169,16 @@ export default function App() {
       : null;
   const initialCategoryDetailId =
     pathParts[0] === "category" && pathParts.length === 2 ? decodeURIComponent(pathParts[1] || "") : null;
-  const initialTab = initialPath.startsWith("/session")
-    ? "session"
-    : initialCategoryProgressId
-      ? "category-progress"
-      : initialCategoryDetailId
-        ? "category-detail"
-        : "today";
+  const isPilotagePath = initialPath.startsWith("/pilotage") || initialPath.startsWith("/tools");
+  const initialTab = isPilotagePath
+    ? "pilotage"
+    : initialPath.startsWith("/session")
+      ? "session"
+      : initialCategoryProgressId
+        ? "category-progress"
+        : initialCategoryDetailId
+          ? "category-detail"
+          : "today";
   const [tab, _setTab] = useState(initialTab);
   const [categoryDetailId, setCategoryDetailId] = useState(initialCategoryDetailId);
   const [categoryProgressId, setCategoryProgressId] = useState(initialCategoryProgressId);
@@ -236,7 +241,9 @@ export default function App() {
             ? categoryDetailId
               ? `/category/${categoryDetailId}`
               : "/category"
-            : "/";
+            : t === "pilotage"
+              ? "/pilotage"
+              : "/";
       if (window.location.pathname !== nextPath) {
         const state =
           t === "session"
@@ -381,9 +388,7 @@ export default function App() {
     }
     return ids;
   }, [goals, railDow]);
-  const railCategories = useMemo(() => {
-    return orderedCategories.filter((c) => plannedCategoryIds.has(c.id));
-  }, [orderedCategories, plannedCategoryIds]);
+  const railCategories = useMemo(() => orderedCategories, [orderedCategories]);
   const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
   const handleEditBack = () => {
     const returnTab = editItem?.returnTab || "library";
@@ -404,17 +409,14 @@ export default function App() {
             tab === "create-category" ||
             tab === "create-goal" ||
             tab === "create-habit" ||
-            tab === "edit-item"
-          ? librarySelectedCategoryId ||
+            tab === "edit-item" ||
+            tab === "pilotage"
+          ? safeData?.ui?.selectedCategoryByView?.library ||
+            librarySelectedCategoryId ||
             safeData?.ui?.selectedCategoryByView?.home ||
             safeData?.ui?.selectedCategoryId ||
             null
-          : tab === "plan"
-            ? safeData?.ui?.selectedCategoryByView?.plan ||
-              safeData?.ui?.selectedCategoryId ||
-              safeData?.ui?.selectedCategoryByView?.home ||
-              null
-            : safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
+          : safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
 
   useEffect(() => {
     applyThemeTokens(themeName);
@@ -434,6 +436,13 @@ export default function App() {
     if (window.location.pathname !== nextPath) window.history.pushState({}, "", nextPath);
   }, [tab, categoryDetailId]);
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (tab !== "pilotage") return;
+    if (window.location.pathname === "/tools") {
+      window.history.replaceState({}, "", "/pilotage");
+    }
+  }, [tab]);
+  useEffect(() => {
     // Do not restore tab during onboarding flows.
     const completed = Boolean(safeData?.ui?.onboardingCompleted);
     if (!completed) return;
@@ -451,6 +460,41 @@ export default function App() {
   const onboardingCompleted = Boolean(safeData.ui?.onboardingCompleted);
   const showPlanStep = Boolean(safeData.ui?.showPlanStep);
   const shouldShowEmpty = !onboarded && !showPlanStep && tab === "today";
+  const handlePlanCategory = (categoryId) => {
+    const fallbackId = categories[0]?.id || null;
+    const targetId = categoryId || fallbackId;
+    if (!targetId) {
+      setLibraryCategoryId(null);
+      setTab("create-category");
+      return;
+    }
+    const counts = getCategoryCounts(safeData, targetId);
+    const outcomeGoals = goals.filter(
+      (g) => g && g.categoryId === targetId && resolveGoalType(g) === "OUTCOME"
+    );
+    const mainGoalId = categories.find((c) => c.id === targetId)?.mainGoalId || null;
+    const fallbackGoalId = outcomeGoals[0]?.id || null;
+    const goalId =
+      mainGoalId && outcomeGoals.some((g) => g.id === mainGoalId) ? mainGoalId : fallbackGoalId;
+
+    setData((prev) => ({
+      ...prev,
+      ui: {
+        ...(prev.ui || {}),
+        librarySelectedCategoryId: targetId,
+        selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), library: targetId },
+      },
+    }));
+
+    setCreateFlowCategoryId(targetId);
+    setCreateFlowGoalId(goalId);
+    setLibraryCategoryId(null);
+    if (counts.outcomesCount === 0 || !goalId) {
+      setTab("create-goal");
+      return;
+    }
+    setTab("create-habit");
+  };
 
   if (showPlanStep && onboardingCompleted) {
     return <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />;
@@ -496,7 +540,7 @@ export default function App() {
 
   return (
     <>
-      <TopNav
+        <TopNav
         active={
           tab === "session"
             ? "today"
@@ -509,8 +553,8 @@ export default function App() {
                 tab === "category-detail" ||
                 tab === "category-progress"
               ? "library"
-              : tab === "plan"
-                ? "plan"
+              : tab === "pilotage"
+                ? "pilotage"
                 : tab === "settings"
                   ? "settings"
                   : tab
@@ -520,10 +564,14 @@ export default function App() {
           setTab(next);
         }}
         onOpenSettings={() => setTab("settings")}
-        onCreateCategory={() => {
-          setLibraryCategoryId(null);
-          setTab("create-category");
-        }}
+        onCreateCategory={
+          tab === "pilotage"
+            ? null
+            : () => {
+                setLibraryCategoryId(null);
+                setTab("create-category");
+              }
+        }
         categories={
           tab === "create" ||
           tab === "create-category" ||
@@ -553,7 +601,7 @@ export default function App() {
             });
             return;
           }
-          if (tab === "library" || tab === "edit-item") {
+          if (tab === "library" || tab === "edit-item" || tab === "pilotage") {
             setData((prev) => ({
               ...prev,
               ui: {
@@ -562,20 +610,6 @@ export default function App() {
                 selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), library: categoryId },
               },
             }));
-            return;
-          }
-          if (tab === "plan") {
-            setData((prev) => {
-              const prevUi = prev.ui || {};
-              const prevSel =
-                prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-                  ? prevUi.selectedCategoryByView
-                  : {};
-              return {
-                ...prev,
-                ui: { ...prevUi, selectedCategoryByView: { ...prevSel, plan: categoryId } },
-              };
-            });
             return;
           }
           if (tab === "session") {
@@ -646,35 +680,8 @@ export default function App() {
             setTab("library");
           }}
         />
-      ) : tab === "plan" ? (
-        <CategoryDetail
-          data={data}
-          setData={setData}
-          categoryId={
-            data?.ui?.selectedCategoryByView?.plan ||
-            data?.ui?.selectedCategoryId ||
-            data?.categories?.[0]?.id ||
-            null
-          }
-          onBack={() => {
-            setLibraryCategoryId(null);
-            setTab("library");
-          }}
-          initialEditGoalId={data?.ui?.openGoalEditId || null}
-          onSelectCategory={(nextId) => {
-            setData((prev) => {
-              const prevUi = prev.ui || {};
-              const prevSel =
-                prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-                  ? prevUi.selectedCategoryByView
-                  : {};
-              return {
-                ...prev,
-                ui: { ...prevUi, selectedCategoryByView: { ...prevSel, plan: nextId } },
-              };
-            });
-          }}
-        />
+      ) : tab === "pilotage" ? (
+        <Pilotage data={data} onPlanCategory={handlePlanCategory} />
       ) : tab === "edit-item" ? (
         <EditItem data={data} setData={setData} editItem={editItem} onBack={handleEditBack} />
       ) : tab === "library" && libraryCategoryId ? (
@@ -683,9 +690,9 @@ export default function App() {
           setData={setData}
           categoryId={libraryCategoryId}
           onBack={() => setLibraryCategoryId(null)}
-          onOpenPlan={() => {
+          onOpenPilotage={() => {
             setLibraryCategoryId(null);
-            setTab("plan");
+            setTab("pilotage");
           }}
           onOpenCreate={() => {
             setLibraryCategoryId(null);
@@ -817,7 +824,7 @@ export default function App() {
             <div className="p18">
               <div className="titleSm">{activeReminder.reminder?.label || "Rappel"}</div>
               <div className="small2" style={{ marginTop: 6 }}>
-                {activeReminder.goal?.title || activeReminder.habit?.title || "Habitude"}
+                {activeReminder.goal?.title || activeReminder.habit?.title || "Action"}
               </div>
               <div className="small2" style={{ marginTop: 4 }}>
                 {(() => {
@@ -853,7 +860,7 @@ export default function App() {
                         ...prev,
                         ui: { ...(prev.ui || {}), selectedCategoryId: target.categoryId },
                       }));
-                      setTab("plan");
+                      setTab("pilotage");
                     }
                     setActiveReminder(null);
                   }}

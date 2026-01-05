@@ -375,13 +375,13 @@ export default function Home({
     return goals.filter((g) => g.categoryId === focusCategory.id && resolveGoalType(g) === "PROCESS");
   }, [goals, focusCategory?.id]);
 
-  // Habitudes liées à l’objectif sélectionné (queued/active)
+  // Actions liées à l’objectif sélectionné (queued/active)
   const linkedHabits = useMemo(() => {
     if (!mainGoalId) return [];
     return processGoals.filter((g) => g.parentId === mainGoalId);
   }, [processGoals, mainGoalId]);
 
-  // Habitudes actives uniquement
+  // Actions actives uniquement
   const activeHabits = useMemo(() => {
     return linkedHabits.filter((g) => g.status === "active");
   }, [linkedHabits]);
@@ -1018,7 +1018,7 @@ export default function Home({
                                 </div>
                               ) : !activeHabits.length ? (
                                 <div className="sectionSub" style={{ marginTop: 8 }}>
-                                  Ajoute une habitude dans Bibliothèque &gt; Gérer.
+                                  Ajoute une action dans Bibliothèque &gt; Gérer.
                                 </div>
                               ) : !canValidate ? (
                                 <div className="sectionSub" style={{ marginTop: 8 }}>
@@ -1401,7 +1401,7 @@ export default function Home({
                 </div>
               </div>
               <div className="row" style={{ justifyContent: "space-between" }}>
-                <div className="small2">Habitudes du jour</div>
+                <div className="small2">Actions du jour</div>
                 <div className="titleSm">Tu as validé {habitsDoneCount} sur {activeHabits.length}</div>
               </div>
               <div className="row" style={{ justifyContent: "space-between" }}>

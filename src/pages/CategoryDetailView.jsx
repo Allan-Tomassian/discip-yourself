@@ -101,17 +101,17 @@ export default function CategoryDetailView({ data, categoryId, onBack, onOpenLib
 
       <Card accentBorder style={{ marginTop: 12 }}>
         <div className="p18">
-          <div className="sectionTitle">Habitudes</div>
+          <div className="sectionTitle">Actions</div>
           {habits.length ? (
             <div className="mt12 col" style={{ gap: 10 }}>
               {habits.map((h) => (
                 <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
-                  <div className="itemTitle">{h.title || "Habitude"}</div>
+                  <div className="itemTitle">{h.title || "Action"}</div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="small2 mt10">Aucune habitude liée.</div>
+            <div className="small2 mt10">Aucune action liée.</div>
           )}
         </div>
       </Card>

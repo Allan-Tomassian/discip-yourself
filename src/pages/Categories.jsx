@@ -4,17 +4,7 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { isPrimaryCategory } from "../logic/priority";
-
-function resolveGoalType(goal) {
-  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
-  if (raw === "OUTCOME" || raw === "PROCESS") return raw;
-  if (raw === "STATE") return "OUTCOME";
-  if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
-  const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
-  if (legacy === "OUTCOME") return "OUTCOME";
-  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
-  return "PROCESS";
-}
+import { getCategoryCounts } from "../logic/pilotage";
 
 function formatCount(count, singular, plural) {
   if (count === 0) return `0 ${plural}`;
@@ -25,14 +15,14 @@ function formatCount(count, singular, plural) {
 export default function Categories({ data, setData, onOpenLibraryCategory, onOpenCreate }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
-  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
 
   // IMPORTANT:
   // This page must not mutate ui.selectedCategoryId (used by Plan / CategoryDetail).
   // We isolate the Library selection using ui.librarySelectedCategoryId.
   const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
+  const libraryViewSelectedId = safeData?.ui?.selectedCategoryByView?.library || librarySelectedCategoryId || null;
 
-  function openCategory(categoryId) {
+  function setLibraryCategory(categoryId, { navigate } = {}) {
     if (!categoryId) return;
 
     // Keep Library selection local to Library page only
@@ -54,10 +44,16 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
       });
     }
 
-    // Navigation callback stays the same (parent decides what to do)
-    if (typeof onOpenLibraryCategory === "function") {
+    if (navigate && typeof onOpenLibraryCategory === "function") {
       onOpenLibraryCategory(categoryId);
     }
+  }
+
+  function handleOpenManage() {
+    const fallbackId = categories[0]?.id || null;
+    const targetId = libraryViewSelectedId || fallbackId;
+    if (!targetId) return;
+    setLibraryCategory(targetId, { navigate: true });
   }
 
   if (categories.length === 0) {
@@ -66,12 +62,17 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
         headerTitle={<span className="textAccent">Bibliothèque</span>}
         headerSubtitle="Aucune catégorie"
         headerRight={
-          <Button
-            variant="ghost"
-            onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
-          >
-            Créer
-          </Button>
+          <div className="row" style={{ gap: 8 }}>
+            <Button variant="ghost" onClick={handleOpenManage} disabled={!categories.length}>
+              Gérer
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
+            >
+              Créer
+            </Button>
+          </div>
         }
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
@@ -96,28 +97,29 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
 
   const countsByCategory = useMemo(() => {
     const map = new Map();
-    for (const g of goals) {
-      if (!g || !g.categoryId) continue;
-      const type = resolveGoalType(g);
-      const entry = map.get(g.categoryId) || { habits: 0, objectives: 0 };
-      if (type === "OUTCOME") entry.objectives += 1;
-      if (type === "PROCESS") entry.habits += 1;
-      map.set(g.categoryId, entry);
+    for (const c of categories) {
+      const counts = getCategoryCounts(safeData, c.id);
+      map.set(c.id, { habits: counts.processCount, objectives: counts.outcomesCount });
     }
     return map;
-  }, [goals]);
+  }, [categories, safeData]);
 
   return (
     <ScreenShell
       headerTitle={<span className="textAccent">Bibliothèque</span>}
       headerSubtitle="Catégories"
       headerRight={
-        <Button
-          variant="ghost"
-          onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
-        >
-          Créer
-        </Button>
+        <div className="row" style={{ gap: 8 }}>
+          <Button variant="ghost" onClick={handleOpenManage} disabled={!categories.length}>
+            Gérer
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
+          >
+            Créer
+          </Button>
+        </div>
       }
       backgroundImage={safeData?.profile?.whyImage || ""}
     >
@@ -128,11 +130,24 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
           const habits = counts.habits;
           const summary =
             objectives || habits
-              ? `${formatCount(habits, "habitude", "habitudes")} · ${formatCount(objectives, "objectif", "objectifs")}`
+              ? `${formatCount(habits, "action", "actions")} · ${formatCount(objectives, "objectif", "objectifs")}`
               : "Aucun élément";
 
           return (
-            <Card key={c.id} className="catAccentRow" style={getCategoryAccentVars(c.color)}>
+            <Card
+              key={c.id}
+              className="catAccentRow"
+              style={getCategoryAccentVars(c.color)}
+              onClick={() => setLibraryCategory(c.id, { navigate: true })}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setLibraryCategory(c.id, { navigate: true });
+                }
+              }}
+            >
               <div className="p18 row" style={{ justifyContent: "space-between" }}>
                 <div>
                   <div className="itemTitle">
@@ -145,9 +160,6 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
                   </div>
                   <div className="itemSub">{summary}</div>
                 </div>
-                <Button variant="ghost" onClick={() => openCategory(c.id)}>
-                  Gérer
-                </Button>
               </div>
             </Card>
           );

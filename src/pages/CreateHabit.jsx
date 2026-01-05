@@ -92,7 +92,7 @@ export default function CreateHabit({ data, setData, onCancel, onDone, initialCa
       headerTitle="Créer"
       headerSubtitle={
         <>
-          <span style={{ opacity: 0.6 }}>3.</span> Habitude
+          <span style={{ opacity: 0.6 }}>3.</span> Action
         </>
       }
       backgroundImage={backgroundImage}
@@ -134,7 +134,7 @@ export default function CreateHabit({ data, setData, onCancel, onDone, initialCa
             ))}
           </Select>
 
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nom de l’habitude" />
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nom de l’action" />
 
           {!categories.length ? <div className="small2">Aucune catégorie disponible.</div> : null}
           {categories.length && !outcomeGoals.length ? (

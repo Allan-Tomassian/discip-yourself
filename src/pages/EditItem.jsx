@@ -516,7 +516,7 @@ export default function EditItem({ data, setData, editItem, onBack }) {
       headerTitle={<span className="textAccent">Modifier</span>}
       headerSubtitle={
         <div className="stack stackGap12">
-          <div>{item.title || (isProcess ? "Habitude" : "Objectif")}</div>
+          <div>{item.title || (isProcess ? "Action" : "Objectif")}</div>
           <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
             ← Retour
           </Button>

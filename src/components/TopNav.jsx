@@ -4,7 +4,7 @@ import CategoryRail from "./CategoryRail";
 const NAV_ITEMS = [
   { id: "today", label: "Aujourd’hui" },
   { id: "library", label: "Bibliothèque" },
-  { id: "plan", label: "Outils" },
+  { id: "pilotage", label: "Pilotage" },
 ];
 
 export default function TopNav({

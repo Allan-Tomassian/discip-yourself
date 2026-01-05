@@ -348,7 +348,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
         }}
       >
         <div className="drawerHeader">
-          <div style={{ fontWeight: 800 }}>{isProcess ? "Modifier l’habitude" : "Modifier l’objectif"}</div>
+          <div style={{ fontWeight: 800 }}>{isProcess ? "Modifier l’action" : "Modifier l’objectif"}</div>
           <Button variant="ghost" onClick={onClose}>
             Fermer
           </Button>

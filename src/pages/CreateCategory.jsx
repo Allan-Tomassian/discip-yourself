@@ -41,9 +41,25 @@ export default function CreateCategory({ data, setData, onCancel, onDone }) {
       const prevOrder = Array.isArray(prevUi.categoryRailOrder) ? prevUi.categoryRailOrder : [];
       const nextOrder = prevOrder.includes(id) ? prevOrder : [...prevOrder, id];
       const isFirst = prevCategories.length === 0;
+      const prevSel =
+        prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+          ? prevUi.selectedCategoryByView
+          : {};
+      const nextSelectedByView = { ...prevSel, home: id, library: id };
       const nextUi = isFirst
-        ? { ...prevUi, selectedCategoryId: id, librarySelectedCategoryId: id, categoryRailOrder: nextOrder }
-        : { ...prevUi, librarySelectedCategoryId: id, categoryRailOrder: nextOrder };
+        ? {
+            ...prevUi,
+            selectedCategoryId: id,
+            librarySelectedCategoryId: id,
+            selectedCategoryByView: nextSelectedByView,
+            categoryRailOrder: nextOrder,
+          }
+        : {
+            ...prevUi,
+            librarySelectedCategoryId: id,
+            selectedCategoryByView: nextSelectedByView,
+            categoryRailOrder: nextOrder,
+          };
 
       let next = { ...prev, categories: nextCategories, ui: nextUi };
       if (isPriority) next = setPrimaryCategory(next, id);

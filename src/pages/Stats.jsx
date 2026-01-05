@@ -67,7 +67,7 @@ export default function Stats({ data }) {
               <div style={{ fontSize: 28, fontWeight: 900 }}>{Math.round(dailyAvg * 100)}%</div>
               <ProgressRing value={dailyAvg} />
             </div>
-            <div className="small2">Moyenne des habitudes quotidiennes</div>
+            <div className="small2">Moyenne des actions quotidiennes</div>
           </div>
         </Card>
 
@@ -78,7 +78,7 @@ export default function Stats({ data }) {
               <div style={{ fontSize: 28, fontWeight: 900 }}>{Math.round(weeklyAvg * 100)}%</div>
               <ProgressRing value={weeklyAvg} />
             </div>
-            <div className="small2">Moyenne des habitudes hebdomadaires</div>
+            <div className="small2">Moyenne des actions hebdomadaires</div>
           </div>
         </Card>
       </div>

@@ -152,7 +152,7 @@ function formatGoalMeta(goal) {
   }
 
   if (planType === "STATE") {
-    const parts = ["Suivi via une habitude liée"];
+    const parts = ["Suivi via une action liée"];
     if (goal?.deadline) parts.push(`date limite ${formatDateFr(goal.deadline)}`);
     return parts.join(" · ");
   }
@@ -249,7 +249,7 @@ function HabitForm({
 }) {
   return (
     <>
-      <Input value={title} onChange={onTitleChange} placeholder="Nom de l’habitude" />
+      <Input value={title} onChange={onTitleChange} placeholder="Nom de l’action" />
       {planType === "ACTION" ? (
         <div>
           <div className="small" style={{ marginBottom: 6 }}>
@@ -404,15 +404,15 @@ export default function CategoryDetail({ data, setData, categoryId, onBack, onSe
       ? "Modifier l’objectif"
       : "Nouvel objectif"
     : editGoalId
-    ? "Modifier l’habitude"
-    : "Nouvelle habitude";
+    ? "Modifier l’action"
+    : "Nouvelle action";
   const formSaveLabel = isObjectiveForm
     ? editGoalId
       ? "Enregistrer l’objectif"
       : "Ajouter l’objectif"
     : editGoalId
-    ? "Enregistrer l’habitude"
-    : "Ajouter l’habitude";
+    ? "Enregistrer l’action"
+    : "Ajouter l’action";
   const outcomeAggregate = useMemo(
     () => computeAggregateProgress({ goals: allGoals }, mainGoal?.id),
     [allGoals, mainGoal?.id]
