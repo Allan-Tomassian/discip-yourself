@@ -26,9 +26,9 @@ import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
 import { todayKey } from "./utils/dates";
 import { normalizePriorities } from "./logic/priority";
 import { getCategoryCounts } from "./logic/pilotage";
-import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
-import { useTour } from "./tour/useTour";
-import TourOverlay from "./tour/TourOverlay";
+import { FIRST_USE_FLOW_STEPS, TOUR_VERSION } from "./tour/tourSpec";
+import { TourProvider } from "./tour/TourContext";
+import TourRunner from "./tour/TourRunner";
 
 function runSelfTests() {
   // minimal sanity
@@ -195,7 +195,6 @@ export default function App() {
   const dataRef = useRef(data);
   const lastReminderRef = useRef({});
   const activeReminderRef = useRef(activeReminder);
-  const tour = useTour({ data, setData, steps: FIRST_USE_TOUR_STEPS, tourVersion: TOUR_VERSION });
 
   const setTab = (next, opts = {}) => {
     const t = normalizeTab(next);
@@ -464,7 +463,6 @@ export default function App() {
   const onboardingCompleted = Boolean(safeData.ui?.onboardingCompleted);
   const showPlanStep = Boolean(safeData.ui?.showPlanStep);
   const shouldShowEmpty = !onboarded && !showPlanStep && tab === "today";
-  const showTourOverlay = onboardingCompleted;
   const handlePlanCategory = (categoryId) => {
     const fallbackId = categories[0]?.id || null;
     const targetId = categoryId || fallbackId;
@@ -500,17 +498,37 @@ export default function App() {
     }
     setTab("create-habit");
   };
+  const tourRunner = (
+    <TourRunner
+      data={data}
+      setData={setData}
+      tab={tab}
+      setTab={setTab}
+      steps={FIRST_USE_FLOW_STEPS}
+      tourVersion={TOUR_VERSION}
+    />
+  );
 
   if (showPlanStep && onboardingCompleted) {
-    return <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />;
+    return (
+      <TourProvider>
+        <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />
+        {tourRunner}
+      </TourProvider>
+    );
   }
   if (!onboardingCompleted) {
-    return <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />;
+    return (
+      <TourProvider>
+        <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />
+        {tourRunner}
+      </TourProvider>
+    );
   }
   if (shouldShowEmpty) {
     const empty = getEmptyStateConfig(safeData);
     return (
-      <>
+      <TourProvider>
         <ScreenShell
           data={safeData}
           pageId="home"
@@ -541,25 +559,14 @@ export default function App() {
             </div>
           </Card>
         </ScreenShell>
-        {showTourOverlay ? (
-          <TourOverlay
-            isActive={tour.isActive}
-            step={tour.step}
-            stepIndex={tour.stepIndex}
-            totalSteps={tour.totalSteps}
-            onNext={tour.next}
-            onPrev={tour.prev}
-            onSkip={tour.skip}
-            onMissingAnchor={tour.handleMissingAnchor}
-            onAnchorFound={tour.handleAnchorFound}
-          />
-        ) : null}
-      </>
+        {tourRunner}
+      </TourProvider>
     );
   }
 
   return (
-    <>
+    <TourProvider>
+      <>
         <TopNav
         active={
           tab === "session"
@@ -644,6 +651,19 @@ export default function App() {
           setData={setData}
           onOpenLibrary={() => {
             setLibraryCategoryId(null);
+            setTab("library");
+          }}
+          onOpenManageCategory={(categoryId) => {
+            if (!categoryId) return;
+            setLibraryCategoryId(categoryId);
+            setData((prev) => ({
+              ...prev,
+              ui: {
+                ...(prev.ui || {}),
+                librarySelectedCategoryId: categoryId,
+                selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), library: categoryId },
+              },
+            }));
             setTab("library");
           }}
           onOpenCreate={() => {
@@ -892,19 +912,8 @@ export default function App() {
           </Card>
         </div>
       ) : null}
-      {showTourOverlay ? (
-        <TourOverlay
-          isActive={tour.isActive}
-          step={tour.step}
-          stepIndex={tour.stepIndex}
-          totalSteps={tour.totalSteps}
-          onNext={tour.next}
-          onPrev={tour.prev}
-          onSkip={tour.skip}
-          onMissingAnchor={tour.handleMissingAnchor}
-          onAnchorFound={tour.handleAnchorFound}
-        />
-      ) : null}
-    </>
+      {tourRunner}
+      </>
+    </TourProvider>
   );
 }

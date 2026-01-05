@@ -137,6 +137,26 @@ a{ color:inherit; }
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap:10px;
 }
+.noteActions{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:8px;
+}
+.calendarMonthHeader{
+  display:grid;
+  grid-template-columns: auto 1fr auto;
+  align-items:center;
+  gap:8px;
+}
+.calendarMonthTitle{
+  text-align:center;
+}
+.calendarMonthActions{
+  display:flex;
+  justify-content:flex-end;
+  margin-top:8px;
+}
 @media (max-width: 420px){
   .noteMetaGrid{
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -481,6 +501,24 @@ a{ color:inherit; }
 .textarea{ resize:none; min-height:92px; }
 
 .scrollTarget{ scroll-margin-top:120px; }
+
+.flashPulse{
+  animation: flashPulse 1.6s ease-out 1;
+  box-shadow: 0 0 0 1px var(--accent), 0 0 22px var(--accentGlow);
+}
+.flashPulseBtn{
+  animation: flashPulseBtn 1.6s ease-out 1;
+}
+@keyframes flashPulse{
+  0%{ box-shadow: 0 0 0 1px var(--accent), 0 0 8px var(--accentGlow); }
+  60%{ box-shadow: 0 0 0 2px var(--accent), 0 0 24px var(--accentGlow); }
+  100%{ box-shadow: 0 0 0 1px var(--accent), 0 0 10px var(--accentGlow); }
+}
+@keyframes flashPulseBtn{
+  0%{ box-shadow: 0 0 0 0 rgba(255,255,255,.45); }
+  60%{ box-shadow: 0 0 0 6px rgba(255,255,255,.18); }
+  100%{ box-shadow: 0 0 0 0 rgba(255,255,255,.0); }
+}
 
 .focusHalo{
   position:relative;

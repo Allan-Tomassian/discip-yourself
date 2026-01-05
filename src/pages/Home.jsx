@@ -150,6 +150,7 @@ export default function Home({
   data,
   setData,
   onOpenLibrary,
+  onOpenManageCategory,
   onOpenCreate,
   onOpenCreateCategory,
   onOpenSession,
@@ -400,7 +401,7 @@ export default function Home({
   }, [dayChecks.micro]);
 
   const hasActiveSession = Boolean(sessionForDay && sessionForDay.status === "partial");
-  const canOpenSession = Boolean(canValidate && selectedGoal && activeHabits.length);
+  const canOpenSession = Boolean(canValidate && selectedGoal);
 
   const coreProgress = useMemo(() => {
     const activeIds = new Set(activeHabits.map((h) => h.id));
@@ -661,7 +662,22 @@ export default function Home({
   }
 
   function openSessionFlow() {
-    if (!selectedGoal?.id || !activeHabits.length || typeof setData !== "function") return;
+    if (!selectedGoal?.id || !canValidate || typeof setData !== "function") return;
+    if (!activeHabits.length) {
+      setData((prev) => ({
+        ...prev,
+        ui: {
+          ...(prev.ui || {}),
+          manageScrollTo: "actions",
+        },
+      }));
+      if (typeof onOpenManageCategory === "function") {
+        onOpenManageCategory(focusCategory?.id || null);
+      } else if (typeof onOpenLibrary === "function") {
+        onOpenLibrary();
+      }
+      return;
+    }
     setData((prev) =>
       startSessionForDate(prev, selectedDateKey, {
         objectiveId: selectedGoal.id,
@@ -1037,16 +1053,18 @@ export default function Home({
                             </div>
 
                             <div className="mt12">
-                              <Button onClick={openSessionFlow} disabled={!canOpenSession} data-tour-id="today-go">
-                                GO
-                              </Button>
+                              <div className="row" style={{ justifyContent: "flex-end" }}>
+                                <Button onClick={openSessionFlow} disabled={!canOpenSession} data-tour-id="today-go">
+                                  GO
+                                </Button>
+                              </div>
                               {!selectedGoal ? (
                                 <div className="sectionSub" style={{ marginTop: 8 }}>
-                                  Choisis un objectif principal.
+                                  Sélectionne un objectif pour activer GO.
                                 </div>
                               ) : !activeHabits.length ? (
                                 <div className="sectionSub" style={{ marginTop: 8 }}>
-                                  Ajoute une action dans Bibliothèque &gt; Gérer.
+                                  Aucune action liée. Va dans Bibliothèque &gt; Gérer pour en créer une.
                                 </div>
                               ) : !canValidate ? (
                                 <div className="sectionSub" style={{ marginTop: 8 }}>
@@ -1076,8 +1094,7 @@ export default function Home({
                               </div>
                             </div>
                             <div className="row" style={{ gap: 8 }}>
-                              <Button
-                                variant="ghost"
+                              <IconButton
                                 onClick={() => {
                                   const today = toLocalDateKey(new Date());
                                   handleDayOpen(today);
@@ -1085,10 +1102,12 @@ export default function Home({
                                     requestAnimationFrame(() => scrollRailToKey(today));
                                   }
                                 }}
+                                aria-label="Revenir à aujourd’hui"
+                                title="Revenir à aujourd’hui"
                                 data-tour-id="today-calendar-today"
                               >
-                                Aujourd’hui
-                              </Button>
+                                ⟳
+                              </IconButton>
                               <Button
                                 variant="ghost"
                                 onClick={() => setCalendarView("day")}
@@ -1154,19 +1173,25 @@ export default function Home({
                             </div>
                           ) : (
                             <div className="mt12">
-                              <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                                <div className="row" style={{ alignItems: "center", gap: 8 }}>
-                                  <Button variant="ghost" onClick={() => setMonthCursor((d) => addMonths(d, -1))}>
-                                    ←
-                                  </Button>
-                                  <div className="titleSm" style={{ minWidth: 140, textAlign: "center" }}>
-                                    {getMonthLabelFR(monthCursor)}
-                                  </div>
-                                  <Button variant="ghost" onClick={() => setMonthCursor((d) => addMonths(d, 1))}>
-                                    →
-                                  </Button>
-                                </div>
-                                {typeof onAddOccurrence === "function" ? (
+                              <div className="calendarMonthHeader">
+                                <Button
+                                  variant="ghost"
+                                  onClick={() => setMonthCursor((d) => addMonths(d, -1))}
+                                  aria-label="Mois précédent"
+                                >
+                                  ←
+                                </Button>
+                                <div className="titleSm calendarMonthTitle">{getMonthLabelFR(monthCursor)}</div>
+                                <Button
+                                  variant="ghost"
+                                  onClick={() => setMonthCursor((d) => addMonths(d, 1))}
+                                  aria-label="Mois suivant"
+                                >
+                                  →
+                                </Button>
+                              </div>
+                              {typeof onAddOccurrence === "function" ? (
+                                <div className="calendarMonthActions">
                                   <Button
                                     variant="ghost"
                                     onClick={() => handleAddOccurrence(selectedDateKey, selectedGoal?.id || null)}
@@ -1174,8 +1199,8 @@ export default function Home({
                                   >
                                     Ajouter
                                   </Button>
-                                ) : null}
-                              </div>
+                                </div>
+                              ) : null}
                               <div
                                 className="mt10"
                                 style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, textAlign: "center" }}
@@ -1209,7 +1234,7 @@ export default function Home({
                                       }}
                                     >
                                       <div className="dayPillDay">{cell.dayNumber}</div>
-                                      <div className="small2">P:{plannedCount} · F:{doneCount}</div>
+                                      <div className="small2">Planifié {plannedCount} · Fait {doneCount}</div>
                                     </button>
                                   );
                                 })}
@@ -1336,13 +1361,6 @@ export default function Home({
                             </div>
                             <div className="row" style={{ gap: 8 }}>
                               <IconButton
-                                aria-label="Ajouter à l'historique"
-                                onClick={addNoteToHistory}
-                                data-tour-id="today-notes-add"
-                              >
-                                Ajouter
-                              </IconButton>
-                              <IconButton
                                 aria-label="Historique des notes"
                                 onClick={() => setShowNotesHistory(true)}
                                 data-tour-id="today-notes-history"
@@ -1414,6 +1432,11 @@ export default function Home({
                                 />
                               </div>
                             </div>
+                          </div>
+                          <div className="noteActions mt12">
+                            <Button onClick={addNoteToHistory} data-tour-id="today-notes-add">
+                              Enregistrer
+                            </Button>
                           </div>
                         </div>
                       </Card>

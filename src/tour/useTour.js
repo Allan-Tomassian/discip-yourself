@@ -1,13 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-export function useTour({ data, setData, steps, tourVersion }) {
+export function useTour({ data, setData, steps, tourVersion, tourState }) {
   const safeSteps = useMemo(() => (Array.isArray(steps) ? steps.filter(Boolean) : []), [steps]);
   const totalSteps = safeSteps.length;
   const ui = data?.ui || {};
   const onboardingCompleted = Boolean(ui.onboardingCompleted);
+  const hasSeenTour = tourState?.hasSeenTour;
+  const setHasSeenTour = tourState?.setHasSeenTour;
+  const tourStatus = tourState?.status || "idle";
+  const setTourStatus = tourState?.setStatus;
+  const persistedIndex = Number.isFinite(tourState?.stepIndex) ? tourState.stepIndex : 0;
+  const setPersistedIndex = tourState?.setStepIndex;
 
   const [isActive, setIsActive] = useState(false);
-  const [stepIndex, setStepIndex] = useState(0);
+  const [stepIndex, setStepIndex] = useState(persistedIndex || 0);
   const stepIndexRef = useRef(0);
   const missingCountRef = useRef(0);
 
@@ -21,16 +27,30 @@ export function useTour({ data, setData, steps, tourVersion }) {
       return;
     }
     const seenVersion = typeof ui.tourSeenVersion === "number" ? ui.tourSeenVersion : 0;
-    const shouldStart = ui.tourForceStart === true || seenVersion < tourVersion;
+    const shouldStart =
+      ui.tourForceStart === true ||
+      seenVersion < tourVersion ||
+      hasSeenTour === false;
     if (!shouldStart) {
       setIsActive(false);
       return;
     }
-    const startIndex = typeof ui.tourStepIndex === "number" ? ui.tourStepIndex : 0;
+    const startIndex = typeof ui.tourStepIndex === "number" ? ui.tourStepIndex : persistedIndex || 0;
     const clamped = Math.min(Math.max(0, startIndex), totalSteps - 1);
     setStepIndex(clamped);
     setIsActive(true);
-  }, [onboardingCompleted, totalSteps, ui.tourForceStart, ui.tourSeenVersion, ui.tourStepIndex, tourVersion]);
+    if (typeof setTourStatus === "function") setTourStatus("running");
+  }, [
+    onboardingCompleted,
+    totalSteps,
+    ui.tourForceStart,
+    ui.tourSeenVersion,
+    ui.tourStepIndex,
+    tourVersion,
+    hasSeenTour,
+    persistedIndex,
+    setTourStatus,
+  ]);
 
   useEffect(() => {
     if (!isActive || typeof setData !== "function") return;
@@ -45,7 +65,19 @@ export function useTour({ data, setData, steps, tourVersion }) {
         },
       };
     });
-  }, [isActive, stepIndex, setData]);
+  }, [isActive, stepIndex, setData, setPersistedIndex]);
+
+  useEffect(() => {
+    if (!isActive || typeof setPersistedIndex !== "function") return;
+    setPersistedIndex(stepIndex);
+  }, [isActive, stepIndex, setPersistedIndex]);
+
+  useEffect(() => {
+    if (isActive) return;
+    if (persistedIndex !== stepIndex) {
+      setStepIndex(persistedIndex);
+    }
+  }, [isActive, persistedIndex, stepIndex]);
 
   const end = useCallback(() => {
     setIsActive(false);
@@ -61,7 +93,10 @@ export function useTour({ data, setData, steps, tourVersion }) {
         tourStepIndex: 0,
       },
     }));
-  }, [setData, tourVersion]);
+    if (typeof setTourStatus === "function") setTourStatus("completed");
+    if (typeof setHasSeenTour === "function") setHasSeenTour(true);
+    if (typeof setPersistedIndex === "function") setPersistedIndex(0);
+  }, [setData, tourVersion, setHasSeenTour, setPersistedIndex, setTourStatus]);
 
   const next = useCallback(() => {
     const current = stepIndexRef.current;
@@ -121,6 +156,7 @@ export function useTour({ data, setData, steps, tourVersion }) {
 
   return {
     isActive,
+    status: tourStatus,
     step,
     stepIndex,
     totalSteps,

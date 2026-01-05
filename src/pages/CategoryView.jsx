@@ -58,6 +58,32 @@ export default function CategoryView({
   const [selectedOutcomeId, setSelectedOutcomeId] = useState(null);
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
 
+  useEffect(() => {
+    if (safeData?.ui?.manageScrollTo !== "actions") return;
+    if (typeof document === "undefined") return;
+    const section = document.querySelector('[data-tour-id="manage-actions-section"]');
+    const cta = document.querySelector('[data-tour-id="manage-actions-create"]');
+    if (section && typeof section.scrollIntoView === "function") {
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+      section.classList.add("flashPulse");
+    }
+    if (cta) cta.classList.add("flashPulseBtn");
+    if (typeof setData === "function") {
+      setData((prev) => ({
+        ...prev,
+        ui: {
+          ...(prev.ui || {}),
+          manageScrollTo: null,
+        },
+      }));
+    }
+    const timeout = window.setTimeout(() => {
+      if (section) section.classList.remove("flashPulse");
+      if (cta) cta.classList.remove("flashPulseBtn");
+    }, 1600);
+    return () => window.clearTimeout(timeout);
+  }, [safeData?.ui?.manageScrollTo, setData]);
+
   const outcomeGoals = useMemo(() => {
     if (!category?.id) return [];
     return goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "OUTCOME");
