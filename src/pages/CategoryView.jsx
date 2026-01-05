@@ -7,6 +7,10 @@ import { safeConfirm, safePrompt } from "../utils/dialogs";
 import { addDays, startOfWeekKey, todayKey } from "../utils/dates";
 import { isPrimaryCategory, isPrimaryGoal, setPrimaryCategory } from "../logic/priority";
 
+// TOUR MAP:
+// - primary_action: manage goals/actions in a category
+// - key_elements: back button, category settings, objectives/actions sections
+// - optional_elements: pilotage link, mini-why toggle
 function resolveGoalType(goal) {
   const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
   if (raw === "OUTCOME" || raw === "PROCESS") return raw;
@@ -228,7 +232,7 @@ export default function CategoryView({
   if (!categories.length) {
     return (
       <ScreenShell
-        headerTitle={<span className="textAccent">Gérer</span>}
+        headerTitle={<span className="textAccent" data-tour-id="manage-title">Gérer</span>}
         headerSubtitle="Aucune catégorie"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
@@ -239,7 +243,7 @@ export default function CategoryView({
               Ajoute une première catégorie pour commencer.
             </div>
             <div className="mt12">
-              <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+              <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack} data-tour-id="manage-back">
                 ← Retour
               </Button>
             </div>
@@ -252,7 +256,7 @@ export default function CategoryView({
   if (!category) {
     return (
       <ScreenShell
-        headerTitle={<span className="textAccent">Gérer</span>}
+        headerTitle={<span className="textAccent" data-tour-id="manage-title">Gérer</span>}
         headerSubtitle="Catégorie introuvable"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
@@ -263,7 +267,7 @@ export default function CategoryView({
               Cette catégorie n’existe plus.
             </div>
             <div className="mt12">
-              <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+              <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack} data-tour-id="manage-back">
                 ← Retour
               </Button>
             </div>
@@ -311,11 +315,11 @@ export default function CategoryView({
     <ScreenShell
       accent={accent}
       backgroundImage={backgroundImage}
-      headerTitle={<span className="textAccent">Gérer</span>}
+      headerTitle={<span className="textAccent" data-tour-id="manage-title">Gérer</span>}
       headerSubtitle={
         <div className="stack stackGap12">
-          <div>{category.name || "Catégorie"}</div>
-          <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+          <div data-tour-id="manage-category-name">{category.name || "Catégorie"}</div>
+          <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack} data-tour-id="manage-back">
             ← Retour
           </Button>
         </div>
@@ -324,7 +328,7 @@ export default function CategoryView({
       headerRowAlign="start"
     >
       <div style={{ "--catColor": category.color || "#7C3AED" }}>
-        <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }}>
+        <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }} data-tour-id="manage-category-card">
           <div className="p18">
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div>
@@ -347,12 +351,14 @@ export default function CategoryView({
                     setGoalMenuOpenId(null);
                     setHabitMenuOpenId(null);
                   }}
+                  data-tour-id="manage-category-settings"
                 />
                 <IconButton
                   icon="close"
                   className="iconBtnDanger"
                   aria-label="Supprimer la catégorie"
                   onClick={deleteCategory}
+                  data-tour-id="manage-category-delete"
                 />
               </div>
             </div>
@@ -364,6 +370,7 @@ export default function CategoryView({
                     renameCategory();
                     setCategoryMenuOpen(false);
                   }}
+                  data-tour-id="manage-category-rename"
                 >
                   Renommer
                 </Button>
@@ -374,6 +381,7 @@ export default function CategoryView({
                     setCategoryMenuOpen(false);
                   }}
                   disabled={isPrimaryCategory(category)}
+                  data-tour-id="manage-category-priority"
                 >
                   {isPrimaryCategory(category) ? "Prioritaire" : "Définir comme prioritaire"}
                 </Button>
@@ -382,14 +390,14 @@ export default function CategoryView({
           </div>
         </Card>
 
-        <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }}>
+        <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }} data-tour-id="manage-mini-why">
           <div className="p18">
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div className="titleSm">Mini-why</div>
                 <div className="small2">Visible pour cette catégorie</div>
               </div>
-              <button className="linkBtn" onClick={() => setShowWhy((v) => !v)}>
+              <button className="linkBtn" onClick={() => setShowWhy((v) => !v)} data-tour-id="manage-mini-why-toggle">
                 {showWhy ? "Masquer" : "Afficher"}
               </button>
             </div>
@@ -397,7 +405,7 @@ export default function CategoryView({
           </div>
         </Card>
 
-        <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }}>
+        <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }} data-tour-id="manage-objectives-section">
           <div className="p18">
             <div className="titleSm">Objectifs</div>
             {outcomeGoals.length ? (
@@ -434,7 +442,11 @@ export default function CategoryView({
               <div className="mt12 col">
                 <div className="small2">Aucun objectif dans cette catégorie.</div>
                 <div className="mt10">
-                  <Button variant="ghost" onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}>
+                  <Button
+                    variant="ghost"
+                    onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
+                    data-tour-id="manage-objectives-create"
+                  >
                     Créer
                   </Button>
                 </div>
@@ -443,7 +455,7 @@ export default function CategoryView({
           </div>
         </Card>
 
-        <Card accentBorder style={{ marginTop: 12 }}>
+        <Card accentBorder style={{ marginTop: 12 }} data-tour-id="manage-actions-section">
           <div className="p18">
             <div className="titleSm">Actions</div>
             {habits.length ? (
@@ -481,7 +493,11 @@ export default function CategoryView({
               <div className="mt12 col">
                 <div className="small2">Aucune action liée.</div>
                 <div className="mt10">
-                  <Button variant="ghost" onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}>
+                  <Button
+                    variant="ghost"
+                    onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
+                    data-tour-id="manage-actions-create"
+                  >
                     Créer
                   </Button>
                 </div>
@@ -490,14 +506,14 @@ export default function CategoryView({
           </div>
         </Card>
 
-        <Card accentBorder style={{ marginTop: 12 }}>
+        <Card accentBorder style={{ marginTop: 12 }} data-tour-id="manage-pilotage-section">
           <div className="p18">
             <div className="titleSm">Pilotage</div>
             <div className="small2" style={{ marginTop: 6 }}>
               Etat, charge et discipline (lecture seule).
             </div>
             <div className="mt10">
-              <Button variant="ghost" onClick={openPilotage}>
+              <Button variant="ghost" onClick={openPilotage} data-tour-id="manage-open-pilotage">
                 Ouvrir le pilotage
               </Button>
             </div>

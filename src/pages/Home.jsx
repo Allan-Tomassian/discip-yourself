@@ -1230,7 +1230,7 @@ export default function Home({
 
                   if (blockId === "micro") {
                     return (
-                      <Card>
+                      <Card data-tour-id="today-micro-card">
                         <div className="p18">
                           <div className="row">
                             <div className="cardSectionTitleRow">
@@ -1245,6 +1245,7 @@ export default function Home({
                               className="linkBtn microToggle"
                               type="button"
                               onClick={() => setMicroOpen((v) => !v)}
+                              data-tour-id="today-micro-toggle"
                             >
                               {microOpen ? "▾" : "▸"}
                             </button>
@@ -1322,7 +1323,7 @@ export default function Home({
                   }
 
                     return (
-                      <Card>
+                      <Card data-tour-id="today-notes-card">
                         <div className="p18">
                           <div className="row">
                             <div className="cardSectionTitleRow">
@@ -1334,12 +1335,17 @@ export default function Home({
                               <div className="cardSectionTitle">Note du jour</div>
                             </div>
                             <div className="row" style={{ gap: 8 }}>
-                              <IconButton aria-label="Ajouter à l'historique" onClick={addNoteToHistory}>
+                              <IconButton
+                                aria-label="Ajouter à l'historique"
+                                onClick={addNoteToHistory}
+                                data-tour-id="today-notes-add"
+                              >
                                 Ajouter
                               </IconButton>
                               <IconButton
                                 aria-label="Historique des notes"
                                 onClick={() => setShowNotesHistory(true)}
+                                data-tour-id="today-notes-history"
                               >
                                 +
                               </IconButton>
@@ -1359,11 +1365,12 @@ export default function Home({
                                 }
                               }}
                               placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
+                              data-tour-id="today-notes-text"
                             />
                           </div>
                           <div className="mt12">
                             <div className="small2">Check-in rapide</div>
-                            <div className="noteMetaGrid mt8">
+                            <div className="noteMetaGrid mt8" data-tour-id="today-notes-meta">
                               <div>
                                 <div className="small2">Forme</div>
                                 <Select
