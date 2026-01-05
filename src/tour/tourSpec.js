@@ -1,3 +1,10 @@
+// FIRST_USE_TOUR rationale:
+// - today-title: explains what the app is (Today focus).
+// - today-focus-card: shows the daily focus area (action context).
+// - today-focus-goal-select: teaches selecting the main goal (action setup).
+// - today-go: shows how to start acting today (primary action).
+// - library-create: shows where to create items (entry to creation).
+// - create-title: confirms the creation flow location (next step).
 export const TOUR_VERSION = 1;
 
 export const TOUR_STEPS = [
@@ -1003,4 +1010,13 @@ export const TOUR_STEPS = [
     nextActionHint: "Lis l'information.",
     skippableAfterMs: 3000,
   },
+];
+
+export const FIRST_USE_TOUR_STEPS = [
+  TOUR_STEPS.find((step) => step.id === "today-title"),
+  TOUR_STEPS.find((step) => step.id === "today-focus-card"),
+  TOUR_STEPS.find((step) => step.id === "today-focus-goal-select"),
+  TOUR_STEPS.find((step) => step.id === "today-go"),
+  TOUR_STEPS.find((step) => step.id === "library-create"),
+  TOUR_STEPS.find((step) => step.id === "create-title"),
 ];
