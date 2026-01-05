@@ -37,10 +37,21 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
 
     // Keep Library selection local to Library page only
     if (typeof setData === "function") {
-      setData((prev) => ({
-        ...prev,
-        ui: { ...(prev.ui || {}), librarySelectedCategoryId: categoryId },
-      }));
+      setData((prev) => {
+        const prevUi = prev.ui || {};
+        const prevSel =
+          prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+            ? prevUi.selectedCategoryByView
+            : {};
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            librarySelectedCategoryId: categoryId,
+            selectedCategoryByView: { ...prevSel, library: categoryId },
+          },
+        };
+      });
     }
 
     // Navigation callback stays the same (parent decides what to do)

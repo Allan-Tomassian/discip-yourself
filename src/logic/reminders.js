@@ -59,61 +59,153 @@ export function normalizeReminder(raw, index = 0) {
 
 export function getDueReminders(state, now, lastFiredMap) {
   const reminders = Array.isArray(state?.reminders) ? state.reminders : [];
-  if (!reminders.length) return [];
   const occurrences = Array.isArray(state?.occurrences) ? state.occurrences : [];
   const goals = Array.isArray(state?.goals) ? state.goals : [];
-  const timeKey = formatNowKey(now);
   const nowHM = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const jsDow = now.getDay(); // 0=Sun..6=Sat
   const appDow = jsDow === 0 ? 7 : jsDow;
+  const today = todayKey(now);
+  const debug = typeof window !== "undefined" && window.__debugReminders;
   const due = [];
+  const candidates = debug ? [] : null;
+  const goalsById = new Map(goals.map((g) => [g?.id, g]));
+
+  const remindersByGoal = new Map();
+  for (const r of reminders) {
+    if (!r || r.enabled === false) continue;
+    const goalId = typeof r.goalId === "string" ? r.goalId : "";
+    if (!goalId) continue;
+    const goal = goalsById.get(goalId);
+    if (!goal || resolveGoalType(goal) !== "PROCESS") continue;
+    const list = remindersByGoal.get(goalId) || [];
+    list.push(r);
+    remindersByGoal.set(goalId, list);
+  }
+
   const occurrencesByGoal = new Map();
   for (const occ of occurrences) {
     if (!occ || typeof occ.goalId !== "string") continue;
+    if (occ.date !== today) continue;
     const list = occurrencesByGoal.get(occ.goalId) || [];
     list.push(occ);
     occurrencesByGoal.set(occ.goalId, list);
   }
-  const today = todayKey(now);
 
-  for (const r of reminders) {
-    if (!r || r.enabled === false) continue;
-    const goalId = typeof r.goalId === "string" ? r.goalId : "";
-    const goal = goalId ? goals.find((g) => g?.id === goalId) || null : null;
+  function shouldSkipFire(goalId) {
+    const key = `${goalId}|${today}|${nowHM}`;
+    if (lastFiredMap && lastFiredMap[key]) return true;
+    if (lastFiredMap) lastFiredMap[key] = true;
+    return false;
+  }
+
+  for (const goal of goals) {
     if (!goal || resolveGoalType(goal) !== "PROCESS") continue;
-    const target = goal;
-    const goalOccurrences = goalId ? occurrencesByGoal.get(goalId) || [] : [];
-    const hasOccurrences = goalOccurrences.length > 0;
+    const goalId = goal.id;
+    if (!goalId) continue;
 
-    if (hasOccurrences) {
-      const dueOccurrence = goalOccurrences.some((occ) => {
-        if (!occ || typeof occ.date !== "string" || typeof occ.start !== "string") return false;
+    const todaysOccurrences = occurrencesByGoal.get(goalId) || [];
+    const hasOccurrencesToday = todaysOccurrences.length > 0;
+    const reminderItems = remindersByGoal.get(goalId) || [];
+
+    if (hasOccurrencesToday) {
+      const dueOccurrence = todaysOccurrences.find((occ) => {
+        if (!occ || typeof occ.start !== "string") return false;
         const status = occ.status || "planned";
         if (status === "done" || status === "skipped") return false;
-        if (occ.date !== today) return false;
         return occ.start === nowHM;
       });
-      if (!dueOccurrence) continue;
-      if (lastFiredMap && lastFiredMap[r.id] === timeKey) continue;
-      due.push(r);
-      if (lastFiredMap) lastFiredMap[r.id] = timeKey;
+      if (dueOccurrence) {
+        if (shouldSkipFire(goalId)) {
+          if (candidates) candidates.push({ goalId, source: "occurrence", time: nowHM, skipped: "fired" });
+          continue;
+        }
+        const template = reminderItems[0] || {};
+        const reminder = {
+          id: template.id || `${goalId}-${today}-${nowHM}-occ`,
+          goalId,
+          time: nowHM,
+          enabled: true,
+          channel: template.channel || "IN_APP",
+          label: template.label || "Rappel",
+          days: template.days || normalizeDays([]),
+          __source: "occurrence",
+        };
+        if (candidates) candidates.push({ goalId, source: "occurrence", time: nowHM, due: true });
+        due.push(reminder);
+      } else if (candidates) {
+        candidates.push({ goalId, source: "occurrence", time: nowHM, due: false });
+      }
       continue;
     }
 
-    const schedule = target && typeof target.schedule === "object" ? target.schedule : null;
+    if (reminderItems.length) {
+      const enabledReminders = reminderItems.filter((r) => r && r.enabled !== false);
+      for (const r of enabledReminders) {
+        const days = normalizeDays(r.days);
+        if (days && !days.includes(appDow)) continue;
+        const parsed = parseTime(r.time);
+        if (!parsed) continue;
+        const match = `${String(parsed.h).padStart(2, "0")}:${String(parsed.min).padStart(2, "0")}` === nowHM;
+        if (!match) continue;
+        if (shouldSkipFire(goalId)) {
+          if (candidates) candidates.push({ goalId, source: "reminder", time: nowHM, skipped: "fired" });
+          continue;
+        }
+        const reminder = { ...r, __source: "reminder" };
+        if (candidates) candidates.push({ goalId, source: "reminder", time: nowHM, due: true });
+        due.push(reminder);
+      }
+      continue;
+    }
+
+    const schedule = goal && typeof goal.schedule === "object" ? goal.schedule : null;
+    const remindersEnabled = Boolean(schedule?.remindersEnabled);
+    if (!remindersEnabled) {
+      if (candidates) candidates.push({ goalId, source: "schedule", time: nowHM, due: false, skipped: "disabled" });
+      continue;
+    }
     const timeSlots = Array.isArray(schedule?.timeSlots) ? schedule.timeSlots : [];
-    if (!timeSlots.length) continue;
+    if (!timeSlots.length) {
+      if (candidates) candidates.push({ goalId, source: "schedule", time: nowHM, due: false, skipped: "no-slots" });
+      continue;
+    }
     const days = Array.isArray(schedule?.daysOfWeek) && schedule.daysOfWeek.length ? schedule.daysOfWeek : null;
-    if (days && !days.includes(appDow)) continue;
+    if (days && !days.includes(appDow)) {
+      if (candidates) candidates.push({ goalId, source: "schedule", time: nowHM, due: false, skipped: "day" });
+      continue;
+    }
     const slotMatch = timeSlots.some((slot) => {
       const parsed = parseTime(slot);
       if (!parsed) return false;
       return `${String(parsed.h).padStart(2, "0")}:${String(parsed.min).padStart(2, "0")}` === nowHM;
     });
-    if (!slotMatch) continue;
-    if (lastFiredMap && lastFiredMap[r.id] === timeKey) continue;
-    due.push(r);
-    if (lastFiredMap) lastFiredMap[r.id] = timeKey;
+    if (!slotMatch) {
+      if (candidates) candidates.push({ goalId, source: "schedule", time: nowHM, due: false });
+      continue;
+    }
+    if (shouldSkipFire(goalId)) {
+      if (candidates) candidates.push({ goalId, source: "schedule", time: nowHM, skipped: "fired" });
+      continue;
+    }
+    const reminder = {
+      id: `${goalId}-${today}-${nowHM}-schedule`,
+      goalId,
+      time: nowHM,
+      enabled: true,
+      channel: "IN_APP",
+      label: "Rappel",
+      days: days || normalizeDays([]),
+      __source: "schedule",
+    };
+    if (candidates) candidates.push({ goalId, source: "schedule", time: nowHM, due: true });
+    due.push(reminder);
+  }
+
+  if (debug) {
+    // eslint-disable-next-line no-console
+    console.debug("[reminders] candidates", { now: `${today} ${nowHM}`, candidates });
+    // eslint-disable-next-line no-console
+    console.debug("[reminders] due", { count: due.length, due: due.map((r) => ({ goalId: r.goalId, source: r.__source, time: r.time })) });
   }
 
   return due;

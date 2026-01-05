@@ -18,6 +18,7 @@ import CreateHabit from "./pages/CreateHabit";
 import Settings from "./pages/Settings";
 import CategoryDetail from "./pages/CategoryDetail";
 import CategoryView from "./pages/CategoryView";
+import EditItem from "./pages/EditItem";
 import CategoryDetailView from "./pages/CategoryDetailView";
 import CategoryProgress from "./pages/CategoryProgress";
 import Session from "./pages/Session";
@@ -130,6 +131,7 @@ const TABS = new Set([
   "create-category",
   "create-goal",
   "create-habit",
+  "edit-item",
   "session",
   "category-progress",
   "category-detail",
@@ -179,6 +181,7 @@ export default function App() {
   const [sessionCategoryId, setSessionCategoryId] = useState(initialSearch?.get("cat") || null);
   const [sessionDateKey, setSessionDateKey] = useState(initialSearch?.get("date") || null);
   const [activeReminder, setActiveReminder] = useState(null);
+  const [editItem, setEditItem] = useState(null);
   const [createFlowCategoryId, setCreateFlowCategoryId] = useState(null);
   const [createFlowGoalId, setCreateFlowGoalId] = useState(null);
   const dataRef = useRef(data);
@@ -252,6 +255,44 @@ export default function App() {
     activeReminderRef.current = activeReminder;
   }, [activeReminder]);
 
+  const reminderFingerprint = useMemo(() => {
+    const reminders = Array.isArray(data?.reminders) ? data.reminders : [];
+    const goals = Array.isArray(data?.goals) ? data.goals : [];
+    const occurrences = Array.isArray(data?.occurrences) ? data.occurrences : [];
+    const reminderSig = reminders
+      .map((r) => {
+        const days = Array.isArray(r?.days) ? r.days.join(",") : "";
+        return `${r?.id || ""}:${r?.goalId || ""}:${r?.time || ""}:${r?.enabled === false ? 0 : 1}:${days}:${
+          r?.channel || ""
+        }`;
+      })
+      .sort()
+      .join("|");
+    const scheduleSig = goals
+      .filter((g) => (g?.type || g?.kind || "").toString().toUpperCase() === "PROCESS")
+      .map((g) => {
+        const slots = Array.isArray(g?.schedule?.timeSlots) ? g.schedule.timeSlots.join(",") : "";
+        const days = Array.isArray(g?.schedule?.daysOfWeek) ? g.schedule.daysOfWeek.join(",") : "";
+        const enabled = g?.schedule?.remindersEnabled ? 1 : 0;
+        return `${g?.id || ""}:${slots}:${days}:${enabled}`;
+      })
+      .sort()
+      .join("|");
+    const occurrenceSig = occurrences
+      .map((o) => `${o?.id || ""}:${o?.goalId || ""}:${o?.date || ""}:${o?.start || ""}:${o?.status || ""}`)
+      .sort()
+      .join("|");
+    return `${reminderSig}||${scheduleSig}||${occurrenceSig}`;
+  }, [data?.reminders, data?.goals, data?.occurrences]);
+
+  useEffect(() => {
+    lastReminderRef.current = {};
+    if (typeof window !== "undefined" && window.__debugReminders) {
+      // eslint-disable-next-line no-console
+      console.debug("[reminders] cache cleared");
+    }
+  }, [reminderFingerprint]);
+
   useEffect(() => {
     if (tab === "create-category" || tab === "create-goal" || tab === "create-habit") return;
     setCreateFlowCategoryId(null);
@@ -274,14 +315,35 @@ export default function App() {
 
   useEffect(() => {
     const id = setInterval(() => {
-      if (activeReminderRef.current) return;
+      const debug = typeof window !== "undefined" && window.__debugReminders;
+      if (activeReminderRef.current) {
+        if (debug) {
+          // eslint-disable-next-line no-console
+          console.debug("[reminders] skipped: active reminder");
+        }
+        return;
+      }
       const current = dataRef.current;
-      const due = getDueReminders(current, new Date(), lastReminderRef.current);
+      const now = new Date();
+      const due = getDueReminders(current, now, lastReminderRef.current);
+      if (debug) {
+        // eslint-disable-next-line no-console
+        console.debug("[reminders] tick", { now: now.toISOString(), due: due.length });
+      }
       if (!due.length) return;
       const reminder = due[0];
       const goal = (current.goals || []).find((g) => g.id === reminder.goalId) || null;
       const habit = !goal ? (current.habits || []).find((h) => h.id === reminder.goalId) || null : null;
       const soundEnabled = Boolean(current?.ui?.soundEnabled);
+      if (debug) {
+        // eslint-disable-next-line no-console
+        console.debug("[reminders] dispatch", {
+          goalId: reminder.goalId,
+          id: reminder.id,
+          source: reminder.__source || "unknown",
+          time: reminder.time,
+        });
+      }
       setActiveReminder({ reminder, goal, habit });
       if (soundEnabled) playReminderSound();
       if ((reminder.channel || "IN_APP") === "NOTIFICATION") {
@@ -323,6 +385,15 @@ export default function App() {
     return orderedCategories.filter((c) => plannedCategoryIds.has(c.id));
   }, [orderedCategories, plannedCategoryIds]);
   const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
+  const handleEditBack = () => {
+    const returnTab = editItem?.returnTab || "library";
+    if (returnTab === "library") {
+      const nextId = editItem?.categoryId || libraryCategoryId || null;
+      if (nextId) setLibraryCategoryId(nextId);
+    }
+    setEditItem(null);
+    setTab(returnTab);
+  };
   const railSelectedId =
     tab === "category-detail"
       ? categoryDetailId
@@ -332,7 +403,8 @@ export default function App() {
             tab === "create" ||
             tab === "create-category" ||
             tab === "create-goal" ||
-            tab === "create-habit"
+            tab === "create-habit" ||
+            tab === "edit-item"
           ? librarySelectedCategoryId ||
             safeData?.ui?.selectedCategoryByView?.home ||
             safeData?.ui?.selectedCategoryId ||
@@ -433,6 +505,7 @@ export default function App() {
                 tab === "create-category" ||
                 tab === "create-goal" ||
                 tab === "create-habit" ||
+                tab === "edit-item" ||
                 tab === "category-detail" ||
                 tab === "category-progress"
               ? "library"
@@ -480,10 +553,14 @@ export default function App() {
             });
             return;
           }
-          if (tab === "library") {
+          if (tab === "library" || tab === "edit-item") {
             setData((prev) => ({
               ...prev,
-              ui: { ...(prev.ui || {}), librarySelectedCategoryId: categoryId },
+              ui: {
+                ...(prev.ui || {}),
+                librarySelectedCategoryId: categoryId,
+                selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), library: categoryId },
+              },
             }));
             return;
           }
@@ -598,6 +675,8 @@ export default function App() {
             });
           }}
         />
+      ) : tab === "edit-item" ? (
+        <EditItem data={data} setData={setData} editItem={editItem} onBack={handleEditBack} />
       ) : tab === "library" && libraryCategoryId ? (
         <CategoryView
           data={data}
@@ -616,6 +695,22 @@ export default function App() {
             if (!categoryIdValue) return;
             setCategoryProgressId(categoryIdValue);
             setTab("category-progress", { categoryProgressId: categoryIdValue });
+          }}
+          onEditItem={({ id, type, categoryId }) => {
+            const nextId = categoryId || libraryCategoryId || null;
+            if (nextId) {
+              setLibraryCategoryId(nextId);
+              setData((prev) => ({
+                ...prev,
+                ui: {
+                  ...(prev.ui || {}),
+                  librarySelectedCategoryId: nextId,
+                  selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), library: nextId },
+                },
+              }));
+            }
+            setEditItem({ id, type, categoryId: nextId, returnTab: tab });
+            setTab("edit-item");
           }}
         />
       ) : tab === "library" ? (

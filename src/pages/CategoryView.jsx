@@ -1,15 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, IconButton } from "../components/UI";
-import CategoryRail from "../components/CategoryRail";
-import EditItemPanel from "../components/EditItemPanel";
 import Gauge from "../components/Gauge";
 import { getAccentForPage } from "../utils/_theme";
 import { safeConfirm, safePrompt } from "../utils/dialogs";
-import { uid } from "../utils/helpers";
 import { addDays, startOfWeekKey, todayKey } from "../utils/dates";
-import { updateGoal } from "../logic/goals";
-import { isPrimaryCategory, isPrimaryGoal, setPrimaryCategory, setPrimaryGoalForCategory } from "../logic/priority";
+import { isPrimaryCategory, isPrimaryGoal, setPrimaryCategory } from "../logic/priority";
 
 function resolveGoalType(goal) {
   const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
@@ -22,13 +18,6 @@ function resolveGoalType(goal) {
   return "PROCESS";
 }
 
-function ensureOrder(order, categories) {
-  const ids = categories.map((c) => c.id);
-  const base = Array.isArray(order) ? order.filter((id) => ids.includes(id)) : [];
-  const missing = ids.filter((id) => !base.includes(id));
-  return [...base, ...missing];
-}
-
 const MEASURE_UNITS = {
   money: "€",
   counter: "",
@@ -38,20 +27,21 @@ const MEASURE_UNITS = {
   weight: "kg",
 };
 
-export default function CategoryView({ data, setData, categoryId, onBack, onOpenPlan, onOpenCreate, onOpenProgress }) {
+export default function CategoryView({
+  data,
+  setData,
+  categoryId,
+  onBack,
+  onOpenPlan,
+  onOpenCreate,
+  onOpenProgress,
+  onEditItem,
+}) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const sessions = Array.isArray(safeData.sessions) ? safeData.sessions : [];
   const checks = safeData.checks && typeof safeData.checks === "object" ? safeData.checks : {};
-  const railOrder = useMemo(() => ensureOrder(safeData?.ui?.categoryRailOrder, categories), [
-    safeData?.ui?.categoryRailOrder,
-    categories,
-  ]);
-  const orderedCategories = useMemo(() => {
-    const map = new Map(categories.map((c) => [c.id, c]));
-    return railOrder.map((id) => map.get(id)).filter(Boolean);
-  }, [categories, railOrder]);
   const uiLibraryCategoryId =
     safeData?.ui?.selectedCategoryByView?.library || safeData?.ui?.librarySelectedCategoryId || null;
   const resolvedCategoryId =
@@ -63,26 +53,6 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
   const [showWhy, setShowWhy] = useState(true);
   const [selectedOutcomeId, setSelectedOutcomeId] = useState(null);
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState(null);
-
-  function handleSelectCategory(nextId) {
-    if (!nextId || typeof setData !== "function") return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      const prevSel =
-        prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-          ? prevUi.selectedCategoryByView
-          : {};
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          librarySelectedCategoryId: nextId,
-          selectedCategoryByView: { ...prevSel, library: nextId },
-        },
-      };
-    });
-  }
 
   const outcomeGoals = useMemo(() => {
     if (!category?.id) return [];
@@ -123,7 +93,6 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
     return main ? [main, ...rest] : outcomeGoals;
   }, [outcomeGoals, category?.mainGoalId]);
   const gaugeSlice = gaugeGoals.slice(0, 2);
-  const reminders = Array.isArray(safeData.reminders) ? safeData.reminders : [];
   const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
   const habitWeekStats = useMemo(() => {
     const stats = new Map();
@@ -264,156 +233,12 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
     if (typeof onBack === "function") onBack();
   }
 
-  function deleteGoal(goalId) {
-    if (!goalId || typeof setData !== "function") return false;
-    const ok = safeConfirm("Supprimer cet élément ?");
-    if (!ok) return false;
-    setData((prev) => {
-      const goal = (prev.goals || []).find((g) => g.id === goalId);
-      const isOutcome = resolveGoalType(goal) === "OUTCOME";
-      let nextGoals = (prev.goals || []).filter((g) => g.id !== goalId);
-      if (isOutcome) nextGoals = nextGoals.filter((g) => g.parentId !== goalId);
-      const nextCategories = (prev.categories || []).map((cat) =>
-        cat.mainGoalId === goalId ? { ...cat, mainGoalId: null } : cat
-      );
-      const nextUi = { ...(prev.ui || {}) };
-      if (nextUi.sessionDraft?.objectiveId === goalId) nextUi.sessionDraft = null;
-      if (nextUi.activeSession?.habitIds) {
-        const kept = nextUi.activeSession.habitIds.filter((id) => nextGoals.some((g) => g.id === id));
-        nextUi.activeSession = kept.length ? { ...nextUi.activeSession, habitIds: kept } : null;
-      }
-      return {
-        ...prev,
-        goals: nextGoals,
-        categories: nextCategories,
-        ui: nextUi,
-      };
-    });
-    return true;
-  }
-
   function openEditItem(item) {
     if (!item) return;
     const type = resolveGoalType(item);
-    const itemReminders = reminders.filter((r) => r.goalId === item.id);
-    const itemOccurrences = occurrences.filter((o) => o && o.goalId === item.id);
-    setEditTarget({ item: { ...item, _reminders: itemReminders, _occurrences: itemOccurrences }, type });
-  }
-
-  function buildOccurrencesByGoal(list) {
-    const entries = Array.isArray(list) ? list : [];
-    const map = new Map();
-    for (const occ of entries) {
-      if (!occ || typeof occ.goalId !== "string") continue;
-      const bucket = map.get(occ.goalId) || [];
-      bucket.push(occ);
-      map.set(occ.goalId, bucket);
+    if (typeof onEditItem === "function") {
+      onEditItem({ id: item.id, type, categoryId: item.categoryId || null });
     }
-    return map;
-  }
-
-  function buildPlanSignature(goal, occurrencesByGoal) {
-    if (!goal) return "";
-    const schedule = goal.schedule && typeof goal.schedule === "object" ? goal.schedule : null;
-    const scheduleSig = schedule
-      ? JSON.stringify({
-          daysOfWeek: Array.isArray(schedule.daysOfWeek) ? schedule.daysOfWeek : [],
-          timeSlots: Array.isArray(schedule.timeSlots) ? schedule.timeSlots : [],
-          durationMinutes: Number.isFinite(schedule.durationMinutes) ? schedule.durationMinutes : null,
-          windowStart: schedule.windowStart || "",
-          windowEnd: schedule.windowEnd || "",
-        })
-      : "";
-    const occurrences = occurrencesByGoal?.get(goal.id) || [];
-    const occurrenceSig = occurrences
-      .map((occ) => `${occ?.date || ""}|${occ?.start || ""}|${occ?.status || ""}`)
-      .sort()
-      .join(",");
-    return `${goal.planType || ""}|${goal.startAt || ""}|${scheduleSig}|${occurrenceSig}`;
-  }
-
-  function updateRemindersForGoal(state, goalId, config, fallbackLabel, options = {}) {
-    const base = Array.isArray(state?.reminders) ? state.reminders : [];
-    const others = base.filter((r) => r.goalId !== goalId);
-    const goal = Array.isArray(state?.goals) ? state.goals.find((g) => g?.id === goalId) : null;
-    const goalType = resolveGoalType(goal);
-    if (goalType !== "PROCESS") return others;
-
-    const occurrences = Array.isArray(state?.occurrences) ? state.occurrences : [];
-    const goalOccurrences = occurrences.filter((occ) => occ?.goalId === goalId);
-    const hasOccurrences = goalOccurrences.length > 0;
-    const schedule = goal && typeof goal.schedule === "object" ? goal.schedule : null;
-    const scheduleSlots = Array.isArray(schedule?.timeSlots) ? schedule.timeSlots : [];
-    const scheduleDays =
-      Array.isArray(schedule?.daysOfWeek) && schedule.daysOfWeek.length ? schedule.daysOfWeek : [1, 2, 3, 4, 5, 6, 7];
-    const canUseReminders = hasOccurrences || scheduleSlots.length > 0;
-    if (!config || !config.enabled || !canUseReminders) return others;
-
-    const channel = config.channel === "NOTIFICATION" ? "NOTIFICATION" : "IN_APP";
-    const label = config.label || fallbackLabel || "Rappel";
-    const requestedTimes = Array.isArray(config.times) ? config.times : [];
-    const occurrenceTimes = [
-      ...new Set(goalOccurrences.map((occ) => (typeof occ?.start === "string" ? occ.start : "")).filter(Boolean)),
-    ];
-    const times = hasOccurrences
-      ? occurrenceTimes.length
-        ? occurrenceTimes
-        : requestedTimes.length
-          ? requestedTimes
-          : ["09:00"]
-      : scheduleSlots;
-    const safeTimes = times.filter((t) => typeof t === "string" && t.trim().length);
-    if (!safeTimes.length) return others;
-
-    const existing = base.filter((r) => r.goalId === goalId);
-    const forceNewIds = options?.forceNewIds === true;
-    const nextForGoal = safeTimes.map((time, index) => {
-      const prev = !forceNewIds ? existing[index] : null;
-      return {
-        id: prev?.id || uid(),
-        goalId,
-        time,
-        enabled: true,
-        channel,
-        days: scheduleDays,
-        label: prev?.label || label,
-      };
-    });
-
-    return [...others, ...nextForGoal];
-  }
-
-  function handleSaveEdit(payload) {
-    if (!editTarget?.item?.id || typeof setData !== "function") return;
-    const goalId = editTarget.item.id;
-    const categoryId = editTarget.item.categoryId;
-    const updates = payload?.updates || {};
-    const reminderConfig = payload?.reminderConfig || null;
-
-    setData((prev) => {
-      const prevOccurrencesByGoal = buildOccurrencesByGoal(prev?.occurrences);
-      const prevGoal = Array.isArray(prev?.goals) ? prev.goals.find((g) => g?.id === goalId) : null;
-      const prevPlanSig = buildPlanSignature(prevGoal, prevOccurrencesByGoal);
-
-      let next = updateGoal(prev, goalId, updates);
-      if (editTarget.type === "OUTCOME" && updates.priorityLevel === "primary" && categoryId) {
-        next = setPrimaryGoalForCategory(next, categoryId, goalId);
-      }
-
-      const nextOccurrencesByGoal = buildOccurrencesByGoal(next?.occurrences);
-      const nextGoal = Array.isArray(next?.goals) ? next.goals.find((g) => g?.id === goalId) : null;
-      const nextPlanSig = buildPlanSignature(nextGoal, nextOccurrencesByGoal);
-      const planChanged = prevPlanSig !== nextPlanSig;
-
-      if (reminderConfig) {
-        const label = updates.title || editTarget.item.title || "Rappel";
-        const nextReminders = updateRemindersForGoal(next, goalId, reminderConfig, label, { forceNewIds: planChanged });
-        next = { ...next, reminders: nextReminders };
-      }
-      return next;
-    });
-
-    setEditTarget(null);
   }
 
   if (!categories.length) {
@@ -515,13 +340,6 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
       headerRowAlign="start"
     >
       <div style={{ "--catColor": category.color || "#7C3AED" }}>
-        <div className="categoryRailRow" style={{ marginBottom: 12 }}>
-          <CategoryRail
-            categories={orderedCategories}
-            selectedCategoryId={category?.id || null}
-            onSelect={handleSelectCategory}
-          />
-        </div>
         <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }}>
           <div className="p18">
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
@@ -702,18 +520,6 @@ export default function CategoryView({ data, setData, categoryId, onBack, onOpen
           </div>
         </Card>
       </div>
-      {editTarget ? (
-        <EditItemPanel
-          item={editTarget.item}
-          type={editTarget.type}
-          onSave={handleSaveEdit}
-          onDelete={() => {
-            const removed = deleteGoal(editTarget.item.id);
-            if (removed) setEditTarget(null);
-          }}
-          onClose={() => setEditTarget(null)}
-        />
-      ) : null}
     </ScreenShell>
   );
 }

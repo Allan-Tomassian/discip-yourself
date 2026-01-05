@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button, Input, Select, Textarea } from "./UI";
 import { todayKey } from "../utils/dates";
 import { createDefaultGoalSchedule } from "../logic/state";
@@ -162,6 +163,16 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
   const canUseReminders = hasOccurrenceSource || hasScheduleSource;
 
   useEffect(() => {
+    if (!item) return undefined;
+    if (typeof document === "undefined") return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [item]);
+
+  useEffect(() => {
     if (!item) return;
     const resolvedPlan = isProcess ? resolvePlanType(item) : "STATE";
     const freq = resolveFrequency(item);
@@ -214,7 +225,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
 
   const normalizedReminderTimes = useMemo(() => normalizeTimes(reminderTimes), [reminderTimes]);
 
-  if (!item) return null;
+  if (!item || typeof document === "undefined") return null;
 
   function toggleDay(day) {
     setDaysOfWeek((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
@@ -301,23 +312,41 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
     }
 
     if (typeof onSave === "function") {
-      const enabled = remindersEnabled && canUseReminders;
-      onSave({
-        updates,
-        reminderConfig: {
+      const payload = { updates };
+      if (isProcess) {
+        const enabled = remindersEnabled && canUseReminders;
+        payload.reminderConfig = {
           enabled,
           times: normalizedReminderTimes,
           channel: reminderChannel,
           days: normalizeDays(daysOfWeek),
           label: cleanTitle,
-        },
-      });
+        };
+      }
+      onSave(payload);
     }
   }
 
-  return (
-    <div className="modalBackdrop drawerBackdrop" onClick={onClose}>
-      <div className="drawerPanel editPanel" onClick={(e) => e.stopPropagation()}>
+  const overlay = (
+    <div
+      className="modalBackdrop drawerBackdrop"
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", justifyContent: "flex-end" }}
+    >
+      <div
+        className="drawerPanel editPanel"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: "fixed",
+          right: 0,
+          top: 0,
+          height: "100dvh",
+          minHeight: "100vh",
+          maxWidth: 420,
+          width: "min(92vw, 420px)",
+          paddingTop: "env(safe-area-inset-top)",
+        }}
+      >
         <div className="drawerHeader">
           <div style={{ fontWeight: 800 }}>{isProcess ? "Modifier l’habitude" : "Modifier l’objectif"}</div>
           <Button variant="ghost" onClick={onClose}>
@@ -482,46 +511,48 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
             ) : null}
           </div>
 
-          <div className="editSection">
-            <div className="editSectionTitle">Rappels</div>
-            <div className="editSectionBody">
-              <label className="includeToggle">
-                <input
-                  type="checkbox"
-                  checked={remindersEnabled}
-                  onChange={(e) => setRemindersEnabled(e.target.checked)}
-                  disabled={!canUseReminders}
-                />
-                <span>Activer les rappels</span>
-              </label>
-              {remindersEnabled ? (
-                <>
-                  <div className="editTimeList">
-                    {reminderTimes.map((t, index) => (
-                      <div key={`${t}-${index}`} className="editTimeRow">
-                        <Input type="time" value={t} onChange={(e) => updateReminderTime(index, e.target.value)} />
-                        {reminderTimes.length > 1 ? (
-                          <Button variant="ghost" onClick={() => removeReminderTime(index)}>
-                            Retirer
-                          </Button>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                  <Button variant="ghost" onClick={addReminderTime}>
-                    + Ajouter une heure
-                  </Button>
-                  <Select value={reminderChannel} onChange={(e) => setReminderChannel(e.target.value)}>
-                    {CHANNEL_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </Select>
-                </>
-              ) : null}
+          {isProcess ? (
+            <div className="editSection">
+              <div className="editSectionTitle">Rappels</div>
+              <div className="editSectionBody">
+                <label className="includeToggle">
+                  <input
+                    type="checkbox"
+                    checked={remindersEnabled}
+                    onChange={(e) => setRemindersEnabled(e.target.checked)}
+                    disabled={!canUseReminders}
+                  />
+                  <span>Activer les rappels</span>
+                </label>
+                {remindersEnabled ? (
+                  <>
+                    <div className="editTimeList">
+                      {reminderTimes.map((t, index) => (
+                        <div key={`${t}-${index}`} className="editTimeRow">
+                          <Input type="time" value={t} onChange={(e) => updateReminderTime(index, e.target.value)} />
+                          {reminderTimes.length > 1 ? (
+                            <Button variant="ghost" onClick={() => removeReminderTime(index)}>
+                              Retirer
+                            </Button>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                    <Button variant="ghost" onClick={addReminderTime}>
+                      + Ajouter une heure
+                    </Button>
+                    <Select value={reminderChannel} onChange={(e) => setReminderChannel(e.target.value)}>
+                      {CHANNEL_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </>
+                ) : null}
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div className="editSection">
             <div className="editSectionTitle">Notes</div>
@@ -555,4 +586,5 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
       </div>
     </div>
   );
+  return createPortal(overlay, document.body);
 }
