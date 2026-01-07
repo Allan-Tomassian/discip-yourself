@@ -26,9 +26,9 @@ import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
 import { todayKey } from "./utils/dates";
 import { normalizePriorities } from "./logic/priority";
 import { getCategoryCounts } from "./logic/pilotage";
-import { FIRST_USE_FLOW_STEPS, TOUR_VERSION } from "./tour/tourSpec";
-import { TourProvider } from "./tour/TourContext";
-import TourRunner from "./tour/TourRunner";
+import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
+import { useTour } from "./tour/useTour";
+import TourOverlay from "./tour/TourOverlay";
 
 function runSelfTests() {
   // minimal sanity
@@ -195,6 +195,7 @@ export default function App() {
   const dataRef = useRef(data);
   const lastReminderRef = useRef({});
   const activeReminderRef = useRef(activeReminder);
+  const tour = useTour({ data, setData, steps: FIRST_USE_TOUR_STEPS, tourVersion: TOUR_VERSION });
 
   const setTab = (next, opts = {}) => {
     const t = normalizeTab(next);
@@ -463,6 +464,7 @@ export default function App() {
   const onboardingCompleted = Boolean(safeData.ui?.onboardingCompleted);
   const showPlanStep = Boolean(safeData.ui?.showPlanStep);
   const shouldShowEmpty = !onboarded && !showPlanStep && tab === "today";
+  const showTourOverlay = onboardingCompleted;
   const handlePlanCategory = (categoryId) => {
     const fallbackId = categories[0]?.id || null;
     const targetId = categoryId || fallbackId;
@@ -498,37 +500,17 @@ export default function App() {
     }
     setTab("create-habit");
   };
-  const tourRunner = (
-    <TourRunner
-      data={data}
-      setData={setData}
-      tab={tab}
-      setTab={setTab}
-      steps={FIRST_USE_FLOW_STEPS}
-      tourVersion={TOUR_VERSION}
-    />
-  );
 
   if (showPlanStep && onboardingCompleted) {
-    return (
-      <TourProvider>
-        <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />
-        {tourRunner}
-      </TourProvider>
-    );
+    return <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />;
   }
   if (!onboardingCompleted) {
-    return (
-      <TourProvider>
-        <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />
-        {tourRunner}
-      </TourProvider>
-    );
+    return <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />;
   }
   if (shouldShowEmpty) {
     const empty = getEmptyStateConfig(safeData);
     return (
-      <TourProvider>
+      <>
         <ScreenShell
           data={safeData}
           pageId="home"
@@ -559,14 +541,25 @@ export default function App() {
             </div>
           </Card>
         </ScreenShell>
-        {tourRunner}
-      </TourProvider>
+        {showTourOverlay ? (
+          <TourOverlay
+            isActive={tour.isActive}
+            step={tour.step}
+            stepIndex={tour.stepIndex}
+            totalSteps={tour.totalSteps}
+            onNext={tour.next}
+            onPrev={tour.prev}
+            onSkip={tour.skip}
+            onMissingAnchor={tour.handleMissingAnchor}
+            onAnchorFound={tour.handleAnchorFound}
+          />
+        ) : null}
+      </>
     );
   }
 
   return (
-    <TourProvider>
-      <>
+    <>
         <TopNav
         active={
           tab === "session"
@@ -912,8 +905,19 @@ export default function App() {
           </Card>
         </div>
       ) : null}
-      {tourRunner}
-      </>
-    </TourProvider>
+      {showTourOverlay ? (
+        <TourOverlay
+          isActive={tour.isActive}
+          step={tour.step}
+          stepIndex={tour.stepIndex}
+          totalSteps={tour.totalSteps}
+          onNext={tour.next}
+          onPrev={tour.prev}
+          onSkip={tour.skip}
+          onMissingAnchor={tour.handleMissingAnchor}
+          onAnchorFound={tour.handleAnchorFound}
+        />
+      ) : null}
+    </>
   );
 }

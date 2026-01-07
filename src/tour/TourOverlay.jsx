@@ -13,16 +13,32 @@ export default function TourOverlay({
   step,
   stepIndex,
   totalSteps,
-  anchorEl: providedAnchor,
   onNext,
   onPrev,
   onSkip,
-  disableNext = false,
+  onMissingAnchor,
+  onAnchorFound,
 }) {
   const tooltipRef = useRef(null);
+  const missingRef = useRef(null);
   const [style, setStyle] = useState({ top: 0, left: 0, opacity: 0 });
 
-  const anchorEl = providedAnchor || null;
+  const anchorSelector = step?.anchor ? `[data-tour-id="${step.anchor}"]` : null;
+  const anchorEl =
+    typeof document !== "undefined" && anchorSelector ? document.querySelector(anchorSelector) : null;
+
+  useEffect(() => {
+    if (!isActive || !step) return;
+    if (!anchorEl) {
+      if (missingRef.current !== step.id) {
+        missingRef.current = step.id;
+        if (typeof onMissingAnchor === "function") onMissingAnchor(step);
+      }
+      return;
+    }
+    missingRef.current = null;
+    if (typeof onAnchorFound === "function") onAnchorFound(step);
+  }, [isActive, step, anchorEl, onMissingAnchor, onAnchorFound]);
 
   useLayoutEffect(() => {
     if (!isActive || !step || !anchorEl || !tooltipRef.current) return;
@@ -145,7 +161,7 @@ export default function TourOverlay({
             ) : null}
             <div className="row" style={{ justifyContent: "space-between", marginTop: 12, gap: 8 }}>
               <Button variant="ghost" onClick={onSkip}>
-                Passer
+                Ignorer
               </Button>
               <div className="row" style={{ gap: 8 }}>
                 {stepIndex > 0 ? (
@@ -153,7 +169,7 @@ export default function TourOverlay({
                     Précédent
                   </Button>
                 ) : null}
-                <Button onClick={onNext} disabled={disableNext}>
+                <Button onClick={onNext}>
                   {isLast ? "Terminer" : "Suivant"}
                 </Button>
               </div>
