@@ -15,8 +15,27 @@ import {
 // - optional_elements: empty-today planifier CTA
 const STATUS_LABELS = {
   EMPTY: "Vide",
-  DONE: "Terminee",
+  DONE: "Terminée",
   ACTIVE: "Active",
+};
+
+// Statuts = couleurs fixes (ne dépendent pas de la catégorie)
+const STATUS_STYLES = {
+  ACTIVE: {
+    backgroundColor: "rgba(76, 175, 80, 0.14)",
+    borderColor: "rgba(76, 175, 80, 0.8)",
+    color: "#EAF7ED",
+  },
+  DONE: {
+    backgroundColor: "rgba(158, 158, 158, 0.14)",
+    borderColor: "rgba(158, 158, 158, 0.7)",
+    color: "#F0F0F0",
+  },
+  EMPTY: {
+    backgroundColor: "rgba(255, 152, 0, 0.14)",
+    borderColor: "rgba(255, 152, 0, 0.8)",
+    color: "#FFF4E5",
+  },
 };
 
 export default function Pilotage({ data, onPlanCategory }) {
@@ -44,6 +63,20 @@ export default function Pilotage({ data, onPlanCategory }) {
   const loadSummary = useMemo(() => getLoadSummary(safeData, now), [safeData, dayKey]);
   const disciplineSummary = useMemo(() => getDisciplineSummary(safeData, now), [safeData, dayKey]);
 
+  const selectedCategoryId =
+    safeData?.ui?.selectedCategoryId || safeData?.selectedCategoryId || categories?.[0]?.id || null;
+
+  const getCategoryColor = (c) => {
+    // Tolérant : accepte plusieurs noms possibles
+    return (
+      c?.color ||
+      c?.accentColor ||
+      c?.hex ||
+      c?.themeColor ||
+      "#6EE7FF" // fallback cohérent avec l'UI actuelle
+    );
+  };
+
   return (
     <ScreenShell
       headerTitle={<span className="textAccent" data-tour-id="pilotage-title">Pilotage</span>}
@@ -54,41 +87,64 @@ export default function Pilotage({ data, onPlanCategory }) {
         <Card accentBorder data-tour-id="pilotage-category-status">
           <div className="p18">
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-              <div className="sectionTitle">Etat des categories</div>
+              <div className="sectionTitle">État des catégories</div>
               <Button
                 variant="ghost"
                 onClick={() => {
-                  const activeCategoryId =
-                    safeData?.ui?.selectedCategoryId ||
-                    safeData?.selectedCategoryId ||
-                    categories?.[0]?.id ||
-                    null;
-
-                  if (typeof onPlanCategory === "function") onPlanCategory(activeCategoryId);
+                  if (typeof onPlanCategory === "function") onPlanCategory(selectedCategoryId);
                 }}
                 disabled={!categories?.length}
+                aria-label="Planifier la catégorie"
+                title="Planifier"
                 data-tour-id="pilotage-planifier"
               >
                 Planifier
               </Button>
             </div>
-            <div className="mt12 col" style={{ gap: 10 }}>
+            <div className="mt12 col" role="list" style={{ gap: 10 }}>
               {categories.map((c) => {
                 const counts = countsByCategory.get(c.id) || { outcomesCount: 0, processCount: 0 };
                 const label = statusByCategory.get(c.id) || "ACTIVE";
                 const summary =
                   counts.outcomesCount || counts.processCount
                     ? `${counts.outcomesCount} objectifs \u00b7 ${counts.processCount} actions`
-                    : "Aucun element";
+                    : "Aucun élément";
+
+                const isSelected = selectedCategoryId === c.id;
+                const catColor = getCategoryColor(c);
+                const statusStyle = STATUS_STYLES[label] || STATUS_STYLES.ACTIVE;
 
                 return (
-                  <div key={c.id} className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+                  <div
+                    key={c.id}
+                    className="row"
+                    role="listitem"
+                    aria-label={`Catégorie ${c.name || "Catégorie"} (${STATUS_LABELS[label] || "Active"})`}
+                    style={{
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "10px 10px",
+                      borderRadius: 12,
+                      background: isSelected ? `linear-gradient(90deg, rgba(0,0,0,0), ${catColor}22)` : "transparent",
+                      borderLeft: isSelected ? `4px solid ${catColor}` : "4px solid transparent",
+                    }}
+                  >
                     <div>
-                      <div className="itemTitle">{c.name || "Categorie"}</div>
+                      <div className="itemTitle">{c.name || "Catégorie"}</div>
                       <div className="itemSub">{summary}</div>
                     </div>
                     <div className="row" style={{ alignItems: "center", gap: 8 }}>
-                      <span className="badge">{STATUS_LABELS[label] || "Active"}</span>
+                      <span
+                        className="badge"
+                        aria-label={`Statut: ${STATUS_LABELS[label] || "Active"}`}
+                        style={{
+                          ...statusStyle,
+                          borderWidth: 1,
+                          borderStyle: "solid",
+                        }}
+                      >
+                        {STATUS_LABELS[label] || "Active"}
+                      </span>
                     </div>
                   </div>
                 );
@@ -104,25 +160,19 @@ export default function Pilotage({ data, onPlanCategory }) {
               <div className="row" style={{ justifyContent: "space-between" }}>
                 <div className="itemTitle">Aujourd'hui</div>
                 <div className="itemSub">
-                  {loadSummary.today.done}/{loadSummary.today.planned} terminees
+                  {loadSummary.today.done}/{loadSummary.today.planned} terminées
                 </div>
               </div>
               <div className="row" style={{ justifyContent: "space-between" }}>
                 <div className="itemTitle">Cette semaine</div>
                 <div className="itemSub">
-                  {loadSummary.week.done}/{loadSummary.week.planned} terminees
+                  {loadSummary.week.done}/{loadSummary.week.planned} terminées
                 </div>
               </div>
               {loadSummary.emptyToday ? (
                 <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                  <div className="small2">Rien de planifie aujourd'hui.</div>
-                  <Button
-                    variant="ghost"
-                    onClick={() => (typeof onPlanCategory === "function" ? onPlanCategory(null) : null)}
-                    data-tour-id="pilotage-planifier-empty"
-                  >
-                    Planifier
-                  </Button>
+                  <div className="small2">Rien de planifié aujourd'hui.</div>
+                  <div className="small2" aria-label="Utiliser le bouton Planifier en haut">Planifier via le bouton en haut</div>
                 </div>
               ) : null}
             </div>
@@ -134,11 +184,11 @@ export default function Pilotage({ data, onPlanCategory }) {
             <div className="sectionTitle">Discipline</div>
             <div className="mt12 col" style={{ gap: 10 }}>
               <div className="row" style={{ justifyContent: "space-between" }}>
-                <div className="itemTitle">Sessions annulees (7j)</div>
+                <div className="itemTitle">Sessions annulées (7j)</div>
                 <div className="itemSub">{disciplineSummary.cancelledSessions7d}</div>
               </div>
               <div className="row" style={{ justifyContent: "space-between" }}>
-                <div className="itemTitle">Jours sans execution (7j)</div>
+                <div className="itemTitle">Jours sans exécution (7j)</div>
                 <div className="itemSub">{disciplineSummary.noExecutionDays7d}</div>
               </div>
             </div>

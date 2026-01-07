@@ -1008,6 +1008,7 @@ export default function Home({
 
   const accent = focusCategory && focusCategory.color ? focusCategory.color : getAccentForPage(safeData, "home");
   const goalAccent = selectedGoal?.color || accent;
+  const selectedDayAccent = goalAccentByDate.get(selectedDateKey) || goalAccent || accent;
   const backgroundImage = profile.whyImage || "";
   const catAccentVars = getCategoryAccentVars(accent);
 
@@ -1326,11 +1327,11 @@ export default function Home({
                                           scrollSnapAlign: "center",
                                           borderColor:
                                             item.key === selectedDateKey
-                                              ? (goalAccent || accent)
+                                              ? selectedDayAccent
                                               : goalAccentByDate.get(item.key) || "rgba(255,255,255,.14)",
                                           boxShadow:
                                             item.key === selectedDateKey
-                                              ? `0 0 0 2px ${(goalAccent || accent)}33`
+                                              ? `0 0 0 2px ${selectedDayAccent}33`
                                               : undefined,
                                         }}
                                       >
@@ -1403,8 +1404,10 @@ export default function Home({
                                           borderRadius: 12,
                                           padding: 6,
                                           opacity: cell.inMonth ? 1 : 0.4,
-                                          borderColor: isSelected ? (goalAccent || accent) : goalAccentByDate.get(dayKey) || "rgba(255,255,255,.14)",
-                                          boxShadow: isSelected ? `0 0 0 2px ${(goalAccent || accent)}33` : undefined,
+                                          borderColor: isSelected
+                                            ? selectedDayAccent
+                                            : goalAccentByDate.get(dayKey) || "rgba(255,255,255,.14)",
+                                          boxShadow: isSelected ? `0 0 0 2px ${selectedDayAccent}33` : undefined,
                                         }}
                                       >
                                         <div className="dayPillDay">{cell.dayNumber}</div>

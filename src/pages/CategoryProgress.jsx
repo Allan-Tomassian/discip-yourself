@@ -32,7 +32,14 @@ export default function CategoryProgress({ data, categoryId, onBack }) {
 
   const outcomeGoals = useMemo(() => {
     if (!category?.id) return [];
-    return goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "OUTCOME");
+    return goals.filter((g) => {
+      if (!g || g.categoryId !== category.id) return false;
+      if (resolveGoalType(g) !== "OUTCOME") return false;
+      const status = (g.status || "").toString().toLowerCase();
+      // Progress page shows active outcomes by default
+      if (status === "done" || status === "completed" || status === "finished" || status === "abandoned") return false;
+      return true;
+    });
   }, [goals, category?.id]);
 
   if (!category) {
@@ -79,8 +86,8 @@ export default function CategoryProgress({ data, categoryId, onBack }) {
                 <Gauge
                   key={g.id}
                   label={g.title || "Objectif"}
-                  currentValue={g.currentValue}
-                  targetValue={g.targetValue}
+                  currentValue={Number(g.currentValue) || 0}
+                  targetValue={Number(g.targetValue) || 0}
                   unit={MEASURE_UNITS[g.measureType] || ""}
                   accentColor={accent}
                 />
