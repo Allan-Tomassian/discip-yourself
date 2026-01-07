@@ -9,8 +9,8 @@ import { updateGoal } from "../logic/goals";
 import { setPrimaryGoalForCategory } from "../logic/priority";
 
 const PRIORITY_OPTIONS = [
-  { value: "primary", label: "Prioritaire" },
-  { value: "secondary", label: "Secondaire" },
+  { value: "prioritaire", label: "Prioritaire" },
+  { value: "secondaire", label: "Secondaire" },
   { value: "bonus", label: "Bonus" },
 ];
 
@@ -136,15 +136,19 @@ function normalizeTimes(times) {
 }
 
 function resolvePriority(item) {
-  const raw = typeof item?.priority === "string" ? item.priority : "";
+  const raw = typeof item?.priority === "string" ? item.priority.toLowerCase() : "";
   if (PRIORITY_OPTIONS.some((opt) => opt.value === raw)) return raw;
+
+  // legacy mappings
   const level = typeof item?.priorityLevel === "string" ? item.priorityLevel.toLowerCase() : "";
-  if (level === "primary") return "primary";
-  if (level === "secondary") return "secondary";
+  if (level === "primary") return "prioritaire";
+  if (level === "secondary") return "secondaire";
+
   const tier = typeof item?.priorityTier === "string" ? item.priorityTier.toLowerCase() : "";
-  if (tier === "essential") return "primary";
+  if (tier === "essential") return "prioritaire";
   if (tier === "optional" || tier === "someday") return "bonus";
-  return "secondary";
+
+  return "secondaire";
 }
 
 function buildOccurrencesByGoal(list) {
@@ -252,7 +256,7 @@ export default function EditItem({ data, setData, editItem, onBack }) {
   const type = resolveGoalType(rawItem);
 
   const [title, setTitle] = useState("");
-  const [priority, setPriority] = useState("secondary");
+  const [priority, setPriority] = useState("secondaire");
   const [planType, setPlanType] = useState("ACTION");
   const [freqCount, setFreqCount] = useState("1");
   const [freqUnit, setFreqUnit] = useState("WEEK");
@@ -386,7 +390,8 @@ export default function EditItem({ data, setData, editItem, onBack }) {
       title: cleanTitle,
       priority,
     };
-    updates.priorityLevel = priority;
+    // legacy backfill (kept for compatibility)
+    updates.priorityLevel = priority === "prioritaire" ? "primary" : priority === "secondaire" ? "secondary" : "bonus";
 
     if (isProcess) {
       const plan = planType === "ONE_OFF" ? "ONE_OFF" : "ACTION";
@@ -463,7 +468,7 @@ export default function EditItem({ data, setData, editItem, onBack }) {
         const prevPlanSig = buildPlanSignature(prevGoal, prevOccurrencesByGoal);
 
         let next = updateGoal(prev, goalId, updates);
-        if (type === "OUTCOME" && updates.priorityLevel === "primary" && categoryId) {
+        if (type === "OUTCOME" && updates.priority === "prioritaire" && categoryId) {
           next = setPrimaryGoalForCategory(next, categoryId, goalId);
         }
 

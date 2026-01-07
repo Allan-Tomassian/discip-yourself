@@ -46,6 +46,23 @@ function resolveGoalType(goal) {
   return "PROCESS";
 }
 
+// ---- Priority helpers
+function normalizePriorityValue(v) {
+  const raw = typeof v === "string" ? v.toLowerCase() : "";
+  if (raw === "prioritaire" || raw === "primary") return "prioritaire";
+  if (raw === "secondaire" || raw === "secondary") return "secondaire";
+  if (raw === "bonus") return "bonus";
+  return "";
+}
+
+function priorityRank(v) {
+  const p = normalizePriorityValue(v);
+  if (p === "prioritaire") return 0;
+  if (p === "secondaire") return 1;
+  if (p === "bonus") return 2;
+  return 3;
+}
+
 // ---- Micro-actions
 const MICRO_ACTIONS = [
   { id: "micro_flexions", label: "Faire 10 flexions" },
@@ -195,6 +212,7 @@ export default function Home({
   const railItemRefs = useRef(new Map());
   const railScrollRaf = useRef(null);
   const skipAutoCenterRef = useRef(false);
+  const didInitSelectedDateRef = useRef(false);
 
   // Data slices
   const profile = safeData.profile || {};
@@ -263,6 +281,27 @@ export default function Home({
     const raw = safeData.ui?.selectedDate;
     const isValid = typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw);
 
+    // If the user didn't touch the calendar during this browser session,
+    // force Home to start on the real local day.
+    let touched = false;
+    try {
+      touched = sessionStorage.getItem("home:selectedDateTouched") === "1";
+    } catch (_) {
+      touched = false;
+    }
+
+    if (!didInitSelectedDateRef.current) {
+      didInitSelectedDateRef.current = true;
+      if (!touched && raw !== today) {
+        setData((prev) => ({
+          ...prev,
+          ui: { ...(prev.ui || {}), selectedDate: today },
+        }));
+        return;
+      }
+    }
+
+    // Still keep the safety net for invalid values.
     if (!isValid) {
       setData((prev) => ({
         ...prev,
@@ -398,6 +437,94 @@ export default function Home({
   const activeHabits = useMemo(() => {
     return linkedHabits.filter((g) => g.status === "active");
   }, [linkedHabits]);
+
+  // ---- Outcome goal lookup helpers and dominant outcome by date
+  const goalsById = useMemo(() => {
+    const map = new Map();
+    for (const g of goals) if (g && g.id) map.set(g.id, g);
+    return map;
+  }, [goals]);
+
+  const outcomeById = useMemo(() => {
+    const map = new Map();
+    for (const g of goals) {
+      if (!g || !g.id) continue;
+      if (resolveGoalType(g) === "OUTCOME") map.set(g.id, g);
+    }
+    return map;
+  }, [goals]);
+
+  const getOutcomeForGoalId = useCallback(
+    (goalId) => {
+      const g = goalId ? goalsById.get(goalId) : null;
+      if (!g) return null;
+      const t = resolveGoalType(g);
+      if (t === "OUTCOME") return g;
+      const parentId = typeof g.parentId === "string" ? g.parentId : null;
+      return parentId ? outcomeById.get(parentId) || null : null;
+    },
+    [goalsById, outcomeById]
+  );
+
+  const dominantOutcomeIdByDate = useMemo(() => {
+    const map = new Map();
+
+    // Helper: pick best outcome id from candidates
+    const pickBest = (ids) => {
+      const unique = Array.from(new Set(ids.filter(Boolean)));
+      unique.sort((a, b) => {
+        const ga = goalsById.get(a);
+        const gb = goalsById.get(b);
+        const ra = priorityRank(ga?.priority);
+        const rb = priorityRank(gb?.priority);
+        if (ra !== rb) return ra - rb;
+        // fallback: stable by title
+        return String(ga?.title || "").localeCompare(String(gb?.title || ""));
+      });
+      return unique[0] || null;
+    };
+
+    // 1) Session active: use objectiveId / goalId
+    for (const s of sessions) {
+      if (!s) continue;
+      const key = typeof s.dateKey === "string" ? s.dateKey : typeof s.date === "string" ? s.date : "";
+      if (!key) continue;
+      const sid =
+        (typeof s.objectiveId === "string" && s.objectiveId) ||
+        (typeof s.goalId === "string" && s.goalId) ||
+        null;
+      const out = sid ? getOutcomeForGoalId(sid) : null;
+      if (out?.id) map.set(key, out.id);
+    }
+
+    // 2) Occurrences planned: map PROCESS -> parent OUTCOME
+    for (const occ of occurrences) {
+      if (!occ || typeof occ.date !== "string") continue;
+      if (occ.status !== "planned") continue;
+      const out = getOutcomeForGoalId(occ.goalId);
+      if (!out?.id) continue;
+      const key = occ.date;
+      const prev = map.get(key);
+      if (!prev) {
+        map.set(key, out.id);
+      } else if (prev !== out.id) {
+        map.set(key, pickBest([prev, out.id]));
+      }
+    }
+
+    return map;
+  }, [sessions, occurrences, goalsById, getOutcomeForGoalId]);
+
+  const goalAccentByDate = useMemo(() => {
+    const map = new Map();
+    for (const [key, outId] of dominantOutcomeIdByDate.entries()) {
+      const g = outId ? goalsById.get(outId) : null;
+      const c = g?.categoryId ? categories.find((x) => x.id === g.categoryId) : null;
+      const color = (g && g.color) || (c && c.color) || "";
+      if (color) map.set(key, color);
+    }
+    return map;
+  }, [dominantOutcomeIdByDate, goalsById, categories]);
 
   const microItems = useMemo(() => {
     return microState.items;
@@ -582,6 +709,11 @@ export default function Home({
   const setSelectedDate = useCallback(
     (nextKey) => {
       if (!nextKey || typeof setData !== "function") return;
+      try {
+        sessionStorage.setItem("home:selectedDateTouched", "1");
+      } catch (_) {
+        // ignore
+      }
       setData((prev) => ({
         ...prev,
         ui: { ...(prev.ui || {}), selectedDate: nextKey },
@@ -1116,7 +1248,7 @@ export default function Home({
                                     data-tour-id="today-calendar-today"
                                     disabled={isOnToday}
                                   >
-                                    ↻
+                                    ⟳
                                   </IconButton>
                                 );
                               })()}
@@ -1190,7 +1322,17 @@ export default function Home({
                                           handleDayOpen(item.key);
                                         }}
                                         type="button"
-                                        style={{ scrollSnapAlign: "center" }}
+                                        style={{
+                                          scrollSnapAlign: "center",
+                                          borderColor:
+                                            item.key === selectedDateKey
+                                              ? (goalAccent || accent)
+                                              : goalAccentByDate.get(item.key) || "rgba(255,255,255,.14)",
+                                          boxShadow:
+                                            item.key === selectedDateKey
+                                              ? `0 0 0 2px ${(goalAccent || accent)}33`
+                                              : undefined,
+                                        }}
                                       >
                                         <div className="dayPillDay">{item.day}</div>
                                         <div className="dayPillMonth">/{item.month}</div>
@@ -1261,10 +1403,12 @@ export default function Home({
                                           borderRadius: 12,
                                           padding: 6,
                                           opacity: cell.inMonth ? 1 : 0.4,
+                                          borderColor: isSelected ? (goalAccent || accent) : goalAccentByDate.get(dayKey) || "rgba(255,255,255,.14)",
+                                          boxShadow: isSelected ? `0 0 0 2px ${(goalAccent || accent)}33` : undefined,
                                         }}
                                       >
                                         <div className="dayPillDay">{cell.dayNumber}</div>
-                                        <div className="small2">Planifié {plannedCount} · Fait {doneCount}</div>
+                                        <div className="small2">{plannedCount ? `${plannedCount} planifié` : ""}{plannedCount && doneCount ? " · " : ""}{doneCount ? `${doneCount} fait` : ""}</div>
                                       </button>
                                     );
                                   })}
@@ -1560,7 +1704,7 @@ export default function Home({
                   if (meta.humeur) metaParts.push(`Humeur: ${meta.humeur}`);
                   if (meta.motivation) metaParts.push(`Motivation: ${meta.motivation}/10`);
                   return (
-                    <div key={item.dateKey} className="listItem">
+                    <div key={item.id || item.dateKey} className="listItem">
                       <div className="small2">{item.dateKey}</div>
                       {metaParts.length ? <div className="small2 mt8">{metaParts.join(" · ")}</div> : null}
                       {item.note ? <div className="small2 mt8">{item.note}</div> : null}
