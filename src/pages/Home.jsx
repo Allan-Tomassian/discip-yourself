@@ -675,21 +675,6 @@ export default function Home({
 
   function openSessionFlow() {
     if (!selectedGoal?.id || !canValidate || typeof setData !== "function") return;
-    if (!activeHabits.length) {
-      setData((prev) => ({
-        ...prev,
-        ui: {
-          ...(prev.ui || {}),
-          manageScrollTo: "actions",
-        },
-      }));
-      if (typeof onOpenManageCategory === "function") {
-        onOpenManageCategory(focusCategory?.id || null);
-      } else if (typeof onOpenLibrary === "function") {
-        onOpenLibrary();
-      }
-      return;
-    }
     setData((prev) =>
       startSessionForDate(prev, selectedDateKey, {
         objectiveId: selectedGoal.id,
@@ -1076,7 +1061,7 @@ export default function Home({
                                 </div>
                               ) : !activeHabits.length ? (
                                 <div className="sectionSub" style={{ marginTop: 8 }}>
-                                  Aucune action liée. Va dans Bibliothèque &gt; Gérer pour en créer une.
+                                  Aucune action liée. Tu peux démarrer quand même, puis ajouter une action depuis Bibliothèque.
                                 </div>
                               ) : !canValidate ? (
                                 <div className="sectionSub" style={{ marginTop: 8 }}>

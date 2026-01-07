@@ -6,7 +6,6 @@ import {
   finishSessionForDate,
   getSessionByDate,
   skipSessionForDate,
-  toggleSessionHabit,
   updateSessionTimerForDate,
 } from "../logic/sessions";
 import { getAccentForPage } from "../utils/_theme";
@@ -82,12 +81,6 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
   const objectiveId = typeof session?.objectiveId === "string" ? session.objectiveId : null;
   const objective = objectiveId ? goals.find((g) => g.id === objectiveId) || null : null;
   const habitIds = Array.isArray(session?.habitIds) ? session.habitIds : [];
-  const doneHabitIds = Array.isArray(session?.doneHabitIds)
-    ? session.doneHabitIds
-    : Array.isArray(session?.doneHabits)
-      ? session.doneHabits
-      : [];
-  const doneSet = useMemo(() => new Set(doneHabitIds), [doneHabitIds]);
   const habits = habitIds.map((id) => goals.find((g) => g.id === id)).filter(Boolean);
   const effectiveCategoryId = objective?.categoryId || habits[0]?.categoryId || null;
   const category = categories.find((c) => c.id === effectiveCategoryId) || null;
@@ -112,10 +105,24 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
   const hasHabits = habits.length > 0;
   const isFinal = Boolean(session && (session.status === "done" || session.status === "skipped"));
 
-  function toggleDone(habitId, checked) {
-    if (!habitId || typeof setData !== "function" || !isEditable) return;
-    setData((prev) => toggleSessionHabit(prev, resolvedDateKey, habitId, checked, objectiveId));
-  }
+  useEffect(() => {
+    if (!session || !isEditable) return;
+    if (!isRunning) return;
+    if (remainingSec == null) return;
+    if (remainingSec > 0) return;
+
+    const durationSec = Math.max(0, Math.floor(elapsedSec));
+    setData((prev) =>
+      finishSessionForDate(prev, resolvedDateKey, {
+        objectiveId,
+        durationSec,
+        doneHabitIds: habitIds,
+      })
+    );
+
+    if (typeof onBack === "function") onBack();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRunning, remainingSec]);
 
   function startTimer() {
     if (!session || typeof setData !== "function" || !hasHabits) return;
@@ -166,7 +173,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
       finishSessionForDate(prev, resolvedDateKey, {
         objectiveId,
         durationSec,
-        doneHabitIds,
+        doneHabitIds: habitIds,
       })
     );
 
@@ -219,6 +226,23 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
 
   if (isFinal) {
     const statusLabel = session.status === "done" ? "Session terminée" : "Session annulée";
+
+    const durationSecStored = Number.isFinite(session?.durationSec) ? session.durationSec : null;
+    const durationSec =
+      durationSecStored != null
+        ? Math.max(0, Math.floor(durationSecStored))
+        : Math.max(0, Math.floor(elapsedSec));
+    const durationLabel = formatElapsed(durationSec * 1000);
+
+    const doneHabitIds = Array.isArray(session?.doneHabitIds)
+      ? session.doneHabitIds
+      : session.status === "done"
+        ? habitIds
+        : [];
+    const doneHabits = doneHabitIds
+      .map((id) => goals.find((g) => g.id === id))
+      .filter(Boolean);
+
     return (
       <ScreenShell
         accent={accent}
@@ -239,6 +263,41 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
             <div className="small2" style={{ marginTop: 6 }}>
               Date : {effectiveDateKey}
             </div>
+          </div>
+        </Card>
+
+        <Card accentBorder style={{ marginTop: 12 }}>
+          <div className="p18">
+            <div className="sectionTitle">Débrief</div>
+
+            <div className="mt12">
+              <div className="small2">Durée : {durationLabel}</div>
+            </div>
+
+            {session.status === "done" ? (
+              <div className="mt12">
+                <div className="small2">Actions accomplies</div>
+                {doneHabits.length ? (
+                  <div className="mt10 col" style={{ gap: 10 }}>
+                    {doneHabits.map((h) => (
+                      <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
+                        <div
+                          className="row"
+                          style={{ alignItems: "center", justifyContent: "space-between" }}
+                        >
+                          <div className="itemTitle">{h.title || "Action"}</div>
+                          <span className="actionStatus running">Fait</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt10 small2">Aucune action enregistrée.</div>
+                )}
+              </div>
+            ) : (
+              <div className="mt12 small2">Aucune action validée (session annulée).</div>
+            )}
           </div>
         </Card>
       </ScreenShell>
@@ -273,7 +332,9 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
             ) : null}
             {!isRunning ? (
               <div className="small2" style={{ marginTop: 6 }}>
-                {elapsedSec > 0 ? "Reprends quand tu es prêt." : "Appuie sur Démarrer pour lancer le timer."}
+                {elapsedSec > 0
+                  ? "Reprends quand tu es prêt."
+                  : "Appuie sur Démarrer pour lancer le timer."}
               </div>
             ) : null}
             <div className="mt12 row" style={{ gap: 10 }}>
@@ -294,18 +355,14 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
               <div className="mt12 col" style={{ gap: 10 }}>
                 {habits.map((h) => (
                   <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
-                    <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+                    <div
+                      className="row"
+                      style={{ alignItems: "center", justifyContent: "space-between" }}
+                    >
                       <div className="itemTitle">{h.title || "Action"}</div>
-                      <label className="includeToggle">
-                        <input
-                          type="checkbox"
-                          className="sessionCheck"
-                          checked={doneSet.has(h.id)}
-                          disabled={!isEditable}
-                          onChange={(e) => toggleDone(h.id, e.target.checked)}
-                        />
-                        <span>{doneSet.has(h.id) ? "Fait" : "À faire"}</span>
-                      </label>
+                      <span className={`actionStatus ${isRunning ? "running" : "todo"}`}>
+                        {isRunning ? "En cours" : "À faire"}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -314,7 +371,10 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
               <div className="mt12 col">
                 <div className="small2">Aucune action disponible pour cette session.</div>
                 <div className="mt10">
-                  <Button variant="ghost" onClick={typeof onOpenLibrary === "function" ? onOpenLibrary : onBack}>
+                  <Button
+                    variant="ghost"
+                    onClick={typeof onOpenLibrary === "function" ? onOpenLibrary : onBack}
+                  >
                     Aller à Bibliothèque
                   </Button>
                 </div>
@@ -338,8 +398,20 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
 
 /* Tests manuels
 1) Démarrer session, voir le timer tourner.
-2) Cocher une action => reflété au retour sur Aujourd’hui.
-3) Terminer la session => progression mise à jour.
-4) Annuler la session => état annulé, retour Aujourd’hui.
-5) Revenir sur /session après fin => “Session terminée”.
+2) Quand le timer tourne: status actions => "En cours".
+3) Terminer (timer à 0 ou bouton Terminer) => écran final + Débrief.
+4) Annuler => écran final "Session annulée".
+*/
+
+/* CSS à ajouter (ex: index.css)
+.actionStatus {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(255,255,255,0.10);
+}
+.actionStatus.running {
+  background: rgba(255,165,0,0.20);
+}
 */

@@ -53,7 +53,25 @@ export default function Pilotage({ data, onPlanCategory }) {
       <div className="stack stackGap12">
         <Card accentBorder data-tour-id="pilotage-category-status">
           <div className="p18">
-            <div className="sectionTitle">Etat des categories</div>
+            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+              <div className="sectionTitle">Etat des categories</div>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  const activeCategoryId =
+                    safeData?.ui?.selectedCategoryId ||
+                    safeData?.selectedCategoryId ||
+                    categories?.[0]?.id ||
+                    null;
+
+                  if (typeof onPlanCategory === "function") onPlanCategory(activeCategoryId);
+                }}
+                disabled={!categories?.length}
+                data-tour-id="pilotage-planifier"
+              >
+                Planifier
+              </Button>
+            </div>
             <div className="mt12 col" style={{ gap: 10 }}>
               {categories.map((c) => {
                 const counts = countsByCategory.get(c.id) || { outcomesCount: 0, processCount: 0 };
@@ -71,9 +89,6 @@ export default function Pilotage({ data, onPlanCategory }) {
                     </div>
                     <div className="row" style={{ alignItems: "center", gap: 8 }}>
                       <span className="badge">{STATUS_LABELS[label] || "Active"}</span>
-                      <Button variant="ghost" onClick={() => (typeof onPlanCategory === "function" ? onPlanCategory(c.id) : null)}>
-                        Planifier
-                      </Button>
                     </div>
                   </div>
                 );
