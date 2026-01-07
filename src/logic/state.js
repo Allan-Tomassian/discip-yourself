@@ -395,27 +395,35 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
   // status: queued | active | done | invalid
   if (!g.status) g.status = "queued";
   if (typeof g.order !== "number") g.order = index + 1;
-  const shouldHaveSchedule = isProcess && g.planType === "ACTION";
-  if (shouldHaveSchedule) {
+    // Scheduling rules:
+  // - PROCESS/ACTION: schedule is canonical and can later drive occurrences/reminders.
+  // - OUTCOME/STATE: schedule is OPTIONAL and is only used for planning visibility (calendar coloring),
+  //   reminders must stay disabled for OUTCOME.
+  const shouldHaveProcessSchedule = isProcess && g.planType === "ACTION";
+  const shouldKeepOutcomeSchedule = isOutcome && g.planType === "STATE" && g.schedule && typeof g.schedule === "object";
+
+  if (shouldHaveProcessSchedule || shouldKeepOutcomeSchedule) {
+    const base = createDefaultGoalSchedule();
     if (!g.schedule || typeof g.schedule !== "object") {
-      g.schedule = createDefaultGoalSchedule();
+      g.schedule = { ...base };
     } else {
-      // Merge with defaults to be resilient to future schema changes.
-      g.schedule = { ...createDefaultGoalSchedule(), ...g.schedule };
+      g.schedule = { ...base, ...g.schedule };
+    }
 
-      if (!Array.isArray(g.schedule.daysOfWeek)) g.schedule.daysOfWeek = createDefaultGoalSchedule().daysOfWeek;
-      if (!Array.isArray(g.schedule.timeSlots)) g.schedule.timeSlots = createDefaultGoalSchedule().timeSlots;
-      if (typeof g.schedule.timezone !== "string") g.schedule.timezone = createDefaultGoalSchedule().timezone;
+    if (!Array.isArray(g.schedule.daysOfWeek)) g.schedule.daysOfWeek = base.daysOfWeek;
+    if (!Array.isArray(g.schedule.timeSlots)) g.schedule.timeSlots = base.timeSlots;
+    if (typeof g.schedule.timezone !== "string") g.schedule.timezone = base.timezone;
 
-      if (typeof g.schedule.durationMinutes !== "number")
-        g.schedule.durationMinutes = createDefaultGoalSchedule().durationMinutes;
-      if (typeof g.schedule.remindBeforeMinutes !== "number")
-        g.schedule.remindBeforeMinutes = createDefaultGoalSchedule().remindBeforeMinutes;
-      if (typeof g.schedule.allowSnooze !== "boolean") g.schedule.allowSnooze = createDefaultGoalSchedule().allowSnooze;
-      if (typeof g.schedule.snoozeMinutes !== "number")
-        g.schedule.snoozeMinutes = createDefaultGoalSchedule().snoozeMinutes;
-      if (typeof g.schedule.remindersEnabled !== "boolean")
-        g.schedule.remindersEnabled = createDefaultGoalSchedule().remindersEnabled;
+    if (typeof g.schedule.durationMinutes !== "number") g.schedule.durationMinutes = base.durationMinutes;
+    if (typeof g.schedule.remindBeforeMinutes !== "number") g.schedule.remindBeforeMinutes = base.remindBeforeMinutes;
+    if (typeof g.schedule.allowSnooze !== "boolean") g.schedule.allowSnooze = base.allowSnooze;
+    if (typeof g.schedule.snoozeMinutes !== "number") g.schedule.snoozeMinutes = base.snoozeMinutes;
+    if (typeof g.schedule.remindersEnabled !== "boolean") g.schedule.remindersEnabled = base.remindersEnabled;
+
+    // Hard rule: OUTCOME goals never emit reminders.
+    if (isOutcome) {
+      g.schedule.remindersEnabled = false;
+      // NOTE: OUTCOME may keep schedule for planning visibility, but reminders are always forced OFF here.
     }
   } else {
     g.schedule = undefined;

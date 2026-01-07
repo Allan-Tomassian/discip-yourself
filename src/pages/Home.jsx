@@ -258,11 +258,17 @@ export default function Home({
   // Effects
   useEffect(() => {
     if (typeof setData !== "function") return;
-    if (safeData.ui?.selectedDate) return;
-    setData((prev) => ({
-      ...prev,
-      ui: { ...(prev.ui || {}), selectedDate: toLocalDateKey(new Date()) },
-    }));
+
+    const today = toLocalDateKey(new Date());
+    const raw = safeData.ui?.selectedDate;
+    const isValid = typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw);
+
+    if (!isValid) {
+      setData((prev) => ({
+        ...prev,
+        ui: { ...(prev.ui || {}), selectedDate: today },
+      }));
+    }
   }, [safeData.ui?.selectedDate, setData]);
 
   useEffect(() => {
@@ -1091,20 +1097,29 @@ export default function Home({
                               </div>
                             </div>
                             <div className="row" style={{ gap: 8 }}>
-                              <IconButton
-                                onClick={() => {
-                                  const today = toLocalDateKey(new Date());
-                                  handleDayOpen(today);
-                                  if (calendarView === "day") {
-                                    requestAnimationFrame(() => scrollRailToKey(today));
-                                  }
-                                }}
-                                aria-label="Revenir à aujourd’hui"
-                                title="Revenir à aujourd’hui"
-                                data-tour-id="today-calendar-today"
-                              >
-                                ⟳
-                              </IconButton>
+                              {/*
+                                Add isOnToday const before IconButton for "Revenir à aujourd’hui"
+                              */}
+                              {(() => {
+                                const isOnToday = selectedDateKey === toLocalDateKey(new Date());
+                                return (
+                                  <IconButton
+                                    onClick={() => {
+                                      const today = toLocalDateKey(new Date());
+                                      handleDayOpen(today);
+                                      if (calendarView === "day") {
+                                        requestAnimationFrame(() => scrollRailToKey(today));
+                                      }
+                                    }}
+                                    aria-label="Revenir à aujourd’hui"
+                                    title="Revenir à aujourd’hui"
+                                    data-tour-id="today-calendar-today"
+                                    disabled={isOnToday}
+                                  >
+                                    ↻
+                                  </IconButton>
+                                );
+                              })()}
                               <Button
                                 variant="ghost"
                                 onClick={() => setCalendarView("day")}

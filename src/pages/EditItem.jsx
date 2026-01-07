@@ -9,8 +9,8 @@ import { updateGoal } from "../logic/goals";
 import { setPrimaryGoalForCategory } from "../logic/priority";
 
 const PRIORITY_OPTIONS = [
-  { value: "prioritaire", label: "Prioritaire" },
-  { value: "secondaire", label: "Secondaire" },
+  { value: "primary", label: "Prioritaire" },
+  { value: "secondary", label: "Secondaire" },
   { value: "bonus", label: "Bonus" },
 ];
 
@@ -139,12 +139,12 @@ function resolvePriority(item) {
   const raw = typeof item?.priority === "string" ? item.priority : "";
   if (PRIORITY_OPTIONS.some((opt) => opt.value === raw)) return raw;
   const level = typeof item?.priorityLevel === "string" ? item.priorityLevel.toLowerCase() : "";
-  if (level === "primary") return "prioritaire";
-  if (level === "secondary") return "secondaire";
+  if (level === "primary") return "primary";
+  if (level === "secondary") return "secondary";
   const tier = typeof item?.priorityTier === "string" ? item.priorityTier.toLowerCase() : "";
-  if (tier === "essential") return "prioritaire";
+  if (tier === "essential") return "primary";
   if (tier === "optional" || tier === "someday") return "bonus";
-  return "secondaire";
+  return "secondary";
 }
 
 function buildOccurrencesByGoal(list) {
@@ -237,14 +237,22 @@ export default function EditItem({ data, setData, editItem, onBack }) {
   const reminders = Array.isArray(safeData.reminders) ? safeData.reminders : [];
   const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
 
-  const rawItem = editItem?.id ? goals.find((g) => g?.id === editItem.id) || null : null;
+  const rawItem = useMemo(() => {
+    if (!editItem?.id) return null;
+    return goals.find((g) => g?.id === editItem.id) || null;
+  }, [editItem?.id, goals]);
+
+  const item = useMemo(() => {
+    if (!rawItem) return null;
+    const itemReminders = Array.isArray(reminders) ? reminders.filter((r) => r?.goalId === rawItem.id) : [];
+    const itemOccurrences = Array.isArray(occurrences) ? occurrences.filter((o) => o && o.goalId === rawItem.id) : [];
+    return { ...rawItem, _reminders: itemReminders, _occurrences: itemOccurrences };
+  }, [rawItem, reminders, occurrences]);
+
   const type = resolveGoalType(rawItem);
-  const itemReminders = rawItem ? reminders.filter((r) => r.goalId === rawItem.id) : [];
-  const itemOccurrences = rawItem ? occurrences.filter((o) => o && o.goalId === rawItem.id) : [];
-  const item = rawItem ? { ...rawItem, _reminders: itemReminders, _occurrences: itemOccurrences } : null;
 
   const [title, setTitle] = useState("");
-  const [priority, setPriority] = useState("secondaire");
+  const [priority, setPriority] = useState("secondary");
   const [planType, setPlanType] = useState("ACTION");
   const [freqCount, setFreqCount] = useState("1");
   const [freqUnit, setFreqUnit] = useState("WEEK");
@@ -321,7 +329,7 @@ export default function EditItem({ data, setData, editItem, onBack }) {
     setTargetValue(item.targetValue != null ? String(item.targetValue) : "");
     setError("");
     setPlanOpen(false);
-  }, [item, isProcess, canUseReminders]);
+  }, [item?.id]);
 
   const normalizedReminderTimes = useMemo(() => normalizeTimes(reminderTimes), [reminderTimes]);
 
@@ -378,6 +386,7 @@ export default function EditItem({ data, setData, editItem, onBack }) {
       title: cleanTitle,
       priority,
     };
+    updates.priorityLevel = priority;
 
     if (isProcess) {
       const plan = planType === "ONE_OFF" ? "ONE_OFF" : "ACTION";
