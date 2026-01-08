@@ -456,6 +456,7 @@ export function initialData() {
         home: null,
         library: null,
         plan: null,
+        pilotage: null,
       },
 
       // V2: per-page theming
@@ -530,6 +531,7 @@ export function demoData() {
         home: categories[0].id,
         library: categories[0].id,
         plan: categories[0].id,
+        pilotage: categories[0].id,
       },
 
       pageThemes: { home: "aurora" },
@@ -644,11 +646,12 @@ export function migrate(prev) {
 
   // V3: per-view selected category (decouple Today/Library/Plan)
   if (!next.ui.selectedCategoryByView || typeof next.ui.selectedCategoryByView !== "object") {
-    next.ui.selectedCategoryByView = { home: null, library: null, plan: null };
+    next.ui.selectedCategoryByView = { home: null, library: null, plan: null, pilotage: null };
   } else {
     if (typeof next.ui.selectedCategoryByView.home === "undefined") next.ui.selectedCategoryByView.home = null;
     if (typeof next.ui.selectedCategoryByView.library === "undefined") next.ui.selectedCategoryByView.library = null;
     if (typeof next.ui.selectedCategoryByView.plan === "undefined") next.ui.selectedCategoryByView.plan = null;
+    if (typeof next.ui.selectedCategoryByView.pilotage === "undefined") next.ui.selectedCategoryByView.pilotage = null;
   }
 
   // Backfill per-view focus from legacy selectedCategoryId (one-time initialization)
@@ -661,6 +664,9 @@ export function migrate(prev) {
   }
   if (!next.ui.selectedCategoryByView.plan) {
     next.ui.selectedCategoryByView.plan = next.ui.selectedCategoryId || null;
+  }
+  if (!next.ui.selectedCategoryByView.pilotage) {
+    next.ui.selectedCategoryByView.pilotage = next.ui.selectedCategoryId || null;
   }
 
   if (typeof next.ui.soundEnabled === "undefined") next.ui.soundEnabled = false;
@@ -714,6 +720,11 @@ export function migrate(prev) {
   if (next.ui?.selectedCategoryByView?.plan) {
     const exists = next.categories.some((c) => c.id === next.ui.selectedCategoryByView.plan);
     if (!exists) next.ui.selectedCategoryByView.plan = next.categories[0]?.id || null;
+  }
+  // Ensure per-view pilotage selection is valid
+  if (next.ui?.selectedCategoryByView?.pilotage) {
+    const exists = next.categories.some((c) => c.id === next.ui.selectedCategoryByView.pilotage);
+    if (!exists) next.ui.selectedCategoryByView.pilotage = next.categories[0]?.id || null;
   }
 
   // goals (V2 normalize)
@@ -869,11 +880,12 @@ export function migrate(prev) {
   const first = cats[0]?.id || null;
   const goalList = Array.isArray(normalized.goals) ? normalized.goals : [];
 
-  const scv = normalized.ui?.selectedCategoryByView || { home: null, library: null, plan: null };
+  const scv = normalized.ui?.selectedCategoryByView || { home: null, library: null, plan: null, pilotage: null };
 
   const safeHome = scv.home && cats.some((c) => c.id === scv.home) ? scv.home : first;
   const safeLibrary = scv.library && cats.some((c) => c.id === scv.library) ? scv.library : first;
   const safePlan = scv.plan && cats.some((c) => c.id === scv.plan) ? scv.plan : first;
+  const safePilotage = scv.pilotage && cats.some((c) => c.id === scv.pilotage) ? scv.pilotage : first;
 
   // Keep legacy `selectedCategoryId` as the Plan context to avoid coupling Today/Library to it.
   const legacySelectedCategoryId = safePlan || null;
@@ -894,6 +906,7 @@ export function migrate(prev) {
         home: safeHome,
         library: safeLibrary,
         plan: safePlan,
+        pilotage: safePilotage,
       },
     },
   };

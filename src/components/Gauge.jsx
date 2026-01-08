@@ -1,10 +1,22 @@
 import React from "react";
 
-export default function Gauge({ label, currentValue, targetValue, unit, accentColor, className }) {
+export default function Gauge({
+  label,
+  currentValue,
+  targetValue,
+  unit,
+  accentColor,
+  className,
+  startFull = false,
+}) {
   const hasTarget = Number.isFinite(targetValue) && targetValue > 0;
   const current = Number.isFinite(currentValue) && currentValue >= 0 ? currentValue : 0;
   const target = hasTarget ? targetValue : 0;
-  const progress = hasTarget ? Math.min(current / target, 1) : 0;
+  const progress = hasTarget
+    ? startFull && current === 0
+      ? 1
+      : Math.min(current / target, 1)
+    : 0;
   const displayUnit = unit ? ` ${unit}` : "";
   const fillColor = accentColor || "var(--accent)";
 

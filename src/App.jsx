@@ -408,19 +408,23 @@ export default function App() {
       ? categoryDetailId
       : tab === "category-progress"
         ? categoryProgressId
-        : tab === "library" ||
-            tab === "create" ||
-            tab === "create-category" ||
-            tab === "create-goal" ||
-            tab === "create-habit" ||
-            tab === "edit-item" ||
-            tab === "pilotage"
-          ? safeData?.ui?.selectedCategoryByView?.library ||
-            librarySelectedCategoryId ||
+        : tab === "pilotage"
+          ? safeData?.ui?.selectedCategoryByView?.pilotage ||
             safeData?.ui?.selectedCategoryByView?.home ||
             safeData?.ui?.selectedCategoryId ||
             null
-          : safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
+          : tab === "library" ||
+              tab === "create" ||
+              tab === "create-category" ||
+              tab === "create-goal" ||
+              tab === "create-habit" ||
+              tab === "edit-item"
+            ? safeData?.ui?.selectedCategoryByView?.library ||
+              librarySelectedCategoryId ||
+              safeData?.ui?.selectedCategoryByView?.home ||
+              safeData?.ui?.selectedCategoryId ||
+              null
+            : safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
 
   useEffect(() => {
     applyThemeTokens(themeName);
@@ -621,13 +625,23 @@ export default function App() {
             });
             return;
           }
-          if (tab === "library" || tab === "edit-item" || tab === "pilotage") {
+          if (tab === "library" || tab === "edit-item") {
             setData((prev) => ({
               ...prev,
               ui: {
                 ...(prev.ui || {}),
                 librarySelectedCategoryId: categoryId,
                 selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), library: categoryId },
+              },
+            }));
+            return;
+          }
+          if (tab === "pilotage") {
+            setData((prev) => ({
+              ...prev,
+              ui: {
+                ...(prev.ui || {}),
+                selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), pilotage: categoryId },
               },
             }));
             return;
@@ -714,7 +728,7 @@ export default function App() {
           }}
         />
       ) : tab === "pilotage" ? (
-        <Pilotage data={data} onPlanCategory={handlePlanCategory} />
+        <Pilotage data={data} setData={setData} onPlanCategory={handlePlanCategory} />
       ) : tab === "edit-item" ? (
         <EditItem data={data} setData={setData} editItem={editItem} onBack={handleEditBack} />
       ) : tab === "library" && libraryCategoryId ? (

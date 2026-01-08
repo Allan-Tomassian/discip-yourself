@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import { todayKey } from "../utils/dates";
@@ -38,7 +38,7 @@ const STATUS_STYLES = {
   },
 };
 
-export default function Pilotage({ data, onPlanCategory }) {
+export default function Pilotage({ data, setData, onPlanCategory }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const now = new Date();
@@ -63,8 +63,66 @@ export default function Pilotage({ data, onPlanCategory }) {
   const loadSummary = useMemo(() => getLoadSummary(safeData, now), [safeData, dayKey]);
   const disciplineSummary = useMemo(() => getDisciplineSummary(safeData, now), [safeData, dayKey]);
 
-  const selectedCategoryId =
-    safeData?.ui?.selectedCategoryId || safeData?.selectedCategoryId || categories?.[0]?.id || null;
+  const pilotageSelectedId = safeData?.ui?.selectedCategoryByView?.pilotage || null;
+  const [localSelectedCategoryId, setLocalSelectedCategoryId] = useState(() => pilotageSelectedId || categories?.[0]?.id || null);
+  const selectedCategoryId = pilotageSelectedId || localSelectedCategoryId;
+
+  // Helper to update pilotage selection in UI state or local fallback
+  const setPilotageSelectedCategory = (categoryId) => {
+    if (!categoryId) return;
+    if (typeof setData === "function") {
+      setData((prev) => {
+        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+        const prevSel = prevUi?.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object" ? prevUi.selectedCategoryByView : {};
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            selectedCategoryByView: {
+              ...prevSel,
+              pilotage: categoryId,
+            },
+          },
+        };
+      });
+    } else {
+      setLocalSelectedCategoryId(categoryId);
+    }
+  };
+
+  // Pilotage doit piloter sa sélection : on garde un id valide quand la liste change.
+  useEffect(() => {
+    if (!categories?.length) {
+      if (typeof setData === "function") {
+        setData((prev) => {
+          const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+          const prevSel = prevUi?.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object" ? prevUi.selectedCategoryByView : {};
+          // only clear pilotage if it was set
+          if (prevSel?.pilotage == null) return prev;
+          return {
+            ...prev,
+            ui: {
+              ...prevUi,
+              selectedCategoryByView: {
+                ...prevSel,
+                pilotage: null,
+              },
+            },
+          };
+        });
+      } else {
+        if (localSelectedCategoryId !== null) setLocalSelectedCategoryId(null);
+      }
+      return;
+    }
+
+    const current = selectedCategoryId;
+    const exists = current ? categories.some((c) => c.id === current) : false;
+    if (!exists) {
+      const fallbackId = categories[0].id;
+      setPilotageSelectedCategory(fallbackId);
+    }
+  }, [categories, selectedCategoryId, localSelectedCategoryId, setData]);
 
   const getCategoryColor = (c) => {
     // Tolérant : accepte plusieurs noms possibles
@@ -119,14 +177,27 @@ export default function Pilotage({ data, onPlanCategory }) {
                     key={c.id}
                     className="row"
                     role="listitem"
+                    tabIndex={0}
                     aria-label={`Catégorie ${c.name || "Catégorie"} (${STATUS_LABELS[label] || "Active"})`}
+                    onClick={() => setPilotageSelectedCategory(c.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setPilotageSelectedCategory(c.id);
+                      }
+                    }}
                     style={{
                       alignItems: "center",
                       justifyContent: "space-between",
                       padding: "10px 10px",
                       borderRadius: 12,
-                      background: isSelected ? `linear-gradient(90deg, rgba(0,0,0,0), ${catColor}22)` : "transparent",
+                      background: isSelected
+                        ? `linear-gradient(90deg, rgba(0,0,0,0), ${catColor}22)`
+                        : `linear-gradient(90deg, rgba(0,0,0,0), ${catColor}0F)`,
                       borderLeft: isSelected ? `4px solid ${catColor}` : "4px solid transparent",
+                      transition: "background 180ms ease, border-left-color 180ms ease",
+                      cursor: "pointer",
+                      outline: "none",
                     }}
                   >
                     <div>

@@ -556,6 +556,29 @@ export default function Home({
 
   const disciplineBreakdown = useMemo(() => {
     const now = new Date();
+
+    // UX: start discipline at 100% for brand-new users (no history yet).
+    const hasAnyChecks = checks && typeof checks === "object" && Object.keys(checks).length > 0;
+    const hasAnySessions = Array.isArray(sessions) && sessions.some((s) => s && typeof s.status === "string");
+    const hasAnyDoneOutcome = goals.some((g) => resolveGoalType(g) === "OUTCOME" && g.status === "done");
+    const hasAnyHistory = hasAnyChecks || hasAnySessions || hasAnyDoneOutcome;
+
+    if (!hasAnyHistory) {
+      const outcomesTotal = goals.filter((g) => resolveGoalType(g) === "OUTCOME").length;
+      return {
+        score: 100,
+        ratio: 1,
+        habit14: { done: 0, planned: 0, ratio: 1, keptDays: 0 },
+        habit90: { done: 0, planned: 0, ratio: 1, keptDays: 0 },
+        microDone14: 0,
+        microMax14: 0,
+        microRatio14: 1,
+        outcomesDone90: 0,
+        outcomesTotal,
+        reliabilityRatio: 1,
+        habitDaysKept14: 0,
+      };
+    }
     const processAll = goals.filter((g) => resolveGoalType(g) === "PROCESS" && g.status === "active");
     const processIds = processAll.map((g) => g.id);
     const plannedPerDay = processIds.length;

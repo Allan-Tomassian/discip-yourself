@@ -110,16 +110,12 @@ export function getCategoryStatus(data, categoryId, nowDate = new Date()) {
   if (processCount === 0) return "ACTIVE";
 
   const goals = Array.isArray(data?.goals) ? data.goals : [];
-  const processGoals = goals.filter(
-    (g) => g && g.categoryId === categoryId && resolveGoalType(g) === "PROCESS"
-  );
+  const processGoals = goals.filter((g) => g && g.categoryId === categoryId && resolveGoalType(g) === "PROCESS");
   if (!processGoals.length) return "ACTIVE";
 
   const occurrences = Array.isArray(data?.occurrences) ? data.occurrences : [];
   const reminders = Array.isArray(data?.reminders) ? data.reminders : [];
-  const reminderGoalIds = new Set(
-    reminders.filter((r) => r && r.goalId && r.enabled !== false).map((r) => r.goalId)
-  );
+  const reminderGoalIds = new Set(reminders.filter((r) => r && r.goalId && r.enabled !== false).map((r) => r.goalId));
   const today = todayKey(nowDate);
   const weekKeys = buildWeekKeys(nowDate);
   const weekSet = new Set(weekKeys);
@@ -252,24 +248,145 @@ export function getDisciplineSummary(data, nowDate = new Date()) {
   const goals = Array.isArray(data?.goals) ? data.goals : [];
   const processIds = new Set(goals.filter((g) => resolveGoalType(g) === "PROCESS").map((g) => g.id));
 
-  const last7Keys = Array.from({ length: 7 }, (_, i) => todayKey(addDays(nowDate, -i)));
+  const checks = data?.checks && typeof data.checks === "object" ? data.checks : {};
+  const hasAnyChecks = Boolean(checks && Object.keys(checks).length);
+
+  // Fresh start guard: if user has no history at all (no sessions + no checks)
+  // OR if they don't have any PROCESS goals yet, show 100% to avoid demotivating defaults.
+  if ((sessions.length === 0 && !hasAnyChecks) || processIds.size === 0) {
+    return {
+      cancelledSessions7d: 0,
+      noExecutionDays7d: 0,
+      cancelledSessions30d: 0,
+      noExecutionDays30d: 0,
+      disciplineScore: 100,
+      disciplineRatio: 1,
+      windowDays: 30,
+      isFreshStart: true,
+    };
+  }
+
+  const occurrences = Array.isArray(data?.occurrences) ? data.occurrences : [];
+
+  const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+  const buildWindowKeys = (days) => Array.from({ length: days }, (_, i) => todayKey(addDays(nowDate, -i)));
+
+  function computePlannedCountByDate(windowKeys) {
+    const windowSet = new Set(windowKeys);
+    const plannedCountByDate = new Map();
+    for (const k of windowKeys) plannedCountByDate.set(k, 0);
+
+    if (occurrences.length) {
+      for (const occ of occurrences) {
+        if (!occ || typeof occ.goalId !== "string" || !processIds.has(occ.goalId)) continue;
+        const dateKey = typeof occ.date === "string" ? occ.date : "";
+        if (!windowSet.has(dateKey)) continue;
+        const status = occ.status || "planned";
+        if (status === "skipped" || status === "done") continue;
+        plannedCountByDate.set(dateKey, (plannedCountByDate.get(dateKey) || 0) + 1);
+      }
+      return plannedCountByDate;
+    }
+
+    const processGoals = goals.filter((g) => g && processIds.has(g.id));
+    for (const k of windowKeys) {
+      let planned = 0;
+      for (const g of processGoals) {
+        const p = countPlannedFromSchedule(g.schedule, [k]);
+        if (p.available) planned += p.planned;
+      }
+      plannedCountByDate.set(k, planned);
+    }
+
+    return plannedCountByDate;
+  }
+
+  function computeCancelledSessions(windowSet) {
+    let cancelled = 0;
+    for (const s of sessions) {
+      if (!s || s.status !== "skipped") continue;
+      const key = typeof s.dateKey === "string" ? s.dateKey : typeof s.date === "string" ? s.date : "";
+      if (!windowSet.has(key)) continue;
+      cancelled += 1;
+    }
+    return cancelled;
+  }
+
+  function computeNoExecutionDays(windowKeys, plannedCountByDate, doneByDate) {
+    let noExecDays = 0;
+    let hasAnySignal = false;
+
+    for (const key of windowKeys) {
+      const set = doneByDate.get(key) || new Set();
+      let done = 0;
+      for (const id of set) if (processIds.has(id)) done += 1;
+
+      const planned = plannedCountByDate.get(key) || 0;
+      if (done > 0) hasAnySignal = true;
+
+      if (planned > 0 && done === 0) {
+        noExecDays += 1;
+        hasAnySignal = true;
+      }
+    }
+
+    return { noExecDays, hasAnySignal };
+  }
+
+  // 7d metrics (kept for UI / future 7d star)
+  const last7Keys = buildWindowKeys(7);
   const last7Set = new Set(last7Keys);
-  let cancelledSessions7d = 0;
+  const plannedByDate7d = computePlannedCountByDate(last7Keys);
+  const doneByDate7d = collectDoneByDate(data || {}, last7Keys);
+  const cancelledSessions7d = computeCancelledSessions(last7Set);
+  const { noExecDays: noExecutionDays7d, hasAnySignal: hasAnySignal7d } = computeNoExecutionDays(
+    last7Keys,
+    plannedByDate7d,
+    doneByDate7d
+  );
+  const totalPlanned7d = last7Keys.reduce((sum, k) => sum + (plannedByDate7d.get(k) || 0), 0);
 
-  for (const s of sessions) {
-    if (!s || s.status !== "skipped") continue;
-    const key = typeof s.dateKey === "string" ? s.dateKey : typeof s.date === "string" ? s.date : "";
-    if (last7Set.has(key)) cancelledSessions7d += 1;
+  // 30d score (requested: 1 month)
+  const last30Keys = buildWindowKeys(30);
+  const last30Set = new Set(last30Keys);
+  const plannedByDate30d = computePlannedCountByDate(last30Keys);
+  const doneByDate30d = collectDoneByDate(data || {}, last30Keys);
+  const cancelledSessions30d = computeCancelledSessions(last30Set);
+  const { noExecDays: noExecutionDays30d, hasAnySignal: hasAnySignal30d } = computeNoExecutionDays(
+    last30Keys,
+    plannedByDate30d,
+    doneByDate30d
+  );
+  const totalPlanned30d = last30Keys.reduce((sum, k) => sum + (plannedByDate30d.get(k) || 0), 0);
+
+  if ((!hasAnySignal30d || totalPlanned30d === 0) && (!hasAnySignal7d || totalPlanned7d === 0)) {
+    return {
+      cancelledSessions7d: 0,
+      noExecutionDays7d: 0,
+      cancelledSessions30d: 0,
+      noExecutionDays30d: 0,
+      disciplineScore: 100,
+      disciplineRatio: 1,
+      windowDays: 30,
+      isFreshStart: true,
+    };
   }
 
-  const doneByDate = collectDoneByDate(data || {}, last7Keys);
-  let noExecutionDays7d = 0;
-  for (const key of last7Keys) {
-    const set = doneByDate.get(key) || new Set();
-    let done = 0;
-    for (const id of set) if (processIds.has(id)) done += 1;
-    if (done === 0) noExecutionDays7d += 1;
-  }
+  // Capital discipline: starts at 100 and only decreases on failures.
+  // Penalties are gentler on 30d to avoid collapsing too fast.
+  let disciplineScore = 100;
+  disciplineScore -= noExecutionDays30d * 3;
+  disciplineScore -= cancelledSessions30d * 1.5;
+  disciplineScore = clamp(disciplineScore, 0, 100);
 
-  return { cancelledSessions7d, noExecutionDays7d };
+  return {
+    cancelledSessions7d,
+    noExecutionDays7d,
+    cancelledSessions30d,
+    noExecutionDays30d,
+    disciplineScore,
+    disciplineRatio: disciplineScore / 100,
+    windowDays: 30,
+    isFreshStart: false,
+  };
 }
