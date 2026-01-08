@@ -17,6 +17,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, IconButton, Select, Textarea } from "../components/UI";
+import AccentItem from "../components/AccentItem";
 import {
   addDays,
   addMonths,
@@ -1171,44 +1172,39 @@ export default function Home({
                             </div>
                             <div className="mt12">
                               <div className="small2">Catégorie</div>
-                              <div
-                                className="mt8 listItem catAccentRow"
-                                style={catAccentVars}
-                                data-tour-id="today-focus-category"
-                              >
-                                <div
-                                  className="itemTitle"
-                                  style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-                                >
-                                  {focusCategory?.name || "Catégorie"}
-                                </div>
-                              </div>
+                          <AccentItem
+                            color={accent}
+                            selected
+                            className="mt8"
+                            data-tour-id="today-focus-category"
+                          >
+                            <div className="itemTitle">{focusCategory?.name || "Catégorie"}</div>
+                          </AccentItem>
                             </div>
 
                             <div className="mt12">
                               <div className="small2">Objectif principal</div>
                             {outcomeGoals.length ? (
-                              <div className="mt8 catAccentField liquidSelect" style={catAccentVars}>
-                                <Select
-                                  value={selectedGoal?.id || ""}
-                                  onChange={(e) => setCategoryMainGoal(e.target.value)}
-                                  style={{ fontSize: 16 }}
-                                  disabled={!canEdit}
-                                  data-tour-id="today-focus-goal-select"
-                                  >
-                                    <option value="" disabled>
-                                      Choisir un objectif
-                                    </option>
-                                    {outcomeGoals.map((g) => (
-                                      <option key={g.id} value={g.id}>
-                                        {g.title || "Objectif"}
-                                      </option>
-                                    ))}
-                                  </Select>
-                                </div>
-                              ) : (
-                                <div className="mt8 small2">Aucun objectif principal pour cette catégorie.</div>
-                              )}
+                          <AccentItem color={accent} selected className="mt8">
+                            <Select
+                              value={selectedGoal?.id || ""}
+                              onChange={(e) => setCategoryMainGoal(e.target.value)}
+                              disabled={!canEdit}
+                              style={{ fontSize: 16 }}
+                            >
+                              <option value="" disabled>
+                                Choisir un objectif
+                              </option>
+                              {outcomeGoals.map((g) => (
+                                <option key={g.id} value={g.id}>
+                                  {g.title}
+                                </option>
+                              ))}
+                            </Select>
+                          </AccentItem>
+                            ) : (
+                              <div className="mt8 small2">Aucun objectif principal pour cette catégorie.</div>
+                            )}
                             </div>
 
                             <div className="mt12">
@@ -1484,60 +1480,12 @@ export default function Home({
                                   const isMicroDone = dayChecks.micro.includes(item.id);
                                   const canAddMicro = canValidate && microDoneToday < 3 && !isMicroDone;
                                   return (
-                                    <div key={item.uid} className="listItem catAccentRow" style={catAccentVars}>
-                                      <div
-                                        className="row"
-                                        style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}
-                                      >
-                                        <div className="itemTitle" style={{ flex: 1, minWidth: 0 }}>
-                                          {item.label}
-                                        </div>
-                                        <Button
-                                          variant="ghost"
-                                          disabled={!canAddMicro}
-                                          onClick={() => {
-                                            if (!canAddMicro) return;
-                                            setData((prev) => {
-                                              const nextChecks = { ...(prev.checks || {}) };
-                                              const rawBucket = nextChecks[selectedDateKey];
-                                              const dayBucket =
-                                                rawBucket && typeof rawBucket === "object" ? { ...rawBucket } : {};
-                                              const microIds = Array.isArray(dayBucket.micro)
-                                                ? [...dayBucket.micro]
-                                                : [];
-                                              const unique = new Set(microIds);
-                                              if (unique.size >= 3 || unique.has(item.id)) return prev;
-                                              dayBucket.micro = [...microIds, item.id];
-                                              nextChecks[selectedDateKey] = dayBucket;
-                                              return { ...prev, checks: nextChecks };
-                                            });
-                                            setMicroState((prev) => {
-                                              const remaining = prev.items.filter((i) => i.uid !== item.uid);
-                                              const nextItem = MICRO_ACTIONS[prev.cursor % MICRO_ACTIONS.length];
-                                              const next = nextItem
-                                                ? {
-                                                    uid: `${nextItem.id}-${selectedDateKey}-${Date.now()}`,
-                                                    id: nextItem.id,
-                                                    label: nextItem.label,
-                                                  }
-                                                : null;
-                                              return {
-                                                ...prev,
-                                                cursor: (prev.cursor + 1) % MICRO_ACTIONS.length,
-                                                items: next ? [...remaining, next] : remaining,
-                                              };
-                                            });
-                                          }}
-                                        >
-                                          +1
-                                        </Button>
+                                    <AccentItem key={item.uid} color={accent} className="listItem">
+                                      <div className="row" style={{ justifyContent: "space-between" }}>
+                                        <div className="itemTitle">{item.label}</div>
+                                        <Button variant="ghost">+1</Button>
                                       </div>
-                                      {!canValidate ? (
-                                        <div className="sectionSub" style={{ marginTop: 8 }}>
-                                          {lockMessage}
-                                        </div>
-                                      ) : null}
-                                    </div>
+                                    </AccentItem>
                                   );
                                 })}
                               </div>

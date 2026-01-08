@@ -1,6 +1,7 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
+import AccentItem from "../components/AccentItem";
 import { todayKey } from "../utils/dates";
 import {
   getCategoryCounts,
@@ -42,7 +43,6 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const now = new Date();
-  const dayKey = todayKey(now);
 
   const countsByCategory = useMemo(() => {
     const map = new Map();
@@ -58,22 +58,23 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
       map.set(c.id, getCategoryStatus(safeData, c.id, now));
     }
     return map;
-  }, [categories, safeData, dayKey]);
+  }, [categories, safeData, now]);
 
-  const loadSummary = useMemo(() => getLoadSummary(safeData, now), [safeData, dayKey]);
-  const disciplineSummary = useMemo(() => getDisciplineSummary(safeData, now), [safeData, dayKey]);
+  const loadSummary = useMemo(() => getLoadSummary(safeData, now), [safeData, now]);
+  const disciplineSummary = useMemo(() => getDisciplineSummary(safeData, now), [safeData, now]);
 
-  const pilotageSelectedId = safeData?.ui?.selectedCategoryByView?.pilotage || null;
-  const [localSelectedCategoryId, setLocalSelectedCategoryId] = useState(() => pilotageSelectedId || categories?.[0]?.id || null);
-  const selectedCategoryId = pilotageSelectedId || localSelectedCategoryId;
+  const selectedCategoryId = safeData?.ui?.selectedCategoryByView?.pilotage || categories?.[0]?.id || null;
 
-  // Helper to update pilotage selection in UI state or local fallback
-  const setPilotageSelectedCategory = (categoryId) => {
-    if (!categoryId) return;
-    if (typeof setData === "function") {
+  const setPilotageSelectedCategory = useCallback(
+    (categoryId) => {
+      if (!categoryId || typeof setData !== "function") return;
       setData((prev) => {
         const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-        const prevSel = prevUi?.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object" ? prevUi.selectedCategoryByView : {};
+        const prevSel =
+          prevUi?.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+            ? prevUi.selectedCategoryByView
+            : {};
+        if (prevSel?.pilotage === categoryId) return prev;
         return {
           ...prev,
           ui: {
@@ -85,46 +86,44 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
           },
         };
       });
-    } else {
-      setLocalSelectedCategoryId(categoryId);
-    }
-  };
+    },
+    [setData]
+  );
 
   // Pilotage doit piloter sa sélection : on garde un id valide quand la liste change.
   useEffect(() => {
-    if (!categories?.length) {
-      if (typeof setData === "function") {
-        setData((prev) => {
-          const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-          const prevSel = prevUi?.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object" ? prevUi.selectedCategoryByView : {};
-          // only clear pilotage if it was set
-          if (prevSel?.pilotage == null) return prev;
-          return {
-            ...prev,
-            ui: {
-              ...prevUi,
-              selectedCategoryByView: {
-                ...prevSel,
-                pilotage: null,
-              },
+    if (typeof setData !== "function") return;
+
+    if (!categories.length) {
+      setData((prev) => {
+        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+        const prevSel =
+          prevUi?.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+            ? prevUi.selectedCategoryByView
+            : {};
+        if (prevSel?.pilotage == null) return prev;
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            selectedCategoryByView: {
+              ...prevSel,
+              pilotage: null,
             },
-          };
-        });
-      } else {
-        if (localSelectedCategoryId !== null) setLocalSelectedCategoryId(null);
-      }
+          },
+        };
+      });
       return;
     }
 
-    const current = selectedCategoryId;
+    const current = safeData?.ui?.selectedCategoryByView?.pilotage || null;
     const exists = current ? categories.some((c) => c.id === current) : false;
     if (!exists) {
-      const fallbackId = categories[0].id;
-      setPilotageSelectedCategory(fallbackId);
+      setPilotageSelectedCategory(categories[0].id);
     }
-  }, [categories, selectedCategoryId, localSelectedCategoryId, setData]);
+  }, [categories, safeData?.ui?.selectedCategoryByView?.pilotage, setData, setPilotageSelectedCategory]);
 
-  const getCategoryColor = (c) => {
+  const getCategoryColor = useCallback((c) => {
     // Tolérant : accepte plusieurs noms possibles
     return (
       c?.color ||
@@ -133,7 +132,7 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
       c?.themeColor ||
       "#6EE7FF" // fallback cohérent avec l'UI actuelle
     );
-  };
+  }, []);
 
   return (
     <ScreenShell
@@ -173,38 +172,13 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
                 const statusStyle = STATUS_STYLES[label] || STATUS_STYLES.ACTIVE;
 
                 return (
-                  <div
+                  <AccentItem
                     key={c.id}
-                    className="row"
-                    role="listitem"
-                    tabIndex={0}
-                    aria-label={`Catégorie ${c.name || "Catégorie"} (${STATUS_LABELS[label] || "Active"})`}
+                    color={catColor}
+                    selected={isSelected}
                     onClick={() => setPilotageSelectedCategory(c.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setPilotageSelectedCategory(c.id);
-                      }
-                    }}
-                    style={{
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "10px 10px",
-                      borderRadius: 12,
-                      background: isSelected
-                        ? `linear-gradient(90deg, rgba(0,0,0,0), ${catColor}22)`
-                        : `linear-gradient(90deg, rgba(0,0,0,0), ${catColor}0F)`,
-                      borderLeft: isSelected ? `4px solid ${catColor}` : "4px solid transparent",
-                      transition: "background 180ms ease, border-left-color 180ms ease",
-                      cursor: "pointer",
-                      outline: "none",
-                    }}
-                  >
-                    <div>
-                      <div className="itemTitle">{c.name || "Catégorie"}</div>
-                      <div className="itemSub">{summary}</div>
-                    </div>
-                    <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                    aria-label={`Catégorie ${c.name || "Catégorie"} (${STATUS_LABELS[label] || "Active"})`}
+                    rightSlot={
                       <span
                         className="badge"
                         aria-label={`Statut: ${STATUS_LABELS[label] || "Active"}`}
@@ -216,8 +190,13 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
                       >
                         {STATUS_LABELS[label] || "Active"}
                       </span>
+                    }
+                  >
+                    <div>
+                      <div className="itemTitle">{c.name || "Catégorie"}</div>
+                      <div className="itemSub">{summary}</div>
                     </div>
-                  </div>
+                  </AccentItem>
                 );
               })}
             </div>

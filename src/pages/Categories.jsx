@@ -1,8 +1,7 @@
 // src/pages/Categories.jsx
 import React, { useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card } from "../components/UI";
-import { getCategoryAccentVars } from "../utils/categoryAccent";
+import { Button, Card, AccentItem } from "../components/UI";
 import { isPrimaryCategory } from "../logic/priority";
 import { getCategoryCounts } from "../logic/pilotage";
 
@@ -139,11 +138,13 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
               ? `${formatCount(habits, "action", "actions")} · ${formatCount(objectives, "objectif", "objectifs")}`
               : "Aucun élément";
 
+          const isSelected = libraryViewSelectedId === c.id;
+
           return (
-            <Card
+            <AccentItem
               key={c.id}
-              className="catAccentRow"
-              style={getCategoryAccentVars(c.color)}
+              color={c.color}
+              selected={isSelected}
               onClick={() => setLibraryCategory(c.id, { navigate: true })}
               role="button"
               tabIndex={0}
@@ -159,7 +160,10 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
                   <div className="itemTitle">
                     {c.name}
                     {isPrimaryCategory(c) ? (
-                      <span className="badge" style={{ marginLeft: 8, borderColor: "var(--accent)", color: "var(--accent)" }}>
+                      <span
+                        className="badge"
+                        style={{ marginLeft: 8, borderColor: "var(--accent)", color: "var(--accent)" }}
+                      >
                         Prioritaire
                       </span>
                     ) : null}
@@ -167,7 +171,7 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
                   <div className="itemSub">{summary}</div>
                 </div>
               </div>
-            </Card>
+            </AccentItem>
           );
         })}
       </div>
