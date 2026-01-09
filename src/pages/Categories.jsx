@@ -64,30 +64,41 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
       <ScreenShell
         headerTitle={<span className="textAccent" data-tour-id="library-title">Bibliothèque</span>}
         headerSubtitle="Aucune catégorie"
-        headerRight={
-          <div className="row" style={{ gap: 8 }}>
-            <Button variant="ghost" onClick={handleOpenManage} disabled={!categories.length} data-tour-id="library-manage">
-              Gérer
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
-              data-tour-id="library-create"
-            >
-              Créer
-            </Button>
-          </div>
-        }
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
-        <Card accentBorder>
-          <div className="p18">
-            <div className="titleSm">Aucune catégorie</div>
-            <div className="small" style={{ marginTop: 6 }}>
-              Ajoute une première catégorie pour commencer.
+        <div className="stack stackGap12" style={{ maxWidth: 720, margin: "0 auto" }}>
+          <Card>
+            <div className="p18">
+              <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+                <div className="sectionTitle">Catégories</div>
+                <div className="row" style={{ gap: 8 }}>
+                  <Button
+                    variant="ghost"
+                    onClick={handleOpenManage}
+                    disabled={!categories.length}
+                    data-tour-id="library-manage"
+                  >
+                    Gérer
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
+                    data-tour-id="library-create"
+                  >
+                    Créer
+                  </Button>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <div className="titleSm">Aucune catégorie</div>
+                <div className="small" style={{ marginTop: 6 }}>
+                  Ajoute une première catégorie pour commencer.
+                </div>
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
       </ScreenShell>
     );
   }
@@ -112,68 +123,76 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
     <ScreenShell
       headerTitle={<span className="textAccent" data-tour-id="library-title">Bibliothèque</span>}
       headerSubtitle="Catégories"
-      headerRight={
-        <div className="row" style={{ gap: 8 }}>
-          <Button variant="ghost" onClick={handleOpenManage} disabled={!categories.length} data-tour-id="library-manage">
-            Gérer
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
-            data-tour-id="library-create"
-          >
-            Créer
-          </Button>
-        </div>
-      }
       backgroundImage={safeData?.profile?.whyImage || ""}
     >
-      <div className="stack stackGap12" data-tour-id="library-category-list">
-        {sortedCategories.map((c) => {
-          const counts = countsByCategory.get(c.id) || { habits: 0, objectives: 0 };
-          const objectives = counts.objectives;
-          const habits = counts.habits;
-          const summary =
-            objectives || habits
-              ? `${formatCount(habits, "action", "actions")} · ${formatCount(objectives, "objectif", "objectifs")}`
-              : "Aucun élément";
-
-          const isSelected = libraryViewSelectedId === c.id;
-
-          return (
-            <AccentItem
-              key={c.id}
-              color={c.color}
-              selected={isSelected}
-              onClick={() => setLibraryCategory(c.id, { navigate: true })}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setLibraryCategory(c.id, { navigate: true });
-                }
-              }}
-            >
-              <div className="p18 row" style={{ justifyContent: "space-between" }}>
-                <div>
-                  <div className="itemTitle">
-                    {c.name}
-                    {isPrimaryCategory(c) ? (
-                      <span
-                        className="badge"
-                        style={{ marginLeft: 8, borderColor: "var(--accent)", color: "var(--accent)" }}
-                      >
-                        Prioritaire
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="itemSub">{summary}</div>
-                </div>
+      <div className="stack stackGap12" style={{ maxWidth: 720, margin: "0 auto" }}>
+        <Card>
+          <div className="p18">
+            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+              <div className="sectionTitle">Catégories</div>
+              <div className="row" style={{ gap: 8 }}>
+                <Button variant="ghost" onClick={handleOpenManage} data-tour-id="library-manage">
+                  Gérer
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
+                  data-tour-id="library-create"
+                >
+                  Créer
+                </Button>
               </div>
-            </AccentItem>
-          );
-        })}
+            </div>
+
+            <div className="mt12 col" data-tour-id="library-category-list" style={{ gap: 10 }}>
+              {sortedCategories.map((c) => {
+                const counts = countsByCategory.get(c.id) || { habits: 0, objectives: 0 };
+                const objectives = counts.objectives;
+                const habits = counts.habits;
+                const summary =
+                  objectives || habits
+                    ? `${formatCount(habits, "action", "actions")} · ${formatCount(objectives, "objectif", "objectifs")}`
+                    : "Aucun élément";
+
+                const isSelected = libraryViewSelectedId === c.id;
+
+                return (
+                  <AccentItem
+                    key={c.id}
+                    color={c.color}
+                    selected={isSelected}
+                    onClick={() => setLibraryCategory(c.id, { navigate: true })}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setLibraryCategory(c.id, { navigate: true });
+                      }
+                    }}
+                  >
+                    <div className="p18 row" style={{ justifyContent: "space-between" }}>
+                      <div>
+                        <div className="itemTitle">
+                          {c.name}
+                          {isPrimaryCategory(c) ? (
+                            <span
+                              className="badge"
+                              style={{ marginLeft: 8, borderColor: "var(--accent)", color: "var(--accent)" }}
+                            >
+                              Prioritaire
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="itemSub">{summary}</div>
+                      </div>
+                    </div>
+                  </AccentItem>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
       </div>
     </ScreenShell>
   );

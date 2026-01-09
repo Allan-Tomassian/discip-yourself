@@ -1172,14 +1172,21 @@ export default function Home({
                             </div>
                             <div className="mt12">
                               <div className="small2">Catégorie</div>
-                          <AccentItem
-                            color={accent}
-                            selected
-                            className="mt8"
-                            data-tour-id="today-focus-category"
-                          >
-                            <div className="itemTitle">{focusCategory?.name || "Catégorie"}</div>
-                          </AccentItem>
+                              <div
+                                className="mt8"
+                                data-tour-id="today-focus-category"
+                                style={{
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  padding: "10px 10px",
+                                  borderRadius: 12,
+                                  background: `linear-gradient(90deg, rgba(0,0,0,0), ${accent}22)`,
+                                  borderLeft: `4px solid ${accent}`,
+                                  transition: "background 180ms ease, border-left-color 180ms ease",
+                                }}
+                              >
+                                <div className="itemTitle">{focusCategory?.name || "Catégorie"}</div>
+                              </div>
                             </div>
 
                             <div className="mt12">

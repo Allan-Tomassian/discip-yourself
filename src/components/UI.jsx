@@ -113,9 +113,12 @@ export function AccentItem({
   return (
     <div
       className={className}
+      aria-selected={selected}
       style={{
+        display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
+        gap: 10,
         padding: "10px 10px",
         borderRadius: 12,
         background: selected

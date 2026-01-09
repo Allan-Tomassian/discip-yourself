@@ -141,7 +141,7 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
       backgroundImage={safeData?.profile?.whyImage || ""}
     >
       <div className="stack stackGap12">
-        <Card accentBorder data-tour-id="pilotage-category-status">
+        <Card data-tour-id="pilotage-category-status">
           <div className="p18">
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div className="sectionTitle">État des catégories</div>
@@ -203,7 +203,7 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
           </div>
         </Card>
 
-        <Card accentBorder data-tour-id="pilotage-load">
+        <Card data-tour-id="pilotage-load">
           <div className="p18">
             <div className="sectionTitle">Charge</div>
             <div className="mt12 col" style={{ gap: 10 }}>
@@ -229,7 +229,7 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
           </div>
         </Card>
 
-        <Card accentBorder data-tour-id="pilotage-discipline">
+        <Card data-tour-id="pilotage-discipline">
           <div className="p18">
             <div className="sectionTitle">Discipline</div>
             <div className="mt12 col" style={{ gap: 10 }}>
