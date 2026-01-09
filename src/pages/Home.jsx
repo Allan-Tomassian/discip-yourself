@@ -998,6 +998,36 @@ export default function Home({
     }
   }
 
+  function addMicroCheck(microId) {
+    if (!microId || typeof setData !== "function") return;
+    if (!canValidate) return;
+    // Max 3 micro-actions/day and avoid duplicates
+    const already = Array.isArray(dayChecks.micro) ? dayChecks.micro.includes(microId) : false;
+    if (already) return;
+    if (microDoneToday >= 3) return;
+
+    setData((prev) => {
+      const prevChecks = prev?.checks && typeof prev.checks === "object" ? prev.checks : {};
+      const prevBucket = prevChecks?.[selectedDateKey] && typeof prevChecks[selectedDateKey] === "object"
+        ? prevChecks[selectedDateKey]
+        : {};
+      const prevMicro = Array.isArray(prevBucket.micro) ? prevBucket.micro : [];
+      if (prevMicro.includes(microId)) return prev;
+
+      const nextMicro = [...prevMicro, microId];
+      return {
+        ...prev,
+        checks: {
+          ...prevChecks,
+          [selectedDateKey]: {
+            ...prevBucket,
+            micro: nextMicro,
+          },
+        },
+      };
+    });
+  }
+
 
   // Render
   if (!categories.length) {
@@ -1490,7 +1520,15 @@ export default function Home({
                                     <AccentItem key={item.uid} color={accent} className="listItem">
                                       <div className="row" style={{ justifyContent: "space-between" }}>
                                         <div className="itemTitle">{item.label}</div>
-                                        <Button variant="ghost">+1</Button>
+                                        <Button
+                                          variant="ghost"
+                                          onClick={() => addMicroCheck(item.id)}
+                                          disabled={!canAddMicro}
+                                          aria-label={isMicroDone ? "Déjà fait" : "Ajouter +1"}
+                                          title={isMicroDone ? "Déjà fait" : microDoneToday >= 3 ? "Limite atteinte (3/jour)" : "Ajouter"}
+                                        >
+                                          +1
+                                        </Button>
                                       </div>
                                     </AccentItem>
                                   );
@@ -1503,7 +1541,8 @@ export default function Home({
                     );
                   }
 
-                    return (
+                if (blockId === "notes") {
+                  return (
                       <Card data-tour-id="today-notes-card">
                         <div className="p18">
                           <div className="row">
@@ -1596,8 +1635,10 @@ export default function Home({
                           </div>
                         </div>
                       </Card>
-                    );
-                  }}
+                  );
+                }
+                return null;
+                }}
                 </SortableBlock>
               ))}
             </div>
