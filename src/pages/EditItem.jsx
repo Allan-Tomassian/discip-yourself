@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Input, Select, Textarea } from "../components/UI";
+import { Button, Card, Input, Select, Textarea } from "../components/UI";
 import { safeConfirm } from "../utils/dialogs";
 import { todayKey } from "../utils/dates";
 import { uid } from "../utils/helpers";
@@ -351,8 +351,12 @@ export default function EditItem({ data, setData, editItem, onBack }) {
         }
         backgroundImage={backgroundImage}
       >
-        <div className="p18">
-          <div className="small2">Impossible de retrouver cet élément.</div>
+        <div className="stack stackGap12">
+          <Card>
+            <div className="p18">
+              <div className="small2">Impossible de retrouver cet élément.</div>
+            </div>
+          </Card>
         </div>
       </ScreenShell>
     );
@@ -540,7 +544,9 @@ export default function EditItem({ data, setData, editItem, onBack }) {
       backgroundImage={backgroundImage}
     >
       <div className="stack stackGap12">
-        <div className="editPanel">
+        <Card>
+          <div className="p18">
+            <div className="editPanel">
           <div className="editPanelBody">
             <div className="editSection">
               <div className="editSectionTitle">Identité</div>
@@ -755,13 +761,15 @@ export default function EditItem({ data, setData, editItem, onBack }) {
             {error ? <div className="small2" style={{ color: "rgba(255,120,120,.95)" }}>{error}</div> : null}
           </div>
 
-          <div className="editPanelFooter">
-            <Button variant="ghost" onClick={onBack}>
-              Annuler
-            </Button>
-            <Button onClick={handleSave}>Enregistrer</Button>
+            <div className="editPanelFooter">
+              <Button variant="ghost" onClick={onBack}>
+                Annuler
+              </Button>
+              <Button onClick={handleSave}>Enregistrer</Button>
+            </div>
           </div>
         </div>
+      </Card>
       </div>
     </ScreenShell>
   );

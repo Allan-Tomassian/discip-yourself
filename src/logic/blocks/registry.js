@@ -2,7 +2,7 @@ export const BLOCKS_SCHEMA_VERSION = 1;
 
 export const PAGE_BLOCKS = {
   home: ["focus", "calendar", "micro", "notes"],
-  pilotage: ["status", "load", "discipline"],
+  pilotage: ["pilotage.categories", "pilotage.charge", "pilotage.discipline"],
   library: ["list"],
 };
 

@@ -6,6 +6,12 @@ const coerceId = (entry) => {
   return "";
 };
 
+const PILOTAGE_ID_MAP = {
+  status: "pilotage.categories",
+  load: "pilotage.charge",
+  discipline: "pilotage.discipline",
+};
+
 export function ensureBlocksConfig(blocksByPage) {
   const defaults = getDefaultBlocksByPage();
   const base = blocksByPage && typeof blocksByPage === "object" ? blocksByPage : null;
@@ -25,18 +31,20 @@ export function ensureBlocksConfig(blocksByPage) {
     let pageChanged = false;
 
     for (const entry of raw) {
-      const id = coerceId(entry);
+      const rawId = coerceId(entry);
+      const mappedId = pageId === "pilotage" && PILOTAGE_ID_MAP[rawId] ? PILOTAGE_ID_MAP[rawId] : rawId;
+      const id = mappedId;
       if (!id || !ids.includes(id) || seen.has(id)) {
         pageChanged = true;
         continue;
       }
       seen.add(id);
       if (entry && typeof entry === "object") {
-        if (typeof entry.enabled === "boolean") {
+        if (typeof entry.enabled === "boolean" && entry.id === id) {
           sanitized.push(entry);
         } else {
           pageChanged = true;
-          sanitized.push({ ...entry, id, enabled: true });
+          sanitized.push({ ...entry, id, enabled: entry.enabled !== false });
         }
       } else {
         sanitized.push({ id, enabled: true });

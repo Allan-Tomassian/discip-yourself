@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, IconButton } from "../components/UI";
+import { AccentItem, Button, Card, IconButton } from "../components/UI";
 import Gauge from "../components/Gauge";
 import { getAccentForPage } from "../utils/_theme";
 import { safeConfirm, safePrompt } from "../utils/dialogs";
@@ -353,9 +353,9 @@ export default function CategoryView({
       headerRight={headerRight}
       headerRowAlign="start"
     >
-      <div style={{ "--catColor": category.color || "#7C3AED" }}>
-        <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }} data-tour-id="manage-category-card">
-          <div className="p18">
+      <div className="stack stackGap12" style={{ "--catColor": category.color || "#7C3AED" }}>
+        <Card accentBorder style={{ borderColor: category.color || undefined }} data-tour-id="manage-category-card">
+          <div className="p18 stack stackGap12">
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div className="titleSm">Catégorie</div>
@@ -389,7 +389,7 @@ export default function CategoryView({
               </div>
             </div>
             {categoryMenuOpen ? (
-              <div className="mt12 col" style={{ gap: 8 }}>
+              <div className="stack stackGap12">
                 <Button
                   variant="ghost"
                   onClick={() => {
@@ -416,8 +416,8 @@ export default function CategoryView({
           </div>
         </Card>
 
-        <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }} data-tour-id="manage-mini-why">
-          <div className="p18">
+        <Card accentBorder style={{ borderColor: category.color || undefined }} data-tour-id="manage-mini-why">
+          <div className="p18 stack stackGap12">
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div className="titleSm">Mini-why</div>
@@ -427,122 +427,114 @@ export default function CategoryView({
                 {showWhy ? "Masquer" : "Afficher"}
               </button>
             </div>
-            {showWhy ? <div className="mt12 small2">{whyDisplay}</div> : null}
+            {showWhy ? <div className="small2">{whyDisplay}</div> : null}
           </div>
         </Card>
 
-        <Card accentBorder style={{ marginTop: 12, borderColor: category.color || undefined }} data-tour-id="manage-objectives-section">
-          <div className="p18">
+        <Card accentBorder style={{ borderColor: category.color || undefined }} data-tour-id="manage-objectives-section">
+          <div className="p18 stack stackGap12">
             <div className="titleSm">Objectifs</div>
             {outcomeGoals.length ? (
-              <div className="mt12 col">
+              <div className="stack stackGap12">
                 {outcomeGoals.map((g) => (
-                  <div key={g.id} className="listItem">
-                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <div style={{ fontWeight: 700 }}>
-                          {g.title || "Objectif"}
-                          {isPrimaryGoal(g) ? (
-                            <span
-                              className="badge"
-                              style={{ marginLeft: 8, borderColor: "var(--accent)", color: "var(--accent)" }}
-                            >
-                              Prioritaire
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="small2">{g.id === category.mainGoalId ? "Principal" : "Secondaire"}</div>
+                  <AccentItem key={g.id} color={category.color || accent} style={{ cursor: "default" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="itemTitle">
+                        {g.title || "Objectif"}
+                        {isPrimaryGoal(g) ? (
+                          <span
+                            className="badge"
+                            style={{ marginLeft: 8, borderColor: "var(--accent)", color: "var(--accent)" }}
+                          >
+                            Prioritaire
+                          </span>
+                        ) : null}
                       </div>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <IconButton
-                          icon="gear"
-                          aria-label="Paramètres objectif"
-                          onClick={() => openEditItem(g)}
-                        />
-                      </div>
+                      <div className="itemSub">{g.id === category.mainGoalId ? "Principal" : "Secondaire"}</div>
                     </div>
-                  </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <IconButton
+                        icon="gear"
+                        aria-label="Paramètres objectif"
+                        onClick={() => openEditItem(g)}
+                      />
+                    </div>
+                  </AccentItem>
                 ))}
               </div>
             ) : (
-              <div className="mt12 col">
+              <div className="stack stackGap12">
                 <div className="small2">Aucun objectif dans cette catégorie.</div>
-                <div className="mt10">
-                  <Button
-                    variant="ghost"
-                    onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
-                    data-tour-id="manage-objectives-create"
-                  >
-                    Créer
-                  </Button>
-                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
+                  data-tour-id="manage-objectives-create"
+                >
+                  Créer
+                </Button>
               </div>
             )}
           </div>
         </Card>
 
-        <Card accentBorder style={{ marginTop: 12 }} data-tour-id="manage-actions-section">
-          <div className="p18">
+        <Card accentBorder data-tour-id="manage-actions-section">
+          <div className="p18 stack stackGap12">
             <div className="titleSm">Actions</div>
             {habits.length ? (
-              <div className="mt12 col">
+              <div className="stack stackGap12">
                 {habits.map((h) => {
                   const stat = habitWeekStats.get(h.id) || { planned: 0, done: 0, ratio: 0 };
                   return (
-                  <div key={h.id} className="listItem">
-                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ fontWeight: 700 }}>{h.title || "Action"}</div>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <IconButton
-                          icon="gear"
-                          aria-label="Paramètres action"
-                          onClick={() => openEditItem(h)}
+                  <AccentItem key={h.id} color={category.color || accent} style={{ cursor: "default" }}>
+                    <div className="stack" style={{ gap: 6, minWidth: 0, width: "100%" }}>
+                      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                        <div className="itemTitle">{h.title || "Action"}</div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <IconButton
+                            icon="gear"
+                            aria-label="Paramètres action"
+                            onClick={() => openEditItem(h)}
+                          />
+                        </div>
+                      </div>
+                      <div className="itemSub">
+                        {`Cette semaine : ${stat.done} terminées · ${stat.done}/${stat.planned}`}
+                      </div>
+                      <div className="progressTrack">
+                        <div
+                          className="progressFill"
+                          style={{
+                            width: `${Math.round(stat.ratio * 100)}%`,
+                          }}
                         />
                       </div>
                     </div>
-                    <div className="small2" style={{ marginTop: 6 }}>
-                      {`Cette semaine : ${stat.done} terminées · ${stat.done}/${stat.planned}`}
-                    </div>
-                    <div className="progressTrack" style={{ marginTop: 6 }}>
-                      <div
-                        className="progressFill"
-                        style={{
-                          width: `${Math.round(stat.ratio * 100)}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
+                  </AccentItem>
                 );
                 })}
               </div>
             ) : (
-              <div className="mt12 col">
+              <div className="stack stackGap12">
                 <div className="small2">Aucune action liée.</div>
-                <div className="mt10">
-                  <Button
-                    variant="ghost"
-                    onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
-                    data-tour-id="manage-actions-create"
-                  >
-                    Créer
-                  </Button>
-                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
+                  data-tour-id="manage-actions-create"
+                >
+                  Créer
+                </Button>
               </div>
             )}
           </div>
         </Card>
 
-        <Card accentBorder style={{ marginTop: 12 }} data-tour-id="manage-pilotage-section">
-          <div className="p18">
+        <Card accentBorder data-tour-id="manage-pilotage-section">
+          <div className="p18 stack stackGap12">
             <div className="titleSm">Pilotage</div>
-            <div className="small2" style={{ marginTop: 6 }}>
-              Etat, charge et discipline (lecture seule).
-            </div>
-            <div className="mt10">
-              <Button variant="ghost" onClick={openPilotage} data-tour-id="manage-open-pilotage">
-                Ouvrir le pilotage
-              </Button>
-            </div>
+            <div className="small2">Etat, charge et discipline (lecture seule).</div>
+            <Button variant="ghost" onClick={openPilotage} data-tour-id="manage-open-pilotage">
+              Ouvrir le pilotage
+            </Button>
           </div>
         </Card>
       </div>

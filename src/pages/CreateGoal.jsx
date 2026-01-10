@@ -195,7 +195,7 @@ export default function CreateGoal({ data, setData, onCancel, onDone, initialCat
       }
       backgroundImage={backgroundImage}
     >
-      <div className="col">
+      <div className="stack stackGap12">
         <Button
           variant="ghost"
           className="btnBackCompact backBtn"

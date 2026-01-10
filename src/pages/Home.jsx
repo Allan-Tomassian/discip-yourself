@@ -280,16 +280,17 @@ export default function Home({
 
     // If the user didn't touch the calendar during this browser session,
     // force Home to start on the real local day.
-    let touched = false;
+    let touchedKey = "";
     try {
-      touched = sessionStorage.getItem("home:selectedDateTouched") === "1";
+      touchedKey = sessionStorage.getItem("home:selectedDateTouched") || "";
     } catch (_) {
-      touched = false;
+      touchedKey = "";
     }
+    const touchedToday = touchedKey === today;
 
     if (!didInitSelectedDateRef.current) {
       didInitSelectedDateRef.current = true;
-      if (!touched && raw !== today) {
+      if (!touchedToday && raw !== today) {
         setData((prev) => ({
           ...prev,
           ui: { ...(prev.ui || {}), selectedDate: today },
@@ -778,24 +779,31 @@ export default function Home({
 
   // Handlers
   const setSelectedDate = useCallback(
-    (nextKey) => {
+    (nextKey, source = "user") => {
       if (!nextKey || typeof setData !== "function") return;
-      try {
-        sessionStorage.setItem("home:selectedDateTouched", "1");
-      } catch (_) {
-        // ignore
+      const isUser = source === "user";
+      if (isUser) {
+        try {
+          sessionStorage.setItem("home:selectedDateTouched", nextKey);
+        } catch (_) {
+          // ignore
+        }
       }
-      setData((prev) => ({
-        ...prev,
-        ui: { ...(prev.ui || {}), selectedDate: nextKey },
-      }));
+      setData((prev) => {
+        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+        if (prevUi.selectedDate === nextKey) return prev;
+        return {
+          ...prev,
+          ui: { ...prevUi, selectedDate: nextKey },
+        };
+      });
     },
     [setData]
   );
   const handleDayOpen = useCallback(
     (nextKey) => {
       if (!nextKey) return;
-      setSelectedDate(nextKey);
+      setSelectedDate(nextKey, "user");
       if (typeof onDayOpen === "function") onDayOpen(nextKey);
     },
     [onDayOpen, setSelectedDate]
@@ -843,7 +851,7 @@ export default function Home({
     });
     if (closestKey && closestKey !== selectedDateKey) {
       skipAutoCenterRef.current = true;
-      setSelectedDate(closestKey);
+      setSelectedDate(closestKey, "auto");
     }
   }, [selectedDateKey, setSelectedDate]);
 
@@ -1213,6 +1221,7 @@ export default function Home({
           items={blockOrder}
           getId={(id) => id}
           onReorder={handleReorder}
+          className="stack stackGap12"
           renderItem={(blockId, drag) => {
             const { attributes, listeners, setActivatorNodeRef } = drag || {};
             if (blockId === "focus") {
@@ -1787,3 +1796,9 @@ export default function Home({
     </ScreenShell>
   );
 }
+
+// Manual tests:
+// - Fresh load (no interaction): rail + grid highlight today and month aligns.
+// - Refresh (same tab, no interaction): rail + grid highlight today and month aligns.
+// - Scroll rail (auto): selection updates without touching sessionStorage.
+// - Click a day or ⟳: selection updates and persists; month follows.

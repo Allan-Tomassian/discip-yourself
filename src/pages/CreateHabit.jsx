@@ -101,7 +101,7 @@ export default function CreateHabit({ data, setData, onCancel, onDone, initialCa
       }
       backgroundImage={backgroundImage}
     >
-      <div className="col">
+      <div className="stack stackGap12">
         <Button
           variant="ghost"
           className="btnBackCompact backBtn"

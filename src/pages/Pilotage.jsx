@@ -9,6 +9,7 @@ import {
   getDisciplineSummary,
   getLoadSummary,
 } from "../logic/pilotage";
+import SortableBlocks from "../components/SortableBlocks";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
 
 // TOUR MAP:
@@ -41,6 +42,16 @@ const STATUS_STYLES = {
 };
 
 const DEFAULT_PILOTAGE_ORDER = getDefaultBlockIds("pilotage");
+const PILOTAGE_BLOCKS = {
+  "pilotage.categories": { id: "pilotage.categories" },
+  "pilotage.charge": { id: "pilotage.charge" },
+  "pilotage.discipline": { id: "pilotage.discipline" },
+};
+const arrayEqual = (a, b) =>
+  Array.isArray(a) &&
+  Array.isArray(b) &&
+  a.length === b.length &&
+  a.every((id, idx) => id === b[idx]);
 
 export default function Pilotage({ data, setData, onPlanCategory }) {
   const safeData = data && typeof data === "object" ? data : {};
@@ -65,9 +76,98 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
 
   const loadSummary = useMemo(() => getLoadSummary(safeData, now), [safeData, now]);
   const disciplineSummary = useMemo(() => getDisciplineSummary(safeData, now), [safeData, now]);
-  const blockOrder = DEFAULT_PILOTAGE_ORDER;
+  const blockOrder = useMemo(() => {
+    const raw = safeData?.ui?.blocksByPage?.pilotage;
+    const ids = Array.isArray(raw)
+      ? raw.map((item) => (typeof item === "string" ? item : item?.id)).filter(Boolean)
+      : [];
+    const cleaned = [];
+    const seen = new Set();
+    let hasInvalid = false;
+    let hasDuplicate = false;
+    let hasMissing = false;
+    for (const id of ids) {
+      if (!DEFAULT_PILOTAGE_ORDER.includes(id)) {
+        hasInvalid = true;
+        continue;
+      }
+      if (seen.has(id)) {
+        hasDuplicate = true;
+        continue;
+      }
+      seen.add(id);
+      cleaned.push(id);
+    }
+    for (const id of DEFAULT_PILOTAGE_ORDER) {
+      if (!seen.has(id)) {
+        if (ids.length) hasMissing = true;
+        cleaned.push(id);
+      }
+    }
+    if (
+      typeof import.meta !== "undefined" &&
+      import.meta.env?.DEV &&
+      (hasInvalid || hasDuplicate || hasMissing)
+    ) {
+      // eslint-disable-next-line no-console
+      console.warn("[pilotage] invalid or duplicate block ids in blocksByPage.pilotage");
+    }
+    return cleaned.length ? cleaned : [...DEFAULT_PILOTAGE_ORDER];
+  }, [safeData?.ui?.blocksByPage?.pilotage]);
+  const blockItems = useMemo(
+    () => blockOrder.map((id) => PILOTAGE_BLOCKS[id]).filter(Boolean),
+    [blockOrder]
+  );
 
   const selectedCategoryId = safeData?.ui?.selectedCategoryByView?.pilotage || categories?.[0]?.id || null;
+  const handleReorder = useCallback(
+    (nextItems) => {
+      if (typeof setData !== "function") return;
+      const nextIds = Array.isArray(nextItems)
+        ? nextItems.map((item) => item?.id).filter(Boolean)
+        : [];
+      const deduped = [];
+      const seen = new Set();
+      for (const id of nextIds) {
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        deduped.push(id);
+      }
+      setData((prev) => {
+        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+        const prevBlocksByPage =
+          prevUi.blocksByPage && typeof prevUi.blocksByPage === "object" ? prevUi.blocksByPage : {};
+        const prevPilotage = Array.isArray(prevBlocksByPage.pilotage) ? prevBlocksByPage.pilotage : [];
+        const prevIds = prevPilotage.map((b) => (typeof b === "string" ? b : b?.id)).filter(Boolean);
+        if (arrayEqual(prevIds, deduped)) return prev;
+        const byId = new Map(
+          prevPilotage
+            .map((b) => (b && typeof b === "object" ? b : null))
+            .filter(Boolean)
+            .map((b) => [b.id, b])
+        );
+        const nextPilotage = deduped.map((id) => {
+          const existing = byId.get(id);
+          return {
+            ...(existing || { id, enabled: true }),
+            id,
+            enabled: existing ? existing.enabled !== false : true,
+          };
+        });
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            blocksByPage: {
+              ...prevBlocksByPage,
+              pilotage: nextPilotage,
+            },
+          },
+        };
+      });
+    },
+    [setData]
+  );
   const setPilotageSelectedCategory = useCallback(
     (categoryId) => {
       if (!categoryId || typeof setData !== "function") return;
@@ -143,14 +243,31 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
       headerSubtitle="Vue d'ensemble"
       backgroundImage={safeData?.profile?.whyImage || ""}
     >
-      <div className="stack stackGap12">
-        {blockOrder.map((blockId) => {
-          if (blockId === "status") {
+      <SortableBlocks
+        items={blockItems}
+        getId={(item) => item.id}
+        onReorder={handleReorder}
+        className="stack stackGap12"
+        renderItem={(item, drag) => {
+          const blockId = item?.id;
+          const { attributes, listeners, setActivatorNodeRef } = drag || {};
+          if (blockId === "pilotage.categories") {
             return (
-              <Card key={blockId} data-tour-id="pilotage-category-status">
+              <Card data-tour-id="pilotage-category-status">
                 <div className="p18">
                   <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
                     <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                      {drag ? (
+                        <button
+                          ref={setActivatorNodeRef}
+                          {...listeners}
+                          {...attributes}
+                          className="dragHandle"
+                          aria-label="Réorganiser"
+                        >
+                          ⋮⋮
+                        </button>
+                      ) : null}
                       <div className="sectionTitle">État des catégories</div>
                     </div>
                     <Button
@@ -212,11 +329,22 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
               </Card>
             );
           }
-          if (blockId === "load") {
+          if (blockId === "pilotage.charge") {
             return (
-              <Card key={blockId} data-tour-id="pilotage-load">
+              <Card data-tour-id="pilotage-load">
                 <div className="p18">
                   <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                    {drag ? (
+                      <button
+                        ref={setActivatorNodeRef}
+                        {...listeners}
+                        {...attributes}
+                        className="dragHandle"
+                        aria-label="Réorganiser"
+                      >
+                        ⋮⋮
+                      </button>
+                    ) : null}
                     <div className="sectionTitle">Charge</div>
                   </div>
                   <div className="mt12 col" style={{ gap: 10 }}>
@@ -245,11 +373,22 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
               </Card>
             );
           }
-          if (blockId === "discipline") {
+          if (blockId === "pilotage.discipline") {
             return (
-              <Card key={blockId} data-tour-id="pilotage-discipline">
+              <Card data-tour-id="pilotage-discipline">
                 <div className="p18">
                   <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                    {drag ? (
+                      <button
+                        ref={setActivatorNodeRef}
+                        {...listeners}
+                        {...attributes}
+                        className="dragHandle"
+                        aria-label="Réorganiser"
+                      >
+                        ⋮⋮
+                      </button>
+                    ) : null}
                     <div className="sectionTitle">Discipline</div>
                   </div>
                   <div className="mt12 col" style={{ gap: 10 }}>
@@ -267,8 +406,8 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
             );
           }
           return null;
-        })}
-      </div>
+        }}
+      />
     </ScreenShell>
   );
 }

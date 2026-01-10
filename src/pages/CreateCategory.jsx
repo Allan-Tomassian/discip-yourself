@@ -85,7 +85,7 @@ export default function CreateCategory({ data, setData, onCancel, onDone }) {
       }
       backgroundImage={backgroundImage}
     >
-      <div className="col">
+      <div className="stack stackGap12">
         <Button
           variant="ghost"
           className="btnBackCompact backBtn"

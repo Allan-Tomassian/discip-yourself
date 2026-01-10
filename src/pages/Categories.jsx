@@ -171,21 +171,19 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
                       }
                     }}
                   >
-                    <div className="p18 row" style={{ justifyContent: "space-between" }}>
-                      <div>
-                        <div className="itemTitle">
-                          {c.name}
-                          {isPrimaryCategory(c) ? (
-                            <span
-                              className="badge"
-                              style={{ marginLeft: 8, borderColor: "var(--accent)", color: "var(--accent)" }}
-                            >
-                              Prioritaire
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="itemSub">{summary}</div>
+                    <div>
+                      <div className="itemTitle">
+                        {c.name}
+                        {isPrimaryCategory(c) ? (
+                          <span
+                            className="badge"
+                            style={{ marginLeft: 8, borderColor: "var(--accent)", color: "var(--accent)" }}
+                          >
+                            Prioritaire
+                          </span>
+                        ) : null}
                       </div>
+                      <div className="itemSub">{summary}</div>
                     </div>
                   </AccentItem>
                 );

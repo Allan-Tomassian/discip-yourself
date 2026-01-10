@@ -18,7 +18,7 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
       headerSubtitle="Bibliothèque"
       backgroundImage={backgroundImage}
     >
-      <div className="col">
+      <div className="stack stackGap12">
         {onBack ? (
           <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack} data-tour-id="create-back">
             ← Retour
@@ -26,7 +26,7 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
         ) : null}
         <Card
           accentBorder
-          style={{ marginBottom: 12, cursor: "pointer" }}
+          style={{ cursor: "pointer" }}
           onClick={() => (typeof onOpenCategory === "function" ? onOpenCategory() : null)}
           role="button"
           tabIndex={0}
@@ -60,7 +60,7 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
 
         <Card
           accentBorder
-          style={{ marginBottom: 12, cursor: "pointer" }}
+          style={{ cursor: "pointer" }}
           onClick={() => (typeof onOpenGoal === "function" ? onOpenGoal() : null)}
           role="button"
           tabIndex={0}
