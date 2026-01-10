@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import AccentItem from "../components/AccentItem";
@@ -9,7 +9,6 @@ import {
   getDisciplineSummary,
   getLoadSummary,
 } from "../logic/pilotage";
-import SortableBlocks from "../components/SortableBlocks";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
 
 // TOUR MAP:
@@ -42,23 +41,6 @@ const STATUS_STYLES = {
 };
 
 const DEFAULT_PILOTAGE_ORDER = getDefaultBlockIds("pilotage");
-const sameOrder = (a, b) =>
-  Array.isArray(a) &&
-  Array.isArray(b) &&
-  a.length === b.length &&
-  a.every((id, idx) => id === b[idx]);
-
-function normalizeBlockOrder(raw, defaults = DEFAULT_PILOTAGE_ORDER) {
-  if (!Array.isArray(raw)) return [...defaults];
-  const ids = raw
-    .map((item) => (typeof item === "string" ? item : item?.id))
-    .filter(Boolean);
-  const cleaned = ids.filter((id) => defaults.includes(id));
-  for (const id of defaults) {
-    if (!cleaned.includes(id)) cleaned.push(id);
-  }
-  return cleaned.length ? cleaned : [...defaults];
-}
 
 export default function Pilotage({ data, setData, onPlanCategory }) {
   const safeData = data && typeof data === "object" ? data : {};
@@ -83,14 +65,9 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
 
   const loadSummary = useMemo(() => getLoadSummary(safeData, now), [safeData, now]);
   const disciplineSummary = useMemo(() => getDisciplineSummary(safeData, now), [safeData, now]);
+  const blockOrder = DEFAULT_PILOTAGE_ORDER;
 
   const selectedCategoryId = safeData?.ui?.selectedCategoryByView?.pilotage || categories?.[0]?.id || null;
-  const blockOrderFromState = useMemo(
-    () => normalizeBlockOrder(safeData?.ui?.blocksByPage?.pilotage, DEFAULT_PILOTAGE_ORDER),
-    [safeData?.ui?.blocksByPage?.pilotage]
-  );
-  const [blockOrder, setBlockOrder] = useState(blockOrderFromState);
-
   const setPilotageSelectedCategory = useCallback(
     (categoryId) => {
       if (!categoryId || typeof setData !== "function") return;
@@ -149,49 +126,6 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
     }
   }, [categories, safeData?.ui?.selectedCategoryByView?.pilotage, setData, setPilotageSelectedCategory]);
 
-  useEffect(() => {
-    const nextKey = blockOrderFromState.join("|");
-    const currentKey = blockOrder.join("|");
-    if (nextKey !== currentKey) setBlockOrder(blockOrderFromState);
-  }, [blockOrderFromState, blockOrder]);
-
-  useEffect(() => {
-    if (typeof setData !== "function") return;
-    setData((prev) => {
-      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-      const prevBlocksByPage =
-        prevUi.blocksByPage && typeof prevUi.blocksByPage === "object" ? prevUi.blocksByPage : {};
-      const prevPilotage = Array.isArray(prevBlocksByPage.pilotage) ? prevBlocksByPage.pilotage : [];
-      const prevKey = prevPilotage.map((b) => (typeof b === "string" ? b : b?.id)).join("|");
-      const nextKey = blockOrder.join("|");
-      if (prevKey === nextKey) return prev;
-      const byId = new Map(
-        prevPilotage
-          .map((b) => (b && typeof b === "object" ? b : null))
-          .filter(Boolean)
-          .map((b) => [b.id, b])
-      );
-      const nextPilotage = blockOrder.map((id) => {
-        const existing = byId.get(id);
-        return {
-          ...(existing || { id, enabled: true }),
-          id,
-          enabled: existing ? existing.enabled !== false : true,
-        };
-      });
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          blocksByPage: {
-            ...prevBlocksByPage,
-            pilotage: nextPilotage,
-          },
-        },
-      };
-    });
-  }, [blockOrder, setData]);
-
   const getCategoryColor = useCallback((c) => {
     // Tolérant : accepte plusieurs noms possibles
     return (
@@ -209,32 +143,14 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
       headerSubtitle="Vue d'ensemble"
       backgroundImage={safeData?.profile?.whyImage || ""}
     >
-      <SortableBlocks
-        items={blockOrder}
-        getId={(id) => id}
-        onReorder={(next) =>
-          setBlockOrder((prev) => (sameOrder(prev, next) ? prev : next))
-        }
-        className="stack stackGap12"
-        renderItem={(blockId, drag) => {
-          const { attributes, listeners, setActivatorNodeRef } = drag || {};
+      <div className="stack stackGap12">
+        {blockOrder.map((blockId) => {
           if (blockId === "status") {
             return (
-              <Card data-tour-id="pilotage-category-status">
+              <Card key={blockId} data-tour-id="pilotage-category-status">
                 <div className="p18">
                   <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
                     <div className="row" style={{ alignItems: "center", gap: 8 }}>
-                      {drag ? (
-                        <button
-                          ref={setActivatorNodeRef}
-                          {...listeners}
-                          {...attributes}
-                          className="dragHandle"
-                          aria-label="Réorganiser"
-                        >
-                          ⋮⋮
-                        </button>
-                      ) : null}
                       <div className="sectionTitle">État des catégories</div>
                     </div>
                     <Button
@@ -298,20 +214,9 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
           }
           if (blockId === "load") {
             return (
-              <Card data-tour-id="pilotage-load">
+              <Card key={blockId} data-tour-id="pilotage-load">
                 <div className="p18">
                   <div className="row" style={{ alignItems: "center", gap: 8 }}>
-                    {drag ? (
-                      <button
-                        ref={setActivatorNodeRef}
-                        {...listeners}
-                        {...attributes}
-                        className="dragHandle"
-                        aria-label="Réorganiser"
-                      >
-                        ⋮⋮
-                      </button>
-                    ) : null}
                     <div className="sectionTitle">Charge</div>
                   </div>
                   <div className="mt12 col" style={{ gap: 10 }}>
@@ -342,20 +247,9 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
           }
           if (blockId === "discipline") {
             return (
-              <Card data-tour-id="pilotage-discipline">
+              <Card key={blockId} data-tour-id="pilotage-discipline">
                 <div className="p18">
                   <div className="row" style={{ alignItems: "center", gap: 8 }}>
-                    {drag ? (
-                      <button
-                        ref={setActivatorNodeRef}
-                        {...listeners}
-                        {...attributes}
-                        className="dragHandle"
-                        aria-label="Réorganiser"
-                      >
-                        ⋮⋮
-                      </button>
-                    ) : null}
                     <div className="sectionTitle">Discipline</div>
                   </div>
                   <div className="mt12 col" style={{ gap: 10 }}>
@@ -373,8 +267,8 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
             );
           }
           return null;
-        }}
-      />
+        })}
+      </div>
     </ScreenShell>
   );
 }

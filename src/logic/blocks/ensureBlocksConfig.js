@@ -8,36 +8,64 @@ const coerceId = (entry) => {
 
 export function ensureBlocksConfig(blocksByPage) {
   const defaults = getDefaultBlocksByPage();
-  const base = blocksByPage && typeof blocksByPage === "object" ? blocksByPage : {};
+  const base = blocksByPage && typeof blocksByPage === "object" ? blocksByPage : null;
+  if (!base) return defaults;
+  let changed = false;
   const next = { ...base };
 
   for (const [pageId, ids] of Object.entries(PAGE_BLOCKS)) {
-    const raw = Array.isArray(base[pageId]) ? base[pageId] : [];
+    const raw = Array.isArray(base[pageId]) ? base[pageId] : null;
+    if (!raw) {
+      next[pageId] = defaults[pageId];
+      changed = true;
+      continue;
+    }
     const seen = new Set();
     const sanitized = [];
+    let pageChanged = false;
 
     for (const entry of raw) {
       const id = coerceId(entry);
-      if (!id || !ids.includes(id) || seen.has(id)) continue;
+      if (!id || !ids.includes(id) || seen.has(id)) {
+        pageChanged = true;
+        continue;
+      }
       seen.add(id);
       if (entry && typeof entry === "object") {
-        sanitized.push({ ...entry, id, enabled: entry.enabled !== false });
+        if (typeof entry.enabled === "boolean") {
+          sanitized.push(entry);
+        } else {
+          pageChanged = true;
+          sanitized.push({ ...entry, id, enabled: true });
+        }
       } else {
         sanitized.push({ id, enabled: true });
+        pageChanged = true;
       }
     }
 
     for (const id of ids) {
-      if (!seen.has(id)) sanitized.push({ id, enabled: true });
+      if (!seen.has(id)) {
+        sanitized.push({ id, enabled: true });
+        pageChanged = true;
+      }
     }
 
-    next[pageId] = sanitized;
+    if (pageChanged || sanitized.length !== raw.length) {
+      next[pageId] = sanitized;
+      changed = true;
+    } else {
+      next[pageId] = raw;
+    }
   }
 
   // Ensure defaults exist if nothing was provided.
   for (const [pageId, configs] of Object.entries(defaults)) {
-    if (!Array.isArray(next[pageId])) next[pageId] = configs;
+    if (!Array.isArray(next[pageId])) {
+      next[pageId] = configs;
+      changed = true;
+    }
   }
 
-  return next;
+  return changed ? next : base;
 }

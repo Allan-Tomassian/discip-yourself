@@ -490,6 +490,7 @@ export function initialData() {
         calendar: "unknown",
         health: "unknown",
       },
+      isDragging: false,
       showPlanStep: false,
       soundEnabled: false,
       selectedDate: todayKey(),
@@ -562,6 +563,7 @@ export function demoData() {
         calendar: "unknown",
         health: "unknown",
       },
+      isDragging: false,
       showPlanStep: false,
       soundEnabled: false,
       selectedDate: todayKey(),
@@ -702,6 +704,7 @@ export function migrate(prev) {
   if (typeof next.ui.tourSeenVersion !== "number") next.ui.tourSeenVersion = 0;
   if (typeof next.ui.tourStepIndex !== "number") next.ui.tourStepIndex = 0;
   if (typeof next.ui.tourForceStart !== "boolean") next.ui.tourForceStart = false;
+  if (typeof next.ui.isDragging !== "boolean") next.ui.isDragging = false;
   if (!next.ui.permissions || typeof next.ui.permissions !== "object") next.ui.permissions = {};
   if (typeof next.ui.permissions.notifications !== "string") next.ui.permissions.notifications = "unknown";
   if (typeof next.ui.permissions.calendar !== "string") next.ui.permissions.calendar = "unknown";

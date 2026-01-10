@@ -5,6 +5,7 @@ export function useTour({ data, setData, steps, tourVersion }) {
   const totalSteps = safeSteps.length;
   const ui = data?.ui || {};
   const onboardingCompleted = Boolean(ui.onboardingCompleted);
+  const isDragging = Boolean(ui.isDragging);
 
   const [isActive, setIsActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
@@ -20,6 +21,10 @@ export function useTour({ data, setData, steps, tourVersion }) {
       setIsActive(false);
       return;
     }
+    if (isDragging) {
+      setIsActive(false);
+      return;
+    }
     const seenVersion = typeof ui.tourSeenVersion === "number" ? ui.tourSeenVersion : 0;
     const shouldStart = ui.tourForceStart === true || seenVersion < tourVersion;
     if (!shouldStart) {
@@ -30,7 +35,15 @@ export function useTour({ data, setData, steps, tourVersion }) {
     const clamped = Math.min(Math.max(0, startIndex), totalSteps - 1);
     setStepIndex(clamped);
     setIsActive(true);
-  }, [onboardingCompleted, totalSteps, ui.tourForceStart, ui.tourSeenVersion, ui.tourStepIndex, tourVersion]);
+  }, [
+    onboardingCompleted,
+    totalSteps,
+    isDragging,
+    ui.tourForceStart,
+    ui.tourSeenVersion,
+    ui.tourStepIndex,
+    tourVersion,
+  ]);
 
   useEffect(() => {
     if (!isActive || typeof setData !== "function") return;

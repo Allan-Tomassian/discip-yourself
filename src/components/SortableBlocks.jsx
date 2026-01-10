@@ -1,5 +1,5 @@
 // src/components/SortableBlocks.jsx
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -113,15 +113,50 @@ export default function SortableBlocks({
   disabled = false,
   modifiers = [restrictToVerticalAxis, restrictToParentElement],
 }) {
+  const stableEqualIds = (a, b) =>
+    Array.isArray(a) &&
+    Array.isArray(b) &&
+    a.length === b.length &&
+    a.every((id, idx) => id === b[idx]);
+
   const safeItems = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const resolveId = useCallback(
     (item) => (typeof getId === "function" ? getId(item) : item),
     [getId]
   );
-  const order = useMemo(
-    () => safeItems.map((item) => resolveId(item)).filter(Boolean),
-    [safeItems, resolveId]
-  );
+  const { pairs, pairIds } = useMemo(() => {
+    const nextPairs = [];
+    const nextIds = [];
+    const seen = new Set();
+    let hasInvalid = false;
+    let hasDuplicate = false;
+    for (const item of safeItems) {
+      const id = resolveId(item);
+      if (!id) {
+        hasInvalid = true;
+        continue;
+      }
+      if (seen.has(id)) {
+        hasDuplicate = true;
+        continue;
+      }
+      seen.add(id);
+      nextPairs.push({ item, id });
+      nextIds.push(id);
+    }
+    if (hasInvalid && typeof console !== "undefined") {
+      // eslint-disable-next-line no-console
+      console.warn("[SortableBlocks] invalid item id ignored");
+    }
+    if (hasDuplicate && typeof console !== "undefined") {
+      // eslint-disable-next-line no-console
+      console.warn("[SortableBlocks] duplicate item id ignored");
+    }
+    return { pairs: nextPairs, pairIds: nextIds };
+  }, [safeItems, resolveId]);
+
+  const latestRef = useRef({ pairIds, pairs });
+  latestRef.current = { pairIds, pairs };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -134,19 +169,18 @@ export default function SortableBlocks({
       if (!active?.id || !over?.id) return;
       if (active.id === over.id) return;
 
-      const oldIndex = order.indexOf(active.id);
-      const newIndex = order.indexOf(over.id);
+      const { pairIds: idsNow, pairs: pairsNow } = latestRef.current;
+      const oldIndex = idsNow.indexOf(active.id);
+      const newIndex = idsNow.indexOf(over.id);
       if (oldIndex === -1 || newIndex === -1) return;
       if (oldIndex === newIndex) return;
 
-      const next = arrayMove(safeItems, oldIndex, newIndex);
-      const nextOrder = next.map((item) => resolveId(item)).filter(Boolean);
-      const sameOrder =
-        nextOrder.length === order.length && nextOrder.every((id, idx) => id === order[idx]);
-      if (sameOrder) return;
-      if (typeof onReorder === "function") onReorder(next);
+      const nextPairs = arrayMove(pairsNow, oldIndex, newIndex);
+      const nextIds = nextPairs.map((pair) => pair.id);
+      if (stableEqualIds(nextIds, idsNow)) return;
+      if (typeof onReorder === "function") onReorder(nextPairs.map((pair) => pair.item));
     },
-    [order, safeItems, resolveId, onReorder]
+    [resolveId, onReorder, stableEqualIds]
   );
 
   if (typeof renderItem !== "function") return null;
@@ -158,15 +192,15 @@ export default function SortableBlocks({
       onDragEnd={handleDragEnd}
       modifiers={modifiers}
     >
-      <SortableContext items={order} strategy={verticalListSortingStrategy}>
+      <SortableContext items={pairIds} strategy={verticalListSortingStrategy}>
         <div className={className || ""}>
-          {safeItems.map((item, index) => {
-            const id = order[index];
+          {pairs.map((pair) => {
+            const id = pair.id;
             if (!id) return null;
             return (
               <SortableBlock key={id} id={id} disabled={disabled}>
                 {({ attributes, listeners, setActivatorNodeRef }) =>
-                  renderItem(item, { attributes, listeners, setActivatorNodeRef, id })
+                  renderItem(pair.item, { attributes, listeners, setActivatorNodeRef, id })
                 }
               </SortableBlock>
             );

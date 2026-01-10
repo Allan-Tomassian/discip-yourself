@@ -60,11 +60,6 @@ const MICRO_ACTIONS = [
   { id: "micro_etirements", label: "Étirements rapides" },
 ];
 const DEFAULT_BLOCK_ORDER = getDefaultBlockIds("home");
-const sameOrder = (a, b) =>
-  Array.isArray(a) &&
-  Array.isArray(b) &&
-  a.length === b.length &&
-  a.every((id, idx) => id === b[idx]);
 
 function initMicroState(dayKeyValue) {
   const key = dayKeyValue || toLocalDateKey(new Date());
@@ -107,6 +102,12 @@ function normalizeBlockOrder(raw, defaults = DEFAULT_BLOCK_ORDER) {
   }
   return cleaned.length ? cleaned : [...defaults];
 }
+
+const arrayEqual = (a, b) =>
+  Array.isArray(a) &&
+  Array.isArray(b) &&
+  a.length === b.length &&
+  a.every((id, idx) => id === b[idx]);
 
 function loadLegacyBlockOrder() {
   if (typeof window === "undefined") return null;
@@ -153,14 +154,53 @@ export default function Home({
   const [noteMeta, setNoteMeta] = useState({ forme: "", humeur: "", motivation: "" });
   const [showNotesHistory, setShowNotesHistory] = useState(false);
   const legacyOrder = useMemo(() => loadLegacyBlockOrder(), []);
-  const blockOrderFromState = useMemo(() => {
+  const blockOrder = useMemo(() => {
     const raw = safeData?.ui?.blocksByPage?.home;
     if (Array.isArray(raw) && raw.length) return normalizeBlockOrder(raw, DEFAULT_BLOCK_ORDER);
     if (legacyOrder) return normalizeBlockOrder(legacyOrder, DEFAULT_BLOCK_ORDER);
     return [...DEFAULT_BLOCK_ORDER];
   }, [safeData?.ui?.blocksByPage?.home, legacyOrder]);
-  const [blockOrder, setBlockOrder] = useState(blockOrderFromState);
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(selectedDate));
+
+  const handleReorder = useCallback(
+    (nextOrder) => {
+      if (typeof setData !== "function") return;
+      const nextIds = Array.isArray(nextOrder) ? nextOrder.filter(Boolean) : [];
+      setData((prev) => {
+        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+        const prevBlocksByPage =
+          prevUi.blocksByPage && typeof prevUi.blocksByPage === "object" ? prevUi.blocksByPage : {};
+        const prevHome = Array.isArray(prevBlocksByPage.home) ? prevBlocksByPage.home : [];
+        const prevIds = prevHome.map((b) => (typeof b === "string" ? b : b?.id)).filter(Boolean);
+        if (arrayEqual(prevIds, nextIds)) return prev;
+        const byId = new Map(
+          prevHome
+            .map((b) => (b && typeof b === "object" ? b : null))
+            .filter(Boolean)
+            .map((b) => [b.id, b])
+        );
+        const nextHome = nextIds.map((id) => {
+          const existing = byId.get(id);
+          return {
+            ...(existing || { id, enabled: true }),
+            id,
+            enabled: existing ? existing.enabled !== false : true,
+          };
+        });
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            blocksByPage: {
+              ...prevBlocksByPage,
+              home: nextHome,
+            },
+          },
+        };
+      });
+    },
+    [setData]
+  );
 
   // Refs
   const todayKeyRef = useRef(localTodayKey);
@@ -169,6 +209,7 @@ export default function Home({
   const railScrollRaf = useRef(null);
   const skipAutoCenterRef = useRef(false);
   const didInitSelectedDateRef = useRef(false);
+  const didHydrateLegacyRef = useRef(false);
 
   // Data slices
   const profile = safeData.profile || {};
@@ -267,28 +308,30 @@ export default function Home({
   }, [safeData.ui?.selectedDate, setData]);
 
   useEffect(() => {
-    const nextKey = blockOrderFromState.join("|");
-    const currentKey = blockOrder.join("|");
-    if (nextKey !== currentKey) setBlockOrder(blockOrderFromState);
-  }, [blockOrderFromState, blockOrder]);
-
-  useEffect(() => {
+    if (didHydrateLegacyRef.current) return;
     if (typeof setData !== "function") return;
+    if (!legacyOrder) return;
+    const raw = safeData?.ui?.blocksByPage?.home;
+    if (Array.isArray(raw) && raw.length) {
+      didHydrateLegacyRef.current = true;
+      return;
+    }
+    didHydrateLegacyRef.current = true;
+    const nextOrder = normalizeBlockOrder(legacyOrder, DEFAULT_BLOCK_ORDER);
     setData((prev) => {
       const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
       const prevBlocksByPage =
         prevUi.blocksByPage && typeof prevUi.blocksByPage === "object" ? prevUi.blocksByPage : {};
       const prevHome = Array.isArray(prevBlocksByPage.home) ? prevBlocksByPage.home : [];
-      const prevKey = prevHome.map((b) => (typeof b === "string" ? b : b?.id)).join("|");
-      const nextKey = blockOrder.join("|");
-      if (prevKey === nextKey) return prev;
+      const prevIds = prevHome.map((b) => (typeof b === "string" ? b : b?.id)).filter(Boolean);
+      if (arrayEqual(prevIds, nextOrder)) return prev;
       const byId = new Map(
         prevHome
           .map((b) => (b && typeof b === "object" ? b : null))
           .filter(Boolean)
           .map((b) => [b.id, b])
       );
-      const nextHome = blockOrder.map((id) => {
+      const nextHome = nextOrder.map((id) => {
         const existing = byId.get(id);
         return {
           ...(existing || { id, enabled: true }),
@@ -307,7 +350,21 @@ export default function Home({
         },
       };
     });
-  }, [blockOrder, setData]);
+    try {
+      localStorage.removeItem("todayBlocksOrder");
+    } catch (_) {
+      // Ignore storage failures.
+    }
+  }, [legacyOrder, safeData?.ui?.blocksByPage?.home, setData]);
+
+  useEffect(() => {
+    if (typeof console === "undefined") return;
+    const hasDuplicate = new Set(blockOrder).size !== blockOrder.length;
+    if (hasDuplicate && typeof import.meta !== "undefined" && import.meta.env?.DEV) {
+      // eslint-disable-next-line no-console
+      console.warn("[blocks] duplicate ids in home block order");
+    }
+  }, [blockOrder]);
 
   useEffect(() => {
     let next = "";
@@ -1155,9 +1212,7 @@ export default function Home({
         <SortableBlocks
           items={blockOrder}
           getId={(id) => id}
-          onReorder={(next) =>
-            setBlockOrder((prev) => (sameOrder(prev, next) ? prev : next))
-          }
+          onReorder={handleReorder}
           renderItem={(blockId, drag) => {
             const { attributes, listeners, setActivatorNodeRef } = drag || {};
             if (blockId === "focus") {
