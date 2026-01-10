@@ -1,37 +1,48 @@
+// src/components/SortableBlocks.jsx
 import React, { useCallback, useMemo } from "react";
 import {
   DndContext,
   PointerSensor,
-  KeyboardSensor,
+  TouchSensor,
+  closestCenter,
   useSensor,
   useSensors,
-  closestCenter,
 } from "@dnd-kit/core";
 import {
   SortableContext,
+  arrayMove,
   useSortable,
   verticalListSortingStrategy,
-  arrayMove,
-  sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 
-function DragHandle({ label = "Déplacer" }) {
+/**
+ * Drag handle (copié depuis Home)
+ * -> À utiliser dans tes headers de cartes.
+ */
+export function DragHandle({ setActivatorNodeRef, listeners, attributes }) {
   return (
     <button
+      ref={setActivatorNodeRef}
       type="button"
-      aria-label={label}
-      title={label}
-      className="dragHandle"
+      aria-label="Réorganiser"
+      {...listeners}
+      {...attributes}
       style={{
-        cursor: "grab",
-        userSelect: "none",
-        border: "1px solid rgba(255,255,255,.14)",
-        background: "rgba(0,0,0,.18)",
-        color: "rgba(255,255,255,.9)",
-        borderRadius: 10,
-        padding: "6px 10px",
+        width: 18,
+        height: 18,
+        padding: 0,
+        border: 0,
+        borderRadius: 6,
+        background: "transparent",
+        color: "rgba(255,255,255,0.5)",
+        fontSize: 12,
         lineHeight: 1,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "grab",
       }}
     >
       ⋮⋮
@@ -39,93 +50,125 @@ function DragHandle({ label = "Déplacer" }) {
   );
 }
 
-function SortableItem({ id, children, handleLabel }) {
+/**
+ * Wrapper sortable (copié depuis Home)
+ * -> children est une fonction pour récupérer (attributes/listeners/setActivatorNodeRef).
+ */
+export function SortableBlock({ id, children, disabled = false }) {
   const {
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
-  } = useSortable({ id });
+  } = useSortable({ id, disabled });
 
+  const scale = isDragging ? 1.02 : 1;
+  const transformString = CSS.Transform.toString(transform);
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: transformString ? `${transformString} scale(${scale})` : `scale(${scale})`,
     transition,
-    opacity: isDragging ? 0.7 : 1,
+    boxShadow: isDragging ? "0 16px 28px rgba(0,0,0,0.25)" : undefined,
   };
 
   return (
     <div ref={setNodeRef} style={style}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div {...attributes} {...listeners}>
-          <DragHandle label={handleLabel} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
-      </div>
+      {typeof children === "function"
+        ? children({ attributes, listeners, setActivatorNodeRef, isDragging })
+        : children}
     </div>
   );
 }
 
 /**
- * SortableBlocks
- * - order: string[] (current order)
- * - setOrder: (nextOrder: string[]) => void
- * - items: Array<{ id: string, render: () => React.ReactNode }>
+ * Composant réutilisable : même DnD que Home
+ *
+ * API recommandée:
+ * - items: array d'ids ou d'objets
+ * - getId: (item) => string
+ * - onReorder: (nextItems) => void
+ * - renderItem: (item, dndProps) => ReactNode
+ *
+ * Exemple:
+ * <SortableBlocks
+ *   items={items}
+ *   getId={(item) => item.id}
+ *   onReorder={setItems}
+ *   renderItem={(item, dnd) => (
+ *     <Card>
+ *       <DragHandle {...dnd} />
+ *       ...
+ *     </Card>
+ *   )}
+ * />
  */
 export default function SortableBlocks({
-  order,
-  setOrder,
   items,
-  handleLabel = "Déplacer le bloc",
+  getId,
+  onReorder,
+  renderItem,
+  className,
+  disabled = false,
+  modifiers = [restrictToVerticalAxis, restrictToParentElement],
 }) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  const safeItems = useMemo(() => (Array.isArray(items) ? items : []), [items]);
+  const resolveId = useCallback(
+    (item) => (typeof getId === "function" ? getId(item) : item),
+    [getId]
+  );
+  const order = useMemo(
+    () => safeItems.map((item) => resolveId(item)).filter(Boolean),
+    [safeItems, resolveId]
   );
 
-  const itemsById = useMemo(() => {
-    const map = new Map();
-    for (const it of Array.isArray(items) ? items : []) {
-      if (it && typeof it.id === "string") map.set(it.id, it);
-    }
-    return map;
-  }, [items]);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } })
+  );
 
-  const orderedIds = useMemo(() => {
-    const base = Array.isArray(order) ? order : [];
-    const known = new Set(itemsById.keys());
-    const filtered = base.filter((id) => known.has(id));
-    for (const id of known) if (!filtered.includes(id)) filtered.push(id);
-    return filtered;
-  }, [order, itemsById]);
-
-  const onDragEnd = useCallback(
+  const handleDragEnd = useCallback(
     (event) => {
       const { active, over } = event;
       if (!active?.id || !over?.id) return;
       if (active.id === over.id) return;
-      const oldIndex = orderedIds.indexOf(active.id);
-      const newIndex = orderedIds.indexOf(over.id);
+
+      const oldIndex = order.indexOf(active.id);
+      const newIndex = order.indexOf(over.id);
       if (oldIndex === -1 || newIndex === -1) return;
-      const next = arrayMove(orderedIds, oldIndex, newIndex);
-      if (typeof setOrder === "function") setOrder(next);
+      if (oldIndex === newIndex) return;
+
+      const next = arrayMove(safeItems, oldIndex, newIndex);
+      const nextOrder = next.map((item) => resolveId(item)).filter(Boolean);
+      const sameOrder =
+        nextOrder.length === order.length && nextOrder.every((id, idx) => id === order[idx]);
+      if (sameOrder) return;
+      if (typeof onReorder === "function") onReorder(next);
     },
-    [orderedIds, setOrder]
+    [order, safeItems, resolveId, onReorder]
   );
 
+  if (typeof renderItem !== "function") return null;
+
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-      <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
-        <div className="stack stackGap12">
-          {orderedIds.map((id) => {
-            const it = itemsById.get(id);
-            if (!it) return null;
-            const node = typeof it.render === "function" ? it.render() : null;
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+      modifiers={modifiers}
+    >
+      <SortableContext items={order} strategy={verticalListSortingStrategy}>
+        <div className={className || ""}>
+          {safeItems.map((item, index) => {
+            const id = order[index];
+            if (!id) return null;
             return (
-              <SortableItem key={id} id={id} handleLabel={handleLabel}>
-                {node}
-              </SortableItem>
+              <SortableBlock key={id} id={id} disabled={disabled}>
+                {({ attributes, listeners, setActivatorNodeRef }) =>
+                  renderItem(item, { attributes, listeners, setActivatorNodeRef, id })
+                }
+              </SortableBlock>
             );
           })}
         </div>

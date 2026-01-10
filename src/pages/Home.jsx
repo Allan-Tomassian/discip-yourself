@@ -1,20 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  DndContext,
-  PointerSensor,
-  TouchSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import SortableBlocks from "../components/SortableBlocks";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, IconButton, Select, Textarea } from "../components/UI";
 import AccentItem from "../components/AccentItem";
@@ -30,6 +15,7 @@ import { getDoneSessionsForDate, getSessionByDate, startSessionForDate } from ".
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { isPrimaryCategory, isPrimaryGoal } from "../logic/priority";
+import { getDefaultBlockIds } from "../logic/blocks/registry";
 
 // TOUR MAP:
 // - primary_action: start session (GO) for today
@@ -73,7 +59,12 @@ const MICRO_ACTIONS = [
   { id: "micro_rangement", label: "Ranger 2 minutes" },
   { id: "micro_etirements", label: "Étirements rapides" },
 ];
-const DEFAULT_BLOCK_ORDER = ["focus", "calendar", "micro", "notes"];
+const DEFAULT_BLOCK_ORDER = getDefaultBlockIds("home");
+const sameOrder = (a, b) =>
+  Array.isArray(a) &&
+  Array.isArray(b) &&
+  a.length === b.length &&
+  a.every((id, idx) => id === b[idx]);
 
 function initMicroState(dayKeyValue) {
   const key = dayKeyValue || toLocalDateKey(new Date());
@@ -105,64 +96,28 @@ function fromLocalDateKey(key) {
   return new Date(y, m - 1, d, 12, 0, 0);
 }
 
-function normalizeBlockOrder(raw) {
-  if (!Array.isArray(raw)) return [...DEFAULT_BLOCK_ORDER];
-  const cleaned = raw.filter((id) => DEFAULT_BLOCK_ORDER.includes(id));
-  for (const id of DEFAULT_BLOCK_ORDER) {
+function normalizeBlockOrder(raw, defaults = DEFAULT_BLOCK_ORDER) {
+  if (!Array.isArray(raw)) return [...defaults];
+  const ids = raw
+    .map((item) => (typeof item === "string" ? item : item?.id))
+    .filter(Boolean);
+  const cleaned = ids.filter((id) => defaults.includes(id));
+  for (const id of defaults) {
     if (!cleaned.includes(id)) cleaned.push(id);
   }
-  return cleaned.length ? cleaned : [...DEFAULT_BLOCK_ORDER];
+  return cleaned.length ? cleaned : [...defaults];
 }
 
-// ---- Drag & drop
-function DragHandle({ setActivatorNodeRef, listeners, attributes }) {
-  return (
-    <button
-      ref={setActivatorNodeRef}
-      type="button"
-      aria-label="Réorganiser"
-      {...listeners}
-      {...attributes}
-      style={{
-        width: 18,
-        height: 18,
-        padding: 0,
-        border: 0,
-        borderRadius: 6,
-        background: "transparent",
-        color: "rgba(255,255,255,0.5)",
-        fontSize: 12,
-        lineHeight: 1,
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "grab",
-      }}
-    >
-      ⋮⋮
-    </button>
-  );
+function loadLegacyBlockOrder() {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = JSON.parse(localStorage.getItem("todayBlocksOrder"));
+    return Array.isArray(stored) ? stored : null;
+  } catch (_) {
+    return null;
+  }
 }
 
-function SortableBlock({ id, children }) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
-    useSortable({ id });
-  const scale = isDragging ? 1.02 : 1;
-  const transformString = CSS.Transform.toString(transform);
-  const style = {
-    transform: transformString ? `${transformString} scale(${scale})` : `scale(${scale})`,
-    transition,
-    boxShadow: isDragging ? "0 16px 28px rgba(0,0,0,0.25)" : undefined,
-  };
-
-  return (
-    <div ref={setNodeRef} style={style}>
-      {typeof children === "function"
-        ? children({ attributes, listeners, setActivatorNodeRef, isDragging })
-        : children}
-    </div>
-  );
-}
 
 export default function Home({
   data,
@@ -197,14 +152,14 @@ export default function Home({
   const [dailyNote, setDailyNote] = useState("");
   const [noteMeta, setNoteMeta] = useState({ forme: "", humeur: "", motivation: "" });
   const [showNotesHistory, setShowNotesHistory] = useState(false);
-  const [blockOrder, setBlockOrder] = useState(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem("todayBlocksOrder"));
-      return normalizeBlockOrder(stored);
-    } catch (_) {
-      return [...DEFAULT_BLOCK_ORDER];
-    }
-  });
+  const legacyOrder = useMemo(() => loadLegacyBlockOrder(), []);
+  const blockOrderFromState = useMemo(() => {
+    const raw = safeData?.ui?.blocksByPage?.home;
+    if (Array.isArray(raw) && raw.length) return normalizeBlockOrder(raw, DEFAULT_BLOCK_ORDER);
+    if (legacyOrder) return normalizeBlockOrder(legacyOrder, DEFAULT_BLOCK_ORDER);
+    return [...DEFAULT_BLOCK_ORDER];
+  }, [safeData?.ui?.blocksByPage?.home, legacyOrder]);
+  const [blockOrder, setBlockOrder] = useState(blockOrderFromState);
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(selectedDate));
 
   // Refs
@@ -312,12 +267,47 @@ export default function Home({
   }, [safeData.ui?.selectedDate, setData]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem("todayBlocksOrder", JSON.stringify(blockOrder));
-    } catch (_) {
-      // Ignore storage failures.
-    }
-  }, [blockOrder]);
+    const nextKey = blockOrderFromState.join("|");
+    const currentKey = blockOrder.join("|");
+    if (nextKey !== currentKey) setBlockOrder(blockOrderFromState);
+  }, [blockOrderFromState, blockOrder]);
+
+  useEffect(() => {
+    if (typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+      const prevBlocksByPage =
+        prevUi.blocksByPage && typeof prevUi.blocksByPage === "object" ? prevUi.blocksByPage : {};
+      const prevHome = Array.isArray(prevBlocksByPage.home) ? prevBlocksByPage.home : [];
+      const prevKey = prevHome.map((b) => (typeof b === "string" ? b : b?.id)).join("|");
+      const nextKey = blockOrder.join("|");
+      if (prevKey === nextKey) return prev;
+      const byId = new Map(
+        prevHome
+          .map((b) => (b && typeof b === "object" ? b : null))
+          .filter(Boolean)
+          .map((b) => [b.id, b])
+      );
+      const nextHome = blockOrder.map((id) => {
+        const existing = byId.get(id);
+        return {
+          ...(existing || { id, enabled: true }),
+          id,
+          enabled: existing ? existing.enabled !== false : true,
+        };
+      });
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          blocksByPage: {
+            ...prevBlocksByPage,
+            home: nextHome,
+          },
+        },
+      };
+    });
+  }, [blockOrder, setData]);
 
   useEffect(() => {
     let next = "";
@@ -855,21 +845,6 @@ export default function Home({
     setData((prev) => setMainGoal(prev, nextGoalId));
   }
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } })
-  );
-
-  const handleDragEnd = useCallback((event) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setBlockOrder((items) => {
-      const oldIndex = items.indexOf(active.id);
-      const newIndex = items.indexOf(over.id);
-      if (oldIndex === -1 || newIndex === -1) return items;
-      return arrayMove(items, oldIndex, newIndex);
-    });
-  }, []);
 
   const noteHistoryItems = useMemo(() => {
     if (!showNotesHistory) return [];
@@ -1177,473 +1152,487 @@ export default function Home({
           </button>
         </div>
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
-        >
-          <SortableContext items={blockOrder} strategy={verticalListSortingStrategy}>
-            <div className="stack stackGap12">
-              {blockOrder.map((blockId) => (
-                <SortableBlock key={blockId} id={blockId}>
-                  {({ attributes, listeners, setActivatorNodeRef }) => {
-                    if (blockId === "focus") {
-                      return (
-                        <Card data-tour-id="today-focus-card">
-                          <div className="p18">
-                            <div className="cardSectionTitleRow">
-                              <DragHandle
-                                attributes={attributes}
-                                listeners={listeners}
-                                setActivatorNodeRef={setActivatorNodeRef}
-                              />
-                              <div className="cardSectionTitle">Focus du jour</div>
-                            </div>
-                            <div className="mt12">
-                              <div className="small2">Catégorie</div>
-                              <div
-                                className="mt8"
-                                data-tour-id="today-focus-category"
+        <SortableBlocks
+          items={blockOrder}
+          getId={(id) => id}
+          onReorder={(next) =>
+            setBlockOrder((prev) => (sameOrder(prev, next) ? prev : next))
+          }
+          renderItem={(blockId, drag) => {
+            const { attributes, listeners, setActivatorNodeRef } = drag || {};
+            if (blockId === "focus") {
+              return (
+                <Card data-tour-id="today-focus-card">
+                  <div className="p18">
+                    <div className="cardSectionTitleRow">
+                      {drag ? (
+                        <button
+                          ref={setActivatorNodeRef}
+                          {...listeners}
+                          {...attributes}
+                          className="dragHandle"
+                          aria-label="Réorganiser"
+                        >
+                          ⋮⋮
+                        </button>
+                      ) : null}
+                      <div className="cardSectionTitle">Focus du jour</div>
+                    </div>
+                    <div className="mt12">
+                      <div className="small2">Catégorie</div>
+                      <div
+                        className="mt8"
+                        data-tour-id="today-focus-category"
+                        style={{
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "10px 10px",
+                          borderRadius: 12,
+                          background: `linear-gradient(90deg, rgba(0,0,0,0), ${accent}22)`,
+                          borderLeft: `4px solid ${accent}`,
+                          transition: "background 180ms ease, border-left-color 180ms ease",
+                        }}
+                      >
+                        <div className="itemTitle">{focusCategory?.name || "Catégorie"}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt12">
+                      <div className="small2">Objectif principal</div>
+                    {outcomeGoals.length ? (
+                  <AccentItem color={accent} selected className="mt8">
+                    <Select
+                      value={selectedGoal?.id || ""}
+                      onChange={(e) => setCategoryMainGoal(e.target.value)}
+                      disabled={!canEdit}
+                      style={{ fontSize: 16 }}
+                    >
+                      <option value="" disabled>
+                        Choisir un objectif
+                      </option>
+                      {outcomeGoals.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.title}
+                        </option>
+                      ))}
+                    </Select>
+                  </AccentItem>
+                    ) : (
+                      <div className="mt8 small2">Aucun objectif principal pour cette catégorie.</div>
+                    )}
+                    </div>
+
+                    <div className="mt12">
+                      <div className="row" style={{ justifyContent: "flex-end" }}>
+                        <Button onClick={openSessionFlow} disabled={!canOpenSession} data-tour-id="today-go">
+                          GO
+                        </Button>
+                      </div>
+                      {!selectedGoal ? (
+                        <div className="sectionSub" style={{ marginTop: 8 }}>
+                          Sélectionne un objectif pour activer GO.
+                        </div>
+                      ) : !activeHabits.length ? (
+                        <div className="sectionSub" style={{ marginTop: 8 }}>
+                          Aucune action liée. Tu peux démarrer quand même, puis ajouter une action depuis Bibliothèque.
+                        </div>
+                      ) : !canValidate ? (
+                        <div className="sectionSub" style={{ marginTop: 8 }}>
+                          Lecture seule.
+                        </div>
+                      ) : null}
+                    </div>
+                </div>
+              </Card>
+            );
+          }
+
+          if (blockId === "calendar") {
+            return (
+              <Card data-tour-id="today-calendar-card">
+                <div className="p18">
+                  <div className="row">
+                    <div className="cardSectionTitleRow">
+                      {drag ? (
+                        <button
+                          ref={setActivatorNodeRef}
+                          {...listeners}
+                          {...attributes}
+                          className="dragHandle"
+                          aria-label="Réorganiser"
+                        >
+                          ⋮⋮
+                        </button>
+                      ) : null}
+                      <div>
+                        <div className="cardSectionTitle">Calendrier</div>
+                        <div className="small2 mt8">{selectedDateLabel || "—"}</div>
+                      </div>
+                    </div>
+                    <div className="row" style={{ gap: 8 }}>
+                      {(() => {
+                        const isOnToday = selectedDateKey === toLocalDateKey(new Date());
+                        return (
+                          <IconButton
+                            onClick={() => {
+                              const today = toLocalDateKey(new Date());
+                              handleDayOpen(today);
+                              if (calendarView === "day") {
+                                requestAnimationFrame(() => scrollRailToKey(today));
+                              }
+                            }}
+                            aria-label="Revenir à aujourd’hui"
+                            title="Revenir à aujourd’hui"
+                            data-tour-id="today-calendar-today"
+                            disabled={isOnToday}
+                          >
+                            ⟳
+                          </IconButton>
+                        );
+                      })()}
+                      <Button
+                        variant="ghost"
+                        onClick={() => setCalendarView("day")}
+                        disabled={calendarView === "day"}
+                        data-tour-id="today-calendar-day"
+                      >
+                        Jour
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setCalendarView("month")}
+                        disabled={calendarView === "month"}
+                        data-tour-id="today-calendar-month"
+                      >
+                        Mois
+                      </Button>
+                    </div>
+                  </div>
+                  <div
+                    key={calendarPaneKey}
+                    className={`calPane ${calendarPanePhase}`}
+                    style={{
+                      willChange: "transform, opacity",
+                      transition: "transform 220ms ease, opacity 220ms ease",
+                      opacity: calendarPanePhase === "enter" ? 0 : 1,
+                      transform: calendarPanePhase === "enter" ? "translateY(6px)" : "translateY(0px)",
+                    }}
+                  >
+                    {calendarView === "day" ? (
+                      <div className="calendarRailWrap mt12">
+                        <div className="calendarSelector" aria-hidden="true">
+                          <span className="calendarSelectorDot" />
+                        </div>
+                        <div
+                          className="calendarRail scrollNoBar"
+                          ref={railRef}
+                          onScroll={handleRailScroll}
+                          data-tour-id="today-calendar-rail"
+                          style={{
+                            scrollSnapType: "x mandatory",
+                            WebkitOverflowScrolling: "touch",
+                            overscrollBehaviorX: "contain",
+                          }}
+                        >
+                          {railItems.map((item) => {
+                            const plannedCount = plannedByDate.get(item.key) || 0;
+                            const doneCount = doneByDate.get(item.key) || 0;
+                            return (
+                              <button
+                                key={item.key}
+                                ref={(el) => {
+                                  if (el) railItemRefs.current.set(item.key, el);
+                                  else railItemRefs.current.delete(item.key);
+                                }}
+                                className={`dayPill calendarItem ${
+                                  item.key === selectedDateKey
+                                    ? "is-current"
+                                    : item.key < selectedDateKey
+                                      ? "is-past"
+                                      : "is-future"
+                                }`}
+                                data-datekey={item.key}
+                                data-status={item.status}
+                                data-planned={plannedCount}
+                                data-done={doneCount}
+                                onClick={() => {
+                                  scrollRailToKey(item.key);
+                                  handleDayOpen(item.key);
+                                }}
+                                type="button"
                                 style={{
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  padding: "10px 10px",
-                                  borderRadius: 12,
-                                  background: `linear-gradient(90deg, rgba(0,0,0,0), ${accent}22)`,
-                                  borderLeft: `4px solid ${accent}`,
-                                  transition: "background 180ms ease, border-left-color 180ms ease",
+                                  scrollSnapAlign: "center",
+                                  borderColor:
+                                    item.key === selectedDateKey
+                                      ? selectedDayAccent
+                                      : goalAccentByDate.get(item.key) || "rgba(255,255,255,.14)",
+                                  boxShadow:
+                                    item.key === selectedDateKey
+                                      ? `0 0 0 2px ${selectedDayAccent}33`
+                                      : undefined,
                                 }}
                               >
-                                <div className="itemTitle">{focusCategory?.name || "Catégorie"}</div>
-                              </div>
-                            </div>
-
-                            <div className="mt12">
-                              <div className="small2">Objectif principal</div>
-                            {outcomeGoals.length ? (
-                          <AccentItem color={accent} selected className="mt8">
-                            <Select
-                              value={selectedGoal?.id || ""}
-                              onChange={(e) => setCategoryMainGoal(e.target.value)}
-                              disabled={!canEdit}
-                              style={{ fontSize: 16 }}
-                            >
-                              <option value="" disabled>
-                                Choisir un objectif
-                              </option>
-                              {outcomeGoals.map((g) => (
-                                <option key={g.id} value={g.id}>
-                                  {g.title}
-                                </option>
-                              ))}
-                            </Select>
-                          </AccentItem>
-                            ) : (
-                              <div className="mt8 small2">Aucun objectif principal pour cette catégorie.</div>
-                            )}
-                            </div>
-
-                            <div className="mt12">
-                              <div className="row" style={{ justifyContent: "flex-end" }}>
-                                <Button onClick={openSessionFlow} disabled={!canOpenSession} data-tour-id="today-go">
-                                  GO
-                                </Button>
-                              </div>
-                              {!selectedGoal ? (
-                                <div className="sectionSub" style={{ marginTop: 8 }}>
-                                  Sélectionne un objectif pour activer GO.
-                                </div>
-                              ) : !activeHabits.length ? (
-                                <div className="sectionSub" style={{ marginTop: 8 }}>
-                                  Aucune action liée. Tu peux démarrer quand même, puis ajouter une action depuis Bibliothèque.
-                                </div>
-                              ) : !canValidate ? (
-                                <div className="sectionSub" style={{ marginTop: 8 }}>
-                                  Lecture seule.
-                                </div>
-                              ) : null}
-                            </div>
+                                <div className="dayPillDay">{item.day}</div>
+                                <div className="dayPillMonth">/{item.month}</div>
+                              </button>
+                            );
+                          })}
                         </div>
-                      </Card>
-                    );
-                  }
-
-                  if (blockId === "calendar") {
-                    return (
-                      <Card data-tour-id="today-calendar-card">
-                        <div className="p18">
-                          <div className="row">
-                            <div className="cardSectionTitleRow">
-                              <DragHandle
-                                attributes={attributes}
-                                listeners={listeners}
-                                setActivatorNodeRef={setActivatorNodeRef}
-                              />
-                              <div>
-                                <div className="cardSectionTitle">Calendrier</div>
-                                <div className="small2 mt8">{selectedDateLabel || "—"}</div>
-                              </div>
-                            </div>
-                            <div className="row" style={{ gap: 8 }}>
-                              {/*
-                                Add isOnToday const before IconButton for "Revenir à aujourd’hui"
-                              */}
-                              {(() => {
-                                const isOnToday = selectedDateKey === toLocalDateKey(new Date());
-                                return (
-                                  <IconButton
-                                    onClick={() => {
-                                      const today = toLocalDateKey(new Date());
-                                      handleDayOpen(today);
-                                      if (calendarView === "day") {
-                                        requestAnimationFrame(() => scrollRailToKey(today));
-                                      }
-                                    }}
-                                    aria-label="Revenir à aujourd’hui"
-                                    title="Revenir à aujourd’hui"
-                                    data-tour-id="today-calendar-today"
-                                    disabled={isOnToday}
-                                  >
-                                    ⟳
-                                  </IconButton>
-                                );
-                              })()}
-                              <Button
-                                variant="ghost"
-                                onClick={() => setCalendarView("day")}
-                                disabled={calendarView === "day"}
-                                data-tour-id="today-calendar-day"
-                              >
-                                Jour
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                onClick={() => setCalendarView("month")}
-                                disabled={calendarView === "month"}
-                                data-tour-id="today-calendar-month"
-                              >
-                                Mois
-                              </Button>
-                            </div>
-                          </div>
-                          <div
-                            key={calendarPaneKey}
-                            className={`calPane ${calendarPanePhase}`}
-                            style={{
-                              willChange: "transform, opacity",
-                              transition: "transform 220ms ease, opacity 220ms ease",
-                              opacity: calendarPanePhase === "enter" ? 0 : 1,
-                              transform: calendarPanePhase === "enter" ? "translateY(6px)" : "translateY(0px)",
-                            }}
+                      </div>
+                    ) : (
+                      <div className="mt12">
+                        <div className="calendarMonthHeader" style={{ display: "grid", gridTemplateColumns: "48px 1fr 48px", alignItems: "center" }}>
+                          <Button
+                            variant="ghost"
+                            onClick={() => setMonthCursor((d) => addMonths(d, -1))}
+                            aria-label="Mois précédent"
                           >
-                            {calendarView === "day" ? (
-                              <div className="calendarRailWrap mt12">
-                                <div className="calendarSelector" aria-hidden="true">
-                                  <span className="calendarSelectorDot" />
-                                </div>
-                                <div
-                                  className="calendarRail scrollNoBar"
-                                  ref={railRef}
-                                  onScroll={handleRailScroll}
-                                  data-tour-id="today-calendar-rail"
-                                  style={{
-                                    scrollSnapType: "x mandatory",
-                                    WebkitOverflowScrolling: "touch",
-                                    overscrollBehaviorX: "contain",
-                                  }}
-                                >
-                                  {railItems.map((item) => {
-                                    const plannedCount = plannedByDate.get(item.key) || 0;
-                                    const doneCount = doneByDate.get(item.key) || 0;
-                                    return (
-                                      <button
-                                        key={item.key}
-                                        ref={(el) => {
-                                          if (el) railItemRefs.current.set(item.key, el);
-                                          else railItemRefs.current.delete(item.key);
-                                        }}
-                                        className={`dayPill calendarItem ${
-                                          item.key === selectedDateKey
-                                            ? "is-current"
-                                            : item.key < selectedDateKey
-                                              ? "is-past"
-                                              : "is-future"
-                                        }`}
-                                        data-datekey={item.key}
-                                        data-status={item.status}
-                                        data-planned={plannedCount}
-                                        data-done={doneCount}
-                                        onClick={() => {
-                                          scrollRailToKey(item.key);
-                                          handleDayOpen(item.key);
-                                        }}
-                                        type="button"
-                                        style={{
-                                          scrollSnapAlign: "center",
-                                          borderColor:
-                                            item.key === selectedDateKey
-                                              ? selectedDayAccent
-                                              : goalAccentByDate.get(item.key) || "rgba(255,255,255,.14)",
-                                          boxShadow:
-                                            item.key === selectedDateKey
-                                              ? `0 0 0 2px ${selectedDayAccent}33`
-                                              : undefined,
-                                        }}
-                                      >
-                                        <div className="dayPillDay">{item.day}</div>
-                                        <div className="dayPillMonth">/{item.month}</div>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="mt12">
-                                <div className="calendarMonthHeader" style={{ display: "grid", gridTemplateColumns: "48px 1fr 48px", alignItems: "center" }}>
-                                  <Button
-                                    variant="ghost"
-                                    onClick={() => setMonthCursor((d) => addMonths(d, -1))}
-                                    aria-label="Mois précédent"
-                                  >
-                                    ←
-                                  </Button>
-                                  <div className="titleSm calendarMonthTitle" style={{ textAlign: "center" }}>
-                                    {getMonthLabelFR(monthCursor)}
-                                  </div>
-                                  <Button
-                                    variant="ghost"
-                                    onClick={() => setMonthCursor((d) => addMonths(d, 1))}
-                                    aria-label="Mois suivant"
-                                  >
-                                    →
-                                  </Button>
-                                </div>
-                                {typeof onAddOccurrence === "function" ? (
-                                  <div className="calendarMonthActions">
-                                    <Button
-                                      variant="ghost"
-                                      onClick={() => handleAddOccurrence(selectedDateKey, selectedGoal?.id || null)}
-                                      data-tour-id="today-calendar-add-occurrence"
-                                    >
-                                      Ajouter
-                                    </Button>
-                                  </div>
-                                ) : null}
-                                <div
-                                  className="mt10 calMonthGrid"
-                                  style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, textAlign: "center", contain: "content" }}
-                                  data-tour-id="today-calendar-month-grid"
-                                >
-                                  {["L", "M", "M", "J", "V", "S", "D"].map((label, idx) => (
-                                    <div key={`${label}-${idx}`} className="small2">
-                                      {label}
-                                    </div>
-                                  ))}
-                                  {monthGrid.map((cell) => {
-                                    const dayKey = toLocalDateKey(cell.dateObj);
-                                    const plannedCount = plannedByDate.get(dayKey) || 0;
-                                    const doneCount = doneByDate.get(dayKey) || 0;
-                                    const isSelected = dayKey === selectedDateKey;
-                                    return (
-                                      <button
-                                        key={dayKey}
-                                        type="button"
-                                        className={`dayPill${isSelected ? " dayPillActive" : ""}`}
-                                        data-datekey={dayKey}
-                                        data-planned={plannedCount}
-                                        data-done={doneCount}
-                                        onClick={() => handleDayOpen(dayKey)}
-                                        style={{
-                                          width: "100%",
-                                          minHeight: 56,
-                                          borderRadius: 12,
-                                          padding: 6,
-                                          opacity: cell.inMonth ? 1 : 0.4,
-                                          borderColor: isSelected
-                                            ? selectedDayAccent
-                                            : goalAccentByDate.get(dayKey) || "rgba(255,255,255,.14)",
-                                          boxShadow: isSelected ? `0 0 0 2px ${selectedDayAccent}33` : undefined,
-                                        }}
-                                      >
-                                        <div className="dayPillDay">{cell.dayNumber}</div>
-                                        <div className="small2">{plannedCount ? `${plannedCount} planifié` : ""}{plannedCount && doneCount ? " · " : ""}{doneCount ? `${doneCount} fait` : ""}</div>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
+                            ←
+                          </Button>
+                          <div className="titleSm calendarMonthTitle" style={{ textAlign: "center" }}>
+                            {getMonthLabelFR(monthCursor)}
                           </div>
-                          <div className="sectionSub" style={{ marginTop: 8 }}>
-                            {selectedStatus === "past"
-                              ? "Lecture seule"
-                              : selectedStatus === "today"
-                                ? "Aujourd’hui"
-                                : "À venir"}
-                          </div>
+                          <Button
+                            variant="ghost"
+                            onClick={() => setMonthCursor((d) => addMonths(d, 1))}
+                            aria-label="Mois suivant"
+                          >
+                            →
+                          </Button>
                         </div>
-                      </Card>
-                    );
-                  }
-
-                  if (blockId === "micro") {
-                    return (
-                      <Card data-tour-id="today-micro-card">
-                        <div className="p18">
-                          <div className="row">
-                            <div className="cardSectionTitleRow">
-                              <DragHandle
-                                attributes={attributes}
-                                listeners={listeners}
-                                setActivatorNodeRef={setActivatorNodeRef}
-                              />
-                              <div className="cardSectionTitle">Micro-actions</div>
-                            </div>
-                            <button
-                              className="linkBtn microToggle"
-                              type="button"
-                              onClick={() => setMicroOpen((v) => !v)}
-                              data-tour-id="today-micro-toggle"
+                        {typeof onAddOccurrence === "function" ? (
+                          <div className="calendarMonthActions">
+                            <Button
+                              variant="ghost"
+                              onClick={() => handleAddOccurrence(selectedDateKey, selectedGoal?.id || null)}
+                              data-tour-id="today-calendar-add-occurrence"
                             >
-                              {microOpen ? "▾" : "▸"}
-                            </button>
-                          </div>
-                          {microOpen ? (
-                            <>
-                              <div className="sectionSub">Trois impulsions simples</div>
-                              <div className="mt12 col" style={{ gap: 10 }}>
-                                {microItems.map((item) => {
-                                  const isMicroDone = dayChecks.micro.includes(item.id);
-                                  const canAddMicro = canValidate && microDoneToday < 3 && !isMicroDone;
-                                  return (
-                                    <AccentItem key={item.uid} color={accent} className="listItem">
-                                      <div className="row" style={{ justifyContent: "space-between" }}>
-                                        <div className="itemTitle">{item.label}</div>
-                                        <Button
-                                          variant="ghost"
-                                          onClick={() => addMicroCheck(item.id)}
-                                          disabled={!canAddMicro}
-                                          aria-label={isMicroDone ? "Déjà fait" : "Ajouter +1"}
-                                          title={isMicroDone ? "Déjà fait" : microDoneToday >= 3 ? "Limite atteinte (3/jour)" : "Ajouter"}
-                                        >
-                                          +1
-                                        </Button>
-                                      </div>
-                                    </AccentItem>
-                                  );
-                                })}
-                              </div>
-                            </>
-                          ) : null}
-                        </div>
-                      </Card>
-                    );
-                  }
-
-                if (blockId === "notes") {
-                  return (
-                      <Card data-tour-id="today-notes-card">
-                        <div className="p18">
-                          <div className="row">
-                            <div className="cardSectionTitleRow">
-                              <DragHandle
-                                attributes={attributes}
-                                listeners={listeners}
-                                setActivatorNodeRef={setActivatorNodeRef}
-                              />
-                              <div className="cardSectionTitle">Note du jour</div>
-                            </div>
-                            <div className="row" style={{ gap: 8 }}>
-                              <IconButton
-                                aria-label="Historique des notes"
-                                onClick={() => setShowNotesHistory(true)}
-                                data-tour-id="today-notes-history"
-                              >
-                                +
-                              </IconButton>
-                            </div>
-                          </div>
-                          <div className="mt12">
-                            <Textarea
-                              rows={3}
-                              value={dailyNote}
-                              onChange={(e) => {
-                                const next = e.target.value;
-                                setDailyNote(next);
-                                try {
-                                  localStorage.setItem(`dailyNote:${selectedDateKey}`, next);
-                                } catch (_) {
-                                  // Ignore storage failures (private mode, quota, etc.)
-                                }
-                              }}
-                              placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
-                              data-tour-id="today-notes-text"
-                            />
-                          </div>
-                          <div className="mt12">
-                            <div className="small2">Check-in rapide</div>
-                            <div className="noteMetaGrid mt8" data-tour-id="today-notes-meta">
-                              <div>
-                                <div className="small2">Forme</div>
-                                <Select
-                                  value={noteMeta.forme || ""}
-                                  onChange={(e) => updateNoteMeta({ forme: e.target.value })}
-                                >
-                                  <option value="" disabled>
-                                    Choisir
-                                  </option>
-                                  <option value="Excellente">Excellente</option>
-                                  <option value="Bonne">Bonne</option>
-                                  <option value="Moyenne">Moyenne</option>
-                                  <option value="Faible">Faible</option>
-                                </Select>
-                              </div>
-                              <div>
-                                <div className="small2">Humeur</div>
-                                <Select
-                                  value={noteMeta.humeur || ""}
-                                  onChange={(e) => updateNoteMeta({ humeur: e.target.value })}
-                                >
-                                  <option value="" disabled>
-                                    Choisir
-                                  </option>
-                                  <option value="Positif">Positif</option>
-                                  <option value="Neutre">Neutre</option>
-                                  <option value="Basse">Basse</option>
-                                </Select>
-                              </div>
-                              <div>
-                                <div className="small2">Motivation</div>
-                                <input
-                                  className="input"
-                                  type="number"
-                                  min="0"
-                                  max="10"
-                                  step="1"
-                                  value={noteMeta.motivation || ""}
-                                  onChange={(e) => updateNoteMeta({ motivation: e.target.value })}
-                                  placeholder="0-10"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                          <div className="noteActions mt12">
-                            <Button onClick={addNoteToHistory} data-tour-id="today-notes-add">
-                              Enregistrer
+                              Ajouter
                             </Button>
                           </div>
+                        ) : null}
+                        <div
+                          className="mt10 calMonthGrid"
+                          style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, textAlign: "center", contain: "content" }}
+                          data-tour-id="today-calendar-month-grid"
+                        >
+                          {["L", "M", "M", "J", "V", "S", "D"].map((label, idx) => (
+                            <div key={`${label}-${idx}`} className="small2">
+                              {label}
+                            </div>
+                          ))}
+                          {monthGrid.map((cell) => {
+                            const dayKey = toLocalDateKey(cell.dateObj);
+                            const plannedCount = plannedByDate.get(dayKey) || 0;
+                            const doneCount = doneByDate.get(dayKey) || 0;
+                            const isSelected = dayKey === selectedDateKey;
+                            return (
+                              <button
+                                key={dayKey}
+                                type="button"
+                                className={`dayPill${isSelected ? " dayPillActive" : ""}`}
+                                data-datekey={dayKey}
+                                data-planned={plannedCount}
+                                data-done={doneCount}
+                                onClick={() => handleDayOpen(dayKey)}
+                                style={{
+                                  width: "100%",
+                                  minHeight: 56,
+                                  borderRadius: 12,
+                                  padding: 6,
+                                  opacity: cell.inMonth ? 1 : 0.4,
+                                  borderColor: isSelected
+                                    ? selectedDayAccent
+                                    : goalAccentByDate.get(dayKey) || "rgba(255,255,255,.14)",
+                                  boxShadow: isSelected ? `0 0 0 2px ${selectedDayAccent}33` : undefined,
+                                }}
+                              >
+                                <div className="dayPillDay">{cell.dayNumber}</div>
+                                <div className="small2">{plannedCount ? `${plannedCount} planifié` : ""}{plannedCount && doneCount ? " · " : ""}{doneCount ? `${doneCount} fait` : ""}</div>
+                              </button>
+                            );
+                          })}
                         </div>
-                      </Card>
-                  );
-                }
-                return null;
-                }}
-                </SortableBlock>
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+                      </div>
+                    )}
+                  </div>
+                  <div className="sectionSub" style={{ marginTop: 8 }}>
+                    {selectedStatus === "past"
+                      ? "Lecture seule"
+                      : selectedStatus === "today"
+                        ? "Aujourd’hui"
+                        : "À venir"}
+                  </div>
+                </div>
+              </Card>
+            );
+          }
+
+          if (blockId === "micro") {
+            return (
+              <Card data-tour-id="today-micro-card">
+                <div className="p18">
+                  <div className="row">
+                    <div className="cardSectionTitleRow">
+                      {drag ? (
+                        <button
+                          ref={setActivatorNodeRef}
+                          {...listeners}
+                          {...attributes}
+                          className="dragHandle"
+                          aria-label="Réorganiser"
+                        >
+                          ⋮⋮
+                        </button>
+                      ) : null}
+                      <div className="cardSectionTitle">Micro-actions</div>
+                    </div>
+                    <button
+                      className="linkBtn microToggle"
+                      type="button"
+                      onClick={() => setMicroOpen((v) => !v)}
+                      data-tour-id="today-micro-toggle"
+                    >
+                      {microOpen ? "▾" : "▸"}
+                    </button>
+                  </div>
+                  {microOpen ? (
+                    <>
+                      <div className="sectionSub">Trois impulsions simples</div>
+                      <div className="mt12 col" style={{ gap: 10 }}>
+                        {microItems.map((item) => {
+                          const isMicroDone = dayChecks.micro.includes(item.id);
+                          const canAddMicro = canValidate && microDoneToday < 3 && !isMicroDone;
+                          return (
+                            <AccentItem key={item.uid} color={accent} className="listItem">
+                              <div className="row" style={{ justifyContent: "space-between" }}>
+                                <div className="itemTitle">{item.label}</div>
+                                <Button
+                                  variant="ghost"
+                                  onClick={() => addMicroCheck(item.id)}
+                                  disabled={!canAddMicro}
+                                  aria-label={isMicroDone ? "Déjà fait" : "Ajouter +1"}
+                                  title={isMicroDone ? "Déjà fait" : microDoneToday >= 3 ? "Limite atteinte (3/jour)" : "Ajouter"}
+                                >
+                                  +1
+                                </Button>
+                              </div>
+                            </AccentItem>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              </Card>
+            );
+          }
+
+          if (blockId === "notes") {
+            return (
+                <Card data-tour-id="today-notes-card">
+                  <div className="p18">
+                    <div className="row">
+                      <div className="cardSectionTitleRow">
+                        {drag ? (
+                          <button
+                            ref={setActivatorNodeRef}
+                            {...listeners}
+                            {...attributes}
+                            className="dragHandle"
+                            aria-label="Réorganiser"
+                          >
+                            ⋮⋮
+                          </button>
+                        ) : null}
+                        <div className="cardSectionTitle">Note du jour</div>
+                      </div>
+                      <div className="row" style={{ gap: 8 }}>
+                        <IconButton
+                          aria-label="Historique des notes"
+                          onClick={() => setShowNotesHistory(true)}
+                          data-tour-id="today-notes-history"
+                        >
+                          +
+                        </IconButton>
+                      </div>
+                    </div>
+                    <div className="mt12">
+                      <Textarea
+                        rows={3}
+                        value={dailyNote}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setDailyNote(next);
+                          try {
+                            localStorage.setItem(`dailyNote:${selectedDateKey}`, next);
+                          } catch (_) {
+                            // Ignore storage failures (private mode, quota, etc.)
+                          }
+                        }}
+                        placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
+                        data-tour-id="today-notes-text"
+                      />
+                    </div>
+                    <div className="mt12">
+                      <div className="small2">Check-in rapide</div>
+                      <div className="noteMetaGrid mt8" data-tour-id="today-notes-meta">
+                        <div>
+                          <div className="small2">Forme</div>
+                          <Select
+                            value={noteMeta.forme || ""}
+                            onChange={(e) => updateNoteMeta({ forme: e.target.value })}
+                          >
+                            <option value="" disabled>
+                              Choisir
+                            </option>
+                            <option value="Excellente">Excellente</option>
+                            <option value="Bonne">Bonne</option>
+                            <option value="Moyenne">Moyenne</option>
+                            <option value="Faible">Faible</option>
+                          </Select>
+                        </div>
+                        <div>
+                          <div className="small2">Humeur</div>
+                          <Select
+                            value={noteMeta.humeur || ""}
+                            onChange={(e) => updateNoteMeta({ humeur: e.target.value })}
+                          >
+                            <option value="" disabled>
+                              Choisir
+                            </option>
+                            <option value="Positif">Positif</option>
+                            <option value="Neutre">Neutre</option>
+                            <option value="Basse">Basse</option>
+                          </Select>
+                        </div>
+                        <div>
+                          <div className="small2">Motivation</div>
+                          <input
+                            className="input"
+                            type="number"
+                            min="0"
+                            max="10"
+                            step="1"
+                            value={noteMeta.motivation || ""}
+                            onChange={(e) => updateNoteMeta({ motivation: e.target.value })}
+                            placeholder="0-10"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="noteActions mt12">
+                      <Button onClick={addNoteToHistory} data-tour-id="today-notes-add">
+                        Enregistrer
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+            );
+          }
+          return null;
+          }}
+        />
       </div>
       {showDayStats ? (
         <div className="modalBackdrop disciplineOverlay" onClick={() => setShowDayStats(false)}>

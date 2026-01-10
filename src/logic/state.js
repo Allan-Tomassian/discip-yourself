@@ -5,6 +5,9 @@ import { normalizeGoalsState } from "./goals";
 import { normalizeReminder } from "./reminders";
 import { normalizeSession } from "./sessions";
 import { todayKey } from "../utils/dates";
+import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "./blocks/registry";
+import { ensureBlocksConfig } from "./blocks/ensureBlocksConfig";
+import { validateBlocksState } from "./blocks/validateBlocksState";
 
 export const THEME_PRESETS = ["aurora", "midnight", "sunset", "ocean", "forest"];
 
@@ -448,6 +451,8 @@ export function initialData() {
       rewardClaims: {},
     },
     ui: {
+      blocksSchemaVersion: BLOCKS_SCHEMA_VERSION,
+      blocksByPage: getDefaultBlocksByPage(),
       blocks: DEFAULT_BLOCKS.map((b) => ({ ...b })),
       selectedCategoryId: null,
 
@@ -524,6 +529,8 @@ export function demoData() {
       rewardClaims: {},
     },
     ui: {
+      blocksSchemaVersion: BLOCKS_SCHEMA_VERSION,
+      blocksByPage: getDefaultBlocksByPage(),
       blocks: DEFAULT_BLOCKS.map((b) => ({ ...b })),
       selectedCategoryId: categories[0].id,
 
@@ -615,6 +622,23 @@ export function migrate(prev) {
   if (!next.ui) next.ui = {};
   if (!Array.isArray(next.ui.blocks) || next.ui.blocks.length === 0)
     next.ui.blocks = DEFAULT_BLOCKS.map((b) => ({ ...b }));
+  if (typeof next.ui.blocksSchemaVersion !== "number") next.ui.blocksSchemaVersion = BLOCKS_SCHEMA_VERSION;
+  if (!next.ui.blocksByPage || typeof next.ui.blocksByPage !== "object") {
+    const seeded = { ...getDefaultBlocksByPage() };
+    // Keep a legacy snapshot to avoid losing old configs (even if not used anymore).
+    if (Array.isArray(next.ui.blocks)) seeded.legacy = next.ui.blocks.map((b) => ({ ...b }));
+    next.ui.blocksByPage = ensureBlocksConfig(seeded);
+  } else {
+    next.ui.blocksByPage = ensureBlocksConfig(next.ui.blocksByPage);
+  }
+  const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
+  if (isDev) {
+    const audit = validateBlocksState(next);
+    if (!audit.ok) {
+      // eslint-disable-next-line no-console
+      console.warn("[blocks] invalid blocksByPage", audit.issues);
+    }
+  }
   if (!next.ui.selectedCategoryId) {
     next.ui.selectedCategoryId = Array.isArray(next.categories) && next.categories.length ? next.categories[0].id : null;
   }
