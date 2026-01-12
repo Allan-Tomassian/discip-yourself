@@ -5,7 +5,7 @@ import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { resolveGoalType } from "../utils/goalType";
 
-export default function CategoryDetailView({ data, categoryId, onBack, onOpenLibrary }) {
+export default function CategoryDetailView({ data, categoryId, onBack, onOpenLibraryList, onOpenManage }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -75,9 +75,14 @@ export default function CategoryDetailView({ data, categoryId, onBack, onOpenLib
         <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
           ← Retour
         </Button>
-        {typeof onOpenLibrary === "function" ? (
-          <Button variant="ghost" onClick={onOpenLibrary}>
-            Bibliothèque
+        {typeof onOpenLibraryList === "function" ? (
+          <Button variant="ghost" onClick={onOpenLibraryList}>
+            Toutes les catégories
+          </Button>
+        ) : null}
+        {typeof onOpenManage === "function" ? (
+          <Button variant="ghost" onClick={onOpenManage}>
+            Gérer
           </Button>
         ) : null}
       </div>

@@ -11,6 +11,14 @@ import { validateBlocksState } from "./blocks/validateBlocksState";
 
 export const THEME_PRESETS = ["aurora", "midnight", "sunset", "ocean", "forest"];
 
+function toLocalDateKey(d = new Date()) {
+  if (!(d instanceof Date)) return todayKey();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export const DEFAULT_CATEGORIES = [
   { id: "cat_sport", name: "Sport", color: "#7C3AED", wallpaper: "", mainGoalId: null },
   { id: "cat_work", name: "Travail", color: "#06B6D4", wallpaper: "", mainGoalId: null },
@@ -493,7 +501,7 @@ export function initialData() {
       isDragging: false,
       showPlanStep: false,
       soundEnabled: false,
-      selectedDate: todayKey(),
+      selectedDate: toLocalDateKey(),
       selectedHabits: {},
       sessionDraft: null,
       activeSession: null,
@@ -566,7 +574,7 @@ export function demoData() {
       isDragging: false,
       showPlanStep: false,
       soundEnabled: false,
-      selectedDate: todayKey(),
+      selectedDate: toLocalDateKey(),
       selectedHabits: {},
       sessionDraft: null,
       activeSession: null,
@@ -716,7 +724,7 @@ export function migrate(prev) {
   {
     const raw = typeof next.ui.selectedDate === "string" ? next.ui.selectedDate : "";
     const parsed = raw ? new Date(`${raw}T12:00:00`) : null;
-    const normalized = parsed && !Number.isNaN(parsed.getTime()) ? todayKey(parsed) : todayKey();
+    const normalized = parsed && !Number.isNaN(parsed.getTime()) ? toLocalDateKey(parsed) : toLocalDateKey();
     next.ui.selectedDate = normalized;
   }
 

@@ -23,7 +23,19 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
   // This page must not mutate ui.selectedCategoryId (used by Plan / CategoryDetail).
   // We isolate the Library selection using ui.librarySelectedCategoryId.
   const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
-  const libraryViewSelectedId = safeData?.ui?.selectedCategoryByView?.library || librarySelectedCategoryId || null;
+  const homeSelectedCategoryId =
+    safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
+  const libraryViewSelectedId =
+    safeData?.ui?.selectedCategoryByView?.library ||
+    librarySelectedCategoryId ||
+    homeSelectedCategoryId ||
+    null;
+
+  function markLibraryTouched() {
+    try {
+      sessionStorage.setItem("library:selectedCategoryTouched", "1");
+    } catch (_) {}
+  }
 
   function setLibraryCategory(categoryId, { navigate } = {}) {
     if (!categoryId) return;
@@ -56,11 +68,13 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
     const fallbackId = categories[0]?.id || null;
     const targetId = libraryViewSelectedId || fallbackId;
     if (!targetId) return;
+    markLibraryTouched();
     setLibraryCategory(targetId, { navigate: true });
   }
 
   function handleOpenDetail(categoryId) {
     if (!categoryId) return;
+    markLibraryTouched();
     setLibraryCategory(categoryId);
     if (typeof onOpenCategoryDetail === "function") {
       onOpenCategoryDetail(categoryId);

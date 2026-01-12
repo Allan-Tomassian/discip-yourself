@@ -24,7 +24,7 @@ import Session from "./pages/Session";
 import Pilotage from "./pages/Pilotage";
 import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
 import { todayKey } from "./utils/dates";
-import { normalizePriorities } from "./logic/priority";
+import { isPrimaryCategory, normalizePriorities } from "./logic/priority";
 import { getCategoryCounts } from "./logic/pilotage";
 import { resolveGoalType } from "./utils/goalType";
 import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
@@ -47,6 +47,20 @@ function appDowFromDateKey(key) {
   const d = parseLocalDateKey(key);
   const js = d.getDay(); // 0..6 (Sun..Sat)
   return js === 0 ? 7 : js; // 1..7 (Mon..Sun)
+}
+
+function getHomeSelectedCategoryId(data) {
+  const safe = data && typeof data === "object" ? data : {};
+  const categories = Array.isArray(safe.categories) ? safe.categories : [];
+  const goals = Array.isArray(safe.goals) ? safe.goals : [];
+  const homeSelectedId = safe.ui?.selectedCategoryByView?.home || safe.ui?.selectedCategoryId || null;
+  if (homeSelectedId && categories.some((c) => c.id === homeSelectedId)) return homeSelectedId;
+  const primary = categories.find((c) => isPrimaryCategory(c)) || null;
+  if (primary) return primary.id;
+  const withGoal = categories.find((c) =>
+    goals.some((g) => g.categoryId === c.id && resolveGoalType(g) === "OUTCOME")
+  );
+  return withGoal?.id || categories[0]?.id || null;
 }
 
 function isOnboarded(data) {
@@ -185,6 +199,7 @@ export default function App() {
   const dataRef = useRef(data);
   const lastReminderRef = useRef({});
   const activeReminderRef = useRef(activeReminder);
+  const prevTabRef = useRef(tab);
   const tour = useTour({ data, setData, steps: FIRST_USE_TOUR_STEPS, tourVersion: TOUR_VERSION });
 
   const setTab = (next, opts = {}) => {
@@ -391,6 +406,49 @@ export default function App() {
   }, [goals, railDow]);
   const railCategories = useMemo(() => orderedCategories, [orderedCategories]);
   const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
+  const homeActiveCategoryId =
+    safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
+  const homeSelectedCategoryId = getHomeSelectedCategoryId(safeData);
+  const openLibraryDetail = () => {
+    let touched = false;
+    try {
+      touched = sessionStorage.getItem("library:selectedCategoryTouched") === "1";
+    } catch (_) {
+      touched = false;
+    }
+    const libraryViewSelectedId = touched
+      ? safeData?.ui?.selectedCategoryByView?.library || librarySelectedCategoryId || null
+      : null;
+    const hasLibrarySelection =
+      libraryViewSelectedId && categories.some((c) => c.id === libraryViewSelectedId);
+    const targetId = hasLibrarySelection ? libraryViewSelectedId : homeSelectedCategoryId;
+    if (!targetId) {
+      setLibraryCategoryId(null);
+      setCategoryDetailId(null);
+      setTab("library");
+      return;
+    }
+    if (!hasLibrarySelection) {
+      setData((prev) => {
+        const prevUi = prev.ui || {};
+        const prevSel =
+          prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+            ? prevUi.selectedCategoryByView
+            : {};
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            librarySelectedCategoryId: targetId,
+            selectedCategoryByView: { ...prevSel, library: targetId },
+          },
+        };
+      });
+    }
+    setLibraryCategoryId(null);
+    setCategoryDetailId(null);
+    setTab("library");
+  };
   const handleEditBack = () => {
     const returnTab = editItem?.returnTab || "library";
     if (returnTab === "library") {
@@ -400,6 +458,53 @@ export default function App() {
     setEditItem(null);
     setTab(returnTab);
   };
+  useEffect(() => {
+    const prevTab = prevTabRef.current;
+    if (prevTab !== "library" && tab === "library") {
+      let touched = false;
+      try {
+        touched = sessionStorage.getItem("library:selectedCategoryTouched") === "1";
+      } catch (_) {
+        touched = false;
+      }
+      if (!touched) {
+        const libraryId =
+          safeData?.ui?.selectedCategoryByView?.library || safeData?.ui?.librarySelectedCategoryId || null;
+        const hasHome =
+          homeActiveCategoryId && categories.some((category) => category.id === homeActiveCategoryId);
+        if (hasHome && homeActiveCategoryId !== libraryId) {
+          setData((prev) => {
+            const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
+            if (!prevCategories.some((category) => category.id === homeActiveCategoryId)) return prev;
+            const prevUi = prev.ui || {};
+            const prevSel =
+              prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+                ? prevUi.selectedCategoryByView
+                : {};
+            if (prevUi.librarySelectedCategoryId === homeActiveCategoryId && prevSel.library === homeActiveCategoryId) {
+              return prev;
+            }
+            return {
+              ...prev,
+              ui: {
+                ...prevUi,
+                librarySelectedCategoryId: homeActiveCategoryId,
+                selectedCategoryByView: { ...prevSel, library: homeActiveCategoryId },
+              },
+            };
+          });
+        }
+      }
+    }
+    prevTabRef.current = tab;
+  }, [
+    tab,
+    categories,
+    homeActiveCategoryId,
+    safeData?.ui?.selectedCategoryByView?.library,
+    safeData?.ui?.librarySelectedCategoryId,
+    setData,
+  ]);
   const railSelectedId =
     tab === "category-detail"
       ? categoryDetailId
@@ -422,6 +527,12 @@ export default function App() {
               safeData?.ui?.selectedCategoryId ||
               null
             : safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
+  const detailCategoryId =
+    categoryDetailId ||
+    safeData?.ui?.selectedCategoryByView?.home ||
+    safeData?.ui?.selectedCategoryId ||
+    safeData?.categories?.[0]?.id ||
+    null;
 
   useEffect(() => {
     applyThemeTokens(themeName);
@@ -581,7 +692,10 @@ export default function App() {
                   : tab
         }
         setActive={(next) => {
-          if (next === "library") setLibraryCategoryId(null);
+          if (next === "library") {
+            openLibraryDetail();
+            return;
+          }
           setTab(next);
         }}
         onOpenSettings={() => setTab("settings")}
@@ -604,33 +718,74 @@ export default function App() {
         selectedCategoryId={railSelectedId}
         onSelectCategory={(categoryId) => {
           if (!categoryId) return;
-          if (tab === "today") {
+          const markLibraryTouched = () => {
+            try {
+              sessionStorage.setItem("library:selectedCategoryTouched", "1");
+            } catch (_) {}
+          };
+          const syncCategorySelection = ({ updateLegacy } = {}) => {
+            const shouldUpdateLegacy = Boolean(updateLegacy);
             setData((prev) => {
               const prevUi = prev.ui || {};
               const prevSel =
                 prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
                   ? prevUi.selectedCategoryByView
                   : {};
+              if (
+                prevUi.librarySelectedCategoryId === categoryId &&
+                prevSel.library === categoryId &&
+                prevSel.home === categoryId &&
+                (!shouldUpdateLegacy || prevUi.selectedCategoryId === categoryId)
+              ) {
+                return prev;
+              }
               return {
                 ...prev,
                 ui: {
                   ...prevUi,
-                  selectedCategoryId: categoryId,
-                  selectedCategoryByView: { ...prevSel, home: categoryId },
+                  librarySelectedCategoryId: categoryId,
+                  selectedCategoryByView: { ...prevSel, library: categoryId, home: categoryId },
+                  ...(shouldUpdateLegacy ? { selectedCategoryId: categoryId } : {}),
                 },
               };
             });
+          };
+          if (tab === "today") {
+            syncCategorySelection({ updateLegacy: true });
+            setCategoryDetailId(categoryId);
             return;
           }
-          if (tab === "library" || tab === "edit-item") {
-            setData((prev) => ({
-              ...prev,
-              ui: {
-                ...(prev.ui || {}),
-                librarySelectedCategoryId: categoryId,
-                selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), library: categoryId },
-              },
-            }));
+          if (tab === "library") {
+            markLibraryTouched();
+            syncCategorySelection();
+            if (libraryCategoryId) {
+              setLibraryCategoryId(categoryId);
+              return;
+            }
+            setLibraryCategoryId(null);
+            setCategoryDetailId(categoryId);
+            setTab("category-detail", { categoryDetailId: categoryId });
+            return;
+          }
+          if (tab === "category-detail") {
+            markLibraryTouched();
+            syncCategorySelection();
+            setLibraryCategoryId(null);
+            setCategoryDetailId(categoryId);
+            setTab("category-detail", { categoryDetailId: categoryId });
+            return;
+          }
+          if (tab === "category-progress") {
+            markLibraryTouched();
+            syncCategorySelection();
+            setLibraryCategoryId(null);
+            setCategoryProgressId(categoryId);
+            setTab("category-progress", { categoryProgressId: categoryId });
+            return;
+          }
+          if (tab === "edit-item") {
+            markLibraryTouched();
+            syncCategorySelection();
             return;
           }
           if (tab === "pilotage") {
@@ -654,8 +809,7 @@ export default function App() {
           data={data}
           setData={setData}
           onOpenLibrary={() => {
-            setLibraryCategoryId(null);
-            setTab("library");
+            openLibraryDetail();
           }}
           onOpenManageCategory={(categoryId) => {
             if (!categoryId) return;
@@ -685,20 +839,28 @@ export default function App() {
       ) : tab === "category-detail" ? (
         <CategoryDetailView
           data={data}
-          categoryId={
-            categoryDetailId ||
-            data?.ui?.selectedCategoryByView?.home ||
-            data?.ui?.selectedCategoryId ||
-            data?.categories?.[0]?.id ||
-            null
-          }
+          categoryId={detailCategoryId}
           onBack={() => {
             setCategoryDetailId(null);
             setTab("today");
           }}
-          onOpenLibrary={() => {
+          onOpenLibraryList={() => {
             setCategoryDetailId(null);
             setLibraryCategoryId(null);
+            setTab("library");
+          }}
+          onOpenManage={() => {
+            if (!detailCategoryId) return;
+            setLibraryCategoryId(detailCategoryId);
+            setData((prev) => ({
+              ...prev,
+              ui: {
+                ...(prev.ui || {}),
+                librarySelectedCategoryId: detailCategoryId,
+                selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), library: detailCategoryId },
+              },
+            }));
+            setCategoryDetailId(null);
             setTab("library");
           }}
         />
@@ -854,8 +1016,7 @@ export default function App() {
             setTab("today");
           }}
           onOpenLibrary={() => {
-            setLibraryCategoryId(null);
-            setTab("library");
+            openLibraryDetail();
           }}
         />
       ) : (

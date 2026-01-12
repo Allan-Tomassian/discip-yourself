@@ -80,6 +80,14 @@ function fromLocalDateKey(key) {
   return new Date(y, m - 1, d, 12, 0, 0);
 }
 
+function diffDays(anchor, target) {
+  if (!(anchor instanceof Date) || !(target instanceof Date)) return 0;
+  const a = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 12, 0, 0);
+  const b = new Date(target.getFullYear(), target.getMonth(), target.getDate(), 12, 0, 0);
+  const diff = b.getTime() - a.getTime();
+  return Math.round(diff / (24 * 60 * 60 * 1000));
+}
+
 function normalizeBlockOrder(raw, defaults = DEFAULT_BLOCK_ORDER) {
   if (!Array.isArray(raw)) return [...defaults];
   const ids = raw
@@ -142,6 +150,9 @@ export default function Home({
   const [dailyNote, setDailyNote] = useState("");
   const [noteMeta, setNoteMeta] = useState({ forme: "", humeur: "", motivation: "" });
   const [showNotesHistory, setShowNotesHistory] = useState(false);
+  const [noteDeleteMode, setNoteDeleteMode] = useState(false);
+  const [noteDeleteTargetId, setNoteDeleteTargetId] = useState(null);
+  const [noteHistoryVersion, setNoteHistoryVersion] = useState(0);
   const legacyOrder = useMemo(() => loadLegacyBlockOrder(), []);
   const blockOrder = useMemo(() => {
     const raw = safeData?.ui?.blocksByPage?.home;
@@ -150,6 +161,7 @@ export default function Home({
     return [...DEFAULT_BLOCK_ORDER];
   }, [safeData?.ui?.blocksByPage?.home, legacyOrder]);
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(selectedDate));
+  const [railRange, setRailRange] = useState(() => ({ start: -7, end: 7 }));
 
   const handleReorder = useCallback(
     (nextOrder) => {
@@ -196,6 +208,12 @@ export default function Home({
   const railRef = useRef(null);
   const railItemRefs = useRef(new Map());
   const railScrollRaf = useRef(null);
+  const railExtendRef = useRef(0);
+  const lastSelectionSourceRef = useRef("auto");
+  const noteSaveRef = useRef(null);
+  const noteHistoryCacheRef = useRef({ version: -1, items: [] });
+  const calendarIdleTimerRef = useRef(null);
+  const railScrollEndTimerRef = useRef(null);
   const skipAutoCenterRef = useRef(false);
   const didInitSelectedDateRef = useRef(false);
   const didHydrateLegacyRef = useRef(false);
@@ -204,6 +222,15 @@ export default function Home({
   const profile = safeData.profile || {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+  // per-view category selection for Home (fallback to legacy)
+  const homeSelectedCategoryId =
+    safeData.ui?.selectedCategoryByView?.home || safeData.ui?.selectedCategoryId || null;
+  const noteCategoryId = homeSelectedCategoryId;
+  const noteKeyPrefix = noteCategoryId ? `dailyNote:${noteCategoryId}:` : "dailyNote:";
+  const noteMetaKeyPrefix = noteCategoryId ? `dailyNoteMeta:${noteCategoryId}:` : "dailyNoteMeta:";
+  const noteStorageKey = `${noteKeyPrefix}${selectedDateKey}`;
+  const noteMetaStorageKey = `${noteMetaKeyPrefix}${selectedDateKey}`;
+  const noteHistoryStorageKey = noteCategoryId ? `dailyNoteHistory:${noteCategoryId}` : "dailyNoteHistory";
   const sessions = Array.isArray(safeData.sessions) ? safeData.sessions : [];
   const checks = safeData.checks || {};
   const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
@@ -298,6 +325,26 @@ export default function Home({
   }, [safeData.ui?.selectedDate, setData]);
 
   useEffect(() => {
+    return () => {
+      if (typeof setData !== "function") return;
+      const today = toLocalDateKey(new Date());
+      setData((prev) => {
+        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+        if (prevUi.selectedDate === today) return prev;
+        return {
+          ...prev,
+          ui: { ...prevUi, selectedDate: today },
+        };
+      });
+      try {
+        sessionStorage.removeItem("home:selectedDateTouched");
+      } catch (_) {
+        // Ignore storage failures.
+      }
+    };
+  }, [setData]);
+
+  useEffect(() => {
     if (didHydrateLegacyRef.current) return;
     if (typeof setData !== "function") return;
     if (!legacyOrder) return;
@@ -359,17 +406,17 @@ export default function Home({
   useEffect(() => {
     let next = "";
     try {
-      next = localStorage.getItem(`dailyNote:${selectedDateKey}`) || "";
+      next = localStorage.getItem(noteStorageKey) || "";
     } catch (_) {
       next = "";
     }
     setDailyNote(next);
-  }, [selectedDateKey]);
+  }, [noteStorageKey]);
 
   useEffect(() => {
     let next = { forme: "", humeur: "", motivation: "" };
     try {
-      const raw = localStorage.getItem(`dailyNoteMeta:${selectedDateKey}`) || "";
+      const raw = localStorage.getItem(noteMetaStorageKey) || "";
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === "object") {
@@ -384,7 +431,21 @@ export default function Home({
       // Ignore storage failures.
     }
     setNoteMeta(next);
-  }, [selectedDateKey]);
+  }, [noteMetaStorageKey]);
+
+  useEffect(() => {
+    if (noteSaveRef.current) clearTimeout(noteSaveRef.current);
+    noteSaveRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(noteStorageKey, dailyNote || "");
+      } catch (_) {
+        // Ignore storage failures (private mode, quota, etc.)
+      }
+    }, 400);
+    return () => {
+      if (noteSaveRef.current) clearTimeout(noteSaveRef.current);
+    };
+  }, [dailyNote, noteStorageKey]);
 
   useEffect(() => {
     if (typeof setData !== "function") return;
@@ -403,10 +464,6 @@ export default function Home({
   }, [setData]);
 
   // Derived data
-  // per-view category selection for Home (fallback to legacy)
-  const homeSelectedCategoryId =
-    safeData.ui?.selectedCategoryByView?.home || safeData.ui?.selectedCategoryId || null;
-
   const focusCategory = useMemo(() => {
     if (!categories.length) return null;
     const selected = categories.find((c) => c.id === homeSelectedCategoryId) || null;
@@ -475,6 +532,9 @@ export default function Home({
   const activeHabits = useMemo(() => {
     return linkedHabits.filter((g) => g.status === "active");
   }, [linkedHabits]);
+  const hasLinkedHabits = linkedHabits.length > 0;
+  const hasActiveHabits = activeHabits.length > 0;
+  const canManageCategory = Boolean(typeof onOpenManageCategory === "function" && focusCategory?.id);
 
   // ---- Outcome goal lookup helpers and dominant outcome by date
   const goalsById = useMemo(() => {
@@ -574,7 +634,7 @@ export default function Home({
   }, [dayChecks.micro]);
 
   const hasActiveSession = Boolean(sessionForDay && sessionForDay.status === "partial");
-  const canOpenSession = Boolean(canValidate && selectedGoal);
+  const canOpenSession = Boolean(canValidate && selectedGoal && activeHabits.length);
 
   const coreProgress = useMemo(() => {
     const activeIds = new Set(activeHabits.map((h) => h.id));
@@ -712,21 +772,34 @@ export default function Home({
 
   const railAnchorDate = useMemo(() => fromLocalDateKey(localTodayKey), [localTodayKey]);
   const railItems = useMemo(() => {
-    const offsets = Array.from({ length: 31 }, (_, i) => i - 15);
-    return offsets.map((offset) => {
+    const items = [];
+    for (let offset = railRange.start; offset <= railRange.end; offset += 1) {
       const d = addDays(railAnchorDate, offset);
       const key = toLocalDateKey(d);
       const parts = key.split("-");
-      return {
+      items.push({
         key,
         date: d,
         day: parts[2] || "",
         month: parts[1] || "",
         isSelected: key === selectedDateKey,
         status: key === localTodayKey ? "today" : key < localTodayKey ? "past" : "future",
-      };
+      });
+    }
+    return items;
+  }, [railAnchorDate, railRange.start, railRange.end, selectedDateKey, localTodayKey]);
+
+  const ensureRailRangeForOffset = useCallback((offset) => {
+    const buffer = 7;
+    setRailRange((prev) => {
+      let start = prev.start;
+      let end = prev.end;
+      if (offset < start + buffer) start = offset - buffer;
+      if (offset > end - buffer) end = offset + buffer;
+      if (start === prev.start && end === prev.end) return prev;
+      return { start, end };
     });
-  }, [railAnchorDate, selectedDateKey, localTodayKey]);
+  }, []);
 
   const calendarRangeLabel = useMemo(() => {
     try {
@@ -741,6 +814,11 @@ export default function Home({
       return selectedDateKey || "";
     }
   }, [selectedDate, selectedDateKey]);
+
+  useEffect(() => {
+    const offset = diffDays(railAnchorDate, selectedDate);
+    ensureRailRangeForOffset(offset);
+  }, [railAnchorDate, selectedDate, ensureRailRangeForOffset]);
 
   const selectedDateLabel =
     selectedStatus === "today" ? `${calendarRangeLabel} · Aujourd’hui` : calendarRangeLabel;
@@ -767,9 +845,30 @@ export default function Home({
   }, [calendarView]);
 
   // Handlers
+  const scheduleCalendarIdleReset = useCallback(() => {
+    if (calendarIdleTimerRef.current) clearTimeout(calendarIdleTimerRef.current);
+    calendarIdleTimerRef.current = setTimeout(() => {
+      const today = toLocalDateKey(new Date());
+      lastSelectionSourceRef.current = "auto";
+      setData((prev) => {
+        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+        if (prevUi.selectedDate === today) return prev;
+        return {
+          ...prev,
+          ui: { ...prevUi, selectedDate: today },
+        };
+      });
+      try {
+        sessionStorage.removeItem("home:selectedDateTouched");
+      } catch (_) {
+        // ignore
+      }
+    }, 1200);
+  }, [setData]);
   const setSelectedDate = useCallback(
     (nextKey, source = "user") => {
       if (!nextKey || typeof setData !== "function") return;
+      lastSelectionSourceRef.current = source;
       const isUser = source === "user";
       if (isUser) {
         try {
@@ -786,9 +885,23 @@ export default function Home({
           ui: { ...prevUi, selectedDate: nextKey },
         };
       });
+      if (isUser) scheduleCalendarIdleReset();
     },
-    [setData]
+    [scheduleCalendarIdleReset, setData]
   );
+
+  useEffect(() => {
+    if (calendarView === "day") return;
+    if (lastSelectionSourceRef.current === "user") return;
+    if (selectedDateKey !== localTodayKey) {
+      setSelectedDate(localTodayKey, "auto");
+    }
+  }, [calendarView, localTodayKey, selectedDateKey, setSelectedDate]);
+  useEffect(() => {
+    return () => {
+      if (calendarIdleTimerRef.current) clearTimeout(calendarIdleTimerRef.current);
+    };
+  }, []);
   const handleDayOpen = useCallback(
     (nextKey) => {
       if (!nextKey) return;
@@ -806,6 +919,57 @@ export default function Home({
     },
     [onAddOccurrence]
   );
+
+  const getRailStepPx = useCallback(() => {
+    const fallback = 62;
+    if (typeof window === "undefined") return fallback;
+    const container = railRef.current;
+    if (!container) return fallback;
+    let itemWidth = 54;
+    const sample = railItemRefs.current.values().next().value;
+    if (sample && sample.offsetWidth) itemWidth = sample.offsetWidth;
+    let gap = 8;
+    const style = window.getComputedStyle(container);
+    const gapRaw = style.columnGap || style.gap || "0";
+    const parsedGap = parseFloat(gapRaw);
+    if (Number.isFinite(parsedGap)) gap = parsedGap;
+    return itemWidth + gap;
+  }, []);
+
+  const extendRailRange = useCallback(
+    (direction) => {
+      const now = Date.now();
+      if (now - railExtendRef.current < 200) return;
+      railExtendRef.current = now;
+      const delta = 14;
+      setRailRange((prev) => {
+        if (direction === "start") return { start: prev.start - delta, end: prev.end };
+        if (direction === "end") return { start: prev.start, end: prev.end + delta };
+        return prev;
+      });
+      if (direction === "start") {
+        const container = railRef.current;
+        if (!container) return;
+        const step = getRailStepPx();
+        container.scrollLeft += step * delta;
+      }
+    },
+    [getRailStepPx]
+  );
+
+  const maybeExtendRailRange = useCallback(() => {
+    const container = railRef.current;
+    if (!container) return;
+    const step = getRailStepPx();
+    const threshold = step * 2;
+    const left = container.scrollLeft;
+    const right = container.scrollWidth - (left + container.clientWidth);
+    if (left < threshold) {
+      extendRailRange("start");
+    } else if (right < threshold) {
+      extendRailRange("end");
+    }
+  }, [extendRailRange, getRailStepPx]);
 
   const scrollRailToKey = useCallback((dateKeyValue, behavior = "smooth") => {
     const container = railRef.current;
@@ -848,22 +1012,30 @@ export default function Home({
     if (railScrollRaf.current) return;
     railScrollRaf.current = requestAnimationFrame(() => {
       railScrollRaf.current = null;
-      updateSelectedFromScroll();
+      maybeExtendRailRange();
+      if (railScrollEndTimerRef.current) clearTimeout(railScrollEndTimerRef.current);
+      railScrollEndTimerRef.current = setTimeout(() => {
+        updateSelectedFromScroll();
+      }, 80);
     });
-  }, [updateSelectedFromScroll]);
+    scheduleCalendarIdleReset();
+  }, [maybeExtendRailRange, scheduleCalendarIdleReset, updateSelectedFromScroll]);
 
   useEffect(() => {
+    if (calendarView !== "day") return;
     if (!selectedDateKey) return;
     if (skipAutoCenterRef.current) {
       skipAutoCenterRef.current = false;
       return;
     }
-    requestAnimationFrame(() => scrollRailToKey(selectedDateKey, "auto"));
-  }, [scrollRailToKey, selectedDateKey, railItems.length]);
+    const behavior = lastSelectionSourceRef.current === "user" ? "smooth" : "auto";
+    requestAnimationFrame(() => scrollRailToKey(selectedDateKey, behavior));
+  }, [calendarView, scrollRailToKey, selectedDateKey, railItems.length]);
 
   useEffect(() => {
     return () => {
       if (railScrollRaf.current) cancelAnimationFrame(railScrollRaf.current);
+      if (railScrollEndTimerRef.current) clearTimeout(railScrollEndTimerRef.current);
     };
   }, []);
 
@@ -880,7 +1052,7 @@ export default function Home({
   }
 
   function openSessionFlow() {
-    if (!selectedGoal?.id || !canValidate || typeof setData !== "function") return;
+    if (!selectedGoal?.id || !canValidate || !activeHabits.length || typeof setData !== "function") return;
     setData((prev) =>
       startSessionForDate(prev, selectedDateKey, {
         objectiveId: selectedGoal.id,
@@ -902,11 +1074,16 @@ export default function Home({
 
   const noteHistoryItems = useMemo(() => {
     if (!showNotesHistory) return [];
+    const cacheKey = `${noteHistoryVersion}:${noteHistoryStorageKey}:${selectedDateKey}`;
+    if (noteHistoryCacheRef.current.version === cacheKey) {
+      return noteHistoryCacheRef.current.items;
+    }
+    let nextItems = [];
     try {
       const items = [];
       let history = [];
       try {
-        const raw = localStorage.getItem("dailyNoteHistory") || "";
+        const raw = localStorage.getItem(noteHistoryStorageKey) || "";
         const parsed = raw ? JSON.parse(raw) : [];
         if (Array.isArray(parsed)) history = parsed;
       } catch (_) {
@@ -934,15 +1111,15 @@ export default function Home({
       for (let i = 0; i < localStorage.length; i += 1) {
         const key = localStorage.key(i);
         if (!key) continue;
-        if (key.startsWith("dailyNote:")) {
-          const dateKey = key.replace("dailyNote:", "");
+        if (key.startsWith(noteKeyPrefix)) {
+          const dateKey = key.slice(noteKeyPrefix.length);
           const note = localStorage.getItem(key) || "";
           const entry = entries.get(dateKey) || { dateKey, note: "", meta: {} };
           entry.note = note;
           entries.set(dateKey, entry);
         }
-        if (key.startsWith("dailyNoteMeta:")) {
-          const dateKey = key.replace("dailyNoteMeta:", "");
+        if (key.startsWith(noteMetaKeyPrefix)) {
+          const dateKey = key.slice(noteMetaKeyPrefix.length);
           let meta = {};
           try {
             const raw = localStorage.getItem(key) || "";
@@ -971,29 +1148,87 @@ export default function Home({
         });
       });
 
-      return items.sort((a, b) => {
-        const aTime = a.savedAt || 0;
-        const bTime = b.savedAt || 0;
-        if (aTime && bTime) return bTime - aTime;
-        if (aTime) return -1;
-        if (bTime) return 1;
-        return (b.dateKey || "").localeCompare(a.dateKey || "");
-      });
+      nextItems = items
+        .sort((a, b) => {
+          const aTime = a.savedAt || 0;
+          const bTime = b.savedAt || 0;
+          if (aTime && bTime) return bTime - aTime;
+          if (aTime) return -1;
+          if (bTime) return 1;
+          return (b.dateKey || "").localeCompare(a.dateKey || "");
+        })
+        .slice(0, 120);
     } catch (_) {
-      return [];
+      nextItems = [];
     }
-  }, [showNotesHistory]);
+    noteHistoryCacheRef.current = { version: cacheKey, items: nextItems };
+    return nextItems;
+  }, [noteHistoryVersion, noteHistoryStorageKey, noteKeyPrefix, noteMetaKeyPrefix, selectedDateKey, showNotesHistory]);
 
   function updateNoteMeta(patch) {
     setNoteMeta((prev) => {
       const next = { ...prev, ...patch };
       try {
-        localStorage.setItem(`dailyNoteMeta:${selectedDateKey}`, JSON.stringify(next));
+        localStorage.setItem(noteMetaStorageKey, JSON.stringify(next));
       } catch (_) {
         // Ignore storage failures.
       }
       return next;
     });
+  }
+
+  function clearDailyNote(dateKeyValue) {
+    const targetDate = dateKeyValue || selectedDateKey;
+    const nextMeta = { forme: "", humeur: "", motivation: "" };
+    if (targetDate === selectedDateKey) {
+      setDailyNote("");
+      setNoteMeta(nextMeta);
+    }
+    try {
+      localStorage.setItem(`${noteKeyPrefix}${targetDate}`, "");
+      localStorage.setItem(`${noteMetaKeyPrefix}${targetDate}`, JSON.stringify(nextMeta));
+    } catch (_) {
+      // Ignore storage failures.
+    }
+    setNoteHistoryVersion((v) => v + 1);
+  }
+
+  function deleteSelectedNote() {
+    if (!noteDeleteTargetId) return;
+    const target = noteHistoryItems.find((item) => item.id === noteDeleteTargetId) || null;
+    if (!target) return;
+    const targetDateKey = target.dateKey;
+    const isCurrentEntry = typeof target.id === "string" && target.id.startsWith("current-");
+    if (isCurrentEntry) {
+      clearDailyNote(targetDateKey);
+      setNoteDeleteTargetId(null);
+      setNoteDeleteMode(false);
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(noteHistoryStorageKey) || "";
+      const parsed = raw ? JSON.parse(raw) : [];
+      const history = Array.isArray(parsed) ? parsed : [];
+      const targetSavedAt = Number(target.savedAt) || 0;
+      const targetNote = typeof target.note === "string" ? target.note : "";
+      const targetMeta = target.meta && typeof target.meta === "object" ? target.meta : {};
+      const nextHistory = history.filter((entry) => {
+        if (!entry || typeof entry !== "object") return false;
+        const entryDate = typeof entry.dateKey === "string" ? entry.dateKey : "";
+        if (entryDate !== targetDateKey) return true;
+        const entrySavedAt = Number(entry.savedAt) || 0;
+        if (targetSavedAt) return entrySavedAt !== targetSavedAt;
+        const entryNote = typeof entry.note === "string" ? entry.note : "";
+        const entryMeta = entry.meta && typeof entry.meta === "object" ? entry.meta : {};
+        return entryNote !== targetNote || JSON.stringify(entryMeta) !== JSON.stringify(targetMeta);
+      });
+      localStorage.setItem(noteHistoryStorageKey, JSON.stringify(nextHistory));
+    } catch (_) {
+      // Ignore storage failures.
+    }
+    setNoteHistoryVersion((v) => v + 1);
+    setNoteDeleteTargetId(null);
+    setNoteDeleteMode(false);
   }
 
   function addNoteToHistory() {
@@ -1008,11 +1243,11 @@ export default function Home({
       savedAt: Date.now(),
     };
     try {
-      const raw = localStorage.getItem("dailyNoteHistory") || "";
+      const raw = localStorage.getItem(noteHistoryStorageKey) || "";
       const parsed = raw ? JSON.parse(raw) : [];
       const history = Array.isArray(parsed) ? parsed : [];
       history.unshift(entry);
-      localStorage.setItem("dailyNoteHistory", JSON.stringify(history));
+      localStorage.setItem(noteHistoryStorageKey, JSON.stringify(history));
     } catch (_) {
       // Ignore storage failures.
     }
@@ -1020,11 +1255,12 @@ export default function Home({
     const nextMeta = { forme: "", humeur: "", motivation: "" };
     setNoteMeta(nextMeta);
     try {
-      localStorage.setItem(`dailyNote:${selectedDateKey}`, "");
-      localStorage.setItem(`dailyNoteMeta:${selectedDateKey}`, JSON.stringify(nextMeta));
+      localStorage.setItem(noteStorageKey, "");
+      localStorage.setItem(noteMetaStorageKey, JSON.stringify(nextMeta));
     } catch (_) {
       // Ignore storage failures.
     }
+    setNoteHistoryVersion((v) => v + 1);
   }
 
   function addMicroCheck(microId) {
@@ -1094,6 +1330,18 @@ export default function Home({
   const selectedDayAccent = goalAccentByDate.get(selectedDateKey) || goalAccent || accent;
   const backgroundImage = profile.whyImage || "";
   const catAccentVars = getCategoryAccentVars(accent);
+  const noteFieldStyle = {
+    background: `linear-gradient(90deg, rgba(0,0,0,0), ${accent}0F)`,
+  };
+  const focusRowStyle = {
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "10px 10px",
+    borderRadius: 12,
+    background: `linear-gradient(90deg, rgba(0,0,0,0), ${accent}22)`,
+    borderLeft: `4px solid ${accent}`,
+    transition: "background 180ms ease, border-left-color 180ms ease",
+  };
 
   const whyText = (profile.whyText || "").trim();
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
@@ -1230,21 +1478,24 @@ export default function Home({
                         </button>
                       ) : null}
                       <div className="cardSectionTitle">Focus du jour</div>
+                      <div style={{ flex: 1 }} />
+                      {canManageCategory ? (
+                        <Button
+                          variant="ghost"
+                          onClick={() => onOpenManageCategory(focusCategory.id)}
+                          aria-label="Gérer la catégorie"
+                          style={{ borderColor: accent }}
+                        >
+                          Gérer
+                        </Button>
+                      ) : null}
                     </div>
                     <div className="mt12">
                       <div className="small2">Catégorie</div>
                       <div
                         className="mt8"
                         data-tour-id="today-focus-category"
-                        style={{
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          padding: "10px 10px",
-                          borderRadius: 12,
-                          background: `linear-gradient(90deg, rgba(0,0,0,0), ${accent}22)`,
-                          borderLeft: `4px solid ${accent}`,
-                          transition: "background 180ms ease, border-left-color 180ms ease",
-                        }}
+                        style={focusRowStyle}
                       >
                         <div className="itemTitle">{focusCategory?.name || "Catégorie"}</div>
                       </div>
@@ -1253,23 +1504,29 @@ export default function Home({
                     <div className="mt12">
                       <div className="small2">Objectif principal</div>
                     {outcomeGoals.length ? (
-                  <AccentItem color={accent} selected className="mt8">
-                    <Select
-                      value={selectedGoal?.id || ""}
-                      onChange={(e) => setCategoryMainGoal(e.target.value)}
-                      disabled={!canEdit}
-                      style={{ fontSize: 16 }}
-                    >
-                      <option value="" disabled>
-                        Choisir un objectif
-                      </option>
-                      {outcomeGoals.map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.title}
-                        </option>
-                      ))}
-                    </Select>
-                  </AccentItem>
+                      <div className="mt8" style={focusRowStyle}>
+                        <Select
+                          value={selectedGoal?.id || ""}
+                          onChange={(e) => setCategoryMainGoal(e.target.value)}
+                          disabled={!canEdit}
+                          style={{
+                            background: "transparent",
+                            border: 0,
+                            boxShadow: "none",
+                            padding: 0,
+                            width: "100%",
+                          }}
+                        >
+                          <option value="" disabled>
+                            Choisir un objectif
+                          </option>
+                          {outcomeGoals.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.title}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
                     ) : (
                       <div className="mt8 small2">Aucun objectif principal pour cette catégorie.</div>
                     )}
@@ -1285,13 +1542,41 @@ export default function Home({
                         <div className="sectionSub" style={{ marginTop: 8 }}>
                           Sélectionne un objectif pour activer GO.
                         </div>
-                      ) : !activeHabits.length ? (
-                        <div className="sectionSub" style={{ marginTop: 8 }}>
-                          Aucune action liée. Tu peux démarrer quand même, puis ajouter une action depuis Bibliothèque.
-                        </div>
                       ) : !canValidate ? (
                         <div className="sectionSub" style={{ marginTop: 8 }}>
-                          Lecture seule.
+                          {lockMessage}
+                        </div>
+                      ) : !hasLinkedHabits ? (
+                        <div className="sectionSub" style={{ marginTop: 8 }}>
+                          Aucune action liée à cet objectif.
+                          {canManageCategory ? (
+                            <>
+                              {" "}
+                              <button
+                                className="linkBtn"
+                                type="button"
+                                onClick={() => onOpenManageCategory(focusCategory.id)}
+                              >
+                                Ajouter une action
+                              </button>
+                            </>
+                          ) : null}
+                        </div>
+                      ) : !hasActiveHabits ? (
+                        <div className="sectionSub" style={{ marginTop: 8 }}>
+                          Actions liées détectées, mais aucune n’est active (statut).
+                          {canManageCategory ? (
+                            <>
+                              {" "}
+                              <button
+                                className="linkBtn"
+                                type="button"
+                                onClick={() => onOpenManageCategory(focusCategory.id)}
+                              >
+                                Activer dans Gérer
+                              </button>
+                            </>
+                          ) : null}
                         </div>
                       ) : null}
                     </div>
@@ -1302,7 +1587,11 @@ export default function Home({
 
           if (blockId === "calendar") {
             return (
-              <Card data-tour-id="today-calendar-card">
+              <Card
+                data-tour-id="today-calendar-card"
+                onPointerDown={scheduleCalendarIdleReset}
+                onWheel={scheduleCalendarIdleReset}
+              >
                 <div className="p18">
                   <div className="row">
                     <div className="cardSectionTitleRow">
@@ -1319,7 +1608,9 @@ export default function Home({
                       ) : null}
                       <div>
                         <div className="cardSectionTitle">Calendrier</div>
-                        <div className="small2 mt8">{selectedDateLabel || "—"}</div>
+                        <div className="small2 mt8" aria-live="polite" aria-atomic="true">
+                          {selectedDateLabel || "—"}
+                        </div>
                       </div>
                     </div>
                     <div className="row" style={{ gap: 8 }}>
@@ -1347,6 +1638,7 @@ export default function Home({
                         variant="ghost"
                         onClick={() => setCalendarView("day")}
                         disabled={calendarView === "day"}
+                        aria-pressed={calendarView === "day"}
                         data-tour-id="today-calendar-day"
                       >
                         Jour
@@ -1355,6 +1647,7 @@ export default function Home({
                         variant="ghost"
                         onClick={() => setCalendarView("month")}
                         disabled={calendarView === "month"}
+                        aria-pressed={calendarView === "month"}
                         data-tour-id="today-calendar-month"
                       >
                         Mois
@@ -1381,6 +1674,8 @@ export default function Home({
                           ref={railRef}
                           onScroll={handleRailScroll}
                           data-tour-id="today-calendar-rail"
+                          role="listbox"
+                          aria-label="Sélecteur de jour"
                           style={{
                             scrollSnapType: "x mandatory",
                             WebkitOverflowScrolling: "touch",
@@ -1390,6 +1685,14 @@ export default function Home({
                           {railItems.map((item) => {
                             const plannedCount = plannedByDate.get(item.key) || 0;
                             const doneCount = doneByDate.get(item.key) || 0;
+                            const isToday = item.key === localTodayKey;
+                            const plannedLabel = plannedCount
+                              ? `${plannedCount} planifié${plannedCount > 1 ? "s" : ""}`
+                              : "0 planifié";
+                            const doneLabel = doneCount ? `${doneCount} fait${doneCount > 1 ? "s" : ""}` : "0 fait";
+                            const ariaLabel = `${item.key} · ${plannedLabel} · ${doneLabel}${
+                              isToday ? " · Aujourd’hui" : ""
+                            }`;
                             return (
                               <button
                                 key={item.key}
@@ -1408,6 +1711,10 @@ export default function Home({
                                 data-status={item.status}
                                 data-planned={plannedCount}
                                 data-done={doneCount}
+                                aria-label={ariaLabel}
+                                aria-pressed={item.key === selectedDateKey}
+                                aria-current={isToday ? "date" : undefined}
+                                role="option"
                                 onClick={() => {
                                   scrollRailToKey(item.key);
                                   handleDayOpen(item.key);
@@ -1479,6 +1786,12 @@ export default function Home({
                             const plannedCount = plannedByDate.get(dayKey) || 0;
                             const doneCount = doneByDate.get(dayKey) || 0;
                             const isSelected = dayKey === selectedDateKey;
+                            const isToday = dayKey === localTodayKey;
+                            const plannedLabel = plannedCount
+                              ? `${plannedCount} planifié${plannedCount > 1 ? "s" : ""}`
+                              : "0 planifié";
+                            const doneLabel = doneCount ? `${doneCount} fait${doneCount > 1 ? "s" : ""}` : "0 fait";
+                            const ariaLabel = `${dayKey} · ${plannedLabel} · ${doneLabel}${isToday ? " · Aujourd’hui" : ""}`;
                             return (
                               <button
                                 key={dayKey}
@@ -1487,6 +1800,9 @@ export default function Home({
                                 data-datekey={dayKey}
                                 data-planned={plannedCount}
                                 data-done={doneCount}
+                                aria-label={ariaLabel}
+                                aria-pressed={isSelected}
+                                aria-current={isToday ? "date" : undefined}
                                 onClick={() => handleDayOpen(dayKey)}
                                 style={{
                                   width: "100%",
@@ -1583,104 +1899,107 @@ export default function Home({
 
           if (blockId === "notes") {
             return (
-                <Card data-tour-id="today-notes-card">
-                  <div className="p18">
-                    <div className="row">
-                      <div className="cardSectionTitleRow">
-                        {drag ? (
-                          <button
-                            ref={setActivatorNodeRef}
-                            {...listeners}
-                            {...attributes}
-                            className="dragHandle"
-                            aria-label="Réorganiser"
-                          >
-                            ⋮⋮
-                          </button>
-                        ) : null}
-                        <div className="cardSectionTitle">Note du jour</div>
-                      </div>
-                      <div className="row" style={{ gap: 8 }}>
-                        <IconButton
-                          aria-label="Historique des notes"
-                          onClick={() => setShowNotesHistory(true)}
-                          data-tour-id="today-notes-history"
+              <Card data-tour-id="today-notes-card">
+                <div className="p18">
+                  <div className="row">
+                    <div className="cardSectionTitleRow">
+                      {drag ? (
+                        <button
+                          ref={setActivatorNodeRef}
+                          {...listeners}
+                          {...attributes}
+                          className="dragHandle"
+                          aria-label="Réorganiser"
                         >
-                          +
-                        </IconButton>
-                      </div>
+                          ⋮⋮
+                        </button>
+                      ) : null}
+                      <div className="cardSectionTitle">Note du jour</div>
                     </div>
-                    <div className="mt12">
-                      <Textarea
-                        rows={3}
-                        value={dailyNote}
-                        onChange={(e) => {
-                          const next = e.target.value;
-                          setDailyNote(next);
-                          try {
-                            localStorage.setItem(`dailyNote:${selectedDateKey}`, next);
-                          } catch (_) {
-                            // Ignore storage failures (private mode, quota, etc.)
-                          }
+                    <div className="row" style={{ gap: 8 }}>
+                      <IconButton
+                        aria-label="Historique des notes"
+                        onClick={() => {
+                          setNoteHistoryVersion((v) => v + 1);
+                          setNoteDeleteMode(false);
+                          setNoteDeleteTargetId(null);
+                          setShowNotesHistory(true);
                         }}
-                        placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
-                        data-tour-id="today-notes-text"
-                      />
-                    </div>
-                    <div className="mt12">
-                      <div className="small2">Check-in rapide</div>
-                      <div className="noteMetaGrid mt8" data-tour-id="today-notes-meta">
-                        <div>
-                          <div className="small2">Forme</div>
-                          <Select
-                            value={noteMeta.forme || ""}
-                            onChange={(e) => updateNoteMeta({ forme: e.target.value })}
-                          >
-                            <option value="" disabled>
-                              Choisir
-                            </option>
-                            <option value="Excellente">Excellente</option>
-                            <option value="Bonne">Bonne</option>
-                            <option value="Moyenne">Moyenne</option>
-                            <option value="Faible">Faible</option>
-                          </Select>
-                        </div>
-                        <div>
-                          <div className="small2">Humeur</div>
-                          <Select
-                            value={noteMeta.humeur || ""}
-                            onChange={(e) => updateNoteMeta({ humeur: e.target.value })}
-                          >
-                            <option value="" disabled>
-                              Choisir
-                            </option>
-                            <option value="Positif">Positif</option>
-                            <option value="Neutre">Neutre</option>
-                            <option value="Basse">Basse</option>
-                          </Select>
-                        </div>
-                        <div>
-                          <div className="small2">Motivation</div>
-                          <input
-                            className="input"
-                            type="number"
-                            min="0"
-                            max="10"
-                            step="1"
-                            value={noteMeta.motivation || ""}
-                            onChange={(e) => updateNoteMeta({ motivation: e.target.value })}
-                            placeholder="0-10"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="noteActions mt12">
-                      <Button onClick={addNoteToHistory} data-tour-id="today-notes-add">
-                        Enregistrer
-                      </Button>
+                        data-tour-id="today-notes-history"
+                      >
+                        +
+                      </IconButton>
                     </div>
                   </div>
-                </Card>
+                  <div className="mt12">
+                    <Textarea
+                      rows={3}
+                      value={dailyNote}
+                      onChange={(e) => {
+                        setDailyNote(e.target.value);
+                      }}
+                      style={noteFieldStyle}
+                      placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
+                      data-tour-id="today-notes-text"
+                    />
+                  </div>
+                  <div className="mt12">
+                    <div className="small2">Check-in rapide</div>
+                    <div className="noteMetaGrid mt8" data-tour-id="today-notes-meta">
+                      <div>
+                        <div className="small2">Forme</div>
+                        <Select
+                          value={noteMeta.forme || ""}
+                          onChange={(e) => updateNoteMeta({ forme: e.target.value })}
+                          style={noteFieldStyle}
+                        >
+                          <option value="" disabled>
+                            Choisir
+                          </option>
+                          <option value="Excellente">Excellente</option>
+                          <option value="Bonne">Bonne</option>
+                          <option value="Moyenne">Moyenne</option>
+                          <option value="Faible">Faible</option>
+                        </Select>
+                      </div>
+                      <div>
+                        <div className="small2">Humeur</div>
+                        <Select
+                          value={noteMeta.humeur || ""}
+                          onChange={(e) => updateNoteMeta({ humeur: e.target.value })}
+                          style={noteFieldStyle}
+                        >
+                          <option value="" disabled>
+                            Choisir
+                          </option>
+                          <option value="Positif">Positif</option>
+                          <option value="Neutre">Neutre</option>
+                          <option value="Basse">Basse</option>
+                        </Select>
+                      </div>
+                      <div>
+                        <div className="small2">Motivation</div>
+                        <input
+                          className="input"
+                          type="number"
+                          min="0"
+                          max="10"
+                          step="1"
+                          value={noteMeta.motivation || ""}
+                          onChange={(e) => updateNoteMeta({ motivation: e.target.value })}
+                          placeholder="0-10"
+                          style={noteFieldStyle}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="noteActions mt12">
+                    <Button onClick={addNoteToHistory} data-tour-id="today-notes-add">
+                      Enregistrer
+                    </Button>
+                  </div>
+                </div>
+              </Card>
             );
           }
           return null;
@@ -1751,13 +2070,46 @@ export default function Home({
         </div>
       ) : null}
       {showNotesHistory ? (
-        <div className="modalBackdrop disciplineOverlay" onClick={() => setShowNotesHistory(false)}>
+        <div
+          className="modalBackdrop disciplineOverlay"
+          onClick={() => {
+            setShowNotesHistory(false);
+            setNoteDeleteMode(false);
+            setNoteDeleteTargetId(null);
+          }}
+        >
           <Card className="disciplineCard" onClick={(e) => e.stopPropagation()}>
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div className="titleSm">Historique des notes</div>
-              <button className="linkBtn" type="button" onClick={() => setShowNotesHistory(false)}>
-                Fermer
-              </button>
+              <div className="row" style={{ gap: 8 }}>
+                <IconButton
+                  aria-label="Mode suppression"
+                  title="Mode suppression"
+                  onClick={() => {
+                    setNoteDeleteMode((v) => !v);
+                    setNoteDeleteTargetId(null);
+                  }}
+                  aria-pressed={noteDeleteMode}
+                >
+                  🗑
+                </IconButton>
+                {noteDeleteMode ? (
+                  <Button variant="danger" onClick={deleteSelectedNote} disabled={!noteDeleteTargetId}>
+                    Supprimer
+                  </Button>
+                ) : null}
+                <button
+                  className="linkBtn"
+                  type="button"
+                  onClick={() => {
+                    setShowNotesHistory(false);
+                    setNoteDeleteMode(false);
+                    setNoteDeleteTargetId(null);
+                  }}
+                >
+                  Fermer
+                </button>
+              </div>
             </div>
             <div className="mt12 col" style={{ gap: 10, maxHeight: 320, overflow: "auto" }}>
               {noteHistoryItems.length ? (
@@ -1767,8 +2119,30 @@ export default function Home({
                   if (meta.forme) metaParts.push(`Forme: ${meta.forme}`);
                   if (meta.humeur) metaParts.push(`Humeur: ${meta.humeur}`);
                   if (meta.motivation) metaParts.push(`Motivation: ${meta.motivation}/10`);
+                  const isSelected = noteDeleteMode && noteDeleteTargetId === item.id;
                   return (
-                    <div key={item.id || item.dateKey} className="listItem">
+                    <div
+                      key={item.id || item.dateKey}
+                      className={`listItem${isSelected ? " catAccentRow" : ""}`}
+                      style={isSelected ? catAccentVars : undefined}
+                      role={noteDeleteMode ? "button" : undefined}
+                      tabIndex={noteDeleteMode ? 0 : undefined}
+                      onClick={
+                        noteDeleteMode
+                          ? () => setNoteDeleteTargetId((prev) => (prev === item.id ? null : item.id))
+                          : undefined
+                      }
+                      onKeyDown={
+                        noteDeleteMode
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setNoteDeleteTargetId((prev) => (prev === item.id ? null : item.id));
+                              }
+                            }
+                          : undefined
+                      }
+                    >
                       <div className="small2">{item.dateKey}</div>
                       {metaParts.length ? <div className="small2 mt8">{metaParts.join(" · ")}</div> : null}
                       {item.note ? <div className="small2 mt8">{item.note}</div> : null}
