@@ -1,5 +1,7 @@
 import React from "react";
 
+export { default as AccentItem } from "./AccentItem";
+
 export const AccentContext = React.createContext({ accent: "#FFFFFF" });
 
 export function Badge({ children }) {
@@ -96,43 +98,6 @@ export function ProgressRing({ value, size = 44 }) {
       >
         {Math.round(v * 100)}%
       </div>
-    </div>
-  );
-}
-
-// AccentItem: standardized "gradient + left bracket" selection style (used across Pilotage/Home/Library)
-export function AccentItem({
-  selected = false,
-  color = "#6EE7FF",
-  className = "",
-  style,
-  children,
-  ...props
-}) {
-  const safeColor = typeof color === "string" && color.trim() ? color : "#6EE7FF";
-  return (
-    <div
-      className={className}
-      aria-selected={selected}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 10,
-        padding: "10px 10px",
-        borderRadius: 12,
-        background: selected
-          ? `linear-gradient(90deg, rgba(0,0,0,0), ${safeColor}22)`
-          : `linear-gradient(90deg, rgba(0,0,0,0), ${safeColor}0F)`,
-        borderLeft: selected ? `4px solid ${safeColor}` : "4px solid transparent",
-        transition: "background 180ms ease, border-left-color 180ms ease",
-        cursor: "pointer",
-        outline: "none",
-        ...(style || {}),
-      }}
-      {...props}
-    >
-      {children}
     </div>
   );
 }

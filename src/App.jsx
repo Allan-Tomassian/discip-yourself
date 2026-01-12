@@ -26,6 +26,7 @@ import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
 import { todayKey } from "./utils/dates";
 import { normalizePriorities } from "./logic/priority";
 import { getCategoryCounts } from "./logic/pilotage";
+import { resolveGoalType } from "./utils/goalType";
 import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
 import { useTour } from "./tour/useTour";
 import TourOverlay from "./tour/TourOverlay";
@@ -33,17 +34,6 @@ import TourOverlay from "./tour/TourOverlay";
 function runSelfTests() {
   // minimal sanity
   console.assert(typeof window !== "undefined", "browser env");
-}
-
-function resolveGoalType(goal) {
-  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
-  if (raw === "OUTCOME" || raw === "PROCESS") return raw;
-  if (raw === "STATE") return "OUTCOME";
-  if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
-  const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
-  if (legacy === "OUTCOME") return "OUTCOME";
-  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
-  return "PROCESS";
 }
 
 function parseLocalDateKey(key) {
@@ -205,6 +195,8 @@ export default function App() {
       typeof opts.sessionDateKey === "string" ? opts.sessionDateKey : sessionDateKey;
     const nextCategoryProgressId =
       typeof opts.categoryProgressId === "string" ? opts.categoryProgressId : categoryProgressId;
+    const nextCategoryDetailId =
+      typeof opts.categoryDetailId === "string" ? opts.categoryDetailId : categoryDetailId;
     if (t === "session" && typeof opts.sessionCategoryId === "string") {
       setSessionCategoryId(opts.sessionCategoryId);
     } else if (t === "session" && opts.sessionCategoryId === null) {
@@ -219,6 +211,11 @@ export default function App() {
       setCategoryProgressId(opts.categoryProgressId);
     } else if (t === "category-progress" && opts.categoryProgressId === null) {
       setCategoryProgressId(null);
+    }
+    if (t === "category-detail" && typeof opts.categoryDetailId === "string") {
+      setCategoryDetailId(opts.categoryDetailId);
+    } else if (t === "category-detail" && opts.categoryDetailId === null) {
+      setCategoryDetailId(null);
     }
     _setTab(t);
     // persist last tab for better UX (non-blocking)
@@ -242,8 +239,8 @@ export default function App() {
               ? `/category/${nextCategoryProgressId}/progress`
               : "/category"
           : t === "category-detail"
-            ? categoryDetailId
-              ? `/category/${categoryDetailId}`
+            ? nextCategoryDetailId
+              ? `/category/${nextCategoryDetailId}`
               : "/category"
             : t === "pilotage"
               ? "/pilotage"
@@ -771,6 +768,11 @@ export default function App() {
         <Categories
           data={data}
           setData={setData}
+          onOpenCategoryDetail={(categoryId) => {
+            if (!categoryId) return;
+            setLibraryCategoryId(null);
+            setTab("category-detail", { categoryDetailId: categoryId });
+          }}
           onOpenLibraryCategory={(categoryId) => {
             setLibraryCategoryId(categoryId);
             setTab("library");

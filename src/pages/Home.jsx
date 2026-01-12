@@ -16,23 +16,12 @@ import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { isPrimaryCategory, isPrimaryGoal } from "../logic/priority";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
+import { resolveGoalType } from "../utils/goalType";
 
 // TOUR MAP:
 // - primary_action: start session (GO) for today
 // - key_elements: focus section, calendar, micro-actions, daily note
 // - optional_elements: day stats/discipline stats modals
-// ---- Helpers
-function resolveGoalType(goal) {
-  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
-  if (raw === "OUTCOME" || raw === "PROCESS") return raw;
-  if (raw === "STATE") return "OUTCOME";
-  if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
-  const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
-  if (legacy === "OUTCOME") return "OUTCOME";
-  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
-  return "PROCESS";
-}
-
 // ---- Priority helpers
 function normalizePriorityValue(v) {
   const raw = typeof v === "string" ? v.toLowerCase() : "";

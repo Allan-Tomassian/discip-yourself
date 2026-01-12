@@ -3,17 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
-
-function resolveGoalType(goal) {
-  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
-  if (raw === "OUTCOME" || raw === "PROCESS") return raw;
-  if (raw === "STATE") return "OUTCOME";
-  if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
-  const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
-  if (legacy === "OUTCOME") return "OUTCOME";
-  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
-  return "PROCESS";
-}
+import { resolveGoalType } from "../utils/goalType";
 
 export default function CategoryDetailView({ data, categoryId, onBack, onOpenLibrary }) {
   const safeData = data && typeof data === "object" ? data : {};
@@ -26,10 +16,27 @@ export default function CategoryDetailView({ data, categoryId, onBack, onOpenLib
     return goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "OUTCOME");
   }, [goals, category?.id]);
 
-  const habits = useMemo(() => {
+  const processGoals = useMemo(() => {
     if (!category?.id) return [];
     return goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "PROCESS");
   }, [goals, category?.id]);
+
+  const { habitsByOutcome, unlinkedHabits } = useMemo(() => {
+    const byParent = new Map();
+    const unlinked = [];
+    const outcomeIds = new Set(outcomeGoals.map((g) => g.id));
+    for (const habit of processGoals) {
+      const parentId = typeof habit?.parentId === "string" ? habit.parentId : "";
+      if (parentId && outcomeIds.has(parentId)) {
+        const list = byParent.get(parentId) || [];
+        list.push(habit);
+        byParent.set(parentId, list);
+      } else {
+        unlinked.push(habit);
+      }
+    }
+    return { habitsByOutcome: byParent, unlinkedHabits: unlinked };
+  }, [processGoals, outcomeGoals]);
 
   if (!category) {
     return (
@@ -86,12 +93,30 @@ export default function CategoryDetailView({ data, categoryId, onBack, onOpenLib
         <div className="p18">
           <div className="sectionTitle">Objectifs</div>
           {outcomeGoals.length ? (
-            <div className="mt12 col" style={{ gap: 10 }}>
-              {outcomeGoals.map((g) => (
-                <div key={g.id} className="listItem catAccentRow" style={catAccentVars}>
-                  <div className="itemTitle">{g.title || "Objectif"}</div>
-                </div>
-              ))}
+            <div className="mt12 col" style={{ gap: 12 }}>
+              {outcomeGoals.map((g) => {
+                const linkedHabits = habitsByOutcome.get(g.id) || [];
+                return (
+                  <div key={g.id} className="col" style={{ gap: 8 }}>
+                    <div className="listItem catAccentRow" style={catAccentVars}>
+                      <div className="itemTitle">{g.title || "Objectif"}</div>
+                    </div>
+                    {linkedHabits.length ? (
+                      <div className="col" style={{ gap: 8, paddingLeft: 12 }}>
+                        {linkedHabits.map((h) => (
+                          <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
+                            <div className="itemTitle">{h.title || "Habitude"}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="small2" style={{ paddingLeft: 12 }}>
+                        Aucune habitude liée.
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="small2 mt10">Aucun objectif dans cette catégorie.</div>
@@ -99,22 +124,20 @@ export default function CategoryDetailView({ data, categoryId, onBack, onOpenLib
         </div>
       </Card>
 
-      <Card accentBorder style={{ marginTop: 12 }}>
-        <div className="p18">
-          <div className="sectionTitle">Actions</div>
-          {habits.length ? (
+      {unlinkedHabits.length ? (
+        <Card accentBorder style={{ marginTop: 12 }}>
+          <div className="p18">
+            <div className="sectionTitle">Habitudes non liées</div>
             <div className="mt12 col" style={{ gap: 10 }}>
-              {habits.map((h) => (
+              {unlinkedHabits.map((h) => (
                 <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
-                  <div className="itemTitle">{h.title || "Action"}</div>
+                  <div className="itemTitle">{h.title || "Habitude"}</div>
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="small2 mt10">Aucune action liée.</div>
-          )}
-        </div>
-      </Card>
+          </div>
+        </Card>
+      ) : null}
     </ScreenShell>
   );
 }

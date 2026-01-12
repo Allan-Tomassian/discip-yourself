@@ -15,7 +15,7 @@ function formatCount(count, singular, plural) {
   return `${count} ${plural}`;
 }
 
-export default function Categories({ data, setData, onOpenLibraryCategory, onOpenCreate }) {
+export default function Categories({ data, setData, onOpenLibraryCategory, onOpenCategoryDetail, onOpenCreate }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
 
@@ -57,6 +57,14 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
     const targetId = libraryViewSelectedId || fallbackId;
     if (!targetId) return;
     setLibraryCategory(targetId, { navigate: true });
+  }
+
+  function handleOpenDetail(categoryId) {
+    if (!categoryId) return;
+    setLibraryCategory(categoryId);
+    if (typeof onOpenCategoryDetail === "function") {
+      onOpenCategoryDetail(categoryId);
+    }
   }
 
   if (categories.length === 0) {
@@ -161,13 +169,13 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
                     key={c.id}
                     color={c.color}
                     selected={isSelected}
-                    onClick={() => setLibraryCategory(c.id, { navigate: true })}
+                    onClick={() => handleOpenDetail(c.id)}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        setLibraryCategory(c.id, { navigate: true });
+                        handleOpenDetail(c.id);
                       }
                     }}
                   >

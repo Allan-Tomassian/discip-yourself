@@ -3,22 +3,12 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input, Select } from "../components/UI";
 import { uid } from "../utils/helpers";
 import { createGoal } from "../logic/goals";
+import { resolveGoalType } from "../utils/goalType";
 
 // TOUR MAP:
 // - primary_action: create action
 // - key_elements: category select, goal select, title input, submit/cancel
 // - optional_elements: empty state hints
-function resolveGoalType(goal) {
-  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
-  if (raw === "OUTCOME" || raw === "PROCESS") return raw;
-  if (raw === "STATE") return "OUTCOME";
-  if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
-  const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
-  if (legacy === "OUTCOME") return "OUTCOME";
-  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
-  return "PROCESS";
-}
-
 export default function CreateHabit({ data, setData, onCancel, onDone, initialCategoryId, initialGoalId }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";

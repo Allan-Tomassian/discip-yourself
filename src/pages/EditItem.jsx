@@ -7,6 +7,7 @@ import { uid } from "../utils/helpers";
 import { createDefaultGoalSchedule } from "../logic/state";
 import { updateGoal } from "../logic/goals";
 import { setPrimaryGoalForCategory } from "../logic/priority";
+import { resolveGoalType } from "../utils/goalType";
 
 const PRIORITY_OPTIONS = [
   { value: "prioritaire", label: "Prioritaire" },
@@ -46,17 +47,6 @@ function getMeasurePlaceholder(type) {
   if (type === "weight") return "kg";
   if (type === "counter") return "nombre";
   return "Valeur";
-}
-
-function resolveGoalType(goal) {
-  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
-  if (raw === "OUTCOME" || raw === "PROCESS") return raw;
-  if (raw === "STATE") return "OUTCOME";
-  if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
-  const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
-  if (legacy === "OUTCOME") return "OUTCOME";
-  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
-  return "PROCESS";
 }
 
 function resolvePlanType(item) {

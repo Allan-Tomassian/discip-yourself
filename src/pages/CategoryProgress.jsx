@@ -3,17 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import Gauge from "../components/Gauge";
 import { getAccentForPage } from "../utils/_theme";
-
-function resolveGoalType(goal) {
-  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
-  if (raw === "OUTCOME" || raw === "PROCESS") return raw;
-  if (raw === "STATE") return "OUTCOME";
-  if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
-  const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
-  if (legacy === "OUTCOME") return "OUTCOME";
-  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
-  return "PROCESS";
-}
+import { resolveGoalType } from "../utils/goalType";
 
 const MEASURE_UNITS = {
   money: "€",
