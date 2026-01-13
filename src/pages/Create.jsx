@@ -6,7 +6,7 @@ import { Button, Card } from "../components/UI";
 // - primary_action: choose a creation step (category/goal/action)
 // - key_elements: back button, step cards, open buttons
 // - optional_elements: none
-export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpenHabit }) {
+export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpenHabit, onUseNewFlow }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
 
@@ -125,6 +125,19 @@ export default function Create({ data, onBack, onOpenCategory, onOpenGoal, onOpe
             </Button>
           </div>
         </Card>
+        {typeof onUseNewFlow === "function" ? (
+          <Card accentBorder>
+            <div className="p18 row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div className="titleSm">Nouveau parcours</div>
+                <div className="small2">Tester le nouveau flow guidé.</div>
+              </div>
+              <Button variant="ghost" onClick={onUseNewFlow}>
+                Essayer
+              </Button>
+            </div>
+          </Card>
+        ) : null}
       </div>
     </ScreenShell>
   );

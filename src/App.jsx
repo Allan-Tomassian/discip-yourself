@@ -15,6 +15,12 @@ import Create from "./pages/Create";
 import CreateCategory from "./pages/CreateCategory";
 import CreateGoal from "./pages/CreateGoal";
 import CreateHabit from "./pages/CreateHabit";
+import CreateV2 from "./pages/CreateV2";
+import CreateV2Category from "./pages/CreateV2Category";
+import CreateV2Outcome from "./pages/CreateV2Outcome";
+import CreateV2Habits from "./pages/CreateV2Habits";
+import CreateV2Rhythm from "./pages/CreateV2Rhythm";
+import CreateV2Review from "./pages/CreateV2Review";
 import Settings from "./pages/Settings";
 import CategoryView from "./pages/CategoryView";
 import EditItem from "./pages/EditItem";
@@ -30,6 +36,7 @@ import { resolveGoalType } from "./utils/goalType";
 import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
 import { useTour } from "./tour/useTour";
 import TourOverlay from "./tour/TourOverlay";
+import { createEmptyDraft } from "./creation/creationDraft";
 
 function runSelfTests() {
   // minimal sanity
@@ -41,6 +48,14 @@ function parseLocalDateKey(key) {
   const [y, m, d] = key.split("-").map((v) => parseInt(v, 10));
   if (!y || !m || !d) return new Date();
   return new Date(y, m - 1, d, 12, 0, 0);
+}
+
+function localDateKey(d = new Date()) {
+  const dateObj = d instanceof Date && !Number.isNaN(d.getTime()) ? d : new Date();
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const day = String(dateObj.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function appDowFromDateKey(key) {
@@ -139,6 +154,8 @@ const TABS = new Set([
   "create-category",
   "create-goal",
   "create-habit",
+  "create-rhythm",
+  "create-review",
   "edit-item",
   "session",
   "category-progress",
@@ -317,7 +334,15 @@ export default function App() {
   }, [reminderFingerprint]);
 
   useEffect(() => {
-    if (tab === "create-category" || tab === "create-goal" || tab === "create-habit") return;
+    if (
+      tab === "create-category" ||
+      tab === "create-goal" ||
+      tab === "create-habit" ||
+      tab === "create-rhythm" ||
+      tab === "create-review"
+    ) {
+      return;
+    }
     setCreateFlowCategoryId(null);
     setCreateFlowGoalId(null);
   }, [tab]);
@@ -378,6 +403,15 @@ export default function App() {
 
 
   const safeData = data && typeof data === "object" ? data : {};
+  const creationFlowVersion = safeData?.ui?.creationFlowVersion || "legacy";
+  const useV2Creation = creationFlowVersion === "v2";
+  const isCreateTab =
+    tab === "create" ||
+    tab === "create-category" ||
+    tab === "create-goal" ||
+    tab === "create-habit" ||
+    tab === "create-rhythm" ||
+    tab === "create-review";
   const themeName = getThemeName(safeData);
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -390,7 +424,7 @@ export default function App() {
     const map = new Map(categories.map((c) => [c.id, c]));
     return categoryRailOrder.map((id) => map.get(id)).filter(Boolean);
   }, [categoryIdsKey, categoryRailOrder]);
-  const railDateKey = safeData?.ui?.selectedDate || todayKey(new Date());
+  const railDateKey = safeData?.ui?.selectedDate || localDateKey();
   const railDow = useMemo(() => appDowFromDateKey(railDateKey), [railDateKey]);
   const plannedCategoryIds = useMemo(() => {
     if (!goals.length) return new Set();
@@ -449,6 +483,15 @@ export default function App() {
     setCategoryDetailId(null);
     setTab("library");
   };
+  useEffect(() => {
+    if (!useV2Creation || !isCreateTab) return;
+    if (typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      if (prevUi.createDraft && typeof prevUi.createDraft === "object") return prev;
+      return { ...prev, ui: { ...prevUi, createDraft: createEmptyDraft() } };
+    });
+  }, [isCreateTab, setData, useV2Creation]);
   const handleEditBack = () => {
     const returnTab = editItem?.returnTab || "library";
     if (returnTab === "library") {
@@ -460,6 +503,14 @@ export default function App() {
   };
   useEffect(() => {
     const prevTab = prevTabRef.current;
+    if (prevTab !== "today" && tab === "today") {
+      const today = localDateKey();
+      setData((prev) => {
+        const prevUi = prev.ui || {};
+        if (prevUi.selectedDate === today) return prev;
+        return { ...prev, ui: { ...prevUi, selectedDate: today } };
+      });
+    }
     if (prevTab !== "library" && tab === "library") {
       let touched = false;
       try {
@@ -520,6 +571,8 @@ export default function App() {
               tab === "create-category" ||
               tab === "create-goal" ||
               tab === "create-habit" ||
+              tab === "create-rhythm" ||
+              tab === "create-review" ||
               tab === "edit-item"
             ? safeData?.ui?.selectedCategoryByView?.library ||
               librarySelectedCategoryId ||
@@ -681,6 +734,8 @@ export default function App() {
                 tab === "create-category" ||
                 tab === "create-goal" ||
                 tab === "create-habit" ||
+                tab === "create-rhythm" ||
+                tab === "create-review" ||
                 tab === "edit-item" ||
                 tab === "category-detail" ||
                 tab === "category-progress"
@@ -711,7 +766,9 @@ export default function App() {
           tab === "create" ||
           tab === "create-category" ||
           tab === "create-goal" ||
-          tab === "create-habit"
+          tab === "create-habit" ||
+          tab === "create-rhythm" ||
+          tab === "create-review"
             ? []
             : railCategories
         }
@@ -841,6 +898,25 @@ export default function App() {
           data={data}
           categoryId={detailCategoryId}
           onBack={() => {
+            if (detailCategoryId) {
+              setData((prev) => {
+                const prevCats = Array.isArray(prev.categories) ? prev.categories : [];
+                if (!prevCats.some((cat) => cat.id === detailCategoryId)) return prev;
+                const prevUi = prev.ui || {};
+                const prevSel =
+                  prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+                    ? prevUi.selectedCategoryByView
+                    : {};
+                if (prevSel.home === detailCategoryId) return prev;
+                return {
+                  ...prev,
+                  ui: {
+                    ...prevUi,
+                    selectedCategoryByView: { ...prevSel, home: detailCategoryId },
+                  },
+                };
+              });
+            }
             setCategoryDetailId(null);
             setTab("today");
           }}
@@ -945,62 +1021,137 @@ export default function App() {
           }}
         />
       ) : tab === "create" ? (
-        <Create
-          data={data}
-          onBack={() => {
-            setLibraryCategoryId(null);
-            setTab("library");
-          }}
-          onOpenCategory={() => setTab("create-category")}
-          onOpenGoal={() => setTab("create-goal")}
-          onOpenHabit={() => setTab("create-habit")}
-        />
+        useV2Creation ? (
+          <CreateV2
+            data={data}
+            onBack={() => {
+              setLibraryCategoryId(null);
+              setTab("library");
+            }}
+            onOpenStep={(step) => {
+              if (step === "category") setTab("create-category");
+              else if (step === "outcome") setTab("create-goal");
+              else if (step === "habits") setTab("create-habit");
+              else if (step === "rhythm") setTab("create-rhythm");
+              else if (step === "review") setTab("create-review");
+            }}
+            onUseLegacyFlow={() => {
+              setData((prev) => ({
+                ...prev,
+                ui: { ...(prev.ui || {}), creationFlowVersion: "legacy" },
+              }));
+              setTab("create");
+            }}
+          />
+        ) : (
+          <Create
+            data={data}
+            onBack={() => {
+              setLibraryCategoryId(null);
+              setTab("library");
+            }}
+            onOpenCategory={() => setTab("create-category")}
+            onOpenGoal={() => setTab("create-goal")}
+            onOpenHabit={() => setTab("create-habit")}
+            onUseNewFlow={() => {
+              setData((prev) => ({
+                ...prev,
+                ui: { ...(prev.ui || {}), creationFlowVersion: "v2" },
+              }));
+              setTab("create");
+            }}
+          />
+        )
       ) : tab === "create-category" ? (
-        <CreateCategory
-          data={data}
-          setData={setData}
-          onCancel={() => setTab("create")}
-          onDone={({ categoryId }) => {
-            setCreateFlowCategoryId(categoryId || null);
-            setCreateFlowGoalId(null);
-            setTab("create-goal");
-          }}
-        />
-      ) : tab === "create-goal" ? (
-        <CreateGoal
-          data={data}
-          setData={setData}
-          initialCategoryId={createFlowCategoryId}
-          onCancel={() => {
-            if (createFlowCategoryId) {
+        useV2Creation ? (
+          <CreateV2Category
+            data={data}
+            setData={setData}
+            onBack={() => setTab("create")}
+            onNext={() => setTab("create-goal")}
+          />
+        ) : (
+          <CreateCategory
+            data={data}
+            setData={setData}
+            onCancel={() => setTab("create")}
+            onDone={({ categoryId }) => {
+              setCreateFlowCategoryId(categoryId || null);
               setCreateFlowGoalId(null);
-              setTab("create-category");
-              return;
-            }
-            setTab("create");
-          }}
-          onDone={({ goalId, categoryId }) => {
-            setCreateFlowCategoryId(categoryId || createFlowCategoryId || null);
-            setCreateFlowGoalId(goalId || null);
-            setTab("create-habit");
-          }}
-        />
+              setTab("create-goal");
+            }}
+          />
+        )
+      ) : tab === "create-goal" ? (
+        useV2Creation ? (
+          <CreateV2Outcome
+            data={data}
+            setData={setData}
+            onBack={() => setTab("create-category")}
+            onNext={() => setTab("create-habit")}
+          />
+        ) : (
+          <CreateGoal
+            data={data}
+            setData={setData}
+            initialCategoryId={createFlowCategoryId}
+            onCancel={() => {
+              if (createFlowCategoryId) {
+                setCreateFlowGoalId(null);
+                setTab("create-category");
+                return;
+              }
+              setTab("create");
+            }}
+            onDone={({ goalId, categoryId }) => {
+              setCreateFlowCategoryId(categoryId || createFlowCategoryId || null);
+              setCreateFlowGoalId(goalId || null);
+              setTab("create-habit");
+            }}
+          />
+        )
       ) : tab === "create-habit" ? (
-        <CreateHabit
+        useV2Creation ? (
+          <CreateV2Habits
+            data={data}
+            setData={setData}
+            onBack={() => setTab("create-goal")}
+            onNext={() => setTab("create-rhythm")}
+          />
+        ) : (
+          <CreateHabit
+            data={data}
+            setData={setData}
+            initialCategoryId={createFlowCategoryId}
+            initialGoalId={createFlowGoalId}
+            onCancel={() => {
+              if (createFlowGoalId) {
+                setTab("create-goal");
+                return;
+              }
+              setTab("create");
+            }}
+            onDone={() => {
+              setCreateFlowCategoryId(null);
+              setCreateFlowGoalId(null);
+              setLibraryCategoryId(null);
+              setTab("library");
+            }}
+          />
+        )
+      ) : tab === "create-rhythm" ? (
+        <CreateV2Rhythm
           data={data}
           setData={setData}
-          initialCategoryId={createFlowCategoryId}
-          initialGoalId={createFlowGoalId}
-          onCancel={() => {
-            if (createFlowGoalId) {
-              setTab("create-goal");
-              return;
-            }
-            setTab("create");
-          }}
+          onBack={() => setTab("create-habit")}
+          onNext={() => setTab("create-review")}
+        />
+      ) : tab === "create-review" ? (
+        <CreateV2Review
+          data={data}
+          setData={setData}
+          onBack={() => setTab("create-rhythm")}
           onDone={() => {
-            setCreateFlowCategoryId(null);
-            setCreateFlowGoalId(null);
             setLibraryCategoryId(null);
             setTab("library");
           }}

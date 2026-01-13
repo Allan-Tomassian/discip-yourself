@@ -213,7 +213,6 @@ export default function Home({
   const noteSaveRef = useRef(null);
   const noteHistoryCacheRef = useRef({ version: -1, items: [] });
   const calendarIdleTimerRef = useRef(null);
-  const railScrollEndTimerRef = useRef(null);
   const skipAutoCenterRef = useRef(false);
   const didInitSelectedDateRef = useRef(false);
   const didHydrateLegacyRef = useRef(false);
@@ -294,25 +293,20 @@ export default function Home({
     const raw = safeData.ui?.selectedDate;
     const isValid = typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw);
 
-    // If the user didn't touch the calendar during this browser session,
-    // force Home to start on the real local day.
-    let touchedKey = "";
-    try {
-      touchedKey = sessionStorage.getItem("home:selectedDateTouched") || "";
-    } catch (_) {
-      touchedKey = "";
-    }
-    const touchedToday = touchedKey === today;
-
     if (!didInitSelectedDateRef.current) {
       didInitSelectedDateRef.current = true;
-      if (!touchedToday && raw !== today) {
+      if (raw !== today) {
         setData((prev) => ({
           ...prev,
           ui: { ...(prev.ui || {}), selectedDate: today },
         }));
-        return;
       }
+      try {
+        sessionStorage.removeItem("home:selectedDateTouched");
+      } catch (_) {
+        // Ignore storage failures.
+      }
+      return;
     }
 
     // Still keep the safety net for invalid values.
@@ -452,11 +446,10 @@ export default function Home({
     const id = setInterval(() => {
       const nowKey = toLocalDateKey(new Date());
       if (nowKey === todayKeyRef.current) return;
-      const prevKey = todayKeyRef.current;
       todayKeyRef.current = nowKey;
       setData((prev) => {
         const prevUi = prev.ui || {};
-        if (prevUi.selectedDate !== prevKey) return prev;
+        if (prevUi.selectedDate === nowKey) return prev;
         return { ...prev, ui: { ...prevUi, selectedDate: nowKey } };
       });
     }, 60000);
@@ -1012,11 +1005,8 @@ export default function Home({
     if (railScrollRaf.current) return;
     railScrollRaf.current = requestAnimationFrame(() => {
       railScrollRaf.current = null;
+      updateSelectedFromScroll();
       maybeExtendRailRange();
-      if (railScrollEndTimerRef.current) clearTimeout(railScrollEndTimerRef.current);
-      railScrollEndTimerRef.current = setTimeout(() => {
-        updateSelectedFromScroll();
-      }, 80);
     });
     scheduleCalendarIdleReset();
   }, [maybeExtendRailRange, scheduleCalendarIdleReset, updateSelectedFromScroll]);
@@ -1028,14 +1018,12 @@ export default function Home({
       skipAutoCenterRef.current = false;
       return;
     }
-    const behavior = lastSelectionSourceRef.current === "user" ? "smooth" : "auto";
-    requestAnimationFrame(() => scrollRailToKey(selectedDateKey, behavior));
+    requestAnimationFrame(() => scrollRailToKey(selectedDateKey, "auto"));
   }, [calendarView, scrollRailToKey, selectedDateKey, railItems.length]);
 
   useEffect(() => {
     return () => {
       if (railScrollRaf.current) cancelAnimationFrame(railScrollRaf.current);
-      if (railScrollEndTimerRef.current) clearTimeout(railScrollEndTimerRef.current);
     };
   }, []);
 

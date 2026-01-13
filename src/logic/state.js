@@ -4,7 +4,6 @@ import { uid } from "../utils/helpers";
 import { normalizeGoalsState } from "./goals";
 import { normalizeReminder } from "./reminders";
 import { normalizeSession } from "./sessions";
-import { todayKey } from "../utils/dates";
 import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "./blocks/registry";
 import { ensureBlocksConfig } from "./blocks/ensureBlocksConfig";
 import { validateBlocksState } from "./blocks/validateBlocksState";
@@ -12,10 +11,10 @@ import { validateBlocksState } from "./blocks/validateBlocksState";
 export const THEME_PRESETS = ["aurora", "midnight", "sunset", "ocean", "forest"];
 
 function toLocalDateKey(d = new Date()) {
-  if (!(d instanceof Date)) return todayKey();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  const dateObj = d instanceof Date && !Number.isNaN(d.getTime()) ? d : new Date();
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const day = String(dateObj.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
 
@@ -499,6 +498,8 @@ export function initialData() {
         health: "unknown",
       },
       isDragging: false,
+      creationFlowVersion: "v2",
+      createDraft: null,
       showPlanStep: false,
       soundEnabled: false,
       selectedDate: toLocalDateKey(),
@@ -572,6 +573,8 @@ export function demoData() {
         health: "unknown",
       },
       isDragging: false,
+      creationFlowVersion: "v2",
+      createDraft: null,
       showPlanStep: false,
       soundEnabled: false,
       selectedDate: toLocalDateKey(),
@@ -717,6 +720,11 @@ export function migrate(prev) {
   if (typeof next.ui.permissions.notifications !== "string") next.ui.permissions.notifications = "unknown";
   if (typeof next.ui.permissions.calendar !== "string") next.ui.permissions.calendar = "unknown";
   if (typeof next.ui.permissions.health !== "string") next.ui.permissions.health = "unknown";
+  if (next.ui.creationFlowVersion !== "legacy" && next.ui.creationFlowVersion !== "v2") {
+    next.ui.creationFlowVersion = "legacy";
+  }
+  if (typeof next.ui.createDraft === "undefined") next.ui.createDraft = null;
+  if (next.ui.createDraft && typeof next.ui.createDraft !== "object") next.ui.createDraft = null;
   if (typeof next.ui.showPlanStep === "undefined") next.ui.showPlanStep = false;
   if (!next.ui.selectedHabits || typeof next.ui.selectedHabits !== "object") next.ui.selectedHabits = {};
   if (typeof next.ui.sessionDraft === "undefined") next.ui.sessionDraft = null;
