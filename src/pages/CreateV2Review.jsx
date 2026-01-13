@@ -6,13 +6,66 @@ import { createGoal } from "../logic/goals";
 import { uid } from "../utils/helpers";
 import { setPrimaryCategory, setPrimaryGoalForCategory } from "../logic/priority";
 
-function buildSchedule(item) {
-  if (!item || !item.time || !Array.isArray(item.daysOfWeek) || !item.daysOfWeek.length) return null;
+const DOWS = [
+  { id: 1, label: "Lun" },
+  { id: 2, label: "Mar" },
+  { id: 3, label: "Mer" },
+  { id: 4, label: "Jeu" },
+  { id: 5, label: "Ven" },
+  { id: 6, label: "Sam" },
+  { id: 7, label: "Dim" },
+];
+
+const MEASURE_LABELS = {
+  money: "Argent",
+  counter: "Compteur",
+  time: "Temps",
+  energy: "Energie",
+  distance: "Distance",
+  weight: "Poids",
+};
+
+function formatPriority(priority) {
+  if (priority === "prioritaire") return "Prioritaire";
+  if (priority === "bonus") return "Bonus";
+  return "Secondaire";
+}
+
+function formatDays(days) {
+  if (!Array.isArray(days) || !days.length) return "—";
+  return days
+    .map((day) => DOWS.find((d) => d.id === day)?.label)
+    .filter(Boolean)
+    .join(", ");
+}
+
+function formatDurationMinutes(value) {
+  if (!Number.isFinite(value) || value <= 0) return "—";
+  return `${value} min`;
+}
+
+function buildSchedule(item, daysOverride) {
+  const days = Array.isArray(daysOverride)
+    ? daysOverride
+    : Array.isArray(item?.daysOfWeek)
+      ? item.daysOfWeek
+      : [];
+  if (!item || !days.length) return null;
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Paris";
+  if (item.type === "outcome") {
+    return {
+      timezone,
+      daysOfWeek: days,
+      timeSlots: [],
+      durationMinutes: null,
+      remindersEnabled: false,
+    };
+  }
+  if (!item.time) return null;
   const durationMinutes = Number.isFinite(item.durationMinutes) && item.durationMinutes > 0 ? item.durationMinutes : 60;
   return {
     timezone,
-    daysOfWeek: item.daysOfWeek,
+    daysOfWeek: days,
     timeSlots: [item.time],
     durationMinutes,
     remindBeforeMinutes: 10,
@@ -25,19 +78,37 @@ function buildSchedule(item) {
 function isDraftComplete(draft) {
   const items = Array.isArray(draft?.rhythm?.items) ? draft.rhythm.items : [];
   if (!items.length) return false;
-  return items.every((item) => {
-    const days = Array.isArray(item.daysOfWeek) ? item.daysOfWeek : [];
-    return Boolean(item.time) && Number.isFinite(item.durationMinutes) && item.durationMinutes > 0 && days.length > 0;
-  });
+  if (draft?.rhythm?.hasConflicts) return false;
+  const outcomes = Array.isArray(draft?.outcomes) ? draft.outcomes : [];
+  const habits = Array.isArray(draft?.habits) ? draft.habits : [];
+  const outcomeItems = new Map(items.filter((item) => item.type === "outcome").map((item) => [item.id, item]));
+  for (const outcome of outcomes) {
+    const item = outcomeItems.get(outcome.id);
+    const days = Array.isArray(item?.daysOfWeek) ? item.daysOfWeek : [];
+    if (!item || !days.length) return false;
+  }
+  const habitItems = new Map(items.filter((item) => item.type === "habit").map((item) => [item.id, item]));
+  for (const habit of habits) {
+    const item = habitItems.get(habit.id);
+    if (!item) return false;
+    const hasTime = Boolean(item.time);
+    const hasDuration = Number.isFinite(item.durationMinutes) && item.durationMinutes > 0;
+    const outcomeItem = outcomeItems.get(habit.outcomeId);
+    const days = Array.isArray(outcomeItem?.daysOfWeek) ? outcomeItem.daysOfWeek : [];
+    if (!hasTime || !hasDuration || !days.length) return false;
+  }
+  return true;
 }
 
-export default function CreateV2Review({ data, setData, onBack, onDone }) {
+export default function CreateV2Review({ data, setData, onBack, onDone, onCancel }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
   const rhythmItems = Array.isArray(draft?.rhythm?.items) ? draft.rhythm.items : [];
+  const outcomes = Array.isArray(draft?.outcomes) ? draft.outcomes : [];
+  const habits = Array.isArray(draft?.habits) ? draft.habits : [];
 
   const canConfirm = isDraftComplete(draft);
 
@@ -51,7 +122,6 @@ export default function CreateV2Review({ data, setData, onBack, onDone }) {
     setData((prev) => {
       let next = prev;
       const prevCategories = Array.isArray(next.categories) ? next.categories : [];
-      const prevGoals = Array.isArray(next.goals) ? next.goals : [];
       const prevUi = next.ui || {};
       const prevOrder = Array.isArray(prevUi.categoryRailOrder) ? prevUi.categoryRailOrder : [];
 
@@ -99,43 +169,53 @@ export default function CreateV2Review({ data, setData, onBack, onDone }) {
 
       if (!categoryId) return prev;
 
-      let outcomeId = null;
-      if (draft.outcome?.mode === "existing") {
-        outcomeId = draft.outcome.id || null;
-      } else if (draft.outcome?.mode === "new") {
-        const outcomeItem = rhythmItems.find((item) => item.id === "outcome") || null;
+      const outcomeIdMap = new Map();
+      let nextState = next;
+      for (const outcome of outcomes) {
+        if (!outcome || !outcome.id) continue;
+        if (outcome.mode === "existing") {
+          outcomeIdMap.set(outcome.id, outcome.id);
+          continue;
+        }
+        const outcomeItem = rhythmItems.find((item) => item.id === outcome.id) || null;
         const schedule = buildSchedule(outcomeItem);
         const id = uid();
         let created = createGoal(
-          { ...next, goals: prevGoals },
+          nextState,
           {
             id,
             categoryId,
-            title: draft.outcome.title || "Objectif",
+            title: outcome.title || "Objectif",
             type: "OUTCOME",
             planType: "STATE",
             schedule: schedule || undefined,
-            deadline: draft.outcome.deadline || "",
-            measureType: draft.outcome.measureType || null,
-            targetValue: draft.outcome.targetValue ? Number(draft.outcome.targetValue) : null,
-            currentValue: draft.outcome.targetValue ? 0 : null,
-            priority: draft.outcome.priority || "secondaire",
+            deadline: outcome.deadline || "",
+            measureType: outcome.measureType || null,
+            targetValue: outcome.targetValue ? Number(outcome.targetValue) : null,
+            currentValue: outcome.targetValue ? 0 : null,
+            priority: outcome.priority || "secondaire",
           }
         );
-        if (draft.outcome.priority === "prioritaire") {
+        if (outcome.priority === "prioritaire") {
           created = setPrimaryGoalForCategory(created, categoryId, id);
         }
-        outcomeId = id;
-        next = created;
+        outcomeIdMap.set(outcome.id, id);
+        nextState = created;
       }
 
-      if (!outcomeId) return prev;
+      if (!outcomeIdMap.size) return prev;
 
-      let finalState = next;
+      let finalState = nextState;
+      const outcomeItems = new Map(
+        rhythmItems.filter((item) => item.type === "outcome").map((item) => [item.id, item])
+      );
       for (const habit of draft.habits || []) {
         if (!habit || !habit.title) continue;
         const item = rhythmItems.find((it) => it.id === habit.id) || null;
-        const schedule = buildSchedule(item);
+        const outcomeId = outcomeIdMap.get(habit.outcomeId);
+        if (!outcomeId) continue;
+        const outcomeItem = outcomeItems.get(habit.outcomeId) || null;
+        const schedule = buildSchedule(item, outcomeItem?.daysOfWeek || []);
         finalState = createGoal(finalState, {
           id: uid(),
           categoryId,
@@ -155,7 +235,7 @@ export default function CreateV2Review({ data, setData, onBack, onDone }) {
 
       finalState = {
         ...finalState,
-        ui: { ...(finalState.ui || {}), createDraft: createEmptyDraft() },
+        ui: { ...(finalState.ui || {}), createDraft: createEmptyDraft(), createDraftWasCompleted: true },
       };
       return finalState;
     });
@@ -167,11 +247,17 @@ export default function CreateV2Review({ data, setData, onBack, onDone }) {
     draft.category?.mode === "existing"
       ? categories.find((c) => c.id === draft.category.id)?.name
       : draft.category?.name;
-  const outcomeLabel =
-    draft.outcome?.mode === "existing"
-      ? goals.find((g) => g.id === draft.outcome.id)?.title
-      : draft.outcome?.title;
-
+  const categoryPriority =
+    draft.category?.mode === "existing"
+      ? categories.find((c) => c.id === draft.category.id)?.priorityLevel
+      : draft.category?.priorityLevel;
+  const categoryPriorityLabel = categoryPriority === "primary" ? "Prioritaire" : "Secondaire";
+  const outcomeItems = new Map(
+    rhythmItems.filter((item) => item.type === "outcome").map((item) => [item.id, item])
+  );
+  const habitItems = new Map(
+    rhythmItems.filter((item) => item.type === "habit").map((item) => [item.id, item])
+  );
   return (
     <ScreenShell
       data={safeData}
@@ -185,18 +271,98 @@ export default function CreateV2Review({ data, setData, onBack, onDone }) {
       backgroundImage={backgroundImage}
     >
       <div className="stack stackGap12">
-        <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+        <Button
+          variant="ghost"
+          className="btnBackCompact backBtn"
+          onClick={() => {
+            if (typeof onCancel === "function") {
+              onCancel();
+              return;
+            }
+            if (typeof onBack === "function") onBack();
+          }}
+        >
           ← Retour
         </Button>
         <Card accentBorder>
           <div className="p18 col" style={{ gap: 10 }}>
             <div className="titleSm">Résumé</div>
-            <div className="small2">Catégorie: {categoryLabel || "—"}</div>
-            <div className="small2">Objectif: {outcomeLabel || "—"}</div>
-            <div className="small2">Habitudes: {draft.habits?.length || 0}</div>
+            <div className="small2">
+              Catégorie: {categoryLabel || "—"}
+              {categoryLabel ? <span style={{ opacity: 0.6 }}> · {categoryPriorityLabel}</span> : null}
+            </div>
+            <div className="small2">Démarre aujourd’hui automatiquement.</div>
+            <div className="stack stackGap8" style={{ marginTop: 4 }}>
+              <div className="small2" style={{ opacity: 0.7 }}>
+                Objectifs
+              </div>
+              {outcomes.map((outcome) => {
+                const existing = goals.find((g) => g.id === outcome.id);
+                const label = outcome.mode === "existing" ? existing?.title : outcome.title;
+                const priority = outcome.mode === "existing" ? existing?.priority : outcome.priority;
+                const measureType = outcome.mode === "existing" ? existing?.measureType : outcome.measureType;
+                const targetValue = outcome.mode === "existing" ? existing?.targetValue : outcome.targetValue;
+                const deadline = outcome.mode === "existing" ? existing?.deadline : outcome.deadline;
+                const days = outcomeItems.get(outcome.id)?.daysOfWeek || [];
+                return (
+                  <div key={outcome.id} className="stack stackGap4">
+                    <div className="small2">
+                      <span style={{ fontWeight: 600 }}>{label || "Objectif"}</span>{" "}
+                      <span style={{ opacity: 0.6 }}>· {formatPriority(priority)}</span>
+                    </div>
+                    <div className="small2" style={{ opacity: 0.7 }}>
+                      Mesure: {measureType ? MEASURE_LABELS[measureType] || measureType : "—"}
+                      {targetValue ? ` · Cible: ${targetValue}` : ""}
+                      {deadline ? ` · Date limite: ${deadline}` : ""}
+                    </div>
+                    <div className="small2" style={{ opacity: 0.7 }}>
+                      Jours: {formatDays(days)}
+                    </div>
+                  </div>
+                );
+              })}
+              {!outcomes.length ? <div className="small2">—</div> : null}
+            </div>
+            <div className="stack stackGap8" style={{ marginTop: 4 }}>
+              <div className="small2" style={{ opacity: 0.7 }}>
+                Habitudes
+              </div>
+              {habits.map((habit) => {
+                const outcomeLabel =
+                  outcomes.find((o) => o.id === habit.outcomeId)?.title ||
+                  goals.find((g) => g.id === habit.outcomeId)?.title ||
+                  "Objectif";
+                const habitItem = habitItems.get(habit.id) || null;
+                const days = outcomeItems.get(habit.outcomeId)?.daysOfWeek || [];
+                return (
+                  <div key={habit.id} className="stack stackGap4">
+                    <div className="small2">
+                      <span style={{ fontWeight: 600 }}>{habit.title}</span>{" "}
+                      <span style={{ opacity: 0.6 }}>· {outcomeLabel}</span>
+                    </div>
+                    <div className="small2" style={{ opacity: 0.7 }}>
+                      Heure: {habitItem?.time || "—"} · Durée: {formatDurationMinutes(habitItem?.durationMinutes)}
+                    </div>
+                    <div className="small2" style={{ opacity: 0.7 }}>
+                      Jours: {formatDays(days)}
+                    </div>
+                  </div>
+                );
+              })}
+              {!habits.length ? <div className="small2">—</div> : null}
+            </div>
             <div className="small2">Rythme: {rhythmItems.length ? "OK" : "À définir"}</div>
             <div className="row" style={{ justifyContent: "flex-end", gap: 10, marginTop: 6 }}>
-              <Button variant="ghost" onClick={onBack}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  if (typeof onCancel === "function") {
+                    onCancel();
+                    return;
+                  }
+                  if (typeof onBack === "function") onBack();
+                }}
+              >
                 Annuler
               </Button>
               <Button onClick={handleConfirm} disabled={!canConfirm}>

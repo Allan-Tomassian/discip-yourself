@@ -15,6 +15,8 @@ export function createEmptyDraft() {
     step: STEP_CATEGORY,
     category: null,
     outcome: null,
+    outcomes: [],
+    activeOutcomeId: null,
     habits: [],
     rhythm: {
       items: [],
@@ -31,7 +33,34 @@ export function normalizeCreationDraft(raw) {
   if (!CREATION_STEPS.includes(draft.step)) draft.step = STEP_CATEGORY;
   if (!draft.category || typeof draft.category !== "object") draft.category = null;
   if (!draft.outcome || typeof draft.outcome !== "object") draft.outcome = null;
+  if (!Array.isArray(draft.outcomes)) {
+    if (draft.outcome) {
+      const legacyId = draft.outcome.id || "outcome";
+      draft.outcomes = [{ ...draft.outcome, id: legacyId }];
+    } else {
+      draft.outcomes = [];
+    }
+  }
+  draft.outcomes = draft.outcomes
+    .map((outcome, index) => {
+      if (!outcome || typeof outcome !== "object") return null;
+      if (!outcome.id) return { ...outcome, id: `outcome-${index + 1}` };
+      return outcome;
+    })
+    .filter(Boolean);
+  if (!draft.activeOutcomeId || !draft.outcomes.some((o) => o.id === draft.activeOutcomeId)) {
+    draft.activeOutcomeId = draft.outcomes[0]?.id || null;
+  }
   if (!Array.isArray(draft.habits)) draft.habits = [];
+  draft.habits = draft.habits
+    .map((habit) => {
+      if (!habit || typeof habit !== "object") return null;
+      if (!habit.outcomeId && draft.outcomes.length === 1) {
+        return { ...habit, outcomeId: draft.outcomes[0].id };
+      }
+      return habit;
+    })
+    .filter(Boolean);
   if (!draft.rhythm || typeof draft.rhythm !== "object") draft.rhythm = { items: [] };
   if (!Array.isArray(draft.rhythm.items)) draft.rhythm.items = [];
   if (!draft.review || typeof draft.review !== "object") draft.review = { confirmed: false };

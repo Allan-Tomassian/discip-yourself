@@ -1,28 +1,34 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, Input } from "../components/UI";
+import { Button, Card, Input, Select } from "../components/UI";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_RHYTHM } from "../creation/creationSchema";
 import { uid } from "../utils/helpers";
 
-export default function CreateV2Habits({ data, setData, onBack, onNext }) {
+export default function CreateV2Habits({ data, setData, onBack, onNext, onCancel }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
+  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
   const [title, setTitle] = useState("");
 
   const habits = Array.isArray(draft.habits) ? draft.habits : [];
-  const hasOutcome =
-    draft?.outcome?.mode === "existing"
-      ? Boolean(draft.outcome.id)
-      : Boolean((draft?.outcome?.title || "").trim());
+  const outcomes = Array.isArray(draft.outcomes) ? draft.outcomes : [];
+  const activeOutcomeId = draft.activeOutcomeId || outcomes[0]?.id || "";
+  const hasOutcome = outcomes.length > 0;
 
   useEffect(() => {
     if (hasOutcome) return;
     if (typeof onBack === "function") onBack();
   }, [hasOutcome, onBack]);
 
-  function updateDraft(nextHabits) {
+  useEffect(() => {
+    if (!outcomes.length) return;
+    if (outcomes.some((o) => o.id === activeOutcomeId)) return;
+    updateDraft(habits, outcomes[0].id);
+  }, [activeOutcomeId, habits, outcomes]);
+
+  function updateDraft(nextHabits, nextActiveId) {
     if (typeof setData !== "function") return;
     setData((prev) => {
       const prevUi = prev.ui || {};
@@ -33,6 +39,7 @@ export default function CreateV2Habits({ data, setData, onBack, onNext }) {
           createDraft: {
             ...normalizeCreationDraft(prevUi.createDraft),
             habits: nextHabits,
+            activeOutcomeId: nextActiveId || activeOutcomeId || null,
             step: STEP_RHYTHM,
           },
         },
@@ -43,14 +50,15 @@ export default function CreateV2Habits({ data, setData, onBack, onNext }) {
   function addHabit() {
     const cleanTitle = title.trim();
     if (!cleanTitle) return;
-    const nextHabits = [...habits, { id: uid(), title: "" + cleanTitle }];
-    updateDraft(nextHabits);
+    if (!activeOutcomeId) return;
+    const nextHabits = [...habits, { id: uid(), title: "" + cleanTitle, outcomeId: activeOutcomeId }];
+    updateDraft(nextHabits, activeOutcomeId);
     setTitle("");
   }
 
   function removeHabit(id) {
     const nextHabits = habits.filter((h) => h.id !== id);
-    updateDraft(nextHabits);
+    updateDraft(nextHabits, activeOutcomeId);
   }
 
   function handleNext() {
@@ -58,7 +66,15 @@ export default function CreateV2Habits({ data, setData, onBack, onNext }) {
     if (typeof onNext === "function") onNext();
   }
 
-  const outcomeLabel = draft.outcome?.title || "Objectif";
+  function getOutcomeLabel(id) {
+    return (
+      outcomes.find((o) => o.id === id)?.title ||
+      goals.find((g) => g.id === id)?.title ||
+      "Objectif"
+    );
+  }
+
+  const outcomeLabel = getOutcomeLabel(activeOutcomeId);
 
   return (
     <ScreenShell
@@ -78,6 +94,22 @@ export default function CreateV2Habits({ data, setData, onBack, onNext }) {
         </Button>
         <Card accentBorder>
           <div className="p18 col" style={{ gap: 12 }}>
+            <div className="stack stackGap6">
+              <div className="small2" style={{ opacity: 0.7 }}>
+                Ajouter des habitudes pour...
+              </div>
+              <Select
+                value={activeOutcomeId}
+                onChange={(e) => updateDraft(habits, e.target.value)}
+                disabled={!outcomes.length}
+              >
+                {outcomes.map((outcome) => (
+                  <option key={outcome.id} value={outcome.id}>
+                    {getOutcomeLabel(outcome.id)}
+                  </option>
+                ))}
+              </Select>
+            </div>
             <div className="row" style={{ gap: 8 }}>
               <Input
                 value={title}
@@ -93,6 +125,10 @@ export default function CreateV2Habits({ data, setData, onBack, onNext }) {
                 <div key={habit.id} className="row" style={{ justifyContent: "space-between", gap: 10 }}>
                   <div className="small2" style={{ flex: 1 }}>
                     {habit.title}
+                    <span style={{ opacity: 0.6 }}>
+                      {" "}
+                      · {getOutcomeLabel(habit.outcomeId || activeOutcomeId)}
+                    </span>
                   </div>
                   <Button variant="ghost" onClick={() => removeHabit(habit.id)}>
                     Retirer
@@ -102,7 +138,16 @@ export default function CreateV2Habits({ data, setData, onBack, onNext }) {
               {!habits.length ? <div className="small2">Ajoute au moins une habitude.</div> : null}
             </div>
             <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
-              <Button variant="ghost" onClick={onBack}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  if (typeof onCancel === "function") {
+                    onCancel();
+                    return;
+                  }
+                  if (typeof onBack === "function") onBack();
+                }}
+              >
                 Annuler
               </Button>
               <Button onClick={handleNext} disabled={!habits.length}>

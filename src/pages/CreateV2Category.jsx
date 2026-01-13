@@ -4,7 +4,7 @@ import { Button, Card, Input, Select, Textarea } from "../components/UI";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_OUTCOME } from "../creation/creationSchema";
 
-export default function CreateV2Category({ data, setData, onBack, onNext }) {
+export default function CreateV2Category({ data, setData, onBack, onNext, onCancel }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
@@ -155,7 +155,16 @@ export default function CreateV2Category({ data, setData, onBack, onNext }) {
               </>
             )}
             <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
-              <Button variant="ghost" onClick={onBack}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  if (typeof onCancel === "function") {
+                    onCancel();
+                    return;
+                  }
+                  if (typeof onBack === "function") onBack();
+                }}
+              >
                 Annuler
               </Button>
               <Button onClick={handleNext} disabled={!canSubmit}>

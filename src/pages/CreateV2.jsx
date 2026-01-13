@@ -25,29 +25,50 @@ function isCategoryReady(category) {
   return Boolean((category.name || "").trim());
 }
 
-function isOutcomeReady(outcome) {
-  if (!outcome || typeof outcome !== "object") return false;
-  if (outcome.mode === "existing") return Boolean(outcome.id);
-  return Boolean((outcome.title || "").trim());
+function isOutcomeReady(outcomes) {
+  if (!Array.isArray(outcomes) || outcomes.length === 0) return false;
+  return outcomes.every((outcome) => {
+    if (!outcome || typeof outcome !== "object") return false;
+    if (outcome.mode === "existing") return Boolean(outcome.id);
+    return Boolean((outcome.title || "").trim());
+  });
 }
 
-function isHabitsReady(habits) {
-  return Array.isArray(habits) && habits.length > 0 && habits.every((h) => h && h.title);
+function isHabitsReady(habits, outcomes) {
+  if (!Array.isArray(habits) || habits.length === 0) return false;
+  const outcomeIds = new Set((outcomes || []).map((o) => o && o.id).filter(Boolean));
+  return habits.every((habit) => habit && habit.title && habit.outcomeId && outcomeIds.has(habit.outcomeId));
 }
 
 function isRhythmReady(draft) {
   const items = Array.isArray(draft?.rhythm?.items) ? draft.rhythm.items : [];
   if (!items.length) return false;
-  return items.every((item) => {
-    const days = Array.isArray(item.daysOfWeek) ? item.daysOfWeek : [];
-    return Boolean(item.time) && Number.isFinite(item.durationMinutes) && item.durationMinutes > 0 && days.length > 0;
-  });
+  if (draft?.rhythm?.hasConflicts) return false;
+  const outcomes = Array.isArray(draft?.outcomes) ? draft.outcomes : [];
+  const habits = Array.isArray(draft?.habits) ? draft.habits : [];
+  const outcomeItems = new Map(items.filter((item) => item.type === "outcome").map((item) => [item.id, item]));
+  for (const outcome of outcomes) {
+    const item = outcomeItems.get(outcome.id);
+    const days = Array.isArray(item?.daysOfWeek) ? item.daysOfWeek : [];
+    if (!item || !days.length) return false;
+  }
+  const habitItems = new Map(items.filter((item) => item.type === "habit").map((item) => [item.id, item]));
+  for (const habit of habits) {
+    const item = habitItems.get(habit.id);
+    if (!item) return false;
+    const hasTime = Boolean(item.time);
+    const hasDuration = Number.isFinite(item.durationMinutes) && item.durationMinutes > 0;
+    const outcomeItem = outcomeItems.get(habit.outcomeId);
+    const days = Array.isArray(outcomeItem?.daysOfWeek) ? outcomeItem.daysOfWeek : [];
+    if (!hasTime || !hasDuration || !days.length) return false;
+  }
+  return true;
 }
 
 function getNextStep(draft) {
   if (!isCategoryReady(draft.category)) return STEP_CATEGORY;
-  if (!isOutcomeReady(draft.outcome)) return STEP_OUTCOME;
-  if (!isHabitsReady(draft.habits)) return STEP_HABITS;
+  if (!isOutcomeReady(draft.outcomes)) return STEP_OUTCOME;
+  if (!isHabitsReady(draft.habits, draft.outcomes)) return STEP_HABITS;
   if (!isRhythmReady(draft)) return STEP_RHYTHM;
   return STEP_REVIEW;
 }
@@ -58,13 +79,22 @@ export default function CreateV2({ data, onBack, onOpenStep, onUseLegacyFlow }) 
   const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
   const nextStep = getNextStep(draft);
   const nextIndex = CREATION_STEPS.indexOf(nextStep);
+  const outcomesCount = Array.isArray(draft.outcomes) ? draft.outcomes.length : 0;
+  const habitsCount = Array.isArray(draft.habits) ? draft.habits.length : 0;
+  const rhythmOk = isRhythmReady(draft);
 
   const stepStatuses = {
     [STEP_CATEGORY]: isCategoryReady(draft.category),
-    [STEP_OUTCOME]: isOutcomeReady(draft.outcome),
-    [STEP_HABITS]: isHabitsReady(draft.habits),
+    [STEP_OUTCOME]: isOutcomeReady(draft.outcomes),
+    [STEP_HABITS]: isHabitsReady(draft.habits, draft.outcomes),
     [STEP_RHYTHM]: isRhythmReady(draft),
     [STEP_REVIEW]: isRhythmReady(draft),
+  };
+
+  const stepRightLabels = {
+    [STEP_OUTCOME]: `${outcomesCount} objectif${outcomesCount > 1 ? "s" : ""}`,
+    [STEP_HABITS]: `${habitsCount} habitude${habitsCount > 1 ? "s" : ""}`,
+    [STEP_RHYTHM]: rhythmOk ? "OK" : "À faire",
   };
 
   return (
@@ -94,7 +124,11 @@ export default function CreateV2({ data, onBack, onOpenStep, onUseLegacyFlow }) 
                     if (stepIndex > nextIndex) return;
                     if (typeof onOpenStep === "function") onOpenStep(step);
                   }}
-                  rightSlot={<div className="small2">{stepStatuses[step] ? "✔" : "•"}</div>}
+                  rightSlot={
+                    <div className="small2">
+                      {stepRightLabels[step] || (stepStatuses[step] ? "✔" : "•")}
+                    </div>
+                  }
                 >
                   <div className="small2">{STEP_LABELS[step]}</div>
                 </AccentItem>

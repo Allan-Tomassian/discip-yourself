@@ -4,6 +4,7 @@ import { Button, Card, Input, Select } from "../components/UI";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_HABITS } from "../creation/creationSchema";
 import { resolveGoalType } from "../utils/goalType";
+import { uid } from "../utils/helpers";
 
 const MEASURE_OPTIONS = [
   { value: "money", label: "💰 Argent" },
@@ -19,7 +20,7 @@ function getCategoryIdFromDraft(draft) {
   return "";
 }
 
-export default function CreateV2Outcome({ data, setData, onBack, onNext }) {
+export default function CreateV2Outcome({ data, setData, onBack, onNext, onCancel }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
@@ -35,23 +36,34 @@ export default function CreateV2Outcome({ data, setData, onBack, onNext }) {
     return goals.filter((g) => g.categoryId === categoryId && resolveGoalType(g) === "OUTCOME");
   }, [goals, categoryId]);
 
-  const initialMode = draft.outcome?.mode || (existingOutcomes.length ? "existing" : "new");
-  const [mode, setMode] = useState(initialMode);
-  const [selectedId, setSelectedId] = useState(draft.outcome?.id || existingOutcomes[0]?.id || "");
-  const [title, setTitle] = useState(draft.outcome?.title || "");
-  const [deadline, setDeadline] = useState(draft.outcome?.deadline || "");
-  const [measureType, setMeasureType] = useState(draft.outcome?.measureType || "");
-  const [targetValue, setTargetValue] = useState(draft.outcome?.targetValue || "");
-  const [priority, setPriority] = useState(draft.outcome?.priority || "secondaire");
+  const outcomes = Array.isArray(draft.outcomes) ? draft.outcomes : [];
+  const activeOutcomeId = draft.activeOutcomeId || outcomes[0]?.id || "";
+  const existingIds = new Set(outcomes.filter((o) => o.mode === "existing").map((o) => o.id));
+  const availableExisting = existingOutcomes.filter((g) => !existingIds.has(g.id));
 
-  const canSubmit = mode === "existing" ? Boolean(selectedId) : Boolean((title || "").trim());
+  const [selectedId, setSelectedId] = useState(availableExisting[0]?.id || "");
+  const [title, setTitle] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [measureType, setMeasureType] = useState("");
+  const [targetValue, setTargetValue] = useState("");
+  const [priority, setPriority] = useState("secondaire");
+
+  const canAddExisting = Boolean(selectedId);
+  const canAddNew = Boolean((title || "").trim());
+  const canContinue = outcomes.length > 0;
 
   useEffect(() => {
     if (hasCategory) return;
     if (typeof onBack === "function") onBack();
   }, [hasCategory, onBack]);
 
-  function updateDraft(nextOutcome) {
+  useEffect(() => {
+    if (!availableExisting.length) return;
+    if (availableExisting.some((g) => g.id === selectedId)) return;
+    setSelectedId(availableExisting[0]?.id || "");
+  }, [availableExisting, selectedId]);
+
+  function updateDraft(nextOutcomes, nextActiveId, stepOverride) {
     if (typeof setData !== "function") return;
     setData((prev) => {
       const prevUi = prev.ui || {};
@@ -61,8 +73,57 @@ export default function CreateV2Outcome({ data, setData, onBack, onNext }) {
           ...prevUi,
           createDraft: {
             ...normalizeCreationDraft(prevUi.createDraft),
-            outcome: nextOutcome,
-            step: STEP_HABITS,
+            outcomes: nextOutcomes,
+            activeOutcomeId: nextActiveId || activeOutcomeId || null,
+            ...(stepOverride ? { step: stepOverride } : {}),
+          },
+        },
+      };
+    });
+  }
+
+  function handleAddExisting() {
+    if (!canAddExisting) return;
+    const next = [...outcomes, { mode: "existing", id: selectedId }];
+    updateDraft(next, selectedId);
+  }
+
+  function handleAddNew() {
+    if (!canAddNew) return;
+    const id = uid();
+    const nextOutcome = {
+      id,
+      mode: "new",
+      title: title.trim(),
+      deadline: (deadline || "").trim(),
+      measureType: measureType || "",
+      targetValue: (targetValue || "").trim(),
+      priority: priority || "secondaire",
+    };
+    updateDraft([...outcomes, nextOutcome], id);
+    setTitle("");
+    setDeadline("");
+    setMeasureType("");
+    setTargetValue("");
+    setPriority("secondaire");
+  }
+
+  function handleRemove(outcomeId) {
+    const nextOutcomes = outcomes.filter((o) => o.id !== outcomeId);
+    const nextActiveId = nextOutcomes[0]?.id || "";
+    const nextHabits = (draft.habits || []).filter((h) => h.outcomeId !== outcomeId);
+    if (typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          createDraft: {
+            ...normalizeCreationDraft(prevUi.createDraft),
+            outcomes: nextOutcomes,
+            activeOutcomeId: nextActiveId || null,
+            habits: nextHabits,
           },
         },
       };
@@ -70,19 +131,8 @@ export default function CreateV2Outcome({ data, setData, onBack, onNext }) {
   }
 
   function handleNext() {
-    if (!canSubmit) return;
-    if (mode === "existing") {
-      updateDraft({ mode, id: selectedId });
-    } else {
-      updateDraft({
-        mode,
-        title: title.trim(),
-        deadline: (deadline || "").trim(),
-        measureType: measureType || "",
-        targetValue: (targetValue || "").trim(),
-        priority: priority || "secondaire",
-      });
-    }
+    if (!canContinue) return;
+    updateDraft(outcomes, activeOutcomeId, STEP_HABITS);
     if (typeof onNext === "function") onNext();
   }
 
@@ -98,7 +148,7 @@ export default function CreateV2Outcome({ data, setData, onBack, onNext }) {
       headerTitle="Créer"
       headerSubtitle={
         <>
-          <span style={{ opacity: 0.6 }}>2.</span> Objectif · {categoryLabel}
+          <span style={{ opacity: 0.6 }}>2.</span> Objectifs · {categoryLabel}
         </>
       }
       backgroundImage={backgroundImage}
@@ -109,38 +159,52 @@ export default function CreateV2Outcome({ data, setData, onBack, onNext }) {
         </Button>
         <Card accentBorder>
           <div className="p18 col" style={{ gap: 12 }}>
-            {existingOutcomes.length ? (
-              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                <Button variant={mode === "existing" ? "primary" : "ghost"} onClick={() => setMode("existing")}
-                >
-                  Objectif existant
-                </Button>
-                <Button variant={mode === "new" ? "primary" : "ghost"} onClick={() => setMode("new")}
-                >
-                  Nouvel objectif
-                </Button>
+            {availableExisting.length ? (
+              <div className="stack stackGap8">
+                <div className="small" style={{ opacity: 0.7 }}>
+                  Objectif existant (optionnel)
+                </div>
+                <div className="row" style={{ gap: 8 }}>
+                  <Select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
+                    <option value="" disabled>
+                      Sélectionner un objectif
+                    </option>
+                    {availableExisting.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.title || "Objectif"}
+                      </option>
+                    ))}
+                  </Select>
+                  <Button onClick={handleAddExisting} disabled={!canAddExisting}>
+                    Ajouter
+                  </Button>
+                </div>
               </div>
             ) : null}
 
-            {mode === "existing" && existingOutcomes.length ? (
-              <Select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
-                <option value="" disabled>
-                  Sélectionner un objectif
-                </option>
-                {existingOutcomes.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.title || "Objectif"}
-                  </option>
-                ))}
-              </Select>
-            ) : (
-              <>
+            <div className="stack stackGap8">
+              <div className="small" style={{ opacity: 0.7 }}>
+                Nouvel objectif
+              </div>
+              <div className="stack stackGap8">
+                <div className="small" style={{ opacity: 0.7 }}>
+                  Objectif
+                </div>
                 <Input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Nom de l’objectif"
                 />
-                <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+                <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
+                  <option value="secondaire">Secondaire</option>
+                  <option value="prioritaire">Prioritaire</option>
+                  <option value="bonus">Bonus</option>
+                </Select>
+              </div>
+              <div className="stack stackGap8">
+                <div className="small" style={{ opacity: 0.7 }}>
+                  Mesure
+                </div>
                 <Select value={measureType} onChange={(e) => setMeasureType(e.target.value)}>
                   <option value="">Mesure (optionnel)</option>
                   {MEASURE_OPTIONS.map((opt) => (
@@ -154,17 +218,52 @@ export default function CreateV2Outcome({ data, setData, onBack, onNext }) {
                   onChange={(e) => setTargetValue(e.target.value)}
                   placeholder="Valeur cible (optionnel)"
                 />
-                <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
-                  <option value="secondaire">Secondaire</option>
-                  <option value="prioritaire">Prioritaire</option>
-                </Select>
-              </>
-            )}
+                <div className="small2" style={{ opacity: 0.7 }}>
+                  Date limite (optionnel)
+                </div>
+                <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+                <div className="small2" style={{ opacity: 0.6 }}>
+                  Démarre aujourd’hui automatiquement.
+                </div>
+              </div>
+              <Button onClick={handleAddNew} disabled={!canAddNew}>
+                Ajouter
+              </Button>
+            </div>
+
+            <div className="stack stackGap8">
+              {outcomes.map((outcome) => {
+                const label =
+                  outcome.mode === "existing"
+                    ? existingOutcomes.find((g) => g.id === outcome.id)?.title
+                    : outcome.title;
+                return (
+                  <div key={outcome.id} className="row" style={{ justifyContent: "space-between", gap: 10 }}>
+                    <div className="small2" style={{ flex: 1 }}>
+                      {label || "Objectif"}
+                    </div>
+                    <Button variant="ghost" onClick={() => handleRemove(outcome.id)}>
+                      Retirer
+                    </Button>
+                  </div>
+                );
+              })}
+              {!outcomes.length ? <div className="small2">Ajoute au moins un objectif.</div> : null}
+            </div>
             <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
-              <Button variant="ghost" onClick={onBack}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  if (typeof onCancel === "function") {
+                    onCancel();
+                    return;
+                  }
+                  if (typeof onBack === "function") onBack();
+                }}
+              >
                 Annuler
               </Button>
-              <Button onClick={handleNext} disabled={!canSubmit}>
+              <Button onClick={handleNext} disabled={!canContinue}>
                 Continuer
               </Button>
             </div>

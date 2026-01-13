@@ -6,7 +6,7 @@ import { isPrimaryCategory } from "../logic/priority";
 import { getCategoryCounts } from "../logic/pilotage";
 
 // TOUR MAP:
-// - primary_action: open manage for selected category
+// - primary_action: open category detail
 // - key_elements: create button, category list, category cards
 // - optional_elements: priority badge
 function formatCount(count, singular, plural) {
@@ -15,7 +15,7 @@ function formatCount(count, singular, plural) {
   return `${count} ${plural}`;
 }
 
-export default function Categories({ data, setData, onOpenLibraryCategory, onOpenCategoryDetail, onOpenCreate }) {
+export default function Categories({ data, setData, onOpenCategoryDetail, onOpenCreate }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
 
@@ -37,7 +37,7 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
     } catch (_) {}
   }
 
-  function setLibraryCategory(categoryId, { navigate } = {}) {
+  function setLibraryCategory(categoryId) {
     if (!categoryId) return;
 
     // Keep Library selection local to Library page only
@@ -58,18 +58,6 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
         };
       });
     }
-
-    if (navigate && typeof onOpenLibraryCategory === "function") {
-      onOpenLibraryCategory(categoryId);
-    }
-  }
-
-  function handleOpenManage() {
-    const fallbackId = categories[0]?.id || null;
-    const targetId = libraryViewSelectedId || fallbackId;
-    if (!targetId) return;
-    markLibraryTouched();
-    setLibraryCategory(targetId, { navigate: true });
   }
 
   function handleOpenDetail(categoryId) {
@@ -94,14 +82,6 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
               <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
                 <div className="sectionTitle">Catégories</div>
                 <div className="row" style={{ gap: 8 }}>
-                  <Button
-                    variant="ghost"
-                    onClick={handleOpenManage}
-                    disabled={!categories.length}
-                    data-tour-id="library-manage"
-                  >
-                    Gérer
-                  </Button>
                   <Button
                     variant="ghost"
                     onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
@@ -153,9 +133,6 @@ export default function Categories({ data, setData, onOpenLibraryCategory, onOpe
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div className="sectionTitle">Catégories</div>
               <div className="row" style={{ gap: 8 }}>
-                <Button variant="ghost" onClick={handleOpenManage} data-tour-id="library-manage">
-                  Gérer
-                </Button>
                 <Button
                   variant="ghost"
                   onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}

@@ -5,7 +5,7 @@ import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { resolveGoalType } from "../utils/goalType";
 
-export default function CategoryDetailView({ data, categoryId, onBack, onOpenLibraryList, onOpenManage }) {
+export default function CategoryDetailView({ data, categoryId, onBack, onOpenManage }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -75,11 +75,6 @@ export default function CategoryDetailView({ data, categoryId, onBack, onOpenLib
         <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
           ← Retour
         </Button>
-        {typeof onOpenLibraryList === "function" ? (
-          <Button variant="ghost" onClick={onOpenLibraryList}>
-            Toutes les catégories
-          </Button>
-        ) : null}
         {typeof onOpenManage === "function" ? (
           <Button variant="ghost" onClick={onOpenManage}>
             Gérer
@@ -108,15 +103,18 @@ export default function CategoryDetailView({ data, categoryId, onBack, onOpenLib
                     </div>
                     {linkedHabits.length ? (
                       <div className="col" style={{ gap: 8, paddingLeft: 12 }}>
+                        <div className="small2" style={{ opacity: 0.7 }}>
+                          Actions
+                        </div>
                         {linkedHabits.map((h) => (
                           <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
-                            <div className="itemTitle">{h.title || "Habitude"}</div>
+                            <div className="itemTitle">{h.title || "Action"}</div>
                           </div>
                         ))}
                       </div>
                     ) : (
                       <div className="small2" style={{ paddingLeft: 12 }}>
-                        Aucune habitude liée.
+                        Aucune action liée.
                       </div>
                     )}
                   </div>
@@ -132,11 +130,11 @@ export default function CategoryDetailView({ data, categoryId, onBack, onOpenLib
       {unlinkedHabits.length ? (
         <Card accentBorder style={{ marginTop: 12 }}>
           <div className="p18">
-            <div className="sectionTitle">Habitudes non liées</div>
+            <div className="sectionTitle">Actions non liées</div>
             <div className="mt12 col" style={{ gap: 10 }}>
               {unlinkedHabits.map((h) => (
                 <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
-                  <div className="itemTitle">{h.title || "Habitude"}</div>
+                  <div className="itemTitle">{h.title || "Action"}</div>
                 </div>
               ))}
             </div>

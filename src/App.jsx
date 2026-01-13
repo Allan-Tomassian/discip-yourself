@@ -11,10 +11,6 @@ import { markIOSRootClass } from "./utils/dialogs";
 import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
 import Categories from "./pages/Categories";
-import Create from "./pages/Create";
-import CreateCategory from "./pages/CreateCategory";
-import CreateGoal from "./pages/CreateGoal";
-import CreateHabit from "./pages/CreateHabit";
 import CreateV2 from "./pages/CreateV2";
 import CreateV2Category from "./pages/CreateV2Category";
 import CreateV2Outcome from "./pages/CreateV2Outcome";
@@ -36,7 +32,8 @@ import { resolveGoalType } from "./utils/goalType";
 import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
 import { useTour } from "./tour/useTour";
 import TourOverlay from "./tour/TourOverlay";
-import { createEmptyDraft } from "./creation/creationDraft";
+import { createEmptyDraft, normalizeCreationDraft } from "./creation/creationDraft";
+import { STEP_CATEGORY, STEP_HABITS, STEP_OUTCOME, isValidCreationStep } from "./creation/creationSchema";
 
 function runSelfTests() {
   // minimal sanity
@@ -403,8 +400,6 @@ export default function App() {
 
 
   const safeData = data && typeof data === "object" ? data : {};
-  const creationFlowVersion = safeData?.ui?.creationFlowVersion || "legacy";
-  const useV2Creation = creationFlowVersion === "v2";
   const isCreateTab =
     tab === "create" ||
     tab === "create-category" ||
@@ -443,6 +438,91 @@ export default function App() {
   const homeActiveCategoryId =
     safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
   const homeSelectedCategoryId = getHomeSelectedCategoryId(safeData);
+  const resetCreateDraft = () => {
+    if (typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          createDraft: createEmptyDraft(),
+          createDraftWasCanceled: true,
+          createDraftWasCompleted: false,
+        },
+      };
+    });
+  };
+  const clearCreateDraftCancelFlag = () => {
+    if (typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      if (!prevUi.createDraftWasCanceled) return prev;
+      return { ...prev, ui: { ...prevUi, createDraftWasCanceled: false } };
+    });
+  };
+  const seedCreateDraft = ({ source, categoryId, outcomeId, step } = {}) => {
+    if (typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      const shouldReset = prevUi.createDraftWasCanceled || prevUi.createDraftWasCompleted;
+      const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
+      const prevGoals = Array.isArray(prev.goals) ? prev.goals : [];
+      let resolvedCategoryId = categoryId || null;
+      if (!resolvedCategoryId) {
+        if (source === "library") {
+          resolvedCategoryId =
+            prevUi?.selectedCategoryByView?.library ||
+            prevUi?.librarySelectedCategoryId ||
+            prevUi?.selectedCategoryByView?.home ||
+            prevUi?.selectedCategoryId ||
+            null;
+        } else if (source === "pilotage") {
+          resolvedCategoryId =
+            prevUi?.selectedCategoryByView?.pilotage ||
+            prevUi?.selectedCategoryByView?.home ||
+            prevUi?.selectedCategoryId ||
+            null;
+        } else if (source === "today") {
+          resolvedCategoryId = prevUi?.selectedCategoryByView?.home || prevUi?.selectedCategoryId || null;
+        } else {
+          resolvedCategoryId = prevUi?.selectedCategoryByView?.home || prevUi?.selectedCategoryId || null;
+        }
+      }
+      if (resolvedCategoryId && !prevCategories.some((c) => c.id === resolvedCategoryId)) {
+        resolvedCategoryId = null;
+      }
+      let resolvedOutcomeId = outcomeId || null;
+      if (resolvedOutcomeId && !prevGoals.some((g) => g && g.id === resolvedOutcomeId)) {
+        resolvedOutcomeId = null;
+      }
+      if (!resolvedOutcomeId && resolvedCategoryId) {
+        const outcomeGoals = prevGoals.filter(
+          (g) => g && g.categoryId === resolvedCategoryId && resolveGoalType(g) === "OUTCOME"
+        );
+        const mainGoalId = prevCategories.find((c) => c.id === resolvedCategoryId)?.mainGoalId || null;
+        const fallbackOutcomeId = outcomeGoals[0]?.id || null;
+        resolvedOutcomeId =
+          mainGoalId && outcomeGoals.some((g) => g.id === mainGoalId) ? mainGoalId : fallbackOutcomeId;
+      }
+      const nextDraft = createEmptyDraft();
+      if (resolvedCategoryId) nextDraft.category = { mode: "existing", id: resolvedCategoryId };
+      if (resolvedOutcomeId) {
+        nextDraft.outcomes = [{ mode: "existing", id: resolvedOutcomeId }];
+        nextDraft.activeOutcomeId = resolvedOutcomeId;
+      }
+      if (isValidCreationStep(step)) nextDraft.step = step;
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          createDraft: nextDraft,
+          createDraftWasCanceled: shouldReset ? false : prevUi.createDraftWasCanceled,
+          createDraftWasCompleted: false,
+        },
+      };
+    });
+  };
   const openLibraryDetail = () => {
     let touched = false;
     try {
@@ -484,14 +564,21 @@ export default function App() {
     setTab("library");
   };
   useEffect(() => {
-    if (!useV2Creation || !isCreateTab) return;
+    if (!isCreateTab) return;
     if (typeof setData !== "function") return;
     setData((prev) => {
       const prevUi = prev.ui || {};
+      if (prevUi.createDraftWasCompleted) {
+        return {
+          ...prev,
+          ui: { ...prevUi, createDraft: createEmptyDraft(), createDraftWasCompleted: false },
+        };
+      }
       if (prevUi.createDraft && typeof prevUi.createDraft === "object") return prev;
-      return { ...prev, ui: { ...prevUi, createDraft: createEmptyDraft() } };
+      const nextDraft = normalizeCreationDraft(prevUi.createDraft);
+      return { ...prev, ui: { ...prevUi, createDraft: nextDraft } };
     });
-  }, [isCreateTab, setData, useV2Creation]);
+  }, [isCreateTab, setData]);
   const handleEditBack = () => {
     const returnTab = editItem?.returnTab || "library";
     if (returnTab === "library") {
@@ -656,14 +743,18 @@ export default function App() {
       },
     }));
 
-    setCreateFlowCategoryId(targetId);
-    setCreateFlowGoalId(goalId);
+    seedCreateDraft({
+      source: "pilotage",
+      categoryId: targetId,
+      outcomeId: goalId,
+      step: goalId ? STEP_HABITS : STEP_OUTCOME,
+    });
     setLibraryCategoryId(null);
     if (counts.outcomesCount === 0 || !goalId) {
-      setTab("create-goal");
+      setTab("create");
       return;
     }
-    setTab("create-habit");
+    setTab("create");
   };
 
   if (showPlanStep && onboardingCompleted) {
@@ -692,11 +783,24 @@ export default function App() {
               <div className="mt12">
                 <Button
                   onClick={() => {
+                    const step =
+                      empty.targetTab === "create-category"
+                        ? STEP_CATEGORY
+                        : empty.targetTab === "create-goal"
+                          ? STEP_OUTCOME
+                          : empty.targetTab === "create-habit"
+                            ? STEP_HABITS
+                            : null;
                     setData((prev) => {
                       const nextUi = { ...(prev.ui || {}), openGoalEditId: null };
                       if (empty.categoryId) nextUi.selectedCategoryId = empty.categoryId;
                       return { ...prev, ui: nextUi };
                     });
+                    if (empty.targetTab.startsWith("create")) {
+                      seedCreateDraft({ source: "empty", categoryId: empty.categoryId, step });
+                      setTab("create");
+                      return;
+                    }
                     setTab(empty.targetTab);
                   }}
                 >
@@ -759,7 +863,8 @@ export default function App() {
             ? null
             : () => {
                 setLibraryCategoryId(null);
-                setTab("create-category");
+                seedCreateDraft({ source: "topnav", step: STEP_CATEGORY });
+                setTab("create");
               }
         }
         categories={
@@ -883,11 +988,13 @@ export default function App() {
           }}
           onOpenCreate={() => {
             setLibraryCategoryId(null);
+            seedCreateDraft({ source: "today", categoryId: homeSelectedCategoryId });
             setTab("create");
           }}
           onOpenCreateCategory={() => {
             setLibraryCategoryId(null);
-            setTab("create-category");
+            seedCreateDraft({ source: "today", step: STEP_CATEGORY });
+            setTab("create");
           }}
           onOpenSession={({ categoryId, dateKey }) =>
             setTab("session", { sessionCategoryId: categoryId || null, sessionDateKey: dateKey || null })
@@ -898,31 +1005,7 @@ export default function App() {
           data={data}
           categoryId={detailCategoryId}
           onBack={() => {
-            if (detailCategoryId) {
-              setData((prev) => {
-                const prevCats = Array.isArray(prev.categories) ? prev.categories : [];
-                if (!prevCats.some((cat) => cat.id === detailCategoryId)) return prev;
-                const prevUi = prev.ui || {};
-                const prevSel =
-                  prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-                    ? prevUi.selectedCategoryByView
-                    : {};
-                if (prevSel.home === detailCategoryId) return prev;
-                return {
-                  ...prev,
-                  ui: {
-                    ...prevUi,
-                    selectedCategoryByView: { ...prevSel, home: detailCategoryId },
-                  },
-                };
-              });
-            }
             setCategoryDetailId(null);
-            setTab("today");
-          }}
-          onOpenLibraryList={() => {
-            setCategoryDetailId(null);
-            setLibraryCategoryId(null);
             setTab("library");
           }}
           onOpenManage={() => {
@@ -978,6 +1061,7 @@ export default function App() {
           }}
           onOpenCreate={() => {
             setLibraryCategoryId(null);
+            seedCreateDraft({ source: "library", categoryId: libraryCategoryId });
             setTab("create");
           }}
           onOpenProgress={(categoryIdValue) => {
@@ -1017,133 +1101,68 @@ export default function App() {
           }}
           onOpenCreate={() => {
             setLibraryCategoryId(null);
+            seedCreateDraft({ source: "library" });
             setTab("create");
           }}
         />
       ) : tab === "create" ? (
-        useV2Creation ? (
-          <CreateV2
-            data={data}
-            onBack={() => {
-              setLibraryCategoryId(null);
-              setTab("library");
-            }}
-            onOpenStep={(step) => {
-              if (step === "category") setTab("create-category");
-              else if (step === "outcome") setTab("create-goal");
-              else if (step === "habits") setTab("create-habit");
-              else if (step === "rhythm") setTab("create-rhythm");
-              else if (step === "review") setTab("create-review");
-            }}
-            onUseLegacyFlow={() => {
-              setData((prev) => ({
-                ...prev,
-                ui: { ...(prev.ui || {}), creationFlowVersion: "legacy" },
-              }));
-              setTab("create");
-            }}
-          />
-        ) : (
-          <Create
-            data={data}
-            onBack={() => {
-              setLibraryCategoryId(null);
-              setTab("library");
-            }}
-            onOpenCategory={() => setTab("create-category")}
-            onOpenGoal={() => setTab("create-goal")}
-            onOpenHabit={() => setTab("create-habit")}
-            onUseNewFlow={() => {
-              setData((prev) => ({
-                ...prev,
-                ui: { ...(prev.ui || {}), creationFlowVersion: "v2" },
-              }));
-              setTab("create");
-            }}
-          />
-        )
+        <CreateV2
+          data={data}
+          onBack={() => {
+            setLibraryCategoryId(null);
+            setTab("library");
+          }}
+          onOpenStep={(step) => {
+            clearCreateDraftCancelFlag();
+            if (step === "category") setTab("create-category");
+            else if (step === "outcome") setTab("create-goal");
+            else if (step === "habits") setTab("create-habit");
+            else if (step === "rhythm") setTab("create-rhythm");
+            else if (step === "review") setTab("create-review");
+          }}
+        />
       ) : tab === "create-category" ? (
-        useV2Creation ? (
-          <CreateV2Category
-            data={data}
-            setData={setData}
-            onBack={() => setTab("create")}
-            onNext={() => setTab("create-goal")}
-          />
-        ) : (
-          <CreateCategory
-            data={data}
-            setData={setData}
-            onCancel={() => setTab("create")}
-            onDone={({ categoryId }) => {
-              setCreateFlowCategoryId(categoryId || null);
-              setCreateFlowGoalId(null);
-              setTab("create-goal");
-            }}
-          />
-        )
+        <CreateV2Category
+          data={data}
+          setData={setData}
+          onBack={() => setTab("create")}
+          onCancel={() => {
+            resetCreateDraft();
+            setTab("library");
+          }}
+          onNext={() => setTab("create-goal")}
+        />
       ) : tab === "create-goal" ? (
-        useV2Creation ? (
-          <CreateV2Outcome
-            data={data}
-            setData={setData}
-            onBack={() => setTab("create-category")}
-            onNext={() => setTab("create-habit")}
-          />
-        ) : (
-          <CreateGoal
-            data={data}
-            setData={setData}
-            initialCategoryId={createFlowCategoryId}
-            onCancel={() => {
-              if (createFlowCategoryId) {
-                setCreateFlowGoalId(null);
-                setTab("create-category");
-                return;
-              }
-              setTab("create");
-            }}
-            onDone={({ goalId, categoryId }) => {
-              setCreateFlowCategoryId(categoryId || createFlowCategoryId || null);
-              setCreateFlowGoalId(goalId || null);
-              setTab("create-habit");
-            }}
-          />
-        )
+        <CreateV2Outcome
+          data={data}
+          setData={setData}
+          onBack={() => setTab("create-category")}
+          onCancel={() => {
+            resetCreateDraft();
+            setTab("library");
+          }}
+          onNext={() => setTab("create-habit")}
+        />
       ) : tab === "create-habit" ? (
-        useV2Creation ? (
-          <CreateV2Habits
-            data={data}
-            setData={setData}
-            onBack={() => setTab("create-goal")}
-            onNext={() => setTab("create-rhythm")}
-          />
-        ) : (
-          <CreateHabit
-            data={data}
-            setData={setData}
-            initialCategoryId={createFlowCategoryId}
-            initialGoalId={createFlowGoalId}
-            onCancel={() => {
-              if (createFlowGoalId) {
-                setTab("create-goal");
-                return;
-              }
-              setTab("create");
-            }}
-            onDone={() => {
-              setCreateFlowCategoryId(null);
-              setCreateFlowGoalId(null);
-              setLibraryCategoryId(null);
-              setTab("library");
-            }}
-          />
-        )
+        <CreateV2Habits
+          data={data}
+          setData={setData}
+          onBack={() => setTab("create-goal")}
+          onCancel={() => {
+            resetCreateDraft();
+            setTab("library");
+          }}
+          onNext={() => setTab("create-rhythm")}
+        />
       ) : tab === "create-rhythm" ? (
         <CreateV2Rhythm
           data={data}
           setData={setData}
           onBack={() => setTab("create-habit")}
+          onCancel={() => {
+            resetCreateDraft();
+            setTab("library");
+          }}
           onNext={() => setTab("create-review")}
         />
       ) : tab === "create-review" ? (
@@ -1151,6 +1170,10 @@ export default function App() {
           data={data}
           setData={setData}
           onBack={() => setTab("create-rhythm")}
+          onCancel={() => {
+            resetCreateDraft();
+            setTab("library");
+          }}
           onDone={() => {
             setLibraryCategoryId(null);
             setTab("library");
