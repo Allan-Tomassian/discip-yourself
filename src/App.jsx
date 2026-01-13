@@ -435,6 +435,7 @@ export default function App() {
   }, [goals, railDow]);
   const railCategories = useMemo(() => orderedCategories, [orderedCategories]);
   const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
+  const libraryDetailExpandedId = safeData?.ui?.libraryDetailExpandedId || null;
   const homeActiveCategoryId =
     safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
   const homeSelectedCategoryId = getHomeSelectedCategoryId(safeData);
@@ -453,19 +454,22 @@ export default function App() {
       };
     });
   };
-  const clearCreateDraftCancelFlag = () => {
-    if (typeof setData !== "function") return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      if (!prevUi.createDraftWasCanceled) return prev;
-      return { ...prev, ui: { ...prevUi, createDraftWasCanceled: false } };
-    });
-  };
   const seedCreateDraft = ({ source, categoryId, outcomeId, step } = {}) => {
     if (typeof setData !== "function") return;
     setData((prev) => {
       const prevUi = prev.ui || {};
-      const shouldReset = prevUi.createDraftWasCanceled || prevUi.createDraftWasCompleted;
+      if (prevUi.createDraftWasCanceled) {
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            createDraft: createEmptyDraft(),
+            createDraftWasCanceled: true,
+            createDraftWasCompleted: false,
+          },
+        };
+      }
+      const shouldReset = prevUi.createDraftWasCompleted;
       const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
       const prevGoals = Array.isArray(prev.goals) ? prev.goals : [];
       let resolvedCategoryId = categoryId || null;
@@ -555,8 +559,16 @@ export default function App() {
             ...prevUi,
             librarySelectedCategoryId: targetId,
             selectedCategoryByView: { ...prevSel, library: targetId },
+            libraryDetailExpandedId: null,
           },
         };
+      });
+    }
+    if (hasLibrarySelection) {
+      setData((prev) => {
+        const prevUi = prev.ui || {};
+        if (!prevUi.libraryDetailExpandedId) return prev;
+        return { ...prev, ui: { ...prevUi, libraryDetailExpandedId: null } };
       });
     }
     setLibraryCategoryId(null);
@@ -564,21 +576,43 @@ export default function App() {
     setTab("library");
   };
   useEffect(() => {
+    if (tab !== "library") return;
+    if (typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      if (!prevUi.libraryDetailExpandedId) return prev;
+      return { ...prev, ui: { ...prevUi, libraryDetailExpandedId: null } };
+    });
+  }, [tab, setData]);
+  useEffect(() => {
     if (!isCreateTab) return;
     if (typeof setData !== "function") return;
     setData((prev) => {
       const prevUi = prev.ui || {};
+      let nextUi = prevUi;
+      let nextDraft = prevUi.createDraft;
+      let changed = false;
       if (prevUi.createDraftWasCompleted) {
-        return {
-          ...prev,
-          ui: { ...prevUi, createDraft: createEmptyDraft(), createDraftWasCompleted: false },
-        };
+        nextDraft = createEmptyDraft();
+        nextUi = { ...nextUi, createDraftWasCompleted: false };
+        changed = true;
       }
-      if (prevUi.createDraft && typeof prevUi.createDraft === "object") return prev;
-      const nextDraft = normalizeCreationDraft(prevUi.createDraft);
-      return { ...prev, ui: { ...prevUi, createDraft: nextDraft } };
+      if (prevUi.createDraftWasCanceled && tab !== "create") {
+        nextUi = { ...nextUi, createDraftWasCanceled: false };
+        changed = true;
+      }
+      if (!nextDraft || typeof nextDraft !== "object") {
+        nextDraft = normalizeCreationDraft(nextDraft);
+        nextUi = { ...nextUi, createDraft: nextDraft };
+        changed = true;
+      } else if (nextDraft !== prevUi.createDraft) {
+        nextUi = { ...nextUi, createDraft: nextDraft };
+        changed = true;
+      }
+      if (!changed) return prev;
+      return { ...prev, ui: nextUi };
     });
-  }, [isCreateTab, setData]);
+  }, [isCreateTab, setData, tab]);
   const handleEditBack = () => {
     const returnTab = editItem?.returnTab || "library";
     if (returnTab === "library") {
@@ -878,7 +912,7 @@ export default function App() {
             : railCategories
         }
         selectedCategoryId={railSelectedId}
-        onSelectCategory={(categoryId) => {
+          onSelectCategory={(categoryId) => {
           if (!categoryId) return;
           const markLibraryTouched = () => {
             try {
@@ -924,17 +958,34 @@ export default function App() {
               setLibraryCategoryId(categoryId);
               return;
             }
+            setData((prev) => {
+              const prevUi = prev.ui || {};
+              const prevSel =
+                prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+                  ? prevUi.selectedCategoryByView
+                  : {};
+              const isExpanded = prevUi.libraryDetailExpandedId === categoryId;
+              return {
+                ...prev,
+                ui: {
+                  ...prevUi,
+                  librarySelectedCategoryId: categoryId,
+                  selectedCategoryByView: { ...prevSel, library: categoryId },
+                  libraryDetailExpandedId: isExpanded ? null : categoryId,
+                },
+              };
+            });
             setLibraryCategoryId(null);
-            setCategoryDetailId(categoryId);
-            setTab("category-detail", { categoryDetailId: categoryId });
+            setCategoryDetailId(null);
+            setTab("library");
             return;
           }
           if (tab === "category-detail") {
             markLibraryTouched();
             syncCategorySelection();
             setLibraryCategoryId(null);
-            setCategoryDetailId(categoryId);
-            setTab("category-detail", { categoryDetailId: categoryId });
+            setCategoryDetailId(null);
+            setTab("library");
             return;
           }
           if (tab === "category-progress") {
@@ -1004,10 +1055,6 @@ export default function App() {
         <CategoryDetailView
           data={data}
           categoryId={detailCategoryId}
-          onBack={() => {
-            setCategoryDetailId(null);
-            setTab("library");
-          }}
           onOpenManage={() => {
             if (!detailCategoryId) return;
             setLibraryCategoryId(detailCategoryId);
@@ -1090,19 +1137,15 @@ export default function App() {
         <Categories
           data={data}
           setData={setData}
-          onOpenCategoryDetail={(categoryId) => {
-            if (!categoryId) return;
-            setLibraryCategoryId(null);
-            setTab("category-detail", { categoryDetailId: categoryId });
-          }}
-          onOpenLibraryCategory={(categoryId) => {
-            setLibraryCategoryId(categoryId);
-            setTab("library");
-          }}
           onOpenCreate={() => {
             setLibraryCategoryId(null);
             seedCreateDraft({ source: "library" });
             setTab("create");
+          }}
+          onOpenManage={(categoryId) => {
+            if (!categoryId) return;
+            setLibraryCategoryId(categoryId);
+            setTab("library");
           }}
         />
       ) : tab === "create" ? (
@@ -1113,7 +1156,6 @@ export default function App() {
             setTab("library");
           }}
           onOpenStep={(step) => {
-            clearCreateDraftCancelFlag();
             if (step === "category") setTab("create-category");
             else if (step === "outcome") setTab("create-goal");
             else if (step === "habits") setTab("create-habit");

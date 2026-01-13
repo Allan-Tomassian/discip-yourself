@@ -5,7 +5,7 @@ import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { resolveGoalType } from "../utils/goalType";
 
-export default function CategoryDetailView({ data, categoryId, onBack, onOpenManage }) {
+export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -49,11 +49,6 @@ export default function CategoryDetailView({ data, categoryId, onBack, onOpenMan
           <div className="p18">
             <div className="titleSm">Catégorie introuvable</div>
             <div className="small2 mt8">Cette catégorie n’existe plus.</div>
-            <div className="mt12">
-              <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
-                ← Retour
-              </Button>
-            </div>
           </div>
         </Card>
       </ScreenShell>
@@ -71,16 +66,13 @@ export default function CategoryDetailView({ data, categoryId, onBack, onOpenMan
       headerTitle={<span className="textAccent">{category.name || "Catégorie"}</span>}
       headerSubtitle="Détail catégorie"
     >
-      <div className="row" style={{ gap: 10 }}>
-        <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
-          ← Retour
-        </Button>
-        {typeof onOpenManage === "function" ? (
+      {typeof onOpenManage === "function" ? (
+        <div className="row" style={{ gap: 10 }}>
           <Button variant="ghost" onClick={onOpenManage}>
             Gérer
           </Button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <Card accentBorder style={{ marginTop: 12 }}>
         <div className="p18">
@@ -99,24 +91,31 @@ export default function CategoryDetailView({ data, categoryId, onBack, onOpenMan
                 return (
                   <div key={g.id} className="col" style={{ gap: 8 }}>
                     <div className="listItem catAccentRow" style={catAccentVars}>
-                      <div className="itemTitle">{g.title || "Objectif"}</div>
-                    </div>
-                    {linkedHabits.length ? (
-                      <div className="col" style={{ gap: 8, paddingLeft: 12 }}>
-                        <div className="small2" style={{ opacity: 0.7 }}>
-                          Actions
-                        </div>
-                        {linkedHabits.map((h) => (
-                          <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
-                            <div className="itemTitle">{h.title || "Action"}</div>
+                      <div className="row" style={{ justifyContent: "space-between", gap: 8 }}>
+                        <div className="itemTitle">{g.title || "Objectif"}</div>
+                        {category?.mainGoalId && g.id === category.mainGoalId ? (
+                          <span className="small2" style={{ color: "var(--accent)" }}>
+                            Prioritaire
+                          </span>
+                        ) : null}
+                      </div>
+                      {linkedHabits.length ? (
+                        <div className="col" style={{ gap: 8, marginTop: 8, paddingLeft: 12 }}>
+                          <div className="small2" style={{ color: "var(--accent)" }}>
+                            Actions
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="small2" style={{ paddingLeft: 12 }}>
-                        Aucune action liée.
-                      </div>
-                    )}
+                          {linkedHabits.map((h) => (
+                            <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
+                              <div className="itemTitle">{h.title || "Action"}</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="small2" style={{ marginTop: 8, paddingLeft: 12 }}>
+                          Aucune action liée.
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}

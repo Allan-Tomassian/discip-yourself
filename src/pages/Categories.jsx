@@ -2,8 +2,10 @@
 import React, { useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, AccentItem } from "../components/UI";
-import { isPrimaryCategory } from "../logic/priority";
+import SortableBlocks from "../components/SortableBlocks";
 import { getCategoryCounts } from "../logic/pilotage";
+import { getCategoryAccentVars } from "../utils/categoryAccent";
+import { resolveGoalType } from "../utils/goalType";
 
 // TOUR MAP:
 // - primary_action: open category detail
@@ -15,9 +17,10 @@ function formatCount(count, singular, plural) {
   return `${count} ${plural}`;
 }
 
-export default function Categories({ data, setData, onOpenCategoryDetail, onOpenCreate }) {
+export default function Categories({ data, setData, onOpenCreate, onOpenManage }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
+  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
 
   // IMPORTANT:
   // This page must not mutate ui.selectedCategoryId (used by Plan / CategoryDetail).
@@ -25,11 +28,8 @@ export default function Categories({ data, setData, onOpenCategoryDetail, onOpen
   const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
   const homeSelectedCategoryId =
     safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
-  const libraryViewSelectedId =
-    safeData?.ui?.selectedCategoryByView?.library ||
-    librarySelectedCategoryId ||
-    homeSelectedCategoryId ||
-    null;
+  const libraryDetailExpandedId = safeData?.ui?.libraryDetailExpandedId || null;
+  const libraryViewSelectedId = librarySelectedCategoryId || homeSelectedCategoryId || null;
 
   function markLibraryTouched() {
     try {
@@ -60,13 +60,33 @@ export default function Categories({ data, setData, onOpenCategoryDetail, onOpen
     }
   }
 
+  function setLibraryDetailExpanded(categoryId) {
+    if (typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      if (prevUi.libraryDetailExpandedId === categoryId) return prev;
+      return { ...prev, ui: { ...prevUi, libraryDetailExpandedId: categoryId } };
+    });
+  }
+
+  function clearLibraryDetailExpanded() {
+    if (typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      if (!prevUi.libraryDetailExpandedId) return prev;
+      return { ...prev, ui: { ...prevUi, libraryDetailExpandedId: null } };
+    });
+  }
+
   function handleOpenDetail(categoryId) {
     if (!categoryId) return;
     markLibraryTouched();
-    setLibraryCategory(categoryId);
-    if (typeof onOpenCategoryDetail === "function") {
-      onOpenCategoryDetail(categoryId);
+    if (libraryDetailExpandedId === categoryId) {
+      clearLibraryDetailExpanded();
+      return;
     }
+    setLibraryCategory(categoryId);
+    setLibraryDetailExpanded(categoryId);
   }
 
   if (categories.length === 0) {
@@ -105,12 +125,17 @@ export default function Categories({ data, setData, onOpenCategoryDetail, onOpen
     );
   }
 
-  const sortedCategories = useMemo(() => {
-    if (!librarySelectedCategoryId) return categories;
-    const copy = categories.slice();
-    copy.sort((a, b) => (a.id === librarySelectedCategoryId ? -1 : b.id === librarySelectedCategoryId ? 1 : 0));
-    return copy;
-  }, [categories, librarySelectedCategoryId]);
+  const categoryRailOrder = Array.isArray(safeData?.ui?.categoryRailOrder)
+    ? safeData.ui.categoryRailOrder
+    : [];
+  const orderedCategories = useMemo(() => {
+    if (!categoryRailOrder.length) return categories;
+    const map = new Map(categories.map((c) => [c.id, c]));
+    const ordered = categoryRailOrder.map((id) => map.get(id)).filter(Boolean);
+    if (ordered.length === categories.length) return ordered;
+    const missing = categories.filter((c) => !categoryRailOrder.includes(c.id));
+    return ordered.concat(missing);
+  }, [categories, categoryRailOrder]);
 
   const countsByCategory = useMemo(() => {
     const map = new Map();
@@ -120,6 +145,32 @@ export default function Categories({ data, setData, onOpenCategoryDetail, onOpen
     }
     return map;
   }, [categories, safeData]);
+
+  const selectedCategory = categories.find((c) => c.id === libraryDetailExpandedId) || null;
+  const outcomeGoals = useMemo(() => {
+    if (!selectedCategory?.id) return [];
+    return goals.filter((g) => g.categoryId === selectedCategory.id && resolveGoalType(g) === "OUTCOME");
+  }, [goals, selectedCategory?.id]);
+  const processGoals = useMemo(() => {
+    if (!selectedCategory?.id) return [];
+    return goals.filter((g) => g.categoryId === selectedCategory.id && resolveGoalType(g) === "PROCESS");
+  }, [goals, selectedCategory?.id]);
+  const { habitsByOutcome, unlinkedHabits } = useMemo(() => {
+    const byParent = new Map();
+    const unlinked = [];
+    const outcomeIds = new Set(outcomeGoals.map((g) => g.id));
+    for (const habit of processGoals) {
+      const parentId = typeof habit?.parentId === "string" ? habit.parentId : "";
+      if (parentId && outcomeIds.has(parentId)) {
+        const list = byParent.get(parentId) || [];
+        list.push(habit);
+        byParent.set(parentId, list);
+      } else {
+        unlinked.push(habit);
+      }
+    }
+    return { habitsByOutcome: byParent, unlinkedHabits: unlinked };
+  }, [processGoals, outcomeGoals]);
 
   return (
     <ScreenShell
@@ -144,49 +195,154 @@ export default function Categories({ data, setData, onOpenCategoryDetail, onOpen
             </div>
 
             <div className="mt12 col" data-tour-id="library-category-list" style={{ gap: 10 }}>
-              {sortedCategories.map((c) => {
-                const counts = countsByCategory.get(c.id) || { habits: 0, objectives: 0 };
-                const objectives = counts.objectives;
-                const habits = counts.habits;
-                const summary =
-                  objectives || habits
-                    ? `${formatCount(habits, "action", "actions")} · ${formatCount(objectives, "objectif", "objectifs")}`
-                    : "Aucun élément";
+              <SortableBlocks
+                items={orderedCategories}
+                getId={(item) => item.id}
+                onReorder={(nextItems) => {
+                  if (typeof setData !== "function") return;
+                  const nextOrder = nextItems.map((item) => item.id);
+                  setData((prev) => ({
+                    ...prev,
+                    ui: { ...(prev.ui || {}), categoryRailOrder: nextOrder },
+                  }));
+                }}
+                className="col"
+                renderItem={(c, drag) => {
+                  const counts = countsByCategory.get(c.id) || { habits: 0, objectives: 0 };
+                  const objectives = counts.objectives;
+                  const habits = counts.habits;
+                  const summary =
+                    objectives || habits
+                      ? `${formatCount(objectives, "objectif", "objectifs")} · ${formatCount(habits, "action", "actions")}`
+                      : "Aucun élément";
 
-                const isSelected = libraryViewSelectedId === c.id;
+                  const isSelected = libraryViewSelectedId === c.id;
+                  const isExpanded = libraryDetailExpandedId === c.id;
+                  const detailAccentVars = getCategoryAccentVars(c.color);
+                  const detailWhy = (c.whyText || "").trim() || "Aucun mini-why pour cette catégorie.";
+                  const { attributes, listeners, setActivatorNodeRef } = drag || {};
 
-                return (
-                  <AccentItem
-                    key={c.id}
-                    color={c.color}
-                    selected={isSelected}
-                    onClick={() => handleOpenDetail(c.id)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleOpenDetail(c.id);
-                      }
-                    }}
-                  >
-                    <div>
-                      <div className="itemTitle">
-                        {c.name}
-                        {isPrimaryCategory(c) ? (
-                          <span
-                            className="badge"
-                            style={{ marginLeft: 8, borderColor: "var(--accent)", color: "var(--accent)" }}
-                          >
-                            Prioritaire
+                  return (
+                    <div key={c.id} className="col" style={{ gap: 8 }}>
+                      <AccentItem
+                        color={c.color}
+                        selected={isSelected}
+                        rightSlot={
+                          <span className="row" style={{ alignItems: "center", gap: 8 }}>
+                            <span className="small2" style={{ opacity: 0.6 }}>
+                              {isExpanded ? "−" : "+"}
+                            </span>
+                            {drag ? (
+                              <button
+                                ref={setActivatorNodeRef}
+                                {...listeners}
+                                {...attributes}
+                                className="dragHandle"
+                                aria-label="Réorganiser"
+                              >
+                                ⋮⋮
+                              </button>
+                            ) : null}
                           </span>
-                        ) : null}
-                      </div>
-                      <div className="itemSub">{summary}</div>
+                        }
+                        onClick={() => handleOpenDetail(c.id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleOpenDetail(c.id);
+                          }
+                        }}
+                      >
+                        <div>
+                          <div className="itemTitle">{c.name}</div>
+                          <div className="itemSub">{summary}</div>
+                        </div>
+                      </AccentItem>
+                      {isExpanded ? (
+                        <div className="col" style={{ gap: 8, paddingLeft: 10, ...(detailAccentVars || {}) }}>
+                          <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+                            <div className="small2" style={{ opacity: 0.6 }}>
+                              Détails
+                            </div>
+                            {typeof onOpenManage === "function" ? (
+                              <Button variant="ghost" onClick={() => onOpenManage(c.id)}>
+                                Gérer
+                              </Button>
+                            ) : null}
+                          </div>
+                          <div className="listItem catAccentRow" style={detailAccentVars}>
+                            <div className="small2" style={{ color: "var(--accent)" }}>
+                              Mini-why
+                            </div>
+                            <div className="small2" style={{ marginTop: 6 }}>
+                              {detailWhy}
+                            </div>
+                          </div>
+                          <div className="col" style={{ gap: 8 }}>
+                            <div className="small2" style={{ color: "var(--accent)" }}>
+                              Objectifs
+                            </div>
+                            {outcomeGoals.length ? (
+                              <div className="col" style={{ gap: 8 }}>
+                                {outcomeGoals.map((g) => {
+                                  const linkedHabits = habitsByOutcome.get(g.id) || [];
+                                  const isPrimaryGoal = c.mainGoalId && g.id === c.mainGoalId;
+                                  return (
+                                    <div key={g.id} className="listItem catAccentRow" style={detailAccentVars}>
+                                      <div className="row" style={{ justifyContent: "space-between", gap: 8 }}>
+                                        <div className="itemTitle">{g.title || "Objectif"}</div>
+                                        {isPrimaryGoal ? (
+                                          <span className="small2" style={{ color: "var(--accent)" }}>
+                                            Prioritaire
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      {linkedHabits.length ? (
+                                        <div className="col" style={{ gap: 8, marginTop: 8, paddingLeft: 12 }}>
+                                          <div className="small2" style={{ color: "var(--accent)" }}>
+                                            Actions
+                                          </div>
+                                          {linkedHabits.map((h) => (
+                                            <div key={h.id} className="listItem catAccentRow" style={detailAccentVars}>
+                                              <div className="itemTitle">{h.title || "Action"}</div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <div className="small2" style={{ marginTop: 8, paddingLeft: 12 }}>
+                                          Aucune action liée.
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div className="small2">Aucun objectif dans cette catégorie.</div>
+                            )}
+                          </div>
+                          {unlinkedHabits.length ? (
+                            <div className="col" style={{ gap: 8 }}>
+                              <div className="small2" style={{ color: "var(--accent)" }}>
+                                Actions non liées
+                              </div>
+                              <div className="col" style={{ gap: 8 }}>
+                                {unlinkedHabits.map((h) => (
+                                  <div key={h.id} className="listItem catAccentRow" style={detailAccentVars}>
+                                    <div className="itemTitle">{h.title || "Action"}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
-                  </AccentItem>
-                );
-              })}
+                  );
+                }}
+              />
             </div>
           </div>
         </Card>
