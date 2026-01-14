@@ -1,13 +1,6 @@
 import { todayKey, startOfWeekKey, yearKey } from "../utils/dates";
 import { clamp } from "../utils/helpers";
-
-function resolveGoalType(goal) {
-  const raw = (goal?.type || goal?.planType || goal?.kind || "").toString().toUpperCase();
-  if (raw === "PROCESS") return "PROCESS";
-  if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
-  if (raw === "OUTCOME" || raw === "STATE") return "OUTCOME";
-  return "";
-}
+import { resolveGoalType } from "../utils/goalType";
 
 function getProcessGoals(data) {
   const goals = Array.isArray(data?.goals) ? data.goals : [];
