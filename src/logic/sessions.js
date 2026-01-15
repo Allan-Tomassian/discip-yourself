@@ -35,6 +35,13 @@ function normalizeIdList(list) {
     .map((id) => id.trim());
 }
 
+function sameIdList(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) if (a[i] !== b[i]) return false;
+  return true;
+}
+
 export function normalizeSession(rawSession) {
   const s = rawSession && typeof rawSession === "object" ? { ...rawSession } : {};
   if (!s.id) s.id = uid();
@@ -252,7 +259,23 @@ export function startSessionForDate(state, dateKey, payload = {}) {
   const habitIds = normalizeIdList(payload.habitIds);
   if (!objectiveId || habitIds.length === 0) return state;
   const existing = getSessionByDate(state, key, objectiveId);
-  if (existing) return state;
+  if (existing) {
+    const current = normalizeSession(existing);
+    const canUpdateHabits =
+      current.status === "partial" &&
+      !current.timerRunning &&
+      !current.startedAt &&
+      current.timerAccumulatedSec === 0 &&
+      current.doneHabitIds.length === 0;
+    if (!canUpdateHabits || sameIdList(current.habitIds, habitIds)) return state;
+    const list = Array.isArray(state.sessions) ? state.sessions : [];
+    const idx = findSessionIndexByDate(list, key, objectiveId, "partial");
+    if (idx < 0) return state;
+    const nextSession = normalizeSession({ ...current, habitIds, doneHabitIds: [] });
+    const nextSessions = list.slice();
+    nextSessions[idx] = nextSession;
+    return { ...state, sessions: nextSessions };
+  }
   const list = Array.isArray(state.sessions) ? state.sessions : [];
   const session = normalizeSession({
     id: uid(),
@@ -267,6 +290,25 @@ export function startSessionForDate(state, dateKey, payload = {}) {
     timerRunning: false,
   });
   return { ...state, sessions: [...list, session] };
+}
+
+export function clearSessionForDate(state, dateKey, objectiveId) {
+  if (!state) return state;
+  const key = normalizeDateKey(dateKey);
+  const list = Array.isArray(state.sessions) ? state.sessions : [];
+  const id = typeof objectiveId === "string" ? objectiveId : null;
+  const idx = findSessionIndexByDate(list, key, id, "partial");
+  if (idx < 0) return state;
+  const current = normalizeSession(list[idx]);
+  const canClear =
+    !current.timerRunning &&
+    !current.startedAt &&
+    current.timerAccumulatedSec === 0 &&
+    current.doneHabitIds.length === 0;
+  if (!canClear) return state;
+  const nextSessions = list.slice();
+  nextSessions.splice(idx, 1);
+  return { ...state, sessions: nextSessions };
 }
 
 export function updateSessionTimerForDate(state, dateKey, payload = {}) {
