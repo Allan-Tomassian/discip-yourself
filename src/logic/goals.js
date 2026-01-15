@@ -710,7 +710,7 @@ export function scheduleStart(state, goalId, startAt, sessionMinutes) {
 }
 
 /**
- * Action centrale : activer un objectif/habitude
+ * Action centrale : activer un objectif/action
  * - Plusieurs actifs autorisés (notamment plusieurs PROCESS)
  * - Unicité "single active" (si activée un jour) ne concerne que PROCESS.
  */

@@ -517,17 +517,38 @@ export default function Home({
 
   // Actions liées à l’objectif sélectionné (queued/active)
   const linkedHabits = useMemo(() => {
-    if (!mainGoalId) return [];
-    return processGoals.filter((g) => g.parentId === mainGoalId);
-  }, [processGoals, mainGoalId]);
+    if (!selectedGoal?.id) return [];
+    const targetId = selectedGoal.id;
+    return processGoals.filter((g) => {
+      const parentId = typeof g.parentId === "string" ? g.parentId : "";
+      const primaryId = typeof g.primaryGoalId === "string" ? g.primaryGoalId : "";
+      return (parentId && parentId === targetId) || (primaryId && primaryId === targetId);
+    });
+  }, [processGoals, selectedGoal?.id]);
 
-  // Actions actives uniquement
+  // Actions liées à l’objectif (toutes)
+  const selectableHabits = linkedHabits;
+  const hasLinkedHabits = linkedHabits.length > 0;
+  const hasSelectableHabits = selectableHabits.length > 0;
+  // Actions actives uniquement (progression)
   const activeHabits = useMemo(() => {
     return linkedHabits.filter((g) => g.status === "active");
   }, [linkedHabits]);
-  const hasLinkedHabits = linkedHabits.length > 0;
   const hasActiveHabits = activeHabits.length > 0;
   const canManageCategory = Boolean(typeof onOpenManageCategory === "function" && focusCategory?.id);
+  const selectedHabitsByGoal = safeData.ui?.selectedHabits || {};
+  const storedSelectedHabits =
+    selectedGoal?.id && Array.isArray(selectedHabitsByGoal[selectedGoal.id])
+      ? selectedHabitsByGoal[selectedGoal.id]
+      : null;
+  const selectedActionIds = useMemo(() => {
+    const valid = new Set(selectableHabits.map((h) => h.id));
+    if (Array.isArray(storedSelectedHabits)) {
+      return storedSelectedHabits.filter((id) => valid.has(id));
+    }
+    return selectableHabits.map((h) => h.id);
+  }, [selectableHabits, storedSelectedHabits]);
+  const hasSelectedActions = selectedActionIds.length > 0;
 
   // ---- Outcome goal lookup helpers and dominant outcome by date
   const goalsById = useMemo(() => {
@@ -627,7 +648,7 @@ export default function Home({
   }, [dayChecks.micro]);
 
   const hasActiveSession = Boolean(sessionForDay && sessionForDay.status === "partial");
-  const canOpenSession = Boolean(canValidate && selectedGoal && activeHabits.length);
+  const canOpenSession = Boolean(canValidate && selectedGoal && hasSelectedActions);
 
   const coreProgress = useMemo(() => {
     const activeIds = new Set(activeHabits.map((h) => h.id));
@@ -1040,17 +1061,44 @@ export default function Home({
   }
 
   function openSessionFlow() {
-    if (!selectedGoal?.id || !canValidate || !activeHabits.length || typeof setData !== "function") return;
+    if (!selectedGoal?.id || !canValidate || !hasSelectedActions || typeof setData !== "function") return;
     setData((prev) =>
       startSessionForDate(prev, selectedDateKey, {
         objectiveId: selectedGoal.id,
-        habitIds: activeHabits.map((h) => h.id),
+        habitIds: selectedActionIds,
       })
     );
     if (typeof onOpenSession === "function") {
       onOpenSession({ categoryId: focusCategory?.id || null, dateKey: selectedDateKey });
     }
   }
+
+  const toggleActionSelection = useCallback(
+    (habitId) => {
+      if (!selectedGoal?.id || typeof setData !== "function" || !canEdit) return;
+      setData((prev) => {
+        const prevUi = prev.ui || {};
+        const prevSelected = prevUi.selectedHabits || {};
+        const current = Array.isArray(prevSelected[selectedGoal.id])
+          ? prevSelected[selectedGoal.id]
+          : selectableHabits.map((h) => h.id);
+        const next = current.includes(habitId)
+          ? current.filter((id) => id !== habitId)
+          : [...current, habitId];
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            selectedHabits: {
+              ...prevSelected,
+              [selectedGoal.id]: next,
+            },
+          },
+        };
+      });
+    },
+    [selectedGoal?.id, setData, selectableHabits, canEdit]
+  );
 
   function setCategoryMainGoal(nextGoalId) {
     if (!nextGoalId || typeof setData !== "function") return;
@@ -1520,6 +1568,34 @@ export default function Home({
                     )}
                     </div>
 
+                    {selectedGoal && hasSelectableHabits ? (
+                      <div className="mt12">
+                        <div className="small2">Actions à faire</div>
+                        <div className="mt8 col" style={{ gap: 8 }}>
+                          {selectableHabits.map((habit) => {
+                            const isSelected = selectedActionIds.includes(habit.id);
+                            return (
+                              <AccentItem
+                                key={habit.id}
+                                color={goalAccent}
+                                selected={isSelected}
+                                compact
+                                onClick={canEdit ? () => toggleActionSelection(habit.id) : undefined}
+                                aria-label={`${isSelected ? "Désélectionner" : "Sélectionner"} ${habit.title}`}
+                              >
+                                <div className="itemTitle">{habit.title}</div>
+                              </AccentItem>
+                            );
+                          })}
+                        </div>
+                        {!hasSelectedActions ? (
+                          <div className="sectionSub" style={{ marginTop: 8 }}>
+                            Sélectionne au moins une action.
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
                     <div className="mt12">
                       <div className="row" style={{ justifyContent: "flex-end" }}>
                         <Button onClick={openSessionFlow} disabled={!canOpenSession} data-tour-id="today-go">
@@ -1546,22 +1622,6 @@ export default function Home({
                                 onClick={() => onOpenManageCategory(focusCategory.id)}
                               >
                                 Ajouter une action
-                              </button>
-                            </>
-                          ) : null}
-                        </div>
-                      ) : !hasActiveHabits ? (
-                        <div className="sectionSub" style={{ marginTop: 8 }}>
-                          Actions liées détectées, mais aucune n’est active (statut).
-                          {canManageCategory ? (
-                            <>
-                              {" "}
-                              <button
-                                className="linkBtn"
-                                type="button"
-                                onClick={() => onOpenManageCategory(focusCategory.id)}
-                              >
-                                Activer dans Gérer
                               </button>
                             </>
                           ) : null}

@@ -14,7 +14,7 @@ import { normalizeCreationDraft } from "../creation/creationDraft";
 const STEP_LABELS = {
   [STEP_CATEGORY]: "Catégorie",
   [STEP_OUTCOME]: "Objectif",
-  [STEP_HABITS]: "Habitudes",
+  [STEP_HABITS]: "Actions",
   [STEP_RHYTHM]: "Rythme",
   [STEP_REVIEW]: "Vérification",
 };
@@ -93,7 +93,7 @@ export default function CreateV2({ data, onBack, onOpenStep, onUseLegacyFlow }) 
 
   const stepRightLabels = {
     [STEP_OUTCOME]: `${outcomesCount} objectif${outcomesCount > 1 ? "s" : ""}`,
-    [STEP_HABITS]: `${habitsCount} habitude${habitsCount > 1 ? "s" : ""}`,
+    [STEP_HABITS]: `${habitsCount} action${habitsCount > 1 ? "s" : ""}`,
     [STEP_RHYTHM]: rhythmOk ? "OK" : "À faire",
   };
 

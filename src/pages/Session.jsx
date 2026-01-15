@@ -5,6 +5,7 @@ import { todayKey } from "../utils/dates";
 import {
   finishSessionForDate,
   getSessionByDate,
+  getSessionsForDate,
   skipSessionForDate,
   updateSessionTimerForDate,
 } from "../logic/sessions";
@@ -18,6 +19,21 @@ function formatElapsed(ms) {
   const minutes = Math.floor(totalSec / 60);
   const seconds = totalSec % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function getSessionSortKey(session) {
+  if (!session) return 0;
+  const status = session.status;
+  const statusRank = status === "partial" ? 3 : status === "done" ? 2 : status === "skipped" ? 1 : 0;
+  const raw =
+    session.finishedAt ||
+    session.startedAt ||
+    session.startAt ||
+    session.timerStartedAt ||
+    "";
+  const ts = new Date(raw).getTime();
+  const safeTs = Number.isFinite(ts) ? ts : 0;
+  return statusRank * 1_000_000_000_000 + safeTs;
 }
 
 export default function Session({ data, setData, onBack, onOpenLibrary, categoryId, dateKey }) {
@@ -53,12 +69,33 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
 
   const [tick, setTick] = useState(Date.now());
 
+  const sessionsForDay = useMemo(
+    () => getSessionsForDate({ sessions }, effectiveDateKey),
+    [sessions, effectiveDateKey]
+  );
+
+  const sessionMatch = useMemo(() => {
+    if (!sessionsForDay.length) return null;
+    if (!sessionCategoryId) return sessionsForDay[0] || null;
+    const byCategory = sessionsForDay.filter((s) => {
+      const objId = typeof s?.objectiveId === "string" ? s.objectiveId : null;
+      const obj = objId ? goals.find((g) => g.id === objId) || null : null;
+      if (obj?.categoryId && obj.categoryId === sessionCategoryId) return true;
+      const habitId = Array.isArray(s?.habitIds) ? s.habitIds.find(Boolean) : null;
+      const habit = habitId ? goals.find((g) => g.id === habitId) || null : null;
+      return habit?.categoryId === sessionCategoryId;
+    });
+    if (!byCategory.length) return sessionsForDay[0] || null;
+    return byCategory.reduce((best, cur) => (getSessionSortKey(cur) >= getSessionSortKey(best) ? cur : best));
+  }, [sessionsForDay, sessionCategoryId, goals]);
+
   const session = useMemo(() => {
+    if (sessionMatch) return sessionMatch;
     if (objectiveIdForSession) {
       return getSessionByDate({ sessions }, effectiveDateKey, objectiveIdForSession);
     }
     return getSessionByDate({ sessions }, effectiveDateKey, null);
-  }, [sessions, effectiveDateKey, objectiveIdForSession]);
+  }, [sessionMatch, sessions, effectiveDateKey, objectiveIdForSession]);
   const isRunning = Boolean(session && session.status === "partial" && session.timerRunning);
   const isEditable = Boolean(session && session.status === "partial");
   useEffect(() => {
@@ -359,13 +396,13 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
               </div>
             ) : (
               <div className="mt12 col">
-                <div className="small2">Aucune action disponible pour cette session.</div>
+                <div className="small2">Aucune action sélectionnée pour cette session.</div>
                 <div className="mt10">
                   <Button
                     variant="ghost"
                     onClick={typeof onOpenLibrary === "function" ? onOpenLibrary : onBack}
                   >
-                    Aller à Bibliothèque
+                    Choisir des actions
                   </Button>
                 </div>
               </div>

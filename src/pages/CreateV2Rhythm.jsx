@@ -108,7 +108,7 @@ export default function CreateV2Rhythm({ data, setData, onBack, onNext, onCancel
       items.push({
         id: h.id,
         type: "habit",
-        title: h.title || "Habitude",
+        title: h.title || "Action",
         outcomeId: h.outcomeId || "",
       });
     });
@@ -236,7 +236,7 @@ export default function CreateV2Rhythm({ data, setData, onBack, onNext, onCancel
       const linkedDays = getOutcomeDays(item.outcomeId);
       windows.push(
         ...buildWindows(item, null, {
-          title: item.title || "Habitude",
+          title: item.title || "Action",
           categoryName,
           source: "draft",
         }, linkedDays)

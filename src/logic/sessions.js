@@ -1,6 +1,8 @@
 import { uid } from "../utils/helpers";
 import { incHabit } from "./habits";
 import { todayKey } from "../utils/dates";
+import { upsertOccurrence } from "./occurrences";
+import { resolveGoalType } from "../utils/goalType";
 
 const STATUSES = new Set(["done", "partial", "skipped"]);
 
@@ -140,6 +142,87 @@ function applyDoneHabitsToChecks(state, dateKey, doneHabitIds) {
   return next;
 }
 
+function pickOccurrenceStart(occurrences, goalId, dateKey, preferredStart) {
+  const matches = occurrences.filter((o) => o && o.goalId === goalId && o.date === dateKey);
+  if (!matches.length) return preferredStart || "";
+  if (preferredStart && matches.some((o) => o.start === preferredStart)) return preferredStart;
+  const sorted = matches
+    .map((o) => o.start)
+    .filter(Boolean)
+    .sort();
+  return sorted[0] || preferredStart || "";
+}
+
+function syncOccurrencesForDoneHabits(state, dateKey, doneHabitIds) {
+  if (!state || !dateKey || !Array.isArray(doneHabitIds) || doneHabitIds.length === 0) return state;
+  const goals = Array.isArray(state.goals) ? state.goals : [];
+  let occurrences = Array.isArray(state.occurrences) ? state.occurrences : [];
+  const key = normalizeDateKey(dateKey);
+  if (!key) return state;
+
+  for (const habitId of doneHabitIds) {
+    const goal = goals.find((g) => g && g.id === habitId);
+    if (!goal || resolveGoalType(goal) !== "PROCESS") continue;
+    const schedule = goal.schedule && typeof goal.schedule === "object" ? goal.schedule : null;
+    const timeSlots = Array.isArray(schedule?.timeSlots) ? schedule.timeSlots.filter(Boolean) : [];
+    const preferredStart = timeSlots[0] || "";
+    const start = pickOccurrenceStart(occurrences, habitId, key, preferredStart) || "00:00";
+    const durationMinutes = Number.isFinite(schedule?.durationMinutes)
+      ? schedule.durationMinutes
+      : Number.isFinite(goal.sessionMinutes)
+        ? goal.sessionMinutes
+        : null;
+    occurrences = upsertOccurrence(
+      habitId,
+      key,
+      start,
+      durationMinutes,
+      { status: "done" },
+      { occurrences }
+    );
+  }
+
+  return { ...state, occurrences };
+}
+
+function getSessionHabitIds(session) {
+  const ids = normalizeIdList(session?.habitIds);
+  if (session?.habitId && !ids.includes(session.habitId)) ids.push(session.habitId);
+  return ids;
+}
+
+function syncOccurrencesForSkippedHabits(state, dateKey, habitIds) {
+  if (!state || !dateKey || !Array.isArray(habitIds) || habitIds.length === 0) return state;
+  const goals = Array.isArray(state.goals) ? state.goals : [];
+  let occurrences = Array.isArray(state.occurrences) ? state.occurrences : [];
+  const key = normalizeDateKey(dateKey);
+  if (!key) return state;
+
+  for (const habitId of habitIds) {
+    const goal = goals.find((g) => g && g.id === habitId);
+    if (!goal || resolveGoalType(goal) !== "PROCESS") continue;
+    const schedule = goal.schedule && typeof goal.schedule === "object" ? goal.schedule : null;
+    const timeSlots = Array.isArray(schedule?.timeSlots) ? schedule.timeSlots.filter(Boolean) : [];
+    const preferredStart = timeSlots[0] || "";
+    const start = pickOccurrenceStart(occurrences, habitId, key, preferredStart) || "00:00";
+    const durationMinutes = Number.isFinite(schedule?.durationMinutes)
+      ? schedule.durationMinutes
+      : Number.isFinite(goal.sessionMinutes)
+        ? goal.sessionMinutes
+        : null;
+    occurrences = upsertOccurrence(
+      habitId,
+      key,
+      start,
+      durationMinutes,
+      { status: "skipped" },
+      { occurrences }
+    );
+  }
+
+  return { ...state, occurrences };
+}
+
 export function getSessionsForDate(state, dateKey) {
   if (!state) return [];
   const list = Array.isArray(state.sessions) ? state.sessions : [];
@@ -254,7 +337,8 @@ export function finishSessionForDate(state, dateKey, payload = {}) {
   const nextSessions = list.slice();
   nextSessions[idx] = finished;
   const nextState = { ...state, sessions: nextSessions };
-  return applyDoneHabitsToChecks(nextState, key, doneHabitIds);
+  const withChecks = applyDoneHabitsToChecks(nextState, key, doneHabitIds);
+  return syncOccurrencesForDoneHabits(withChecks, key, doneHabitIds);
 }
 
 export function skipSessionForDate(state, dateKey, payload = {}) {
@@ -277,7 +361,9 @@ export function skipSessionForDate(state, dateKey, payload = {}) {
   });
   const nextSessions = list.slice();
   nextSessions[idx] = skipped;
-  return { ...state, sessions: nextSessions };
+  const nextState = { ...state, sessions: nextSessions };
+  const habitIds = getSessionHabitIds(current);
+  return syncOccurrencesForSkippedHabits(nextState, key, habitIds);
 }
 
 export function startSession(state, habitId, dateKey, objectiveId, fallbackMinutes) {

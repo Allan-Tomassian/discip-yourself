@@ -470,6 +470,17 @@ export default function App() {
         };
       }
       const shouldReset = prevUi.createDraftWasCompleted;
+      if (shouldReset) {
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            createDraft: createEmptyDraft(),
+            createDraftWasCanceled: false,
+            createDraftWasCompleted: false,
+          },
+        };
+      }
       const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
       const prevGoals = Array.isArray(prev.goals) ? prev.goals : [];
       let resolvedCategoryId = categoryId || null;

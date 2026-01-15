@@ -186,7 +186,7 @@ function normalizeLegacyHabit(rawHabit, index = 0) {
   if (!h.id) h.id = uid();
   if (typeof h.title !== "string" || !h.title.trim()) {
     if (typeof h.name === "string" && h.name.trim()) h.title = h.name.trim();
-    else h.title = `Habitude ${index + 1}`;
+    else h.title = `Action ${index + 1}`;
   }
   if (typeof h.cadence !== "string") h.cadence = "WEEKLY";
   if (!Number.isFinite(h.target)) h.target = 1;
@@ -245,7 +245,7 @@ function mergeLegacyHabitsIntoGoals(state) {
     additions.push({
       id: habit.id,
       categoryId,
-      title: habit.title || "Habitude",
+      title: habit.title || "Action",
       type: "PROCESS",
       planType: "ACTION",
       kind: "ACTION",
@@ -610,8 +610,8 @@ export function demoData() {
       },
     ],
     habits: [
-      { id: uid(), categoryId: categories[0].id, title: "Habitude 1", cadence: "WEEKLY", target: 2 },
-      { id: uid(), categoryId: categories[1].id, title: "Habitude 2", cadence: "DAILY", target: 1 },
+      { id: uid(), categoryId: categories[0].id, title: "Action 1", cadence: "WEEKLY", target: 2 },
+      { id: uid(), categoryId: categories[1].id, title: "Action 2", cadence: "DAILY", target: 1 },
     ],
     reminders: [],
     sessions: [],

@@ -83,7 +83,7 @@ export default function CreateV2Habits({ data, setData, onBack, onNext, onCancel
       headerTitle="Créer"
       headerSubtitle={
         <>
-          <span style={{ opacity: 0.6 }}>3.</span> Habitudes · {outcomeLabel}
+          <span style={{ opacity: 0.6 }}>3.</span> Actions · {outcomeLabel}
         </>
       }
       backgroundImage={backgroundImage}
@@ -96,7 +96,7 @@ export default function CreateV2Habits({ data, setData, onBack, onNext, onCancel
           <div className="p18 col" style={{ gap: 12 }}>
             <div className="stack stackGap6">
               <div className="small2" style={{ opacity: 0.7 }}>
-                Ajouter des habitudes pour...
+                Ajouter des actions pour...
               </div>
               <Select
                 value={activeOutcomeId}
@@ -114,7 +114,7 @@ export default function CreateV2Habits({ data, setData, onBack, onNext, onCancel
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Nouvelle habitude"
+                placeholder="Nouvelle action"
               />
               <Button onClick={addHabit} disabled={!title.trim()}>
                 Ajouter
@@ -135,7 +135,7 @@ export default function CreateV2Habits({ data, setData, onBack, onNext, onCancel
                   </Button>
                 </div>
               ))}
-              {!habits.length ? <div className="small2">Ajoute au moins une habitude.</div> : null}
+              {!habits.length ? <div className="small2">Ajoute au moins une action.</div> : null}
             </div>
             <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
               <Button

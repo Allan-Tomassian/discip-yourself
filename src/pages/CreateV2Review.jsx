@@ -3,8 +3,11 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import { normalizeCreationDraft, createEmptyDraft } from "../creation/creationDraft";
 import { createGoal } from "../logic/goals";
+import { upsertOccurrence } from "../logic/occurrences";
 import { uid } from "../utils/helpers";
+import { addDays, todayKey } from "../utils/dates";
 import { setPrimaryCategory, setPrimaryGoalForCategory } from "../logic/priority";
+import { resolveGoalType } from "../utils/goalType";
 
 const DOWS = [
   { id: 1, label: "Lun" },
@@ -42,6 +45,15 @@ function formatDays(days) {
 function formatDurationMinutes(value) {
   if (!Number.isFinite(value) || value <= 0) return "—";
   return `${value} min`;
+}
+
+function appDowFromDateKey(key) {
+  if (typeof key !== "string") return null;
+  const [y, m, d] = key.split("-").map((v) => parseInt(v, 10));
+  if (!y || !m || !d) return null;
+  const date = new Date(y, m - 1, d, 12, 0, 0);
+  const js = date.getDay();
+  return js === 0 ? 7 : js;
 }
 
 function buildSchedule(item, daysOverride) {
@@ -170,6 +182,7 @@ export default function CreateV2Review({ data, setData, onBack, onDone, onCancel
       if (!categoryId) return prev;
 
       const outcomeIdMap = new Map();
+      const createdProcessIds = [];
       let nextState = next;
       for (const outcome of outcomes) {
         if (!outcome || !outcome.id) continue;
@@ -216,8 +229,9 @@ export default function CreateV2Review({ data, setData, onBack, onDone, onCancel
         if (!outcomeId) continue;
         const outcomeItem = outcomeItems.get(habit.outcomeId) || null;
         const schedule = buildSchedule(item, outcomeItem?.daysOfWeek || []);
+        const habitId = uid();
         finalState = createGoal(finalState, {
-          id: uid(),
+          id: habitId,
           categoryId,
           title: habit.title,
           type: "PROCESS",
@@ -231,6 +245,43 @@ export default function CreateV2Review({ data, setData, onBack, onDone, onCancel
           sessionMinutes: schedule?.durationMinutes || null,
           schedule: schedule || undefined,
         });
+        createdProcessIds.push(habitId);
+      }
+
+      if (createdProcessIds.length) {
+        const baseDate = new Date();
+        const nextOccurrences = Array.isArray(finalState.occurrences) ? finalState.occurrences : [];
+        let occurrences = nextOccurrences;
+        for (let offset = 0; offset <= 14; offset += 1) {
+          const dateKey = todayKey(addDays(baseDate, offset));
+          const dow = appDowFromDateKey(dateKey);
+          if (!dow) continue;
+          for (const goalId of createdProcessIds) {
+            const goal = finalState.goals.find((g) => g.id === goalId);
+            if (!goal || resolveGoalType(goal) !== "PROCESS") continue;
+            const schedule = goal.schedule && typeof goal.schedule === "object" ? goal.schedule : null;
+            const days = Array.isArray(schedule?.daysOfWeek) ? schedule.daysOfWeek : [];
+            if (days.length && !days.includes(dow)) continue;
+            const timeSlots = Array.isArray(schedule?.timeSlots) ? schedule.timeSlots.filter(Boolean) : [];
+            if (!timeSlots.length) continue;
+            const durationMinutes = Number.isFinite(schedule?.durationMinutes)
+              ? schedule.durationMinutes
+              : Number.isFinite(goal.sessionMinutes)
+                ? goal.sessionMinutes
+                : null;
+            for (const start of timeSlots) {
+              occurrences = upsertOccurrence(
+                goalId,
+                dateKey,
+                start,
+                durationMinutes,
+                { status: "planned" },
+                { occurrences }
+              );
+            }
+          }
+        }
+        finalState = { ...finalState, occurrences };
       }
 
       finalState = {
@@ -325,7 +376,7 @@ export default function CreateV2Review({ data, setData, onBack, onDone, onCancel
             </div>
             <div className="stack stackGap8" style={{ marginTop: 4 }}>
               <div className="small2" style={{ opacity: 0.7 }}>
-                Habitudes
+                Actions
               </div>
               {habits.map((habit) => {
                 const outcomeLabel =

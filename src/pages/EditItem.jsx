@@ -8,6 +8,7 @@ import { createDefaultGoalSchedule } from "../logic/state";
 import { updateGoal } from "../logic/goals";
 import { setPrimaryGoalForCategory } from "../logic/priority";
 import { resolveGoalType } from "../utils/goalType";
+import { upsertOccurrence } from "../logic/occurrences";
 
 const PRIORITY_OPTIONS = [
   { value: "prioritaire", label: "Prioritaire" },
@@ -171,6 +172,43 @@ function buildPlanSignature(goal, occurrencesByGoal) {
     .sort()
     .join(",");
   return `${goal.planType || ""}|${goal.startAt || ""}|${scheduleSig}|${occurrenceSig}`;
+}
+
+function appDowFromDateKey(key) {
+  if (typeof key !== "string") return null;
+  const [y, m, d] = key.split("-").map((v) => parseInt(v, 10));
+  if (!y || !m || !d) return null;
+  const date = new Date(y, m - 1, d, 12, 0, 0);
+  const js = date.getDay();
+  return js === 0 ? 7 : js;
+}
+
+function upsertPlannedOccurrencesForGoal(goal, occurrences) {
+  if (!goal || resolveGoalType(goal) !== "PROCESS") return occurrences;
+  const schedule = goal.schedule && typeof goal.schedule === "object" ? goal.schedule : null;
+  const timeSlots = Array.isArray(schedule?.timeSlots) ? schedule.timeSlots.filter(Boolean) : [];
+  if (!timeSlots.length) return occurrences;
+  const days = Array.isArray(schedule?.daysOfWeek) ? schedule.daysOfWeek : [];
+  const durationMinutes = Number.isFinite(schedule?.durationMinutes)
+    ? schedule.durationMinutes
+    : Number.isFinite(goal.sessionMinutes)
+      ? goal.sessionMinutes
+      : null;
+
+  let next = Array.isArray(occurrences) ? occurrences : [];
+  const baseDate = new Date();
+  for (let offset = 0; offset <= 14; offset += 1) {
+    const dateKey = todayKey(addDays(baseDate, offset));
+    const dow = appDowFromDateKey(dateKey);
+    if (!dow) continue;
+    if (days.length && !days.includes(dow)) continue;
+    for (const start of timeSlots) {
+      const existing = next.find((o) => o && o.goalId === goal.id && o.date === dateKey && o.start === start);
+      const patch = existing ? {} : { status: "planned" };
+      next = upsertOccurrence(goal.id, dateKey, start, durationMinutes, patch, { occurrences: next });
+    }
+  }
+  return next;
 }
 
 function updateRemindersForGoal(state, goalId, config, fallbackLabel, options = {}) {
@@ -482,6 +520,13 @@ export default function EditItem({ data, setData, editItem, onBack }) {
           const label = updates.title || item.title || "Rappel";
           const nextReminders = updateRemindersForGoal(next, goalId, reminderConfig, label, { forceNewIds: planChanged });
           next = { ...next, reminders: nextReminders };
+        }
+        if (planChanged && type !== "OUTCOME") {
+          const refreshedGoal = Array.isArray(next?.goals) ? next.goals.find((g) => g?.id === goalId) : null;
+          const updatedOccurrences = upsertPlannedOccurrencesForGoal(refreshedGoal, next.occurrences);
+          if (updatedOccurrences !== next.occurrences) {
+            next = { ...next, occurrences: updatedOccurrences };
+          }
         }
         return next;
       });
