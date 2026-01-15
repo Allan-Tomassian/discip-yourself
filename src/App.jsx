@@ -34,6 +34,7 @@ import { useTour } from "./tour/useTour";
 import TourOverlay from "./tour/TourOverlay";
 import { createEmptyDraft, normalizeCreationDraft } from "./creation/creationDraft";
 import { STEP_CATEGORY, STEP_HABITS, STEP_OUTCOME, isValidCreationStep } from "./creation/creationSchema";
+import DiagnosticOverlay from "./components/DiagnosticOverlay";
 
 function runSelfTests() {
   // minimal sanity
@@ -803,10 +804,20 @@ export default function App() {
   };
 
   if (showPlanStep && onboardingCompleted) {
-    return <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />;
+    return (
+      <>
+        <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />
+        <DiagnosticOverlay data={safeData} tab={tab} />
+      </>
+    );
   }
   if (!onboardingCompleted) {
-    return <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />;
+    return (
+      <>
+        <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />
+        <DiagnosticOverlay data={safeData} tab={tab} />
+      </>
+    );
   }
   if (shouldShowEmpty) {
     const empty = getEmptyStateConfig(safeData);
@@ -868,6 +879,7 @@ export default function App() {
             onAnchorFound={tour.handleAnchorFound}
           />
         ) : null}
+        <DiagnosticOverlay data={safeData} tab={tab} />
       </>
     );
   }
@@ -1322,6 +1334,7 @@ export default function App() {
           onAnchorFound={tour.handleAnchorFound}
         />
       ) : null}
+      <DiagnosticOverlay data={safeData} tab={tab} />
     </>
   );
 }

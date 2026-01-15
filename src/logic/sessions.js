@@ -62,6 +62,9 @@ export function normalizeSession(rawSession) {
   if (typeof s.finishedAt !== "string") s.finishedAt = "";
   s.startAt = s.startedAt;
   s.habitIds = normalizeIdList(s.habitIds);
+  if (s.habitId && !s.habitIds.includes(s.habitId)) {
+    s.habitIds = [...s.habitIds, s.habitId];
+  }
   const doneBase = Array.isArray(s.doneHabits) ? s.doneHabits : s.doneHabitIds;
   const doneNormalized = normalizeIdList(doneBase);
   s.doneHabitIds = doneNormalized;
