@@ -1,5 +1,5 @@
 import { uid } from "../utils/helpers";
-import { normalizeLocalDateKey } from "../utils/dateKey";
+import { normalizeLocalDateKey, toLocalDateKey } from "../utils/dateKey";
 
 const STATUS_VALUES = new Set(["planned", "done", "skipped"]);
 
@@ -15,10 +15,7 @@ function toHM(date) {
 
 function dateKeyFromDate(d) {
   // expects Date
-  const y = d.getFullYear();
-  const m = pad2(d.getMonth() + 1);
-  const day = pad2(d.getDate());
-  return `${y}-${m}-${day}`;
+  return toLocalDateKey(d);
 }
 
 function appDowFromDate(d) {

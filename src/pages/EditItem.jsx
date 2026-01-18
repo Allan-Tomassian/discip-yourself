@@ -3,11 +3,12 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input, Select, Textarea } from "../components/UI";
 import { safeConfirm } from "../utils/dialogs";
 import { todayKey } from "../utils/dates";
+import { toLocalDateKey } from "../utils/dateKey";
 import { uid } from "../utils/helpers";
 import { createDefaultGoalSchedule } from "../logic/state";
 import { updateGoal } from "../logic/goals";
 import { setPrimaryGoalForCategory } from "../logic/priority";
-import { resolveGoalType } from "../utils/goalType";
+import { resolveGoalType } from "../domain/goalType";
 import { upsertOccurrence } from "../logic/occurrences";
 
 const PRIORITY_OPTIONS = [
@@ -66,7 +67,7 @@ function parseStartAt(value) {
   if (!Number.isNaN(dt.getTime())) {
     const pad = (n) => String(n).padStart(2, "0");
     return {
-      date: `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`,
+      date: toLocalDateKey(dt),
       time: `${pad(dt.getHours())}:${pad(dt.getMinutes())}`,
     };
   }

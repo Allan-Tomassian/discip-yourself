@@ -25,10 +25,10 @@ import CategoryProgress from "./pages/CategoryProgress";
 import Session from "./pages/Session";
 import Pilotage from "./pages/Pilotage";
 import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
-import { todayKey } from "./utils/dates";
+import { fromLocalDateKey, toLocalDateKey, todayLocalKey } from "./utils/dateKey";
 import { isPrimaryCategory, normalizePriorities } from "./logic/priority";
 import { getCategoryCounts } from "./logic/pilotage";
-import { resolveGoalType } from "./utils/goalType";
+import { resolveGoalType } from "./domain/goalType";
 import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
 import { useTour } from "./tour/useTour";
 import TourOverlay from "./tour/TourOverlay";
@@ -42,18 +42,11 @@ function runSelfTests() {
 }
 
 function parseLocalDateKey(key) {
-  if (typeof key !== "string") return new Date();
-  const [y, m, d] = key.split("-").map((v) => parseInt(v, 10));
-  if (!y || !m || !d) return new Date();
-  return new Date(y, m - 1, d, 12, 0, 0);
+  return fromLocalDateKey(key);
 }
 
 function localDateKey(d = new Date()) {
-  const dateObj = d instanceof Date && !Number.isNaN(d.getTime()) ? d : new Date();
-  const y = dateObj.getFullYear();
-  const m = String(dateObj.getMonth() + 1).padStart(2, "0");
-  const day = String(dateObj.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return toLocalDateKey(d);
 }
 
 function appDowFromDateKey(key) {
@@ -1298,7 +1291,7 @@ export default function App() {
                         startSession(
                           prev,
                           target.id,
-                          todayKey(),
+                          todayLocalKey(),
                           typeof target.parentId === "string" ? target.parentId : null,
                           Number.isFinite(target.sessionMinutes) ? target.sessionMinutes : null
                         )

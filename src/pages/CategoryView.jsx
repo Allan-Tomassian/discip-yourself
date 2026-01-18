@@ -6,7 +6,7 @@ import { getAccentForPage } from "../utils/_theme";
 import { safeConfirm, safePrompt } from "../utils/dialogs";
 import { addDays, startOfWeekKey, todayKey } from "../utils/dates";
 import { isPrimaryCategory, isPrimaryGoal, setPrimaryCategory } from "../logic/priority";
-import { resolveGoalType } from "../utils/goalType";
+import { resolveGoalType } from "../domain/goalType";
 
 // TOUR MAP:
 // - primary_action: manage goals/actions in a category

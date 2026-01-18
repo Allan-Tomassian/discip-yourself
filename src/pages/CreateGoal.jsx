@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input, Select } from "../components/UI";
 import { uid } from "../utils/helpers";
+import { toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { createGoal } from "../logic/goals";
 import { setPrimaryGoalForCategory } from "../logic/priority";
 
@@ -37,13 +38,7 @@ export default function CreateGoal({ data, setData, onCancel, onDone, initialCat
 
   // Planning (objective rhythm)
   const [planType, setPlanType] = useState("weekly"); // weekly | daily | custom
-  const [planStartDate, setPlanStartDate] = useState(() => {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  });
+  const [planStartDate, setPlanStartDate] = useState(() => todayLocalKey());
   const [planTime, setPlanTime] = useState("09:00");
   const [planDaysOfWeek, setPlanDaysOfWeek] = useState([1, 3, 5]); // 1=Mon..7=Sun
 
@@ -75,12 +70,6 @@ export default function CreateGoal({ data, setData, onCancel, onDone, initialCat
     return d;
   }
 
-  function formatDateKey(dateObj) {
-    const yyyy = dateObj.getFullYear();
-    const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
-    const dd = String(dateObj.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  }
 
   function jsDowToAppDow(jsDow) {
     // JS: 0=Sun..6=Sat -> App: 1=Mon..7=Sun
@@ -96,7 +85,7 @@ export default function CreateGoal({ data, setData, onCancel, onDone, initialCat
     const result = [];
     for (let i = 0; i < 30; i += 1) {
       const d = addDays(start, i);
-      const key = formatDateKey(d);
+      const key = toLocalDateKey(d);
       if (planType === "daily") {
         result.push(key);
         continue;

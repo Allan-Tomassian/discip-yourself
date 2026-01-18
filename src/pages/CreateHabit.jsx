@@ -3,7 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input, Select } from "../components/UI";
 import { uid } from "../utils/helpers";
 import { createGoal } from "../logic/goals";
-import { resolveGoalType } from "../utils/goalType";
+import { resolveGoalType } from "../domain/goalType";
 
 // TOUR MAP:
 // - primary_action: create action

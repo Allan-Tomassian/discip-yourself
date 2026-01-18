@@ -6,6 +6,9 @@ export function resolveGoalType(goal) {
   const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
   if (legacy === "OUTCOME") return "OUTCOME";
   if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
+  const planType = typeof goal?.planType === "string" ? goal.planType.toUpperCase() : "";
+  if (planType === "STATE") return "OUTCOME";
+  if (planType === "ACTION" || planType === "ONE_OFF") return "PROCESS";
   return "PROCESS";
 }
 

@@ -5,6 +5,7 @@ import { normalizeGoalsState } from "./goals";
 import { normalizeReminder } from "./reminders";
 import { normalizeSession } from "./sessions";
 import { toLocalDateKey } from "../utils/dateKey";
+import { resolveGoalType, isOutcome, isProcess } from "../domain/goalType";
 import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "./blocks/registry";
 import { ensureBlocksConfig } from "./blocks/ensureBlocksConfig";
 import { validateBlocksState } from "./blocks/validateBlocksState";
@@ -109,20 +110,17 @@ function inferMeasureTypeFromUnit(unit) {
 function backfillGoalLegacyFields(rawGoal) {
   if (!rawGoal || typeof rawGoal !== "object") return rawGoal;
   const g = { ...rawGoal };
-  const rawKind = typeof g.kind === "string" ? g.kind.toUpperCase() : "";
   const rawType = typeof g.type === "string" ? g.type.toUpperCase() : "";
   const rawPlan = typeof g.planType === "string" ? g.planType.toUpperCase() : "";
+  const resolvedType = resolveGoalType(g);
 
   if (!rawType) {
-    if (rawKind === "OUTCOME") g.type = "OUTCOME";
-    else if (rawKind === "ACTION") g.type = "PROCESS";
-    else if (rawPlan === "STATE") g.type = "OUTCOME";
-    else if (rawPlan === "ACTION" || rawPlan === "ONE_OFF") g.type = "PROCESS";
+    g.type = resolvedType;
   }
 
   if (!rawPlan) {
-    if (g.type === "OUTCOME") g.planType = "STATE";
-    else if (g.type === "PROCESS") g.planType = g.oneOffDate ? "ONE_OFF" : "ACTION";
+    if (resolvedType === "OUTCOME") g.planType = "STATE";
+    else if (resolvedType === "PROCESS") g.planType = g.oneOffDate ? "ONE_OFF" : "ACTION";
   }
 
   if (!g.freqUnit || !Number.isFinite(g.freqCount)) {
@@ -187,15 +185,6 @@ function normalizeLegacyHabit(rawHabit, index = 0) {
   return h;
 }
 
-function resolveGoalTypeLegacy(goal) {
-  const raw = (goal?.type || goal?.planType || goal?.kind || "").toString().toUpperCase();
-  if (raw === "OUTCOME" || raw === "PROCESS") return raw;
-  if (raw === "STATE") return "OUTCOME";
-  if (raw === "ACTION" || raw === "ONE_OFF") return "PROCESS";
-  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
-  return "";
-}
-
 function mergeLegacyHabitsIntoGoals(state) {
   if (!state || typeof state !== "object") return state;
   const goals = Array.isArray(state.goals) ? state.goals : [];
@@ -204,7 +193,7 @@ function mergeLegacyHabitsIntoGoals(state) {
 
   const existingGoalIds = new Set(goals.map((g) => g?.id).filter(Boolean));
   const existingProcessIds = new Set(
-    goals.filter((g) => resolveGoalTypeLegacy(g) === "PROCESS").map((g) => g?.id).filter(Boolean)
+    goals.filter((g) => resolveGoalType(g) === "PROCESS").map((g) => g?.id).filter(Boolean)
   );
 
   const categories = Array.isArray(state.categories) ? state.categories : [];
@@ -232,7 +221,7 @@ function mergeLegacyHabitsIntoGoals(state) {
     if (!parentId && category?.mainGoalId) parentId = category.mainGoalId;
     if (parentId && goalsById.has(parentId)) {
       const parent = goalsById.get(parentId);
-      if (resolveGoalTypeLegacy(parent) !== "OUTCOME" || parent?.categoryId !== categoryId) parentId = null;
+      if (!isOutcome(parent) || parent?.categoryId !== categoryId) parentId = null;
     }
 
     additions.push({
@@ -276,35 +265,30 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
     if (fallbackCategoryId) g.categoryId = fallbackCategoryId;
   }
 
-  const rawType = (g.type || g.planType || g.kind || "").toString().toUpperCase();
-  const hasMetric = g.metric && typeof g.metric === "object";
-  const isOutcome = rawType === "OUTCOME" || rawType === "STATE" || hasMetric;
-  const isProcess = rawType === "PROCESS" || rawType === "ACTION" || rawType === "ONE_OFF";
-
-  const inferredPlanType = rawType === "ONE_OFF" ? "ONE_OFF" : isProcess ? "ACTION" : "STATE";
+  const goalType = resolveGoalType(g);
+  const outcome = goalType === "OUTCOME";
+  const process = goalType === "PROCESS";
+  const inferredPlanType = g.oneOffDate ? "ONE_OFF" : "ACTION";
 
   // Canonical semantics:
   // - OUTCOME = objective (STATE) : can carry metric/deadline/notes, but never scheduling/frequency/session/parent.
   // - PROCESS = habit (ACTION or ONE_OFF) : can carry frequency/session/oneOffDate, but never metric/deadline/notes.
-  if (isOutcome) {
-    g.type = "OUTCOME";
-    g.planType = "STATE";
-    g.kind = "OUTCOME";
-  } else if (isProcess) {
-    g.type = "PROCESS";
-    g.planType = inferredPlanType;
-    g.kind = "ACTION";
-  }
+  if (!g.type && outcome) g.type = "OUTCOME";
+  if (!g.type && process) g.type = "PROCESS";
+  if (!g.planType && outcome) g.planType = "STATE";
+  if (!g.planType && process) g.planType = inferredPlanType;
+  if (!g.kind && outcome) g.kind = "OUTCOME";
+  if (!g.kind && process) g.kind = "ACTION";
 
   if (!g.title) g.title = "Objectif";
-  if (!isOutcome) {
+  if (!outcome) {
     if (!g.cadence) g.cadence = "WEEKLY";
     if (typeof g.target !== "number") g.target = 1;
   }
 
   if (typeof g.templateId !== "string") g.templateId = null;
-  if (isOutcome) g.templateType = "GOAL";
-  else if (isProcess) g.templateType = "HABIT";
+  if (outcome) g.templateType = "GOAL";
+  else if (process) g.templateType = "HABIT";
   else if (typeof g.templateType !== "string") g.templateType = null;
 
   // Optional: deadline as ISO date (YYYY-MM-DD). Empty string means "no deadline yet".
@@ -323,7 +307,7 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
   // Strict separation:
   // OUTCOME (objective): keep metric/deadline/notes, but remove any habit/scheduling fields.
   // PROCESS (habit): keep planning/frequency fields, but remove any outcome fields.
-  if (isOutcome) {
+  if (outcome) {
     // Remove habit fields
     g.cadence = undefined;
     g.target = undefined;
@@ -349,7 +333,7 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
     }
   }
 
-  if (isProcess) {
+  if (process) {
     // Remove outcome fields
     g.deadline = "";
     g.metric = null;
@@ -781,8 +765,7 @@ export function migrate(prev) {
     const byId = new Map(next.goals.map((g) => [g.id, g]));
     next.goals = next.goals.map((g) => {
       if (!g || typeof g !== "object") return g;
-      const t = (g.type || g.kind || "").toString().toUpperCase();
-      if (t !== "PROCESS") return g;
+      if (!isProcess(g)) return g;
 
       const rawParent = typeof g.parentId === "string" ? g.parentId.trim() : "";
       if (!rawParent) {
@@ -791,8 +774,7 @@ export function migrate(prev) {
       }
 
       const parent = byId.get(rawParent);
-      const parentType = (parent?.type || parent?.kind || "").toString().toUpperCase();
-      const parentOk = Boolean(parent && parentType === "OUTCOME" && parent.categoryId && parent.categoryId === g.categoryId);
+      const parentOk = Boolean(parent && isOutcome(parent) && parent.categoryId && parent.categoryId === g.categoryId);
 
       if (!parentOk) {
         // Do NOT delete the habit; just detach it.
@@ -809,8 +791,7 @@ export function migrate(prev) {
   // Enforce: mainGoalId reflects only the OUTCOME with priority === "prioritaire"
   const prioritaireByCategory = new Map();
   for (const g of next.goals) {
-    const t = (g?.type || g?.kind || "").toString().toUpperCase();
-    if (t !== "OUTCOME") continue;
+    if (!isOutcome(g)) continue;
     if (!g.categoryId) continue;
     if (g.priority !== "prioritaire") continue;
 
@@ -826,8 +807,7 @@ export function migrate(prev) {
 
   if (prioritaireByCategory.size) {
     next.goals = next.goals.map((g) => {
-      const t = (g?.type || g?.kind || "").toString().toUpperCase();
-      if (t !== "OUTCOME") return g;
+      if (!isOutcome(g)) return g;
       if (!g.categoryId || g.priority !== "prioritaire") return g;
       const picked = prioritaireByCategory.get(g.categoryId);
       if (picked && picked.id === g.id) return g;
@@ -854,16 +834,10 @@ export function migrate(prev) {
     const whyOk = Boolean((next.profile?.whyText || "").trim());
     const hasCategory = next.categories.length > 0;
 
-    const outcomeIds = new Set(
-      next.goals
-        .filter((g) => (g?.type || g?.kind || "").toString().toUpperCase() === "OUTCOME")
-        .map((g) => g.id)
-    );
+    const outcomeIds = new Set(next.goals.filter((g) => isOutcome(g)).map((g) => g.id));
     const hasOutcome = outcomeIds.size > 0;
 
-    const hasProcess = next.goals.some(
-      (g) => (g?.type || g?.kind || "").toString().toUpperCase() === "PROCESS" && outcomeIds.has(g.parentId)
-    );
+    const hasProcess = next.goals.some((g) => isProcess(g) && outcomeIds.has(g.parentId));
 
     if (step >= 3 && nameOk && whyOk && hasCategory && hasOutcome && hasProcess) {
       next.ui.onboardingCompleted = true;
@@ -887,12 +861,7 @@ export function migrate(prev) {
     const byId = new Map(goals.map((g) => [g.id, g]));
 
     const fixedCategories = cats.map((cat) => {
-      const outcomes = goals.filter(
-        (x) =>
-          (x?.type || x?.kind || "").toString().toUpperCase() === "OUTCOME" &&
-          x.categoryId === cat.id &&
-          x.priority === "prioritaire"
-      );
+      const outcomes = goals.filter((x) => isOutcome(x) && x.categoryId === cat.id && x.priority === "prioritaire");
       if (!outcomes.length) return { ...cat, mainGoalId: null };
 
       const orderScore = (x) => (typeof x.order === "number" ? x.order : Number.POSITIVE_INFINITY);

@@ -22,11 +22,14 @@ export function fromLocalDateKey(key) {
 }
 
 export function normalizeLocalDateKey(key) {
+  if (key instanceof Date) return toLocalDateKey(key);
   if (typeof key !== "string") return "";
   const trimmed = key.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
-  const candidate = trimmed.slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(candidate) ? candidate : "";
+  const candidate = /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : trimmed.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(candidate)) return "";
+  const [y, m, d] = candidate.split("-").map((v) => parseInt(v, 10));
+  const rebuilt = new Date(y, m - 1, d, 12, 0, 0);
+  return toLocalDateKey(rebuilt) === candidate ? candidate : "";
 }
 
 export function todayLocalKey() {

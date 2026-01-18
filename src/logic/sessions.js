@@ -2,7 +2,7 @@ import { uid } from "../utils/helpers";
 import { incHabit } from "./habits";
 import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { upsertOccurrence } from "./occurrences";
-import { resolveGoalType } from "../utils/goalType";
+import { resolveGoalType } from "../domain/goalType";
 
 const STATUSES = new Set(["done", "partial", "skipped"]);
 

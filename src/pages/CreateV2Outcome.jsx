@@ -3,7 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input, Select } from "../components/UI";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_HABITS } from "../creation/creationSchema";
-import { resolveGoalType } from "../utils/goalType";
+import { resolveGoalType } from "../domain/goalType";
 import { uid } from "../utils/helpers";
 
 const MEASURE_OPTIONS = [

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button, Input, Select, Textarea } from "./UI";
 import { todayKey } from "../utils/dates";
+import { toLocalDateKey } from "../utils/dateKey";
 import { createDefaultGoalSchedule } from "../logic/state";
 
 const PRIORITY_OPTIONS = [
@@ -60,7 +61,7 @@ function parseStartAt(value) {
   if (!Number.isNaN(dt.getTime())) {
     const pad = (n) => String(n).padStart(2, "0");
     return {
-      date: `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`,
+      date: toLocalDateKey(dt),
       time: `${pad(dt.getHours())}:${pad(dt.getMinutes())}`,
     };
   }

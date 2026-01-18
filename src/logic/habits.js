@@ -1,6 +1,6 @@
 import { todayKey, startOfWeekKey, yearKey } from "../utils/dates";
 import { clamp } from "../utils/helpers";
-import { resolveGoalType } from "../utils/goalType";
+import { resolveGoalType } from "../domain/goalType";
 
 function getProcessGoals(data) {
   const goals = Array.isArray(data?.goals) ? data.goals : [];

@@ -1,5 +1,5 @@
 import { addDays, startOfWeekKey, todayKey } from "../utils/dates";
-import { resolveGoalType } from "../utils/goalType";
+import { resolveGoalType } from "../domain/goalType";
 
 function parseDateKey(key) {
   if (typeof key !== "string") return null;

@@ -3,7 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input } from "../components/UI";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_REVIEW } from "../creation/creationSchema";
-import { resolveGoalType } from "../utils/goalType";
+import { resolveGoalType } from "../domain/goalType";
 import { buildTimeWindow, windowsOverlap } from "../creation/collision";
 
 const DOWS = [

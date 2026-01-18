@@ -1,6 +1,6 @@
 import { uid } from "../utils/helpers";
 import { todayKey } from "../utils/dates";
-import { resolveGoalType } from "../utils/goalType";
+import { resolveGoalType } from "../domain/goalType";
 
 export const ENABLE_WEB_NOTIFICATIONS = false;
 

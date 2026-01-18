@@ -3,7 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
-import { resolveGoalType } from "../utils/goalType";
+import { resolveGoalType } from "../domain/goalType";
 
 export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
   const safeData = data && typeof data === "object" ? data : {};

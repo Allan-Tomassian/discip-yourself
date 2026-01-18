@@ -3,7 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import Gauge from "../components/Gauge";
 import { getAccentForPage } from "../utils/_theme";
-import { resolveGoalType } from "../utils/goalType";
+import { resolveGoalType } from "../domain/goalType";
 
 const MEASURE_UNITS = {
   money: "€",

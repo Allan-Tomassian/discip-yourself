@@ -1,5 +1,6 @@
 import { toLocalDateKey } from "./dateKey";
 
+// LOCAL DATE KEY ONLY (no UTC)
 export function todayKey(d = new Date()) {
   return toLocalDateKey(d);
 }

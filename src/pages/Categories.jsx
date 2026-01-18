@@ -5,7 +5,7 @@ import { Button, Card, AccentItem } from "../components/UI";
 import SortableBlocks from "../components/SortableBlocks";
 import { getCategoryCounts } from "../logic/pilotage";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
-import { resolveGoalType } from "../utils/goalType";
+import { resolveGoalType } from "../domain/goalType";
 
 // TOUR MAP:
 // - primary_action: open category detail

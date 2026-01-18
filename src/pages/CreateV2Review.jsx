@@ -7,7 +7,7 @@ import { upsertOccurrence } from "../logic/occurrences";
 import { uid } from "../utils/helpers";
 import { addDays, todayKey } from "../utils/dates";
 import { setPrimaryCategory, setPrimaryGoalForCategory } from "../logic/priority";
-import { resolveGoalType } from "../utils/goalType";
+import { resolveGoalType } from "../domain/goalType";
 
 const DOWS = [
   { id: 1, label: "Lun" },

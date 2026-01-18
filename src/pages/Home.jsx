@@ -10,14 +10,14 @@ import {
   getMonthLabelFR,
   startOfMonth,
 } from "../utils/dates";
-import { fromLocalDateKey, toLocalDateKey } from "../utils/dateKey";
+import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { setMainGoal } from "../logic/goals";
 import { getDoneSessionsForDate, getSessionByDate, startSessionForDate } from "../logic/sessions";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { isPrimaryCategory, isPrimaryGoal } from "../logic/priority";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
-import { resolveGoalType } from "../utils/goalType";
+import { resolveGoalType } from "../domain/goalType";
 
 // TOUR MAP:
 // - primary_action: start session (GO) for today
@@ -141,7 +141,7 @@ export default function Home({
   onAddOccurrence,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
-  const selectedDateKey = safeData.ui?.selectedDate || toLocalDateKey(new Date());
+  const selectedDateKey = normalizeLocalDateKey(safeData.ui?.selectedDate) || todayLocalKey();
   const selectedDate = fromLocalDateKey(selectedDateKey);
   const localTodayKey = toLocalDateKey(new Date());
   const selectedStatus =

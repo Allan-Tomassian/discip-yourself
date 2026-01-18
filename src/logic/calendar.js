@@ -5,6 +5,7 @@ import {
   listOccurrencesForGoal,
   updateOccurrence,
 } from "./occurrences";
+import { normalizeLocalDateKey } from "../utils/dateKey";
 
 function resolveOccurrences(source) {
   if (Array.isArray(source)) return source;
@@ -16,7 +17,7 @@ function resolveOccurrences(source) {
 }
 
 function isIsoDateString(value) {
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+  return Boolean(normalizeLocalDateKey(value));
 }
 
 /**

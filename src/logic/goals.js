@@ -1,11 +1,10 @@
 // src/logic/goals.js
 import { todayKey } from "../utils/dates";
 import { normalizeGoal, normalizeResetPolicy } from "./state";
+import { resolveGoalType, isOutcome, isProcess } from "../domain/goalType";
 
 const ALLOWED = new Set(["queued", "active", "done", "invalid"]);
 const PLAN_TYPES = new Set(["ACTION", "ONE_OFF", "STATE"]);
-const GOAL_TYPES = new Set(["PROCESS", "OUTCOME"]);
-const LEGACY_KINDS = new Set(["ACTION", "OUTCOME"]);
 
 // Future flag (do not change behavior elsewhere yet)
 export const allowGlobalSingleActive = false;
@@ -45,13 +44,7 @@ function normalizePlanType(goal) {
 }
 
 function normalizeGoalType(goal, planType) {
-  const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
-  if (GOAL_TYPES.has(raw)) return raw;
-  const legacy = typeof goal?.kind === "string" ? goal.kind.toUpperCase() : "";
-  if (LEGACY_KINDS.has(legacy)) return legacy === "OUTCOME" ? "OUTCOME" : "PROCESS";
-  if (goal?.metric && typeof goal.metric === "object") return "OUTCOME";
-  if (planType === "STATE") return "OUTCOME";
-  return "PROCESS";
+  return resolveGoalType({ ...(goal || {}), planType });
 }
 
 export function sanitizeOutcome(goal) {
@@ -345,7 +338,7 @@ export function normalizeGoalsState(state) {
   const orderScore = (x) => (typeof x.order === "number" ? x.order : Number.POSITIVE_INFINITY);
   const prioritaireByCategory = new Map();
   for (const g of normalizedGoals) {
-    if (!g || g.type !== "OUTCOME") continue;
+    if (!g || !isOutcome(g)) continue;
     if (!g.categoryId) continue;
     if (g.priority !== "prioritaire") continue;
     const prevBest = prioritaireByCategory.get(g.categoryId);
@@ -353,7 +346,7 @@ export function normalizeGoalsState(state) {
   }
 
   const priorityNormalizedGoals = normalizedGoals.map((g) => {
-    if (!g || g.type !== "OUTCOME") return g;
+    if (!g || !isOutcome(g)) return g;
     if (g.priority !== "prioritaire" || !g.categoryId) return g;
     const pick = prioritaireByCategory.get(g.categoryId);
     if (pick && pick.id === g.id) return g;
@@ -365,7 +358,7 @@ export function normalizeGoalsState(state) {
   let nextActiveGoalId = uiActiveValid ? uiActiveId : null;
 
   let nextGoals = priorityNormalizedGoals;
-  const isProcessGoal = (g) => (g?.type || g?.kind || "").toString().toUpperCase() === "PROCESS";
+  const isProcessGoal = (g) => isProcess(g);
 
   if (allowGlobalSingleActive) {
     const activeGoals = priorityNormalizedGoals.filter((g) => g?.status === "active" && isProcessGoal(g));
@@ -391,7 +384,7 @@ export function normalizeGoalsState(state) {
   }
 
   const activeNow = nextGoals.filter((g) => g?.status === "active");
-  const activeProcess = activeNow.filter((g) => (g?.type || "").toString().toUpperCase() === "PROCESS");
+  const activeProcess = activeNow.filter((g) => isProcess(g));
   nextActiveGoalId = allowGlobalSingleActive
     ? (activeNow.length ? activeNow[0].id || null : null)
     : pickPreferredActiveId(activeProcess.length ? activeProcess : activeNow, uiActiveId);
@@ -403,7 +396,7 @@ export function normalizeGoalsState(state) {
   const nextCategories = (state.categories || []).map((cat) => {
     const candidates = nextGoals
       .filter((g) => g && g.categoryId === cat.id)
-      .filter((g) => (g?.type || g?.kind || "").toString().toUpperCase() === "OUTCOME")
+      .filter((g) => isOutcome(g))
       .filter((g) => g.priority === "prioritaire");
     if (!candidates.length) return { ...cat, mainGoalId: null };
     let best = candidates[0];
@@ -427,7 +420,7 @@ export function normalizeGoalsState(state) {
     nextMainGoalId = selectedCategory.mainGoalId;
   } else if (uiMainId) {
     const g = goalsById.get(uiMainId);
-    if (g && g.categoryId === resolvedCategoryId && (g.type || g.kind || "").toString().toUpperCase() === "OUTCOME") {
+    if (g && g.categoryId === resolvedCategoryId && isOutcome(g)) {
       nextMainGoalId = g.priority === "prioritaire" ? uiMainId : null;
     }
   }
@@ -462,7 +455,7 @@ export function computeAggregateProgress(state, parentId) {
   const linked = goals
     .filter((g) => g?.parentId === parentId)
     .filter((g) => g?.status === "active" || g?.status === "done")
-    .filter((g) => (g?.type || "").toString().toUpperCase() === "PROCESS")
+    .filter((g) => isProcess(g))
     .map((g) => {
       const rawWeight = typeof g?.weight === "string" ? Number(g.weight) : g?.weight;
       const weight = Number.isFinite(rawWeight) ? Math.max(0, Math.min(100, Math.round(rawWeight))) : 100;
@@ -474,7 +467,7 @@ export function computeAggregateProgress(state, parentId) {
   const aggregate = totalWeight ? linkedSum / totalWeight : 0;
 
   let metricProgress = null;
-  if ((parent?.type || "").toString().toUpperCase() === "OUTCOME" && parent?.metric) {
+  if (isOutcome(parent) && parent?.metric) {
     const targetRaw =
       typeof parent.metric.targetValue === "string"
         ? Number(parent.metric.targetValue)
@@ -559,13 +552,11 @@ export function updateGoal(state, goalId, updates = {}) {
   let adjustedGoals = nextGoals;
   if (updates?.priority === "prioritaire") {
     const updated = nextGoals.find((g) => g?.id === goalId) || null;
-    const isOutcome = (updated?.type || updated?.kind || "").toString().toUpperCase() === "OUTCOME";
-    if (isOutcome && updated?.categoryId) {
+    if (isOutcome(updated) && updated?.categoryId) {
       adjustedGoals = nextGoals.map((g) => {
         if (!g || g.id === goalId) return g;
         if (g.categoryId !== updated.categoryId) return g;
-        const t = (g.type || g.kind || "").toString().toUpperCase();
-        if (t !== "OUTCOME") return g;
+        if (!isOutcome(g)) return g;
         if (g.priority === "prioritaire") return { ...g, priority: "secondaire" };
         return g;
       });
@@ -636,8 +627,7 @@ export function setMainGoal(state, goalId) {
   if (!goal || !goal.categoryId) return state;
 
   // Only OUTCOME goals can be set as main.
-  const t = (goal.type || goal.kind || "").toString().toUpperCase();
-  if (t !== "OUTCOME") return state;
+  if (!isOutcome(goal)) return state;
 
   // One "prioritaire" per category.
   const nextGoals = goals.map((g) => {
@@ -724,12 +714,12 @@ export function activateGoal(state, goalId, opts = { navigate: true }) {
 
   const planType = normalizePlanType(goal);
   const goalType = normalizeGoalType(goal, planType);
-  const isProcess = goalType === "PROCESS";
-  const isProcessGoal = (x) => (x?.type || x?.kind || "").toString().toUpperCase() === "PROCESS";
+  const isProcessType = goalType === "PROCESS";
+  const isProcessGoal = (x) => isProcess(x);
 
   // If we ever enforce a global single active goal, it only makes sense for PROCESS goals (habits/actions).
   const blockers =
-    isProcess && allowGlobalSingleActive
+    isProcessType && allowGlobalSingleActive
       ? goals.filter((g) => {
           if (!g || g.id === goalId) return false;
           if (!isProcessGoal(g)) return false;
@@ -748,7 +738,7 @@ export function activateGoal(state, goalId, opts = { navigate: true }) {
   }
 
   // Time overlap checks apply to PROCESS (scheduled action sessions), not OUTCOME.
-  if (isProcess) {
+  if (isProcessType) {
     const overlap = preventOverlap(state, goalId, goal.startAt, goal.sessionMinutes);
     if (!overlap.ok) {
       return {
@@ -766,7 +756,7 @@ export function activateGoal(state, goalId, opts = { navigate: true }) {
     if (g.id === goalId) {
       return { ...g, status: "active", activeSince: g.activeSince || todayKey() };
     }
-    if (allowGlobalSingleActive && isProcess && isProcessGoal(g) && normalizeStatus(g.status) === "active") {
+    if (allowGlobalSingleActive && isProcessType && isProcessGoal(g) && normalizeStatus(g.status) === "active") {
       return { ...g, status: "queued" };
     }
     return g;
@@ -888,11 +878,7 @@ export function autoActivateScheduledGoals(state, now = new Date()) {
   let nextGoals = goals.map((g) => ({ ...g }));
 
   for (const [categoryId, list] of byCategory.entries()) {
-    const hasActive = list.some(
-      (g) =>
-        normalizeStatus(g.status) === "active" &&
-        (g?.type || g?.kind || "").toString().toUpperCase() === "PROCESS"
-    );
+    const hasActive = list.some((g) => normalizeStatus(g.status) === "active" && isProcess(g));
     if (hasActive) continue;
 
     const candidates = list

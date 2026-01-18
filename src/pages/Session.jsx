@@ -11,7 +11,7 @@ import {
 } from "../logic/sessions";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
-import { resolveGoalType } from "../utils/goalType";
+import { resolveGoalType } from "../domain/goalType";
 
 function formatElapsed(ms) {
   const safe = Number.isFinite(ms) && ms > 0 ? ms : 0;
