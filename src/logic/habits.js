@@ -1,6 +1,7 @@
-import { todayKey, startOfWeekKey, yearKey } from "../utils/dates";
+import { addDays, startOfWeekKey, todayKey, yearKey } from "../utils/dates";
 import { clamp } from "../utils/helpers";
 import { resolveGoalType } from "../domain/goalType";
+import { hasHabitChecked, setHabitChecked } from "./checks";
 
 function getProcessGoals(data) {
   const goals = Array.isArray(data?.goals) ? data.goals : [];
@@ -14,22 +15,35 @@ export function getHabitList(data) {
 }
 
 export function computeHabitProgress(habit, checks, now = new Date()) {
-  const h = checks[habit.id] || { daily: {}, weekly: {}, yearly: {} };
-
+  const state = { checks };
   if (habit.cadence === "DAILY") {
     const k = todayKey(now);
-    const count = h.daily?.[k] || 0;
-    return { done: count, target: habit.target, ratio: habit.target ? count / habit.target : 0 };
+    const done = hasHabitChecked(state, k, habit.id) ? 1 : 0;
+    return { done, target: habit.target, ratio: habit.target ? done / habit.target : 0 };
   }
   if (habit.cadence === "YEARLY") {
     const y = yearKey(now);
-    const count = h.yearly?.[y] || 0;
-    return { done: count, target: habit.target, ratio: habit.target ? count / habit.target : 0 };
+    let done = 0;
+    if (checks && typeof checks === "object") {
+      for (const [key, bucket] of Object.entries(checks)) {
+        if (typeof key !== "string" || !key.startsWith(`${y}-`)) continue;
+        const habits = Array.isArray(bucket?.habits) ? bucket.habits : [];
+        if (habits.includes(habit.id)) done += 1;
+      }
+    }
+    return { done, target: habit.target, ratio: habit.target ? done / habit.target : 0 };
   }
 
   const wk = startOfWeekKey(now);
-  const count = h.weekly?.[wk] || 0;
-  return { done: count, target: habit.target, ratio: habit.target ? count / habit.target : 0 };
+  const start = new Date(`${wk}T12:00:00`);
+  let done = 0;
+  if (!Number.isNaN(start.getTime())) {
+    for (let i = 0; i < 7; i += 1) {
+      const key = todayKey(addDays(start, i));
+      if (hasHabitChecked(state, key, habit.id)) done += 1;
+    }
+  }
+  return { done, target: habit.target, ratio: habit.target ? done / habit.target : 0 };
 }
 
 export function computeGlobalAvgForDay(data, d = new Date()) {
@@ -70,76 +84,24 @@ function resolveHabit(data, habitId) {
 }
 
 export function incHabit(data, habitId, at = new Date()) {
-  const dKey = todayKey(at);
-  const wKey = startOfWeekKey(at);
-  const yKey = yearKey(at);
-
   const habit = resolveHabit(data, habitId);
   if (!habit) return data;
-
-  const checks = { ...data.checks };
-  const bucket = checks[habitId] || { daily: {}, weekly: {}, yearly: {} };
-
-  if (habit.cadence === "DAILY") {
-    const cur = bucket.daily[dKey] || 0;
-    bucket.daily = { ...bucket.daily, [dKey]: cur + 1 };
-  } else if (habit.cadence === "YEARLY") {
-    const cur = bucket.yearly[yKey] || 0;
-    bucket.yearly = { ...bucket.yearly, [yKey]: cur + 1 };
-  } else {
-    const cur = bucket.weekly[wKey] || 0;
-    bucket.weekly = { ...bucket.weekly, [wKey]: cur + 1 };
-  }
-
-  checks[habitId] = bucket;
-  return { ...data, checks };
+  const dKey = todayKey(at);
+  return setHabitChecked(data, dKey, habitId, true);
 }
 
 export function decHabit(data, habitId, at = new Date()) {
-  const dKey = todayKey(at);
-  const wKey = startOfWeekKey(at);
-  const yKey = yearKey(at);
-
   const habit = resolveHabit(data, habitId);
   if (!habit) return data;
-
-  const checks = { ...data.checks };
-  const bucket = checks[habitId] || { daily: {}, weekly: {}, yearly: {} };
-
-  if (habit.cadence === "DAILY") {
-    const cur = bucket.daily[dKey] || 0;
-    bucket.daily = { ...bucket.daily, [dKey]: Math.max(0, cur - 1) };
-  } else if (habit.cadence === "YEARLY") {
-    const cur = bucket.yearly[yKey] || 0;
-    bucket.yearly = { ...bucket.yearly, [yKey]: Math.max(0, cur - 1) };
-  } else {
-    const cur = bucket.weekly[wKey] || 0;
-    bucket.weekly = { ...bucket.weekly, [wKey]: Math.max(0, cur - 1) };
-  }
-
-  checks[habitId] = bucket;
-  return { ...data, checks };
+  const dKey = todayKey(at);
+  return setHabitChecked(data, dKey, habitId, false);
 }
 
 export function toggleHabitOnce(data, habitId) {
   const now = new Date();
-  const dKey = todayKey(now);
-  const wKey = startOfWeekKey(now);
-  const yKey = yearKey(now);
-
   const habit = resolveHabit(data, habitId);
   if (!habit) return data;
-
-  const bucket = data.checks?.[habitId] || { daily: {}, weekly: {}, yearly: {} };
-
-  let cur = 0;
-  if (habit.cadence === "DAILY") {
-    cur = bucket.daily?.[dKey] || 0;
-  } else if (habit.cadence === "YEARLY") {
-    cur = bucket.yearly?.[yKey] || 0;
-  } else {
-    cur = bucket.weekly?.[wKey] || 0;
-  }
-
-  return cur > 0 ? decHabit(data, habitId) : incHabit(data, habitId);
+  const dKey = todayKey(now);
+  const has = hasHabitChecked(data, dKey, habitId);
+  return setHabitChecked(data, dKey, habitId, !has);
 }

@@ -1,5 +1,6 @@
 import { addDays, startOfWeekKey, todayKey } from "../utils/dates";
 import { resolveGoalType } from "../domain/goalType";
+import { getChecksForDate } from "./checks";
 
 function parseDateKey(key) {
   if (typeof key !== "string") return null;
@@ -22,15 +23,14 @@ function buildWeekKeys(nowDate) {
 }
 
 function collectDoneByDate(data, dateKeys) {
-  const checks = data?.checks && typeof data.checks === "object" ? data.checks : {};
   const sessions = Array.isArray(data?.sessions) ? data.sessions : [];
   const dateSet = new Set(dateKeys);
   const map = new Map();
   for (const key of dateKeys) map.set(key, new Set());
 
   for (const key of dateKeys) {
-    const bucket = checks?.[key];
-    const ids = Array.isArray(bucket?.habits) ? bucket.habits : [];
+    const { habits } = getChecksForDate(data, key);
+    const ids = habits;
     const set = map.get(key);
     if (!set) continue;
     for (const id of ids) set.add(id);

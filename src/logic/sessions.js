@@ -1,8 +1,8 @@
 import { uid } from "../utils/helpers";
-import { incHabit } from "./habits";
 import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { upsertOccurrence } from "./occurrences";
 import { resolveGoalType } from "../domain/goalType";
+import { hasHabitChecked, setHabitChecked } from "./checks";
 
 const STATUSES = new Set(["done", "partial", "skipped"]);
 
@@ -134,20 +134,9 @@ function findSessionIndexByDate(sessions, dateKey, objectiveId, status) {
 
 function applyDoneHabitsToChecks(state, dateKey, doneHabitIds) {
   let next = state;
-  const dateRef = new Date(`${dateKey}T12:00:00`);
   for (const id of doneHabitIds) {
-    const latestChecks = next.checks || {};
-    const latestBucket = latestChecks[dateKey];
-    const dayBucket = latestBucket && typeof latestBucket === "object" ? { ...latestBucket } : {};
-    const existingHabits = Array.isArray(dayBucket.habits) ? [...dayBucket.habits] : [];
-    if (existingHabits.includes(id)) continue;
-
-    next = incHabit(next, id, dateRef);
-
-    const refreshedChecks = { ...(next.checks || {}) };
-    dayBucket.habits = [...existingHabits, id];
-    refreshedChecks[dateKey] = dayBucket;
-    next.checks = refreshedChecks;
+    if (hasHabitChecked(next, dateKey, id)) continue;
+    next = setHabitChecked(next, dateKey, id, true);
   }
   return next;
 }

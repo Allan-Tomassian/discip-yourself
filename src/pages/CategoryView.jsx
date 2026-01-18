@@ -7,6 +7,7 @@ import { safeConfirm, safePrompt } from "../utils/dialogs";
 import { addDays, startOfWeekKey, todayKey } from "../utils/dates";
 import { isPrimaryCategory, isPrimaryGoal, setPrimaryCategory } from "../logic/priority";
 import { resolveGoalType } from "../domain/goalType";
+import { getChecksForDate } from "../logic/checks";
 
 // TOUR MAP:
 // - primary_action: manage goals/actions in a category
@@ -131,8 +132,7 @@ export default function CategoryView({
     };
 
     for (const key of weekKeys) {
-      const bucket = checks?.[key];
-      const ids = Array.isArray(bucket?.habits) ? bucket.habits : [];
+      const { habits: ids } = getChecksForDate(safeData, key);
       for (const id of ids) addDone(id, key);
     }
 

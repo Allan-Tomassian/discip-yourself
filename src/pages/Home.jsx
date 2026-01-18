@@ -13,6 +13,7 @@ import {
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { setMainGoal } from "../logic/goals";
 import { getDoneSessionsForDate, getSessionByDate, startSessionForDate } from "../logic/sessions";
+import { getChecksForDate, setMicroChecked } from "../logic/checks";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { isPrimaryCategory, isPrimaryGoal } from "../logic/priority";
@@ -246,11 +247,8 @@ export default function Home({
   const checks = safeData.checks || {};
   const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
   const dayChecks = useMemo(() => {
-    const bucket = checks?.[selectedDateKey];
-    const habits = Array.isArray(bucket?.habits) ? bucket.habits : [];
-    const micro = Array.isArray(bucket?.micro) ? bucket.micro : [];
-    return { habits, micro };
-  }, [checks, selectedDateKey]);
+    return getChecksForDate(safeData, selectedDateKey);
+  }, [safeData, selectedDateKey]);
   const plannedByDate = useMemo(() => {
     const map = new Map();
     for (const occ of occurrences) {
@@ -269,8 +267,8 @@ export default function Home({
       map.set(key, set);
     };
     if (checks && typeof checks === "object") {
-      for (const [key, bucket] of Object.entries(checks)) {
-        const habits = Array.isArray(bucket?.habits) ? bucket.habits : [];
+      for (const key of Object.keys(checks)) {
+        const { habits } = getChecksForDate(safeData, key);
         for (const id of habits) addId(key, id);
       }
     }
@@ -673,8 +671,8 @@ export default function Home({
   }, [microState.items]);
 
   const microDoneToday = useMemo(() => {
-    const unique = new Set(Array.isArray(dayChecks.micro) ? dayChecks.micro : []);
-    return Math.min(3, unique.size);
+    const count = Object.keys(dayChecks.micro || {}).length;
+    return Math.min(3, count);
   }, [dayChecks.micro]);
 
   const hasActiveSession = Boolean(sessionForDay && sessionForDay.status === "partial");
@@ -726,8 +724,8 @@ export default function Home({
     const plannedPerDay = processIds.length;
 
     function getDoneIdsForDate(key) {
-      const bucket = checks?.[key];
-      const ids = new Set(Array.isArray(bucket?.habits) ? bucket.habits : []);
+      const { habits } = getChecksForDate(safeData, key);
+      const ids = new Set(habits);
       for (const s of sessions || []) {
         if (!s || s.date !== key || s.status !== "done") continue;
         if (s.habitId) ids.add(s.habitId);
@@ -766,10 +764,9 @@ export default function Home({
     let microDone14 = 0;
     for (let i = 0; i < 14; i += 1) {
       const key = toLocalDateKey(addDays(now, -i));
-      const bucket = checks?.[key];
-      const list = Array.isArray(bucket?.micro) ? bucket.micro : [];
-      const unique = new Set(list);
-      microDone14 += Math.min(3, unique.size);
+      const { micro } = getChecksForDate(safeData, key);
+      const count = Object.keys(micro || {}).length;
+      microDone14 += Math.min(3, count);
     }
     const microMax14 = 14 * 3;
     const microRatio14 = microMax14 ? microDone14 / microMax14 : 0;
@@ -1333,30 +1330,11 @@ export default function Home({
     if (!microId || typeof setData !== "function") return;
     if (!canValidate) return;
     // Max 3 micro-actions/day and avoid duplicates
-    const already = Array.isArray(dayChecks.micro) ? dayChecks.micro.includes(microId) : false;
+    const already = Boolean(dayChecks.micro?.[microId]);
     if (already) return;
     if (microDoneToday >= 3) return;
 
-    setData((prev) => {
-      const prevChecks = prev?.checks && typeof prev.checks === "object" ? prev.checks : {};
-      const prevBucket = prevChecks?.[selectedDateKey] && typeof prevChecks[selectedDateKey] === "object"
-        ? prevChecks[selectedDateKey]
-        : {};
-      const prevMicro = Array.isArray(prevBucket.micro) ? prevBucket.micro : [];
-      if (prevMicro.includes(microId)) return prev;
-
-      const nextMicro = [...prevMicro, microId];
-      return {
-        ...prev,
-        checks: {
-          ...prevChecks,
-          [selectedDateKey]: {
-            ...prevBucket,
-            micro: nextMicro,
-          },
-        },
-      };
-    });
+    setData((prev) => setMicroChecked(prev, selectedDateKey, microId, true));
   }
 
 
@@ -1969,7 +1947,7 @@ export default function Home({
                       <div className="sectionSub">Trois impulsions simples</div>
                       <div className="mt12 col" style={{ gap: 10 }}>
                         {microItems.map((item) => {
-                          const isMicroDone = dayChecks.micro.includes(item.id);
+                          const isMicroDone = Boolean(dayChecks.micro?.[item.id]);
                           const canAddMicro = canValidate && microDoneToday < 3 && !isMicroDone;
                           return (
                             <AccentItem key={item.uid} color={accent} className="listItem">

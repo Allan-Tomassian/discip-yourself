@@ -4,7 +4,7 @@ import { uid } from "../utils/helpers";
 import { normalizeGoalsState } from "./goals";
 import { normalizeReminder } from "./reminders";
 import { normalizeSession } from "./sessions";
-import { toLocalDateKey } from "../utils/dateKey";
+import { normalizeLocalDateKey, toLocalDateKey } from "../utils/dateKey";
 import { resolveGoalType, isOutcome, isProcess } from "../domain/goalType";
 import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "./blocks/registry";
 import { ensureBlocksConfig } from "./blocks/ensureBlocksConfig";
@@ -183,6 +183,46 @@ function normalizeLegacyHabit(rawHabit, index = 0) {
   if (!Number.isFinite(h.target)) h.target = 1;
   if (typeof h.categoryId !== "string") h.categoryId = "";
   return h;
+}
+
+function migrateLegacyChecks(rawChecks) {
+  const checks = rawChecks && typeof rawChecks === "object" ? rawChecks : {};
+  const nextChecks = {};
+  let legacyFound = false;
+
+  for (const [key, bucket] of Object.entries(checks)) {
+    const dateKey = normalizeLocalDateKey(key);
+    if (dateKey) {
+      const habits = Array.isArray(bucket?.habits) ? bucket.habits.filter(Boolean) : [];
+      const micro = bucket?.micro && typeof bucket.micro === "object"
+        ? { ...bucket.micro }
+        : Array.isArray(bucket?.micro)
+          ? bucket.micro.reduce((acc, id) => {
+              if (typeof id === "string" && id.trim()) acc[id] = true;
+              return acc;
+            }, {})
+          : {};
+      if (habits.length || Object.keys(micro).length) {
+        nextChecks[dateKey] = { habits: Array.from(new Set(habits)), micro };
+      }
+      continue;
+    }
+
+    if (bucket && typeof bucket === "object" && (bucket.daily || bucket.weekly || bucket.yearly)) {
+      legacyFound = true;
+      const daily = bucket.daily && typeof bucket.daily === "object" ? bucket.daily : {};
+      for (const [dKey, val] of Object.entries(daily)) {
+        if (!val) continue;
+        const normalized = normalizeLocalDateKey(dKey);
+        if (!normalized) continue;
+        const entry = nextChecks[normalized] || { habits: [], micro: {} };
+        if (!entry.habits.includes(key)) entry.habits.push(key);
+        nextChecks[normalized] = entry;
+      }
+    }
+  }
+
+  return legacyFound ? { checks: nextChecks, legacy: checks } : { checks, legacy: null };
 }
 
 function mergeLegacyHabitsIntoGoals(state) {
@@ -850,6 +890,11 @@ export function migrate(prev) {
   if (!Array.isArray(next.sessions)) next.sessions = [];
   next.sessions = next.sessions.map((s) => normalizeSession(s));
   if (!Array.isArray(next.occurrences)) next.occurrences = [];
+  const migratedChecks = migrateLegacyChecks(next.checks);
+  next.checks = migratedChecks.checks || {};
+  if (migratedChecks.legacy && !next.checksLegacy) {
+    next.checksLegacy = migratedChecks.legacy;
+  }
   if (!next.checks || typeof next.checks !== "object") next.checks = {};
 
   const normalized = normalizeGoalsState(next);
