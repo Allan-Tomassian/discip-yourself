@@ -1,5 +1,7 @@
+import { toLocalDateKey } from "./dateKey";
+
 export function todayKey(d = new Date()) {
-  return d.toISOString().slice(0, 10);
+  return toLocalDateKey(d);
 }
 
 export function dayKey(d = new Date()) {

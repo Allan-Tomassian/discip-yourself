@@ -1,4 +1,5 @@
 import { uid } from "../utils/helpers";
+import { normalizeLocalDateKey } from "../utils/dateKey";
 
 const STATUS_VALUES = new Set(["planned", "done", "skipped"]);
 
@@ -52,10 +53,7 @@ function normalizeDurationMinutes(value) {
 }
 
 function normalizeDateKey(value) {
-  const raw = typeof value === "string" ? value.trim() : "";
-  // minimal YYYY-MM-DD sanity
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return "";
-  return raw;
+  return normalizeLocalDateKey(value);
 }
 
 function normalizeTimeHM(value) {

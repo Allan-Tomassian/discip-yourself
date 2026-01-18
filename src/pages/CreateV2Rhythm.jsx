@@ -273,24 +273,56 @@ export default function CreateV2Rhythm({ data, setData, onBack, onNext, onCancel
 
   function suggestTimes(item) {
     const existing = [...existingWindows, ...draftWindows.filter((w) => w.itemId !== item.id)];
-    const suggestions = [];
-    const startMinutes = parseTimeToMinutes(item.time) || 8 * 60;
     const linkedDays = getOutcomeDays(item.outcomeId);
-    for (let offset = 30; suggestions.length < 3 && offset <= 240; offset += 30) {
-      const nextMinutes = startMinutes + offset;
-      if (nextMinutes >= 22 * 60) break;
-      const candidateTime = formatTime(nextMinutes);
+
+    const isCandidateOk = (candidateTime) => {
       const windows = buildWindows(item, candidateTime, {}, linkedDays);
-      const ok = windows.every((w) => {
+      if (!windows.length) return false;
+      return windows.every((w) => {
         const windowMeta = buildTimeWindow(w);
         if (!windowMeta) return true;
         return existing.every((other) => {
           const otherMeta = buildTimeWindow(other);
+          if (!otherMeta) return true;
           return !windowsOverlap(windowMeta, otherMeta);
         });
       });
-      if (ok) suggestions.push(candidateTime);
+    };
+
+    const suggestions = [];
+    const startMinutes = parseTimeToMinutes(item.time) ?? 8 * 60;
+    const STEP = 15;
+    const MAX = 240;
+    const MIN_DAY = 5 * 60;
+    const MAX_DAY = 22 * 60;
+
+    // Nearest available around the chosen time (prefer later if same distance)
+    for (let offset = STEP; suggestions.length < 3 && offset <= MAX; offset += STEP) {
+      const earlier = startMinutes - offset;
+      const later = startMinutes + offset;
+
+      // Prefer later first: keeps intent and avoids surprise "earlier" scheduling.
+      if (later < MAX_DAY) {
+        const t = formatTime(later);
+        if (isCandidateOk(t)) suggestions.push(t);
+      }
+
+      if (suggestions.length >= 3) break;
+
+      if (earlier >= MIN_DAY) {
+        const t = formatTime(earlier);
+        if (!suggestions.includes(t) && isCandidateOk(t)) suggestions.push(t);
+      }
     }
+
+    // If nothing found nearby, fall back to scanning forward by 30min (still never 00:00)
+    for (let offset = 30; suggestions.length < 3 && offset <= 8 * 60; offset += 30) {
+      const nextMinutes = startMinutes + offset;
+      if (nextMinutes >= MAX_DAY) break;
+      const candidateTime = formatTime(nextMinutes);
+      if (!suggestions.includes(candidateTime) && isCandidateOk(candidateTime)) suggestions.push(candidateTime);
+    }
+
     return suggestions;
   }
 
@@ -459,9 +491,18 @@ export default function CreateV2Rhythm({ data, setData, onBack, onNext, onCancel
                       ) : null}
                       {isOutcome ? null : (
                         <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                          {suggestions.map((time) => (
+                          {suggestions.length ? (
+                            <Button
+                              variant="primary"
+                              onClick={() => updateItem(item.id, { time: suggestions[0] })}
+                            >
+                              Prochain horaire libre: {suggestions[0]}
+                            </Button>
+                          ) : null}
+
+                          {suggestions.slice(1).map((time) => (
                             <Button key={time} variant="ghost" onClick={() => updateItem(item.id, { time })}>
-                              Décaler à {time}
+                              Alternative: {time}
                             </Button>
                           ))}
                           <Button variant="ghost" onClick={() => reduceDuration(item.id)}>

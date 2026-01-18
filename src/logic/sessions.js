@@ -1,6 +1,6 @@
 import { uid } from "../utils/helpers";
 import { incHabit } from "./habits";
-import { todayKey } from "../utils/dates";
+import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { upsertOccurrence } from "./occurrences";
 import { resolveGoalType } from "../utils/goalType";
 
@@ -12,8 +12,8 @@ function normalizeStatus(raw) {
 }
 
 function normalizeDateKey(raw) {
-  const v = typeof raw === "string" ? raw.trim() : "";
-  return v || todayKey();
+  const v = normalizeLocalDateKey(raw);
+  return v || todayLocalKey();
 }
 
 function normalizeDuration(raw) {
@@ -152,15 +152,52 @@ function applyDoneHabitsToChecks(state, dateKey, doneHabitIds) {
   return next;
 }
 
-function pickOccurrenceStart(occurrences, goalId, dateKey, preferredStart) {
+function parseTimeToMinutes(value) {
+  if (typeof value !== "string") return null;
+  const [h, m] = value.split(":").map((v) => Number(v));
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return h * 60 + m;
+}
+
+function pickNearestTimeSlot(timeSlots = [], preferredStart = "") {
+  const slots = Array.isArray(timeSlots) ? timeSlots.filter(Boolean) : [];
+  if (!slots.length) return "";
+  if (preferredStart && slots.includes(preferredStart)) return preferredStart;
+
+  const prefMin = parseTimeToMinutes(preferredStart);
+  const parsed = slots
+    .map((t) => ({ t, m: parseTimeToMinutes(t) }))
+    .filter((x) => x.m != null)
+    .sort((a, b) => a.m - b.m);
+
+  if (!parsed.length) return slots.slice().sort()[0] || "";
+  if (prefMin == null) return parsed[0].t;
+
+  let best = parsed[0];
+  let bestDiff = Math.abs(best.m - prefMin);
+  for (let i = 1; i < parsed.length; i += 1) {
+    const diff = Math.abs(parsed[i].m - prefMin);
+    if (diff < bestDiff) {
+      best = parsed[i];
+      bestDiff = diff;
+    }
+  }
+  return best.t;
+}
+
+function pickOccurrenceStart(occurrences, goalId, dateKey, preferredStart, timeSlots = []) {
   const matches = occurrences.filter((o) => o && o.goalId === goalId && o.date === dateKey);
-  if (!matches.length) return preferredStart || "";
-  if (preferredStart && matches.some((o) => o.start === preferredStart)) return preferredStart;
-  const sorted = matches
-    .map((o) => o.start)
-    .filter(Boolean)
-    .sort();
-  return sorted[0] || preferredStart || "";
+  if (matches.length) {
+    if (preferredStart && matches.some((o) => o.start === preferredStart)) return preferredStart;
+    const sorted = matches
+      .map((o) => o.start)
+      .filter(Boolean)
+      .sort();
+    return sorted[0] || preferredStart || "";
+  }
+  // No existing occurrences that day: choose the nearest available slot from schedule
+  return pickNearestTimeSlot(timeSlots, preferredStart) || preferredStart || "";
 }
 
 function syncOccurrencesForDoneHabits(state, dateKey, doneHabitIds) {
@@ -176,7 +213,10 @@ function syncOccurrencesForDoneHabits(state, dateKey, doneHabitIds) {
     const schedule = goal.schedule && typeof goal.schedule === "object" ? goal.schedule : null;
     const timeSlots = Array.isArray(schedule?.timeSlots) ? schedule.timeSlots.filter(Boolean) : [];
     const preferredStart = timeSlots[0] || "";
-    const start = pickOccurrenceStart(occurrences, habitId, key, preferredStart) || "00:00";
+    const start =
+      pickOccurrenceStart(occurrences, habitId, key, preferredStart, timeSlots) ||
+      pickNearestTimeSlot(timeSlots, preferredStart) ||
+      "00:00";
     const durationMinutes = Number.isFinite(schedule?.durationMinutes)
       ? schedule.durationMinutes
       : Number.isFinite(goal.sessionMinutes)
@@ -214,7 +254,9 @@ function syncOccurrencesForSkippedHabits(state, dateKey, habitIds) {
     const schedule = goal.schedule && typeof goal.schedule === "object" ? goal.schedule : null;
     const timeSlots = Array.isArray(schedule?.timeSlots) ? schedule.timeSlots.filter(Boolean) : [];
     const preferredStart = timeSlots[0] || "";
-    const start = pickOccurrenceStart(occurrences, habitId, key, preferredStart) || "00:00";
+    const startFromSchedule = pickOccurrenceStart(occurrences, habitId, key, preferredStart, timeSlots);
+    const nearest = pickNearestTimeSlot(timeSlots, preferredStart);
+    const start = startFromSchedule || nearest || "00:00";
     const durationMinutes = Number.isFinite(schedule?.durationMinutes)
       ? schedule.durationMinutes
       : Number.isFinite(goal.sessionMinutes)

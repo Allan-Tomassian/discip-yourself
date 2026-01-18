@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
-import { todayKey } from "../utils/dates";
+import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import {
   finishSessionForDate,
   getSessionByDate,
@@ -45,15 +45,11 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
   const urlCategoryId = urlParams?.get("cat") || null;
   const urlDateKey = urlParams?.get("date") || null;
   const effectiveDateKey =
-    typeof dateKey === "string" && dateKey
-      ? dateKey
-      : typeof urlDateKey === "string" && urlDateKey
-        ? urlDateKey
-        : typeof data?.selectedDateKey === "string" && data.selectedDateKey
-          ? data.selectedDateKey
-          : typeof safeData.ui?.selectedDate === "string" && safeData.ui.selectedDate
-            ? safeData.ui.selectedDate
-            : new Date().toISOString().slice(0, 10);
+    normalizeLocalDateKey(dateKey) ||
+    normalizeLocalDateKey(urlDateKey) ||
+    normalizeLocalDateKey(data?.selectedDateKey) ||
+    normalizeLocalDateKey(safeData.ui?.selectedDate) ||
+    todayLocalKey();
   const sessionCategoryId =
     categoryId || urlCategoryId || safeData.ui?.selectedCategoryId || categories[0]?.id || null;
 

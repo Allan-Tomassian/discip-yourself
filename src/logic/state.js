@@ -4,19 +4,12 @@ import { uid } from "../utils/helpers";
 import { normalizeGoalsState } from "./goals";
 import { normalizeReminder } from "./reminders";
 import { normalizeSession } from "./sessions";
+import { toLocalDateKey } from "../utils/dateKey";
 import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "./blocks/registry";
 import { ensureBlocksConfig } from "./blocks/ensureBlocksConfig";
 import { validateBlocksState } from "./blocks/validateBlocksState";
 
 export const THEME_PRESETS = ["aurora", "midnight", "sunset", "ocean", "forest"];
-
-function toLocalDateKey(d = new Date()) {
-  const dateObj = d instanceof Date && !Number.isNaN(d.getTime()) ? d : new Date();
-  const y = dateObj.getFullYear();
-  const m = String(dateObj.getMonth() + 1).padStart(2, "0");
-  const day = String(dateObj.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 export const DEFAULT_CATEGORIES = [
   { id: "cat_sport", name: "Sport", color: "#7C3AED", wallpaper: "", mainGoalId: null },

@@ -10,6 +10,7 @@ import {
   getMonthLabelFR,
   startOfMonth,
 } from "../utils/dates";
+import { fromLocalDateKey, toLocalDateKey } from "../utils/dateKey";
 import { setMainGoal } from "../logic/goals";
 import { getDoneSessionsForDate, getSessionByDate, startSessionForDate } from "../logic/sessions";
 import { getAccentForPage } from "../utils/_theme";
@@ -39,6 +40,34 @@ function priorityRank(v) {
   return 3;
 }
 
+function safeString(v) {
+  return typeof v === "string" ? v : "";
+}
+
+function normalizeLinkId(v) {
+  const s = safeString(v).trim();
+  return s ? s : "";
+}
+
+function isActiveProcessGoal(g) {
+  if (!g) return false;
+  return resolveGoalType(g) === "PROCESS" && safeString(g.status) === "active";
+}
+
+function getGoalLinkTargetId(goal) {
+  // Canonical link fields
+  const parentId = normalizeLinkId(goal?.parentId);
+  const primaryId = normalizeLinkId(goal?.primaryGoalId);
+  if (parentId) return parentId;
+  if (primaryId) return primaryId;
+
+  // Legacy/link drift fallbacks (do not mutate data, only interpret)
+  const legacy1 = normalizeLinkId(goal?.objectiveId);
+  const legacy2 = normalizeLinkId(goal?.outcomeId);
+  const legacy3 = normalizeLinkId(goal?.goalId);
+  return legacy1 || legacy2 || legacy3 || "";
+}
+
 // ---- Micro-actions
 const MICRO_ACTIONS = [
   { id: "micro_flexions", label: "Faire 10 flexions" },
@@ -61,23 +90,6 @@ function initMicroState(dayKeyValue) {
       label: item.label,
     })),
   };
-}
-
-// Build a local date key without UTC shift (timezone-safe).
-function toLocalDateKey(d) {
-  if (!(d instanceof Date)) return "";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-// Parse a local date key at midday to avoid DST edge cases.
-function fromLocalDateKey(key) {
-  if (typeof key !== "string") return new Date();
-  const [y, m, d] = key.split("-").map((v) => parseInt(v, 10));
-  if (!y || !m || !d) return new Date();
-  return new Date(y, m - 1, d, 12, 0, 0);
 }
 
 function diffDays(anchor, target) {
@@ -512,27 +524,39 @@ export default function Home({
 
   const processGoals = useMemo(() => {
     if (!focusCategory?.id) return [];
-    return goals.filter((g) => g.categoryId === focusCategory.id && resolveGoalType(g) === "PROCESS");
+    const list = goals.filter((g) => g && g.categoryId === focusCategory.id && resolveGoalType(g) === "PROCESS");
+    // Stable order: keep explicit order if present, otherwise title.
+    return list.slice().sort((a, b) => {
+      const ao = Number.isFinite(a?.order) ? a.order : 0;
+      const bo = Number.isFinite(b?.order) ? b.order : 0;
+      if (ao !== bo) return ao - bo;
+      return String(a?.title || "").localeCompare(String(b?.title || ""));
+    });
   }, [goals, focusCategory?.id]);
 
-  // Actions liées à l’objectif sélectionné (queued/active)
+  // Actions liées à l’objectif sélectionné (robuste)
   const linkedHabits = useMemo(() => {
     if (!selectedGoal?.id) return [];
     const targetId = selectedGoal.id;
     return processGoals.filter((g) => {
-      const parentId = typeof g.parentId === "string" ? g.parentId : "";
-      const primaryId = typeof g.primaryGoalId === "string" ? g.primaryGoalId : "";
-      return (parentId && parentId === targetId) || (primaryId && primaryId === targetId);
+      const linkTarget = getGoalLinkTargetId(g);
+      return Boolean(linkTarget && linkTarget === targetId);
     });
   }, [processGoals, selectedGoal?.id]);
+
+  // Actions non liées (actives) : visibles pour diagnostic + CTA, mais pas auto-sélectionnées
+  const unlinkedActiveHabits = useMemo(() => {
+    return processGoals.filter((g) => isActiveProcessGoal(g) && !getGoalLinkTargetId(g));
+  }, [processGoals]);
 
   // Actions liées à l’objectif (toutes)
   const selectableHabits = linkedHabits;
   const hasLinkedHabits = linkedHabits.length > 0;
   const hasSelectableHabits = selectableHabits.length > 0;
+
   // Actions actives uniquement (progression)
   const activeHabits = useMemo(() => {
-    return linkedHabits.filter((g) => g.status === "active");
+    return linkedHabits.filter((g) => safeString(g.status) === "active");
   }, [linkedHabits]);
   const hasActiveHabits = activeHabits.length > 0;
   const canManageCategory = Boolean(typeof onOpenManageCategory === "function" && focusCategory?.id);
@@ -544,7 +568,13 @@ export default function Home({
   const selectedActionIds = useMemo(() => {
     const valid = new Set(selectableHabits.map((h) => h.id));
     if (Array.isArray(storedSelectedHabits)) {
-      return storedSelectedHabits.filter((id) => valid.has(id));
+      const filtered = storedSelectedHabits.filter((id) => valid.has(id));
+      // If user previously had selections but the set is now empty due to link changes,
+      // fall back to all linked actions to avoid a dead GO.
+      if (storedSelectedHabits.length && filtered.length === 0) {
+        return selectableHabits.map((h) => h.id);
+      }
+      return filtered;
     }
     return selectableHabits.map((h) => h.id);
   }, [selectableHabits, storedSelectedHabits]);
@@ -1596,6 +1626,27 @@ export default function Home({
                       </div>
                     ) : null}
 
+                    {selectedGoal && unlinkedActiveHabits.length ? (
+                      <div className="mt12">
+                        <div className="small2">Actions non liées</div>
+                        <div className="sectionSub" style={{ marginTop: 6 }}>
+                          Ces actions existent dans la catégorie mais ne sont liées à aucun objectif. Elles ne seront pas proposées ici.
+                          {canManageCategory ? (
+                            <>
+                              {" "}
+                              <button
+                                className="linkBtn"
+                                type="button"
+                                onClick={() => onOpenManageCategory(focusCategory.id)}
+                              >
+                                Lier des actions
+                              </button>
+                            </>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+
                     <div className="mt12">
                       <div className="row" style={{ justifyContent: "flex-end" }}>
                         <Button onClick={openSessionFlow} disabled={!canOpenSession} data-tour-id="today-go">
@@ -1612,7 +1663,7 @@ export default function Home({
                         </div>
                       ) : !hasLinkedHabits ? (
                         <div className="sectionSub" style={{ marginTop: 8 }}>
-                          Aucune action liée à cet objectif.
+                          Aucune action liée à cet objectif (ou tes actions ne sont pas reliées correctement).
                           {canManageCategory ? (
                             <>
                               {" "}
