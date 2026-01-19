@@ -19,6 +19,7 @@ import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { isPrimaryCategory, isPrimaryGoal } from "../logic/priority";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
 import { resolveGoalType } from "../domain/goalType";
+import { linkProcessToOutcome, splitProcessByLink } from "../logic/linking";
 
 // TOUR MAP:
 // - primary_action: start session (GO) for today
@@ -43,30 +44,6 @@ function priorityRank(v) {
 
 function safeString(v) {
   return typeof v === "string" ? v : "";
-}
-
-function normalizeLinkId(v) {
-  const s = safeString(v).trim();
-  return s ? s : "";
-}
-
-function isActiveProcessGoal(g) {
-  if (!g) return false;
-  return resolveGoalType(g) === "PROCESS" && safeString(g.status) === "active";
-}
-
-function getGoalLinkTargetId(goal) {
-  // Canonical link fields
-  const parentId = normalizeLinkId(goal?.parentId);
-  const primaryId = normalizeLinkId(goal?.primaryGoalId);
-  if (parentId) return parentId;
-  if (primaryId) return primaryId;
-
-  // Legacy/link drift fallbacks (do not mutate data, only interpret)
-  const legacy1 = normalizeLinkId(goal?.objectiveId);
-  const legacy2 = normalizeLinkId(goal?.outcomeId);
-  const legacy3 = normalizeLinkId(goal?.goalId);
-  return legacy1 || legacy2 || legacy3 || "";
 }
 
 // ---- Micro-actions
@@ -533,19 +510,10 @@ export default function Home({
   }, [goals, focusCategory?.id]);
 
   // Actions liées à l’objectif sélectionné (robuste)
-  const linkedHabits = useMemo(() => {
-    if (!selectedGoal?.id) return [];
-    const targetId = selectedGoal.id;
-    return processGoals.filter((g) => {
-      const linkTarget = getGoalLinkTargetId(g);
-      return Boolean(linkTarget && linkTarget === targetId);
-    });
+  const { linked: linkedHabits, unlinked: unlinkedHabits } = useMemo(() => {
+    if (!selectedGoal?.id) return { linked: [], unlinked: [] };
+    return splitProcessByLink(processGoals, selectedGoal.id);
   }, [processGoals, selectedGoal?.id]);
-
-  // Actions non liées (actives) : visibles pour diagnostic + CTA, mais pas auto-sélectionnées
-  const unlinkedActiveHabits = useMemo(() => {
-    return processGoals.filter((g) => isActiveProcessGoal(g) && !getGoalLinkTargetId(g));
-  }, [processGoals]);
 
   // Actions liées à l’objectif (toutes)
   const selectableHabits = linkedHabits;
@@ -553,9 +521,7 @@ export default function Home({
   const hasSelectableHabits = selectableHabits.length > 0;
 
   // Actions actives uniquement (progression)
-  const activeHabits = useMemo(() => {
-    return linkedHabits.filter((g) => safeString(g.status) === "active");
-  }, [linkedHabits]);
+  const activeHabits = useMemo(() => linkedHabits.filter((g) => safeString(g.status) === "active"), [linkedHabits]);
   const hasActiveHabits = activeHabits.length > 0;
   const canManageCategory = Boolean(typeof onOpenManageCategory === "function" && focusCategory?.id);
   const selectedHabitsByGoal = safeData.ui?.selectedHabits || {};
@@ -601,7 +567,9 @@ export default function Home({
       const t = resolveGoalType(g);
       if (t === "OUTCOME") return g;
       const parentId = typeof g.parentId === "string" ? g.parentId : null;
-      return parentId ? outcomeById.get(parentId) || null : null;
+      const primaryId = typeof g.primaryGoalId === "string" ? g.primaryGoalId : null;
+      const linkId = parentId || primaryId;
+      return linkId ? outcomeById.get(linkId) || null : null;
     },
     [goalsById, outcomeById]
   );
@@ -1604,23 +1572,31 @@ export default function Home({
                       </div>
                     ) : null}
 
-                    {selectedGoal && unlinkedActiveHabits.length ? (
+                    {selectedGoal && unlinkedHabits.length ? (
                       <div className="mt12">
                         <div className="small2">Actions non liées</div>
                         <div className="sectionSub" style={{ marginTop: 6 }}>
-                          Ces actions existent dans la catégorie mais ne sont liées à aucun objectif. Elles ne seront pas proposées ici.
-                          {canManageCategory ? (
-                            <>
-                              {" "}
-                              <button
-                                className="linkBtn"
-                                type="button"
-                                onClick={() => onOpenManageCategory(focusCategory.id)}
-                              >
-                                Lier des actions
-                              </button>
-                            </>
-                          ) : null}
+                          Ces actions existent dans la catégorie mais ne sont liées à aucun objectif.
+                        </div>
+                        <div className="mt8 col" style={{ gap: 8 }}>
+                          {unlinkedHabits.map((habit) => (
+                            <div key={habit.id} className="row" style={{ gap: 8, alignItems: "center" }}>
+                              <div className="itemTitle" style={{ opacity: 0.6 }}>
+                                {habit.title || "Action"}
+                              </div>
+                              {typeof setData === "function" && selectedGoal ? (
+                                <button
+                                  className="linkBtn"
+                                  type="button"
+                                  onClick={() =>
+                                    setData((prev) => linkProcessToOutcome(prev, habit.id, selectedGoal.id))
+                                  }
+                                >
+                                  Lier
+                                </button>
+                              ) : null}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ) : null}

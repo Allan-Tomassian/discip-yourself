@@ -6,6 +6,7 @@ import SortableBlocks from "../components/SortableBlocks";
 import { getCategoryCounts } from "../logic/pilotage";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { resolveGoalType } from "../domain/goalType";
+import { isProcessLinkedToOutcome } from "../logic/linking";
 
 // TOUR MAP:
 // - primary_action: open category detail
@@ -158,16 +159,15 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
   const { habitsByOutcome, unlinkedHabits } = useMemo(() => {
     const byParent = new Map();
     const unlinked = [];
-    const outcomeIds = new Set(outcomeGoals.map((g) => g.id));
     for (const habit of processGoals) {
-      const parentId = typeof habit?.parentId === "string" ? habit.parentId : "";
-      if (parentId && outcomeIds.has(parentId)) {
-        const list = byParent.get(parentId) || [];
+      const linkedOutcome = outcomeGoals.find((g) => g?.id && isProcessLinkedToOutcome(habit, g.id)) || null;
+      if (linkedOutcome?.id) {
+        const list = byParent.get(linkedOutcome.id) || [];
         list.push(habit);
-        byParent.set(parentId, list);
-      } else {
-        unlinked.push(habit);
+        byParent.set(linkedOutcome.id, list);
+        continue;
       }
+      unlinked.push(habit);
     }
     return { habitsByOutcome: byParent, unlinkedHabits: unlinked };
   }, [processGoals, outcomeGoals]);

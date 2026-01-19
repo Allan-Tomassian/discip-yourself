@@ -7,6 +7,7 @@ import { safeConfirm, safePrompt } from "../utils/dialogs";
 import { addDays, startOfWeekKey, todayKey } from "../utils/dates";
 import { isPrimaryCategory, isPrimaryGoal, setPrimaryCategory } from "../logic/priority";
 import { resolveGoalType } from "../domain/goalType";
+import { isProcessLinkedToOutcome } from "../logic/linking";
 import { getChecksForDate } from "../logic/checks";
 
 // TOUR MAP:
@@ -105,7 +106,9 @@ export default function CategoryView({
     return goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "PROCESS");
   }, [goals, category?.id]);
 
-  const linkedHabits = selectedOutcome ? processGoals.filter((g) => g.parentId === selectedOutcome.id) : [];
+  const linkedHabits = selectedOutcome
+    ? processGoals.filter((g) => isProcessLinkedToOutcome(g, selectedOutcome.id))
+    : [];
   const habits = linkedHabits.length ? linkedHabits : processGoals;
 
   const gaugeGoals = useMemo(() => {

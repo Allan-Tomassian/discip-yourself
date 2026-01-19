@@ -4,6 +4,7 @@ import { Button, Card } from "../components/UI";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { resolveGoalType } from "../domain/goalType";
+import { isProcessLinkedToOutcome } from "../logic/linking";
 
 export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
   const safeData = data && typeof data === "object" ? data : {};
@@ -24,16 +25,15 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
   const { habitsByOutcome, unlinkedHabits } = useMemo(() => {
     const byParent = new Map();
     const unlinked = [];
-    const outcomeIds = new Set(outcomeGoals.map((g) => g.id));
     for (const habit of processGoals) {
-      const parentId = typeof habit?.parentId === "string" ? habit.parentId : "";
-      if (parentId && outcomeIds.has(parentId)) {
-        const list = byParent.get(parentId) || [];
+      const linkedOutcome = outcomeGoals.find((g) => g?.id && isProcessLinkedToOutcome(habit, g.id)) || null;
+      if (linkedOutcome?.id) {
+        const list = byParent.get(linkedOutcome.id) || [];
         list.push(habit);
-        byParent.set(parentId, list);
-      } else {
-        unlinked.push(habit);
+        byParent.set(linkedOutcome.id, list);
+        continue;
       }
+      unlinked.push(habit);
     }
     return { habitsByOutcome: byParent, unlinkedHabits: unlinked };
   }, [processGoals, outcomeGoals]);
