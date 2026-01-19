@@ -16,6 +16,7 @@ export function useTour({ data, setData, steps, tourVersion }) {
     stepIndexRef.current = stepIndex;
   }, [stepIndex]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!onboardingCompleted || totalSteps === 0) {
       setIsActive(false);
@@ -44,6 +45,7 @@ export function useTour({ data, setData, steps, tourVersion }) {
     ui.tourStepIndex,
     tourVersion,
   ]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!isActive || typeof setData !== "function") return;
@@ -120,7 +122,8 @@ export function useTour({ data, setData, steps, tourVersion }) {
   const step = safeSteps[stepIndex] || null;
   useEffect(() => {
     if (!isActive || !step) return;
-    const debug = typeof window !== "undefined" && window.__debugTour;
+    const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
+    const debug = isDev && typeof window !== "undefined" && window.__debugTour;
     if (debug) {
       // eslint-disable-next-line no-console
       console.debug("[tour] resolve", {

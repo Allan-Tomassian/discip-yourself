@@ -70,7 +70,8 @@ export function getDueReminders(state, now, lastFiredMap) {
   const goals = Array.isArray(state?.goals) ? state.goals : [];
   const nowMinutes = minutesSinceMidnight(now);
   const today = toLocalDateKey(now);
-  const debug = typeof window !== "undefined" && window.__debugReminders;
+  const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
+  const debug = isDev && typeof window !== "undefined" && window.__debugReminders;
   const due = [];
   const firedGoals = new Set();
   const candidates = debug ? [] : null;
@@ -178,15 +179,14 @@ export function playReminderSound() {
     osc.start();
     osc.stop(ctx.currentTime + 0.55);
     osc.onended = () => ctx.close();
-  } catch {}
+  } catch (err) {
+    void err;
+  }
 }
 
 export function internalTestReminders() {
-  const isProdNode =
-    typeof process !== "undefined" && process.env && process.env.NODE_ENV === "production";
-  const isProdMeta =
-    typeof import.meta !== "undefined" && import.meta.env && import.meta.env.MODE === "production";
-  if (isProdNode || isProdMeta) return;
+  const isProd = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
+  if (isProd) return;
 
   const now = new Date(2026, 0, 18, 9, 50, 0);
   const today = toLocalDateKey(now);
@@ -261,7 +261,9 @@ export function sendReminderNotification(reminder, targetTitle = "") {
     const body = targetTitle ? `Cible: ${targetTitle}` : "Ouvre l’app pour continuer.";
     // eslint-disable-next-line no-new
     new Notification(title, { body, silent: true });
-  } catch {}
+  } catch (err) {
+    void err;
+  }
 }
 
 export async function requestReminderPermission() {
@@ -271,7 +273,8 @@ export async function requestReminderPermission() {
   if (!("serviceWorker" in navigator)) return "unsupported";
   try {
     await navigator.serviceWorker.ready;
-  } catch {
+  } catch (err) {
+    void err;
     return "unsupported";
   }
   if (Notification.permission === "granted") return "granted";

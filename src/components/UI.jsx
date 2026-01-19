@@ -1,8 +1,7 @@
 import React from "react";
+import AccentContext from "./AccentContext";
 
 export { default as AccentItem } from "./AccentItem";
-
-export const AccentContext = React.createContext({ accent: "#FFFFFF" });
 
 export function Badge({ children }) {
   return <span className="badge">{children}</span>;

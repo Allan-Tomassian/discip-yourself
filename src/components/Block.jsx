@@ -2,6 +2,8 @@ import React, { useMemo } from "react";
 import { Badge, Button, Card, ProgressRing } from "./UI";
 import { clamp } from "../utils/helpers";
 import { computeHabitProgress, incHabit, decHabit } from "../logic/habits";
+import { addXp } from "../logic/xp";
+import { safePrompt } from "../utils/dialogs";
 
 // Reserved for future composition; currently unused.
 export default function Block({
@@ -15,7 +17,6 @@ export default function Block({
 }) {
   const blockCardStyle = useMemo(() => {
     // “Aujourd'hui”-style container: subtle glass + soft border. Accent is expressed via a left rail.
-    const rail = accent || "#6EE7FF";
     return {
       borderRadius: 16,
       border: "1px solid rgba(255,255,255,0.10)",
@@ -40,6 +41,14 @@ export default function Block({
       opacity: 0.9,
     };
   }, [accent]);
+
+  const categoryRate = useMemo(() => {
+    const list = habitsForCategory;
+    if (!list.length) return null;
+    let sum = 0;
+    for (const hh of list) sum += clamp(computeHabitProgress(hh, data.checks).ratio, 0, 1);
+    return sum / list.length;
+  }, [habitsForCategory, data.checks]);
 
   if (block.type === "WHY") {
     return (
@@ -155,14 +164,6 @@ export default function Block({
   }
 
   // GOAL
-  const categoryRate = useMemo(() => {
-    const list = habitsForCategory;
-    if (!list.length) return null;
-    let sum = 0;
-    for (const hh of list) sum += clamp(computeHabitProgress(hh, data.checks).ratio, 0, 1);
-    return sum / list.length;
-  }, [habitsForCategory, data.checks]);
-
   return (
     <Card style={blockCardStyle}>
       <div style={blockRailStyle} />

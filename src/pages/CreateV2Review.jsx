@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import { normalizeCreationDraft, createEmptyDraft } from "../creation/creationDraft";
@@ -107,7 +107,7 @@ export default function CreateV2Review({ data, setData, onBack, onDone, onCancel
   const backgroundImage = safeData?.profile?.whyImage || "";
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
-  const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
+  const draft = normalizeCreationDraft(safeData?.ui?.createDraft);
   const rhythmItems = Array.isArray(draft?.rhythm?.items) ? draft.rhythm.items : [];
   const outcomes = Array.isArray(draft?.outcomes) ? draft.outcomes : [];
   const habits = Array.isArray(draft?.habits) ? draft.habits : [];

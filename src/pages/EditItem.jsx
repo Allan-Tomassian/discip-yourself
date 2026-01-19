@@ -232,17 +232,14 @@ export default function EditItem({ data, setData, editItem, onBack }) {
   const reminders = Array.isArray(safeData.reminders) ? safeData.reminders : [];
   const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
 
-  const rawItem = useMemo(() => {
-    if (!editItem?.id) return null;
-    return goals.find((g) => g?.id === editItem.id) || null;
-  }, [editItem?.id, goals]);
-
-  const item = useMemo(() => {
-    if (!rawItem) return null;
-    const itemReminders = Array.isArray(reminders) ? reminders.filter((r) => r?.goalId === rawItem.id) : [];
-    const itemOccurrences = Array.isArray(occurrences) ? occurrences.filter((o) => o && o.goalId === rawItem.id) : [];
-    return { ...rawItem, _reminders: itemReminders, _occurrences: itemOccurrences };
-  }, [rawItem, reminders, occurrences]);
+  const rawItem = editItem?.id ? goals.find((g) => g?.id === editItem.id) || null : null;
+  const item = rawItem
+    ? {
+        ...rawItem,
+        _reminders: Array.isArray(reminders) ? reminders.filter((r) => r?.goalId === rawItem.id) : [],
+        _occurrences: Array.isArray(occurrences) ? occurrences.filter((o) => o && o.goalId === rawItem.id) : [],
+      }
+    : null;
 
   const type = resolveGoalType(rawItem);
 
@@ -275,6 +272,7 @@ export default function EditItem({ data, setData, editItem, onBack }) {
     isProcess && item?.schedule && Array.isArray(item.schedule.timeSlots) && item.schedule.timeSlots.length > 0;
   const canUseReminders = hasOccurrenceSource || hasScheduleSource;
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!item) return;
     const resolvedPlan = isProcess ? resolvePlanType(item) : "STATE";
@@ -325,6 +323,7 @@ export default function EditItem({ data, setData, editItem, onBack }) {
     setError("");
     setPlanOpen(false);
   }, [item?.id]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const normalizedReminderTimes = useMemo(() => normalizeTimes(reminderTimes), [reminderTimes]);
 

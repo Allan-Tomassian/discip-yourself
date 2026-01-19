@@ -48,14 +48,6 @@ function parseTimeToMinutes(value) {
   return h * 60 + min;
 }
 
-function minutesToTime(minutes) {
-  if (!Number.isFinite(minutes)) return "";
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h < 0 || h > 23 || m < 0 || m > 59) return "";
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
-
 function resolvePreferredMinutes(session) {
   const raw = session?.timerStartedAt || session?.startedAt || "";
   const d = raw ? new Date(raw) : new Date();

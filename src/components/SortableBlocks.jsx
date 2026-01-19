@@ -1,5 +1,5 @@
 // src/components/SortableBlocks.jsx
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -156,7 +156,9 @@ export default function SortableBlocks({
   }, [safeItems, resolveId]);
 
   const latestRef = useRef({ pairIds, pairs });
-  latestRef.current = { pairIds, pairs };
+  useEffect(() => {
+    latestRef.current = { pairIds, pairs };
+  }, [pairIds, pairs]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),

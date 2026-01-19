@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import AccentItem from "../components/AccentItem";
-import { todayKey } from "../utils/dates";
 import {
   getCategoryCounts,
   getCategoryStatus,

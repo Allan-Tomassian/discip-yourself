@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { AccentItem, Button, Card, IconButton } from "../components/UI";
 import Gauge from "../components/Gauge";
@@ -37,7 +37,6 @@ export default function CategoryView({
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const sessions = Array.isArray(safeData.sessions) ? safeData.sessions : [];
-  const checks = safeData.checks && typeof safeData.checks === "object" ? safeData.checks : {};
   const uiLibraryCategoryId =
     safeData?.ui?.selectedCategoryByView?.library || safeData?.ui?.librarySelectedCategoryId || null;
   const resolvedCategoryId =
@@ -76,13 +75,13 @@ export default function CategoryView({
     return () => window.clearTimeout(timeout);
   }, [safeData?.ui?.manageScrollTo, setData]);
 
-  const outcomeGoals = useMemo(() => {
-    if (!category?.id) return [];
-    return goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "OUTCOME");
-  }, [goals, category?.id]);
+  const outcomeGoals = category?.id
+    ? goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "OUTCOME")
+    : [];
 
   useEffect(() => {
     if (!category?.id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedOutcomeId(null);
       return;
     }
@@ -90,37 +89,34 @@ export default function CategoryView({
       ? category.mainGoalId
       : null;
     const fallback = outcomeGoals[0]?.id || null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedOutcomeId((prev) => {
       if (prev && outcomeGoals.some((g) => g.id === prev)) return prev;
       return mainId || fallback;
     });
   }, [category?.id, category?.mainGoalId, outcomeGoals]);
 
-  const selectedOutcome = useMemo(() => {
-    if (!selectedOutcomeId) return null;
-    return outcomeGoals.find((g) => g.id === selectedOutcomeId) || null;
-  }, [outcomeGoals, selectedOutcomeId]);
+  const selectedOutcome = selectedOutcomeId ? outcomeGoals.find((g) => g.id === selectedOutcomeId) || null : null;
 
-  const processGoals = useMemo(() => {
-    if (!category?.id) return [];
-    return goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "PROCESS");
-  }, [goals, category?.id]);
+  const processGoals = category?.id
+    ? goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "PROCESS")
+    : [];
 
-  const { linked: linkedHabits, unlinked: unlinkedHabits } = useMemo(() => {
-    if (!processGoals.length) return { linked: [], unlinked: [] };
-    if (!selectedOutcome?.id) return { linked: [], unlinked: processGoals };
-    return splitProcessByLink(processGoals, selectedOutcome.id);
-  }, [processGoals, selectedOutcome?.id]);
+  const { linked: linkedHabits, unlinked: unlinkedHabits } = !processGoals.length
+    ? { linked: [], unlinked: [] }
+    : !selectedOutcome?.id
+      ? { linked: [], unlinked: processGoals }
+      : splitProcessByLink(processGoals, selectedOutcome.id);
   const habits = linkedHabits;
 
-  const gaugeGoals = useMemo(() => {
+  const gaugeGoals = (() => {
     const main = category?.mainGoalId ? outcomeGoals.find((g) => g.id === category.mainGoalId) : null;
     const rest = main ? outcomeGoals.filter((g) => g.id !== main.id) : outcomeGoals;
     return main ? [main, ...rest] : outcomeGoals;
-  }, [outcomeGoals, category?.mainGoalId]);
+  })();
   const gaugeSlice = gaugeGoals.slice(0, 2);
   const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
-  const habitWeekStats = useMemo(() => {
+  const habitWeekStats = (() => {
     const stats = new Map();
     if (!processGoals.length) return stats;
     const weekStartKey = startOfWeekKey(new Date());
@@ -181,7 +177,7 @@ export default function CategoryView({
       stats.set(h.id, { planned, done, ratio });
     }
     return stats;
-  }, [processGoals, occurrences, sessions, checks]);
+  })();
 
   function linkHabitToSelectedOutcome(habitId) {
     if (!selectedOutcome?.id || typeof setData !== "function") return;
@@ -374,8 +370,6 @@ export default function CategoryView({
                   aria-label="Paramètres catégorie"
                   onClick={() => {
                     setCategoryMenuOpen((prev) => !prev);
-                    setGoalMenuOpenId(null);
-                    setHabitMenuOpenId(null);
                   }}
                   data-tour-id="manage-category-settings"
                 />

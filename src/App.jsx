@@ -25,7 +25,7 @@ import CategoryProgress from "./pages/CategoryProgress";
 import Session from "./pages/Session";
 import Pilotage from "./pages/Pilotage";
 import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
-import { fromLocalDateKey, toLocalDateKey, todayLocalKey } from "./utils/dateKey";
+import { toLocalDateKey, todayLocalKey } from "./utils/dateKey";
 import { isPrimaryCategory, normalizePriorities } from "./logic/priority";
 import { getCategoryCounts } from "./logic/pilotage";
 import { resolveGoalType } from "./domain/goalType";
@@ -36,30 +36,20 @@ import { createEmptyDraft, normalizeCreationDraft } from "./creation/creationDra
 import { STEP_CATEGORY, STEP_HABITS, STEP_OUTCOME, isValidCreationStep } from "./creation/creationSchema";
 import DiagnosticOverlay from "./components/DiagnosticOverlay";
 import { validateOccurrences } from "./logic/occurrencePlanner";
+import { runInternalP2Tests } from "./logic/internalP2Tests";
 
 function runSelfTests(data) {
-  const isProdNode =
-    typeof process !== "undefined" && process.env && process.env.NODE_ENV === "production";
-  const isProdMeta = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.MODE === "production";
-  if (isProdNode || isProdMeta) return;
+  const isProd = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
+  if (isProd) return;
   // minimal sanity
   console.assert(typeof window !== "undefined", "browser env");
   validateOccurrences(data);
-}
-
-function parseLocalDateKey(key) {
-  return fromLocalDateKey(key);
 }
 
 function localDateKey(d = new Date()) {
   return toLocalDateKey(d);
 }
 
-function appDowFromDateKey(key) {
-  const d = parseLocalDateKey(key);
-  const js = d.getDay(); // 0..6 (Sun..Sat)
-  return js === 0 ? 7 : js; // 1..7 (Mon..Sun)
-}
 
 function getHomeSelectedCategoryId(data) {
   const safe = data && typeof data === "object" ? data : {};
@@ -208,8 +198,6 @@ export default function App() {
   const [sessionDateKey, setSessionDateKey] = useState(initialSearch?.get("date") || null);
   const [activeReminder, setActiveReminder] = useState(null);
   const [editItem, setEditItem] = useState(null);
-  const [createFlowCategoryId, setCreateFlowCategoryId] = useState(null);
-  const [createFlowGoalId, setCreateFlowGoalId] = useState(null);
   const dataRef = useRef(data);
   const lastReminderRef = useRef({});
   const activeReminderRef = useRef(activeReminder);
@@ -324,25 +312,21 @@ export default function App() {
 
   useEffect(() => {
     lastReminderRef.current = {};
-    if (typeof window !== "undefined" && window.__debugReminders) {
+    const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
+    if (isDev && typeof window !== "undefined" && window.__debugReminders) {
       // eslint-disable-next-line no-console
       console.debug("[reminders] cache cleared");
     }
   }, [reminderFingerprint]);
 
   useEffect(() => {
-    if (
-      tab === "create-category" ||
-      tab === "create-goal" ||
-      tab === "create-habit" ||
-      tab === "create-rhythm" ||
-      tab === "create-review"
-    ) {
-      return;
-    }
-    setCreateFlowCategoryId(null);
-    setCreateFlowGoalId(null);
-  }, [tab]);
+    const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
+    if (!isDev || typeof window === "undefined") return;
+    window.__runP2Tests = runInternalP2Tests;
+    return () => {
+      delete window.__runP2Tests;
+    };
+  }, []);
 
   useEffect(() => {
     setData((prev) => {
@@ -363,7 +347,8 @@ export default function App() {
 
   useEffect(() => {
     const id = setInterval(() => {
-      const debug = typeof window !== "undefined" && window.__debugReminders;
+      const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
+      const debug = isDev && typeof window !== "undefined" && window.__debugReminders;
       if (activeReminderRef.current) {
         if (debug) {
           // eslint-disable-next-line no-console
@@ -422,23 +407,8 @@ export default function App() {
     const map = new Map(categories.map((c) => [c.id, c]));
     return categoryRailOrder.map((id) => map.get(id)).filter(Boolean);
   }, [categoryIdsKey, categoryRailOrder]);
-  const railDateKey = safeData?.ui?.selectedDate || localDateKey();
-  const railDow = useMemo(() => appDowFromDateKey(railDateKey), [railDateKey]);
-  const plannedCategoryIds = useMemo(() => {
-    if (!goals.length) return new Set();
-    const ids = new Set();
-    for (const g of goals) {
-      if (resolveGoalType(g) !== "PROCESS") continue;
-      if (g.status && g.status !== "active") continue;
-      const days = Array.isArray(g?.schedule?.daysOfWeek) ? g.schedule.daysOfWeek : null;
-      const plannedToday = !days || days.length === 0 ? true : days.includes(railDow);
-      if (plannedToday && g.categoryId) ids.add(g.categoryId);
-    }
-    return ids;
-  }, [goals, railDow]);
   const railCategories = useMemo(() => orderedCategories, [orderedCategories]);
   const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
-  const libraryDetailExpandedId = safeData?.ui?.libraryDetailExpandedId || null;
   const homeActiveCategoryId =
     safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
   const homeSelectedCategoryId = getHomeSelectedCategoryId(safeData);
@@ -545,7 +515,8 @@ export default function App() {
     let touched = false;
     try {
       touched = sessionStorage.getItem("library:selectedCategoryTouched") === "1";
-    } catch (_) {
+    } catch (err) {
+      void err;
       touched = false;
     }
     const libraryViewSelectedId = touched
@@ -650,7 +621,8 @@ export default function App() {
       let touched = false;
       try {
         touched = sessionStorage.getItem("library:selectedCategoryTouched") === "1";
-      } catch (_) {
+      } catch (err) {
+        void err;
         touched = false;
       }
       if (!touched) {
@@ -942,7 +914,9 @@ export default function App() {
           const markLibraryTouched = () => {
             try {
               sessionStorage.setItem("library:selectedCategoryTouched", "1");
-            } catch (_) {}
+            } catch (err) {
+              void err;
+            }
           };
           const syncCategorySelection = ({ updateLegacy } = {}) => {
             const shouldUpdateLegacy = Boolean(updateLegacy);

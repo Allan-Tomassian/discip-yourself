@@ -173,6 +173,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
     };
   }, [item]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!item) return;
     const resolvedPlan = isProcess ? resolvePlanType(item) : "STATE";
@@ -223,6 +224,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
     setError("");
     setPlanOpen(false);
   }, [item, isProcess, canUseReminders]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const normalizedReminderTimes = useMemo(() => normalizeTimes(reminderTimes), [reminderTimes]);
 

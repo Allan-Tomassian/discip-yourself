@@ -7,10 +7,6 @@ function pad2(n) {
   return String(n).padStart(2, "0");
 }
 
-function occurrenceKey(goalId, date, start) {
-  return `${goalId}::${date}::${start}`;
-}
-
 function resolveOccurrences(source) {
   if (Array.isArray(source)) return source;
   if (source && typeof source === "object") {
@@ -120,7 +116,6 @@ export function upsertOccurrence(goalId, date, start, durationMinutes, patch, so
   const s = normalizeTimeHM(start);
   if (!g || !d || !s) return occurrences.slice();
 
-  const key = occurrenceKey(g, d, s);
   const nextPatch = patch && typeof patch === "object" ? { ...patch } : {};
   if ("status" in nextPatch) nextPatch.status = normalizeStatus(nextPatch.status);
   if ("durationMinutes" in nextPatch) nextPatch.durationMinutes = normalizeDurationMinutes(nextPatch.durationMinutes);

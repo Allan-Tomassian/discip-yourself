@@ -226,31 +226,6 @@ function pickPreferredActiveId(actives, preferredId) {
   return keep?.id || null;
 }
 
-function getGoalAgeKey(goal) {
-  const key = goal?.activeSince || goal?.createdAt || goal?.startAt || "";
-  return typeof key === "string" ? key : "";
-}
-
-function pickOldestActiveId(actives) {
-  if (!actives.length) return null;
-  let picked = actives[0];
-  let bestKey = getGoalAgeKey(picked);
-  for (const g of actives.slice(1)) {
-    const key = getGoalAgeKey(g);
-    if (key && (!bestKey || key < bestKey)) {
-      picked = g;
-      bestKey = key;
-      continue;
-    }
-    if (!bestKey && !key) {
-      const order = typeof g.order === "number" ? g.order : Number.POSITIVE_INFINITY;
-      const bestOrder = typeof picked.order === "number" ? picked.order : Number.POSITIVE_INFINITY;
-      if (order < bestOrder) picked = g;
-    }
-  }
-  return picked?.id || null;
-}
-
 export function normalizeGoalsState(state) {
   if (!state || typeof state !== "object") return state;
   const goals = Array.isArray(state.goals) ? state.goals : [];

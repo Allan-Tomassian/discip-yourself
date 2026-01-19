@@ -255,36 +255,6 @@ function syncOccurrencesForDoneHabits(state, dateKey, doneHabitIds) {
   return nextState;
 }
 
-function getSessionHabitIds(session) {
-  const ids = normalizeIdList(session?.habitIds);
-  if (session?.habitId && !ids.includes(session.habitId)) ids.push(session.habitId);
-  return ids;
-}
-
-function syncOccurrencesForSkippedHabits(state, dateKey, habitIds) {
-  if (!state || !dateKey || !Array.isArray(habitIds) || habitIds.length === 0) return state;
-  const goals = Array.isArray(state.goals) ? state.goals : [];
-  let nextState = state;
-  const key = normalizeDateKey(dateKey);
-  if (!key) return state;
-
-  for (const habitId of habitIds) {
-    const goal = goals.find((g) => g && g.id === habitId);
-    if (!goal || resolveGoalType(goal) !== "PROCESS") continue;
-    nextState = ensureWindowForGoal(nextState, habitId, key, 1);
-    const occurrences = Array.isArray(nextState.occurrences) ? nextState.occurrences : [];
-    const schedule = goal.schedule && typeof goal.schedule === "object" ? goal.schedule : null;
-    const timeSlots = Array.isArray(schedule?.timeSlots) ? schedule.timeSlots.filter(Boolean) : [];
-    const preferredStart = timeSlots[0] || "";
-    const start = pickOccurrenceStart(occurrences, habitId, key, preferredStart, timeSlots);
-    if (!start) continue;
-    const updated = setOccurrenceStatus(habitId, key, start, "skipped", { occurrences });
-    nextState = { ...nextState, occurrences: updated };
-  }
-
-  return nextState;
-}
-
 function findSessionIndexForHabit(sessions, dateKey, habitId) {
   for (let i = sessions.length - 1; i >= 0; i -= 1) {
     const s = sessions[i];

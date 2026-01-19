@@ -141,7 +141,7 @@ export function getDayCountsForDate(date, source, options = {}) {
   let planned = 0;
   let done = 0;
   let skipped = 0;
-  for (const o of listAll) {
+  for (const o of list) {
     if (!o) continue;
     if (o.status === "done") done += 1;
     else if (o.status === "skipped") skipped += 1;

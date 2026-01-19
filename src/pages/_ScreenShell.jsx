@@ -1,5 +1,5 @@
 import React from "react";
-import { AccentContext } from "../components/UI";
+import AccentContext from "../components/AccentContext";
 
 export default function ScreenShell({
   accent = "#FFFFFF",

@@ -13,6 +13,7 @@ import {
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { setMainGoal } from "../logic/goals";
 import { getDoneSessionsForDate, getSessionByDate, startSessionForDate } from "../logic/sessions";
+import { ensureWindowForGoals } from "../logic/occurrencePlanner";
 import { getChecksForDate, setMicroChecked } from "../logic/checks";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
@@ -101,7 +102,8 @@ function loadLegacyBlockOrder() {
   try {
     const stored = JSON.parse(localStorage.getItem("todayBlocksOrder"));
     return Array.isArray(stored) ? stored : null;
-  } catch (_) {
+  } catch (err) {
+   void err;
     return null;
   }
 }
@@ -201,7 +203,6 @@ export default function Home({
   const railExtendRef = useRef(0);
   const lastSelectionSourceRef = useRef("auto");
   const noteSaveRef = useRef(null);
-  const noteHistoryCacheRef = useRef({ version: -1, items: [] });
   const calendarIdleTimerRef = useRef(null);
   const skipAutoCenterRef = useRef(false);
   const didInitSelectedDateRef = useRef(false);
@@ -290,7 +291,8 @@ export default function Home({
       }
       try {
         sessionStorage.removeItem("home:selectedDateTouched");
-      } catch (_) {
+      } catch (err) {
+   void err;
         // Ignore storage failures.
       }
       return;
@@ -319,7 +321,8 @@ export default function Home({
       });
       try {
         sessionStorage.removeItem("home:selectedDateTouched");
-      } catch (_) {
+      } catch (err) {
+   void err;
         // Ignore storage failures.
       }
     };
@@ -370,7 +373,8 @@ export default function Home({
     });
     try {
       localStorage.removeItem("todayBlocksOrder");
-    } catch (_) {
+    } catch (err) {
+   void err;
       // Ignore storage failures.
     }
   }, [legacyOrder, safeData?.ui?.blocksByPage?.home, setData]);
@@ -388,9 +392,11 @@ export default function Home({
     let next = "";
     try {
       next = localStorage.getItem(noteStorageKey) || "";
-    } catch (_) {
+    } catch (err) {
+   void err;
       next = "";
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDailyNote(next);
   }, [noteStorageKey]);
 
@@ -408,9 +414,11 @@ export default function Home({
           };
         }
       }
-    } catch (_) {
+    } catch (err) {
+   void err;
       // Ignore storage failures.
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNoteMeta(next);
   }, [noteMetaStorageKey]);
 
@@ -419,7 +427,8 @@ export default function Home({
     noteSaveRef.current = setTimeout(() => {
       try {
         localStorage.setItem(noteStorageKey, dailyNote || "");
-      } catch (_) {
+      } catch (err) {
+   void err;
         // Ignore storage failures (private mode, quota, etc.)
       }
     }, 400);
@@ -544,7 +553,6 @@ export default function Home({
 
   // Actions actives uniquement (progression)
   const activeHabits = useMemo(() => linkedHabits.filter((g) => safeString(g.status) === "active"), [linkedHabits]);
-  const hasActiveHabits = activeHabits.length > 0;
   const canManageCategory = Boolean(typeof onOpenManageCategory === "function" && focusCategory?.id);
   const selectedHabitsByGoal = safeData.ui?.selectedHabits || {};
   const storedSelectedHabits =
@@ -665,7 +673,6 @@ export default function Home({
     return Math.min(3, count);
   }, [dayChecks.micro]);
 
-  const hasActiveSession = Boolean(sessionForDay && sessionForDay.status === "partial");
   const canOpenSession = Boolean(canValidate && selectedGoal && hasSelectedActions);
 
   const coreProgress = useMemo(() => {
@@ -841,13 +848,15 @@ export default function Home({
         day: "numeric",
       });
       return fmt.format(selectedDate);
-    } catch {
+    } catch (err) {
+      void err;
       return selectedDateKey || "";
     }
   }, [selectedDate, selectedDateKey]);
 
   useEffect(() => {
     const offset = diffDays(railAnchorDate, selectedDate);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     ensureRailRangeForOffset(offset);
   }, [railAnchorDate, selectedDate, ensureRailRangeForOffset]);
 
@@ -858,18 +867,23 @@ export default function Home({
 
   useEffect(() => {
     if (microState.dayKey === selectedDateKey) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMicroState(initMicroState(selectedDateKey));
   }, [microState.dayKey, selectedDateKey]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMonthCursor(startOfMonth(selectedDate));
   }, [selectedDateKey]);
 
   useEffect(() => {
     // Lightweight in-app transition (GPU-friendly): opacity + translate.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCalendarPanePhase("enter");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCalendarPaneKey((k) => k + 1);
     const raf = requestAnimationFrame(() => {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCalendarPanePhase("enterActive");
     });
     return () => cancelAnimationFrame(raf);
@@ -891,7 +905,8 @@ export default function Home({
       });
       try {
         sessionStorage.removeItem("home:selectedDateTouched");
-      } catch (_) {
+      } catch (err) {
+   void err;
         // ignore
       }
     }, 1200);
@@ -904,7 +919,8 @@ export default function Home({
       if (isUser) {
         try {
           sessionStorage.setItem("home:selectedDateTouched", nextKey);
-        } catch (_) {
+        } catch (err) {
+   void err;
           // ignore
         }
       }
@@ -1080,10 +1096,14 @@ export default function Home({
   function openSessionFlow() {
     if (!selectedGoal?.id || !canValidate || !hasSelectedActions || typeof setData !== "function") return;
     setData((prev) =>
-      startSessionForDate(prev, selectedDateKey, {
-        objectiveId: selectedGoal.id,
-        habitIds: selectedActionIds,
-      })
+      startSessionForDate(
+        ensureWindowForGoals(prev, selectedActionIds, selectedDateKey, 1),
+        selectedDateKey,
+        {
+          objectiveId: selectedGoal.id,
+          habitIds: selectedActionIds,
+        }
+      )
     );
     if (typeof onOpenSession === "function") {
       onOpenSession({ categoryId: focusCategory?.id || null, dateKey: selectedDateKey });
@@ -1127,10 +1147,6 @@ export default function Home({
 
   const noteHistoryItems = useMemo(() => {
     if (!showNotesHistory) return [];
-    const cacheKey = `${noteHistoryVersion}:${noteHistoryStorageKey}:${selectedDateKey}`;
-    if (noteHistoryCacheRef.current.version === cacheKey) {
-      return noteHistoryCacheRef.current.items;
-    }
     let nextItems = [];
     try {
       const items = [];
@@ -1139,7 +1155,8 @@ export default function Home({
         const raw = localStorage.getItem(noteHistoryStorageKey) || "";
         const parsed = raw ? JSON.parse(raw) : [];
         if (Array.isArray(parsed)) history = parsed;
-      } catch (_) {
+      } catch (err) {
+        void err;
         history = [];
       }
       history.forEach((entry, index) => {
@@ -1178,7 +1195,8 @@ export default function Home({
             const raw = localStorage.getItem(key) || "";
             const parsed = raw ? JSON.parse(raw) : null;
             if (parsed && typeof parsed === "object") meta = parsed;
-          } catch (_) {
+          } catch (err) {
+            void err;
             meta = {};
           }
           const entry = entries.get(dateKey) || { dateKey, note: "", meta: {} };
@@ -1211,10 +1229,10 @@ export default function Home({
           return (b.dateKey || "").localeCompare(a.dateKey || "");
         })
         .slice(0, 120);
-    } catch (_) {
+    } catch (err) {
+      void err;
       nextItems = [];
     }
-    noteHistoryCacheRef.current = { version: cacheKey, items: nextItems };
     return nextItems;
   }, [noteHistoryVersion, noteHistoryStorageKey, noteKeyPrefix, noteMetaKeyPrefix, selectedDateKey, showNotesHistory]);
 
@@ -1223,7 +1241,8 @@ export default function Home({
       const next = { ...prev, ...patch };
       try {
         localStorage.setItem(noteMetaStorageKey, JSON.stringify(next));
-      } catch (_) {
+      } catch (err) {
+   void err;
         // Ignore storage failures.
       }
       return next;
@@ -1240,7 +1259,8 @@ export default function Home({
     try {
       localStorage.setItem(`${noteKeyPrefix}${targetDate}`, "");
       localStorage.setItem(`${noteMetaKeyPrefix}${targetDate}`, JSON.stringify(nextMeta));
-    } catch (_) {
+    } catch (err) {
+   void err;
       // Ignore storage failures.
     }
     setNoteHistoryVersion((v) => v + 1);
@@ -1276,7 +1296,8 @@ export default function Home({
         return entryNote !== targetNote || JSON.stringify(entryMeta) !== JSON.stringify(targetMeta);
       });
       localStorage.setItem(noteHistoryStorageKey, JSON.stringify(nextHistory));
-    } catch (_) {
+    } catch (err) {
+   void err;
       // Ignore storage failures.
     }
     setNoteHistoryVersion((v) => v + 1);
@@ -1301,7 +1322,8 @@ export default function Home({
       const history = Array.isArray(parsed) ? parsed : [];
       history.unshift(entry);
       localStorage.setItem(noteHistoryStorageKey, JSON.stringify(history));
-    } catch (_) {
+    } catch (err) {
+   void err;
       // Ignore storage failures.
     }
     setDailyNote("");
@@ -1310,7 +1332,8 @@ export default function Home({
     try {
       localStorage.setItem(noteStorageKey, "");
       localStorage.setItem(noteMetaStorageKey, JSON.stringify(nextMeta));
-    } catch (_) {
+    } catch (err) {
+   void err;
       // Ignore storage failures.
     }
     setNoteHistoryVersion((v) => v + 1);

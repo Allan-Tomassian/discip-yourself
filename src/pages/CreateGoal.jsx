@@ -52,9 +52,11 @@ export default function CreateGoal({ data, setData, onCancel, onDone, initialCat
   useEffect(() => {
     if (!categories.length) return;
     if (initialCategoryId && categories.some((c) => c.id === initialCategoryId)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (categoryId !== initialCategoryId) setCategoryId(initialCategoryId);
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!categoryId) setCategoryId(categories[0].id);
   }, [categories, categoryId, initialCategoryId]);
 

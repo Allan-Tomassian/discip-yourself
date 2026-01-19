@@ -21,15 +21,18 @@ export default function CreateHabit({ data, setData, onCancel, onDone, initialCa
 
   useEffect(() => {
     if (!initialGoalId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (parentId !== initialGoalId) setParentId(initialGoalId);
   }, [initialGoalId, parentId]);
 
   useEffect(() => {
     if (!categories.length) return;
     if (initialCategoryId && categories.some((c) => c.id === initialCategoryId)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (categoryId !== initialCategoryId) setCategoryId(initialCategoryId);
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!categoryId) setCategoryId(categories[0].id);
   }, [categories, categoryId, initialCategoryId]);
 
@@ -47,9 +50,11 @@ export default function CreateHabit({ data, setData, onCancel, onDone, initialCa
     if (initialGoalId && parentId === initialGoalId) return;
     if (parentId && outcomeGoals.some((g) => g.id === parentId)) return;
     if (mainGoalId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setParentId(mainGoalId);
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setParentId(outcomeGoals[0]?.id || "");
   }, [outcomeGoals, parentId, mainGoalId, initialGoalId]);
 

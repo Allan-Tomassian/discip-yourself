@@ -10,13 +10,22 @@ import { Button, Card, Textarea } from "../components/UI";
 function MotivationSection({ data, setData }) {
   const profile = data?.profile || {};
   const [whyDraft, setWhyDraft] = useState(profile.whyText || "");
+  const [nowMs, setNowMs] = useState(0);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setWhyDraft(profile.whyText || "");
   }, [profile.whyText]);
 
+  useEffect(() => {
+    if (nowMs) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNowMs(Date.now());
+  }, [nowMs]);
+
   const lastUpdatedMs = profile.whyUpdatedAt ? Date.parse(profile.whyUpdatedAt) : 0;
-  const daysSince = lastUpdatedMs ? Math.floor((Date.now() - lastUpdatedMs) / (24 * 60 * 60 * 1000)) : 999;
+  const daysSince =
+    nowMs && lastUpdatedMs ? Math.floor((nowMs - lastUpdatedMs) / (24 * 60 * 60 * 1000)) : 999;
   const daysLeft = profile.plan === "premium" ? 0 : Math.max(0, 30 - daysSince);
   const canEditWhy = profile.plan === "premium" || daysLeft === 0;
   const cleanWhy = (whyDraft || "").trim();

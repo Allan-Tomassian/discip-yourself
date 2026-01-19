@@ -60,6 +60,7 @@ export default function CreateV2Outcome({ data, setData, onBack, onNext, onCance
   useEffect(() => {
     if (!availableExisting.length) return;
     if (availableExisting.some((g) => g.id === selectedId)) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedId(availableExisting[0]?.id || "");
   }, [availableExisting, selectedId]);
 

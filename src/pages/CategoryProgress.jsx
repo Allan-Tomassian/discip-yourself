@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import Gauge from "../components/Gauge";
@@ -20,17 +20,16 @@ export default function CategoryProgress({ data, categoryId, onBack }) {
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const category = categories.find((c) => c.id === categoryId) || null;
 
-  const outcomeGoals = useMemo(() => {
-    if (!category?.id) return [];
-    return goals.filter((g) => {
-      if (!g || g.categoryId !== category.id) return false;
-      if (resolveGoalType(g) !== "OUTCOME") return false;
-      const status = (g.status || "").toString().toLowerCase();
-      // Progress page shows active outcomes by default
-      if (status === "done" || status === "completed" || status === "finished" || status === "abandoned") return false;
-      return true;
-    });
-  }, [goals, category?.id]);
+  const outcomeGoals = category?.id
+    ? goals.filter((g) => {
+        if (!g || g.categoryId !== category.id) return false;
+        if (resolveGoalType(g) !== "OUTCOME") return false;
+        const status = (g.status || "").toString().toLowerCase();
+        // Progress page shows active outcomes by default
+        if (status === "done" || status === "completed" || status === "finished" || status === "abandoned") return false;
+        return true;
+      })
+    : [];
 
   if (!category) {
     return (

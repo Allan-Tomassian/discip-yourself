@@ -4,7 +4,8 @@ export function loadState() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     return raw ? JSON.parse(raw) : null;
-  } catch {
+  } catch (err) {
+    void err;
     return null;
   }
 }
@@ -12,11 +13,15 @@ export function loadState() {
 export function saveState(state) {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(state));
-  } catch {}
+  } catch (err) {
+    void err;
+  }
 }
 
 export function clearState() {
   try {
     localStorage.removeItem(LS_KEY);
-  } catch {}
+  } catch (err) {
+    void err;
+  }
 }

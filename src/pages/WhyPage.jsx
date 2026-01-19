@@ -12,18 +12,30 @@ async function shareText(text) {
       await navigator.share({ text });
       return true;
     }
-  } catch {}
+  } catch (err) {
+    void err;
+  }
   try {
     await navigator.clipboard.writeText(text);
     safeAlert("Copié dans le presse-papier.");
     return true;
-  } catch {
+  } catch (err) {
+    void err;
     safeAlert(text);
     return false;
   }
 }
 
 export default function WhyPage({ data, setData }) {
+  const categories = Array.isArray(data?.categories) ? data.categories : [];
+  const selected = categories.find((c) => c.id === data?.ui?.selectedCategoryId) || categories[0] || null;
+  const [pendingName, setPendingName] = useState(data.profile.name || "");
+  const [pendingWhy, setPendingWhy] = useState(data.profile.whyText || "");
+
+  const dailyAvg = useMemo(() => computeGlobalAvgForDay(data, new Date()), [data]);
+  const weeklyAvg = useMemo(() => computeGlobalAvgForWeek(data, new Date()), [data]);
+  const streak = useMemo(() => computeStreakDays(data, new Date()), [data]);
+
   function addCategory() {
     const name = safePrompt("Nom :", "Nouvelle");
     if (!name) return;
@@ -42,7 +54,7 @@ export default function WhyPage({ data, setData }) {
     });
   }
 
-  if (!data.categories || data.categories.length === 0) {
+  if (!categories.length) {
     return (
       <ScreenShell
         data={data}
@@ -65,14 +77,6 @@ export default function WhyPage({ data, setData }) {
       </ScreenShell>
     );
   }
-
-  const selected = data.categories.find((c) => c.id === data.ui.selectedCategoryId) || data.categories[0];
-  const [pendingName, setPendingName] = useState(data.profile.name || "");
-  const [pendingWhy, setPendingWhy] = useState(data.profile.whyText || "");
-
-  const dailyAvg = useMemo(() => computeGlobalAvgForDay(data, new Date()), [data]);
-  const weeklyAvg = useMemo(() => computeGlobalAvgForWeek(data, new Date()), [data]);
-  const streak = useMemo(() => computeStreakDays(data, new Date()), [data]);
 
   function claim(id) {
     setData((prev) => ({

@@ -17,17 +17,6 @@ export default function CreateV2Habits({ data, setData, onBack, onNext, onCancel
   const activeOutcomeId = draft.activeOutcomeId || outcomes[0]?.id || "";
   const hasOutcome = outcomes.length > 0;
 
-  useEffect(() => {
-    if (hasOutcome) return;
-    if (typeof onBack === "function") onBack();
-  }, [hasOutcome, onBack]);
-
-  useEffect(() => {
-    if (!outcomes.length) return;
-    if (outcomes.some((o) => o.id === activeOutcomeId)) return;
-    updateDraft(habits, outcomes[0].id);
-  }, [activeOutcomeId, habits, outcomes]);
-
   function updateDraft(nextHabits, nextActiveId) {
     if (typeof setData !== "function") return;
     setData((prev) => {
@@ -46,6 +35,17 @@ export default function CreateV2Habits({ data, setData, onBack, onNext, onCancel
       };
     });
   }
+
+  useEffect(() => {
+    if (hasOutcome) return;
+    if (typeof onBack === "function") onBack();
+  }, [hasOutcome, onBack]);
+
+  useEffect(() => {
+    if (!outcomes.length) return;
+    if (outcomes.some((o) => o.id === activeOutcomeId)) return;
+    updateDraft(habits, outcomes[0].id);
+  }, [activeOutcomeId, habits, outcomes]);
 
   function addHabit() {
     const cleanTitle = title.trim();

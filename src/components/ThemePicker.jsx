@@ -6,6 +6,7 @@ export default function ThemePicker({ data, setData }) {
   const [pendingTheme, setPendingTheme] = useState(data.ui.pageThemes?.home || data.ui.pageThemeHome || "aurora");
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPendingTheme(data.ui.pageThemes?.home || data.ui.pageThemeHome || "aurora");
   }, [data.ui.pageThemes?.home, data.ui.pageThemeHome]);
 

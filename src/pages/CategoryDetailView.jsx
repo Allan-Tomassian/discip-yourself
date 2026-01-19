@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import { getAccentForPage } from "../utils/_theme";
@@ -12,17 +12,14 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const category = categories.find((c) => c.id === categoryId) || null;
 
-  const outcomeGoals = useMemo(() => {
-    if (!category?.id) return [];
-    return goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "OUTCOME");
-  }, [goals, category?.id]);
+  const outcomeGoals = category?.id
+    ? goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "OUTCOME")
+    : [];
+  const processGoals = category?.id
+    ? goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "PROCESS")
+    : [];
 
-  const processGoals = useMemo(() => {
-    if (!category?.id) return [];
-    return goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "PROCESS");
-  }, [goals, category?.id]);
-
-  const { habitsByOutcome, unlinkedHabits } = useMemo(() => {
+  const { habitsByOutcome, unlinkedHabits } = (() => {
     const byParent = new Map();
     const unlinked = [];
     for (const habit of processGoals) {
@@ -36,7 +33,7 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
       unlinked.push(habit);
     }
     return { habitsByOutcome: byParent, unlinkedHabits: unlinked };
-  }, [processGoals, outcomeGoals]);
+  })();
 
   if (!category) {
     return (

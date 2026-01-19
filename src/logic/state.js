@@ -36,7 +36,8 @@ function isDemoMode() {
   try {
     const params = new URLSearchParams(window.location.search);
     return params.get("demo") === "1";
-  } catch {
+  } catch (err) {
+    void err;
     return false;
   }
 }
@@ -826,8 +827,6 @@ export function migrate(prev) {
     });
   }
 
-  const goalsById = new Map(next.goals.map((g) => [g.id, g]));
-
   // Enforce: mainGoalId reflects only the OUTCOME with priority === "prioritaire"
   const prioritaireByCategory = new Map();
   for (const g of next.goals) {
@@ -903,8 +902,6 @@ export function migrate(prev) {
   {
     const cats = Array.isArray(normalized.categories) ? normalized.categories : [];
     const goals = Array.isArray(normalized.goals) ? normalized.goals : [];
-    const byId = new Map(goals.map((g) => [g.id, g]));
-
     const fixedCategories = cats.map((cat) => {
       const outcomes = goals.filter((x) => isOutcome(x) && x.categoryId === cat.id && x.priority === "prioritaire");
       if (!outcomes.length) return { ...cat, mainGoalId: null };

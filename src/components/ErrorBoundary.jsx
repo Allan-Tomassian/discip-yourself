@@ -23,7 +23,8 @@ async function copyText(text) {
     try {
       await navigator.clipboard.writeText(text);
       return;
-    } catch (_) {
+    } catch (err) {
+      void err;
       // fallback below
     }
   }
@@ -38,7 +39,8 @@ async function copyText(text) {
     area.select();
     document.execCommand("copy");
     document.body.removeChild(area);
-  } catch (_) {
+  } catch (err) {
+    void err;
     // no-op
   }
 }

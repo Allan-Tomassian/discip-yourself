@@ -10,6 +10,23 @@ export default function Stats({ data }) {
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const habits = getHabitList(safeData);
   const checks = safeData.checks && typeof safeData.checks === "object" ? safeData.checks : {};
+  const now = new Date();
+
+  const dailyAvg = useMemo(() => {
+    const list = habits.filter((h) => h.cadence === "DAILY");
+    if (!list.length) return 0;
+    let s = 0;
+    for (const h of list) s += clamp(computeHabitProgress(h, checks, now).ratio, 0, 1);
+    return s / list.length;
+  }, [habits, checks, now]);
+
+  const weeklyAvg = useMemo(() => {
+    const list = habits.filter((h) => h.cadence === "WEEKLY");
+    if (!list.length) return 0;
+    let s = 0;
+    for (const h of list) s += clamp(computeHabitProgress(h, checks, now).ratio, 0, 1);
+    return s / list.length;
+  }, [habits, checks, now]);
 
   if (categories.length === 0) {
     return (
@@ -33,23 +50,6 @@ export default function Stats({ data }) {
   }
 
   const selected = categories.find((c) => c.id === safeData.ui?.selectedCategoryId) || categories[0];
-  const now = new Date();
-
-  const dailyAvg = useMemo(() => {
-    const list = habits.filter((h) => h.cadence === "DAILY");
-    if (!list.length) return 0;
-    let s = 0;
-    for (const h of list) s += clamp(computeHabitProgress(h, checks, now).ratio, 0, 1);
-    return s / list.length;
-  }, [habits, checks]);
-
-  const weeklyAvg = useMemo(() => {
-    const list = habits.filter((h) => h.cadence === "WEEKLY");
-    if (!list.length) return 0;
-    let s = 0;
-    for (const h of list) s += clamp(computeHabitProgress(h, checks, now).ratio, 0, 1);
-    return s / list.length;
-  }, [habits, checks]);
 
   return (
     <ScreenShell
