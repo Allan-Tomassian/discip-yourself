@@ -154,6 +154,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
   const objective = objectiveId ? goals.find((g) => g.id === objectiveId) || null : null;
   const habitIds = Array.isArray(session?.habitIds) ? session.habitIds : [];
   const habits = habitIds.map((id) => goals.find((g) => g.id === id)).filter(Boolean);
+  const hasHabits = habits.length > 0;
   const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
   const effectiveCategoryId = objective?.categoryId || habits[0]?.categoryId || null;
   const category = categories.find((c) => c.id === effectiveCategoryId) || null;
@@ -191,7 +192,6 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
       ? Math.max(0, Math.round(targetMinutes * 60 - elapsedSec))
       : null;
   const remainingLabel = remainingSec != null ? formatElapsed(remainingSec * 1000) : "";
-  const hasHabits = habits.length > 0;
   const isFinal = Boolean(session && (session.status === "done" || session.status === "skipped"));
   useEffect(() => {
     setExtraMinutes(0);
