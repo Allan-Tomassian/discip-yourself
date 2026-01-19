@@ -25,11 +25,23 @@ export function normalizeLocalDateKey(key) {
   if (key instanceof Date) return toLocalDateKey(key);
   if (typeof key !== "string") return "";
   const trimmed = key.trim();
-  const candidate = /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : trimmed.slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(candidate)) return "";
-  const [y, m, d] = candidate.split("-").map((v) => parseInt(v, 10));
-  const rebuilt = new Date(y, m - 1, d, 12, 0, 0);
-  return toLocalDateKey(rebuilt) === candidate ? candidate : "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [y, m, d] = trimmed.split("-").map((v) => parseInt(v, 10));
+    const rebuilt = new Date(y, m - 1, d, 12, 0, 0);
+    return toLocalDateKey(rebuilt) === trimmed ? trimmed : "";
+  }
+  if (trimmed.includes("T") || Number.isFinite(Date.parse(trimmed))) {
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) return toLocalDateKey(parsed);
+  }
+  if (trimmed.length >= 10) {
+    const candidate = trimmed.slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(candidate)) return "";
+    const [y, m, d] = candidate.split("-").map((v) => parseInt(v, 10));
+    const rebuilt = new Date(y, m - 1, d, 12, 0, 0);
+    return toLocalDateKey(rebuilt) === candidate ? candidate : "";
+  }
+  return "";
 }
 
 export function todayLocalKey() {

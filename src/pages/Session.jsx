@@ -205,7 +205,17 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
 
   function cancelSession() {
     if (typeof setData !== "function" || !isEditable) return;
-    setData((prev) => skipSessionForDate(prev, resolvedDateKey, { objectiveId }));
+    const targetHabitIds = habitIds.length ? habitIds : session?.habitId ? [session.habitId] : [];
+    if (!targetHabitIds.length) {
+      if (typeof onBack === "function") onBack();
+      return;
+    }
+    setData((prev) =>
+      targetHabitIds.reduce(
+        (next, habitId) => skipSessionForDate(next, habitId, resolvedDateKey, ""),
+        prev
+      )
+    );
     if (typeof onBack === "function") onBack();
   }
 

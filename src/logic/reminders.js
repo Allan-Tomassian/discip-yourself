@@ -1,25 +1,33 @@
 import { uid } from "../utils/helpers";
-import { todayKey } from "../utils/dates";
+import { todayLocalKey } from "../utils/dateKey";
 import { resolveGoalType } from "../domain/goalType";
 
 export const ENABLE_WEB_NOTIFICATIONS = false;
 
-function parseTime(value) {
+// Single source of truth for due window.
+export const DUE_SOON_MINUTES = 15;
+
+function parseTimeToMinutes(value) {
   if (typeof value !== "string") return null;
-  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  const m = /^(\d{2}):(\d{2})$/.exec(value.trim());
   if (!m) return null;
   const h = Number(m[1]);
   const min = Number(m[2]);
   if (Number.isNaN(h) || Number.isNaN(min)) return null;
   if (h < 0 || h > 23 || min < 0 || min > 59) return null;
-  return { h, min };
+  return h * 60 + min;
 }
 
-function formatNowKey(now) {
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(
-    now.getMinutes()
-  )}`;
+function minutesSinceMidnight(now) {
+  return now.getHours() * 60 + now.getMinutes();
+}
+
+function isOccurrenceDueSoon(occ, nowMinutes, windowMinutes) {
+  if (!occ || typeof occ.start !== "string") return false;
+  const occMinutes = parseTimeToMinutes(occ.start);
+  if (!Number.isFinite(occMinutes)) return false;
+  const delta = occMinutes - nowMinutes;
+  return delta >= 0 && delta <= windowMinutes;
 }
 
 function normalizeDays(days) {
@@ -51,10 +59,8 @@ export function getDueReminders(state, now, lastFiredMap) {
   const reminders = Array.isArray(state?.reminders) ? state.reminders : [];
   const occurrences = Array.isArray(state?.occurrences) ? state.occurrences : [];
   const goals = Array.isArray(state?.goals) ? state.goals : [];
-  const nowHM = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  const jsDow = now.getDay(); // 0=Sun..6=Sat
-  const appDow = jsDow === 0 ? 7 : jsDow;
-  const today = todayKey(now);
+  const nowMinutes = minutesSinceMidnight(now);
+  const today = todayLocalKey();
   const debug = typeof window !== "undefined" && window.__debugReminders;
   const due = [];
   const candidates = debug ? [] : null;
@@ -72,128 +78,62 @@ export function getDueReminders(state, now, lastFiredMap) {
     remindersByGoal.set(goalId, list);
   }
 
-  const occurrencesByGoal = new Map();
+  const dueByGoal = new Map();
   for (const occ of occurrences) {
     if (!occ || typeof occ.goalId !== "string") continue;
     if (occ.date !== today) continue;
-    const list = occurrencesByGoal.get(occ.goalId) || [];
-    list.push(occ);
-    occurrencesByGoal.set(occ.goalId, list);
+    if (occ.status !== "planned") continue;
+    if (!isOccurrenceDueSoon(occ, nowMinutes, DUE_SOON_MINUTES)) continue;
+    const existing = dueByGoal.get(occ.goalId);
+    const occMinutes = parseTimeToMinutes(occ.start);
+    if (!Number.isFinite(occMinutes)) continue;
+    if (!existing || occMinutes < existing.minutes) {
+      dueByGoal.set(occ.goalId, { minutes: occMinutes, start: occ.start });
+    }
   }
+  if (!dueByGoal.size) return [];
 
   function shouldSkipFire(goalId) {
-    const key = `${goalId}|${today}|${nowHM}`;
+    const key = `${goalId}|${today}`;
     if (lastFiredMap && lastFiredMap[key]) return true;
     if (lastFiredMap) lastFiredMap[key] = true;
     return false;
   }
 
-  for (const goal of goals) {
-    if (!goal || resolveGoalType(goal) !== "PROCESS") continue;
-    const goalId = goal.id;
-    if (!goalId) continue;
-
-    const todaysOccurrences = occurrencesByGoal.get(goalId) || [];
-    const hasOccurrencesToday = todaysOccurrences.length > 0;
-    const reminderItems = remindersByGoal.get(goalId) || [];
-
-    if (hasOccurrencesToday) {
-      const dueOccurrence = todaysOccurrences.find((occ) => {
-        if (!occ || typeof occ.start !== "string") return false;
-        const status = occ.status || "planned";
-        if (status === "done" || status === "skipped") return false;
-        return occ.start === nowHM;
-      });
-      if (dueOccurrence) {
-        if (shouldSkipFire(goalId)) {
-          if (candidates) candidates.push({ goalId, source: "occurrence", time: nowHM, skipped: "fired" });
-          continue;
-        }
-        const template = reminderItems[0] || {};
-        const reminder = {
-          id: template.id || `${goalId}-${today}-${nowHM}-occ`,
-          goalId,
-          time: nowHM,
-          enabled: true,
-          channel: template.channel || "IN_APP",
-          label: template.label || "Rappel",
-          days: template.days || normalizeDays([]),
-          __source: "occurrence",
-        };
-        if (candidates) candidates.push({ goalId, source: "occurrence", time: nowHM, due: true });
-        due.push(reminder);
-      } else if (candidates) {
-        candidates.push({ goalId, source: "occurrence", time: nowHM, due: false });
-      }
-      continue;
-    }
-
-    if (reminderItems.length) {
-      const enabledReminders = reminderItems.filter((r) => r && r.enabled !== false);
-      for (const r of enabledReminders) {
-        const days = normalizeDays(r.days);
-        if (days && !days.includes(appDow)) continue;
-        const parsed = parseTime(r.time);
-        if (!parsed) continue;
-        const match = `${String(parsed.h).padStart(2, "0")}:${String(parsed.min).padStart(2, "0")}` === nowHM;
-        if (!match) continue;
-        if (shouldSkipFire(goalId)) {
-          if (candidates) candidates.push({ goalId, source: "reminder", time: nowHM, skipped: "fired" });
-          continue;
-        }
-        const reminder = { ...r, __source: "reminder" };
-        if (candidates) candidates.push({ goalId, source: "reminder", time: nowHM, due: true });
-        due.push(reminder);
-      }
-      continue;
-    }
-
-    const schedule = goal && typeof goal.schedule === "object" ? goal.schedule : null;
-    const remindersEnabled = Boolean(schedule?.remindersEnabled);
-    if (!remindersEnabled) {
-      if (candidates) candidates.push({ goalId, source: "schedule", time: nowHM, due: false, skipped: "disabled" });
-      continue;
-    }
-    const timeSlots = Array.isArray(schedule?.timeSlots) ? schedule.timeSlots : [];
-    if (!timeSlots.length) {
-      if (candidates) candidates.push({ goalId, source: "schedule", time: nowHM, due: false, skipped: "no-slots" });
-      continue;
-    }
-    const days = Array.isArray(schedule?.daysOfWeek) && schedule.daysOfWeek.length ? schedule.daysOfWeek : null;
-    if (days && !days.includes(appDow)) {
-      if (candidates) candidates.push({ goalId, source: "schedule", time: nowHM, due: false, skipped: "day" });
-      continue;
-    }
-    const slotMatch = timeSlots.some((slot) => {
-      const parsed = parseTime(slot);
-      if (!parsed) return false;
-      return `${String(parsed.h).padStart(2, "0")}:${String(parsed.min).padStart(2, "0")}` === nowHM;
-    });
-    if (!slotMatch) {
-      if (candidates) candidates.push({ goalId, source: "schedule", time: nowHM, due: false });
+  for (const [goalId, reminderItems] of remindersByGoal.entries()) {
+    const dueInfo = dueByGoal.get(goalId);
+    if (!dueInfo) {
+      if (candidates) candidates.push({ goalId, source: "occurrence", due: false });
       continue;
     }
     if (shouldSkipFire(goalId)) {
-      if (candidates) candidates.push({ goalId, source: "schedule", time: nowHM, skipped: "fired" });
+      if (candidates) candidates.push({ goalId, source: "occurrence", time: dueInfo.start, skipped: "fired" });
       continue;
     }
+    const template = reminderItems[0] || {};
     const reminder = {
-      id: `${goalId}-${today}-${nowHM}-schedule`,
+      id: template.id || `${goalId}-${today}-${dueInfo.start}-occ`,
       goalId,
-      time: nowHM,
+      time: dueInfo.start,
       enabled: true,
-      channel: "IN_APP",
-      label: "Rappel",
-      days: days || normalizeDays([]),
-      __source: "schedule",
+      channel: template.channel || "IN_APP",
+      label: template.label || "Rappel",
+      days: template.days || normalizeDays([]),
+      __source: "occurrence",
     };
-    if (candidates) candidates.push({ goalId, source: "schedule", time: nowHM, due: true });
+    if (candidates) candidates.push({ goalId, source: "occurrence", time: dueInfo.start, due: true });
     due.push(reminder);
   }
 
+  due.sort((a, b) => {
+    const aMin = parseTimeToMinutes(a.time) ?? 0;
+    const bMin = parseTimeToMinutes(b.time) ?? 0;
+    return aMin - bMin;
+  });
+
   if (debug) {
     // eslint-disable-next-line no-console
-    console.debug("[reminders] candidates", { now: `${today} ${nowHM}`, candidates });
+    console.debug("[reminders] candidates", { today, candidates });
     // eslint-disable-next-line no-console
     console.debug("[reminders] due", { count: due.length, due: due.map((r) => ({ goalId: r.goalId, source: r.__source, time: r.time })) });
   }

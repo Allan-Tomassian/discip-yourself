@@ -35,10 +35,16 @@ import TourOverlay from "./tour/TourOverlay";
 import { createEmptyDraft, normalizeCreationDraft } from "./creation/creationDraft";
 import { STEP_CATEGORY, STEP_HABITS, STEP_OUTCOME, isValidCreationStep } from "./creation/creationSchema";
 import DiagnosticOverlay from "./components/DiagnosticOverlay";
+import { validateOccurrences } from "./logic/occurrencePlanner";
 
-function runSelfTests() {
+function runSelfTests(data) {
+  const isProdNode =
+    typeof process !== "undefined" && process.env && process.env.NODE_ENV === "production";
+  const isProdMeta = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.MODE === "production";
+  if (isProdNode || isProdMeta) return;
   // minimal sanity
   console.assert(typeof window !== "undefined", "browser env");
+  validateOccurrences(data);
 }
 
 function parseLocalDateKey(key) {
@@ -339,8 +345,11 @@ export default function App() {
   }, [tab]);
 
   useEffect(() => {
-    runSelfTests();
-    setData((prev) => normalizePriorities(migrate(prev)));
+    setData((prev) => {
+      const next = normalizePriorities(migrate(prev));
+      runSelfTests(next);
+      return next;
+    });
     markIOSRootClass();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

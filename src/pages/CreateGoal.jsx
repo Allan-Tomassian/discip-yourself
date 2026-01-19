@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input, Select } from "../components/UI";
 import { uid } from "../utils/helpers";
-import { toLocalDateKey, todayLocalKey } from "../utils/dateKey";
+import { todayLocalKey } from "../utils/dateKey";
 import { createGoal } from "../logic/goals";
 import { setPrimaryGoalForCategory } from "../logic/priority";
 
@@ -64,46 +64,6 @@ export default function CreateGoal({ data, setData, onCancel, onDone, initialCat
     setPlanDaysOfWeek((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()));
   }
 
-  function addDays(dateObj, days) {
-    const d = new Date(dateObj);
-    d.setDate(d.getDate() + days);
-    return d;
-  }
-
-
-  function jsDowToAppDow(jsDow) {
-    // JS: 0=Sun..6=Sat -> App: 1=Mon..7=Sun
-    return jsDow === 0 ? 7 : jsDow;
-  }
-
-  function buildPlannedDates({ startDateKey, planType, daysOfWeek }) {
-    // Generate a short horizon to feed the calendar immediately.
-    // We keep it simple and safe: 30 days ahead.
-    const start = new Date(`${startDateKey}T12:00:00`);
-    if (Number.isNaN(start.getTime())) return [];
-
-    const result = [];
-    for (let i = 0; i < 30; i += 1) {
-      const d = addDays(start, i);
-      const key = toLocalDateKey(d);
-      if (planType === "daily") {
-        result.push(key);
-        continue;
-      }
-      if (planType === "weekly") {
-        const dow = jsDowToAppDow(d.getDay());
-        if (Array.isArray(daysOfWeek) && daysOfWeek.length && daysOfWeek.includes(dow)) result.push(key);
-        continue;
-      }
-      // custom: only the start date for now (keeps UX simple and avoids unexpected spam)
-      if (planType === "custom") {
-        result.push(startDateKey);
-        break;
-      }
-    }
-    return Array.from(new Set(result));
-  }
-
   function handleCreate() {
     if (!canSubmit || typeof setData !== "function") return;
     const cleanTitle = title.trim();
@@ -139,31 +99,6 @@ export default function CreateGoal({ data, setData, onCancel, onDone, initialCat
         currentValue: hasTarget && cleanMeasure ? 0 : null,
         priority: isPriority ? "prioritaire" : "secondaire",
       });
-
-      // Generate occurrences so the calendar can show planned days immediately.
-      const plannedDates = buildPlannedDates({
-        startDateKey: planStartDate,
-        planType,
-        daysOfWeek: planDaysOfWeek,
-      });
-      if (plannedDates.length) {
-        const prevOcc = Array.isArray(next.occurrences) ? next.occurrences : [];
-        const existingKey = new Set(prevOcc.map((o) => `${o?.goalId || ""}|${o?.date || ""}|${o?.start || ""}`));
-        const additions = [];
-        for (const dateKey of plannedDates) {
-          const k = `${id}|${dateKey}|${planTime || "09:00"}`;
-          if (existingKey.has(k)) continue;
-          additions.push({
-            id: uid(),
-            goalId: id,
-            date: dateKey,
-            start: planTime || "09:00",
-            durationMinutes: null,
-            status: "planned",
-          });
-        }
-        if (additions.length) next = { ...next, occurrences: [...prevOcc, ...additions] };
-      }
 
       if (isPriority) next = setPrimaryGoalForCategory(next, categoryId, id);
       return next;

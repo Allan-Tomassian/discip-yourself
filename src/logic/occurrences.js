@@ -1,27 +1,10 @@
 import { uid } from "../utils/helpers";
-import { normalizeLocalDateKey, toLocalDateKey } from "../utils/dateKey";
+import { normalizeLocalDateKey } from "../utils/dateKey";
 
 const STATUS_VALUES = new Set(["planned", "done", "skipped"]);
 
-const DOW_VALUES = new Set([1, 2, 3, 4, 5, 6, 7]); // 1=Mon .. 7=Sun (app convention)
-
 function pad2(n) {
   return String(n).padStart(2, "0");
-}
-
-function toHM(date) {
-  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
-}
-
-function dateKeyFromDate(d) {
-  // expects Date
-  return toLocalDateKey(d);
-}
-
-function appDowFromDate(d) {
-  // JS: 0=Sun..6=Sat => App: 1=Mon..7=Sun
-  const js = d.getDay();
-  return js === 0 ? 7 : js;
 }
 
 function occurrenceKey(goalId, date, start) {
@@ -181,77 +164,6 @@ export function upsertOccurrence(goalId, date, start, durationMinutes, patch, so
   return [...occurrences, created];
 }
 
-// --- New: generate occurrences from a goal schedule (non-destructive; returns new list) ---
-// Schedule shape supported (already used elsewhere in app):
-// schedule.daysOfWeek: [1..7]
-// schedule.timeSlots: ["HH:MM", ...]
-// schedule.durationMinutes: number
-// schedule.remindersEnabled: boolean (ignored here)
-export function ensureOccurrencesForGoalBetween(goal, startDateKey, endDateKey, source, options = {}) {
-  const occurrences = resolveOccurrences(source);
-  if (!goal || typeof goal !== "object") return occurrences.slice();
-  const goalId = typeof goal.id === "string" ? goal.id.trim() : "";
-  if (!goalId) return occurrences.slice();
-
-  const startKey = normalizeDateKey(startDateKey);
-  const endKey = normalizeDateKey(endDateKey);
-  if (!startKey || !endKey) return occurrences.slice();
-
-  const schedule = goal.schedule && typeof goal.schedule === "object" ? goal.schedule : null;
-  const daysOfWeek = Array.isArray(schedule?.daysOfWeek) ? schedule.daysOfWeek.filter((d) => DOW_VALUES.has(d)) : [];
-  const timeSlotsRaw = Array.isArray(schedule?.timeSlots) ? schedule.timeSlots : [];
-  const timeSlots = timeSlotsRaw.map(normalizeTimeHM).filter(Boolean);
-
-  if (!timeSlots.length) return occurrences.slice();
-
-  // if daysOfWeek is empty, assume every day
-  const allowAllDays = daysOfWeek.length === 0;
-
-  const start = new Date(`${startKey}T00:00:00`);
-  const end = new Date(`${endKey}T00:00:00`);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return occurrences.slice();
-
-  const maxDays = Number.isFinite(options.maxDays) ? options.maxDays : 120;
-  const durationMinutes = normalizeDurationMinutes(schedule?.durationMinutes ?? goal.sessionMinutes);
-
-  // Build fast lookup for existing occurrences by key
-  const existingKeys = new Set();
-  for (const o of occurrences) {
-    if (!o || o.goalId !== goalId) continue;
-    const d = typeof o.date === "string" ? o.date : "";
-    const s = typeof o.start === "string" ? o.start : "";
-    if (!d || !s) continue;
-    existingKeys.add(occurrenceKey(goalId, d, s));
-  }
-
-  let next = occurrences.slice();
-  let daysCount = 0;
-  for (let cursor = new Date(start); cursor.getTime() <= end.getTime(); cursor.setDate(cursor.getDate() + 1)) {
-    daysCount += 1;
-    if (daysCount > maxDays) break;
-
-    const dow = appDowFromDate(cursor);
-    if (!allowAllDays && !daysOfWeek.includes(dow)) continue;
-
-    const dateKey = dateKeyFromDate(cursor);
-    for (const t of timeSlots) {
-      const key = occurrenceKey(goalId, dateKey, t);
-      if (existingKeys.has(key)) continue;
-      existingKeys.add(key);
-      next = [...next, {
-        id: uid(),
-        goalId,
-        date: dateKey,
-        start: t,
-        durationMinutes,
-        status: "planned",
-      }];
-    }
-  }
-
-  return next;
-}
-
 // --- New: mark all occurrences for a goal/date as done or skipped ---
 export function setOccurrencesStatusForGoalDate(goalId, date, status, source) {
   const occurrences = resolveOccurrences(source);
@@ -272,7 +184,9 @@ export function setOccurrenceStatus(goalId, date, start, status, source) {
   const d = normalizeDateKey(date);
   const s = normalizeTimeHM(start);
   if (!g || !d || !s) return occurrences.slice();
-  const st = normalizeStatus(status);
+  const raw = typeof status === "string" ? status : "";
+  if (!STATUS_VALUES.has(raw)) return occurrences.slice();
+  const st = normalizeStatus(raw);
   return occurrences.map((o) => {
     if (!o || o.goalId !== g || o.date !== d || o.start !== s) return o;
     return { ...o, status: st };
