@@ -6,7 +6,7 @@ import SortableBlocks from "../components/SortableBlocks";
 import { getCategoryCounts } from "../logic/pilotage";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { resolveGoalType } from "../domain/goalType";
-import { isProcessLinkedToOutcome } from "../logic/linking";
+import { isProcessLinkedToOutcome, linkProcessToOutcome } from "../logic/linking";
 
 // TOUR MAP:
 // - primary_action: open category detail
@@ -171,6 +171,10 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
     }
     return { habitsByOutcome: byParent, unlinkedHabits: unlinked };
   }, [processGoals, outcomeGoals]);
+  const linkTargetId =
+    (selectedCategory?.mainGoalId && outcomeGoals.some((g) => g.id === selectedCategory.mainGoalId)
+      ? selectedCategory.mainGoalId
+      : outcomeGoals[0]?.id) || null;
 
   return (
     <ScreenShell
@@ -331,9 +335,26 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
                               <div className="col" style={{ gap: 8 }}>
                                 {unlinkedHabits.map((h) => (
                                   <div key={h.id} className="listItem catAccentRow" style={detailAccentVars}>
-                                    <div className="itemTitle">{h.title || "Action"}</div>
+                                    <div className="row" style={{ justifyContent: "space-between", gap: 8 }}>
+                                      <div className="itemTitle">{h.title || "Action"}</div>
+                                      <Button
+                                        variant="ghost"
+                                        onClick={() => {
+                                          if (!linkTargetId || typeof setData !== "function") return;
+                                          setData((prev) => linkProcessToOutcome(prev, h.id, linkTargetId));
+                                        }}
+                                        disabled={!linkTargetId || typeof setData !== "function"}
+                                      >
+                                        Lier
+                                      </Button>
+                                    </div>
                                   </div>
                                 ))}
+                                {!linkTargetId ? (
+                                  <div className="small2" style={{ opacity: 0.7 }}>
+                                    Ajoute un objectif pour pouvoir lier ces actions.
+                                  </div>
+                                ) : null}
                               </div>
                             </div>
                           ) : null}

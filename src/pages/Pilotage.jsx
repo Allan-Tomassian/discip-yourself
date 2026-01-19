@@ -118,6 +118,7 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
     () => blockOrder.map((id) => PILOTAGE_BLOCKS[id]).filter(Boolean),
     [blockOrder]
   );
+  const showPlanningCta = Boolean(categories.length && loadSummary?.week?.planned === 0);
 
   const selectedCategoryId = safeData?.ui?.selectedCategoryByView?.pilotage || categories?.[0]?.id || null;
   const handleReorder = useCallback(
@@ -270,18 +271,6 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
                       ) : null}
                       <div className="sectionTitle">État des catégories</div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        if (typeof onPlanCategory === "function") onPlanCategory(selectedCategoryId);
-                      }}
-                      disabled={!categories?.length}
-                      aria-label="Planifier la catégorie"
-                      title="Planifier"
-                      data-tour-id="pilotage-planifier"
-                    >
-                      Planifier
-                    </Button>
                   </div>
                   <div className="mt12 col" role="list" style={{ gap: 10 }}>
                     {categories.map((c) => {
@@ -360,11 +349,19 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
                         {loadSummary.week.done}/{loadSummary.week.planned} terminées
                       </div>
                     </div>
-                    {loadSummary.emptyToday ? (
-                      <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                        <div className="small2">Rien de planifié aujourd'hui.</div>
-                        <div className="small2" aria-label="Utiliser le bouton Planifier en haut">
-                          Planifier via le bouton en haut
+                    {showPlanningCta ? (
+                      <div className="mt10">
+                        <div className="small2">0 occurrence planifiée sur 7 jours.</div>
+                        <div className="mt8">
+                          <Button
+                            onClick={() => {
+                              if (typeof onPlanCategory === "function") onPlanCategory(selectedCategoryId);
+                            }}
+                            disabled={!categories?.length}
+                            data-tour-id="pilotage-planifier"
+                          >
+                            Générer le planning
+                          </Button>
                         </div>
                       </div>
                     ) : null}

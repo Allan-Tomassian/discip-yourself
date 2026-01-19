@@ -7,7 +7,7 @@ import { safeConfirm, safePrompt } from "../utils/dialogs";
 import { addDays, startOfWeekKey, todayKey } from "../utils/dates";
 import { isPrimaryCategory, isPrimaryGoal, setPrimaryCategory } from "../logic/priority";
 import { resolveGoalType } from "../domain/goalType";
-import { isProcessLinkedToOutcome } from "../logic/linking";
+import { linkProcessToOutcome, splitProcessByLink } from "../logic/linking";
 import { getChecksForDate } from "../logic/checks";
 
 // TOUR MAP:
@@ -106,10 +106,12 @@ export default function CategoryView({
     return goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "PROCESS");
   }, [goals, category?.id]);
 
-  const linkedHabits = selectedOutcome
-    ? processGoals.filter((g) => isProcessLinkedToOutcome(g, selectedOutcome.id))
-    : [];
-  const habits = linkedHabits.length ? linkedHabits : processGoals;
+  const { linked: linkedHabits, unlinked: unlinkedHabits } = useMemo(() => {
+    if (!processGoals.length) return { linked: [], unlinked: [] };
+    if (!selectedOutcome?.id) return { linked: [], unlinked: processGoals };
+    return splitProcessByLink(processGoals, selectedOutcome.id);
+  }, [processGoals, selectedOutcome?.id]);
+  const habits = linkedHabits;
 
   const gaugeGoals = useMemo(() => {
     const main = category?.mainGoalId ? outcomeGoals.find((g) => g.id === category.mainGoalId) : null;
@@ -120,7 +122,7 @@ export default function CategoryView({
   const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
   const habitWeekStats = useMemo(() => {
     const stats = new Map();
-    if (!habits.length) return stats;
+    if (!processGoals.length) return stats;
     const weekStartKey = startOfWeekKey(new Date());
     const weekStartDate = new Date(`${weekStartKey}T12:00:00`);
     const weekKeys = Array.from({ length: 7 }, (_, i) => todayKey(addDays(weekStartDate, i)));
@@ -169,7 +171,7 @@ export default function CategoryView({
       occurrenceStats.set(occ.goalId, entry);
     }
 
-    for (const h of habits) {
+    for (const h of processGoals) {
       const occ = occurrenceStats.get(h.id) || { planned: 0, done: 0 };
       const doneFallback = doneDatesByHabit.get(h.id)?.size || 0;
       const hasOccurrences = occ.planned > 0 || occ.done > 0;
@@ -179,7 +181,12 @@ export default function CategoryView({
       stats.set(h.id, { planned, done, ratio });
     }
     return stats;
-  }, [habits, occurrences, sessions, checks]);
+  }, [processGoals, occurrences, sessions, checks]);
+
+  function linkHabitToSelectedOutcome(habitId) {
+    if (!selectedOutcome?.id || typeof setData !== "function") return;
+    setData((prev) => linkProcessToOutcome(prev, habitId, selectedOutcome.id));
+  }
 
   function openPilotage() {
     if (typeof onOpenPilotage === "function") onOpenPilotage();
@@ -518,6 +525,32 @@ export default function CategoryView({
                 </Button>
               </div>
             )}
+            {unlinkedHabits.length ? (
+              <div className="stack stackGap12">
+                <div className="small2">Actions non liées</div>
+                <div className="stack stackGap12">
+                  {unlinkedHabits.map((h) => (
+                    <AccentItem key={h.id} color={category.color || accent} style={{ cursor: "default" }}>
+                      <div className="row" style={{ justifyContent: "space-between", gap: 8, width: "100%" }}>
+                        <div className="itemTitle">{h.title || "Action"}</div>
+                        <Button
+                          variant="ghost"
+                          onClick={() => linkHabitToSelectedOutcome(h.id)}
+                          disabled={!selectedOutcome?.id || typeof setData !== "function"}
+                        >
+                          Lier
+                        </Button>
+                      </div>
+                    </AccentItem>
+                  ))}
+                  {!selectedOutcome?.id ? (
+                    <div className="small2" style={{ opacity: 0.7 }}>
+                      Sélectionne un objectif pour lier ces actions.
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </div>
         </Card>
 

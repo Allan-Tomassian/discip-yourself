@@ -519,6 +519,28 @@ export default function Home({
   const selectableHabits = linkedHabits;
   const hasLinkedHabits = linkedHabits.length > 0;
   const hasSelectableHabits = selectableHabits.length > 0;
+  const plannedLinkedWindowCount = useMemo(() => {
+    if (!linkedHabits.length) return 0;
+    const linkedIds = new Set(linkedHabits.map((h) => h.id));
+    const startKey = localTodayKey;
+    const endKey = toLocalDateKey(addDays(fromLocalDateKey(localTodayKey), 6));
+    let count = 0;
+    for (const occ of occurrences) {
+      if (!occ || occ.status !== "planned") continue;
+      const dateKey = typeof occ.date === "string" ? occ.date : "";
+      if (!dateKey || dateKey < startKey || dateKey > endKey) continue;
+      if (!linkedIds.has(occ.goalId)) continue;
+      count += 1;
+    }
+    return count;
+  }, [linkedHabits, occurrences, localTodayKey]);
+  const showTodayEmptyCta =
+    selectedStatus === "today" && (!selectedGoal || !hasLinkedHabits || plannedLinkedWindowCount === 0);
+  const emptyCtaSubtitle = !selectedGoal
+    ? "Choisis un objectif puis des actions pour lancer le planning."
+    : !hasLinkedHabits
+      ? "Aucune action liée à cet objectif pour le moment."
+      : "0 occurrence planifiée sur les 7 prochains jours.";
 
   // Actions actives uniquement (progression)
   const activeHabits = useMemo(() => linkedHabits.filter((g) => safeString(g.status) === "active"), [linkedHabits]);
@@ -1544,6 +1566,25 @@ export default function Home({
                     )}
                     </div>
 
+                    {showTodayEmptyCta ? (
+                      <div className="mt12" data-tour-id="today-empty-cta">
+                        <div className="small2">Aujourd’hui est vide.</div>
+                        <div className="sectionSub" style={{ marginTop: 6 }}>
+                          {emptyCtaSubtitle}
+                        </div>
+                        <div className="mt10">
+                          <Button onClick={() => openCreateFlow()} disabled={!canEdit}>
+                            Planifier mes actions
+                          </Button>
+                          {!canEdit ? (
+                            <div className="sectionSub" style={{ marginTop: 8 }}>
+                              {lockMessage}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+
                     {selectedGoal && hasSelectableHabits ? (
                       <div className="mt12">
                         <div className="small2">Actions à faire</div>
@@ -1618,7 +1659,7 @@ export default function Home({
                       ) : !hasLinkedHabits ? (
                         <div className="sectionSub" style={{ marginTop: 8 }}>
                           Aucune action liée à cet objectif (ou tes actions ne sont pas reliées correctement).
-                          {canManageCategory ? (
+                          {canManageCategory && !showTodayEmptyCta ? (
                             <>
                               {" "}
                               <button
