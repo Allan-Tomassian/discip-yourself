@@ -322,7 +322,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
         <Card accentBorder>
           <div className="p18">
             <div className="titleSm">Aucune session en cours</div>
-            <div className="small2" style={{ marginTop: 6 }}>
+            <div className="small2 mt6">
               Lance une session depuis Aujourd’hui.
             </div>
             {typeof onOpenLibrary === "function" ? (
@@ -377,13 +377,13 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
         <Card accentBorder>
           <div className="p18">
             <div className="titleSm">{statusLabel}</div>
-            <div className="small2" style={{ marginTop: 6 }}>
+            <div className="small2 mt6">
               Date : {effectiveDateKey}
             </div>
           </div>
         </Card>
 
-        <Card accentBorder style={{ marginTop: 12 }}>
+        <Card accentBorder className="mt12">
           <div className="p18">
             <div className="sectionTitle">Débrief</div>
 
@@ -395,13 +395,10 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
               <div className="mt12">
                 <div className="small2">Actions accomplies</div>
                 {doneHabits.length ? (
-                  <div className="mt10 col" style={{ gap: 10 }}>
+                  <div className="mt10 col gap10">
                     {doneHabits.map((h) => (
                       <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
-                        <div
-                          className="row"
-                          style={{ alignItems: "center", justifyContent: "space-between" }}
-                        >
+                        <div className="row rowBetween alignCenter">
                           <div className="itemTitle">{h.title || "Action"}</div>
                           <span className="actionStatus running">Fait</span>
                         </div>
@@ -436,19 +433,19 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
       backgroundImage={category?.wallpaper || safeData.profile?.whyImage || ""}
     >
       <div style={catAccentVars}>
-        <Card accentBorder style={{ marginTop: 12 }}>
+        <Card accentBorder className="mt12">
           <div className="p18">
             <div className="sectionTitle">Timer</div>
-            <div className="titleSm" style={{ marginTop: 6 }}>
+            <div className="titleSm mt6">
               {elapsedLabel}
             </div>
             {remainingLabel ? (
-              <div className="small2" style={{ marginTop: 6 }}>
+              <div className="small2 mt6">
                 Reste : {remainingLabel}
               </div>
             ) : null}
             {!isRunning ? (
-              <div className="small2" style={{ marginTop: 6 }}>
+              <div className="small2 mt6">
                 {!hasOccurrence
                   ? "Aucune occurrence planifiée pour cette session."
                   : elapsedSec > 0
@@ -456,7 +453,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
                     : "Appuie sur Démarrer pour lancer le timer."}
               </div>
             ) : null}
-            <div className="mt12 row" style={{ gap: 10 }}>
+            <div className="mt12 row gap10">
               <Button variant="ghost" onClick={confirmPause} disabled={!canRunTimer || !isEditable}>
                 Pause
               </Button>
@@ -467,17 +464,14 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
           </div>
         </Card>
 
-        <Card accentBorder style={{ marginTop: 12 }}>
+        <Card accentBorder className="mt12">
           <div className="p18">
             <div className="sectionTitle">Actions</div>
             {habits.length ? (
-              <div className="mt12 col" style={{ gap: 10 }}>
+              <div className="mt12 col gap10">
                 {habits.map((h) => (
                   <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
-                    <div
-                      className="row"
-                      style={{ alignItems: "center", justifyContent: "space-between" }}
-                    >
+                    <div className="row rowBetween alignCenter">
                       <div className="itemTitle">{h.title || "Action"}</div>
                       <span className={`actionStatus ${isRunning ? "running" : "todo"}`}>
                         {isRunning ? "En cours" : "À faire"}
@@ -502,7 +496,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
           </div>
         </Card>
 
-        <div className="mt12 row" style={{ gap: 10 }}>
+        <div className="mt12 row gap10">
           <Button variant="ghost" onClick={cancelSession} disabled={!hasHabits || !isEditable}>
             Annuler
           </Button>
@@ -511,10 +505,10 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
           </Button>
         </div>
         {showEndConfirm ? (
-          <Card accentBorder style={{ marginTop: 12 }}>
+          <Card accentBorder className="mt12">
             <div className="p18">
               <div className="sectionTitle">Terminer ?</div>
-              <div className="mt12 row" style={{ gap: 8, flexWrap: "wrap" }}>
+              <div className="mt12 row gap8 rowWrap">
                 <Button onClick={() => applyExtension(5)}>+5</Button>
                 <Button onClick={() => applyExtension(10)}>+10</Button>
                 <Button onClick={() => applyExtension(15)}>+15</Button>

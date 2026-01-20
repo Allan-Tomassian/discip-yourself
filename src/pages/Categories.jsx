@@ -147,12 +147,12 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
         headerSubtitle="Aucune catégorie"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
-        <div className="stack stackGap12" style={{ maxWidth: 720, margin: "0 auto" }}>
+        <div className="stack stackGap12 pageNarrow">
           <Card>
             <div className="p18">
-              <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+              <div className="row rowBetween alignCenter">
                 <div className="sectionTitle">Catégories</div>
-                <div className="row" style={{ gap: 8 }}>
+                <div className="row gap8">
                   <Button
                     variant="ghost"
                     onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
@@ -163,9 +163,9 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
                 </div>
               </div>
 
-              <div style={{ marginTop: 12 }}>
+              <div className="mt12">
                 <div className="titleSm">Aucune catégorie</div>
-                <div className="small" style={{ marginTop: 6 }}>
+                <div className="small mt6">
                   Ajoute une première catégorie pour commencer.
                 </div>
               </div>
@@ -177,17 +177,17 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
   }
 
   return (
-    <ScreenShell
-      headerTitle={<span className="textAccent" data-tour-id="library-title">Bibliothèque</span>}
-      headerSubtitle="Catégories"
-      backgroundImage={safeData?.profile?.whyImage || ""}
-    >
-      <div className="stack stackGap12" style={{ maxWidth: 720, margin: "0 auto" }}>
+      <ScreenShell
+        headerTitle={<span className="textAccent" data-tour-id="library-title">Bibliothèque</span>}
+        headerSubtitle="Catégories"
+        backgroundImage={safeData?.profile?.whyImage || ""}
+      >
+      <div className="stack stackGap12 pageNarrow">
         <Card>
           <div className="p18">
-            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+            <div className="row rowBetween alignCenter">
               <div className="sectionTitle">Catégories</div>
-              <div className="row" style={{ gap: 8 }}>
+              <div className="row gap8">
                 <Button
                   variant="ghost"
                   onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
@@ -198,7 +198,7 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
               </div>
             </div>
 
-            <div className="mt12 col" data-tour-id="library-category-list" style={{ gap: 10 }}>
+            <div className="mt12 col gap10" data-tour-id="library-category-list">
               <SortableBlocks
                 items={orderedCategories}
                 getId={(item) => item.id}
@@ -227,13 +227,13 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
                   const { attributes, listeners, setActivatorNodeRef } = drag || {};
 
                   return (
-                    <div key={c.id} className="col" style={{ gap: 8 }}>
+                    <div key={c.id} className="col gap8">
                       <AccentItem
                         color={c.color}
                         selected={isSelected}
                         rightSlot={
-                          <span className="row" style={{ alignItems: "center", gap: 8 }}>
-                            <span className="small2" style={{ opacity: 0.6 }}>
+                          <span className="row gap8">
+                            <span className="small2 textMuted2">
                               {isExpanded ? "−" : "+"}
                             </span>
                             {drag ? (
@@ -265,9 +265,9 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
                         </div>
                       </AccentItem>
                       {isExpanded ? (
-                        <div className="col" style={{ gap: 8, paddingLeft: 10, ...(detailAccentVars || {}) }}>
-                          <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                            <div className="small2" style={{ opacity: 0.6 }}>
+                        <div className="col gap8 pl10" style={detailAccentVars}>
+                          <div className="row rowBetween alignCenter">
+                            <div className="small2 textMuted2">
                               Détails
                             </div>
                             {typeof onOpenManage === "function" ? (
@@ -277,35 +277,35 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
                             ) : null}
                           </div>
                           <div className="listItem catAccentRow" style={detailAccentVars}>
-                            <div className="small2" style={{ color: "var(--accent)" }}>
+                            <div className="small2 textAccent">
                               Mini-why
                             </div>
-                            <div className="small2" style={{ marginTop: 6 }}>
+                            <div className="small2 mt6">
                               {detailWhy}
                             </div>
                           </div>
-                          <div className="col" style={{ gap: 8 }}>
-                            <div className="small2" style={{ color: "var(--accent)" }}>
+                          <div className="col gap8">
+                            <div className="small2 textAccent">
                               Objectifs
                             </div>
                             {outcomeGoals.length ? (
-                              <div className="col" style={{ gap: 8 }}>
+                              <div className="col gap8">
                                 {outcomeGoals.map((g) => {
                                   const linkedHabits = habitsByOutcome.get(g.id) || [];
                                   const isPrimaryGoal = c.mainGoalId && g.id === c.mainGoalId;
                                   return (
                                     <div key={g.id} className="listItem catAccentRow" style={detailAccentVars}>
-                                      <div className="row" style={{ justifyContent: "space-between", gap: 8 }}>
+                                      <div className="row rowBetween gap8">
                                         <div className="itemTitle">{g.title || "Objectif"}</div>
                                         {isPrimaryGoal ? (
-                                          <span className="small2" style={{ color: "var(--accent)" }}>
+                                          <span className="small2 textAccent">
                                             Prioritaire
                                           </span>
                                         ) : null}
                                       </div>
                                       {linkedHabits.length ? (
-                                        <div className="col" style={{ gap: 8, marginTop: 8, paddingLeft: 12 }}>
-                                          <div className="small2" style={{ color: "var(--accent)" }}>
+                                        <div className="col gap8 mt8 pl12">
+                                          <div className="small2 textAccent">
                                             Actions
                                           </div>
                                           {linkedHabits.map((h) => (
@@ -315,7 +315,7 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
                                           ))}
                                         </div>
                                       ) : (
-                                        <div className="small2" style={{ marginTop: 8, paddingLeft: 12 }}>
+                                        <div className="small2 mt8 pl12">
                                           Aucune action liée.
                                         </div>
                                       )}
@@ -328,14 +328,14 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
                             )}
                           </div>
                           {unlinkedHabits.length ? (
-                            <div className="col" style={{ gap: 8 }}>
-                              <div className="small2" style={{ color: "var(--accent)" }}>
+                            <div className="col gap8">
+                              <div className="small2 textAccent">
                                 Actions non liées
                               </div>
-                              <div className="col" style={{ gap: 8 }}>
+                              <div className="col gap8">
                                 {unlinkedHabits.map((h) => (
                                   <div key={h.id} className="listItem catAccentRow" style={detailAccentVars}>
-                                    <div className="row" style={{ justifyContent: "space-between", gap: 8 }}>
+                                    <div className="row rowBetween gap8">
                                       <div className="itemTitle">{h.title || "Action"}</div>
                                       <Button
                                         variant="ghost"
@@ -351,7 +351,7 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
                                   </div>
                                 ))}
                                 {!linkTargetId ? (
-                                  <div className="small2" style={{ opacity: 0.7 }}>
+                                  <div className="small2 textMuted">
                                     Ajoute un objectif pour pouvoir lier ces actions.
                                   </div>
                                 ) : null}

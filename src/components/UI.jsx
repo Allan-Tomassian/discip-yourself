@@ -28,6 +28,8 @@ export function Button({ children, variant = "primary", className = "", type = "
   const cls =
     variant === "ghost"
       ? "btn btnGhost"
+      : variant === "secondary"
+        ? "btn btnSecondary"
       : variant === "danger"
         ? "btn btnDanger"
         : "btn";
@@ -60,6 +62,30 @@ export function Textarea(props) {
 
 export function Select(props) {
   return <select className="select" {...props} />;
+}
+
+export function CardSectionHeader({ title, action = null, className = "" }) {
+  return (
+    <div className={`cardSectionTitleRow${className ? ` ${className}` : ""}`}>
+      <div className="cardSectionTitle">{title}</div>
+      <div className="flex1" />
+      {action}
+    </div>
+  );
+}
+
+export function Modal({ open, onClose, children, className = "" }) {
+  if (!open) return null;
+  return (
+    <div className="modalBackdrop" onClick={onClose}>
+      <div
+        className={`modalPanel${className ? ` ${className}` : ""}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
 
 export function ProgressRing({ value, size = 44 }) {

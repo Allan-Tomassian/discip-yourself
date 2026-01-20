@@ -19,6 +19,15 @@ export function getPlanLimits() {
   };
 }
 
+export function getGenerationWindowDays(data) {
+  if (isPremium(data)) return 90;
+  return getPlanLimits().planningHorizonDays;
+}
+
+export function isPlanningUnlimited(data) {
+  return isPremium(data);
+}
+
 function countOutcomes(data) {
   const goals = Array.isArray(data?.goals) ? data.goals : [];
   return goals.filter((g) => resolveGoalType(g) === "OUTCOME").length;

@@ -75,7 +75,7 @@ export default function CreateV2Category({
       headerTitle="Créer"
       headerSubtitle={
         <>
-          <span style={{ opacity: 0.6 }}>1.</span> Catégorie
+          <span className="textMuted2">1.</span> Catégorie
         </>
       }
       backgroundImage={backgroundImage}
@@ -85,9 +85,9 @@ export default function CreateV2Category({
           ← Retour
         </Button>
         <Card accentBorder>
-          <div className="p18 col" style={{ gap: 12 }}>
+          <div className="p18 col gap12">
             {categories.length ? (
-              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+              <div className="row gap8 rowWrap">
                 <Button variant={mode === "existing" ? "primary" : "ghost"} onClick={() => setMode("existing")}
                 >
                   Catégorie existante
@@ -117,32 +117,15 @@ export default function CreateV2Category({
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Nom de la catégorie"
                 />
-                <div
-                  className="row"
-                  style={{
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 10,
-                    background: "#0C0C0C",
-                    border: "1px solid rgba(255,255,255,.16)",
-                    borderRadius: 12,
-                    padding: 10,
-                    position: "relative",
-                  }}
-                >
-                  <div className="row" style={{ alignItems: "center", gap: 10 }}>
+                <div className="row colorPickerRow">
+                  <div className="row gap10 alignCenter">
                     <div
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 8,
-                        background: safeColor,
-                        border: "1px solid rgba(255,255,255,.18)",
-                      }}
+                      className="colorPickerSwatch"
+                      style={{ background: safeColor }}
                     />
                     <div className="small2">Couleur</div>
                   </div>
-                  <div style={{ position: "relative", display: "inline-flex" }}>
+                  <div className="colorPickerButton">
                     <Button variant="ghost" type="button">
                       Choisir
                     </Button>
@@ -150,7 +133,7 @@ export default function CreateV2Category({
                       type="color"
                       value={safeColor}
                       onChange={(e) => setColor(e.target.value)}
-                      style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }}
+                      className="overlayInput"
                       aria-label="Choisir une couleur"
                     />
                   </div>
@@ -166,7 +149,7 @@ export default function CreateV2Category({
                 </label>
               </>
             )}
-            <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
+            <div className="row rowEnd gap10">
               <Button
                 variant="ghost"
                 onClick={() => {

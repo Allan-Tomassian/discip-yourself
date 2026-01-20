@@ -261,7 +261,7 @@ export default function CategoryView({
         <Card accentBorder>
           <div className="p18">
             <div className="titleSm">Aucune catégorie</div>
-            <div className="small" style={{ marginTop: 6 }}>
+            <div className="small mt6">
               Ajoute une première catégorie pour commencer.
             </div>
             <div className="mt12">
@@ -285,7 +285,7 @@ export default function CategoryView({
         <Card accentBorder>
           <div className="p18">
             <div className="titleSm">Catégorie introuvable</div>
-            <div className="small" style={{ marginTop: 6 }}>
+            <div className="small mt6">
               Cette catégorie n’existe plus.
             </div>
             <div className="mt12">
@@ -304,10 +304,10 @@ export default function CategoryView({
   const whyText = (category.whyText || "").trim();
   const whyDisplay = whyText || "Aucun mini-why pour cette catégorie.";
   const headerRight = (
-    <div style={{ minWidth: 0, maxWidth: 320, width: "100%" }}>
-      <div className="col" style={{ gap: 8, alignItems: "flex-end" }}>
+    <div className="panelNarrow">
+      <div className="col gap8 alignEnd">
         {outcomeGoals.length ? (
-          <div className="col" style={{ gap: 8, alignItems: "flex-end", width: "100%" }}>
+          <div className="col gap8 alignEnd wFull">
             {gaugeSlice.map((g) => (
               <Gauge
                 key={g.id}
@@ -352,19 +352,19 @@ export default function CategoryView({
       <div className="stack stackGap12" style={{ "--catColor": category.color || "#7C3AED" }}>
         <Card accentBorder style={{ borderColor: category.color || undefined }} data-tour-id="manage-category-card">
           <div className="p18 stack stackGap12">
-            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+            <div className="row rowBetween alignCenter">
               <div>
                 <div className="titleSm">Catégorie</div>
                 <div className="small2">
                   {category.name || "Catégorie"}
                   {isPrimaryCategory(category) ? (
-                    <span className="badge" style={{ marginLeft: 8, borderColor: "var(--accent)", color: "var(--accent)" }}>
+                    <span className="badge badgeAccent ml8">
                       Prioritaire
                     </span>
                   ) : null}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div className="row gap8">
                 <IconButton
                   icon="gear"
                   aria-label="Paramètres catégorie"
@@ -412,7 +412,7 @@ export default function CategoryView({
 
         <Card accentBorder style={{ borderColor: category.color || undefined }} data-tour-id="manage-mini-why">
           <div className="p18 stack stackGap12">
-            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+            <div className="row rowBetween alignCenter">
               <div>
                 <div className="titleSm">Mini-why</div>
                 <div className="small2">Visible pour cette catégorie</div>
@@ -431,14 +431,13 @@ export default function CategoryView({
             {outcomeGoals.length ? (
               <div className="stack stackGap12">
                 {outcomeGoals.map((g) => (
-                  <AccentItem key={g.id} color={category.color || accent} style={{ cursor: "default" }}>
-                    <div style={{ minWidth: 0 }}>
+                  <AccentItem key={g.id} color={category.color || accent}>
+                    <div className="minW0">
                       <div className="itemTitle">
                         {g.title || "Objectif"}
                         {isPrimaryGoal(g) ? (
                           <span
-                            className="badge"
-                            style={{ marginLeft: 8, borderColor: "var(--accent)", color: "var(--accent)" }}
+                            className="badge badgeAccent ml8"
                           >
                             Prioritaire
                           </span>
@@ -446,7 +445,7 @@ export default function CategoryView({
                       </div>
                       <div className="itemSub">{g.id === category.mainGoalId ? "Principal" : "Secondaire"}</div>
                     </div>
-                    <div style={{ display: "flex", gap: 8 }}>
+                    <div className="row gap8">
                       <IconButton
                         icon="gear"
                         aria-label="Paramètres objectif"
@@ -479,11 +478,11 @@ export default function CategoryView({
                 {habits.map((h) => {
                   const stat = habitWeekStats.get(h.id) || { planned: 0, done: 0, ratio: 0 };
                   return (
-                  <AccentItem key={h.id} color={category.color || accent} style={{ cursor: "default" }}>
-                    <div className="stack" style={{ gap: 6, minWidth: 0, width: "100%" }}>
-                      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                  <AccentItem key={h.id} color={category.color || accent}>
+                    <div className="stack gap6 minW0 wFull">
+                      <div className="row rowBetween alignCenter">
                         <div className="itemTitle">{h.title || "Action"}</div>
-                        <div style={{ display: "flex", gap: 8 }}>
+                        <div className="row gap8">
                           <IconButton
                             icon="gear"
                             aria-label="Paramètres action"
@@ -524,8 +523,8 @@ export default function CategoryView({
                 <div className="small2">Actions non liées</div>
                 <div className="stack stackGap12">
                   {unlinkedHabits.map((h) => (
-                    <AccentItem key={h.id} color={category.color || accent} style={{ cursor: "default" }}>
-                      <div className="row" style={{ justifyContent: "space-between", gap: 8, width: "100%" }}>
+                    <AccentItem key={h.id} color={category.color || accent}>
+                      <div className="row rowBetween gap8 wFull">
                         <div className="itemTitle">{h.title || "Action"}</div>
                         <Button
                           variant="ghost"
@@ -538,7 +537,7 @@ export default function CategoryView({
                     </AccentItem>
                   ))}
                   {!selectedOutcome?.id ? (
-                    <div className="small2" style={{ opacity: 0.7 }}>
+                    <div className="small2 textMuted">
                       Sélectionne un objectif pour lier ces actions.
                     </div>
                   ) : null}

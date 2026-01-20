@@ -34,10 +34,10 @@ function MotivationSection({ data, setData }) {
   const whyChanged = cleanWhy !== (profile.whyText || "").trim();
 
   return (
-    <Card accentBorder style={{ marginTop: 14 }} data-tour-id="settings-why">
+    <Card accentBorder className="mt14" data-tour-id="settings-why">
       <div className="p18 col">
         <div className="sectionTitle textAccent">Pourquoi</div>
-        <div className="sectionSub" style={{ marginTop: 6 }}>
+        <div className="sectionSub mt6">
           Modifiable tous les 30 jours.
         </div>
         <div className="mt10 col">
@@ -123,10 +123,10 @@ export default function Settings({
           <ThemePicker data={themeData} setData={setData} />
         </div>
         <MotivationSection data={safeData} setData={setData} />
-        <Card accentBorder style={{ marginTop: 14 }}>
+        <Card accentBorder className="mt14">
           <div className="p18 col">
             <div className="sectionTitle textAccent">Abonnement</div>
-            <div className="sectionSub" style={{ marginTop: 6 }}>
+            <div className="sectionSub mt6">
               {isPremiumPlan ? "Premium actif" : "Version gratuite"}
             </div>
             <div className="mt10 col">
@@ -170,10 +170,10 @@ export default function Settings({
             </div>
           </div>
         </Card>
-        <Card accentBorder style={{ marginTop: 14 }}>
+        <Card accentBorder className="mt14">
           <div className="p18 col">
             <div className="sectionTitle textAccent">Données</div>
-            <div className="sectionSub" style={{ marginTop: 6 }}>
+            <div className="sectionSub mt6">
               Export JSON complet de l’app.
             </div>
             <div className="mt10">
@@ -191,10 +191,10 @@ export default function Settings({
             </div>
           </div>
         </Card>
-        <Card accentBorder style={{ marginTop: 14 }}>
+        <Card accentBorder className="mt14">
           <div className="p18 col">
             <div className="sectionTitle textAccent">Introduction</div>
-            <div className="sectionSub" style={{ marginTop: 6 }}>
+            <div className="sectionSub mt6">
               Revoir l’accueil et relancer le tutoriel.
             </div>
             <div className="mt10 col">
@@ -234,10 +234,10 @@ export default function Settings({
             </div>
           </div>
         </Card>
-        <Card accentBorder style={{ marginTop: 14 }} data-tour-id="settings-notifications">
+        <Card accentBorder className="mt14" data-tour-id="settings-notifications">
           <div className="p18 col">
             <div className="sectionTitle textAccent">Notifications</div>
-            <div className="sectionSub" style={{ marginTop: 6 }}>
+            <div className="sectionSub mt6">
               Les notifications système (son/vibration) nécessitent une version PWA. À venir.
             </div>
             <div className="mt10">
@@ -247,10 +247,10 @@ export default function Settings({
             </div>
           </div>
         </Card>
-        <Card accentBorder style={{ marginTop: 14 }}>
+        <Card accentBorder className="mt14">
           <div className="p18 col">
             <div className="sectionTitle textAccent">Légal & Support</div>
-            <div className="sectionSub" style={{ marginTop: 6 }}>
+            <div className="sectionSub mt6">
               Informations légales et assistance.
             </div>
             <div className="mt10 col">

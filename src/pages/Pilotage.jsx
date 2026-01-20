@@ -52,7 +52,13 @@ const arrayEqual = (a, b) =>
   a.length === b.length &&
   a.every((id, idx) => id === b[idx]);
 
-export default function Pilotage({ data, setData, onPlanCategory }) {
+export default function Pilotage({
+  data,
+  setData,
+  onPlanCategory,
+  generationWindowDays = null,
+  isPlanningUnlimited = false,
+}) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const now = new Date();
@@ -350,7 +356,13 @@ export default function Pilotage({ data, setData, onPlanCategory }) {
                     </div>
                     {showPlanningCta ? (
                       <div className="mt10">
-                        <div className="small2">0 occurrence planifiée sur 7 jours.</div>
+                        <div className="small2">
+                          {isPlanningUnlimited
+                            ? "Planning illimité : aucune occurrence planifiée pour le moment."
+                            : Number.isFinite(generationWindowDays) && generationWindowDays > 0
+                              ? `0 occurrence planifiée sur ${Math.floor(generationWindowDays)} jours.`
+                              : "0 occurrence planifiée sur les prochains jours."}
+                        </div>
                         <div className="mt8">
                           <Button
                             onClick={() => {

@@ -122,6 +122,8 @@ export default function Home({
   onOpenPaywall,
   isPremiumPlan = false,
   planLimits = null,
+  generationWindowDays = null,
+  isPlanningUnlimited = false,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
   const selectedDateKey = normalizeLocalDateKey(safeData.ui?.selectedDate) || todayLocalKey();
@@ -533,11 +535,14 @@ export default function Home({
   const selectableHabits = linkedHabits;
   const hasLinkedHabits = linkedHabits.length > 0;
   const hasSelectableHabits = selectableHabits.length > 0;
+  const plannedWindowDays = Number.isFinite(generationWindowDays) && generationWindowDays > 0
+    ? Math.floor(generationWindowDays)
+    : 14;
   const plannedLinkedWindowCount = useMemo(() => {
     if (!linkedHabits.length) return 0;
     const linkedIds = new Set(linkedHabits.map((h) => h.id));
     const startKey = localTodayKey;
-    const endKey = toLocalDateKey(addDays(fromLocalDateKey(localTodayKey), 6));
+    const endKey = toLocalDateKey(addDays(fromLocalDateKey(localTodayKey), plannedWindowDays - 1));
     let count = 0;
     for (const occ of occurrences) {
       if (!occ || occ.status !== "planned") continue;
@@ -547,14 +552,18 @@ export default function Home({
       count += 1;
     }
     return count;
-  }, [linkedHabits, occurrences, localTodayKey]);
+  }, [linkedHabits, occurrences, localTodayKey, plannedWindowDays]);
   const showTodayEmptyCta =
     selectedStatus === "today" && (!selectedGoal || !hasLinkedHabits || plannedLinkedWindowCount === 0);
   const emptyCtaSubtitle = !selectedGoal
     ? "Choisis un objectif puis des actions pour lancer le planning."
     : !hasLinkedHabits
       ? "Aucune action liée à cet objectif pour le moment."
-      : "0 occurrence planifiée sur les 7 prochains jours.";
+      : isPlanningUnlimited
+        ? "Planning illimité : aucune occurrence planifiée pour le moment."
+        : Number.isFinite(generationWindowDays) && generationWindowDays > 0
+          ? `0 occurrence planifiée sur les ${Math.floor(generationWindowDays)} prochains jours.`
+          : "0 occurrence planifiée sur les prochains jours.";
 
   // Actions actives uniquement (progression)
   const activeHabits = useMemo(() => linkedHabits.filter((g) => safeString(g.status) === "active"), [linkedHabits]);
@@ -965,12 +974,58 @@ export default function Home({
   const handleAddOccurrence = useCallback(
     (nextKey, goalId) => {
       if (!nextKey) return;
+      if (!isPlanningUnlimited && Number.isFinite(generationWindowDays) && generationWindowDays > 0) {
+        const endKey = toLocalDateKey(
+          addDays(fromLocalDateKey(localTodayKey), Math.floor(generationWindowDays) - 1)
+        );
+        if (nextKey > endKey) {
+          if (typeof onOpenPaywall === "function") {
+            onOpenPaywall(
+              `Planning limité à ${Math.floor(generationWindowDays)} jours.`
+            );
+          }
+          return;
+        }
+      }
       if (typeof onAddOccurrence === "function") {
         onAddOccurrence(nextKey, goalId || null);
       }
     },
-    [onAddOccurrence]
+    [generationWindowDays, isPlanningUnlimited, localTodayKey, onAddOccurrence, onOpenPaywall]
   );
+
+  useEffect(() => {
+    if (!isPlanningUnlimited) return;
+    if (!Number.isFinite(generationWindowDays) || generationWindowDays <= 0) return;
+    const endKey = toLocalDateKey(
+      addDays(fromLocalDateKey(localTodayKey), Math.floor(generationWindowDays) - 1)
+    );
+    const thresholdKey = toLocalDateKey(addDays(fromLocalDateKey(endKey), -7));
+    if (selectedDateKey < thresholdKey) return;
+    setData((prev) => {
+      const goalsList = Array.isArray(prev?.goals) ? prev.goals : [];
+      let processIds = [];
+      if (selectedGoal?.id) {
+        processIds = linkedHabits.map((goal) => goal.id).filter(Boolean);
+      } else if (focusCategory?.id) {
+        processIds = goalsList
+          .filter((goal) => resolveGoalType(goal) === "PROCESS" && goal.categoryId === focusCategory.id)
+          .map((goal) => goal.id)
+          .filter(Boolean);
+      }
+      if (!processIds.length) return prev;
+      return ensureWindowForGoals(prev, processIds, localTodayKey, Math.floor(generationWindowDays));
+    });
+  }, [
+    focusCategory?.id,
+    generationWindowDays,
+    isPlanningUnlimited,
+    linkedHabits,
+    localTodayKey,
+    selectedDateKey,
+    selectedGoal?.id,
+    setData,
+  ]);
 
   const getRailStepPx = useCallback(() => {
     const fallback = 62;

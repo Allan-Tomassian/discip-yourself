@@ -225,7 +225,7 @@ function updateRemindersForGoal(state, goalId, config, fallbackLabel, options = 
   return [...others, ...nextForGoal];
 }
 
-export default function EditItem({ data, setData, editItem, onBack }) {
+export default function EditItem({ data, setData, editItem, onBack, generationWindowDays = null }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -484,7 +484,11 @@ export default function EditItem({ data, setData, editItem, onBack }) {
           next = { ...next, reminders: nextReminders };
         }
         if (planChanged && type !== "OUTCOME") {
-          next = regenerateWindowForGoal(next, goalId, todayLocalKey(), 14);
+          const days =
+            Number.isFinite(generationWindowDays) && generationWindowDays > 0
+              ? Math.floor(generationWindowDays)
+              : 14;
+          next = regenerateWindowForGoal(next, goalId, todayLocalKey(), days);
         }
         return next;
       });

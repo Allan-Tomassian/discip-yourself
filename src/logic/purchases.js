@@ -9,7 +9,9 @@ const webFallback = {
 let cachedModule = null;
 
 function isNativePlatform() {
-  return Boolean(globalThis?.Capacitor?.isNativePlatform);
+  const flag = globalThis?.Capacitor?.isNativePlatform;
+  if (typeof flag === "function") return flag.call(globalThis.Capacitor);
+  return Boolean(flag);
 }
 
 async function loadModule() {

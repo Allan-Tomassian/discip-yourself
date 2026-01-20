@@ -112,7 +112,7 @@ export default function CreateV2({ data, onBack, onOpenStep, onUseLegacyFlow }) 
           </Button>
         ) : null}
         <Card accentBorder>
-          <div className="p18 col" style={{ gap: 12 }}>
+          <div className="p18 col gap12">
             <div className="titleSm">Progression</div>
             <div className="stack stackGap8">
               {CREATION_STEPS.map((step) => (
@@ -134,7 +134,7 @@ export default function CreateV2({ data, onBack, onOpenStep, onUseLegacyFlow }) 
                 </AccentItem>
               ))}
             </div>
-            <div className="row" style={{ justifyContent: "flex-end" }}>
+            <div className="row rowEnd">
               {typeof onUseLegacyFlow === "function" ? (
                 <Button variant="ghost" onClick={onUseLegacyFlow}>
                   Mode classique

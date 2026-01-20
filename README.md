@@ -19,6 +19,21 @@ If you are developing a production application, we recommend using TypeScript wi
 
 This project can be wrapped as an iOS app using Capacitor.
 
+## How to run
+
+Web dev:
+- `npm install`
+- `npm run dev`
+
+iOS build/sync:
+- `npm run build`
+- `npx cap sync`
+- `npx cap open ios`
+
+iOS live reload:
+- `npm run dev -- --host`
+- `npx cap run ios --livereload --external`
+
 Commands:
 - `npm run build`
 - `npx cap add ios`

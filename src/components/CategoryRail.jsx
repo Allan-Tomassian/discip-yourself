@@ -28,10 +28,6 @@ export default function CategoryRail({
   return (
     <div
       className="categoryRailScroll scrollNoBar"
-      style={{
-        scrollBehavior: "smooth",
-        scrollSnapType: "x mandatory",
-      }}
     >
       {categories.map((c) => {
         const isSelected = c.id === selectedCategoryId;
@@ -46,25 +42,12 @@ export default function CategoryRail({
             type="button"
             className={`listItem categoryRailItem${isSelected ? " catAccentRow isSelected" : ""}`}
             aria-pressed={isSelected}
-            style={{
-              ...(isSelected ? accentVars : null),
-              minWidth: "max-content",
-              padding: "6px 10px",
-              borderRadius: 12,
-              whiteSpace: "nowrap",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              scrollSnapAlign: "center",
-              transform: isSelected ? "scale(1.06)" : "scale(1)",
-              opacity: isSelected ? 1 : 0.65,
-              transition: "transform 220ms ease, opacity 220ms ease",
-            }}
+            style={isSelected ? accentVars : undefined}
             onClick={() => {
               if (typeof onSelect === "function") onSelect(c.id);
             }}
           >
-            <span className="itemTitle" style={{ fontSize: 13, lineHeight: 1 }}>
+            <span className="itemTitle">
               {c.name || "Catégorie"}
             </span>
           </button>

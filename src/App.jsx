@@ -32,7 +32,15 @@ import { toLocalDateKey, todayLocalKey } from "./utils/dateKey";
 import { isPrimaryCategory, normalizePriorities } from "./logic/priority";
 import { getCategoryCounts } from "./logic/pilotage";
 import { resolveGoalType } from "./domain/goalType";
-import { canCreateAction, canCreateCategory, canCreateOutcome, getPlanLimits, isPremium } from "./logic/entitlements";
+import {
+  canCreateAction,
+  canCreateCategory,
+  canCreateOutcome,
+  getGenerationWindowDays,
+  getPlanLimits,
+  isPlanningUnlimited,
+  isPremium,
+} from "./logic/entitlements";
 import { getPremiumEntitlement, purchase, restore } from "./logic/purchases";
 import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
 import { useTour } from "./tour/useTour";
@@ -456,6 +464,8 @@ export default function App() {
   const safeData = data && typeof data === "object" ? data : {};
   const planLimits = getPlanLimits();
   const isPremiumPlan = isPremium(safeData);
+  const generationWindowDays = getGenerationWindowDays(safeData);
+  const planningUnlimited = isPlanningUnlimited(safeData);
   const canCreateCategoryNow = canCreateCategory(safeData);
   const canCreateOutcomeNow = canCreateOutcome(safeData);
   const canCreateActionNow = canCreateAction(safeData);
@@ -1164,6 +1174,8 @@ export default function App() {
           onOpenPaywall={openPaywall}
           isPremiumPlan={isPremiumPlan}
           planLimits={planLimits}
+          generationWindowDays={generationWindowDays}
+          isPlanningUnlimited={planningUnlimited}
         />
       ) : tab === "category-detail" ? (
         <CategoryDetailView
@@ -1207,9 +1219,21 @@ export default function App() {
           }}
         />
       ) : tab === "pilotage" ? (
-        <Pilotage data={data} setData={setData} onPlanCategory={handlePlanCategory} />
+        <Pilotage
+          data={data}
+          setData={setData}
+          onPlanCategory={handlePlanCategory}
+          generationWindowDays={generationWindowDays}
+          isPlanningUnlimited={planningUnlimited}
+        />
       ) : tab === "edit-item" ? (
-        <EditItem data={data} setData={setData} editItem={editItem} onBack={handleEditBack} />
+        <EditItem
+          data={data}
+          setData={setData}
+          editItem={editItem}
+          onBack={handleEditBack}
+          generationWindowDays={generationWindowDays}
+        />
       ) : tab === "library" && libraryCategoryId ? (
         <CategoryView
           data={data}
@@ -1350,6 +1374,7 @@ export default function App() {
             setLibraryCategoryId(null);
             setTab("library");
           }}
+          generationWindowDays={generationWindowDays}
         />
       ) : tab === "session" ? (
         <Session

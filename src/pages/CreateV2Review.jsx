@@ -102,7 +102,7 @@ function isDraftComplete(draft) {
   return true;
 }
 
-export default function CreateV2Review({ data, setData, onBack, onDone, onCancel }) {
+export default function CreateV2Review({ data, setData, onBack, onDone, onCancel, generationWindowDays = null }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
@@ -239,7 +239,11 @@ export default function CreateV2Review({ data, setData, onBack, onDone, onCancel
       }
 
       if (createdProcessIds.length) {
-        finalState = ensureWindowForGoals(finalState, createdProcessIds, todayLocalKey(), 14);
+        const days =
+          Number.isFinite(generationWindowDays) && generationWindowDays > 0
+            ? Math.floor(generationWindowDays)
+            : 14;
+        finalState = ensureWindowForGoals(finalState, createdProcessIds, todayLocalKey(), days);
       }
 
       finalState = {

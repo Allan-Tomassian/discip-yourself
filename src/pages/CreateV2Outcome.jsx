@@ -173,7 +173,7 @@ export default function CreateV2Outcome({
       headerTitle="Créer"
       headerSubtitle={
         <>
-          <span style={{ opacity: 0.6 }}>2.</span> Objectifs · {categoryLabel}
+          <span className="textMuted2">2.</span> Objectifs · {categoryLabel}
         </>
       }
       backgroundImage={backgroundImage}
@@ -183,13 +183,13 @@ export default function CreateV2Outcome({
           ← Retour
         </Button>
         <Card accentBorder>
-          <div className="p18 col" style={{ gap: 12 }}>
+          <div className="p18 col gap12">
             {availableExisting.length ? (
               <div className="stack stackGap8">
-                <div className="small" style={{ opacity: 0.7 }}>
+                <div className="small textMuted">
                   Objectif existant (optionnel)
                 </div>
-                <div className="row" style={{ gap: 8 }}>
+                <div className="row gap8">
                   <Select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
                     <option value="" disabled>
                       Sélectionner un objectif
@@ -208,11 +208,11 @@ export default function CreateV2Outcome({
             ) : null}
 
             <div className="stack stackGap8">
-              <div className="small" style={{ opacity: 0.7 }}>
+              <div className="small textMuted">
                 Nouvel objectif
               </div>
               <div className="stack stackGap8">
-                <div className="small" style={{ opacity: 0.7 }}>
+                <div className="small textMuted">
                   Objectif
                 </div>
                 <Input
@@ -227,7 +227,7 @@ export default function CreateV2Outcome({
                 </Select>
               </div>
               <div className="stack stackGap8">
-                <div className="small" style={{ opacity: 0.7 }}>
+                <div className="small textMuted">
                   Mesure
                 </div>
                 <Select value={measureType} onChange={(e) => setMeasureType(e.target.value)}>
@@ -243,11 +243,11 @@ export default function CreateV2Outcome({
                   onChange={(e) => setTargetValue(e.target.value)}
                   placeholder="Valeur cible (optionnel)"
                 />
-                <div className="small2" style={{ opacity: 0.7 }}>
+                <div className="small2 textMuted">
                   Date limite (optionnel)
                 </div>
                 <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
-                <div className="small2" style={{ opacity: 0.6 }}>
+                <div className="small2 textMuted2">
                   Démarre aujourd’hui automatiquement.
                 </div>
               </div>
@@ -263,8 +263,8 @@ export default function CreateV2Outcome({
                     ? existingOutcomes.find((g) => g.id === outcome.id)?.title
                     : outcome.title;
                 return (
-                  <div key={outcome.id} className="row" style={{ justifyContent: "space-between", gap: 10 }}>
-                    <div className="small2" style={{ flex: 1 }}>
+                  <div key={outcome.id} className="row rowBetween gap10">
+                    <div className="small2 flex1">
                       {label || "Objectif"}
                     </div>
                     <Button variant="ghost" onClick={() => handleRemove(outcome.id)}>
@@ -275,7 +275,7 @@ export default function CreateV2Outcome({
               })}
               {!outcomes.length ? <div className="small2">Ajoute au moins un objectif.</div> : null}
             </div>
-            <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
+            <div className="row rowEnd gap10">
               <Button
                 variant="ghost"
                 onClick={() => {
