@@ -1,5 +1,17 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import AccentContext from "./AccentContext";
+
+function hexToRgba(hex, alpha) {
+  if (typeof hex !== "string") return "";
+  const clean = hex.replace("#", "").trim();
+  if (clean.length !== 6) return "";
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  if ([r, g, b].some((v) => Number.isNaN(v))) return "";
+  const a = typeof alpha === "number" ? alpha : 0.12;
+  return `rgba(${r},${g},${b},${a})`;
+}
 
 export { default as AccentItem } from "./AccentItem";
 
@@ -9,12 +21,15 @@ export function Badge({ children }) {
 
 export function Card({ children, accentBorder = false, style, className = "", ...props }) {
   const { accent } = React.useContext(AccentContext);
-  const borderStyle = accentBorder ? { borderColor: accent } : {};
+  const accentTint = accentBorder ? hexToRgba(accent, 0.12) : "";
+  const accentStyle = accentBorder
+    ? { "--accent": accent, "--accentTint": accentTint || "rgba(255,255,255,.06)" }
+    : {};
   return (
     <div
-      className={`card${className ? ` ${className}` : ""}`}
+      className={`card${accentBorder ? " accentFrame" : ""}${className ? ` ${className}` : ""}`}
       style={{
-        ...borderStyle,
+        ...accentStyle,
         ...(style || {}),
       }}
       {...props}
@@ -52,16 +67,142 @@ export function IconButton({ icon, children, className = "", type = "button", ..
   );
 }
 
-export function Input(props) {
-  return <input className="input" {...props} />;
+export function Input({ className = "", ...props }) {
+  return <input className={`input${className ? ` ${className}` : ""}`} {...props} />;
 }
 
-export function Textarea(props) {
-  return <textarea className="textarea" {...props} />;
+export function Textarea({ className = "", ...props }) {
+  return <textarea className={`textarea${className ? ` ${className}` : ""}`} {...props} />;
 }
 
-export function Select(props) {
-  return <select className="select" {...props} />;
+export function Select({
+  className = "",
+  children,
+  value,
+  onChange,
+  disabled,
+  placeholder,
+  style,
+  "aria-label": ariaLabel,
+}) {
+  const options = useMemo(() => {
+    const list = [];
+    React.Children.forEach(children, (child) => {
+      if (!React.isValidElement(child)) return;
+      const optValue = child.props?.value;
+      const optLabel = child.props?.children;
+      if (optValue === undefined) return;
+      list.push({
+        value: optValue,
+        label: optLabel || String(optValue),
+        disabled: Boolean(child.props?.disabled),
+      });
+    });
+    return list;
+  }, [children]);
+
+  const derivedPlaceholder =
+    placeholder ||
+    options.find((opt) => opt.disabled && !opt.value)?.label ||
+    "Sélectionner";
+
+  return (
+    <SelectMenu
+      value={value}
+      onChange={(next) => (typeof onChange === "function" ? onChange({ target: { value: next } }) : null)}
+      disabled={disabled}
+      placeholder={derivedPlaceholder}
+      options={options.filter((opt) => opt.value !== "" || !opt.disabled)}
+      className={className}
+      style={style}
+      ariaLabel={ariaLabel}
+    />
+  );
+}
+
+export function SelectMenu({
+  value,
+  options = [],
+  onChange,
+  placeholder = "Sélectionner",
+  disabled = false,
+  className = "",
+  menuClassName = "",
+  style,
+  ariaLabel,
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = useMemo(
+    () => options.find((opt) => opt.value === value) || null,
+    [options, value]
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    function handleKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
+
+  function handleSelect(opt) {
+    if (!opt || opt.disabled) return;
+    if (typeof onChange === "function") onChange(opt.value);
+    setOpen(false);
+  }
+
+  return (
+    <div className="selectMenuWrap" style={style}>
+      <button
+        type="button"
+        className={`selectTrigger${className ? ` ${className}` : ""}`}
+        onClick={() => (!disabled ? setOpen((prev) => !prev) : null)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-disabled={disabled}
+        aria-label={ariaLabel}
+        disabled={disabled}
+      >
+        <span className={`selectTriggerValue${selected ? "" : " isPlaceholder"}`}>
+          {selected?.label || placeholder}
+        </span>
+        <span className="selectChevron" aria-hidden="true">▾</span>
+      </button>
+      {open ? (
+        <>
+          <button
+            type="button"
+            className="selectMenuOverlay"
+            onClick={() => setOpen(false)}
+            aria-label="Fermer"
+          />
+          <div className={`selectMenu${menuClassName ? ` ${menuClassName}` : ""}`} role="listbox">
+            {options.length ? (
+              options.map((opt) => {
+                const isSelected = opt.value === value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    disabled={opt.disabled}
+                    className={`selectOption${isSelected ? " isSelected" : ""}${opt.disabled ? " isDisabled" : ""}`}
+                    onClick={() => handleSelect(opt)}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })
+            ) : (
+              <div className="selectEmpty">Aucune option</div>
+            )}
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
 }
 
 export function CardSectionHeader({ title, action = null, className = "" }) {

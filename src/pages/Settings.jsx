@@ -36,7 +36,7 @@ function MotivationSection({ data, setData }) {
   return (
     <Card accentBorder className="mt14" data-tour-id="settings-why">
       <div className="p18 col">
-        <div className="sectionTitle textAccent">Pourquoi</div>
+        <div className="sectionTitle">Pourquoi</div>
         <div className="sectionSub mt6">
           Modifiable tous les 30 jours.
         </div>
@@ -114,7 +114,7 @@ export default function Settings({
     <ScreenShell
       data={safeData}
       pageId="settings"
-      headerTitle={<span className="textAccent" data-tour-id="settings-title">Réglages</span>}
+      headerTitle={<span data-tour-id="settings-title">Réglages</span>}
       headerSubtitle="Essentiel"
       backgroundImage={backgroundImage}
     >
@@ -125,7 +125,7 @@ export default function Settings({
         <MotivationSection data={safeData} setData={setData} />
         <Card accentBorder className="mt14">
           <div className="p18 col">
-            <div className="sectionTitle textAccent">Abonnement</div>
+            <div className="sectionTitle">Abonnement</div>
             <div className="sectionSub mt6">
               {isPremiumPlan ? "Premium actif" : "Version gratuite"}
             </div>
@@ -172,7 +172,7 @@ export default function Settings({
         </Card>
         <Card accentBorder className="mt14">
           <div className="p18 col">
-            <div className="sectionTitle textAccent">Données</div>
+            <div className="sectionTitle">Données</div>
             <div className="sectionSub mt6">
               Export JSON complet de l’app.
             </div>
@@ -193,7 +193,7 @@ export default function Settings({
         </Card>
         <Card accentBorder className="mt14">
           <div className="p18 col">
-            <div className="sectionTitle textAccent">Introduction</div>
+            <div className="sectionTitle">Introduction</div>
             <div className="sectionSub mt6">
               Revoir l’accueil et relancer le tutoriel.
             </div>
@@ -236,7 +236,7 @@ export default function Settings({
         </Card>
         <Card accentBorder className="mt14" data-tour-id="settings-notifications">
           <div className="p18 col">
-            <div className="sectionTitle textAccent">Notifications</div>
+            <div className="sectionTitle">Notifications</div>
             <div className="sectionSub mt6">
               Les notifications système (son/vibration) nécessitent une version PWA. À venir.
             </div>
@@ -249,7 +249,7 @@ export default function Settings({
         </Card>
         <Card accentBorder className="mt14">
           <div className="p18 col">
-            <div className="sectionTitle textAccent">Légal & Support</div>
+            <div className="sectionTitle">Légal & Support</div>
             <div className="sectionSub mt6">
               Informations légales et assistance.
             </div>

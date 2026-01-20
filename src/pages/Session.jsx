@@ -307,7 +307,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
     return (
       <ScreenShell
         accent={getAccentForPage(safeData, "home")}
-        headerTitle={<span className="textAccent">Session</span>}
+        headerTitle={<span>Session</span>}
         headerSubtitle={
           <div className="stack stackGap12">
             <div>Aucune session</div>
@@ -363,7 +363,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
     return (
       <ScreenShell
         accent={accent}
-        headerTitle={<span className="textAccent">{sessionTitle}</span>}
+        headerTitle={<span>{sessionTitle}</span>}
         headerSubtitle={
           <div className="stack stackGap12">
             <div>{sessionSubtitle}</div>
@@ -421,7 +421,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
   return (
     <ScreenShell
       accent={accent}
-      headerTitle={<span className="textAccent">{sessionTitle}</span>}
+      headerTitle={<span>{sessionTitle}</span>}
       headerSubtitle={
         <div className="stack stackGap12">
           <div>{sessionSubtitle}</div>

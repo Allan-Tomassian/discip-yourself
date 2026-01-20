@@ -11,11 +11,13 @@ export default function AccentItem({
   children,
   rightSlot = null,
   compact = false,
+  tone = "accent",
   style = {},
   className = "",
   "aria-label": ariaLabel,
 }) {
   const clickable = typeof onClick === "function";
+  const isNeutral = tone === "neutral";
 
   const padding = compact ? "8px 10px" : "10px 10px";
 
@@ -26,10 +28,12 @@ export default function AccentItem({
     gap: 10,
     padding,
     borderRadius: 12,
-    background: selected
-      ? `linear-gradient(90deg, rgba(0,0,0,0), ${color}22)`
-      : `linear-gradient(90deg, rgba(0,0,0,0), ${color}0F)`,
-    borderLeft: selected ? `4px solid ${color}` : "4px solid transparent",
+    background: isNeutral
+      ? "var(--surface)"
+      : selected
+        ? `linear-gradient(90deg, rgba(0,0,0,0), ${color}22)`
+        : `linear-gradient(90deg, rgba(0,0,0,0), ${color}0F)`,
+    borderLeft: isNeutral ? "4px solid transparent" : selected ? `4px solid ${color}` : "4px solid transparent",
     transition: "background 180ms ease, border-left-color 180ms ease",
     cursor: clickable ? "pointer" : "default",
     outline: "none",

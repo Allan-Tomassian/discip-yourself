@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SortableBlocks from "../components/SortableBlocks";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, IconButton, Select, Textarea } from "../components/UI";
+import { Button, Card, IconButton, SelectMenu, Textarea } from "../components/UI";
 import AccentItem from "../components/AccentItem";
 import {
   addDays,
@@ -1436,7 +1436,7 @@ export default function Home({
       <ScreenShell
         accent={getAccentForPage(safeData, "home")}
         backgroundImage={profile.whyImage || ""}
-        headerTitle={<span className="textAccent" data-tour-id="today-title">Aujourd’hui</span>}
+        headerTitle={<span data-tour-id="today-title">Aujourd’hui</span>}
         headerSubtitle={<span data-tour-id="today-empty-subtitle">Aucune catégorie</span>}
       >
         <Card accentBorder>
@@ -1465,19 +1465,7 @@ export default function Home({
   const goalAccent = selectedGoal?.color || accent;
   const selectedDayAccent = goalAccentByDate.get(selectedDateKey) || goalAccent || accent;
   const backgroundImage = profile.whyImage || "";
-  const catAccentVars = getCategoryAccentVars(accent);
-  const noteFieldStyle = {
-    background: `linear-gradient(90deg, rgba(0,0,0,0), ${accent}0F)`,
-  };
-  const focusRowStyle = {
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "10px 10px",
-    borderRadius: 12,
-    background: `linear-gradient(90deg, rgba(0,0,0,0), ${accent}22)`,
-    borderLeft: `4px solid ${accent}`,
-    transition: "background 180ms ease, border-left-color 180ms ease",
-  };
+  const accentVars = getCategoryAccentVars(accent);
 
   const whyText = (profile.whyText || "").trim();
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
@@ -1521,13 +1509,14 @@ export default function Home({
       <button
         className="statButton mt10"
         type="button"
+        style={accentVars}
         onClick={() => setShowDisciplineStats(true)}
         data-tour-id="today-stats-discipline"
       >
-        <div className="small2" style={{ textAlign: "right" }}>
+        <div className="small2 textRight">
           Discipline
         </div>
-        <div className="row" style={{ alignItems: "center", gap: 8, marginTop: 4 }}>
+        <div className="row alignCenter gap8 mt4">
           <div
             style={{
               flex: 1,
@@ -1541,20 +1530,20 @@ export default function Home({
               style={{
                 width: `${Math.round(disciplineBreakdown.ratio * 100)}%`,
                 height: "100%",
-                background: "var(--accent)",
+                background: accent,
                 borderRadius: 999,
               }}
             />
           </div>
-          <div className="small2" style={{ minWidth: 36, textAlign: "right" }}>
+          <div className="small2 textRight minW36">
             {disciplineBreakdown.score}%
           </div>
         </div>
       </button>
 
       {sessionBadgeLabel ? (
-        <div className="mt10" style={{ display: "flex", justifyContent: "flex-end" }}>
-          <span className="badge" style={{ borderColor: "var(--accent)", color: "var(--accent)" }}>
+        <div className="mt10 row rowEnd" style={accentVars}>
+          <span className="badge badgeAccent">
             {sessionBadgeLabel}
           </span>
         </div>
@@ -1566,7 +1555,7 @@ export default function Home({
     <ScreenShell
       accent={accent}
       backgroundImage={backgroundImage}
-      headerTitle={<span className="textAccent" data-tour-id="today-title">Aujourd’hui</span>}
+      headerTitle={<span data-tour-id="today-title">Aujourd’hui</span>}
       headerSubtitle={<span data-tour-id="today-subtitle">Exécution</span>}
       headerRight={headerRight}
       headerRowAlign="start"
@@ -1614,13 +1603,12 @@ export default function Home({
                         </button>
                       ) : null}
                       <div className="cardSectionTitle">Focus du jour</div>
-                      <div style={{ flex: 1 }} />
+                      <div className="flex1" />
                       {canManageCategory ? (
                         <Button
                           variant="ghost"
                           onClick={() => onOpenManageCategory(focusCategory.id)}
                           aria-label="Gérer la catégorie"
-                          style={{ borderColor: accent }}
                         >
                           Gérer
                         </Button>
@@ -1629,9 +1617,9 @@ export default function Home({
                     <div className="mt12">
                       <div className="small2">Catégorie</div>
                       <div
-                        className="mt8"
+                        className="mt8 accentRow"
                         data-tour-id="today-focus-category"
-                        style={focusRowStyle}
+                        style={accentVars}
                       >
                         <div className="itemTitle">{focusCategory?.name || "Catégorie"}</div>
                       </div>
@@ -1640,28 +1628,15 @@ export default function Home({
                     <div className="mt12">
                       <div className="small2">Objectif principal</div>
                     {outcomeGoals.length ? (
-                      <div className="mt8" style={focusRowStyle}>
-                        <Select
+                      <div className="mt8 accentRow" style={accentVars}>
+                        <SelectMenu
                           value={selectedGoal?.id || ""}
-                          onChange={(e) => setCategoryMainGoal(e.target.value)}
+                          onChange={(next) => setCategoryMainGoal(next)}
                           disabled={!canEdit}
-                          style={{
-                            background: "transparent",
-                            border: 0,
-                            boxShadow: "none",
-                            padding: 0,
-                            width: "100%",
-                          }}
-                        >
-                          <option value="" disabled>
-                            Choisir un objectif
-                          </option>
-                          {outcomeGoals.map((g) => (
-                            <option key={g.id} value={g.id}>
-                              {g.title}
-                            </option>
-                          ))}
-                        </Select>
+                          placeholder="Choisir un objectif"
+                          options={outcomeGoals.map((g) => ({ value: g.id, label: g.title || "Objectif" }))}
+                          className="accentInput"
+                        />
                       </div>
                     ) : (
                       <div className="mt8 small2">Aucun objectif principal pour cette catégorie.</div>
@@ -1690,7 +1665,7 @@ export default function Home({
                     {selectedGoal && hasSelectableHabits ? (
                       <div className="mt12">
                         <div className="small2">Actions à faire</div>
-                        <div className="mt8 col" style={{ gap: 8 }}>
+                        <div className="mt8 col gap8">
                           {selectableHabits.map((habit) => {
                             const isSelected = selectedActionIds.includes(habit.id);
                             return (
@@ -1708,7 +1683,7 @@ export default function Home({
                           })}
                         </div>
                         {!hasSelectedActions ? (
-                          <div className="sectionSub" style={{ marginTop: 8 }}>
+                          <div className="sectionSub mt8">
                             Sélectionne au moins une action.
                           </div>
                         ) : null}
@@ -1718,13 +1693,13 @@ export default function Home({
                     {selectedGoal && unlinkedHabits.length ? (
                       <div className="mt12">
                         <div className="small2">Actions non liées</div>
-                        <div className="sectionSub" style={{ marginTop: 6 }}>
+                        <div className="sectionSub mt6">
                           Ces actions existent dans la catégorie mais ne sont liées à aucun objectif.
                         </div>
-                        <div className="mt8 col" style={{ gap: 8 }}>
+                        <div className="mt8 col gap8">
                           {unlinkedHabits.map((habit) => (
-                            <div key={habit.id} className="row" style={{ gap: 8, alignItems: "center" }}>
-                              <div className="itemTitle" style={{ opacity: 0.6 }}>
+                            <div key={habit.id} className="row gap8 alignCenter">
+                              <div className="itemTitle textMuted2">
                                 {habit.title || "Action"}
                               </div>
                               {typeof setData === "function" && selectedGoal ? (
@@ -1745,21 +1720,21 @@ export default function Home({
                     ) : null}
 
                     <div className="mt12">
-                      <div className="row" style={{ justifyContent: "flex-end" }}>
+                      <div className="row rowEnd">
                         <Button onClick={openSessionFlow} disabled={!canOpenSession} data-tour-id="today-go">
                           GO
                         </Button>
                       </div>
                       {!selectedGoal ? (
-                        <div className="sectionSub" style={{ marginTop: 8 }}>
+                        <div className="sectionSub mt8">
                           Sélectionne un objectif pour activer GO.
                         </div>
                       ) : !canValidate ? (
-                        <div className="sectionSub" style={{ marginTop: 8 }}>
+                        <div className="sectionSub mt8">
                           {lockMessage}
                         </div>
                       ) : !hasLinkedHabits ? (
-                        <div className="sectionSub" style={{ marginTop: 8 }}>
+                        <div className="sectionSub mt8">
                           Aucune action liée à cet objectif (ou tes actions ne sont pas reliées correctement).
                           {canManageCategory && !showTodayEmptyCta ? (
                             <>
@@ -2134,7 +2109,8 @@ export default function Home({
                       onChange={(e) => {
                         setDailyNote(e.target.value);
                       }}
-                      style={noteFieldStyle}
+                      className="accentInput"
+                      style={accentVars}
                       placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
                       data-tour-id="today-notes-text"
                     />
@@ -2144,39 +2120,39 @@ export default function Home({
                     <div className="noteMetaGrid mt8" data-tour-id="today-notes-meta">
                       <div>
                         <div className="small2">Forme</div>
-                        <Select
+                        <SelectMenu
                           value={noteMeta.forme || ""}
-                          onChange={(e) => updateNoteMeta({ forme: e.target.value })}
-                          style={noteFieldStyle}
-                        >
-                          <option value="" disabled>
-                            Choisir
-                          </option>
-                          <option value="Excellente">Excellente</option>
-                          <option value="Bonne">Bonne</option>
-                          <option value="Moyenne">Moyenne</option>
-                          <option value="Faible">Faible</option>
-                        </Select>
+                          onChange={(next) => updateNoteMeta({ forme: next })}
+                          style={accentVars}
+                          className="accentInput"
+                          placeholder="Choisir"
+                          options={[
+                            { value: "Excellente", label: "Excellente" },
+                            { value: "Bonne", label: "Bonne" },
+                            { value: "Moyenne", label: "Moyenne" },
+                            { value: "Faible", label: "Faible" },
+                          ]}
+                        />
                       </div>
                       <div>
                         <div className="small2">Humeur</div>
-                        <Select
+                        <SelectMenu
                           value={noteMeta.humeur || ""}
-                          onChange={(e) => updateNoteMeta({ humeur: e.target.value })}
-                          style={noteFieldStyle}
-                        >
-                          <option value="" disabled>
-                            Choisir
-                          </option>
-                          <option value="Positif">Positif</option>
-                          <option value="Neutre">Neutre</option>
-                          <option value="Basse">Basse</option>
-                        </Select>
+                          onChange={(next) => updateNoteMeta({ humeur: next })}
+                          style={accentVars}
+                          className="accentInput"
+                          placeholder="Choisir"
+                          options={[
+                            { value: "Positif", label: "Positif" },
+                            { value: "Neutre", label: "Neutre" },
+                            { value: "Basse", label: "Basse" },
+                          ]}
+                        />
                       </div>
                       <div>
                         <div className="small2">Motivation</div>
                         <input
-                          className="input"
+                          className="input accentInput"
                           type="number"
                           min="0"
                           max="10"
@@ -2184,7 +2160,7 @@ export default function Home({
                           value={noteMeta.motivation || ""}
                           onChange={(e) => updateNoteMeta({ motivation: e.target.value })}
                           placeholder="0-10"
-                          style={noteFieldStyle}
+                          style={accentVars}
                         />
                       </div>
                     </div>
@@ -2328,7 +2304,7 @@ export default function Home({
                     <div
                       key={item.id || item.dateKey}
                       className={`listItem${isSelected ? " catAccentRow" : ""}`}
-                      style={isSelected ? catAccentVars : undefined}
+                      style={isSelected ? accentVars : undefined}
                       role={noteDeleteMode ? "button" : undefined}
                       tabIndex={noteDeleteMode ? 0 : undefined}
                       onClick={

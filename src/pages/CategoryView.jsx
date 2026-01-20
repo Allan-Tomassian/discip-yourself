@@ -254,7 +254,7 @@ export default function CategoryView({
   if (!categories.length) {
     return (
       <ScreenShell
-        headerTitle={<span className="textAccent" data-tour-id="manage-title">Gérer</span>}
+        headerTitle={<span data-tour-id="manage-title">Gérer</span>}
         headerSubtitle="Aucune catégorie"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
@@ -278,7 +278,7 @@ export default function CategoryView({
   if (!category) {
     return (
       <ScreenShell
-        headerTitle={<span className="textAccent" data-tour-id="manage-title">Gérer</span>}
+        headerTitle={<span data-tour-id="manage-title">Gérer</span>}
         headerSubtitle="Catégorie introuvable"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
@@ -337,7 +337,7 @@ export default function CategoryView({
     <ScreenShell
       accent={accent}
       backgroundImage={backgroundImage}
-      headerTitle={<span className="textAccent" data-tour-id="manage-title">Gérer</span>}
+      headerTitle={<span data-tour-id="manage-title">Gérer</span>}
       headerSubtitle={
         <div className="stack stackGap12">
           <div data-tour-id="manage-category-name">{category.name || "Catégorie"}</div>
@@ -350,7 +350,7 @@ export default function CategoryView({
       headerRowAlign="start"
     >
       <div className="stack stackGap12" style={{ "--catColor": category.color || "#7C3AED" }}>
-        <Card accentBorder style={{ borderColor: category.color || undefined }} data-tour-id="manage-category-card">
+        <Card accentBorder data-tour-id="manage-category-card">
           <div className="p18 stack stackGap12">
             <div className="row rowBetween alignCenter">
               <div>
@@ -410,7 +410,7 @@ export default function CategoryView({
           </div>
         </Card>
 
-        <Card accentBorder style={{ borderColor: category.color || undefined }} data-tour-id="manage-mini-why">
+        <Card accentBorder data-tour-id="manage-mini-why">
           <div className="p18 stack stackGap12">
             <div className="row rowBetween alignCenter">
               <div>
@@ -425,7 +425,7 @@ export default function CategoryView({
           </div>
         </Card>
 
-        <Card accentBorder style={{ borderColor: category.color || undefined }} data-tour-id="manage-objectives-section">
+        <Card accentBorder data-tour-id="manage-objectives-section">
           <div className="p18 stack stackGap12">
             <div className="titleSm">Objectifs</div>
             {outcomeGoals.length ? (
@@ -523,7 +523,7 @@ export default function CategoryView({
                 <div className="small2">Actions non liées</div>
                 <div className="stack stackGap12">
                   {unlinkedHabits.map((h) => (
-                    <AccentItem key={h.id} color={category.color || accent}>
+                    <AccentItem key={h.id} color={category.color || accent} tone="neutral">
                       <div className="row rowBetween gap8 wFull">
                         <div className="itemTitle">{h.title || "Action"}</div>
                         <Button

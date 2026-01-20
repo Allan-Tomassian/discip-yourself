@@ -143,7 +143,7 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
   if (categories.length === 0) {
     return (
       <ScreenShell
-        headerTitle={<span className="textAccent" data-tour-id="library-title">Bibliothèque</span>}
+        headerTitle={<span data-tour-id="library-title">Bibliothèque</span>}
         headerSubtitle="Aucune catégorie"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
@@ -178,7 +178,7 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
 
   return (
       <ScreenShell
-        headerTitle={<span className="textAccent" data-tour-id="library-title">Bibliothèque</span>}
+        headerTitle={<span data-tour-id="library-title">Bibliothèque</span>}
         headerSubtitle="Catégories"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
@@ -277,7 +277,7 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
                             ) : null}
                           </div>
                           <div className="listItem catAccentRow" style={detailAccentVars}>
-                            <div className="small2 textAccent">
+                            <div className="small2 textMuted">
                               Mini-why
                             </div>
                             <div className="small2 mt6">
@@ -285,7 +285,7 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
                             </div>
                           </div>
                           <div className="col gap8">
-                            <div className="small2 textAccent">
+                            <div className="small2 textMuted">
                               Objectifs
                             </div>
                             {outcomeGoals.length ? (
@@ -298,14 +298,14 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
                                       <div className="row rowBetween gap8">
                                         <div className="itemTitle">{g.title || "Objectif"}</div>
                                         {isPrimaryGoal ? (
-                                          <span className="small2 textAccent">
+                                          <span className="badge badgeAccent">
                                             Prioritaire
                                           </span>
                                         ) : null}
                                       </div>
                                       {linkedHabits.length ? (
                                         <div className="col gap8 mt8 pl12">
-                                          <div className="small2 textAccent">
+                                          <div className="small2 textMuted">
                                             Actions
                                           </div>
                                           {linkedHabits.map((h) => (
@@ -329,12 +329,12 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
                           </div>
                           {unlinkedHabits.length ? (
                             <div className="col gap8">
-                              <div className="small2 textAccent">
+                              <div className="small2 textMuted">
                                 Actions non liées
                               </div>
                               <div className="col gap8">
                                 {unlinkedHabits.map((h) => (
-                                  <div key={h.id} className="listItem catAccentRow" style={detailAccentVars}>
+                                  <div key={h.id} className="listItem">
                                     <div className="row rowBetween gap8">
                                       <div className="itemTitle">{h.title || "Action"}</div>
                                       <Button
