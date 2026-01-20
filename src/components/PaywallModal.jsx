@@ -1,10 +1,54 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Button, Card } from "./UI";
 import { getPlanLimits } from "../logic/entitlements";
+import { loadProducts, PRODUCT_IDS } from "../logic/purchases";
 
-export default function PaywallModal({ open, reason = "", onClose, onUpgrade, onRestore }) {
-  if (!open) return null;
+export default function PaywallModal({
+  open,
+  reason = "",
+  onClose,
+  onSubscribeMonthly,
+  onSubscribeYearly,
+  onRestore,
+  onOpenTerms,
+  onOpenPrivacy,
+}) {
   const limits = getPlanLimits();
+  const [products, setProducts] = useState({ monthly: null, yearly: null, available: false });
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    loadProducts()
+      .then((next) => {
+        if (cancelled) return;
+        setProducts(next || { monthly: null, yearly: null, available: false });
+      })
+      .catch((err) => {
+        void err;
+        if (cancelled) return;
+        setProducts({ monthly: null, yearly: null, available: false });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  if (!open) return null;
+
+  const monthlyPrice = products.monthly?.price;
+  const yearlyPrice = products.yearly?.price;
+  const hasDiscount =
+    Number.isFinite(monthlyPrice) &&
+    Number.isFinite(yearlyPrice) &&
+    monthlyPrice > 0 &&
+    yearlyPrice > 0;
+  const yearlyDiscount = hasDiscount
+    ? Math.max(0, Math.round(100 - (yearlyPrice / (monthlyPrice * 12)) * 100))
+    : null;
+  const yearlyBadge = yearlyDiscount ? `≈ -${yearlyDiscount}%` : "≈ -40%";
+  const monthlyLabel = products.monthly?.priceString || "—";
+  const yearlyLabel = products.yearly?.priceString || "—";
 
   return (
     <div className="modalBackdrop" onClick={onClose}>
@@ -30,14 +74,49 @@ export default function PaywallModal({ open, reason = "", onClose, onUpgrade, on
           <div className="small2" style={{ opacity: 0.6 }}>
             Limites gratuites : {limits.categories} catégories · {limits.outcomes} objectifs · {limits.actions} actions
           </div>
-          <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
-            <Button variant="ghost" onClick={onRestore}>
-              Restaurer
+          <div className="col" style={{ gap: 8 }}>
+            <Button
+              onClick={() => {
+                if (typeof onSubscribeMonthly === "function") onSubscribeMonthly(PRODUCT_IDS.monthly);
+              }}
+            >
+              S’abonner (Mensuel) · {monthlyLabel}
             </Button>
-            <Button variant="ghost" onClick={onClose}>
-              Plus tard
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (typeof onSubscribeYearly === "function") onSubscribeYearly(PRODUCT_IDS.yearly);
+              }}
+            >
+              S’abonner (Annuel) · {yearlyLabel} {yearlyBadge}
             </Button>
-            <Button onClick={onUpgrade}>Passer Premium</Button>
+          </div>
+          {!products.available ? (
+            <div className="small2" style={{ opacity: 0.6 }}>
+              Offres StoreKit indisponibles sur cet appareil.
+            </div>
+          ) : null}
+          <div className="small2" style={{ opacity: 0.7 }}>
+            Abonnement auto-renouvelable. Annulable à tout moment dans les réglages iOS. Le paiement est débité via
+            l’Apple ID.
+          </div>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+            <div className="row" style={{ gap: 8 }}>
+              <button className="linkBtn" type="button" onClick={() => (onOpenTerms ? onOpenTerms() : null)}>
+                Conditions
+              </button>
+              <button className="linkBtn" type="button" onClick={() => (onOpenPrivacy ? onOpenPrivacy() : null)}>
+                Confidentialité
+              </button>
+            </div>
+            <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
+              <Button variant="ghost" onClick={onRestore}>
+                Restaurer
+              </Button>
+              <Button variant="ghost" onClick={onClose}>
+                Plus tard
+              </Button>
+            </div>
           </div>
         </div>
       </Card>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TopNav from "./components/TopNav";
 import { migrate, usePersistedState } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
@@ -33,6 +33,7 @@ import { isPrimaryCategory, normalizePriorities } from "./logic/priority";
 import { getCategoryCounts } from "./logic/pilotage";
 import { resolveGoalType } from "./domain/goalType";
 import { canCreateAction, canCreateCategory, canCreateOutcome, getPlanLimits, isPremium } from "./logic/entitlements";
+import { getPremiumEntitlement, purchase, restore } from "./logic/purchases";
 import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
 import { useTour } from "./tour/useTour";
 import TourOverlay from "./tour/TourOverlay";
@@ -359,6 +360,40 @@ export default function App() {
     };
   }, []);
 
+  const refreshEntitlement = useCallback(
+    async (cancelledRef) => {
+      const result = await getPremiumEntitlement();
+      if (cancelledRef?.current) return result;
+      if (typeof setData !== "function") return result;
+      setData((prev) => {
+        const profile = prev.profile && typeof prev.profile === "object" ? prev.profile : {};
+        const prevEntitlements =
+          profile.entitlements && typeof profile.entitlements === "object" ? profile.entitlements : {};
+        const premium = Boolean(result?.premium);
+        const expiresAt = typeof result?.expiresAt === "string" ? result.expiresAt : null;
+        const entitlements = {
+          ...prevEntitlements,
+          premium,
+          expiresAt,
+          lastCheckedAt: new Date().toISOString(),
+          source: result?.source || prevEntitlements.source || "none",
+        };
+        const nextPlan = premium ? "premium" : profile.plan || "free";
+        return { ...prev, profile: { ...profile, plan: nextPlan, entitlements } };
+      });
+      return result;
+    },
+    [setData]
+  );
+
+  useEffect(() => {
+    const cancelledRef = { current: false };
+    refreshEntitlement(cancelledRef);
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, [refreshEntitlement]);
+
   useEffect(() => {
     setData((prev) => {
       const next = normalizePriorities(migrate(prev));
@@ -427,6 +462,23 @@ export default function App() {
   const openPaywall = (reason) => {
     setPaywallReason(reason || "");
     setPaywallOpen(true);
+  };
+  const handlePurchase = async (productId) => {
+    const result = await purchase(productId);
+    if (!result?.success) {
+      if (typeof safeAlert === "function") safeAlert("Achat indisponible pour le moment.");
+      return;
+    }
+    await refreshEntitlement();
+    setPaywallOpen(false);
+  };
+  const handleRestorePurchases = async () => {
+    const result = await restore();
+    if (!result?.success) {
+      if (typeof safeAlert === "function") safeAlert("Restauration indisponible pour le moment.");
+      return;
+    }
+    await refreshEntitlement();
   };
   const isCreateTab =
     tab === "create" ||
@@ -1327,6 +1379,7 @@ export default function App() {
           onOpenTerms={() => setTab("terms")}
           onOpenSupport={() => setTab("support")}
           onOpenPaywall={openPaywall}
+          onRestorePurchases={handleRestorePurchases}
         />
       )}
 
@@ -1393,19 +1446,11 @@ export default function App() {
         open={paywallOpen}
         reason={paywallReason}
         onClose={() => setPaywallOpen(false)}
-        onUpgrade={() => {
-          if (typeof setData !== "function") return;
-          setData((prev) => {
-            const profile = prev.profile && typeof prev.profile === "object" ? prev.profile : {};
-            return { ...prev, profile: { ...profile, plan: "premium" } };
-          });
-          setPaywallOpen(false);
-        }}
-        onRestore={() => {
-          if (typeof safeAlert === "function") {
-            safeAlert("Restauration en cours de préparation.");
-          }
-        }}
+        onSubscribeMonthly={handlePurchase}
+        onSubscribeYearly={handlePurchase}
+        onRestore={handleRestorePurchases}
+        onOpenTerms={() => setTab("terms")}
+        onOpenPrivacy={() => setTab("privacy")}
       />
       {showTourOverlay ? (
         <TourOverlay

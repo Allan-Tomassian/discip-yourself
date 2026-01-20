@@ -1,6 +1,10 @@
 import { resolveGoalType } from "../domain/goalType";
 
 export function isPremium(data) {
+  const entitlements = data?.profile?.entitlements;
+  if (entitlements && typeof entitlements === "object") {
+    if (entitlements.premium === true) return true;
+  }
   return data?.profile?.plan === "premium";
 }
 

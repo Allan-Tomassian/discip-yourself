@@ -29,3 +29,7 @@ Notes:
 - The `ios/` folder is generated locally by Capacitor and is not committed.
 - Configure icons/splash in Xcode under `ios/App/App/Assets.xcassets`.
 - Configure iOS permission strings in `ios/App/App/Info.plist`.
+- StoreKit subscriptions:
+  - Configure products in App Store Connect (monthly/yearly IDs).
+  - Run `npm run cap:sync` after installing native dependencies.
+  - Test with a sandbox Apple ID on device/simulator.

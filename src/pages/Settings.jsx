@@ -10,6 +10,7 @@ import { getPlanLimits, isPremium } from "../logic/entitlements";
 // - optional_elements: none
 function MotivationSection({ data, setData }) {
   const profile = data?.profile || {};
+  const isPremiumPlan = isPremium(data);
   const [whyDraft, setWhyDraft] = useState(profile.whyText || "");
   const [nowMs, setNowMs] = useState(0);
 
@@ -27,8 +28,8 @@ function MotivationSection({ data, setData }) {
   const lastUpdatedMs = profile.whyUpdatedAt ? Date.parse(profile.whyUpdatedAt) : 0;
   const daysSince =
     nowMs && lastUpdatedMs ? Math.floor((nowMs - lastUpdatedMs) / (24 * 60 * 60 * 1000)) : 999;
-  const daysLeft = profile.plan === "premium" ? 0 : Math.max(0, 30 - daysSince);
-  const canEditWhy = profile.plan === "premium" || daysLeft === 0;
+  const daysLeft = isPremiumPlan ? 0 : Math.max(0, 30 - daysSince);
+  const canEditWhy = isPremiumPlan || daysLeft === 0;
   const cleanWhy = (whyDraft || "").trim();
   const whyChanged = cleanWhy !== (profile.whyText || "").trim();
 
@@ -78,6 +79,7 @@ export default function Settings({
   onOpenTerms,
   onOpenSupport,
   onOpenPaywall,
+  onRestorePurchases,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
   const themeData = safeData.ui && typeof safeData.ui === "object" ? safeData : { ...safeData, ui: {} };
@@ -85,6 +87,14 @@ export default function Settings({
   const backgroundImage = fallbackWallpaper || safeData.profile?.whyImage || "";
   const isPremiumPlan = isPremium(safeData);
   const limits = getPlanLimits();
+  const entitlements =
+    safeData?.profile?.entitlements && typeof safeData.profile.entitlements === "object"
+      ? safeData.profile.entitlements
+      : {};
+  const expiryMs = entitlements?.expiresAt ? Date.parse(entitlements.expiresAt) : NaN;
+  const expiryLabel = Number.isFinite(expiryMs) ? new Date(expiryMs).toLocaleDateString() : "";
+  const showExpiry = Boolean(expiryLabel);
+  const isIOS = globalThis?.Capacitor?.getPlatform ? globalThis.Capacitor.getPlatform() === "ios" : false;
 
   function downloadJsonFile(filename, payload) {
     try {
@@ -123,6 +133,9 @@ export default function Settings({
               <div className="small2">
                 Limites gratuites : {limits.categories} catégories · {limits.outcomes} objectifs · {limits.actions} actions
               </div>
+              {isPremiumPlan && showExpiry ? (
+                <div className="small2">Expire le {expiryLabel}</div>
+              ) : null}
               <Button
                 onClick={() => {
                   if (isPremiumPlan) return;
@@ -135,11 +148,25 @@ export default function Settings({
               <Button
                 variant="ghost"
                 onClick={() => {
+                  if (typeof onRestorePurchases === "function") {
+                    onRestorePurchases();
+                    return;
+                  }
                   if (typeof onOpenPaywall === "function") onOpenPaywall("Restaurer un achat");
                 }}
               >
                 Restaurer
               </Button>
+              {isIOS ? (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    window.open("https://apps.apple.com/account/subscriptions", "_blank");
+                  }}
+                >
+                  Gérer l’abonnement
+                </Button>
+              ) : null}
             </div>
           </div>
         </Card>
