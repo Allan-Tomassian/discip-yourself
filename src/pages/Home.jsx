@@ -119,6 +119,9 @@ export default function Home({
   onOpenSession,
   onDayOpen,
   onAddOccurrence,
+  onOpenPaywall,
+  isPremiumPlan = false,
+  planLimits = null,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
   const selectedDateKey = normalizeLocalDateKey(safeData.ui?.selectedDate) || todayLocalKey();
@@ -129,6 +132,8 @@ export default function Home({
   const canValidate = selectedStatus === "today";
   const canEdit = selectedStatus !== "past";
   const lockMessage = selectedStatus === "past" ? "Lecture seule" : "Disponible le jour J";
+  const historyLimitDays = !isPremiumPlan ? Number(planLimits?.historyDays) || 0 : 0;
+  const historyMaxAge = historyLimitDays > 0 ? historyLimitDays - 1 : null;
 
   // State
   const [showWhy, setShowWhy] = useState(true);
@@ -1145,8 +1150,8 @@ export default function Home({
   }
 
 
-  const noteHistoryItems = useMemo(() => {
-    if (!showNotesHistory) return [];
+  const { items: noteHistoryItems, hasHistoryBeyondLimit } = useMemo(() => {
+    if (!showNotesHistory) return { items: [], hasHistoryBeyondLimit: false };
     let nextItems = [];
     try {
       const items = [];
@@ -1233,8 +1238,27 @@ export default function Home({
       void err;
       nextItems = [];
     }
-    return nextItems;
-  }, [noteHistoryVersion, noteHistoryStorageKey, noteKeyPrefix, noteMetaKeyPrefix, selectedDateKey, showNotesHistory]);
+    if (!historyMaxAge && historyMaxAge !== 0) {
+      return { items: nextItems, hasHistoryBeyondLimit: false };
+    }
+    const today = fromLocalDateKey(localTodayKey);
+    const limited = nextItems.filter((item) => {
+      const itemDate = fromLocalDateKey(item.dateKey);
+      const age = diffDays(itemDate, today);
+      return age >= 0 && age <= historyMaxAge;
+    });
+    const hasBeyond = nextItems.length > limited.length;
+    return { items: limited, hasHistoryBeyondLimit: hasBeyond };
+  }, [
+    noteHistoryVersion,
+    noteHistoryStorageKey,
+    noteKeyPrefix,
+    noteMetaKeyPrefix,
+    selectedDateKey,
+    showNotesHistory,
+    historyMaxAge,
+    localTodayKey,
+  ]);
 
   function updateNoteMeta(patch) {
     setNoteMeta((prev) => {
@@ -2213,6 +2237,14 @@ export default function Home({
                 {noteDeleteMode ? (
                   <Button variant="danger" onClick={deleteSelectedNote} disabled={!noteDeleteTargetId}>
                     Supprimer
+                  </Button>
+                ) : null}
+                {!isPremiumPlan && hasHistoryBeyondLimit ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => (typeof onOpenPaywall === "function" ? onOpenPaywall("Historique complet") : null)}
+                  >
+                    Débloquer tout
                   </Button>
                 ) : null}
                 <button

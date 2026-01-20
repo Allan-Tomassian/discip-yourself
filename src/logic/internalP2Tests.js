@@ -88,7 +88,7 @@ export function runInternalP2Tests() {
     const skipped = list.filter((o) => o.status === "skipped");
     const byStart = countByStart(skipped);
     const hasDuplicateStart = Array.from(byStart.values()).some((v) => v > 1);
-    const ok = skipped.length >= 1 && !hasDuplicateStart;
+    const ok = skipped.length === 1 && !hasDuplicateStart;
     results.push({ id: "TEST 2", pass: ok });
     if (ok) console.log("TEST 2 PASS");
     else console.error("TEST 2 FAIL", { list });

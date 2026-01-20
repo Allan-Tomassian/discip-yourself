@@ -4,7 +4,15 @@ import { Button, Card, Input, Select, Textarea } from "../components/UI";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_OUTCOME } from "../creation/creationSchema";
 
-export default function CreateV2Category({ data, setData, onBack, onNext, onCancel }) {
+export default function CreateV2Category({
+  data,
+  setData,
+  onBack,
+  onNext,
+  onCancel,
+  canCreateCategory = true,
+  onOpenPaywall,
+}) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
@@ -42,6 +50,10 @@ export default function CreateV2Category({ data, setData, onBack, onNext, onCanc
 
   function handleNext() {
     if (!canSubmit) return;
+    if (mode === "new" && !canCreateCategory) {
+      if (typeof onOpenPaywall === "function") onOpenPaywall("Limite de catégories atteinte.");
+      return;
+    }
     if (mode === "existing") {
       updateDraft({ mode, id: selectedId });
     } else {

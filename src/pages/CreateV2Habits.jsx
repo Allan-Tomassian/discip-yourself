@@ -3,9 +3,20 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input, Select } from "../components/UI";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_RHYTHM } from "../creation/creationSchema";
+import { resolveGoalType } from "../domain/goalType";
 import { uid } from "../utils/helpers";
 
-export default function CreateV2Habits({ data, setData, onBack, onNext, onCancel }) {
+export default function CreateV2Habits({
+  data,
+  setData,
+  onBack,
+  onNext,
+  onCancel,
+  canCreateAction = true,
+  onOpenPaywall,
+  isPremiumPlan = false,
+  planLimits = null,
+}) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -16,6 +27,10 @@ export default function CreateV2Habits({ data, setData, onBack, onNext, onCancel
   const outcomes = Array.isArray(draft.outcomes) ? draft.outcomes : [];
   const activeOutcomeId = draft.activeOutcomeId || outcomes[0]?.id || "";
   const hasOutcome = outcomes.length > 0;
+  const existingActionCount = useMemo(
+    () => goals.filter((g) => resolveGoalType(g) === "PROCESS").length,
+    [goals]
+  );
 
   function updateDraft(nextHabits, nextActiveId) {
     if (typeof setData !== "function") return;
@@ -51,6 +66,15 @@ export default function CreateV2Habits({ data, setData, onBack, onNext, onCancel
     const cleanTitle = title.trim();
     if (!cleanTitle) return;
     if (!activeOutcomeId) return;
+    const limit = Number(planLimits?.actions) || 0;
+    if (!isPremiumPlan && limit > 0 && existingActionCount + habits.length >= limit) {
+      if (typeof onOpenPaywall === "function") onOpenPaywall("Limite d’actions atteinte.");
+      return;
+    }
+    if (!canCreateAction) {
+      if (typeof onOpenPaywall === "function") onOpenPaywall("Limite d’actions atteinte.");
+      return;
+    }
     const nextHabits = [...habits, { id: uid(), title: "" + cleanTitle, outcomeId: activeOutcomeId }];
     updateDraft(nextHabits, activeOutcomeId);
     setTitle("");

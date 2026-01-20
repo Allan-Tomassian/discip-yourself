@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import ThemePicker from "../components/ThemePicker";
 import { Button, Card, Textarea } from "../components/UI";
+import { getPlanLimits, isPremium } from "../logic/entitlements";
 
 // TOUR MAP:
 // - primary_action: adjust settings and replay onboarding/tutorial
@@ -70,11 +71,34 @@ function MotivationSection({ data, setData }) {
   );
 }
 
-export default function Settings({ data, setData }) {
+export default function Settings({
+  data,
+  setData,
+  onOpenPrivacy,
+  onOpenTerms,
+  onOpenSupport,
+  onOpenPaywall,
+}) {
   const safeData = data && typeof data === "object" ? data : {};
   const themeData = safeData.ui && typeof safeData.ui === "object" ? safeData : { ...safeData, ui: {} };
   const fallbackWallpaper = Array.isArray(safeData.categories) ? safeData.categories[0]?.wallpaper : "";
   const backgroundImage = fallbackWallpaper || safeData.profile?.whyImage || "";
+  const isPremiumPlan = isPremium(safeData);
+  const limits = getPlanLimits();
+
+  function downloadJsonFile(filename, payload) {
+    try {
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      void err;
+    }
+  }
 
   return (
     <ScreenShell
@@ -89,6 +113,57 @@ export default function Settings({ data, setData }) {
           <ThemePicker data={themeData} setData={setData} />
         </div>
         <MotivationSection data={safeData} setData={setData} />
+        <Card accentBorder style={{ marginTop: 14 }}>
+          <div className="p18 col">
+            <div className="sectionTitle textAccent">Abonnement</div>
+            <div className="sectionSub" style={{ marginTop: 6 }}>
+              {isPremiumPlan ? "Premium actif" : "Version gratuite"}
+            </div>
+            <div className="mt10 col">
+              <div className="small2">
+                Limites gratuites : {limits.categories} catégories · {limits.outcomes} objectifs · {limits.actions} actions
+              </div>
+              <Button
+                onClick={() => {
+                  if (isPremiumPlan) return;
+                  if (typeof onOpenPaywall === "function") onOpenPaywall("Limites premium");
+                }}
+                disabled={isPremiumPlan}
+              >
+                {isPremiumPlan ? "Premium activé" : "Passer Premium"}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  if (typeof onOpenPaywall === "function") onOpenPaywall("Restaurer un achat");
+                }}
+              >
+                Restaurer
+              </Button>
+            </div>
+          </div>
+        </Card>
+        <Card accentBorder style={{ marginTop: 14 }}>
+          <div className="p18 col">
+            <div className="sectionTitle textAccent">Données</div>
+            <div className="sectionSub" style={{ marginTop: 6 }}>
+              Export JSON complet de l’app.
+            </div>
+            <div className="mt10">
+              <Button
+                onClick={() => {
+                  if (!isPremiumPlan) {
+                    if (typeof onOpenPaywall === "function") onOpenPaywall("Export des données");
+                    return;
+                  }
+                  downloadJsonFile("discip-yourself-data.json", safeData);
+                }}
+              >
+                Exporter mes données (JSON)
+              </Button>
+            </div>
+          </div>
+        </Card>
         <Card accentBorder style={{ marginTop: 14 }}>
           <div className="p18 col">
             <div className="sectionTitle textAccent">Introduction</div>
@@ -141,6 +216,34 @@ export default function Settings({ data, setData }) {
             <div className="mt10">
               <Button disabled variant="ghost">
                 Activer · Bientôt
+              </Button>
+            </div>
+          </div>
+        </Card>
+        <Card accentBorder style={{ marginTop: 14 }}>
+          <div className="p18 col">
+            <div className="sectionTitle textAccent">Légal & Support</div>
+            <div className="sectionSub" style={{ marginTop: 6 }}>
+              Informations légales et assistance.
+            </div>
+            <div className="mt10 col">
+              <Button
+                variant="ghost"
+                onClick={() => (typeof onOpenPrivacy === "function" ? onOpenPrivacy() : null)}
+              >
+                Confidentialité
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => (typeof onOpenTerms === "function" ? onOpenTerms() : null)}
+              >
+                Conditions
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => (typeof onOpenSupport === "function" ? onOpenSupport() : null)}
+              >
+                Support
               </Button>
             </div>
           </div>

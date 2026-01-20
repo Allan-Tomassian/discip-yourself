@@ -20,7 +20,17 @@ function getCategoryIdFromDraft(draft) {
   return "";
 }
 
-export default function CreateV2Outcome({ data, setData, onBack, onNext, onCancel }) {
+export default function CreateV2Outcome({
+  data,
+  setData,
+  onBack,
+  onNext,
+  onCancel,
+  canCreateOutcome = true,
+  onOpenPaywall,
+  isPremiumPlan = false,
+  planLimits = null,
+}) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
@@ -35,6 +45,10 @@ export default function CreateV2Outcome({ data, setData, onBack, onNext, onCance
     if (!categoryId) return [];
     return goals.filter((g) => g.categoryId === categoryId && resolveGoalType(g) === "OUTCOME");
   }, [goals, categoryId]);
+  const existingOutcomeCount = useMemo(
+    () => goals.filter((g) => resolveGoalType(g) === "OUTCOME").length,
+    [goals]
+  );
 
   const outcomes = Array.isArray(draft.outcomes) ? draft.outcomes : [];
   const activeOutcomeId = draft.activeOutcomeId || outcomes[0]?.id || "";
@@ -91,6 +105,16 @@ export default function CreateV2Outcome({ data, setData, onBack, onNext, onCance
 
   function handleAddNew() {
     if (!canAddNew) return;
+    const limit = Number(planLimits?.outcomes) || 0;
+    const draftNewCount = outcomes.filter((o) => o.mode === "new").length;
+    if (!isPremiumPlan && limit > 0 && existingOutcomeCount + draftNewCount >= limit) {
+      if (typeof onOpenPaywall === "function") onOpenPaywall("Limite d’objectifs atteinte.");
+      return;
+    }
+    if (!canCreateOutcome) {
+      if (typeof onOpenPaywall === "function") onOpenPaywall("Limite d’objectifs atteinte.");
+      return;
+    }
     const id = uid();
     const nextOutcome = {
       id,

@@ -6,7 +6,7 @@ import { getDueReminders, playReminderSound, sendReminderNotification } from "./
 import { startSession } from "./logic/sessions";
 import { Button, Card } from "./components/UI";
 import ScreenShell from "./pages/_ScreenShell";
-import { markIOSRootClass } from "./utils/dialogs";
+import { markIOSRootClass, safeAlert } from "./utils/dialogs";
 
 import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
@@ -24,11 +24,15 @@ import CategoryDetailView from "./pages/CategoryDetailView";
 import CategoryProgress from "./pages/CategoryProgress";
 import Session from "./pages/Session";
 import Pilotage from "./pages/Pilotage";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import Support from "./pages/Support";
 import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
 import { toLocalDateKey, todayLocalKey } from "./utils/dateKey";
 import { isPrimaryCategory, normalizePriorities } from "./logic/priority";
 import { getCategoryCounts } from "./logic/pilotage";
 import { resolveGoalType } from "./domain/goalType";
+import { canCreateAction, canCreateCategory, canCreateOutcome, getPlanLimits, isPremium } from "./logic/entitlements";
 import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
 import { useTour } from "./tour/useTour";
 import TourOverlay from "./tour/TourOverlay";
@@ -36,7 +40,7 @@ import { createEmptyDraft, normalizeCreationDraft } from "./creation/creationDra
 import { STEP_CATEGORY, STEP_HABITS, STEP_OUTCOME, isValidCreationStep } from "./creation/creationSchema";
 import DiagnosticOverlay from "./components/DiagnosticOverlay";
 import { validateOccurrences } from "./logic/occurrencePlanner";
-import { runInternalP2Tests } from "./logic/internalP2Tests";
+import PaywallModal from "./components/PaywallModal";
 
 function runSelfTests(data) {
   const isProd = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
@@ -148,6 +152,9 @@ const TABS = new Set([
   "category-progress",
   "category-detail",
   "settings",
+  "privacy",
+  "terms",
+  "support",
 ]);
 function normalizeTab(t) {
   if (t === "tools" || t === "plan") return "pilotage";
@@ -185,6 +192,12 @@ export default function App() {
     ? "pilotage"
     : initialPath.startsWith("/session")
       ? "session"
+      : initialPath.startsWith("/privacy")
+        ? "privacy"
+        : initialPath.startsWith("/terms")
+          ? "terms"
+          : initialPath.startsWith("/support")
+            ? "support"
       : initialCategoryProgressId
         ? "category-progress"
         : initialCategoryDetailId
@@ -198,6 +211,8 @@ export default function App() {
   const [sessionDateKey, setSessionDateKey] = useState(initialSearch?.get("date") || null);
   const [activeReminder, setActiveReminder] = useState(null);
   const [editItem, setEditItem] = useState(null);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [paywallReason, setPaywallReason] = useState("");
   const dataRef = useRef(data);
   const lastReminderRef = useRef({});
   const activeReminderRef = useRef(activeReminder);
@@ -261,7 +276,13 @@ export default function App() {
               : "/category"
             : t === "pilotage"
               ? "/pilotage"
-              : "/";
+              : t === "privacy"
+                ? "/privacy"
+                : t === "terms"
+                  ? "/terms"
+                  : t === "support"
+                    ? "/support"
+                    : "/";
       if (window.location.pathname !== nextPath) {
         const state =
           t === "session"
@@ -322,8 +343,18 @@ export default function App() {
   useEffect(() => {
     const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
     if (!isDev || typeof window === "undefined") return;
-    window.__runP2Tests = runInternalP2Tests;
+    let cancelled = false;
+    import("./logic/internalP2Tests")
+      .then((m) => {
+        if (cancelled) return;
+        window.__runP2Tests = m.runInternalP2Tests;
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error("[p2-tests] failed to load", err);
+      });
     return () => {
+      cancelled = true;
       delete window.__runP2Tests;
     };
   }, []);
@@ -388,6 +419,15 @@ export default function App() {
 
 
   const safeData = data && typeof data === "object" ? data : {};
+  const planLimits = getPlanLimits();
+  const isPremiumPlan = isPremium(safeData);
+  const canCreateCategoryNow = canCreateCategory(safeData);
+  const canCreateOutcomeNow = canCreateOutcome(safeData);
+  const canCreateActionNow = canCreateAction(safeData);
+  const openPaywall = (reason) => {
+    setPaywallReason(reason || "");
+    setPaywallOpen(true);
+  };
   const isCreateTab =
     tab === "create" ||
     tab === "create-category" ||
@@ -813,6 +853,18 @@ export default function App() {
               <div className="mt12">
                 <Button
                   onClick={() => {
+                    if (empty.targetTab === "create-category" && !canCreateCategoryNow) {
+                      openPaywall("Limite de catégories atteinte.");
+                      return;
+                    }
+                    if (empty.targetTab === "create-goal" && !canCreateOutcomeNow) {
+                      openPaywall("Limite d’objectifs atteinte.");
+                      return;
+                    }
+                    if (empty.targetTab === "create-habit" && !canCreateActionNow) {
+                      openPaywall("Limite d’actions atteinte.");
+                      return;
+                    }
                     const step =
                       empty.targetTab === "create-category"
                         ? STEP_CATEGORY
@@ -893,6 +945,10 @@ export default function App() {
           tab === "pilotage"
             ? null
             : () => {
+                if (!canCreateCategoryNow) {
+                  openPaywall("Limite de catégories atteinte.");
+                  return;
+                }
                 setLibraryCategoryId(null);
                 seedCreateDraft({ source: "topnav", step: STEP_CATEGORY });
                 setTab("create");
@@ -1042,6 +1098,10 @@ export default function App() {
             setTab("create");
           }}
           onOpenCreateCategory={() => {
+            if (!canCreateCategoryNow) {
+              openPaywall("Limite de catégories atteinte.");
+              return;
+            }
             setLibraryCategoryId(null);
             seedCreateDraft({ source: "today", step: STEP_CATEGORY });
             setTab("create");
@@ -1049,6 +1109,9 @@ export default function App() {
           onOpenSession={({ categoryId, dateKey }) =>
             setTab("session", { sessionCategoryId: categoryId || null, sessionDateKey: dateKey || null })
           }
+          onOpenPaywall={openPaywall}
+          isPremiumPlan={isPremiumPlan}
+          planLimits={planLimits}
         />
       ) : tab === "category-detail" ? (
         <CategoryDetailView
@@ -1137,6 +1200,10 @@ export default function App() {
           data={data}
           setData={setData}
           onOpenCreate={() => {
+            if (!canCreateCategoryNow) {
+              openPaywall("Limite de catégories atteinte.");
+              return;
+            }
             setLibraryCategoryId(null);
             seedCreateDraft({ source: "library" });
             setTab("create");
@@ -1172,6 +1239,10 @@ export default function App() {
             setTab("library");
           }}
           onNext={() => setTab("create-goal")}
+          canCreateCategory={canCreateCategoryNow}
+          onOpenPaywall={openPaywall}
+          isPremiumPlan={isPremiumPlan}
+          planLimits={planLimits}
         />
       ) : tab === "create-goal" ? (
         <CreateV2Outcome
@@ -1183,6 +1254,10 @@ export default function App() {
             setTab("library");
           }}
           onNext={() => setTab("create-habit")}
+          canCreateOutcome={canCreateOutcomeNow}
+          onOpenPaywall={openPaywall}
+          isPremiumPlan={isPremiumPlan}
+          planLimits={planLimits}
         />
       ) : tab === "create-habit" ? (
         <CreateV2Habits
@@ -1194,6 +1269,10 @@ export default function App() {
             setTab("library");
           }}
           onNext={() => setTab("create-rhythm")}
+          canCreateAction={canCreateActionNow}
+          onOpenPaywall={openPaywall}
+          isPremiumPlan={isPremiumPlan}
+          planLimits={planLimits}
         />
       ) : tab === "create-rhythm" ? (
         <CreateV2Rhythm
@@ -1234,8 +1313,21 @@ export default function App() {
             openLibraryDetail();
           }}
         />
+      ) : tab === "privacy" ? (
+        <Privacy data={data} onBack={() => setTab("settings")} />
+      ) : tab === "terms" ? (
+        <Terms data={data} onBack={() => setTab("settings")} />
+      ) : tab === "support" ? (
+        <Support data={data} onBack={() => setTab("settings")} />
       ) : (
-        <Settings data={data} setData={setData} />
+        <Settings
+          data={data}
+          setData={setData}
+          onOpenPrivacy={() => setTab("privacy")}
+          onOpenTerms={() => setTab("terms")}
+          onOpenSupport={() => setTab("support")}
+          onOpenPaywall={openPaywall}
+        />
       )}
 
       {activeReminder ? (
@@ -1297,6 +1389,24 @@ export default function App() {
           </Card>
         </div>
       ) : null}
+      <PaywallModal
+        open={paywallOpen}
+        reason={paywallReason}
+        onClose={() => setPaywallOpen(false)}
+        onUpgrade={() => {
+          if (typeof setData !== "function") return;
+          setData((prev) => {
+            const profile = prev.profile && typeof prev.profile === "object" ? prev.profile : {};
+            return { ...prev, profile: { ...profile, plan: "premium" } };
+          });
+          setPaywallOpen(false);
+        }}
+        onRestore={() => {
+          if (typeof safeAlert === "function") {
+            safeAlert("Restauration en cours de préparation.");
+          }
+        }}
+      />
       {showTourOverlay ? (
         <TourOverlay
           isActive={tour.isActive}
