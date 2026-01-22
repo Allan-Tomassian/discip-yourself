@@ -18,7 +18,7 @@ function formatCount(count, singular, plural) {
   return `${count} ${plural}`;
 }
 
-export default function Categories({ data, setData, onOpenCreate, onOpenManage }) {
+export default function Categories({ data, setData, onOpenCreateOutcome, onOpenCreateHabit, onOpenManage }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -152,23 +152,25 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
             <div className="p18">
               <div className="row rowBetween alignCenter">
                 <div className="sectionTitle">Catégories</div>
-                <div className="row gap8">
-                  <Button
-                    variant="ghost"
-                    onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
-                    data-tour-id="library-create"
-                  >
-                    Créer
-                  </Button>
-                </div>
               </div>
 
-              <div className="mt12">
-                <div className="titleSm">Aucune catégorie</div>
-                <div className="small mt6">
-                  Ajoute une première catégorie pour commencer.
-                </div>
+            <div className="mt12">
+              <div className="titleSm">Aucune catégorie</div>
+              <div className="small mt6">
+                Crée un objectif ou une action, puis classe si besoin.
               </div>
+              <div className="mt12 row gap10">
+                <Button onClick={() => (typeof onOpenCreateOutcome === "function" ? onOpenCreateOutcome() : null)}>
+                  Créer un objectif
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => (typeof onOpenCreateHabit === "function" ? onOpenCreateHabit() : null)}
+                >
+                  Créer une action
+                </Button>
+              </div>
+            </div>
             </div>
           </Card>
         </div>
@@ -190,10 +192,10 @@ export default function Categories({ data, setData, onOpenCreate, onOpenManage }
               <div className="row gap8">
                 <Button
                   variant="ghost"
-                  onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
+                  onClick={() => (typeof onOpenCreateOutcome === "function" ? onOpenCreateOutcome() : null)}
                   data-tour-id="library-create"
                 >
-                  Créer
+                  Créer un objectif
                 </Button>
               </div>
             </div>

@@ -60,7 +60,7 @@ export default function CreateGoal({ data, setData, onCancel, onDone, initialCat
     if (!categoryId) setCategoryId(categories[0].id);
   }, [categories, categoryId, initialCategoryId]);
 
-  const canSubmit = Boolean(categoryId && title.trim());
+  const canSubmit = Boolean(title.trim());
 
   function toggleDow(day) {
     setPlanDaysOfWeek((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()));

@@ -1,6 +1,6 @@
 // src/logic/goals.js
 import { todayKey } from "../utils/dates";
-import { normalizeGoal, normalizeResetPolicy } from "./state";
+import { ensureSystemInboxCategory, normalizeGoal, normalizeResetPolicy } from "./state";
 import { resolveGoalType, isOutcome, isProcess } from "../domain/goalType";
 
 const ALLOWED = new Set(["queued", "active", "done", "invalid"]);
@@ -491,12 +491,20 @@ function canAbandon(goal) {
 
 export function createGoal(state, goalInput = {}) {
   if (!state) return state;
-  const goals = Array.isArray(state.goals) ? state.goals : [];
   const base = { ...goalInput };
+  let workingState = state;
+
+  if (!base.categoryId || !String(base.categoryId).trim()) {
+    const ensured = ensureSystemInboxCategory(workingState);
+    workingState = ensured.state;
+    if (ensured.category?.id) base.categoryId = ensured.category.id;
+  }
+
+  const goals = Array.isArray(workingState.goals) ? workingState.goals : [];
 
   if (typeof base.order !== "number") base.order = getNextOrder(goals);
   const normalized = {
-    ...normalizeGoal(base, goals.length, state.categories),
+    ...normalizeGoal(base, goals.length, workingState.categories),
     createdAt: base.createdAt || todayKey(),
   };
   const planType = normalizePlanType(normalized);
@@ -505,7 +513,7 @@ export function createGoal(state, goalInput = {}) {
   const nextGoal = goalType === "OUTCOME" ? sanitizeOutcome(prepared) : sanitizeProcess(prepared);
 
   return normalizeGoalsState({
-    ...state,
+    ...workingState,
     goals: [...goals, nextGoal],
   });
 }

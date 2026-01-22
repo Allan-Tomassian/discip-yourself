@@ -19,6 +19,7 @@ export default function TopNav({
   categories = [],
   selectedCategoryId = null,
   onSelectCategory,
+  createOpen = false,
 }) {
   const navTopRef = useRef(null);
   const navBarRef = useRef(null);
@@ -90,11 +91,12 @@ export default function TopNav({
             {typeof onCreateCategory === "function" ? (
               <button
                 type="button"
-                className="categoryRailAdd"
-                onClick={onCreateCategory}
-                aria-label="Créer une catégorie"
-                title="Créer une catégorie"
+                className={`categoryRailAdd${createOpen ? " isOpen" : ""}`}
+                onClick={(event) => onCreateCategory(event)}
+                aria-label="Créer"
+                title="Créer"
                 data-tour-id="topnav-category-add"
+                data-create-anchor="topnav"
               >
                 +
               </button>

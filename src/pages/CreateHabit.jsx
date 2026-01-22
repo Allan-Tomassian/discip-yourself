@@ -58,7 +58,7 @@ export default function CreateHabit({ data, setData, onCancel, onDone, initialCa
     setParentId(outcomeGoals[0]?.id || "");
   }, [outcomeGoals, parentId, mainGoalId, initialGoalId]);
 
-  const canSubmit = Boolean(categoryId && parentId && title.trim());
+  const canSubmit = Boolean(title.trim());
 
   function handleCreate() {
     if (!canSubmit || typeof setData !== "function") return;

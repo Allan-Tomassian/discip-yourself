@@ -34,14 +34,14 @@ export default function Stats({ data }) {
         data={safeData}
         pageId="stats"
         headerTitle="Statistiques"
-        headerSubtitle="Aucune catégorie"
+        headerSubtitle="Aucun contenu"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
         <Card accentBorder>
           <div className="p18">
-            <div className="titleSm">Aucune catégorie</div>
+            <div className="titleSm">Aucun contenu</div>
             <div className="small" style={{ marginTop: 6 }}>
-              Ajoute une première catégorie dans l’onglet Bibliothèque pour commencer.
+              Crée un objectif ou une action pour commencer.
             </div>
           </div>
         </Card>
