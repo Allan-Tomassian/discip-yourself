@@ -29,7 +29,8 @@ export default function CategoryView({
   categoryId,
   onBack,
   onOpenPilotage,
-  onOpenCreate,
+  onOpenCreateOutcome,
+  onOpenCreateHabit,
   onOpenProgress,
   onEditItem,
 }) {
@@ -262,7 +263,7 @@ export default function CategoryView({
           <div className="p18">
             <div className="titleSm">Aucune catégorie</div>
             <div className="small mt6">
-              Ajoute une première catégorie pour commencer.
+              Crée un objectif ou une action depuis la bibliothèque pour commencer.
             </div>
             <div className="mt12">
               <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack} data-tour-id="manage-back">
@@ -460,10 +461,12 @@ export default function CategoryView({
                 <div className="small2">Aucun objectif dans cette catégorie.</div>
                 <Button
                   variant="ghost"
-                  onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
+                  onClick={() =>
+                    (typeof onOpenCreateOutcome === "function" ? onOpenCreateOutcome() : null)
+                  }
                   data-tour-id="manage-objectives-create"
                 >
-                  Créer
+                  Créer un objectif
                 </Button>
               </div>
             )}
@@ -511,10 +514,12 @@ export default function CategoryView({
                 <div className="small2">Aucune action liée.</div>
                 <Button
                   variant="ghost"
-                  onClick={() => (typeof onOpenCreate === "function" ? onOpenCreate() : null)}
+                  onClick={() =>
+                    (typeof onOpenCreateHabit === "function" ? onOpenCreateHabit() : null)
+                  }
                   data-tour-id="manage-actions-create"
                 >
-                  Créer
+                  Créer une action
                 </Button>
               </div>
             )}

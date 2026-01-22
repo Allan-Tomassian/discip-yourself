@@ -11,6 +11,7 @@ import { ensureBlocksConfig } from "./blocks/ensureBlocksConfig";
 import { validateBlocksState } from "./blocks/validateBlocksState";
 
 export const THEME_PRESETS = ["aurora", "midnight", "sunset", "ocean", "forest"];
+export const SYSTEM_INBOX_ID = "sys_inbox";
 
 export const DEFAULT_CATEGORIES = [
   { id: "cat_sport", name: "Sport", color: "#7C3AED", wallpaper: "", mainGoalId: null },
@@ -294,17 +295,37 @@ export function normalizeCategory(rawCat, index = 0) {
   if (typeof c.whyText !== "string") c.whyText = "";
   if (typeof c.templateId !== "string" || !c.templateId.trim()) c.templateId = null;
   c.mainGoalId = typeof c.mainGoalId === "string" && c.mainGoalId.trim() ? c.mainGoalId : null;
+  c.system = Boolean(c.system);
+  if (typeof c.createdAt !== "string") c.createdAt = "";
   return c;
+}
+
+export function ensureSystemInboxCategory(state) {
+  const next = state && typeof state === "object" ? { ...state } : {};
+  const categories = Array.isArray(next.categories) ? next.categories : [];
+  const existing =
+    categories.find((cat) => cat && (cat.id === SYSTEM_INBOX_ID || cat.system)) || null;
+  if (existing) return { state: { ...next, categories }, category: existing };
+  const createdAt = new Date().toISOString();
+  const inbox = normalizeCategory(
+    {
+      id: SYSTEM_INBOX_ID,
+      name: "Inbox/Général",
+      color: "#64748B",
+      system: true,
+      createdAt,
+    },
+    categories.length
+  );
+  return { state: { ...next, categories: [...categories, inbox] }, category: inbox };
 }
 
 export function normalizeGoal(rawGoal, index = 0, categories = []) {
   const g = rawGoal && typeof rawGoal === "object" ? { ...rawGoal } : {};
 
   if (!g.id) g.id = uid();
-  const fallbackCategoryId = Array.isArray(categories) && categories.length ? categories[0].id : null;
-  if (typeof g.categoryId !== "string" || !g.categoryId.trim()) {
-    if (fallbackCategoryId) g.categoryId = fallbackCategoryId;
-  }
+  const rawCategoryId = typeof g.categoryId === "string" ? g.categoryId.trim() : "";
+  g.categoryId = rawCategoryId || null;
 
   const goalType = resolveGoalType(g);
   const outcome = goalType === "OUTCOME";
@@ -671,7 +692,7 @@ export function migrate(prev) {
     }
   }
   if (!next.ui.selectedCategoryId) {
-    next.ui.selectedCategoryId = Array.isArray(next.categories) && next.categories.length ? next.categories[0].id : null;
+    next.ui.selectedCategoryId = null;
   }
 
   // V2: ensure pageThemes/pageAccents exist (used by utils/_theme)
@@ -871,14 +892,10 @@ export function migrate(prev) {
     const step = Number(next.ui.onboardingStep) || 1;
     const nameOk = Boolean((next.profile?.name || "").trim());
     const whyOk = Boolean((next.profile?.whyText || "").trim());
-    const hasCategory = next.categories.length > 0;
+    const hasOutcome = next.goals.some((g) => isOutcome(g));
+    const hasProcess = next.goals.some((g) => isProcess(g));
 
-    const outcomeIds = new Set(next.goals.filter((g) => isOutcome(g)).map((g) => g.id));
-    const hasOutcome = outcomeIds.size > 0;
-
-    const hasProcess = next.goals.some((g) => isProcess(g) && outcomeIds.has(g.parentId));
-
-    if (step >= 3 && nameOk && whyOk && hasCategory && hasOutcome && hasProcess) {
+    if (step >= 3 && nameOk && whyOk && (hasOutcome || hasProcess)) {
       next.ui.onboardingCompleted = true;
     }
   }

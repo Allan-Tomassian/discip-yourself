@@ -67,7 +67,7 @@ export default function WhyPage({ data, setData }) {
           <div className="p18">
             <div className="titleSm">Aucune catégorie</div>
             <div className="small" style={{ marginTop: 6 }}>
-              Ajoute une première catégorie pour commencer.
+              Tu peux commencer sans catégorie, et en créer une plus tard si besoin.
             </div>
             <div className="mt12">
               <Button onClick={addCategory}>+ Ajouter une catégorie</Button>

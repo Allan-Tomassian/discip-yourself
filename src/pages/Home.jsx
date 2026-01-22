@@ -114,7 +114,8 @@ export default function Home({
   setData,
   onOpenLibrary,
   onOpenManageCategory,
-  onOpenCreate,
+  onOpenCreateOutcome,
+  onOpenCreateHabit,
   onOpenCreateCategory,
   onOpenSession,
   onDayOpen,
@@ -1141,13 +1142,25 @@ export default function Home({
     };
   }, []);
 
-  function openCreateFlow(kind) {
-    if (kind === "category" && typeof onOpenCreateCategory === "function") {
-      onOpenCreateCategory();
+  function openCreateOutcome() {
+    if (typeof onOpenCreateOutcome === "function") {
+      onOpenCreateOutcome();
       return;
     }
-    if (typeof onOpenCreate === "function") {
-      onOpenCreate();
+    if (typeof onOpenLibrary === "function") onOpenLibrary();
+  }
+
+  function openCreateHabit() {
+    if (typeof onOpenCreateHabit === "function") {
+      onOpenCreateHabit();
+      return;
+    }
+    if (typeof onOpenLibrary === "function") onOpenLibrary();
+  }
+
+  function openCreateCategory() {
+    if (typeof onOpenCreateCategory === "function") {
+      onOpenCreateCategory();
       return;
     }
     if (typeof onOpenLibrary === "function") onOpenLibrary();
@@ -1443,11 +1456,18 @@ export default function Home({
           <div className="p18">
             <div className="titleSm">Aucune catégorie</div>
             <div className="small" style={{ marginTop: 6 }}>
-              Ajoute une première catégorie pour commencer.
+              Commence par un objectif ou une action. Tu pourras classer ensuite.
             </div>
-            <div className="mt12">
+            <div className="mt12 row gap10">
+              <Button onClick={openCreateOutcome} disabled={!canEdit}>
+                Créer un objectif
+              </Button>
+              <Button variant="ghost" onClick={openCreateHabit} disabled={!canEdit}>
+                Créer une action
+              </Button>
               <Button
-                onClick={() => openCreateFlow("category")}
+                variant="ghost"
+                onClick={openCreateCategory}
                 disabled={!canEdit}
                 data-tour-id="today-empty-create-category"
               >
@@ -1650,7 +1670,7 @@ export default function Home({
                           {emptyCtaSubtitle}
                         </div>
                         <div className="mt10">
-                          <Button onClick={() => openCreateFlow()} disabled={!canEdit}>
+                          <Button onClick={openCreateHabit} disabled={!canEdit}>
                             Planifier mes actions
                           </Button>
                           {!canEdit ? (

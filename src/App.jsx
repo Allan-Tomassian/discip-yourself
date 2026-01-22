@@ -5,6 +5,7 @@ import { autoActivateScheduledGoals } from "./logic/goals";
 import { getDueReminders, playReminderSound, sendReminderNotification } from "./logic/reminders";
 import { startSession } from "./logic/sessions";
 import { Button, Card } from "./components/UI";
+import PlusExpander from "./components/PlusExpander";
 import ScreenShell from "./pages/_ScreenShell";
 import { markIOSRootClass, safeAlert } from "./utils/dialogs";
 
@@ -12,11 +13,8 @@ import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
 import Categories from "./pages/Categories";
 import CreateV2 from "./pages/CreateV2";
-import CreateV2Category from "./pages/CreateV2Category";
 import CreateV2Outcome from "./pages/CreateV2Outcome";
 import CreateV2Habits from "./pages/CreateV2Habits";
-import CreateV2Rhythm from "./pages/CreateV2Rhythm";
-import CreateV2Review from "./pages/CreateV2Review";
 import Settings from "./pages/Settings";
 import CategoryView from "./pages/CategoryView";
 import EditItem from "./pages/EditItem";
@@ -30,11 +28,9 @@ import Support from "./pages/Support";
 import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
 import { toLocalDateKey, todayLocalKey } from "./utils/dateKey";
 import { isPrimaryCategory, normalizePriorities } from "./logic/priority";
-import { getCategoryCounts } from "./logic/pilotage";
 import { resolveGoalType } from "./domain/goalType";
 import {
   canCreateAction,
-  canCreateCategory,
   canCreateOutcome,
   getGenerationWindowDays,
   getPlanLimits,
@@ -46,7 +42,7 @@ import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
 import { useTour } from "./tour/useTour";
 import TourOverlay from "./tour/TourOverlay";
 import { createEmptyDraft, normalizeCreationDraft } from "./creation/creationDraft";
-import { STEP_CATEGORY, STEP_HABITS, STEP_OUTCOME, isValidCreationStep } from "./creation/creationSchema";
+import { STEP_HABITS, STEP_OUTCOME, isValidCreationStep } from "./creation/creationSchema";
 import DiagnosticOverlay from "./components/DiagnosticOverlay";
 import { validateOccurrences } from "./logic/occurrencePlanner";
 import PaywallModal from "./components/PaywallModal";
@@ -81,58 +77,37 @@ function getHomeSelectedCategoryId(data) {
 function isOnboarded(data) {
   const nameOk = Boolean((data?.profile?.name || "").trim());
   const whyOk = Boolean((data?.profile?.whyText || "").trim());
-  const categories = Array.isArray(data?.categories) ? data.categories : [];
-  if (!nameOk || !whyOk || categories.length === 0) return false;
+  if (!nameOk || !whyOk) return false;
   const goals = Array.isArray(data?.goals) ? data.goals : [];
   const outcomes = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
-  if (!outcomes.length) return false;
-  const outcomeIds = new Set(outcomes.map((g) => g.id));
-  const hasProcess = goals.some(
-    (g) => resolveGoalType(g) === "PROCESS" && g.parentId && outcomeIds.has(g.parentId)
-  );
-  return hasProcess;
+  const hasOutcome = outcomes.length > 0;
+  const hasProcess = goals.some((g) => resolveGoalType(g) === "PROCESS");
+  return hasOutcome || hasProcess;
 }
 
 function getEmptyStateConfig(data) {
   const safe = data && typeof data === "object" ? data : {};
-  const categories = Array.isArray(safe.categories) ? safe.categories : [];
   const goals = Array.isArray(safe.goals) ? safe.goals : [];
   const outcomes = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
-  const outcomeIds = new Set(outcomes.map((g) => g.id));
   const hasOutcome = outcomes.length > 0;
-  const hasHabit = goals.some(
-    (g) => resolveGoalType(g) === "PROCESS" && g.parentId && outcomeIds.has(g.parentId)
-  );
-  const firstCategoryId = categories[0]?.id || null;
-  const outcomeCategoryId = outcomes[0]?.categoryId || firstCategoryId;
-
-  if (!categories.length) {
-    return {
-      title: "Aucune catégorie",
-      subtitle: "Crée une catégorie pour reprendre.",
-      cta: "Créer une catégorie",
-      targetTab: "create-category",
-      categoryId: null,
-      openGoalEditId: null,
-    };
-  }
+  const hasHabit = goals.some((g) => resolveGoalType(g) === "PROCESS");
   if (!hasOutcome) {
     return {
       title: "Aucun objectif",
-      subtitle: "Crée un objectif principal pour cette catégorie.",
+      subtitle: "Crée un objectif pour commencer.",
       cta: "Créer un objectif",
       targetTab: "create-goal",
-      categoryId: firstCategoryId,
+      categoryId: null,
       openGoalEditId: null,
     };
   }
   if (!hasHabit) {
     return {
       title: "Aucune action",
-      subtitle: "Crée une action liée à ton objectif principal.",
+      subtitle: "Ajoute une action pour avancer.",
       cta: "Créer une action",
       targetTab: "create-habit",
-      categoryId: outcomeCategoryId,
+      categoryId: null,
       openGoalEditId: null,
     };
   }
@@ -141,7 +116,7 @@ function getEmptyStateConfig(data) {
     subtitle: "Complète la configuration pour continuer.",
     cta: "Ouvrir la bibliothèque",
     targetTab: "library",
-    categoryId: firstCategoryId,
+    categoryId: null,
     openGoalEditId: null,
   };
 }
@@ -151,11 +126,8 @@ const TABS = new Set([
   "library",
   "pilotage",
   "create",
-  "create-category",
   "create-goal",
   "create-habit",
-  "create-rhythm",
-  "create-review",
   "edit-item",
   "session",
   "category-progress",
@@ -167,6 +139,7 @@ const TABS = new Set([
 ]);
 function normalizeTab(t) {
   if (t === "tools" || t === "plan") return "pilotage";
+  if (t === "create-category" || t === "create-rhythm" || t === "create-review") return "create-goal";
   return TABS.has(t) ? t : "today";
 }
 
@@ -466,7 +439,6 @@ export default function App() {
   const isPremiumPlan = isPremium(safeData);
   const generationWindowDays = getGenerationWindowDays(safeData);
   const planningUnlimited = isPlanningUnlimited(safeData);
-  const canCreateCategoryNow = canCreateCategory(safeData);
   const canCreateOutcomeNow = canCreateOutcome(safeData);
   const canCreateActionNow = canCreateAction(safeData);
   const openPaywall = (reason) => {
@@ -492,11 +464,8 @@ export default function App() {
   };
   const isCreateTab =
     tab === "create" ||
-    tab === "create-category" ||
     tab === "create-goal" ||
-    tab === "create-habit" ||
-    tab === "create-rhythm" ||
-    tab === "create-review";
+    tab === "create-habit";
   const themeName = getThemeName(safeData);
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -510,6 +479,8 @@ export default function App() {
     return categoryRailOrder.map((id) => map.get(id)).filter(Boolean);
   }, [categoryIdsKey, categoryRailOrder]);
   const railCategories = useMemo(() => orderedCategories, [orderedCategories]);
+  const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
+  const hasDraft = Boolean((draft.outcomes && draft.outcomes.length) || (draft.habits && draft.habits.length));
   const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
   const homeActiveCategoryId =
     safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
@@ -557,7 +528,6 @@ export default function App() {
         };
       }
       const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
-      const prevGoals = Array.isArray(prev.goals) ? prev.goals : [];
       let resolvedCategoryId = categoryId || null;
       if (!resolvedCategoryId) {
         if (source === "library") {
@@ -583,24 +553,13 @@ export default function App() {
         resolvedCategoryId = null;
       }
       let resolvedOutcomeId = outcomeId || null;
-      if (resolvedOutcomeId && !prevGoals.some((g) => g && g.id === resolvedOutcomeId)) {
+      if (resolvedOutcomeId && !Array.isArray(prev.goals)) resolvedOutcomeId = null;
+      if (resolvedOutcomeId && !prev.goals.some((g) => g && g.id === resolvedOutcomeId)) {
         resolvedOutcomeId = null;
-      }
-      if (!resolvedOutcomeId && resolvedCategoryId) {
-        const outcomeGoals = prevGoals.filter(
-          (g) => g && g.categoryId === resolvedCategoryId && resolveGoalType(g) === "OUTCOME"
-        );
-        const mainGoalId = prevCategories.find((c) => c.id === resolvedCategoryId)?.mainGoalId || null;
-        const fallbackOutcomeId = outcomeGoals[0]?.id || null;
-        resolvedOutcomeId =
-          mainGoalId && outcomeGoals.some((g) => g.id === mainGoalId) ? mainGoalId : fallbackOutcomeId;
       }
       const nextDraft = createEmptyDraft();
       if (resolvedCategoryId) nextDraft.category = { mode: "existing", id: resolvedCategoryId };
-      if (resolvedOutcomeId) {
-        nextDraft.outcomes = [{ mode: "existing", id: resolvedOutcomeId }];
-        nextDraft.activeOutcomeId = resolvedOutcomeId;
-      }
+      if (resolvedOutcomeId) nextDraft.activeOutcomeId = resolvedOutcomeId;
       if (isValidCreationStep(step)) nextDraft.step = step;
       return {
         ...prev,
@@ -777,11 +736,8 @@ export default function App() {
             null
           : tab === "library" ||
               tab === "create" ||
-              tab === "create-category" ||
               tab === "create-goal" ||
               tab === "create-habit" ||
-              tab === "create-rhythm" ||
-              tab === "create-review" ||
               tab === "edit-item"
             ? safeData?.ui?.selectedCategoryByView?.library ||
               librarySelectedCategoryId ||
@@ -839,51 +795,251 @@ export default function App() {
   const showPlanStep = Boolean(safeData.ui?.showPlanStep);
   const shouldShowEmpty = !onboarded && !showPlanStep && tab === "today";
   const showTourOverlay = onboardingCompleted;
-  const handlePlanCategory = (categoryId) => {
-    const fallbackId = categories[0]?.id || null;
-    const targetId = categoryId || fallbackId;
-    if (!targetId) {
-      setLibraryCategoryId(null);
-      setTab("create-category");
-      return;
-    }
-    const counts = getCategoryCounts(safeData, targetId);
-    const outcomeGoals = goals.filter(
-      (g) => g && g.categoryId === targetId && resolveGoalType(g) === "OUTCOME"
-    );
-    const mainGoalId = categories.find((c) => c.id === targetId)?.mainGoalId || null;
-    const fallbackGoalId = outcomeGoals[0]?.id || null;
-    const goalId =
-      mainGoalId && outcomeGoals.some((g) => g.id === mainGoalId) ? mainGoalId : fallbackGoalId;
-
-    setData((prev) => ({
-      ...prev,
-      ui: {
-        ...(prev.ui || {}),
-        librarySelectedCategoryId: targetId,
-        selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), library: targetId },
-      },
-    }));
-
-    seedCreateDraft({
-      source: "pilotage",
-      categoryId: targetId,
-      outcomeId: goalId,
-      step: goalId ? STEP_HABITS : STEP_OUTCOME,
-    });
-    setLibraryCategoryId(null);
-    if (counts.outcomesCount === 0 || !goalId) {
-      setTab("create");
-      return;
-    }
-    setTab("create");
+  const emptyState = shouldShowEmpty ? getEmptyStateConfig(safeData) : null;
+  const handlePlanCategory = ({ categoryId } = {}) => {
+    openCreateOutcomeDirect({ source: "pilotage", categoryId });
   };
+
+  const [plusOpen, setPlusOpen] = useState(false);
+  const [plusAnchorRect, setPlusAnchorRect] = useState(null);
+  const [plusContext, setPlusContext] = useState({ source: null, categoryId: null });
+  const plusAnchorElRef = useRef(null);
+
+  const normalizeAnchorRect = (rect) => {
+    if (!rect) return null;
+    return {
+      top: rect.top,
+      left: rect.left,
+      right: rect.right,
+      bottom: rect.bottom,
+      width: rect.width,
+      height: rect.height,
+    };
+  };
+
+  const resolveTopNavAnchor = () => {
+    if (typeof document === "undefined") return { anchorRect: null, anchorEl: null };
+    const el = document.querySelector("[data-create-anchor='topnav']");
+    if (!el) return { anchorRect: null, anchorEl: null };
+    return { anchorRect: normalizeAnchorRect(el.getBoundingClientRect()), anchorEl: el };
+  };
+
+  const openCreateExpander = ({ source, categoryId, anchorRect, anchorEl } = {}) => {
+    const normalizedRect = normalizeAnchorRect(anchorRect);
+    const fallback = normalizedRect ? { anchorRect: normalizedRect, anchorEl } : resolveTopNavAnchor();
+    plusAnchorElRef.current = anchorEl || fallback.anchorEl || null;
+    setPlusAnchorRect(normalizedRect || fallback.anchorRect || null);
+    setPlusContext({ source: source || "unknown", categoryId: categoryId || null });
+    setPlusOpen(true);
+  };
+  const closePlusExpander = () => setPlusOpen(false);
+  const handleChooseObjective = () => {
+    const { source, categoryId } = plusContext || {};
+    openCreateOutcomeDirect({ source, categoryId });
+  };
+  const handleChooseAction = () => {
+    const { source, categoryId } = plusContext || {};
+    openCreateHabitDirect({ source, categoryId });
+  };
+  const handleResumeDraft = () => {
+    const step = isValidCreationStep(draft.step) ? draft.step : STEP_OUTCOME;
+    setTab(step === STEP_HABITS ? "create-habit" : "create-goal");
+    setPlusOpen(false);
+  };
+  const openCreateOutcomeDirect = ({ source, categoryId } = {}) => {
+    if (!canCreateOutcomeNow) {
+      openPaywall("Limite d’objectifs atteinte.");
+      return;
+    }
+    seedCreateDraft({ source: source || "unknown", categoryId: categoryId || null, step: STEP_OUTCOME });
+    setTab("create-goal");
+    setPlusOpen(false);
+  };
+  const openCreateHabitDirect = ({ source, categoryId, outcomeId } = {}) => {
+    if (!canCreateActionNow) {
+      openPaywall("Limite d’actions atteinte.");
+      return;
+    }
+    seedCreateDraft({
+      source: source || "unknown",
+      categoryId: categoryId || null,
+      outcomeId: outcomeId || null,
+      step: STEP_HABITS,
+    });
+    setTab("create-habit");
+    setPlusOpen(false);
+  };
+  const topNav = (
+    <TopNav
+      active={
+        tab === "session"
+          ? "today"
+          : tab === "library" ||
+              tab === "create" ||
+              tab === "create-goal" ||
+              tab === "create-habit" ||
+              tab === "edit-item" ||
+              tab === "category-detail" ||
+              tab === "category-progress"
+            ? "library"
+            : tab === "pilotage"
+              ? "pilotage"
+              : tab === "settings"
+                ? "settings"
+                : tab
+      }
+      setActive={(next) => {
+        if (next === "library") {
+          openLibraryDetail();
+          return;
+        }
+        setTab(next);
+      }}
+      onOpenSettings={() => setTab("settings")}
+      onCreateCategory={
+        tab === "pilotage"
+          ? null
+          : (event) => {
+              openCreateExpander({
+                source: "topnav",
+                anchorRect: event?.currentTarget?.getBoundingClientRect?.(),
+                anchorEl: event?.currentTarget || null,
+              });
+            }
+      }
+      createOpen={plusOpen}
+      categories={
+        tab === "create" ||
+        tab === "create-goal" ||
+        tab === "create-habit"
+          ? []
+          : railCategories
+      }
+      selectedCategoryId={railSelectedId}
+      onSelectCategory={(categoryId) => {
+        if (!categoryId) return;
+        const markLibraryTouched = () => {
+          try {
+            sessionStorage.setItem("library:selectedCategoryTouched", "1");
+          } catch (err) {
+            void err;
+          }
+        };
+        const syncCategorySelection = ({ updateLegacy } = {}) => {
+          const shouldUpdateLegacy = Boolean(updateLegacy);
+          setData((prev) => {
+            const prevUi = prev.ui || {};
+            const prevSel =
+              prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+                ? prevUi.selectedCategoryByView
+                : {};
+            if (
+              prevUi.librarySelectedCategoryId === categoryId &&
+              prevSel.library === categoryId &&
+              prevSel.home === categoryId &&
+              (!shouldUpdateLegacy || prevUi.selectedCategoryId === categoryId)
+            ) {
+              return prev;
+            }
+            return {
+              ...prev,
+              ui: {
+                ...prevUi,
+                librarySelectedCategoryId: categoryId,
+                selectedCategoryByView: { ...prevSel, library: categoryId, home: categoryId },
+                ...(shouldUpdateLegacy ? { selectedCategoryId: categoryId } : {}),
+              },
+            };
+          });
+        };
+        if (tab === "today") {
+          syncCategorySelection({ updateLegacy: true });
+          setCategoryDetailId(categoryId);
+          return;
+        }
+        if (tab === "library") {
+          markLibraryTouched();
+          syncCategorySelection();
+          if (libraryCategoryId) {
+            setLibraryCategoryId(categoryId);
+            return;
+          }
+          setData((prev) => {
+            const prevUi = prev.ui || {};
+            const prevSel =
+              prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+                ? prevUi.selectedCategoryByView
+                : {};
+            const isExpanded = prevUi.libraryDetailExpandedId === categoryId;
+            return {
+              ...prev,
+              ui: {
+                ...prevUi,
+                librarySelectedCategoryId: categoryId,
+                selectedCategoryByView: { ...prevSel, library: categoryId },
+                libraryDetailExpandedId: isExpanded ? null : categoryId,
+              },
+            };
+          });
+          setLibraryCategoryId(null);
+          setCategoryDetailId(null);
+          setTab("library");
+          return;
+        }
+        if (tab === "category-detail") {
+          markLibraryTouched();
+          syncCategorySelection();
+          setLibraryCategoryId(null);
+          setCategoryDetailId(null);
+          setTab("library");
+          return;
+        }
+        if (tab === "category-progress") {
+          markLibraryTouched();
+          syncCategorySelection();
+          setLibraryCategoryId(null);
+          setCategoryProgressId(categoryId);
+          setTab("category-progress", { categoryProgressId: categoryId });
+          return;
+        }
+        if (tab === "edit-item") {
+          markLibraryTouched();
+          syncCategorySelection();
+          return;
+        }
+        if (tab === "pilotage") {
+          setData((prev) => ({
+            ...prev,
+            ui: {
+              ...(prev.ui || {}),
+              selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), pilotage: categoryId },
+            },
+          }));
+          return;
+        }
+        if (tab === "session") {
+          setSessionCategoryId(categoryId);
+        }
+      }}
+    />
+  );
 
   if (showPlanStep && onboardingCompleted) {
     return (
       <>
+        {topNav}
         <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />
         <DiagnosticOverlay data={safeData} tab={tab} />
+        <PlusExpander
+          open={plusOpen}
+          anchorRect={plusAnchorRect}
+          anchorEl={plusAnchorElRef.current}
+          onClose={closePlusExpander}
+          onChooseObjective={handleChooseObjective}
+          onChooseAction={handleChooseAction}
+          onResumeDraft={hasDraft ? handleResumeDraft : null}
+          hasDraft={hasDraft}
+        />
       </>
     );
   }
@@ -895,246 +1051,36 @@ export default function App() {
       </>
     );
   }
-  if (shouldShowEmpty) {
-    const empty = getEmptyStateConfig(safeData);
-    return (
-      <>
+  return (
+    <>
+      {topNav}
+
+      {tab === "today" && shouldShowEmpty && emptyState ? (
         <ScreenShell
           data={safeData}
           pageId="home"
           headerTitle="Aujourd’hui"
-          headerSubtitle={empty.title}
+          headerSubtitle={emptyState.title}
           backgroundImage={safeData?.profile?.whyImage || ""}
         >
           <Card accentBorder>
             <div className="p18">
-              <div className="titleSm">{empty.title}</div>
+              <div className="titleSm">{emptyState.title}</div>
               <div className="small" style={{ marginTop: 6 }}>
-                {empty.subtitle}
+                {emptyState.subtitle}
               </div>
-              <div className="mt12">
-                <Button
-                  onClick={() => {
-                    if (empty.targetTab === "create-category" && !canCreateCategoryNow) {
-                      openPaywall("Limite de catégories atteinte.");
-                      return;
-                    }
-                    if (empty.targetTab === "create-goal" && !canCreateOutcomeNow) {
-                      openPaywall("Limite d’objectifs atteinte.");
-                      return;
-                    }
-                    if (empty.targetTab === "create-habit" && !canCreateActionNow) {
-                      openPaywall("Limite d’actions atteinte.");
-                      return;
-                    }
-                    const step =
-                      empty.targetTab === "create-category"
-                        ? STEP_CATEGORY
-                        : empty.targetTab === "create-goal"
-                          ? STEP_OUTCOME
-                          : empty.targetTab === "create-habit"
-                            ? STEP_HABITS
-                            : null;
-                    setData((prev) => {
-                      const nextUi = { ...(prev.ui || {}), openGoalEditId: null };
-                      if (empty.categoryId) nextUi.selectedCategoryId = empty.categoryId;
-                      return { ...prev, ui: nextUi };
-                    });
-                    if (empty.targetTab.startsWith("create")) {
-                      seedCreateDraft({ source: "empty", categoryId: empty.categoryId, step });
-                      setTab("create");
-                      return;
-                    }
-                    setTab(empty.targetTab);
-                  }}
-                >
-                  {empty.cta}
+              <div className="mt12 row gap10">
+                <Button onClick={() => openCreateOutcomeDirect({ source: "empty" })}>
+                  Créer un objectif
+                </Button>
+                <Button variant="ghost" onClick={() => openCreateHabitDirect({ source: "empty" })}>
+                  Créer une action
                 </Button>
               </div>
             </div>
           </Card>
         </ScreenShell>
-        {showTourOverlay ? (
-          <TourOverlay
-            isActive={tour.isActive}
-            step={tour.step}
-            stepIndex={tour.stepIndex}
-            totalSteps={tour.totalSteps}
-            onNext={tour.next}
-            onPrev={tour.prev}
-            onSkip={tour.skip}
-            onMissingAnchor={tour.handleMissingAnchor}
-            onAnchorFound={tour.handleAnchorFound}
-          />
-        ) : null}
-        <DiagnosticOverlay data={safeData} tab={tab} />
-      </>
-    );
-  }
-
-  return (
-    <>
-        <TopNav
-        active={
-          tab === "session"
-            ? "today"
-            : tab === "library" ||
-                tab === "create" ||
-                tab === "create-category" ||
-                tab === "create-goal" ||
-                tab === "create-habit" ||
-                tab === "create-rhythm" ||
-                tab === "create-review" ||
-                tab === "edit-item" ||
-                tab === "category-detail" ||
-                tab === "category-progress"
-              ? "library"
-              : tab === "pilotage"
-                ? "pilotage"
-                : tab === "settings"
-                  ? "settings"
-                  : tab
-        }
-        setActive={(next) => {
-          if (next === "library") {
-            openLibraryDetail();
-            return;
-          }
-          setTab(next);
-        }}
-        onOpenSettings={() => setTab("settings")}
-        onCreateCategory={
-          tab === "pilotage"
-            ? null
-            : () => {
-                if (!canCreateCategoryNow) {
-                  openPaywall("Limite de catégories atteinte.");
-                  return;
-                }
-                setLibraryCategoryId(null);
-                seedCreateDraft({ source: "topnav", step: STEP_CATEGORY });
-                setTab("create");
-              }
-        }
-        categories={
-          tab === "create" ||
-          tab === "create-category" ||
-          tab === "create-goal" ||
-          tab === "create-habit" ||
-          tab === "create-rhythm" ||
-          tab === "create-review"
-            ? []
-            : railCategories
-        }
-        selectedCategoryId={railSelectedId}
-          onSelectCategory={(categoryId) => {
-          if (!categoryId) return;
-          const markLibraryTouched = () => {
-            try {
-              sessionStorage.setItem("library:selectedCategoryTouched", "1");
-            } catch (err) {
-              void err;
-            }
-          };
-          const syncCategorySelection = ({ updateLegacy } = {}) => {
-            const shouldUpdateLegacy = Boolean(updateLegacy);
-            setData((prev) => {
-              const prevUi = prev.ui || {};
-              const prevSel =
-                prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-                  ? prevUi.selectedCategoryByView
-                  : {};
-              if (
-                prevUi.librarySelectedCategoryId === categoryId &&
-                prevSel.library === categoryId &&
-                prevSel.home === categoryId &&
-                (!shouldUpdateLegacy || prevUi.selectedCategoryId === categoryId)
-              ) {
-                return prev;
-              }
-              return {
-                ...prev,
-                ui: {
-                  ...prevUi,
-                  librarySelectedCategoryId: categoryId,
-                  selectedCategoryByView: { ...prevSel, library: categoryId, home: categoryId },
-                  ...(shouldUpdateLegacy ? { selectedCategoryId: categoryId } : {}),
-                },
-              };
-            });
-          };
-          if (tab === "today") {
-            syncCategorySelection({ updateLegacy: true });
-            setCategoryDetailId(categoryId);
-            return;
-          }
-          if (tab === "library") {
-            markLibraryTouched();
-            syncCategorySelection();
-            if (libraryCategoryId) {
-              setLibraryCategoryId(categoryId);
-              return;
-            }
-            setData((prev) => {
-              const prevUi = prev.ui || {};
-              const prevSel =
-                prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-                  ? prevUi.selectedCategoryByView
-                  : {};
-              const isExpanded = prevUi.libraryDetailExpandedId === categoryId;
-              return {
-                ...prev,
-                ui: {
-                  ...prevUi,
-                  librarySelectedCategoryId: categoryId,
-                  selectedCategoryByView: { ...prevSel, library: categoryId },
-                  libraryDetailExpandedId: isExpanded ? null : categoryId,
-                },
-              };
-            });
-            setLibraryCategoryId(null);
-            setCategoryDetailId(null);
-            setTab("library");
-            return;
-          }
-          if (tab === "category-detail") {
-            markLibraryTouched();
-            syncCategorySelection();
-            setLibraryCategoryId(null);
-            setCategoryDetailId(null);
-            setTab("library");
-            return;
-          }
-          if (tab === "category-progress") {
-            markLibraryTouched();
-            syncCategorySelection();
-            setLibraryCategoryId(null);
-            setCategoryProgressId(categoryId);
-            setTab("category-progress", { categoryProgressId: categoryId });
-            return;
-          }
-          if (tab === "edit-item") {
-            markLibraryTouched();
-            syncCategorySelection();
-            return;
-          }
-          if (tab === "pilotage") {
-            setData((prev) => ({
-              ...prev,
-              ui: {
-                ...(prev.ui || {}),
-                selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), pilotage: categoryId },
-              },
-            }));
-            return;
-          }
-          if (tab === "session") {
-            setSessionCategoryId(categoryId);
-          }
-        }}
-      />
-
-      {tab === "today" ? (
+      ) : tab === "today" ? (
         <Home
           data={data}
           setData={setData}
@@ -1154,19 +1100,15 @@ export default function App() {
             }));
             setTab("library");
           }}
-          onOpenCreate={() => {
-            setLibraryCategoryId(null);
-            seedCreateDraft({ source: "today", categoryId: homeSelectedCategoryId });
-            setTab("create");
+          onOpenCreateOutcome={() => {
+            openCreateOutcomeDirect({ source: "today", categoryId: homeSelectedCategoryId });
+          }}
+          onOpenCreateHabit={() => {
+            openCreateHabitDirect({ source: "today", categoryId: homeSelectedCategoryId });
           }}
           onOpenCreateCategory={() => {
-            if (!canCreateCategoryNow) {
-              openPaywall("Limite de catégories atteinte.");
-              return;
-            }
             setLibraryCategoryId(null);
-            seedCreateDraft({ source: "today", step: STEP_CATEGORY });
-            setTab("create");
+            setTab("library");
           }}
           onOpenSession={({ categoryId, dateKey }) =>
             setTab("session", { sessionCategoryId: categoryId || null, sessionDateKey: dateKey || null })
@@ -1244,10 +1186,11 @@ export default function App() {
             setLibraryCategoryId(null);
             setTab("pilotage");
           }}
-          onOpenCreate={() => {
-            setLibraryCategoryId(null);
-            seedCreateDraft({ source: "library", categoryId: libraryCategoryId });
-            setTab("create");
+          onOpenCreateOutcome={() => {
+            openCreateOutcomeDirect({ source: "library", categoryId: libraryCategoryId });
+          }}
+          onOpenCreateHabit={() => {
+            openCreateHabitDirect({ source: "library", categoryId: libraryCategoryId });
           }}
           onOpenProgress={(categoryIdValue) => {
             if (!categoryIdValue) return;
@@ -1275,14 +1218,11 @@ export default function App() {
         <Categories
           data={data}
           setData={setData}
-          onOpenCreate={() => {
-            if (!canCreateCategoryNow) {
-              openPaywall("Limite de catégories atteinte.");
-              return;
-            }
-            setLibraryCategoryId(null);
-            seedCreateDraft({ source: "library" });
-            setTab("create");
+          onOpenCreateOutcome={() => {
+            openCreateOutcomeDirect({ source: "library" });
+          }}
+          onOpenCreateHabit={() => {
+            openCreateHabitDirect({ source: "library" });
           }}
           onOpenManage={(categoryId) => {
             if (!categoryId) return;
@@ -1298,38 +1238,28 @@ export default function App() {
             setTab("library");
           }}
           onOpenStep={(step) => {
-            if (step === "category") setTab("create-category");
-            else if (step === "outcome") setTab("create-goal");
+            if (step === "outcome") setTab("create-goal");
             else if (step === "habits") setTab("create-habit");
-            else if (step === "rhythm") setTab("create-rhythm");
-            else if (step === "review") setTab("create-review");
           }}
-        />
-      ) : tab === "create-category" ? (
-        <CreateV2Category
-          data={data}
-          setData={setData}
-          onBack={() => setTab("create")}
-          onCancel={() => {
-            resetCreateDraft();
-            setTab("library");
-          }}
-          onNext={() => setTab("create-goal")}
-          canCreateCategory={canCreateCategoryNow}
-          onOpenPaywall={openPaywall}
-          isPremiumPlan={isPremiumPlan}
-          planLimits={planLimits}
         />
       ) : tab === "create-goal" ? (
         <CreateV2Outcome
           data={data}
           setData={setData}
-          onBack={() => setTab("create-category")}
+          onBack={() => setTab("library")}
           onCancel={() => {
             resetCreateDraft();
             setTab("library");
           }}
           onNext={() => setTab("create-habit")}
+          onCreateActionFromObjective={(outcomeId) => {
+            seedCreateDraft({ source: "post-objective", outcomeId, step: STEP_HABITS });
+            setTab("create-habit");
+          }}
+          onSkipObjectiveAction={() => {
+            setLibraryCategoryId(null);
+            setTab("library");
+          }}
           canCreateOutcome={canCreateOutcomeNow}
           onOpenPaywall={openPaywall}
           isPremiumPlan={isPremiumPlan}
@@ -1344,36 +1274,14 @@ export default function App() {
             resetCreateDraft();
             setTab("library");
           }}
-          onNext={() => setTab("create-rhythm")}
-          canCreateAction={canCreateActionNow}
-          onOpenPaywall={openPaywall}
-          isPremiumPlan={isPremiumPlan}
-          planLimits={planLimits}
-        />
-      ) : tab === "create-rhythm" ? (
-        <CreateV2Rhythm
-          data={data}
-          setData={setData}
-          onBack={() => setTab("create-habit")}
-          onCancel={() => {
-            resetCreateDraft();
-            setTab("library");
-          }}
-          onNext={() => setTab("create-review")}
-        />
-      ) : tab === "create-review" ? (
-        <CreateV2Review
-          data={data}
-          setData={setData}
-          onBack={() => setTab("create-rhythm")}
-          onCancel={() => {
-            resetCreateDraft();
-            setTab("library");
-          }}
           onDone={() => {
             setLibraryCategoryId(null);
             setTab("library");
           }}
+          canCreateAction={canCreateActionNow}
+          onOpenPaywall={openPaywall}
+          isPremiumPlan={isPremiumPlan}
+          planLimits={planLimits}
           generationWindowDays={generationWindowDays}
         />
       ) : tab === "session" ? (
@@ -1491,6 +1399,16 @@ export default function App() {
         />
       ) : null}
       <DiagnosticOverlay data={safeData} tab={tab} />
+      <PlusExpander
+        open={plusOpen}
+        anchorRect={plusAnchorRect}
+        anchorEl={plusAnchorElRef.current}
+        onClose={closePlusExpander}
+        onChooseObjective={handleChooseObjective}
+        onChooseAction={handleChooseAction}
+        onResumeDraft={hasDraft ? handleResumeDraft : null}
+        hasDraft={hasDraft}
+      />
     </>
   );
 }

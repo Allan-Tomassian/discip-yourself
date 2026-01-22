@@ -3,74 +3,33 @@ import ScreenShell from "./_ScreenShell";
 import { AccentItem, Button, Card } from "../components/UI";
 import {
   CREATION_STEPS,
-  STEP_CATEGORY,
   STEP_HABITS,
   STEP_OUTCOME,
-  STEP_REVIEW,
-  STEP_RHYTHM,
 } from "../creation/creationSchema";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 
 const STEP_LABELS = {
-  [STEP_CATEGORY]: "Catégorie",
   [STEP_OUTCOME]: "Objectif",
   [STEP_HABITS]: "Actions",
-  [STEP_RHYTHM]: "Rythme",
-  [STEP_REVIEW]: "Vérification",
 };
 
-function isCategoryReady(category) {
-  if (!category || typeof category !== "object") return false;
-  if (category.mode === "existing") return Boolean(category.id);
-  return Boolean((category.name || "").trim());
-}
-
-function isOutcomeReady(outcomes) {
-  if (!Array.isArray(outcomes) || outcomes.length === 0) return false;
-  return outcomes.every((outcome) => {
-    if (!outcome || typeof outcome !== "object") return false;
-    if (outcome.mode === "existing") return Boolean(outcome.id);
-    return Boolean((outcome.title || "").trim());
-  });
-}
-
-function isHabitsReady(habits, outcomes) {
-  if (!Array.isArray(habits) || habits.length === 0) return false;
-  const outcomeIds = new Set((outcomes || []).map((o) => o && o.id).filter(Boolean));
-  return habits.every((habit) => habit && habit.title && habit.outcomeId && outcomeIds.has(habit.outcomeId));
-}
-
-function isRhythmReady(draft) {
-  const items = Array.isArray(draft?.rhythm?.items) ? draft.rhythm.items : [];
-  if (!items.length) return false;
-  if (draft?.rhythm?.hasConflicts) return false;
+function isOutcomeReady(draft) {
   const outcomes = Array.isArray(draft?.outcomes) ? draft.outcomes : [];
-  const habits = Array.isArray(draft?.habits) ? draft.habits : [];
-  const outcomeItems = new Map(items.filter((item) => item.type === "outcome").map((item) => [item.id, item]));
-  for (const outcome of outcomes) {
-    const item = outcomeItems.get(outcome.id);
-    const days = Array.isArray(item?.daysOfWeek) ? item.daysOfWeek : [];
-    if (!item || !days.length) return false;
-  }
-  const habitItems = new Map(items.filter((item) => item.type === "habit").map((item) => [item.id, item]));
-  for (const habit of habits) {
-    const item = habitItems.get(habit.id);
-    if (!item) return false;
-    const hasTime = Boolean(item.time);
-    const hasDuration = Number.isFinite(item.durationMinutes) && item.durationMinutes > 0;
-    const outcomeItem = outcomeItems.get(habit.outcomeId);
-    const days = Array.isArray(outcomeItem?.daysOfWeek) ? outcomeItem.daysOfWeek : [];
-    if (!hasTime || !hasDuration || !days.length) return false;
-  }
-  return true;
+  if (outcomes.length !== 1) return false;
+  const outcome = outcomes[0];
+  if (!outcome || typeof outcome !== "object") return false;
+  return Boolean((outcome.title || "").trim()) && Boolean((outcome.deadline || "").trim());
+}
+
+function isHabitsReady(habits) {
+  if (!Array.isArray(habits) || habits.length === 0) return false;
+  return habits.every((habit) => habit && habit.title);
 }
 
 function getNextStep(draft) {
-  if (!isCategoryReady(draft.category)) return STEP_CATEGORY;
-  if (!isOutcomeReady(draft.outcomes)) return STEP_OUTCOME;
-  if (!isHabitsReady(draft.habits, draft.outcomes)) return STEP_HABITS;
-  if (!isRhythmReady(draft)) return STEP_RHYTHM;
-  return STEP_REVIEW;
+  if (!isOutcomeReady(draft)) return STEP_OUTCOME;
+  if (!isHabitsReady(draft.habits)) return STEP_HABITS;
+  return STEP_HABITS;
 }
 
 export default function CreateV2({ data, onBack, onOpenStep, onUseLegacyFlow }) {
@@ -81,20 +40,15 @@ export default function CreateV2({ data, onBack, onOpenStep, onUseLegacyFlow }) 
   const nextIndex = CREATION_STEPS.indexOf(nextStep);
   const outcomesCount = Array.isArray(draft.outcomes) ? draft.outcomes.length : 0;
   const habitsCount = Array.isArray(draft.habits) ? draft.habits.length : 0;
-  const rhythmOk = isRhythmReady(draft);
 
   const stepStatuses = {
-    [STEP_CATEGORY]: isCategoryReady(draft.category),
-    [STEP_OUTCOME]: isOutcomeReady(draft.outcomes),
-    [STEP_HABITS]: isHabitsReady(draft.habits, draft.outcomes),
-    [STEP_RHYTHM]: isRhythmReady(draft),
-    [STEP_REVIEW]: isRhythmReady(draft),
+    [STEP_OUTCOME]: isOutcomeReady(draft),
+    [STEP_HABITS]: isHabitsReady(draft.habits),
   };
 
   const stepRightLabels = {
     [STEP_OUTCOME]: `${outcomesCount} objectif${outcomesCount > 1 ? "s" : ""}`,
     [STEP_HABITS]: `${habitsCount} action${habitsCount > 1 ? "s" : ""}`,
-    [STEP_RHYTHM]: rhythmOk ? "OK" : "À faire",
   };
 
   return (

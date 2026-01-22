@@ -366,12 +366,12 @@ export default function Pilotage({
                         <div className="mt8">
                           <Button
                             onClick={() => {
-                              if (typeof onPlanCategory === "function") onPlanCategory(selectedCategoryId);
+                              if (typeof onPlanCategory === "function")
+                                onPlanCategory({ categoryId: selectedCategoryId });
                             }}
-                            disabled={!categories?.length}
                             data-tour-id="pilotage-planifier"
                           >
-                            Générer le planning
+                            Créer un objectif
                           </Button>
                         </div>
                       </div>

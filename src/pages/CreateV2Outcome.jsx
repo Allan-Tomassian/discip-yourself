@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input, Select } from "../components/UI";
-import { normalizeCreationDraft } from "../creation/creationDraft";
-import { STEP_HABITS } from "../creation/creationSchema";
+import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { resolveGoalType } from "../domain/goalType";
 import { uid } from "../utils/helpers";
+import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
+import { createGoal } from "../logic/goals";
 
 const MEASURE_OPTIONS = [
   { value: "money", label: "💰 Argent" },
@@ -30,84 +31,69 @@ export default function CreateV2Outcome({
   onOpenPaywall,
   isPremiumPlan = false,
   planLimits = null,
+  onCreateActionFromObjective,
+  onSkipObjectiveAction,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
-  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
-  const hasCategory =
-    draft?.category?.mode === "existing"
-      ? Boolean(draft.category.id)
-      : Boolean((draft?.category?.name || "").trim());
-  const categoryId = getCategoryIdFromDraft(draft);
-  const existingOutcomes = useMemo(() => {
-    if (!categoryId) return [];
-    return goals.filter((g) => g.categoryId === categoryId && resolveGoalType(g) === "OUTCOME");
-  }, [goals, categoryId]);
   const existingOutcomeCount = useMemo(
-    () => goals.filter((g) => resolveGoalType(g) === "OUTCOME").length,
-    [goals]
+    () =>
+      (Array.isArray(safeData.goals) ? safeData.goals : []).filter((g) => g && resolveGoalType(g) === "OUTCOME")
+        .length,
+    [safeData.goals]
   );
 
-  const outcomes = Array.isArray(draft.outcomes) ? draft.outcomes : [];
-  const activeOutcomeId = draft.activeOutcomeId || outcomes[0]?.id || "";
-  const existingIds = new Set(outcomes.filter((o) => o.mode === "existing").map((o) => o.id));
-  const availableExisting = existingOutcomes.filter((g) => !existingIds.has(g.id));
+  const draftCategoryId = getCategoryIdFromDraft(draft);
+  const initialCategoryId =
+    (draftCategoryId && categories.some((c) => c.id === draftCategoryId) && draftCategoryId) || "";
+  const [categoryId, setCategoryId] = useState(initialCategoryId);
+  const [title, setTitle] = useState(draft.outcomes?.[0]?.title || "");
+  const [startDate, setStartDate] = useState(draft.outcomes?.[0]?.startDate || "");
+  const [deadline, setDeadline] = useState(draft.outcomes?.[0]?.deadline || "");
+  const [measureType, setMeasureType] = useState(draft.outcomes?.[0]?.measureType || "");
+  const [targetValue, setTargetValue] = useState(draft.outcomes?.[0]?.targetValue || "");
+  const [priority, setPriority] = useState(draft.outcomes?.[0]?.priority || "secondaire");
+  const [error, setError] = useState("");
+  const [savedOutcomeId, setSavedOutcomeId] = useState(null);
+  const [showSavedBanner, setShowSavedBanner] = useState(false);
 
-  const [selectedId, setSelectedId] = useState(availableExisting[0]?.id || "");
-  const [title, setTitle] = useState("");
-  const [deadline, setDeadline] = useState("");
-  const [measureType, setMeasureType] = useState("");
-  const [targetValue, setTargetValue] = useState("");
-  const [priority, setPriority] = useState("secondaire");
-
-  const canAddExisting = Boolean(selectedId);
-  const canAddNew = Boolean((title || "").trim());
-  const canContinue = outcomes.length > 0;
-
+  const outcomeIdRef = useRef(draft.outcomes?.[0]?.id || uid());
   useEffect(() => {
-    if (hasCategory) return;
-    if (typeof onBack === "function") onBack();
-  }, [hasCategory, onBack]);
+    if (draft.outcomes?.[0]?.id) outcomeIdRef.current = draft.outcomes[0].id;
+  }, [draft.outcomes]);
+  const effectiveStartKey = useMemo(
+    () => normalizeLocalDateKey(startDate) || todayLocalKey(),
+    [startDate]
+  );
+  const minDeadlineKey = useMemo(() => {
+    const base = fromLocalDateKey(effectiveStartKey);
+    base.setDate(base.getDate() + 7);
+    return toLocalDateKey(base);
+  }, [effectiveStartKey]);
 
-  useEffect(() => {
-    if (!availableExisting.length) return;
-    if (availableExisting.some((g) => g.id === selectedId)) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSelectedId(availableExisting[0]?.id || "");
-  }, [availableExisting, selectedId]);
+  const canContinue = Boolean(title.trim() && deadline.trim() && !showSavedBanner);
+  const startDateHelper = startDate ? "Démarre à la date choisie." : "Si vide : démarre aujourd’hui.";
 
-  function updateDraft(nextOutcomes, nextActiveId, stepOverride) {
-    if (typeof setData !== "function") return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          createDraft: {
-            ...normalizeCreationDraft(prevUi.createDraft),
-            outcomes: nextOutcomes,
-            activeOutcomeId: nextActiveId || activeOutcomeId || null,
-            ...(stepOverride ? { step: stepOverride } : {}),
-          },
-        },
-      };
-    });
+  function validateDeadline(nextValue) {
+    const normalized = normalizeLocalDateKey(nextValue);
+    if (!normalized) return "Date de fin requise (min J+7).";
+    if (normalized < minDeadlineKey) {
+      return `Date de fin minimale : ${minDeadlineKey} (J+7).`;
+    }
+    return "";
   }
 
-  function handleAddExisting() {
-    if (!canAddExisting) return;
-    const next = [...outcomes, { mode: "existing", id: selectedId }];
-    updateDraft(next, selectedId);
-  }
-
-  function handleAddNew() {
-    if (!canAddNew) return;
+  function handleNext() {
+    if (!canContinue || showSavedBanner) return;
+    const deadlineError = validateDeadline(deadline);
+    if (deadlineError) {
+      setError(deadlineError);
+      return;
+    }
     const limit = Number(planLimits?.outcomes) || 0;
-    const draftNewCount = outcomes.filter((o) => o.mode === "new").length;
-    if (!isPremiumPlan && limit > 0 && existingOutcomeCount + draftNewCount >= limit) {
+    if (!isPremiumPlan && limit > 0 && existingOutcomeCount >= limit) {
       if (typeof onOpenPaywall === "function") onOpenPaywall("Limite d’objectifs atteinte.");
       return;
     }
@@ -115,56 +101,39 @@ export default function CreateV2Outcome({
       if (typeof onOpenPaywall === "function") onOpenPaywall("Limite d’objectifs atteinte.");
       return;
     }
-    const id = uid();
-    const nextOutcome = {
-      id,
-      mode: "new",
-      title: title.trim(),
-      deadline: (deadline || "").trim(),
-      measureType: measureType || "",
-      targetValue: (targetValue || "").trim(),
-      priority: priority || "secondaire",
-    };
-    updateDraft([...outcomes, nextOutcome], id);
-    setTitle("");
-    setDeadline("");
-    setMeasureType("");
-    setTargetValue("");
-    setPriority("secondaire");
-  }
-
-  function handleRemove(outcomeId) {
-    const nextOutcomes = outcomes.filter((o) => o.id !== outcomeId);
-    const nextActiveId = nextOutcomes[0]?.id || "";
-    const nextHabits = (draft.habits || []).filter((h) => h.outcomeId !== outcomeId);
     if (typeof setData !== "function") return;
+    const outcomeId = outcomeIdRef.current;
+    const parsedTarget = Number(targetValue);
+    const hasTarget = Number.isFinite(parsedTarget) && parsedTarget > 0;
     setData((prev) => {
-      const prevUi = prev.ui || {};
+      let next = prev;
+      next = createGoal(next, {
+        id: outcomeId,
+        categoryId: categoryId ? categoryId : null,
+        title: title.trim(),
+        type: "OUTCOME",
+        planType: "STATE",
+        startDate: startDate ? startDate.trim() : "",
+        deadline: (deadline || "").trim(),
+        measureType: measureType || null,
+        targetValue: hasTarget ? parsedTarget : null,
+        currentValue: hasTarget ? 0 : null,
+        priority: priority || "secondaire",
+      });
+      const prevUi = next.ui || {};
       return {
-        ...prev,
+        ...next,
         ui: {
           ...prevUi,
-          createDraft: {
-            ...normalizeCreationDraft(prevUi.createDraft),
-            outcomes: nextOutcomes,
-            activeOutcomeId: nextActiveId || null,
-            habits: nextHabits,
-          },
+          createDraft: createEmptyDraft(),
+          createDraftWasCompleted: true,
+          createDraftWasCanceled: false,
         },
       };
     });
+    setSavedOutcomeId(outcomeId);
+    setShowSavedBanner(true);
   }
-
-  function handleNext() {
-    if (!canContinue) return;
-    updateDraft(outcomes, activeOutcomeId, STEP_HABITS);
-    if (typeof onNext === "function") onNext();
-  }
-
-  const categoryLabel =
-    (categoryId && categories.find((c) => c.id === categoryId)?.name) ||
-    draft.category?.name ||
-    "Catégorie";
 
   return (
     <ScreenShell
@@ -173,7 +142,7 @@ export default function CreateV2Outcome({
       headerTitle="Créer"
       headerSubtitle={
         <>
-          <span className="textMuted2">2.</span> Objectifs · {categoryLabel}
+          <span className="textMuted2">1.</span> Objectif
         </>
       }
       backgroundImage={backgroundImage}
@@ -184,96 +153,77 @@ export default function CreateV2Outcome({
         </Button>
         <Card accentBorder>
           <div className="p18 col gap12">
-            {availableExisting.length ? (
+            {categories.length ? (
               <div className="stack stackGap8">
-                <div className="small textMuted">
-                  Objectif existant (optionnel)
-                </div>
-                <div className="row gap8">
-                  <Select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
-                    <option value="" disabled>
-                      Sélectionner un objectif
+                <div className="small textMuted">Catégorie (optionnel)</div>
+                <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                  <option value="">Sans catégorie</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name || "Catégorie"}
                     </option>
-                    {availableExisting.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.title || "Objectif"}
-                      </option>
-                    ))}
-                  </Select>
-                  <Button onClick={handleAddExisting} disabled={!canAddExisting}>
-                    Ajouter
-                  </Button>
-                </div>
+                  ))}
+                </Select>
               </div>
             ) : null}
 
             <div className="stack stackGap8">
-              <div className="small textMuted">
-                Nouvel objectif
-              </div>
-              <div className="stack stackGap8">
-                <div className="small textMuted">
-                  Objectif
-                </div>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Nom de l’objectif"
-                />
-                <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
-                  <option value="secondaire">Secondaire</option>
-                  <option value="prioritaire">Prioritaire</option>
-                  <option value="bonus">Bonus</option>
-                </Select>
-              </div>
-              <div className="stack stackGap8">
-                <div className="small textMuted">
-                  Mesure
-                </div>
-                <Select value={measureType} onChange={(e) => setMeasureType(e.target.value)}>
-                  <option value="">Mesure (optionnel)</option>
-                  {MEASURE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </Select>
-                <Input
-                  value={targetValue}
-                  onChange={(e) => setTargetValue(e.target.value)}
-                  placeholder="Valeur cible (optionnel)"
-                />
-                <div className="small2 textMuted">
-                  Date limite (optionnel)
-                </div>
-                <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
-                <div className="small2 textMuted2">
-                  Démarre aujourd’hui automatiquement.
-                </div>
-              </div>
-              <Button onClick={handleAddNew} disabled={!canAddNew}>
-                Ajouter
-              </Button>
+              <div className="small textMuted">Objectif</div>
+              <Input
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (error) setError("");
+                }}
+                placeholder="Nom de l’objectif"
+              />
+              <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
+                <option value="secondaire">Secondaire</option>
+                <option value="prioritaire">Prioritaire</option>
+                <option value="bonus">Bonus</option>
+              </Select>
             </div>
 
             <div className="stack stackGap8">
-              {outcomes.map((outcome) => {
-                const label =
-                  outcome.mode === "existing"
-                    ? existingOutcomes.find((g) => g.id === outcome.id)?.title
-                    : outcome.title;
-                return (
-                  <div key={outcome.id} className="row rowBetween gap10">
-                    <div className="small2 flex1">
-                      {label || "Objectif"}
-                    </div>
-                    <Button variant="ghost" onClick={() => handleRemove(outcome.id)}>
-                      Retirer
-                    </Button>
-                  </div>
-                );
-              })}
-              {!outcomes.length ? <div className="small2">Ajoute au moins un objectif.</div> : null}
+              <div className="small textMuted">Mesure</div>
+              <Select value={measureType} onChange={(e) => setMeasureType(e.target.value)}>
+                <option value="">Mesure (optionnel)</option>
+                {MEASURE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </Select>
+              <Input
+                value={targetValue}
+                onChange={(e) => setTargetValue(e.target.value)}
+                placeholder="Valeur cible (optionnel)"
+              />
+            </div>
+
+            <div className="stack stackGap6">
+              <div className="small2 textMuted">Date de début (optionnel)</div>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  if (error) setError("");
+                }}
+              />
+            </div>
+            <div className="stack stackGap6">
+              <div className="small2 textMuted">Date de fin (obligatoire, min J+7 : {minDeadlineKey})</div>
+              <Input
+                type="date"
+                value={deadline}
+                onChange={(e) => {
+                  setDeadline(e.target.value);
+                  if (error) setError("");
+                }}
+              />
+              {error ? <div className="small2 textAccent">{error}</div> : null}
+              <div className="small2 textMuted2">{startDateHelper}</div>
             </div>
             <div className="row rowEnd gap10">
               <Button
@@ -288,12 +238,44 @@ export default function CreateV2Outcome({
               >
                 Annuler
               </Button>
-              <Button onClick={handleNext} disabled={!canContinue}>
+              <Button onClick={handleNext} disabled={showSavedBanner || !canContinue}>
                 Continuer
               </Button>
             </div>
           </div>
         </Card>
+        {showSavedBanner ? (
+          <Card>
+            <div className="p18 row rowBetween alignCenter gap12">
+              <div className="small2">
+                Objectif créé. Ajouter une action maintenant&nbsp;?
+              </div>
+              <div className="row gap8">
+                <Button
+                  onClick={() => {
+                    if (typeof onCreateActionFromObjective === "function" && savedOutcomeId) {
+                      onCreateActionFromObjective(savedOutcomeId);
+                    }
+                    setSavedOutcomeId(null);
+                    setShowSavedBanner(false);
+                  }}
+                >
+                  Créer une action
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setSavedOutcomeId(null);
+                    setShowSavedBanner(false);
+                    if (typeof onSkipObjectiveAction === "function") onSkipObjectiveAction();
+                  }}
+                >
+                  Plus tard
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ) : null}
       </div>
     </ScreenShell>
   );

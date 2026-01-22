@@ -19,6 +19,11 @@ export function getPlanLimits() {
   };
 }
 
+export function getUserCategories(categories) {
+  const list = Array.isArray(categories) ? categories : [];
+  return list.filter((c) => !c?.system);
+}
+
 export function getGenerationWindowDays(data) {
   if (isPremium(data)) return 90;
   return getPlanLimits().planningHorizonDays;
@@ -40,7 +45,7 @@ function countActions(data) {
 
 export function canCreateCategory(data) {
   if (isPremium(data)) return true;
-  const categories = Array.isArray(data?.categories) ? data.categories : [];
+  const categories = getUserCategories(data?.categories);
   return categories.length < getPlanLimits().categories;
 }
 
