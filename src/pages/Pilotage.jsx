@@ -58,9 +58,11 @@ export default function Pilotage({
   onPlanCategory,
   generationWindowDays = null,
   isPlanningUnlimited = false,
+  isAppEmpty,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
+  const isEmpty = Boolean(isAppEmpty);
   const now = new Date();
 
   const countsByCategory = useMemo(() => {
@@ -123,7 +125,7 @@ export default function Pilotage({
     () => blockOrder.map((id) => PILOTAGE_BLOCKS[id]).filter(Boolean),
     [blockOrder]
   );
-  const showPlanningCta = Boolean(categories.length && loadSummary?.week?.planned === 0);
+  const showPlanningCta = Boolean(!isEmpty && categories.length && loadSummary?.week?.planned === 0);
 
   const selectedCategoryId = safeData?.ui?.selectedCategoryByView?.pilotage || categories?.[0]?.id || null;
   const handleReorder = useCallback(
@@ -257,6 +259,32 @@ export default function Pilotage({
         renderItem={(item, drag) => {
           const blockId = item?.id;
           const { attributes, listeners, setActivatorNodeRef } = drag || {};
+          const renderEmptyCard = (title, dataTourId) => (
+            <Card data-tour-id={dataTourId}>
+              <div className="p18">
+                <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                  {drag ? (
+                    <button
+                      ref={setActivatorNodeRef}
+                      {...listeners}
+                      {...attributes}
+                      className="dragHandle"
+                      aria-label="Réorganiser"
+                    >
+                      ⋮⋮
+                    </button>
+                  ) : null}
+                  <div className="sectionTitle">{title}</div>
+                </div>
+                <div className="mt12 small2 textMuted">Aucune donnée à analyser.</div>
+              </div>
+            </Card>
+          );
+          if (isEmpty) {
+            if (blockId === "pilotage.categories") return renderEmptyCard("État des catégories", "pilotage-category-status");
+            if (blockId === "pilotage.charge") return renderEmptyCard("Charge", "pilotage-load");
+            if (blockId === "pilotage.discipline") return renderEmptyCard("Discipline", "pilotage-discipline");
+          }
           if (blockId === "pilotage.categories") {
             return (
               <Card data-tour-id="pilotage-category-status">

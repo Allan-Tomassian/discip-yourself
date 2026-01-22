@@ -125,6 +125,7 @@ export default function Home({
   planLimits = null,
   generationWindowDays = null,
   isPlanningUnlimited = false,
+  isAppEmpty,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
   const selectedDateKey = normalizeLocalDateKey(safeData.ui?.selectedDate) || todayLocalKey();
@@ -220,6 +221,7 @@ export default function Home({
   const profile = safeData.profile || {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+  const isEmpty = Boolean(isAppEmpty);
   // per-view category selection for Home (fallback to legacy)
   const homeSelectedCategoryId =
     safeData.ui?.selectedCategoryByView?.home || safeData.ui?.selectedCategoryId || null;
@@ -1444,43 +1446,6 @@ export default function Home({
 
 
   // Render
-  if (!categories.length) {
-    return (
-      <ScreenShell
-        accent={getAccentForPage(safeData, "home")}
-        backgroundImage={profile.whyImage || ""}
-        headerTitle={<span data-tour-id="today-title">Aujourd’hui</span>}
-        headerSubtitle={<span data-tour-id="today-empty-subtitle">Aucune catégorie</span>}
-      >
-        <Card accentBorder>
-          <div className="p18">
-            <div className="titleSm">Aucune catégorie</div>
-            <div className="small" style={{ marginTop: 6 }}>
-              Commence par un objectif ou une action. Tu pourras classer ensuite.
-            </div>
-            <div className="mt12 row gap10">
-              <Button onClick={openCreateOutcome} disabled={!canEdit}>
-                Créer un objectif
-              </Button>
-              <Button variant="ghost" onClick={openCreateHabit} disabled={!canEdit}>
-                Créer une action
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={openCreateCategory}
-                disabled={!canEdit}
-                data-tour-id="today-empty-create-category"
-              >
-                Créer une catégorie
-              </Button>
-              {!canEdit ? <div className="sectionSub" style={{ marginTop: 8 }}>{lockMessage}</div> : null}
-            </div>
-          </div>
-        </Card>
-      </ScreenShell>
-    );
-  }
-
   const accent = focusCategory && focusCategory.color ? focusCategory.color : getAccentForPage(safeData, "home");
   const goalAccent = selectedGoal?.color || accent;
   const selectedDayAccent = goalAccentByDate.get(selectedDateKey) || goalAccent || accent;
@@ -1606,6 +1571,36 @@ export default function Home({
           className="stack stackGap12"
           renderItem={(blockId, drag) => {
             const { attributes, listeners, setActivatorNodeRef } = drag || {};
+            const renderEmptyCard = (title, dataTourId) => (
+              <Card data-tour-id={dataTourId}>
+                <div className="p18">
+                  <div className="cardSectionTitleRow">
+                    {drag ? (
+                      <button
+                        ref={setActivatorNodeRef}
+                        {...listeners}
+                        {...attributes}
+                        className="dragHandle"
+                        aria-label="Réorganiser"
+                      >
+                        ⋮⋮
+                      </button>
+                    ) : null}
+                    <div className="cardSectionTitle">{title}</div>
+                  </div>
+                  <div className="mt12">
+                    <div className="small2">Aucun élément</div>
+                    <div className="small2 textMuted">Crée un objectif ou une action pour commencer.</div>
+                  </div>
+                </div>
+              </Card>
+            );
+            if (isEmpty) {
+              if (blockId === "focus") return renderEmptyCard("Focus du jour", "today-focus-card");
+              if (blockId === "calendar") return renderEmptyCard("Calendrier", "today-calendar-card");
+              if (blockId === "micro") return renderEmptyCard("Micro-actions", "today-micro-card");
+              if (blockId === "notes") return renderEmptyCard("Notes", "today-notes-card");
+            }
             if (blockId === "focus") {
               return (
                 <Card data-tour-id="today-focus-card">

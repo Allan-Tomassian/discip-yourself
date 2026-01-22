@@ -80,30 +80,32 @@ export default function TopNav({
           </button>
         </div>
       </div>
-      {categories.length ? (
-        <div className="navRailWrap" data-tour-id="topnav-rail">
-          <div className="categoryRailRow">
+      <div className="navRailWrap" data-tour-id="topnav-rail">
+        <div className="categoryRailRow">
+          {categories.length ? (
             <CategoryRail
               categories={categories}
               selectedCategoryId={selectedCategoryId}
               onSelect={onSelectCategory}
             />
-            {typeof onCreateCategory === "function" ? (
-              <button
-                type="button"
-                className={`categoryRailAdd${createOpen ? " isOpen" : ""}`}
-                onClick={(event) => onCreateCategory(event)}
-                aria-label="Créer"
-                title="Créer"
-                data-tour-id="topnav-category-add"
-                data-create-anchor="topnav"
-              >
-                +
-              </button>
-            ) : null}
-          </div>
+          ) : (
+            <div className="flex1" />
+          )}
+          {typeof onCreateCategory === "function" ? (
+            <button
+              type="button"
+              className={`categoryRailAdd${createOpen ? " isOpen" : ""}`}
+              onClick={(event) => onCreateCategory(event)}
+              aria-label="Créer"
+              title="Créer"
+              data-tour-id="topnav-category-add"
+              data-create-anchor="topnav"
+            >
+              +
+            </button>
+          ) : null}
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }

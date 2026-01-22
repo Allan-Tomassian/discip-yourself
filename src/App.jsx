@@ -6,7 +6,6 @@ import { getDueReminders, playReminderSound, sendReminderNotification } from "./
 import { startSession } from "./logic/sessions";
 import { Button, Card } from "./components/UI";
 import PlusExpander from "./components/PlusExpander";
-import ScreenShell from "./pages/_ScreenShell";
 import { markIOSRootClass, safeAlert } from "./utils/dialogs";
 
 import Onboarding from "./pages/Onboarding";
@@ -46,6 +45,7 @@ import { STEP_HABITS, STEP_OUTCOME, isValidCreationStep } from "./creation/creat
 import DiagnosticOverlay from "./components/DiagnosticOverlay";
 import { validateOccurrences } from "./logic/occurrencePlanner";
 import PaywallModal from "./components/PaywallModal";
+import { isAppEmpty } from "./utils/emptyState";
 
 function runSelfTests(data) {
   const isProd = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
@@ -74,53 +74,6 @@ function getHomeSelectedCategoryId(data) {
   return withGoal?.id || categories[0]?.id || null;
 }
 
-function isOnboarded(data) {
-  const nameOk = Boolean((data?.profile?.name || "").trim());
-  const whyOk = Boolean((data?.profile?.whyText || "").trim());
-  if (!nameOk || !whyOk) return false;
-  const goals = Array.isArray(data?.goals) ? data.goals : [];
-  const outcomes = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
-  const hasOutcome = outcomes.length > 0;
-  const hasProcess = goals.some((g) => resolveGoalType(g) === "PROCESS");
-  return hasOutcome || hasProcess;
-}
-
-function getEmptyStateConfig(data) {
-  const safe = data && typeof data === "object" ? data : {};
-  const goals = Array.isArray(safe.goals) ? safe.goals : [];
-  const outcomes = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
-  const hasOutcome = outcomes.length > 0;
-  const hasHabit = goals.some((g) => resolveGoalType(g) === "PROCESS");
-  if (!hasOutcome) {
-    return {
-      title: "Aucun objectif",
-      subtitle: "Crée un objectif pour commencer.",
-      cta: "Créer un objectif",
-      targetTab: "create-goal",
-      categoryId: null,
-      openGoalEditId: null,
-    };
-  }
-  if (!hasHabit) {
-    return {
-      title: "Aucune action",
-      subtitle: "Ajoute une action pour avancer.",
-      cta: "Créer une action",
-      targetTab: "create-habit",
-      categoryId: null,
-      openGoalEditId: null,
-    };
-  }
-  return {
-    title: "État incomplet",
-    subtitle: "Complète la configuration pour continuer.",
-    cta: "Ouvrir la bibliothèque",
-    targetTab: "library",
-    categoryId: null,
-    openGoalEditId: null,
-  };
-}
-
 const TABS = new Set([
   "today",
   "library",
@@ -139,6 +92,7 @@ const TABS = new Set([
 ]);
 function normalizeTab(t) {
   if (t === "tools" || t === "plan") return "pilotage";
+  if (t === "create") return "today";
   if (t === "create-category" || t === "create-rhythm" || t === "create-review") return "create-goal";
   return TABS.has(t) ? t : "today";
 }
@@ -790,12 +744,10 @@ export default function App() {
     _setTab((cur) => (normalizeTab(cur) === last ? cur : last));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const onboarded = isOnboarded(safeData);
   const onboardingCompleted = Boolean(safeData.ui?.onboardingCompleted);
   const showPlanStep = Boolean(safeData.ui?.showPlanStep);
-  const shouldShowEmpty = !onboarded && !showPlanStep && tab === "today";
+  const appIsEmpty = isAppEmpty(safeData);
   const showTourOverlay = onboardingCompleted;
-  const emptyState = shouldShowEmpty ? getEmptyStateConfig(safeData) : null;
   const handlePlanCategory = ({ categoryId } = {}) => {
     openCreateOutcomeDirect({ source: "pilotage", categoryId });
   };
@@ -1055,35 +1007,11 @@ export default function App() {
     <>
       {topNav}
 
-      {tab === "today" && shouldShowEmpty && emptyState ? (
-        <ScreenShell
-          data={safeData}
-          pageId="home"
-          headerTitle="Aujourd’hui"
-          headerSubtitle={emptyState.title}
-          backgroundImage={safeData?.profile?.whyImage || ""}
-        >
-          <Card accentBorder>
-            <div className="p18">
-              <div className="titleSm">{emptyState.title}</div>
-              <div className="small" style={{ marginTop: 6 }}>
-                {emptyState.subtitle}
-              </div>
-              <div className="mt12 row gap10">
-                <Button onClick={() => openCreateOutcomeDirect({ source: "empty" })}>
-                  Créer un objectif
-                </Button>
-                <Button variant="ghost" onClick={() => openCreateHabitDirect({ source: "empty" })}>
-                  Créer une action
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </ScreenShell>
-      ) : tab === "today" ? (
+      {tab === "today" ? (
         <Home
           data={data}
           setData={setData}
+          isAppEmpty={appIsEmpty}
           onOpenLibrary={() => {
             openLibraryDetail();
           }}
@@ -1164,6 +1092,7 @@ export default function App() {
         <Pilotage
           data={data}
           setData={setData}
+          isAppEmpty={appIsEmpty}
           onPlanCategory={handlePlanCategory}
           generationWindowDays={generationWindowDays}
           isPlanningUnlimited={planningUnlimited}
@@ -1218,11 +1147,9 @@ export default function App() {
         <Categories
           data={data}
           setData={setData}
+          isAppEmpty={appIsEmpty}
           onOpenCreateOutcome={() => {
             openCreateOutcomeDirect({ source: "library" });
-          }}
-          onOpenCreateHabit={() => {
-            openCreateHabitDirect({ source: "library" });
           }}
           onOpenManage={(categoryId) => {
             if (!categoryId) return;
