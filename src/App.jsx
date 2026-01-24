@@ -91,7 +91,6 @@ const TABS = new Set([
 function normalizeTab(t) {
   if (t === "tools" || t === "plan") return "pilotage";
   if (t === "create") return "today";
-  if (t === "create-category" || t === "create-rhythm" || t === "create-review") return "create-goal";
   return TABS.has(t) ? t : "today";
 }
 
