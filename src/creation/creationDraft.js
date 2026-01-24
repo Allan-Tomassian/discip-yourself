@@ -35,8 +35,13 @@ export function normalizeCreationDraft(raw) {
   draft.outcomes = draft.outcomes
     .map((outcome, index) => {
       if (!outcome || typeof outcome !== "object") return null;
-      if (!outcome.id) return { ...outcome, id: `outcome-${index + 1}` };
-      return outcome;
+      const nextOutcome = { ...outcome };
+      if (!nextOutcome.id) nextOutcome.id = `outcome-${index + 1}`;
+      if ("measureType" in nextOutcome) delete nextOutcome.measureType;
+      if ("targetValue" in nextOutcome) delete nextOutcome.targetValue;
+      if ("currentValue" in nextOutcome) delete nextOutcome.currentValue;
+      if ("metric" in nextOutcome) delete nextOutcome.metric;
+      return nextOutcome;
     })
     .filter(Boolean);
   if (!draft.activeOutcomeId || !draft.outcomes.some((o) => o.id === draft.activeOutcomeId)) {

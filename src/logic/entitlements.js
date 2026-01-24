@@ -11,12 +11,21 @@ export function isPremium(data) {
 export function getPlanLimits() {
   return {
     categories: 2,
-    outcomes: 3,
-    actions: 6,
+    outcomes: 2,
+    actions: 4,
     planningHorizonDays: 7,
     historyDays: 7,
     export: false,
   };
+}
+
+export function getTrialDays(products) {
+  if (!products || typeof products !== "object") return null;
+  const monthly = products.monthly?.trialDays;
+  if (Number.isFinite(monthly) && monthly > 0) return monthly;
+  const yearly = products.yearly?.trialDays;
+  if (Number.isFinite(yearly) && yearly > 0) return yearly;
+  return null;
 }
 
 export function getUserCategories(categories) {

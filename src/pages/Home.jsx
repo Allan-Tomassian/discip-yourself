@@ -114,9 +114,6 @@ export default function Home({
   setData,
   onOpenLibrary,
   onOpenManageCategory,
-  onOpenCreateOutcome,
-  onOpenCreateHabit,
-  onOpenCreateCategory,
   onOpenSession,
   onDayOpen,
   onAddOccurrence,
@@ -1144,30 +1141,6 @@ export default function Home({
     };
   }, []);
 
-  function openCreateOutcome() {
-    if (typeof onOpenCreateOutcome === "function") {
-      onOpenCreateOutcome();
-      return;
-    }
-    if (typeof onOpenLibrary === "function") onOpenLibrary();
-  }
-
-  function openCreateHabit() {
-    if (typeof onOpenCreateHabit === "function") {
-      onOpenCreateHabit();
-      return;
-    }
-    if (typeof onOpenLibrary === "function") onOpenLibrary();
-  }
-
-  function openCreateCategory() {
-    if (typeof onOpenCreateCategory === "function") {
-      onOpenCreateCategory();
-      return;
-    }
-    if (typeof onOpenLibrary === "function") onOpenLibrary();
-  }
-
   function openSessionFlow() {
     if (!selectedGoal?.id || !canValidate || !hasSelectedActions || typeof setData !== "function") return;
     setData((prev) =>
@@ -1665,9 +1638,9 @@ export default function Home({
                           {emptyCtaSubtitle}
                         </div>
                         <div className="mt10">
-                          <Button onClick={openCreateHabit} disabled={!canEdit}>
-                            Planifier mes actions
-                          </Button>
+                          <div className="small2 textMuted">
+                            Utilise le + pour créer un objectif ou une action.
+                          </div>
                           {!canEdit ? (
                             <div className="sectionSub" style={{ marginTop: 8 }}>
                               {lockMessage}

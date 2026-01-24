@@ -7,15 +7,6 @@ import { uid } from "../utils/helpers";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { createGoal } from "../logic/goals";
 
-const MEASURE_OPTIONS = [
-  { value: "money", label: "💰 Argent" },
-  { value: "counter", label: "🔢 Compteur" },
-  { value: "time", label: "⏱️ Temps" },
-  { value: "energy", label: "⚡ Énergie" },
-  { value: "distance", label: "📏 Distance" },
-  { value: "weight", label: "⚖️ Poids" },
-];
-
 function getCategoryIdFromDraft(draft) {
   if (draft?.category?.mode === "existing") return draft.category.id || "";
   return "";
@@ -31,8 +22,6 @@ export default function CreateV2Outcome({
   onOpenPaywall,
   isPremiumPlan = false,
   planLimits = null,
-  onCreateActionFromObjective,
-  onSkipObjectiveAction,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
@@ -52,8 +41,6 @@ export default function CreateV2Outcome({
   const [title, setTitle] = useState(draft.outcomes?.[0]?.title || "");
   const [startDate, setStartDate] = useState(draft.outcomes?.[0]?.startDate || "");
   const [deadline, setDeadline] = useState(draft.outcomes?.[0]?.deadline || "");
-  const [measureType, setMeasureType] = useState(draft.outcomes?.[0]?.measureType || "");
-  const [targetValue, setTargetValue] = useState(draft.outcomes?.[0]?.targetValue || "");
   const [priority, setPriority] = useState(draft.outcomes?.[0]?.priority || "secondaire");
   const [error, setError] = useState("");
   const [savedOutcomeId, setSavedOutcomeId] = useState(null);
@@ -103,8 +90,6 @@ export default function CreateV2Outcome({
     }
     if (typeof setData !== "function") return;
     const outcomeId = outcomeIdRef.current;
-    const parsedTarget = Number(targetValue);
-    const hasTarget = Number.isFinite(parsedTarget) && parsedTarget > 0;
     setData((prev) => {
       let next = prev;
       next = createGoal(next, {
@@ -115,9 +100,6 @@ export default function CreateV2Outcome({
         planType: "STATE",
         startDate: startDate ? startDate.trim() : "",
         deadline: (deadline || "").trim(),
-        measureType: measureType || null,
-        targetValue: hasTarget ? parsedTarget : null,
-        currentValue: hasTarget ? 0 : null,
         priority: priority || "secondaire",
       });
       const prevUi = next.ui || {};
@@ -184,23 +166,6 @@ export default function CreateV2Outcome({
               </Select>
             </div>
 
-            <div className="stack stackGap8">
-              <div className="small textMuted">Mesure</div>
-              <Select value={measureType} onChange={(e) => setMeasureType(e.target.value)}>
-                <option value="">Mesure (optionnel)</option>
-                {MEASURE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                value={targetValue}
-                onChange={(e) => setTargetValue(e.target.value)}
-                placeholder="Valeur cible (optionnel)"
-              />
-            </div>
-
             <div className="stack stackGap6">
               <div className="small2 textMuted">Date de début (optionnel)</div>
               <Input
@@ -246,32 +211,9 @@ export default function CreateV2Outcome({
         </Card>
         {showSavedBanner ? (
           <Card>
-            <div className="p18 row rowBetween alignCenter gap12">
+            <div className="p18">
               <div className="small2">
-                Objectif créé. Ajouter une action maintenant&nbsp;?
-              </div>
-              <div className="row gap8">
-                <Button
-                  onClick={() => {
-                    if (typeof onCreateActionFromObjective === "function" && savedOutcomeId) {
-                      onCreateActionFromObjective(savedOutcomeId);
-                    }
-                    setSavedOutcomeId(null);
-                    setShowSavedBanner(false);
-                  }}
-                >
-                  Créer une action
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setSavedOutcomeId(null);
-                    setShowSavedBanner(false);
-                    if (typeof onSkipObjectiveAction === "function") onSkipObjectiveAction();
-                  }}
-                >
-                  Plus tard
-                </Button>
+                Objectif créé. Utilise le + pour ajouter une action.
               </div>
             </div>
           </Card>

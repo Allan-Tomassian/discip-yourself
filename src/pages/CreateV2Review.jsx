@@ -18,15 +18,6 @@ const DOWS = [
   { id: 7, label: "Dim" },
 ];
 
-const MEASURE_LABELS = {
-  money: "Argent",
-  counter: "Compteur",
-  time: "Temps",
-  energy: "Energie",
-  distance: "Distance",
-  weight: "Poids",
-};
-
 function formatPriority(priority) {
   if (priority === "prioritaire") return "Prioritaire";
   if (priority === "bonus") return "Bonus";
@@ -193,9 +184,6 @@ export default function CreateV2Review({ data, setData, onBack, onDone, onCancel
             planType: "STATE",
             schedule: schedule || undefined,
             deadline: outcome.deadline || "",
-            measureType: outcome.measureType || null,
-            targetValue: outcome.targetValue ? Number(outcome.targetValue) : null,
-            currentValue: outcome.targetValue ? 0 : null,
             priority: outcome.priority || "secondaire",
           }
         );
@@ -313,8 +301,6 @@ export default function CreateV2Review({ data, setData, onBack, onDone, onCancel
                 const existing = goals.find((g) => g.id === outcome.id);
                 const label = outcome.mode === "existing" ? existing?.title : outcome.title;
                 const priority = outcome.mode === "existing" ? existing?.priority : outcome.priority;
-                const measureType = outcome.mode === "existing" ? existing?.measureType : outcome.measureType;
-                const targetValue = outcome.mode === "existing" ? existing?.targetValue : outcome.targetValue;
                 const deadline = outcome.mode === "existing" ? existing?.deadline : outcome.deadline;
                 const days = outcomeItems.get(outcome.id)?.daysOfWeek || [];
                 return (
@@ -324,8 +310,6 @@ export default function CreateV2Review({ data, setData, onBack, onDone, onCancel
                       <span style={{ opacity: 0.6 }}>· {formatPriority(priority)}</span>
                     </div>
                     <div className="small2" style={{ opacity: 0.7 }}>
-                      Mesure: {measureType ? MEASURE_LABELS[measureType] || measureType : "—"}
-                      {targetValue ? ` · Cible: ${targetValue}` : ""}
                       {deadline ? ` · Date limite: ${deadline}` : ""}
                     </div>
                     <div className="small2" style={{ opacity: 0.7 }}>

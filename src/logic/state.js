@@ -289,6 +289,10 @@ function mergeLegacyHabitsIntoGoals(state) {
 export function normalizeCategory(rawCat, index = 0) {
   const c = rawCat && typeof rawCat === "object" ? { ...rawCat } : {};
   if (!c.id) c.id = uid();
+  if (c.id === SYSTEM_INBOX_ID) {
+    c.name = "Général";
+    c.system = true;
+  }
   if (typeof c.name !== "string" || !c.name.trim()) c.name = `Catégorie ${index + 1}`;
   if (typeof c.color !== "string" || !c.color.trim()) c.color = "#7C3AED";
   if (typeof c.wallpaper !== "string") c.wallpaper = "";
@@ -310,7 +314,7 @@ export function ensureSystemInboxCategory(state) {
   const inbox = normalizeCategory(
     {
       id: SYSTEM_INBOX_ID,
-      name: "Inbox/Général",
+      name: "Général",
       color: "#64748B",
       system: true,
       createdAt,

@@ -112,7 +112,7 @@ export const TOUR_STEPS = [
   {
     id: "today-empty-subtitle",
     screen: "today",
-    anchor: "today-empty-subtitle",
+    anchor: "today-empty-cta",
     title: "Aucune categorie",
     body: "Ce message apparait si tout est vide.",
     placement: "bottom",
@@ -122,11 +122,11 @@ export const TOUR_STEPS = [
   {
     id: "today-empty-create-category",
     screen: "today",
-    anchor: "today-empty-create-category",
-    title: "Creer une categorie",
-    body: "Demarre par une categorie.",
+    anchor: "today-empty-cta",
+    title: "Utilise le +",
+    body: "Lance une creation avec le +.",
     placement: "bottom",
-    nextActionHint: "Tape pour creer.",
+    nextActionHint: "Ouvre le +.",
     skippableAfterMs: 3000,
   },
   {
@@ -192,7 +192,7 @@ export const TOUR_STEPS = [
   {
     id: "today-focus-goal-select",
     screen: "today",
-    anchor: "today-focus-goal-select",
+    anchor: "today-focus-card",
     title: "Objectif principal",
     body: "Choisis un objectif.",
     placement: "top",
@@ -365,7 +365,7 @@ export const TOUR_STEPS = [
   {
     id: "library-manage",
     screen: "library",
-    anchor: "library-manage",
+    anchor: "library-category-list",
     title: "Gerer",
     body: "Ouvre la gestion detaillee.",
     placement: "bottom",
@@ -375,7 +375,7 @@ export const TOUR_STEPS = [
   {
     id: "library-create",
     screen: "library",
-    anchor: "library-create",
+    anchor: "topnav-category-add",
     title: "Creer",
     body: "Demarre une creation.",
     placement: "bottom",
@@ -507,7 +507,7 @@ export const TOUR_STEPS = [
   {
     id: "manage-objectives-create",
     screen: "manage",
-    anchor: "manage-objectives-create",
+    anchor: "manage-objectives-section",
     title: "Creer un objectif",
     body: "Ajoute un objectif.",
     placement: "bottom",
@@ -527,7 +527,7 @@ export const TOUR_STEPS = [
   {
     id: "manage-actions-create",
     screen: "manage",
-    anchor: "manage-actions-create",
+    anchor: "manage-actions-section",
     title: "Creer une action",
     body: "Ajoute une action.",
     placement: "bottom",
@@ -590,7 +590,7 @@ export const TOUR_STEPS = [
   {
     id: "pilotage-planifier-empty",
     screen: "pilotage",
-    anchor: "pilotage-planifier-empty",
+    anchor: "pilotage-load",
     title: "Planifier",
     body: "Action rapide si rien n'est planifie.",
     placement: "left",

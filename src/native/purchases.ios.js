@@ -24,6 +24,75 @@ function toNumber(value) {
   return null;
 }
 
+function parseIsoTrialPeriod(raw) {
+  if (typeof raw !== "string") return null;
+  const match = raw.trim().toUpperCase().match(/^P(\d+)(D|W)$/);
+  if (!match) return null;
+  const count = Number(match[1]);
+  if (!Number.isFinite(count) || count <= 0) return null;
+  const unit = match[2];
+  if (unit === "D") return count;
+  if (unit === "W") return count * 7;
+  return null;
+}
+
+function normalizePeriod(period) {
+  if (!period) return null;
+  if (typeof period === "string") {
+    const isoDays = parseIsoTrialPeriod(period);
+    if (isoDays) return { unit: "DAY", value: isoDays };
+    return null;
+  }
+  if (typeof period !== "object") return null;
+  const unitRaw = period.unit || period.unitType || period.periodUnit || period.type || "";
+  const valueRaw =
+    period.value ?? period.numberOfUnits ?? period.unitCount ?? period.count ?? null;
+  const value = Number(valueRaw);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const unit = String(unitRaw || "").toUpperCase();
+  if (!unit) return null;
+  return { unit, value };
+}
+
+function periodToTrialDays(period) {
+  if (!period) return null;
+  const unit = String(period.unit || "").toUpperCase();
+  const value = Number(period.value);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  if (unit === "DAY" || unit === "DAYS") return value;
+  if (unit === "WEEK" || unit === "WEEKS") return value * 7;
+  return null;
+}
+
+function resolveTrialDays(product) {
+  if (!product || typeof product !== "object") return null;
+  if (Number.isFinite(product.trialDays) && product.trialDays > 0) return product.trialDays;
+  const candidates = [
+    product.introductoryOfferPeriod,
+    product.introductoryOffer?.period,
+    product.introductoryOffer?.subscriptionPeriod,
+    product.introductoryPrice?.period,
+    product.introductoryPrice?.subscriptionPeriod,
+    product.introductoryPricePeriod,
+    product.introductoryPeriod,
+    product.trialPeriod,
+    product.freeTrialPeriod,
+    product.introductoryTrialPeriod,
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    if (typeof candidate === "string") {
+      const isoDays = parseIsoTrialPeriod(candidate);
+      if (isoDays) return isoDays;
+      continue;
+    }
+    const normalized = normalizePeriod(candidate);
+    const days = periodToTrialDays(normalized);
+    if (Number.isFinite(days) && days > 0) return days;
+  }
+  return null;
+}
+
 function normalizeProduct(product) {
   if (!product || typeof product !== "object") return null;
   const priceValue =
@@ -39,6 +108,7 @@ function normalizeProduct(product) {
     priceString: product.priceString || product.displayPrice || product.localizedPrice || "",
     currency: product.currencyCode || product.currency || "",
     period: product.subscriptionPeriod || product.period || "",
+    trialDays: resolveTrialDays(product),
   };
 }
 

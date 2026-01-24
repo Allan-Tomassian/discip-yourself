@@ -29,8 +29,6 @@ export default function CategoryView({
   categoryId,
   onBack,
   onOpenPilotage,
-  onOpenCreateOutcome,
-  onOpenCreateHabit,
   onOpenProgress,
   onEditItem,
 }) {
@@ -459,15 +457,6 @@ export default function CategoryView({
             ) : (
               <div className="stack stackGap12">
                 <div className="small2">Aucun objectif dans cette catégorie.</div>
-                <Button
-                  variant="ghost"
-                  onClick={() =>
-                    (typeof onOpenCreateOutcome === "function" ? onOpenCreateOutcome() : null)
-                  }
-                  data-tour-id="manage-objectives-create"
-                >
-                  Créer un objectif
-                </Button>
               </div>
             )}
           </div>
@@ -512,15 +501,6 @@ export default function CategoryView({
             ) : (
               <div className="stack stackGap12">
                 <div className="small2">Aucune action liée.</div>
-                <Button
-                  variant="ghost"
-                  onClick={() =>
-                    (typeof onOpenCreateHabit === "function" ? onOpenCreateHabit() : null)
-                  }
-                  data-tour-id="manage-actions-create"
-                >
-                  Créer une action
-                </Button>
               </div>
             )}
             {unlinkedHabits.length ? (

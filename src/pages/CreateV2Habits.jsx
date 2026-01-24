@@ -164,9 +164,6 @@ export default function CreateV2Habits({
           type: "OUTCOME",
           planType: "STATE",
           deadline: objective.deadline || "",
-          measureType: objective.measureType || null,
-          targetValue: objective.targetValue ? Number(objective.targetValue) : null,
-          currentValue: objective.targetValue ? 0 : null,
           priority: objective.priority || "secondaire",
         });
         if (objective.priority === "prioritaire") {

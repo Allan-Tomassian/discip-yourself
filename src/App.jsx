@@ -11,7 +11,6 @@ import { markIOSRootClass, safeAlert } from "./utils/dialogs";
 import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
 import Categories from "./pages/Categories";
-import CreateV2 from "./pages/CreateV2";
 import CreateV2Outcome from "./pages/CreateV2Outcome";
 import CreateV2Habits from "./pages/CreateV2Habits";
 import Settings from "./pages/Settings";
@@ -78,7 +77,6 @@ const TABS = new Set([
   "today",
   "library",
   "pilotage",
-  "create",
   "create-goal",
   "create-habit",
   "edit-item",
@@ -417,7 +415,6 @@ export default function App() {
     await refreshEntitlement();
   };
   const isCreateTab =
-    tab === "create" ||
     tab === "create-goal" ||
     tab === "create-habit";
   const themeName = getThemeName(safeData);
@@ -597,7 +594,7 @@ export default function App() {
         nextUi = { ...nextUi, createDraftWasCompleted: false };
         changed = true;
       }
-      if (prevUi.createDraftWasCanceled && tab !== "create") {
+      if (prevUi.createDraftWasCanceled) {
         nextUi = { ...nextUi, createDraftWasCanceled: false };
         changed = true;
       }
@@ -689,7 +686,6 @@ export default function App() {
             safeData?.ui?.selectedCategoryId ||
             null
           : tab === "library" ||
-              tab === "create" ||
               tab === "create-goal" ||
               tab === "create-habit" ||
               tab === "edit-item"
@@ -827,7 +823,6 @@ export default function App() {
         tab === "session"
           ? "today"
           : tab === "library" ||
-              tab === "create" ||
               tab === "create-goal" ||
               tab === "create-habit" ||
               tab === "edit-item" ||
@@ -861,7 +856,6 @@ export default function App() {
       }
       createOpen={plusOpen}
       categories={
-        tab === "create" ||
         tab === "create-goal" ||
         tab === "create-habit"
           ? []
@@ -1034,10 +1028,6 @@ export default function App() {
           onOpenCreateHabit={() => {
             openCreateHabitDirect({ source: "today", categoryId: homeSelectedCategoryId });
           }}
-          onOpenCreateCategory={() => {
-            setLibraryCategoryId(null);
-            setTab("library");
-          }}
           onOpenSession={({ categoryId, dateKey }) =>
             setTab("session", { sessionCategoryId: categoryId || null, sessionDateKey: dateKey || null })
           }
@@ -1155,18 +1145,6 @@ export default function App() {
             if (!categoryId) return;
             setLibraryCategoryId(categoryId);
             setTab("library");
-          }}
-        />
-      ) : tab === "create" ? (
-        <CreateV2
-          data={data}
-          onBack={() => {
-            setLibraryCategoryId(null);
-            setTab("library");
-          }}
-          onOpenStep={(step) => {
-            if (step === "outcome") setTab("create-goal");
-            else if (step === "habits") setTab("create-habit");
           }}
         />
       ) : tab === "create-goal" ? (

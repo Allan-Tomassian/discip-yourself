@@ -21,7 +21,6 @@ function formatCount(count, singular, plural) {
 export default function Categories({
   data,
   setData,
-  onOpenCreateOutcome,
   onOpenManage,
   isAppEmpty,
 }) {
@@ -158,17 +157,6 @@ export default function Categories({
           <div className="p18">
             <div className="row rowBetween alignCenter">
               <div className="sectionTitle">Catégories</div>
-              {!isEmpty ? (
-                <div className="row gap8">
-                  <Button
-                    variant="ghost"
-                    onClick={() => (typeof onOpenCreateOutcome === "function" ? onOpenCreateOutcome() : null)}
-                    data-tour-id="library-create"
-                  >
-                    Créer un objectif
-                  </Button>
-                </div>
-              ) : null}
             </div>
 
             <div className="mt12 col gap10" data-tour-id="library-category-list">

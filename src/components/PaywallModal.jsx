@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Button, Card } from "./UI";
-import { getPlanLimits } from "../logic/entitlements";
+import { getPlanLimits, getTrialDays } from "../logic/entitlements";
 import { loadProducts, PRODUCT_IDS } from "../logic/purchases";
 
 export default function PaywallModal({
@@ -15,6 +15,8 @@ export default function PaywallModal({
 }) {
   const limits = getPlanLimits();
   const [products, setProducts] = useState({ monthly: null, yearly: null, available: false });
+  const trialDays = getTrialDays(products);
+  const showTrial = trialDays === 14;
 
   useEffect(() => {
     if (!open) return;
@@ -60,6 +62,11 @@ export default function PaywallModal({
       >
         <div className="p18 col" style={{ gap: 12 }}>
           <div className="titleSm">Passer Premium</div>
+          {showTrial ? (
+            <div className="small2" style={{ opacity: 0.8 }}>
+              Essai 14 jours
+            </div>
+          ) : null}
           <div className="small2" style={{ opacity: 0.8 }}>
             {reason || "Débloque toutes les fonctionnalités et enlève les limites."}
           </div>

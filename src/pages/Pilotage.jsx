@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card } from "../components/UI";
+import { Card } from "../components/UI";
 import AccentItem from "../components/AccentItem";
 import {
   getCategoryCounts,
@@ -55,7 +55,6 @@ const arrayEqual = (a, b) =>
 export default function Pilotage({
   data,
   setData,
-  onPlanCategory,
   generationWindowDays = null,
   isPlanningUnlimited = false,
   isAppEmpty,
@@ -392,15 +391,9 @@ export default function Pilotage({
                               : "0 occurrence planifiée sur les prochains jours."}
                         </div>
                         <div className="mt8">
-                          <Button
-                            onClick={() => {
-                              if (typeof onPlanCategory === "function")
-                                onPlanCategory({ categoryId: selectedCategoryId });
-                            }}
-                            data-tour-id="pilotage-planifier"
-                          >
-                            Créer un objectif
-                          </Button>
+                          <div className="small2 textMuted">
+                            Utilise le + pour créer un objectif ou une action.
+                          </div>
                         </div>
                       </div>
                     ) : null}

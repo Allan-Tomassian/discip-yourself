@@ -6,6 +6,17 @@ const webFallback = {
   yearly: null,
 };
 
+function normalizeProducts(products) {
+  if (!products || typeof products !== "object") return webFallback;
+  const monthly = products.monthly && typeof products.monthly === "object"
+    ? { trialDays: null, ...products.monthly }
+    : null;
+  const yearly = products.yearly && typeof products.yearly === "object"
+    ? { trialDays: null, ...products.yearly }
+    : null;
+  return { ...products, monthly, yearly };
+}
+
 let cachedModule = null;
 
 function isNativePlatform() {
@@ -31,7 +42,10 @@ export const PRODUCT_IDS = {
 export async function loadProducts() {
   try {
     const mod = await loadModule();
-    if (mod?.loadProducts) return mod.loadProducts();
+    if (mod?.loadProducts) {
+      const products = await mod.loadProducts();
+      return normalizeProducts(products);
+    }
   } catch (err) {
     void err;
   }
