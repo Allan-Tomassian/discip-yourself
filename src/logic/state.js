@@ -782,6 +782,10 @@ export function migrate(prev) {
   // categories
   if (!Array.isArray(next.categories)) next.categories = [];
   next.categories = next.categories.map((cat, i) => normalizeCategory(cat, i));
+  {
+    const ensured = ensureSystemInboxCategory(next);
+    next = ensured.state || next;
+  }
 
   // Ensure selectedCategoryId always points to an existing category (or null)
   // NOTE: This legacy field is only kept for backward compatibility and should NOT drive per-view selection anymore.

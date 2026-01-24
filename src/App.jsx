@@ -44,7 +44,6 @@ import { STEP_HABITS, STEP_OUTCOME, isValidCreationStep } from "./creation/creat
 import DiagnosticOverlay from "./components/DiagnosticOverlay";
 import { validateOccurrences } from "./logic/occurrencePlanner";
 import PaywallModal from "./components/PaywallModal";
-import { isAppEmpty } from "./utils/emptyState";
 
 function runSelfTests(data) {
   const isProd = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
@@ -741,7 +740,6 @@ export default function App() {
   }, []);
   const onboardingCompleted = Boolean(safeData.ui?.onboardingCompleted);
   const showPlanStep = Boolean(safeData.ui?.showPlanStep);
-  const appIsEmpty = isAppEmpty(safeData);
   const showTourOverlay = onboardingCompleted;
   const handlePlanCategory = ({ categoryId } = {}) => {
     openCreateOutcomeDirect({ source: "pilotage", categoryId });
@@ -1004,7 +1002,6 @@ export default function App() {
         <Home
           data={data}
           setData={setData}
-          isAppEmpty={appIsEmpty}
           onOpenLibrary={() => {
             openLibraryDetail();
           }}
@@ -1081,7 +1078,6 @@ export default function App() {
         <Pilotage
           data={data}
           setData={setData}
-          isAppEmpty={appIsEmpty}
           onPlanCategory={handlePlanCategory}
           generationWindowDays={generationWindowDays}
           isPlanningUnlimited={planningUnlimited}
@@ -1136,7 +1132,6 @@ export default function App() {
         <Categories
           data={data}
           setData={setData}
-          isAppEmpty={appIsEmpty}
           onOpenCreateOutcome={() => {
             openCreateOutcomeDirect({ source: "library" });
           }}

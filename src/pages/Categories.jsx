@@ -22,12 +22,11 @@ export default function Categories({
   data,
   setData,
   onOpenManage,
-  isAppEmpty,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
-  const isEmpty = Boolean(isAppEmpty);
+  const isEmpty = categories.length === 0;
 
   // IMPORTANT:
   // This page must not mutate ui.selectedCategoryId (used by Plan / CategoryDetail).
