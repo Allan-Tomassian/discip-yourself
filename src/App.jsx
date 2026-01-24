@@ -840,17 +840,13 @@ export default function App() {
         setTab(next);
       }}
       onOpenSettings={() => setTab("settings")}
-      onCreateCategory={
-        tab === "pilotage"
-          ? null
-          : (event) => {
-              openCreateExpander({
-                source: "topnav",
-                anchorRect: event?.currentTarget?.getBoundingClientRect?.(),
-                anchorEl: event?.currentTarget || null,
-              });
-            }
-      }
+      onCreateCategory={(event) => {
+        openCreateExpander({
+          source: "topnav",
+          anchorRect: event?.currentTarget?.getBoundingClientRect?.(),
+          anchorEl: event?.currentTarget || null,
+        });
+      }}
       createOpen={plusOpen}
       categories={
         tab === "create-goal" ||

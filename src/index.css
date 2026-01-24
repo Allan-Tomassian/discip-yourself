@@ -187,8 +187,6 @@ a{ color:inherit; }
 }
 .categoryRailItem{
   min-width:max-content;
-  padding:6px 12px;
-  border-radius:var(--radius-chip);
   white-space:nowrap;
   display:flex;
   align-items:center;
@@ -201,10 +199,6 @@ a{ color:inherit; }
 .categoryRailItem.isSelected{
   transform:scale(1.05);
   opacity:1;
-  border-color: var(--catColor, var(--focus));
-  background:
-    linear-gradient(90deg, var(--catGlow, rgba(124,58,237,.12)), rgba(0,0,0,0) 70%),
-    var(--surface);
 }
 .categoryRailAdd{
   border:0;
@@ -240,12 +234,13 @@ a{ color:inherit; }
   gap:6px;
 }
 .navBtn{
-  border:0;
+  border:1px solid rgba(255,255,255,.12);
   background:transparent;
   color:rgba(255,255,255,.7);
   padding:10px 8px;
   border-radius:16px;
   font-size:11px;
+  line-height:1;
   cursor:pointer;
 }
 .navBtn:hover{ background: rgba(255,255,255,.08); }

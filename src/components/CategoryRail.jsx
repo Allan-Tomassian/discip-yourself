@@ -40,7 +40,7 @@ export default function CategoryRail({
               if (node) itemRefs.current[c.id] = node;
             }}
             type="button"
-            className={`listItem categoryRailItem${isSelected ? " isSelected" : ""}`}
+            className={`listItem navBtn categoryRailItem${isSelected ? " navBtnActive" : ""}`}
             aria-pressed={isSelected}
             style={isSelected ? accentVars : undefined}
             onClick={() => {
