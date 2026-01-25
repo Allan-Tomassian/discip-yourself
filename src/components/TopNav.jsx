@@ -1,6 +1,4 @@
 import React, { useLayoutEffect, useRef } from "react";
-import CategoryRail from "./CategoryRail";
-
 // TOUR MAP:
 // - primary_action: top navigation tabs
 // - key_elements: settings gear, category rail, add category
@@ -15,11 +13,6 @@ export default function TopNav({
   active,
   setActive,
   onOpenSettings,
-  onCreateCategory,
-  categories = [],
-  selectedCategoryId = null,
-  onSelectCategory,
-  createOpen = false,
 }) {
   const navTopRef = useRef(null);
   const navBarRef = useRef(null);
@@ -50,7 +43,7 @@ export default function TopNav({
       if (ro) ro.disconnect();
       else window.removeEventListener("resize", updateOffset);
     };
-  }, [categories.length]);
+  }, []);
 
   return (
     <div className="navTop stickyStack" ref={navTopRef} data-tour-id="topnav">
@@ -78,32 +71,6 @@ export default function TopNav({
           >
             ⚙
           </button>
-        </div>
-      </div>
-      <div className="navRailWrap" data-tour-id="topnav-rail">
-        <div className="categoryRailRow">
-          {categories.length ? (
-            <CategoryRail
-              categories={categories}
-              selectedCategoryId={selectedCategoryId}
-              onSelect={onSelectCategory}
-            />
-          ) : (
-            <div className="flex1" />
-          )}
-          {typeof onCreateCategory === "function" ? (
-            <button
-              type="button"
-              className={`categoryRailAdd${createOpen ? " isOpen" : ""}`}
-              onClick={(event) => onCreateCategory(event)}
-              aria-label="Créer"
-              title="Créer"
-              data-tour-id="topnav-category-add"
-              data-create-anchor="topnav"
-            >
-              +
-            </button>
-          ) : null}
         </div>
       </div>
     </div>

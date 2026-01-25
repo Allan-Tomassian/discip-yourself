@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TopNav from "./components/TopNav";
+import CategoryRail from "./components/CategoryRail";
 import { migrate, usePersistedState } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
 import { getDueReminders, playReminderSound, sendReminderNotification } from "./logic/reminders";
@@ -764,14 +765,19 @@ export default function App() {
 
   const resolveTopNavAnchor = () => {
     if (typeof document === "undefined") return { anchorRect: null, anchorEl: null };
-    const el = document.querySelector("[data-create-anchor='topnav']");
-    if (!el) return { anchorRect: null, anchorEl: null };
-    return { anchorRect: normalizeAnchorRect(el.getBoundingClientRect()), anchorEl: el };
+    const bottomEl = document.querySelector("[data-create-anchor='bottomrail']");
+    if (bottomEl) {
+      return { anchorRect: normalizeAnchorRect(bottomEl.getBoundingClientRect()), anchorEl: bottomEl };
+    }
+    const topEl = document.querySelector("[data-create-anchor='topnav']");
+    if (!topEl) return { anchorRect: null, anchorEl: null };
+    return { anchorRect: normalizeAnchorRect(topEl.getBoundingClientRect()), anchorEl: topEl };
   };
 
   const openCreateExpander = ({ source, categoryId, anchorRect, anchorEl } = {}) => {
     const normalizedRect = normalizeAnchorRect(anchorRect);
-    const fallback = normalizedRect ? { anchorRect: normalizedRect, anchorEl } : resolveTopNavAnchor();
+    const hasExplicitAnchor = Boolean(normalizedRect || anchorEl);
+    const fallback = hasExplicitAnchor ? { anchorRect: normalizedRect, anchorEl } : resolveTopNavAnchor();
     plusAnchorElRef.current = anchorEl || fallback.anchorEl || null;
     setPlusAnchorRect(normalizedRect || fallback.anchorRect || null);
     setPlusContext({ source: source || "unknown", categoryId: categoryId || null });
@@ -814,6 +820,112 @@ export default function App() {
     setTab("create-habit");
     setPlusOpen(false);
   };
+  const handleSelectCategory = (categoryId) => {
+    if (!categoryId) return;
+    const markLibraryTouched = () => {
+      try {
+        sessionStorage.setItem("library:selectedCategoryTouched", "1");
+      } catch (err) {
+        void err;
+      }
+    };
+    const syncCategorySelection = ({ updateLegacy } = {}) => {
+      const shouldUpdateLegacy = Boolean(updateLegacy);
+      setData((prev) => {
+        const prevUi = prev.ui || {};
+        const prevSel =
+          prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+            ? prevUi.selectedCategoryByView
+            : {};
+        if (
+          prevUi.librarySelectedCategoryId === categoryId &&
+          prevSel.library === categoryId &&
+          prevSel.home === categoryId &&
+          (!shouldUpdateLegacy || prevUi.selectedCategoryId === categoryId)
+        ) {
+          return prev;
+        }
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            librarySelectedCategoryId: categoryId,
+            selectedCategoryByView: { ...prevSel, library: categoryId, home: categoryId },
+            ...(shouldUpdateLegacy ? { selectedCategoryId: categoryId } : {}),
+          },
+        };
+      });
+    };
+    if (tab === "today") {
+      syncCategorySelection({ updateLegacy: true });
+      setCategoryDetailId(categoryId);
+      return;
+    }
+    if (tab === "library") {
+      markLibraryTouched();
+      syncCategorySelection();
+      if (libraryCategoryId) {
+        setLibraryCategoryId(categoryId);
+        return;
+      }
+      setData((prev) => {
+        const prevUi = prev.ui || {};
+        const prevSel =
+          prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+            ? prevUi.selectedCategoryByView
+            : {};
+        const isExpanded = prevUi.libraryDetailExpandedId === categoryId;
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            librarySelectedCategoryId: categoryId,
+            selectedCategoryByView: { ...prevSel, library: categoryId },
+            libraryDetailExpandedId: isExpanded ? null : categoryId,
+          },
+        };
+      });
+      setLibraryCategoryId(null);
+      setCategoryDetailId(null);
+      setTab("library");
+      return;
+    }
+    if (tab === "category-detail") {
+      markLibraryTouched();
+      syncCategorySelection();
+      setLibraryCategoryId(null);
+      setCategoryDetailId(null);
+      setTab("library");
+      return;
+    }
+    if (tab === "category-progress") {
+      markLibraryTouched();
+      syncCategorySelection();
+      setLibraryCategoryId(null);
+      setCategoryProgressId(categoryId);
+      setTab("category-progress", { categoryProgressId: categoryId });
+      return;
+    }
+    if (tab === "edit-item") {
+      markLibraryTouched();
+      syncCategorySelection();
+      return;
+    }
+    if (tab === "pilotage") {
+      setData((prev) => ({
+        ...prev,
+        ui: {
+          ...(prev.ui || {}),
+          selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), pilotage: categoryId },
+        },
+      }));
+      return;
+    }
+    if (tab === "session") {
+      setSessionCategoryId(categoryId);
+    }
+  };
+
   const topNav = (
     <TopNav
       active={
@@ -840,128 +952,10 @@ export default function App() {
         setTab(next);
       }}
       onOpenSettings={() => setTab("settings")}
-      onCreateCategory={(event) => {
-        openCreateExpander({
-          source: "topnav",
-          anchorRect: event?.currentTarget?.getBoundingClientRect?.(),
-          anchorEl: event?.currentTarget || null,
-        });
-      }}
-      createOpen={plusOpen}
-      categories={
-        tab === "create-goal" ||
-        tab === "create-habit"
-          ? []
-          : railCategories
-      }
-      selectedCategoryId={railSelectedId}
-      onSelectCategory={(categoryId) => {
-        if (!categoryId) return;
-        const markLibraryTouched = () => {
-          try {
-            sessionStorage.setItem("library:selectedCategoryTouched", "1");
-          } catch (err) {
-            void err;
-          }
-        };
-        const syncCategorySelection = ({ updateLegacy } = {}) => {
-          const shouldUpdateLegacy = Boolean(updateLegacy);
-          setData((prev) => {
-            const prevUi = prev.ui || {};
-            const prevSel =
-              prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-                ? prevUi.selectedCategoryByView
-                : {};
-            if (
-              prevUi.librarySelectedCategoryId === categoryId &&
-              prevSel.library === categoryId &&
-              prevSel.home === categoryId &&
-              (!shouldUpdateLegacy || prevUi.selectedCategoryId === categoryId)
-            ) {
-              return prev;
-            }
-            return {
-              ...prev,
-              ui: {
-                ...prevUi,
-                librarySelectedCategoryId: categoryId,
-                selectedCategoryByView: { ...prevSel, library: categoryId, home: categoryId },
-                ...(shouldUpdateLegacy ? { selectedCategoryId: categoryId } : {}),
-              },
-            };
-          });
-        };
-        if (tab === "today") {
-          syncCategorySelection({ updateLegacy: true });
-          setCategoryDetailId(categoryId);
-          return;
-        }
-        if (tab === "library") {
-          markLibraryTouched();
-          syncCategorySelection();
-          if (libraryCategoryId) {
-            setLibraryCategoryId(categoryId);
-            return;
-          }
-          setData((prev) => {
-            const prevUi = prev.ui || {};
-            const prevSel =
-              prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-                ? prevUi.selectedCategoryByView
-                : {};
-            const isExpanded = prevUi.libraryDetailExpandedId === categoryId;
-            return {
-              ...prev,
-              ui: {
-                ...prevUi,
-                librarySelectedCategoryId: categoryId,
-                selectedCategoryByView: { ...prevSel, library: categoryId },
-                libraryDetailExpandedId: isExpanded ? null : categoryId,
-              },
-            };
-          });
-          setLibraryCategoryId(null);
-          setCategoryDetailId(null);
-          setTab("library");
-          return;
-        }
-        if (tab === "category-detail") {
-          markLibraryTouched();
-          syncCategorySelection();
-          setLibraryCategoryId(null);
-          setCategoryDetailId(null);
-          setTab("library");
-          return;
-        }
-        if (tab === "category-progress") {
-          markLibraryTouched();
-          syncCategorySelection();
-          setLibraryCategoryId(null);
-          setCategoryProgressId(categoryId);
-          setTab("category-progress", { categoryProgressId: categoryId });
-          return;
-        }
-        if (tab === "edit-item") {
-          markLibraryTouched();
-          syncCategorySelection();
-          return;
-        }
-        if (tab === "pilotage") {
-          setData((prev) => ({
-            ...prev,
-            ui: {
-              ...(prev.ui || {}),
-              selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), pilotage: categoryId },
-            },
-          }));
-          return;
-        }
-        if (tab === "session") {
-          setSessionCategoryId(categoryId);
-        }
-      }}
     />
   );
+
+  const showBottomRail = tab === "today" || tab === "library" || tab === "pilotage";
 
   if (showPlanStep && onboardingCompleted) {
     return (
@@ -993,6 +987,31 @@ export default function App() {
   return (
     <>
       {topNav}
+      {showBottomRail ? (
+        <div className="navWrap bottomBar" data-tour-id="topnav-rail">
+          <div className="navRow">
+            <CategoryRail
+              categories={railCategories}
+              selectedCategoryId={railSelectedId}
+              onSelect={handleSelectCategory}
+            />
+            <button
+              type="button"
+              className="navBtn navGear"
+              aria-label="Créer"
+              title="Créer"
+              data-create-anchor="bottomrail"
+              onClick={(event) => {
+                const el = event?.currentTarget || null;
+                const rect = el?.getBoundingClientRect ? el.getBoundingClientRect() : null;
+                openCreateExpander({ source: "bottomrail", anchorEl: el, anchorRect: rect });
+              }}
+            >
+              +
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {tab === "today" ? (
         <Home

@@ -18,7 +18,7 @@ a{ color:inherit; }
   padding:calc(var(--navOffset, 0px) + var(--navGap, 10px) + var(--page-top-gap)) 16px 32px;
   min-height:100vh;
   overflow:visible;
-  padding-bottom:80px;
+  padding-bottom:calc(32px + var(--bottomRailOffset, 120px));
   overflow-x:hidden;
 }
 .pageContent{
@@ -192,13 +192,9 @@ a{ color:inherit; }
   align-items:center;
   gap:8px;
   scroll-snap-align:center;
-  transform:scale(1);
-  opacity:0.65;
-  transition: transform 220ms ease, opacity 220ms ease;
 }
-.categoryRailItem.isSelected{
-  transform:scale(1.05);
-  opacity:1;
+.categoryRailItem .itemTitle{
+  color: inherit;
 }
 .categoryRailAdd{
   border:0;
@@ -223,6 +219,11 @@ a{ color:inherit; }
   box-shadow: 0 10px 24px rgba(0,0,0,.25);
 }
 .navRow{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.navActions{
   display:flex;
   align-items:center;
   gap:6px;
@@ -266,6 +267,16 @@ a{ color:inherit; }
   background: rgba(255,255,255,.92);
   color:#000;
   box-shadow: 0 10px 30px rgba(0,0,0,.20);
+}
+
+.bottomBar{
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 48;
+  width: min(var(--page-max), calc(100vw - 32px));
+  pointer-events: auto;
 }
 
 .btnBackCompact{
