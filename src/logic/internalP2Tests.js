@@ -1,4 +1,5 @@
 import { getDayCountsForDate } from "./calendar";
+import { buildMonthGrid, WEEKDAY_LABELS_FR, WEEK_DAYS_PER_WEEK } from "../utils/dates";
 import { setOccurrencesStatusForGoalDate, upsertOccurrence } from "./occurrences";
 
 const KEY = "2026-01-18";
@@ -128,6 +129,21 @@ export function runInternalP2Tests() {
   } catch (err) {
     results.push({ id: "TEST 3", pass: false, error: err });
     console.error("TEST 3 FAIL", err);
+    pass = false;
+  }
+
+  // TEST 4: month grid always has 7 columns worth of days (labels + cells).
+  try {
+    const labelsOk = WEEKDAY_LABELS_FR.length === WEEK_DAYS_PER_WEEK && WEEK_DAYS_PER_WEEK === 7;
+    const grid = buildMonthGrid(new Date(2026, 0, 1));
+    const ok = labelsOk && Array.isArray(grid) && grid.length % WEEK_DAYS_PER_WEEK === 0;
+    results.push({ id: "TEST 4", pass: ok });
+    if (ok) console.log("TEST 4 PASS");
+    else console.error("TEST 4 FAIL", { labels: WEEKDAY_LABELS_FR, size: grid?.length });
+    pass = pass && ok;
+  } catch (err) {
+    results.push({ id: "TEST 4", pass: false, error: err });
+    console.error("TEST 4 FAIL", err);
     pass = false;
   }
 

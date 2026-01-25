@@ -43,6 +43,9 @@ export function isSameDayKey(aKey, bKey) {
   return Boolean(aKey && bKey && aKey === bKey);
 }
 
+export const WEEK_DAYS_PER_WEEK = 7;
+export const WEEKDAY_LABELS_FR = ["L", "M", "M", "J", "V", "S", "D"];
+
 const MONTH_LABEL_FR = new Intl.DateTimeFormat("fr-FR", {
   month: "long",
   year: "numeric",
@@ -59,7 +62,8 @@ export function buildMonthGrid(d = new Date()) {
   const gridStart = new Date(first);
   gridStart.setDate(first.getDate() - mondayIndex);
   const cells = [];
-  for (let i = 0; i < 42; i += 1) {
+  const totalCells = WEEK_DAYS_PER_WEEK * 6;
+  for (let i = 0; i < totalCells; i += 1) {
     const dateObj = new Date(gridStart);
     dateObj.setDate(gridStart.getDate() + i);
     cells.push({

@@ -9,6 +9,7 @@ import {
   buildMonthGrid,
   getMonthLabelFR,
   startOfMonth,
+  WEEKDAY_LABELS_FR,
 } from "../utils/dates";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { setMainGoal } from "../logic/goals";
@@ -1892,10 +1893,16 @@ export default function Home({
                         ) : null}
                         <div
                           className="mt10 calMonthGrid"
-                          style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, textAlign: "center", contain: "content" }}
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: `repeat(${WEEKDAY_LABELS_FR.length}, minmax(0, 1fr))`,
+                            gap: 6,
+                            textAlign: "center",
+                            contain: "content",
+                          }}
                           data-tour-id="today-calendar-month-grid"
                         >
-                          {["L", "M", "M", "J", "V", "S", "D"].map((label, idx) => (
+                          {WEEKDAY_LABELS_FR.map((label, idx) => (
                             <div key={`${label}-${idx}`} className="small2">
                               {label}
                             </div>
