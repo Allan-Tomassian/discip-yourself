@@ -1,10 +1,14 @@
 // src/logic/goals.js
 import { todayKey } from "../utils/dates";
+import { todayLocalKey } from "../utils/dateKey";
+import { ensureWindowForGoal, validateOccurrences } from "./occurrencePlanner";
+import { getGenerationWindowDays } from "./entitlements";
 import { ensureSystemInboxCategory, normalizeGoal, normalizeResetPolicy } from "./state";
 import { resolveGoalType, isOutcome, isProcess } from "../domain/goalType";
 
 const ALLOWED = new Set(["queued", "active", "done", "invalid"]);
 const PLAN_TYPES = new Set(["ACTION", "ONE_OFF", "STATE"]);
+const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
 
 // Future flag (do not change behavior elsewhere yet)
 export const allowGlobalSingleActive = false;
@@ -476,6 +480,14 @@ function getNextOrder(goals) {
   return max + 1;
 }
 
+function ensureOccurrencesWindow(state, goalId) {
+  if (!state || !goalId) return state;
+  const days = getGenerationWindowDays(state);
+  const next = ensureWindowForGoal(state, goalId, todayLocalKey(), days);
+  if (isDev) validateOccurrences(next);
+  return next;
+}
+
 function canActivate(goal) {
   const s = normalizeStatus(goal?.status);
   return s === "queued" || s === "active";
@@ -512,10 +524,11 @@ export function createGoal(state, goalInput = {}) {
   const prepared = { ...normalized, planType, type: goalType };
   const nextGoal = goalType === "OUTCOME" ? sanitizeOutcome(prepared) : sanitizeProcess(prepared);
 
-  return normalizeGoalsState({
+  const nextState = normalizeGoalsState({
     ...workingState,
     goals: [...goals, nextGoal],
   });
+  return goalType === "PROCESS" ? ensureOccurrencesWindow(nextState, nextGoal.id) : nextState;
 }
 
 export function updateGoal(state, goalId, updates = {}) {
@@ -679,7 +692,10 @@ export function scheduleStart(state, goalId, startAt, sessionMinutes) {
     };
   });
 
-  return { ok: true, state: normalizeGoalsState({ ...state, goals: nextGoals }) };
+  const nextState = normalizeGoalsState({ ...state, goals: nextGoals });
+  const nextGoal = nextState.goals.find((g) => g?.id === goalId) || null;
+  const shouldEnsure = nextGoal ? resolveGoalType(nextGoal) === "PROCESS" : false;
+  return { ok: true, state: shouldEnsure ? ensureOccurrencesWindow(nextState, goalId) : nextState };
 }
 
 /**
@@ -753,13 +769,15 @@ export function activateGoal(state, goalId, opts = { navigate: true }) {
     nextUi.selectedCategoryId = goal.categoryId || state.ui?.selectedCategoryId;
   }
 
+  const nextState = normalizeGoalsState({
+    ...state,
+    goals: nextGoals,
+    ui: nextUi,
+  });
+  const ensured = isProcessType ? ensureOccurrencesWindow(nextState, goalId) : nextState;
   return {
     ok: true,
-    state: normalizeGoalsState({
-      ...state,
-      goals: nextGoals,
-      ui: nextUi,
-    }),
+    state: ensured,
   };
 }
 

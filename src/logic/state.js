@@ -3,15 +3,16 @@ import { loadState, saveState } from "../utils/storage";
 import { uid } from "../utils/helpers";
 import { normalizeGoalsState } from "./goals";
 import { normalizeReminder } from "./reminders";
-import { normalizeSession } from "./sessions";
 import { normalizeLocalDateKey, toLocalDateKey } from "../utils/dateKey";
 import { resolveGoalType, isOutcome, isProcess } from "../domain/goalType";
+import { findOccurrenceForGoalDateDeterministic, setOccurrenceStatus, upsertOccurrence } from "./occurrences";
 import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "./blocks/registry";
 import { ensureBlocksConfig } from "./blocks/ensureBlocksConfig";
 import { validateBlocksState } from "./blocks/validateBlocksState";
 
 export const THEME_PRESETS = ["aurora", "midnight", "sunset", "ocean", "forest"];
 export const SYSTEM_INBOX_ID = "sys_inbox";
+export const DEFAULT_CATEGORY_ID = SYSTEM_INBOX_ID;
 
 export const DEFAULT_CATEGORIES = [
   { id: "cat_sport", name: "Sport", color: "#7C3AED", wallpaper: "", mainGoalId: null },
@@ -26,6 +27,7 @@ export const DEFAULT_BLOCKS = [
 ];
 
 const MEASURE_TYPES = new Set(["money", "counter", "time", "energy", "distance", "weight"]);
+const TRACKING_MODES = new Set(["none", "manual", "template"]);
 const GOAL_PRIORITY_VALUES = new Set(["prioritaire", "secondaire", "bonus"]);
 
 // Demo mode (disabled by default).
@@ -183,7 +185,7 @@ function normalizeLegacyHabit(rawHabit, index = 0) {
   }
   if (typeof h.cadence !== "string") h.cadence = "WEEKLY";
   if (!Number.isFinite(h.target)) h.target = 1;
-  if (typeof h.categoryId !== "string") h.categoryId = "";
+  if (typeof h.categoryId !== "string" || !h.categoryId.trim()) h.categoryId = DEFAULT_CATEGORY_ID;
   return h;
 }
 
@@ -225,6 +227,160 @@ function migrateLegacyChecks(rawChecks) {
   }
 
   return legacyFound ? { checks: nextChecks, legacy: checks } : { checks, legacy: null };
+}
+
+function normalizeLegacyIdList(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const id of list) {
+    if (typeof id !== "string") continue;
+    const trimmed = id.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    out.push(trimmed);
+  }
+  return out;
+}
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+function extractStartTime(raw) {
+  if (typeof raw !== "string" || !raw.trim()) return "";
+  const trimmed = raw.trim();
+  if (/^\d{2}:\d{2}$/.test(trimmed)) return trimmed;
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return `${pad2(parsed.getHours())}:${pad2(parsed.getMinutes())}`;
+}
+
+function normalizeLegacySession(raw) {
+  const s = raw && typeof raw === "object" ? raw : {};
+  const dateKey = normalizeLocalDateKey(s.dateKey || s.date || "");
+  const statusRaw = typeof s.status === "string" ? s.status.toLowerCase() : "";
+  const status = statusRaw === "skipped" ? "skipped" : statusRaw === "done" || statusRaw === "partial" ? "done" : "";
+  const habitIds = normalizeLegacyIdList(
+    Array.isArray(s.habitIds) ? s.habitIds : s.habitId ? [s.habitId] : []
+  );
+  const doneHabitIds = normalizeLegacyIdList(
+    Array.isArray(s.doneHabitIds) ? s.doneHabitIds : s.doneHabits ? s.doneHabits : []
+  );
+  const start = extractStartTime(s.startAt || s.startedAt || s.timerStartedAt || "");
+  const durationMinutes = Number.isFinite(s.duration)
+    ? Math.round(s.duration)
+    : Number.isFinite(s.durationSec)
+      ? Math.round(s.durationSec / 60)
+      : null;
+  return { dateKey, status, habitIds, doneHabitIds, start, durationMinutes };
+}
+
+function migrateLegacyActivity(nextState) {
+  if (!nextState || typeof nextState !== "object") {
+    return { state: nextState, checksLegacy: null, sessionsLegacy: null };
+  }
+  const goals = Array.isArray(nextState.goals) ? nextState.goals : [];
+  const goalIds = new Set(goals.map((g) => g?.id).filter(Boolean));
+  let occurrences = Array.isArray(nextState.occurrences) ? nextState.occurrences : [];
+  const microChecks = nextState.microChecks && typeof nextState.microChecks === "object"
+    ? { ...nextState.microChecks }
+    : {};
+
+  const applyStatus = (goalId, dateKey, status, start, durationMinutes) => {
+    if (!goalId || !dateKey || !status) return;
+    if (!goalIds.has(goalId)) return;
+    const hasAny = occurrences.some((o) => o && o.goalId === goalId && o.date === dateKey);
+    const preferredStart = typeof start === "string" ? start : "";
+
+    if (preferredStart) {
+      const match = findOccurrenceForGoalDateDeterministic(occurrences, goalId, dateKey, preferredStart);
+      if (match && match.start === preferredStart) {
+        occurrences = setOccurrenceStatus(goalId, dateKey, preferredStart, status, { occurrences, goals });
+        return;
+      }
+      if (!hasAny) {
+        occurrences = upsertOccurrence(
+          goalId,
+          dateKey,
+          preferredStart,
+          durationMinutes,
+          { status },
+          { occurrences, goals }
+        );
+        return;
+      }
+      if (match) {
+        const fallbackStart = match.start || "00:00";
+        occurrences = setOccurrenceStatus(goalId, dateKey, fallbackStart, status, { occurrences, goals });
+        return;
+      }
+      occurrences = upsertOccurrence(
+        goalId,
+        dateKey,
+        preferredStart,
+        durationMinutes,
+        { status },
+        { occurrences, goals }
+      );
+      return;
+    }
+
+    if (hasAny) {
+      const match = findOccurrenceForGoalDateDeterministic(occurrences, goalId, dateKey, "");
+      if (match) {
+        const fallbackStart = match.start || "00:00";
+        occurrences = setOccurrenceStatus(goalId, dateKey, fallbackStart, status, { occurrences, goals });
+        return;
+      }
+    }
+
+    occurrences = upsertOccurrence(
+      goalId,
+      dateKey,
+      "00:00",
+      durationMinutes,
+      { status },
+      { occurrences, goals }
+    );
+  };
+
+  const migratedChecks = migrateLegacyChecks(nextState.checks);
+  const normalizedChecks = migratedChecks.checks || {};
+  for (const [key, bucket] of Object.entries(normalizedChecks)) {
+    const dateKey = normalizeLocalDateKey(key);
+    if (!dateKey) continue;
+    const habits = Array.isArray(bucket?.habits) ? bucket.habits : [];
+    for (const habitId of habits) {
+      if (typeof habitId !== "string" || !habitId.trim()) continue;
+      applyStatus(habitId.trim(), dateKey, "done", "", null);
+    }
+    const micro = bucket?.micro && typeof bucket.micro === "object" ? { ...bucket.micro } : {};
+    if (Object.keys(micro).length) {
+      microChecks[dateKey] = { ...(microChecks[dateKey] || {}), ...micro };
+    }
+  }
+
+  const sessions = Array.isArray(nextState.sessions) ? nextState.sessions : [];
+  for (const raw of sessions) {
+    const normalized = normalizeLegacySession(raw);
+    if (!normalized.dateKey || !normalized.status) continue;
+    const targets =
+      normalized.status === "skipped"
+        ? normalized.habitIds
+        : normalized.doneHabitIds.length
+          ? normalized.doneHabitIds
+          : normalized.habitIds;
+    for (const habitId of targets) {
+      applyStatus(habitId, normalized.dateKey, normalized.status, normalized.start, normalized.durationMinutes);
+    }
+  }
+
+  return {
+    state: { ...nextState, occurrences, microChecks },
+    checksLegacy: migratedChecks.legacy,
+    sessionsLegacy: sessions.length ? sessions : null,
+  };
 }
 
 function mergeLegacyHabitsIntoGoals(state) {
@@ -336,6 +492,15 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
   const process = goalType === "PROCESS";
   const inferredPlanType = g.oneOffDate ? "ONE_OFF" : "ACTION";
 
+  if (!g.categoryId) g.categoryId = DEFAULT_CATEGORY_ID;
+
+  const rawOutcomeId = typeof g.outcomeId === "string" ? g.outcomeId.trim() : "";
+  const rawObjectiveId = typeof g.objectiveId === "string" ? g.objectiveId.trim() : "";
+  const rawParent = typeof g.parentId === "string" ? g.parentId.trim() : "";
+  g.parentId = rawParent || rawOutcomeId || rawObjectiveId || null;
+  g.outcomeId = g.parentId || null;
+  if (typeof g.objectiveId === "string") g.objectiveId = null;
+
   // Canonical semantics:
   // - OUTCOME = objective (STATE) : can carry metric/deadline/notes, but never scheduling/frequency/session/parent.
   // - PROCESS = habit (ACTION or ONE_OFF) : can carry frequency/session/oneOffDate, but never metric/deadline/notes.
@@ -360,6 +525,10 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
   // Optional: deadline as ISO date (YYYY-MM-DD). Empty string means "no deadline yet".
   if (typeof g.deadline !== "string") g.deadline = "";
   if (typeof g.notes !== "string") g.notes = "";
+
+  const rawTracking = typeof g.trackingMode === "string" ? g.trackingMode.trim() : "";
+  if (outcome) g.trackingMode = TRACKING_MODES.has(rawTracking) ? rawTracking : "none";
+  if (process) g.trackingMode = "none";
 
   // Optional: measurement fields for OUTCOME goals.
   const rawMeasure = typeof g.measureType === "string" ? g.measureType.trim() : "";
@@ -392,6 +561,7 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
     g.primaryGoalId = null;
     g.weight = 0;
     g.linkWeight = 0;
+    g.outcomeId = null;
 
     if (!g.measureType) {
       g.targetValue = null;
@@ -425,6 +595,8 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
       // ACTION habit must not carry oneOffDate
       g.oneOffDate = undefined;
     }
+
+    g.outcomeId = g.parentId || null;
   }
 
   // If a PROCESS has no valid parentId, keep it null (linking is optional)
@@ -557,6 +729,7 @@ export function initialData() {
     sessions: [],
     occurrences: [],
     checks: {},
+    microChecks: {},
   };
 }
 
@@ -659,6 +832,7 @@ export function demoData() {
     reminders: [],
     sessions: [],
     checks: {},
+    microChecks: {},
   };
 }
 
@@ -911,15 +1085,19 @@ export function migrate(prev) {
   // habits/checks
   if (!Array.isArray(next.reminders)) next.reminders = [];
   next.reminders = next.reminders.map((r, i) => normalizeReminder(r, i));
-  if (!Array.isArray(next.sessions)) next.sessions = [];
-  next.sessions = next.sessions.map((s) => normalizeSession(s));
   if (!Array.isArray(next.occurrences)) next.occurrences = [];
-  const migratedChecks = migrateLegacyChecks(next.checks);
-  next.checks = migratedChecks.checks || {};
-  if (migratedChecks.legacy && !next.checksLegacy) {
-    next.checksLegacy = migratedChecks.legacy;
+  if (!next.microChecks || typeof next.microChecks !== "object") next.microChecks = {};
+
+  const migrated = migrateLegacyActivity(next);
+  next = migrated.state || next;
+  if (migrated.checksLegacy && !next.checksLegacy) {
+    next.checksLegacy = migrated.checksLegacy;
   }
-  if (!next.checks || typeof next.checks !== "object") next.checks = {};
+  if (migrated.sessionsLegacy && !next.sessionsLegacy) {
+    next.sessionsLegacy = migrated.sessionsLegacy;
+  }
+  next.sessions = [];
+  next.checks = {};
 
   const normalized = normalizeGoalsState(next);
 

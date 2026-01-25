@@ -15,7 +15,6 @@ export default function DiagnosticOverlay({ data, tab }) {
     categories: Array.isArray(safeData.categories) ? safeData.categories.length : 0,
     goals: Array.isArray(safeData.goals) ? safeData.goals.length : 0,
     occurrences: Array.isArray(safeData.occurrences) ? safeData.occurrences.length : 0,
-    sessions: Array.isArray(safeData.sessions) ? safeData.sessions.length : 0,
     reminders: Array.isArray(safeData.reminders) ? safeData.reminders.length : 0,
   };
   const pathname = typeof window !== "undefined" ? window.location.pathname : "";
@@ -69,8 +68,7 @@ export default function DiagnosticOverlay({ data, tab }) {
           <div>pilotage: {selectedByView.pilotage || "—"}</div>
           <div>selectedDate: {ui.selectedDate || "—"}</div>
           <div>
-            counts: c{counts.categories} g{counts.goals} o{counts.occurrences} s{counts.sessions} r
-            {counts.reminders}
+            counts: c{counts.categories} g{counts.goals} o{counts.occurrences} r{counts.reminders}
           </div>
           <div>route: {pathname || "—"}</div>
         </div>

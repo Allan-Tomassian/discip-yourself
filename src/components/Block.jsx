@@ -46,9 +46,9 @@ export default function Block({
     const list = habitsForCategory;
     if (!list.length) return null;
     let sum = 0;
-    for (const hh of list) sum += clamp(computeHabitProgress(hh, data.checks).ratio, 0, 1);
+    for (const hh of list) sum += clamp(computeHabitProgress(hh, data).ratio, 0, 1);
     return sum / list.length;
-  }, [habitsForCategory, data.checks]);
+  }, [habitsForCategory, data]);
 
   if (block.type === "WHY") {
     return (
@@ -108,7 +108,7 @@ export default function Block({
               <div className="listItem">Aucune action dans cette catégorie.</div>
             ) : (
               habitsForCategory.map((h) => {
-                const p = computeHabitProgress(h, data.checks);
+                const p = computeHabitProgress(h, data);
                 const done = clamp(p.done, 0, p.target);
                 const ratio = clamp(p.ratio, 0, 1);
 

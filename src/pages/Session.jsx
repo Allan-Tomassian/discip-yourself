@@ -2,16 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
-import {
-  finishSessionForDate,
-  getSessionByDate,
-  getSessionsForDate,
-  skipSessionForDate,
-  updateSessionTimerForDate,
-} from "../logic/sessions";
+import { setOccurrencesStatusForGoalDate, upsertOccurrence } from "../logic/occurrences";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
-import { resolveGoalType } from "../domain/goalType";
 import { resolveConflictNearest } from "../logic/occurrencePlanner";
 
 function formatElapsed(ms) {
@@ -20,21 +13,6 @@ function formatElapsed(ms) {
   const minutes = Math.floor(totalSec / 60);
   const seconds = totalSec % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
-function getSessionSortKey(session) {
-  if (!session) return 0;
-  const status = session.status;
-  const statusRank = status === "partial" ? 3 : status === "done" ? 2 : status === "skipped" ? 1 : 0;
-  const raw =
-    session.finishedAt ||
-    session.startedAt ||
-    session.startAt ||
-    session.timerStartedAt ||
-    "";
-  const ts = new Date(raw).getTime();
-  const safeTs = Number.isFinite(ts) ? ts : 0;
-  return statusRank * 1_000_000_000_000 + safeTs;
 }
 
 function parseTimeToMinutes(value) {
@@ -78,9 +56,9 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
-  const sessions = Array.isArray(safeData.sessions) ? safeData.sessions : [];
+  const activeSession =
+    safeData.ui && typeof safeData.ui.activeSession === "object" ? safeData.ui.activeSession : null;
   const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-  const urlCategoryId = urlParams?.get("cat") || null;
   const urlDateKey = urlParams?.get("date") || null;
   const effectiveDateKey =
     normalizeLocalDateKey(dateKey) ||
@@ -88,51 +66,16 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
     normalizeLocalDateKey(data?.selectedDateKey) ||
     normalizeLocalDateKey(safeData.ui?.selectedDate) ||
     todayLocalKey();
-  const sessionCategoryId =
-    categoryId || urlCategoryId || safeData.ui?.selectedCategoryId || categories[0]?.id || null;
-
-  const objectiveIdForSession = useMemo(() => {
-    if (!sessionCategoryId) return null;
-    const category = categories.find((c) => c.id === sessionCategoryId) || null;
-    if (category?.mainGoalId) return category.mainGoalId;
-    const outcome =
-      goals.find((g) => g.categoryId === sessionCategoryId && resolveGoalType(g) === "OUTCOME") ||
-      null;
-    return outcome?.id || null;
-  }, [categories, goals, sessionCategoryId]);
-
   const [tick, setTick] = useState(Date.now());
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [extraMinutes, setExtraMinutes] = useState(0);
   const [overrideStart, setOverrideStart] = useState("");
-
-  const sessionsForDay = useMemo(
-    () => getSessionsForDate({ sessions }, effectiveDateKey),
-    [sessions, effectiveDateKey]
-  );
-
-  const sessionMatch = useMemo(() => {
-    if (!sessionsForDay.length) return null;
-    if (!sessionCategoryId) return sessionsForDay[0] || null;
-    const byCategory = sessionsForDay.filter((s) => {
-      const objId = typeof s?.objectiveId === "string" ? s.objectiveId : null;
-      const obj = objId ? goals.find((g) => g.id === objId) || null : null;
-      if (obj?.categoryId && obj.categoryId === sessionCategoryId) return true;
-      const habitId = Array.isArray(s?.habitIds) ? s.habitIds.find(Boolean) : null;
-      const habit = habitId ? goals.find((g) => g.id === habitId) || null : null;
-      return habit?.categoryId === sessionCategoryId;
-    });
-    if (!byCategory.length) return sessionsForDay[0] || null;
-    return byCategory.reduce((best, cur) => (getSessionSortKey(cur) >= getSessionSortKey(best) ? cur : best));
-  }, [sessionsForDay, sessionCategoryId, goals]);
-
   const session = useMemo(() => {
-    if (sessionMatch) return sessionMatch;
-    if (objectiveIdForSession) {
-      return getSessionByDate({ sessions }, effectiveDateKey, objectiveIdForSession);
-    }
-    return getSessionByDate({ sessions }, effectiveDateKey, null);
-  }, [sessionMatch, sessions, effectiveDateKey, objectiveIdForSession]);
+    if (!activeSession) return null;
+    const key = activeSession.dateKey || activeSession.date;
+    if (key && key !== effectiveDateKey) return null;
+    return activeSession;
+  }, [activeSession, effectiveDateKey]);
   const isRunning = Boolean(session && session.status === "partial" && session.timerRunning);
   const isEditable = Boolean(session && session.status === "partial");
   useEffect(() => {
@@ -198,13 +141,42 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
     if (remainingSec > 0) return;
 
     const durationSec = Math.max(0, Math.floor(elapsedSec));
-    setData((prev) =>
-      finishSessionForDate(prev, resolvedDateKey, {
-        objectiveId,
-        durationSec,
-        doneHabitIds: habitIds,
-      })
-    );
+    if (typeof setData === "function") {
+      setData((prev) => {
+        const goals = Array.isArray(prev?.goals) ? prev.goals : [];
+        let nextOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
+        for (const habitId of habitIds) {
+          if (!habitId) continue;
+          const hasAny = nextOccurrences.some((o) => o && o.goalId === habitId && o.date === resolvedDateKey);
+          if (hasAny) {
+            nextOccurrences = setOccurrencesStatusForGoalDate(habitId, resolvedDateKey, "done", {
+              occurrences: nextOccurrences,
+              goals,
+            });
+          } else {
+            nextOccurrences = upsertOccurrence(habitId, resolvedDateKey, "00:00", null, { status: "done" }, {
+              occurrences: nextOccurrences,
+              goals,
+            });
+          }
+        }
+        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+        const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+        const nextSession = current
+          ? {
+              ...current,
+              status: "done",
+              doneHabitIds: habitIds,
+              durationSec,
+              timerRunning: false,
+              timerStartedAt: "",
+              timerAccumulatedSec: durationSec,
+              finishedAt: new Date().toISOString(),
+            }
+          : current;
+        return { ...prev, occurrences: nextOccurrences, ui: { ...prevUi, activeSession: nextSession } };
+      });
+    }
 
     if (typeof onBack === "function") onBack();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -213,26 +185,45 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
   function startTimer() {
     if (!session || typeof setData !== "function" || !canRunTimer) return;
     const nowIso = new Date().toISOString();
-    setData((prev) =>
-      updateSessionTimerForDate(prev, resolvedDateKey, {
-        objectiveId,
-        timerStartedAt: nowIso,
-        timerAccumulatedSec,
-        timerRunning: true,
-      })
-    );
+    setData((prev) => {
+      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+      const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+      if (!current) return prev;
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          activeSession: {
+            ...current,
+            timerStartedAt: nowIso,
+            timerAccumulatedSec,
+            timerRunning: true,
+            startedAt: current.startedAt || nowIso,
+          },
+        },
+      };
+    });
   }
 
   function pauseTimer() {
     if (!session || typeof setData !== "function") return;
-    setData((prev) =>
-      updateSessionTimerForDate(prev, resolvedDateKey, {
-        objectiveId,
-        timerStartedAt: "",
-        timerAccumulatedSec: elapsedSec,
-        timerRunning: false,
-      })
-    );
+    setData((prev) => {
+      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+      const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+      if (!current) return prev;
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          activeSession: {
+            ...current,
+            timerStartedAt: "",
+            timerAccumulatedSec: elapsedSec,
+            timerRunning: false,
+          },
+        },
+      };
+    });
   }
 
   function confirmPause() {
@@ -242,26 +233,62 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
   function resumeTimer() {
     if (!session || typeof setData !== "function" || !canRunTimer) return;
     const nowIso = new Date().toISOString();
-    setData((prev) =>
-      updateSessionTimerForDate(prev, resolvedDateKey, {
-        objectiveId,
-        timerStartedAt: nowIso,
-        timerAccumulatedSec,
-        timerRunning: true,
-      })
-    );
+    setData((prev) => {
+      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+      const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+      if (!current) return prev;
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          activeSession: {
+            ...current,
+            timerStartedAt: nowIso,
+            timerAccumulatedSec,
+            timerRunning: true,
+          },
+        },
+      };
+    });
   }
 
   function endSession() {
     if (!session || typeof setData !== "function" || !canRunTimer || !isEditable) return;
     const durationSec = Math.max(0, Math.floor(elapsedSec));
-    setData((prev) =>
-      finishSessionForDate(prev, resolvedDateKey, {
-        objectiveId,
-        durationSec,
-        doneHabitIds: habitIds,
-      })
-    );
+    setData((prev) => {
+      const goals = Array.isArray(prev?.goals) ? prev.goals : [];
+      let nextOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
+      for (const habitId of habitIds) {
+        if (!habitId) continue;
+        const hasAny = nextOccurrences.some((o) => o && o.goalId === habitId && o.date === resolvedDateKey);
+        if (hasAny) {
+          nextOccurrences = setOccurrencesStatusForGoalDate(habitId, resolvedDateKey, "done", {
+            occurrences: nextOccurrences,
+            goals,
+          });
+        } else {
+          nextOccurrences = upsertOccurrence(habitId, resolvedDateKey, "00:00", null, { status: "done" }, {
+            occurrences: nextOccurrences,
+            goals,
+          });
+        }
+      }
+      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+      const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+      const nextSession = current
+        ? {
+            ...current,
+            status: "done",
+            doneHabitIds: habitIds,
+            durationSec,
+            timerRunning: false,
+            timerStartedAt: "",
+            timerAccumulatedSec: durationSec,
+            finishedAt: new Date().toISOString(),
+          }
+        : current;
+      return { ...prev, occurrences: nextOccurrences, ui: { ...prevUi, activeSession: nextSession } };
+    });
 
     if (typeof onBack === "function") onBack();
   }
@@ -294,12 +321,38 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
       if (typeof onBack === "function") onBack();
       return;
     }
-    setData((prev) =>
-      targetHabitIds.reduce(
-        (next, habitId) => skipSessionForDate(next, habitId, resolvedDateKey, ""),
-        prev
-      )
-    );
+    setData((prev) => {
+      const goals = Array.isArray(prev?.goals) ? prev.goals : [];
+      let nextOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
+      for (const habitId of targetHabitIds) {
+        if (!habitId) continue;
+        const hasAny = nextOccurrences.some((o) => o && o.goalId === habitId && o.date === resolvedDateKey);
+        if (hasAny) {
+          nextOccurrences = setOccurrencesStatusForGoalDate(habitId, resolvedDateKey, "skipped", {
+            occurrences: nextOccurrences,
+            goals,
+          });
+        } else {
+          nextOccurrences = upsertOccurrence(habitId, resolvedDateKey, "00:00", null, { status: "skipped" }, {
+            occurrences: nextOccurrences,
+            goals,
+          });
+        }
+      }
+      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+      const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+      const nextSession = current
+        ? {
+            ...current,
+            status: "skipped",
+            doneHabitIds: [],
+            timerRunning: false,
+            timerStartedAt: "",
+            finishedAt: new Date().toISOString(),
+          }
+        : current;
+      return { ...prev, occurrences: nextOccurrences, ui: { ...prevUi, activeSession: nextSession } };
+    });
     if (typeof onBack === "function") onBack();
   }
 

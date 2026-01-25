@@ -1,6 +1,5 @@
 import { addDays, startOfWeekKey, todayKey } from "../utils/dates";
 import { resolveGoalType } from "../domain/goalType";
-import { getChecksForDate } from "./checks";
 
 function parseDateKey(key) {
   if (typeof key !== "string") return null;
@@ -23,38 +22,18 @@ function buildWeekKeys(nowDate) {
 }
 
 function collectDoneByDate(data, dateKeys) {
-  const sessions = Array.isArray(data?.sessions) ? data.sessions : [];
+  const occurrences = Array.isArray(data?.occurrences) ? data.occurrences : [];
   const dateSet = new Set(dateKeys);
   const map = new Map();
   for (const key of dateKeys) map.set(key, new Set());
 
-  for (const key of dateKeys) {
-    const { habits } = getChecksForDate(data, key);
-    const ids = habits;
-    const set = map.get(key);
-    if (!set) continue;
-    for (const id of ids) set.add(id);
-  }
-
-  for (const s of sessions) {
-    if (!s || s.status !== "done") continue;
-    const key = typeof s.dateKey === "string" ? s.dateKey : typeof s.date === "string" ? s.date : "";
+  for (const occ of occurrences) {
+    if (!occ || occ.status !== "done") continue;
+    const key = typeof occ.date === "string" ? occ.date : "";
     if (!dateSet.has(key)) continue;
     const set = map.get(key);
     if (!set) continue;
-    const doneIds = Array.isArray(s.doneHabitIds)
-      ? s.doneHabitIds
-      : Array.isArray(s.doneHabits)
-        ? s.doneHabits
-        : [];
-    if (doneIds.length) {
-      for (const id of doneIds) set.add(id);
-    } else {
-      if (s.habitId) set.add(s.habitId);
-      if (Array.isArray(s.habitIds)) {
-        for (const id of s.habitIds) set.add(id);
-      }
-    }
+    if (occ.goalId) set.add(occ.goalId);
   }
 
   return map;
@@ -104,8 +83,6 @@ export function getCategoryStatus(data, categoryId, nowDate = new Date()) {
   if (!processGoals.length) return "ACTIVE";
 
   const occurrences = Array.isArray(data?.occurrences) ? data.occurrences : [];
-  const reminders = Array.isArray(data?.reminders) ? data.reminders : [];
-  const reminderGoalIds = new Set(reminders.filter((r) => r && r.goalId && r.enabled !== false).map((r) => r.goalId));
   const today = todayKey(nowDate);
   const weekKeys = buildWeekKeys(nowDate);
   const weekSet = new Set(weekKeys);
@@ -152,13 +129,11 @@ export function getCategoryStatus(data, categoryId, nowDate = new Date()) {
     const goalId = goal.id;
     const occCount = occCountByGoal.get(goalId) || 0;
     const hasOccurrencePlan = occCount > 0;
-    const schedulePlan = countPlannedFromSchedule(goal.schedule, weekKeys);
-    const reminderPlan = reminderGoalIds.has(goalId);
-    const plannedAvailable = hasOccurrencePlan || schedulePlan.available;
+    const plannedAvailable = hasOccurrencePlan;
     if (plannedAvailable) hasPlannedData = true;
 
     if (!plannedAvailable) {
-      if (isGoalActive(goal) && (hasOccurrencePlan || schedulePlan.available || reminderPlan)) {
+      if (isGoalActive(goal) && hasOccurrencePlan) {
         hasActivePlannedGoal = true;
       }
       continue;
@@ -166,11 +141,7 @@ export function getCategoryStatus(data, categoryId, nowDate = new Date()) {
 
     if (isGoalActive(goal)) hasActivePlannedGoal = true;
 
-    const plannedCount = hasOccurrencePlan
-      ? occPlannedByGoal.get(goalId) || 0
-      : schedulePlan.available
-        ? schedulePlan.planned
-        : 0;
+    const plannedCount = occPlannedByGoal.get(goalId) || 0;
     const doneFallback = doneDatesByGoal.get(goalId)?.size || 0;
     const doneCount = Math.max(occDoneByGoal.get(goalId) || 0, doneFallback);
     if (doneCount < plannedCount) allPlannedMet = false;
@@ -207,23 +178,13 @@ export function getLoadSummary(data, nowDate = new Date()) {
   let plannedToday = 0;
   let plannedWeek = 0;
 
-  if (occurrences.length) {
-    for (const occ of occurrences) {
-      if (!occ || typeof occ.goalId !== "string" || !processIds.has(occ.goalId)) continue;
-      const dateKey = typeof occ.date === "string" ? occ.date : "";
-      const status = occ.status || "planned";
-      if (status === "skipped" || status === "done") continue;
-      if (dateKey === today) plannedToday += 1;
-      if (dateKey && weekSet.has(dateKey)) plannedWeek += 1;
-    }
-  } else {
-    for (const goal of processGoals) {
-      const schedulePlan = countPlannedFromSchedule(goal.schedule, weekKeys);
-      if (!schedulePlan.available || schedulePlan.planned === 0) continue;
-      plannedWeek += schedulePlan.planned;
-      const todayPlan = countPlannedFromSchedule(goal.schedule, [today]);
-      if (todayPlan.available) plannedToday += todayPlan.planned;
-    }
+  for (const occ of occurrences) {
+    if (!occ || typeof occ.goalId !== "string" || !processIds.has(occ.goalId)) continue;
+    const dateKey = typeof occ.date === "string" ? occ.date : "";
+    const status = occ.status || "planned";
+    if (status === "skipped" || status === "done") continue;
+    if (dateKey === today) plannedToday += 1;
+    if (dateKey && weekSet.has(dateKey)) plannedWeek += 1;
   }
 
   return {
@@ -234,16 +195,13 @@ export function getLoadSummary(data, nowDate = new Date()) {
 }
 
 export function getDisciplineSummary(data, nowDate = new Date()) {
-  const sessions = Array.isArray(data?.sessions) ? data.sessions : [];
   const goals = Array.isArray(data?.goals) ? data.goals : [];
   const processIds = new Set(goals.filter((g) => resolveGoalType(g) === "PROCESS").map((g) => g.id));
-
-  const checks = data?.checks && typeof data.checks === "object" ? data.checks : {};
-  const hasAnyChecks = Boolean(checks && Object.keys(checks).length);
+  const occurrences = Array.isArray(data?.occurrences) ? data.occurrences : [];
 
   // Fresh start guard: if user has no history at all (no sessions + no checks)
   // OR if they don't have any PROCESS goals yet, show 100% to avoid demotivating defaults.
-  if ((sessions.length === 0 && !hasAnyChecks) || processIds.size === 0) {
+  if (!occurrences.length || processIds.size === 0) {
     return {
       cancelledSessions7d: 0,
       noExecutionDays7d: 0,
@@ -256,8 +214,6 @@ export function getDisciplineSummary(data, nowDate = new Date()) {
     };
   }
 
-  const occurrences = Array.isArray(data?.occurrences) ? data.occurrences : [];
-
   const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
   const buildWindowKeys = (days) => Array.from({ length: days }, (_, i) => todayKey(addDays(nowDate, -i)));
 
@@ -266,36 +222,22 @@ export function getDisciplineSummary(data, nowDate = new Date()) {
     const plannedCountByDate = new Map();
     for (const k of windowKeys) plannedCountByDate.set(k, 0);
 
-    if (occurrences.length) {
-      for (const occ of occurrences) {
-        if (!occ || typeof occ.goalId !== "string" || !processIds.has(occ.goalId)) continue;
-        const dateKey = typeof occ.date === "string" ? occ.date : "";
-        if (!windowSet.has(dateKey)) continue;
-        const status = occ.status || "planned";
-        if (status === "skipped" || status === "done") continue;
-        plannedCountByDate.set(dateKey, (plannedCountByDate.get(dateKey) || 0) + 1);
-      }
-      return plannedCountByDate;
+    for (const occ of occurrences) {
+      if (!occ || typeof occ.goalId !== "string" || !processIds.has(occ.goalId)) continue;
+      const dateKey = typeof occ.date === "string" ? occ.date : "";
+      if (!windowSet.has(dateKey)) continue;
+      const status = occ.status || "planned";
+      if (status === "skipped" || status === "done") continue;
+      plannedCountByDate.set(dateKey, (plannedCountByDate.get(dateKey) || 0) + 1);
     }
-
-    const processGoals = goals.filter((g) => g && processIds.has(g.id));
-    for (const k of windowKeys) {
-      let planned = 0;
-      for (const g of processGoals) {
-        const p = countPlannedFromSchedule(g.schedule, [k]);
-        if (p.available) planned += p.planned;
-      }
-      plannedCountByDate.set(k, planned);
-    }
-
     return plannedCountByDate;
   }
 
   function computeCancelledSessions(windowSet) {
     let cancelled = 0;
-    for (const s of sessions) {
-      if (!s || s.status !== "skipped") continue;
-      const key = typeof s.dateKey === "string" ? s.dateKey : typeof s.date === "string" ? s.date : "";
+    for (const occ of occurrences) {
+      if (!occ || occ.status !== "canceled") continue;
+      const key = typeof occ.date === "string" ? occ.date : "";
       if (!windowSet.has(key)) continue;
       cancelled += 1;
     }

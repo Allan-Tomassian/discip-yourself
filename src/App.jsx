@@ -4,7 +4,6 @@ import CategoryRail from "./components/CategoryRail";
 import { migrate, usePersistedState } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
 import { getDueReminders, playReminderSound, sendReminderNotification } from "./logic/reminders";
-import { startSession } from "./logic/sessions";
 import { Button, Card } from "./components/UI";
 import PlusExpander from "./components/PlusExpander";
 import { markIOSRootClass, safeAlert } from "./utils/dialogs";
@@ -43,7 +42,8 @@ import TourOverlay from "./tour/TourOverlay";
 import { createEmptyDraft, normalizeCreationDraft } from "./creation/creationDraft";
 import { STEP_HABITS, STEP_OUTCOME, isValidCreationStep } from "./creation/creationSchema";
 import DiagnosticOverlay from "./components/DiagnosticOverlay";
-import { validateOccurrences } from "./logic/occurrencePlanner";
+import { ensureWindowForGoal, validateOccurrences } from "./logic/occurrencePlanner";
+import { uid } from "./utils/helpers";
 import PaywallModal from "./components/PaywallModal";
 
 function runSelfTests(data) {
@@ -1262,15 +1262,25 @@ export default function App() {
                       target &&
                       (target.type || target.kind || target.planType || "").toString().toUpperCase() !== "OUTCOME";
                     if (isProcess && target?.id) {
-                      setData((prev) =>
-                        startSession(
-                          prev,
-                          target.id,
-                          todayLocalKey(),
-                          typeof target.parentId === "string" ? target.parentId : null,
-                          Number.isFinite(target.sessionMinutes) ? target.sessionMinutes : null
-                        )
-                      );
+                      setData((prev) => {
+                        const ensured = ensureWindowForGoal(prev, target.id, todayLocalKey(), 1);
+                        const prevUi = ensured.ui || {};
+                        const nextSession = {
+                          id: prevUi.activeSession?.id || uid(),
+                          dateKey: todayLocalKey(),
+                          objectiveId: typeof target.parentId === "string" ? target.parentId : null,
+                          habitIds: [target.id],
+                          status: "partial",
+                          timerStartedAt: "",
+                          timerAccumulatedSec: 0,
+                          timerRunning: false,
+                          doneHabitIds: [],
+                        };
+                        return {
+                          ...ensured,
+                          ui: { ...prevUi, activeSession: nextSession },
+                        };
+                      });
                     }
                     if (target?.categoryId) {
                       setData((prev) => ({

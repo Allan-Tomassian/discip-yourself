@@ -12,15 +12,14 @@ import {
 } from "../utils/dates";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { setMainGoal } from "../logic/goals";
-import { getDoneSessionsForDate, getSessionByDate, startSessionForDate } from "../logic/sessions";
 import { ensureWindowForGoals } from "../logic/occurrencePlanner";
-import { getChecksForDate, setMicroChecked } from "../logic/checks";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { isPrimaryCategory, isPrimaryGoal } from "../logic/priority";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
 import { resolveGoalType } from "../domain/goalType";
 import { linkProcessToOutcome, splitProcessByLink } from "../logic/linking";
+import { uid } from "../utils/helpers";
 
 // TOUR MAP:
 // - primary_action: start session (GO) for today
@@ -226,12 +225,13 @@ export default function Home({
   const noteStorageKey = `${noteKeyPrefix}${selectedDateKey}`;
   const noteMetaStorageKey = `${noteMetaKeyPrefix}${selectedDateKey}`;
   const noteHistoryStorageKey = noteCategoryId ? `dailyNoteHistory:${noteCategoryId}` : "dailyNoteHistory";
-  const sessions = Array.isArray(safeData.sessions) ? safeData.sessions : [];
-  const checks = safeData.checks || {};
   const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
-  const dayChecks = useMemo(() => {
-    return getChecksForDate(safeData, selectedDateKey);
-  }, [safeData, selectedDateKey]);
+  const microChecks = safeData.microChecks && typeof safeData.microChecks === "object" ? safeData.microChecks : {};
+  const dayMicro = useMemo(() => {
+    return microChecks?.[selectedDateKey] && typeof microChecks[selectedDateKey] === "object"
+      ? microChecks[selectedDateKey]
+      : {};
+  }, [microChecks, selectedDateKey]);
   const plannedByDate = useMemo(() => {
     const map = new Map();
     for (const occ of occurrences) {
@@ -243,40 +243,19 @@ export default function Home({
   }, [occurrences]);
   const doneByDate = useMemo(() => {
     const map = new Map();
-    const addId = (key, id) => {
-      if (!key || !id) return;
+    for (const occ of occurrences) {
+      if (!occ || occ.status !== "done") continue;
+      const key = typeof occ.date === "string" ? occ.date : "";
+      const id = typeof occ.goalId === "string" ? occ.goalId : "";
+      if (!key || !id) continue;
       const set = map.get(key) || new Set();
       set.add(id);
       map.set(key, set);
-    };
-    if (checks && typeof checks === "object") {
-      for (const key of Object.keys(checks)) {
-        const { habits } = getChecksForDate(safeData, key);
-        for (const id of habits) addId(key, id);
-      }
-    }
-    for (const s of sessions) {
-      if (!s || s.status !== "done") continue;
-      const key = typeof s.dateKey === "string" ? s.dateKey : typeof s.date === "string" ? s.date : "";
-      if (!key) continue;
-      const doneIds = Array.isArray(s.doneHabitIds)
-        ? s.doneHabitIds
-        : Array.isArray(s.doneHabits)
-          ? s.doneHabits
-          : [];
-      if (doneIds.length) {
-        for (const id of doneIds) addId(key, id);
-      } else {
-        if (s.habitId) addId(key, s.habitId);
-        if (Array.isArray(s.habitIds)) {
-          for (const id of s.habitIds) addId(key, id);
-        }
-      }
     }
     const counts = new Map();
     for (const [key, set] of map.entries()) counts.set(key, set.size);
     return counts;
-  }, [checks, sessions]);
+  }, [occurrences]);
 
   // Effects
   useEffect(() => {
@@ -487,29 +466,34 @@ export default function Home({
     return primary || outcomeGoals[0] || null;
   }, [focusCategory?.id, mainGoalId, outcomeGoals]);
 
-  const dayDoneSessions = useMemo(
-    () => getDoneSessionsForDate(sessions, selectedDateKey),
-    [sessions, selectedDateKey]
-  );
-  const sessionForDay = useMemo(
-    () => getSessionByDate({ sessions }, selectedDateKey, selectedGoal?.id || null),
-    [sessions, selectedDateKey, selectedGoal?.id]
-  );
+  const activeSession =
+    safeData.ui && typeof safeData.ui.activeSession === "object" ? safeData.ui.activeSession : null;
+  const sessionForDay = useMemo(() => {
+    if (!activeSession) return null;
+    const key = activeSession.dateKey || activeSession.date;
+    if (key !== selectedDateKey) return null;
+    if (selectedGoal?.id && activeSession.objectiveId && activeSession.objectiveId !== selectedGoal.id) {
+      return null;
+    }
+    return activeSession;
+  }, [activeSession, selectedDateKey, selectedGoal?.id]);
   const sessionHabit = useMemo(() => {
     if (!sessionForDay?.habitIds?.length) return null;
     const firstId = sessionForDay.habitIds[0];
     return firstId ? goals.find((g) => g.id === firstId) || null : null;
   }, [sessionForDay?.habitIds, goals]);
   const doneHabitIds = useMemo(() => {
-    const ids = new Set(dayChecks.habits);
-    for (const s of dayDoneSessions) {
-      if (s?.habitId) ids.add(s.habitId);
-      if (Array.isArray(s?.doneHabitIds)) {
-        for (const id of s.doneHabitIds) ids.add(id);
-      }
+    const ids = new Set();
+    for (const occ of occurrences) {
+      if (!occ || occ.status !== "done") continue;
+      if (occ.date !== selectedDateKey) continue;
+      if (occ.goalId) ids.add(occ.goalId);
+    }
+    if (Array.isArray(sessionForDay?.doneHabitIds)) {
+      for (const id of sessionForDay.doneHabitIds) ids.add(id);
     }
     return ids;
-  }, [dayChecks.habits, dayDoneSessions]);
+  }, [occurrences, selectedDateKey, sessionForDay?.doneHabitIds]);
 
   const processGoals = useMemo(() => {
     if (!focusCategory?.id) return [];
@@ -634,20 +618,7 @@ export default function Home({
       return unique[0] || null;
     };
 
-    // 1) Session active: use objectiveId / goalId
-    for (const s of sessions) {
-      if (!s) continue;
-      const key = typeof s.dateKey === "string" ? s.dateKey : typeof s.date === "string" ? s.date : "";
-      if (!key) continue;
-      const sid =
-        (typeof s.objectiveId === "string" && s.objectiveId) ||
-        (typeof s.goalId === "string" && s.goalId) ||
-        null;
-      const out = sid ? getOutcomeForGoalId(sid) : null;
-      if (out?.id) map.set(key, out.id);
-    }
-
-    // 2) Occurrences planned: map PROCESS -> parent OUTCOME
+    // Occurrences planned: map PROCESS -> parent OUTCOME
     for (const occ of occurrences) {
       if (!occ || typeof occ.date !== "string") continue;
       if (occ.status !== "planned") continue;
@@ -663,7 +634,7 @@ export default function Home({
     }
 
     return map;
-  }, [sessions, occurrences, goalsById, getOutcomeForGoalId]);
+  }, [occurrences, goalsById, getOutcomeForGoalId]);
 
   const goalAccentByDate = useMemo(() => {
     const map = new Map();
@@ -681,9 +652,9 @@ export default function Home({
   }, [microState.items]);
 
   const microDoneToday = useMemo(() => {
-    const count = Object.keys(dayChecks.micro || {}).length;
+    const count = Object.keys(dayMicro || {}).length;
     return Math.min(3, count);
-  }, [dayChecks.micro]);
+  }, [dayMicro]);
 
   const canOpenSession = Boolean(canValidate && selectedGoal && hasSelectedActions);
 
@@ -707,10 +678,10 @@ export default function Home({
     const now = new Date();
 
     // UX: start discipline at 100% for brand-new users (no history yet).
-    const hasAnyChecks = checks && typeof checks === "object" && Object.keys(checks).length > 0;
-    const hasAnySessions = Array.isArray(sessions) && sessions.some((s) => s && typeof s.status === "string");
+    const hasAnyOccurrences = occurrences.some((o) => o && typeof o.status === "string");
+    const hasAnyMicro = Object.keys(microChecks).length > 0;
     const hasAnyDoneOutcome = goals.some((g) => resolveGoalType(g) === "OUTCOME" && g.status === "done");
-    const hasAnyHistory = hasAnyChecks || hasAnySessions || hasAnyDoneOutcome;
+    const hasAnyHistory = hasAnyOccurrences || hasAnyMicro || hasAnyDoneOutcome;
 
     if (!hasAnyHistory) {
       const outcomesTotal = goals.filter((g) => resolveGoalType(g) === "OUTCOME").length;
@@ -733,14 +704,11 @@ export default function Home({
     const plannedPerDay = processIds.length;
 
     function getDoneIdsForDate(key) {
-      const { habits } = getChecksForDate(safeData, key);
-      const ids = new Set(habits);
-      for (const s of sessions || []) {
-        if (!s || s.date !== key || s.status !== "done") continue;
-        if (s.habitId) ids.add(s.habitId);
-        if (Array.isArray(s.doneHabitIds)) {
-          for (const id of s.doneHabitIds) ids.add(id);
-        }
+      const ids = new Set();
+      for (const occ of occurrences) {
+        if (!occ || occ.status !== "done") continue;
+        if (occ.date !== key) continue;
+        if (processIds.includes(occ.goalId)) ids.add(occ.goalId);
       }
       return ids;
     }
@@ -773,7 +741,7 @@ export default function Home({
     let microDone14 = 0;
     for (let i = 0; i < 14; i += 1) {
       const key = toLocalDateKey(addDays(now, -i));
-      const { micro } = getChecksForDate(safeData, key);
+      const micro = microChecks?.[key] && typeof microChecks[key] === "object" ? microChecks[key] : {};
       const count = Object.keys(micro || {}).length;
       microDone14 += Math.min(3, count);
     }
@@ -809,7 +777,7 @@ export default function Home({
       reliabilityRatio,
       habitDaysKept14: habit14.keptDays,
     };
-  }, [checks, goals, sessions]);
+  }, [goals, microChecks, occurrences]);
 
   const sessionBadgeLabel = useMemo(() => {
     if (!sessionForDay || sessionForDay?.status !== "partial") return "";
@@ -1141,16 +1109,29 @@ export default function Home({
 
   function openSessionFlow() {
     if (!selectedGoal?.id || !canValidate || !hasSelectedActions || typeof setData !== "function") return;
-    setData((prev) =>
-      startSessionForDate(
-        ensureWindowForGoals(prev, selectedActionIds, selectedDateKey, 1),
-        selectedDateKey,
-        {
-          objectiveId: selectedGoal.id,
-          habitIds: selectedActionIds,
-        }
-      )
-    );
+    setData((prev) => {
+      const ensured = ensureWindowForGoals(prev, selectedActionIds, selectedDateKey, 1);
+      const prevUi = ensured.ui || {};
+      const existing = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+      const nextSession = {
+        id: existing?.id || uid(),
+        dateKey: selectedDateKey,
+        objectiveId: selectedGoal.id,
+        habitIds: selectedActionIds,
+        status: "partial",
+        timerStartedAt: "",
+        timerAccumulatedSec: 0,
+        timerRunning: false,
+        doneHabitIds: [],
+      };
+      return {
+        ...ensured,
+        ui: {
+          ...prevUi,
+          activeSession: nextSession,
+        },
+      };
+    });
     if (typeof onOpenSession === "function") {
       onOpenSession({ categoryId: focusCategory?.id || null, dateKey: selectedDateKey });
     }
@@ -1408,11 +1389,22 @@ export default function Home({
     if (!microId || typeof setData !== "function") return;
     if (!canValidate) return;
     // Max 3 micro-actions/day and avoid duplicates
-    const already = Boolean(dayChecks.micro?.[microId]);
+    const already = Boolean(dayMicro?.[microId]);
     if (already) return;
     if (microDoneToday >= 3) return;
-
-    setData((prev) => setMicroChecked(prev, selectedDateKey, microId, true));
+    setData((prev) => {
+      const prevMicro = prev?.microChecks && typeof prev.microChecks === "object" ? prev.microChecks : {};
+      const prevDay = prevMicro?.[selectedDateKey] && typeof prevMicro[selectedDateKey] === "object"
+        ? prevMicro[selectedDateKey]
+        : {};
+      return {
+        ...prev,
+        microChecks: {
+          ...prevMicro,
+          [selectedDateKey]: { ...prevDay, [microId]: true },
+        },
+      };
+    });
   }
 
 
@@ -1997,7 +1989,7 @@ export default function Home({
                       <div className="sectionSub">Trois impulsions simples</div>
                       <div className="mt12 col" style={{ gap: 10 }}>
                         {microItems.map((item) => {
-                          const isMicroDone = Boolean(dayChecks.micro?.[item.id]);
+                          const isMicroDone = Boolean(dayMicro?.[item.id]);
                           const canAddMicro = canValidate && microDoneToday < 3 && !isMicroDone;
                           return (
                             <AccentItem key={item.uid} color={accent} className="listItem">

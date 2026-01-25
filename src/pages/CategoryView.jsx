@@ -8,7 +8,6 @@ import { addDays, startOfWeekKey, todayKey } from "../utils/dates";
 import { isPrimaryCategory, isPrimaryGoal, setPrimaryCategory } from "../logic/priority";
 import { resolveGoalType } from "../domain/goalType";
 import { linkProcessToOutcome, splitProcessByLink } from "../logic/linking";
-import { getChecksForDate } from "../logic/checks";
 
 // TOUR MAP:
 // - primary_action: manage goals/actions in a category
@@ -35,7 +34,6 @@ export default function CategoryView({
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
-  const sessions = Array.isArray(safeData.sessions) ? safeData.sessions : [];
   const uiLibraryCategoryId =
     safeData?.ui?.selectedCategoryByView?.library || safeData?.ui?.librarySelectedCategoryId || null;
   const resolvedCategoryId =
@@ -123,38 +121,6 @@ export default function CategoryView({
     const weekKeys = Array.from({ length: 7 }, (_, i) => todayKey(addDays(weekStartDate, i)));
     const weekSet = new Set(weekKeys);
 
-    const doneDatesByHabit = new Map();
-    const addDone = (habitId, dateKey) => {
-      if (!habitId || !dateKey) return;
-      const set = doneDatesByHabit.get(habitId) || new Set();
-      set.add(dateKey);
-      doneDatesByHabit.set(habitId, set);
-    };
-
-    for (const key of weekKeys) {
-      const { habits: ids } = getChecksForDate(safeData, key);
-      for (const id of ids) addDone(id, key);
-    }
-
-    for (const s of sessions) {
-      if (!s || s.status !== "done") continue;
-      const key = typeof s.dateKey === "string" ? s.dateKey : typeof s.date === "string" ? s.date : "";
-      if (!weekSet.has(key)) continue;
-      const doneIds = Array.isArray(s.doneHabitIds)
-        ? s.doneHabitIds
-        : Array.isArray(s.doneHabits)
-          ? s.doneHabits
-          : [];
-      if (doneIds.length) {
-        for (const id of doneIds) addDone(id, key);
-      } else {
-        if (s.habitId) addDone(s.habitId, key);
-        if (Array.isArray(s.habitIds)) {
-          for (const id of s.habitIds) addDone(id, key);
-        }
-      }
-    }
-
     const occurrenceStats = new Map();
     for (const occ of occurrences) {
       if (!occ || typeof occ.goalId !== "string" || typeof occ.date !== "string") continue;
@@ -168,10 +134,8 @@ export default function CategoryView({
 
     for (const h of processGoals) {
       const occ = occurrenceStats.get(h.id) || { planned: 0, done: 0 };
-      const doneFallback = doneDatesByHabit.get(h.id)?.size || 0;
-      const hasOccurrences = occ.planned > 0 || occ.done > 0;
-      const done = hasOccurrences ? Math.max(occ.done, doneFallback) : doneFallback;
-      const planned = hasOccurrences ? occ.planned : 0;
+      const planned = occ.planned;
+      const done = occ.done;
       const ratio = planned ? Math.min(1, done / planned) : 0;
       stats.set(h.id, { planned, done, ratio });
     }

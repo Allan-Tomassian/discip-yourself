@@ -1,5 +1,5 @@
-import { skipSessionForDate } from "./sessions";
 import { getDayCountsForDate } from "./calendar";
+import { setOccurrencesStatusForGoalDate, upsertOccurrence } from "./occurrences";
 
 const KEY = "2026-01-18";
 
@@ -49,7 +49,11 @@ export function runInternalP2Tests() {
       ],
       sessions: [],
     };
-    const next = skipSessionForDate(state, "g1", KEY, "");
+    const updated = setOccurrencesStatusForGoalDate("g1", KEY, "skipped", {
+      occurrences: state.occurrences,
+      goals: state.goals,
+    });
+    const next = { ...state, occurrences: updated };
     const list = findOccurrences(next.occurrences, "g1", KEY);
     const byStart = countByStart(list);
     const occ = list.find((o) => o.start === "10:00");
@@ -83,8 +87,8 @@ export function runInternalP2Tests() {
       occurrences: [],
       sessions: [],
     };
-    const next = skipSessionForDate(state, "g1", KEY, "");
-    const list = findOccurrences(next.occurrences, "g1", KEY);
+    const updated = upsertOccurrence("g1", KEY, "00:00", 30, { status: "skipped" }, state);
+    const list = findOccurrences(updated, "g1", KEY);
     const skipped = list.filter((o) => o.status === "skipped");
     const byStart = countByStart(skipped);
     const hasDuplicateStart = Array.from(byStart.values()).some((v) => v > 1);
