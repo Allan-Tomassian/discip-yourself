@@ -1147,6 +1147,7 @@ export default function App() {
         <Categories
           data={data}
           setData={setData}
+          onOpenPaywall={openPaywall}
           onOpenCreateOutcome={() => {
             openCreateOutcomeDirect({ source: "library" });
           }}
@@ -1184,6 +1185,7 @@ export default function App() {
           data={data}
           setData={setData}
           onBack={() => setTab("create-goal")}
+          onOpenCategories={() => setTab("library")}
           onCancel={() => {
             resetCreateDraft();
             setTab("library");

@@ -6,6 +6,7 @@ import { resolveGoalType } from "../domain/goalType";
 import { uid } from "../utils/helpers";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { createGoal } from "../logic/goals";
+import { SYSTEM_INBOX_ID } from "../logic/state";
 
 function getCategoryIdFromDraft(draft) {
   if (draft?.category?.mode === "existing") return draft.category.id || "";
@@ -18,6 +19,8 @@ export default function CreateV2Outcome({
   onBack,
   onNext,
   onCancel,
+  onCreateActionFromObjective,
+  onSkipObjectiveAction,
   canCreateOutcome = true,
   onOpenPaywall,
   isPremiumPlan = false,
@@ -35,8 +38,9 @@ export default function CreateV2Outcome({
   );
 
   const draftCategoryId = getCategoryIdFromDraft(draft);
+  const sysCategoryId = categories.find((c) => c.id === SYSTEM_INBOX_ID)?.id || SYSTEM_INBOX_ID;
   const initialCategoryId =
-    (draftCategoryId && categories.some((c) => c.id === draftCategoryId) && draftCategoryId) || "";
+    (draftCategoryId && categories.some((c) => c.id === draftCategoryId) && draftCategoryId) || sysCategoryId;
   const [categoryId, setCategoryId] = useState(initialCategoryId);
   const [title, setTitle] = useState(draft.outcomes?.[0]?.title || "");
   const [startDate, setStartDate] = useState(draft.outcomes?.[0]?.startDate || "");
@@ -62,6 +66,12 @@ export default function CreateV2Outcome({
 
   const canContinue = Boolean(title.trim() && deadline.trim() && !showSavedBanner);
   const startDateHelper = startDate ? "Démarre à la date choisie." : "Si vide : démarre aujourd’hui.";
+  const categoryOptions = useMemo(() => {
+    const sys = categories.find((c) => c.id === SYSTEM_INBOX_ID) || { id: SYSTEM_INBOX_ID, name: "Général" };
+    const rest = categories.filter((c) => c.id !== SYSTEM_INBOX_ID);
+    rest.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+    return [sys, ...rest];
+  }, [categories]);
 
   function validateDeadline(nextValue) {
     const normalized = normalizeLocalDateKey(nextValue);
@@ -94,7 +104,7 @@ export default function CreateV2Outcome({
       let next = prev;
       next = createGoal(next, {
         id: outcomeId,
-        categoryId: categoryId ? categoryId : null,
+        categoryId: categoryId || sysCategoryId,
         title: title.trim(),
         type: "OUTCOME",
         planType: "STATE",
@@ -135,19 +145,16 @@ export default function CreateV2Outcome({
         </Button>
         <Card accentBorder>
           <div className="p18 col gap12">
-            {categories.length ? (
-              <div className="stack stackGap8">
-                <div className="small textMuted">Catégorie (optionnel)</div>
-                <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                  <option value="">Sans catégorie</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name || "Catégorie"}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            ) : null}
+            <div className="stack stackGap8">
+              <div className="small textMuted">Catégorie</div>
+              <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                {categoryOptions.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name || "Catégorie"}
+                  </option>
+                ))}
+              </Select>
+            </div>
 
             <div className="stack stackGap8">
               <div className="small textMuted">Objectif</div>
@@ -212,8 +219,27 @@ export default function CreateV2Outcome({
         {showSavedBanner ? (
           <Card>
             <div className="p18">
-              <div className="small2">
-                Objectif créé. Utilise le + pour ajouter une action.
+              <div className="small2">Objectif créé.</div>
+              <div className="mt8 row gap8 alignCenter">
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    if (typeof onCreateActionFromObjective === "function" && savedOutcomeId) {
+                      onCreateActionFromObjective(savedOutcomeId);
+                    }
+                  }}
+                >
+                  Créer une action liée
+                </Button>
+                <button
+                  type="button"
+                  className="linkBtn"
+                  onClick={() => {
+                    if (typeof onSkipObjectiveAction === "function") onSkipObjectiveAction();
+                  }}
+                >
+                  Plus tard
+                </button>
               </div>
             </div>
           </Card>

@@ -386,7 +386,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
                         Type
                       </div>
                       <Select value={planType} onChange={(e) => setPlanType(e.target.value)}>
-                        <option value="ONE_OFF">Ponctuel</option>
+                        <option value="ONE_OFF">Une fois</option>
                         <option value="ACTION">Répétitif</option>
                       </Select>
                     </div>

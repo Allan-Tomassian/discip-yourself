@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
-import { setOccurrencesStatusForGoalDate, upsertOccurrence } from "../logic/occurrences";
+import { findOccurrenceForGoalDateDeterministic, setOccurrenceStatus, upsertOccurrence } from "../logic/occurrences";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { resolveConflictNearest } from "../logic/occurrencePlanner";
@@ -50,6 +50,14 @@ function pickClosestOccurrence(list, preferredMin) {
     }
   }
   return best;
+}
+
+function applySingleOccurrenceStatus(nextOccurrences, goals, goalId, dateKey, status) {
+  const picked = findOccurrenceForGoalDateDeterministic(nextOccurrences, goalId, dateKey);
+  if (picked && picked.start) {
+    return setOccurrenceStatus(goalId, dateKey, picked.start, status, { occurrences: nextOccurrences, goals });
+  }
+  return upsertOccurrence(goalId, dateKey, "00:00", null, { status }, { occurrences: nextOccurrences, goals });
 }
 
 export default function Session({ data, setData, onBack, onOpenLibrary, categoryId, dateKey }) {
@@ -147,18 +155,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
         let nextOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
         for (const habitId of habitIds) {
           if (!habitId) continue;
-          const hasAny = nextOccurrences.some((o) => o && o.goalId === habitId && o.date === resolvedDateKey);
-          if (hasAny) {
-            nextOccurrences = setOccurrencesStatusForGoalDate(habitId, resolvedDateKey, "done", {
-              occurrences: nextOccurrences,
-              goals,
-            });
-          } else {
-            nextOccurrences = upsertOccurrence(habitId, resolvedDateKey, "00:00", null, { status: "done" }, {
-              occurrences: nextOccurrences,
-              goals,
-            });
-          }
+          nextOccurrences = applySingleOccurrenceStatus(nextOccurrences, goals, habitId, resolvedDateKey, "done");
         }
         const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
         const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
@@ -260,18 +257,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
       let nextOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
       for (const habitId of habitIds) {
         if (!habitId) continue;
-        const hasAny = nextOccurrences.some((o) => o && o.goalId === habitId && o.date === resolvedDateKey);
-        if (hasAny) {
-          nextOccurrences = setOccurrencesStatusForGoalDate(habitId, resolvedDateKey, "done", {
-            occurrences: nextOccurrences,
-            goals,
-          });
-        } else {
-          nextOccurrences = upsertOccurrence(habitId, resolvedDateKey, "00:00", null, { status: "done" }, {
-            occurrences: nextOccurrences,
-            goals,
-          });
-        }
+        nextOccurrences = applySingleOccurrenceStatus(nextOccurrences, goals, habitId, resolvedDateKey, "done");
       }
       const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
       const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
@@ -326,18 +312,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
       let nextOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
       for (const habitId of targetHabitIds) {
         if (!habitId) continue;
-        const hasAny = nextOccurrences.some((o) => o && o.goalId === habitId && o.date === resolvedDateKey);
-        if (hasAny) {
-          nextOccurrences = setOccurrencesStatusForGoalDate(habitId, resolvedDateKey, "skipped", {
-            occurrences: nextOccurrences,
-            goals,
-          });
-        } else {
-          nextOccurrences = upsertOccurrence(habitId, resolvedDateKey, "00:00", null, { status: "skipped" }, {
-            occurrences: nextOccurrences,
-            goals,
-          });
-        }
+        nextOccurrences = applySingleOccurrenceStatus(nextOccurrences, goals, habitId, resolvedDateKey, "skipped");
       }
       const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
       const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;

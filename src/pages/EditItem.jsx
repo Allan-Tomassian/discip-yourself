@@ -573,7 +573,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
                           Type
                         </div>
                         <Select value={planType} onChange={(e) => setPlanType(e.target.value)}>
-                          <option value="ONE_OFF">Ponctuel</option>
+                          <option value="ONE_OFF">Une fois</option>
                           <option value="ACTION">Répétitif</option>
                         </Select>
                       </div>

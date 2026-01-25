@@ -28,6 +28,8 @@ export const DEFAULT_BLOCKS = [
 
 const MEASURE_TYPES = new Set(["money", "counter", "time", "energy", "distance", "weight"]);
 const TRACKING_MODES = new Set(["none", "manual", "template"]);
+const REPEAT_VALUES = new Set(["none", "daily", "weekly"]);
+const DOW_VALUES = new Set([1, 2, 3, 4, 5, 6, 7]);
 const GOAL_PRIORITY_VALUES = new Set(["prioritaire", "secondaire", "bonus"]);
 
 // Demo mode (disabled by default).
@@ -83,6 +85,37 @@ function normalizeCadence(raw) {
   const v = typeof raw === "string" ? raw.toUpperCase() : "";
   if (v === "DAILY" || v === "WEEKLY" || v === "YEARLY") return v;
   return "";
+}
+
+function normalizeRepeat(raw) {
+  const v = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  return REPEAT_VALUES.has(v) ? v : "";
+}
+
+function normalizeDaysOfWeek(value) {
+  if (!Array.isArray(value)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const v of value) {
+    const n = typeof v === "string" ? Number(v) : v;
+    if (!Number.isFinite(n)) continue;
+    const id = Math.trunc(n);
+    if (!DOW_VALUES.has(id) || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
+function normalizeStartTime(value) {
+  const raw = typeof value === "string" ? value.trim() : "";
+  return /^\d{2}:\d{2}$/.test(raw) ? raw : "";
+}
+
+function normalizeDurationMinutes(value) {
+  const raw = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(raw) || raw <= 0) return null;
+  return Math.round(raw);
 }
 
 function normalizeGoalPriority(raw) {
@@ -652,6 +685,39 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
     }
   } else {
     g.schedule = undefined;
+  }
+
+  if (process) {
+    const scheduleDays = normalizeDaysOfWeek(g.schedule?.daysOfWeek);
+    let repeat = normalizeRepeat(g.repeat);
+    if (!repeat) {
+      if (g.planType === "ONE_OFF" || normalizeLocalDateKey(g.oneOffDate)) {
+        repeat = "none";
+      } else if (scheduleDays.length && scheduleDays.length < 7) {
+        repeat = "weekly";
+      } else {
+        repeat = "daily";
+      }
+    }
+    g.repeat = repeat || "none";
+
+    const days = normalizeDaysOfWeek(g.daysOfWeek);
+    if (g.repeat === "weekly") {
+      g.daysOfWeek = days.length ? days : scheduleDays;
+    } else {
+      g.daysOfWeek = days.length ? days : [];
+    }
+
+    const startTime = normalizeStartTime(g.startTime);
+    const scheduleStart = normalizeStartTime(g.schedule?.timeSlots?.[0]);
+    if (startTime) g.startTime = startTime;
+    else if (scheduleStart && scheduleStart !== "00:00") g.startTime = scheduleStart;
+    else g.startTime = "";
+
+    const duration = normalizeDurationMinutes(g.durationMinutes);
+    const scheduleDuration = normalizeDurationMinutes(g.schedule?.durationMinutes);
+    const sessionDuration = normalizeDurationMinutes(g.sessionMinutes);
+    g.durationMinutes = duration ?? scheduleDuration ?? sessionDuration ?? null;
   }
 
   g.resetPolicy = normalizeResetPolicy(g.resetPolicy);

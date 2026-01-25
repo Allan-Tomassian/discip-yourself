@@ -14,6 +14,7 @@ import {
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { setMainGoal } from "../logic/goals";
 import { ensureWindowForGoals } from "../logic/occurrencePlanner";
+import { setOccurrenceStatus } from "../logic/occurrences";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { isPrimaryCategory, isPrimaryGoal } from "../logic/priority";
@@ -577,6 +578,103 @@ export default function Home({
     for (const g of goals) if (g && g.id) map.set(g.id, g);
     return map;
   }, [goals]);
+  const categoriesById = useMemo(() => {
+    const map = new Map();
+    for (const c of categories) if (c && c.id) map.set(c.id, c);
+    return map;
+  }, [categories]);
+
+  const dayLabelFormatter = useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "2-digit", month: "short" });
+    } catch (err) {
+      void err;
+      return null;
+    }
+  }, []);
+
+  const formatDayLabel = useCallback(
+    (key) => {
+      if (!key) return "—";
+      if (!dayLabelFormatter) return key;
+      return dayLabelFormatter.format(fromLocalDateKey(key));
+    },
+    [dayLabelFormatter]
+  );
+
+  const occurrenceSort = useCallback(
+    (a, b) => {
+      const ga = goalsById.get(a?.goalId) || null;
+      const gb = goalsById.get(b?.goalId) || null;
+      const sa = typeof a?.start === "string" ? a.start : "";
+      const sb = typeof b?.start === "string" ? b.start : "";
+      const ha = Boolean(ga?.startTime || (sa && sa !== "00:00"));
+      const hb = Boolean(gb?.startTime || (sb && sb !== "00:00"));
+      if (ha !== hb) return ha ? -1 : 1;
+      if (ha && hb && sa !== sb) return sa.localeCompare(sb);
+      const ta = ga?.title || "";
+      const tb = gb?.title || "";
+      return String(ta).localeCompare(String(tb));
+    },
+    [goalsById]
+  );
+
+  const occurrencesForSelectedDay = useMemo(() => {
+    const list = occurrences.filter((o) => o && o.date === selectedDateKey);
+    return list.slice().sort(occurrenceSort);
+  }, [occurrences, occurrenceSort, selectedDateKey]);
+
+  const planningWindowDays = useMemo(() => {
+    if (Number.isFinite(generationWindowDays) && generationWindowDays > 0) {
+      return Math.floor(generationWindowDays);
+    }
+    return isPremiumPlan ? 90 : 7;
+  }, [generationWindowDays, isPremiumPlan]);
+
+  const planningDays = useMemo(() => {
+    const start = fromLocalDateKey(localTodayKey);
+    const out = [];
+    const count = Number.isFinite(planningWindowDays) && planningWindowDays > 0 ? planningWindowDays : 7;
+    for (let i = 0; i < count; i += 1) {
+      out.push(toLocalDateKey(addDays(start, i)));
+    }
+    return out;
+  }, [localTodayKey, planningWindowDays]);
+
+  const occurrencesByPlanningDay = useMemo(() => {
+    const map = new Map();
+    const daySet = new Set(planningDays);
+    for (const key of planningDays) map.set(key, []);
+    for (const occ of occurrences) {
+      if (!occ || typeof occ.date !== "string" || !daySet.has(occ.date)) continue;
+      const bucket = map.get(occ.date);
+      if (bucket) bucket.push(occ);
+    }
+    for (const [key, list] of map.entries()) {
+      map.set(key, list.slice().sort(occurrenceSort));
+    }
+    return map;
+  }, [occurrences, occurrenceSort, planningDays]);
+
+  const toggleOccurrence = useCallback(
+    (occ) => {
+      if (!occ || !occ.goalId || !occ.date) return;
+      if (!canEdit || typeof setData !== "function") return;
+      setData((prev) => {
+        const goalsList = Array.isArray(prev?.goals) ? prev.goals : [];
+        const prevOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
+        const nextStatus = occ.status === "done" ? "planned" : "done";
+        const start = occ.start || "00:00";
+        const nextOccurrences = setOccurrenceStatus(occ.goalId, occ.date, start, nextStatus, {
+          occurrences: prevOccurrences,
+          goals: goalsList,
+        });
+        if (nextOccurrences === prevOccurrences) return prev;
+        return { ...prev, occurrences: nextOccurrences };
+      });
+    },
+    [canEdit, setData]
+  );
 
   const outcomeById = useMemo(() => {
     const map = new Map();
@@ -1700,6 +1798,54 @@ export default function Home({
                         </div>
                       ) : null}
                     </div>
+
+                    <div className="mt12">
+                      <div className="small2">Occurrences du jour</div>
+                      {occurrencesForSelectedDay.length ? (
+                        <div className="mt8 col gap8">
+                          {occurrencesForSelectedDay.map((occ) => {
+                            const goal = goalsById.get(occ.goalId) || null;
+                            const title = goal?.title || "Action";
+                            const categoryName = categoriesById.get(goal?.categoryId)?.name || "Général";
+                            const outcome = getOutcomeForGoalId(occ.goalId);
+                            const hasTime = Boolean(goal?.startTime || (occ.start && occ.start !== "00:00"));
+                            const timeLabel = hasTime ? occ.start : "";
+                            const duration = Number.isFinite(goal?.durationMinutes) ? goal.durationMinutes : null;
+                            const status =
+                              occ.status === "done" ? "Fait" : occ.status === "skipped" ? "Ignorée" : "Planifiée";
+                            const statusClass = occ.status === "done" ? "textAccent" : "textMuted2";
+                            const pointsLabel = Number.isFinite(occ.pointsAwarded) ? `+${occ.pointsAwarded} points` : "";
+                            return (
+                              <button
+                                key={`${occ.goalId}-${occ.date}-${occ.start}`}
+                                type="button"
+                                className="listItem row rowBetween gap10"
+                                onClick={() => toggleOccurrence(occ)}
+                                disabled={!canEdit}
+                              >
+                                <div className="col gap4">
+                                  <div className="itemTitle">
+                                    {(timeLabel ? `${timeLabel} · ` : "") + title}
+                                  </div>
+                                  <div className="row gap6 wrap">
+                                    <span className="badge">{categoryName}</span>
+                                    {outcome?.id ? <span className="badge">{outcome.title || "Objectif"}</span> : null}
+                                  </div>
+                                  <div className="small2 textMuted2">
+                                    {duration ? `${duration} min` : ""}
+                                    {duration && pointsLabel ? " · " : ""}
+                                    {pointsLabel}
+                                  </div>
+                                  <div className={`small2 ${statusClass}`}>{status}</div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="small2 textMuted2 mt6">Aucune occurrence planifiée.</div>
+                      )}
+                    </div>
                 </div>
               </Card>
             );
@@ -1950,6 +2096,73 @@ export default function Home({
                         </div>
                       </div>
                     )}
+                  </div>
+                  <div className="mt12">
+                    <div className="small2">Planning {planningWindowDays} jours</div>
+                    <div
+                      className="mt8 col gap10"
+                      style={{
+                        maxHeight: planningWindowDays > 14 ? 360 : "none",
+                        overflowY: planningWindowDays > 14 ? "auto" : "visible",
+                      }}
+                    >
+                      {planningDays.map((dayKey) => {
+                        const list = occurrencesByPlanningDay.get(dayKey) || [];
+                        return (
+                          <div key={dayKey} className="stack stackGap6">
+                            <div className="small2 textMuted2">{formatDayLabel(dayKey)}</div>
+                            {list.length ? (
+                              <div className="col gap8">
+                                {list.map((occ) => {
+                                  const goal = goalsById.get(occ.goalId) || null;
+                                  const title = goal?.title || "Action";
+                                  const categoryName = categoriesById.get(goal?.categoryId)?.name || "Général";
+                                  const outcome = getOutcomeForGoalId(occ.goalId);
+                                  const hasTime = Boolean(goal?.startTime || (occ.start && occ.start !== "00:00"));
+                                  const timeLabel = hasTime ? occ.start : "";
+                                  const duration = Number.isFinite(goal?.durationMinutes) ? goal.durationMinutes : null;
+                                  const status =
+                                    occ.status === "done"
+                                      ? "Fait"
+                                      : occ.status === "skipped"
+                                        ? "Ignorée"
+                                        : "Planifiée";
+                                  const statusClass = occ.status === "done" ? "textAccent" : "textMuted2";
+                                  const pointsLabel = Number.isFinite(occ.pointsAwarded) ? `+${occ.pointsAwarded} points` : "";
+                                  return (
+                                    <button
+                                      key={`${occ.goalId}-${occ.date}-${occ.start}`}
+                                      type="button"
+                                      className="listItem row rowBetween gap10"
+                                      onClick={() => toggleOccurrence(occ)}
+                                      disabled={!canEdit}
+                                    >
+                                      <div className="col gap4">
+                                        <div className="itemTitle">
+                                          {(timeLabel ? `${timeLabel} · ` : "") + title}
+                                        </div>
+                                        <div className="row gap6 wrap">
+                                          <span className="badge">{categoryName}</span>
+                                          {outcome?.id ? <span className="badge">{outcome.title || "Objectif"}</span> : null}
+                                        </div>
+                                        <div className="small2 textMuted2">
+                                          {duration ? `${duration} min` : ""}
+                                          {duration && pointsLabel ? " · " : ""}
+                                          {pointsLabel}
+                                        </div>
+                                        <div className={`small2 ${statusClass}`}>{status}</div>
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div className="small2 textMuted2">Aucune occurrence.</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div className="sectionSub" style={{ marginTop: 8 }}>
                     {selectedStatus === "past"

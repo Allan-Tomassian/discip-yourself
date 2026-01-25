@@ -86,11 +86,11 @@ export default function PlusExpander({
     >
       <div className="plusExpanderPanel" ref={panelRef} role="menu" aria-label="Créer">
         <div className="stack stackGap8">
-          <Button onClick={onChooseObjective}>
-            Créer un objectif
-          </Button>
-          <Button variant="ghost" onClick={onChooseAction}>
+          <Button onClick={onChooseAction}>
             Créer une action
+          </Button>
+          <Button variant="ghost" onClick={onChooseObjective}>
+            Créer un objectif
           </Button>
           {hasDraft && typeof onResumeDraft === "function" ? (
             <Button variant="ghost" onClick={onResumeDraft}>

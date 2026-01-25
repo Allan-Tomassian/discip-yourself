@@ -1,6 +1,8 @@
 import { getDayCountsForDate } from "./calendar";
-import { buildMonthGrid, WEEKDAY_LABELS_FR, WEEK_DAYS_PER_WEEK } from "../utils/dates";
-import { setOccurrencesStatusForGoalDate, upsertOccurrence } from "./occurrences";
+import { buildMonthGrid, WEEKDAY_LABELS_FR, WEEK_DAYS_PER_WEEK, addDays } from "../utils/dates";
+import { fromLocalDateKey, toLocalDateKey } from "../utils/dateKey";
+import { ensureWindowForGoal } from "./occurrencePlanner";
+import { setOccurrenceStatus, upsertOccurrence } from "./occurrences";
 
 const KEY = "2026-01-18";
 
@@ -50,7 +52,7 @@ export function runInternalP2Tests() {
       ],
       sessions: [],
     };
-    const updated = setOccurrencesStatusForGoalDate("g1", KEY, "skipped", {
+    const updated = setOccurrenceStatus("g1", KEY, "10:00", "skipped", {
       occurrences: state.occurrences,
       goals: state.goals,
     });
@@ -144,6 +146,102 @@ export function runInternalP2Tests() {
   } catch (err) {
     results.push({ id: "TEST 4", pass: false, error: err });
     console.error("TEST 4 FAIL", err);
+    pass = false;
+  }
+
+  // TEST 5: weekly occurrences generated only on selected days.
+  try {
+    const startKey = "2026-01-19";
+    const windowDays = 7;
+    const targetDays = new Set([1, 3, 5]); // Lun, Mer, Ven
+    const baseState = {
+      goals: [
+        {
+          id: "g-week",
+          type: "PROCESS",
+          planType: "ACTION",
+          status: "active",
+          schedule: { daysOfWeek: [1, 3, 5], timeSlots: ["08:00"], durationMinutes: 30 },
+        },
+      ],
+      occurrences: [],
+    };
+    const next = ensureWindowForGoal(baseState, "g-week", startKey, windowDays);
+    const list = (next.occurrences || []).filter((o) => o && o.goalId === "g-week");
+    let expected = 0;
+    const startDate = fromLocalDateKey(startKey);
+    for (let i = 0; i < windowDays; i += 1) {
+      const key = toLocalDateKey(addDays(startDate, i));
+      const d = new Date(`${key}T12:00:00`);
+      const js = d.getDay();
+      const appDow = js === 0 ? 7 : js;
+      if (targetDays.has(appDow)) expected += 1;
+    }
+    const ok = list.length === expected && list.every((o) => typeof o.start === "string" && o.start);
+    results.push({ id: "TEST 5", pass: ok });
+    if (ok) console.log("TEST 5 PASS");
+    else console.error("TEST 5 FAIL", { expected, list });
+    pass = pass && ok;
+  } catch (err) {
+    results.push({ id: "TEST 5", pass: false, error: err });
+    console.error("TEST 5 FAIL", err);
+    pass = false;
+  }
+
+  // TEST 6: toggle updates a single occurrence only.
+  try {
+    const state = {
+      goals: [{ id: "g1", type: "PROCESS", planType: "ACTION", status: "active" }],
+      occurrences: [
+        { id: "o1", goalId: "g1", date: KEY, start: "08:00", status: "planned" },
+        { id: "o2", goalId: "g1", date: KEY, start: "09:00", status: "planned" },
+      ],
+    };
+    const updated = setOccurrenceStatus("g1", KEY, "08:00", "done", {
+      occurrences: state.occurrences,
+      goals: state.goals,
+    });
+    const list = updated.filter((o) => o && o.goalId === "g1" && o.date === KEY);
+    const doneCount = list.filter((o) => o.status === "done").length;
+    const first = list.find((o) => o.start === "08:00");
+    const second = list.find((o) => o.start === "09:00");
+    const ok = doneCount === 1 && first?.status === "done" && second?.status === "planned";
+    results.push({ id: "TEST 6", pass: ok });
+    if (ok) console.log("TEST 6 PASS");
+    else console.error("TEST 6 FAIL", { list });
+    pass = pass && ok;
+  } catch (err) {
+    results.push({ id: "TEST 6", pass: false, error: err });
+    console.error("TEST 6 FAIL", err);
+    pass = false;
+  }
+
+  // TEST 7: one-off occurrence generated on selected date.
+  try {
+    const oneOffDate = "2026-01-21";
+    const baseState = {
+      goals: [
+        {
+          id: "g-once",
+          type: "PROCESS",
+          planType: "ONE_OFF",
+          status: "active",
+          oneOffDate,
+          startAt: `${oneOffDate}T00:00`,
+        },
+      ],
+      occurrences: [],
+    };
+    const next = ensureWindowForGoal(baseState, "g-once", oneOffDate, 7);
+    const list = (next.occurrences || []).filter((o) => o && o.goalId === "g-once");
+    const ok = list.length === 1 && list[0]?.date === oneOffDate && list[0]?.start === "00:00";
+    results.push({ id: "TEST 7", pass: ok });
+    if (ok) console.log("TEST 7 PASS");
+    else console.error("TEST 7 FAIL", { list });
+    pass = pass && ok;
+  } catch (err) {
+    results.push({ id: "TEST 7", pass: false, error: err });
+    console.error("TEST 7 FAIL", err);
     pass = false;
   }
 
