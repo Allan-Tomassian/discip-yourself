@@ -15,6 +15,7 @@ import CreateV2Outcome from "./pages/CreateV2Outcome";
 import CreateV2Habits from "./pages/CreateV2Habits";
 import CreateV2LinkOutcome from "./pages/CreateV2LinkOutcome";
 import CreateV2PickCategory from "./pages/CreateV2PickCategory";
+import CreateV2OutcomeNextAction from "./pages/CreateV2OutcomeNextAction";
 import Settings from "./pages/Settings";
 import CategoryView from "./pages/CategoryView";
 import EditItem from "./pages/EditItem";
@@ -42,7 +43,14 @@ import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
 import { useTour } from "./tour/useTour";
 import TourOverlay from "./tour/TourOverlay";
 import { createEmptyDraft, normalizeCreationDraft } from "./creation/creationDraft";
-import { STEP_HABITS, STEP_OUTCOME, STEP_LINK_OUTCOME, STEP_PICK_CATEGORY, isValidCreationStep } from "./creation/creationSchema";
+import {
+  STEP_HABITS,
+  STEP_OUTCOME,
+  STEP_OUTCOME_NEXT_ACTION,
+  STEP_LINK_OUTCOME,
+  STEP_PICK_CATEGORY,
+  isValidCreationStep,
+} from "./creation/creationSchema";
 import DiagnosticOverlay from "./components/DiagnosticOverlay";
 import { ensureWindowForGoal, validateOccurrences } from "./logic/occurrencePlanner";
 import { uid } from "./utils/helpers";
@@ -80,6 +88,7 @@ const TABS = new Set([
   "library",
   "pilotage",
   "create-goal",
+  "create-outcome-next",
   "create-habit",
   "create-link-outcome",
   "create-pick-category",
@@ -419,6 +428,7 @@ export default function App() {
   };
   const isCreateTab =
     tab === "create-goal" ||
+    tab === "create-outcome-next" ||
     tab === "create-habit" ||
     tab === "create-link-outcome" ||
     tab === "create-pick-category";
@@ -439,7 +449,8 @@ export default function App() {
   const hasDraft = Boolean(
     (draft.outcomes && draft.outcomes.length) ||
       (draft.habits && draft.habits.length) ||
-      (draft.createdActionIds && draft.createdActionIds.length)
+      (draft.createdActionIds && draft.createdActionIds.length) ||
+      draft.createdOutcomeId
   );
   const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
   const homeActiveCategoryId =
@@ -803,6 +814,7 @@ export default function App() {
   const handleResumeDraft = () => {
     const step = isValidCreationStep(draft.step) ? draft.step : STEP_OUTCOME;
     if (step === STEP_HABITS) setTab("create-habit");
+    else if (step === STEP_OUTCOME_NEXT_ACTION) setTab("create-outcome-next");
     else if (step === STEP_LINK_OUTCOME) setTab("create-link-outcome");
     else if (step === STEP_PICK_CATEGORY) setTab("create-pick-category");
     else setTab("create-goal");
@@ -1179,18 +1191,23 @@ export default function App() {
             setTab("library");
           }}
           onNext={() => setTab("create-habit")}
-          onCreateActionFromObjective={(outcomeId, categoryId) => {
-            seedCreateDraft({ source: "post-objective", outcomeId, categoryId, step: STEP_HABITS });
-            setTab("create-habit");
-          }}
-          onSkipObjectiveAction={() => {
-            setLibraryCategoryId(null);
-            setTab("library");
-          }}
+          onAfterSave={() => setTab("create-outcome-next")}
           canCreateOutcome={canCreateOutcomeNow}
           onOpenPaywall={openPaywall}
           isPremiumPlan={isPremiumPlan}
           planLimits={planLimits}
+        />
+      ) : tab === "create-outcome-next" ? (
+        <CreateV2OutcomeNextAction
+          data={data}
+          setData={setData}
+          onCreateAction={(outcomeId, categoryId) => {
+            openCreateHabitDirect({ source: "post-outcome", categoryId, outcomeId });
+          }}
+          onDone={() => {
+            resetCreateDraft();
+            setTab("library");
+          }}
         />
       ) : tab === "create-habit" ? (
         <CreateV2Habits

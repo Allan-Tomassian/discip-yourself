@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input, Select } from "../components/UI";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
+import { STEP_OUTCOME_NEXT_ACTION } from "../creation/creationSchema";
 import { resolveGoalType } from "../domain/goalType";
 import { uid } from "../utils/helpers";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
@@ -21,8 +22,7 @@ export default function CreateV2Outcome({
   onBack,
   onNext,
   onCancel,
-  onCreateActionFromObjective,
-  onSkipObjectiveAction,
+  onAfterSave,
   canCreateOutcome = true,
   onOpenPaywall,
   isPremiumPlan = false,
@@ -59,8 +59,6 @@ export default function CreateV2Outcome({
   const [deadline, setDeadline] = useState(() => normalizeLocalDateKey(draft.outcomes?.[0]?.deadline) || "");
   const [priority, setPriority] = useState(draft.outcomes?.[0]?.priority || "secondaire");
   const [error, setError] = useState("");
-  const [savedOutcomeId, setSavedOutcomeId] = useState(null);
-  const [showSavedBanner, setShowSavedBanner] = useState(false);
   const [deadlineTouched, setDeadlineTouched] = useState(Boolean(draft.outcomes?.[0]?.deadline));
 
   const outcomeIdRef = useRef(draft.outcomes?.[0]?.id || uid());
@@ -78,7 +76,7 @@ export default function CreateV2Outcome({
   }, [effectiveStartKey]);
 
   const deadlineError = useMemo(() => validateDeadline(deadline), [deadline, minDeadlineKey]);
-  const canContinue = Boolean(title.trim() && deadline.trim() && !deadlineError && !showSavedBanner);
+  const canContinue = Boolean(title.trim() && deadline.trim() && !deadlineError);
   const startDateHelper = startDate ? "Démarre à la date choisie." : "Si vide : démarre aujourd’hui.";
   const categoryOptions = useMemo(() => {
     const sys = categories.find((c) => c.id === SYSTEM_INBOX_ID) || { id: SYSTEM_INBOX_ID, name: "Général" };
@@ -109,7 +107,7 @@ export default function CreateV2Outcome({
   }
 
   function handleNext() {
-    if (!canContinue || showSavedBanner) return;
+    if (!canContinue) return;
     if (deadlineError) {
       setError(deadlineError);
       return;
@@ -156,18 +154,24 @@ export default function CreateV2Outcome({
         priority: priority || "secondaire",
       });
       const prevUi = next.ui || {};
+      const nextDraft = {
+        ...createEmptyDraft(),
+        step: STEP_OUTCOME_NEXT_ACTION,
+        createdOutcomeId: outcomeId,
+        activeOutcomeId: outcomeId,
+        category: categoryId ? { mode: "existing", id: categoryId } : null,
+      };
       return {
         ...next,
         ui: {
           ...prevUi,
-          createDraft: createEmptyDraft(),
-          createDraftWasCompleted: true,
+          createDraft: nextDraft,
+          createDraftWasCompleted: false,
           createDraftWasCanceled: false,
         },
       };
     });
-    setSavedOutcomeId(outcomeId);
-    setShowSavedBanner(true);
+    if (typeof onAfterSave === "function") onAfterSave(outcomeId, categoryId || sysCategoryId);
   }
 
   function activateSuggestedCategory(cat) {
@@ -294,40 +298,12 @@ export default function CreateV2Outcome({
               >
                 Annuler
               </Button>
-              <Button onClick={handleNext} disabled={showSavedBanner || !canContinue}>
+              <Button onClick={handleNext} disabled={!canContinue}>
                 Continuer
               </Button>
             </div>
           </div>
         </Card>
-        {showSavedBanner ? (
-          <Card>
-            <div className="p18">
-              <div className="small2">Objectif créé.</div>
-              <div className="mt8 row gap8 alignCenter">
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    if (typeof onCreateActionFromObjective === "function" && savedOutcomeId) {
-                      onCreateActionFromObjective(savedOutcomeId, categoryId || sysCategoryId);
-                    }
-                  }}
-                >
-                  Créer une action liée
-                </Button>
-                <button
-                  type="button"
-                  className="linkBtn"
-                  onClick={() => {
-                    if (typeof onSkipObjectiveAction === "function") onSkipObjectiveAction();
-                  }}
-                >
-                  Plus tard
-                </button>
-              </div>
-            </div>
-          </Card>
-        ) : null}
       </div>
     </ScreenShell>
   );

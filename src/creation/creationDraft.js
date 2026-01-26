@@ -1,6 +1,13 @@
 import { normalizeLocalDateKey } from "../utils/dateKey";
 import { normalizeTimeFields } from "../logic/timeFields";
-import { CREATION_STEPS, STEP_HABITS, STEP_OUTCOME, STEP_LINK_OUTCOME, STEP_PICK_CATEGORY } from "./creationSchema";
+import {
+  CREATION_STEPS,
+  STEP_HABITS,
+  STEP_OUTCOME,
+  STEP_LINK_OUTCOME,
+  STEP_PICK_CATEGORY,
+  STEP_OUTCOME_NEXT_ACTION,
+} from "./creationSchema";
 
 export const CREATION_DRAFT_VERSION = 1;
 const REPEAT_VALUES = new Set(["none", "daily", "weekly"]);
@@ -62,6 +69,7 @@ export function createEmptyDraft() {
     outcome: null,
     outcomes: [],
     activeOutcomeId: null,
+    createdOutcomeId: null,
     habits: [],
     createdActionIds: [],
     pendingCategoryId: null,
@@ -101,6 +109,8 @@ export function normalizeCreationDraft(raw) {
     draft.activeOutcomeId = activeOutcomeId;
   }
   if (!Array.isArray(draft.habits)) draft.habits = [];
+  draft.createdOutcomeId = typeof draft.createdOutcomeId === "string" ? draft.createdOutcomeId.trim() : "";
+  if (!draft.createdOutcomeId) draft.createdOutcomeId = null;
   if (!Array.isArray(draft.createdActionIds)) {
     const legacy = typeof draft.createdActionId === "string" ? [draft.createdActionId] : [];
     draft.createdActionIds = legacy;
@@ -167,6 +177,7 @@ export function ensureDraftStep(draft, step) {
 
 export const DRAFT_SECTIONS = {
   outcome: STEP_OUTCOME,
+  outcomeNext: STEP_OUTCOME_NEXT_ACTION,
   habits: STEP_HABITS,
   linkOutcome: STEP_LINK_OUTCOME,
   pickCategory: STEP_PICK_CATEGORY,
