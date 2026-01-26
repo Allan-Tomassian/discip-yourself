@@ -12,6 +12,7 @@ import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
 import { canCreateCategory, isPremium } from "../logic/entitlements";
 import { safePrompt } from "../utils/dialogs";
 import { uid } from "../utils/helpers";
+import { buildPlanningSections } from "../utils/librarySections";
 
 // TOUR MAP:
 // - primary_action: open category detail
@@ -258,21 +259,18 @@ export default function Categories({
   const processGoals = selectedCategory?.id
     ? goals.filter((g) => g.categoryId === selectedCategory.id && resolveGoalType(g) === "PROCESS")
     : [];
-  const { habitsByOutcome, unlinkedHabits } = useMemo(() => {
-    const byParent = new Map();
+  const { unlinkedHabits, actionSections } = useMemo(() => {
     const unlinked = [];
     for (const habit of processGoals) {
       const linkedOutcome = outcomeGoals.find((g) => g?.id && isProcessLinkedToOutcome(habit, g.id)) || null;
-      if (linkedOutcome?.id) {
-        const list = byParent.get(linkedOutcome.id) || [];
-        list.push(habit);
-        byParent.set(linkedOutcome.id, list);
-        continue;
-      }
-      unlinked.push(habit);
+      if (!linkedOutcome?.id) unlinked.push(habit);
     }
-    return { habitsByOutcome: byParent, unlinkedHabits: unlinked };
+    return {
+      unlinkedHabits: unlinked,
+      actionSections: buildPlanningSections(processGoals, outcomeGoals),
+    };
   }, [processGoals, outcomeGoals]);
+  const unlinkedHabitIds = useMemo(() => new Set(unlinkedHabits.map((h) => h.id)), [unlinkedHabits]);
   const linkTargetId =
     (selectedCategory?.mainGoalId && outcomeGoals.some((g) => g.id === selectedCategory.mainGoalId)
       ? selectedCategory.mainGoalId
@@ -372,7 +370,6 @@ export default function Categories({
               {outcomeGoals.length ? (
                 <div className="col gap8">
                   {outcomeGoals.map((g) => {
-                    const linkedHabits = habitsByOutcome.get(g.id) || [];
                     const isPrimaryGoal = category.mainGoalId && g.id === category.mainGoalId;
                     return (
                       <div key={g.id} className="listItem catAccentRow" style={detailAccentVars}>
@@ -384,22 +381,6 @@ export default function Categories({
                             </span>
                           ) : null}
                         </div>
-                        {linkedHabits.length ? (
-                          <div className="col gap8 mt8 pl12">
-                            <div className="small2 textMuted">
-                              Actions
-                            </div>
-                            {linkedHabits.map((h) => (
-                              <div key={h.id} className="listItem catAccentRow" style={detailAccentVars}>
-                                <div className="itemTitle">{h.title || "Action"}</div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="small2 mt8 pl12">
-                            Aucune action liée.
-                          </div>
-                        )}
                       </div>
                     );
                   })}
@@ -408,37 +389,59 @@ export default function Categories({
                 <div className="small2">Aucun objectif dans cette catégorie.</div>
               )}
             </div>
-            {unlinkedHabits.length ? (
+            {actionSections.length ? (
               <div className="col gap8">
-                <div className="small2 textMuted">
-                  Actions non liées
-                </div>
+                <div className="small2 textMuted">Actions</div>
                 <div className="col gap8">
-                  {unlinkedHabits.map((h) => (
-                    <div key={h.id} className="listItem">
-                      <div className="row rowBetween gap8">
-                        <div className="itemTitle">{h.title || "Action"}</div>
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            if (!linkTargetId || typeof setData !== "function") return;
-                            setData((prev) => linkProcessToOutcome(prev, h.id, linkTargetId));
-                          }}
-                          disabled={!linkTargetId || typeof setData !== "function"}
-                        >
-                          Lier
-                        </Button>
+                  {actionSections.map((section) => (
+                    <div key={section.key} className="col gap8">
+                      <div className="small2 textMuted">{section.title}</div>
+                      <div className="col gap8">
+                        {section.items.map(({ goal, badges }) => {
+                          const canLink = unlinkedHabitIds.has(goal.id) && linkTargetId && typeof setData === "function";
+                          return (
+                            <div key={goal.id} className="listItem catAccentRow" style={detailAccentVars}>
+                              <div className="row rowBetween gap8">
+                                <div className="col gap6 minW0">
+                                  <div className="itemTitle">{goal.title || "Action"}</div>
+                                  {badges.length ? (
+                                    <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                                      {badges.map((label, idx) => (
+                                        <span key={`${goal.id}-b-${idx}`} className="badge">
+                                          {label}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </div>
+                                {canLink ? (
+                                  <Button
+                                    variant="ghost"
+                                    onClick={() => {
+                                      if (!linkTargetId || typeof setData !== "function") return;
+                                      setData((prev) => linkProcessToOutcome(prev, goal.id, linkTargetId));
+                                    }}
+                                  >
+                                    Lier
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
-                  {!linkTargetId ? (
+                  {!linkTargetId && unlinkedHabits.length ? (
                     <div className="small2 textMuted">
                       Ajoute un objectif pour pouvoir lier ces actions.
                     </div>
                   ) : null}
                 </div>
               </div>
-            ) : null}
+            ) : (
+              <div className="small2">Aucune action dans cette catégorie.</div>
+            )}
           </div>
         ) : null}
       </div>

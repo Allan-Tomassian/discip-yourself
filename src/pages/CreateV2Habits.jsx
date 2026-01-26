@@ -2,17 +2,18 @@ import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { AccentItem, Button, Card, Input, Select, Textarea } from "../components/UI";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
-import { STEP_HABITS } from "../creation/creationSchema";
+import { STEP_HABITS, STEP_LINK_OUTCOME, STEP_PICK_CATEGORY } from "../creation/creationSchema";
 import { resolveGoalType } from "../domain/goalType";
 import { uid } from "../utils/helpers";
 import { createGoal } from "../logic/goals";
 import { setPrimaryGoalForCategory } from "../logic/priority";
 import { ensureWindowForGoals } from "../logic/occurrencePlanner";
-import { fromLocalDateKey, normalizeLocalDateKey, todayLocalKey, toLocalDateKey } from "../utils/dateKey";
+import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { createDefaultGoalSchedule, ensureSystemInboxCategory, normalizeCategory, SYSTEM_INBOX_ID } from "../logic/state";
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
 import { canCreateCategory } from "../logic/entitlements";
 import { normalizeReminder } from "../logic/reminders";
+import { normalizeTimeFields } from "../logic/timeFields";
 
 // App convention: 1 = Monday ... 7 = Sunday
 const DOWS = [
@@ -114,6 +115,7 @@ export default function CreateV2Habits({
   planLimits = null,
   generationWindowDays = null,
   onOpenCategories,
+  onNext,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
@@ -131,6 +133,7 @@ export default function CreateV2Habits({
   const [oneOffDate, setOneOffDate] = useState(() => todayLocalKey());
   const [repeat, setRepeat] = useState("none");
   const [daysOfWeek, setDaysOfWeek] = useState(() => [appDowFromDate(new Date())]);
+  const [timeMode, setTimeMode] = useState("NONE");
   const [startTime, setStartTime] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("");
   const [quantityValue, setQuantityValue] = useState("");
@@ -156,9 +159,6 @@ export default function CreateV2Habits({
   const [selectedOutcomeId, setSelectedOutcomeId] = useState(() =>
     activeOutcomeId || availableOutcomes[0]?.id || ""
   );
-  const [postActionPrompt, setPostActionPrompt] = useState(null);
-  const [postObjectiveTitle, setPostObjectiveTitle] = useState("");
-  const [postSelectedOutcomeId, setPostSelectedOutcomeId] = useState("");
   const hasOutcome = Boolean(selectedOutcomeId);
   const categoryId = selectedCategoryId || SYSTEM_INBOX_ID;
   const category = categoryId ? (safeData.categories || []).find((c) => c.id === categoryId) : null;
@@ -178,7 +178,11 @@ export default function CreateV2Habits({
   const normalizedReminderWindowEnd = normalizeStartTime(reminderWindowEnd);
   const reminderWindowProvided = Boolean(normalizedReminderWindowStart || normalizedReminderWindowEnd);
   const reminderValid = !reminderWindowProvided || Boolean(normalizedReminderTime);
-  const canAddHabit = Boolean(title.trim()) && !missingWeeklyDays && oneOffDateValid && quantityValid && reminderValid;
+  const normalizedStartForCheck = normalizeStartTime(startTime);
+  const requiresStartTime = timeMode === "FIXED";
+  const startTimeValid = !requiresStartTime || Boolean(normalizedStartForCheck);
+  const canAddHabit =
+    Boolean(title.trim()) && !missingWeeklyDays && oneOffDateValid && quantityValid && reminderValid && startTimeValid;
   const hasInvalidHabits = habits.some(
     (habit) =>
       habit &&
@@ -225,13 +229,6 @@ export default function CreateV2Habits({
       syncActiveOutcome("");
     }
   }, [hasAvailableOutcomes, linkToObjective]);
-
-  useEffect(() => {
-    if (!postActionPrompt) return;
-    if (!postSelectedOutcomeId && availableOutcomes.length) {
-      setPostSelectedOutcomeId(availableOutcomes[0].id);
-    }
-  }, [availableOutcomes, postActionPrompt, postSelectedOutcomeId]);
 
   useEffect(() => {
     if (repeat !== "none") return;
@@ -364,6 +361,12 @@ export default function CreateV2Habits({
     const normalizedDuration = normalizeDurationMinutes(durationMinutes);
     const normalizedOneOff = normalizeLocalDateKey(oneOffDate) || todayLocalKey();
     const normalizedMemo = typeof memo === "string" ? memo.trim() : "";
+    const timeFields = normalizeTimeFields({
+      timeMode,
+      timeSlots: timeMode === "FIXED" && normalizedStart ? [normalizedStart] : [],
+      startTime: normalizedStart,
+      reminderTime: normalizedReminderTime,
+    });
     const nextHabits = [
       ...habits,
       {
@@ -372,7 +375,9 @@ export default function CreateV2Habits({
         outcomeId,
         repeat,
         daysOfWeek: normalizedDays,
-        startTime: normalizedStart,
+        timeMode: timeFields.timeMode,
+        timeSlots: timeFields.timeSlots,
+        startTime: timeFields.startTime,
         durationMinutes: normalizedDuration,
         oneOffDate: repeat === "none" ? normalizedOneOff : "",
         quantityValue: normalizedQuantityValue,
@@ -493,11 +498,17 @@ export default function CreateV2Habits({
       for (let index = 0; index < validHabits.length; index += 1) {
         const habit = validHabits[index];
         const habitId = createdProcessIds[index];
-        const normalizedStart = normalizeStartTime(habit.startTime);
-        const normalizedReminderTime = normalizeStartTime(habit.reminderTime);
+    const normalizedStart = normalizeStartTime(habit.startTime);
+    const normalizedReminderTime = normalizeStartTime(habit.reminderTime);
         const normalizedWindowStart = normalizeStartTime(habit.reminderWindowStart);
         const normalizedWindowEnd = normalizeStartTime(habit.reminderWindowEnd);
-        const occurrenceStart = normalizedStart || normalizedReminderTime || "00:00";
+        const timeFields = normalizeTimeFields({
+          timeMode: habit.timeMode,
+          timeSlots: habit.timeSlots,
+          startTime: normalizedStart,
+          reminderTime: normalizedReminderTime,
+        });
+        const occurrenceStart = timeFields.startTime || normalizedReminderTime || "00:00";
         const normalizedDuration = normalizeDurationMinutes(habit.durationMinutes);
         const normalizedDays = normalizeDaysOfWeek(habit.daysOfWeek);
         const repeatMode = habit.repeat || "none";
@@ -543,7 +554,9 @@ export default function CreateV2Habits({
           startAt,
           repeat: repeatMode,
           daysOfWeek: normalizedDays,
-          startTime: normalizedStart,
+          timeMode: timeFields.timeMode,
+          timeSlots: timeFields.timeSlots,
+          startTime: timeFields.startTime,
           durationMinutes: normalizedDuration,
           quantityValue: normalizedQuantityValue,
           quantityUnit: normalizedQuantityValue ? normalizedQuantityUnit : "",
@@ -588,78 +601,24 @@ export default function CreateV2Habits({
         finalState = { ...finalState, reminders: [...filtered, ...createdReminders] };
       }
 
+      const nextStep = linkedOutcomeId ? STEP_PICK_CATEGORY : STEP_LINK_OUTCOME;
+      const nextDraft = {
+        ...createEmptyDraft(),
+        step: nextStep,
+        activeOutcomeId: linkedOutcomeId,
+        createdActionIds: createdProcessIds,
+        category: categoryId ? { mode: "existing", id: categoryId } : null,
+        pendingCategoryId: categoryId || null,
+      };
       return {
         ...finalState,
-        ui: { ...(finalState.ui || {}), createDraft: createEmptyDraft(), createDraftWasCompleted: true },
+        ui: { ...(finalState.ui || {}), createDraft: nextDraft, createDraftWasCompleted: false },
       };
     });
-    if (!linkedOutcomeId && createdProcessIds.length) {
-      const suggestedTitle = String(validHabits[0]?.title || title || "").trim();
-      setPostActionPrompt({ createdProcessIds, categoryId: categoryId || SYSTEM_INBOX_ID });
-      setPostObjectiveTitle(suggestedTitle);
-      setPostSelectedOutcomeId(availableOutcomes[0]?.id || "");
+    if (typeof onNext === "function") {
+      onNext(linkedOutcomeId ? STEP_PICK_CATEGORY : STEP_LINK_OUTCOME);
       return;
     }
-    if (typeof onDone === "function") onDone();
-  }
-
-  function handleSkipObjective() {
-    setPostActionPrompt(null);
-    if (typeof onDone === "function") onDone();
-  }
-
-  function linkToExistingObjective() {
-    if (!postActionPrompt?.createdProcessIds?.length || !postSelectedOutcomeId) return;
-    if (typeof setData !== "function") return;
-    const linkId = postSelectedOutcomeId;
-    setData((prev) => {
-      const goalsList = Array.isArray(prev.goals) ? prev.goals : [];
-      const updated = goalsList.map((goal) =>
-        postActionPrompt.createdProcessIds.includes(goal.id)
-          ? { ...goal, parentId: linkId, outcomeId: linkId }
-          : goal
-      );
-      return { ...prev, goals: updated };
-    });
-    setPostActionPrompt(null);
-    if (typeof onDone === "function") onDone();
-  }
-
-  function createObjectiveAndLink() {
-    if (!postActionPrompt?.createdProcessIds?.length) return;
-    const cleanTitle = String(postObjectiveTitle || "").trim();
-    if (!cleanTitle) return;
-    if (typeof setData !== "function") return;
-    const startKey = todayLocalKey();
-    const deadlineDate = fromLocalDateKey(startKey);
-    deadlineDate.setDate(deadlineDate.getDate() + 7);
-    const deadlineKey = toLocalDateKey(deadlineDate);
-    const outcomeId = uid();
-    const targetCategoryId = postActionPrompt.categoryId || SYSTEM_INBOX_ID;
-    setData((prev) => {
-      let next = prev;
-      if (targetCategoryId === SYSTEM_INBOX_ID) {
-        next = ensureSystemInboxCategory(next).state;
-      }
-      next = createGoal(next, {
-        id: outcomeId,
-        categoryId: targetCategoryId,
-        title: cleanTitle,
-        type: "OUTCOME",
-        planType: "STATE",
-        startDate: startKey,
-        deadline: deadlineKey,
-        priority: "secondaire",
-      });
-      const goalsList = Array.isArray(next.goals) ? next.goals : [];
-      const updated = goalsList.map((goal) =>
-        postActionPrompt.createdProcessIds.includes(goal.id)
-          ? { ...goal, parentId: outcomeId, outcomeId }
-          : goal
-      );
-      return { ...next, goals: updated };
-    });
-    setPostActionPrompt(null);
     if (typeof onDone === "function") onDone();
   }
 
@@ -673,64 +632,6 @@ export default function CreateV2Habits({
 
   const outcomeLabel = hasOutcome ? getOutcomeLabel(selectedOutcomeId) : "Sans objectif";
   const objectiveColor = category?.color || "#64748B";
-
-  if (postActionPrompt) {
-    const hasOutcomes = availableOutcomes.length > 0;
-    return (
-      <ScreenShell
-        data={safeData}
-        pageId="categories"
-        headerTitle="Créer"
-        headerSubtitle={
-          <>
-            <span className="textMuted2">2.</span> Objectif
-          </>
-        }
-        backgroundImage={backgroundImage}
-      >
-        <div className="stack stackGap12">
-          <Card accentBorder>
-            <div className="p18 col gap12">
-              <div className="small2">Action créée.</div>
-              <div className="stack stackGap8">
-                <div className="small textMuted">Lier à un objectif existant</div>
-                <Select
-                  value={postSelectedOutcomeId}
-                  onChange={(e) => setPostSelectedOutcomeId(e.target.value)}
-                  disabled={!hasOutcomes}
-                >
-                  <option value="">Sans objectif</option>
-                  {availableOutcomes.map((outcome) => (
-                    <option key={outcome.id} value={outcome.id}>
-                      {outcome.title || "Objectif"}
-                    </option>
-                  ))}
-                </Select>
-                <Button onClick={linkToExistingObjective} disabled={!hasOutcomes || !postSelectedOutcomeId}>
-                  Lier à cet objectif
-                </Button>
-              </div>
-              <div className="stack stackGap8">
-                <div className="small textMuted">Créer un objectif maintenant</div>
-                <Input
-                  value={postObjectiveTitle}
-                  onChange={(e) => setPostObjectiveTitle(e.target.value)}
-                  placeholder="Nom de l’objectif"
-                />
-                <div className="small2 textMuted2">Durée minimale 7 jours (fin auto J+7).</div>
-                <Button onClick={createObjectiveAndLink} disabled={!postObjectiveTitle.trim()}>
-                  Créer l’objectif
-                </Button>
-              </div>
-              <button type="button" className="linkBtn" onClick={handleSkipObjective}>
-                Plus tard
-              </button>
-            </div>
-          </Card>
-        </div>
-      </ScreenShell>
-    );
-  }
 
   return (
     <ScreenShell
@@ -786,20 +687,33 @@ export default function CreateV2Habits({
                   <option value="daily">Quotidien</option>
                   <option value="weekly">Hebdo</option>
                 </Select>
-                <Input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  placeholder="Heure"
-                />
+                <Select
+                  value={timeMode}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setTimeMode(next);
+                    if (next !== "FIXED") setStartTime("");
+                  }}
+                >
+                  <option value="NONE">Sans heure</option>
+                  <option value="FIXED">À heure fixe</option>
+                </Select>
+                {timeMode === "FIXED" ? (
                   <Input
-                    type="number"
-                    min="1"
-                    value={durationMinutes}
-                    onChange={(e) => setDurationMinutes(e.target.value)}
-                    placeholder="Durée (min)"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    placeholder="Heure"
                   />
-                </div>
+                ) : null}
+                <Input
+                  type="number"
+                  min="1"
+                  value={durationMinutes}
+                  onChange={(e) => setDurationMinutes(e.target.value)}
+                  placeholder="Durée (min)"
+                />
+              </div>
               {repeat === "none" ? (
                 <div className="stack stackGap6">
                   <div className="small2 textMuted">Date</div>
@@ -839,6 +753,9 @@ export default function CreateV2Habits({
               ) : null}
               {missingWeeklyDays ? (
                 <div className="small2 textAccent">Choisis au moins un jour.</div>
+              ) : null}
+              {requiresStartTime && !normalizedStartForCheck ? (
+                <div className="small2 textAccent">Choisis une heure.</div>
               ) : null}
             </div>
             <div className="stack stackGap8">

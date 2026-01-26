@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { AccentItem, Button, Card, IconButton } from "../components/UI";
 import Gauge from "../components/Gauge";
@@ -9,6 +9,7 @@ import { isPrimaryCategory, isPrimaryGoal, setPrimaryCategory } from "../logic/p
 import { resolveGoalType } from "../domain/goalType";
 import { linkProcessToOutcome, splitProcessByLink } from "../logic/linking";
 import { ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
+import { buildPlanningSections } from "../utils/librarySections";
 
 // TOUR MAP:
 // - primary_action: manage goals/actions in a category
@@ -105,7 +106,6 @@ export default function CategoryView({
     : !selectedOutcome?.id
       ? { linked: [], unlinked: processGoals }
       : splitProcessByLink(processGoals, selectedOutcome.id);
-  const habits = linkedHabits;
 
   const gaugeGoals = (() => {
     const main = category?.mainGoalId ? outcomeGoals.find((g) => g.id === category.mainGoalId) : null;
@@ -142,6 +142,10 @@ export default function CategoryView({
     }
     return stats;
   })();
+  const actionSections = useMemo(
+    () => buildPlanningSections([...linkedHabits, ...unlinkedHabits], outcomeGoals),
+    [linkedHabits, unlinkedHabits, outcomeGoals]
+  );
 
   function linkHabitToSelectedOutcome(habitId) {
     if (!selectedOutcome?.id || typeof setData !== "function") return;
@@ -552,94 +556,91 @@ export default function CategoryView({
         <Card accentBorder data-tour-id="manage-actions-section">
           <div className="p18 stack stackGap12">
             <div className="titleSm">Actions</div>
-            {habits.length ? (
+            {actionSections.length ? (
               <div className="stack stackGap12">
-                {habits.map((h) => {
-                  const stat = habitWeekStats.get(h.id) || { planned: 0, done: 0, ratio: 0 };
-                  return (
-                  <AccentItem key={h.id} color={category.color || accent}>
-                    <div className="stack gap6 minW0 wFull">
-                      <div className="row rowBetween alignCenter">
-                        <div className="itemTitle">{h.title || "Action"}</div>
-                        <div className="row gap8">
-                          <IconButton
-                            icon="gear"
-                            aria-label="Paramètres action"
-                            onClick={() => openEditItem(h)}
-                          />
-                          <Button
-                            variant="ghost"
-                            onClick={() => unlinkAction(h.id)}
-                            disabled={!h.parentId && !h.outcomeId}
-                          >
-                            Délier
-                          </Button>
-                          <IconButton
-                            icon="close"
-                            aria-label="Supprimer l’action"
-                            onClick={() => deleteAction(h)}
-                          />
-                        </div>
-                      </div>
-                      <div className="itemSub">
-                        {`Cette semaine : ${stat.done} terminées · ${stat.done}/${stat.planned}`}
-                      </div>
-                      <div className="progressTrack">
-                        <div
-                          className="progressFill"
-                          style={{
-                            width: `${Math.round(stat.ratio * 100)}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </AccentItem>
-                );
-                })}
+                {actionSections.map((section) => (
+                  <div key={section.key} className="stack stackGap12">
+                    <div className="small2 textMuted">{section.title}</div>
+                    {section.items.map(({ goal, badges }) => {
+                      const stat = habitWeekStats.get(goal.id) || { planned: 0, done: 0, ratio: 0 };
+                      const linkedToSelected =
+                        selectedOutcome?.id &&
+                        (goal.parentId === selectedOutcome.id ||
+                          goal.primaryGoalId === selectedOutcome.id ||
+                          goal.outcomeId === selectedOutcome.id);
+                      const showLink = linkedToSelected || Boolean(selectedOutcome?.id);
+                      return (
+                        <AccentItem key={goal.id} color={category.color || accent}>
+                          <div className="stack gap6 minW0 wFull">
+                            <div className="row rowBetween alignCenter">
+                              <div className="itemTitle">{goal.title || "Action"}</div>
+                              <div className="row gap8">
+                                <IconButton
+                                  icon="gear"
+                                  aria-label="Paramètres action"
+                                  onClick={() => openEditItem(goal)}
+                                />
+                                {showLink ? (
+                                  linkedToSelected ? (
+                                    <Button
+                                      variant="ghost"
+                                      onClick={() => unlinkAction(goal.id)}
+                                      disabled={!goal.parentId && !goal.outcomeId}
+                                    >
+                                      Délier
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="ghost"
+                                      onClick={() => linkHabitToSelectedOutcome(goal.id)}
+                                      disabled={!selectedOutcome?.id || typeof setData !== "function"}
+                                    >
+                                      Lier
+                                    </Button>
+                                  )
+                                ) : null}
+                                <IconButton
+                                  icon="close"
+                                  aria-label="Supprimer l’action"
+                                  onClick={() => deleteAction(goal)}
+                                />
+                              </div>
+                            </div>
+                            {badges.length ? (
+                              <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                                {badges.map((label, idx) => (
+                                  <span key={`${goal.id}-badge-${idx}`} className="badge">
+                                    {label}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                            <div className="itemSub">
+                              {`Cette semaine : ${stat.done} terminées · ${stat.done}/${stat.planned}`}
+                            </div>
+                            <div className="progressTrack">
+                              <div
+                                className="progressFill"
+                                style={{
+                                  width: `${Math.round(stat.ratio * 100)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </AccentItem>
+                      );
+                    })}
+                  </div>
+                ))}
+                {!selectedOutcome?.id ? (
+                  <div className="small2 textMuted">Sélectionne un objectif pour lier ces actions.</div>
+                ) : null}
               </div>
             ) : (
               <div className="stack stackGap12">
-                <div className="small2">Aucune action liée.</div>
+                <div className="small2">Aucune action dans cette catégorie.</div>
               </div>
             )}
-            {unlinkedHabits.length ? (
-              <div className="stack stackGap12">
-                <div className="small2">Actions non liées</div>
-                <div className="stack stackGap12">
-                  {unlinkedHabits.map((h) => (
-                    <AccentItem key={h.id} color={category.color || accent} tone="neutral">
-                      <div className="row rowBetween gap8 wFull">
-                        <div className="itemTitle">{h.title || "Action"}</div>
-                        <div className="row gap8">
-                          <IconButton
-                            icon="gear"
-                            aria-label="Paramètres action"
-                            onClick={() => openEditItem(h)}
-                          />
-                          <Button
-                            variant="ghost"
-                            onClick={() => linkHabitToSelectedOutcome(h.id)}
-                            disabled={!selectedOutcome?.id || typeof setData !== "function"}
-                          >
-                            Lier
-                          </Button>
-                          <IconButton
-                            icon="close"
-                            aria-label="Supprimer l’action"
-                            onClick={() => deleteAction(h)}
-                          />
-                        </div>
-                      </div>
-                    </AccentItem>
-                  ))}
-                  {!selectedOutcome?.id ? (
-                    <div className="small2 textMuted">
-                      Sélectionne un objectif pour lier ces actions.
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
           </div>
         </Card>
 

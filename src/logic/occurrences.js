@@ -66,6 +66,15 @@ function normalizeTimeHM(value) {
   return `${pad2(h)}:${pad2(m)}`;
 }
 
+function normalizeSlotKey(value) {
+  return normalizeTimeHM(value);
+}
+
+function resolveOccurrenceSlotKey(occurrence) {
+  const raw = typeof occurrence?.slotKey === "string" ? occurrence.slotKey : occurrence?.start;
+  return normalizeSlotKey(raw);
+}
+
 function sortByStart(a, b) {
   const sa = typeof a?.start === "string" ? a.start : "";
   const sb = typeof b?.start === "string" ? b.start : "";
@@ -84,7 +93,7 @@ export function findOccurrenceForGoalDateDeterministic(occurrences, goalId, date
   if (!matches.length) return null;
   const preferred = normalizeTimeHM(preferredStart);
   if (preferred) {
-    const exact = matches.find((o) => o && o.start === preferred);
+    const exact = matches.find((o) => o && (o.start === preferred || o.slotKey === preferred));
     if (exact) return exact;
   }
   const midnight = matches.find((o) => o && o.start === "00:00");
@@ -114,7 +123,11 @@ export function addOccurrence(goalId, date, start, durationMinutes, source) {
   if (!cleanDate) return occurrences.slice();
   if (!cleanStart) return occurrences.slice();
 
-  const exists = occurrences.some((o) => o && o.goalId === goalId && o.date === cleanDate && o.start === cleanStart);
+  const exists = occurrences.some((o) => {
+    if (!o || o.goalId !== goalId || o.date !== cleanDate) return false;
+    const slotKey = resolveOccurrenceSlotKey(o);
+    return slotKey ? slotKey === cleanStart : o.start === cleanStart;
+  });
   if (exists) return occurrences.slice();
 
   const occurrence = {
@@ -122,6 +135,7 @@ export function addOccurrence(goalId, date, start, durationMinutes, source) {
     goalId,
     date: cleanDate,
     start: cleanStart,
+    slotKey: cleanStart,
     durationMinutes: normalizeDurationMinutes(durationMinutes),
     status: "planned",
   };
@@ -170,12 +184,15 @@ export function upsertOccurrence(goalId, date, start, durationMinutes, patch, so
   if (!g || !d || !s) return occurrences.slice();
 
   const nextPatch = patch && typeof patch === "object" ? { ...patch } : {};
+  const slotKey = normalizeSlotKey(nextPatch.slotKey || s);
   if ("status" in nextPatch) nextPatch.status = normalizeStatus(nextPatch.status);
   if ("durationMinutes" in nextPatch) nextPatch.durationMinutes = normalizeDurationMinutes(nextPatch.durationMinutes);
 
   let found = false;
   const next = occurrences.map((o) => {
-    if (!o || o.goalId !== g || o.date !== d || o.start !== s) return o;
+    if (!o || o.goalId !== g || o.date !== d) return o;
+    const existingSlot = resolveOccurrenceSlotKey(o);
+    if (!existingSlot || existingSlot !== slotKey) return o;
     found = true;
     const merged = {
       ...o,
@@ -184,6 +201,7 @@ export function upsertOccurrence(goalId, date, start, durationMinutes, patch, so
       goalId: g,
       date: d,
       start: s,
+      slotKey,
       durationMinutes: normalizeDurationMinutes(
         typeof nextPatch.durationMinutes !== "undefined" ? nextPatch.durationMinutes : o.durationMinutes
       ),
@@ -199,6 +217,7 @@ export function upsertOccurrence(goalId, date, start, durationMinutes, patch, so
     goalId: g,
     date: d,
     start: s,
+    slotKey,
     durationMinutes: normalizeDurationMinutes(durationMinutes),
     status: "planned",
     ...nextPatch,
@@ -207,6 +226,7 @@ export function upsertOccurrence(goalId, date, start, durationMinutes, patch, so
   created.goalId = g;
   created.date = d;
   created.start = s;
+  created.slotKey = slotKey;
   if ("status" in created) created.status = normalizeStatus(created.status);
   if ("durationMinutes" in created) created.durationMinutes = normalizeDurationMinutes(created.durationMinutes);
 

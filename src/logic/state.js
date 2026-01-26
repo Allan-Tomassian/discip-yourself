@@ -6,6 +6,7 @@ import { normalizeReminder } from "./reminders";
 import { normalizeLocalDateKey, toLocalDateKey } from "../utils/dateKey";
 import { resolveGoalType, isOutcome, isProcess } from "../domain/goalType";
 import { findOccurrenceForGoalDateDeterministic, setOccurrenceStatus, upsertOccurrence } from "./occurrences";
+import { normalizeTimeFields } from "./timeFields";
 import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "./blocks/registry";
 import { ensureBlocksConfig } from "./blocks/ensureBlocksConfig";
 import { validateBlocksState } from "./blocks/validateBlocksState";
@@ -768,6 +769,16 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
     if (startTime) g.startTime = startTime;
     else if (scheduleStart && scheduleStart !== "00:00") g.startTime = scheduleStart;
     else g.startTime = "";
+
+    const timeFields = normalizeTimeFields({
+      timeMode: g.timeMode,
+      timeSlots: g.timeSlots,
+      startTime: g.startTime,
+      reminderTime,
+    });
+    g.timeMode = timeFields.timeMode;
+    g.timeSlots = timeFields.timeSlots;
+    g.startTime = timeFields.startTime;
 
     const duration = normalizeDurationMinutes(g.durationMinutes);
     const scheduleDuration = normalizeDurationMinutes(g.schedule?.durationMinutes);

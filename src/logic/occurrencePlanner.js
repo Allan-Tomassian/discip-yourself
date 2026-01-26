@@ -40,9 +40,38 @@ function overlaps(startMin, durationMinutes, otherStartMin, otherDurationMinutes
 
 function normalizeTimeSlots(timeSlots) {
   if (!Array.isArray(timeSlots)) return [];
-  return timeSlots
-    .map((slot) => minutesToTime(parseTimeToMinutes(slot)))
-    .filter(Boolean);
+  const seen = new Set();
+  const out = [];
+  for (const raw of timeSlots) {
+    const slot = minutesToTime(parseTimeToMinutes(raw));
+    if (!slot || seen.has(slot)) continue;
+    seen.add(slot);
+    out.push(slot);
+  }
+  return out;
+}
+
+function resolveTimeMode(goal) {
+  const raw = typeof goal?.timeMode === "string" ? goal.timeMode.trim().toUpperCase() : "";
+  return raw || "";
+}
+
+function resolveGoalSlots(goal, schedule) {
+  const mode = resolveTimeMode(goal);
+  const goalSlots = normalizeTimeSlots(goal?.timeSlots);
+  const scheduleSlots = normalizeTimeSlots(schedule?.timeSlots);
+  const start = minutesToTime(parseTimeToMinutes(goal?.startTime));
+
+  if (mode === "SLOTS") {
+    return goalSlots.length ? goalSlots : scheduleSlots;
+  }
+  if (mode === "FIXED") {
+    const slot = goalSlots[0] || scheduleSlots[0] || start;
+    return slot ? [slot] : [];
+  }
+  if (mode === "NONE") return [];
+
+  return goalSlots.length ? goalSlots : scheduleSlots;
 }
 
 function resolveGoalTimeSlots(goal, schedule) {
@@ -85,6 +114,11 @@ function occurrenceKey(goalId, dateKey, start) {
 function isValidStart(value) {
   const raw = typeof value === "string" ? value.trim() : "";
   return /^\d{2}:\d{2}$/.test(raw);
+}
+
+function resolveOccurrenceSlotKey(occ) {
+  const raw = typeof occ?.slotKey === "string" ? occ.slotKey : occ?.start;
+  return isValidStart(raw) ? raw : "";
 }
 
 function resolveConflictNearest(occurrences, dateKey, start, durationMinutes, timeSlots = []) {
@@ -166,7 +200,8 @@ export function dedupeOccurrences(occurrences) {
       next.push(occ);
       continue;
     }
-    const key = occurrenceKey(occ.goalId, occ.date, occ.start);
+    const slotKey = resolveOccurrenceSlotKey(occ) || occ.start;
+    const key = occurrenceKey(occ.goalId, occ.date, slotKey);
     if (!seen.has(key)) {
       seen.set(key, next.length);
       next.push(occ);
@@ -188,17 +223,33 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
   if (resolveGoalType(goal) !== "PROCESS") return data;
 
   const schedule = goal.schedule && typeof goal.schedule === "object" ? goal.schedule : null;
-  const timeSlots = resolveGoalTimeSlots(goal, schedule);
+  const slotKeys = resolveGoalSlots(goal, schedule);
+  const timeSlots = slotKeys.length ? slotKeys : resolveGoalTimeSlots(goal, schedule);
   const { slot: fallbackSlot, fromStartAt } = resolveFallbackSlot(goal);
   const oneOff = normalizeLocalDateKey(goal?.oneOffDate);
   if (!oneOff && !timeSlots.length && !fromStartAt) return data;
 
   const dates = buildWindowDates(fromDateKey, days);
-  const occurrences = Array.isArray(data?.occurrences) ? data.occurrences.slice() : [];
+  const dateSet = new Set(dates);
+  let occurrences = Array.isArray(data?.occurrences) ? data.occurrences.slice() : [];
+
+  if (resolveTimeMode(goal) === "SLOTS" && slotKeys.length) {
+    const allowed = new Set(slotKeys);
+    occurrences = occurrences.filter((o) => {
+      if (!o || o.goalId !== goal.id) return true;
+      if (!dateSet.has(o.date)) return true;
+      const occSlot = resolveOccurrenceSlotKey(o);
+      return occSlot && allowed.has(occSlot);
+    });
+  }
+
   const usedKeys = new Set(
     occurrences
       .filter((o) => o && o.goalId && o.date && o.start)
-      .map((o) => occurrenceKey(o.goalId, o.date, o.start))
+      .map((o) => {
+        const slotKey = resolveOccurrenceSlotKey(o) || o.start;
+        return occurrenceKey(o.goalId, o.date, slotKey);
+      })
   );
 
   for (const dateKey of dates) {
@@ -208,26 +259,27 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
     const slotsForDate = timeSlots.length ? timeSlots : [fallbackSlot];
     const isAnytimeSlot = slotsForDate.length === 1 && slotsForDate[0] === "00:00";
     for (const preferredStart of slotsForDate) {
-      const key = occurrenceKey(goal.id, dateKey, preferredStart);
+      const slotKey = isValidStart(preferredStart) ? preferredStart : fallbackSlot;
+      if (!slotKey) continue;
+      const key = occurrenceKey(goal.id, dateKey, slotKey);
       if (usedKeys.has(key)) continue;
 
       const resolved = isAnytimeSlot && preferredStart === "00:00"
         ? { start: preferredStart, conflict: false }
         : resolveConflictNearest(occurrences, dateKey, preferredStart, durationMinutes, slotsForDate);
-      const resolvedKey = occurrenceKey(goal.id, dateKey, resolved.start);
-      if (usedKeys.has(resolvedKey)) continue;
 
       const occurrence = {
         id: uid(),
         goalId: goal.id,
         date: dateKey,
         start: resolved.start,
+        slotKey,
         durationMinutes,
         status: "planned",
       };
       if (resolved.conflict) occurrence.conflict = true;
       occurrences.push(occurrence);
-      usedKeys.add(resolvedKey);
+      usedKeys.add(key);
     }
   }
 

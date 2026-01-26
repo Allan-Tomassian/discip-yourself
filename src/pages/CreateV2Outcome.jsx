@@ -73,7 +73,7 @@ export default function CreateV2Outcome({
   );
   const minDeadlineKey = useMemo(() => {
     const base = fromLocalDateKey(effectiveStartKey);
-    base.setDate(base.getDate() + 7);
+    base.setDate(base.getDate() + 1);
     return toLocalDateKey(base);
   }, [effectiveStartKey]);
 
@@ -101,9 +101,9 @@ export default function CreateV2Outcome({
 
   function validateDeadline(nextValue) {
     const normalized = normalizeLocalDateKey(nextValue);
-    if (!normalized) return "Date de fin requise (min J+7).";
+    if (!normalized) return "Date de fin requise (min 2 jours).";
     if (normalized < minDeadlineKey) {
-      return `Date de fin minimale : ${minDeadlineKey} (J+7).`;
+      return `Date de fin minimale : ${minDeadlineKey} (min 2 jours).`;
     }
     return "";
   }
@@ -256,7 +256,7 @@ export default function CreateV2Outcome({
               />
             </div>
             <div className="stack stackGap6">
-              <div className="small2 textMuted">Date de fin (obligatoire, min J+7 : {minDeadlineKey})</div>
+              <div className="small2 textMuted">Date de fin (obligatoire, min 2 jours : {minDeadlineKey})</div>
               <Input
                 type="date"
                 value={deadline}

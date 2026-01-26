@@ -3,7 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { Card } from "../components/UI";
 import AccentItem from "../components/AccentItem";
 import {
-  getCategoryCounts,
+  getCategoryPilotageCounts,
   getCategoryStatus,
   getDisciplineSummary,
   getLoadSummary,
@@ -65,7 +65,7 @@ export default function Pilotage({
   const countsByCategory = useMemo(() => {
     const map = new Map();
     for (const c of categories) {
-      map.set(c.id, getCategoryCounts(safeData, c.id));
+      map.set(c.id, getCategoryPilotageCounts(safeData, c.id));
     }
     return map;
   }, [categories, safeData]);
@@ -278,11 +278,11 @@ export default function Pilotage({
                   </div>
                   <div className="mt12 col" role="list" style={{ gap: 10 }}>
                     {categories.map((c) => {
-                      const counts = countsByCategory.get(c.id) || { outcomesCount: 0, processCount: 0 };
+                      const counts = countsByCategory.get(c.id) || { activeOutcomesCount: 0, processCount: 0 };
                       const label = statusByCategory.get(c.id) || "ACTIVE";
                       const summary =
-                        counts.outcomesCount || counts.processCount
-                          ? `${counts.outcomesCount} objectifs \u00b7 ${counts.processCount} actions`
+                        counts.activeOutcomesCount || counts.processCount
+                          ? `${counts.activeOutcomesCount} objectifs \u00b7 ${counts.processCount} actions`
                           : "Aucun élément";
 
                       const isSelected = selectedCategoryId === c.id;

@@ -59,6 +59,19 @@ function isGoalActive(goal) {
   return st !== "done" && st !== "invalid" && st !== "abandoned";
 }
 
+function collectActiveOutcomeIds(goals) {
+  const set = new Set();
+  for (const g of goals) {
+    if (!g) continue;
+    if (resolveGoalType(g) !== "PROCESS") continue;
+    const rawOutcome = typeof g.outcomeId === "string" ? g.outcomeId.trim() : "";
+    const rawParent = typeof g.parentId === "string" ? g.parentId.trim() : "";
+    const id = rawOutcome || rawParent;
+    if (id) set.add(id);
+  }
+  return set;
+}
+
 export function getCategoryCounts(data, categoryId) {
   if (!categoryId) return { outcomesCount: 0, processCount: 0 };
   const goals = Array.isArray(data?.goals) ? data.goals : [];
@@ -73,10 +86,25 @@ export function getCategoryCounts(data, categoryId) {
   return { outcomesCount, processCount };
 }
 
+export function getCategoryPilotageCounts(data, categoryId) {
+  if (!categoryId) return { activeOutcomesCount: 0, processCount: 0 };
+  const goals = Array.isArray(data?.goals) ? data.goals : [];
+  const activeOutcomeIds = collectActiveOutcomeIds(goals);
+  let activeOutcomesCount = 0;
+  let processCount = 0;
+  for (const g of goals) {
+    if (!g || g.categoryId !== categoryId) continue;
+    const type = resolveGoalType(g);
+    if (type === "PROCESS") processCount += 1;
+    if (type === "OUTCOME" && activeOutcomeIds.has(g.id)) activeOutcomesCount += 1;
+  }
+  return { activeOutcomesCount, processCount };
+}
+
 export function getCategoryStatus(data, categoryId, nowDate = new Date()) {
-  const { outcomesCount, processCount } = getCategoryCounts(data, categoryId);
-  if (outcomesCount === 0 && processCount === 0) return "EMPTY";
-  if (processCount === 0) return "ACTIVE";
+  const { activeOutcomesCount, processCount } = getCategoryPilotageCounts(data, categoryId);
+  if (activeOutcomesCount === 0 && processCount === 0) return "EMPTY";
+  if (processCount === 0) return "EMPTY";
 
   const goals = Array.isArray(data?.goals) ? data.goals : [];
   const processGoals = goals.filter((g) => g && g.categoryId === categoryId && resolveGoalType(g) === "PROCESS");

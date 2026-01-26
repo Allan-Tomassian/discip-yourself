@@ -13,6 +13,8 @@ import Home from "./pages/Home";
 import Categories from "./pages/Categories";
 import CreateV2Outcome from "./pages/CreateV2Outcome";
 import CreateV2Habits from "./pages/CreateV2Habits";
+import CreateV2LinkOutcome from "./pages/CreateV2LinkOutcome";
+import CreateV2PickCategory from "./pages/CreateV2PickCategory";
 import Settings from "./pages/Settings";
 import CategoryView from "./pages/CategoryView";
 import EditItem from "./pages/EditItem";
@@ -40,7 +42,7 @@ import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
 import { useTour } from "./tour/useTour";
 import TourOverlay from "./tour/TourOverlay";
 import { createEmptyDraft, normalizeCreationDraft } from "./creation/creationDraft";
-import { STEP_HABITS, STEP_OUTCOME, isValidCreationStep } from "./creation/creationSchema";
+import { STEP_HABITS, STEP_OUTCOME, STEP_LINK_OUTCOME, STEP_PICK_CATEGORY, isValidCreationStep } from "./creation/creationSchema";
 import DiagnosticOverlay from "./components/DiagnosticOverlay";
 import { ensureWindowForGoal, validateOccurrences } from "./logic/occurrencePlanner";
 import { uid } from "./utils/helpers";
@@ -79,6 +81,8 @@ const TABS = new Set([
   "pilotage",
   "create-goal",
   "create-habit",
+  "create-link-outcome",
+  "create-pick-category",
   "edit-item",
   "session",
   "category-progress",
@@ -415,7 +419,9 @@ export default function App() {
   };
   const isCreateTab =
     tab === "create-goal" ||
-    tab === "create-habit";
+    tab === "create-habit" ||
+    tab === "create-link-outcome" ||
+    tab === "create-pick-category";
   const themeName = getThemeName(safeData);
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -430,7 +436,11 @@ export default function App() {
   }, [categoryIdsKey, categoryRailOrder]);
   const railCategories = useMemo(() => orderedCategories, [orderedCategories]);
   const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
-  const hasDraft = Boolean((draft.outcomes && draft.outcomes.length) || (draft.habits && draft.habits.length));
+  const hasDraft = Boolean(
+    (draft.outcomes && draft.outcomes.length) ||
+      (draft.habits && draft.habits.length) ||
+      (draft.createdActionIds && draft.createdActionIds.length)
+  );
   const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
   const homeActiveCategoryId =
     safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
@@ -792,7 +802,10 @@ export default function App() {
   };
   const handleResumeDraft = () => {
     const step = isValidCreationStep(draft.step) ? draft.step : STEP_OUTCOME;
-    setTab(step === STEP_HABITS ? "create-habit" : "create-goal");
+    if (step === STEP_HABITS) setTab("create-habit");
+    else if (step === STEP_LINK_OUTCOME) setTab("create-link-outcome");
+    else if (step === STEP_PICK_CATEGORY) setTab("create-pick-category");
+    else setTab("create-goal");
     setPlusOpen(false);
   };
   const openCreateOutcomeDirect = ({ source, categoryId } = {}) => {
@@ -1184,6 +1197,11 @@ export default function App() {
           data={data}
           setData={setData}
           onBack={() => setTab("create-goal")}
+          onNext={(step) => {
+            if (step === STEP_LINK_OUTCOME) setTab("create-link-outcome");
+            else if (step === STEP_PICK_CATEGORY) setTab("create-pick-category");
+            else setTab("library");
+          }}
           onOpenCategories={() => setTab("library")}
           onCancel={() => {
             resetCreateDraft();
@@ -1198,6 +1216,28 @@ export default function App() {
           isPremiumPlan={isPremiumPlan}
           planLimits={planLimits}
           generationWindowDays={generationWindowDays}
+        />
+      ) : tab === "create-link-outcome" ? (
+        <CreateV2LinkOutcome
+          data={data}
+          setData={setData}
+          onNext={() => setTab("create-pick-category")}
+          onCancel={() => setTab("create-pick-category")}
+          onDone={() => setTab("library")}
+          canCreateOutcome={canCreateOutcomeNow}
+          onOpenPaywall={openPaywall}
+        />
+      ) : tab === "create-pick-category" ? (
+        <CreateV2PickCategory
+          data={data}
+          setData={setData}
+          onDone={() => {
+            setTab("library");
+          }}
+          onCancel={() => {
+            setTab("library");
+          }}
+          onOpenPaywall={openPaywall}
         />
       ) : tab === "session" ? (
         <Session

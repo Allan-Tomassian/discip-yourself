@@ -1,5 +1,6 @@
 import { normalizeLocalDateKey } from "../utils/dateKey";
-import { CREATION_STEPS, STEP_HABITS, STEP_OUTCOME } from "./creationSchema";
+import { normalizeTimeFields } from "../logic/timeFields";
+import { CREATION_STEPS, STEP_HABITS, STEP_OUTCOME, STEP_LINK_OUTCOME, STEP_PICK_CATEGORY } from "./creationSchema";
 
 export const CREATION_DRAFT_VERSION = 1;
 const REPEAT_VALUES = new Set(["none", "daily", "weekly"]);
@@ -62,6 +63,8 @@ export function createEmptyDraft() {
     outcomes: [],
     activeOutcomeId: null,
     habits: [],
+    createdActionIds: [],
+    pendingCategoryId: null,
   };
 }
 
@@ -91,10 +94,21 @@ export function normalizeCreationDraft(raw) {
       return nextOutcome;
     })
     .filter(Boolean);
-  if (!draft.activeOutcomeId || !draft.outcomes.some((o) => o.id === draft.activeOutcomeId)) {
+  const activeOutcomeId = typeof draft.activeOutcomeId === "string" ? draft.activeOutcomeId.trim() : "";
+  if (!activeOutcomeId) {
     draft.activeOutcomeId = draft.outcomes[0]?.id || null;
+  } else {
+    draft.activeOutcomeId = activeOutcomeId;
   }
   if (!Array.isArray(draft.habits)) draft.habits = [];
+  if (!Array.isArray(draft.createdActionIds)) {
+    const legacy = typeof draft.createdActionId === "string" ? [draft.createdActionId] : [];
+    draft.createdActionIds = legacy;
+  }
+  draft.createdActionIds = draft.createdActionIds
+    .map((id) => (typeof id === "string" ? id.trim() : ""))
+    .filter(Boolean);
+  if (typeof draft.pendingCategoryId !== "string") draft.pendingCategoryId = null;
   draft.habits = draft.habits
     .map((habit) => {
       if (!habit || typeof habit !== "object") return null;
@@ -129,6 +143,15 @@ export function normalizeCreationDraft(raw) {
         nextHabit.reminderWindowStart = "";
         nextHabit.reminderWindowEnd = "";
       }
+      const timeFields = normalizeTimeFields({
+        timeMode: nextHabit.timeMode,
+        timeSlots: nextHabit.timeSlots,
+        startTime: nextHabit.startTime,
+        reminderTime: nextHabit.reminderTime,
+      });
+      nextHabit.timeMode = timeFields.timeMode;
+      nextHabit.timeSlots = timeFields.timeSlots;
+      nextHabit.startTime = timeFields.startTime;
       nextHabit.memo = typeof nextHabit.memo === "string" ? nextHabit.memo : "";
       return nextHabit;
     })
@@ -145,4 +168,6 @@ export function ensureDraftStep(draft, step) {
 export const DRAFT_SECTIONS = {
   outcome: STEP_OUTCOME,
   habits: STEP_HABITS,
+  linkOutcome: STEP_LINK_OUTCOME,
+  pickCategory: STEP_PICK_CATEGORY,
 };

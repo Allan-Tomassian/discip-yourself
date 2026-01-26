@@ -11,6 +11,7 @@ import { resolveGoalType } from "../domain/goalType";
 import { regenerateWindowForGoal } from "../logic/occurrencePlanner";
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
 import { canCreateCategory } from "../logic/entitlements";
+import { normalizeTimeFields } from "../logic/timeFields";
 
 const PRIORITY_OPTIONS = [
   { value: "prioritaire", label: "Prioritaire" },
@@ -266,10 +267,12 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState("secondaire");
   const [repeat, setRepeat] = useState("daily");
+  const [timeMode, setTimeMode] = useState("NONE");
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [oneOffDate, setOneOffDate] = useState("");
   const [oneOffTime, setOneOffTime] = useState("");
+  const [timeSlots, setTimeSlots] = useState([]);
   const [sessionMinutes, setSessionMinutes] = useState("");
   const [daysOfWeek, setDaysOfWeek] = useState(createDefaultGoalSchedule().daysOfWeek);
   const [windowStart, setWindowStart] = useState("");
@@ -303,6 +306,8 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   const hasScheduleSource =
     isProcess && item?.schedule && Array.isArray(item.schedule.timeSlots) && item.schedule.timeSlots.length > 0;
   const canUseReminders = hasOccurrenceSource || hasScheduleSource;
+  const hasMultipleSlots = isProcess && Array.isArray(timeSlots) && timeSlots.length > 1;
+  const timeInputValue = repeat === "none" ? oneOffTime : startTime;
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -315,8 +320,10 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
         ? { ...scheduleBase, ...item.schedule }
         : { ...scheduleBase };
     const scheduleDays = normalizeDays(schedule.daysOfWeek);
-    const timeSlots =
-      Array.isArray(schedule.timeSlots) && schedule.timeSlots.length ? schedule.timeSlots : scheduleBase.timeSlots;
+    const scheduleSlotsRaw =
+      item.schedule && typeof item.schedule === "object" && Array.isArray(item.schedule.timeSlots)
+        ? item.schedule.timeSlots
+        : [];
     const reminderItems = Array.isArray(item._reminders) ? item._reminders : [];
     const reminderTimesRaw = reminderItems.length ? reminderItems.map((r) => r.time) : [];
     const reminderTimesClean = normalizeTimes(reminderTimesRaw);
@@ -341,16 +348,22 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     setPriority(resolvePriority(item));
     setRepeat(derivedRepeat);
     setStartDate(normalizeLocalDateKey(item.startDate) || parsed.date || todayLocalKey());
-    const slotTime = timeSlots[0] || "";
-    const fallbackStart = slotTime === "00:00" ? "" : slotTime;
-    const nextStartTime = normalizeStartTime(item.startTime || parsed.time || fallbackStart);
+    const timeFields = normalizeTimeFields({
+      timeMode: item.timeMode,
+      timeSlots:
+        Array.isArray(item.timeSlots) && item.timeSlots.length ? item.timeSlots : scheduleSlotsRaw,
+      startTime: item.startTime || parsed.time || "",
+      reminderTime: reminderTimeValue,
+    });
+    const nextStartTime = timeFields.startTime === "00:00" ? "" : timeFields.startTime;
+    setTimeMode(timeFields.timeMode);
+    setTimeSlots(timeFields.timeSlots);
     setStartTime(nextStartTime);
     const normalizedOneOffDate =
       normalizeLocalDateKey(item.oneOffDate) ||
       (resolvedPlan === "ONE_OFF" ? parsed.date : "");
     setOneOffDate(normalizedOneOffDate || "");
-    const nextOneOffTime = normalizeStartTime(item.startTime || parsed.time || "");
-    setOneOffTime(nextOneOffTime === "00:00" ? "" : nextOneOffTime);
+    setOneOffTime(nextStartTime);
     setSessionMinutes(
       Number.isFinite(item.durationMinutes)
         ? String(item.durationMinutes)
@@ -480,9 +493,13 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
         setError("Choisis au moins un jour.");
         return;
       }
+      const normalizedTimeInput = normalizeStartTime(timeInputValue);
+      if (!hasMultipleSlots && timeMode === "FIXED" && !normalizedTimeInput) {
+        setError("Choisis une heure.");
+        return;
+      }
       const normalizedDuration = normalizeDurationMinutes(sessionMinutes);
       const days = normalizeDays(daysOfWeek);
-      const normalizedStart = normalizeStartTime(startTime);
       const normalizedReminderTime = remindersEnabled ? normalizeStartTime(reminderTime) : "";
       const normalizedWindowStart = normalizeStartTime(windowStart);
       const normalizedWindowEnd = normalizeStartTime(windowEnd);
@@ -490,7 +507,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
         setError("Choisis une heure de rappel.");
         return;
       }
-      const effectiveStart = normalizedStart || normalizedReminderTime || "00:00";
+      const effectiveStart = normalizedTimeInput || normalizedReminderTime || "00:00";
       const scheduleBase = createDefaultGoalSchedule();
       const schedule =
         isOneOff
@@ -506,7 +523,10 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
               windowEnd: normalizedReminderTime ? normalizedWindowEnd || "" : "",
             };
       const startAt = isOneOff
-        ? buildStartAt(normalizedOneOff || todayLocalKey(), oneOffTime || normalizedReminderTime || normalizedStart || "00:00")
+        ? buildStartAt(
+            normalizedOneOff || todayLocalKey(),
+            normalizedTimeInput || normalizedReminderTime || "00:00"
+          )
         : null;
 
       const normalizedQuantityValue = normalizeQuantityValue(quantityValue);
@@ -524,7 +544,6 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       updates.planType = isOneOff ? "ONE_OFF" : "ACTION";
       updates.repeat = repeatMode;
       updates.daysOfWeek = isWeekly ? days : [];
-      updates.startTime = normalizedStart;
       updates.durationMinutes = normalizedDuration;
       updates.oneOffDate = isOneOff ? normalizedOneOff || "" : undefined;
       updates.startAt = startAt || null;
@@ -542,6 +561,23 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       updates.reminderWindowEnd = normalizedReminderTime ? normalizedWindowEnd || "" : "";
       updates.parentId = selectedOutcomeId || null;
       updates.outcomeId = selectedOutcomeId || null;
+      const existingTimeFields = normalizeTimeFields({
+        timeMode: item.timeMode,
+        timeSlots: item.timeSlots,
+        startTime: item.startTime,
+        reminderTime: normalizedReminderTime,
+      });
+      const timeFieldsToPersist = hasMultipleSlots
+        ? existingTimeFields
+        : normalizeTimeFields({
+            timeMode,
+            timeSlots: timeMode === "FIXED" && normalizedTimeInput ? [normalizedTimeInput] : [],
+            startTime: normalizedTimeInput,
+            reminderTime: normalizedReminderTime,
+          });
+      updates.timeMode = timeFieldsToPersist.timeMode;
+      updates.timeSlots = timeFieldsToPersist.timeSlots;
+      updates.startTime = timeFieldsToPersist.startTime;
     } else {
       const normalizedStart = normalizeLocalDateKey(startDate) || todayLocalKey();
       const normalizedDeadline = normalizeLocalDateKey(deadline);
@@ -800,7 +836,33 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
                             <div className="small" style={{ marginBottom: 6 }}>
                               Heure
                             </div>
-                            <Input type="time" value={oneOffTime} onChange={(e) => setOneOffTime(e.target.value)} />
+                            {hasMultipleSlots ? (
+                              <div className="small2 textMuted">Créneaux: {timeSlots.length}</div>
+                            ) : (
+                              <>
+                                <Select
+                                  value={timeMode}
+                                  onChange={(e) => {
+                                    const next = e.target.value;
+                                    setTimeMode(next);
+                                    if (next !== "FIXED") {
+                                      setStartTime("");
+                                      setOneOffTime("");
+                                    }
+                                  }}
+                                >
+                                  <option value="NONE">Sans heure</option>
+                                  <option value="FIXED">À heure fixe</option>
+                                </Select>
+                                {timeMode === "FIXED" ? (
+                                  <Input
+                                    type="time"
+                                    value={oneOffTime}
+                                    onChange={(e) => setOneOffTime(e.target.value)}
+                                  />
+                                ) : null}
+                              </>
+                            )}
                           </div>
                         </>
                       ) : (
@@ -839,11 +901,40 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
                               <div className="small" style={{ marginBottom: 6 }}>
                                 Heure
                               </div>
-                              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                              {hasMultipleSlots ? (
+                                <div className="small2 textMuted">Créneaux: {timeSlots.length}</div>
+                              ) : (
+                                <>
+                                  <Select
+                                    value={timeMode}
+                                    onChange={(e) => {
+                                      const next = e.target.value;
+                                      setTimeMode(next);
+                                      if (next !== "FIXED") {
+                                        setStartTime("");
+                                        setOneOffTime("");
+                                      }
+                                    }}
+                                  >
+                                    <option value="NONE">Sans heure</option>
+                                    <option value="FIXED">À heure fixe</option>
+                                  </Select>
+                                  {timeMode === "FIXED" ? (
+                                    <Input
+                                      type="time"
+                                      value={startTime}
+                                      onChange={(e) => setStartTime(e.target.value)}
+                                    />
+                                  ) : null}
+                                </>
+                              )}
                             </div>
                           </div>
                         </>
                       )}
+                      {!hasMultipleSlots && timeMode === "FIXED" && !normalizeStartTime(timeInputValue) ? (
+                        <div className="small2 textAccent">Choisis une heure.</div>
+                      ) : null}
                     </>
                   ) : (
                     <>
