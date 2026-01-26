@@ -475,18 +475,7 @@ export default function App() {
     if (typeof setData !== "function") return;
     setData((prev) => {
       const prevUi = prev.ui || {};
-      if (prevUi.createDraftWasCanceled) {
-        return {
-          ...prev,
-          ui: {
-            ...prevUi,
-            createDraft: createEmptyDraft(),
-            createDraftWasCanceled: true,
-            createDraftWasCompleted: false,
-          },
-        };
-      }
-      const shouldReset = prevUi.createDraftWasCompleted;
+      const shouldReset = prevUi.createDraftWasCompleted || prevUi.createDraftWasCanceled;
       const baseUi = shouldReset
         ? {
             ...prevUi,
@@ -607,15 +596,6 @@ export default function App() {
       let nextUi = prevUi;
       let nextDraft = prevUi.createDraft;
       let changed = false;
-      if (prevUi.createDraftWasCompleted) {
-        nextDraft = createEmptyDraft();
-        nextUi = { ...nextUi, createDraftWasCompleted: false };
-        changed = true;
-      }
-      if (prevUi.createDraftWasCanceled) {
-        nextUi = { ...nextUi, createDraftWasCanceled: false };
-        changed = true;
-      }
       if (!nextDraft || typeof nextDraft !== "object") {
         nextDraft = normalizeCreationDraft(nextDraft);
         nextUi = { ...nextUi, createDraft: nextDraft };

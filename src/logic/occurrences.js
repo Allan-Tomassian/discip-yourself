@@ -71,7 +71,7 @@ function normalizeSlotKey(value) {
 }
 
 function resolveOccurrenceSlotKey(occurrence) {
-  const raw = typeof occurrence?.slotKey === "string" ? occurrence.slotKey : occurrence?.start;
+  const raw = typeof occurrence?.start === "string" ? occurrence.start : occurrence?.slotKey;
   return normalizeSlotKey(raw);
 }
 
@@ -184,7 +184,8 @@ export function upsertOccurrence(goalId, date, start, durationMinutes, patch, so
   if (!g || !d || !s) return occurrences.slice();
 
   const nextPatch = patch && typeof patch === "object" ? { ...patch } : {};
-  const slotKey = normalizeSlotKey(nextPatch.slotKey || s);
+  const slotKey = normalizeSlotKey(s);
+  nextPatch.slotKey = slotKey;
   if ("status" in nextPatch) nextPatch.status = normalizeStatus(nextPatch.status);
   if ("durationMinutes" in nextPatch) nextPatch.durationMinutes = normalizeDurationMinutes(nextPatch.durationMinutes);
 

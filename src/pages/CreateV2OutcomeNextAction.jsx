@@ -70,6 +70,9 @@ export default function CreateV2OutcomeNextAction({ data, setData, onCreateActio
                 Créer 1ère action
               </Button>
             </div>
+            <div className="small2 textMuted2">
+              L’objectif sera en brouillon tant qu’aucune action n’est liée.
+            </div>
           </div>
         </Card>
       </div>

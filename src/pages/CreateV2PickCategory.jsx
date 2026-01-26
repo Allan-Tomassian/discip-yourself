@@ -2,10 +2,11 @@ import React, { useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
-import { updateGoal } from "../logic/goals";
+import { safeUpdateGoal } from "../logic/goalGuards";
+import { canCreateCategory } from "../logic/entitlements";
 import { ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
 
-export default function CreateV2PickCategory({ data, setData, onDone, onCancel }) {
+export default function CreateV2PickCategory({ data, setData, onDone, onCancel, onOpenPaywall }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -53,13 +54,21 @@ export default function CreateV2PickCategory({ data, setData, onDone, onCancel }
     }
     if (typeof setData !== "function") return;
     const nextCategoryId = selectedCategoryId || initialCategoryId || SYSTEM_INBOX_ID;
+    if (nextCategoryId && !options.some((c) => c.id === nextCategoryId)) {
+      if (!canCreateCategory(safeData)) {
+        if (typeof onOpenPaywall === "function") onOpenPaywall("Limite de catégories atteinte.");
+        return;
+      }
+      return;
+    }
     setData((prev) => {
       let next = prev;
       if (nextCategoryId === SYSTEM_INBOX_ID) {
         next = ensureSystemInboxCategory(next).state;
       }
       for (const id of createdActionIds) {
-        next = updateGoal(next, id, { categoryId: nextCategoryId });
+        const result = safeUpdateGoal(next, id, { categoryId: nextCategoryId }, { onOpenPaywall });
+        next = result.state;
       }
       const prevUi = next.ui || {};
       return {

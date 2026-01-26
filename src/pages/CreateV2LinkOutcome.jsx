@@ -3,7 +3,8 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input, Select } from "../components/UI";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_PICK_CATEGORY } from "../creation/creationSchema";
-import { createGoal, updateGoal } from "../logic/goals";
+import { createGoal } from "../logic/goals";
+import { safeUpdateGoal } from "../logic/goalGuards";
 import { ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
 import { resolveGoalType } from "../domain/goalType";
 import { normalizeLocalDateKey, todayLocalKey, toLocalDateKey } from "../utils/dateKey";
@@ -70,7 +71,8 @@ export default function CreateV2LinkOutcome({
     setData((prev) => {
       let next = prev;
       for (const id of createdActionIds) {
-        next = updateGoal(next, id, { parentId: outcomeId, outcomeId });
+        const result = safeUpdateGoal(next, id, { parentId: outcomeId, outcomeId }, { onOpenPaywall });
+        next = result.state;
       }
       const prevUi = prev.ui || {};
       const nextDraft = {
@@ -118,7 +120,8 @@ export default function CreateV2LinkOutcome({
         priority: "secondaire",
       });
       for (const id of createdActionIds) {
-        next = updateGoal(next, id, { parentId: outcomeId, outcomeId });
+        const result = safeUpdateGoal(next, id, { parentId: outcomeId, outcomeId }, { onOpenPaywall });
+        next = result.state;
       }
       const prevUi = prev.ui || {};
       const nextDraft = {
@@ -230,6 +233,7 @@ export default function CreateV2LinkOutcome({
               </Button>
               <Button onClick={handleContinue}>Continuer</Button>
             </div>
+            <div className="small2 textMuted2">L’action restera autonome. Tu pourras la lier plus tard.</div>
           </div>
         </Card>
       </div>

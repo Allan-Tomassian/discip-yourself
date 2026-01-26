@@ -245,6 +245,55 @@ export function runInternalP2Tests() {
     pass = false;
   }
 
+  // TEST 8: conflict resolution keeps slotKey aligned with start.
+  try {
+    const state = {
+      goals: [
+        { id: "g1", type: "PROCESS", planType: "ACTION", status: "active" },
+        {
+          id: "g2",
+          type: "PROCESS",
+          planType: "ACTION",
+          status: "active",
+          schedule: { timeSlots: ["09:00"], durationMinutes: 30 },
+        },
+      ],
+      occurrences: [
+        { id: "o1", goalId: "g1", date: KEY, start: "09:00", status: "planned", durationMinutes: 30 },
+      ],
+    };
+    const next = ensureWindowForGoal(state, "g2", KEY, 1);
+    const occ = (next.occurrences || []).find((o) => o && o.goalId === "g2" && o.date === KEY) || null;
+    const ok = occ && occ.start !== "09:00" && occ.slotKey === occ.start;
+    results.push({ id: "TEST 8", pass: ok });
+    if (ok) console.log("TEST 8 PASS");
+    else console.error("TEST 8 FAIL", { occ });
+    pass = pass && ok;
+  } catch (err) {
+    results.push({ id: "TEST 8", pass: false, error: err });
+    console.error("TEST 8 FAIL", err);
+    pass = false;
+  }
+
+  // TEST 9: upsert keeps slotKey equal to start.
+  try {
+    const state = {
+      goals: [{ id: "g1", type: "PROCESS", planType: "ACTION", status: "active" }],
+      occurrences: [],
+    };
+    const updated = upsertOccurrence("g1", KEY, "08:00", 30, { slotKey: "09:00" }, state);
+    const occ = updated.find((o) => o && o.goalId === "g1" && o.date === KEY) || null;
+    const ok = occ && occ.start === "08:00" && occ.slotKey === "08:00";
+    results.push({ id: "TEST 9", pass: ok });
+    if (ok) console.log("TEST 9 PASS");
+    else console.error("TEST 9 FAIL", { occ });
+    pass = pass && ok;
+  } catch (err) {
+    results.push({ id: "TEST 9", pass: false, error: err });
+    console.error("TEST 9 FAIL", err);
+    pass = false;
+  }
+
   console.log("P2 internal tests summary:", pass ? "PASS" : "FAIL");
   console.groupEnd();
 
