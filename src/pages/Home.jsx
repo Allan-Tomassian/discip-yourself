@@ -572,6 +572,18 @@ export default function Home({
     const list = occurrences.filter((o) => o && o.date === selectedDateKey);
     return list.slice().sort(occurrenceSort);
   }, [occurrences, occurrenceSort, selectedDateKey]);
+  const visibleOccurrencesForSelectedDay = useMemo(() => {
+    return occurrencesForSelectedDay.filter((occ) => goalsById.has(occ.goalId));
+  }, [goalsById, occurrencesForSelectedDay]);
+  useEffect(() => {
+    const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
+    if (!isDev) return;
+    for (const occ of occurrencesForSelectedDay) {
+      if (goalsById.has(occ.goalId)) continue;
+      // eslint-disable-next-line no-console
+      console.log("[orphan occurrence skipped]", occ);
+    }
+  }, [goalsById, occurrencesForSelectedDay]);
 
   const planningWindowDays = useMemo(() => {
     if (Number.isFinite(generationWindowDays) && generationWindowDays > 0) {
@@ -1777,9 +1789,9 @@ export default function Home({
 
                     <div className="mt12">
                       <div className="small2">Occurrences du jour</div>
-                      {occurrencesForSelectedDay.length ? (
+                      {visibleOccurrencesForSelectedDay.length ? (
                         <div className="mt8 col gap8">
-                          {occurrencesForSelectedDay.map((occ) => {
+                          {visibleOccurrencesForSelectedDay.map((occ) => {
                             const goal = goalsById.get(occ.goalId) || null;
                             const title = goal?.title || "Action";
                             const categoryName = categoriesById.get(goal?.categoryId)?.name || "Général";
@@ -2103,9 +2115,9 @@ export default function Home({
                         overflowY: planningWindowDays > 14 ? "auto" : "visible",
                       }}
                     >
-                      {occurrencesForSelectedDay.length ? (
+                      {visibleOccurrencesForSelectedDay.length ? (
                         <div className="col gap8">
-                          {occurrencesForSelectedDay.map((occ) => {
+                          {visibleOccurrencesForSelectedDay.map((occ) => {
                             const goal = goalsById.get(occ.goalId) || null;
                             const title = goal?.title || "Action";
                             const categoryName = categoriesById.get(goal?.categoryId)?.name || "Général";

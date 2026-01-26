@@ -257,6 +257,31 @@ export default function CategoryView({
       const nextGoals = (prev.goals || []).filter((g) => g && g.id !== goalId);
       const nextOccurrences = (prev.occurrences || []).filter((o) => o && o.goalId !== goalId);
       const nextReminders = (prev.reminders || []).filter((r) => r && r.goalId !== goalId);
+      const nextSessions = Array.isArray(prev.sessions)
+        ? prev.sessions
+            .map((s) => {
+              if (!s || typeof s !== "object") return s;
+              const habitIds = Array.isArray(s.habitIds) ? s.habitIds.filter((id) => id !== goalId) : [];
+              const doneHabitIds = Array.isArray(s.doneHabitIds) ? s.doneHabitIds.filter((id) => id !== goalId) : [];
+              return { ...s, habitIds, doneHabitIds };
+            })
+            .filter((s) => {
+              if (!s || typeof s !== "object") return false;
+              const hasHabits = Array.isArray(s.habitIds) && s.habitIds.length > 0;
+              const hasDone = Array.isArray(s.doneHabitIds) && s.doneHabitIds.length > 0;
+              return hasHabits || hasDone;
+            })
+        : prev.sessions;
+      let nextChecks = prev.checks;
+      if (nextChecks && typeof nextChecks === "object") {
+        const cleaned = {};
+        for (const [key, bucket] of Object.entries(nextChecks)) {
+          const habits = Array.isArray(bucket?.habits) ? bucket.habits.filter((id) => id !== goalId) : [];
+          const micro = bucket?.micro && typeof bucket.micro === "object" ? bucket.micro : {};
+          if (habits.length || Object.keys(micro).length) cleaned[key] = { ...bucket, habits, micro };
+        }
+        nextChecks = cleaned;
+      }
       const nextUi = { ...(prev.ui || {}) };
       if (nextUi.activeSession?.habitIds) {
         const kept = nextUi.activeSession.habitIds.filter((id) => id !== goalId);
@@ -268,6 +293,8 @@ export default function CategoryView({
         goals: nextGoals,
         occurrences: nextOccurrences,
         reminders: nextReminders,
+        sessions: nextSessions,
+        checks: nextChecks,
         ui: nextUi,
       };
     });

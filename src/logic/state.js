@@ -756,9 +756,10 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
     const startTimeRaw = normalizeStartTime(g.startTime);
     const isLegacyDefaultSlot = scheduleSlots.length === 1 && scheduleSlot0 === "09:00";
     const isAnytime = !startTimeRaw && !reminderTime;
-    const startIsLegacyDefault = startTimeRaw === "09:00" && !reminderTime && isLegacyDefaultSlot;
-    if ((isAnytime || startIsLegacyDefault) && isLegacyDefaultSlot) {
-      g.schedule.timeSlots = ["00:00"];
+    if (isAnytime && isLegacyDefaultSlot) {
+      if (g.schedule && typeof g.schedule === "object") {
+        g.schedule.timeSlots = ["00:00"];
+      }
       g.startTime = "";
     }
 
@@ -1215,6 +1216,107 @@ export function migrate(prev) {
   }
   if (migrated.sessionsLegacy && !next.sessionsLegacy) {
     next.sessionsLegacy = migrated.sessionsLegacy;
+  }
+
+  // Cleanup: remove legacy timed occurrences/reminders for anytime goals.
+  {
+    const anytimeGoalIds = new Set();
+    for (const g of next.goals || []) {
+      if (!g || !isProcess(g)) continue;
+      const st = normalizeStartTime(g.startTime);
+      const rt = normalizeStartTime(g.reminderTime);
+      if (!st && !rt && g.id) anytimeGoalIds.add(g.id);
+    }
+    if (anytimeGoalIds.size) {
+      let removedOccurrences = 0;
+      if (Array.isArray(next.occurrences)) {
+        const before = next.occurrences.length;
+        next.occurrences = next.occurrences.filter((o) => {
+          if (!o || !o.goalId) return true;
+          if (!anytimeGoalIds.has(o.goalId)) return true;
+          return o.start === "00:00";
+        });
+        removedOccurrences = before - next.occurrences.length;
+      }
+      let removedReminders = 0;
+      if (Array.isArray(next.reminders)) {
+        const before = next.reminders.length;
+        next.reminders = next.reminders.filter((r) => {
+          const gid = typeof r?.goalId === "string" ? r.goalId : "";
+          if (!gid || !anytimeGoalIds.has(gid)) return true;
+          return false;
+        });
+        removedReminders = before - next.reminders.length;
+      }
+      const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
+      if (isDev && (removedOccurrences > 0 || removedReminders > 0)) {
+        // eslint-disable-next-line no-console
+        console.log("[migration] anytime cleanup", {
+          goals: Array.from(anytimeGoalIds),
+          removedOccurrences,
+          removedReminders,
+        });
+      }
+    }
+  }
+
+  // Cleanup: prune orphan occurrences/reminders/sessions/checks (goalId not found).
+  {
+    const goalIds = new Set((next.goals || []).map((g) => g?.id).filter(Boolean));
+    let removedOrphanOccurrences = 0;
+    if (Array.isArray(next.occurrences)) {
+      const before = next.occurrences.length;
+      next.occurrences = next.occurrences.filter((o) => o && goalIds.has(o.goalId));
+      removedOrphanOccurrences = before - next.occurrences.length;
+    }
+    let removedOrphanReminders = 0;
+    if (Array.isArray(next.reminders)) {
+      const before = next.reminders.length;
+      next.reminders = next.reminders.filter((r) => r && goalIds.has(r.goalId));
+      removedOrphanReminders = before - next.reminders.length;
+    }
+    let removedOrphanSessions = 0;
+    if (Array.isArray(next.sessions)) {
+      const before = next.sessions.length;
+      next.sessions = next.sessions
+        .map((s) => {
+          if (!s || typeof s !== "object") return s;
+          const habitIds = Array.isArray(s.habitIds) ? s.habitIds.filter((id) => goalIds.has(id)) : [];
+          const doneHabitIds = Array.isArray(s.doneHabitIds) ? s.doneHabitIds.filter((id) => goalIds.has(id)) : [];
+          return { ...s, habitIds, doneHabitIds };
+        })
+        .filter((s) => {
+          if (!s || typeof s !== "object") return false;
+          const hasHabits = Array.isArray(s.habitIds) && s.habitIds.length > 0;
+          const hasDone = Array.isArray(s.doneHabitIds) && s.doneHabitIds.length > 0;
+          return hasHabits || hasDone;
+        });
+      removedOrphanSessions = before - next.sessions.length;
+    }
+    let removedOrphanChecks = 0;
+    if (next.checks && typeof next.checks === "object") {
+      const nextChecks = {};
+      for (const [key, bucket] of Object.entries(next.checks)) {
+        const habits = Array.isArray(bucket?.habits) ? bucket.habits.filter((id) => goalIds.has(id)) : [];
+        const micro = bucket?.micro && typeof bucket.micro === "object" ? bucket.micro : {};
+        if (habits.length || Object.keys(micro).length) {
+          nextChecks[key] = { ...bucket, habits, micro };
+        } else {
+          removedOrphanChecks += 1;
+        }
+      }
+      next.checks = nextChecks;
+    }
+    const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
+    if (isDev && (removedOrphanOccurrences || removedOrphanReminders || removedOrphanSessions || removedOrphanChecks)) {
+      // eslint-disable-next-line no-console
+      console.log("[migration] orphan cleanup", {
+        removedOrphanOccurrences,
+        removedOrphanReminders,
+        removedOrphanSessions,
+        removedOrphanChecks,
+      });
+    }
   }
   next.sessions = [];
   next.checks = {};

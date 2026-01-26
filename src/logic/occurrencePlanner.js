@@ -206,12 +206,12 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
     const durationMinutes = getDurationMinutes(goal, schedule);
 
     const slotsForDate = timeSlots.length ? timeSlots : [fallbackSlot];
-    const isAnytimeSlot = timeSlots.length === 1 && timeSlots[0] === "00:00";
+    const isAnytimeSlot = slotsForDate.length === 1 && slotsForDate[0] === "00:00";
     for (const preferredStart of slotsForDate) {
       const key = occurrenceKey(goal.id, dateKey, preferredStart);
       if (usedKeys.has(key)) continue;
 
-      const resolved = isAnytimeSlot
+      const resolved = isAnytimeSlot && preferredStart === "00:00"
         ? { start: preferredStart, conflict: false }
         : resolveConflictNearest(occurrences, dateKey, preferredStart, durationMinutes, slotsForDate);
       const resolvedKey = occurrenceKey(goal.id, dateKey, resolved.start);
