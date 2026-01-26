@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import SortableBlocks from "../components/SortableBlocks";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, IconButton, SelectMenu, Textarea } from "../components/UI";
@@ -125,7 +125,11 @@ export default function Home({
   isPlanningUnlimited = false,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
-  const selectedDateKey = normalizeLocalDateKey(safeData.ui?.selectedDate) || todayLocalKey();
+  const selectedDateKey =
+    normalizeLocalDateKey(safeData.ui?.selectedDateKey || safeData.ui?.selectedDate) || todayLocalKey();
+  const pendingDateKey =
+    normalizeLocalDateKey(safeData.ui?.pendingDateKey) || selectedDateKey;
+  const activeRailKey = pendingDateKey;
   const selectedDate = fromLocalDateKey(selectedDateKey);
   const localTodayKey = toLocalDateKey(new Date());
   const selectedStatus =
@@ -159,7 +163,17 @@ export default function Home({
     return [...DEFAULT_BLOCK_ORDER];
   }, [safeData?.ui?.blocksByPage?.home, legacyOrder]);
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(selectedDate));
-  const [railRange, setRailRange] = useState(() => ({ start: -7, end: 7 }));
+  const [railRange, setRailRange] = useState(() => {
+    const anchor = fromLocalDateKey(localTodayKey);
+    const active = fromLocalDateKey(activeRailKey);
+    if (!anchor || !active) return { start: -7, end: 7 };
+    const offset = diffDays(anchor, active);
+    const buffer = 7;
+    return {
+      start: Math.min(-7, offset - buffer),
+      end: Math.max(7, offset + buffer),
+    };
+  });
 
   const handleReorder = useCallback(
     (nextOrder) => {
@@ -202,16 +216,13 @@ export default function Home({
   );
 
   // Refs
-  const todayKeyRef = useRef(localTodayKey);
   const railRef = useRef(null);
   const railItemRefs = useRef(new Map());
   const railScrollRaf = useRef(null);
   const railExtendRef = useRef(0);
-  const lastSelectionSourceRef = useRef("auto");
   const noteSaveRef = useRef(null);
-  const calendarIdleTimerRef = useRef(null);
-  const skipAutoCenterRef = useRef(false);
-  const didInitSelectedDateRef = useRef(false);
+  const pendingCommitRef = useRef(null);
+  const isRailInteractingRef = useRef(false);
   const didHydrateLegacyRef = useRef(false);
 
   // Data slices
@@ -260,59 +271,6 @@ export default function Home({
   }, [occurrences]);
 
   // Effects
-  useEffect(() => {
-    if (typeof setData !== "function") return;
-
-    const today = toLocalDateKey(new Date());
-    const raw = safeData.ui?.selectedDate;
-    const isValid = typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw);
-
-    if (!didInitSelectedDateRef.current) {
-      didInitSelectedDateRef.current = true;
-      if (raw !== today) {
-        setData((prev) => ({
-          ...prev,
-          ui: { ...(prev.ui || {}), selectedDate: today },
-        }));
-      }
-      try {
-        sessionStorage.removeItem("home:selectedDateTouched");
-      } catch (err) {
-   void err;
-        // Ignore storage failures.
-      }
-      return;
-    }
-
-    // Still keep the safety net for invalid values.
-    if (!isValid) {
-      setData((prev) => ({
-        ...prev,
-        ui: { ...(prev.ui || {}), selectedDate: today },
-      }));
-    }
-  }, [safeData.ui?.selectedDate, setData]);
-
-  useEffect(() => {
-    return () => {
-      if (typeof setData !== "function") return;
-      const today = toLocalDateKey(new Date());
-      setData((prev) => {
-        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-        if (prevUi.selectedDate === today) return prev;
-        return {
-          ...prev,
-          ui: { ...prevUi, selectedDate: today },
-        };
-      });
-      try {
-        sessionStorage.removeItem("home:selectedDateTouched");
-      } catch (err) {
-   void err;
-        // Ignore storage failures.
-      }
-    };
-  }, [setData]);
 
   useEffect(() => {
     if (didHydrateLegacyRef.current) return;
@@ -424,19 +382,10 @@ export default function Home({
   }, [dailyNote, noteStorageKey]);
 
   useEffect(() => {
-    if (typeof setData !== "function") return;
-    const id = setInterval(() => {
-      const nowKey = toLocalDateKey(new Date());
-      if (nowKey === todayKeyRef.current) return;
-      todayKeyRef.current = nowKey;
-      setData((prev) => {
-        const prevUi = prev.ui || {};
-        if (prevUi.selectedDate === nowKey) return prev;
-        return { ...prev, ui: { ...prevUi, selectedDate: nowKey } };
-      });
-    }, 60000);
-    return () => clearInterval(id);
-  }, [setData]);
+    return () => {
+      if (pendingCommitRef.current) clearTimeout(pendingCommitRef.current);
+    };
+  }, []);
 
   // Derived data
   const focusCategory = useMemo(() => {
@@ -899,12 +848,12 @@ export default function Home({
         date: d,
         day: parts[2] || "",
         month: parts[1] || "",
-        isSelected: key === selectedDateKey,
+        isSelected: key === activeRailKey,
         status: key === localTodayKey ? "today" : key < localTodayKey ? "past" : "future",
       });
     }
     return items;
-  }, [railAnchorDate, railRange.start, railRange.end, selectedDateKey, localTodayKey]);
+  }, [railAnchorDate, railRange.start, railRange.end, activeRailKey, localTodayKey]);
 
   const ensureRailRangeForOffset = useCallback((offset) => {
     const buffer = 7;
@@ -934,10 +883,13 @@ export default function Home({
   }, [selectedDate, selectedDateKey]);
 
   useEffect(() => {
-    const offset = diffDays(railAnchorDate, selectedDate);
+    if (!activeRailKey) return;
+    const activeDate = fromLocalDateKey(activeRailKey);
+    if (!activeDate) return;
+    const offset = diffDays(railAnchorDate, activeDate);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     ensureRailRangeForOffset(offset);
-  }, [railAnchorDate, selectedDate, ensureRailRangeForOffset]);
+  }, [activeRailKey, railAnchorDate, ensureRailRangeForOffset]);
 
   const selectedDateLabel =
     selectedStatus === "today" ? `${calendarRangeLabel} · Aujourd’hui` : calendarRangeLabel;
@@ -969,72 +921,79 @@ export default function Home({
   }, [calendarView]);
 
   // Handlers
-  const scheduleCalendarIdleReset = useCallback(() => {
-    if (calendarIdleTimerRef.current) clearTimeout(calendarIdleTimerRef.current);
-    calendarIdleTimerRef.current = setTimeout(() => {
-      const today = toLocalDateKey(new Date());
-      lastSelectionSourceRef.current = "auto";
-      setData((prev) => {
-        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-        if (prevUi.selectedDate === today) return prev;
-        return {
-          ...prev,
-          ui: { ...prevUi, selectedDate: today },
-        };
-      });
-      try {
-        sessionStorage.removeItem("home:selectedDateTouched");
-      } catch (err) {
-   void err;
-        // ignore
-      }
-    }, 1200);
-  }, [setData]);
-  const setSelectedDate = useCallback(
-    (nextKey, source = "user") => {
+  const setPendingKey = useCallback(
+    (nextKey) => {
       if (!nextKey || typeof setData !== "function") return;
-      lastSelectionSourceRef.current = source;
-      const isUser = source === "user";
-      if (isUser) {
-        try {
-          sessionStorage.setItem("home:selectedDateTouched", nextKey);
-        } catch (err) {
-   void err;
-          // ignore
-        }
-      }
       setData((prev) => {
         const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-        if (prevUi.selectedDate === nextKey) return prev;
+        if (prevUi.pendingDateKey === nextKey) return prev;
         return {
           ...prev,
-          ui: { ...prevUi, selectedDate: nextKey },
+          ui: { ...prevUi, pendingDateKey: nextKey },
         };
       });
-      if (isUser) scheduleCalendarIdleReset();
     },
-    [scheduleCalendarIdleReset, setData]
+    [setData]
   );
 
-  useEffect(() => {
-    if (calendarView === "day") return;
-    if (lastSelectionSourceRef.current === "user") return;
-    if (selectedDateKey !== localTodayKey) {
-      setSelectedDate(localTodayKey, "auto");
-    }
-  }, [calendarView, localTodayKey, selectedDateKey, setSelectedDate]);
-  useEffect(() => {
-    return () => {
-      if (calendarIdleTimerRef.current) clearTimeout(calendarIdleTimerRef.current);
-    };
-  }, []);
+  const commitDateKey = useCallback(
+    (nextKey) => {
+      if (!nextKey || typeof setData !== "function") return;
+      if (pendingCommitRef.current) clearTimeout(pendingCommitRef.current);
+      setData((prev) => {
+        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+        if (
+          prevUi.selectedDateKey === nextKey &&
+          prevUi.selectedDate === nextKey &&
+          prevUi.pendingDateKey === nextKey
+        ) {
+          return prev;
+        }
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            selectedDateKey: nextKey,
+            selectedDate: nextKey,
+            pendingDateKey: nextKey,
+          },
+        };
+      });
+    },
+    [setData]
+  );
+
+  const schedulePendingCommit = useCallback(
+    (nextKey) => {
+      if (!nextKey) return;
+      if (pendingCommitRef.current) clearTimeout(pendingCommitRef.current);
+      pendingCommitRef.current = setTimeout(() => {
+        commitDateKey(nextKey);
+      }, 1000);
+    },
+    [commitDateKey]
+  );
+
+  const setPendingSelection = useCallback(
+    (nextKey, source = "scroll") => {
+      if (!nextKey) return;
+      setPendingKey(nextKey);
+      if (source === "scroll") {
+        schedulePendingCommit(nextKey);
+      } else {
+        commitDateKey(nextKey);
+      }
+    },
+    [commitDateKey, schedulePendingCommit, setPendingKey]
+  );
+
   const handleDayOpen = useCallback(
     (nextKey) => {
       if (!nextKey) return;
-      setSelectedDate(nextKey, "user");
+      commitDateKey(nextKey);
       if (typeof onDayOpen === "function") onDayOpen(nextKey);
     },
-    [onDayOpen, setSelectedDate]
+    [commitDateKey, onDayOpen]
   );
   const handleAddOccurrence = useCallback(
     (nextKey, goalId) => {
@@ -1159,6 +1118,17 @@ export default function Home({
     }
   }, []);
 
+  const centerRailOnKey = useCallback((dateKeyValue, behavior = "auto") => {
+    const container = railRef.current;
+    if (!container || !dateKeyValue) return;
+    const refEl = railItemRefs.current.get(dateKeyValue);
+    const el = refEl || container.querySelector(`[data-datekey="${dateKeyValue}"]`);
+    if (!el) return;
+    const left = el.offsetLeft + el.offsetWidth / 2 - container.clientWidth / 2;
+    if (!Number.isFinite(left)) return;
+    container.scrollTo({ left: Math.max(0, left), behavior });
+  }, []);
+
   const updateSelectedFromScroll = useCallback(() => {
     const container = railRef.current;
     if (!container || !railItemRefs.current.size) return;
@@ -1174,31 +1144,37 @@ export default function Home({
         closestKey = key;
       }
     });
-    if (closestKey && closestKey !== selectedDateKey) {
-      skipAutoCenterRef.current = true;
-      setSelectedDate(closestKey, "auto");
+    if (closestKey && closestKey !== pendingDateKey) {
+      setPendingSelection(closestKey, "scroll");
     }
-  }, [selectedDateKey, setSelectedDate]);
+  }, [pendingDateKey, setPendingSelection]);
 
   const handleRailScroll = useCallback(() => {
     if (railScrollRaf.current) return;
     railScrollRaf.current = requestAnimationFrame(() => {
       railScrollRaf.current = null;
       updateSelectedFromScroll();
-      maybeExtendRailRange();
+      if (!isRailInteractingRef.current) {
+        maybeExtendRailRange();
+      }
     });
-    scheduleCalendarIdleReset();
-  }, [maybeExtendRailRange, scheduleCalendarIdleReset, updateSelectedFromScroll]);
+  }, [maybeExtendRailRange, updateSelectedFromScroll]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (calendarView !== "day") return;
-    if (!selectedDateKey) return;
-    if (skipAutoCenterRef.current) {
-      skipAutoCenterRef.current = false;
-      return;
-    }
-    requestAnimationFrame(() => scrollRailToKey(selectedDateKey, "auto"));
-  }, [calendarView, scrollRailToKey, selectedDateKey, railItems.length]);
+    if (!activeRailKey) return;
+    if (isRailInteractingRef.current) return;
+    const activeDate = fromLocalDateKey(activeRailKey);
+    if (!activeDate) return;
+    ensureRailRangeForOffset(diffDays(railAnchorDate, activeDate));
+    requestAnimationFrame(() => {
+      if (isRailInteractingRef.current) return;
+      requestAnimationFrame(() => {
+        if (isRailInteractingRef.current) return;
+        centerRailOnKey(activeRailKey, "auto");
+      });
+    });
+  }, [activeRailKey, calendarView, centerRailOnKey, ensureRailRangeForOffset, railAnchorDate, railRange.start, railRange.end]);
 
   useEffect(() => {
     return () => {
@@ -1855,8 +1831,6 @@ export default function Home({
             return (
               <Card
                 data-tour-id="today-calendar-card"
-                onPointerDown={scheduleCalendarIdleReset}
-                onWheel={scheduleCalendarIdleReset}
               >
                 <div className="p18">
                   <div className="row">
@@ -1939,6 +1913,27 @@ export default function Home({
                           className="calendarRail scrollNoBar"
                           ref={railRef}
                           onScroll={handleRailScroll}
+                          onPointerDown={() => {
+                            isRailInteractingRef.current = true;
+                          }}
+                          onPointerUp={() => {
+                            isRailInteractingRef.current = false;
+                            maybeExtendRailRange();
+                          }}
+                          onPointerCancel={() => {
+                            isRailInteractingRef.current = false;
+                          }}
+                          onMouseUp={() => {
+                            isRailInteractingRef.current = false;
+                            maybeExtendRailRange();
+                          }}
+                          onTouchStart={() => {
+                            isRailInteractingRef.current = true;
+                          }}
+                          onTouchEnd={() => {
+                            isRailInteractingRef.current = false;
+                            maybeExtendRailRange();
+                          }}
                           data-tour-id="today-calendar-rail"
                           role="listbox"
                           aria-label="Sélecteur de jour"
@@ -1959,6 +1954,8 @@ export default function Home({
                             const ariaLabel = `${item.key} · ${plannedLabel} · ${doneLabel}${
                               isToday ? " · Aujourd’hui" : ""
                             }`;
+                            const isSelected = item.key === activeRailKey;
+                            const accentForItem = goalAccentByDate.get(item.key) || goalAccent || accent;
                             return (
                               <button
                                 key={item.key}
@@ -1967,9 +1964,9 @@ export default function Home({
                                   else railItemRefs.current.delete(item.key);
                                 }}
                                 className={`dayPill calendarItem ${
-                                  item.key === selectedDateKey
+                                  isSelected
                                     ? "is-current"
-                                    : item.key < selectedDateKey
+                                    : item.key < activeRailKey
                                       ? "is-past"
                                       : "is-future"
                                 }`}
@@ -1978,8 +1975,8 @@ export default function Home({
                                 data-planned={plannedCount}
                                 data-done={doneCount}
                                 aria-label={ariaLabel}
-                                aria-pressed={item.key === selectedDateKey}
-                                aria-current={isToday ? "date" : undefined}
+                                aria-pressed={isSelected}
+                                aria-current={isSelected ? "date" : undefined}
                                 role="option"
                                 onClick={() => {
                                   scrollRailToKey(item.key);
@@ -1989,12 +1986,12 @@ export default function Home({
                                 style={{
                                   scrollSnapAlign: "center",
                                   borderColor:
-                                    item.key === selectedDateKey
-                                      ? selectedDayAccent
+                                    isSelected
+                                      ? accentForItem
                                       : goalAccentByDate.get(item.key) || "rgba(255,255,255,.14)",
                                   boxShadow:
-                                    item.key === selectedDateKey
-                                      ? `0 0 0 2px ${selectedDayAccent}33`
+                                    isSelected
+                                      ? `0 0 0 2px ${accentForItem}33`
                                       : undefined,
                                 }}
                               >
@@ -2098,7 +2095,7 @@ export default function Home({
                     )}
                   </div>
                   <div className="mt12">
-                    <div className="small2">Planning {planningWindowDays} jours</div>
+                    <div className="small2">Planning du jour</div>
                     <div
                       className="mt8 col gap10"
                       style={{
@@ -2106,62 +2103,54 @@ export default function Home({
                         overflowY: planningWindowDays > 14 ? "auto" : "visible",
                       }}
                     >
-                      {planningDays.map((dayKey) => {
-                        const list = occurrencesByPlanningDay.get(dayKey) || [];
-                        return (
-                          <div key={dayKey} className="stack stackGap6">
-                            <div className="small2 textMuted2">{formatDayLabel(dayKey)}</div>
-                            {list.length ? (
-                              <div className="col gap8">
-                                {list.map((occ) => {
-                                  const goal = goalsById.get(occ.goalId) || null;
-                                  const title = goal?.title || "Action";
-                                  const categoryName = categoriesById.get(goal?.categoryId)?.name || "Général";
-                                  const outcome = getOutcomeForGoalId(occ.goalId);
-                                  const hasTime = Boolean(goal?.startTime || (occ.start && occ.start !== "00:00"));
-                                  const timeLabel = hasTime ? occ.start : "";
-                                  const duration = Number.isFinite(goal?.durationMinutes) ? goal.durationMinutes : null;
-                                  const status =
-                                    occ.status === "done"
-                                      ? "Fait"
-                                      : occ.status === "skipped"
-                                        ? "Ignorée"
-                                        : "Planifiée";
-                                  const statusClass = occ.status === "done" ? "textAccent" : "textMuted2";
-                                  const pointsLabel = Number.isFinite(occ.pointsAwarded) ? `+${occ.pointsAwarded} points` : "";
-                                  return (
-                                    <button
-                                      key={`${occ.goalId}-${occ.date}-${occ.start}`}
-                                      type="button"
-                                      className="listItem row rowBetween gap10"
-                                      onClick={() => toggleOccurrence(occ)}
-                                      disabled={!canEdit}
-                                    >
-                                      <div className="col gap4">
-                                        <div className="itemTitle">
-                                          {(timeLabel ? `${timeLabel} · ` : "") + title}
-                                        </div>
-                                        <div className="row gap6 wrap">
-                                          <span className="badge">{categoryName}</span>
-                                          {outcome?.id ? <span className="badge">{outcome.title || "Objectif"}</span> : null}
-                                        </div>
-                                        <div className="small2 textMuted2">
-                                          {duration ? `${duration} min` : ""}
-                                          {duration && pointsLabel ? " · " : ""}
-                                          {pointsLabel}
-                                        </div>
-                                        <div className={`small2 ${statusClass}`}>{status}</div>
-                                      </div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <div className="small2 textMuted2">Aucune occurrence.</div>
-                            )}
-                          </div>
-                        );
-                      })}
+                      {occurrencesForSelectedDay.length ? (
+                        <div className="col gap8">
+                          {occurrencesForSelectedDay.map((occ) => {
+                            const goal = goalsById.get(occ.goalId) || null;
+                            const title = goal?.title || "Action";
+                            const categoryName = categoriesById.get(goal?.categoryId)?.name || "Général";
+                            const outcome = getOutcomeForGoalId(occ.goalId);
+                            const hasTime = Boolean(goal?.startTime || (occ.start && occ.start !== "00:00"));
+                            const timeLabel = hasTime ? occ.start : "";
+                            const duration = Number.isFinite(goal?.durationMinutes) ? goal.durationMinutes : null;
+                            const status =
+                              occ.status === "done"
+                                ? "Fait"
+                                : occ.status === "skipped"
+                                  ? "Ignorée"
+                                  : "Planifiée";
+                            const statusClass = occ.status === "done" ? "textAccent" : "textMuted2";
+                            const pointsLabel = Number.isFinite(occ.pointsAwarded) ? `+${occ.pointsAwarded} points` : "";
+                            return (
+                              <button
+                                key={`${occ.goalId}-${occ.date}-${occ.start}`}
+                                type="button"
+                                className="listItem row rowBetween gap10"
+                                onClick={() => toggleOccurrence(occ)}
+                                disabled={!canEdit}
+                              >
+                                <div className="col gap4">
+                                  <div className="itemTitle">
+                                    {(timeLabel ? `${timeLabel} · ` : "") + title}
+                                  </div>
+                                  <div className="row gap6 wrap">
+                                    <span className="badge">{categoryName}</span>
+                                    {outcome?.id ? <span className="badge">{outcome.title || "Objectif"}</span> : null}
+                                  </div>
+                                  <div className="small2 textMuted2">
+                                    {duration ? `${duration} min` : ""}
+                                    {duration && pointsLabel ? " · " : ""}
+                                    {pointsLabel}
+                                  </div>
+                                  <div className={`small2 ${statusClass}`}>{status}</div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="small2 textMuted2">Rien de planifié ce jour</div>
+                      )}
                     </div>
                   </div>
                   <div className="sectionSub" style={{ marginTop: 8 }}>

@@ -1,5 +1,5 @@
 // src/pages/Categories.jsx
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, AccentItem } from "../components/UI";
 import SortableBlocks from "../components/SortableBlocks";
@@ -9,7 +9,9 @@ import { ensureSystemInboxCategory, normalizeCategory, SYSTEM_INBOX_ID } from ".
 import { resolveGoalType } from "../domain/goalType";
 import { isProcessLinkedToOutcome, linkProcessToOutcome } from "../logic/linking";
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
-import { canCreateCategory, getUserCategories } from "../logic/entitlements";
+import { canCreateCategory, isPremium } from "../logic/entitlements";
+import { safePrompt } from "../utils/dialogs";
+import { uid } from "../utils/helpers";
 
 // TOUR MAP:
 // - primary_action: open category detail
@@ -30,23 +32,38 @@ export default function Categories({
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
-  const userCategories = useMemo(() => getUserCategories(categories), [categories]);
-  const isEmpty = userCategories.length === 0;
-  const showSuggestions = isEmpty;
-  const suggestedCategories = useMemo(() => {
-    const existingCategoryNames = new Set(
-      categories.map((c) => String(c?.name || "").trim().toLowerCase()).filter(Boolean)
-    );
-    const byId = new Map(categories.map((c) => [c?.id, c]));
-    return SUGGESTED_CATEGORIES.map((cat) => {
-      if (!cat) return null;
-      const activeCategory = byId.get(cat.id) || null;
-      if (!activeCategory && existingCategoryNames.has(String(cat.name || "").trim().toLowerCase())) {
-        return null;
-      }
-      return { ...cat, activeCategory };
-    }).filter(Boolean);
-  }, [categories]);
+  const isPremiumPlan = isPremium(safeData);
+  const sysCategory = useMemo(
+    () => categories.find((c) => c?.id === SYSTEM_INBOX_ID) || categories.find((c) => c?.system) || null,
+    [categories]
+  );
+  const activeCategories = useMemo(
+    () => categories.filter((c) => c && c.id !== SYSTEM_INBOX_ID),
+    [categories]
+  );
+  const isEmpty = activeCategories.length === 0;
+  const suggestedIds = useMemo(() => {
+    const ids = new Set();
+    for (const cat of SUGGESTED_CATEGORIES) {
+      if (cat?.id) ids.add(cat.id);
+    }
+    return ids;
+  }, []);
+  const remainingSuggestions = useMemo(
+    () => SUGGESTED_CATEGORIES.filter((s) => s && !categories.some((c) => c?.id === s.id)),
+    [categories]
+  );
+  const defaultSuggestionsCollapsed = activeCategories.length > 0;
+  const suggestionsCollapsed =
+    typeof safeData?.ui?.librarySuggestionsCollapsed === "boolean"
+      ? safeData.ui.librarySuggestionsCollapsed
+      : defaultSuggestionsCollapsed;
+  const suggestionsOpen = !suggestionsCollapsed;
+
+  useEffect(() => {
+    if (sysCategory || typeof setData !== "function") return;
+    setData((prev) => ensureSystemInboxCategory(prev).state);
+  }, [sysCategory, setData]);
 
   function activateSuggestedCategory(cat) {
     if (!cat || typeof setData !== "function") return;
@@ -95,6 +112,24 @@ export default function Categories({
         goals: nextGoals,
         habits: nextHabits,
         ui: nextUi,
+      };
+    });
+  }
+
+  function toggleSuggestionsOpen() {
+    if (typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
+      const hasActive = prevCategories.some((c) => c && c.id !== SYSTEM_INBOX_ID);
+      const fallbackCollapsed = hasActive;
+      const currentCollapsed =
+        typeof prevUi.librarySuggestionsCollapsed === "boolean"
+          ? prevUi.librarySuggestionsCollapsed
+          : fallbackCollapsed;
+      return {
+        ...prev,
+        ui: { ...prevUi, librarySuggestionsCollapsed: !currentCollapsed },
       };
     });
   }
@@ -168,17 +203,44 @@ export default function Categories({
     setLibraryDetailExpanded(categoryId);
   }
 
+  function handleCreateCustomCategory() {
+    if (!isPremiumPlan) {
+      if (typeof onOpenPaywall === "function") onOpenPaywall("Création de catégories personnalisées (Premium).");
+      return;
+    }
+    const name = safePrompt("Nom de la catégorie :", "");
+    if (!name || !name.trim()) return;
+    const colorInput = safePrompt("Couleur (hex) :", "#7C3AED");
+    const color = typeof colorInput === "string" && colorInput.trim() ? colorInput.trim() : "#7C3AED";
+    if (typeof setData !== "function") return;
+    setData((prev) => {
+      const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
+      const exists = prevCategories.some(
+        (c) => String(c?.name || "").trim().toLowerCase() === String(name).trim().toLowerCase()
+      );
+      if (exists) return prev;
+      const created = normalizeCategory({ id: `cat_${uid()}`, name: name.trim(), color }, prevCategories.length);
+      return { ...prev, categories: [...prevCategories, created] };
+    });
+  }
+
   const categoryRailOrder = Array.isArray(safeData?.ui?.categoryRailOrder)
     ? safeData.ui.categoryRailOrder
     : [];
-  const orderedCategories = useMemo(() => {
-    if (!categoryRailOrder.length) return categories;
-    const map = new Map(categories.map((c) => [c.id, c]));
-    const ordered = categoryRailOrder.map((id) => map.get(id)).filter(Boolean);
-    if (ordered.length === categories.length) return ordered;
-    const missing = categories.filter((c) => !categoryRailOrder.includes(c.id));
-    return ordered.concat(missing);
-  }, [categories, categoryRailOrder]);
+  const orderedUserCategories = useMemo(() => {
+    const hasUserOrder = categoryRailOrder.some((id) => id && id !== SYSTEM_INBOX_ID);
+    if (hasUserOrder) {
+      const map = new Map(activeCategories.map((c) => [c.id, c]));
+      const ordered = categoryRailOrder.map((id) => map.get(id)).filter(Boolean);
+      const missing = activeCategories.filter((c) => !categoryRailOrder.includes(c.id));
+      return ordered.concat(missing);
+    }
+    const byName = [...activeCategories];
+    byName.sort((a, b) =>
+      String(a?.name || "").localeCompare(String(b?.name || ""), "fr", { sensitivity: "base" })
+    );
+    return byName;
+  }, [activeCategories, categoryRailOrder]);
 
   const countsByCategory = useMemo(() => {
     const map = new Map();
@@ -216,6 +278,182 @@ export default function Categories({
       ? selectedCategory.mainGoalId
       : outcomeGoals[0]?.id) || null;
 
+  function renderCategoryItem(category, drag, allowDrag = true) {
+    if (!category) return null;
+    const counts = countsByCategory.get(category.id) || { habits: 0, objectives: 0 };
+    const objectives = counts.objectives;
+    const habits = counts.habits;
+    const hasContent = objectives > 0 || habits > 0;
+    const summary =
+      objectives || habits
+        ? `${formatCount(objectives, "objectif", "objectifs")} · ${formatCount(habits, "action", "actions")}`
+        : "Aucun élément";
+
+    const isSelected = libraryViewSelectedId === category.id;
+    const isExpanded = libraryDetailExpandedId === category.id;
+    const isSuggested = suggestedIds.has(category.id);
+    const detailAccentVars = getCategoryAccentVars(category.color);
+    const detailWhy = (category.whyText || "").trim() || "Aucun mini-why pour cette catégorie.";
+    const { attributes, listeners, setActivatorNodeRef } = drag || {};
+
+    return (
+      <div key={category.id} className="col gap8">
+        <AccentItem
+          color={category.color}
+          selected={isSelected}
+          rightSlot={
+            <span className="row gap8">
+              <span className="small2 textMuted2">
+                {isExpanded ? "−" : "+"}
+              </span>
+              {allowDrag && drag ? (
+                <button
+                  ref={setActivatorNodeRef}
+                  {...listeners}
+                  {...attributes}
+                  className="dragHandle"
+                  aria-label="Réorganiser"
+                >
+                  ⋮⋮
+                </button>
+              ) : null}
+            </span>
+          }
+          onClick={() => handleOpenDetail(category.id)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleOpenDetail(category.id);
+            }
+          }}
+        >
+          <div>
+            <div className="itemTitle">{category.name}</div>
+            <div className="itemSub">{summary}</div>
+          </div>
+        </AccentItem>
+        {isExpanded ? (
+          <div className="col gap8 pl10" style={detailAccentVars}>
+            <div className="row rowBetween alignCenter">
+              <div className="small2 textMuted2">
+                Détails
+              </div>
+              <div className="row gap8">
+                {typeof onOpenManage === "function" ? (
+                  <Button variant="ghost" onClick={() => onOpenManage(category.id)}>
+                    Gérer
+                  </Button>
+                ) : null}
+                {isSuggested && category.id !== SYSTEM_INBOX_ID ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => deactivateSuggestedCategory(category)}
+                    disabled={hasContent}
+                  >
+                    Désactiver
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+            <div className="listItem catAccentRow" style={detailAccentVars}>
+              <div className="small2 textMuted">
+                Mini-why
+              </div>
+              <div className="small2 mt6">
+                {detailWhy}
+              </div>
+            </div>
+            <div className="col gap8">
+              <div className="small2 textMuted">
+                Objectifs
+              </div>
+              {outcomeGoals.length ? (
+                <div className="col gap8">
+                  {outcomeGoals.map((g) => {
+                    const linkedHabits = habitsByOutcome.get(g.id) || [];
+                    const isPrimaryGoal = category.mainGoalId && g.id === category.mainGoalId;
+                    return (
+                      <div key={g.id} className="listItem catAccentRow" style={detailAccentVars}>
+                        <div className="row rowBetween gap8">
+                          <div className="itemTitle">{g.title || "Objectif"}</div>
+                          {isPrimaryGoal ? (
+                            <span className="badge badgeAccent">
+                              Prioritaire
+                            </span>
+                          ) : null}
+                        </div>
+                        {linkedHabits.length ? (
+                          <div className="col gap8 mt8 pl12">
+                            <div className="small2 textMuted">
+                              Actions
+                            </div>
+                            {linkedHabits.map((h) => (
+                              <div key={h.id} className="listItem catAccentRow" style={detailAccentVars}>
+                                <div className="itemTitle">{h.title || "Action"}</div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="small2 mt8 pl12">
+                            Aucune action liée.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="small2">Aucun objectif dans cette catégorie.</div>
+              )}
+            </div>
+            {unlinkedHabits.length ? (
+              <div className="col gap8">
+                <div className="small2 textMuted">
+                  Actions non liées
+                </div>
+                <div className="col gap8">
+                  {unlinkedHabits.map((h) => (
+                    <div key={h.id} className="listItem">
+                      <div className="row rowBetween gap8">
+                        <div className="itemTitle">{h.title || "Action"}</div>
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            if (!linkTargetId || typeof setData !== "function") return;
+                            setData((prev) => linkProcessToOutcome(prev, h.id, linkTargetId));
+                          }}
+                          disabled={!linkTargetId || typeof setData !== "function"}
+                        >
+                          Lier
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {!linkTargetId ? (
+                    <div className="small2 textMuted">
+                      Ajoute un objectif pour pouvoir lier ces actions.
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  const sysCategoryDisplay = useMemo(
+    () => sysCategory || { id: SYSTEM_INBOX_ID, name: "Général", color: "#64748B" },
+    [sysCategory]
+  );
+  const orderedRealCategories = useMemo(
+    () => [sysCategoryDisplay, ...orderedUserCategories].filter(Boolean),
+    [sysCategoryDisplay, orderedUserCategories]
+  );
+
   return (
       <ScreenShell
         headerTitle={<span data-tour-id="library-title">Bibliothèque</span>}
@@ -227,210 +465,73 @@ export default function Categories({
           <div className="p18">
             <div className="row rowBetween alignCenter">
               <div className="sectionTitle">Catégories</div>
+              {isPremiumPlan ? (
+                <Button variant="ghost" onClick={handleCreateCustomCategory}>
+                  Créer une catégorie
+                </Button>
+              ) : null}
             </div>
 
             <div className="mt12 col gap10" data-tour-id="library-category-list">
               {isEmpty ? <div className="small2 textMuted">Aucune catégorie active.</div> : null}
-              {showSuggestions && suggestedCategories.length ? (
-                <div className="col gap8">
-                  <div className="small2">Suggestions de catégories</div>
-                  <div className="col gap8">
-                    {suggestedCategories.map((cat) => {
-                      const isActive = Boolean(cat.activeCategory);
-                      const counts = countsByCategory.get(cat.id) || { habits: 0, objectives: 0 };
-                      const hasContent = counts.habits > 0 || counts.objectives > 0;
-                      return (
-                        <AccentItem key={cat.id} color={cat.color} tone="neutral">
-                          <div className="row rowBetween gap8">
-                            <div className="itemTitle">{cat.name}</div>
-                            {isActive ? (
-                              <Button
-                                variant="ghost"
-                                onClick={() => deactivateSuggestedCategory(cat)}
-                                disabled={hasContent}
-                              >
-                                {hasContent ? "Active" : "Désactiver"}
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                onClick={() => activateSuggestedCategory(cat)}
-                              >
-                                Activer
-                              </Button>
-                            )}
-                          </div>
-                        </AccentItem>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-              <SortableBlocks
-                  items={orderedCategories}
+              {orderedRealCategories.length ? (
+                <SortableBlocks
+                  items={orderedRealCategories}
                   getId={(item) => item.id}
                   onReorder={(nextItems) => {
                     if (typeof setData !== "function") return;
-                    const nextOrder = nextItems.map((item) => item.id);
+                    const nextIds = nextItems.map((item) => item.id).filter(Boolean);
+                    const filtered = nextIds.filter((id) => id !== SYSTEM_INBOX_ID);
+                    const nextOrder = [SYSTEM_INBOX_ID, ...filtered];
                     setData((prev) => ({
                       ...prev,
                       ui: { ...(prev.ui || {}), categoryRailOrder: nextOrder },
                     }));
                   }}
                   className="col"
-                  renderItem={(c, drag) => {
-                  const counts = countsByCategory.get(c.id) || { habits: 0, objectives: 0 };
-                  const objectives = counts.objectives;
-                  const habits = counts.habits;
-                  const summary =
-                    objectives || habits
-                      ? `${formatCount(objectives, "objectif", "objectifs")} · ${formatCount(habits, "action", "actions")}`
-                      : "Aucun élément";
-
-                  const isSelected = libraryViewSelectedId === c.id;
-                  const isExpanded = libraryDetailExpandedId === c.id;
-                  const detailAccentVars = getCategoryAccentVars(c.color);
-                  const detailWhy = (c.whyText || "").trim() || "Aucun mini-why pour cette catégorie.";
-                  const { attributes, listeners, setActivatorNodeRef } = drag || {};
-
-                  return (
-                    <div key={c.id} className="col gap8">
-                      <AccentItem
-                        color={c.color}
-                        selected={isSelected}
-                        rightSlot={
-                          <span className="row gap8">
-                            <span className="small2 textMuted2">
-                              {isExpanded ? "−" : "+"}
-                            </span>
-                            {drag ? (
-                              <button
-                                ref={setActivatorNodeRef}
-                                {...listeners}
-                                {...attributes}
-                                className="dragHandle"
-                                aria-label="Réorganiser"
-                              >
-                                ⋮⋮
-                              </button>
-                            ) : null}
-                          </span>
-                        }
-                        onClick={() => handleOpenDetail(c.id)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            handleOpenDetail(c.id);
-                          }
-                        }}
-                      >
-                        <div>
-                          <div className="itemTitle">{c.name}</div>
-                          <div className="itemSub">{summary}</div>
-                        </div>
-                      </AccentItem>
-                      {isExpanded ? (
-                        <div className="col gap8 pl10" style={detailAccentVars}>
-                          <div className="row rowBetween alignCenter">
-                            <div className="small2 textMuted2">
-                              Détails
-                            </div>
-                            {typeof onOpenManage === "function" ? (
-                              <Button variant="ghost" onClick={() => onOpenManage(c.id)}>
-                                Gérer
-                              </Button>
-                            ) : null}
-                          </div>
-                          <div className="listItem catAccentRow" style={detailAccentVars}>
-                            <div className="small2 textMuted">
-                              Mini-why
-                            </div>
-                            <div className="small2 mt6">
-                              {detailWhy}
-                            </div>
-                          </div>
-                          <div className="col gap8">
-                            <div className="small2 textMuted">
-                              Objectifs
-                            </div>
-                            {outcomeGoals.length ? (
-                              <div className="col gap8">
-                                {outcomeGoals.map((g) => {
-                                  const linkedHabits = habitsByOutcome.get(g.id) || [];
-                                  const isPrimaryGoal = c.mainGoalId && g.id === c.mainGoalId;
-                                  return (
-                                    <div key={g.id} className="listItem catAccentRow" style={detailAccentVars}>
-                                      <div className="row rowBetween gap8">
-                                        <div className="itemTitle">{g.title || "Objectif"}</div>
-                                        {isPrimaryGoal ? (
-                                          <span className="badge badgeAccent">
-                                            Prioritaire
-                                          </span>
-                                        ) : null}
-                                      </div>
-                                      {linkedHabits.length ? (
-                                        <div className="col gap8 mt8 pl12">
-                                          <div className="small2 textMuted">
-                                            Actions
-                                          </div>
-                                          {linkedHabits.map((h) => (
-                                            <div key={h.id} className="listItem catAccentRow" style={detailAccentVars}>
-                                              <div className="itemTitle">{h.title || "Action"}</div>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      ) : (
-                                        <div className="small2 mt8 pl12">
-                                          Aucune action liée.
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <div className="small2">Aucun objectif dans cette catégorie.</div>
-                            )}
-                          </div>
-                          {unlinkedHabits.length ? (
-                            <div className="col gap8">
-                              <div className="small2 textMuted">
-                                Actions non liées
-                              </div>
-                              <div className="col gap8">
-                                {unlinkedHabits.map((h) => (
-                                  <div key={h.id} className="listItem">
-                                    <div className="row rowBetween gap8">
-                                      <div className="itemTitle">{h.title || "Action"}</div>
-                                      <Button
-                                        variant="ghost"
-                                        onClick={() => {
-                                          if (!linkTargetId || typeof setData !== "function") return;
-                                          setData((prev) => linkProcessToOutcome(prev, h.id, linkTargetId));
-                                        }}
-                                        disabled={!linkTargetId || typeof setData !== "function"}
-                                      >
-                                        Lier
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ))}
-                                {!linkTargetId ? (
-                                  <div className="small2 textMuted">
-                                    Ajoute un objectif pour pouvoir lier ces actions.
-                                  </div>
-                                ) : null}
-                              </div>
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                  }}
+                  renderItem={(category, drag) =>
+                    renderCategoryItem(category, drag, category?.id !== SYSTEM_INBOX_ID)
+                  }
                 />
+              ) : null}
+              {remainingSuggestions.length ? (
+                <div className="col gap8">
+                  <div
+                    className="row rowBetween alignCenter"
+                    role="button"
+                    tabIndex={0}
+                    onClick={toggleSuggestionsOpen}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggleSuggestionsOpen();
+                      }
+                    }}
+                  >
+                    <div className="small2">
+                      Suggestions de catégories
+                      <span className="textMuted2"> ({remainingSuggestions.length})</span>
+                    </div>
+                    <span className="small2 textMuted2">
+                      {suggestionsOpen ? "Réduire" : "Afficher"}
+                    </span>
+                  </div>
+                  {suggestionsOpen ? (
+                    <div className="col gap8">
+                      {remainingSuggestions.map((cat) => (
+                        <AccentItem key={cat.id} color={cat.color} tone="neutral">
+                          <div className="row rowBetween gap8">
+                            <div className="itemTitle">{cat.name}</div>
+                            <Button variant="ghost" onClick={() => activateSuggestedCategory(cat)}>
+                              Activer
+                            </Button>
+                          </div>
+                        </AccentItem>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
         </Card>

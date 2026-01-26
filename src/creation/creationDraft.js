@@ -4,6 +4,7 @@ import { CREATION_STEPS, STEP_HABITS, STEP_OUTCOME } from "./creationSchema";
 export const CREATION_DRAFT_VERSION = 1;
 const REPEAT_VALUES = new Set(["none", "daily", "weekly"]);
 const DOW_VALUES = new Set([1, 2, 3, 4, 5, 6, 7]);
+const QUANTITY_PERIODS = new Set(["DAY", "WEEK", "MONTH"]);
 
 function normalizeRepeat(value) {
   const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -34,6 +35,22 @@ function normalizeDurationMinutes(value) {
   const raw = typeof value === "string" ? Number(value) : value;
   if (!Number.isFinite(raw) || raw <= 0) return null;
   return Math.round(raw);
+}
+
+function normalizeQuantityValue(value) {
+  const raw = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(raw) || raw <= 0) return null;
+  return Math.round(raw * 100) / 100;
+}
+
+function normalizeQuantityUnit(value) {
+  const raw = typeof value === "string" ? value.trim() : "";
+  return raw;
+}
+
+function normalizeQuantityPeriod(value) {
+  const raw = typeof value === "string" ? value.trim().toUpperCase() : "";
+  return QUANTITY_PERIODS.has(raw) ? raw : "";
 }
 
 export function createEmptyDraft() {
@@ -92,6 +109,26 @@ export function normalizeCreationDraft(raw) {
       nextHabit.durationMinutes = normalizeDurationMinutes(nextHabit.durationMinutes);
       const normalizedDate = normalizeLocalDateKey(nextHabit.oneOffDate);
       nextHabit.oneOffDate = repeat === "none" ? normalizedDate || "" : "";
+      const quantityValue = normalizeQuantityValue(nextHabit.quantityValue);
+      const quantityUnit = normalizeQuantityUnit(nextHabit.quantityUnit);
+      const quantityPeriod = normalizeQuantityPeriod(nextHabit.quantityPeriod);
+      if (quantityValue && quantityUnit) {
+        nextHabit.quantityValue = quantityValue;
+        nextHabit.quantityUnit = quantityUnit;
+        nextHabit.quantityPeriod = quantityPeriod || "DAY";
+      } else {
+        nextHabit.quantityValue = null;
+        nextHabit.quantityUnit = "";
+        nextHabit.quantityPeriod = "";
+      }
+      nextHabit.reminderTime = normalizeStartTime(nextHabit.reminderTime);
+      nextHabit.reminderWindowStart = normalizeStartTime(nextHabit.reminderWindowStart);
+      nextHabit.reminderWindowEnd = normalizeStartTime(nextHabit.reminderWindowEnd);
+      if (!nextHabit.reminderTime) {
+        nextHabit.reminderWindowStart = "";
+        nextHabit.reminderWindowEnd = "";
+      }
+      nextHabit.memo = typeof nextHabit.memo === "string" ? nextHabit.memo : "";
       return nextHabit;
     })
     .filter(Boolean);

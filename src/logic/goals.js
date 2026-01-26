@@ -240,6 +240,7 @@ export function normalizeGoalsState(state) {
     const next = { ...g, status: normalizeStatus(g.status) };
     const planType = normalizePlanType(next);
     const goalType = normalizeGoalType(next, planType);
+    const preservedStartDate = goalType === "OUTCOME" && typeof next.startDate === "string" ? next.startDate : undefined;
     const kind = normalizeLegacyKind(goalType);
     const parentId = normalizeParentId(next);
     const weight = normalizeWeight(next, parentId);
@@ -256,7 +257,7 @@ export function normalizeGoalsState(state) {
         kind,
         startAt,
         endAt: computeEndAt(startAt, sessionMinutes),
-        startDate: undefined,
+        startDate: preservedStartDate,
         oneOffDate: normalizeOneOffDate(next),
         freqUnit: undefined,
         freqCount: undefined,
@@ -278,7 +279,7 @@ export function normalizeGoalsState(state) {
         kind,
         startAt,
         endAt: computeEndAt(startAt, sessionMinutes),
-        startDate: undefined,
+        startDate: preservedStartDate,
         oneOffDate: undefined,
         freqUnit: undefined,
         freqCount: undefined,
@@ -300,7 +301,7 @@ export function normalizeGoalsState(state) {
       kind,
       startAt,
       endAt: computeEndAt(startAt, sessionMinutes),
-      startDate: undefined,
+      startDate: preservedStartDate,
       oneOffDate: undefined,
       freqUnit: freq.freqUnit,
       freqCount: freq.freqCount,

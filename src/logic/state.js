@@ -30,6 +30,7 @@ const MEASURE_TYPES = new Set(["money", "counter", "time", "energy", "distance",
 const TRACKING_MODES = new Set(["none", "manual", "template"]);
 const REPEAT_VALUES = new Set(["none", "daily", "weekly"]);
 const DOW_VALUES = new Set([1, 2, 3, 4, 5, 6, 7]);
+const QUANTITY_PERIODS = new Set(["DAY", "WEEK", "MONTH"]);
 const GOAL_PRIORITY_VALUES = new Set(["prioritaire", "secondaire", "bonus"]);
 
 // Demo mode (disabled by default).
@@ -63,7 +64,7 @@ export function createDefaultGoalSchedule() {
     // Weekly defaults (user will later edit in UI)
     // 1 = Monday ... 7 = Sunday
     daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
-    timeSlots: ["09:00"], // HH:mm
+    timeSlots: ["00:00"], // HH:mm
 
     // Session / reminders (data-only for now)
     durationMinutes: 60,
@@ -116,6 +117,22 @@ function normalizeDurationMinutes(value) {
   const raw = typeof value === "string" ? Number(value) : value;
   if (!Number.isFinite(raw) || raw <= 0) return null;
   return Math.round(raw);
+}
+
+function normalizeQuantityValue(value) {
+  const raw = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(raw) || raw <= 0) return null;
+  return Math.round(raw * 100) / 100;
+}
+
+function normalizeQuantityUnit(value) {
+  const raw = typeof value === "string" ? value.trim() : "";
+  return raw;
+}
+
+function normalizeQuantityPeriod(value) {
+  const raw = typeof value === "string" ? value.trim().toUpperCase() : "";
+  return QUANTITY_PERIODS.has(raw) ? raw : "DAY";
 }
 
 function normalizeGoalPriority(raw) {
@@ -558,6 +575,8 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
   // Optional: deadline as ISO date (YYYY-MM-DD). Empty string means "no deadline yet".
   if (typeof g.deadline !== "string") g.deadline = "";
   if (typeof g.notes !== "string") g.notes = "";
+  const rawStartDate = typeof g.startDate === "string" ? g.startDate.trim() : "";
+  g.startDate = normalizeLocalDateKey(rawStartDate) || "";
 
   const rawTracking = typeof g.trackingMode === "string" ? g.trackingMode.trim() : "";
   if (outcome) g.trackingMode = TRACKING_MODES.has(rawTracking) ? rawTracking : "none";
@@ -572,6 +591,23 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
   g.currentValue = Number.isFinite(rawCurrent) && rawCurrent >= 0 ? rawCurrent : null;
   if (!g.targetValue) g.currentValue = null;
 
+  if (typeof g.habitNotes !== "string") g.habitNotes = "";
+  const quantityValue = normalizeQuantityValue(g.quantityValue);
+  const quantityUnit = normalizeQuantityUnit(g.quantityUnit);
+  const quantityPeriod = normalizeQuantityPeriod(g.quantityPeriod);
+  if (quantityValue && quantityUnit) {
+    g.quantityValue = quantityValue;
+    g.quantityUnit = quantityUnit;
+    g.quantityPeriod = quantityPeriod;
+  } else {
+    g.quantityValue = null;
+    g.quantityUnit = "";
+    g.quantityPeriod = "";
+  }
+  g.reminderTime = normalizeStartTime(g.reminderTime);
+  g.reminderWindowStart = normalizeStartTime(g.reminderWindowStart);
+  g.reminderWindowEnd = normalizeStartTime(g.reminderWindowEnd);
+
   // Strict separation:
   // OUTCOME (objective): keep metric/deadline/notes, but remove any habit/scheduling fields.
   // PROCESS (habit): keep planning/frequency fields, but remove any outcome fields.
@@ -583,11 +619,17 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
     g.freqCount = undefined;
     g.sessionMinutes = null;
     g.oneOffDate = undefined;
+    g.habitNotes = "";
+    g.quantityValue = null;
+    g.quantityUnit = "";
+    g.quantityPeriod = "";
+    g.reminderTime = "";
+    g.reminderWindowStart = "";
+    g.reminderWindowEnd = "";
 
     // Remove scheduling remnants
     g.startAt = null;
     g.endAt = null;
-    g.startDate = undefined;
 
     // Outcome is the parent, never a child
     g.parentId = null;
@@ -706,6 +748,18 @@ export function normalizeGoal(rawGoal, index = 0, categories = []) {
       g.daysOfWeek = days.length ? days : scheduleDays;
     } else {
       g.daysOfWeek = days.length ? days : [];
+    }
+
+    const reminderTime = normalizeStartTime(g.reminderTime);
+    const scheduleSlots = Array.isArray(g.schedule?.timeSlots) ? g.schedule.timeSlots : [];
+    const scheduleSlot0 = normalizeStartTime(scheduleSlots[0]);
+    const startTimeRaw = normalizeStartTime(g.startTime);
+    const isLegacyDefaultSlot = scheduleSlots.length === 1 && scheduleSlot0 === "09:00";
+    const isAnytime = !startTimeRaw && !reminderTime;
+    const startIsLegacyDefault = startTimeRaw === "09:00" && !reminderTime && isLegacyDefaultSlot;
+    if ((isAnytime || startIsLegacyDefault) && isLegacyDefaultSlot) {
+      g.schedule.timeSlots = ["00:00"];
+      g.startTime = "";
     }
 
     const startTime = normalizeStartTime(g.startTime);

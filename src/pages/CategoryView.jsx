@@ -8,6 +8,7 @@ import { addDays, startOfWeekKey, todayKey } from "../utils/dates";
 import { isPrimaryCategory, isPrimaryGoal, setPrimaryCategory } from "../logic/priority";
 import { resolveGoalType } from "../domain/goalType";
 import { linkProcessToOutcome, splitProcessByLink } from "../logic/linking";
+import { ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
 
 // TOUR MAP:
 // - primary_action: manage goals/actions in a category
@@ -163,6 +164,30 @@ export default function CategoryView({
     }));
   }
 
+  function recolorCategory() {
+    if (!category?.id || typeof setData !== "function") return;
+    const nextColor = safePrompt("Couleur (hex) :", category.color || "#7C3AED");
+    if (!nextColor || !nextColor.trim()) return;
+    setData((prev) => ({
+      ...prev,
+      categories: (prev.categories || []).map((cat) =>
+        cat.id === category.id ? { ...cat, color: nextColor.trim() } : cat
+      ),
+    }));
+  }
+
+  function editMiniWhy() {
+    if (!category?.id || typeof setData !== "function") return;
+    const nextWhy = safePrompt("Mini-why :", category.whyText || "");
+    if (nextWhy == null) return;
+    setData((prev) => ({
+      ...prev,
+      categories: (prev.categories || []).map((cat) =>
+        cat.id === category.id ? { ...cat, whyText: String(nextWhy) } : cat
+      ),
+    }));
+  }
+
   function setCategoryPriority() {
     if (!category?.id || typeof setData !== "function") return;
     setData((prev) => setPrimaryCategory(prev, category.id));
@@ -170,33 +195,33 @@ export default function CategoryView({
 
   function deleteCategory() {
     if (!category?.id || typeof setData !== "function") return;
-    const ok = safeConfirm("Supprimer cette catégorie et tous ses éléments ?");
+    if (category.id === SYSTEM_INBOX_ID) return;
+    const ok = safeConfirm("Supprimer cette catégorie ? Les éléments seront déplacés vers Général.");
     if (!ok) return;
     setData((prev) => {
-      const nextCategories = (prev.categories || []).filter((cat) => cat.id !== category.id);
-      const nextGoals = (prev.goals || []).filter((g) => g.categoryId !== category.id);
-      const nextHabits = (prev.habits || []).filter((h) => h.categoryId !== category.id);
-      const nextUi = { ...(prev.ui || {}) };
-      const nextSelected = nextCategories[0]?.id || null;
-      if (nextUi.selectedCategoryId === category.id) nextUi.selectedCategoryId = nextSelected;
+      let next = prev;
+      const ensured = ensureSystemInboxCategory(next);
+      next = ensured.state;
+      const sysId = ensured.category?.id || SYSTEM_INBOX_ID;
+      const nextCategories = (next.categories || []).filter((cat) => cat.id !== category.id);
+      const nextGoals = (next.goals || []).map((g) =>
+        g && g.categoryId === category.id ? { ...g, categoryId: sysId } : g
+      );
+      const nextHabits = (next.habits || []).map((h) =>
+        h && h.categoryId === category.id ? { ...h, categoryId: sysId } : h
+      );
+      const nextUi = { ...(next.ui || {}) };
+      if (nextUi.selectedCategoryId === category.id) nextUi.selectedCategoryId = sysId;
       if (nextUi.selectedCategoryByView) {
         const scv = { ...nextUi.selectedCategoryByView };
-        if (scv.library === category.id) scv.library = nextSelected;
-        if (scv.plan === category.id) scv.plan = nextSelected;
-        if (scv.home === category.id) scv.home = nextSelected;
+        if (scv.library === category.id) scv.library = sysId;
+        if (scv.plan === category.id) scv.plan = sysId;
+        if (scv.home === category.id) scv.home = sysId;
+        scv.pilotage = scv.pilotage === category.id ? sysId : scv.pilotage;
         nextUi.selectedCategoryByView = scv;
       }
-      if (nextUi.sessionDraft?.objectiveId) {
-        const stillExists = nextGoals.some((g) => g.id === nextUi.sessionDraft.objectiveId);
-        if (!stillExists) nextUi.sessionDraft = null;
-      }
-      if (nextUi.activeSession?.habitIds) {
-        const kept = nextUi.activeSession.habitIds.filter((id) => nextGoals.some((g) => g.id === id));
-        if (!kept.length) nextUi.activeSession = null;
-        else nextUi.activeSession = { ...nextUi.activeSession, habitIds: kept };
-      }
       return {
-        ...prev,
+        ...next,
         categories: nextCategories,
         goals: nextGoals,
         habits: nextHabits,
@@ -204,6 +229,58 @@ export default function CategoryView({
       };
     });
     if (typeof onBack === "function") onBack();
+  }
+
+  function deleteOutcome(goal) {
+    if (!goal?.id || typeof setData !== "function") return;
+    const ok = safeConfirm("Supprimer cet objectif ?");
+    if (!ok) return;
+    setData((prev) => {
+      const nextGoals = (prev.goals || [])
+        .filter((g) => g && g.id !== goal.id)
+        .map((g) =>
+          g && g.parentId === goal.id ? { ...g, parentId: null, outcomeId: null } : g
+        );
+      const nextCategories = (prev.categories || []).map((cat) =>
+        cat.mainGoalId === goal.id ? { ...cat, mainGoalId: null } : cat
+      );
+      return { ...prev, goals: nextGoals, categories: nextCategories };
+    });
+  }
+
+  function deleteAction(goal) {
+    if (!goal?.id || typeof setData !== "function") return;
+    const ok = safeConfirm("Supprimer cette action ?");
+    if (!ok) return;
+    const goalId = goal.id;
+    setData((prev) => {
+      const nextGoals = (prev.goals || []).filter((g) => g && g.id !== goalId);
+      const nextOccurrences = (prev.occurrences || []).filter((o) => o && o.goalId !== goalId);
+      const nextReminders = (prev.reminders || []).filter((r) => r && r.goalId !== goalId);
+      const nextUi = { ...(prev.ui || {}) };
+      if (nextUi.activeSession?.habitIds) {
+        const kept = nextUi.activeSession.habitIds.filter((id) => id !== goalId);
+        nextUi.activeSession = kept.length ? { ...nextUi.activeSession, habitIds: kept } : null;
+      }
+      if (nextUi.sessionDraft?.objectiveId === goalId) nextUi.sessionDraft = null;
+      return {
+        ...prev,
+        goals: nextGoals,
+        occurrences: nextOccurrences,
+        reminders: nextReminders,
+        ui: nextUi,
+      };
+    });
+  }
+
+  function unlinkAction(goalId) {
+    if (!goalId || typeof setData !== "function") return;
+    setData((prev) => ({
+      ...prev,
+      goals: (prev.goals || []).map((g) =>
+        g && g.id === goalId ? { ...g, parentId: null, outcomeId: null } : g
+      ),
+    }));
   }
 
   function openEditItem(item) {
@@ -262,7 +339,7 @@ export default function CategoryView({
     );
   }
 
-  const accent = getAccentForPage(safeData, "home");
+  const accent = category?.color || getAccentForPage(safeData, "home");
   const backgroundImage = category.wallpaper || safeData.profile?.whyImage || "";
   const whyText = (category.whyText || "").trim();
   const whyDisplay = whyText || "Aucun mini-why pour cette catégorie.";
@@ -345,23 +422,32 @@ export default function CategoryView({
                 />
               </div>
             </div>
-            {categoryMenuOpen ? (
-              <div className="stack stackGap12">
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    renameCategory();
-                    setCategoryMenuOpen(false);
-                  }}
-                  data-tour-id="manage-category-rename"
-                >
-                  Renommer
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setCategoryPriority();
-                    setCategoryMenuOpen(false);
+              {categoryMenuOpen ? (
+                <div className="stack stackGap12">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      renameCategory();
+                      setCategoryMenuOpen(false);
+                    }}
+                    data-tour-id="manage-category-rename"
+                  >
+                    Renommer
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      recolorCategory();
+                      setCategoryMenuOpen(false);
+                    }}
+                  >
+                    Modifier la couleur
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setCategoryPriority();
+                      setCategoryMenuOpen(false);
                   }}
                   disabled={isPrimaryCategory(category)}
                   data-tour-id="manage-category-priority"
@@ -385,6 +471,11 @@ export default function CategoryView({
               </button>
             </div>
             {showWhy ? <div className="small2">{whyDisplay}</div> : null}
+            <div className="row rowEnd">
+              <Button variant="ghost" onClick={editMiniWhy}>
+                Éditer
+              </Button>
+            </div>
           </div>
         </Card>
 
@@ -413,6 +504,11 @@ export default function CategoryView({
                         icon="gear"
                         aria-label="Paramètres objectif"
                         onClick={() => openEditItem(g)}
+                      />
+                      <IconButton
+                        icon="close"
+                        aria-label="Supprimer l’objectif"
+                        onClick={() => deleteOutcome(g)}
                       />
                     </div>
                   </AccentItem>
@@ -443,6 +539,18 @@ export default function CategoryView({
                             icon="gear"
                             aria-label="Paramètres action"
                             onClick={() => openEditItem(h)}
+                          />
+                          <Button
+                            variant="ghost"
+                            onClick={() => unlinkAction(h.id)}
+                            disabled={!h.parentId && !h.outcomeId}
+                          >
+                            Délier
+                          </Button>
+                          <IconButton
+                            icon="close"
+                            aria-label="Supprimer l’action"
+                            onClick={() => deleteAction(h)}
                           />
                         </div>
                       </div>
@@ -475,13 +583,25 @@ export default function CategoryView({
                     <AccentItem key={h.id} color={category.color || accent} tone="neutral">
                       <div className="row rowBetween gap8 wFull">
                         <div className="itemTitle">{h.title || "Action"}</div>
-                        <Button
-                          variant="ghost"
-                          onClick={() => linkHabitToSelectedOutcome(h.id)}
-                          disabled={!selectedOutcome?.id || typeof setData !== "function"}
-                        >
-                          Lier
-                        </Button>
+                        <div className="row gap8">
+                          <IconButton
+                            icon="gear"
+                            aria-label="Paramètres action"
+                            onClick={() => openEditItem(h)}
+                          />
+                          <Button
+                            variant="ghost"
+                            onClick={() => linkHabitToSelectedOutcome(h.id)}
+                            disabled={!selectedOutcome?.id || typeof setData !== "function"}
+                          >
+                            Lier
+                          </Button>
+                          <IconButton
+                            icon="close"
+                            aria-label="Supprimer l’action"
+                            onClick={() => deleteAction(h)}
+                          />
+                        </div>
                       </div>
                     </AccentItem>
                   ))}

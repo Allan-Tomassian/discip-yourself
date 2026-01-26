@@ -71,7 +71,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, category
   const effectiveDateKey =
     normalizeLocalDateKey(dateKey) ||
     normalizeLocalDateKey(urlDateKey) ||
-    normalizeLocalDateKey(data?.selectedDateKey) ||
+    normalizeLocalDateKey(safeData.ui?.selectedDateKey) ||
     normalizeLocalDateKey(safeData.ui?.selectedDate) ||
     todayLocalKey();
   const [tick, setTick] = useState(Date.now());

@@ -6,7 +6,9 @@ import { resolveGoalType } from "../domain/goalType";
 import { uid } from "../utils/helpers";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { createGoal } from "../logic/goals";
-import { SYSTEM_INBOX_ID } from "../logic/state";
+import { ensureSystemInboxCategory, normalizeCategory, SYSTEM_INBOX_ID } from "../logic/state";
+import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
+import { canCreateCategory } from "../logic/entitlements";
 
 function getCategoryIdFromDraft(draft) {
   if (draft?.category?.mode === "existing") return draft.category.id || "";
@@ -30,6 +32,16 @@ export default function CreateV2Outcome({
   const backgroundImage = safeData?.profile?.whyImage || "";
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
+  const suggestedCategories = useMemo(() => {
+    const existingNames = new Set(categories.map((c) => String(c?.name || "").trim().toLowerCase()).filter(Boolean));
+    const existingIds = new Set(categories.map((c) => c?.id).filter(Boolean));
+    return SUGGESTED_CATEGORIES.filter(
+      (cat) =>
+        cat &&
+        !existingIds.has(cat.id) &&
+        !existingNames.has(String(cat.name || "").trim().toLowerCase())
+    );
+  }, [categories]);
   const existingOutcomeCount = useMemo(
     () =>
       (Array.isArray(safeData.goals) ? safeData.goals : []).filter((g) => g && resolveGoalType(g) === "OUTCOME")
@@ -43,12 +55,13 @@ export default function CreateV2Outcome({
     (draftCategoryId && categories.some((c) => c.id === draftCategoryId) && draftCategoryId) || sysCategoryId;
   const [categoryId, setCategoryId] = useState(initialCategoryId);
   const [title, setTitle] = useState(draft.outcomes?.[0]?.title || "");
-  const [startDate, setStartDate] = useState(draft.outcomes?.[0]?.startDate || "");
-  const [deadline, setDeadline] = useState(draft.outcomes?.[0]?.deadline || "");
+  const [startDate, setStartDate] = useState(() => normalizeLocalDateKey(draft.outcomes?.[0]?.startDate) || todayLocalKey());
+  const [deadline, setDeadline] = useState(() => normalizeLocalDateKey(draft.outcomes?.[0]?.deadline) || "");
   const [priority, setPriority] = useState(draft.outcomes?.[0]?.priority || "secondaire");
   const [error, setError] = useState("");
   const [savedOutcomeId, setSavedOutcomeId] = useState(null);
   const [showSavedBanner, setShowSavedBanner] = useState(false);
+  const [deadlineTouched, setDeadlineTouched] = useState(Boolean(draft.outcomes?.[0]?.deadline));
 
   const outcomeIdRef = useRef(draft.outcomes?.[0]?.id || uid());
   useEffect(() => {
@@ -64,14 +77,27 @@ export default function CreateV2Outcome({
     return toLocalDateKey(base);
   }, [effectiveStartKey]);
 
-  const canContinue = Boolean(title.trim() && deadline.trim() && !showSavedBanner);
+  const deadlineError = useMemo(() => validateDeadline(deadline), [deadline, minDeadlineKey]);
+  const canContinue = Boolean(title.trim() && deadline.trim() && !deadlineError && !showSavedBanner);
   const startDateHelper = startDate ? "Démarre à la date choisie." : "Si vide : démarre aujourd’hui.";
   const categoryOptions = useMemo(() => {
     const sys = categories.find((c) => c.id === SYSTEM_INBOX_ID) || { id: SYSTEM_INBOX_ID, name: "Général" };
     const rest = categories.filter((c) => c.id !== SYSTEM_INBOX_ID);
     rest.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
-    return [sys, ...rest];
-  }, [categories]);
+    const suggestions = suggestedCategories.map((cat) => ({
+      id: cat.id,
+      name: cat.name,
+      color: cat.color,
+      suggested: true,
+    }));
+    return [sys, ...rest, ...suggestions];
+  }, [categories, suggestedCategories]);
+
+  useEffect(() => {
+    if (deadlineTouched) return;
+    if (!minDeadlineKey) return;
+    setDeadline(minDeadlineKey);
+  }, [deadlineTouched, minDeadlineKey]);
 
   function validateDeadline(nextValue) {
     const normalized = normalizeLocalDateKey(nextValue);
@@ -84,9 +110,13 @@ export default function CreateV2Outcome({
 
   function handleNext() {
     if (!canContinue || showSavedBanner) return;
-    const deadlineError = validateDeadline(deadline);
     if (deadlineError) {
       setError(deadlineError);
+      return;
+    }
+    const selectedSuggestion = suggestedCategories.find((cat) => cat.id === categoryId) || null;
+    if (selectedSuggestion && !canCreateCategory(safeData)) {
+      if (typeof onOpenPaywall === "function") onOpenPaywall("Limite de catégories atteinte.");
       return;
     }
     const limit = Number(planLimits?.outcomes) || 0;
@@ -102,6 +132,19 @@ export default function CreateV2Outcome({
     const outcomeId = outcomeIdRef.current;
     setData((prev) => {
       let next = prev;
+      if (categoryId === SYSTEM_INBOX_ID) {
+        next = ensureSystemInboxCategory(next).state;
+      }
+      if (selectedSuggestion) {
+        const prevCategories = Array.isArray(next.categories) ? next.categories : [];
+        if (!prevCategories.some((c) => c?.id === selectedSuggestion.id)) {
+          const created = normalizeCategory(
+            { id: selectedSuggestion.id, name: selectedSuggestion.name, color: selectedSuggestion.color },
+            prevCategories.length
+          );
+          next = { ...next, categories: [...prevCategories, created] };
+        }
+      }
       next = createGoal(next, {
         id: outcomeId,
         categoryId: categoryId || sysCategoryId,
@@ -127,6 +170,25 @@ export default function CreateV2Outcome({
     setShowSavedBanner(true);
   }
 
+  function activateSuggestedCategory(cat) {
+    if (!cat || typeof setData !== "function") return;
+    if (!canCreateCategory(safeData)) {
+      if (typeof onOpenPaywall === "function") onOpenPaywall("Limite de catégories atteinte.");
+      return;
+    }
+    setData((prev) => {
+      const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
+      if (prevCategories.some((c) => c?.id === cat.id)) return prev;
+      if (prevCategories.some((c) => String(c?.name || "").trim().toLowerCase() === String(cat.name || "").trim().toLowerCase())) {
+        return prev;
+      }
+      const created = normalizeCategory({ id: cat.id, name: cat.name, color: cat.color }, prevCategories.length);
+      return { ...prev, categories: [...prevCategories, created] };
+    });
+  }
+
+  const selectedSuggestion = suggestedCategories.find((cat) => cat.id === categoryId) || null;
+
   return (
     <ScreenShell
       data={safeData}
@@ -151,9 +213,18 @@ export default function CreateV2Outcome({
                 {categoryOptions.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name || "Catégorie"}
+                    {category.suggested ? " (suggestion)" : ""}
                   </option>
                 ))}
               </Select>
+              {selectedSuggestion ? (
+                <div className="row rowBetween alignCenter">
+                  <div className="small2 textMuted">Suggestion non activée.</div>
+                  <Button variant="ghost" onClick={() => activateSuggestedCategory(selectedSuggestion)}>
+                    Activer
+                  </Button>
+                </div>
+              ) : null}
             </div>
 
             <div className="stack stackGap8">
@@ -191,10 +262,23 @@ export default function CreateV2Outcome({
                 value={deadline}
                 onChange={(e) => {
                   setDeadline(e.target.value);
+                  if (!deadlineTouched) setDeadlineTouched(true);
                   if (error) setError("");
                 }}
               />
-              {error ? <div className="small2 textAccent">{error}</div> : null}
+              {error ? (
+                <div className="stack stackGap6">
+                  <div className="small2 textAccent">{error}</div>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      if (typeof onNext === "function") onNext();
+                    }}
+                  >
+                    Créer une action à la place
+                  </Button>
+                </div>
+              ) : null}
               <div className="small2 textMuted2">{startDateHelper}</div>
             </div>
             <div className="row rowEnd gap10">

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { AccentItem, Button, Card, Input, Select } from "../components/UI";
+import { AccentItem, Button, Card, Input, Select, Textarea } from "../components/UI";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_HABITS } from "../creation/creationSchema";
 import { resolveGoalType } from "../domain/goalType";
@@ -12,6 +12,7 @@ import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { createDefaultGoalSchedule, ensureSystemInboxCategory, normalizeCategory, SYSTEM_INBOX_ID } from "../logic/state";
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
 import { canCreateCategory } from "../logic/entitlements";
+import { normalizeReminder } from "../logic/reminders";
 
 // App convention: 1 = Monday ... 7 = Sunday
 const DOWS = [
@@ -22,6 +23,12 @@ const DOWS = [
   { id: 5, label: "V" },
   { id: 6, label: "S" },
   { id: 7, label: "D" },
+];
+
+const QUANTITY_PERIODS = [
+  { id: "DAY", label: "par jour" },
+  { id: "WEEK", label: "par semaine" },
+  { id: "MONTH", label: "par mois" },
 ];
 
 function appDowFromDate(d) {
@@ -38,6 +45,30 @@ function normalizeDurationMinutes(value) {
   const raw = typeof value === "string" ? Number(value) : value;
   if (!Number.isFinite(raw) || raw <= 0) return null;
   return Math.round(raw);
+}
+
+function normalizeQuantityValue(value) {
+  const raw = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(raw) || raw <= 0) return null;
+  return Math.round(raw * 100) / 100;
+}
+
+function normalizeQuantityUnit(value) {
+  const raw = typeof value === "string" ? value.trim() : "";
+  return raw;
+}
+
+function normalizeQuantityPeriod(value) {
+  const raw = typeof value === "string" ? value.trim().toUpperCase() : "";
+  return QUANTITY_PERIODS.some((p) => p.id === raw) ? raw : "DAY";
+}
+
+function formatQuantityLabel(habit) {
+  if (!habit || !Number.isFinite(habit.quantityValue)) return "";
+  const unit = habit.quantityUnit || "";
+  const period = QUANTITY_PERIODS.find((p) => p.id === habit.quantityPeriod)?.label || "";
+  if (!unit || !period) return "";
+  return `${habit.quantityValue} ${unit} ${period}`;
 }
 
 function normalizeDaysOfWeek(value) {
@@ -102,6 +133,13 @@ export default function CreateV2Habits({
   const [daysOfWeek, setDaysOfWeek] = useState(() => [appDowFromDate(new Date())]);
   const [startTime, setStartTime] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("");
+  const [quantityValue, setQuantityValue] = useState("");
+  const [quantityUnit, setQuantityUnit] = useState("");
+  const [quantityPeriod, setQuantityPeriod] = useState("DAY");
+  const [reminderTime, setReminderTime] = useState("");
+  const [reminderWindowStart, setReminderWindowStart] = useState("");
+  const [reminderWindowEnd, setReminderWindowEnd] = useState("");
+  const [memo, setMemo] = useState("");
   const [linkToObjective, setLinkToObjective] = useState(() =>
     Boolean(draft.activeOutcomeId || draft.outcomes?.length)
   );
@@ -128,12 +166,22 @@ export default function CreateV2Habits({
   const isWeekly = repeat === "weekly";
   const missingWeeklyDays = isWeekly && daysOfWeek.length === 0;
   const oneOffDateValid = repeat !== "none" || Boolean(normalizeLocalDateKey(oneOffDate));
-  const canAddHabit = Boolean(title.trim()) && !missingWeeklyDays && oneOffDateValid;
+  const quantityValueParsed = normalizeQuantityValue(quantityValue);
+  const quantityUnitClean = normalizeQuantityUnit(quantityUnit);
+  const quantityValid =
+    !String(quantityValue || "").trim() || (Number.isFinite(quantityValueParsed) && quantityUnitClean);
+  const normalizedReminderTime = normalizeStartTime(reminderTime);
+  const normalizedReminderWindowStart = normalizeStartTime(reminderWindowStart);
+  const normalizedReminderWindowEnd = normalizeStartTime(reminderWindowEnd);
+  const reminderWindowProvided = Boolean(normalizedReminderWindowStart || normalizedReminderWindowEnd);
+  const reminderValid = !reminderWindowProvided || Boolean(normalizedReminderTime);
+  const canAddHabit = Boolean(title.trim()) && !missingWeeklyDays && oneOffDateValid && quantityValid && reminderValid;
   const hasInvalidHabits = habits.some(
     (habit) =>
       habit &&
       ((habit.repeat === "weekly" && (!habit.daysOfWeek || habit.daysOfWeek.length === 0)) ||
-        (habit.repeat === "none" && !normalizeLocalDateKey(habit.oneOffDate)))
+        (habit.repeat === "none" && !normalizeLocalDateKey(habit.oneOffDate)) ||
+        (habit.quantityValue && !habit.quantityUnit))
   );
   const suggestedCategories = useMemo(() => {
     const existingNames = new Set(categories.map((c) => String(c?.name || "").trim().toLowerCase()).filter(Boolean));
@@ -273,6 +321,24 @@ export default function CreateV2Habits({
       setError("Sélectionne une date pour l’action \"Une fois\".");
       return;
     }
+    const normalizedQuantityValue = normalizeQuantityValue(quantityValue);
+    const normalizedQuantityUnit = normalizeQuantityUnit(quantityUnit);
+    if (String(quantityValue || "").trim() && !normalizedQuantityValue) {
+      setError("Quantité invalide.");
+      return;
+    }
+    if (normalizedQuantityValue && !normalizedQuantityUnit) {
+      setError("Unité requise pour la quantité.");
+      return;
+    }
+    const normalizedQuantityPeriod = normalizeQuantityPeriod(quantityPeriod);
+    const normalizedReminderTime = normalizeStartTime(reminderTime);
+    const normalizedWindowStart = normalizeStartTime(reminderWindowStart);
+    const normalizedWindowEnd = normalizeStartTime(reminderWindowEnd);
+    if ((normalizedWindowStart || normalizedWindowEnd) && !normalizedReminderTime) {
+      setError("Choisis une heure de rappel.");
+      return;
+    }
     const limit = Number(planLimits?.actions) || 0;
     if (!isPremiumPlan && limit > 0 && existingActionCount + habits.length >= limit) {
       if (typeof onOpenPaywall === "function") onOpenPaywall("Limite d’actions atteinte.");
@@ -287,6 +353,7 @@ export default function CreateV2Habits({
     const normalizedStart = normalizeStartTime(startTime);
     const normalizedDuration = normalizeDurationMinutes(durationMinutes);
     const normalizedOneOff = normalizeLocalDateKey(oneOffDate) || todayLocalKey();
+    const normalizedMemo = typeof memo === "string" ? memo.trim() : "";
     const nextHabits = [
       ...habits,
       {
@@ -298,10 +365,24 @@ export default function CreateV2Habits({
         startTime: normalizedStart,
         durationMinutes: normalizedDuration,
         oneOffDate: repeat === "none" ? normalizedOneOff : "",
+        quantityValue: normalizedQuantityValue,
+        quantityUnit: normalizedQuantityValue ? normalizedQuantityUnit : "",
+        quantityPeriod: normalizedQuantityValue ? normalizedQuantityPeriod : "",
+        reminderTime: normalizedReminderTime,
+        reminderWindowStart: normalizedWindowStart,
+        reminderWindowEnd: normalizedWindowEnd,
+        memo: normalizedMemo,
       },
     ];
     updateDraft(nextHabits);
     setTitle("");
+    setQuantityValue("");
+    setQuantityUnit("");
+    setQuantityPeriod("DAY");
+    setReminderTime("");
+    setReminderWindowStart("");
+    setReminderWindowEnd("");
+    setMemo("");
   }
 
   function removeHabit(id) {
@@ -373,6 +454,7 @@ export default function CreateV2Habits({
       const objective = outcomes[0] || null;
       const outcomeId = objective ? uid() : null;
       const createdProcessIds = [];
+      const createdReminders = [];
 
       if (objective && outcomeId) {
         next = createGoal(next, {
@@ -396,13 +478,17 @@ export default function CreateV2Habits({
         if (habit.repeat === "weekly" && (!habit.daysOfWeek || habit.daysOfWeek.length === 0)) continue;
         const habitId = uid();
         const normalizedStart = normalizeStartTime(habit.startTime);
-        const occurrenceStart = normalizedStart || "00:00";
+        const normalizedReminderTime = normalizeStartTime(habit.reminderTime);
+        const normalizedWindowStart = normalizeStartTime(habit.reminderWindowStart);
+        const normalizedWindowEnd = normalizeStartTime(habit.reminderWindowEnd);
+        const occurrenceStart = normalizedStart || normalizedReminderTime || "00:00";
         const normalizedDuration = normalizeDurationMinutes(habit.durationMinutes);
         const normalizedDays = normalizeDaysOfWeek(habit.daysOfWeek);
         const repeatMode = habit.repeat || "none";
         const isWeeklyRepeat = repeatMode === "weekly";
         const isDailyRepeat = repeatMode === "daily";
         const isOneOff = repeatMode === "none";
+        const reminderEnabled = Boolean(normalizedReminderTime);
         const schedule = isOneOff
           ? null
           : {
@@ -410,10 +496,17 @@ export default function CreateV2Habits({
               daysOfWeek: isWeeklyRepeat ? normalizedDays : [],
               timeSlots: [occurrenceStart],
               durationMinutes: normalizedDuration,
+              windowStart: normalizedWindowStart || "",
+              windowEnd: normalizedWindowEnd || "",
+              remindersEnabled: reminderEnabled,
             };
         const normalizedOneOff = normalizeLocalDateKey(habit.oneOffDate) || todayLocalKey();
         const oneOffDate = isOneOff ? normalizedOneOff : undefined;
         const startAt = isOneOff ? `${oneOffDate}T${occurrenceStart}` : null;
+        const normalizedQuantityValue = normalizeQuantityValue(habit.quantityValue);
+        const normalizedQuantityUnit = normalizeQuantityUnit(habit.quantityUnit);
+        const normalizedQuantityPeriod = normalizeQuantityPeriod(habit.quantityPeriod);
+        const normalizedMemo = typeof habit.memo === "string" ? habit.memo.trim() : "";
         finalState = createGoal(finalState, {
           id: habitId,
           categoryId,
@@ -436,7 +529,28 @@ export default function CreateV2Habits({
           daysOfWeek: normalizedDays,
           startTime: normalizedStart,
           durationMinutes: normalizedDuration,
+          quantityValue: normalizedQuantityValue,
+          quantityUnit: normalizedQuantityValue ? normalizedQuantityUnit : "",
+          quantityPeriod: normalizedQuantityValue ? normalizedQuantityPeriod : "",
+          reminderTime: normalizedReminderTime,
+          reminderWindowStart: normalizedWindowStart,
+          reminderWindowEnd: normalizedWindowEnd,
+          habitNotes: normalizedMemo,
         });
+        if (reminderEnabled) {
+          createdReminders.push(
+            normalizeReminder(
+              {
+                goalId: habitId,
+                time: normalizedReminderTime,
+                enabled: true,
+                channel: "IN_APP",
+                label: habit.title || "Rappel",
+              },
+              createdReminders.length
+            )
+          );
+        }
         if (isOneOff && oneOffDate) {
           finalState = ensureWindowForGoals(finalState, [habitId], oneOffDate, 1);
         }
@@ -451,6 +565,12 @@ export default function CreateV2Habits({
               ? 90
               : 7;
         finalState = ensureWindowForGoals(finalState, createdProcessIds, todayLocalKey(), days);
+      }
+
+      if (createdReminders.length) {
+        const existingReminders = Array.isArray(finalState.reminders) ? finalState.reminders : [];
+        const filtered = existingReminders.filter((r) => !createdProcessIds.includes(r?.goalId));
+        finalState = { ...finalState, reminders: [...filtered, ...createdReminders] };
       }
 
       return {
@@ -532,14 +652,14 @@ export default function CreateV2Habits({
                   onChange={(e) => setStartTime(e.target.value)}
                   placeholder="Heure"
                 />
-                <Input
-                  type="number"
-                  min="1"
-                  value={durationMinutes}
-                  onChange={(e) => setDurationMinutes(e.target.value)}
-                  placeholder="Durée (min)"
-                />
-              </div>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={durationMinutes}
+                    onChange={(e) => setDurationMinutes(e.target.value)}
+                    placeholder="Durée (min)"
+                  />
+                </div>
               {repeat === "none" ? (
                 <div className="stack stackGap6">
                   <div className="small2 textMuted">Date</div>
@@ -580,6 +700,63 @@ export default function CreateV2Habits({
               {missingWeeklyDays ? (
                 <div className="small2 textAccent">Choisis au moins un jour.</div>
               ) : null}
+            </div>
+            <div className="stack stackGap8">
+              <div className="small textMuted">Quantification (optionnel)</div>
+              <div className="row gap8">
+                <Input
+                  type="number"
+                  min="1"
+                  value={quantityValue}
+                  onChange={(e) => setQuantityValue(e.target.value)}
+                  placeholder="Quantité"
+                />
+                <Input
+                  value={quantityUnit}
+                  onChange={(e) => setQuantityUnit(e.target.value)}
+                  placeholder="Unité"
+                />
+                <Select value={quantityPeriod} onChange={(e) => setQuantityPeriod(e.target.value)}>
+                  {QUANTITY_PERIODS.map((period) => (
+                    <option key={period.id} value={period.id}>
+                      {period.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              {!quantityValid && String(quantityValue || "").trim() ? (
+                <div className="small2 textAccent">Ajoute une unité pour la quantité.</div>
+              ) : null}
+            </div>
+            <div className="stack stackGap8">
+              <div className="small textMuted">Rappel (optionnel)</div>
+              <div className="row gap8">
+                <Input
+                  type="time"
+                  value={reminderTime}
+                  onChange={(e) => setReminderTime(e.target.value)}
+                  placeholder="Heure"
+                />
+                <Input
+                  type="time"
+                  value={reminderWindowStart}
+                  onChange={(e) => setReminderWindowStart(e.target.value)}
+                  placeholder="Fenêtre début"
+                />
+                <Input
+                  type="time"
+                  value={reminderWindowEnd}
+                  onChange={(e) => setReminderWindowEnd(e.target.value)}
+                  placeholder="Fenêtre fin"
+                />
+              </div>
+              {!reminderValid && reminderWindowProvided ? (
+                <div className="small2 textAccent">Définis une heure de rappel.</div>
+              ) : null}
+            </div>
+            <div className="stack stackGap8">
+              <div className="small textMuted">Mémo (optionnel)</div>
+              <Textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="Note personnelle" />
             </div>
             <div className="stack stackGap8">
               <label className="includeToggle">
@@ -636,6 +813,9 @@ export default function CreateV2Habits({
                         {formatRepeatLabel(habit)}
                         {habit.startTime ? ` · ${habit.startTime}` : ""}
                         {Number.isFinite(habit.durationMinutes) ? ` · ${habit.durationMinutes} min` : ""}
+                        {formatQuantityLabel(habit) ? ` · ${formatQuantityLabel(habit)}` : ""}
+                        {habit.reminderTime ? ` · Rappel ${habit.reminderTime}` : ""}
+                        {habit.memo ? " · Mémo" : ""}
                       </div>
                     </div>
                     <label className="includeToggle">

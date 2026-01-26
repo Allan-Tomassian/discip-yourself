@@ -2,13 +2,15 @@ import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input, Select, Textarea } from "../components/UI";
 import { safeConfirm } from "../utils/dialogs";
-import { toLocalDateKey, todayLocalKey } from "../utils/dateKey";
+import { normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { uid } from "../utils/helpers";
-import { createDefaultGoalSchedule } from "../logic/state";
+import { createDefaultGoalSchedule, ensureSystemInboxCategory, normalizeCategory, SYSTEM_INBOX_ID } from "../logic/state";
 import { updateGoal } from "../logic/goals";
 import { setPrimaryGoalForCategory } from "../logic/priority";
 import { resolveGoalType } from "../domain/goalType";
 import { regenerateWindowForGoal } from "../logic/occurrencePlanner";
+import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
+import { canCreateCategory } from "../logic/entitlements";
 
 const PRIORITY_OPTIONS = [
   { value: "prioritaire", label: "Prioritaire" },
@@ -16,13 +18,16 @@ const PRIORITY_OPTIONS = [
   { value: "bonus", label: "Bonus" },
 ];
 
-const MEASURE_OPTIONS = [
-  { value: "money", label: "💰 Argent" },
-  { value: "counter", label: "🔢 Compteur" },
-  { value: "time", label: "⏱️ Temps" },
-  { value: "energy", label: "⚡ Énergie" },
-  { value: "distance", label: "📏 Distance" },
-  { value: "weight", label: "⚖️ Poids" },
+const REPEAT_OPTIONS = [
+  { value: "none", label: "Une fois" },
+  { value: "daily", label: "Quotidien" },
+  { value: "weekly", label: "Hebdo" },
+];
+
+const QUANTITY_PERIODS = [
+  { id: "DAY", label: "par jour" },
+  { id: "WEEK", label: "par semaine" },
+  { id: "MONTH", label: "par mois" },
 ];
 
 const DAY_OPTIONS = [
@@ -39,16 +44,6 @@ const CHANNEL_OPTIONS = [
   { value: "IN_APP", label: "Dans l’app" },
   { value: "NOTIFICATION", label: "Notification" },
 ];
-
-function getMeasurePlaceholder(type) {
-  if (type === "money") return "€";
-  if (type === "time") return "minutes";
-  if (type === "energy") return "0 – 100";
-  if (type === "distance") return "km";
-  if (type === "weight") return "kg";
-  if (type === "counter") return "nombre";
-  return "Valeur";
-}
 
 function resolvePlanType(item) {
   const rawPlan = typeof item?.planType === "string" ? item.planType.toUpperCase() : "";
@@ -84,26 +79,26 @@ function buildStartAt(date, time) {
   return `${cleanDate}T${cleanTime}`;
 }
 
-function resolveFrequency(item) {
-  const rawCount =
-    typeof item?.freqCount === "number"
-      ? item.freqCount
-      : typeof item?.target === "number"
-        ? item.target
-        : 1;
-  const count = Number.isFinite(rawCount) && rawCount > 0 ? Math.floor(rawCount) : 1;
-  let unit = typeof item?.freqUnit === "string" ? item.freqUnit.toUpperCase() : "";
-  if (!unit || unit === "ONCE") {
-    const cadence = typeof item?.cadence === "string" ? item.cadence.toUpperCase() : "";
-    unit = cadence === "DAILY" ? "DAY" : cadence === "YEARLY" ? "YEAR" : "WEEK";
-  }
-  return { count, unit };
+function normalizeQuantityValue(value) {
+  const raw = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(raw) || raw <= 0) return null;
+  return Math.round(raw * 100) / 100;
 }
 
-function cadenceFromUnit(unit) {
-  if (unit === "DAY") return "DAILY";
-  if (unit === "YEAR") return "YEARLY";
-  return "WEEKLY";
+function normalizeQuantityUnit(value) {
+  const raw = typeof value === "string" ? value.trim() : "";
+  return raw;
+}
+
+function normalizeQuantityPeriod(value) {
+  const raw = typeof value === "string" ? value.trim().toUpperCase() : "";
+  return QUANTITY_PERIODS.some((p) => p.id === raw) ? raw : "DAY";
+}
+
+function normalizeRepeat(value) {
+  const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (raw === "daily" || raw === "weekly" || raw === "none") return raw;
+  return "none";
 }
 
 function normalizeDays(days) {
@@ -231,6 +226,25 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const reminders = Array.isArray(safeData.reminders) ? safeData.reminders : [];
   const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
+  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
+  const outcomes = useMemo(() => goals.filter((g) => resolveGoalType(g) === "OUTCOME"), [goals]);
+  const suggestedCategories = useMemo(() => {
+    const existingNames = new Set(categories.map((c) => String(c?.name || "").trim().toLowerCase()).filter(Boolean));
+    const existingIds = new Set(categories.map((c) => c?.id).filter(Boolean));
+    return SUGGESTED_CATEGORIES.filter(
+      (cat) =>
+        cat &&
+        !existingIds.has(cat.id) &&
+        !existingNames.has(String(cat.name || "").trim().toLowerCase())
+    );
+  }, [categories]);
+  const categoryOptions = useMemo(() => {
+    const sys = categories.find((c) => c?.id === SYSTEM_INBOX_ID) || { id: SYSTEM_INBOX_ID, name: "Général" };
+    const rest = categories.filter((c) => c?.id !== SYSTEM_INBOX_ID);
+    rest.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+    const suggestions = suggestedCategories.map((cat) => ({ id: cat.id, name: cat.name, suggested: true }));
+    return [sys, ...rest, ...suggestions];
+  }, [categories, suggestedCategories]);
 
   const rawItem = editItem?.id ? goals.find((g) => g?.id === editItem.id) || null : null;
   const item = rawItem
@@ -245,9 +259,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
 
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState("secondaire");
-  const [planType, setPlanType] = useState("ACTION");
-  const [freqCount, setFreqCount] = useState("1");
-  const [freqUnit, setFreqUnit] = useState("WEEK");
+  const [repeat, setRepeat] = useState("daily");
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("09:00");
   const [oneOffDate, setOneOffDate] = useState("");
@@ -261,12 +273,27 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   const [reminderChannel, setReminderChannel] = useState("IN_APP");
   const [notes, setNotes] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [measureType, setMeasureType] = useState("");
-  const [targetValue, setTargetValue] = useState("");
+  const [quantityValue, setQuantityValue] = useState("");
+  const [quantityUnit, setQuantityUnit] = useState("");
+  const [quantityPeriod, setQuantityPeriod] = useState("DAY");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [selectedOutcomeId, setSelectedOutcomeId] = useState("");
+  const [deadlineTouched, setDeadlineTouched] = useState(false);
   const [error, setError] = useState("");
   const [planOpen, setPlanOpen] = useState(false);
 
   const isProcess = type === "PROCESS";
+  const selectedSuggestion = useMemo(
+    () => suggestedCategories.find((cat) => cat.id === selectedCategoryId) || null,
+    [suggestedCategories, selectedCategoryId]
+  );
+  const effectiveStartKey = normalizeLocalDateKey(startDate) || todayLocalKey();
+  const minDeadlineKey = useMemo(() => {
+    const base = new Date(`${effectiveStartKey}T12:00:00`);
+    if (Number.isNaN(base.getTime())) return "";
+    base.setDate(base.getDate() + 7);
+    return toLocalDateKey(base);
+  }, [effectiveStartKey]);
   const hasOccurrenceSource = Array.isArray(item?._occurrences) && item._occurrences.length > 0;
   const hasScheduleSource =
     isProcess && item?.schedule && Array.isArray(item.schedule.timeSlots) && item.schedule.timeSlots.length > 0;
@@ -276,7 +303,6 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   useEffect(() => {
     if (!item) return;
     const resolvedPlan = isProcess ? resolvePlanType(item) : "STATE";
-    const freq = resolveFrequency(item);
     const parsed = parseStartAt(item.startAt || item.startDate || "");
     const scheduleBase = createDefaultGoalSchedule();
     const schedule =
@@ -293,16 +319,25 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     const reminderChannelRaw = reminderItems.find((r) => r?.channel)?.channel || "IN_APP";
     const windowStartValue = schedule.windowStart || timeSlots[0] || "09:00";
     const windowEndValue = schedule.windowEnd || timeSlots[1] || "18:00";
+    const normalizedRepeat = normalizeRepeat(item.repeat);
+    const derivedRepeat =
+      normalizedRepeat ||
+      (resolvedPlan === "ONE_OFF"
+        ? "none"
+        : scheduleDays.length && scheduleDays.length < 7
+          ? "weekly"
+          : "daily");
+    const rawQuantityValue = normalizeQuantityValue(item.quantityValue);
+    const rawQuantityUnit = normalizeQuantityUnit(item.quantityUnit);
+    const rawQuantityPeriod = normalizeQuantityPeriod(item.quantityPeriod);
 
     setTitle(item.title || "");
     setPriority(resolvePriority(item));
-    setPlanType(resolvedPlan);
-    setFreqCount(String(freq.count || 1));
-    setFreqUnit(freq.unit || "WEEK");
-    setStartDate(parsed.date || todayLocalKey());
-    setStartTime(parsed.time || "09:00");
+    setRepeat(derivedRepeat);
+    setStartDate(normalizeLocalDateKey(item.startDate) || parsed.date || todayLocalKey());
+    setStartTime(item.startTime || parsed.time || "");
     setOneOffDate(item.oneOffDate || "");
-    setOneOffTime(parsed.time || "09:00");
+    setOneOffTime(parsed.time || item.startTime || "");
     setSessionMinutes(
       Number.isFinite(item.sessionMinutes)
         ? String(item.sessionMinutes)
@@ -318,12 +353,30 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     setReminderChannel(reminderChannelRaw);
     setNotes(isProcess ? item.habitNotes || "" : item.notes || "");
     setDeadline(item.deadline || "");
-    setMeasureType(item.measureType || "");
-    setTargetValue(item.targetValue != null ? String(item.targetValue) : "");
+    setQuantityValue(rawQuantityValue != null ? String(rawQuantityValue) : "");
+    setQuantityUnit(rawQuantityUnit);
+    setQuantityPeriod(rawQuantityPeriod || "DAY");
+    setSelectedCategoryId(item.categoryId || SYSTEM_INBOX_ID);
+    setSelectedOutcomeId(item.parentId || item.outcomeId || "");
+    setDeadlineTouched(Boolean(item.deadline));
     setError("");
     setPlanOpen(false);
   }, [item?.id]);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  useEffect(() => {
+    if (isProcess) return;
+    if (deadlineTouched) return;
+    if (!minDeadlineKey) return;
+    setDeadline(minDeadlineKey);
+  }, [deadlineTouched, isProcess, minDeadlineKey]);
+
+  useEffect(() => {
+    if (!isProcess) return;
+    if (!selectedOutcomeId) return;
+    if (outcomes.some((o) => o.id === selectedOutcomeId)) return;
+    setSelectedOutcomeId("");
+  }, [isProcess, outcomes, selectedOutcomeId]);
 
   const normalizedReminderTimes = useMemo(() => normalizeTimes(reminderTimes), [reminderTimes]);
 
@@ -354,6 +407,24 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
 
   function toggleDay(day) {
     setDaysOfWeek((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
+  }
+
+  function activateSuggestedCategory(cat) {
+    if (!cat || typeof setData !== "function") return;
+    if (!canCreateCategory(safeData)) {
+      setError("Limite de catégories atteinte.");
+      return;
+    }
+    setData((prev) => {
+      const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
+      if (prevCategories.some((c) => c?.id === cat.id)) return prev;
+      if (prevCategories.some((c) => String(c?.name || "").trim().toLowerCase() === String(cat.name || "").trim().toLowerCase())) {
+        return prev;
+      }
+      const created = normalizeCategory({ id: cat.id, name: cat.name, color: cat.color }, prevCategories.length);
+      return { ...prev, categories: [...prevCategories, created] };
+    });
+    setSelectedCategoryId(cat.id);
   }
 
   function updateReminderTime(index, value) {
@@ -387,58 +458,92 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     // legacy backfill (kept for compatibility)
     updates.priorityLevel = priority === "prioritaire" ? "primary" : priority === "secondaire" ? "secondary" : "bonus";
 
+    const normalizedCategoryId = selectedCategoryId || SYSTEM_INBOX_ID;
+    const selectedSuggestion = suggestedCategories.find((cat) => cat.id === normalizedCategoryId) || null;
+    if (selectedSuggestion && !canCreateCategory(safeData)) {
+      setError("Limite de catégories atteinte.");
+      return;
+    }
+
     if (isProcess) {
-      const plan = planType === "ONE_OFF" ? "ONE_OFF" : "ACTION";
-      const startAt =
-        plan === "ONE_OFF"
-          ? buildStartAt(oneOffDate || startDate, oneOffTime || startTime)
-          : buildStartAt(startDate, startTime);
-      const parsedCount = Number(freqCount);
-      const safeCount = Number.isFinite(parsedCount) && parsedCount > 0 ? Math.floor(parsedCount) : 1;
+      const repeatMode = normalizeRepeat(repeat);
+      const isWeekly = repeatMode === "weekly";
+      const isOneOff = repeatMode === "none";
+      const normalizedOneOff = normalizeLocalDateKey(oneOffDate);
+      if (isOneOff && !normalizedOneOff) {
+        setError("Sélectionne une date pour l’action \"Une fois\".");
+        return;
+      }
+      if (isWeekly && normalizeDays(daysOfWeek).length === 0) {
+        setError("Choisis au moins un jour.");
+        return;
+      }
       const minutesRaw = Number(sessionMinutes);
       const safeMinutes = Number.isFinite(minutesRaw) && minutesRaw > 0 ? Math.round(minutesRaw) : 30;
-      const scheduleBase = createDefaultGoalSchedule();
       const days = normalizeDays(daysOfWeek);
-      const timeSlots = normalizeTimes([windowStart || scheduleBase.timeSlots[0]]).length
-        ? normalizeTimes([windowStart || scheduleBase.timeSlots[0]])
-        : scheduleBase.timeSlots;
+      const reminderTime = normalizedReminderTimes[0] || "";
+      const effectiveStart = (startTime || "").trim() || reminderTime || "00:00";
+      const scheduleBase = createDefaultGoalSchedule();
       const schedule =
-        plan === "ACTION"
-          ? {
+        isOneOff
+          ? undefined
+          : {
               ...scheduleBase,
               ...item.schedule,
-              daysOfWeek: days,
-              timeSlots,
+              daysOfWeek: isWeekly ? days : [],
+              timeSlots: [effectiveStart],
               durationMinutes: safeMinutes,
               remindersEnabled,
               windowStart: windowStart || scheduleBase.timeSlots[0],
               windowEnd: windowEnd || scheduleBase.timeSlots[0],
-            }
-          : undefined;
-
-      updates.planType = plan;
-      updates.startAt = startAt || null;
-      updates.sessionMinutes = safeMinutes;
-      updates.oneOffDate = plan === "ONE_OFF" ? (oneOffDate || "") : undefined;
-      updates.freqCount = plan === "ACTION" ? safeCount : undefined;
-      updates.freqUnit = plan === "ACTION" ? freqUnit || "WEEK" : undefined;
-      updates.cadence = plan === "ACTION" ? cadenceFromUnit(freqUnit || "WEEK") : undefined;
-      updates.target = plan === "ACTION" ? safeCount : undefined;
-      updates.schedule = schedule;
-      updates.habitNotes = (notes || "").trim();
-    } else {
-      const cleanMeasure = (measureType || "").trim();
-      const rawTarget = (targetValue || "").trim();
-      const parsedTarget = Number(rawTarget);
-      const hasTarget = Boolean(cleanMeasure) && Number.isFinite(parsedTarget) && parsedTarget > 0;
-      updates.deadline = (deadline || "").trim();
-      updates.measureType = cleanMeasure || null;
-      updates.targetValue = hasTarget ? parsedTarget : null;
-      updates.currentValue = hasTarget
-        ? Number.isFinite(item.currentValue)
-          ? item.currentValue
-          : 0
+            };
+      const startAt = isOneOff
+        ? buildStartAt(normalizedOneOff || todayLocalKey(), oneOffTime || reminderTime || startTime || "00:00")
         : null;
+
+      const normalizedQuantityValue = normalizeQuantityValue(quantityValue);
+      const normalizedQuantityUnit = normalizeQuantityUnit(quantityUnit);
+      if (String(quantityValue || "").trim() && !normalizedQuantityValue) {
+        setError("Quantité invalide.");
+        return;
+      }
+      if (normalizedQuantityValue && !normalizedQuantityUnit) {
+        setError("Unité requise pour la quantité.");
+        return;
+      }
+
+      updates.categoryId = normalizedCategoryId;
+      updates.planType = isOneOff ? "ONE_OFF" : "ACTION";
+      updates.repeat = repeatMode;
+      updates.daysOfWeek = isWeekly ? days : [];
+      updates.startTime = (startTime || "").trim();
+      updates.durationMinutes = safeMinutes;
+      updates.oneOffDate = isOneOff ? normalizedOneOff || "" : undefined;
+      updates.startAt = startAt || null;
+      updates.schedule = schedule;
+      updates.cadence = !isOneOff ? (repeatMode === "daily" ? "DAILY" : "WEEKLY") : undefined;
+      updates.target = !isOneOff ? 1 : undefined;
+      updates.freqCount = !isOneOff ? 1 : undefined;
+      updates.freqUnit = !isOneOff ? (repeatMode === "daily" ? "DAY" : "WEEK") : undefined;
+      updates.habitNotes = (notes || "").trim();
+      updates.quantityValue = normalizedQuantityValue;
+      updates.quantityUnit = normalizedQuantityValue ? normalizedQuantityUnit : "";
+      updates.quantityPeriod = normalizedQuantityValue ? normalizeQuantityPeriod(quantityPeriod) : "";
+      updates.reminderTime = reminderTime;
+      updates.reminderWindowStart = windowStart || "";
+      updates.reminderWindowEnd = windowEnd || "";
+      updates.parentId = selectedOutcomeId || null;
+      updates.outcomeId = selectedOutcomeId || null;
+    } else {
+      const normalizedStart = normalizeLocalDateKey(startDate) || todayLocalKey();
+      const normalizedDeadline = normalizeLocalDateKey(deadline);
+      if (!normalizedDeadline || (minDeadlineKey && normalizedDeadline < minDeadlineKey)) {
+        setError(`Un objectif dure min. 7 jours. Pour < 7 jours, crée une Action.`);
+        return;
+      }
+      updates.categoryId = normalizedCategoryId;
+      updates.startDate = normalizedStart;
+      updates.deadline = normalizedDeadline;
       updates.notes = (notes || "").trim();
       updates.priority = priority;
     }
@@ -455,13 +560,27 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
 
     if (typeof setData === "function") {
       const goalId = item.id;
-      const categoryId = item.categoryId;
+      const categoryId = updates.categoryId || item.categoryId;
       setData((prev) => {
+        let nextState = prev;
+        if (categoryId === SYSTEM_INBOX_ID) {
+          nextState = ensureSystemInboxCategory(nextState).state;
+        }
+        if (selectedSuggestion) {
+          const prevCategories = Array.isArray(nextState.categories) ? nextState.categories : [];
+          if (!prevCategories.some((c) => c?.id === selectedSuggestion.id)) {
+            const created = normalizeCategory(
+              { id: selectedSuggestion.id, name: selectedSuggestion.name, color: selectedSuggestion.color },
+              prevCategories.length
+            );
+            nextState = { ...nextState, categories: [...prevCategories, created] };
+          }
+        }
         const prevOccurrencesByGoal = buildOccurrencesByGoal(prev?.occurrences);
         const prevGoal = Array.isArray(prev?.goals) ? prev.goals.find((g) => g?.id === goalId) : null;
         const prevPlanSig = buildPlanSignature(prevGoal, prevOccurrencesByGoal);
 
-        let next = updateGoal(prev, goalId, updates);
+        let next = updateGoal(nextState, goalId, updates);
         if (type === "OUTCOME" && updates.priority === "prioritaire" && categoryId) {
           next = setPrimaryGoalForCategory(next, categoryId, goalId);
         }
@@ -506,7 +625,11 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       const goal = (prev.goals || []).find((g) => g.id === goalId);
       const isOutcome = resolveGoalType(goal) === "OUTCOME";
       let nextGoals = (prev.goals || []).filter((g) => g.id !== goalId);
-      if (isOutcome) nextGoals = nextGoals.filter((g) => g.parentId !== goalId);
+      if (isOutcome) {
+        nextGoals = nextGoals.map((g) =>
+          g && g.parentId === goalId ? { ...g, parentId: null, outcomeId: null } : g
+        );
+      }
       const nextCategories = (prev.categories || []).map((cat) =>
         cat.mainGoalId === goalId ? { ...cat, mainGoalId: null } : cat
       );
@@ -516,12 +639,19 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
         const kept = nextUi.activeSession.habitIds.filter((id) => nextGoals.some((g) => g.id === id));
         nextUi.activeSession = kept.length ? { ...nextUi.activeSession, habitIds: kept } : null;
       }
-      return {
-        ...prev,
-        goals: nextGoals,
-        categories: nextCategories,
-        ui: nextUi,
-      };
+      if (resolveGoalType(goal) === "PROCESS") {
+        const nextOccurrences = (prev.occurrences || []).filter((o) => o && o.goalId !== goalId);
+        const nextReminders = (prev.reminders || []).filter((r) => r && r.goalId !== goalId);
+        return {
+          ...prev,
+          goals: nextGoals,
+          categories: nextCategories,
+          occurrences: nextOccurrences,
+          reminders: nextReminders,
+          ui: nextUi,
+        };
+      }
+      return { ...prev, goals: nextGoals, categories: nextCategories, ui: nextUi };
     });
     if (typeof onBack === "function") onBack();
   }
@@ -548,6 +678,27 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
             <div className="editSection">
               <div className="editSectionTitle">Identité</div>
               <div className="editSectionBody">
+                <div>
+                  <div className="small" style={{ marginBottom: 6 }}>
+                    Catégorie
+                  </div>
+                  <Select value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)}>
+                    {categoryOptions.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                        {cat.suggested ? " (suggestion)" : ""}
+                      </option>
+                    ))}
+                  </Select>
+                  {selectedSuggestion ? (
+                    <div className="row rowBetween alignCenter mt6">
+                      <div className="small2 textMuted">Suggestion non activée.</div>
+                      <Button variant="ghost" onClick={() => activateSuggestedCategory(selectedSuggestion)}>
+                        Activer
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titre" />
                 <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
                   {PRIORITY_OPTIONS.map((opt) => (
@@ -556,6 +707,21 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
                     </option>
                   ))}
                 </Select>
+                {isProcess ? (
+                  <div>
+                    <div className="small" style={{ marginBottom: 6 }}>
+                      Objectif lié (optionnel)
+                    </div>
+                    <Select value={selectedOutcomeId} onChange={(e) => setSelectedOutcomeId(e.target.value)}>
+                      <option value="">Sans objectif</option>
+                      {outcomes.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.title || "Objectif"}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -570,59 +736,56 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
                     <>
                       <div>
                         <div className="small" style={{ marginBottom: 6 }}>
-                          Type
+                          Mode
                         </div>
-                        <Select value={planType} onChange={(e) => setPlanType(e.target.value)}>
-                          <option value="ONE_OFF">Une fois</option>
-                          <option value="ACTION">Répétitif</option>
+                        <Select value={repeat} onChange={(e) => setRepeat(e.target.value)}>
+                          {REPEAT_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
                         </Select>
                       </div>
 
-                      {planType === "ONE_OFF" ? (
+                      {repeat === "none" ? (
                         <>
-                          <Input type="date" value={oneOffDate} onChange={(e) => setOneOffDate(e.target.value)} />
-                          <Input type="time" value={oneOffTime} onChange={(e) => setOneOffTime(e.target.value)} />
+                          <div>
+                            <div className="small" style={{ marginBottom: 6 }}>
+                              Date
+                            </div>
+                            <Input type="date" value={oneOffDate} onChange={(e) => setOneOffDate(e.target.value)} />
+                          </div>
+                          <div>
+                            <div className="small" style={{ marginBottom: 6 }}>
+                              Heure
+                            </div>
+                            <Input type="time" value={oneOffTime} onChange={(e) => setOneOffTime(e.target.value)} />
+                          </div>
                         </>
                       ) : (
                         <>
+                          {repeat === "weekly" ? (
+                            <div>
+                              <div className="small" style={{ marginBottom: 6 }}>
+                                Jours
+                              </div>
+                              <div className="editDaysRow">
+                                {DAY_OPTIONS.map((day) => (
+                                  <button
+                                    key={day.value}
+                                    type="button"
+                                    className={`editDayOption${daysOfWeek.includes(day.value) ? " isActive" : ""}`}
+                                    onClick={() => toggleDay(day.value)}
+                                  >
+                                    {day.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
                           <div>
                             <div className="small" style={{ marginBottom: 6 }}>
-                              Fréquence
-                            </div>
-                            <div className="row" style={{ gap: 10 }}>
-                              <Input
-                                type="number"
-                                value={freqCount}
-                                onChange={(e) => setFreqCount(e.target.value)}
-                                style={{ maxWidth: 120 }}
-                              />
-                              <Select value={freqUnit} onChange={(e) => setFreqUnit(e.target.value)}>
-                                <option value="DAY">Jour</option>
-                                <option value="WEEK">Semaine</option>
-                                <option value="YEAR">Mois</option>
-                              </Select>
-                            </div>
-                          </div>
-                          <div>
-                            <div className="small" style={{ marginBottom: 6 }}>
-                              Jours
-                            </div>
-                            <div className="editDaysRow">
-                              {DAY_OPTIONS.map((day) => (
-                                <button
-                                  key={day.value}
-                                  type="button"
-                                  className={`editDayOption${daysOfWeek.includes(day.value) ? " isActive" : ""}`}
-                                  onClick={() => toggleDay(day.value)}
-                                >
-                                  {day.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="small" style={{ marginBottom: 6 }}>
-                              Durée
+                              Durée (min)
                             </div>
                             <Input
                               type="number"
@@ -647,12 +810,6 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
                           <div className="row" style={{ gap: 10 }}>
                             <div style={{ flex: 1 }}>
                               <div className="small" style={{ marginBottom: 6 }}>
-                                Date de départ
-                              </div>
-                              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                            </div>
-                            <div style={{ flex: 1 }}>
-                              <div className="small" style={{ marginBottom: 6 }}>
                                 Heure
                               </div>
                               <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
@@ -665,30 +822,30 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
                     <>
                       <div>
                         <div className="small" style={{ marginBottom: 6 }}>
-                          Mesure
+                          Date de début
                         </div>
-                        <Select value={measureType} onChange={(e) => setMeasureType(e.target.value)}>
-                          <option value="">Choisir</option>
-                          {MEASURE_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
-                      {measureType ? (
                         <Input
-                          type="number"
-                          value={targetValue}
-                          onChange={(e) => setTargetValue(e.target.value)}
-                          placeholder={getMeasurePlaceholder(measureType)}
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => {
+                            setStartDate(e.target.value);
+                            if (error) setError("");
+                          }}
                         />
-                      ) : null}
+                      </div>
                       <div>
                         <div className="small" style={{ marginBottom: 6 }}>
-                          Date cible
+                          Date de fin (min J+7 : {minDeadlineKey})
                         </div>
-                        <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+                        <Input
+                          type="date"
+                          value={deadline}
+                          onChange={(e) => {
+                            setDeadline(e.target.value);
+                            setDeadlineTouched(true);
+                            if (error) setError("");
+                          }}
+                        />
                       </div>
                     </>
                   )}
@@ -739,8 +896,36 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
               </div>
             ) : null}
 
+            {isProcess ? (
+              <div className="editSection">
+                <div className="editSectionTitle">Quantification</div>
+                <div className="editSectionBody">
+                  <div className="row" style={{ gap: 10 }}>
+                    <Input
+                      type="number"
+                      value={quantityValue}
+                      onChange={(e) => setQuantityValue(e.target.value)}
+                      placeholder="Quantité"
+                    />
+                    <Input
+                      value={quantityUnit}
+                      onChange={(e) => setQuantityUnit(e.target.value)}
+                      placeholder="Unité"
+                    />
+                    <Select value={quantityPeriod} onChange={(e) => setQuantityPeriod(e.target.value)}>
+                      {QUANTITY_PERIODS.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             <div className="editSection">
-              <div className="editSectionTitle">Notes</div>
+              <div className="editSectionTitle">{isProcess ? "Mémo" : "Notes"}</div>
               <div className="editSectionBody">
                 <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes" />
               </div>
@@ -755,7 +940,16 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
               </div>
             </div>
 
-            {error ? <div className="small2" style={{ color: "rgba(255,120,120,.95)" }}>{error}</div> : null}
+            {error ? (
+              <div className="stack stackGap6">
+                <div className="small2" style={{ color: "rgba(255,120,120,.95)" }}>{error}</div>
+                {!isProcess && error.includes("min. 7 jours") ? (
+                  <Button variant="ghost" onClick={onBack}>
+                    Créer une action à la place
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
             <div className="editPanelFooter">
