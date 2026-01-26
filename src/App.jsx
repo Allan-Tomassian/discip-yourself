@@ -466,18 +466,16 @@ export default function App() {
         };
       }
       const shouldReset = prevUi.createDraftWasCompleted;
-      if (shouldReset) {
-        return {
-          ...prev,
-          ui: {
+      const baseUi = shouldReset
+        ? {
             ...prevUi,
             createDraft: createEmptyDraft(),
             createDraftWasCanceled: false,
             createDraftWasCompleted: false,
-          },
-        };
-      }
-      const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
+          }
+        : prevUi;
+      const baseState = shouldReset ? { ...prev, ui: baseUi } : prev;
+      const prevCategories = Array.isArray(baseState.categories) ? baseState.categories : [];
       let resolvedCategoryId = categoryId || null;
       if (!resolvedCategoryId) {
         if (source === "library") {
@@ -503,8 +501,8 @@ export default function App() {
         resolvedCategoryId = null;
       }
       let resolvedOutcomeId = outcomeId || null;
-      if (resolvedOutcomeId && !Array.isArray(prev.goals)) resolvedOutcomeId = null;
-      if (resolvedOutcomeId && !prev.goals.some((g) => g && g.id === resolvedOutcomeId)) {
+      if (resolvedOutcomeId && !Array.isArray(baseState.goals)) resolvedOutcomeId = null;
+      if (resolvedOutcomeId && !baseState.goals.some((g) => g && g.id === resolvedOutcomeId)) {
         resolvedOutcomeId = null;
       }
       const nextDraft = createEmptyDraft();
@@ -512,11 +510,11 @@ export default function App() {
       if (resolvedOutcomeId) nextDraft.activeOutcomeId = resolvedOutcomeId;
       if (isValidCreationStep(step)) nextDraft.step = step;
       return {
-        ...prev,
+        ...baseState,
         ui: {
-          ...prevUi,
+          ...baseUi,
           createDraft: nextDraft,
-          createDraftWasCanceled: shouldReset ? false : prevUi.createDraftWasCanceled,
+          createDraftWasCanceled: shouldReset ? false : baseUi.createDraftWasCanceled,
           createDraftWasCompleted: false,
         },
       };
@@ -1104,6 +1102,7 @@ export default function App() {
           editItem={editItem}
           onBack={handleEditBack}
           generationWindowDays={generationWindowDays}
+          onOpenPaywall={openPaywall}
         />
       ) : tab === "library" && libraryCategoryId ? (
         <CategoryView
@@ -1167,8 +1166,8 @@ export default function App() {
             setTab("library");
           }}
           onNext={() => setTab("create-habit")}
-          onCreateActionFromObjective={(outcomeId) => {
-            seedCreateDraft({ source: "post-objective", outcomeId, step: STEP_HABITS });
+          onCreateActionFromObjective={(outcomeId, categoryId) => {
+            seedCreateDraft({ source: "post-objective", outcomeId, categoryId, step: STEP_HABITS });
             setTab("create-habit");
           }}
           onSkipObjectiveAction={() => {

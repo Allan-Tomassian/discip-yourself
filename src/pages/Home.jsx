@@ -121,15 +121,13 @@ export default function Home({
   onOpenPaywall,
   isPremiumPlan = false,
   planLimits = null,
-  generationWindowDays = null,
-  isPlanningUnlimited = false,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
   const selectedDateKey =
     normalizeLocalDateKey(safeData.ui?.selectedDateKey || safeData.ui?.selectedDate) || todayLocalKey();
   const pendingDateKey =
     normalizeLocalDateKey(safeData.ui?.pendingDateKey) || selectedDateKey;
-  const activeRailKey = pendingDateKey;
+  const activeRailKey = selectedDateKey;
   const selectedDate = fromLocalDateKey(selectedDateKey);
   const localTodayKey = toLocalDateKey(new Date());
   const selectedStatus =
@@ -164,15 +162,10 @@ export default function Home({
   }, [safeData?.ui?.blocksByPage?.home, legacyOrder]);
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(selectedDate));
   const [railRange, setRailRange] = useState(() => {
-    const anchor = fromLocalDateKey(localTodayKey);
     const active = fromLocalDateKey(activeRailKey);
-    if (!anchor || !active) return { start: -7, end: 7 };
-    const offset = diffDays(anchor, active);
+    if (!active) return { start: -7, end: 7 };
     const buffer = 7;
-    return {
-      start: Math.min(-7, offset - buffer),
-      end: Math.max(7, offset + buffer),
-    };
+    return { start: -buffer, end: buffer };
   });
 
   const handleReorder = useCallback(
@@ -239,6 +232,7 @@ export default function Home({
   const noteMetaStorageKey = `${noteMetaKeyPrefix}${selectedDateKey}`;
   const noteHistoryStorageKey = noteCategoryId ? `dailyNoteHistory:${noteCategoryId}` : "dailyNoteHistory";
   const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
+  const goalIdSet = useMemo(() => new Set(goals.map((g) => g?.id).filter(Boolean)), [goals]);
   const microChecks = safeData.microChecks && typeof safeData.microChecks === "object" ? safeData.microChecks : {};
   const dayMicro = useMemo(() => {
     return microChecks?.[selectedDateKey] && typeof microChecks[selectedDateKey] === "object"
@@ -249,18 +243,19 @@ export default function Home({
     const map = new Map();
     for (const occ of occurrences) {
       if (!occ || typeof occ.date !== "string") continue;
+      if (!goalIdSet.has(occ.goalId)) continue;
       if (occ.status !== "planned") continue;
       map.set(occ.date, (map.get(occ.date) || 0) + 1);
     }
     return map;
-  }, [occurrences]);
+  }, [goalIdSet, occurrences]);
   const doneByDate = useMemo(() => {
     const map = new Map();
     for (const occ of occurrences) {
       if (!occ || occ.status !== "done") continue;
       const key = typeof occ.date === "string" ? occ.date : "";
       const id = typeof occ.goalId === "string" ? occ.goalId : "";
-      if (!key || !id) continue;
+      if (!key || !id || !goalIdSet.has(id)) continue;
       const set = map.get(key) || new Set();
       set.add(id);
       map.set(key, set);
@@ -268,7 +263,7 @@ export default function Home({
     const counts = new Map();
     for (const [key, set] of map.entries()) counts.set(key, set.size);
     return counts;
-  }, [occurrences]);
+  }, [goalIdSet, occurrences]);
 
   // Effects
 
@@ -468,35 +463,30 @@ export default function Home({
   const selectableHabits = linkedHabits;
   const hasLinkedHabits = linkedHabits.length > 0;
   const hasSelectableHabits = selectableHabits.length > 0;
-  const plannedWindowDays = Number.isFinite(generationWindowDays) && generationWindowDays > 0
-    ? Math.floor(generationWindowDays)
-    : 14;
-  const plannedLinkedWindowCount = useMemo(() => {
+  const ensureProcessIds = useMemo(() => {
+    const base = selectedGoal?.id ? linkedHabits : processGoals;
+    return base.map((g) => g.id).filter(Boolean);
+  }, [linkedHabits, processGoals, selectedGoal?.id]);
+  const plannedLinkedDayCount = useMemo(() => {
     if (!linkedHabits.length) return 0;
     const linkedIds = new Set(linkedHabits.map((h) => h.id));
-    const startKey = localTodayKey;
-    const endKey = toLocalDateKey(addDays(fromLocalDateKey(localTodayKey), plannedWindowDays - 1));
     let count = 0;
     for (const occ of occurrences) {
       if (!occ || occ.status !== "planned") continue;
       const dateKey = typeof occ.date === "string" ? occ.date : "";
-      if (!dateKey || dateKey < startKey || dateKey > endKey) continue;
+      if (!dateKey || dateKey !== selectedDateKey) continue;
       if (!linkedIds.has(occ.goalId)) continue;
       count += 1;
     }
     return count;
-  }, [linkedHabits, occurrences, localTodayKey, plannedWindowDays]);
+  }, [linkedHabits, occurrences, selectedDateKey]);
   const showTodayEmptyCta =
-    selectedStatus === "today" && (!selectedGoal || !hasLinkedHabits || plannedLinkedWindowCount === 0);
+    selectedStatus === "today" && (!selectedGoal || !hasLinkedHabits || plannedLinkedDayCount === 0);
   const emptyCtaSubtitle = !selectedGoal
     ? "Aucun objectif sélectionné pour le moment."
     : !hasLinkedHabits
       ? "Aucune action liée à cet objectif pour le moment."
-      : isPlanningUnlimited
-        ? "Planning illimité : aucune occurrence planifiée pour le moment."
-        : Number.isFinite(generationWindowDays) && generationWindowDays > 0
-          ? `0 occurrence planifiée sur les ${Math.floor(generationWindowDays)} prochains jours.`
-          : "0 occurrence planifiée sur les prochains jours.";
+      : "Aucune occurrence planifiée pour cette journée.";
 
   // Actions actives uniquement (progression)
   const activeHabits = useMemo(() => linkedHabits.filter((g) => safeString(g.status) === "active"), [linkedHabits]);
@@ -585,37 +575,24 @@ export default function Home({
     }
   }, [goalsById, occurrencesForSelectedDay]);
 
-  const planningWindowDays = useMemo(() => {
-    if (Number.isFinite(generationWindowDays) && generationWindowDays > 0) {
-      return Math.floor(generationWindowDays);
-    }
-    return isPremiumPlan ? 90 : 7;
-  }, [generationWindowDays, isPremiumPlan]);
-
-  const planningDays = useMemo(() => {
-    const start = fromLocalDateKey(localTodayKey);
-    const out = [];
-    const count = Number.isFinite(planningWindowDays) && planningWindowDays > 0 ? planningWindowDays : 7;
-    for (let i = 0; i < count; i += 1) {
-      out.push(toLocalDateKey(addDays(start, i)));
-    }
-    return out;
-  }, [localTodayKey, planningWindowDays]);
-
-  const occurrencesByPlanningDay = useMemo(() => {
+  const occurrencesCountByDateKey = useMemo(() => {
     const map = new Map();
-    const daySet = new Set(planningDays);
-    for (const key of planningDays) map.set(key, []);
     for (const occ of occurrences) {
-      if (!occ || typeof occ.date !== "string" || !daySet.has(occ.date)) continue;
-      const bucket = map.get(occ.date);
-      if (bucket) bucket.push(occ);
-    }
-    for (const [key, list] of map.entries()) {
-      map.set(key, list.slice().sort(occurrenceSort));
+      if (!occ || typeof occ.date !== "string") continue;
+      if (!goalsById.has(occ.goalId)) continue;
+      map.set(occ.date, (map.get(occ.date) || 0) + 1);
     }
     return map;
-  }, [occurrences, occurrenceSort, planningDays]);
+  }, [goalsById, occurrences]);
+
+  const planningListStyle = useMemo(() => {
+    const count = visibleOccurrencesForSelectedDay.length;
+    const needsScroll = count > 8;
+    return {
+      maxHeight: needsScroll ? 360 : "none",
+      overflowY: needsScroll ? "auto" : "visible",
+    };
+  }, [visibleOccurrencesForSelectedDay.length]);
 
   const toggleOccurrence = useCallback(
     (occ) => {
@@ -848,7 +825,7 @@ export default function Home({
     return "Session en cours";
   }, [sessionForDay, sessionHabit]);
 
-  const railAnchorDate = useMemo(() => fromLocalDateKey(localTodayKey), [localTodayKey]);
+  const railAnchorDate = useMemo(() => fromLocalDateKey(selectedDateKey), [selectedDateKey]);
   const railItems = useMemo(() => {
     const items = [];
     for (let offset = railRange.start; offset <= railRange.end; offset += 1) {
@@ -860,12 +837,12 @@ export default function Home({
         date: d,
         day: parts[2] || "",
         month: parts[1] || "",
-        isSelected: key === activeRailKey,
+        isSelected: key === selectedDateKey,
         status: key === localTodayKey ? "today" : key < localTodayKey ? "past" : "future",
       });
     }
     return items;
-  }, [railAnchorDate, railRange.start, railRange.end, activeRailKey, localTodayKey]);
+  }, [railAnchorDate, railRange.start, railRange.end, localTodayKey, selectedDateKey]);
 
   const ensureRailRangeForOffset = useCallback((offset) => {
     const buffer = 7;
@@ -981,7 +958,7 @@ export default function Home({
       if (pendingCommitRef.current) clearTimeout(pendingCommitRef.current);
       pendingCommitRef.current = setTimeout(() => {
         commitDateKey(nextKey);
-      }, 1000);
+      }, 160);
     },
     [commitDateKey]
   );
@@ -1010,58 +987,25 @@ export default function Home({
   const handleAddOccurrence = useCallback(
     (nextKey, goalId) => {
       if (!nextKey) return;
-      if (!isPlanningUnlimited && Number.isFinite(generationWindowDays) && generationWindowDays > 0) {
-        const endKey = toLocalDateKey(
-          addDays(fromLocalDateKey(localTodayKey), Math.floor(generationWindowDays) - 1)
-        );
-        if (nextKey > endKey) {
-          if (typeof onOpenPaywall === "function") {
-            onOpenPaywall(
-              `Planning limité à ${Math.floor(generationWindowDays)} jours.`
-            );
-          }
-          return;
-        }
-      }
       if (typeof onAddOccurrence === "function") {
         onAddOccurrence(nextKey, goalId || null);
       }
     },
-    [generationWindowDays, isPlanningUnlimited, localTodayKey, onAddOccurrence, onOpenPaywall]
+    [onAddOccurrence]
   );
 
+  const lastEnsureSigRef = useRef("");
   useEffect(() => {
-    if (!isPlanningUnlimited) return;
-    if (!Number.isFinite(generationWindowDays) || generationWindowDays <= 0) return;
-    const endKey = toLocalDateKey(
-      addDays(fromLocalDateKey(localTodayKey), Math.floor(generationWindowDays) - 1)
-    );
-    const thresholdKey = toLocalDateKey(addDays(fromLocalDateKey(endKey), -7));
-    if (selectedDateKey < thresholdKey) return;
+    if (!selectedDateKey || !ensureProcessIds.length || typeof setData !== "function") return;
+    const sig = `${selectedDateKey}:${ensureProcessIds.join(",")}`;
+    if (lastEnsureSigRef.current === sig) return;
+    lastEnsureSigRef.current = sig;
     setData((prev) => {
-      const goalsList = Array.isArray(prev?.goals) ? prev.goals : [];
-      let processIds = [];
-      if (selectedGoal?.id) {
-        processIds = linkedHabits.map((goal) => goal.id).filter(Boolean);
-      } else if (focusCategory?.id) {
-        processIds = goalsList
-          .filter((goal) => resolveGoalType(goal) === "PROCESS" && goal.categoryId === focusCategory.id)
-          .map((goal) => goal.id)
-          .filter(Boolean);
-      }
-      if (!processIds.length) return prev;
-      return ensureWindowForGoals(prev, processIds, localTodayKey, Math.floor(generationWindowDays));
+      const baseDate = fromLocalDateKey(selectedDateKey);
+      const fromKey = baseDate ? toLocalDateKey(addDays(baseDate, -1)) : selectedDateKey;
+      return ensureWindowForGoals(prev, ensureProcessIds, fromKey, 3);
     });
-  }, [
-    focusCategory?.id,
-    generationWindowDays,
-    isPlanningUnlimited,
-    linkedHabits,
-    localTodayKey,
-    selectedDateKey,
-    selectedGoal?.id,
-    setData,
-  ]);
+  }, [ensureProcessIds, selectedDateKey, setData]);
 
   const getRailStepPx = useCallback(() => {
     const fallback = 62;
@@ -1120,13 +1064,14 @@ export default function Home({
     const refEl = railItemRefs.current.get(dateKeyValue);
     const el = refEl || container.querySelector(`[data-datekey="${dateKeyValue}"]`);
     if (!el) return;
+    if (typeof el.scrollIntoView === "function") {
+      el.scrollIntoView({ behavior, inline: "center", block: "nearest" });
+      return;
+    }
     const targetLeft = el.offsetLeft - (container.clientWidth / 2 - el.clientWidth / 2);
     if (Number.isFinite(targetLeft)) {
       container.scrollTo({ left: Math.max(0, targetLeft), behavior });
       return;
-    }
-    if (typeof el.scrollIntoView === "function") {
-      el.scrollIntoView({ behavior, inline: "center", block: "nearest" });
     }
   }, []);
 
@@ -1958,6 +1903,7 @@ export default function Home({
                           {railItems.map((item) => {
                             const plannedCount = plannedByDate.get(item.key) || 0;
                             const doneCount = doneByDate.get(item.key) || 0;
+                            const dayCount = occurrencesCountByDateKey.get(item.key) || 0;
                             const isToday = item.key === localTodayKey;
                             const plannedLabel = plannedCount
                               ? `${plannedCount} planifié${plannedCount > 1 ? "s" : ""}`
@@ -2009,6 +1955,14 @@ export default function Home({
                               >
                                 <div className="dayPillDay">{item.day}</div>
                                 <div className="dayPillMonth">/{item.month}</div>
+                                {isToday ? <div className="calendarTodayBadge">Aujourd’hui</div> : null}
+                                {dayCount > 0 ? (
+                                  <span
+                                    className="calendarItemDot"
+                                    aria-hidden="true"
+                                    style={{ background: accentForItem }}
+                                  />
+                                ) : null}
                               </button>
                             );
                           })}
@@ -2107,13 +2061,10 @@ export default function Home({
                     )}
                   </div>
                   <div className="mt12">
-                    <div className="small2">Planning du jour</div>
+                    <div className="small2">Aperçu de la journée</div>
                     <div
                       className="mt8 col gap10"
-                      style={{
-                        maxHeight: planningWindowDays > 14 ? 360 : "none",
-                        overflowY: planningWindowDays > 14 ? "auto" : "visible",
-                      }}
+                      style={planningListStyle}
                     >
                       {visibleOccurrencesForSelectedDay.length ? (
                         <div className="col gap8">

@@ -8,7 +8,7 @@ import { uid } from "../utils/helpers";
 import { createGoal } from "../logic/goals";
 import { setPrimaryGoalForCategory } from "../logic/priority";
 import { ensureWindowForGoals } from "../logic/occurrencePlanner";
-import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
+import { fromLocalDateKey, normalizeLocalDateKey, todayLocalKey, toLocalDateKey } from "../utils/dateKey";
 import { createDefaultGoalSchedule, ensureSystemInboxCategory, normalizeCategory, SYSTEM_INBOX_ID } from "../logic/state";
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
 import { canCreateCategory } from "../logic/entitlements";
@@ -156,6 +156,9 @@ export default function CreateV2Habits({
   const [selectedOutcomeId, setSelectedOutcomeId] = useState(() =>
     activeOutcomeId || availableOutcomes[0]?.id || ""
   );
+  const [postActionPrompt, setPostActionPrompt] = useState(null);
+  const [postObjectiveTitle, setPostObjectiveTitle] = useState("");
+  const [postSelectedOutcomeId, setPostSelectedOutcomeId] = useState("");
   const hasOutcome = Boolean(selectedOutcomeId);
   const categoryId = selectedCategoryId || SYSTEM_INBOX_ID;
   const category = categoryId ? (safeData.categories || []).find((c) => c.id === categoryId) : null;
@@ -222,6 +225,13 @@ export default function CreateV2Habits({
       syncActiveOutcome("");
     }
   }, [hasAvailableOutcomes, linkToObjective]);
+
+  useEffect(() => {
+    if (!postActionPrompt) return;
+    if (!postSelectedOutcomeId && availableOutcomes.length) {
+      setPostSelectedOutcomeId(availableOutcomes[0].id);
+    }
+  }, [availableOutcomes, postActionPrompt, postSelectedOutcomeId]);
 
   useEffect(() => {
     if (repeat !== "none") return;
@@ -433,6 +443,14 @@ export default function CreateV2Habits({
       if (typeof onOpenPaywall === "function") onOpenPaywall("Limite de catégories atteinte.");
       return;
     }
+    const linkedOutcomeId = linkToObjective && selectedOutcomeId ? selectedOutcomeId : null;
+    const validHabits = habits.filter(
+      (habit) =>
+        habit &&
+        habit.title &&
+        !(habit.repeat === "weekly" && (!habit.daysOfWeek || habit.daysOfWeek.length === 0))
+    );
+    const createdProcessIds = validHabits.map(() => uid());
     setData((prev) => {
       let next = prev;
       const existingCategories = Array.isArray(next.categories) ? next.categories : [];
@@ -453,7 +471,6 @@ export default function CreateV2Habits({
       }
       const objective = outcomes[0] || null;
       const outcomeId = objective ? uid() : null;
-      const createdProcessIds = [];
       const createdReminders = [];
 
       if (objective && outcomeId) {
@@ -473,10 +490,9 @@ export default function CreateV2Habits({
 
       const baseSchedule = createDefaultGoalSchedule();
       let finalState = next;
-      for (const habit of habits) {
-        if (!habit || !habit.title) continue;
-        if (habit.repeat === "weekly" && (!habit.daysOfWeek || habit.daysOfWeek.length === 0)) continue;
-        const habitId = uid();
+      for (let index = 0; index < validHabits.length; index += 1) {
+        const habit = validHabits[index];
+        const habitId = createdProcessIds[index];
         const normalizedStart = normalizeStartTime(habit.startTime);
         const normalizedReminderTime = normalizeStartTime(habit.reminderTime);
         const normalizedWindowStart = normalizeStartTime(habit.reminderWindowStart);
@@ -554,7 +570,6 @@ export default function CreateV2Habits({
         if (isOneOff && oneOffDate) {
           finalState = ensureWindowForGoals(finalState, [habitId], oneOffDate, 1);
         }
-        createdProcessIds.push(habitId);
       }
 
       if (createdProcessIds.length) {
@@ -578,6 +593,73 @@ export default function CreateV2Habits({
         ui: { ...(finalState.ui || {}), createDraft: createEmptyDraft(), createDraftWasCompleted: true },
       };
     });
+    if (!linkedOutcomeId && createdProcessIds.length) {
+      const suggestedTitle = String(validHabits[0]?.title || title || "").trim();
+      setPostActionPrompt({ createdProcessIds, categoryId: categoryId || SYSTEM_INBOX_ID });
+      setPostObjectiveTitle(suggestedTitle);
+      setPostSelectedOutcomeId(availableOutcomes[0]?.id || "");
+      return;
+    }
+    if (typeof onDone === "function") onDone();
+  }
+
+  function handleSkipObjective() {
+    setPostActionPrompt(null);
+    if (typeof onDone === "function") onDone();
+  }
+
+  function linkToExistingObjective() {
+    if (!postActionPrompt?.createdProcessIds?.length || !postSelectedOutcomeId) return;
+    if (typeof setData !== "function") return;
+    const linkId = postSelectedOutcomeId;
+    setData((prev) => {
+      const goalsList = Array.isArray(prev.goals) ? prev.goals : [];
+      const updated = goalsList.map((goal) =>
+        postActionPrompt.createdProcessIds.includes(goal.id)
+          ? { ...goal, parentId: linkId, outcomeId: linkId }
+          : goal
+      );
+      return { ...prev, goals: updated };
+    });
+    setPostActionPrompt(null);
+    if (typeof onDone === "function") onDone();
+  }
+
+  function createObjectiveAndLink() {
+    if (!postActionPrompt?.createdProcessIds?.length) return;
+    const cleanTitle = String(postObjectiveTitle || "").trim();
+    if (!cleanTitle) return;
+    if (typeof setData !== "function") return;
+    const startKey = todayLocalKey();
+    const deadlineDate = fromLocalDateKey(startKey);
+    deadlineDate.setDate(deadlineDate.getDate() + 7);
+    const deadlineKey = toLocalDateKey(deadlineDate);
+    const outcomeId = uid();
+    const targetCategoryId = postActionPrompt.categoryId || SYSTEM_INBOX_ID;
+    setData((prev) => {
+      let next = prev;
+      if (targetCategoryId === SYSTEM_INBOX_ID) {
+        next = ensureSystemInboxCategory(next).state;
+      }
+      next = createGoal(next, {
+        id: outcomeId,
+        categoryId: targetCategoryId,
+        title: cleanTitle,
+        type: "OUTCOME",
+        planType: "STATE",
+        startDate: startKey,
+        deadline: deadlineKey,
+        priority: "secondaire",
+      });
+      const goalsList = Array.isArray(next.goals) ? next.goals : [];
+      const updated = goalsList.map((goal) =>
+        postActionPrompt.createdProcessIds.includes(goal.id)
+          ? { ...goal, parentId: outcomeId, outcomeId }
+          : goal
+      );
+      return { ...next, goals: updated };
+    });
+    setPostActionPrompt(null);
     if (typeof onDone === "function") onDone();
   }
 
@@ -591,6 +673,64 @@ export default function CreateV2Habits({
 
   const outcomeLabel = hasOutcome ? getOutcomeLabel(selectedOutcomeId) : "Sans objectif";
   const objectiveColor = category?.color || "#64748B";
+
+  if (postActionPrompt) {
+    const hasOutcomes = availableOutcomes.length > 0;
+    return (
+      <ScreenShell
+        data={safeData}
+        pageId="categories"
+        headerTitle="Créer"
+        headerSubtitle={
+          <>
+            <span className="textMuted2">2.</span> Objectif
+          </>
+        }
+        backgroundImage={backgroundImage}
+      >
+        <div className="stack stackGap12">
+          <Card accentBorder>
+            <div className="p18 col gap12">
+              <div className="small2">Action créée.</div>
+              <div className="stack stackGap8">
+                <div className="small textMuted">Lier à un objectif existant</div>
+                <Select
+                  value={postSelectedOutcomeId}
+                  onChange={(e) => setPostSelectedOutcomeId(e.target.value)}
+                  disabled={!hasOutcomes}
+                >
+                  <option value="">Sans objectif</option>
+                  {availableOutcomes.map((outcome) => (
+                    <option key={outcome.id} value={outcome.id}>
+                      {outcome.title || "Objectif"}
+                    </option>
+                  ))}
+                </Select>
+                <Button onClick={linkToExistingObjective} disabled={!hasOutcomes || !postSelectedOutcomeId}>
+                  Lier à cet objectif
+                </Button>
+              </div>
+              <div className="stack stackGap8">
+                <div className="small textMuted">Créer un objectif maintenant</div>
+                <Input
+                  value={postObjectiveTitle}
+                  onChange={(e) => setPostObjectiveTitle(e.target.value)}
+                  placeholder="Nom de l’objectif"
+                />
+                <div className="small2 textMuted2">Durée minimale 7 jours (fin auto J+7).</div>
+                <Button onClick={createObjectiveAndLink} disabled={!postObjectiveTitle.trim()}>
+                  Créer l’objectif
+                </Button>
+              </div>
+              <button type="button" className="linkBtn" onClick={handleSkipObjective}>
+                Plus tard
+              </button>
+            </div>
+          </Card>
+        </div>
+      </ScreenShell>
+    );
+  }
 
   return (
     <ScreenShell

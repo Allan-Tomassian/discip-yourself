@@ -99,6 +99,7 @@ export function normalizeCreationDraft(raw) {
     .map((habit) => {
       if (!habit || typeof habit !== "object") return null;
       const nextHabit = { ...habit };
+      nextHabit.outcomeId = typeof nextHabit.outcomeId === "string" ? nextHabit.outcomeId : "";
       if (!nextHabit.outcomeId && draft.outcomes.length === 1) {
         nextHabit.outcomeId = draft.outcomes[0].id;
       }

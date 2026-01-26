@@ -309,7 +309,7 @@ export default function CreateV2Outcome({
                   variant="ghost"
                   onClick={() => {
                     if (typeof onCreateActionFromObjective === "function" && savedOutcomeId) {
-                      onCreateActionFromObjective(savedOutcomeId);
+                      onCreateActionFromObjective(savedOutcomeId, categoryId || sysCategoryId);
                     }
                   }}
                 >

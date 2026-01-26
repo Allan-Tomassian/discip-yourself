@@ -40,11 +40,6 @@ const DAY_OPTIONS = [
   { value: 7, label: "Dim" },
 ];
 
-const CHANNEL_OPTIONS = [
-  { value: "IN_APP", label: "Dans l’app" },
-  { value: "NOTIFICATION", label: "Notification" },
-];
-
 function resolvePlanType(item) {
   const rawPlan = typeof item?.planType === "string" ? item.planType.toUpperCase() : "";
   if (rawPlan === "ACTION" || rawPlan === "ONE_OFF" || rawPlan === "STATE") return rawPlan;
@@ -75,8 +70,19 @@ function parseStartAt(value) {
 function buildStartAt(date, time) {
   const cleanDate = (date || "").trim();
   if (!cleanDate) return "";
-  const cleanTime = (time || "09:00").trim() || "09:00";
+  const cleanTime = (time || "00:00").trim() || "00:00";
   return `${cleanDate}T${cleanTime}`;
+}
+
+function normalizeStartTime(value) {
+  const raw = typeof value === "string" ? value.trim() : "";
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(raw) ? raw : "";
+}
+
+function normalizeDurationMinutes(value) {
+  const raw = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(raw) || raw <= 0) return null;
+  return Math.round(raw);
 }
 
 function normalizeQuantityValue(value) {
@@ -220,7 +226,7 @@ function updateRemindersForGoal(state, goalId, config, fallbackLabel, options = 
   return [...others, ...nextForGoal];
 }
 
-export default function EditItem({ data, setData, editItem, onBack, generationWindowDays = null }) {
+export default function EditItem({ data, setData, editItem, onBack, generationWindowDays = null, onOpenPaywall }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -261,16 +267,15 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   const [priority, setPriority] = useState("secondaire");
   const [repeat, setRepeat] = useState("daily");
   const [startDate, setStartDate] = useState("");
-  const [startTime, setStartTime] = useState("09:00");
+  const [startTime, setStartTime] = useState("");
   const [oneOffDate, setOneOffDate] = useState("");
-  const [oneOffTime, setOneOffTime] = useState("09:00");
-  const [sessionMinutes, setSessionMinutes] = useState("30");
+  const [oneOffTime, setOneOffTime] = useState("");
+  const [sessionMinutes, setSessionMinutes] = useState("");
   const [daysOfWeek, setDaysOfWeek] = useState(createDefaultGoalSchedule().daysOfWeek);
-  const [windowStart, setWindowStart] = useState("09:00");
-  const [windowEnd, setWindowEnd] = useState("18:00");
+  const [windowStart, setWindowStart] = useState("");
+  const [windowEnd, setWindowEnd] = useState("");
   const [remindersEnabled, setRemindersEnabled] = useState(false);
-  const [reminderTimes, setReminderTimes] = useState(["09:00"]);
-  const [reminderChannel, setReminderChannel] = useState("IN_APP");
+  const [reminderTime, setReminderTime] = useState("");
   const [notes, setNotes] = useState("");
   const [deadline, setDeadline] = useState("");
   const [quantityValue, setQuantityValue] = useState("");
@@ -310,15 +315,16 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
         ? { ...scheduleBase, ...item.schedule }
         : { ...scheduleBase };
     const scheduleDays = normalizeDays(schedule.daysOfWeek);
-    const timeSlots = Array.isArray(schedule.timeSlots) && schedule.timeSlots.length ? schedule.timeSlots : ["09:00"];
+    const timeSlots =
+      Array.isArray(schedule.timeSlots) && schedule.timeSlots.length ? schedule.timeSlots : scheduleBase.timeSlots;
     const reminderItems = Array.isArray(item._reminders) ? item._reminders : [];
     const reminderTimesRaw = reminderItems.length ? reminderItems.map((r) => r.time) : [];
     const reminderTimesClean = normalizeTimes(reminderTimesRaw);
     const reminderEnabled =
-      reminderItems.length > 0 ? reminderItems.some((r) => r.enabled !== false) : Boolean(schedule.remindersEnabled);
-    const reminderChannelRaw = reminderItems.find((r) => r?.channel)?.channel || "IN_APP";
-    const windowStartValue = schedule.windowStart || timeSlots[0] || "09:00";
-    const windowEndValue = schedule.windowEnd || timeSlots[1] || "18:00";
+      reminderItems.length > 0 ? reminderItems.some((r) => r.enabled !== false) : Boolean(item.reminderTime);
+    const reminderTimeValue = normalizeStartTime(item.reminderTime || reminderTimesClean[0] || "");
+    const windowStartValue = normalizeStartTime(item.reminderWindowStart || schedule.windowStart || "");
+    const windowEndValue = normalizeStartTime(item.reminderWindowEnd || schedule.windowEnd || "");
     const normalizedRepeat = normalizeRepeat(item.repeat);
     const derivedRepeat =
       normalizedRepeat ||
@@ -335,22 +341,28 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     setPriority(resolvePriority(item));
     setRepeat(derivedRepeat);
     setStartDate(normalizeLocalDateKey(item.startDate) || parsed.date || todayLocalKey());
-    setStartTime(item.startTime || parsed.time || "");
-    setOneOffDate(item.oneOffDate || "");
-    setOneOffTime(parsed.time || item.startTime || "");
+    const slotTime = timeSlots[0] || "";
+    const fallbackStart = slotTime === "00:00" ? "" : slotTime;
+    const nextStartTime = normalizeStartTime(item.startTime || parsed.time || fallbackStart);
+    setStartTime(nextStartTime);
+    const normalizedOneOffDate =
+      normalizeLocalDateKey(item.oneOffDate) ||
+      (resolvedPlan === "ONE_OFF" ? parsed.date : "");
+    setOneOffDate(normalizedOneOffDate || "");
+    const nextOneOffTime = normalizeStartTime(item.startTime || parsed.time || "");
+    setOneOffTime(nextOneOffTime === "00:00" ? "" : nextOneOffTime);
     setSessionMinutes(
-      Number.isFinite(item.sessionMinutes)
-        ? String(item.sessionMinutes)
+      Number.isFinite(item.durationMinutes)
+        ? String(item.durationMinutes)
         : Number.isFinite(schedule.durationMinutes)
           ? String(schedule.durationMinutes)
-          : "30"
+          : ""
     );
     setDaysOfWeek(scheduleDays);
     setWindowStart(windowStartValue);
     setWindowEnd(windowEndValue);
     setRemindersEnabled(reminderEnabled && canUseReminders);
-    setReminderTimes(reminderTimesClean.length ? reminderTimesClean : ["09:00"]);
-    setReminderChannel(reminderChannelRaw);
+    setReminderTime(reminderTimeValue);
     setNotes(isProcess ? item.habitNotes || "" : item.notes || "");
     setDeadline(item.deadline || "");
     setQuantityValue(rawQuantityValue != null ? String(rawQuantityValue) : "");
@@ -377,8 +389,6 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     if (outcomes.some((o) => o.id === selectedOutcomeId)) return;
     setSelectedOutcomeId("");
   }, [isProcess, outcomes, selectedOutcomeId]);
-
-  const normalizedReminderTimes = useMemo(() => normalizeTimes(reminderTimes), [reminderTimes]);
 
   if (!item) {
     return (
@@ -412,7 +422,11 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   function activateSuggestedCategory(cat) {
     if (!cat || typeof setData !== "function") return;
     if (!canCreateCategory(safeData)) {
-      setError("Limite de catégories atteinte.");
+      if (typeof onOpenPaywall === "function") {
+        onOpenPaywall("Limite de catégories atteinte.");
+      } else {
+        setError("Limite de catégories atteinte.");
+      }
       return;
     }
     setData((prev) => {
@@ -425,22 +439,6 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       return { ...prev, categories: [...prevCategories, created] };
     });
     setSelectedCategoryId(cat.id);
-  }
-
-  function updateReminderTime(index, value) {
-    setReminderTimes((prev) => {
-      const next = prev.slice();
-      next[index] = value;
-      return next;
-    });
-  }
-
-  function removeReminderTime(index) {
-    setReminderTimes((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function addReminderTime() {
-    setReminderTimes((prev) => [...prev, "09:00"]);
   }
 
   function handleSave() {
@@ -461,7 +459,11 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     const normalizedCategoryId = selectedCategoryId || SYSTEM_INBOX_ID;
     const selectedSuggestion = suggestedCategories.find((cat) => cat.id === normalizedCategoryId) || null;
     if (selectedSuggestion && !canCreateCategory(safeData)) {
-      setError("Limite de catégories atteinte.");
+      if (typeof onOpenPaywall === "function") {
+        onOpenPaywall("Limite de catégories atteinte.");
+      } else {
+        setError("Limite de catégories atteinte.");
+      }
       return;
     }
 
@@ -474,15 +476,21 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
         setError("Sélectionne une date pour l’action \"Une fois\".");
         return;
       }
-      if (isWeekly && normalizeDays(daysOfWeek).length === 0) {
+      if (isWeekly && (!Array.isArray(daysOfWeek) || daysOfWeek.length === 0)) {
         setError("Choisis au moins un jour.");
         return;
       }
-      const minutesRaw = Number(sessionMinutes);
-      const safeMinutes = Number.isFinite(minutesRaw) && minutesRaw > 0 ? Math.round(minutesRaw) : 30;
+      const normalizedDuration = normalizeDurationMinutes(sessionMinutes);
       const days = normalizeDays(daysOfWeek);
-      const reminderTime = normalizedReminderTimes[0] || "";
-      const effectiveStart = (startTime || "").trim() || reminderTime || "00:00";
+      const normalizedStart = normalizeStartTime(startTime);
+      const normalizedReminderTime = remindersEnabled ? normalizeStartTime(reminderTime) : "";
+      const normalizedWindowStart = normalizeStartTime(windowStart);
+      const normalizedWindowEnd = normalizeStartTime(windowEnd);
+      if ((normalizedWindowStart || normalizedWindowEnd) && !normalizedReminderTime) {
+        setError("Choisis une heure de rappel.");
+        return;
+      }
+      const effectiveStart = normalizedStart || normalizedReminderTime || "00:00";
       const scheduleBase = createDefaultGoalSchedule();
       const schedule =
         isOneOff
@@ -492,13 +500,13 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
               ...item.schedule,
               daysOfWeek: isWeekly ? days : [],
               timeSlots: [effectiveStart],
-              durationMinutes: safeMinutes,
-              remindersEnabled,
-              windowStart: windowStart || scheduleBase.timeSlots[0],
-              windowEnd: windowEnd || scheduleBase.timeSlots[0],
+              durationMinutes: normalizedDuration,
+              remindersEnabled: Boolean(normalizedReminderTime),
+              windowStart: normalizedReminderTime ? normalizedWindowStart || "" : "",
+              windowEnd: normalizedReminderTime ? normalizedWindowEnd || "" : "",
             };
       const startAt = isOneOff
-        ? buildStartAt(normalizedOneOff || todayLocalKey(), oneOffTime || reminderTime || startTime || "00:00")
+        ? buildStartAt(normalizedOneOff || todayLocalKey(), oneOffTime || normalizedReminderTime || normalizedStart || "00:00")
         : null;
 
       const normalizedQuantityValue = normalizeQuantityValue(quantityValue);
@@ -516,8 +524,8 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       updates.planType = isOneOff ? "ONE_OFF" : "ACTION";
       updates.repeat = repeatMode;
       updates.daysOfWeek = isWeekly ? days : [];
-      updates.startTime = (startTime || "").trim();
-      updates.durationMinutes = safeMinutes;
+      updates.startTime = normalizedStart;
+      updates.durationMinutes = normalizedDuration;
       updates.oneOffDate = isOneOff ? normalizedOneOff || "" : undefined;
       updates.startAt = startAt || null;
       updates.schedule = schedule;
@@ -529,9 +537,9 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       updates.quantityValue = normalizedQuantityValue;
       updates.quantityUnit = normalizedQuantityValue ? normalizedQuantityUnit : "";
       updates.quantityPeriod = normalizedQuantityValue ? normalizeQuantityPeriod(quantityPeriod) : "";
-      updates.reminderTime = reminderTime;
-      updates.reminderWindowStart = windowStart || "";
-      updates.reminderWindowEnd = windowEnd || "";
+      updates.reminderTime = normalizedReminderTime;
+      updates.reminderWindowStart = normalizedReminderTime ? normalizedWindowStart || "" : "";
+      updates.reminderWindowEnd = normalizedReminderTime ? normalizedWindowEnd || "" : "";
       updates.parentId = selectedOutcomeId || null;
       updates.outcomeId = selectedOutcomeId || null;
     } else {
@@ -548,15 +556,16 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       updates.priority = priority;
     }
 
-    const reminderConfig = isProcess
-      ? {
-          enabled: remindersEnabled && canUseReminders,
-          times: normalizedReminderTimes,
-          channel: reminderChannel,
-          days: normalizeDays(daysOfWeek),
-          label: cleanTitle,
-        }
-      : null;
+    const reminderConfig =
+      isProcess && remindersEnabled && normalizedReminderTime
+        ? {
+            enabled: true,
+            times: [normalizedReminderTime],
+            channel: "IN_APP",
+            days: normalizeDays(daysOfWeek),
+            label: cleanTitle,
+          }
+        : null;
 
     if (typeof setData === "function") {
       const goalId = item.id;
@@ -601,6 +610,11 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
           const label = updates.title || item.title || "Rappel";
           const nextReminders = updateRemindersForGoal(next, goalId, reminderConfig, label, { forceNewIds: planChanged });
           next = { ...next, reminders: nextReminders };
+        } else if (Array.isArray(next.reminders)) {
+          const filtered = next.reminders.filter((r) => r.goalId !== goalId);
+          if (filtered.length !== next.reminders.length) {
+            next = { ...next, reminders: filtered };
+          }
         }
         if (planChanged && type !== "OUTCOME") {
           const days =
@@ -823,20 +837,6 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
                           <div className="row" style={{ gap: 10 }}>
                             <div style={{ flex: 1 }}>
                               <div className="small" style={{ marginBottom: 6 }}>
-                                Fenêtre début
-                              </div>
-                              <Input type="time" value={windowStart} onChange={(e) => setWindowStart(e.target.value)} />
-                            </div>
-                            <div style={{ flex: 1 }}>
-                              <div className="small" style={{ marginBottom: 6 }}>
-                                Fenêtre fin
-                              </div>
-                              <Input type="time" value={windowEnd} onChange={(e) => setWindowEnd(e.target.value)} />
-                            </div>
-                          </div>
-                          <div className="row" style={{ gap: 10 }}>
-                            <div style={{ flex: 1 }}>
-                              <div className="small" style={{ marginBottom: 6 }}>
                                 Heure
                               </div>
                               <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
@@ -895,28 +895,40 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
                   </label>
                   {remindersEnabled ? (
                     <>
-                      <div className="editTimeList">
-                        {reminderTimes.map((t, index) => (
-                          <div key={`${t}-${index}`} className="editTimeRow">
-                            <Input type="time" value={t} onChange={(e) => updateReminderTime(index, e.target.value)} />
-                            {reminderTimes.length > 1 ? (
-                              <Button variant="ghost" onClick={() => removeReminderTime(index)}>
-                                Retirer
-                              </Button>
-                            ) : null}
+                      <div className="row" style={{ gap: 10 }}>
+                        <div style={{ flex: 1 }}>
+                          <div className="small" style={{ marginBottom: 6 }}>
+                            Heure
                           </div>
-                        ))}
+                          <Input
+                            type="time"
+                            value={reminderTime}
+                            onChange={(e) => setReminderTime(e.target.value)}
+                          />
+                        </div>
                       </div>
-                      <Button variant="ghost" onClick={addReminderTime}>
-                        + Ajouter une heure
-                      </Button>
-                      <Select value={reminderChannel} onChange={(e) => setReminderChannel(e.target.value)}>
-                        {CHANNEL_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </Select>
+                      <div className="row" style={{ gap: 10 }}>
+                        <div style={{ flex: 1 }}>
+                          <div className="small" style={{ marginBottom: 6 }}>
+                            Fenêtre début
+                          </div>
+                          <Input
+                            type="time"
+                            value={windowStart}
+                            onChange={(e) => setWindowStart(e.target.value)}
+                          />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div className="small" style={{ marginBottom: 6 }}>
+                            Fenêtre fin
+                          </div>
+                          <Input
+                            type="time"
+                            value={windowEnd}
+                            onChange={(e) => setWindowEnd(e.target.value)}
+                          />
+                        </div>
+                      </div>
                     </>
                   ) : null}
                 </div>
