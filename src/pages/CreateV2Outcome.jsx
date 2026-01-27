@@ -30,7 +30,10 @@ export default function CreateV2Outcome({
 }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
-  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
+  const categories = useMemo(
+    () => (Array.isArray(safeData.categories) ? safeData.categories : []),
+    [safeData.categories]
+  );
   const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
   const suggestedCategories = useMemo(() => {
     const existingNames = new Set(categories.map((c) => String(c?.name || "").trim().toLowerCase()).filter(Boolean));

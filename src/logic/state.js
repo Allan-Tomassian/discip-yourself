@@ -791,6 +791,8 @@ export function normalizeGoal(rawGoal, index = 0) {
   return g;
 }
 
+export { normalizeGoal as normalizeGoalFields };
+
 export function initialData() {
   return {
     profile: {

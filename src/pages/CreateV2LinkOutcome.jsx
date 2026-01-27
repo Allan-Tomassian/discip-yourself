@@ -27,9 +27,15 @@ export default function CreateV2LinkOutcome({
   onOpenPaywall,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
-  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+  const goals = useMemo(
+    () => (Array.isArray(safeData.goals) ? safeData.goals : []),
+    [safeData.goals]
+  );
   const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
-  const createdActionIds = Array.isArray(draft.createdActionIds) ? draft.createdActionIds : [];
+  const createdActionIds = useMemo(
+    () => (Array.isArray(draft.createdActionIds) ? draft.createdActionIds : []),
+    [draft.createdActionIds]
+  );
   const actions = useMemo(
     () => goals.filter((g) => g && createdActionIds.includes(g.id)),
     [goals, createdActionIds]

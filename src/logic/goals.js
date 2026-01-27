@@ -3,7 +3,7 @@ import { todayKey } from "../utils/dates";
 import { todayLocalKey } from "../utils/dateKey";
 import { ensureWindowForGoal, validateOccurrences } from "./occurrencePlanner";
 import { getGenerationWindowDays } from "./entitlements";
-import { ensureSystemInboxCategory, normalizeGoal, normalizeResetPolicy } from "./state";
+import { ensureSystemInboxCategory, normalizeGoalFields, normalizeResetPolicy } from "./state";
 import { resolveGoalType, isOutcome, isProcess } from "../domain/goalType";
 
 const ALLOWED = new Set(["queued", "active", "done", "invalid"]);
@@ -517,7 +517,7 @@ export function createGoal(state, goalInput = {}) {
 
   if (typeof base.order !== "number") base.order = getNextOrder(goals);
   const normalized = {
-    ...normalizeGoal(base, goals.length, workingState.categories),
+    ...normalizeGoalFields(base, goals.length, workingState.categories),
     createdAt: base.createdAt || todayKey(),
   };
   const planType = normalizePlanType(normalized);

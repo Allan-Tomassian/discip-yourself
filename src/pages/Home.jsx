@@ -219,8 +219,11 @@ export default function Home({
 
   // Data slices
   const profile = safeData.profile || {};
-  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
-  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+  const categories = useMemo(
+    () => (Array.isArray(safeData.categories) ? safeData.categories : []),
+    [safeData.categories]
+  );
+  const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
   // per-view category selection for Home (fallback to legacy)
   const homeSelectedCategoryId =
     safeData.ui?.selectedCategoryByView?.home || safeData.ui?.selectedCategoryId || null;
@@ -230,9 +233,15 @@ export default function Home({
   const noteStorageKey = `${noteKeyPrefix}${selectedDateKey}`;
   const noteMetaStorageKey = `${noteMetaKeyPrefix}${selectedDateKey}`;
   const noteHistoryStorageKey = noteCategoryId ? `dailyNoteHistory:${noteCategoryId}` : "dailyNoteHistory";
-  const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
+  const occurrences = useMemo(
+    () => (Array.isArray(safeData.occurrences) ? safeData.occurrences : []),
+    [safeData.occurrences]
+  );
   const goalIdSet = useMemo(() => new Set(goals.map((g) => g?.id).filter(Boolean)), [goals]);
-  const microChecks = safeData.microChecks && typeof safeData.microChecks === "object" ? safeData.microChecks : {};
+  const microChecks = useMemo(
+    () => (safeData.microChecks && typeof safeData.microChecks === "object" ? safeData.microChecks : {}),
+    [safeData.microChecks]
+  );
   const dayMicro = useMemo(() => {
     return microChecks?.[selectedDateKey] && typeof microChecks[selectedDateKey] === "object"
       ? microChecks[selectedDateKey]
@@ -875,7 +884,7 @@ export default function Home({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMonthCursor(startOfMonth(selectedDate));
-  }, [selectedDateKey]);
+  }, [selectedDate]);
 
   useEffect(() => {
     // Lightweight in-app transition (GPU-friendly): opacity + translate.
@@ -1187,6 +1196,7 @@ export default function Home({
 
 
   const { items: noteHistoryItems, hasHistoryBeyondLimit } = useMemo(() => {
+    void noteHistoryVersion;
     if (!showNotesHistory) return { items: [], hasHistoryBeyondLimit: false };
     let nextItems = [];
     try {
@@ -1290,7 +1300,6 @@ export default function Home({
     noteHistoryStorageKey,
     noteKeyPrefix,
     noteMetaKeyPrefix,
-    selectedDateKey,
     showNotesHistory,
     historyMaxAge,
     localTodayKey,

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { AccentItem, Button, Card, IconButton } from "../components/UI";
 import Gauge from "../components/Gauge";
@@ -34,8 +34,14 @@ export default function CategoryView({
   onEditItem,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
-  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
-  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+  const categories = useMemo(
+    () => (Array.isArray(safeData.categories) ? safeData.categories : []),
+    [safeData.categories]
+  );
+  const goals = useMemo(
+    () => (Array.isArray(safeData.goals) ? safeData.goals : []),
+    [safeData.goals]
+  );
   const uiLibraryCategoryId =
     safeData?.ui?.selectedCategoryByView?.library || safeData?.ui?.librarySelectedCategoryId || null;
   const resolvedCategoryId =
@@ -74,9 +80,10 @@ export default function CategoryView({
     return () => window.clearTimeout(timeout);
   }, [safeData?.ui?.manageScrollTo, setData]);
 
-  const outcomeGoals = category?.id
-    ? goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "OUTCOME")
-    : [];
+  const outcomeGoals = useMemo(() => {
+    if (!category?.id) return [];
+    return goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "OUTCOME");
+  }, [category?.id, goals]);
 
   useEffect(() => {
     if (!category?.id) {
@@ -97,9 +104,10 @@ export default function CategoryView({
 
   const selectedOutcome = selectedOutcomeId ? outcomeGoals.find((g) => g.id === selectedOutcomeId) || null : null;
 
-  const processGoals = category?.id
-    ? goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "PROCESS")
-    : [];
+  const processGoals = useMemo(() => {
+    if (!category?.id) return [];
+    return goals.filter((g) => g.categoryId === category.id && resolveGoalType(g) === "PROCESS");
+  }, [category?.id, goals]);
 
   const { linked: linkedHabits, unlinked: unlinkedHabits } = !processGoals.length
     ? { linked: [], unlinked: [] }

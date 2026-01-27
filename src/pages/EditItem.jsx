@@ -228,13 +228,22 @@ function updateRemindersForGoal(state, goalId, config, fallbackLabel, options = 
 }
 
 export default function EditItem({ data, setData, editItem, onBack, generationWindowDays = null, onOpenPaywall }) {
-  const safeData = data && typeof data === "object" ? data : {};
+  const safeData = useMemo(() => (data && typeof data === "object" ? data : {}), [data]);
   const backgroundImage = safeData?.profile?.whyImage || "";
-  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
-  const reminders = Array.isArray(safeData.reminders) ? safeData.reminders : [];
-  const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
-  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
-  const outcomes = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
+  const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
+  const reminders = useMemo(
+    () => (Array.isArray(safeData.reminders) ? safeData.reminders : []),
+    [safeData.reminders]
+  );
+  const occurrences = useMemo(
+    () => (Array.isArray(safeData.occurrences) ? safeData.occurrences : []),
+    [safeData.occurrences]
+  );
+  const categories = useMemo(
+    () => (Array.isArray(safeData.categories) ? safeData.categories : []),
+    [safeData.categories]
+  );
+  const outcomes = useMemo(() => goals.filter((g) => resolveGoalType(g) === "OUTCOME"), [goals]);
   const existingNames = new Set(categories.map((c) => String(c?.name || "").trim().toLowerCase()).filter(Boolean));
   const existingIds = new Set(categories.map((c) => c?.id).filter(Boolean));
   const suggestedCategories = SUGGESTED_CATEGORIES.filter(
@@ -250,14 +259,18 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     ...suggestedCategories.map((cat) => ({ id: cat.id, name: cat.name, suggested: true })),
   ];
 
-  const rawItem = editItem?.id ? goals.find((g) => g?.id === editItem.id) || null : null;
-  const item = rawItem
-    ? {
-        ...rawItem,
-        _reminders: Array.isArray(reminders) ? reminders.filter((r) => r?.goalId === rawItem.id) : [],
-        _occurrences: Array.isArray(occurrences) ? occurrences.filter((o) => o && o.goalId === rawItem.id) : [],
-      }
-    : null;
+  const rawItem = useMemo(
+    () => (editItem?.id ? goals.find((g) => g?.id === editItem.id) || null : null),
+    [editItem?.id, goals]
+  );
+  const item = useMemo(() => {
+    if (!rawItem) return null;
+    return {
+      ...rawItem,
+      _reminders: reminders.filter((r) => r?.goalId === rawItem.id),
+      _occurrences: occurrences.filter((o) => o && o.goalId === rawItem.id),
+    };
+  }, [rawItem, reminders, occurrences]);
 
   const type = resolveGoalType(rawItem);
 
@@ -382,7 +395,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     setDeadlineTouched(Boolean(item.deadline));
     setError("");
     setPlanOpen(false);
-  }, [item?.id]);
+  }, [item, isProcess, canUseReminders]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!item) {

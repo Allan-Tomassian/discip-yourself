@@ -433,17 +433,20 @@ export default function App() {
     tab === "create-link-outcome" ||
     tab === "create-pick-category";
   const themeName = getThemeName(safeData);
-  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
-  const categoryIdsKey = categories.map((c) => c.id).join("|");
+  const categories = useMemo(
+    () => (Array.isArray(safeData.categories) ? safeData.categories : []),
+    [safeData.categories]
+  );
+  const categoryIdsKey = useMemo(() => categories.map((c) => c.id).join("|"), [categories]);
   const categoryRailOrder = useMemo(
     () => ensureOrder(safeData?.ui?.categoryRailOrder, categories),
-    [safeData?.ui?.categoryRailOrder, categoryIdsKey]
+    [safeData?.ui?.categoryRailOrder, categories]
   );
   const orderedCategories = useMemo(() => {
     const map = new Map(categories.map((c) => [c.id, c]));
     return categoryRailOrder.map((id) => map.get(id)).filter(Boolean);
-  }, [categoryIdsKey, categoryRailOrder]);
-  const railCategories = useMemo(() => orderedCategories, [orderedCategories]);
+  }, [categories, categoryRailOrder]);
+  const railCategories = orderedCategories;
   const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
   const hasDraft = Boolean(
     (draft.outcomes && draft.outcomes.length) ||

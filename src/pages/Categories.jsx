@@ -31,8 +31,11 @@ export default function Categories({
   onOpenManage,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
-  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
-  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+  const categories = useMemo(
+    () => (Array.isArray(safeData.categories) ? safeData.categories : []),
+    [safeData.categories]
+  );
+  const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
   const isPremiumPlan = isPremium(safeData);
   const sysCategory = useMemo(
     () => categories.find((c) => c?.id === SYSTEM_INBOX_ID) || categories.find((c) => c?.system) || null,
@@ -225,9 +228,10 @@ export default function Categories({
     });
   }
 
-  const categoryRailOrder = Array.isArray(safeData?.ui?.categoryRailOrder)
-    ? safeData.ui.categoryRailOrder
-    : [];
+  const categoryRailOrder = useMemo(
+    () => (Array.isArray(safeData?.ui?.categoryRailOrder) ? safeData.ui.categoryRailOrder : []),
+    [safeData?.ui?.categoryRailOrder]
+  );
   const orderedUserCategories = useMemo(() => {
     const hasUserOrder = categoryRailOrder.some((id) => id && id !== SYSTEM_INBOX_ID);
     if (hasUserOrder) {
@@ -246,19 +250,21 @@ export default function Categories({
   const countsByCategory = useMemo(() => {
     const map = new Map();
     for (const c of categories) {
-      const counts = getCategoryCounts(safeData, c.id);
+      const counts = getCategoryCounts({ goals }, c.id);
       map.set(c.id, { habits: counts.processCount, objectives: counts.outcomesCount });
     }
     return map;
-  }, [categories, safeData]);
+  }, [categories, goals]);
 
   const selectedCategory = categories.find((c) => c.id === libraryDetailExpandedId) || null;
-  const outcomeGoals = selectedCategory?.id
-    ? goals.filter((g) => g.categoryId === selectedCategory.id && resolveGoalType(g) === "OUTCOME")
-    : [];
-  const processGoals = selectedCategory?.id
-    ? goals.filter((g) => g.categoryId === selectedCategory.id && resolveGoalType(g) === "PROCESS")
-    : [];
+  const outcomeGoals = useMemo(() => {
+    if (!selectedCategory?.id) return [];
+    return goals.filter((g) => g.categoryId === selectedCategory.id && resolveGoalType(g) === "OUTCOME");
+  }, [goals, selectedCategory?.id]);
+  const processGoals = useMemo(() => {
+    if (!selectedCategory?.id) return [];
+    return goals.filter((g) => g.categoryId === selectedCategory.id && resolveGoalType(g) === "PROCESS");
+  }, [goals, selectedCategory?.id]);
   const { unlinkedHabits, actionSections } = useMemo(() => {
     const unlinked = [];
     for (const habit of processGoals) {

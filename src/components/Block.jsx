@@ -27,7 +27,7 @@ export default function Block({
       overflow: "hidden",
       position: "relative",
     };
-  }, [accent]);
+  }, []);
 
   const blockRailStyle = useMemo(() => {
     const rail = accent || "#6EE7FF";

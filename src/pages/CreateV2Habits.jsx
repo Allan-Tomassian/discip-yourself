@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { AccentItem, Button, Card, Input, Select, Textarea } from "../components/UI";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
@@ -119,8 +119,11 @@ export default function CreateV2Habits({
 }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
-  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
-  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+  const categories = useMemo(
+    () => (Array.isArray(safeData.categories) ? safeData.categories : []),
+    [safeData.categories]
+  );
+  const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
   const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
   const [title, setTitle] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState(() => {
@@ -212,7 +215,7 @@ export default function CreateV2Habits({
     return options;
   }, [categories, suggestedCategories]);
 
-  function syncActiveOutcome(nextId) {
+  const syncActiveOutcome = useCallback((nextId) => {
     if (typeof setData !== "function") return;
     setData((prev) => {
       const prevUi = prev.ui || {};
@@ -228,9 +231,9 @@ export default function CreateV2Habits({
         },
       };
     });
-  }
+  }, [setData]);
 
-  function syncCategory(nextId) {
+  const syncCategory = useCallback((nextId) => {
     if (typeof setData !== "function") return;
     setData((prev) => {
       const prevUi = prev.ui || {};
@@ -246,7 +249,7 @@ export default function CreateV2Habits({
         },
       };
     });
-  }
+  }, [setData]);
 
   useEffect(() => {
     if (hasOutcome && error) {
@@ -270,7 +273,7 @@ export default function CreateV2Habits({
       setSelectedOutcomeId("");
       syncActiveOutcome("");
     }
-  }, [hasAvailableOutcomes, linkToObjective]);
+  }, [hasAvailableOutcomes, linkToObjective, syncActiveOutcome]);
 
   useEffect(() => {
     if (repeat !== "none") return;
@@ -297,7 +300,7 @@ export default function CreateV2Habits({
   useEffect(() => {
     if (!selectedCategoryId) return;
     syncCategory(selectedCategoryId);
-  }, [selectedCategoryId]);
+  }, [selectedCategoryId, syncCategory]);
 
   function updateDraft(nextHabits) {
     if (typeof setData !== "function") return;

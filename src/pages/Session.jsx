@@ -95,10 +95,16 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
   const resolvedDateKey = session?.dateKey || session?.date || effectiveDateKey;
   const objectiveId = typeof session?.objectiveId === "string" ? session.objectiveId : null;
   const objective = objectiveId ? goals.find((g) => g.id === objectiveId) || null : null;
-  const habitIds = Array.isArray(session?.habitIds) ? session.habitIds : [];
+  const habitIds = useMemo(
+    () => (Array.isArray(session?.habitIds) ? session.habitIds : []),
+    [session?.habitIds]
+  );
   const habits = habitIds.map((id) => goals.find((g) => g.id === id)).filter(Boolean);
   const hasHabits = habits.length > 0;
-  const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
+  const occurrences = useMemo(
+    () => (Array.isArray(safeData.occurrences) ? safeData.occurrences : []),
+    [safeData.occurrences]
+  );
   const effectiveCategoryId = objective?.categoryId || habits[0]?.categoryId || null;
   const category = categories.find((c) => c.id === effectiveCategoryId) || null;
   const accent = category?.color || getAccentForPage(safeData, "home");

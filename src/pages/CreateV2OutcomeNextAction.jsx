@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
@@ -13,7 +13,7 @@ export default function CreateV2OutcomeNextAction({ data, setData, onCreateActio
   const outcome = goals.find((g) => g && g.id === outcomeId && resolveGoalType(g) === "OUTCOME") || null;
   const categoryId = outcome?.categoryId || (draft.category?.mode === "existing" ? draft.category.id : "") || SYSTEM_INBOX_ID;
 
-  function clearDraftAndExit() {
+  const clearDraftAndExit = useCallback(() => {
     if (typeof setData === "function") {
       setData((prev) => {
         const prevUi = prev.ui || {};
@@ -29,11 +29,11 @@ export default function CreateV2OutcomeNextAction({ data, setData, onCreateActio
       });
     }
     if (typeof onDone === "function") onDone();
-  }
+  }, [onDone, setData]);
 
   useEffect(() => {
     if (!outcomeId) clearDraftAndExit();
-  }, [outcomeId]);
+  }, [outcomeId, clearDraftAndExit]);
 
   if (!outcomeId) return null;
 

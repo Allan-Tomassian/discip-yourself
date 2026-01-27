@@ -58,9 +58,15 @@ export default function Pilotage({
   generationWindowDays = null,
   isPlanningUnlimited = false,
 }) {
-  const safeData = data && typeof data === "object" ? data : {};
-  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
-  const now = new Date();
+  const safeData = useMemo(() => (data && typeof data === "object" ? data : {}), [data]);
+  const categories = useMemo(
+    () => (Array.isArray(safeData.categories) ? safeData.categories : []),
+    [safeData.categories]
+  );
+  const now = useMemo(() => {
+    void safeData;
+    return new Date();
+  }, [safeData]);
 
   const countsByCategory = useMemo(() => {
     const map = new Map();

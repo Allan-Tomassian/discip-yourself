@@ -113,12 +113,6 @@ export default function SortableBlocks({
   disabled = false,
   modifiers = [restrictToVerticalAxis, restrictToParentElement],
 }) {
-  const stableEqualIds = (a, b) =>
-    Array.isArray(a) &&
-    Array.isArray(b) &&
-    a.length === b.length &&
-    a.every((id, idx) => id === b[idx]);
-
   const safeItems = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const resolveId = useCallback(
     (item) => (typeof getId === "function" ? getId(item) : item),
@@ -179,10 +173,15 @@ export default function SortableBlocks({
 
       const nextPairs = arrayMove(pairsNow, oldIndex, newIndex);
       const nextIds = nextPairs.map((pair) => pair.id);
-      if (stableEqualIds(nextIds, idsNow)) return;
+      const sameIds =
+        Array.isArray(nextIds) &&
+        Array.isArray(idsNow) &&
+        nextIds.length === idsNow.length &&
+        nextIds.every((id, idx) => id === idsNow[idx]);
+      if (sameIds) return;
       if (typeof onReorder === "function") onReorder(nextPairs.map((pair) => pair.item));
     },
-    [resolveId, onReorder, stableEqualIds]
+    [onReorder]
   );
 
   if (typeof renderItem !== "function") return null;
