@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input, Select } from "../components/UI";
-import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
+import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_PICK_CATEGORY } from "../creation/creationSchema";
 import { createGoal } from "../logic/goals";
 import { safeUpdateGoal } from "../logic/goalGuards";

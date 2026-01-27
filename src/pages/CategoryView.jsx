@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { AccentItem, Button, Card, IconButton } from "../components/UI";
 import Gauge from "../components/Gauge";
@@ -142,10 +142,7 @@ export default function CategoryView({
     }
     return stats;
   })();
-  const actionSections = useMemo(
-    () => buildPlanningSections([...linkedHabits, ...unlinkedHabits], outcomeGoals),
-    [linkedHabits, unlinkedHabits, outcomeGoals]
-  );
+  const actionSections = buildPlanningSections([...linkedHabits, ...unlinkedHabits], outcomeGoals);
 
   function linkHabitToSelectedOutcome(habitId) {
     if (!selectedOutcome?.id || typeof setData !== "function") return;

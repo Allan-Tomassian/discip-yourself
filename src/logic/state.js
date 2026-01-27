@@ -531,7 +531,7 @@ export function ensureSystemInboxCategory(state) {
   return { state: { ...next, categories: [...categories, inbox] }, category: inbox };
 }
 
-export function normalizeGoal(rawGoal, index = 0, categories = []) {
+export function normalizeGoal(rawGoal, index = 0) {
   const g = rawGoal && typeof rawGoal === "object" ? { ...rawGoal } : {};
 
   if (!g.id) g.id = uid();

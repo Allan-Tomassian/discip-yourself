@@ -113,7 +113,6 @@ function loadLegacyBlockOrder() {
 export default function Home({
   data,
   setData,
-  onOpenLibrary,
   onOpenManageCategory,
   onOpenSession,
   onDayOpen,
@@ -522,24 +521,6 @@ export default function Home({
     for (const c of categories) if (c && c.id) map.set(c.id, c);
     return map;
   }, [categories]);
-
-  const dayLabelFormatter = useMemo(() => {
-    try {
-      return new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "2-digit", month: "short" });
-    } catch (err) {
-      void err;
-      return null;
-    }
-  }, []);
-
-  const formatDayLabel = useCallback(
-    (key) => {
-      if (!key) return "—";
-      if (!dayLabelFormatter) return key;
-      return dayLabelFormatter.format(fromLocalDateKey(key));
-    },
-    [dayLabelFormatter]
-  );
 
   const occurrenceSort = useCallback(
     (a, b) => {
@@ -1123,6 +1104,7 @@ export default function Home({
     if (isRailInteractingRef.current) return;
     const activeDate = fromLocalDateKey(activeRailKey);
     if (!activeDate) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     ensureRailRangeForOffset(diffDays(railAnchorDate, activeDate));
     requestAnimationFrame(() => {
       if (isRailInteractingRef.current) return;

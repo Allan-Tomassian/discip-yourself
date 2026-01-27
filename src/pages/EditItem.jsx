@@ -234,24 +234,21 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   const reminders = Array.isArray(safeData.reminders) ? safeData.reminders : [];
   const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
-  const outcomes = useMemo(() => goals.filter((g) => resolveGoalType(g) === "OUTCOME"), [goals]);
-  const suggestedCategories = useMemo(() => {
-    const existingNames = new Set(categories.map((c) => String(c?.name || "").trim().toLowerCase()).filter(Boolean));
-    const existingIds = new Set(categories.map((c) => c?.id).filter(Boolean));
-    return SUGGESTED_CATEGORIES.filter(
-      (cat) =>
-        cat &&
-        !existingIds.has(cat.id) &&
-        !existingNames.has(String(cat.name || "").trim().toLowerCase())
-    );
-  }, [categories]);
-  const categoryOptions = useMemo(() => {
-    const sys = categories.find((c) => c?.id === SYSTEM_INBOX_ID) || { id: SYSTEM_INBOX_ID, name: "Général" };
-    const rest = categories.filter((c) => c?.id !== SYSTEM_INBOX_ID);
-    rest.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
-    const suggestions = suggestedCategories.map((cat) => ({ id: cat.id, name: cat.name, suggested: true }));
-    return [sys, ...rest, ...suggestions];
-  }, [categories, suggestedCategories]);
+  const outcomes = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
+  const existingNames = new Set(categories.map((c) => String(c?.name || "").trim().toLowerCase()).filter(Boolean));
+  const existingIds = new Set(categories.map((c) => c?.id).filter(Boolean));
+  const suggestedCategories = SUGGESTED_CATEGORIES.filter(
+    (cat) =>
+      cat && !existingIds.has(cat.id) && !existingNames.has(String(cat.name || "").trim().toLowerCase())
+  );
+  const sysCategory = categories.find((c) => c?.id === SYSTEM_INBOX_ID) || { id: SYSTEM_INBOX_ID, name: "Général" };
+  const restCategories = categories.filter((c) => c?.id !== SYSTEM_INBOX_ID);
+  restCategories.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+  const categoryOptions = [
+    sysCategory,
+    ...restCategories,
+    ...suggestedCategories.map((cat) => ({ id: cat.id, name: cat.name, suggested: true })),
+  ];
 
   const rawItem = editItem?.id ? goals.find((g) => g?.id === editItem.id) || null : null;
   const item = rawItem
@@ -291,10 +288,9 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   const [planOpen, setPlanOpen] = useState(false);
 
   const isProcess = type === "PROCESS";
-  const selectedSuggestion = useMemo(
-    () => suggestedCategories.find((cat) => cat.id === selectedCategoryId) || null,
-    [suggestedCategories, selectedCategoryId]
-  );
+  const effectiveSelectedOutcomeId =
+    isProcess && selectedOutcomeId && outcomes.some((o) => o.id === selectedOutcomeId) ? selectedOutcomeId : "";
+  const selectedSuggestion = suggestedCategories.find((cat) => cat.id === selectedCategoryId) || null;
   const effectiveStartKey = normalizeLocalDateKey(startDate) || todayLocalKey();
   const minDeadlineKey = useMemo(() => {
     const base = new Date(`${effectiveStartKey}T12:00:00`);
@@ -389,20 +385,6 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   }, [item?.id]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  useEffect(() => {
-    if (isProcess) return;
-    if (deadlineTouched) return;
-    if (!minDeadlineKey) return;
-    setDeadline(minDeadlineKey);
-  }, [deadlineTouched, isProcess, minDeadlineKey]);
-
-  useEffect(() => {
-    if (!isProcess) return;
-    if (!selectedOutcomeId) return;
-    if (outcomes.some((o) => o.id === selectedOutcomeId)) return;
-    setSelectedOutcomeId("");
-  }, [isProcess, outcomes, selectedOutcomeId]);
-
   if (!item) {
     return (
       <ScreenShell
@@ -480,6 +462,10 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       return;
     }
 
+    let normalizedReminderTime = "";
+    let normalizedWindowStart = "";
+    let normalizedWindowEnd = "";
+
     if (isProcess) {
       const repeatMode = normalizeRepeat(repeat);
       const isWeekly = repeatMode === "weekly";
@@ -500,9 +486,9 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       }
       const normalizedDuration = normalizeDurationMinutes(sessionMinutes);
       const days = normalizeDays(daysOfWeek);
-      const normalizedReminderTime = remindersEnabled ? normalizeStartTime(reminderTime) : "";
-      const normalizedWindowStart = normalizeStartTime(windowStart);
-      const normalizedWindowEnd = normalizeStartTime(windowEnd);
+      normalizedReminderTime = remindersEnabled ? normalizeStartTime(reminderTime) : "";
+      normalizedWindowStart = normalizeStartTime(windowStart);
+      normalizedWindowEnd = normalizeStartTime(windowEnd);
       if ((normalizedWindowStart || normalizedWindowEnd) && !normalizedReminderTime) {
         setError("Choisis une heure de rappel.");
         return;
@@ -559,8 +545,8 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       updates.reminderTime = normalizedReminderTime;
       updates.reminderWindowStart = normalizedReminderTime ? normalizedWindowStart || "" : "";
       updates.reminderWindowEnd = normalizedReminderTime ? normalizedWindowEnd || "" : "";
-      updates.parentId = selectedOutcomeId || null;
-      updates.outcomeId = selectedOutcomeId || null;
+      updates.parentId = effectiveSelectedOutcomeId || null;
+      updates.outcomeId = effectiveSelectedOutcomeId || null;
       const existingTimeFields = normalizeTimeFields({
         timeMode: item.timeMode,
         timeSlots: item.timeSlots,
@@ -789,7 +775,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
                     <div className="small" style={{ marginBottom: 6 }}>
                       Objectif lié (optionnel)
                     </div>
-                    <Select value={selectedOutcomeId} onChange={(e) => setSelectedOutcomeId(e.target.value)}>
+                    <Select value={effectiveSelectedOutcomeId} onChange={(e) => setSelectedOutcomeId(e.target.value)}>
                       <option value="">Sans objectif</option>
                       {outcomes.map((o) => (
                         <option key={o.id} value={o.id}>
@@ -946,7 +932,15 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
                           type="date"
                           value={startDate}
                           onChange={(e) => {
-                            setStartDate(e.target.value);
+                            const nextValue = e.target.value;
+                            setStartDate(nextValue);
+                            if (!deadlineTouched) {
+                              const base = new Date(`${normalizeLocalDateKey(nextValue) || todayLocalKey()}T12:00:00`);
+                              if (!Number.isNaN(base.getTime())) {
+                                base.setDate(base.getDate() + 7);
+                                setDeadline(toLocalDateKey(base));
+                              }
+                            }
                             if (error) setError("");
                           }}
                         />

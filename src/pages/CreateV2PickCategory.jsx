@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
@@ -6,16 +6,13 @@ import { safeUpdateGoal } from "../logic/goalGuards";
 import { canCreateCategory } from "../logic/entitlements";
 import { ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
 
-export default function CreateV2PickCategory({ data, setData, onDone, onCancel, onOpenPaywall }) {
+export default function CreateV2PickCategory({ data, setData, onDone, onOpenPaywall }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
-  const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
+  const draft = normalizeCreationDraft(safeData?.ui?.createDraft);
   const createdActionIds = Array.isArray(draft.createdActionIds) ? draft.createdActionIds : [];
-  const actions = useMemo(
-    () => goals.filter((g) => g && createdActionIds.includes(g.id)),
-    [goals, createdActionIds]
-  );
+  const actions = goals.filter((g) => g && createdActionIds.includes(g.id));
   const sys = categories.find((c) => c?.id === SYSTEM_INBOX_ID) || { id: SYSTEM_INBOX_ID, name: "Général" };
   const rest = categories.filter((c) => c?.id !== SYSTEM_INBOX_ID);
   rest.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));

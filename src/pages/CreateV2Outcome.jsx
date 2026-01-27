@@ -75,7 +75,7 @@ export default function CreateV2Outcome({
     return toLocalDateKey(base);
   }, [effectiveStartKey]);
 
-  const deadlineError = useMemo(() => validateDeadline(deadline), [deadline, minDeadlineKey]);
+  const deadlineError = validateDeadline(deadline);
   const canContinue = Boolean(title.trim() && deadline.trim() && !deadlineError);
   const startDateHelper = startDate ? "Démarre à la date choisie." : "Si vide : démarre aujourd’hui.";
   const categoryOptions = useMemo(() => {
@@ -90,12 +90,6 @@ export default function CreateV2Outcome({
     }));
     return [sys, ...rest, ...suggestions];
   }, [categories, suggestedCategories]);
-
-  useEffect(() => {
-    if (deadlineTouched) return;
-    if (!minDeadlineKey) return;
-    setDeadline(minDeadlineKey);
-  }, [deadlineTouched, minDeadlineKey]);
 
   function validateDeadline(nextValue) {
     const normalized = normalizeLocalDateKey(nextValue);
@@ -250,14 +244,20 @@ export default function CreateV2Outcome({
 
             <div className="stack stackGap6">
               <div className="small2 textMuted">Date de début (optionnel)</div>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                  const nextValue = e.target.value;
+                  setStartDate(nextValue);
+                  if (!deadlineTouched) {
+                    const base = fromLocalDateKey(normalizeLocalDateKey(nextValue) || todayLocalKey());
+                    base.setDate(base.getDate() + 1);
+                    setDeadline(toLocalDateKey(base));
+                  }
                   if (error) setError("");
-                }}
-              />
+                  }}
+                />
             </div>
             <div className="stack stackGap6">
               <div className="small2 textMuted">Date de fin (obligatoire, min 2 jours : {minDeadlineKey})</div>

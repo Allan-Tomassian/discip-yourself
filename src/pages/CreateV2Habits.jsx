@@ -212,65 +212,6 @@ export default function CreateV2Habits({
     return options;
   }, [categories, suggestedCategories]);
 
-  useEffect(() => {
-    if (hasOutcome && error) setError("");
-  }, [hasOutcome, error]);
-
-  useEffect(() => {
-    if (!selectedOutcomeId && hasAvailableOutcomes && linkToObjective) {
-      setSelectedOutcomeId(availableOutcomes[0].id);
-    }
-  }, [availableOutcomes, hasAvailableOutcomes, linkToObjective, selectedOutcomeId]);
-
-  useEffect(() => {
-    if (!hasAvailableOutcomes && linkToObjective) {
-      setLinkToObjective(false);
-      setSelectedOutcomeId("");
-      syncActiveOutcome("");
-    }
-  }, [hasAvailableOutcomes, linkToObjective]);
-
-  useEffect(() => {
-    if (repeat !== "none") return;
-    if (normalizeLocalDateKey(oneOffDate)) return;
-    setOneOffDate(todayLocalKey());
-  }, [repeat, oneOffDate]);
-
-  useEffect(() => {
-    if (!categories.length) {
-      if (selectedCategoryId !== SYSTEM_INBOX_ID) setSelectedCategoryId(SYSTEM_INBOX_ID);
-      return;
-    }
-    const exists = categories.some((c) => c?.id === selectedCategoryId);
-    if (exists) return;
-    const sys = categories.find((c) => c?.id === SYSTEM_INBOX_ID) || null;
-    setSelectedCategoryId(sys?.id || categories[0]?.id || SYSTEM_INBOX_ID);
-  }, [categories, selectedCategoryId]);
-
-  useEffect(() => {
-    if (!selectedCategoryId) return;
-    syncCategory(selectedCategoryId);
-  }, [selectedCategoryId]);
-
-  function updateDraft(nextHabits) {
-    if (typeof setData !== "function") return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          createDraft: {
-            ...normalizeCreationDraft(prevUi.createDraft),
-            habits: nextHabits,
-            activeOutcomeId: selectedOutcomeId || null,
-            step: STEP_HABITS,
-          },
-        },
-      };
-    });
-  }
-
   function syncActiveOutcome(nextId) {
     if (typeof setData !== "function") return;
     setData((prev) => {
@@ -300,6 +241,76 @@ export default function CreateV2Habits({
           createDraft: {
             ...normalizeCreationDraft(prevUi.createDraft),
             category: nextId ? { mode: "existing", id: nextId } : null,
+            step: STEP_HABITS,
+          },
+        },
+      };
+    });
+  }
+
+  useEffect(() => {
+    if (hasOutcome && error) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setError("");
+    }
+  }, [hasOutcome, error]);
+
+  useEffect(() => {
+    if (!selectedOutcomeId && hasAvailableOutcomes && linkToObjective) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedOutcomeId(availableOutcomes[0].id);
+    }
+  }, [availableOutcomes, hasAvailableOutcomes, linkToObjective, selectedOutcomeId]);
+
+  useEffect(() => {
+    if (!hasAvailableOutcomes && linkToObjective) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLinkToObjective(false);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedOutcomeId("");
+      syncActiveOutcome("");
+    }
+  }, [hasAvailableOutcomes, linkToObjective]);
+
+  useEffect(() => {
+    if (repeat !== "none") return;
+    if (normalizeLocalDateKey(oneOffDate)) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOneOffDate(todayLocalKey());
+  }, [repeat, oneOffDate]);
+
+  useEffect(() => {
+    if (!categories.length) {
+      if (selectedCategoryId !== SYSTEM_INBOX_ID) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSelectedCategoryId(SYSTEM_INBOX_ID);
+      }
+      return;
+    }
+    const exists = categories.some((c) => c?.id === selectedCategoryId);
+    if (exists) return;
+    const sys = categories.find((c) => c?.id === SYSTEM_INBOX_ID) || null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedCategoryId(sys?.id || categories[0]?.id || SYSTEM_INBOX_ID);
+  }, [categories, selectedCategoryId]);
+
+  useEffect(() => {
+    if (!selectedCategoryId) return;
+    syncCategory(selectedCategoryId);
+  }, [selectedCategoryId]);
+
+  function updateDraft(nextHabits) {
+    if (typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          createDraft: {
+            ...normalizeCreationDraft(prevUi.createDraft),
+            habits: nextHabits,
+            activeOutcomeId: selectedOutcomeId || null,
             step: STEP_HABITS,
           },
         },

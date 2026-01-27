@@ -434,7 +434,6 @@ export default function App() {
     tab === "create-pick-category";
   const themeName = getThemeName(safeData);
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
-  const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const categoryIdsKey = categories.map((c) => c.id).join("|");
   const categoryRailOrder = useMemo(
     () => ensureOrder(safeData?.ui?.categoryRailOrder, categories),

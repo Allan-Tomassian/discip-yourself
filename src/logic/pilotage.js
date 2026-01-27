@@ -1,20 +1,6 @@
 import { addDays, startOfWeekKey, todayKey } from "../utils/dates";
 import { resolveGoalType } from "../domain/goalType";
 
-function parseDateKey(key) {
-  if (typeof key !== "string") return null;
-  const [y, m, d] = key.split("-").map((v) => parseInt(v, 10));
-  if (!y || !m || !d) return null;
-  return new Date(y, m - 1, d, 12, 0, 0);
-}
-
-function appDowFromDateKey(key) {
-  const d = parseDateKey(key);
-  if (!d) return null;
-  const js = d.getDay();
-  return js === 0 ? 7 : js;
-}
-
 function buildWeekKeys(nowDate) {
   const weekStartKey = startOfWeekKey(nowDate);
   const weekStartDate = new Date(`${weekStartKey}T12:00:00`);
@@ -37,21 +23,6 @@ function collectDoneByDate(data, dateKeys) {
   }
 
   return map;
-}
-
-function countPlannedFromSchedule(schedule, dateKeys) {
-  if (!schedule || typeof schedule !== "object") return { planned: 0, available: false };
-  if (!schedule.remindersEnabled) return { planned: 0, available: false };
-  const timeSlots = Array.isArray(schedule.timeSlots) ? schedule.timeSlots : [];
-  if (!timeSlots.length) return { planned: 0, available: false };
-  const days = Array.isArray(schedule.daysOfWeek) && schedule.daysOfWeek.length ? schedule.daysOfWeek : null;
-  let planned = 0;
-  for (const key of dateKeys) {
-    const dow = appDowFromDateKey(key);
-    if (!dow) continue;
-    if (!days || days.includes(dow)) planned += timeSlots.length;
-  }
-  return { planned, available: true };
 }
 
 function isGoalActive(goal) {

@@ -60,7 +60,7 @@ function applySingleOccurrenceStatus(nextOccurrences, goals, goalId, dateKey, st
   return upsertOccurrence(goalId, dateKey, "00:00", null, { status }, { occurrences: nextOccurrences, goals });
 }
 
-export default function Session({ data, setData, onBack, onOpenLibrary, categoryId, dateKey }) {
+export default function Session({ data, setData, onBack, onOpenLibrary, dateKey }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
