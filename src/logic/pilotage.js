@@ -25,6 +25,44 @@ function collectDoneByDate(data, dateKeys) {
   return map;
 }
 
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+export function computeDisciplineScore(occurrences, todayKeyValue) {
+  const list = Array.isArray(occurrences) ? occurrences : [];
+  const todayKeyStr = typeof todayKeyValue === "string" ? todayKeyValue : "";
+  const expected = list.filter(
+    (occ) =>
+      occ &&
+      typeof occ.date === "string" &&
+      (!todayKeyStr || occ.date < todayKeyStr) &&
+      occ.status !== "canceled"
+  ).length;
+  if (!expected) return { score: 100, ratio: 1, expected: 0, missed: 0, done: 0 };
+  const done = list.filter(
+    (occ) =>
+      occ &&
+      typeof occ.date === "string" &&
+      (!todayKeyStr || occ.date < todayKeyStr) &&
+      occ.status === "done"
+  ).length;
+  const missed = Math.max(0, expected - done);
+  const score = clamp(Math.round(100 * (1 - missed / expected)), 0, 100);
+  return { score, ratio: score / 100, expected, missed, done };
+}
+
+function runDisciplineSanityChecks() {
+  if (typeof import.meta === "undefined" || !import.meta.env?.DEV) return;
+  const today = "2026-01-27";
+  const empty = computeDisciplineScore([], today);
+  console.assert(empty.score === 100, "[discipline] empty -> 100");
+  const doneToday = computeDisciplineScore([{ date: today, status: "done" }], today);
+  console.assert(doneToday.score === 100, "[discipline] today done only -> 100");
+  const missedYesterday = computeDisciplineScore([{ date: "2026-01-26", status: "planned" }], today);
+  console.assert(missedYesterday.score < 100, "[discipline] missed yesterday -> <100");
+}
+
 function isGoalActive(goal) {
   const st = typeof goal?.status === "string" ? goal.status : "";
   return st !== "done" && st !== "invalid" && st !== "abandoned";
@@ -213,7 +251,6 @@ export function getDisciplineSummary(data, nowDate = new Date()) {
     };
   }
 
-  const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
   const buildWindowKeys = (days) => Array.from({ length: days }, (_, i) => todayKey(addDays(nowDate, -i)));
 
   function computePlannedCountByDate(windowKeys) {
@@ -303,12 +340,9 @@ export function getDisciplineSummary(data, nowDate = new Date()) {
     };
   }
 
-  // Capital discipline: starts at 100 and only decreases on failures.
-  // Penalties are gentler on 30d to avoid collapsing too fast.
-  let disciplineScore = 100;
-  disciplineScore -= noExecutionDays30d * 3;
-  disciplineScore -= cancelledSessions30d * 1.5;
-  disciplineScore = clamp(disciplineScore, 0, 100);
+  runDisciplineSanityChecks();
+  const base = computeDisciplineScore(occurrences, todayKey(nowDate));
+  const disciplineScore = base.score;
 
   return {
     cancelledSessions7d,

@@ -21,6 +21,7 @@ import { isPrimaryCategory, isPrimaryGoal } from "../logic/priority";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
 import { resolveGoalType } from "../domain/goalType";
 import { linkProcessToOutcome, splitProcessByLink } from "../logic/linking";
+import { computeDisciplineScore } from "../logic/pilotage";
 import { uid } from "../utils/helpers";
 
 // TOUR MAP:
@@ -703,6 +704,7 @@ export default function Home({
 
   const disciplineBreakdown = useMemo(() => {
     const now = new Date();
+    const disciplineBase = computeDisciplineScore(occurrences, localTodayKey);
 
     // UX: start discipline at 100% for brand-new users (no history yet).
     const hasAnyOccurrences = occurrences.some((o) => o && typeof o.status === "string");
@@ -713,8 +715,8 @@ export default function Home({
     if (!hasAnyHistory) {
       const outcomesTotal = goals.filter((g) => resolveGoalType(g) === "OUTCOME").length;
       return {
-        score: 100,
-        ratio: 1,
+        score: disciplineBase.score,
+        ratio: disciplineBase.ratio,
         habit14: { done: 0, planned: 0, ratio: 1, keptDays: 0 },
         habit90: { done: 0, planned: 0, ratio: 1, keptDays: 0 },
         microDone14: 0,
@@ -787,9 +789,8 @@ export default function Home({
     const outcomeRatio90 = outcomes.length ? outcomesDone90 / outcomes.length : 0;
     const reliabilityRatio = outcomes.length ? (habit90.ratio + outcomeRatio90) / 2 : habit90.ratio;
 
-    const scoreRaw = habit14.ratio * 0.7 + microRatio14 * 0.1 + reliabilityRatio * 0.2;
-    const score = Math.round(Math.max(0, Math.min(1, scoreRaw)) * 100);
-    const ratio = score / 100;
+    const score = disciplineBase.score;
+    const ratio = disciplineBase.ratio;
 
     return {
       score,
@@ -804,7 +805,7 @@ export default function Home({
       reliabilityRatio,
       habitDaysKept14: habit14.keptDays,
     };
-  }, [goals, microChecks, occurrences]);
+  }, [goals, microChecks, occurrences, localTodayKey]);
 
   const sessionBadgeLabel = useMemo(() => {
     if (!sessionForDay || sessionForDay?.status !== "partial") return "";
@@ -2354,14 +2355,14 @@ export default function Home({
       ) : null}
       {showNotesHistory ? (
         <div
-          className="modalBackdrop disciplineOverlay"
+          className="modalBackdrop disciplineOverlay noteHistoryBackdrop"
           onClick={() => {
             setShowNotesHistory(false);
             setNoteDeleteMode(false);
             setNoteDeleteTargetId(null);
           }}
         >
-          <Card className="disciplineCard" onClick={(e) => e.stopPropagation()}>
+          <Card className="noteHistorySheet" onClick={(e) => e.stopPropagation()}>
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div className="titleSm">Historique des notes</div>
               <div className="row" style={{ gap: 8 }}>
@@ -2402,7 +2403,7 @@ export default function Home({
                 </button>
               </div>
             </div>
-            <div className="mt12 col" style={{ gap: 10, maxHeight: 320, overflow: "auto" }}>
+            <div className="noteHistoryBody col" style={{ gap: 10 }}>
               {noteHistoryItems.length ? (
                 noteHistoryItems.map((item) => {
                   const meta = item.meta || {};

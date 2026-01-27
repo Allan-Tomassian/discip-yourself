@@ -14,3 +14,9 @@
 6) Paywall: Free dépassement (objectifs/actions) -> modal, refus => aucune création
 7) Toggle occurrence (Today/Planning) -> une seule occurrence modifiée
 8) Suppression action -> occurrences/reminders nettoyés
+
+## Test iPhone (LAN)
+- Local: `npm run dev` puis `http://localhost:5174`.
+- iPhone: `npm run dev:lan` puis `http://<IP_MAC>:5174`.
+- IP Mac: `ipconfig getifaddr en0`.
+- Si la page ne charge pas: vérifier firewall macOS, VPN/Private Relay, et le même Wi‑Fi.
