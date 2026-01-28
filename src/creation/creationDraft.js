@@ -9,13 +9,56 @@ import {
   STEP_OUTCOME_NEXT_ACTION,
 } from "./creationSchema";
 
-export const CREATION_DRAFT_VERSION = 1;
+export const CREATION_DRAFT_VERSION = 2;
 const REPEAT_VALUES = new Set(["none", "daily", "weekly"]);
 const DOW_VALUES = new Set([1, 2, 3, 4, 5, 6, 7]);
 const QUANTITY_PERIODS = new Set(["DAY", "WEEK", "MONTH"]);
 
 const HABIT_TYPES = new Set(["ONE_OFF", "RECURRING", "ANYTIME"]);
+
+// New UX v2 planning modes (source of truth in draft)
+// - NO_TIME: due that day, no scheduling
+// - UNIFORM_TIME: same time for all expected days
+// - DAY_SLOTS: different slots per day
+const PLANNING_MODES = new Set(["NO_TIME", "UNIFORM_TIME", "DAY_SLOTS"]);
+
+// Legacy schedule modes still accepted for migration parsing
 const SCHEDULE_MODES = new Set(["STANDARD", "WEEKLY_SLOTS"]);
+function normalizeBoolean(value) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const v = value.trim().toLowerCase();
+    if (v === "true" || v === "1" || v === "yes" || v === "y") return true;
+    if (v === "false" || v === "0" || v === "no" || v === "n") return false;
+  }
+  return false;
+}
+
+function normalizePlanningMode(value) {
+  const raw = typeof value === "string" ? value.trim().toUpperCase() : "";
+  return PLANNING_MODES.has(raw) ? raw : "";
+}
+
+function normalizeDaySlotsByDay(value) {
+  // Same structure as legacy weeklySlotsByDay, but renamed for UX v2.
+  return normalizeWeeklySlotsByDay(value);
+}
+
+function deriveExpectedDaysFromLegacy(nextHabit) {
+  // Legacy: daily => all days, weekly => daysOfWeek.
+  const rep = normalizeRepeat(nextHabit.repeat) || "";
+  if (rep === "daily") return [1, 2, 3, 4, 5, 6, 7];
+  if (rep === "weekly") return normalizeDaysOfWeek(nextHabit.daysOfWeek);
+  return [];
+}
+
+function deriveLegacyRepeatFromExpectedDays(expectedDays) {
+  const days = Array.isArray(expectedDays) ? expectedDays : [];
+  if (days.length === 7) return "daily";
+  if (days.length > 0) return "weekly";
+  return "none";
+}
 
 function normalizeHabitType(value) {
   const raw = typeof value === "string" ? value.trim().toUpperCase() : "";
@@ -108,12 +151,15 @@ export function createEmptyDraft() {
     habits: [],
     createdActionIds: [],
     pendingCategoryId: null,
+    // UX v2 flags (default off until App enables uxV2)
+    uxV2: false,
   };
 }
 
 export function normalizeCreationDraft(raw) {
   const draft = raw && typeof raw === "object" ? { ...raw } : createEmptyDraft();
   if (draft.version !== CREATION_DRAFT_VERSION) draft.version = CREATION_DRAFT_VERSION;
+  draft.uxV2 = normalizeBoolean(draft.uxV2);
   if (!CREATION_STEPS.includes(draft.step)) draft.step = STEP_OUTCOME;
   draft.habitType = normalizeHabitType(draft.habitType);
   if (!draft.category || typeof draft.category !== "object") draft.category = null;
@@ -163,45 +209,110 @@ export function normalizeCreationDraft(raw) {
       if (!nextHabit.outcomeId && draft.outcomes.length === 1) {
         nextHabit.outcomeId = draft.outcomes[0].id;
       }
-      const repeat = normalizeRepeat(nextHabit.repeat);
-      nextHabit.repeat = repeat || "none";
-      nextHabit.daysOfWeek = normalizeDaysOfWeek(nextHabit.daysOfWeek);
+
+      // UX v2 fields (source of truth in draft)
+      const rawExpected = Array.isArray(nextHabit.expectedDays) ? nextHabit.expectedDays : nextHabit.expectedDays;
+      nextHabit.expectedDays = normalizeDaysOfWeek(rawExpected);
+
+      // If expectedDays is missing/empty, derive from legacy repeat/daysOfWeek.
+      if (nextHabit.expectedDays.length === 0) {
+        nextHabit.expectedDays = deriveExpectedDaysFromLegacy(nextHabit);
+      }
+
+      nextHabit.anytimeFlexible = normalizeBoolean(
+        nextHabit.anytimeFlexible ?? nextHabit.schedule?.anytimeFlexible
+      );
+
+      // Day slots per day (UX v2). If missing, migrate from legacy weeklySlotsByDay.
+      nextHabit.daySlotsByDay = normalizeDaySlotsByDay(
+        nextHabit.daySlotsByDay || nextHabit.weeklySlotsByDay || nextHabit.schedule?.weeklySlotsByDay
+      );
+
+      // Planning mode (UX v2). If missing, infer from legacy schedule/time fields.
+      const inferredPlanning = (() => {
+        const pm = normalizePlanningMode(nextHabit.planningMode);
+        if (pm) return pm;
+        const legacyScheduleMode =
+          normalizeScheduleMode(nextHabit.scheduleMode) ||
+          normalizeScheduleMode(nextHabit.schedule?.scheduleMode);
+        if (legacyScheduleMode === "WEEKLY_SLOTS") return "DAY_SLOTS";
+        const legacyHasFixedTime = !!normalizeStartTime(nextHabit.startTime) ||
+          (Array.isArray(nextHabit.timeSlots) && nextHabit.timeSlots.length > 0) ||
+          normalizeScheduleMode(nextHabit.scheduleMode) === "STANDARD";
+        if (legacyHasFixedTime && (nextHabit.timeMode === "FIXED" || normalizeStartTime(nextHabit.startTime))) {
+          return "UNIFORM_TIME";
+        }
+        // default
+        return "NO_TIME";
+      })();
+      nextHabit.planningMode = inferredPlanning;
+
+      // Legacy compatibility: keep repeat + daysOfWeek in sync with expectedDays
+      nextHabit.daysOfWeek = [...nextHabit.expectedDays];
+      nextHabit.repeat = deriveLegacyRepeatFromExpectedDays(nextHabit.expectedDays);
+
       nextHabit.startTime = normalizeStartTime(nextHabit.startTime);
       nextHabit.durationMinutes = normalizeDurationMinutes(nextHabit.durationMinutes);
 
-      // Enforce habitType invariants at the draft level to avoid legacy / mixed states.
-      // ANYTIME: no fixed planning; treat as daily availability without time/slots.
-      // ONE_OFF: must be a one-off; no weekly slots.
-      if (draft.habitType === "ANYTIME") {
-        nextHabit.repeat = "daily";
+      // Enforce UX v2 invariants at the draft level.
+      // ONE_OFF: due on a single date, no expectedDays, no per-day slots.
+      // RECURRING: expectedDays required (UI enforces), planning optional.
+      // ANYTIME: no scheduling; may be expected on days OR flexible (no days, never "missed").
+      if (draft.habitType === "ONE_OFF") {
+        nextHabit.anytimeFlexible = false;
+        nextHabit.expectedDays = [];
         nextHabit.daysOfWeek = [];
-        nextHabit.oneOffDate = "";
+        nextHabit.repeat = "none";
+        nextHabit.planningMode = nextHabit.planningMode === "UNIFORM_TIME" ? "UNIFORM_TIME" : "NO_TIME";
+        nextHabit.daySlotsByDay = {};
+        nextHabit.scheduleMode = "STANDARD";
+        nextHabit.weeklySlotsByDay = {};
+      } else if (draft.habitType === "ANYTIME") {
+        // Anytime never uses scheduling fields.
+        nextHabit.planningMode = "NO_TIME";
+        nextHabit.daySlotsByDay = {};
         nextHabit.scheduleMode = "STANDARD";
         nextHabit.weeklySlotsByDay = {};
         nextHabit.timeMode = "NONE";
         nextHabit.timeSlots = [];
         nextHabit.startTime = "";
-      } else if (draft.habitType === "ONE_OFF") {
-        nextHabit.repeat = "none";
-        nextHabit.daysOfWeek = [];
-        nextHabit.scheduleMode = "STANDARD";
-        nextHabit.weeklySlotsByDay = {};
+        // Flexible anytime: no expectedDays.
+        if (nextHabit.anytimeFlexible) {
+          nextHabit.expectedDays = [];
+          nextHabit.daysOfWeek = [];
+          nextHabit.repeat = "none";
+        } else {
+          // Expected anytime: use expectedDays; keep legacy mapping synced.
+          nextHabit.daysOfWeek = [...nextHabit.expectedDays];
+          nextHabit.repeat = deriveLegacyRepeatFromExpectedDays(nextHabit.expectedDays);
+        }
+      } else if (draft.habitType === "RECURRING") {
+        nextHabit.anytimeFlexible = false;
+        // planningMode DAY_SLOTS implies per-day slots; keep legacy weeklySlotsByDay for compatibility
+        if (nextHabit.planningMode === "DAY_SLOTS") {
+          nextHabit.weeklySlotsByDay = normalizeWeeklySlotsByDay(nextHabit.daySlotsByDay);
+          nextHabit.scheduleMode = "WEEKLY_SLOTS";
+        } else {
+          nextHabit.weeklySlotsByDay = {};
+          nextHabit.scheduleMode = "STANDARD";
+        }
+        // Keep legacy mapping synced
+        nextHabit.daysOfWeek = [...nextHabit.expectedDays];
+        nextHabit.repeat = deriveLegacyRepeatFromExpectedDays(nextHabit.expectedDays);
       }
 
-      // Advanced scheduling (weekly slots by day)
+      // Legacy scheduling fields kept for compatibility (driven by planningMode above)
       const scheduleMode =
         normalizeScheduleMode(nextHabit.scheduleMode) ||
         normalizeScheduleMode(nextHabit.schedule?.scheduleMode);
-      nextHabit.scheduleMode = scheduleMode || "STANDARD";
-      // Only weekly habits can use WEEKLY_SLOTS.
-      if (nextHabit.repeat !== "weekly") {
-        nextHabit.scheduleMode = "STANDARD";
-      }
+      nextHabit.scheduleMode = scheduleMode || nextHabit.scheduleMode || "STANDARD";
       if (nextHabit.scheduleMode !== "WEEKLY_SLOTS") {
         nextHabit.weeklySlotsByDay = {};
       }
+
       const normalizedDate = normalizeLocalDateKey(nextHabit.oneOffDate);
-      nextHabit.oneOffDate = nextHabit.repeat === "none" ? normalizedDate || "" : "";
+      nextHabit.oneOffDate = draft.habitType === "ONE_OFF" ? normalizedDate || "" : "";
+
       const quantityValue = normalizeQuantityValue(nextHabit.quantityValue);
       const quantityUnit = normalizeQuantityUnit(nextHabit.quantityUnit);
       const quantityPeriod = normalizeQuantityPeriod(nextHabit.quantityPeriod);
@@ -221,6 +332,10 @@ export function normalizeCreationDraft(raw) {
         nextHabit.reminderWindowStart = "";
         nextHabit.reminderWindowEnd = "";
       }
+      if (draft.habitType === "ANYTIME") {
+        nextHabit.reminderWindowStart = "";
+        nextHabit.reminderWindowEnd = "";
+      }
       const timeFields = normalizeTimeFields({
         timeMode: nextHabit.timeMode,
         timeSlots: nextHabit.timeSlots,
@@ -230,7 +345,18 @@ export function normalizeCreationDraft(raw) {
       nextHabit.timeMode = timeFields.timeMode;
       nextHabit.timeSlots = timeFields.timeSlots;
       nextHabit.startTime = timeFields.startTime;
+      if (draft.habitType === "ANYTIME") {
+        nextHabit.timeMode = "NONE";
+        nextHabit.timeSlots = [];
+        nextHabit.startTime = "";
+      }
       nextHabit.memo = typeof nextHabit.memo === "string" ? nextHabit.memo : "";
+
+      // Ensure new fields always present
+      if (!Array.isArray(nextHabit.expectedDays)) nextHabit.expectedDays = [];
+      if (typeof nextHabit.anytimeFlexible !== "boolean") nextHabit.anytimeFlexible = false;
+      if (!normalizePlanningMode(nextHabit.planningMode)) nextHabit.planningMode = "NO_TIME";
+      if (!nextHabit.daySlotsByDay || typeof nextHabit.daySlotsByDay !== "object") nextHabit.daySlotsByDay = {};
       return nextHabit;
     })
     .filter(Boolean);

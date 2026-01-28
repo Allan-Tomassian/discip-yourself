@@ -744,16 +744,109 @@ a{ color:inherit; }
 
 .chip{
   border:1px solid var(--border);
-  background: var(--surface);
+  background: rgba(255,255,255,.06);
   border-radius:var(--radius-chip);
-  padding:6px 12px;
+  padding:8px 12px;
   font-size:var(--font-sm);
   color:var(--text);
   cursor:pointer;
+  line-height:1;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  user-select:none;
+  -webkit-tap-highlight-color: transparent;
 }
-.chip.isSelected{
+.chip:hover{
+  background: rgba(255,255,255,.09);
+}
+.chip:focus-visible{
+  outline:none;
+  box-shadow: 0 0 0 2px var(--focus), 0 0 18px var(--focusGlow);
+}
+.chip:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
+.chip.isSelected,
+.chip.isActive{
   border-color: var(--focus);
+  background: rgba(124,58,237,.14);
   box-shadow: 0 0 0 1px var(--focus), 0 0 12px var(--focusGlow);
+}
+
+.chipRow{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.hint{
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.05);
+  border-radius:14px;
+  padding:10px 12px;
+  font-size:12px;
+  color: var(--muted);
+  line-height:1.35;
+}
+.hintAccent{
+  border-color: rgba(124,58,237,.35);
+  background: rgba(124,58,237,.10);
+  color: rgba(255,255,255,.88);
+}
+.hintDanger{
+  border-color: rgba(239,68,68,.35);
+  background: rgba(239,68,68,.10);
+  color: rgba(255,255,255,.90);
+}
+
+.checkRow{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  padding:10px 10px;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.04);
+  border-radius:14px;
+  cursor:pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.checkRow:hover{
+  background: rgba(255,255,255,.06);
+}
+.checkRow.isDisabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
+.checkRow input{
+  margin-top:2px;
+  width:16px;
+  height:16px;
+  accent-color: var(--accent);
+  flex:0 0 auto;
+}
+.checkRowText{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  min-width:0;
+}
+.checkRowLabel{
+  font-size:13px;
+  font-weight:700;
+  color: var(--text);
+}
+.checkRowDesc{
+  font-size:12px;
+  color: var(--muted2);
+  line-height:1.35;
+}
+
+.divider{
+  height:1px;
+  width:100%;
+  background: rgba(255,255,255,.10);
 }
 
 .catAccentField .select{

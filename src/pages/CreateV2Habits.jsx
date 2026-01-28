@@ -1,6 +1,19 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { AccentItem, Button, Card, Input, Select, Textarea } from "../components/UI";
+import {
+  AccentItem,
+  Button,
+  Card,
+  Chip,
+  ChipRow,
+  CheckboxRow,
+  Divider,
+  Hint,
+  Input,
+  Select,
+  Textarea,
+  ToggleChip,
+} from "../components/UI";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_HABITS, STEP_LINK_OUTCOME, STEP_PICK_CATEGORY } from "../creation/creationSchema";
 import { uid } from "../utils/helpers";
@@ -32,6 +45,13 @@ const QUANTITY_PERIODS = [
 function appDowFromDate(d) {
   const js = d.getDay();
   return js === 0 ? 7 : js;
+}
+
+function setDaysPreset(setter, preset) {
+  if (preset === "ALL") return setter([1, 2, 3, 4, 5, 6, 7]);
+  if (preset === "WEEKDAYS") return setter([1, 2, 3, 4, 5]);
+  if (preset === "CLEAR") return setter([]);
+  return setter([appDowFromDate(new Date())]);
 }
 
 function normalizeStartTime(value) {
@@ -120,12 +140,10 @@ function normalizeWeeklySlotsByDay(value) {
 function validateWeeklySlotsByDay(daysOfWeek, weeklySlotsByDay) {
   const days = normalizeDaysOfWeek(daysOfWeek);
   const map = normalizeWeeklySlotsByDay(weeklySlotsByDay);
-  // Each selected day must have at least one slot with a start.
   for (const d of days) {
     const slots = Array.isArray(map[d]) ? map[d] : [];
     const hasValidStart = slots.some((s) => Boolean(normalizeStartTime(s?.start)));
     if (!hasValidStart) return false;
-    // If end is provided, it must be after start.
     for (const s of slots) {
       const start = normalizeStartTime(s?.start);
       const end = normalizeStartTime(s?.end);
@@ -141,17 +159,28 @@ function validateWeeklySlotsByDay(daysOfWeek, weeklySlotsByDay) {
 function formatRepeatLabel(habit) {
   if (!habit) return "Une fois";
   const repeat = habit.repeat || "none";
-  if (repeat === "daily") return "Quotidien";
-  if (repeat === "weekly") {
+  const isOneOff = repeat === "none";
+  const isWeekly = repeat === "weekly";
+
+  if (isOneOff) {
+    const dateLabel = habit.oneOffDate ? ` · ${habit.oneOffDate}` : "";
+    return `Ponctuelle${dateLabel}`;
+  }
+
+  if (habit.habitType === "ANYTIME") {
+    return habit.anytimeFlexible ? "Flexible" : "Flexible · Jours";
+  }
+
+  if (isWeekly) {
     const days = Array.isArray(habit.daysOfWeek) ? habit.daysOfWeek : [];
     const labels = days
       .map((id) => DOWS.find((d) => d.id === id)?.label)
       .filter(Boolean)
       .join(" ");
-    return labels ? `Hebdo · ${labels}` : "Hebdo";
+    return labels ? `Planifiée · ${labels}` : "Planifiée";
   }
-  const dateLabel = habit.oneOffDate ? ` · ${habit.oneOffDate}` : "";
-  return `Une fois${dateLabel}`;
+
+  return "Planifiée";
 }
 
 function formatWeeklySlotsSummary(habit) {
@@ -169,8 +198,46 @@ function formatWeeklySlotsSummary(habit) {
   return parts.length ? `Créneaux · ${parts.join(" ")}` : "Créneaux";
 }
 
+function DayChips({ value, onChange }) {
+  const days = Array.isArray(value) ? value : [];
+  return (
+    <ChipRow>
+      {DOWS.map((day) => {
+        const active = days.includes(day.id);
+        return (
+          <ToggleChip
+            key={day.id}
+            value={day.id}
+            selected={active ? day.id : null}
+            onSelect={() =>
+              onChange((prev) => {
+                const p = Array.isArray(prev) ? prev : [];
+                const next = p.includes(day.id) ? p.filter((d) => d !== day.id) : [...p, day.id].sort();
+                return next;
+              })
+            }
+          >
+            {day.label}
+          </ToggleChip>
+        );
+      })}
+    </ChipRow>
+  );
+}
+
+function PresetChips({ onAll, onWeekdays, onClear }) {
+  return (
+    <ChipRow>
+      <Chip onClick={onAll}>Tous</Chip>
+      <Chip onClick={onWeekdays}>Lun–Ven</Chip>
+      <Chip onClick={onClear}>Effacer</Chip>
+    </ChipRow>
+  );
+}
+
 export default function CreateV2Habits({
   data,
+  createVariant,
   setData,
   onBack,
   onDone,
@@ -185,60 +252,76 @@ export default function CreateV2Habits({
 }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
-  // Category UI/state removed
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
   const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
+
   const [title, setTitle] = useState("");
   const [oneOffDate, setOneOffDate] = useState(() => todayLocalKey());
+  const [location, setLocation] = useState("");
+
   // habitType gating
-  const habitType = draft?.habitType || "RECURRING"; // ONE_OFF | RECURRING | ANYTIME
+  const habitType = draft?.habitType || createVariant || "RECURRING"; // ONE_OFF | RECURRING | ANYTIME
   const isTypeOneOff = habitType === "ONE_OFF";
   const isTypeAnytime = habitType === "ANYTIME";
   const isTypeRecurring = !isTypeOneOff && !isTypeAnytime;
-  const [repeat, setRepeat] = useState(() => (isTypeOneOff ? "none" : "daily"));
+
+  // Unified: all non-one-off are weekly-based (days drive recurrence)
+  const [repeat, setRepeat] = useState(() => (isTypeOneOff ? "none" : "weekly"));
+
   const [scheduleMode, setScheduleMode] = useState("STANDARD"); // STANDARD | WEEKLY_SLOTS
   const [weeklySlotsByDay, setWeeklySlotsByDay] = useState(() => {
     const base = {};
     for (let d = 1; d <= 7; d += 1) base[d] = [{ start: "", end: "" }];
     return base;
   });
+
   const [daysOfWeek, setDaysOfWeek] = useState(() => [appDowFromDate(new Date())]);
+  const [anytimeFlexible, setAnytimeFlexible] = useState(false);
+
   const [timeMode, setTimeMode] = useState("NONE");
   const [startTime, setStartTime] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("");
+
   const [quantityValue, setQuantityValue] = useState("");
   const [quantityUnit, setQuantityUnit] = useState("");
   const [quantityPeriod, setQuantityPeriod] = useState("DAY");
+
   const [reminderTime, setReminderTime] = useState("");
   const [reminderWindowStart, setReminderWindowStart] = useState("");
   const [reminderWindowEnd, setReminderWindowEnd] = useState("");
+
   const [memo, setMemo] = useState("");
-  // Remove linkToObjective state and all outcome linking logic
   const [error, setError] = useState("");
 
   const habits = Array.isArray(draft.habits) ? draft.habits : [];
-  // Remove all outcomes/objective linking state and category state
+
   const existingActionCount = useMemo(
     () => goals.filter((g) => resolveGoalType(g) === "PROCESS").length,
     [goals]
   );
+
   const isWeekly = repeat === "weekly";
-  const missingWeeklyDays = isWeekly && daysOfWeek.length === 0;
-  const isWeeklySlotsMode = isWeekly && !isTypeAnytime && scheduleMode === "WEEKLY_SLOTS";
+  const missingWeeklyDays = isTypeRecurring && isWeekly && daysOfWeek.length === 0;
+  const isWeeklySlotsMode = isTypeRecurring && isWeekly && scheduleMode === "WEEKLY_SLOTS";
   const weeklySlotsOk = !isWeeklySlotsMode || validateWeeklySlotsByDay(daysOfWeek, weeklySlotsByDay);
+
   const oneOffDateValid = repeat !== "none" || Boolean(normalizeLocalDateKey(oneOffDate));
+
   const quantityValueParsed = normalizeQuantityValue(quantityValue);
   const quantityUnitClean = normalizeQuantityUnit(quantityUnit);
   const quantityValid =
     !String(quantityValue || "").trim() || (Number.isFinite(quantityValueParsed) && quantityUnitClean);
+
   const normalizedReminderTime = normalizeStartTime(reminderTime);
   const normalizedReminderWindowStart = normalizeStartTime(reminderWindowStart);
   const normalizedReminderWindowEnd = normalizeStartTime(reminderWindowEnd);
   const reminderWindowProvided = Boolean(normalizedReminderWindowStart || normalizedReminderWindowEnd);
   const reminderValid = !reminderWindowProvided || Boolean(normalizedReminderTime);
+
   const normalizedStartForCheck = normalizeStartTime(startTime);
   const requiresStartTime = timeMode === "FIXED";
   const startTimeValid = !requiresStartTime || Boolean(normalizedStartForCheck);
+
   const canAddHabit =
     Boolean(title.trim()) &&
     !missingWeeklyDays &&
@@ -247,9 +330,15 @@ export default function CreateV2Habits({
     reminderValid &&
     startTimeValid &&
     weeklySlotsOk;
+
   const hasInvalidHabits = habits.some((habit) => {
     if (!habit) return false;
-    if (habit.repeat === "weekly" && (!habit.daysOfWeek || habit.daysOfWeek.length === 0)) return true;
+    if (
+      habit.repeat === "weekly" &&
+      (!habit.daysOfWeek || habit.daysOfWeek.length === 0) &&
+      !(habit.habitType === "ANYTIME" && habit.anytimeFlexible)
+    )
+      return true;
     if (habit.repeat === "none" && !normalizeLocalDateKey(habit.oneOffDate)) return true;
     if (habit.quantityValue && !habit.quantityUnit) return true;
     if (habit.repeat === "weekly" && habit.scheduleMode === "WEEKLY_SLOTS") {
@@ -258,12 +347,9 @@ export default function CreateV2Habits({
     return false;
   });
 
-  // Remove all outcome and category sync effects
-
   useEffect(() => {
     if (repeat !== "none") return;
     if (normalizeLocalDateKey(oneOffDate)) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOneOffDate(todayLocalKey());
   }, [repeat, oneOffDate]);
 
@@ -272,15 +358,42 @@ export default function CreateV2Habits({
     if (isTypeOneOff) {
       setRepeat("none");
       setScheduleMode("STANDARD");
-    }
-    if (isTypeAnytime) {
       setTimeMode("NONE");
       setStartTime("");
-      setScheduleMode("STANDARD");
+      setAnytimeFlexible(false);
+      return;
     }
+
+    if (isTypeAnytime) {
+      setRepeat("weekly");
+      setScheduleMode("STANDARD");
+      setTimeMode("NONE");
+      setStartTime("");
+      setReminderWindowStart("");
+      setReminderWindowEnd("");
+      return;
+    }
+
+    // RECURRING: unified weekly + required days
+    setRepeat("weekly");
   }, [isTypeAnytime, isTypeOneOff]);
 
+  function normalizeDraftHabits(list) {
+    const input = Array.isArray(list) ? list : [];
+    const out = [];
+    const seen = new Set();
+    for (const h of input) {
+      if (!h || typeof h !== "object") continue;
+      let id = typeof h.id === "string" ? h.id.trim() : "";
+      if (!id || seen.has(id)) id = uid();
+      seen.add(id);
+      out.push({ ...h, id });
+    }
+    return out;
+  }
+
   function updateDraft(nextHabits) {
+    const nextHabitsNormalized = normalizeDraftHabits(nextHabits);
     if (typeof setData !== "function") return;
     setData((prev) => {
       const prevUi = prev.ui || {};
@@ -290,7 +403,7 @@ export default function CreateV2Habits({
           ...prevUi,
           createDraft: {
             ...normalizeCreationDraft(prevUi.createDraft),
-            habits: nextHabits,
+            habits: nextHabitsNormalized,
             step: STEP_HABITS,
           },
         },
@@ -302,14 +415,16 @@ export default function CreateV2Habits({
     const cleanTitle = title.trim();
     if (!cleanTitle) return;
     if (missingWeeklyDays) return;
+
     if (isWeeklySlotsMode && !weeklySlotsOk) {
       setError("Ajoute au moins un créneau valide (début/fin) pour chaque jour sélectionné.");
       return;
     }
     if (!oneOffDateValid) {
-      setError("Sélectionne une date pour l’action \"Une fois\".");
+      setError("Sélectionne une date pour l’action ponctuelle.");
       return;
     }
+
     const normalizedQuantityValue = normalizeQuantityValue(quantityValue);
     const normalizedQuantityUnit = normalizeQuantityUnit(quantityUnit);
     if (String(quantityValue || "").trim() && !normalizedQuantityValue) {
@@ -321,13 +436,15 @@ export default function CreateV2Habits({
       return;
     }
     const normalizedQuantityPeriod = normalizeQuantityPeriod(quantityPeriod);
-    const normalizedReminderTime = normalizeStartTime(reminderTime);
+
+    const normalizedReminderTime2 = normalizeStartTime(reminderTime);
     const normalizedWindowStart = normalizeStartTime(reminderWindowStart);
     const normalizedWindowEnd = normalizeStartTime(reminderWindowEnd);
-    if ((normalizedWindowStart || normalizedWindowEnd) && !normalizedReminderTime) {
+    if ((normalizedWindowStart || normalizedWindowEnd) && !normalizedReminderTime2) {
       setError("Choisis une heure de rappel.");
       return;
     }
+
     const limit = Number(planLimits?.actions) || 0;
     if (!isPremiumPlan && limit > 0 && existingActionCount + habits.length >= limit) {
       if (typeof onOpenPaywall === "function") onOpenPaywall("Limite d’actions atteinte.");
@@ -337,14 +454,21 @@ export default function CreateV2Habits({
       if (typeof onOpenPaywall === "function") onOpenPaywall("Limite d’actions atteinte.");
       return;
     }
+
     const outcomeId = draft?.activeOutcomeId ? String(draft.activeOutcomeId) : null;
-    const normalizedDays = isWeekly ? normalizeDaysOfWeek(daysOfWeek) : [];
+
+    const normalizedDays = isTypeOneOff ? [] : normalizeDaysOfWeek(daysOfWeek);
+    const effectiveDays = isTypeAnytime && anytimeFlexible ? [] : normalizedDays;
+
     const normalizedStart = normalizeStartTime(startTime);
     const normalizedDuration = normalizeDurationMinutes(durationMinutes);
     const normalizedOneOff = normalizeLocalDateKey(oneOffDate) || todayLocalKey();
     const normalizedMemo = typeof memo === "string" ? memo.trim() : "";
+    const normalizedLocation = typeof location === "string" ? location.trim() : "";
+
     const effectiveScheduleMode = isWeeklySlotsMode ? "WEEKLY_SLOTS" : "STANDARD";
-    const normalizedWeeklySlots = effectiveScheduleMode === "WEEKLY_SLOTS" ? normalizeWeeklySlotsByDay(weeklySlotsByDay) : null;
+    const normalizedWeeklySlots =
+      effectiveScheduleMode === "WEEKLY_SLOTS" ? normalizeWeeklySlotsByDay(weeklySlotsByDay) : null;
 
     const timeFields = normalizeTimeFields({
       timeMode: effectiveScheduleMode === "WEEKLY_SLOTS" ? "NONE" : timeMode,
@@ -352,37 +476,52 @@ export default function CreateV2Habits({
         effectiveScheduleMode === "WEEKLY_SLOTS"
           ? []
           : timeMode === "FIXED" && normalizedStart
-            ? [normalizedStart]
-            : [],
+          ? [normalizedStart]
+          : [],
       startTime: effectiveScheduleMode === "WEEKLY_SLOTS" ? "" : normalizedStart,
-      reminderTime: normalizedReminderTime,
+      reminderTime: normalizedReminderTime2,
     });
+
     const nextHabits = [
       ...habits,
       {
         id: uid(),
         title: "" + cleanTitle,
+
+        habitType,
+        anytimeFlexible: isTypeAnytime ? Boolean(anytimeFlexible) : false,
+
         outcomeId,
-        repeat,
-        daysOfWeek: normalizedDays,
+        repeat: isTypeOneOff ? "none" : "weekly",
+        daysOfWeek: effectiveDays,
+
         scheduleMode: effectiveScheduleMode,
         weeklySlotsByDay: normalizedWeeklySlots,
+
         timeMode: timeFields.timeMode,
         timeSlots: timeFields.timeSlots,
         startTime: timeFields.startTime,
+
         durationMinutes: normalizedDuration,
-        oneOffDate: repeat === "none" ? normalizedOneOff : "",
+        oneOffDate: isTypeOneOff ? normalizedOneOff : "",
+
         quantityValue: normalizedQuantityValue,
         quantityUnit: normalizedQuantityValue ? normalizedQuantityUnit : "",
         quantityPeriod: normalizedQuantityValue ? normalizedQuantityPeriod : "",
-        reminderTime: normalizedReminderTime,
+
+        reminderTime: normalizedReminderTime2,
         reminderWindowStart: normalizedWindowStart,
         reminderWindowEnd: normalizedWindowEnd,
+
+        location: normalizedLocation,
         memo: normalizedMemo,
       },
     ];
+
     updateDraft(nextHabits);
+
     setTitle("");
+    setLocation("");
     setQuantityValue("");
     setQuantityUnit("");
     setQuantityPeriod("DAY");
@@ -390,6 +529,8 @@ export default function CreateV2Habits({
     setReminderWindowStart("");
     setReminderWindowEnd("");
     setMemo("");
+    setError("");
+
     if (isWeeklySlotsMode) {
       setWeeklySlotsByDay(() => {
         const base = {};
@@ -435,59 +576,67 @@ export default function CreateV2Habits({
     updateDraft(nextHabits);
   }
 
-  // Remove handleCategoryChange, toggleHabitLink
-
   function handleDone() {
     if (!habits.length) return;
     if (typeof setData !== "function") return;
+
     if (!oneOffDateValid) {
-      setError("Sélectionne une date pour l’action \"Une fois\".");
+      setError("Sélectionne une date pour l’action ponctuelle.");
       return;
     }
-    // Use SYSTEM_INBOX_ID for all category creation; linking handled later
+
     const validHabits = habits.filter(
       (habit) =>
         habit &&
         habit.title &&
-        !(habit.repeat === "weekly" && (!habit.daysOfWeek || habit.daysOfWeek.length === 0))
+        !(
+          habit.repeat === "weekly" &&
+          (!habit.daysOfWeek || habit.daysOfWeek.length === 0) &&
+          !(habit.habitType === "ANYTIME" && habit.anytimeFlexible)
+        )
     );
+
     const createdProcessIds = validHabits.map(() => uid());
+
     setData((prev) => {
       let next = prev;
-      // Ensure system inbox exists
       next = ensureSystemInboxCategory(next).state;
-      // No objective creation here, only process goals
+
       const baseSchedule = createDefaultGoalSchedule();
       let finalState = next;
+
       for (let index = 0; index < validHabits.length; index += 1) {
         const habit = validHabits[index];
         const habitId = createdProcessIds[index];
+
         const normalizedStart = normalizeStartTime(habit.startTime);
-        const normalizedReminderTime = normalizeStartTime(habit.reminderTime);
+        const normalizedReminderTime3 = normalizeStartTime(habit.reminderTime);
         const normalizedWindowStart = normalizeStartTime(habit.reminderWindowStart);
         const normalizedWindowEnd = normalizeStartTime(habit.reminderWindowEnd);
+
         const timeFields = normalizeTimeFields({
           timeMode: habit.timeMode,
           timeSlots: habit.timeSlots,
           startTime: normalizedStart,
-          reminderTime: normalizedReminderTime,
+          reminderTime: normalizedReminderTime3,
         });
+
         const occurrenceStart = timeFields.startTime || "";
         const normalizedDuration = normalizeDurationMinutes(habit.durationMinutes);
+
         const normalizedDays = normalizeDaysOfWeek(habit.daysOfWeek);
-        const repeatMode = habit.repeat || "none";
-        const isWeeklyRepeat = repeatMode === "weekly";
-        const isDailyRepeat = repeatMode === "daily";
-        const isOneOff = repeatMode === "none";
-        const reminderEnabled = Boolean(normalizedReminderTime);
+        const isOneOff = habit.repeat === "none";
+
+        const reminderEnabled = Boolean(normalizedReminderTime3);
         const processScheduleMode = habit.scheduleMode === "WEEKLY_SLOTS" ? "WEEKLY_SLOTS" : "STANDARD";
         const normalizedWeeklySlots =
           processScheduleMode === "WEEKLY_SLOTS" ? normalizeWeeklySlotsByDay(habit.weeklySlotsByDay) : null;
+
         const schedule = isOneOff
           ? null
           : {
               ...baseSchedule,
-              daysOfWeek: isWeeklyRepeat ? normalizedDays : [],
+              daysOfWeek: normalizedDays,
               timeSlots: processScheduleMode === "WEEKLY_SLOTS" ? [] : occurrenceStart ? [occurrenceStart] : [],
               durationMinutes: normalizedDuration,
               windowStart: normalizedWindowStart || "",
@@ -496,45 +645,64 @@ export default function CreateV2Habits({
               scheduleMode: processScheduleMode,
               weeklySlotsByDay: normalizedWeeklySlots,
             };
+
         const normalizedOneOff = normalizeLocalDateKey(habit.oneOffDate) || todayLocalKey();
         const oneOffDate = isOneOff ? normalizedOneOff : undefined;
         const startAt = isOneOff && occurrenceStart ? `${oneOffDate}T${occurrenceStart}` : null;
+
         const normalizedQuantityValue = normalizeQuantityValue(habit.quantityValue);
         const normalizedQuantityUnit = normalizeQuantityUnit(habit.quantityUnit);
         const normalizedQuantityPeriod = normalizeQuantityPeriod(habit.quantityPeriod);
         const normalizedMemo = typeof habit.memo === "string" ? habit.memo.trim() : "";
+        const normalizedLocation = typeof habit.location === "string" ? habit.location.trim() : "";
+
         finalState = createGoal(finalState, {
           id: habitId,
           categoryId: SYSTEM_INBOX_ID,
           title: habit.title,
+
           type: "PROCESS",
+          habitType: habit.habitType || habitType,
+          anytimeFlexible: Boolean(habit.anytimeFlexible),
+
           planType: isOneOff ? "ONE_OFF" : "ACTION",
           parentId: habit.outcomeId ? habit.outcomeId : null,
-          cadence: isOneOff ? undefined : isDailyRepeat ? "DAILY" : "WEEKLY",
+
+          cadence: isOneOff ? undefined : "WEEKLY",
           target: isOneOff ? undefined : 1,
           freqCount: isOneOff ? undefined : 1,
-          freqUnit: isOneOff ? undefined : isDailyRepeat ? "DAY" : "WEEK",
+          freqUnit: isOneOff ? undefined : "WEEK",
           weight: 100,
+
           sessionMinutes: normalizedDuration,
           schedule,
+
           oneOffDate,
           startAt,
-          repeat: repeatMode,
+
+          repeat: isOneOff ? "none" : "weekly",
           daysOfWeek: normalizedDays,
+
           scheduleMode: processScheduleMode,
           weeklySlotsByDay: normalizedWeeklySlots,
+
           timeMode: timeFields.timeMode,
           timeSlots: timeFields.timeSlots,
           startTime: timeFields.startTime,
           durationMinutes: normalizedDuration,
+
           quantityValue: normalizedQuantityValue,
           quantityUnit: normalizedQuantityValue ? normalizedQuantityUnit : "",
           quantityPeriod: normalizedQuantityValue ? normalizedQuantityPeriod : "",
-          reminderTime: normalizedReminderTime,
+
+          reminderTime: normalizedReminderTime3,
           reminderWindowStart: normalizedWindowStart,
           reminderWindowEnd: normalizedWindowEnd,
+
+          location: normalizedLocation,
           habitNotes: normalizedMemo,
         });
+
         if (reminderEnabled) {
           const existingReminders = Array.isArray(finalState.reminders) ? finalState.reminders : [];
           const filtered = existingReminders.filter((r) => r?.goalId !== habitId);
@@ -545,7 +713,7 @@ export default function CreateV2Habits({
               normalizeReminder(
                 {
                   goalId: habitId,
-                  time: normalizedReminderTime,
+                  time: normalizedReminderTime3,
                   enabled: true,
                   channel: "IN_APP",
                   label: habit.title || "Rappel",
@@ -555,6 +723,7 @@ export default function CreateV2Habits({
             ],
           };
         }
+
         if (isOneOff && oneOffDate) {
           finalState = ensureWindowForGoals(finalState, [habitId], oneOffDate, 1);
         }
@@ -565,14 +734,14 @@ export default function CreateV2Habits({
           Number.isFinite(generationWindowDays) && generationWindowDays > 0
             ? Math.floor(generationWindowDays)
             : isPremiumPlan
-              ? 90
-              : 7;
+            ? 90
+            : 7;
         finalState = ensureWindowForGoals(finalState, createdProcessIds, todayLocalKey(), days);
       }
 
-      // nextStep based on seeded outcome
       const seededOutcomeId = draft?.activeOutcomeId ? String(draft.activeOutcomeId) : null;
       const nextStep = seededOutcomeId ? STEP_PICK_CATEGORY : STEP_LINK_OUTCOME;
+
       const nextDraft = {
         ...createEmptyDraft(),
         step: nextStep,
@@ -581,11 +750,13 @@ export default function CreateV2Habits({
         category: { mode: "existing", id: SYSTEM_INBOX_ID },
         pendingCategoryId: SYSTEM_INBOX_ID,
       };
+
       return {
         ...finalState,
         ui: { ...(finalState.ui || {}), createDraft: nextDraft, createDraftWasCompleted: false },
       };
     });
+
     if (typeof onNext === "function") {
       const seededOutcomeId = draft?.activeOutcomeId ? String(draft.activeOutcomeId) : null;
       onNext(seededOutcomeId ? STEP_PICK_CATEGORY : STEP_LINK_OUTCOME);
@@ -594,8 +765,6 @@ export default function CreateV2Habits({
     if (typeof onDone === "function") onDone();
   }
 
-  // Remove getOutcomeLabel, outcomeLabel, objectiveColor
-
   return (
     <ScreenShell
       data={safeData}
@@ -603,7 +772,8 @@ export default function CreateV2Habits({
       headerTitle="Créer"
       headerSubtitle={
         <>
-          <span className="textMuted2">2.</span> Actions · {habitType === "ONE_OFF" ? "Une fois" : habitType === "ANYTIME" ? "Anytime" : "Récurrent"}
+          <span className="textMuted2">2.</span> Actions ·{" "}
+          {habitType === "ONE_OFF" ? "Ponctuelle" : habitType === "ANYTIME" ? "Flexible" : "Planifiée"}
         </>
       }
       backgroundImage={backgroundImage}
@@ -612,183 +782,248 @@ export default function CreateV2Habits({
         <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
           ← Retour
         </Button>
+
         <Card accentBorder>
           <div className="p18 col gap12">
             <div className="row gap8">
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Nouvelle action"
-              />
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nouvelle action" />
               <Button onClick={addHabit} disabled={!canAddHabit}>
                 Ajouter
               </Button>
             </div>
-            {/* Category selection UI removed */}
+
             <div className="stack stackGap8">
-              <div className="small textMuted">Mode</div>
+              <div className="small textMuted">Lieu (optionnel)</div>
+              <Input
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Ex: Salle, Bureau, 12 rue…"
+              />
+            </div>
 
-              <div className="row gap8">
-                {!isTypeOneOff ? (
-                  <Select value={repeat} onChange={(e) => setRepeat(e.target.value)}>
-                    <option value="daily">Quotidien</option>
-                    <option value="weekly">Hebdo</option>
-                  </Select>
-                ) : (
-                  <div className="small2 textMuted">Ponctuelle</div>
-                )}
+            <div className="stack stackGap8">
+              <div className="small textMuted">{isTypeOneOff ? "Ponctuelle" : isTypeAnytime ? "Flexible" : "Planifiée"}</div>
 
-                {repeat === "weekly" && !isTypeAnytime ? (
-                  <Select
-                    value={scheduleMode}
+              <Divider />
+
+              {/* ONE_OFF */}
+              {isTypeOneOff ? (
+                <div className="stack stackGap12">
+                  <div className="stack stackGap6">
+                    <div className="small2 textMuted">Date (obligatoire)</div>
+                    <Input
+                      type="date"
+                      value={oneOffDate}
+                      onChange={(e) => {
+                        setOneOffDate(e.target.value);
+                        if (error) setError("");
+                      }}
+                    />
+                  </div>
+
+                  <div className="stack stackGap6">
+                    <div className="small2 textMuted">Moment (optionnel)</div>
+                    <div className="row gap8">
+                      <Select
+                        value={timeMode}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setTimeMode(next);
+                          if (next !== "FIXED") setStartTime("");
+                        }}
+                      >
+                        <option value="NONE">Dans la journée</option>
+                        <option value="FIXED">À heure fixe</option>
+                      </Select>
+                      {timeMode === "FIXED" ? (
+                        <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                      ) : null}
+                    </div>
+                    {requiresStartTime && !normalizedStartForCheck ? <Hint tone="danger">Choisis une heure.</Hint> : null}
+                  </div>
+
+                  <div className="stack stackGap6">
+                    <div className="small2 textMuted">Durée (optionnel)</div>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={durationMinutes}
+                      onChange={(e) => setDurationMinutes(e.target.value)}
+                      placeholder="Minutes"
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {/* ANYTIME */}
+              {isTypeAnytime ? (
+                <div className="stack stackGap12">
+                  <CheckboxRow
+                    checked={anytimeFlexible}
                     onChange={(e) => {
-                      const next = e.target.value;
-                      setScheduleMode(next);
-                      if (next === "WEEKLY_SLOTS") {
-                        setTimeMode("NONE");
-                        setStartTime("");
-                      }
+                      const next = Boolean(e.target.checked);
+                      setAnytimeFlexible(next);
+                      if (next) setDaysOfWeek([]);
                     }}
-                  >
-                    <option value="STANDARD">Heure unique (hebdo)</option>
-                    <option value="WEEKLY_SLOTS">Créneaux par jour</option>
-                  </Select>
-                ) : null}
+                    label="Flexible (sans jours fixes)"
+                    description="Jamais manquée : tu coches quand c’est fait."
+                  />
 
-                {!isTypeAnytime && !isWeeklySlotsMode ? (
-                  <>
+                  {!anytimeFlexible ? (
+                    <div className="stack stackGap10">
+                      <div className="row rowBetween alignCenter">
+                        <div className="small2 textMuted">Jours attendus (optionnel)</div>
+                        <PresetChips
+                          onAll={() => setDaysPreset(setDaysOfWeek, "ALL")}
+                          onWeekdays={() => setDaysPreset(setDaysOfWeek, "WEEKDAYS")}
+                          onClear={() => setDaysPreset(setDaysOfWeek, "CLEAR")}
+                        />
+                      </div>
+
+                      <DayChips value={daysOfWeek} onChange={setDaysOfWeek} />
+                      <Hint>Dans la journée. Tu coches quand c’est fait.</Hint>
+                    </div>
+                  ) : (
+                    <Hint>Mode flexible : tu coches quand c’est fait.</Hint>
+                  )}
+
+                  <div className="stack stackGap6">
+                    <div className="small2 textMuted">Durée (optionnel)</div>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={durationMinutes}
+                      onChange={(e) => setDurationMinutes(e.target.value)}
+                      placeholder="Minutes"
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {/* RECURRING (scheduled) */}
+              {isTypeRecurring ? (
+                <div className="stack stackGap12">
+                  <div className="stack stackGap6">
+                    <div className="row rowBetween alignCenter">
+                      <div className="small2 textMuted">Jours (obligatoire)</div>
+                      <PresetChips
+                        onAll={() => setDaysPreset(setDaysOfWeek, "ALL")}
+                        onWeekdays={() => setDaysPreset(setDaysOfWeek, "WEEKDAYS")}
+                        onClear={() => setDaysPreset(setDaysOfWeek, "CLEAR")}
+                      />
+                    </div>
+
+                    <DayChips value={daysOfWeek} onChange={setDaysOfWeek} />
+
+                    {missingWeeklyDays ? <Hint tone="danger">Choisis au moins un jour.</Hint> : null}
+                  </div>
+
+                  <div className="stack stackGap6">
+                    <div className="small2 textMuted">Moment</div>
                     <Select
-                      value={timeMode}
+                      value={scheduleMode}
                       onChange={(e) => {
                         const next = e.target.value;
-                        setTimeMode(next);
-                        if (next !== "FIXED") setStartTime("");
+                        setScheduleMode(next);
+                        if (next === "WEEKLY_SLOTS") {
+                          setTimeMode("NONE");
+                          setStartTime("");
+                        }
                       }}
                     >
-                      <option value="NONE">Sans heure</option>
-                      <option value="FIXED">À heure fixe</option>
+                      <option value="STANDARD">Dans la journée / Heure fixe</option>
+                      <option value="WEEKLY_SLOTS">Créneaux par jour</option>
                     </Select>
-                    {timeMode === "FIXED" ? (
-                      <Input
-                        type="time"
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
-                        placeholder="Heure"
-                      />
+
+                    {scheduleMode === "STANDARD" ? (
+                      <div className="row gap8">
+                        <Select
+                          value={timeMode}
+                          onChange={(e) => {
+                            const next = e.target.value;
+                            setTimeMode(next);
+                            if (next !== "FIXED") setStartTime("");
+                          }}
+                        >
+                          <option value="NONE">Dans la journée</option>
+                          <option value="FIXED">Heure fixe</option>
+                        </Select>
+                        {timeMode === "FIXED" ? (
+                          <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                        ) : null}
+                      </div>
                     ) : null}
-                  </>
-                ) : isTypeAnytime ? (
-                  <div className="small2 textMuted">Sans heure</div>
-                ) : null}
 
-                <Input
-                  type="number"
-                  min="1"
-                  value={durationMinutes}
-                  onChange={(e) => setDurationMinutes(e.target.value)}
-                  placeholder="Durée (min)"
-                />
-              </div>
+                    {scheduleMode === "WEEKLY_SLOTS" && !missingWeeklyDays ? (
+                      <div className="stack stackGap10">
+                        <Hint>Créneaux différents selon le jour.</Hint>
 
-              {isTypeOneOff ? (
-                <div className="stack stackGap6">
-                  <div className="small2 textMuted">Date</div>
-                  <Input
-                    type="date"
-                    value={oneOffDate}
-                    onChange={(e) => {
-                      setOneOffDate(e.target.value);
-                      if (error) setError("");
-                    }}
-                  />
-                </div>
-              ) : null}
-
-              {repeat === "weekly" ? (
-                <div className="editDaysRow">
-                  {DOWS.map((day) => {
-                    const active = daysOfWeek.includes(day.id);
-                    return (
-                      <label key={day.id} className="editDayOption">
-                        <input
-                          type="checkbox"
-                          checked={active}
-                          onChange={() =>
-                            setDaysOfWeek((prev) => {
-                              const next = prev.includes(day.id)
-                                ? prev.filter((d) => d !== day.id)
-                                : [...prev, day.id].sort();
-                              return next;
-                            })
-                          }
-                        />
-                        {day.label}
-                      </label>
-                    );
-                  })}
-                </div>
-              ) : null}
-
-              {repeat === "weekly" && scheduleMode === "WEEKLY_SLOTS" && !missingWeeklyDays ? (
-                <div className="stack stackGap8">
-                  <div className="small2 textMuted">Créneaux par jour</div>
-                  <div className="stack stackGap10">
-                    {(() => {
-                      const normalizedMap = normalizeWeeklySlotsByDay(weeklySlotsByDay);
-                      return normalizeDaysOfWeek(daysOfWeek).map((dayId) => {
-                        const dayLabel = DOWS.find((d) => d.id === dayId)?.label || String(dayId);
-                        const baseSlots = Array.isArray(normalizedMap[dayId]) ? normalizedMap[dayId] : [];
-                        const slots = baseSlots.length ? baseSlots : [{ start: "", end: "" }];
-                        return (
-                          <div key={dayId} className="stack stackGap6">
-                            <div className="row rowBetween alignCenter">
-                              <div className="small2">{dayLabel}</div>
-                              <Button variant="ghost" onClick={() => addWeeklySlot(dayId)}>
-                                +
-                              </Button>
-                            </div>
-                            <div className="stack stackGap6">
-                              {slots.map((slot, idx) => (
-                                <div key={`${dayId}-${idx}`} className="row gap8 alignCenter">
-                                  <Input
-                                    type="time"
-                                    value={slot.start || ""}
-                                    onChange={(e) => updateWeeklySlot(dayId, idx, "start", e.target.value)}
-                                    placeholder="Début"
-                                  />
-                                  <Input
-                                    type="time"
-                                    value={slot.end || ""}
-                                    onChange={(e) => updateWeeklySlot(dayId, idx, "end", e.target.value)}
-                                    placeholder="Fin"
-                                  />
-                                  <Button variant="ghost" onClick={() => removeWeeklySlot(dayId, idx)}>
-                                    Retirer
+                        {(() => {
+                          const normalizedMap = normalizeWeeklySlotsByDay(weeklySlotsByDay);
+                          return normalizeDaysOfWeek(daysOfWeek).map((dayId) => {
+                            const dayLabel = DOWS.find((d) => d.id === dayId)?.label || String(dayId);
+                            const baseSlots = Array.isArray(normalizedMap[dayId]) ? normalizedMap[dayId] : [];
+                            const slots = baseSlots.length ? baseSlots : [{ start: "", end: "" }];
+                            return (
+                              <div key={dayId} className="stack stackGap6">
+                                <div className="row rowBetween alignCenter">
+                                  <div className="small2">{dayLabel}</div>
+                                  <Button variant="ghost" onClick={() => addWeeklySlot(dayId)}>
+                                    +
                                   </Button>
                                 </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      });
-                    })()}
+                                <div className="stack stackGap6">
+                                  {slots.map((slot, idx) => (
+                                    <div
+                                      key={`${dayId}-${normalizeStartTime(slot?.start) || "_"}-${normalizeStartTime(slot?.end) || "_"}-${idx}`}
+                                      className="row gap8 alignCenter"
+                                    >
+                                      <Input
+                                        type="time"
+                                        value={slot.start || ""}
+                                        onChange={(e) => updateWeeklySlot(dayId, idx, "start", e.target.value)}
+                                      />
+                                      <Input
+                                        type="time"
+                                        value={slot.end || ""}
+                                        onChange={(e) => updateWeeklySlot(dayId, idx, "end", e.target.value)}
+                                      />
+                                      <Button variant="ghost" onClick={() => removeWeeklySlot(dayId, idx)}>
+                                        Retirer
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+
+                        {!weeklySlotsOk ? (
+                          <Hint tone="danger">Ajoute au moins un créneau valide (début/fin) pour chaque jour sélectionné.</Hint>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {requiresStartTime && !normalizedStartForCheck ? <Hint tone="danger">Choisis une heure.</Hint> : null}
                   </div>
-                  {!weeklySlotsOk ? (
-                    <div className="small2 textAccent">
-                      Ajoute au moins un créneau valide (début/fin) pour chaque jour sélectionné.
-                    </div>
-                  ) : null}
+
+                  <div className="stack stackGap6">
+                    <div className="small2 textMuted">Durée (optionnel)</div>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={durationMinutes}
+                      onChange={(e) => setDurationMinutes(e.target.value)}
+                      placeholder="Minutes"
+                    />
+                  </div>
                 </div>
               ) : null}
-
-              {missingWeeklyDays ? <div className="small2 textAccent">Choisis au moins un jour.</div> : null}
-              {isWeeklySlotsMode && !weeklySlotsOk && !missingWeeklyDays ? (
-                <div className="small2 textAccent">Ajoute des créneaux valides pour chaque jour.</div>
-              ) : null}
-              {requiresStartTime && !normalizedStartForCheck ? (
-                <div className="small2 textAccent">Choisis une heure.</div>
-              ) : null}
             </div>
+
+            <Divider />
+
             <div className="stack stackGap8">
               <div className="small textMuted">Quantification (optionnel)</div>
               <div className="row gap8">
@@ -799,11 +1034,7 @@ export default function CreateV2Habits({
                   onChange={(e) => setQuantityValue(e.target.value)}
                   placeholder="Quantité"
                 />
-                <Input
-                  value={quantityUnit}
-                  onChange={(e) => setQuantityUnit(e.target.value)}
-                  placeholder="Unité"
-                />
+                <Input value={quantityUnit} onChange={(e) => setQuantityUnit(e.target.value)} placeholder="Unité" />
                 <Select value={quantityPeriod} onChange={(e) => setQuantityPeriod(e.target.value)}>
                   {QUANTITY_PERIODS.map((period) => (
                     <option key={period.id} value={period.id}>
@@ -812,41 +1043,44 @@ export default function CreateV2Habits({
                   ))}
                 </Select>
               </div>
-              {!quantityValid && String(quantityValue || "").trim() ? (
-                <div className="small2 textAccent">Ajoute une unité pour la quantité.</div>
-              ) : null}
+              {!quantityValid && String(quantityValue || "").trim() ? <Hint tone="danger">Ajoute une unité pour la quantité.</Hint> : null}
             </div>
+
+            <Divider />
+
             <div className="stack stackGap8">
               <div className="small textMuted">Rappel (optionnel)</div>
               <div className="row gap8">
-                <Input
-                  type="time"
-                  value={reminderTime}
-                  onChange={(e) => setReminderTime(e.target.value)}
-                  placeholder="Heure"
-                />
-                <Input
-                  type="time"
-                  value={reminderWindowStart}
-                  onChange={(e) => setReminderWindowStart(e.target.value)}
-                  placeholder="Fenêtre début"
-                />
-                <Input
-                  type="time"
-                  value={reminderWindowEnd}
-                  onChange={(e) => setReminderWindowEnd(e.target.value)}
-                  placeholder="Fenêtre fin"
-                />
+                <Input type="time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} />
+                {!isTypeAnytime ? (
+                  <>
+                    <Input
+                      type="time"
+                      value={reminderWindowStart}
+                      onChange={(e) => setReminderWindowStart(e.target.value)}
+                      placeholder="Fenêtre début"
+                    />
+                    <Input
+                      type="time"
+                      value={reminderWindowEnd}
+                      onChange={(e) => setReminderWindowEnd(e.target.value)}
+                      placeholder="Fenêtre fin"
+                    />
+                  </>
+                ) : null}
               </div>
-              {!reminderValid && reminderWindowProvided ? (
-                <div className="small2 textAccent">Définis une heure de rappel.</div>
-              ) : null}
+              {!reminderValid && reminderWindowProvided ? <Hint tone="danger">Définis une heure de rappel.</Hint> : null}
             </div>
+
+            <Divider />
+
             <div className="stack stackGap8">
               <div className="small textMuted">Mémo (optionnel)</div>
               <Textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="Note personnelle" />
             </div>
-            {/* Objective linking UI removed */}
+
+            <Divider />
+
             <div className="stack stackGap8">
               {habits.map((habit) => (
                 <AccentItem key={habit.id} tone="neutral">
@@ -855,7 +1089,12 @@ export default function CreateV2Habits({
                       {habit.title}
                       <div className="textMuted2">
                         {formatRepeatLabel(habit)}
-                        {habit.scheduleMode === "WEEKLY_SLOTS" ? ` · ${formatWeeklySlotsSummary(habit)}` : habit.startTime ? ` · ${habit.startTime}` : ""}
+                        {habit.location ? ` · ${habit.location}` : ""}
+                        {habit.scheduleMode === "WEEKLY_SLOTS"
+                          ? ` · ${formatWeeklySlotsSummary(habit)}`
+                          : habit.startTime
+                          ? ` · ${habit.startTime}`
+                          : ""}
                         {Number.isFinite(habit.durationMinutes) ? ` · ${habit.durationMinutes} min` : ""}
                         {formatQuantityLabel(habit) ? ` · ${formatQuantityLabel(habit)}` : ""}
                         {habit.reminderTime ? ` · Rappel ${habit.reminderTime}` : ""}
@@ -868,12 +1107,11 @@ export default function CreateV2Habits({
                   </div>
                 </AccentItem>
               ))}
-              {!habits.length ? <div className="small2">Ajoute au moins une action.</div> : null}
-              {hasInvalidHabits ? (
-                <div className="small2 textAccent">Corrige les actions hebdo sans jour sélectionné.</div>
-              ) : null}
-              {error ? <div className="small2 textAccent">{error}</div> : null}
+              {!habits.length ? <Hint>Ajoute au moins une action.</Hint> : null}
+              {hasInvalidHabits ? <Hint tone="danger">Corrige les actions invalides.</Hint> : null}
+              {error ? <Hint tone="danger">{error}</Hint> : null}
             </div>
+
             <div className="row rowEnd gap10">
               <Button
                 variant="ghost"

@@ -120,7 +120,7 @@ function normalizeTimes(times) {
   const out = [];
   for (const raw of times) {
     const t = typeof raw === "string" ? raw.trim() : "";
-    if (!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(t)) continue;
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) continue;
     if (seen.has(t)) continue;
     seen.add(t);
     out.push(t);
@@ -308,7 +308,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   const minDeadlineKey = useMemo(() => {
     const base = new Date(`${effectiveStartKey}T12:00:00`);
     if (Number.isNaN(base.getTime())) return "";
-    base.setDate(base.getDate() + 7);
+    base.setDate(base.getDate() + 1);
     return toLocalDateKey(base);
   }, [effectiveStartKey]);
   const hasOccurrenceSource = Array.isArray(item?._occurrences) && item._occurrences.length > 0;
@@ -581,7 +581,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       const normalizedStart = normalizeLocalDateKey(startDate) || todayLocalKey();
       const normalizedDeadline = normalizeLocalDateKey(deadline);
       if (!normalizedDeadline || (minDeadlineKey && normalizedDeadline < minDeadlineKey)) {
-        setError(`Un objectif dure min. 7 jours. Pour < 7 jours, crée une Action.`);
+        setError(`Un objectif dure min. 2 jours. Pour < 2 jours, crée une Action.`);
         return;
       }
       updates.categoryId = normalizedCategoryId;
@@ -960,7 +960,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
                       </div>
                       <div>
                         <div className="small" style={{ marginBottom: 6 }}>
-                          Date de fin (min J+7 : {minDeadlineKey})
+                          Date de fin (min 2 jours : {minDeadlineKey})
                         </div>
                         <Input
                           type="date"

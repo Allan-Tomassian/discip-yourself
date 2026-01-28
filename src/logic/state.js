@@ -715,7 +715,7 @@ export function normalizeGoal(rawGoal, index = 0) {
   }
 
   // If a PROCESS has no valid parentId, keep it null (linking is optional)
-  if (isProcess) {
+  if (process) {
     const rawParent = typeof g.parentId === "string" ? g.parentId.trim() : "";
     g.parentId = rawParent ? rawParent : null;
     if (typeof g.primaryGoalId === "string") {
@@ -739,8 +739,8 @@ export function normalizeGoal(rawGoal, index = 0) {
   // - PROCESS/ACTION: schedule is canonical and can later drive occurrences/reminders.
   // - OUTCOME/STATE: schedule is OPTIONAL and is only used for planning visibility (calendar coloring),
   //   reminders must stay disabled for OUTCOME.
-  const shouldHaveProcessSchedule = isProcess && g.planType === "ACTION";
-  const shouldKeepOutcomeSchedule = isOutcome && g.planType === "STATE" && g.schedule && typeof g.schedule === "object";
+  const shouldHaveProcessSchedule = process && g.planType === "ACTION";
+  const shouldKeepOutcomeSchedule = outcome && g.planType === "STATE" && g.schedule && typeof g.schedule === "object";
 
   if (shouldHaveProcessSchedule || shouldKeepOutcomeSchedule) {
     const base = createDefaultGoalSchedule();
@@ -761,7 +761,7 @@ export function normalizeGoal(rawGoal, index = 0) {
     if (typeof g.schedule.remindersEnabled !== "boolean") g.schedule.remindersEnabled = base.remindersEnabled;
 
     // Hard rule: OUTCOME goals never emit reminders.
-    if (isOutcome) {
+    if (outcome) {
       g.schedule.remindersEnabled = false;
       // NOTE: OUTCOME may keep schedule for planning visibility, but reminders are always forced OFF here.
     }

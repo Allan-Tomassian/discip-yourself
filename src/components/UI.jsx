@@ -57,7 +57,7 @@ export function Button({ children, variant = "primary", className = "", type = "
 }
 
 export function IconButton({ icon, children, className = "", type = "button", ...props }) {
-  const iconMap = { gear: "⚙︎", close: "×" };
+  const iconMap = { gear: "⚙︎", close: "×", back: "←", plus: "+" };
   const content = children || iconMap[icon] || icon;
   const mergedClassName = className ? `iconBtn ${className}` : "iconBtn";
   return (
@@ -283,4 +283,81 @@ export function ProgressRing({ value, size = 44 }) {
       </div>
     </div>
   );
+}
+
+// --- Premium UI primitives (chips / toggles / hints) ---
+
+export function Chip({
+  children,
+  active = false,
+  as = "button",
+  className = "",
+  type = "button",
+  ...props
+}) {
+  const Tag = as;
+  const cls = `chip${active ? " isActive" : ""}${className ? ` ${className}` : ""}`;
+  return (
+    <Tag className={cls} type={Tag === "button" ? type : undefined} {...props}>
+      {children}
+    </Tag>
+  );
+}
+
+export function ChipRow({ children, className = "", ...props }) {
+  return (
+    <div className={`chipRow${className ? ` ${className}` : ""}`} {...props}>
+      {children}
+    </div>
+  );
+}
+
+export function ToggleChip({ children, value, selected, onSelect, disabled = false, className = "" }) {
+  const isActive = value === selected;
+  return (
+    <Chip
+      active={isActive}
+      disabled={disabled}
+      className={className}
+      onClick={() => (!disabled && typeof onSelect === "function" ? onSelect(value) : null)}
+      aria-pressed={isActive}
+    >
+      {children}
+    </Chip>
+  );
+}
+
+export function Hint({ children, tone = "muted", className = "", ...props }) {
+  const cls =
+    tone === "danger"
+      ? "hint hintDanger"
+      : tone === "accent"
+        ? "hint hintAccent"
+        : "hint";
+  return (
+    <div className={`${cls}${className ? ` ${className}` : ""}`} {...props}>
+      {children}
+    </div>
+  );
+}
+
+export function CheckboxRow({ checked, onChange, label, description = "", disabled = false, className = "" }) {
+  return (
+    <label className={`checkRow${disabled ? " isDisabled" : ""}${className ? ` ${className}` : ""}`}>
+      <input
+        type="checkbox"
+        checked={Boolean(checked)}
+        disabled={disabled}
+        onChange={(e) => (typeof onChange === "function" ? onChange(e) : null)}
+      />
+      <div className="checkRowText">
+        <div className="checkRowLabel">{label}</div>
+        {description ? <div className="checkRowDesc">{description}</div> : null}
+      </div>
+    </label>
+  );
+}
+
+export function Divider({ className = "", ...props }) {
+  return <div className={`divider${className ? ` ${className}` : ""}`} {...props} />;
 }
