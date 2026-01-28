@@ -12,18 +12,11 @@ function MotivationSection({ data, setData }) {
   const profile = data?.profile || {};
   const isPremiumPlan = isPremium(data);
   const [whyDraft, setWhyDraft] = useState(profile.whyText || "");
-  const [nowMs, setNowMs] = useState(0);
+  const [nowMs] = useState(() => Date.now());
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setWhyDraft(profile.whyText || "");
   }, [profile.whyText]);
-
-  useEffect(() => {
-    if (nowMs) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setNowMs(Date.now());
-  }, [nowMs]);
 
   const lastUpdatedMs = profile.whyUpdatedAt ? Date.parse(profile.whyUpdatedAt) : 0;
   const daysSince =
@@ -103,7 +96,9 @@ export default function Settings({
       const link = document.createElement("a");
       link.href = url;
       link.download = filename;
+      document.body.appendChild(link);
       link.click();
+      link.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
       void err;
@@ -238,7 +233,7 @@ export default function Settings({
           <div className="p18 col">
             <div className="sectionTitle">Notifications</div>
             <div className="sectionSub mt6">
-              Les notifications système (son/vibration) nécessitent une version PWA. À venir.
+              Les notifications seront disponibles avec la version iOS (TestFlight), puis l’App Store.
             </div>
             <div className="mt10">
               <Button disabled variant="ghost">

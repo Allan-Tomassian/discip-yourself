@@ -47,6 +47,18 @@ function appDowFromDate(d) {
   return js === 0 ? 7 : js;
 }
 
+function addDaysLocal(dateKey, days) {
+  const dk = typeof dateKey === "string" ? normalizeLocalDateKey(dateKey) : "";
+  if (!dk) return "";
+  const base = new Date(`${dk}T12:00:00`);
+  if (Number.isNaN(base.getTime())) return "";
+  base.setDate(base.getDate() + (Number.isFinite(days) ? Math.trunc(days) : 0));
+  const y = base.getFullYear();
+  const m = String(base.getMonth() + 1).padStart(2, "0");
+  const d = String(base.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function setDaysPreset(setter, preset) {
   if (preset === "ALL") return setter([1, 2, 3, 4, 5, 6, 7]);
   if (preset === "WEEKDAYS") return setter([1, 2, 3, 4, 5]);
@@ -247,7 +259,6 @@ export default function CreateV2Habits({
   isPremiumPlan = false,
   planLimits = null,
   generationWindowDays = null,
-  onOpenCategories,
   onNext,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
@@ -258,6 +269,11 @@ export default function CreateV2Habits({
   const [title, setTitle] = useState("");
   const [oneOffDate, setOneOffDate] = useState(() => todayLocalKey());
   const [location, setLocation] = useState("");
+
+  // Mandatory action period (lifecycle)
+  const [lifecycleMode] = useState("FIXED");
+  const [activeFrom, setActiveFrom] = useState(() => todayLocalKey());
+  const [activeTo, setActiveTo] = useState(() => addDaysLocal(todayLocalKey(), 29));
 
   // habitType gating
   const habitType = draft?.habitType || createVariant || "RECURRING"; // ONE_OFF | RECURRING | ANYTIME
@@ -307,6 +323,12 @@ export default function CreateV2Habits({
 
   const oneOffDateValid = repeat !== "none" || Boolean(normalizeLocalDateKey(oneOffDate));
 
+  const normalizedActiveFrom = normalizeLocalDateKey(activeFrom) || "";
+  const normalizedActiveTo = normalizeLocalDateKey(activeTo) || "";
+  const periodValidRaw =
+    Boolean(normalizedActiveFrom && normalizedActiveTo) && normalizedActiveTo >= normalizedActiveFrom;
+  const periodValid = isTypeOneOff ? oneOffDateValid : periodValidRaw;
+
   const quantityValueParsed = normalizeQuantityValue(quantityValue);
   const quantityUnitClean = normalizeQuantityUnit(quantityUnit);
   const quantityValid =
@@ -326,6 +348,7 @@ export default function CreateV2Habits({
     Boolean(title.trim()) &&
     !missingWeeklyDays &&
     oneOffDateValid &&
+    periodValid &&
     quantityValid &&
     reminderValid &&
     startTimeValid &&
@@ -344,6 +367,11 @@ export default function CreateV2Habits({
     if (habit.repeat === "weekly" && habit.scheduleMode === "WEEKLY_SLOTS") {
       return !validateWeeklySlotsByDay(habit.daysOfWeek, habit.weeklySlotsByDay);
     }
+    if (habit.repeat !== "none") {
+      const af = normalizeLocalDateKey(habit.activeFrom) || "";
+      const at = normalizeLocalDateKey(habit.activeTo) || "";
+      if (!af || !at || at < af) return true;
+    }
     return false;
   });
 
@@ -353,6 +381,13 @@ export default function CreateV2Habits({
     setOneOffDate(todayLocalKey());
   }, [repeat, oneOffDate]);
 
+  useEffect(() => {
+    if (!isTypeOneOff) return;
+    const dk = normalizeLocalDateKey(oneOffDate) || todayLocalKey();
+    if (activeFrom !== dk) setActiveFrom(dk);
+    if (activeTo !== dk) setActiveTo(dk);
+  }, [isTypeOneOff, oneOffDate]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Enforce constraints when habitType changes
   useEffect(() => {
     if (isTypeOneOff) {
@@ -361,6 +396,9 @@ export default function CreateV2Habits({
       setTimeMode("NONE");
       setStartTime("");
       setAnytimeFlexible(false);
+      const dk = normalizeLocalDateKey(oneOffDate) || todayLocalKey();
+      setActiveFrom(dk);
+      setActiveTo(dk);
       return;
     }
 
@@ -371,12 +409,16 @@ export default function CreateV2Habits({
       setStartTime("");
       setReminderWindowStart("");
       setReminderWindowEnd("");
+      setActiveFrom((prev) => normalizeLocalDateKey(prev) || todayLocalKey());
+      setActiveTo((prev) => normalizeLocalDateKey(prev) || addDaysLocal(todayLocalKey(), 29));
       return;
     }
 
     // RECURRING: unified weekly + required days
     setRepeat("weekly");
-  }, [isTypeAnytime, isTypeOneOff]);
+    setActiveFrom((prev) => normalizeLocalDateKey(prev) || todayLocalKey());
+    setActiveTo((prev) => normalizeLocalDateKey(prev) || addDaysLocal(todayLocalKey(), 29));
+  }, [isTypeAnytime, isTypeOneOff]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function normalizeDraftHabits(list) {
     const input = Array.isArray(list) ? list : [];
@@ -424,6 +466,18 @@ export default function CreateV2Habits({
       setError("Sélectionne une date pour l’action ponctuelle.");
       return;
     }
+    if (!isTypeOneOff) {
+      const fromKey = normalizeLocalDateKey(activeFrom) || "";
+      const toKey = normalizeLocalDateKey(activeTo) || "";
+      if (!fromKey || !toKey) {
+        setError("Définis une période (début + échéance).");
+        return;
+      }
+      if (toKey < fromKey) {
+        setError("L’échéance doit être après la date de début.");
+        return;
+      }
+    }
 
     const normalizedQuantityValue = normalizeQuantityValue(quantityValue);
     const normalizedQuantityUnit = normalizeQuantityUnit(quantityUnit);
@@ -463,6 +517,12 @@ export default function CreateV2Habits({
     const normalizedStart = normalizeStartTime(startTime);
     const normalizedDuration = normalizeDurationMinutes(durationMinutes);
     const normalizedOneOff = normalizeLocalDateKey(oneOffDate) || todayLocalKey();
+
+    const normalizedFrom = isTypeOneOff ? normalizedOneOff : normalizeLocalDateKey(activeFrom) || todayLocalKey();
+    const normalizedTo = isTypeOneOff
+      ? normalizedOneOff
+      : normalizeLocalDateKey(activeTo) || addDaysLocal(normalizedFrom, 29);
+
     const normalizedMemo = typeof memo === "string" ? memo.trim() : "";
     const normalizedLocation = typeof location === "string" ? location.trim() : "";
 
@@ -504,6 +564,15 @@ export default function CreateV2Habits({
 
         durationMinutes: normalizedDuration,
         oneOffDate: isTypeOneOff ? normalizedOneOff : "",
+
+        lifecycleMode,
+        activeFrom: normalizedFrom,
+        activeTo: normalizedTo,
+
+        completionMode: "ONCE",
+        completionTarget: null,
+        missPolicy: "LENIENT",
+        graceMinutes: 0,
 
         quantityValue: normalizedQuantityValue,
         quantityUnit: normalizedQuantityValue ? normalizedQuantityUnit : "",
@@ -572,29 +641,14 @@ export default function CreateV2Habits({
   }
 
   function removeHabit(id) {
-    const nextHabits = habits.filter((h) => h.id !== id);
-    updateDraft(nextHabits);
+    updateDraft(habits.filter((h) => h.id !== id));
   }
 
   function handleDone() {
     if (!habits.length) return;
     if (typeof setData !== "function") return;
 
-    if (!oneOffDateValid) {
-      setError("Sélectionne une date pour l’action ponctuelle.");
-      return;
-    }
-
-    const validHabits = habits.filter(
-      (habit) =>
-        habit &&
-        habit.title &&
-        !(
-          habit.repeat === "weekly" &&
-          (!habit.daysOfWeek || habit.daysOfWeek.length === 0) &&
-          !(habit.habitType === "ANYTIME" && habit.anytimeFlexible)
-        )
-    );
+    const validHabits = habits.filter((habit) => habit && habit.title);
 
     const createdProcessIds = validHabits.map(() => uid());
 
@@ -650,6 +704,13 @@ export default function CreateV2Habits({
         const oneOffDate = isOneOff ? normalizedOneOff : undefined;
         const startAt = isOneOff && occurrenceStart ? `${oneOffDate}T${occurrenceStart}` : null;
 
+        const normalizedFrom = isOneOff
+          ? oneOffDate || todayLocalKey()
+          : normalizeLocalDateKey(habit.activeFrom) || todayLocalKey();
+        const normalizedTo = isOneOff
+          ? oneOffDate || todayLocalKey()
+          : normalizeLocalDateKey(habit.activeTo) || addDaysLocal(normalizedFrom, 29);
+
         const normalizedQuantityValue = normalizeQuantityValue(habit.quantityValue);
         const normalizedQuantityUnit = normalizeQuantityUnit(habit.quantityUnit);
         const normalizedQuantityPeriod = normalizeQuantityPeriod(habit.quantityPeriod);
@@ -679,6 +740,15 @@ export default function CreateV2Habits({
 
           oneOffDate,
           startAt,
+
+          lifecycleMode: "FIXED",
+          activeFrom: normalizedFrom,
+          activeTo: normalizedTo,
+
+          completionMode: habit.completionMode || "ONCE",
+          completionTarget: habit.completionTarget ?? null,
+          missPolicy: habit.missPolicy || "LENIENT",
+          graceMinutes: typeof habit.graceMinutes === "number" ? habit.graceMinutes : 0,
 
           repeat: isOneOff ? "none" : "weekly",
           daysOfWeek: normalizedDays,
@@ -811,14 +881,8 @@ export default function CreateV2Habits({
                 <div className="stack stackGap12">
                   <div className="stack stackGap6">
                     <div className="small2 textMuted">Date (obligatoire)</div>
-                    <Input
-                      type="date"
-                      value={oneOffDate}
-                      onChange={(e) => {
-                        setOneOffDate(e.target.value);
-                        if (error) setError("");
-                      }}
-                    />
+                    <Input type="date" value={oneOffDate} onChange={(e) => setOneOffDate(e.target.value)} />
+                    <Hint>Cette action est valable uniquement ce jour-là (début = échéance).</Hint>
                   </div>
 
                   <div className="stack stackGap6">
@@ -839,18 +903,11 @@ export default function CreateV2Habits({
                         <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
                       ) : null}
                     </div>
-                    {requiresStartTime && !normalizedStartForCheck ? <Hint tone="danger">Choisis une heure.</Hint> : null}
                   </div>
 
                   <div className="stack stackGap6">
                     <div className="small2 textMuted">Durée (optionnel)</div>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={durationMinutes}
-                      onChange={(e) => setDurationMinutes(e.target.value)}
-                      placeholder="Minutes"
-                    />
+                    <Input type="number" min="1" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} placeholder="Minutes" />
                   </div>
                 </div>
               ) : null}
@@ -858,6 +915,15 @@ export default function CreateV2Habits({
               {/* ANYTIME */}
               {isTypeAnytime ? (
                 <div className="stack stackGap12">
+                  <div className="stack stackGap6">
+                    <div className="small2 textMuted">Période (obligatoire)</div>
+                    <div className="row gap8">
+                      <Input type="date" value={activeFrom} onChange={(e) => setActiveFrom(e.target.value)} />
+                      <Input type="date" value={activeTo} onChange={(e) => setActiveTo(e.target.value)} />
+                    </div>
+                    {!periodValid ? <Hint tone="danger">Définis une période valide (échéance ≥ début).</Hint> : null}
+                  </div>
+
                   <CheckboxRow
                     checked={anytimeFlexible}
                     onChange={(e) => {
@@ -879,7 +945,6 @@ export default function CreateV2Habits({
                           onClear={() => setDaysPreset(setDaysOfWeek, "CLEAR")}
                         />
                       </div>
-
                       <DayChips value={daysOfWeek} onChange={setDaysOfWeek} />
                       <Hint>Dans la journée. Tu coches quand c’est fait.</Hint>
                     </div>
@@ -889,20 +954,23 @@ export default function CreateV2Habits({
 
                   <div className="stack stackGap6">
                     <div className="small2 textMuted">Durée (optionnel)</div>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={durationMinutes}
-                      onChange={(e) => setDurationMinutes(e.target.value)}
-                      placeholder="Minutes"
-                    />
+                    <Input type="number" min="1" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} placeholder="Minutes" />
                   </div>
                 </div>
               ) : null}
 
-              {/* RECURRING (scheduled) */}
+              {/* RECURRING */}
               {isTypeRecurring ? (
                 <div className="stack stackGap12">
+                  <div className="stack stackGap6">
+                    <div className="small2 textMuted">Période (obligatoire)</div>
+                    <div className="row gap8">
+                      <Input type="date" value={activeFrom} onChange={(e) => setActiveFrom(e.target.value)} />
+                      <Input type="date" value={activeTo} onChange={(e) => setActiveTo(e.target.value)} />
+                    </div>
+                    {!periodValid ? <Hint tone="danger">Définis une période valide (échéance ≥ début).</Hint> : null}
+                  </div>
+
                   <div className="stack stackGap6">
                     <div className="row rowBetween alignCenter">
                       <div className="small2 textMuted">Jours (obligatoire)</div>
@@ -914,37 +982,19 @@ export default function CreateV2Habits({
                     </div>
 
                     <DayChips value={daysOfWeek} onChange={setDaysOfWeek} />
-
                     {missingWeeklyDays ? <Hint tone="danger">Choisis au moins un jour.</Hint> : null}
                   </div>
 
                   <div className="stack stackGap6">
                     <div className="small2 textMuted">Moment</div>
-                    <Select
-                      value={scheduleMode}
-                      onChange={(e) => {
-                        const next = e.target.value;
-                        setScheduleMode(next);
-                        if (next === "WEEKLY_SLOTS") {
-                          setTimeMode("NONE");
-                          setStartTime("");
-                        }
-                      }}
-                    >
+                    <Select value={scheduleMode} onChange={(e) => setScheduleMode(e.target.value)}>
                       <option value="STANDARD">Dans la journée / Heure fixe</option>
                       <option value="WEEKLY_SLOTS">Créneaux par jour</option>
                     </Select>
 
                     {scheduleMode === "STANDARD" ? (
                       <div className="row gap8">
-                        <Select
-                          value={timeMode}
-                          onChange={(e) => {
-                            const next = e.target.value;
-                            setTimeMode(next);
-                            if (next !== "FIXED") setStartTime("");
-                          }}
-                        >
+                        <Select value={timeMode} onChange={(e) => setTimeMode(e.target.value)}>
                           <option value="NONE">Dans la journée</option>
                           <option value="FIXED">Heure fixe</option>
                         </Select>
@@ -964,33 +1014,20 @@ export default function CreateV2Habits({
                             const dayLabel = DOWS.find((d) => d.id === dayId)?.label || String(dayId);
                             const baseSlots = Array.isArray(normalizedMap[dayId]) ? normalizedMap[dayId] : [];
                             const slots = baseSlots.length ? baseSlots : [{ start: "", end: "" }];
+
                             return (
                               <div key={dayId} className="stack stackGap6">
                                 <div className="row rowBetween alignCenter">
                                   <div className="small2">{dayLabel}</div>
-                                  <Button variant="ghost" onClick={() => addWeeklySlot(dayId)}>
-                                    +
-                                  </Button>
+                                  <Button variant="ghost" onClick={() => addWeeklySlot(dayId)}>+</Button>
                                 </div>
+
                                 <div className="stack stackGap6">
                                   {slots.map((slot, idx) => (
-                                    <div
-                                      key={`${dayId}-${normalizeStartTime(slot?.start) || "_"}-${normalizeStartTime(slot?.end) || "_"}-${idx}`}
-                                      className="row gap8 alignCenter"
-                                    >
-                                      <Input
-                                        type="time"
-                                        value={slot.start || ""}
-                                        onChange={(e) => updateWeeklySlot(dayId, idx, "start", e.target.value)}
-                                      />
-                                      <Input
-                                        type="time"
-                                        value={slot.end || ""}
-                                        onChange={(e) => updateWeeklySlot(dayId, idx, "end", e.target.value)}
-                                      />
-                                      <Button variant="ghost" onClick={() => removeWeeklySlot(dayId, idx)}>
-                                        Retirer
-                                      </Button>
+                                    <div key={`${dayId}-${idx}`} className="row gap8 alignCenter">
+                                      <Input type="time" value={slot.start || ""} onChange={(e) => updateWeeklySlot(dayId, idx, "start", e.target.value)} />
+                                      <Input type="time" value={slot.end || ""} onChange={(e) => updateWeeklySlot(dayId, idx, "end", e.target.value)} />
+                                      <Button variant="ghost" onClick={() => removeWeeklySlot(dayId, idx)}>Retirer</Button>
                                     </div>
                                   ))}
                                 </div>
@@ -1004,19 +1041,11 @@ export default function CreateV2Habits({
                         ) : null}
                       </div>
                     ) : null}
-
-                    {requiresStartTime && !normalizedStartForCheck ? <Hint tone="danger">Choisis une heure.</Hint> : null}
                   </div>
 
                   <div className="stack stackGap6">
                     <div className="small2 textMuted">Durée (optionnel)</div>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={durationMinutes}
-                      onChange={(e) => setDurationMinutes(e.target.value)}
-                      placeholder="Minutes"
-                    />
+                    <Input type="number" min="1" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} placeholder="Minutes" />
                   </div>
                 </div>
               ) : null}
@@ -1027,23 +1056,14 @@ export default function CreateV2Habits({
             <div className="stack stackGap8">
               <div className="small textMuted">Quantification (optionnel)</div>
               <div className="row gap8">
-                <Input
-                  type="number"
-                  min="1"
-                  value={quantityValue}
-                  onChange={(e) => setQuantityValue(e.target.value)}
-                  placeholder="Quantité"
-                />
+                <Input type="number" min="1" value={quantityValue} onChange={(e) => setQuantityValue(e.target.value)} placeholder="Quantité" />
                 <Input value={quantityUnit} onChange={(e) => setQuantityUnit(e.target.value)} placeholder="Unité" />
                 <Select value={quantityPeriod} onChange={(e) => setQuantityPeriod(e.target.value)}>
                   {QUANTITY_PERIODS.map((period) => (
-                    <option key={period.id} value={period.id}>
-                      {period.label}
-                    </option>
+                    <option key={period.id} value={period.id}>{period.label}</option>
                   ))}
                 </Select>
               </div>
-              {!quantityValid && String(quantityValue || "").trim() ? <Hint tone="danger">Ajoute une unité pour la quantité.</Hint> : null}
             </div>
 
             <Divider />
@@ -1054,22 +1074,11 @@ export default function CreateV2Habits({
                 <Input type="time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} />
                 {!isTypeAnytime ? (
                   <>
-                    <Input
-                      type="time"
-                      value={reminderWindowStart}
-                      onChange={(e) => setReminderWindowStart(e.target.value)}
-                      placeholder="Fenêtre début"
-                    />
-                    <Input
-                      type="time"
-                      value={reminderWindowEnd}
-                      onChange={(e) => setReminderWindowEnd(e.target.value)}
-                      placeholder="Fenêtre fin"
-                    />
+                    <Input type="time" value={reminderWindowStart} onChange={(e) => setReminderWindowStart(e.target.value)} />
+                    <Input type="time" value={reminderWindowEnd} onChange={(e) => setReminderWindowEnd(e.target.value)} />
                   </>
                 ) : null}
               </div>
-              {!reminderValid && reminderWindowProvided ? <Hint tone="danger">Définis une heure de rappel.</Hint> : null}
             </div>
 
             <Divider />
@@ -1089,21 +1098,16 @@ export default function CreateV2Habits({
                       {habit.title}
                       <div className="textMuted2">
                         {formatRepeatLabel(habit)}
+                        {habit.activeFrom && habit.activeTo && habit.repeat !== "none" ? ` · ${habit.activeFrom}→${habit.activeTo}` : ""}
                         {habit.location ? ` · ${habit.location}` : ""}
-                        {habit.scheduleMode === "WEEKLY_SLOTS"
-                          ? ` · ${formatWeeklySlotsSummary(habit)}`
-                          : habit.startTime
-                          ? ` · ${habit.startTime}`
-                          : ""}
+                        {habit.scheduleMode === "WEEKLY_SLOTS" ? ` · ${formatWeeklySlotsSummary(habit)}` : habit.startTime ? ` · ${habit.startTime}` : ""}
                         {Number.isFinite(habit.durationMinutes) ? ` · ${habit.durationMinutes} min` : ""}
                         {formatQuantityLabel(habit) ? ` · ${formatQuantityLabel(habit)}` : ""}
                         {habit.reminderTime ? ` · Rappel ${habit.reminderTime}` : ""}
                         {habit.memo ? " · Mémo" : ""}
                       </div>
                     </div>
-                    <Button variant="ghost" onClick={() => removeHabit(habit.id)}>
-                      Retirer
-                    </Button>
+                    <Button variant="ghost" onClick={() => removeHabit(habit.id)}>Retirer</Button>
                   </div>
                 </AccentItem>
               ))}
@@ -1116,18 +1120,13 @@ export default function CreateV2Habits({
               <Button
                 variant="ghost"
                 onClick={() => {
-                  if (typeof onCancel === "function") {
-                    onCancel();
-                    return;
-                  }
+                  if (typeof onCancel === "function") return onCancel();
                   if (typeof onBack === "function") onBack();
                 }}
               >
                 Annuler
               </Button>
-              <Button onClick={handleDone} disabled={!habits.length || hasInvalidHabits}>
-                Terminer
-              </Button>
+              <Button onClick={handleDone} disabled={!habits.length || hasInvalidHabits}>Terminer</Button>
             </div>
           </div>
         </Card>

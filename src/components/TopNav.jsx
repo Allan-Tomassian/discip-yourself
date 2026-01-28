@@ -53,8 +53,10 @@ export default function TopNav({
             {NAV_ITEMS.map((it) => (
               <button
                 key={it.id}
+                type="button"
                 onClick={() => setActive(it.id)}
                 className={`navBtn ${active === it.id ? "navBtnActive" : ""}`}
+                aria-current={active === it.id ? "page" : undefined}
                 data-tour-id={`topnav-tab-${it.id}`}
               >
                 {it.label}

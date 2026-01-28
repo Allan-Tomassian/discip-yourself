@@ -56,6 +56,17 @@ export default function CreateV2HabitOneOff(props) {
         daysOfWeek: [],
         oneOffDate: nextOneOffDate,
 
+        // V3: mandatory lifecycle period for actions (PROCESS)
+        lifecycleMode: "FIXED",
+        activeFrom: nextOneOffDate,
+        activeTo: nextOneOffDate,
+
+        // Completion semantics (defaults; can be refined in CreateV2Habits UI later)
+        completionMode: current.completionMode || "ONCE",
+        completionTarget: current.completionMode === "ONCE" ? null : current.completionTarget ?? null,
+        missPolicy: current.missPolicy || "LENIENT",
+        graceMinutes: typeof current.graceMinutes === "number" ? current.graceMinutes : 0,
+
         // Never flexible here
         anytimeFlexible: false,
 
@@ -77,6 +88,13 @@ export default function CreateV2HabitOneOff(props) {
         (current.repeat || "") === (nextDraft.repeat || "") &&
         sameArray(current.daysOfWeek || [], nextDraft.daysOfWeek || []) &&
         (current.oneOffDate || "") === (nextDraft.oneOffDate || "") &&
+        (current.lifecycleMode || "") === (nextDraft.lifecycleMode || "") &&
+        (current.activeFrom || "") === (nextDraft.activeFrom || "") &&
+        (current.activeTo || "") === (nextDraft.activeTo || "") &&
+        (current.completionMode || "") === (nextDraft.completionMode || "") &&
+        (current.completionTarget ?? null) === (nextDraft.completionTarget ?? null) &&
+        (current.missPolicy || "") === (nextDraft.missPolicy || "") &&
+        (current.graceMinutes ?? 0) === (nextDraft.graceMinutes ?? 0) &&
         (current.anytimeFlexible || false) === (nextDraft.anytimeFlexible || false) &&
         (current.scheduleMode || "") === (nextDraft.scheduleMode || "") &&
         (current.timeMode || "") === (nextDraft.timeMode || "") &&

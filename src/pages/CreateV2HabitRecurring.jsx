@@ -9,7 +9,28 @@ function appDowFromDate(d) {
   return js === 0 ? 7 : js;
 }
 
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+function toLocalDateKey(d = new Date()) {
+  const year = d.getFullYear();
+  const month = pad2(d.getMonth() + 1);
+  const day = pad2(d.getDate());
+  return `${year}-${month}-${day}`;
+}
+
+function addDaysLocal(dateKey, days) {
+  if (typeof dateKey !== "string" || !dateKey.trim()) return "";
+  const base = new Date(`${dateKey}T12:00:00`);
+  if (Number.isNaN(base.getTime())) return "";
+  base.setDate(base.getDate() + (Number.isFinite(days) ? Math.trunc(days) : 0));
+  return toLocalDateKey(base);
+}
+
+// Helper: compare arrays shallowly for equality.
 function sameArray(a, b) {
+  if (a === b) return true;
   if (!Array.isArray(a) || !Array.isArray(b)) return false;
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i += 1) {
@@ -49,6 +70,23 @@ export default function CreateV2HabitRecurring(props) {
         step: STEP_HABITS,
         habitType: "RECURRING",
 
+        // V3: mandatory period for actions (PROCESS)
+        lifecycleMode: current.lifecycleMode || "FIXED",
+        activeFrom: typeof current.activeFrom === "string" && current.activeFrom ? current.activeFrom : toLocalDateKey(new Date()),
+        activeTo:
+          typeof current.activeTo === "string" && current.activeTo
+            ? current.activeTo
+            : addDaysLocal(
+                typeof current.activeFrom === "string" && current.activeFrom ? current.activeFrom : toLocalDateKey(new Date()),
+                29
+              ),
+
+        // Completion semantics (defaults; can be refined in CreateV2Habits UI later)
+        completionMode: current.completionMode || "ONCE",
+        completionTarget: current.completionMode === "ONCE" ? null : current.completionTarget ?? null,
+        missPolicy: current.missPolicy || "LENIENT",
+        graceMinutes: typeof current.graceMinutes === "number" ? current.graceMinutes : 0,
+
         // Keep this flag for forward-compat (harmless if unused)
         uxV2: true,
 
@@ -77,6 +115,13 @@ export default function CreateV2HabitRecurring(props) {
         current.habitType === nextDraft.habitType &&
         (current.uxV2 || false) === (nextDraft.uxV2 || false) &&
         (current.anytimeFlexible || false) === (nextDraft.anytimeFlexible || false) &&
+        (current.lifecycleMode || "") === (nextDraft.lifecycleMode || "") &&
+        (current.activeFrom || "") === (nextDraft.activeFrom || "") &&
+        (current.activeTo || "") === (nextDraft.activeTo || "") &&
+        (current.completionMode || "") === (nextDraft.completionMode || "") &&
+        (current.completionTarget ?? null) === (nextDraft.completionTarget ?? null) &&
+        (current.missPolicy || "") === (nextDraft.missPolicy || "") &&
+        (current.graceMinutes ?? 0) === (nextDraft.graceMinutes ?? 0) &&
         (current.repeat || "") === (nextDraft.repeat || "") &&
         sameArray(current.daysOfWeek || [], nextDraft.daysOfWeek || []) &&
         (current.oneOffDate || "") === (nextDraft.oneOffDate || "") &&

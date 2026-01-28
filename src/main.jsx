@@ -4,10 +4,12 @@ import App from "./App.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import "./index.css";
 
+const RootWrapper = import.meta.env.DEV ? React.Fragment : React.StrictMode;
+
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
+  <RootWrapper>
     <ErrorBoundary>
       <App />
     </ErrorBoundary>
-  </React.StrictMode>
+  </RootWrapper>
 );

@@ -14,9 +14,61 @@ import { resolveGoalType } from "../domain/goalType";
 const STATUS_RANK = { done: 3, planned: 2, skipped: 1 };
 const DOW_VALUES = new Set([1, 2, 3, 4, 5, 6, 7]); // 1=Mon .. 7=Sun (app convention)
 
+
 function appDowFromDate(d) {
   const js = d.getDay();
   return js === 0 ? 7 : js;
+}
+
+function normalizeDateKeyLoose(value) {
+  const raw = typeof value === "string" ? value.trim() : "";
+  return normalizeLocalDateKey(raw) || "";
+}
+
+function addDaysDateKey(dateKey, days) {
+  const k = normalizeDateKeyLoose(dateKey);
+  if (!k) return "";
+  const base = new Date(`${k}T12:00:00`);
+  if (Number.isNaN(base.getTime())) return "";
+  base.setDate(base.getDate() + (Number.isFinite(days) ? Math.trunc(days) : 0));
+  return toLocalDateKey(base);
+}
+
+function clampPeriod(fromKey, toKey) {
+  const from = normalizeDateKeyLoose(fromKey);
+  const to = normalizeDateKeyLoose(toKey);
+  if (!from && !to) return { from: "", to: "" };
+  if (from && to && to < from) return { from, to: from };
+  return { from: from || "", to: to || "" };
+}
+
+function resolveActivePeriod(goal) {
+  // Period is mandatory for PROCESS goals (enforced in state.js), but we keep safe fallbacks.
+  const planType = typeof goal?.planType === "string" ? goal.planType.trim().toUpperCase() : "";
+
+  // ONE_OFF: period is the oneOffDate.
+  const oneOff = normalizeDateKeyLoose(goal?.oneOffDate);
+  if (planType === "ONE_OFF" && oneOff) return { from: oneOff, to: oneOff };
+
+  const { from, to } = clampPeriod(goal?.activeFrom, goal?.activeTo);
+  if (from && to) return { from, to };
+
+  // Legacy: if only from exists, default to 30-day window.
+  if (from && !to) return { from, to: addDaysDateKey(from, 29) };
+
+  // Last resort: today + 30 days.
+  const today = todayLocalKey();
+  return { from: today, to: addDaysDateKey(today, 29) };
+}
+
+function isDateWithinPeriod(dateKey, period) {
+  const k = normalizeDateKeyLoose(dateKey);
+  if (!k) return false;
+  const from = normalizeDateKeyLoose(period?.from);
+  const to = normalizeDateKeyLoose(period?.to);
+  if (from && k < from) return false;
+  if (to && k > to) return false;
+  return true;
 }
 
 function parseTimeToMinutes(hm) {
@@ -259,6 +311,9 @@ function resolveConflictExact(occurrences, dateKey, start, durationMinutes) {
 }
 
 function shouldOccurOnDate(goal, dateKey, schedule) {
+  const period = resolveActivePeriod(goal);
+  if (!isDateWithinPeriod(dateKey, period)) return false;
+
   const oneOff = normalizeLocalDateKey(goal?.oneOffDate);
   if (oneOff) return oneOff === dateKey;
 
@@ -416,9 +471,23 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
     if (!legacyRepeatWants && !legacyTimeSlots.length) return data;
   }
 
-  const dates = buildWindowDates(fromDateKey, days);
+  const period = resolveActivePeriod(goal);
+  const dates = buildWindowDates(fromDateKey, days).filter((k) => isDateWithinPeriod(k, period));
   const dateSet = new Set(dates);
   let occurrences = Array.isArray(data?.occurrences) ? data.occurrences.slice() : [];
+
+  // Period enforcement: remove occurrences for this goal that fall outside its active period.
+  // We only touch occurrences for this goal, and only within the managed date window.
+  occurrences = occurrences.filter((o) => {
+    if (!o || o.goalId !== goal.id) return true;
+    if (!dateSet.has(o.date)) return true;
+    return isDateWithinPeriod(o.date, period);
+  });
+
+  if (!dates.length) {
+    const nextOccurrences = dedupeOccurrences(occurrences);
+    return { ...data, occurrences: nextOccurrences };
+  }
 
   // Only prune when legacy SLOTS are the intended mode (uniform time slots), not for NO_TIME/DAY_SLOTS.
   const legacySlotKeys = resolveGoalSlots(goal, schedule);

@@ -697,10 +697,13 @@ export default function App() {
             null
           : tab === "library" ||
               tab === "create-goal" ||
+              tab === "create-outcome-next" ||
               tab === "create-habit-type" ||
               tab === "create-habit-oneoff" ||
               tab === "create-habit-recurring" ||
               tab === "create-habit-anytime" ||
+              tab === "create-link-outcome" ||
+              tab === "create-pick-category" ||
               tab === "edit-item"
             ? safeData?.ui?.selectedCategoryByView?.library ||
               librarySelectedCategoryId ||

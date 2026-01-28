@@ -1,15 +1,27 @@
 import React, { useEffect, useMemo, useState } from "react";
 import AccentContext from "./AccentContext";
 
-function hexToRgba(hex, alpha) {
-  if (typeof hex !== "string") return "";
-  const clean = hex.replace("#", "").trim();
-  if (clean.length !== 6) return "";
+function normalizeHex(hex) {
+  if (typeof hex !== "string") return null;
+  const raw = hex.trim().replace(/^#/, "");
+  if (raw.length === 3) {
+    const expanded = `${raw[0]}${raw[0]}${raw[1]}${raw[1]}${raw[2]}${raw[2]}`;
+    return /^[0-9a-fA-F]{6}$/.test(expanded) ? expanded.toUpperCase() : null;
+  }
+  if (raw.length === 6) {
+    return /^[0-9a-fA-F]{6}$/.test(raw) ? raw.toUpperCase() : null;
+  }
+  return null;
+}
+
+function hexToRgba(hex, alpha = 0.12) {
+  const clean = normalizeHex(hex);
+  if (!clean) return "";
   const r = parseInt(clean.slice(0, 2), 16);
   const g = parseInt(clean.slice(2, 4), 16);
   const b = parseInt(clean.slice(4, 6), 16);
   if ([r, g, b].some((v) => Number.isNaN(v))) return "";
-  const a = typeof alpha === "number" ? alpha : 0.12;
+  const a = typeof alpha === "number" ? Math.max(0, Math.min(1, alpha)) : 0.12;
   return `rgba(${r},${g},${b},${a})`;
 }
 
@@ -162,6 +174,16 @@ export function SelectMenu({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e) {
+      const wrap = e.target?.closest?.(".selectMenuWrap");
+      if (!wrap) setOpen(false);
+    }
+    window.addEventListener("pointerdown", onPointerDown, true);
+    return () => window.removeEventListener("pointerdown", onPointerDown, true);
+  }, [open]);
+
   function handleSelect(opt) {
     if (!opt || opt.disabled) return;
     if (typeof onChange === "function") onChange(opt.value);
@@ -255,13 +277,23 @@ export function ProgressRing({ value, size = 44 }) {
 
   return (
     <div style={{ position: "relative", width: size, height: size }}>
-      <svg viewBox="0 0 40 40" style={{ position: "absolute", inset: 0 }}>
-        <circle cx="20" cy="20" r={r} stroke="rgba(255,255,255,0.12)" strokeWidth="4" fill="none" />
+      <svg
+        viewBox="0 0 40 40"
+        style={{ position: "absolute", inset: 0, filter: "drop-shadow(0 6px 18px rgba(0,0,0,.35))" }}
+      >
         <circle
           cx="20"
           cy="20"
           r={r}
-          stroke="rgba(255,255,255,0.92)"
+          stroke="var(--border, rgba(255,255,255,0.14))"
+          strokeWidth="4"
+          fill="none"
+        />
+        <circle
+          cx="20"
+          cy="20"
+          r={r}
+          stroke="var(--accent, rgba(255,255,255,0.92))"
           strokeWidth="4"
           fill="none"
           strokeLinecap="round"

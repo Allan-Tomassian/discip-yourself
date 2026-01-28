@@ -33,6 +33,64 @@ const REPEAT_VALUES = new Set(["none", "daily", "weekly"]);
 
 const SCHEDULE_MODES = new Set(["STANDARD", "WEEKLY_SLOTS"]);
 
+// V3+ (premium): lifecycle + completion rules for PROCESS goals
+const LIFECYCLE_MODES = new Set(["FIXED", "ROLLING", "UNTIL_DONE"]);
+const COMPLETION_MODES = new Set(["ONCE", "COUNT", "DURATION"]);
+const MISS_POLICIES = new Set(["STRICT", "LENIENT"]);
+
+function normalizeLifecycleMode(value) {
+  const raw = typeof value === "string" ? value.trim().toUpperCase() : "";
+  return LIFECYCLE_MODES.has(raw) ? raw : "";
+}
+
+function normalizeCompletionMode(value) {
+  const raw = typeof value === "string" ? value.trim().toUpperCase() : "";
+  return COMPLETION_MODES.has(raw) ? raw : "";
+}
+
+function normalizeMissPolicy(value) {
+  const raw = typeof value === "string" ? value.trim().toUpperCase() : "";
+  return MISS_POLICIES.has(raw) ? raw : "";
+}
+
+function normalizeInt(value, { min = 0, max = Number.POSITIVE_INFINITY } = {}) {
+  const n = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(n)) return null;
+  const v = Math.trunc(n);
+  if (v < min || v > max) return null;
+  return v;
+}
+
+function normalizeFloat(value, { min = -Number.POSITIVE_INFINITY, max = Number.POSITIVE_INFINITY } = {}) {
+  const n = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(n)) return null;
+  if (n < min || n > max) return null;
+  return n;
+}
+
+function normalizeDateKeyLoose(value) {
+  const raw = typeof value === "string" ? value.trim() : "";
+  return normalizeLocalDateKey(raw) || "";
+}
+
+function addDaysDateKey(dateKey, days) {
+  const k = normalizeDateKeyLoose(dateKey);
+  if (!k) return "";
+  const base = new Date(`${k}T12:00:00`);
+  if (Number.isNaN(base.getTime())) return "";
+  base.setDate(base.getDate() + (Number.isFinite(days) ? Math.trunc(days) : 0));
+  return toLocalDateKey(base);
+}
+
+function compareDateKeys(a, b) {
+  const x = normalizeDateKeyLoose(a);
+  const y = normalizeDateKeyLoose(b);
+  if (!x || !y) return 0;
+  if (x < y) return -1;
+  if (x > y) return 1;
+  return 0;
+}
+
 function normalizeScheduleMode(value) {
   if (!value || typeof value !== "string") return "";
   const x = value.trim().toUpperCase();
@@ -608,6 +666,20 @@ export function normalizeGoal(rawGoal, index = 0) {
   const rawStartDate = typeof g.startDate === "string" ? g.startDate.trim() : "";
   g.startDate = normalizeLocalDateKey(rawStartDate) || "";
 
+  // V3: lifecycle (period) + optional location context
+  // NOTE: For PROCESS goals, a period is mandatory (activeFrom/activeTo).
+  // For OUTCOME goals, lifecycle is ignored.
+  g.lifecycleMode = normalizeLifecycleMode(g.lifecycleMode) || "";
+  g.activeFrom = normalizeDateKeyLoose(g.activeFrom) || "";
+  g.activeTo = normalizeDateKeyLoose(g.activeTo) || "";
+
+  // Optional location (premium context)
+  if (typeof g.locationLabel !== "string") g.locationLabel = "";
+  if (typeof g.locationAddress !== "string") g.locationAddress = "";
+  g.locationLat = normalizeFloat(g.locationLat, { min: -90, max: 90 });
+  g.locationLng = normalizeFloat(g.locationLng, { min: -180, max: 180 });
+  g.locationRadiusMeters = normalizeInt(g.locationRadiusMeters, { min: 10, max: 20000 });
+
   const rawTracking = typeof g.trackingMode === "string" ? g.trackingMode.trim() : "";
   if (outcome) g.trackingMode = TRACKING_MODES.has(rawTracking) ? rawTracking : "none";
   if (process) g.trackingMode = "none";
@@ -661,6 +733,16 @@ export function normalizeGoal(rawGoal, index = 0) {
     g.startAt = null;
     g.endAt = null;
 
+    // Remove lifecycle + location (OUTCOME does not carry execution lifecycle)
+    g.lifecycleMode = "";
+    g.activeFrom = "";
+    g.activeTo = "";
+    g.locationLabel = "";
+    g.locationAddress = "";
+    g.locationLat = null;
+    g.locationLng = null;
+    g.locationRadiusMeters = null;
+
     // Remove advanced process scheduling fields (must never live on OUTCOME)
     g.scheduleMode = undefined;
     g.weeklySlotsByDay = undefined;
@@ -693,6 +775,31 @@ export function normalizeGoal(rawGoal, index = 0) {
     g.targetValue = null;
     g.currentValue = null;
 
+    // PROCESS lifecycle: mandatory period.
+    // Rules:
+    // - ONE_OFF: activeFrom = oneOffDate, activeTo = oneOffDate
+    // - ACTION (recurring/anytime): default period = 30 days starting today if missing
+    // - If activeTo < activeFrom, clamp activeTo to activeFrom
+    const todayKey = toLocalDateKey();
+    const existingFrom = g.activeFrom || "";
+    const existingTo = g.activeTo || "";
+
+    // Default lifecycleMode
+    if (!g.lifecycleMode) g.lifecycleMode = "FIXED";
+
+    if (g.planType === "ONE_OFF") {
+      const oneOff = normalizeDateKeyLoose(g.oneOffDate);
+      g.activeFrom = oneOff || existingFrom || todayKey;
+      g.activeTo = g.activeFrom;
+      g.lifecycleMode = "FIXED";
+    } else {
+      g.activeFrom = existingFrom || todayKey;
+      // Default fixed window: 30 days (inclusive) => +29 days
+      g.activeTo = existingTo || addDaysDateKey(g.activeFrom, 29);
+      if (compareDateKeys(g.activeTo, g.activeFrom) < 0) g.activeTo = g.activeFrom;
+      if (!normalizeLifecycleMode(g.lifecycleMode)) g.lifecycleMode = "FIXED";
+    }
+
     // Ensure planType coherence
     if (g.planType === "ONE_OFF") {
       // oneOffDate is the only date carrier for ONE_OFF habits
@@ -712,6 +819,29 @@ export function normalizeGoal(rawGoal, index = 0) {
     }
 
     g.outcomeId = g.parentId || null;
+
+    // Completion rules (V3): default ONCE.
+    g.completionMode = normalizeCompletionMode(g.completionMode) || "ONCE";
+    g.completionTarget = normalizeFloat(g.completionTarget, { min: 1, max: 1000000 });
+    g.missPolicy = normalizeMissPolicy(g.missPolicy) || "LENIENT";
+    g.graceMinutes = normalizeInt(g.graceMinutes, { min: 0, max: 24 * 60 });
+
+    // Backfill from legacy quantity fields when present (non-breaking)
+    if (g.completionMode === "ONCE") {
+      const qv = normalizeFloat(g.quantityValue, { min: 1, max: 1000000 });
+      if (qv && (typeof g.quantityUnit === "string" && g.quantityUnit.trim())) {
+        g.completionMode = "COUNT";
+        g.completionTarget = qv;
+      }
+    }
+
+    // completionTarget required for COUNT/DURATION
+    if ((g.completionMode === "COUNT" || g.completionMode === "DURATION") && !g.completionTarget) {
+      g.completionTarget = g.completionMode === "DURATION" ? (normalizeFloat(g.durationMinutes, { min: 1, max: 24 * 60 }) || 30) : 1;
+    }
+
+    // If ONCE, ignore completionTarget
+    if (g.completionMode === "ONCE") g.completionTarget = null;
   }
 
   // If a PROCESS has no valid parentId, keep it null (linking is optional)
@@ -861,6 +991,13 @@ export function normalizeGoal(rawGoal, index = 0) {
     g.durationMinutes = duration ?? scheduleDuration ?? sessionDuration ?? null;
   }
 
+  // OUTCOME goals must not carry completion/miss semantics.
+  if (outcome) {
+    g.completionMode = undefined;
+    g.completionTarget = undefined;
+    g.missPolicy = undefined;
+    g.graceMinutes = undefined;
+  }
   g.resetPolicy = normalizeResetPolicy(g.resetPolicy);
 
   return g;
@@ -1208,6 +1345,29 @@ export function migrate(prev) {
   next = mergeLegacyHabitsIntoGoals(next);
   next.goals = next.goals.map((g) => backfillGoalLegacyFields(g));
   next.goals = next.goals.map((g, i) => normalizeGoal(g, i, next.categories));
+  // Safety: enforce mandatory lifecycle period on PROCESS goals after normalizeGoal.
+  {
+    const todayKey = toLocalDateKey();
+    next.goals = next.goals.map((g) => {
+      if (!g || typeof g !== "object") return g;
+      if (!isProcess(g)) return g;
+
+      const planType = typeof g.planType === "string" ? g.planType : "ACTION";
+      const from = normalizeDateKeyLoose(g.activeFrom) || "";
+      const to = normalizeDateKeyLoose(g.activeTo) || "";
+
+      if (planType === "ONE_OFF") {
+        const oneOff = normalizeDateKeyLoose(g.oneOffDate) || from || todayKey;
+        return { ...g, lifecycleMode: "FIXED", activeFrom: oneOff, activeTo: oneOff };
+      }
+
+      const activeFrom = from || todayKey;
+      const activeTo = to || addDaysDateKey(activeFrom, 29);
+      const clampedTo = compareDateKeys(activeTo, activeFrom) < 0 ? activeFrom : activeTo;
+      const lifecycleMode = normalizeLifecycleMode(g.lifecycleMode) || "FIXED";
+      return { ...g, lifecycleMode, activeFrom, activeTo: clampedTo };
+    });
+  }
   next.goals = next.goals.map((g) => ({
     ...g,
     status: g.status === "abandoned" ? "invalid" : g.status,
