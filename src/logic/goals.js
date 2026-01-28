@@ -8,6 +8,81 @@ import { resolveGoalType, isOutcome, isProcess } from "../domain/goalType";
 
 const ALLOWED = new Set(["queued", "active", "done", "invalid"]);
 const PLAN_TYPES = new Set(["ACTION", "ONE_OFF", "STATE"]);
+
+const SCHEDULE_MODES = new Set(["STANDARD", "WEEKLY_SLOTS"]);
+
+function normalizeScheduleMode(value) {
+  if (!value || typeof value !== "string") return null;
+  const x = value.trim().toUpperCase();
+  return SCHEDULE_MODES.has(x) ? x : null;
+}
+
+function normalizeWeeklySlotsByDay(value) {
+  if (!value || typeof value !== "object") return null;
+  const out = {};
+  for (const k of Object.keys(value)) {
+    const day = String(k).trim();
+    if (!/^[1-7]$/.test(day)) continue;
+    const arr = value[k];
+    if (!Array.isArray(arr)) continue;
+    const clean = [];
+    for (const slot of arr) {
+      if (!slot || typeof slot !== "object") continue;
+      const start = typeof slot.start === "string" ? slot.start.trim() : "";
+      const end = typeof slot.end === "string" ? slot.end.trim() : "";
+      if (!start || !end) continue;
+      clean.push({ start, end });
+    }
+    if (clean.length) out[day] = clean;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+function extractScheduleExtras(goalLike) {
+  if (!goalLike || typeof goalLike !== "object") return { scheduleMode: null, weeklySlotsByDay: null };
+  const scheduleMode =
+    normalizeScheduleMode(goalLike.scheduleMode) ||
+    normalizeScheduleMode(goalLike.schedule?.scheduleMode) ||
+    null;
+
+  const weeklySlotsByDay =
+    normalizeWeeklySlotsByDay(goalLike.weeklySlotsByDay) ||
+    normalizeWeeklySlotsByDay(goalLike.schedule?.weeklySlotsByDay) ||
+    null;
+
+  return { scheduleMode, weeklySlotsByDay };
+}
+
+function applyScheduleExtras(goalLike, extras) {
+  if (!goalLike || typeof goalLike !== "object") return goalLike;
+  const next = { ...goalLike };
+  const mode = extras?.scheduleMode || null;
+  const byDay = extras?.weeklySlotsByDay || null;
+
+  if (mode) next.scheduleMode = mode;
+  if (byDay) next.weeklySlotsByDay = byDay;
+
+  // Mirror into schedule so planners can read a single place.
+  if (mode || byDay) {
+    const sched = next.schedule && typeof next.schedule === "object" ? { ...next.schedule } : {};
+    if (mode) sched.scheduleMode = mode;
+    if (byDay) sched.weeklySlotsByDay = byDay;
+    next.schedule = sched;
+  }
+
+  // If switching away from WEEKLY_SLOTS, clear only the by-day payload.
+  // Keep `scheduleMode` mirrored inside `schedule` so planners can read a single source.
+  if (next.scheduleMode && next.scheduleMode !== "WEEKLY_SLOTS") {
+    next.weeklySlotsByDay = undefined;
+    if (next.schedule && typeof next.schedule === "object") {
+      const sched = { ...next.schedule };
+      delete sched.weeklySlotsByDay;
+      next.schedule = Object.keys(sched).length ? sched : undefined;
+    }
+  }
+
+  return next;
+}
 const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
 
 // Future flag (do not change behavior elsewhere yet)
@@ -76,6 +151,8 @@ export function sanitizeOutcome(goal) {
   next.startAt = null;
   next.endAt = null;
   next.schedule = undefined;
+  next.scheduleMode = undefined;
+  next.weeklySlotsByDay = undefined;
 
   return next;
 }
@@ -95,6 +172,17 @@ export function sanitizeProcess(goal) {
   next.targetValue = null;
   next.currentValue = null;
 
+  // Keep advanced scheduling fields coherent (weekly slots by day).
+  const extras = extractScheduleExtras(next);
+  if (extras.weeklySlotsByDay && !extras.scheduleMode) extras.scheduleMode = "WEEKLY_SLOTS";
+  if (extras.scheduleMode || extras.weeklySlotsByDay) {
+    const applied = applyScheduleExtras(next, extras);
+    // Re-assign back to `next` while preserving prior spread semantics.
+    next.scheduleMode = applied.scheduleMode;
+    next.weeklySlotsByDay = applied.weeklySlotsByDay;
+    next.schedule = applied.schedule;
+  }
+
   // Keep schedule coherent.
   if (next.planType === "ACTION") {
     next.oneOffDate = undefined;
@@ -106,6 +194,8 @@ export function sanitizeProcess(goal) {
     next.freqUnit = undefined;
     next.freqCount = undefined;
     next.schedule = undefined;
+    next.scheduleMode = undefined;
+    next.weeklySlotsByDay = undefined;
   }
 
   return next;
@@ -505,6 +595,7 @@ function canAbandon(goal) {
 export function createGoal(state, goalInput = {}) {
   if (!state) return state;
   const base = { ...goalInput };
+  const scheduleExtras = extractScheduleExtras(base);
   let workingState = state;
 
   if (!base.categoryId || !String(base.categoryId).trim()) {
@@ -516,10 +607,13 @@ export function createGoal(state, goalInput = {}) {
   const goals = Array.isArray(workingState.goals) ? workingState.goals : [];
 
   if (typeof base.order !== "number") base.order = getNextOrder(goals);
-  const normalized = {
-    ...normalizeGoalFields(base, goals.length, workingState.categories),
-    createdAt: base.createdAt || todayKey(),
-  };
+  const normalized = applyScheduleExtras(
+    {
+      ...normalizeGoalFields(base, goals.length, workingState.categories),
+      createdAt: base.createdAt || todayKey(),
+    },
+    scheduleExtras
+  );
   const planType = normalizePlanType(normalized);
   const goalType = normalizeGoalType(normalized, planType);
   const prepared = { ...normalized, planType, type: goalType };
@@ -539,7 +633,9 @@ export function updateGoal(state, goalId, updates = {}) {
 
   const nextGoals = goals.map((g) => {
     if (g?.id !== goalId) return g;
-    const candidate = { ...g, ...updates };
+    const merged = { ...g, ...updates };
+    const scheduleExtras = extractScheduleExtras(merged);
+    const candidate = applyScheduleExtras(merged, scheduleExtras);
     const planType = normalizePlanType(candidate);
     const goalType = normalizeGoalType(candidate, planType);
     const prepared = { ...candidate, planType, type: goalType };

@@ -14,6 +14,40 @@ const REPEAT_VALUES = new Set(["none", "daily", "weekly"]);
 const DOW_VALUES = new Set([1, 2, 3, 4, 5, 6, 7]);
 const QUANTITY_PERIODS = new Set(["DAY", "WEEK", "MONTH"]);
 
+const HABIT_TYPES = new Set(["ONE_OFF", "RECURRING", "ANYTIME"]);
+const SCHEDULE_MODES = new Set(["STANDARD", "WEEKLY_SLOTS"]);
+
+function normalizeHabitType(value) {
+  const raw = typeof value === "string" ? value.trim().toUpperCase() : "";
+  return HABIT_TYPES.has(raw) ? raw : null;
+}
+
+function normalizeScheduleMode(value) {
+  const raw = typeof value === "string" ? value.trim().toUpperCase() : "";
+  return SCHEDULE_MODES.has(raw) ? raw : "";
+}
+
+function normalizeWeeklySlotsByDay(value) {
+  if (!value || typeof value !== "object") return {};
+  const out = {};
+  for (const k of Object.keys(value)) {
+    const day = String(k).trim();
+    if (!/^[1-7]$/.test(day)) continue;
+    const arr = value[k];
+    if (!Array.isArray(arr)) continue;
+    const clean = [];
+    for (const slot of arr) {
+      if (!slot || typeof slot !== "object") continue;
+      const start = typeof slot.start === "string" ? slot.start.trim() : "";
+      const end = typeof slot.end === "string" ? slot.end.trim() : "";
+      if (!start && !end) continue;
+      clean.push({ start, end });
+    }
+    if (clean.length) out[day] = clean;
+  }
+  return out;
+}
+
 function normalizeRepeat(value) {
   const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
   return REPEAT_VALUES.has(raw) ? raw : "";
@@ -65,6 +99,7 @@ export function createEmptyDraft() {
   return {
     version: CREATION_DRAFT_VERSION,
     step: STEP_OUTCOME,
+    habitType: null,
     category: null,
     outcome: null,
     outcomes: [],
@@ -80,6 +115,7 @@ export function normalizeCreationDraft(raw) {
   const draft = raw && typeof raw === "object" ? { ...raw } : createEmptyDraft();
   if (draft.version !== CREATION_DRAFT_VERSION) draft.version = CREATION_DRAFT_VERSION;
   if (!CREATION_STEPS.includes(draft.step)) draft.step = STEP_OUTCOME;
+  draft.habitType = normalizeHabitType(draft.habitType);
   if (!draft.category || typeof draft.category !== "object") draft.category = null;
   if (!draft.outcome || typeof draft.outcome !== "object") draft.outcome = null;
   if (!Array.isArray(draft.outcomes)) {
@@ -132,8 +168,40 @@ export function normalizeCreationDraft(raw) {
       nextHabit.daysOfWeek = normalizeDaysOfWeek(nextHabit.daysOfWeek);
       nextHabit.startTime = normalizeStartTime(nextHabit.startTime);
       nextHabit.durationMinutes = normalizeDurationMinutes(nextHabit.durationMinutes);
+
+      // Enforce habitType invariants at the draft level to avoid legacy / mixed states.
+      // ANYTIME: no fixed planning; treat as daily availability without time/slots.
+      // ONE_OFF: must be a one-off; no weekly slots.
+      if (draft.habitType === "ANYTIME") {
+        nextHabit.repeat = "daily";
+        nextHabit.daysOfWeek = [];
+        nextHabit.oneOffDate = "";
+        nextHabit.scheduleMode = "STANDARD";
+        nextHabit.weeklySlotsByDay = {};
+        nextHabit.timeMode = "NONE";
+        nextHabit.timeSlots = [];
+        nextHabit.startTime = "";
+      } else if (draft.habitType === "ONE_OFF") {
+        nextHabit.repeat = "none";
+        nextHabit.daysOfWeek = [];
+        nextHabit.scheduleMode = "STANDARD";
+        nextHabit.weeklySlotsByDay = {};
+      }
+
+      // Advanced scheduling (weekly slots by day)
+      const scheduleMode =
+        normalizeScheduleMode(nextHabit.scheduleMode) ||
+        normalizeScheduleMode(nextHabit.schedule?.scheduleMode);
+      nextHabit.scheduleMode = scheduleMode || "STANDARD";
+      // Only weekly habits can use WEEKLY_SLOTS.
+      if (nextHabit.repeat !== "weekly") {
+        nextHabit.scheduleMode = "STANDARD";
+      }
+      if (nextHabit.scheduleMode !== "WEEKLY_SLOTS") {
+        nextHabit.weeklySlotsByDay = {};
+      }
       const normalizedDate = normalizeLocalDateKey(nextHabit.oneOffDate);
-      nextHabit.oneOffDate = repeat === "none" ? normalizedDate || "" : "";
+      nextHabit.oneOffDate = nextHabit.repeat === "none" ? normalizedDate || "" : "";
       const quantityValue = normalizeQuantityValue(nextHabit.quantityValue);
       const quantityUnit = normalizeQuantityUnit(nextHabit.quantityUnit);
       const quantityPeriod = normalizeQuantityPeriod(nextHabit.quantityPeriod);

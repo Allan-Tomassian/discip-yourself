@@ -13,6 +13,10 @@ import Home from "./pages/Home";
 import Categories from "./pages/Categories";
 import CreateV2Outcome from "./pages/CreateV2Outcome";
 import CreateV2Habits from "./pages/CreateV2Habits";
+import CreateV2HabitType from "./pages/CreateV2HabitType";
+import CreateV2HabitOneOff from "./pages/CreateV2HabitOneOff";
+import CreateV2HabitRecurring from "./pages/CreateV2HabitRecurring";
+import CreateV2HabitAnytime from "./pages/CreateV2HabitAnytime";
 import CreateV2LinkOutcome from "./pages/CreateV2LinkOutcome";
 import CreateV2PickCategory from "./pages/CreateV2PickCategory";
 import CreateV2OutcomeNextAction from "./pages/CreateV2OutcomeNextAction";
@@ -44,6 +48,7 @@ import { useTour } from "./tour/useTour";
 import TourOverlay from "./tour/TourOverlay";
 import { createEmptyDraft, normalizeCreationDraft } from "./creation/creationDraft";
 import {
+  STEP_HABIT_TYPE,
   STEP_HABITS,
   STEP_OUTCOME,
   STEP_OUTCOME_NEXT_ACTION,
@@ -89,6 +94,10 @@ const TABS = new Set([
   "pilotage",
   "create-goal",
   "create-outcome-next",
+  "create-habit-type",
+  "create-habit-oneoff",
+  "create-habit-recurring",
+  "create-habit-anytime",
   "create-habit",
   "create-link-outcome",
   "create-pick-category",
@@ -429,6 +438,10 @@ export default function App() {
   const isCreateTab =
     tab === "create-goal" ||
     tab === "create-outcome-next" ||
+    tab === "create-habit-type" ||
+    tab === "create-habit-oneoff" ||
+    tab === "create-habit-recurring" ||
+    tab === "create-habit-anytime" ||
     tab === "create-habit" ||
     tab === "create-link-outcome" ||
     tab === "create-pick-category";
@@ -687,6 +700,10 @@ export default function App() {
             null
           : tab === "library" ||
               tab === "create-goal" ||
+              tab === "create-habit-type" ||
+              tab === "create-habit-oneoff" ||
+              tab === "create-habit-recurring" ||
+              tab === "create-habit-anytime" ||
               tab === "create-habit" ||
               tab === "edit-item"
             ? safeData?.ui?.selectedCategoryByView?.library ||
@@ -794,12 +811,35 @@ export default function App() {
     openCreateHabitDirect({ source, categoryId });
   };
   const handleResumeDraft = () => {
-    const step = isValidCreationStep(draft.step) ? draft.step : STEP_OUTCOME;
-    if (step === STEP_HABITS) setTab("create-habit");
-    else if (step === STEP_OUTCOME_NEXT_ACTION) setTab("create-outcome-next");
-    else if (step === STEP_LINK_OUTCOME) setTab("create-link-outcome");
-    else if (step === STEP_PICK_CATEGORY) setTab("create-pick-category");
-    else setTab("create-goal");
+    const hasHabitDraft =
+      Boolean(draft?.habitType) ||
+      Boolean(Array.isArray(draft?.habits) && draft.habits.length) ||
+      Boolean(Array.isArray(draft?.createdActionIds) && draft.createdActionIds.length);
+
+    const step = isValidCreationStep(draft.step)
+      ? draft.step
+      : hasHabitDraft
+        ? STEP_HABIT_TYPE
+        : STEP_OUTCOME;
+
+    if (step === STEP_HABIT_TYPE) {
+      setTab("create-habit-type");
+    } else if (step === STEP_HABITS) {
+      const ht = (draft?.habitType || "").toString().toUpperCase();
+      if (ht === "ONE_OFF") setTab("create-habit-oneoff");
+      else if (ht === "RECURRING") setTab("create-habit-recurring");
+      else if (ht === "ANYTIME") setTab("create-habit-anytime");
+      else setTab("create-habit");
+    } else if (step === STEP_OUTCOME_NEXT_ACTION) {
+      setTab("create-outcome-next");
+    } else if (step === STEP_LINK_OUTCOME) {
+      setTab("create-link-outcome");
+    } else if (step === STEP_PICK_CATEGORY) {
+      setTab("create-pick-category");
+    } else {
+      setTab("create-goal");
+    }
+
     setPlusOpen(false);
   };
   const openCreateOutcomeDirect = ({ source, categoryId } = {}) => {
@@ -820,9 +860,9 @@ export default function App() {
       source: source || "unknown",
       categoryId: categoryId || null,
       outcomeId: outcomeId || null,
-      step: STEP_HABITS,
+      step: STEP_HABIT_TYPE,
     });
-    setTab("create-habit");
+    setTab("create-habit-type");
     setPlusOpen(false);
   };
   const handleSelectCategory = (categoryId) => {
@@ -938,6 +978,7 @@ export default function App() {
           ? "today"
           : tab === "library" ||
               tab === "create-goal" ||
+              tab === "create-habit-type" ||
               tab === "create-habit" ||
               tab === "edit-item" ||
               tab === "category-detail" ||
@@ -1172,7 +1213,7 @@ export default function App() {
             resetCreateDraft();
             setTab("library");
           }}
-          onNext={() => setTab("create-habit")}
+          onNext={() => setTab("create-outcome-next")}
           onAfterSave={() => setTab("create-outcome-next")}
           canCreateOutcome={canCreateOutcomeNow}
           onOpenPaywall={openPaywall}
@@ -1191,11 +1232,103 @@ export default function App() {
             setTab("library");
           }}
         />
+      ) : tab === "create-habit-type" ? (
+        <CreateV2HabitType
+          data={data}
+          setData={setData}
+          onBack={() => {
+            // If we came from objective creation, go back there; otherwise go back to library.
+            const hasOutcomeDraft = Boolean(draft?.createdOutcomeId || draft?.activeOutcomeId);
+            setTab(hasOutcomeDraft ? "create-goal" : "library");
+          }}
+          onNext={(habitType) => {
+            const ht = (habitType || "").toString().toUpperCase();
+            if (ht === "ONE_OFF") setTab("create-habit-oneoff");
+            else if (ht === "RECURRING") setTab("create-habit-recurring");
+            else if (ht === "ANYTIME") setTab("create-habit-anytime");
+            else setTab("create-habit");
+          }}
+        />
+            ) : tab === "create-habit-oneoff" ? (
+        <CreateV2HabitOneOff
+          data={data}
+          setData={setData}
+          onBack={() => setTab("create-habit-type")}
+          onNext={(step) => {
+            if (step === STEP_LINK_OUTCOME) setTab("create-link-outcome");
+            else if (step === STEP_PICK_CATEGORY) setTab("create-pick-category");
+            else setTab("library");
+          }}
+          onOpenCategories={() => setTab("library")}
+          onCancel={() => {
+            resetCreateDraft();
+            setTab("library");
+          }}
+          onDone={() => {
+            setLibraryCategoryId(null);
+            setTab("library");
+          }}
+          canCreateAction={canCreateActionNow}
+          onOpenPaywall={openPaywall}
+          isPremiumPlan={isPremiumPlan}
+          planLimits={planLimits}
+          generationWindowDays={generationWindowDays}
+        />
+      ) : tab === "create-habit-recurring" ? (
+        <CreateV2HabitRecurring
+          data={data}
+          setData={setData}
+          onBack={() => setTab("create-habit-type")}
+          onNext={(step) => {
+            if (step === STEP_LINK_OUTCOME) setTab("create-link-outcome");
+            else if (step === STEP_PICK_CATEGORY) setTab("create-pick-category");
+            else setTab("library");
+          }}
+          onOpenCategories={() => setTab("library")}
+          onCancel={() => {
+            resetCreateDraft();
+            setTab("library");
+          }}
+          onDone={() => {
+            setLibraryCategoryId(null);
+            setTab("library");
+          }}
+          canCreateAction={canCreateActionNow}
+          onOpenPaywall={openPaywall}
+          isPremiumPlan={isPremiumPlan}
+          planLimits={planLimits}
+          generationWindowDays={generationWindowDays}
+        />
+      ) : tab === "create-habit-anytime" ? (
+        <CreateV2HabitAnytime
+          data={data}
+          setData={setData}
+          onBack={() => setTab("create-habit-type")}
+          onNext={(step) => {
+            if (step === STEP_LINK_OUTCOME) setTab("create-link-outcome");
+            else if (step === STEP_PICK_CATEGORY) setTab("create-pick-category");
+            else setTab("library");
+          }}
+          onOpenCategories={() => setTab("library")}
+          onCancel={() => {
+            resetCreateDraft();
+            setTab("library");
+          }}
+          onDone={() => {
+            setLibraryCategoryId(null);
+            setTab("library");
+          }}
+          canCreateAction={canCreateActionNow}
+          onOpenPaywall={openPaywall}
+          isPremiumPlan={isPremiumPlan}
+          planLimits={planLimits}
+          generationWindowDays={generationWindowDays}
+        />
       ) : tab === "create-habit" ? (
         <CreateV2Habits
           data={data}
           setData={setData}
-          onBack={() => setTab("create-goal")}
+          onBack={() => setTab("create-habit-type")}
           onNext={(step) => {
             if (step === STEP_LINK_OUTCOME) setTab("create-link-outcome");
             else if (step === STEP_PICK_CATEGORY) setTab("create-pick-category");

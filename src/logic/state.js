@@ -30,6 +30,35 @@ export const DEFAULT_BLOCKS = [
 const MEASURE_TYPES = new Set(["money", "counter", "time", "energy", "distance", "weight"]);
 const TRACKING_MODES = new Set(["none", "manual", "template"]);
 const REPEAT_VALUES = new Set(["none", "daily", "weekly"]);
+
+const SCHEDULE_MODES = new Set(["STANDARD", "WEEKLY_SLOTS"]);
+
+function normalizeScheduleMode(value) {
+  if (!value || typeof value !== "string") return "";
+  const x = value.trim().toUpperCase();
+  return SCHEDULE_MODES.has(x) ? x : "";
+}
+
+function normalizeWeeklySlotsByDay(value) {
+  if (!value || typeof value !== "object") return null;
+  const out = {};
+  for (const k of Object.keys(value)) {
+    const day = String(k).trim();
+    if (!/^[1-7]$/.test(day)) continue;
+    const arr = value[k];
+    if (!Array.isArray(arr)) continue;
+    const clean = [];
+    for (const slot of arr) {
+      if (!slot || typeof slot !== "object") continue;
+      const start = typeof slot.start === "string" ? slot.start.trim() : "";
+      const end = typeof slot.end === "string" ? slot.end.trim() : "";
+      if (!start || !end) continue;
+      clean.push({ start, end });
+    }
+    if (clean.length) out[day] = clean;
+  }
+  return Object.keys(out).length ? out : null;
+}
 const DOW_VALUES = new Set([1, 2, 3, 4, 5, 6, 7]);
 const QUANTITY_PERIODS = new Set(["DAY", "WEEK", "MONTH"]);
 const GOAL_PRIORITY_VALUES = new Set(["prioritaire", "secondaire", "bonus"]);
@@ -632,6 +661,16 @@ export function normalizeGoal(rawGoal, index = 0) {
     g.startAt = null;
     g.endAt = null;
 
+    // Remove advanced process scheduling fields (must never live on OUTCOME)
+    g.scheduleMode = undefined;
+    g.weeklySlotsByDay = undefined;
+    if (g.schedule && typeof g.schedule === "object") {
+      const sched = { ...g.schedule };
+      delete sched.scheduleMode;
+      delete sched.weeklySlotsByDay;
+      g.schedule = sched;
+    }
+
     // Outcome is the parent, never a child
     g.parentId = null;
     g.primaryGoalId = null;
@@ -779,6 +818,42 @@ export function normalizeGoal(rawGoal, index = 0) {
     g.timeMode = timeFields.timeMode;
     g.timeSlots = timeFields.timeSlots;
     g.startTime = timeFields.startTime;
+
+    // Advanced scheduling (weekly slots by day)
+    let scheduleMode = normalizeScheduleMode(g.scheduleMode) || normalizeScheduleMode(g.schedule?.scheduleMode);
+    const weeklySlotsByDay = normalizeWeeklySlotsByDay(g.weeklySlotsByDay) || normalizeWeeklySlotsByDay(g.schedule?.weeklySlotsByDay);
+
+    if (weeklySlotsByDay && !scheduleMode) scheduleMode = "WEEKLY_SLOTS";
+
+    if (scheduleMode === "WEEKLY_SLOTS" && weeklySlotsByDay) {
+      g.scheduleMode = "WEEKLY_SLOTS";
+      g.weeklySlotsByDay = weeklySlotsByDay;
+      if (g.schedule && typeof g.schedule === "object") {
+        g.schedule = { ...g.schedule, scheduleMode: "WEEKLY_SLOTS", weeklySlotsByDay };
+      }
+    } else {
+      // Any non-weekly-slots mode: clear payload to avoid stale data.
+      if (typeof g.scheduleMode !== "undefined") g.scheduleMode = undefined;
+      if (typeof g.weeklySlotsByDay !== "undefined") g.weeklySlotsByDay = undefined;
+      if (g.schedule && typeof g.schedule === "object") {
+        const sched = { ...g.schedule };
+        delete sched.scheduleMode;
+        delete sched.weeklySlotsByDay;
+        g.schedule = sched;
+      }
+    }
+
+    // ONE_OFF must never carry weekly-slots payload.
+    if (g.planType === "ONE_OFF") {
+      g.scheduleMode = undefined;
+      g.weeklySlotsByDay = undefined;
+      if (g.schedule && typeof g.schedule === "object") {
+        const sched = { ...g.schedule };
+        delete sched.scheduleMode;
+        delete sched.weeklySlotsByDay;
+        g.schedule = sched;
+      }
+    }
 
     const duration = normalizeDurationMinutes(g.durationMinutes);
     const scheduleDuration = normalizeDurationMinutes(g.schedule?.durationMinutes);
@@ -1238,7 +1313,10 @@ export function migrate(prev) {
       if (!g || !isProcess(g)) continue;
       const st = normalizeStartTime(g.startTime);
       const rt = normalizeStartTime(g.reminderTime);
-      if (!st && !rt && g.id) anytimeGoalIds.add(g.id);
+      const sm = normalizeScheduleMode(g.scheduleMode) || normalizeScheduleMode(g.schedule?.scheduleMode);
+      const wsd = normalizeWeeklySlotsByDay(g.weeklySlotsByDay) || normalizeWeeklySlotsByDay(g.schedule?.weeklySlotsByDay);
+      const hasWeeklySlots = sm === "WEEKLY_SLOTS" && Boolean(wsd);
+      if (!st && !rt && g.id && !hasWeeklySlots) anytimeGoalIds.add(g.id);
     }
     if (anytimeGoalIds.size) {
       let removedOccurrences = 0;

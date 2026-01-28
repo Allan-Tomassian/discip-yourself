@@ -67,12 +67,28 @@ export function IconButton({ icon, children, className = "", type = "button", ..
   );
 }
 
-export function Input({ className = "", ...props }) {
-  return <input className={`input${className ? ` ${className}` : ""}`} {...props} />;
+export function Input({ className = "", style, ...props }) {
+  const type = props?.type;
+  const isDateLike = type === "date" || type === "datetime-local" || type === "time";
+  const input = (
+    <input
+      className={`input${className ? ` ${className}` : ""}`}
+      style={{ maxWidth: "100%", minWidth: 0, ...(style || {}) }}
+      {...props}
+    />
+  );
+  // iOS/Safari date/time controls can visually bleed outside rounded containers.
+  return isDateLike ? <div className="controlClip">{input}</div> : input;
 }
 
-export function Textarea({ className = "", ...props }) {
-  return <textarea className={`textarea${className ? ` ${className}` : ""}`} {...props} />;
+export function Textarea({ className = "", style, ...props }) {
+  return (
+    <textarea
+      className={`textarea${className ? ` ${className}` : ""}`}
+      style={{ maxWidth: "100%", minWidth: 0, ...(style || {}) }}
+      {...props}
+    />
+  );
 }
 
 export function Select({
@@ -153,10 +169,11 @@ export function SelectMenu({
   }
 
   return (
-    <div className="selectMenuWrap" style={style}>
+    <div className="selectMenuWrap" style={{ maxWidth: "100%", ...(style || {}) }}>
       <button
         type="button"
         className={`selectTrigger${className ? ` ${className}` : ""}`}
+        style={{ maxWidth: "100%", minWidth: 0 }}
         onClick={() => (!disabled ? setOpen((prev) => !prev) : null)}
         aria-haspopup="listbox"
         aria-expanded={open}

@@ -53,7 +53,116 @@ function normalizeTimeSlots(timeSlots) {
 
 function resolveTimeMode(goal) {
   const raw = typeof goal?.timeMode === "string" ? goal.timeMode.trim().toUpperCase() : "";
-  return raw || "";
+  return raw;
+}
+
+function resolveScheduleMode(goal, schedule) {
+  const rawGoal = typeof goal?.scheduleMode === "string" ? goal.scheduleMode : "";
+  const rawSchedule = typeof schedule?.scheduleMode === "string" ? schedule.scheduleMode : "";
+  const raw = (rawGoal || rawSchedule || "").trim().toUpperCase();
+  return raw;
+}
+
+function parseSlotRange(raw) {
+  // Accept: "HH:MM-HH:MM" or {start,end} or {startTime,endTime}
+  if (typeof raw === "string") {
+    const s = raw.trim();
+    const m = s.match(/^(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})$/);
+    if (!m) return null;
+    const start = minutesToTime(parseTimeToMinutes(m[1]));
+    const end = minutesToTime(parseTimeToMinutes(m[2]));
+    if (!start || !end) return null;
+    return { start, end };
+  }
+  if (raw && typeof raw === "object") {
+    const startRaw = typeof raw.start === "string" ? raw.start : typeof raw.startTime === "string" ? raw.startTime : "";
+    const endRaw = typeof raw.end === "string" ? raw.end : typeof raw.endTime === "string" ? raw.endTime : "";
+    const start = minutesToTime(parseTimeToMinutes(startRaw));
+    const end = minutesToTime(parseTimeToMinutes(endRaw));
+    if (!start) return null;
+    return end ? { start, end } : { start, end: "" };
+  }
+  return null;
+}
+
+function normalizeSlotRanges(list) {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const item of list) {
+    const slot = parseSlotRange(item);
+    if (!slot || !slot.start) continue;
+    // Prevent duplicates by start+end
+    const key = `${slot.start}::${slot.end || ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(slot);
+  }
+  return out;
+}
+
+function resolveWeeklySlotsByDay(goal, schedule) {
+  // Expected shape: { 1:[{start,end}], 2:[...], ..., 7:[...] } (1=Mon..7=Sun)
+  const raw = goal?.weeklySlotsByDay || schedule?.weeklySlotsByDay;
+  if (!raw || typeof raw !== "object") return null;
+  const out = {};
+  for (const k of Object.keys(raw)) {
+    const day = Number(k);
+    if (!DOW_VALUES.has(day)) continue;
+    out[day] = normalizeSlotRanges(raw[k]);
+  }
+  return out;
+}
+
+function resolvePlannedSlotsForDate(goal, dateKey, schedule) {
+  const scheduleMode = resolveScheduleMode(goal, schedule);
+  const weekly = resolveWeeklySlotsByDay(goal, schedule);
+  if (scheduleMode === "WEEKLY_SLOTS" || weekly) {
+    const date = fromLocalDateKey(dateKey);
+    const dow = appDowFromDate(date);
+    const daySlots = weekly?.[dow] || [];
+    // If no slots for that day, treat as no occurrence that day.
+    return daySlots;
+  }
+
+  // Fallback to existing timeMode/timeSlots behavior.
+  const slotKeys = resolveGoalSlots(goal, schedule);
+  const timeSlots = slotKeys.length ? slotKeys : resolveGoalTimeSlots(goal, schedule);
+  return (timeSlots || []).map((start) => ({ start, end: "" }));
+}
+
+function getDurationMinutesForSlot(goal, schedule, slot) {
+  // If slot has explicit end, derive duration.
+  const startMin = parseTimeToMinutes(slot?.start);
+  const endMin = parseTimeToMinutes(slot?.end);
+  if (Number.isFinite(startMin) && Number.isFinite(endMin)) {
+    const d = endMin - startMin;
+    if (d > 0) return d;
+  }
+  return getDurationMinutes(goal, schedule);
+}
+
+function resolveConflictExact(occurrences, dateKey, start, durationMinutes) {
+  const date = normalizeLocalDateKey(dateKey);
+  const safeStart = start || "09:00";
+  if (!date) return { start: safeStart, conflict: true };
+  const preferredMin = parseTimeToMinutes(safeStart);
+  if (!Number.isFinite(preferredMin)) return { start: safeStart, conflict: true };
+
+  const dayOccurrences = Array.isArray(occurrences)
+    ? occurrences.filter((o) => o && o.date === date)
+    : [];
+  const taken = dayOccurrences.map((o) => ({
+    startMin: parseTimeToMinutes(o.start),
+    duration: Number.isFinite(o.durationMinutes) ? o.durationMinutes : 0,
+  }));
+
+  const isFree = (candidateMin) =>
+    !taken.some((o) => overlaps(candidateMin, durationMinutes, o.startMin, o.duration));
+
+  return isFree(preferredMin)
+    ? { start: safeStart, conflict: false }
+    : { start: safeStart, conflict: true };
 }
 
 function resolveGoalSlots(goal, schedule) {
@@ -223,18 +332,30 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
   if (resolveGoalType(goal) !== "PROCESS") return data;
 
   const schedule = goal.schedule && typeof goal.schedule === "object" ? goal.schedule : null;
-  const slotKeys = resolveGoalSlots(goal, schedule);
-  const timeSlots = slotKeys.length ? slotKeys : resolveGoalTimeSlots(goal, schedule);
+  const scheduleMode = resolveScheduleMode(goal, schedule);
+
   const { slot: fallbackSlot, fromStartAt } = resolveFallbackSlot(goal);
   const oneOff = normalizeLocalDateKey(goal?.oneOffDate);
-  if (!oneOff && !timeSlots.length && !fromStartAt) return data;
+
+  // If user provides weekly slots, we can generate occurrences even without legacy timeSlots/startAt.
+  const weekly = resolveWeeklySlotsByDay(goal, schedule);
+  const hasWeekly = Boolean(weekly && Object.keys(weekly).length);
+
+  // Keep backward compatibility: if nothing indicates timing AND not one-off, do nothing.
+  if (!oneOff && !hasWeekly && !fromStartAt) {
+    // Note: legacy timeSlots are resolved per-date below.
+    const legacySlots = resolveGoalSlots(goal, schedule);
+    const legacyTimeSlots = legacySlots.length ? legacySlots : resolveGoalTimeSlots(goal, schedule);
+    if (!legacyTimeSlots.length) return data;
+  }
 
   const dates = buildWindowDates(fromDateKey, days);
   const dateSet = new Set(dates);
   let occurrences = Array.isArray(data?.occurrences) ? data.occurrences.slice() : [];
 
-  if (resolveTimeMode(goal) === "SLOTS" && slotKeys.length) {
-    const allowed = new Set(slotKeys);
+  const legacySlotKeys = resolveGoalSlots(goal, schedule);
+  if (resolveTimeMode(goal) === "SLOTS" && legacySlotKeys.length) {
+    const allowed = new Set(legacySlotKeys);
     occurrences = occurrences.filter((o) => {
       if (!o || o.goalId !== goal.id) return true;
       if (!dateSet.has(o.date)) return true;
@@ -254,16 +375,29 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
 
   for (const dateKey of dates) {
     if (!shouldOccurOnDate(goal, dateKey, schedule)) continue;
-    const durationMinutes = getDurationMinutes(goal, schedule);
 
-    const slotsForDate = timeSlots.length ? timeSlots : [fallbackSlot];
-    const isAnytimeSlot = slotsForDate.length === 1 && slotsForDate[0] === "00:00";
-    for (const preferredStart of slotsForDate) {
-      const resolved = isAnytimeSlot && preferredStart === "00:00"
-        ? { start: preferredStart, conflict: false }
-        : resolveConflictNearest(occurrences, dateKey, preferredStart, durationMinutes, slotsForDate);
-      const finalStart = isValidStart(resolved.start) ? resolved.start : fallbackSlot;
-      if (!finalStart) continue;
+    const plannedSlots = resolvePlannedSlotsForDate(goal, dateKey, schedule);
+
+    // Backward-compatible fallback when no explicit planned slots found.
+    const slotsForDate = plannedSlots.length
+      ? plannedSlots
+      : [{ start: fallbackSlot, end: "" }];
+
+    // For WEEKLY_SLOTS (or when weeklySlotsByDay exists), keep explicit times (no auto-shift).
+    const useExactTimes = scheduleMode === "WEEKLY_SLOTS" || Boolean(weekly);
+
+    for (const slot of slotsForDate) {
+      const preferredStart = slot?.start;
+      if (!isValidStart(preferredStart)) continue;
+
+      const durationMinutes = getDurationMinutesForSlot(goal, schedule, slot);
+      const candidateStarts = slotsForDate.map((s) => s.start).filter(isValidStart);
+
+      const resolved = useExactTimes
+        ? resolveConflictExact(occurrences, dateKey, preferredStart, durationMinutes)
+        : resolveConflictNearest(occurrences, dateKey, preferredStart, durationMinutes, candidateStarts);
+
+      const finalStart = isValidStart(resolved.start) ? resolved.start : preferredStart;
       const key = occurrenceKey(goal.id, dateKey, finalStart);
       if (usedKeys.has(key)) continue;
 
@@ -276,7 +410,11 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
         durationMinutes,
         status: "planned",
       };
+
+      // Preserve explicit end if provided (useful for UI + future discipline deadlines).
+      if (slot?.end && isValidStart(slot.end)) occurrence.end = slot.end;
       if (resolved.conflict) occurrence.conflict = true;
+
       occurrences.push(occurrence);
       usedKeys.add(key);
     }
@@ -323,7 +461,7 @@ export function validateOccurrences(data) {
     const start = typeof occ.start === "string" ? occ.start.trim() : "";
     console.assert(goalId, "occurrence missing goalId", occ);
     console.assert(date, "occurrence missing/invalid date", occ);
-    console.assert(start, "occurrence missing start", occ);
+    console.assert(start, "occurrence missing start (start is required for planned slots)", occ);
     if (start) console.assert(isValidStart(start), "occurrence invalid start", occ);
     if (occ.conflict === true) console.assert(isValidStart(start), "conflict occurrence invalid start", occ);
     const key = `${goalId}::${date}::${start}`;

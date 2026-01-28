@@ -611,6 +611,42 @@ a{ color:inherit; }
 }
 .textarea{ resize:none; min-height:120px; height:auto; padding:var(--space-12) var(--space-14); }
 
+/* --- iOS overflow/clipping fix for native date/time inputs (wrapper added in UI.jsx) --- */
+.controlClip{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  border:1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--radius-input);
+  overflow:hidden;
+}
+.controlClip:focus-within{
+  border-color: var(--focus);
+  box-shadow: 0 0 0 1px var(--focus), 0 0 16px var(--focusGlow);
+}
+.controlClip > .input,
+.controlClip > .select,
+.controlClip > .textarea{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  border:0;
+  background: transparent;
+  box-shadow:none;
+  border-radius: inherit;
+}
+.controlClip > .textarea{
+  resize:none;
+}
+/* iOS/Safari: normalize native controls so they respect sizing */
+.controlClip .input[type="date"],
+.controlClip .input[type="time"],
+.controlClip .input[type="datetime-local"]{
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .scrollTarget{ scroll-margin-top:120px; }
 
 .flashPulse{

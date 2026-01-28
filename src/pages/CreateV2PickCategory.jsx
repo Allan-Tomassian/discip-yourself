@@ -3,7 +3,6 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card, Select } from "../components/UI";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { safeUpdateGoal } from "../logic/goalGuards";
-import { canCreateCategory } from "../logic/entitlements";
 import { ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
 
 export default function CreateV2PickCategory({ data, setData, onDone, onOpenPaywall }) {
@@ -13,6 +12,9 @@ export default function CreateV2PickCategory({ data, setData, onDone, onOpenPayw
   const draft = normalizeCreationDraft(safeData?.ui?.createDraft);
   const createdActionIds = Array.isArray(draft.createdActionIds) ? draft.createdActionIds : [];
   const actions = goals.filter((g) => g && createdActionIds.includes(g.id));
+  const linkedOutcomeId = draft?.activeOutcomeId ? String(draft.activeOutcomeId) : "";
+  const createdOutcomeId = draft?.createdOutcomeId ? String(draft.createdOutcomeId) : "";
+  const outcomeIds = [linkedOutcomeId, createdOutcomeId].filter(Boolean);
   const sys = categories.find((c) => c?.id === SYSTEM_INBOX_ID) || { id: SYSTEM_INBOX_ID, name: "Général" };
   const rest = categories.filter((c) => c?.id !== SYSTEM_INBOX_ID);
   rest.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
@@ -52,10 +54,8 @@ export default function CreateV2PickCategory({ data, setData, onDone, onOpenPayw
     if (typeof setData !== "function") return;
     const nextCategoryId = selectedCategoryId || initialCategoryId || SYSTEM_INBOX_ID;
     if (nextCategoryId && !options.some((c) => c.id === nextCategoryId)) {
-      if (!canCreateCategory(safeData)) {
-        if (typeof onOpenPaywall === "function") onOpenPaywall("Limite de catégories atteinte.");
-        return;
-      }
+      // No category creation in this flow: fallback to system inbox.
+      setSelectedCategoryId(SYSTEM_INBOX_ID);
       return;
     }
     setData((prev) => {
@@ -63,7 +63,11 @@ export default function CreateV2PickCategory({ data, setData, onDone, onOpenPayw
       if (nextCategoryId === SYSTEM_INBOX_ID) {
         next = ensureSystemInboxCategory(next).state;
       }
-      for (const id of createdActionIds) {
+      const idsToUpdate = [...createdActionIds, ...outcomeIds].filter(Boolean);
+      const seen = new Set();
+      for (const id of idsToUpdate) {
+        if (seen.has(id)) continue;
+        seen.add(id);
         const result = safeUpdateGoal(next, id, { categoryId: nextCategoryId }, { onOpenPaywall });
         next = result.state;
       }
@@ -84,7 +88,7 @@ export default function CreateV2PickCategory({ data, setData, onDone, onOpenPayw
   return (
     <ScreenShell
       data={safeData}
-      pageId="categories"
+      pageId="create-pick-category"
       headerTitle="Créer"
       headerSubtitle={
         <>

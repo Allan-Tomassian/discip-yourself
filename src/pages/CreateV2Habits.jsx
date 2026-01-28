@@ -1,25 +1,22 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { AccentItem, Button, Card, Input, Select, Textarea } from "../components/UI";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_HABITS, STEP_LINK_OUTCOME, STEP_PICK_CATEGORY } from "../creation/creationSchema";
-import { resolveGoalType } from "../domain/goalType";
 import { uid } from "../utils/helpers";
 import { createGoal } from "../logic/goals";
-import { setPrimaryGoalForCategory } from "../logic/priority";
 import { ensureWindowForGoals } from "../logic/occurrencePlanner";
 import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
-import { createDefaultGoalSchedule, ensureSystemInboxCategory, normalizeCategory, SYSTEM_INBOX_ID } from "../logic/state";
-import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
-import { canCreateCategory } from "../logic/entitlements";
+import { createDefaultGoalSchedule, ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
 import { normalizeReminder } from "../logic/reminders";
 import { normalizeTimeFields } from "../logic/timeFields";
+import { resolveGoalType } from "../domain/goalType";
 
 // App convention: 1 = Monday ... 7 = Sunday
 const DOWS = [
   { id: 1, label: "L" },
-  { id: 2, label: "M" },
-  { id: 3, label: "M" },
+  { id: 2, label: "Ma" },
+  { id: 3, label: "Me" },
   { id: 4, label: "J" },
   { id: 5, label: "V" },
   { id: 6, label: "S" },
@@ -87,6 +84,60 @@ function normalizeDaysOfWeek(value) {
   return out;
 }
 
+function timeToMinutes(hhmm) {
+  const raw = typeof hhmm === "string" ? hhmm.trim() : "";
+  if (!/^\d{2}:\d{2}$/.test(raw)) return null;
+  const [h, m] = raw.split(":").map((x) => Number(x));
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return h * 60 + m;
+}
+
+function normalizeSlot(slot) {
+  const start = normalizeStartTime(slot?.start);
+  const end = normalizeStartTime(slot?.end);
+  return { start, end };
+}
+
+function normalizeWeeklySlotsByDay(value) {
+  const out = {};
+  for (let day = 1; day <= 7; day += 1) out[day] = [];
+  if (!value || typeof value !== "object") return out;
+  for (let day = 1; day <= 7; day += 1) {
+    const raw = value[day] || value[String(day)];
+    if (!Array.isArray(raw)) continue;
+    const slots = [];
+    for (const s of raw) {
+      const slot = normalizeSlot(s);
+      if (!slot.start && !slot.end) continue;
+      slots.push(slot);
+    }
+    out[day] = slots;
+  }
+  return out;
+}
+
+function validateWeeklySlotsByDay(daysOfWeek, weeklySlotsByDay) {
+  const days = normalizeDaysOfWeek(daysOfWeek);
+  const map = normalizeWeeklySlotsByDay(weeklySlotsByDay);
+  // Each selected day must have at least one slot with a start.
+  for (const d of days) {
+    const slots = Array.isArray(map[d]) ? map[d] : [];
+    const hasValidStart = slots.some((s) => Boolean(normalizeStartTime(s?.start)));
+    if (!hasValidStart) return false;
+    // If end is provided, it must be after start.
+    for (const s of slots) {
+      const start = normalizeStartTime(s?.start);
+      const end = normalizeStartTime(s?.end);
+      if (!start || !end) continue;
+      const a = timeToMinutes(start);
+      const b = timeToMinutes(end);
+      if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) return false;
+    }
+  }
+  return true;
+}
+
 function formatRepeatLabel(habit) {
   if (!habit) return "Une fois";
   const repeat = habit.repeat || "none";
@@ -101,6 +152,21 @@ function formatRepeatLabel(habit) {
   }
   const dateLabel = habit.oneOffDate ? ` · ${habit.oneOffDate}` : "";
   return `Une fois${dateLabel}`;
+}
+
+function formatWeeklySlotsSummary(habit) {
+  if (!habit || habit.scheduleMode !== "WEEKLY_SLOTS") return "";
+  const map = normalizeWeeklySlotsByDay(habit.weeklySlotsByDay);
+  const days = normalizeDaysOfWeek(habit.daysOfWeek);
+  if (!days.length) return "Créneaux";
+  const parts = [];
+  for (const d of days) {
+    const label = DOWS.find((x) => x.id === d)?.label || String(d);
+    const slots = Array.isArray(map[d]) ? map[d] : [];
+    const count = slots.filter((s) => Boolean(normalizeStartTime(s?.start))).length;
+    parts.push(`${label}(${count || 0})`);
+  }
+  return parts.length ? `Créneaux · ${parts.join(" ")}` : "Créneaux";
 }
 
 export default function CreateV2Habits({
@@ -119,22 +185,23 @@ export default function CreateV2Habits({
 }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
-  const categories = useMemo(
-    () => (Array.isArray(safeData.categories) ? safeData.categories : []),
-    [safeData.categories]
-  );
+  // Category UI/state removed
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
   const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
   const [title, setTitle] = useState("");
-  const [selectedCategoryId, setSelectedCategoryId] = useState(() => {
-    const draftId = draft?.category?.mode === "existing" ? draft.category.id : "";
-    const sys = categories.find((c) => c?.id === SYSTEM_INBOX_ID) || null;
-    if (draftId && categories.some((c) => c.id === draftId)) return draftId;
-    if (sys?.id) return sys.id;
-    return categories[0]?.id || SYSTEM_INBOX_ID;
-  });
   const [oneOffDate, setOneOffDate] = useState(() => todayLocalKey());
-  const [repeat, setRepeat] = useState("none");
+  // habitType gating
+  const habitType = draft?.habitType || "RECURRING"; // ONE_OFF | RECURRING | ANYTIME
+  const isTypeOneOff = habitType === "ONE_OFF";
+  const isTypeAnytime = habitType === "ANYTIME";
+  const isTypeRecurring = !isTypeOneOff && !isTypeAnytime;
+  const [repeat, setRepeat] = useState(() => (isTypeOneOff ? "none" : "daily"));
+  const [scheduleMode, setScheduleMode] = useState("STANDARD"); // STANDARD | WEEKLY_SLOTS
+  const [weeklySlotsByDay, setWeeklySlotsByDay] = useState(() => {
+    const base = {};
+    for (let d = 1; d <= 7; d += 1) base[d] = [{ start: "", end: "" }];
+    return base;
+  });
   const [daysOfWeek, setDaysOfWeek] = useState(() => [appDowFromDate(new Date())]);
   const [timeMode, setTimeMode] = useState("NONE");
   const [startTime, setStartTime] = useState("");
@@ -146,31 +213,19 @@ export default function CreateV2Habits({
   const [reminderWindowStart, setReminderWindowStart] = useState("");
   const [reminderWindowEnd, setReminderWindowEnd] = useState("");
   const [memo, setMemo] = useState("");
-  const [linkToObjective, setLinkToObjective] = useState(() =>
-    Boolean(draft.activeOutcomeId || draft.outcomes?.length)
-  );
+  // Remove linkToObjective state and all outcome linking logic
   const [error, setError] = useState("");
 
   const habits = Array.isArray(draft.habits) ? draft.habits : [];
-  const outcomes = Array.isArray(draft.outcomes) ? draft.outcomes : [];
-  const activeOutcomeId = draft.activeOutcomeId || outcomes[0]?.id || "";
-  const availableOutcomes = useMemo(
-    () => goals.filter((g) => g && resolveGoalType(g) === "OUTCOME"),
-    [goals]
-  );
-  const hasAvailableOutcomes = availableOutcomes.length > 0;
-  const [selectedOutcomeId, setSelectedOutcomeId] = useState(() =>
-    activeOutcomeId || availableOutcomes[0]?.id || ""
-  );
-  const hasOutcome = Boolean(selectedOutcomeId);
-  const categoryId = selectedCategoryId || SYSTEM_INBOX_ID;
-  const category = categoryId ? (safeData.categories || []).find((c) => c.id === categoryId) : null;
+  // Remove all outcomes/objective linking state and category state
   const existingActionCount = useMemo(
     () => goals.filter((g) => resolveGoalType(g) === "PROCESS").length,
     [goals]
   );
   const isWeekly = repeat === "weekly";
   const missingWeeklyDays = isWeekly && daysOfWeek.length === 0;
+  const isWeeklySlotsMode = isWeekly && !isTypeAnytime && scheduleMode === "WEEKLY_SLOTS";
+  const weeklySlotsOk = !isWeeklySlotsMode || validateWeeklySlotsByDay(daysOfWeek, weeklySlotsByDay);
   const oneOffDateValid = repeat !== "none" || Boolean(normalizeLocalDateKey(oneOffDate));
   const quantityValueParsed = normalizeQuantityValue(quantityValue);
   const quantityUnitClean = normalizeQuantityUnit(quantityUnit);
@@ -185,95 +240,25 @@ export default function CreateV2Habits({
   const requiresStartTime = timeMode === "FIXED";
   const startTimeValid = !requiresStartTime || Boolean(normalizedStartForCheck);
   const canAddHabit =
-    Boolean(title.trim()) && !missingWeeklyDays && oneOffDateValid && quantityValid && reminderValid && startTimeValid;
-  const hasInvalidHabits = habits.some(
-    (habit) =>
-      habit &&
-      ((habit.repeat === "weekly" && (!habit.daysOfWeek || habit.daysOfWeek.length === 0)) ||
-        (habit.repeat === "none" && !normalizeLocalDateKey(habit.oneOffDate)) ||
-        (habit.quantityValue && !habit.quantityUnit))
-  );
-  const suggestedCategories = useMemo(() => {
-    const existingNames = new Set(categories.map((c) => String(c?.name || "").trim().toLowerCase()).filter(Boolean));
-    const existingIds = new Set(categories.map((c) => c?.id).filter(Boolean));
-    return SUGGESTED_CATEGORIES.filter(
-      (cat) =>
-        cat &&
-        !existingIds.has(cat.id) &&
-        !existingNames.has(String(cat.name || "").trim().toLowerCase())
-    );
-  }, [categories]);
-  const categoryOptions = useMemo(() => {
-    const sys = categories.find((c) => c?.id === SYSTEM_INBOX_ID) || null;
-    const rest = categories.filter((c) => c?.id !== SYSTEM_INBOX_ID);
-    rest.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
-    const options = [];
-    if (sys) options.push({ id: sys.id, name: sys.name || "Général", color: sys.color });
-    for (const c of rest) options.push({ id: c.id, name: c.name || "Catégorie", color: c.color });
-    for (const s of suggestedCategories) options.push({ id: s.id, name: s.name, color: s.color, suggested: true });
-    if (!options.length) options.push({ id: SYSTEM_INBOX_ID, name: "Général" });
-    return options;
-  }, [categories, suggestedCategories]);
-
-  const syncActiveOutcome = useCallback((nextId) => {
-    if (typeof setData !== "function") return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          createDraft: {
-            ...normalizeCreationDraft(prevUi.createDraft),
-            activeOutcomeId: nextId || null,
-            step: STEP_HABITS,
-          },
-        },
-      };
-    });
-  }, [setData]);
-
-  const syncCategory = useCallback((nextId) => {
-    if (typeof setData !== "function") return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          createDraft: {
-            ...normalizeCreationDraft(prevUi.createDraft),
-            category: nextId ? { mode: "existing", id: nextId } : null,
-            step: STEP_HABITS,
-          },
-        },
-      };
-    });
-  }, [setData]);
-
-  useEffect(() => {
-    if (hasOutcome && error) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setError("");
+    Boolean(title.trim()) &&
+    !missingWeeklyDays &&
+    oneOffDateValid &&
+    quantityValid &&
+    reminderValid &&
+    startTimeValid &&
+    weeklySlotsOk;
+  const hasInvalidHabits = habits.some((habit) => {
+    if (!habit) return false;
+    if (habit.repeat === "weekly" && (!habit.daysOfWeek || habit.daysOfWeek.length === 0)) return true;
+    if (habit.repeat === "none" && !normalizeLocalDateKey(habit.oneOffDate)) return true;
+    if (habit.quantityValue && !habit.quantityUnit) return true;
+    if (habit.repeat === "weekly" && habit.scheduleMode === "WEEKLY_SLOTS") {
+      return !validateWeeklySlotsByDay(habit.daysOfWeek, habit.weeklySlotsByDay);
     }
-  }, [hasOutcome, error]);
+    return false;
+  });
 
-  useEffect(() => {
-    if (!selectedOutcomeId && hasAvailableOutcomes && linkToObjective) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSelectedOutcomeId(availableOutcomes[0].id);
-    }
-  }, [availableOutcomes, hasAvailableOutcomes, linkToObjective, selectedOutcomeId]);
-
-  useEffect(() => {
-    if (!hasAvailableOutcomes && linkToObjective) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLinkToObjective(false);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSelectedOutcomeId("");
-      syncActiveOutcome("");
-    }
-  }, [hasAvailableOutcomes, linkToObjective, syncActiveOutcome]);
+  // Remove all outcome and category sync effects
 
   useEffect(() => {
     if (repeat !== "none") return;
@@ -282,25 +267,18 @@ export default function CreateV2Habits({
     setOneOffDate(todayLocalKey());
   }, [repeat, oneOffDate]);
 
+  // Enforce constraints when habitType changes
   useEffect(() => {
-    if (!categories.length) {
-      if (selectedCategoryId !== SYSTEM_INBOX_ID) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setSelectedCategoryId(SYSTEM_INBOX_ID);
-      }
-      return;
+    if (isTypeOneOff) {
+      setRepeat("none");
+      setScheduleMode("STANDARD");
     }
-    const exists = categories.some((c) => c?.id === selectedCategoryId);
-    if (exists) return;
-    const sys = categories.find((c) => c?.id === SYSTEM_INBOX_ID) || null;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSelectedCategoryId(sys?.id || categories[0]?.id || SYSTEM_INBOX_ID);
-  }, [categories, selectedCategoryId]);
-
-  useEffect(() => {
-    if (!selectedCategoryId) return;
-    syncCategory(selectedCategoryId);
-  }, [selectedCategoryId, syncCategory]);
+    if (isTypeAnytime) {
+      setTimeMode("NONE");
+      setStartTime("");
+      setScheduleMode("STANDARD");
+    }
+  }, [isTypeAnytime, isTypeOneOff]);
 
   function updateDraft(nextHabits) {
     if (typeof setData !== "function") return;
@@ -313,7 +291,6 @@ export default function CreateV2Habits({
           createDraft: {
             ...normalizeCreationDraft(prevUi.createDraft),
             habits: nextHabits,
-            activeOutcomeId: selectedOutcomeId || null,
             step: STEP_HABITS,
           },
         },
@@ -321,23 +298,14 @@ export default function CreateV2Habits({
     });
   }
 
-  function ensureSuggestedCategory(cat) {
-    if (!cat || typeof setData !== "function") return;
-    setData((prev) => {
-      const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
-      if (prevCategories.some((c) => c?.id === cat.id)) return prev;
-      if (prevCategories.some((c) => String(c?.name || "").trim().toLowerCase() === String(cat.name || "").trim().toLowerCase())) {
-        return prev;
-      }
-      const created = normalizeCategory({ id: cat.id, name: cat.name, color: cat.color }, prevCategories.length);
-      return { ...prev, categories: [...prevCategories, created] };
-    });
-  }
-
   function addHabit() {
     const cleanTitle = title.trim();
     if (!cleanTitle) return;
     if (missingWeeklyDays) return;
+    if (isWeeklySlotsMode && !weeklySlotsOk) {
+      setError("Ajoute au moins un créneau valide (début/fin) pour chaque jour sélectionné.");
+      return;
+    }
     if (!oneOffDateValid) {
       setError("Sélectionne une date pour l’action \"Une fois\".");
       return;
@@ -369,16 +337,24 @@ export default function CreateV2Habits({
       if (typeof onOpenPaywall === "function") onOpenPaywall("Limite d’actions atteinte.");
       return;
     }
-    const outcomeId = linkToObjective && selectedOutcomeId ? selectedOutcomeId : null;
+    const outcomeId = draft?.activeOutcomeId ? String(draft.activeOutcomeId) : null;
     const normalizedDays = isWeekly ? normalizeDaysOfWeek(daysOfWeek) : [];
     const normalizedStart = normalizeStartTime(startTime);
     const normalizedDuration = normalizeDurationMinutes(durationMinutes);
     const normalizedOneOff = normalizeLocalDateKey(oneOffDate) || todayLocalKey();
     const normalizedMemo = typeof memo === "string" ? memo.trim() : "";
+    const effectiveScheduleMode = isWeeklySlotsMode ? "WEEKLY_SLOTS" : "STANDARD";
+    const normalizedWeeklySlots = effectiveScheduleMode === "WEEKLY_SLOTS" ? normalizeWeeklySlotsByDay(weeklySlotsByDay) : null;
+
     const timeFields = normalizeTimeFields({
-      timeMode,
-      timeSlots: timeMode === "FIXED" && normalizedStart ? [normalizedStart] : [],
-      startTime: normalizedStart,
+      timeMode: effectiveScheduleMode === "WEEKLY_SLOTS" ? "NONE" : timeMode,
+      timeSlots:
+        effectiveScheduleMode === "WEEKLY_SLOTS"
+          ? []
+          : timeMode === "FIXED" && normalizedStart
+            ? [normalizedStart]
+            : [],
+      startTime: effectiveScheduleMode === "WEEKLY_SLOTS" ? "" : normalizedStart,
       reminderTime: normalizedReminderTime,
     });
     const nextHabits = [
@@ -389,6 +365,8 @@ export default function CreateV2Habits({
         outcomeId,
         repeat,
         daysOfWeek: normalizedDays,
+        scheduleMode: effectiveScheduleMode,
+        weeklySlotsByDay: normalizedWeeklySlots,
         timeMode: timeFields.timeMode,
         timeSlots: timeFields.timeSlots,
         startTime: timeFields.startTime,
@@ -412,6 +390,44 @@ export default function CreateV2Habits({
     setReminderWindowStart("");
     setReminderWindowEnd("");
     setMemo("");
+    if (isWeeklySlotsMode) {
+      setWeeklySlotsByDay(() => {
+        const base = {};
+        for (let d = 1; d <= 7; d += 1) base[d] = [{ start: "", end: "" }];
+        return base;
+      });
+    }
+  }
+
+  function addWeeklySlot(dayId) {
+    setWeeklySlotsByDay((prev) => {
+      const next = normalizeWeeklySlotsByDay(prev);
+      const list = Array.isArray(next[dayId]) ? next[dayId] : [];
+      next[dayId] = [...list, { start: "", end: "" }];
+      return next;
+    });
+  }
+
+  function removeWeeklySlot(dayId, slotIndex) {
+    setWeeklySlotsByDay((prev) => {
+      const next = normalizeWeeklySlotsByDay(prev);
+      const list = Array.isArray(next[dayId]) ? next[dayId] : [];
+      next[dayId] = list.filter((_, i) => i !== slotIndex);
+      if (!next[dayId].length) next[dayId] = [{ start: "", end: "" }];
+      return next;
+    });
+  }
+
+  function updateWeeklySlot(dayId, slotIndex, field, value) {
+    setWeeklySlotsByDay((prev) => {
+      const next = normalizeWeeklySlotsByDay(prev);
+      const list = Array.isArray(next[dayId]) ? [...next[dayId]] : [];
+      const current = normalizeSlot(list[slotIndex] || {});
+      const patch = { ...current, [field]: value };
+      list[slotIndex] = patch;
+      next[dayId] = list;
+      return next;
+    });
   }
 
   function removeHabit(id) {
@@ -419,50 +435,16 @@ export default function CreateV2Habits({
     updateDraft(nextHabits);
   }
 
-  function handleCategoryChange(nextId) {
-    const value = nextId || "";
-    const suggested = suggestedCategories.find((cat) => cat.id === value) || null;
-    if (suggested && !canCreateCategory(safeData)) {
-      if (typeof onOpenPaywall === "function") onOpenPaywall("Limite de catégories atteinte.");
-      return;
-    }
-    if (suggested) ensureSuggestedCategory(suggested);
-    if (value === SYSTEM_INBOX_ID && typeof setData === "function") {
-      setData((prev) => ensureSystemInboxCategory(prev).state);
-    }
-    setSelectedCategoryId(value);
-    syncCategory(value);
-  }
-
-  function toggleHabitLink(habitId, shouldLink) {
-    const nextHabits = habits.map((habit) => {
-      if (habit.id !== habitId) return habit;
-      if (shouldLink && selectedOutcomeId) return { ...habit, outcomeId: selectedOutcomeId };
-      return { ...habit, outcomeId: null };
-    });
-    updateDraft(nextHabits);
-  }
+  // Remove handleCategoryChange, toggleHabitLink
 
   function handleDone() {
     if (!habits.length) return;
-    if (linkToObjective && !selectedOutcomeId) {
-      setError("Choisis un objectif ou désactive le lien.");
-      return;
-    }
-    if (hasOutcome && !outcomes[0] && !selectedOutcomeId) {
-      setError("Complète l’objectif avant de terminer.");
-      return;
-    }
     if (typeof setData !== "function") return;
     if (!oneOffDateValid) {
       setError("Sélectionne une date pour l’action \"Une fois\".");
       return;
     }
-    if (!categories.some((c) => c?.id === categoryId) && !canCreateCategory(safeData)) {
-      if (typeof onOpenPaywall === "function") onOpenPaywall("Limite de catégories atteinte.");
-      return;
-    }
-    const linkedOutcomeId = linkToObjective && selectedOutcomeId ? selectedOutcomeId : null;
+    // Use SYSTEM_INBOX_ID for all category creation; linking handled later
     const validHabits = habits.filter(
       (habit) =>
         habit &&
@@ -472,48 +454,16 @@ export default function CreateV2Habits({
     const createdProcessIds = validHabits.map(() => uid());
     setData((prev) => {
       let next = prev;
-      const existingCategories = Array.isArray(next.categories) ? next.categories : [];
-      const hasCategory = existingCategories.some((c) => c?.id === categoryId);
-      if (!hasCategory) {
-        if (categoryId === SYSTEM_INBOX_ID) {
-          next = ensureSystemInboxCategory(next).state;
-        } else {
-          const suggested = SUGGESTED_CATEGORIES.find((cat) => cat.id === categoryId) || null;
-          if (suggested) {
-            const created = normalizeCategory(
-              { id: suggested.id, name: suggested.name, color: suggested.color },
-              existingCategories.length
-            );
-            next = { ...next, categories: [...existingCategories, created] };
-          }
-        }
-      }
-      const objective = outcomes[0] || null;
-      const outcomeId = objective ? uid() : null;
-      const createdReminders = [];
-
-      if (objective && outcomeId) {
-        next = createGoal(next, {
-          id: outcomeId,
-          categoryId,
-          title: objective.title || "Objectif",
-          type: "OUTCOME",
-          planType: "STATE",
-          deadline: objective.deadline || "",
-          priority: objective.priority || "secondaire",
-        });
-        if (objective.priority === "prioritaire") {
-          next = setPrimaryGoalForCategory(next, categoryId, outcomeId);
-        }
-      }
-
+      // Ensure system inbox exists
+      next = ensureSystemInboxCategory(next).state;
+      // No objective creation here, only process goals
       const baseSchedule = createDefaultGoalSchedule();
       let finalState = next;
       for (let index = 0; index < validHabits.length; index += 1) {
         const habit = validHabits[index];
         const habitId = createdProcessIds[index];
-    const normalizedStart = normalizeStartTime(habit.startTime);
-    const normalizedReminderTime = normalizeStartTime(habit.reminderTime);
+        const normalizedStart = normalizeStartTime(habit.startTime);
+        const normalizedReminderTime = normalizeStartTime(habit.reminderTime);
         const normalizedWindowStart = normalizeStartTime(habit.reminderWindowStart);
         const normalizedWindowEnd = normalizeStartTime(habit.reminderWindowEnd);
         const timeFields = normalizeTimeFields({
@@ -522,7 +472,7 @@ export default function CreateV2Habits({
           startTime: normalizedStart,
           reminderTime: normalizedReminderTime,
         });
-        const occurrenceStart = timeFields.startTime || normalizedReminderTime || "00:00";
+        const occurrenceStart = timeFields.startTime || "";
         const normalizedDuration = normalizeDurationMinutes(habit.durationMinutes);
         const normalizedDays = normalizeDaysOfWeek(habit.daysOfWeek);
         const repeatMode = habit.repeat || "none";
@@ -530,33 +480,36 @@ export default function CreateV2Habits({
         const isDailyRepeat = repeatMode === "daily";
         const isOneOff = repeatMode === "none";
         const reminderEnabled = Boolean(normalizedReminderTime);
+        const processScheduleMode = habit.scheduleMode === "WEEKLY_SLOTS" ? "WEEKLY_SLOTS" : "STANDARD";
+        const normalizedWeeklySlots =
+          processScheduleMode === "WEEKLY_SLOTS" ? normalizeWeeklySlotsByDay(habit.weeklySlotsByDay) : null;
         const schedule = isOneOff
           ? null
           : {
               ...baseSchedule,
               daysOfWeek: isWeeklyRepeat ? normalizedDays : [],
-              timeSlots: [occurrenceStart],
+              timeSlots: processScheduleMode === "WEEKLY_SLOTS" ? [] : occurrenceStart ? [occurrenceStart] : [],
               durationMinutes: normalizedDuration,
               windowStart: normalizedWindowStart || "",
               windowEnd: normalizedWindowEnd || "",
               remindersEnabled: reminderEnabled,
+              scheduleMode: processScheduleMode,
+              weeklySlotsByDay: normalizedWeeklySlots,
             };
         const normalizedOneOff = normalizeLocalDateKey(habit.oneOffDate) || todayLocalKey();
         const oneOffDate = isOneOff ? normalizedOneOff : undefined;
-        const startAt = isOneOff ? `${oneOffDate}T${occurrenceStart}` : null;
+        const startAt = isOneOff && occurrenceStart ? `${oneOffDate}T${occurrenceStart}` : null;
         const normalizedQuantityValue = normalizeQuantityValue(habit.quantityValue);
         const normalizedQuantityUnit = normalizeQuantityUnit(habit.quantityUnit);
         const normalizedQuantityPeriod = normalizeQuantityPeriod(habit.quantityPeriod);
         const normalizedMemo = typeof habit.memo === "string" ? habit.memo.trim() : "";
         finalState = createGoal(finalState, {
           id: habitId,
-          categoryId,
+          categoryId: SYSTEM_INBOX_ID,
           title: habit.title,
           type: "PROCESS",
           planType: isOneOff ? "ONE_OFF" : "ACTION",
-          parentId: habit.outcomeId && (outcomeId || selectedOutcomeId)
-            ? outcomeId || selectedOutcomeId
-            : null,
+          parentId: habit.outcomeId ? habit.outcomeId : null,
           cadence: isOneOff ? undefined : isDailyRepeat ? "DAILY" : "WEEKLY",
           target: isOneOff ? undefined : 1,
           freqCount: isOneOff ? undefined : 1,
@@ -568,6 +521,8 @@ export default function CreateV2Habits({
           startAt,
           repeat: repeatMode,
           daysOfWeek: normalizedDays,
+          scheduleMode: processScheduleMode,
+          weeklySlotsByDay: normalizedWeeklySlots,
           timeMode: timeFields.timeMode,
           timeSlots: timeFields.timeSlots,
           startTime: timeFields.startTime,
@@ -581,18 +536,24 @@ export default function CreateV2Habits({
           habitNotes: normalizedMemo,
         });
         if (reminderEnabled) {
-          createdReminders.push(
-            normalizeReminder(
-              {
-                goalId: habitId,
-                time: normalizedReminderTime,
-                enabled: true,
-                channel: "IN_APP",
-                label: habit.title || "Rappel",
-              },
-              createdReminders.length
-            )
-          );
+          const existingReminders = Array.isArray(finalState.reminders) ? finalState.reminders : [];
+          const filtered = existingReminders.filter((r) => r?.goalId !== habitId);
+          finalState = {
+            ...finalState,
+            reminders: [
+              ...filtered,
+              normalizeReminder(
+                {
+                  goalId: habitId,
+                  time: normalizedReminderTime,
+                  enabled: true,
+                  channel: "IN_APP",
+                  label: habit.title || "Rappel",
+                },
+                0
+              ),
+            ],
+          };
         }
         if (isOneOff && oneOffDate) {
           finalState = ensureWindowForGoals(finalState, [habitId], oneOffDate, 1);
@@ -609,20 +570,16 @@ export default function CreateV2Habits({
         finalState = ensureWindowForGoals(finalState, createdProcessIds, todayLocalKey(), days);
       }
 
-      if (createdReminders.length) {
-        const existingReminders = Array.isArray(finalState.reminders) ? finalState.reminders : [];
-        const filtered = existingReminders.filter((r) => !createdProcessIds.includes(r?.goalId));
-        finalState = { ...finalState, reminders: [...filtered, ...createdReminders] };
-      }
-
-      const nextStep = linkedOutcomeId ? STEP_PICK_CATEGORY : STEP_LINK_OUTCOME;
+      // nextStep based on seeded outcome
+      const seededOutcomeId = draft?.activeOutcomeId ? String(draft.activeOutcomeId) : null;
+      const nextStep = seededOutcomeId ? STEP_PICK_CATEGORY : STEP_LINK_OUTCOME;
       const nextDraft = {
         ...createEmptyDraft(),
         step: nextStep,
-        activeOutcomeId: linkedOutcomeId,
+        activeOutcomeId: seededOutcomeId,
         createdActionIds: createdProcessIds,
-        category: categoryId ? { mode: "existing", id: categoryId } : null,
-        pendingCategoryId: categoryId || null,
+        category: { mode: "existing", id: SYSTEM_INBOX_ID },
+        pendingCategoryId: SYSTEM_INBOX_ID,
       };
       return {
         ...finalState,
@@ -630,31 +587,23 @@ export default function CreateV2Habits({
       };
     });
     if (typeof onNext === "function") {
-      onNext(linkedOutcomeId ? STEP_PICK_CATEGORY : STEP_LINK_OUTCOME);
+      const seededOutcomeId = draft?.activeOutcomeId ? String(draft.activeOutcomeId) : null;
+      onNext(seededOutcomeId ? STEP_PICK_CATEGORY : STEP_LINK_OUTCOME);
       return;
     }
     if (typeof onDone === "function") onDone();
   }
 
-  function getOutcomeLabel(id) {
-    return (
-      outcomes.find((o) => o.id === id)?.title ||
-      goals.find((g) => g.id === id)?.title ||
-      "Objectif"
-    );
-  }
-
-  const outcomeLabel = hasOutcome ? getOutcomeLabel(selectedOutcomeId) : "Sans objectif";
-  const objectiveColor = category?.color || "#64748B";
+  // Remove getOutcomeLabel, outcomeLabel, objectiveColor
 
   return (
     <ScreenShell
       data={safeData}
-      pageId="categories"
+      pageId="create-habit"
       headerTitle="Créer"
       headerSubtitle={
         <>
-          <span className="textMuted2">2.</span> Actions · {outcomeLabel}
+          <span className="textMuted2">2.</span> Actions · {habitType === "ONE_OFF" ? "Une fois" : habitType === "ANYTIME" ? "Anytime" : "Récurrent"}
         </>
       }
       backgroundImage={backgroundImage}
@@ -675,51 +624,63 @@ export default function CreateV2Habits({
                 Ajouter
               </Button>
             </div>
-            <div className="stack stackGap8">
-              <div className="row rowBetween alignCenter">
-                <div className="small textMuted">Catégorie</div>
-                {typeof onOpenCategories === "function" ? (
-                  <button type="button" className="linkBtn" onClick={onOpenCategories}>
-                    Voir toutes
-                  </button>
-                ) : null}
-              </div>
-              <Select value={selectedCategoryId} onChange={(e) => handleCategoryChange(e.target.value)}>
-                {categoryOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                    {option.suggested ? " (suggestion)" : ""}
-                  </option>
-                ))}
-              </Select>
-            </div>
+            {/* Category selection UI removed */}
             <div className="stack stackGap8">
               <div className="small textMuted">Mode</div>
+
               <div className="row gap8">
-                <Select value={repeat} onChange={(e) => setRepeat(e.target.value)}>
-                  <option value="none">Une fois</option>
-                  <option value="daily">Quotidien</option>
-                  <option value="weekly">Hebdo</option>
-                </Select>
-                <Select
-                  value={timeMode}
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    setTimeMode(next);
-                    if (next !== "FIXED") setStartTime("");
-                  }}
-                >
-                  <option value="NONE">Sans heure</option>
-                  <option value="FIXED">À heure fixe</option>
-                </Select>
-                {timeMode === "FIXED" ? (
-                  <Input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    placeholder="Heure"
-                  />
+                {!isTypeOneOff ? (
+                  <Select value={repeat} onChange={(e) => setRepeat(e.target.value)}>
+                    <option value="daily">Quotidien</option>
+                    <option value="weekly">Hebdo</option>
+                  </Select>
+                ) : (
+                  <div className="small2 textMuted">Ponctuelle</div>
+                )}
+
+                {repeat === "weekly" && !isTypeAnytime ? (
+                  <Select
+                    value={scheduleMode}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setScheduleMode(next);
+                      if (next === "WEEKLY_SLOTS") {
+                        setTimeMode("NONE");
+                        setStartTime("");
+                      }
+                    }}
+                  >
+                    <option value="STANDARD">Heure unique (hebdo)</option>
+                    <option value="WEEKLY_SLOTS">Créneaux par jour</option>
+                  </Select>
                 ) : null}
+
+                {!isTypeAnytime && !isWeeklySlotsMode ? (
+                  <>
+                    <Select
+                      value={timeMode}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setTimeMode(next);
+                        if (next !== "FIXED") setStartTime("");
+                      }}
+                    >
+                      <option value="NONE">Sans heure</option>
+                      <option value="FIXED">À heure fixe</option>
+                    </Select>
+                    {timeMode === "FIXED" ? (
+                      <Input
+                        type="time"
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                        placeholder="Heure"
+                      />
+                    ) : null}
+                  </>
+                ) : isTypeAnytime ? (
+                  <div className="small2 textMuted">Sans heure</div>
+                ) : null}
+
                 <Input
                   type="number"
                   min="1"
@@ -728,7 +689,8 @@ export default function CreateV2Habits({
                   placeholder="Durée (min)"
                 />
               </div>
-              {repeat === "none" ? (
+
+              {isTypeOneOff ? (
                 <div className="stack stackGap6">
                   <div className="small2 textMuted">Date</div>
                   <Input
@@ -741,6 +703,7 @@ export default function CreateV2Habits({
                   />
                 </div>
               ) : null}
+
               {repeat === "weekly" ? (
                 <div className="editDaysRow">
                   {DOWS.map((day) => {
@@ -765,8 +728,62 @@ export default function CreateV2Habits({
                   })}
                 </div>
               ) : null}
-              {missingWeeklyDays ? (
-                <div className="small2 textAccent">Choisis au moins un jour.</div>
+
+              {repeat === "weekly" && scheduleMode === "WEEKLY_SLOTS" && !missingWeeklyDays ? (
+                <div className="stack stackGap8">
+                  <div className="small2 textMuted">Créneaux par jour</div>
+                  <div className="stack stackGap10">
+                    {(() => {
+                      const normalizedMap = normalizeWeeklySlotsByDay(weeklySlotsByDay);
+                      return normalizeDaysOfWeek(daysOfWeek).map((dayId) => {
+                        const dayLabel = DOWS.find((d) => d.id === dayId)?.label || String(dayId);
+                        const baseSlots = Array.isArray(normalizedMap[dayId]) ? normalizedMap[dayId] : [];
+                        const slots = baseSlots.length ? baseSlots : [{ start: "", end: "" }];
+                        return (
+                          <div key={dayId} className="stack stackGap6">
+                            <div className="row rowBetween alignCenter">
+                              <div className="small2">{dayLabel}</div>
+                              <Button variant="ghost" onClick={() => addWeeklySlot(dayId)}>
+                                +
+                              </Button>
+                            </div>
+                            <div className="stack stackGap6">
+                              {slots.map((slot, idx) => (
+                                <div key={`${dayId}-${idx}`} className="row gap8 alignCenter">
+                                  <Input
+                                    type="time"
+                                    value={slot.start || ""}
+                                    onChange={(e) => updateWeeklySlot(dayId, idx, "start", e.target.value)}
+                                    placeholder="Début"
+                                  />
+                                  <Input
+                                    type="time"
+                                    value={slot.end || ""}
+                                    onChange={(e) => updateWeeklySlot(dayId, idx, "end", e.target.value)}
+                                    placeholder="Fin"
+                                  />
+                                  <Button variant="ghost" onClick={() => removeWeeklySlot(dayId, idx)}>
+                                    Retirer
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                  {!weeklySlotsOk ? (
+                    <div className="small2 textAccent">
+                      Ajoute au moins un créneau valide (début/fin) pour chaque jour sélectionné.
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {missingWeeklyDays ? <div className="small2 textAccent">Choisis au moins un jour.</div> : null}
+              {isWeeklySlotsMode && !weeklySlotsOk && !missingWeeklyDays ? (
+                <div className="small2 textAccent">Ajoute des créneaux valides pour chaque jour.</div>
               ) : null}
               {requiresStartTime && !normalizedStartForCheck ? (
                 <div className="small2 textAccent">Choisis une heure.</div>
@@ -829,75 +846,22 @@ export default function CreateV2Habits({
               <div className="small textMuted">Mémo (optionnel)</div>
               <Textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="Note personnelle" />
             </div>
-            <div className="stack stackGap8">
-              <label className="includeToggle">
-                <input
-                  type="checkbox"
-                  checked={linkToObjective}
-                  onChange={(e) => {
-                    const next = e.target.checked;
-                    setLinkToObjective(next);
-                    if (!next) setSelectedOutcomeId("");
-                    if (next && !selectedOutcomeId && hasAvailableOutcomes) {
-                      setSelectedOutcomeId(availableOutcomes[0].id);
-                    }
-                    syncActiveOutcome(next ? selectedOutcomeId || availableOutcomes[0]?.id || "" : "");
-                  }}
-                  disabled={!hasAvailableOutcomes}
-                />
-                <span>Liée à un objectif</span>
-              </label>
-              <Select
-                value={selectedOutcomeId}
-                onChange={(e) => {
-                  const nextValue = e.target.value;
-                  setSelectedOutcomeId(nextValue);
-                  syncActiveOutcome(nextValue);
-                }}
-                disabled={!linkToObjective || !hasAvailableOutcomes}
-              >
-                <option value="">Sans objectif</option>
-                {availableOutcomes.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.title || "Objectif"}
-                  </option>
-                ))}
-              </Select>
-            </div>
+            {/* Objective linking UI removed */}
             <div className="stack stackGap8">
               {habits.map((habit) => (
-                <AccentItem
-                  key={habit.id}
-                  color={habit.outcomeId ? objectiveColor : null}
-                  tone={habit.outcomeId ? "accent" : "neutral"}
-                >
+                <AccentItem key={habit.id} tone="neutral">
                   <div className="row rowBetween gap10 wFull">
                     <div className="small2 flex1">
                       {habit.title}
-                      {habit.outcomeId ? (
-                        <span className="textMuted2">
-                          {" "}
-                          · {getOutcomeLabel(habit.outcomeId)}
-                        </span>
-                      ) : null}
                       <div className="textMuted2">
                         {formatRepeatLabel(habit)}
-                        {habit.startTime ? ` · ${habit.startTime}` : ""}
+                        {habit.scheduleMode === "WEEKLY_SLOTS" ? ` · ${formatWeeklySlotsSummary(habit)}` : habit.startTime ? ` · ${habit.startTime}` : ""}
                         {Number.isFinite(habit.durationMinutes) ? ` · ${habit.durationMinutes} min` : ""}
                         {formatQuantityLabel(habit) ? ` · ${formatQuantityLabel(habit)}` : ""}
                         {habit.reminderTime ? ` · Rappel ${habit.reminderTime}` : ""}
                         {habit.memo ? " · Mémo" : ""}
                       </div>
                     </div>
-                    <label className="includeToggle">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(habit.outcomeId)}
-                        onChange={(e) => toggleHabitLink(habit.id, e.target.checked)}
-                        disabled={!hasAvailableOutcomes}
-                      />
-                      <span>Liée</span>
-                    </label>
                     <Button variant="ghost" onClick={() => removeHabit(habit.id)}>
                       Retirer
                     </Button>
