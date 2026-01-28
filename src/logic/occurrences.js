@@ -235,7 +235,7 @@ export function upsertOccurrence(goalId, date, start, durationMinutes, patch, so
   return [...occurrences, finalized];
 }
 
-// --- New: mark all occurrences for a goal/date as done or skipped ---
+// --- New: mark ALL occurrences for a goal/date (every slot) as done/skipped/canceled ---
 export function setOccurrencesStatusForGoalDate(goalId, date, status, source) {
   const occurrences = resolveOccurrences(source);
   const g = typeof goalId === "string" ? goalId.trim() : "";
@@ -255,11 +255,20 @@ export function setOccurrenceStatus(goalId, date, start, status, source) {
   const d = normalizeDateKey(date);
   const s = normalizeTimeHM(start);
   if (!g || !d || !s) return occurrences.slice();
+
   const raw = typeof status === "string" ? status : "";
   if (!STATUS_VALUES.has(raw)) return occurrences.slice();
   const st = normalizeStatus(raw);
+
+  // Deterministic targeting: match by slot key (start or slotKey) to support SLOTS mode.
+  const targetSlot = normalizeSlotKey(s);
+
   return occurrences.map((o) => {
-    if (!o || o.goalId !== g || o.date !== d || o.start !== s) return o;
-    return applyDoneFields({ ...o, status: st }, st, source);
+    if (!o || o.goalId !== g || o.date !== d) return o;
+    const slot = resolveOccurrenceSlotKey(o);
+    if (!slot || slot !== targetSlot) return o;
+    // Keep start/slotKey stable.
+    const next = { ...o, status: st };
+    return applyDoneFields(next, st, source);
   });
 }

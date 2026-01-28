@@ -7,19 +7,24 @@ function buildWeekKeys(nowDate) {
   return Array.from({ length: 7 }, (_, i) => todayKey(addDays(weekStartDate, i)));
 }
 
-function collectDoneByDate(data, dateKeys) {
+function collectDoneCountByDate(data, dateKeys, processIds) {
   const occurrences = Array.isArray(data?.occurrences) ? data.occurrences : [];
-  const dateSet = new Set(dateKeys);
+  const keys = Array.isArray(dateKeys) ? dateKeys : [];
+  const dateSet = new Set(keys);
+  const pidSet = processIds instanceof Set ? processIds : null;
+
   const map = new Map();
-  for (const key of dateKeys) map.set(key, new Set());
+  for (const key of keys) map.set(key, 0);
 
   for (const occ of occurrences) {
     if (!occ || occ.status !== "done") continue;
-    const key = typeof occ.date === "string" ? occ.date : "";
-    if (!dateSet.has(key)) continue;
-    const set = map.get(key);
-    if (!set) continue;
-    if (occ.goalId) set.add(occ.goalId);
+    const dateKey = typeof occ.date === "string" ? occ.date : "";
+    if (!dateSet.has(dateKey)) continue;
+    if (pidSet) {
+      const goalId = typeof occ.goalId === "string" ? occ.goalId : "";
+      if (!goalId || !pidSet.has(goalId)) continue;
+    }
+    map.set(dateKey, (map.get(dateKey) || 0) + 1);
   }
 
   return map;
@@ -29,24 +34,69 @@ function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
+function isOccIgnoredForExpected(status) {
+  // ignored = does not count in expected workload
+  return status === "canceled" || status === "skipped";
+}
+
+function isOccExpected(status) {
+  // expected = counts toward workload (either planned or done)
+  return !isOccIgnoredForExpected(status);
+}
+
+function isOccDone(status) {
+  return status === "done";
+}
+
 export function computeDisciplineScore(occurrences, todayKeyValue) {
   const list = Array.isArray(occurrences) ? occurrences : [];
   const todayKeyStr = typeof todayKeyValue === "string" ? todayKeyValue : "";
-  const expected = list.filter(
-    (occ) =>
-      occ &&
-      typeof occ.date === "string" &&
-      (!todayKeyStr || occ.date < todayKeyStr) &&
-      occ.status !== "canceled"
-  ).length;
+  // Backward-compat: previous behavior considered *all* past occurrences.
+  // We keep it, but use the same semantics (skip/cancel not counted as expected).
+  const expected = list.filter((occ) => {
+    if (!occ || typeof occ.date !== "string") return false;
+    if (todayKeyStr && !(occ.date < todayKeyStr)) return false;
+    const st = occ.status || "planned";
+    return isOccExpected(st);
+  }).length;
+
   if (!expected) return { score: 100, ratio: 1, expected: 0, missed: 0, done: 0 };
-  const done = list.filter(
-    (occ) =>
-      occ &&
-      typeof occ.date === "string" &&
-      (!todayKeyStr || occ.date < todayKeyStr) &&
-      occ.status === "done"
-  ).length;
+
+  const done = list.filter((occ) => {
+    if (!occ || typeof occ.date !== "string") return false;
+    if (todayKeyStr && !(occ.date < todayKeyStr)) return false;
+    const st = occ.status || "planned";
+    return isOccDone(st);
+  }).length;
+
+  const missed = Math.max(0, expected - done);
+  const score = clamp(Math.round(100 * (1 - missed / expected)), 0, 100);
+  return { score, ratio: score / 100, expected, missed, done };
+}
+
+export function computeDisciplineScoreWindow(occurrences, windowKeys, todayKeyValue) {
+  const list = Array.isArray(occurrences) ? occurrences : [];
+  const keys = Array.isArray(windowKeys) ? windowKeys : [];
+  const todayKeyStr = typeof todayKeyValue === "string" ? todayKeyValue : "";
+  const keySet = new Set(keys);
+
+  let expected = 0;
+  let done = 0;
+
+  for (const occ of list) {
+    if (!occ || typeof occ.date !== "string") continue;
+    const dateKey = occ.date;
+    if (!keySet.has(dateKey)) continue;
+    // Discipline window should ignore today+future (only penalize once the day has passed).
+    if (todayKeyStr && !(dateKey < todayKeyStr)) continue;
+
+    const st = occ.status || "planned";
+    if (!isOccExpected(st)) continue;
+    expected += 1;
+    if (isOccDone(st)) done += 1;
+  }
+
+  if (!expected) return { score: 100, ratio: 1, expected: 0, missed: 0, done: 0 };
   const missed = Math.max(0, expected - done);
   const score = clamp(Math.round(100 * (1 - missed / expected)), 0, 100);
   return { score, ratio: score / 100, expected, missed, done };
@@ -135,28 +185,18 @@ export function getCategoryStatus(data, categoryId, nowDate = new Date()) {
       if (!occ || typeof occ.goalId !== "string" || !processIds.has(occ.goalId)) continue;
       const dateKey = typeof occ.date === "string" ? occ.date : "";
       const status = occ.status || "planned";
-      if (dateKey && dateKey > today && status !== "skipped") hasFutureOccurrences = true;
+      if (dateKey && dateKey > today && status !== "skipped" && status !== "canceled") hasFutureOccurrences = true;
       if (dateKey && weekSet.has(dateKey)) {
         occCountByGoal.set(occ.goalId, (occCountByGoal.get(occ.goalId) || 0) + 1);
         if (status === "done") {
           occDoneByGoal.set(occ.goalId, (occDoneByGoal.get(occ.goalId) || 0) + 1);
-        } else if (status !== "skipped") {
+        } else if (status !== "skipped" && status !== "canceled") {
           occPlannedByGoal.set(occ.goalId, (occPlannedByGoal.get(occ.goalId) || 0) + 1);
         }
       }
     }
   }
 
-  const doneByDate = collectDoneByDate(data || {}, weekKeys);
-  const doneDatesByGoal = new Map();
-  for (const [dateKey, set] of doneByDate.entries()) {
-    for (const id of set) {
-      if (!processIds.has(id)) continue;
-      const bucket = doneDatesByGoal.get(id) || new Set();
-      bucket.add(dateKey);
-      doneDatesByGoal.set(id, bucket);
-    }
-  }
 
   let hasPlannedData = false;
   let allPlannedMet = true;
@@ -179,8 +219,7 @@ export function getCategoryStatus(data, categoryId, nowDate = new Date()) {
     if (isGoalActive(goal)) hasActivePlannedGoal = true;
 
     const plannedCount = occPlannedByGoal.get(goalId) || 0;
-    const doneFallback = doneDatesByGoal.get(goalId)?.size || 0;
-    const doneCount = Math.max(occDoneByGoal.get(goalId) || 0, doneFallback);
+    const doneCount = occDoneByGoal.get(goalId) || 0;
     if (doneCount < plannedCount) allPlannedMet = false;
   }
 
@@ -199,35 +238,46 @@ export function getLoadSummary(data, nowDate = new Date()) {
   const weekKeys = buildWeekKeys(nowDate);
   const weekSet = new Set(weekKeys);
 
-  const doneByDate = collectDoneByDate(data || {}, weekKeys);
-  const countDoneForDate = (key) => {
-    const set = doneByDate.get(key);
-    if (!set) return 0;
-    let count = 0;
-    for (const id of set) if (processIds.has(id)) count += 1;
-    return count;
-  };
-
-  const doneToday = countDoneForDate(today);
-  const doneWeek = weekKeys.reduce((sum, key) => sum + countDoneForDate(key), 0);
+  let doneToday = 0;
+  let doneWeek = 0;
 
   const occurrences = Array.isArray(data?.occurrences) ? data.occurrences : [];
-  let plannedToday = 0;
-  let plannedWeek = 0;
+  let remainingToday = 0;
+  let remainingWeek = 0;
+  let expectedToday = 0;
+  let expectedWeek = 0;
 
   for (const occ of occurrences) {
     if (!occ || typeof occ.goalId !== "string" || !processIds.has(occ.goalId)) continue;
     const dateKey = typeof occ.date === "string" ? occ.date : "";
-    const status = occ.status || "planned";
-    if (status === "skipped" || status === "done") continue;
-    if (dateKey === today) plannedToday += 1;
-    if (dateKey && weekSet.has(dateKey)) plannedWeek += 1;
+    if (!dateKey) continue;
+    const st = occ.status || "planned";
+
+    // expected = planned+done (skip/cancel excluded)
+    const countsForExpected = isOccExpected(st);
+    const countsForRemaining = st !== "done" && st !== "skipped" && st !== "canceled";
+    const isDone = st === "done";
+
+    if (dateKey === today) {
+      if (countsForExpected) expectedToday += 1;
+      if (countsForRemaining) remainingToday += 1;
+      if (isDone) doneToday += 1;
+    }
+
+    if (weekSet.has(dateKey)) {
+      if (countsForExpected) expectedWeek += 1;
+      if (countsForRemaining) remainingWeek += 1;
+      if (isDone) doneWeek += 1;
+    }
   }
 
+  const missedWeek = Math.max(0, expectedWeek - doneWeek);
+
   return {
-    today: { planned: plannedToday, done: doneToday },
-    week: { planned: plannedWeek, done: doneWeek },
-    emptyToday: plannedToday === 0,
+    // backward-compatible fields ("planned" used historically as remaining)
+    today: { planned: remainingToday, done: doneToday, expected: expectedToday },
+    week: { planned: remainingWeek, done: doneWeek, expected: expectedWeek, missed: missedWeek },
+    emptyToday: expectedToday === 0,
   };
 }
 
@@ -263,7 +313,7 @@ export function getDisciplineSummary(data, nowDate = new Date()) {
       const dateKey = typeof occ.date === "string" ? occ.date : "";
       if (!windowSet.has(dateKey)) continue;
       const status = occ.status || "planned";
-      if (status === "skipped" || status === "done") continue;
+      if (status === "skipped" || status === "canceled" || status === "done") continue;
       plannedCountByDate.set(dateKey, (plannedCountByDate.get(dateKey) || 0) + 1);
     }
     return plannedCountByDate;
@@ -280,15 +330,12 @@ export function getDisciplineSummary(data, nowDate = new Date()) {
     return cancelled;
   }
 
-  function computeNoExecutionDays(windowKeys, plannedCountByDate, doneByDate) {
+  function computeNoExecutionDays(windowKeys, plannedCountByDate, doneCountByDate) {
     let noExecDays = 0;
     let hasAnySignal = false;
 
     for (const key of windowKeys) {
-      const set = doneByDate.get(key) || new Set();
-      let done = 0;
-      for (const id of set) if (processIds.has(id)) done += 1;
-
+      const done = doneCountByDate.get(key) || 0;
       const planned = plannedCountByDate.get(key) || 0;
       if (done > 0) hasAnySignal = true;
 
@@ -305,12 +352,12 @@ export function getDisciplineSummary(data, nowDate = new Date()) {
   const last7Keys = buildWindowKeys(7);
   const last7Set = new Set(last7Keys);
   const plannedByDate7d = computePlannedCountByDate(last7Keys);
-  const doneByDate7d = collectDoneByDate(data || {}, last7Keys);
+  const doneCountByDate7d = collectDoneCountByDate(data || {}, last7Keys, processIds);
   const cancelledSessions7d = computeCancelledSessions(last7Set);
   const { noExecDays: noExecutionDays7d, hasAnySignal: hasAnySignal7d } = computeNoExecutionDays(
     last7Keys,
     plannedByDate7d,
-    doneByDate7d
+    doneCountByDate7d
   );
   const totalPlanned7d = last7Keys.reduce((sum, k) => sum + (plannedByDate7d.get(k) || 0), 0);
 
@@ -318,12 +365,12 @@ export function getDisciplineSummary(data, nowDate = new Date()) {
   const last30Keys = buildWindowKeys(30);
   const last30Set = new Set(last30Keys);
   const plannedByDate30d = computePlannedCountByDate(last30Keys);
-  const doneByDate30d = collectDoneByDate(data || {}, last30Keys);
+  const doneCountByDate30d = collectDoneCountByDate(data || {}, last30Keys, processIds);
   const cancelledSessions30d = computeCancelledSessions(last30Set);
   const { noExecDays: noExecutionDays30d, hasAnySignal: hasAnySignal30d } = computeNoExecutionDays(
     last30Keys,
     plannedByDate30d,
-    doneByDate30d
+    doneCountByDate30d
   );
   const totalPlanned30d = last30Keys.reduce((sum, k) => sum + (plannedByDate30d.get(k) || 0), 0);
 
@@ -341,8 +388,12 @@ export function getDisciplineSummary(data, nowDate = new Date()) {
   }
 
   runDisciplineSanityChecks();
-  const base = computeDisciplineScore(occurrences, todayKey(nowDate));
-  const disciplineScore = base.score;
+  const todayStr = todayKey(nowDate);
+  const score7 = computeDisciplineScoreWindow(occurrences, last7Keys, todayStr);
+  const score30 = computeDisciplineScoreWindow(occurrences, last30Keys, todayStr);
+
+  // Primary score shown in UI = 7-day discipline.
+  const disciplineScore = score7.score;
 
   return {
     cancelledSessions7d,
@@ -353,5 +404,90 @@ export function getDisciplineSummary(data, nowDate = new Date()) {
     disciplineRatio: disciplineScore / 100,
     windowDays: 30,
     isFreshStart: false,
+    disciplineScore7d: score7.score,
+    disciplineRatio7d: score7.ratio,
+    disciplineExpected7d: score7.expected,
+    disciplineMissed7d: score7.missed,
+    disciplineDone7d: score7.done,
+    disciplineScore30d: score30.score,
+    disciplineRatio30d: score30.ratio,
+    disciplineExpected30d: score30.expected,
+    disciplineMissed30d: score30.missed,
+    disciplineDone30d: score30.done,
   };
+}
+
+export function getCategoryWeekBreakdown(data, categoryId, nowDate = new Date()) {
+  if (!categoryId) return { expected: 0, done: 0, missed: 0, remaining: 0 };
+  const goals = Array.isArray(data?.goals) ? data.goals : [];
+  const processIds = new Set(
+    goals
+      .filter((g) => g && g.categoryId === categoryId && resolveGoalType(g) === "PROCESS")
+      .map((g) => g.id)
+  );
+  if (!processIds.size) return { expected: 0, done: 0, missed: 0, remaining: 0 };
+
+  const weekKeys = buildWeekKeys(nowDate);
+  const weekSet = new Set(weekKeys);
+  const occs = Array.isArray(data?.occurrences) ? data.occurrences : [];
+
+  let expected = 0;
+  let done = 0;
+  let remaining = 0;
+
+  for (const occ of occs) {
+    if (!occ || typeof occ.goalId !== "string" || !processIds.has(occ.goalId)) continue;
+    const dateKey = typeof occ.date === "string" ? occ.date : "";
+    if (!weekSet.has(dateKey)) continue;
+    const st = occ.status || "planned";
+    if (!isOccExpected(st)) continue;
+    expected += 1;
+    if (st === "done") done += 1;
+    if (st !== "done" && st !== "skipped" && st !== "canceled") remaining += 1;
+  }
+
+  const missed = Math.max(0, expected - done);
+  return { expected, done, missed, remaining };
+}
+
+export function getDisciplineStreak7d(data, nowDate = new Date()) {
+  // Streak = consecutive past days (ending yesterday) where ALL expected occurrences were done.
+  const goals = Array.isArray(data?.goals) ? data.goals : [];
+  const processIds = new Set(goals.filter((g) => resolveGoalType(g) === "PROCESS").map((g) => g.id));
+  const occs = Array.isArray(data?.occurrences) ? data.occurrences : [];
+  const todayStr = todayKey(nowDate);
+
+  const keys = buildWeekKeys(nowDate);
+  // keys are Mon..Sun; we want walk backwards from yesterday.
+  const window = keys.filter((k) => k < todayStr).sort();
+  let streak = 0;
+
+  for (let i = window.length - 1; i >= 0; i -= 1) {
+    const day = window[i];
+    let expected = 0;
+    let done = 0;
+
+    for (const occ of occs) {
+      if (!occ || typeof occ.goalId !== "string" || !processIds.has(occ.goalId)) continue;
+      if (occ.date !== day) continue;
+      const st = occ.status || "planned";
+      if (!isOccExpected(st)) continue;
+      expected += 1;
+      if (st === "done") done += 1;
+    }
+
+    if (expected === 0) {
+      // No expected work that day: do not break the streak; also do not increase it.
+      continue;
+    }
+
+    if (done >= expected) {
+      streak += 1;
+      continue;
+    }
+
+    break;
+  }
+
+  return streak;
 }

@@ -576,6 +576,47 @@ export default function Home({
     return map;
   }, [goalsById, occurrences]);
 
+
+  // Calendar dots (multi-catégories) — used in day rail + month grid
+  const categoryDotsByDate = useMemo(() => {
+    const map = new Map(); // dateKey -> Map(categoryId -> { categoryId, color })
+
+    for (const occ of occurrences) {
+      if (!occ || typeof occ.date !== "string") continue;
+      if (occ.status !== "planned") continue;
+
+      const g = goalsById.get(occ.goalId);
+      if (!g) continue;
+
+      const catId = typeof g.categoryId === "string" ? g.categoryId : "";
+      if (!catId) continue;
+
+      const c = categoriesById.get(catId);
+      const color = (c && c.color) || (g && g.color) || "";
+      if (!color) continue;
+
+      const dayMap = map.get(occ.date) || new Map();
+      if (!dayMap.has(catId)) dayMap.set(catId, { categoryId: catId, color });
+      map.set(occ.date, dayMap);
+    }
+
+    const out = new Map();
+    for (const [dateKey, dayMap] of map.entries()) {
+      out.set(dateKey, Array.from(dayMap.values()));
+    }
+    return out;
+  }, [occurrences, goalsById, categoriesById]);
+
+  const getDayDots = useCallback(
+    (dateKey, max = 3) => {
+      const list = categoryDotsByDate.get(dateKey) || [];
+      const dots = list.slice(0, max);
+      const extra = Math.max(0, list.length - max);
+      return { dots, extra };
+    },
+    [categoryDotsByDate]
+  );
+
   const planningListStyle = useMemo(() => {
     const count = visibleOccurrencesForSelectedDay.length;
     const needsScroll = count > 8;
@@ -1895,7 +1936,6 @@ export default function Home({
                           {railItems.map((item) => {
                             const plannedCount = plannedByDate.get(item.key) || 0;
                             const doneCount = doneByDate.get(item.key) || 0;
-                            const dayCount = occurrencesCountByDateKey.get(item.key) || 0;
                             const isToday = item.key === localTodayKey;
                             const plannedLabel = plannedCount
                               ? `${plannedCount} planifié${plannedCount > 1 ? "s" : ""}`
@@ -1948,13 +1988,22 @@ export default function Home({
                                 <div className="dayPillDay">{item.day}</div>
                                 <div className="dayPillMonth">/{item.month}</div>
                                 {isToday ? <div className="calendarTodayBadge">Aujourd’hui</div> : null}
-                                {dayCount > 0 ? (
-                                  <span
-                                    className="calendarItemDot"
-                                    aria-hidden="true"
-                                    style={{ background: accentForItem }}
-                                  />
-                                ) : null}
+                                {(() => {
+                                  const { dots, extra } = getDayDots(item.key, 3);
+                                  if (!dots.length) return null;
+                                  return (
+                                    <div className="calendarDots" aria-hidden="true">
+                                      {dots.map((d) => (
+                                        <span
+                                          key={d.categoryId}
+                                          className="calendarItemDot"
+                                          style={{ background: d.color || "rgba(255,255,255,.45)" }}
+                                        />
+                                      ))}
+                                      {extra > 0 ? <span className="calendarDotsMore">+{extra}</span> : null}
+                                    </div>
+                                  );
+                                })()}
                               </button>
                             );
                           })}

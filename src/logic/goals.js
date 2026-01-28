@@ -112,13 +112,44 @@ function getGoalSortKey(goal) {
   return typeof key === "string" ? key : "";
 }
 
+function hasModernActionFields(goal) {
+  if (!goal || typeof goal !== "object") return false;
+
+  // New creation model fields (CreateV2*): repeat/days/timeMode/timeSlots/schedule.*
+  if (typeof goal.repeat === "string" && goal.repeat.trim()) return true;
+  if (Array.isArray(goal.daysOfWeek) && goal.daysOfWeek.length) return true;
+  if (typeof goal.oneOffDate === "string" && goal.oneOffDate.trim()) return true;
+
+  if (typeof goal.timeMode === "string" && goal.timeMode.trim()) return true;
+  if (Array.isArray(goal.timeSlots) && goal.timeSlots.length) return true;
+  if (typeof goal.startTime === "string" && goal.startTime.trim()) return true;
+  if (Number.isFinite(goal.durationMinutes)) return true;
+
+  if (typeof goal.scheduleMode === "string" && goal.scheduleMode.trim()) return true;
+  if (goal.weeklySlotsByDay && typeof goal.weeklySlotsByDay === "object") return true;
+
+  const sched = goal.schedule && typeof goal.schedule === "object" ? goal.schedule : null;
+  if (sched) {
+    if (typeof sched.scheduleMode === "string" && sched.scheduleMode.trim()) return true;
+    if (sched.weeklySlotsByDay && typeof sched.weeklySlotsByDay === "object") return true;
+  }
+
+  return false;
+}
+
 function normalizePlanType(goal) {
   const rawPlan = typeof goal?.planType === "string" ? goal.planType.toUpperCase() : "";
   if (PLAN_TYPES.has(rawPlan)) return rawPlan;
   const rawType = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
   if (PLAN_TYPES.has(rawType)) return rawType;
   if (goal?.oneOffDate || goal?.freqUnit === "ONCE") return "ONE_OFF";
+
+  // Modern action model (repeat/days/timeMode/slots). Prevent misclassifying Anytime/Recurring as STATE.
+  if (hasModernActionFields(goal)) return "ACTION";
+
+  // Legacy frequency model.
   if (goal?.freqUnit || goal?.freqCount || goal?.cadence) return "ACTION";
+
   return "STATE";
 }
 
@@ -256,6 +287,20 @@ function resolveGoalEndAt(goal) {
   return computeEndAt(goal.startAt, goal.sessionMinutes);
 }
 
+function hasLegacyFrequencySignals(goal) {
+  if (!goal || typeof goal !== "object") return false;
+  const unit = typeof goal.freqUnit === "string" ? goal.freqUnit.trim() : "";
+  if (unit) return true;
+  if (Number.isFinite(goal.freqCount)) return true;
+  if (typeof goal.cadence === "string" && goal.cadence.trim()) return true;
+
+  // Legacy model used `target` as frequency count. Treat it as legacy only if it looks like that model.
+  const t = typeof goal.target === "number" ? goal.target : Number.isFinite(goal.target) ? goal.target : null;
+  if (Number.isFinite(t) && t > 0 && !Number.isFinite(goal.quantityValue)) return true;
+
+  return false;
+}
+
 function deriveFrequencyFromLegacy(goal) {
   const rawTarget = typeof goal?.target === "number" ? goal.target : 1;
   const target = Math.max(1, Math.floor(rawTarget));
@@ -266,6 +311,9 @@ function deriveFrequencyFromLegacy(goal) {
 }
 
 function normalizeFrequency(goal) {
+  // New model actions (repeat/days/timeMode) should not be forced into legacy freqUnit/freqCount.
+  if (!hasLegacyFrequencySignals(goal)) return { freqUnit: undefined, freqCount: undefined };
+
   const next = { freqUnit: goal?.freqUnit, freqCount: goal?.freqCount };
 
   if (!next.freqUnit || next.freqUnit === "ONCE") {

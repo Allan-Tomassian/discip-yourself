@@ -52,11 +52,23 @@ function pickClosestOccurrence(list, preferredMin) {
   return best;
 }
 
-function applySingleOccurrenceStatus(nextOccurrences, goals, goalId, dateKey, status) {
+function applySingleOccurrenceStatus(nextOccurrences, goals, goalId, dateKey, status, preferredStart) {
+  const exact =
+    typeof preferredStart === "string" && preferredStart
+      ? nextOccurrences.find(
+          (o) => o && o.goalId === goalId && o.date === dateKey && typeof o.start === "string" && o.start === preferredStart
+        )
+      : null;
+
+  if (exact && exact.start) {
+    return setOccurrenceStatus(goalId, dateKey, exact.start, status, { occurrences: nextOccurrences, goals });
+  }
+
   const picked = findOccurrenceForGoalDateDeterministic(nextOccurrences, goalId, dateKey);
   if (picked && picked.start) {
     return setOccurrenceStatus(goalId, dateKey, picked.start, status, { occurrences: nextOccurrences, goals });
   }
+
   return upsertOccurrence(goalId, dateKey, "00:00", null, { status }, { occurrences: nextOccurrences, goals });
 }
 
@@ -124,9 +136,22 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
     );
   }, [occurrences, habitIds, resolvedDateKey]);
   const selectedOccurrence = useMemo(() => {
-    if (!candidateOccurrences.length || preferredMinutes == null) return null;
+    if (!candidateOccurrences.length) return null;
+    if (overrideStart) {
+      return candidateOccurrences.find((o) => o && typeof o.start === "string" && o.start === overrideStart) || null;
+    }
+    if (preferredMinutes == null) return candidateOccurrences[0] || null;
     return pickClosestOccurrence(candidateOccurrences, preferredMinutes);
-  }, [candidateOccurrences, preferredMinutes]);
+  }, [candidateOccurrences, preferredMinutes, overrideStart]);
+
+  const availableStarts = useMemo(() => {
+    const set = new Set();
+    for (const occ of candidateOccurrences) {
+      if (!occ || typeof occ.start !== "string" || !occ.start) continue;
+      set.add(occ.start);
+    }
+    return Array.from(set).sort();
+  }, [candidateOccurrences]);
   const occurrenceStart = overrideStart || selectedOccurrence?.start || "";
   const hasOccurrence = Boolean(selectedOccurrence);
   const occurrenceDuration = Number.isFinite(selectedOccurrence?.durationMinutes)
@@ -161,7 +186,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
         let nextOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
         for (const habitId of habitIds) {
           if (!habitId) continue;
-          nextOccurrences = applySingleOccurrenceStatus(nextOccurrences, goals, habitId, resolvedDateKey, "done");
+          nextOccurrences = applySingleOccurrenceStatus(nextOccurrences, goals, habitId, resolvedDateKey, "done", occurrenceStart);
         }
         const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
         const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
@@ -263,7 +288,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
       let nextOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
       for (const habitId of habitIds) {
         if (!habitId) continue;
-        nextOccurrences = applySingleOccurrenceStatus(nextOccurrences, goals, habitId, resolvedDateKey, "done");
+        nextOccurrences = applySingleOccurrenceStatus(nextOccurrences, goals, habitId, resolvedDateKey, "done", occurrenceStart);
       }
       const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
       const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
@@ -318,7 +343,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
       let nextOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
       for (const habitId of targetHabitIds) {
         if (!habitId) continue;
-        nextOccurrences = applySingleOccurrenceStatus(nextOccurrences, goals, habitId, resolvedDateKey, "skipped");
+        nextOccurrences = applySingleOccurrenceStatus(nextOccurrences, goals, habitId, resolvedDateKey, "skipped", occurrenceStart);
       }
       const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
       const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
@@ -483,8 +508,33 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
                 {!hasOccurrence
                   ? "Aucune occurrence planifiée pour cette session."
                   : elapsedSec > 0
-                    ? "Reprends quand tu es prêt."
+                    ? "Continue quand tu es prêt."
                     : "Appuie sur Démarrer pour lancer le timer."}
+              </div>
+            ) : null}
+            {availableStarts.length > 1 ? (
+              <div className="mt12">
+                <div className="small2">Créneau</div>
+                <div className="mt8 row gap8 rowWrap">
+                  {availableStarts.map((t) => (
+                    <Button
+                      key={t}
+                      variant="ghost"
+                      onClick={() => setOverrideStart(t)}
+                      disabled={!isEditable}
+                      style={
+                        t === occurrenceStart
+                          ? {
+                              background: "rgba(255,255,255,0.10)",
+                              borderColor: "var(--catAccent, rgba(255,255,255,0.35))",
+                            }
+                          : null
+                      }
+                    >
+                      {t}
+                    </Button>
+                  ))}
+                </div>
               </div>
             ) : null}
             <div className="mt12 row gap10">
@@ -492,7 +542,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
                 Pause
               </Button>
               <Button onClick={elapsedSec > 0 ? resumeTimer : startTimer} disabled={!canRunTimer}>
-                {elapsedSec > 0 ? "Reprendre" : "Démarrer"}
+                {elapsedSec > 0 ? "Continuer" : "Démarrer"}
               </Button>
             </div>
           </div>

@@ -695,16 +695,7 @@ export default function App() {
             safeData?.ui?.selectedCategoryByView?.home ||
             safeData?.ui?.selectedCategoryId ||
             null
-          : tab === "library" ||
-              tab === "create-goal" ||
-              tab === "create-outcome-next" ||
-              tab === "create-habit-type" ||
-              tab === "create-habit-oneoff" ||
-              tab === "create-habit-recurring" ||
-              tab === "create-habit-anytime" ||
-              tab === "create-link-outcome" ||
-              tab === "create-pick-category" ||
-              tab === "edit-item"
+          : tab === "library" || tab === "edit-item" || isCreateTab
             ? safeData?.ui?.selectedCategoryByView?.library ||
               librarySelectedCategoryId ||
               safeData?.ui?.selectedCategoryByView?.home ||
@@ -824,11 +815,26 @@ export default function App() {
     if (step === STEP_HABIT_TYPE) {
       setTab("create-habit-type");
     } else if (step === STEP_HABITS) {
-  const ht = (draft?.habitType || "").toString().toUpperCase();
-  if (ht === "ONE_OFF") setTab("create-habit-oneoff");
-  else if (ht === "RECURRING") setTab("create-habit-recurring");
-  else if (ht === "ANYTIME") setTab("create-habit-anytime");
-  else setTab("create-habit-type");
+      const raw = (draft?.habitType || "").toString().trim();
+      const ht = raw.toUpperCase();
+
+      // Support both legacy and new naming variants
+      const isOneOff = ht === "ONE_OFF" || ht === "ONEOFF" || ht === "ONE-OFF";
+      const isRecurring =
+        ht === "RECURRING" ||
+        ht === "RECURRING_SCHEDULED" ||
+        ht === "RECURRING-SCHEDULED" ||
+        ht.startsWith("RECURRING");
+      const isAnytime =
+        ht === "ANYTIME" ||
+        ht === "ANYTIME_EXPECTED" ||
+        ht === "ANYTIME-EXPECTED" ||
+        ht.startsWith("ANYTIME");
+
+      if (isOneOff) setTab("create-habit-oneoff");
+      else if (isRecurring) setTab("create-habit-recurring");
+      else if (isAnytime) setTab("create-habit-anytime");
+      else setTab("create-habit-type");
     } else if (step === STEP_OUTCOME_NEXT_ACTION) {
       setTab("create-outcome-next");
     } else if (step === STEP_LINK_OUTCOME) {

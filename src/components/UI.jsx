@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import AccentContext from "./AccentContext";
 
 function normalizeHex(hex) {
@@ -131,7 +131,7 @@ export function Select({
 
   const derivedPlaceholder =
     placeholder ||
-    options.find((opt) => opt.disabled && !opt.value)?.label ||
+    options.find((opt) => opt.disabled && (opt.value === "" || opt.value == null))?.label ||
     "Sélectionner";
 
   return (
@@ -160,6 +160,8 @@ export function SelectMenu({
   ariaLabel,
 }) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
   const selected = useMemo(
     () => options.find((opt) => opt.value === value) || null,
     [options, value]
@@ -167,11 +169,76 @@ export function SelectMenu({
 
   useEffect(() => {
     if (!open) return;
-    function handleKeyDown(event) {
-      if (event.key === "Escape") setOpen(false);
+
+    function getOptionButtons() {
+      const root = menuRef.current;
+      if (!root) return [];
+      return Array.from(root.querySelectorAll("button.selectOption:not([disabled])"));
     }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+
+    function focusSelectedOrFirst() {
+      const root = menuRef.current;
+      if (!root) return;
+      const selectedBtn = root.querySelector("button.selectOption[aria-selected='true']:not([disabled])");
+      if (selectedBtn) {
+        selectedBtn.focus();
+        return;
+      }
+      const first = root.querySelector("button.selectOption:not([disabled])");
+      if (first) first.focus();
+    }
+
+    // Move focus into the menu on open
+    const t = window.setTimeout(focusSelectedOrFirst, 0);
+
+    function handleKeyDown(event) {
+      if (!open) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        return;
+      }
+
+      const buttons = getOptionButtons();
+      if (!buttons.length) return;
+
+      const active = document.activeElement;
+      const idx = buttons.indexOf(active);
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        const next = idx >= 0 ? buttons[(idx + 1) % buttons.length] : buttons[0];
+        next.focus();
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        const next = idx >= 0 ? buttons[(idx - 1 + buttons.length) % buttons.length] : buttons[buttons.length - 1];
+        next.focus();
+      } else if (event.key === "Home") {
+        event.preventDefault();
+        buttons[0].focus();
+      } else if (event.key === "End") {
+        event.preventDefault();
+        buttons[buttons.length - 1].focus();
+      } else if (event.key === "Enter") {
+        // Let the focused button's onClick handle selection
+        if (active && active.classList?.contains("selectOption")) {
+          event.preventDefault();
+          active.click();
+        }
+      } else if (event.key === "Tab") {
+        // Keep focus within the menu when open (simple trap)
+        event.preventDefault();
+        const dir = event.shiftKey ? -1 : 1;
+        const next = idx >= 0 ? buttons[(idx + dir + buttons.length) % buttons.length] : buttons[0];
+        next.focus();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("keydown", handleKeyDown, true);
+    };
   }, [open]);
 
   useEffect(() => {
@@ -188,11 +255,15 @@ export function SelectMenu({
     if (!opt || opt.disabled) return;
     if (typeof onChange === "function") onChange(opt.value);
     setOpen(false);
+    window.setTimeout(() => {
+      if (triggerRef.current) triggerRef.current.focus();
+    }, 0);
   }
 
   return (
     <div className="selectMenuWrap" style={{ maxWidth: "100%", ...(style || {}) }}>
       <button
+        ref={triggerRef}
         type="button"
         className={`selectTrigger${className ? ` ${className}` : ""}`}
         style={{ maxWidth: "100%", minWidth: 0 }}
@@ -216,7 +287,7 @@ export function SelectMenu({
             onClick={() => setOpen(false)}
             aria-label="Fermer"
           />
-          <div className={`selectMenu${menuClassName ? ` ${menuClassName}` : ""}`} role="listbox">
+          <div ref={menuRef} className={`selectMenu${menuClassName ? ` ${menuClassName}` : ""}`} role="listbox">
             {options.length ? (
               options.map((opt) => {
                 const isSelected = opt.value === value;
@@ -255,11 +326,42 @@ export function CardSectionHeader({ title, action = null, className = "" }) {
 }
 
 export function Modal({ open, onClose, children, className = "" }) {
+  const panelRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (typeof onClose === "function") onClose();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown, true);
+
+    // Focus first focusable element inside the panel
+    const t = window.setTimeout(() => {
+      const root = panelRef.current;
+      if (!root) return;
+      const focusable = root.querySelector(
+        "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])"
+      );
+      if (focusable && typeof focusable.focus === "function") focusable.focus();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("keydown", onKeyDown, true);
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
   return (
-    <div className="modalBackdrop" onClick={onClose}>
+    <div className="modalBackdrop" onClick={onClose} role="presentation">
       <div
+        ref={panelRef}
         className={`modalPanel${className ? ` ${className}` : ""}`}
+        role="dialog"
+        aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
         {children}

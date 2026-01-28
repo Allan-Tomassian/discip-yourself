@@ -1,4 +1,4 @@
-import { uid } from "../utils/helpers";
+import { uid as uidFn } from "../utils/helpers";
 import {
   fromLocalDateKey,
   normalizeLocalDateKey,
@@ -254,21 +254,36 @@ function resolvePlannedSlotsForDate(goal, dateKey, schedule) {
     return daySlots.length ? daySlots : [{ start: "00:00", end: "", noTime: true }];
   }
 
-  // Uniform planned time across due days
-  const slotKeys = resolveGoalSlots(goal, schedule);
-
-  // timeMode NONE or no valid slot => NO_TIME placeholder
+  // timeMode NONE (or no explicit time) => NO_TIME placeholder
   if (timeMode === "NONE") return [{ start: "00:00", end: "", noTime: true }];
 
-  // FIXED/SLOTS/legacy: take first valid slot
-  const start =
-    (slotKeys && slotKeys[0]) ||
+  // Canonical slots for uniform planning
+  const slotKeys = resolveGoalSlots(goal, schedule);
+
+  // SLOTS: generate one occurrence per slot
+  if (timeMode === "SLOTS") {
+    const slots = Array.isArray(slotKeys) ? slotKeys.filter((s) => isValidStart(s)) : [];
+    if (!slots.length) return [{ start: "00:00", end: "", noTime: true }];
+    return slots.map((s) => ({ start: s, end: "" }));
+  }
+
+  // FIXED: single time for all due days
+  if (timeMode === "FIXED") {
+    const start = (slotKeys && slotKeys[0]) || minutesToTime(parseTimeToMinutes(goal?.startTime)) || "";
+    if (!start) return [{ start: "00:00", end: "", noTime: true }];
+    return [{ start, end: "" }];
+  }
+
+  // Legacy fallback: if multiple slots exist, treat as SLOTS; otherwise single.
+  const legacySlots = Array.isArray(slotKeys) ? slotKeys.filter((s) => isValidStart(s)) : [];
+  if (legacySlots.length > 1) return legacySlots.map((s) => ({ start: s, end: "" }));
+  const legacyStart =
+    legacySlots[0] ||
     minutesToTime(parseTimeToMinutes(goal?.startTime)) ||
     (resolveGoalTimeSlots(goal, schedule)[0] || "");
 
-  if (!start) return [{ start: "00:00", end: "", noTime: true }];
-
-  return [{ start, end: "" }];
+  if (!legacyStart) return [{ start: "00:00", end: "", noTime: true }];
+  return [{ start: legacyStart, end: "" }];
 }
 
 function getDurationMinutes(goal, schedule) {
@@ -343,7 +358,7 @@ function isValidStart(value) {
 }
 
 function resolveOccurrenceSlotKey(occ) {
-  const raw = typeof occ?.start === "string" ? occ.start : occ?.slotKey;
+  const raw = typeof occ?.slotKey === "string" ? occ.slotKey : typeof occ?.start === "string" ? occ.start : "";
   return isValidStart(raw) ? raw : "";
 }
 
@@ -499,7 +514,7 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
     occurrences = occurrences.filter((o) => {
       if (!o || o.goalId !== goal.id) return true;
       if (!dateSet.has(o.date)) return true;
-      const occSlot = isValidStart(o.start) ? o.start : resolveOccurrenceSlotKey(o);
+      const occSlot = resolveOccurrenceSlotKey(o) || (isValidStart(o.start) ? o.start : "");
       return occSlot && allowed.has(occSlot);
     });
   }
@@ -508,7 +523,7 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
     occurrences
       .filter((o) => o && o.goalId && o.date && o.start)
       .map((o) => {
-        const startKey = isValidStart(o.start) ? o.start : resolveOccurrenceSlotKey(o);
+        const startKey = resolveOccurrenceSlotKey(o) || (isValidStart(o.start) ? o.start : "");
         return occurrenceKey(o.goalId, o.date, startKey);
       })
   );
@@ -519,7 +534,14 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
     const plannedSlots = resolvePlannedSlotsForDate(goal, dateKey, schedule);
     const slotsForDate = plannedSlots.length ? plannedSlots : [{ start: fallbackSlot, end: "" }];
 
-    const useExactTimes = scheduleMode === "WEEKLY_SLOTS" || Boolean(weekly);
+    // Scheduled times should not auto-move. Conflicts are marked, not shifted.
+    const plannedMode = resolveScheduleMode(goal, schedule);
+    const tm = resolveTimeMode(goal);
+    const useExactTimes =
+      plannedMode === "WEEKLY_SLOTS" ||
+      Boolean(weekly) ||
+      tm === "FIXED" ||
+      tm === "SLOTS";
 
     for (const slot of slotsForDate) {
       const preferredStart = slot?.start;
@@ -529,7 +551,7 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
       const durationMinutes = getDurationMinutesForSlot(goal, schedule, slot);
 
       const candidateStarts = slotsForDate
-        .map((s) => s.start)
+        .map((s) => (typeof s?.start === "string" ? s.start.trim() : ""))
         .filter((s) => isValidStart(s) && s !== "00:00");
 
       const resolved = isNoTime
@@ -543,7 +565,7 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
       if (usedKeys.has(key)) continue;
 
       const occurrence = {
-        id: uid(),
+        id: uidFn(),
         goalId: goal.id,
         date: dateKey,
         start: finalStart,
