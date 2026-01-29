@@ -91,8 +91,8 @@ const THEME_TOKENS = {
     border: "rgba(243,244,246,.16)",
     glass: "rgba(255,255,255,.070)",
     glass2: "rgba(255,255,255,.110)",
-    accent: "#60A5FA", // iOS-like blue
-    glow: "rgba(96,165,250,.30)",
+    accent: BRAND_ACCENT,
+    glow: BRAND_GLOW,
     ...SHARED,
   },
 
@@ -273,8 +273,9 @@ export function applyThemeTokens(themeName, accentOverride) {
 
   const finalTokens = {
     ...tokens,
-    accent: normalizedAccent || tokens.accent || BRAND_ACCENT,
-    glow: nextGlow || tokens.glow || BRAND_GLOW,
+    // Global brand accent everywhere unless the user explicitly overrides it.
+    accent: normalizedAccent || BRAND_ACCENT,
+    glow: nextGlow || BRAND_GLOW,
   };
 
   const root = document.documentElement;
@@ -301,8 +302,10 @@ export function applyThemeTokens(themeName, accentOverride) {
  * Convenience helper: apply tokens directly from the persisted app state.
  */
 export function applyThemeFromState(data, page = "home") {
-  const name = getThemeName(data, page);
-  const accent = getThemeAccent(data, page);
+  // Force a single global theme across the app.
+  // This avoids the Settings page (or any other page) overriding the theme and creating color inconsistencies.
+  const name = getThemeName(data, "home");
+  const accent = getThemeAccent(data, "home");
   applyThemeTokens(name, accent);
 }
 

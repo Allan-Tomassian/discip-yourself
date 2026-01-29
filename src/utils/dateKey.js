@@ -30,7 +30,9 @@ export function normalizeLocalDateKey(key) {
     const rebuilt = new Date(y, m - 1, d, 12, 0, 0);
     return toLocalDateKey(rebuilt) === trimmed ? trimmed : "";
   }
-  if (trimmed.includes("T") || Number.isFinite(Date.parse(trimmed))) {
+  // Only accept ISO-like timestamps here to avoid locale-ambiguous parsing (e.g. 01/02/2026).
+  // Examples accepted: 2026-01-29T10:30, 2026-01-29T10:30:00Z, 2026-01-29T10:30:00+01:00
+  if (/^\d{4}-\d{2}-\d{2}T/.test(trimmed)) {
     const parsed = new Date(trimmed);
     if (!Number.isNaN(parsed.getTime())) return toLocalDateKey(parsed);
   }

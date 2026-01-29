@@ -63,6 +63,12 @@ const pct = (done, expected) => {
   return Math.round((d / e) * 100);
 };
 
+const remainingCount = (bucket) => {
+  if (!bucket || typeof bucket !== "object") return 0;
+  const v = bucket.remaining ?? bucket.planned;
+  return Number(v) || 0;
+};
+
 function Meter({ value01 = 0, label = "", tone = "accent" }) {
   const v = clamp01(value01);
   const track = "rgba(255,255,255,0.10)";
@@ -194,8 +200,14 @@ export default function Pilotage({
     [loadSummary]
   );
 
-  const todayRemaining = useMemo(() => Number(loadSummary?.today?.planned) || 0, [loadSummary]);
-  const weekRemaining = useMemo(() => Number(loadSummary?.week?.planned) || 0, [loadSummary]);
+  const todayRemaining = useMemo(() => remainingCount(loadSummary?.today), [loadSummary]);
+  const weekRemaining = useMemo(() => remainingCount(loadSummary?.week), [loadSummary]);
+
+  const todayExpected = Number(loadSummary?.today?.expected) || 0;
+  const todayDone = Number(loadSummary?.today?.done) || 0;
+  const weekExpected = Number(loadSummary?.week?.expected) || 0;
+  const weekDone = Number(loadSummary?.week?.done) || 0;
+  const weekMissed = Number(loadSummary?.week?.missed) || 0;
 
   const disciplineTone = useMemo(() => {
     if (disciplineScore >= 95) return "good";
@@ -432,7 +444,7 @@ export default function Pilotage({
 
   return (
     <ScreenShell
-      headerTitle={<span className="textAccent" data-tour-id="pilotage-title">Pilotage</span>}
+      headerTitle={<span data-tour-id="pilotage-title">Pilotage</span>}
       headerSubtitle="Vue d'ensemble"
       backgroundImage={safeData?.profile?.whyImage || ""}
     >
@@ -580,33 +592,68 @@ export default function Pilotage({
                   </div>
 
                   <div className="mt12 col" style={{ gap: 10 }}>
-                    <div className="row" style={{ justifyContent: "space-between" }}>
+                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                       <div className="itemTitle">Aujourd'hui</div>
-                      <div className="itemSub">
-                        {loadSummary.today.done}/{loadSummary.today.expected} (attendues)
+                      <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                        {todayExpected > 0 ? (
+                          <span className="badge" style={{ ...STATUS_STYLES.ACTIVE, borderWidth: 1, borderStyle: "solid" }}>
+                            {todayDone}/{todayExpected}
+                          </span>
+                        ) : (
+                          <span className="badge" style={{ ...STATUS_STYLES.DONE, borderWidth: 1, borderStyle: "solid" }}>
+                            0 attendue
+                          </span>
+                        )}
+                        {todayRemaining > 0 ? (
+                          <span className="badge" style={{ ...STATUS_STYLES.EMPTY, borderWidth: 1, borderStyle: "solid" }}>
+                            {todayRemaining} restante{todayRemaining > 1 ? "s" : ""}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
 
-                    <div className="row" style={{ justifyContent: "space-between" }}>
+                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                       <div className="itemTitle">Cette semaine</div>
-                      <div className="itemSub">
-                        {loadSummary.week.done}/{loadSummary.week.expected} (attendues)
+                      <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                        {weekExpected > 0 ? (
+                          <span className="badge" style={{ ...STATUS_STYLES.ACTIVE, borderWidth: 1, borderStyle: "solid" }}>
+                            {weekDone}/{weekExpected}
+                          </span>
+                        ) : (
+                          <span className="badge" style={{ ...STATUS_STYLES.DONE, borderWidth: 1, borderStyle: "solid" }}>
+                            0 attendue
+                          </span>
+                        )}
+                        {weekRemaining > 0 ? (
+                          <span className="badge" style={{ ...STATUS_STYLES.EMPTY, borderWidth: 1, borderStyle: "solid" }}>
+                            {weekRemaining} restante{weekRemaining > 1 ? "s" : ""}
+                          </span>
+                        ) : null}
+                        {weekMissed > 0 ? (
+                          <span className="badge" style={{
+                            backgroundColor: "rgba(244,67,54,0.14)",
+                            borderColor: "rgba(244,67,54,0.8)",
+                            color: "#FFECEC",
+                            borderWidth: 1,
+                            borderStyle: "solid",
+                          }}>
+                            {weekMissed} manquée{weekMissed > 1 ? "s" : ""}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
 
                     <div className="mt6 col" style={{ gap: 12 }}>
-                      <StatRow label="Reste aujourd’hui" value={todayRemaining ? `${todayRemaining} à faire` : "0"} />
                       <Meter
-                        label={todayPct == null ? "Aujourd’hui" : `Aujourd’hui · ${todayPct}%`}
+                        label={todayPct == null ? "Aujourd’hui · aucune occurrence attendue" : `Aujourd’hui · ${todayPct}%`}
                         value01={todayPct == null ? 0 : todayPct / 100}
                         tone={todayPct == null ? "accent" : todayPct >= 95 ? "good" : todayPct >= 80 ? "warn" : "bad"}
                       />
                       <Meter
-                        label={weekPct == null ? "Cette semaine" : `Cette semaine · ${weekPct}%`}
+                        label={weekPct == null ? "Cette semaine · aucune occurrence attendue" : `Cette semaine · ${weekPct}%`}
                         value01={weekPct == null ? 0 : weekPct / 100}
                         tone={weekPct == null ? "accent" : weekPct >= 95 ? "good" : weekPct >= 80 ? "warn" : "bad"}
                       />
-                      <StatRow label="Reste cette semaine" value={weekRemaining ? `${weekRemaining} à faire` : "0"} />
                     </div>
 
                     {showPlanningCta ? (

@@ -6,9 +6,10 @@
   "scripts": {
     "cap:open:ios": "npx cap open ios",
     "cap:sync": "npm run build && npx cap sync",
-    "dev": "vite --port 5174 --strictPort --host 127.0.0.1",
-    "dev:lan": "vite --port 5174 --strictPort --host 0.0.0.0",
-    "dev:5173": "vite --port 5173 --strictPort --host 127.0.0.1",
+    "dev": "vite --port 5173 --strictPort --host 127.0.0.1",
+    "dev:lan": "vite --port 5173 --strictPort --host 0.0.0.0",
+    "dev:5174": "vite --port 5174 --strictPort --host 127.0.0.1",
+    "dev:lan:5174": "vite --port 5174 --strictPort --host 0.0.0.0",
     "build": "vite build",
     "lint": "eslint src --ext .js,.jsx",
     "lint:fix": "eslint src --ext .js,.jsx --fix",

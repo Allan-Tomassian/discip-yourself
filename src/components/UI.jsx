@@ -25,6 +25,14 @@ function hexToRgba(hex, alpha = 0.12) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+function isDesktopLikeInput() {
+  try {
+    return Boolean(window?.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches);
+  } catch {
+    return false;
+  }
+}
+
 export { default as AccentItem } from "./AccentItem";
 
 export function Badge({ children }) {
@@ -169,6 +177,8 @@ export function SelectMenu({
 
   useEffect(() => {
     if (!open) return;
+    // iPhone/iPad (touch) doesn't need keyboard trapping; keep it desktop-only.
+    if (!isDesktopLikeInput()) return;
 
     function getOptionButtons() {
       const root = menuRef.current;
@@ -330,6 +340,8 @@ export function Modal({ open, onClose, children, className = "" }) {
 
   useEffect(() => {
     if (!open) return;
+    if (!isDesktopLikeInput()) return;
+
     function onKeyDown(e) {
       if (e.key === "Escape") {
         e.preventDefault();
@@ -338,7 +350,7 @@ export function Modal({ open, onClose, children, className = "" }) {
     }
     window.addEventListener("keydown", onKeyDown, true);
 
-    // Focus first focusable element inside the panel
+    // Focus first focusable element inside the panel (desktop only)
     const t = window.setTimeout(() => {
       const root = panelRef.current;
       if (!root) return;

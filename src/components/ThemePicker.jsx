@@ -9,8 +9,34 @@ function toLabel(name) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+function preserveAccentWhile(applyFn) {
+  if (typeof document === "undefined") return applyFn();
+  const root = document.documentElement;
+  const cs = getComputedStyle(root);
+  const keys = [
+    "--accent",
+    "--accentStrong",
+    "--accentPrimary",
+    "--focus",
+    "--ring",
+    "--accentText",
+  ];
+  const snapshot = {};
+  for (const k of keys) snapshot[k] = cs.getPropertyValue(k);
+  applyFn();
+  // Restore accent variables so theme preview cannot take over the app accent.
+  for (const k of keys) {
+    const v = snapshot[k];
+    if (v != null && String(v).trim() !== "") root.style.setProperty(k, v);
+  }
+}
+
 export default function ThemePicker({ data, setData }) {
-  const savedTheme = getThemeName(data, "home");
+  // Single source of truth: `data.ui.theme` (global). Keep backward compat with per-page themes.
+  const persistedGlobalTheme = data?.ui?.theme;
+  const savedTheme = persistedGlobalTheme || getThemeName(data, "home");
+
+  // Accent is still allowed to be per-page for now; default to home.
   const savedAccent = getThemeAccent(data, "home");
 
   const themeOptions = useMemo(() => {
@@ -30,9 +56,9 @@ export default function ThemePicker({ data, setData }) {
   // Premium behavior: live preview the selected theme while still allowing an explicit “Appliquer”.
   // Revert automatically when the component unmounts (or when selection changes away).
   useEffect(() => {
-    applyThemeTokens(pendingTheme, savedAccent);
+    preserveAccentWhile(() => applyThemeTokens(pendingTheme, savedAccent));
     return () => {
-      applyThemeTokens(savedTheme || "aurora", savedAccent);
+      preserveAccentWhile(() => applyThemeTokens(savedTheme || "aurora", savedAccent));
     };
   }, [pendingTheme, savedTheme, savedAccent]);
 
@@ -68,13 +94,20 @@ export default function ThemePicker({ data, setData }) {
               <Button
                 disabled={!isDirty}
                 onClick={() => {
-                  setData((prev) => ({
-                    ...prev,
-                    ui: {
-                      ...prev.ui,
-                      pageThemes: { ...(prev.ui?.pageThemes || {}), home: pendingTheme },
-                    },
-                  }));
+                  setData((prev) => {
+                    const nextUi = {
+                      ...(prev.ui || {}),
+                      // Global theme (single truth)
+                      theme: pendingTheme,
+                      // Backward compatibility: keep home + a default slot for pages that still read pageThemes
+                      pageThemes: {
+                        ...(prev.ui?.pageThemes || {}),
+                        home: pendingTheme,
+                        __default: pendingTheme,
+                      },
+                    };
+                    return { ...prev, ui: nextUi };
+                  });
                 }}
               >
                 Appliquer

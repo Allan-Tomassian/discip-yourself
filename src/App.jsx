@@ -29,7 +29,7 @@ import Pilotage from "./pages/Pilotage";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Support from "./pages/Support";
-import { applyThemeTokens, getThemeName } from "./theme/themeTokens";
+import { applyThemeTokens } from "./theme/themeTokens";
 import { toLocalDateKey, todayLocalKey } from "./utils/dateKey";
 import { isPrimaryCategory, normalizePriorities } from "./logic/priority";
 import { resolveGoalType } from "./domain/goalType";
@@ -442,7 +442,73 @@ export default function App() {
     tab === "create-habit-anytime" ||
     tab === "create-link-outcome" ||
     tab === "create-pick-category";
-  const themeName = getThemeName(safeData);
+  const BITCOIN_ORANGE = "#F7931A";
+
+  // Single source of truth for theme:
+  // - ui.theme is authoritative
+  // - legacy fallbacks are read ONCE and immediately promoted into ui.theme
+  const deriveLegacyTheme = (uiObj) => {
+    const ui = uiObj && typeof uiObj === "object" ? uiObj : {};
+    const pageThemes = ui.pageThemes && typeof ui.pageThemes === "object" ? ui.pageThemes : null;
+    if (!pageThemes) return "";
+    // Some pages used to persist their own key; pick the first meaningful value.
+    const candidates = [
+      pageThemes.__default,
+      pageThemes.settings,
+      pageThemes.home,
+      pageThemes.today,
+      pageThemes.library,
+      pageThemes.pilotage,
+    ];
+    for (const c of candidates) {
+      const v = (c || "").toString().trim();
+      if (v) return v;
+    }
+    return "";
+  };
+
+  const themeName = useMemo(() => {
+    const ui = safeData?.ui && typeof safeData.ui === "object" ? safeData.ui : {};
+    const direct = (ui.theme || "").toString().trim();
+    if (direct) return direct;
+    const legacy = deriveLegacyTheme(ui);
+    return legacy || "bitcoin";
+  }, [safeData?.ui]);
+
+  const topNav = (
+    <TopNav
+      active={
+        tab === "session"
+          ? "today"
+          : tab === "pilotage"
+            ? "pilotage"
+            : tab === "settings"
+              ? "settings"
+              : tab === "library" ||
+                  tab === "edit-item" ||
+                  tab === "category-detail" ||
+                  tab === "category-progress" ||
+                  (typeof tab === "string" && tab.startsWith("create-"))
+                ? "library"
+                : tab
+      }
+      setActive={(next) => {
+        if (next === "library") {
+          openLibraryDetail();
+          return;
+        }
+        setTab(next);
+      }}
+      onOpenSettings={() => setTab("settings")}
+    />
+  );
+
+  // Single header: keep TopNav only (prevents duplicate logo/title)
+  const headerStack = topNav;
+  // Spacer under the fixed header stack (TopNav + wordmark). Keep it tight to avoid a big empty gap.
+  const headerSpacer = (
+    <div aria-hidden="true" className="appHeaderSpacer" style={{ height: 48 }} />
+  );
   const categories = useMemo(
     () => (Array.isArray(safeData.categories) ? safeData.categories : []),
     [safeData.categories]
@@ -709,8 +775,76 @@ export default function App() {
     safeData?.categories?.[0]?.id ||
     null;
 
+  // Theme reconciliation:
+  // - If ui.theme is missing but legacy pageThemes exist, promote them into ui.theme.
+  // - If ui.theme exists, keep legacy __default in sync so older code (e.g. Settings) cannot override on refresh.
+  useEffect(() => {
+    const ui = safeData?.ui && typeof safeData.ui === "object" ? safeData.ui : {};
+    const current = (ui.theme || "").toString().trim();
+    const legacy = deriveLegacyTheme(ui);
+
+    // Promote legacy -> ui.theme (only when ui.theme is empty)
+    if (!current && legacy && typeof setData === "function") {
+      setData((prev) => {
+        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+        const prevCur = (prevUi.theme || "").toString().trim();
+        if (prevCur) return prev;
+        return { ...prev, ui: { ...prevUi, theme: legacy } };
+      });
+      return;
+    }
+
+    // Keep legacy __default aligned with ui.theme to prevent refresh regressions
+    if (current && typeof setData === "function") {
+      const pageThemes = ui.pageThemes && typeof ui.pageThemes === "object" ? ui.pageThemes : {};
+      const def = (pageThemes.__default || "").toString().trim();
+      if (def === current) return;
+      setData((prev) => {
+        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+        const prevTheme = (prevUi.theme || "").toString().trim();
+        if (!prevTheme) return prev; // only sync when ui.theme exists
+        const prevPageThemes =
+          prevUi.pageThemes && typeof prevUi.pageThemes === "object" ? prevUi.pageThemes : {};
+        const prevDef = (prevPageThemes.__default || "").toString().trim();
+        if (prevDef === prevTheme) return prev;
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            pageThemes: {
+              ...prevPageThemes,
+              __default: prevTheme,
+            },
+          },
+        };
+      });
+    }
+  }, [safeData?.ui, setData]);
+
   useEffect(() => {
     applyThemeTokens(themeName);
+
+    // Brand accent is always Bitcoin orange (consistent identity), regardless of background theme.
+    if (typeof document !== "undefined") {
+      const root = document.documentElement;
+      root.style.setProperty("--accent", BITCOIN_ORANGE);
+      root.style.setProperty("--accentStrong", BITCOIN_ORANGE);
+      root.style.setProperty("--accentPrimary", BITCOIN_ORANGE);
+      root.style.setProperty("--focus", BITCOIN_ORANGE);
+
+      // iOS browser chrome color
+      try {
+        let meta = document.querySelector('meta[name="theme-color"]');
+        if (!meta) {
+          meta = document.createElement("meta");
+          meta.setAttribute("name", "theme-color");
+          document.head.appendChild(meta);
+        }
+        meta.setAttribute("content", BITCOIN_ORANGE);
+      } catch (e) {
+        void e;
+      }
+    }
   }, [themeName]);
   useEffect(() => {
     if (!isSameOrder(categoryRailOrder, safeData?.ui?.categoryRailOrder || [])) {
@@ -976,40 +1110,14 @@ export default function App() {
     }
   };
 
-  const topNav = (
-    <TopNav
-      active={
-        tab === "session"
-          ? "today"
-          : tab === "pilotage"
-            ? "pilotage"
-            : tab === "settings"
-              ? "settings"
-              : tab === "library" ||
-                  tab === "edit-item" ||
-                  tab === "category-detail" ||
-                  tab === "category-progress" ||
-                  (typeof tab === "string" && tab.startsWith("create-"))
-                ? "library"
-                : tab
-      }
-      setActive={(next) => {
-        if (next === "library") {
-          openLibraryDetail();
-          return;
-        }
-        setTab(next);
-      }}
-      onOpenSettings={() => setTab("settings")}
-    />
-  );
 
   const showBottomRail = tab === "today" || tab === "library" || tab === "pilotage";
 
   if (showPlanStep && onboardingCompleted) {
     return (
       <>
-        {topNav}
+        {headerStack}
+        {headerSpacer}
         <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />
         <DiagnosticOverlay data={safeData} tab={tab} />
         <PlusExpander
@@ -1035,7 +1143,8 @@ export default function App() {
   }
   return (
     <>
-      {topNav}
+      {headerStack}
+      {headerSpacer}
       {showBottomRail ? (
         <div className="navWrap bottomBar" data-tour-id="topnav-rail">
           <div className="navRow">

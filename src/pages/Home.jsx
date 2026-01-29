@@ -216,6 +216,8 @@ export default function Home({
   const noteSaveRef = useRef(null);
   const pendingCommitRef = useRef(null);
   const isRailInteractingRef = useRef(false);
+  const railSettleTimerRef = useRef(null);
+  const railSmoothAnimRef = useRef({ raf: 0, start: 0, from: 0, to: 0, duration: 0 });
   const didHydrateLegacyRef = useRef(false);
 
   // Data slices
@@ -274,7 +276,65 @@ export default function Home({
     return counts;
   }, [goalIdSet, occurrences]);
 
+  const prefersReducedMotion = useMemo(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return false;
+    try {
+      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch (e) {
+      void e;
+      return false;
+    }
+  }, []);
+
   // Effects
+  const cancelRailSmooth = useCallback(() => {
+    const a = railSmoothAnimRef.current;
+    if (a.raf) cancelAnimationFrame(a.raf);
+    a.raf = 0;
+  }, []);
+
+  const smoothScrollRailTo = useCallback(
+    (targetLeft, durationMs = 260) => {
+      const container = railRef.current;
+      if (!container || !Number.isFinite(targetLeft)) return;
+
+      // Respect reduced motion and avoid fighting the user.
+      if (prefersReducedMotion) {
+        container.scrollTo({ left: Math.max(0, targetLeft), behavior: "auto" });
+        return;
+      }
+
+      cancelRailSmooth();
+
+      const from = container.scrollLeft;
+      const to = Math.max(0, targetLeft);
+      const distance = Math.abs(to - from);
+      if (distance < 2) return;
+
+      const a = railSmoothAnimRef.current;
+      a.start = performance.now();
+      a.from = from;
+      a.to = to;
+      // Duration scales slightly with distance, capped.
+      a.duration = Math.min(420, Math.max(180, durationMs + distance * 0.25));
+
+      const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+      const step = (now) => {
+        const p = Math.min(1, (now - a.start) / a.duration);
+        const eased = easeOutCubic(p);
+        container.scrollLeft = a.from + (a.to - a.from) * eased;
+        if (p < 1) {
+          a.raf = requestAnimationFrame(step);
+        } else {
+          a.raf = 0;
+        }
+      };
+
+      a.raf = requestAnimationFrame(step);
+    },
+    [cancelRailSmooth, prefersReducedMotion]
+  );
 
   useEffect(() => {
     if (didHydrateLegacyRef.current) return;
@@ -1090,33 +1150,33 @@ export default function Home({
     }
   }, [extendRailRange, getRailStepPx]);
 
-  const scrollRailToKey = useCallback((dateKeyValue, behavior = "smooth") => {
-    const container = railRef.current;
-    if (!container || !dateKeyValue) return;
-    const refEl = railItemRefs.current.get(dateKeyValue);
-    const el = refEl || container.querySelector(`[data-datekey="${dateKeyValue}"]`);
-    if (!el) return;
-    if (typeof el.scrollIntoView === "function") {
-      el.scrollIntoView({ behavior, inline: "center", block: "nearest" });
-      return;
-    }
-    const targetLeft = el.offsetLeft - (container.clientWidth / 2 - el.clientWidth / 2);
-    if (Number.isFinite(targetLeft)) {
-      container.scrollTo({ left: Math.max(0, targetLeft), behavior });
-      return;
-    }
-  }, []);
+  const scrollRailToKey = useCallback(
+    (dateKeyValue, behavior = "smooth") => {
+      const container = railRef.current;
+      if (!container || !dateKeyValue) return;
+      const el = railItemRefs.current.get(dateKeyValue) ||
+        container.querySelector(`[data-datekey="${dateKeyValue}"]`);
+      if (!el) return;
 
-  const centerRailOnKey = useCallback((dateKeyValue, behavior = "auto") => {
-    const container = railRef.current;
-    if (!container || !dateKeyValue) return;
-    const refEl = railItemRefs.current.get(dateKeyValue);
-    const el = refEl || container.querySelector(`[data-datekey="${dateKeyValue}"]`);
-    if (!el) return;
-    const left = el.offsetLeft + el.offsetWidth / 2 - container.clientWidth / 2;
-    if (!Number.isFinite(left)) return;
-    container.scrollTo({ left: Math.max(0, left), behavior });
-  }, []);
+      const targetLeft = el.offsetLeft + el.offsetWidth / 2 - container.clientWidth / 2;
+
+      if (behavior === "auto") {
+        cancelRailSmooth();
+        container.scrollTo({ left: Math.max(0, targetLeft), behavior: "auto" });
+        return;
+      }
+
+      smoothScrollRailTo(targetLeft);
+    },
+    [cancelRailSmooth, smoothScrollRailTo]
+  );
+
+  const centerRailOnKey = useCallback(
+    (dateKeyValue, behavior = "auto") => {
+      scrollRailToKey(dateKeyValue, behavior);
+    },
+    [scrollRailToKey]
+  );
 
   const updateSelectedFromScroll = useCallback(() => {
     const container = railRef.current;
@@ -1143,11 +1203,18 @@ export default function Home({
     railScrollRaf.current = requestAnimationFrame(() => {
       railScrollRaf.current = null;
       updateSelectedFromScroll();
+      if (railSettleTimerRef.current) clearTimeout(railSettleTimerRef.current);
+      railSettleTimerRef.current = setTimeout(() => {
+        // After scrolling ends, gently center the currently pending day.
+        if (!isRailInteractingRef.current) {
+          scrollRailToKey(pendingDateKey || activeRailKey, "smooth");
+        }
+      }, 140);
       if (!isRailInteractingRef.current) {
         maybeExtendRailRange();
       }
     });
-  }, [maybeExtendRailRange, updateSelectedFromScroll]);
+  }, [maybeExtendRailRange, updateSelectedFromScroll, activeRailKey, pendingDateKey, scrollRailToKey]);
 
   useLayoutEffect(() => {
     if (calendarView !== "day") return;
@@ -1169,8 +1236,10 @@ export default function Home({
   useEffect(() => {
     return () => {
       if (railScrollRaf.current) cancelAnimationFrame(railScrollRaf.current);
+      if (railSettleTimerRef.current) clearTimeout(railSettleTimerRef.current);
+      cancelRailSmooth();
     };
-  }, []);
+  }, [cancelRailSmooth]);
 
   function openSessionFlow() {
     if (!selectedGoal?.id || !canValidate || !hasSelectedActions || typeof setData !== "function") return;
@@ -1648,7 +1717,17 @@ export default function Home({
                           disabled={!canEdit}
                           placeholder="Choisir un objectif"
                           options={outcomeGoals.map((g) => ({ value: g.id, label: g.title || "Objectif" }))}
-                          className="accentInput"
+                          // Important: the container (accentRow) provides the shape/border.
+                          // So the SelectMenu must be visually neutral.
+                          className="accentSelect"
+                          style={{
+                            width: "100%",
+                            background: "transparent",
+                            border: "none",
+                            boxShadow: "none",
+                            padding: 0,
+                            minHeight: "unset",
+                          }}
                         />
                       </div>
                     ) : (
@@ -1905,6 +1984,7 @@ export default function Home({
                           onScroll={handleRailScroll}
                           onPointerDown={() => {
                             isRailInteractingRef.current = true;
+                            cancelRailSmooth();
                           }}
                           onPointerUp={() => {
                             isRailInteractingRef.current = false;
@@ -1919,6 +1999,7 @@ export default function Home({
                           }}
                           onTouchStart={() => {
                             isRailInteractingRef.current = true;
+                            cancelRailSmooth();
                           }}
                           onTouchEnd={() => {
                             isRailInteractingRef.current = false;
