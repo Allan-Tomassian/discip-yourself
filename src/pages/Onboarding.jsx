@@ -2,6 +2,10 @@ import React, { useMemo, useState } from "react";
 import { Badge, Button, Card, Input, Textarea } from "../components/UI";
 import ScreenShell from "./_ScreenShell";
 
+const ACCENT = "var(--accent, #F7931A)"; // orange bitcoin fallback
+const BORDER_DEFAULT = "rgba(255,255,255,.16)";
+const SURFACE_SOFT = "rgba(255,255,255,.04)";
+
 function normalizePermission(value) {
   if (value === "granted" || value === "denied") return value;
   return "unknown";
@@ -32,71 +36,93 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
     () => [
       {
         key: "welcome",
-        title: "Bienvenue",
-        subtitle: "Une vision claire",
+        title: "Discip-Yourself",
+        subtitle: "Clarté · Discipline · Exécution",
         content: (
           <div className="col">
-            <div className="titleSm">Reste concentré sur l’essentiel.</div>
-            <div className="small" style={{ marginTop: 6 }}>
-              Discip-Yourself t’aide à transformer l’intention en exécution quotidienne.
+            <div className="titleSm">Un cadre simple. Une exécution quotidienne.</div>
+            <div className="small" style={{ marginTop: 8 }}>
+              Tu définis ce qui compte. L’app transforme le reste en actions concrètes, au bon moment.
+            </div>
+            <div className="small2" style={{ marginTop: 10, opacity: 0.9 }}>
+              60 secondes pour configurer. Ensuite : tu exécutes.
             </div>
           </div>
         ),
       },
       {
         key: "why",
-        title: "Pourquoi l’app existe",
-        subtitle: "Moins d’hésitation, plus d’action",
+        title: "Le principe",
+        subtitle: "Moins de décisions. Plus d’action.",
         content: (
           <div className="col">
-            <div className="titleSm">Clarifier, planifier, agir.</div>
-            <div className="small" style={{ marginTop: 6 }}>
-              Tu poses un cadre simple, puis tu avances sans friction.
+            <div className="titleSm">Tu supprimes le flou.</div>
+            <div className="small" style={{ marginTop: 8 }}>
+              Pas de surcharge. Pas de listes interminables. Tu clarifies ton intention et tu suis un plan lisible.
+            </div>
+            <div className="card" style={{ marginTop: 12, padding: 12, background: SURFACE_SOFT, border: `1px solid ${BORDER_DEFAULT}`, borderRadius: 14 }}>
+              <div className="small">Objectif : te faire gagner du temps mental et verrouiller l’exécution.</div>
             </div>
           </div>
         ),
       },
       {
         key: "how",
-        title: "Comment ça marche",
+        title: "Le système",
         subtitle: "Catégorie → Objectif → Action → Aujourd’hui",
         content: (
           <div className="col">
-            <div className="listItem">
-              <div className="titleSm">1. Catégorie</div>
-              <div className="small">Le domaine de ta vie.</div>
-            </div>
-            <div className="listItem">
-              <div className="titleSm">2. Objectif</div>
-              <div className="small">Le résultat à atteindre.</div>
-            </div>
-            <div className="listItem">
-              <div className="titleSm">3. Action</div>
-              <div className="small">Ce que tu fais concrètement.</div>
-            </div>
-            <div className="listItem">
-              <div className="titleSm">4. Aujourd’hui</div>
-              <div className="small">Exécute la session du jour.</div>
-            </div>
+            {[
+              { n: "1", t: "Catégorie", d: "Le domaine de ta vie (ex : Finance, Santé)." },
+              { n: "2", t: "Objectif", d: "Le résultat à atteindre, sur une période." },
+              { n: "3", t: "Action", d: "Le comportement concret à exécuter." },
+              { n: "4", t: "Aujourd’hui", d: "La liste exacte de ce qui est attendu maintenant." },
+            ].map((x) => (
+              <div key={x.n} className="row" style={{ gap: 10, alignItems: "flex-start", padding: "10px 0" }}>
+                <div
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 9,
+                    display: "grid",
+                    placeItems: "center",
+                    border: `1px solid ${BORDER_DEFAULT}`,
+                    color: "rgba(255,255,255,.92)",
+                    background: SURFACE_SOFT,
+                    flex: "0 0 auto",
+                    fontWeight: 700,
+                  }}
+                >
+                  {x.n}
+                </div>
+                <div>
+                  <div className="titleSm" style={{ lineHeight: 1.1 }}>{x.t}</div>
+                  <div className="small" style={{ marginTop: 4 }}>{x.d}</div>
+                </div>
+              </div>
+            ))}
           </div>
         ),
       },
       {
         key: "permissions",
         title: "Autorisations",
-        subtitle: "Tu restes maître",
+        subtitle: "Tu gardes le contrôle",
         content: (
           <div className="col">
+            <div className="small" style={{ marginBottom: 10 }}>
+              Tu peux tout activer plus tard. Rien n’est obligatoire.
+            </div>
             {[
               {
                 key: "notifications",
                 title: "Notifications",
-                description: "Rappels doux dans l’app.",
+                description: "Rappels utiles quand tu as prévu un créneau.",
               },
               {
                 key: "calendar",
                 title: "Calendrier",
-                description: "Synchronisation future des séances.",
+                description: "Synchronisation des séances (optionnel).",
               },
               {
                 key: "health",
@@ -106,28 +132,41 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
             ].map((item) => {
               const status = permissions[item.key];
               return (
-                <div key={item.key} className="listItem">
+                <div
+                  key={item.key}
+                  className="listItem"
+                  style={{
+                    border: `1px solid ${BORDER_DEFAULT}`,
+                    borderRadius: 16,
+                    padding: 14,
+                    background: SURFACE_SOFT,
+                  }}
+                >
                   <div>
                     <div className="titleSm">{item.title}</div>
                     <div className="small">{item.description}</div>
-                    <div className="small2">Statut : {permissionLabel(status)}</div>
+                    <div className="small2" style={{ marginTop: 4, opacity: 0.9 }}>
+                      Statut : {permissionLabel(status)}
+                    </div>
                   </div>
                   <div className="row" style={{ gap: 8, alignItems: "center" }}>
                     <Button
                       variant={status === "granted" ? "primary" : "ghost"}
-                      onClick={() =>
-                        setPermissions((prev) => ({ ...prev, [item.key]: "granted" }))
-                      }
+                      onClick={() => setPermissions((prev) => ({ ...prev, [item.key]: "granted" }))}
                     >
                       Autoriser
                     </Button>
                     <Button
                       variant={status === "unknown" ? "primary" : "ghost"}
-                      onClick={() =>
-                        setPermissions((prev) => ({ ...prev, [item.key]: "unknown" }))
-                      }
+                      onClick={() => setPermissions((prev) => ({ ...prev, [item.key]: "unknown" }))}
                     >
                       Plus tard
+                    </Button>
+                    <Button
+                      variant={status === "denied" ? "primary" : "ghost"}
+                      onClick={() => setPermissions((prev) => ({ ...prev, [item.key]: "denied" }))}
+                    >
+                      Refuser
                     </Button>
                   </div>
                 </div>
@@ -139,24 +178,23 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
       {
         key: "engagement",
         title: "Engagement",
-        subtitle: "Une phrase pour toi",
+        subtitle: "Un cap. Une phrase.",
         content: (
           <div className="col">
             <div>
-              <div className="small" style={{ marginBottom: 6 }}>
-                Prénom
-              </div>
-              <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+              <div className="small" style={{ marginBottom: 6 }}>Prénom</div>
+              <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Ton prénom" />
             </div>
             <div>
-              <div className="small" style={{ marginBottom: 6 }}>
-                Pourquoi
-              </div>
+              <div className="small" style={{ marginBottom: 6 }}>Ton “Pourquoi”</div>
               <Textarea
                 value={why}
                 onChange={(e) => setWhy(e.target.value)}
-                placeholder="Écris une phrase simple."
+                placeholder="Ex : Je veux reprendre le contrôle et exécuter sans négocier."
               />
+              <div className="small2" style={{ marginTop: 8, opacity: 0.9 }}>
+                Cette phrase s’affichera quand tu auras besoin de te recentrer.
+              </div>
             </div>
           </div>
         ),
@@ -194,7 +232,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
             calendar: permissions.calendar,
             health: permissions.health,
           },
-          onboardingStep: 3,
+          onboardingStep: 0,
           showPlanStep: false,
         },
       };
@@ -216,7 +254,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
             </div>
 
             <div className="mt14 grid2">
-              <Card accentBorder style={{ borderColor: planChoice === "free" ? "#7C3AED" : "rgba(255,255,255,.16)" }}>
+              <Card accentBorder style={{ borderColor: planChoice === "free" ? ACCENT : BORDER_DEFAULT }}>
                 <div className="p18 col">
                   <div className="titleSm">Gratuit</div>
                   <div className="small2">L’essentiel pour démarrer.</div>
@@ -231,7 +269,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
 
               <Card
                 accentBorder
-                style={{ borderColor: planChoice === "premium" ? "#7C3AED" : "rgba(255,255,255,.16)" }}
+                style={{ borderColor: planChoice === "premium" ? ACCENT : BORDER_DEFAULT }}
               >
                 <div className="p18 col">
                   <div className="titleSm">Premium</div>
@@ -279,7 +317,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
     <ScreenShell
       data={safeData}
       pageId="onboarding"
-      headerTitle={current.title}
+      headerTitle={current.title || "Discip-Yourself"}
       headerSubtitle={`${current.subtitle} · ${step + 1}/${totalSteps}`}
     >
       <Card accentBorder>
@@ -292,7 +330,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
           ) : null}
           <div className="row" style={{ marginTop: 14, justifyContent: "space-between", alignItems: "center" }}>
             <Button variant="ghost" onClick={finishOnboarding}>
-              Passer
+              Ignorer
             </Button>
             <Button
               disabled={step === totalSteps - 1 && !canFinish}

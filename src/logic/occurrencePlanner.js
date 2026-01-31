@@ -108,16 +108,41 @@ function normalizeTimeSlots(timeSlots) {
   return out;
 }
 
-function resolveTimeMode(goal) {
-  const raw = typeof goal?.timeMode === "string" ? goal.timeMode.trim().toUpperCase() : "";
+
+function resolvePlanningMode(goal, schedule) {
+  const rawGoal = typeof goal?.planningMode === "string" ? goal.planningMode : "";
+  const rawSchedule = typeof schedule?.planningMode === "string" ? schedule.planningMode : "";
+  const raw = (rawGoal || rawSchedule || "").trim().toUpperCase();
   return raw;
+}
+
+function resolveTimeMode(goal, schedule) {
+  const raw = typeof goal?.timeMode === "string" ? goal.timeMode.trim().toUpperCase() : "";
+  if (raw) return raw;
+
+  const pm = resolvePlanningMode(goal, schedule);
+  if (pm === "DAY_SLOTS" || pm === "NO_TIME") return "NONE";
+
+  if (pm === "UNIFORM_TIME" || pm === "ONE_OFF") {
+    const slots = normalizeTimeSlots(goal?.timeSlots);
+    const start = minutesToTime(parseTimeToMinutes(goal?.startTime));
+    const any = slots[0] || start;
+    return any ? "FIXED" : "NONE";
+  }
+
+  return "";
 }
 
 function resolveScheduleMode(goal, schedule) {
   const rawGoal = typeof goal?.scheduleMode === "string" ? goal.scheduleMode : "";
   const rawSchedule = typeof schedule?.scheduleMode === "string" ? schedule.scheduleMode : "";
   const raw = (rawGoal || rawSchedule || "").trim().toUpperCase();
-  return raw;
+  if (raw) return raw;
+
+  const pm = resolvePlanningMode(goal, schedule);
+  if (pm === "DAY_SLOTS") return "WEEKLY_SLOTS";
+
+  return "";
 }
 
 /**
@@ -125,6 +150,7 @@ function resolveScheduleMode(goal, schedule) {
  * - ONE_OFF: oneOffDate (required), time optional
  * - RECURRING: daysOfWeek (required), time optional, can use weeklySlotsByDay for per-day slots
  * - ANYTIME: daysOfWeek optional, or anytimeFlexible=true (never due)
+ * - planningMode (ONE_OFF | UNIFORM_TIME | DAY_SLOTS | NO_TIME) is accepted as a fallback when scheduleMode/timeMode are missing.
  */
 
 function resolveDueDays(goal, schedule) {
@@ -206,7 +232,7 @@ function resolveWeeklySlotsByDay(goal, schedule) {
 }
 
 function resolveGoalSlots(goal, schedule) {
-  const mode = resolveTimeMode(goal);
+  const mode = resolveTimeMode(goal, schedule);
   const goalSlots = normalizeTimeSlots(goal?.timeSlots);
   const scheduleSlots = normalizeTimeSlots(schedule?.timeSlots);
   const start = minutesToTime(parseTimeToMinutes(goal?.startTime));
@@ -240,13 +266,17 @@ function resolveFallbackSlot(goal) {
 
 function resolvePlannedSlotsForDate(goal, dateKey, schedule) {
   const scheduleMode = resolveScheduleMode(goal, schedule);
-  const timeMode = resolveTimeMode(goal);
+  const timeMode = resolveTimeMode(goal, schedule);
+
+  const pm = resolvePlanningMode(goal, schedule);
+  const forceWeeklySlots = pm === "DAY_SLOTS";
+  const forceNoTime = pm === "NO_TIME";
 
   const weekly = resolveWeeklySlotsByDay(goal, schedule);
   const hasWeekly = Boolean(weekly && Object.keys(weekly).length);
 
   // Per-day slots (different hours per day)
-  if (scheduleMode === "WEEKLY_SLOTS" || hasWeekly) {
+  if (scheduleMode === "WEEKLY_SLOTS" || hasWeekly || forceWeeklySlots) {
     const date = fromLocalDateKey(dateKey);
     const dow = appDowFromDate(date);
     const daySlots = weekly?.[dow] || [];
@@ -255,7 +285,7 @@ function resolvePlannedSlotsForDate(goal, dateKey, schedule) {
   }
 
   // timeMode NONE (or no explicit time) => NO_TIME placeholder
-  if (timeMode === "NONE") return [{ start: "00:00", end: "", noTime: true }];
+  if (timeMode === "NONE" || forceNoTime) return [{ start: "00:00", end: "", noTime: true }];
 
   // Canonical slots for uniform planning
   const slotKeys = resolveGoalSlots(goal, schedule);
@@ -507,7 +537,7 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
   // Only prune when legacy SLOTS are the intended mode (uniform time slots), not for NO_TIME/DAY_SLOTS.
   const legacySlotKeys = resolveGoalSlots(goal, schedule);
   if (
-    resolveTimeMode(goal) === "SLOTS" &&
+    resolveTimeMode(goal, schedule) === "SLOTS" &&
     legacySlotKeys.length
   ) {
     const allowed = new Set(legacySlotKeys);
@@ -536,7 +566,7 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
 
     // Scheduled times should not auto-move. Conflicts are marked, not shifted.
     const plannedMode = resolveScheduleMode(goal, schedule);
-    const tm = resolveTimeMode(goal);
+    const tm = resolveTimeMode(goal, schedule);
     const useExactTimes =
       plannedMode === "WEEKLY_SLOTS" ||
       Boolean(weekly) ||

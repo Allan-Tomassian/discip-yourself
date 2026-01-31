@@ -341,7 +341,16 @@ export default function CreateV2Habits({
   const reminderValid = !reminderWindowProvided || Boolean(normalizedReminderTime);
 
   const normalizedStartForCheck = normalizeStartTime(startTime);
-  const requiresStartTime = timeMode === "FIXED";
+
+  // Premium rule:
+  // - ONE_OFF: time optional
+  // - RECURRING (STANDARD): time required
+  // - RECURRING (WEEKLY_SLOTS): time handled per day slots
+  // - ANYTIME: no time
+  const requiresStartTime =
+    (isTypeOneOff && timeMode === "FIXED") ||
+    (isTypeRecurring && scheduleMode !== "WEEKLY_SLOTS");
+
   const startTimeValid = !requiresStartTime || Boolean(normalizedStartForCheck);
 
   const canAddHabit =
@@ -531,11 +540,11 @@ export default function CreateV2Habits({
       effectiveScheduleMode === "WEEKLY_SLOTS" ? normalizeWeeklySlotsByDay(weeklySlotsByDay) : null;
 
     const timeFields = normalizeTimeFields({
-      timeMode: effectiveScheduleMode === "WEEKLY_SLOTS" ? "NONE" : timeMode,
+      timeMode: effectiveScheduleMode === "WEEKLY_SLOTS" ? "NONE" : isTypeRecurring ? "FIXED" : timeMode,
       timeSlots:
         effectiveScheduleMode === "WEEKLY_SLOTS"
           ? []
-          : timeMode === "FIXED" && normalizedStart
+          : (isTypeRecurring || timeMode === "FIXED") && normalizedStart
           ? [normalizedStart]
           : [],
       startTime: effectiveScheduleMode === "WEEKLY_SLOTS" ? "" : normalizedStart,
@@ -987,20 +996,43 @@ export default function CreateV2Habits({
 
                   <div className="stack stackGap6">
                     <div className="small2 textMuted">Moment</div>
-                    <Select value={scheduleMode} onChange={(e) => setScheduleMode(e.target.value)}>
+                    <Select
+                      value={scheduleMode}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setScheduleMode(next);
+                        if (next === "WEEKLY_SLOTS") {
+                          // per-day slots take over
+                          setStartTime("");
+                        }
+                      }}
+                    >
                       <option value="STANDARD">Dans la journée / Heure fixe</option>
                       <option value="WEEKLY_SLOTS">Créneaux par jour</option>
                     </Select>
 
                     {scheduleMode === "STANDARD" ? (
-                      <div className="row gap8">
-                        <Select value={timeMode} onChange={(e) => setTimeMode(e.target.value)}>
-                          <option value="NONE">Dans la journée</option>
-                          <option value="FIXED">Heure fixe</option>
-                        </Select>
-                        {timeMode === "FIXED" ? (
-                          <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-                        ) : null}
+                      <div className="stack stackGap8">
+                        <div className="row gap8 alignCenter">
+                          <Input
+                            type="time"
+                            value={startTime}
+                            onChange={(e) => setStartTime(e.target.value)}
+                          />
+                          <Button
+                            variant="ghost"
+                            onClick={() => {
+                              // common default if empty
+                              if (!normalizeStartTime(startTime)) setStartTime("08:00");
+                            }}
+                          >
+                            Matin
+                          </Button>
+                          <Button variant="ghost" onClick={() => setStartTime("14:00")}>Après‑midi</Button>
+                          <Button variant="ghost" onClick={() => setStartTime("19:00")}>Soir</Button>
+                        </div>
+                        {!startTimeValid ? <Hint tone="danger">Choisis une heure (obligatoire).</Hint> : null}
+                        <Hint>Heure unique (même heure sur tous les jours sélectionnés).</Hint>
                       </div>
                     ) : null}
 
@@ -1098,7 +1130,7 @@ export default function CreateV2Habits({
                       {habit.title}
                       <div className="textMuted2">
                         {formatRepeatLabel(habit)}
-                        {habit.activeFrom && habit.activeTo && habit.repeat !== "none" ? ` · ${habit.activeFrom}→${habit.activeTo}` : ""}
+                        {habit.activeFrom && habit.activeTo && habit.repeat !== "none" ? ` · ${habit.activeFrom} → ${habit.activeTo}` : ""}
                         {habit.location ? ` · ${habit.location}` : ""}
                         {habit.scheduleMode === "WEEKLY_SLOTS" ? ` · ${formatWeeklySlotsSummary(habit)}` : habit.startTime ? ` · ${habit.startTime}` : ""}
                         {Number.isFinite(habit.durationMinutes) ? ` · ${habit.durationMinutes} min` : ""}

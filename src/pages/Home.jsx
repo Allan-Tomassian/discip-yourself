@@ -1698,37 +1698,49 @@ export default function Home({
                     </div>
                     <div className="mt12">
                       <div className="small2">Catégorie</div>
-                      <div
-                        className="mt8 accentRow"
-                        data-tour-id="today-focus-category"
-                        style={accentVars}
-                      >
-                        <div className="itemTitle">{focusCategory?.name || "Catégorie"}</div>
+                      <div className="mt8" data-tour-id="today-focus-category">
+                        <AccentItem
+                          color={goalAccent}
+                          selected
+                          compact
+                          aria-label="Catégorie focus"
+                          style={{ cursor: "default" }}
+                        >
+                          <div className="itemTitle">{focusCategory?.name || "Catégorie"}</div>
+                        </AccentItem>
                       </div>
                     </div>
 
                     <div className="mt12">
                       <div className="small2">Objectif principal</div>
                     {outcomeGoals.length ? (
-                      <div className="mt8 accentRow" style={accentVars}>
-                        <SelectMenu
-                          value={selectedGoal?.id || ""}
-                          onChange={(next) => setCategoryMainGoal(next)}
-                          disabled={!canEdit}
-                          placeholder="Choisir un objectif"
-                          options={outcomeGoals.map((g) => ({ value: g.id, label: g.title || "Objectif" }))}
-                          // Important: the container (accentRow) provides the shape/border.
-                          // So the SelectMenu must be visually neutral.
-                          className="accentSelect"
-                          style={{
-                            width: "100%",
-                            background: "transparent",
-                            border: "none",
-                            boxShadow: "none",
-                            padding: 0,
-                            minHeight: "unset",
-                          }}
-                        />
+                      <div className="mt8">
+                        <AccentItem
+                          color={goalAccent}
+                          selected
+                          compact
+                          aria-label="Objectif principal"
+                          style={{ cursor: "default" }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <SelectMenu
+                              value={selectedGoal?.id || ""}
+                              onChange={(next) => setCategoryMainGoal(next)}
+                              disabled={!canEdit}
+                              placeholder="Choisir un objectif"
+                              options={outcomeGoals.map((g) => ({ value: g.id, label: g.title || "Objectif" }))}
+                              className="focusGoalSelect"
+                              style={{
+                                width: "100%",
+                                background: "transparent",
+                                border: "none",
+                                boxShadow: "none",
+                                paddingLeft: 0,
+                                paddingRight: 0,
+                              }}
+                            />
+                          </div>
+                        </AccentItem>
                       </div>
                     ) : (
                       <div className="mt8 small2">Aucun objectif principal pour cette catégorie.</div>

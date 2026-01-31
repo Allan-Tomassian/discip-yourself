@@ -211,7 +211,7 @@ export function normalizeCreationDraft(raw) {
       }
 
       // UX v2 fields (source of truth in draft)
-      const rawExpected = Array.isArray(nextHabit.expectedDays) ? nextHabit.expectedDays : nextHabit.expectedDays;
+      const rawExpected = nextHabit.expectedDays;
       nextHabit.expectedDays = normalizeDaysOfWeek(rawExpected);
 
       // If expectedDays is missing/empty, derive from legacy repeat/daysOfWeek.
@@ -236,9 +236,10 @@ export function normalizeCreationDraft(raw) {
           normalizeScheduleMode(nextHabit.scheduleMode) ||
           normalizeScheduleMode(nextHabit.schedule?.scheduleMode);
         if (legacyScheduleMode === "WEEKLY_SLOTS") return "DAY_SLOTS";
-        const legacyHasFixedTime = !!normalizeStartTime(nextHabit.startTime) ||
+        const legacyHasFixedTime =
+          !!normalizeStartTime(nextHabit.startTime) ||
           (Array.isArray(nextHabit.timeSlots) && nextHabit.timeSlots.length > 0) ||
-          normalizeScheduleMode(nextHabit.scheduleMode) === "STANDARD";
+          nextHabit.timeMode === "FIXED";
         if (legacyHasFixedTime && (nextHabit.timeMode === "FIXED" || normalizeStartTime(nextHabit.startTime))) {
           return "UNIFORM_TIME";
         }
@@ -349,6 +350,41 @@ export function normalizeCreationDraft(raw) {
         nextHabit.timeMode = "NONE";
         nextHabit.timeSlots = [];
         nextHabit.startTime = "";
+      }
+      // Enforce scheduling invariants based on UX v2 planningMode.
+      // Goal: avoid double-scheduling (e.g., DAY_SLOTS + FIXED time) and keep legacy fields coherent.
+      if (draft.habitType === "ONE_OFF") {
+        // ONE_OFF only supports optional uniform time; otherwise it is due that day with no time.
+        if (nextHabit.planningMode !== "UNIFORM_TIME") {
+          nextHabit.timeMode = "NONE";
+          nextHabit.timeSlots = [];
+          nextHabit.startTime = "";
+        } else {
+          // Uniform time: if user set a startTime, keep it as FIXED for legacy compatibility.
+          if (nextHabit.startTime) nextHabit.timeMode = "FIXED";
+        }
+      }
+
+      if (draft.habitType === "RECURRING") {
+        // RECURRING supports: NO_TIME, UNIFORM_TIME, or DAY_SLOTS.
+        // NO_TIME and DAY_SLOTS must never keep legacy fixed time fields.
+        if (nextHabit.planningMode === "NO_TIME" || nextHabit.planningMode === "DAY_SLOTS") {
+          nextHabit.timeMode = "NONE";
+          nextHabit.timeSlots = [];
+          nextHabit.startTime = "";
+        } else if (nextHabit.planningMode === "UNIFORM_TIME") {
+          if (nextHabit.startTime) nextHabit.timeMode = "FIXED";
+        }
+
+        // DAY_SLOTS implies legacy WEEKLY_SLOTS schedule mode + weeklySlotsByDay.
+        if (nextHabit.planningMode === "DAY_SLOTS") {
+          nextHabit.scheduleMode = "WEEKLY_SLOTS";
+          nextHabit.weeklySlotsByDay = normalizeWeeklySlotsByDay(nextHabit.daySlotsByDay);
+        } else {
+          // Other modes should not retain weekly slots.
+          nextHabit.weeklySlotsByDay = {};
+          nextHabit.scheduleMode = "STANDARD";
+        }
       }
       nextHabit.memo = typeof nextHabit.memo === "string" ? nextHabit.memo : "";
 

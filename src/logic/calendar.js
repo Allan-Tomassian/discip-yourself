@@ -21,7 +21,7 @@ function isIsoDateString(value) {
 }
 
 function isNoTimeOccurrence(o) {
-  if (!o) return true;
+  if (!o) return false;
   if (o.noTime) return true;
   // Current placeholder convention for no-time occurrences
   return typeof o.start === "string" && o.start === "00:00";
@@ -197,17 +197,19 @@ export function getDayCountsForDate(date, source, options = {}) {
 
   for (const o of list) {
     if (!o) continue;
-    const st = typeof o.status === "string" ? o.status : "";
-    if (st === "done") done += 1;
-    else if (st === "skipped") {
+    const st = typeof o.status === "string" ? o.status : "planned";
+
+    if (st === "skipped" || st === "canceled") {
       if (includeSkipped) skipped += 1;
-      // If includeSkipped=false, we still treat skipped as skipped but callers can ignore it.
-      else skipped += 1;
-    } else planned += 1;
+      continue; // never count skipped/canceled as planned
+    }
+
+    if (st === "done") done += 1;
+    else planned += 1;
   }
 
-  // Backward compatible shape.
-  return includeSkipped ? { planned, done, skipped } : { planned, done, skipped };
+  // Keep the same shape for all callers.
+  return { planned, done, skipped };
 }
 
 /**
@@ -247,8 +249,8 @@ export function getDayCategorySummaryForDate(date, occurrencesSource, goals, cat
     if (!catId) continue;
 
     const st = typeof o.status === "string" ? o.status : "planned";
-    if (!includeSkipped && st === "skipped") {
-      // Still track totals internally, but let UI choose to hide skipped.
+    if (!includeSkipped && (st === "skipped" || st === "canceled")) {
+      continue;
     }
 
     if (!countsByCategoryId[catId]) {
@@ -262,7 +264,7 @@ export function getDayCategorySummaryForDate(date, occurrencesSource, goals, cat
     if (st === "done") {
       bucket.doneCount += 1;
       totalDone += 1;
-    } else if (st === "skipped") {
+    } else if (st === "skipped" || st === "canceled") {
       bucket.skippedCount += 1;
       totalSkipped += 1;
     } else {
