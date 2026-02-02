@@ -5,19 +5,23 @@
 // - “Motion-ready” tokens (optional CSS animation using background-position)
 // - Backward compatible keys: background, bg, text, muted, muted2, border, glass, glass2, accent, glow
 
-const DEFAULT_THEME = "aurora";
+export const DEFAULT_THEME = "aurora";
 
 // Brand accent fallback (can still be overridden per theme or per user).
-const BRAND_ACCENT = "#F7931A";
+export const BRAND_ACCENT = "#F7931A";
 
 // Helper: a consistent glow for brand accent.
-const BRAND_GLOW = "rgba(247,147,26,.35)";
+export const BRAND_GLOW = "rgba(247,147,26,.35)";
+
+// CTA text tuned for the brand accent.
+const CTA_TEXT_DARK = "#1B1206";
 
 // Shared surfaces and shadows tuned for iOS-like glass.
 const SHARED = {
   // Shadow stack (Apple-ish): subtle ambient + tighter contact shadow
   shadow: "0 18px 50px rgba(0,0,0,.45), 0 2px 10px rgba(0,0,0,.25)",
   shadowSoft: "0 10px 30px rgba(0,0,0,.35), 0 1px 8px rgba(0,0,0,.18)",
+  shadowCard: "0 10px 30px rgba(0,0,0,.35), 0 1px 8px rgba(0,0,0,.18)",
 
   // Rings (focus/active states)
   ring: "0 0 0 1px rgba(255,255,255,.14)",
@@ -276,6 +280,14 @@ export function applyThemeTokens(themeName, accentOverride) {
     // Global brand accent everywhere unless the user explicitly overrides it.
     accent: normalizedAccent || BRAND_ACCENT,
     glow: nextGlow || BRAND_GLOW,
+    // Cross-app aliases to avoid hardcoded colors elsewhere.
+    accentStrong: normalizedAccent || BRAND_ACCENT,
+    accentPrimary: normalizedAccent || BRAND_ACCENT,
+    focus: normalizedAccent || BRAND_ACCENT,
+    focusGlow: hexToRgba(normalizedAccent || BRAND_ACCENT, 0.35) || BRAND_GLOW,
+    cta: normalizedAccent || BRAND_ACCENT,
+    ctaText: CTA_TEXT_DARK,
+    accentText: CTA_TEXT_DARK,
   };
 
   const root = document.documentElement;
@@ -296,6 +308,19 @@ export function applyThemeTokens(themeName, accentOverride) {
   // Debug-friendly dataset values
   root.dataset.theme = (typeof themeName === "string" && themeName.trim()) ? themeName.trim() : DEFAULT_THEME;
   root.dataset.accent = finalTokens.accent;
+
+  // iOS browser chrome color
+  try {
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute("content", finalTokens.accent);
+  } catch (err) {
+    void err;
+  }
 }
 
 /**
@@ -309,4 +334,4 @@ export function applyThemeFromState(data, page = "home") {
   applyThemeTokens(name, accent);
 }
 
-export { DEFAULT_THEME, THEME_TOKENS };
+export { THEME_TOKENS };

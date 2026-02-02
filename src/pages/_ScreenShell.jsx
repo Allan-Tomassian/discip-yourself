@@ -1,8 +1,9 @@
 import React from "react";
 import AccentContext from "../components/AccentContext";
+import { BRAND_ACCENT } from "../theme/themeTokens";
 
 export default function ScreenShell({
-  accent = "#F7931A",
+  accent = BRAND_ACCENT,
   backgroundCss = "",
   backgroundImage,
   headerTitle,

@@ -13,7 +13,7 @@ function hexToRgba(hex, alpha) {
 export function getCategoryAccentVars(color, fallback = "#7C3AED") {
   const base = typeof color === "string" && color.trim() ? color.trim() : fallback;
   const glow = hexToRgba(base, 0.12);
-  const tint = hexToRgba(base, 0.1);
+  const tint = hexToRgba(base, 0.12);
   return {
     "--accent": base,
     "--accentTint": tint || "rgba(255,255,255,.06)",

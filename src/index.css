@@ -13,12 +13,12 @@
   --background-position: 50% 50%;
 
   /* Premium token aliases + safe fallbacks (themeTokens.js exports surface2/surface3/borderStrong/textStrong/...) */
-  --surface-2: var(--surface2, rgba(255,255,255,.105));
-  --surface-3: var(--surface3, rgba(255,255,255,.135));
-  --border-strong: var(--borderStrong, rgba(255,255,255,.22));
-  --text-strong: var(--textStrong, rgba(255,255,255,.92));
-  --shadow-soft: var(--shadowSoft, 0 18px 60px rgba(0,0,0,.35));
-  --shadow-card: var(--shadowCard, var(--shadow-soft));
+  --surface-2: var(--surface2);
+  --surface-3: var(--surface3);
+  --border-strong: var(--borderStrong);
+  --text-strong: var(--textStrong);
+  --shadow-soft: var(--shadowSoft);
+  --shadow-card: var(--shadowCard);
 }
 
 *{ box-sizing:border-box; }
@@ -176,14 +176,10 @@ a{ color:inherit; }
 .bg::before{
   content:"";
   position:absolute;
-  inset:-60px;
+  inset:0;
   pointer-events:none;
-  background:
-    radial-gradient(900px 520px at 18% 14%, rgba(255,255,255,.10), rgba(255,255,255,0) 62%),
-    radial-gradient(820px 520px at 86% 22%, rgba(255,255,255,.08), rgba(255,255,255,0) 60%),
-    radial-gradient(980px 720px at 30% 92%, rgba(0,0,0,.32), rgba(0,0,0,0) 60%),
-    radial-gradient(1100px 820px at 82% 88%, rgba(0,0,0,.30), rgba(0,0,0,0) 58%);
-  opacity:.85;
+  background:none;
+  opacity:0;
 }
 
 .bg::after{
@@ -191,11 +187,9 @@ a{ color:inherit; }
   position:absolute;
   inset:0;
   pointer-events:none;
-  opacity:.055;
-  background:
-    repeating-linear-gradient(0deg, rgba(255,255,255,.9) 0 1px, rgba(255,255,255,0) 1px 6px),
-    repeating-linear-gradient(90deg, rgba(255,255,255,.55) 0 1px, rgba(255,255,255,0) 1px 7px);
-  mix-blend-mode: overlay;
+  opacity:0;
+  background:none;
+  mix-blend-mode: normal;
 }
 
 
@@ -479,21 +473,37 @@ a{ color:inherit; }
   border-radius:var(--radius-card);
   box-shadow: var(--shadow-card);
 }
-.accentFrame{
+.accentSurface{
   position:relative;
+  border-color: var(--border);
   background:
-    linear-gradient(90deg, var(--accentTint, rgba(255,255,255,.06)), rgba(0,0,0,0) 60%),
+    linear-gradient(90deg, var(--accentTint, rgba(255,255,255,.08)), rgba(0,0,0,0) 60%),
     var(--surface);
 }
-.accentFrame::before{
+.accentRail{
+  position:relative;
+  --accentRailWidth: 3px;
+  --accentRailInset: 12px;
+  --accentRailRadius: 4px;
+}
+.accentRail::before{
   content:"";
   position:absolute;
   left:0;
-  top:12px;
-  bottom:12px;
-  width:3px;
-  border-radius:4px;
+  top:var(--accentRailInset);
+  bottom:var(--accentRailInset);
+  width:var(--accentRailWidth);
+  border-radius:var(--accentRailRadius);
   background: var(--accent, rgba(255,255,255,.6));
+}
+.accentItem{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  border-radius:12px;
+  transition: background 180ms ease, border-left-color 180ms ease;
+  outline:none;
 }
 
 .p16{ padding:var(--space-16); }
@@ -895,32 +905,6 @@ a{ color:inherit; }
   background: rgba(255,255,255,.10);
 }
 
-.catAccentField .select{
-  border-color: var(--catColor, rgba(255,255,255,.35));
-  box-shadow:none;
-}
-.catAccentField .select:focus{
-  border-color: var(--catColor, rgba(255,255,255,.35));
-  box-shadow: 0 0 0 1px var(--catColor, rgba(255,255,255,.35));
-}
-
-.catAccentRow{
-  position:relative;
-  border-color: var(--border);
-  background:
-    linear-gradient(90deg, var(--catGlow, rgba(124,58,237,.12)), rgba(0,0,0,0) 60%),
-    var(--surface);
-}
-.catAccentRow::before{
-  content:"";
-  position:absolute;
-  left:0;
-  top:10px;
-  bottom:10px;
-  width:3px;
-  border-radius:4px;
-  background: var(--catColor, rgba(124,58,237,.6));
-}
 
 .dayRail{
   display:flex;
@@ -1263,22 +1247,6 @@ a{ color:inherit; }
     box-shadow: inset 0 0 0 1px rgba(124,58,237,.28);
   }
 }
-.accentRow{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:10px 10px;
-  border-radius:var(--radius-12);
-  background:
-    linear-gradient(90deg, var(--accentTint, rgba(255,255,255,.08)), rgba(0,0,0,0) 60%),
-    var(--surface);
-  border-left:3px solid var(--accent, rgba(255,255,255,.6));
-}
-.accentInput{
-  background:
-    linear-gradient(90deg, var(--accentTint, rgba(255,255,255,.08)), rgba(0,0,0,0) 60%),
-    var(--surface);
-}
 .reminderOverlay{
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
@@ -1468,5 +1436,3 @@ a{ color:inherit; }
 .ios .drawerPanel{
   position:absolute;
 }
-
-

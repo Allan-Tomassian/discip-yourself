@@ -2363,7 +2363,7 @@ export default function Home({
                       onChange={(e) => {
                         setDailyNote(e.target.value);
                       }}
-                      className="accentInput"
+                      className="accentSurface"
                       style={accentVars}
                       placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
                       data-tour-id="today-notes-text"
@@ -2378,7 +2378,7 @@ export default function Home({
                           value={noteMeta.forme || ""}
                           onChange={(next) => updateNoteMeta({ forme: next })}
                           style={accentVars}
-                          className="accentInput"
+                          className="accentSurface"
                           placeholder="Choisir"
                           options={[
                             { value: "Excellente", label: "Excellente" },
@@ -2394,7 +2394,7 @@ export default function Home({
                           value={noteMeta.humeur || ""}
                           onChange={(next) => updateNoteMeta({ humeur: next })}
                           style={accentVars}
-                          className="accentInput"
+                          className="accentSurface"
                           placeholder="Choisir"
                           options={[
                             { value: "Positif", label: "Positif" },
@@ -2406,7 +2406,7 @@ export default function Home({
                       <div>
                         <div className="small2">Motivation</div>
                         <input
-                          className="input accentInput"
+                          className="input accentSurface"
                           type="number"
                           min="0"
                           max="10"
@@ -2554,11 +2554,30 @@ export default function Home({
                   if (meta.humeur) metaParts.push(`Humeur: ${meta.humeur}`);
                   if (meta.motivation) metaParts.push(`Motivation: ${meta.motivation}/10`);
                   const isSelected = noteDeleteMode && noteDeleteTargetId === item.id;
+                  if (isSelected) {
+                    return (
+                      <AccentItem
+                        key={item.id || item.dateKey}
+                        className="listItem"
+                        style={accentVars}
+                        selected
+                        onClick={
+                          noteDeleteMode
+                            ? () => setNoteDeleteTargetId((prev) => (prev === item.id ? null : item.id))
+                            : undefined
+                        }
+                      >
+                        <div className="small2">{item.dateKey}</div>
+                        {metaParts.length ? <div className="small2 mt8">{metaParts.join(" · ")}</div> : null}
+                        {item.note ? <div className="small2 mt8">{item.note}</div> : null}
+                      </AccentItem>
+                    );
+                  }
+
                   return (
                     <div
                       key={item.id || item.dateKey}
-                      className={`listItem${isSelected ? " catAccentRow" : ""}`}
-                      style={isSelected ? accentVars : undefined}
+                      className="listItem"
                       role={noteDeleteMode ? "button" : undefined}
                       tabIndex={noteDeleteMode ? 0 : undefined}
                       onClick={

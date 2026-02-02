@@ -361,14 +361,14 @@ export default function Categories({
                 ) : null}
               </div>
             </div>
-            <div className="listItem catAccentRow" style={detailAccentVars}>
+            <AccentItem className="listItem" style={detailAccentVars}>
               <div className="small2 textMuted">
                 Mini-why
               </div>
               <div className="small2 mt6">
                 {detailWhy}
               </div>
-            </div>
+            </AccentItem>
             <div className="col gap8">
               <div className="small2 textMuted">
                 Objectifs
@@ -378,7 +378,7 @@ export default function Categories({
                   {outcomeGoals.map((g) => {
                     const isPrimaryGoal = category.mainGoalId && g.id === category.mainGoalId;
                     return (
-                      <div key={g.id} className="listItem catAccentRow" style={detailAccentVars}>
+                      <AccentItem key={g.id} className="listItem" style={detailAccentVars}>
                         <div className="row rowBetween gap8">
                           <div className="itemTitle">{g.title || "Objectif"}</div>
                           {isPrimaryGoal ? (
@@ -387,7 +387,7 @@ export default function Categories({
                             </span>
                           ) : null}
                         </div>
-                      </div>
+                      </AccentItem>
                     );
                   })}
                 </div>
@@ -406,7 +406,7 @@ export default function Categories({
                         {section.items.map(({ goal, badges }) => {
                           const canLink = unlinkedHabitIds.has(goal.id) && linkTargetId && typeof setData === "function";
                           return (
-                            <div key={goal.id} className="listItem catAccentRow" style={detailAccentVars}>
+                            <AccentItem key={goal.id} className="listItem" style={detailAccentVars}>
                               <div className="row rowBetween gap8">
                                 <div className="col gap6 minW0">
                                   <div className="itemTitle">{goal.title || "Action"}</div>
@@ -432,7 +432,7 @@ export default function Categories({
                                   </Button>
                                 ) : null}
                               </div>
-                            </div>
+                            </AccentItem>
                           );
                         })}
                       </div>

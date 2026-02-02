@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from "react";
 import { Badge, Button, Card, Input, Textarea } from "../components/UI";
 import ScreenShell from "./_ScreenShell";
+import { BRAND_ACCENT } from "../theme/themeTokens";
 
-const ACCENT = "var(--accent, #F7931A)"; // orange bitcoin fallback
-const BORDER_DEFAULT = "rgba(255,255,255,.16)";
-const SURFACE_SOFT = "rgba(255,255,255,.04)";
+const ACCENT = `var(--accent, ${BRAND_ACCENT})`;
+const BORDER_DEFAULT = "var(--border)";
+const SURFACE_SOFT = "var(--surface)";
 
 function normalizePermission(value) {
   if (value === "granted" || value === "denied") return value;

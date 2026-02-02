@@ -43,11 +43,15 @@ export function Card({ children, accentBorder = false, style, className = "", ..
   const { accent } = React.useContext(AccentContext);
   const accentTint = accentBorder ? hexToRgba(accent, 0.12) : "";
   const accentStyle = accentBorder
-    ? { "--accent": accent, "--accentTint": accentTint || "rgba(255,255,255,.06)" }
+    ? {
+        "--accent": accent,
+        ...(accentTint ? { "--accentTint": accentTint } : null),
+        "--accentRailInset": "12px",
+      }
     : {};
   return (
     <div
-      className={`card${accentBorder ? " accentFrame" : ""}${className ? ` ${className}` : ""}`}
+      className={`card${accentBorder ? " accentSurface accentRail" : ""}${className ? ` ${className}` : ""}`}
       style={{
         ...accentStyle,
         ...(style || {}),

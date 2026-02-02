@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { Badge, Button, Card, ProgressRing } from "./UI";
+import AccentContext from "./AccentContext";
+import { AccentItem, Badge, Button, Card, ProgressRing } from "./UI";
 import { clamp } from "../utils/helpers";
 import { computeHabitProgress, incHabit, decHabit } from "../logic/habits";
 import { addXp } from "../logic/xp";
@@ -29,19 +30,6 @@ export default function Block({
     };
   }, []);
 
-  const blockRailStyle = useMemo(() => {
-    const rail = accent || "#6EE7FF";
-    return {
-      position: "absolute",
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: 3,
-      background: `linear-gradient(180deg, ${rail}, ${rail}55)`,
-      opacity: 0.9,
-    };
-  }, [accent]);
-
   const categoryRate = useMemo(() => {
     const list = habitsForCategory;
     if (!list.length) return null;
@@ -52,9 +40,9 @@ export default function Block({
 
   if (block.type === "WHY") {
     return (
-      <Card style={blockCardStyle}>
-        <div style={blockRailStyle} />
-        <div className="p18">
+      <AccentContext.Provider value={{ accent }}>
+        <Card accentBorder style={blockCardStyle}>
+          <div className="p18">
           <div className="row">
             <div>
               <div className="small">Ton pourquoi</div>
@@ -63,13 +51,7 @@ export default function Block({
             <Badge>Fixe</Badge>
           </div>
 
-          <div
-            className="mt12 listItem"
-            style={{
-              borderColor: "rgba(255,255,255,0.10)",
-              background: "rgba(255,255,255,0.04)",
-            }}
-          >
+          <AccentItem className="mt12 listItem" tone="neutral">
             <div style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.95 }}>“{data.profile.whyText}”</div>
             <div className="mt12 row" style={{ fontSize: 12, color: "rgba(255,255,255,.6)" }}>
               <span>Image: {data.profile.whyImage ? "OK" : "—"}</span>
@@ -84,17 +66,18 @@ export default function Block({
                 Modifier
               </button>
             </div>
-          </div>
+          </AccentItem>
         </div>
       </Card>
+      </AccentContext.Provider>
     );
   }
 
   if (block.type === "HABITS") {
     return (
-      <Card style={blockCardStyle}>
-        <div style={blockRailStyle} />
-        <div className="p18">
+      <AccentContext.Provider value={{ accent }}>
+        <Card accentBorder style={blockCardStyle}>
+          <div className="p18">
           <div className="row">
             <div>
               <div className="small">Aujourd’hui</div>
@@ -113,14 +96,7 @@ export default function Block({
                 const ratio = clamp(p.ratio, 0, 1);
 
                 return (
-                  <div
-                    key={h.id}
-                    className="listItem"
-                    style={{
-                      borderColor: "rgba(255,255,255,0.10)",
-                      background: `linear-gradient(90deg, rgba(0,0,0,0), ${(accent || "#6EE7FF")}12)`,
-                    }}
-                  >
+                  <AccentItem key={h.id} className="listItem" color={accent}>
                     <div className="row" style={{ alignItems: "flex-start" }}>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 700 }}>{h.title}</div>
@@ -153,21 +129,22 @@ export default function Block({
                         </Button>
                       </div>
                     </div>
-                  </div>
+                  </AccentItem>
                 );
               })
             )}
           </div>
         </div>
       </Card>
+      </AccentContext.Provider>
     );
   }
 
   // GOAL
   return (
-    <Card style={blockCardStyle}>
-      <div style={blockRailStyle} />
-      <div className="p18">
+    <AccentContext.Provider value={{ accent }}>
+      <Card accentBorder style={blockCardStyle}>
+        <div className="p18">
         <div className="row">
           <div>
             <div className="small">Objectif</div>
@@ -178,13 +155,7 @@ export default function Block({
 
         <div className="mt12">
           {goalForCategory ? (
-            <div
-              className="listItem"
-              style={{
-                borderColor: "rgba(255,255,255,0.10)",
-                background: `linear-gradient(90deg, rgba(0,0,0,0), ${(accent || "#6EE7FF")}12)`,
-              }}
-            >
+            <AccentItem className="listItem" color={accent}>
               <div style={{ fontSize: 14, fontWeight: 700 }}>{goalForCategory.title}</div>
               <div className="small2">
                 {goalForCategory.cadence === "DAILY" ? "Objectif quotidien" : goalForCategory.cadence === "YEARLY" ? "Objectif annuel" : "Objectif hebdomadaire"} · cible {goalForCategory.target}
@@ -215,12 +186,13 @@ export default function Block({
                   <div className="small2 mt10">Ton UI doit te ramener à l’action.</div>
                 </div>
               </div>
-            </div>
+            </AccentItem>
           ) : (
             <div className="listItem">Aucun objectif pour cette catégorie.</div>
           )}
         </div>
       </div>
     </Card>
+    </AccentContext.Provider>
   );
 }

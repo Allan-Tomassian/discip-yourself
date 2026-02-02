@@ -6,56 +6,41 @@ import "./index.css";
 
 // Theme bootstrap: ensure the selected theme is applied BEFORE first paint.
 // This prevents refresh on non-Settings pages from snapping back to a default theme.
-import * as Theme from "./utils/_theme.js";
+import { applyThemeTokens, getThemeAccent, getThemeName } from "./theme/themeTokens";
+import { LS_KEY } from "./utils/storage";
 
-function readStoredThemeId() {
-  // Support legacy keys to avoid breaking existing users.
-  const keys = [
-    "discip_theme",
-    "discipTheme",
-    "themeId",
-    "theme",
-    "appTheme",
-    "selectedTheme",
-    "dy_theme",
-  ];
+function readStoredState() {
+  try {
+    const raw = window.localStorage.getItem(LS_KEY);
+    if (!raw || !raw.trim()) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
 
+function readLegacyThemeId() {
+  const keys = ["discip_theme", "discipTheme", "themeId", "theme", "appTheme", "selectedTheme", "dy_theme"];
   for (const k of keys) {
     const raw = window.localStorage.getItem(k);
     if (!raw) continue;
-
-    // Try JSON first (e.g. { id: "Midnight" } / { themeId: "Midnight" }).
     try {
       const parsed = JSON.parse(raw);
       const id = parsed?.themeId ?? parsed?.id ?? parsed?.theme;
       if (typeof id === "string" && id.trim()) return id.trim();
     } catch {
-      // Not JSON -> treat as plain string.
       if (typeof raw === "string" && raw.trim()) return raw.trim();
     }
   }
-
   return null;
 }
 
 function applyThemeEarly() {
   try {
-    const themeId = readStoredThemeId();
-    if (!themeId) return;
-
-    // Prefer the project's theme engine if present.
-    if (typeof Theme?.applyTheme === "function") {
-      Theme.applyTheme(themeId);
-      return;
-    }
-
-    if (typeof Theme?.setTheme === "function") {
-      Theme.setTheme(themeId);
-      return;
-    }
-
-    // Fallback: set a data attribute for CSS-token based theming.
-    document.documentElement.dataset.theme = themeId;
+    const storedState = readStoredState();
+    const themeId = storedState ? getThemeName(storedState, "home") : readLegacyThemeId();
+    const accent = storedState ? getThemeAccent(storedState, "home") : null;
+    applyThemeTokens(themeId, accent);
   } catch {
     // Never block app boot on theme errors.
   }

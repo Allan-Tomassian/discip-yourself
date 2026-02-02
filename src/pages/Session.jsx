@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card } from "../components/UI";
+import { AccentItem, Button, Card } from "../components/UI";
 import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { findOccurrenceForGoalDateDeterministic, setOccurrenceStatus, upsertOccurrence } from "../logic/occurrences";
 import { getAccentForPage } from "../utils/_theme";
@@ -456,12 +456,12 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
                 {doneHabits.length ? (
                   <div className="mt10 col gap10">
                     {doneHabits.map((h) => (
-                      <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
+                      <AccentItem key={h.id} className="listItem" style={catAccentVars}>
                         <div className="row rowBetween alignCenter">
                           <div className="itemTitle">{h.title || "Action"}</div>
                           <span className="actionStatus running">Fait</span>
                         </div>
-                      </div>
+                      </AccentItem>
                     ))}
                   </div>
                 ) : (
@@ -554,14 +554,14 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
             {habits.length ? (
               <div className="mt12 col gap10">
                 {habits.map((h) => (
-                  <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
+                  <AccentItem key={h.id} className="listItem" style={catAccentVars}>
                     <div className="row rowBetween alignCenter">
                       <div className="itemTitle">{h.title || "Action"}</div>
                       <span className={`actionStatus ${isRunning ? "running" : "todo"}`}>
                         {isRunning ? "En cours" : "À faire"}
                       </span>
                     </div>
-                  </div>
+                  </AccentItem>
                 ))}
               </div>
             ) : (

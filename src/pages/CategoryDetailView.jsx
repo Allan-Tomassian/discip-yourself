@@ -1,6 +1,6 @@
 import React from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card } from "../components/UI";
+import { AccentItem, Button, Card } from "../components/UI";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { resolveGoalType } from "../domain/goalType";
@@ -87,7 +87,7 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
                 const linkedHabits = habitsByOutcome.get(g.id) || [];
                 return (
                   <div key={g.id} className="col gap8">
-                    <div className="listItem catAccentRow" style={catAccentVars}>
+                    <AccentItem className="listItem" style={catAccentVars}>
                       <div className="row rowBetween gap8">
                         <div className="itemTitle">{g.title || "Objectif"}</div>
                         {category?.mainGoalId && g.id === category.mainGoalId ? (
@@ -102,9 +102,9 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
                             Actions
                           </div>
                           {linkedHabits.map((h) => (
-                            <div key={h.id} className="listItem catAccentRow" style={catAccentVars}>
+                            <AccentItem key={h.id} className="listItem" style={catAccentVars}>
                               <div className="itemTitle">{h.title || "Action"}</div>
-                            </div>
+                            </AccentItem>
                           ))}
                         </div>
                       ) : (
@@ -112,7 +112,7 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
                           Aucune action liée.
                         </div>
                       )}
-                    </div>
+                    </AccentItem>
                   </div>
                 );
               })}

@@ -442,8 +442,6 @@ export default function App() {
     tab === "create-habit-anytime" ||
     tab === "create-link-outcome" ||
     tab === "create-pick-category";
-  const BITCOIN_ORANGE = "#F7931A";
-
   // Single source of truth for theme:
   // - ui.theme is authoritative
   // - legacy fallbacks are read ONCE and immediately promoted into ui.theme
@@ -823,28 +821,6 @@ export default function App() {
 
   useEffect(() => {
     applyThemeTokens(themeName);
-
-    // Brand accent is always Bitcoin orange (consistent identity), regardless of background theme.
-    if (typeof document !== "undefined") {
-      const root = document.documentElement;
-      root.style.setProperty("--accent", BITCOIN_ORANGE);
-      root.style.setProperty("--accentStrong", BITCOIN_ORANGE);
-      root.style.setProperty("--accentPrimary", BITCOIN_ORANGE);
-      root.style.setProperty("--focus", BITCOIN_ORANGE);
-
-      // iOS browser chrome color
-      try {
-        let meta = document.querySelector('meta[name="theme-color"]');
-        if (!meta) {
-          meta = document.createElement("meta");
-          meta.setAttribute("name", "theme-color");
-          document.head.appendChild(meta);
-        }
-        meta.setAttribute("content", BITCOIN_ORANGE);
-      } catch (e) {
-        void e;
-      }
-    }
   }, [themeName]);
   useEffect(() => {
     if (!isSameOrder(categoryRailOrder, safeData?.ui?.categoryRailOrder || [])) {
