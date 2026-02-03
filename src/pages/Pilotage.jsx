@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, Input, Select } from "../components/UI";
+import { Button, Card, Input } from "../components/UI";
+import Select from "../ui/select/Select";
 import AccentItem from "../components/AccentItem";
 import { getCategoryPilotageCounts, getCategoryStatus } from "../logic/pilotage";
 import {

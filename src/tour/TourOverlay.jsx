@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Z } from "../ui/layer/zIndex";
 import { Button, Card } from "../components/UI";
 
 const VIEWPORT_PADDING = 12;
@@ -128,7 +129,7 @@ export default function TourOverlay({
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 1200,
+        zIndex: Z.toast,
         background: "rgba(0,0,0,0.45)",
         pointerEvents: "auto",
       }}

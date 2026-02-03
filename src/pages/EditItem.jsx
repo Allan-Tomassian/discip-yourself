@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, Input, Select, Textarea } from "../components/UI";
+import { Button, Card, Input, Textarea } from "../components/UI";
+import Select from "../ui/select/Select";
+import DatePicker from "../ui/date/DatePicker";
 import { safeConfirm } from "../utils/dialogs";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { addDays } from "../utils/dates";
@@ -307,8 +309,9 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   const selectedSuggestion = suggestedCategories.find((cat) => cat.id === selectedCategoryId) || null;
   const effectiveStartKey = normalizeLocalDateKey(startDate) || todayLocalKey();
   const minDeadlineKey = useMemo(() => {
-    const base = new Date(`${effectiveStartKey}T12:00:00`);
-    if (Number.isNaN(base.getTime())) return "";
+    const normalized = normalizeLocalDateKey(effectiveStartKey);
+    if (!normalized) return "";
+    const base = fromLocalDateKey(normalized);
     base.setDate(base.getDate() + 1);
     return toLocalDateKey(base);
   }, [effectiveStartKey]);
@@ -833,7 +836,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
                             <div className="small" style={{ marginBottom: 6 }}>
                               Date
                             </div>
-                            <Input type="date" value={oneOffDate} onChange={(e) => setOneOffDate(e.target.value)} />
+                            <DatePicker value={oneOffDate} onChange={(e) => setOneOffDate(e.target.value)} />
                           </div>
                           <div>
                             <div className="small" style={{ marginBottom: 6 }}>
@@ -945,18 +948,15 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
                         <div className="small" style={{ marginBottom: 6 }}>
                           Date de début
                         </div>
-                        <Input
-                          type="date"
+                        <DatePicker
                           value={startDate}
                           onChange={(e) => {
                             const nextValue = e.target.value;
                             setStartDate(nextValue);
                             if (!deadlineTouched) {
-                              const base = new Date(`${normalizeLocalDateKey(nextValue) || todayLocalKey()}T12:00:00`);
-                              if (!Number.isNaN(base.getTime())) {
-                                base.setDate(base.getDate() + 7);
-                                setDeadline(toLocalDateKey(base));
-                              }
+                              const base = fromLocalDateKey(normalizeLocalDateKey(nextValue) || todayLocalKey());
+                              base.setDate(base.getDate() + 7);
+                              setDeadline(toLocalDateKey(base));
                             }
                             if (error) setError("");
                           }}
@@ -966,8 +966,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
                         <div className="small" style={{ marginBottom: 6 }}>
                           Date de fin (min 2 jours : {minDeadlineKey})
                         </div>
-                        <Input
-                          type="date"
+                        <DatePicker
                           value={deadline}
                           onChange={(e) => {
                             setDeadline(e.target.value);

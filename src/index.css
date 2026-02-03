@@ -19,17 +19,26 @@
   --text-strong: var(--textStrong);
   --shadow-soft: var(--shadowSoft);
   --shadow-card: var(--shadowCard);
+
+  /* Z-index scale */
+  --z-base: 0;
+  --z-sticky: 40;
+  --z-dropdown: 60;
+  --z-modal: 80;
+  --z-toast: 1200;
 }
 
 *{ box-sizing:border-box; }
 html,body{
-  min-height:100%;
+  min-height:100dvh;
+  height:100%;
   width:100%;
   overflow-x:hidden;
+  background: var(--bg-base, var(--background, var(--bg, #05060A)));
 }
 body{
   margin:0;
-  background:var(--bg);
+  background: var(--bg-base, var(--background, var(--bg, #05060A)));
   color:var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   overflow-x:hidden;
@@ -39,6 +48,8 @@ body{
 #root{
   width:100%;
   min-height:100dvh;
+  height:100%;
+  overflow-x:hidden;
 }
 
 a{ color:inherit; }
@@ -138,20 +149,6 @@ a{ color:inherit; }
   align-items:center;
   gap:8px;
 }
-.calendarMonthHeader{
-  display:grid;
-  grid-template-columns: auto 1fr auto;
-  align-items:center;
-  gap:8px;
-}
-.calendarMonthTitle{
-  text-align:center;
-}
-.calendarMonthActions{
-  display:flex;
-  justify-content:flex-end;
-  margin-top:8px;
-}
 @media (max-width: 420px){
   .noteMetaGrid{
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -244,7 +241,7 @@ a{ color:inherit; }
   top: 0;
   left: 0;
   right: 0;
-  z-index: 50;
+  z-index: var(--z-sticky);
   padding-top: var(--safe-top);
 }
 .navWrap{
@@ -363,8 +360,8 @@ a{ color:inherit; }
   left: 50%;
   bottom: calc(16px + var(--safe-bottom));
   transform: translateX(-50%);
-  z-index: 48;
-  width: min(var(--page-max), calc(100vw - 32px));
+  z-index: var(--z-sticky);
+  width: min(var(--page-max), calc(100% - 32px));
   pointer-events: auto;
 }
 
@@ -938,104 +935,6 @@ a{ color:inherit; }
 }
 
 
-.dayRail{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-.dayPill{
-  width:54px;
-  height:54px;
-  border-radius:999px;
-  border:1px solid var(--border);
-  background:var(--glass);
-  color:var(--text);
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:2px;
-  cursor:pointer;
-}
-.dayPillActive{
-  border-color:var(--focus);
-  box-shadow: var(--accent-ring, var(--controlFocusRing, 0 0 0 1px var(--focus)));
-}
-.dayPillDay{ font-size:14px; font-weight:700; line-height:1; }
-.dayPillMonth{ font-size:11px; color:var(--text-3, var(--muted2)); line-height:1; }
-
-.calendarRailWrap{
-  position:relative;
-}
-.calendarRail{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  overflow-x:auto;
-  scroll-snap-type:x mandatory;
-  padding:6px calc(50% - 27px);
-  touch-action: pan-x;
-}
-.calendarItem{
-  scroll-snap-align:center;
-  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms cubic-bezier(0.22, 1, 0.36, 1);
-  transform: translateY(0) scale(0.9);
-  opacity: 0.6;
-  position: relative;
-}
-.calendarItem.is-current{
-  transform: translateY(0) scale(1.05);
-  opacity: 1;
-}
-.calendarItem.is-past{
-  transform: translateY(10px) scale(0.9);
-  opacity: 0.6;
-}
-.calendarItem.is-future{
-  transform: translateY(-10px) scale(0.9);
-  opacity: 0.6;
-}
-.calendarItemDot{
-  position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  opacity: 0.9;
-}
-.calendarTodayBadge{
-  margin-top: 2px;
-  font-size: 10px;
-  line-height: 1;
-  color: var(--text-3, var(--muted2));
-}
-.calendarSelector{
-  position:absolute;
-  left:50%;
-  top:50%;
-  transform: translate(-50%, -50%);
-  width:44px;
-  height:44px;
-  border-radius:999px;
-  border:0;
-  box-shadow:none;
-  pointer-events:none;
-}
-.calendarSelectorDot{
-  position:absolute;
-  left:50%;
-  top:100%;
-  margin-top:10px;
-  transform: translateX(-50%);
-  width:7px;
-  height:7px;
-  border-radius:999px;
-  background: var(--accent);
-  opacity: 0.85;
-  pointer-events:none;
-}
 
 .hideScrollbar{
   -ms-overflow-style: none;
@@ -1056,13 +955,6 @@ a{ color:inherit; }
 
 @media (max-width: 420px){
   .hdrRight{ max-width:45vw; }
-  .dayRailWrap{ flex-direction:column; }
-  .dayRail{
-    flex-direction:row;
-    overflow-x:auto;
-  }
-  .dayPill{ width:52px; height:52px; }
-  .calendarRail{ padding:6px calc(50% - 26px); }
 }
 
 .dragHandle{
@@ -1142,7 +1034,7 @@ a{ color:inherit; }
 .modalBackdrop{
   position:fixed;
   inset:0;
-  z-index:30;
+  z-index:var(--z-modal);
   background: var(--overlayBackdrop, rgba(0,0,0,.55));
   display:flex;
   align-items:center;
@@ -1197,7 +1089,6 @@ a{ color:inherit; }
   inset:0;
   border:0;
   padding:0;
-  z-index:60;
   background: var(--overlayTransparent, rgba(0,0,0,0));
   -webkit-tap-highlight-color: transparent;
 }
@@ -1216,7 +1107,6 @@ a{ color:inherit; }
   gap:4px;
   max-height:240px;
   overflow:auto;
-  z-index:61;
 }
 .selectOption{
   border:0;
@@ -1242,6 +1132,94 @@ a{ color:inherit; }
   padding:10px;
   color:var(--text-3, var(--muted2));
   font-size:var(--font-sm);
+}
+.datePickerMenu{
+  gap:10px;
+  padding:10px;
+  max-height:min(70dvh, 420px);
+  overflow:hidden;
+}
+.datePickerHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.datePickerMonth{
+  font-size:var(--font-sm);
+  font-weight:600;
+  color:var(--text-1, var(--text));
+  text-transform:capitalize;
+}
+.datePickerNavBtn{
+  border:1px solid var(--border-subtle, var(--border));
+  background: var(--surface-2, var(--glass2));
+  color:var(--text-1, var(--text));
+  border-radius:var(--radius-12);
+  width:32px;
+  height:32px;
+  cursor:pointer;
+  display:grid;
+  place-items:center;
+}
+.datePickerNavBtn:hover{
+  background: var(--surface-3, var(--glass2));
+}
+.datePickerWeekdays{
+  display:grid;
+  grid-template-columns:repeat(7, minmax(0, 1fr));
+  gap:4px;
+  font-size:var(--font-xs);
+  color:var(--text-3, var(--muted2));
+  text-align:center;
+}
+.datePickerWeekday{
+  padding:4px 0;
+}
+.datePickerGrid{
+  display:grid;
+  grid-template-columns:repeat(7, minmax(0, 1fr));
+  gap:4px;
+}
+.datePickerDay{
+  border:0;
+  background:transparent;
+  color:var(--text-1, var(--text));
+  border-radius:var(--radius-12);
+  padding:8px 0;
+  cursor:pointer;
+  font-size:var(--font-sm);
+}
+.datePickerDay:hover{
+  background: var(--menuOptionHover, rgba(255,255,255,.06));
+}
+.datePickerDay.isOutside{
+  color:var(--text-3, var(--muted2));
+  opacity:0.6;
+}
+.datePickerDay.isSelected{
+  background: var(--accent-soft, var(--menuOptionSelected, rgba(124,58,237,.16)));
+  box-shadow: inset 0 0 0 1px var(--accentBorder, rgba(124,58,237,.28));
+}
+.datePickerDay.isToday{
+  box-shadow: inset 0 0 0 1px var(--accentBorder, rgba(255,255,255,.35));
+}
+.datePickerFooter{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+}
+.datePickerAction{
+  border:1px solid var(--border-subtle, var(--border));
+  background: var(--surface-2, var(--glass2));
+  color:var(--text-1, var(--text));
+  border-radius:var(--radius-12);
+  padding:6px 10px;
+  cursor:pointer;
+  font-size:var(--font-sm);
+}
+.datePickerAction:hover{
+  background: var(--surface-3, var(--glass2));
 }
 /* --- iOS-style Select bottom sheet (touch devices) --- */
 @media (pointer: coarse), (max-width: 520px){
@@ -1347,7 +1325,7 @@ a{ color:inherit; }
 }
 .plusExpander{
   position:fixed;
-  z-index:55;
+  z-index:var(--z-dropdown);
   transform: translateY(6px) scale(.98);
   opacity:0;
   pointer-events:none;

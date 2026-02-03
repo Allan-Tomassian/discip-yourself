@@ -15,6 +15,17 @@ export function addDays(d, n) {
   return dd;
 }
 
+export function buildDateWindow(anchorDate, beforeDays = 15, afterDays = 15) {
+  if (!(anchorDate instanceof Date)) return [];
+  const before = Math.max(0, beforeDays);
+  const after = Math.max(0, afterDays);
+  const items = [];
+  for (let offset = -before; offset <= after; offset += 1) {
+    items.push(addDays(anchorDate, offset));
+  }
+  return items;
+}
+
 export function addMonths(d, n) {
   return new Date(d.getFullYear(), d.getMonth() + n, 1);
 }

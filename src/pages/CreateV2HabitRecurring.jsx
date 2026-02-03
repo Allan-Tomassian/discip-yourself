@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import CreateV2Habits from "./CreateV2Habits";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_HABITS } from "../creation/creationSchema";
+import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey } from "../utils/dateKey";
 
 // App convention: 1 = Monday ... 7 = Sunday
 function appDowFromDate(d) {
@@ -9,21 +10,10 @@ function appDowFromDate(d) {
   return js === 0 ? 7 : js;
 }
 
-function pad2(n) {
-  return String(n).padStart(2, "0");
-}
-
-function toLocalDateKey(d = new Date()) {
-  const year = d.getFullYear();
-  const month = pad2(d.getMonth() + 1);
-  const day = pad2(d.getDate());
-  return `${year}-${month}-${day}`;
-}
-
 function addDaysLocal(dateKey, days) {
-  if (typeof dateKey !== "string" || !dateKey.trim()) return "";
-  const base = new Date(`${dateKey}T12:00:00`);
-  if (Number.isNaN(base.getTime())) return "";
+  const normalized = normalizeLocalDateKey(dateKey);
+  if (!normalized) return "";
+  const base = fromLocalDateKey(normalized);
   base.setDate(base.getDate() + (Number.isFinite(days) ? Math.trunc(days) : 0));
   return toLocalDateKey(base);
 }

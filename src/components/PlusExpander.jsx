@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "./UI";
+import Portal from "../ui/portal/Portal";
 
 function toAnchorRect(rect) {
   if (!rect) return null;
@@ -80,25 +81,27 @@ export default function PlusExpander({
   if (!open) return null;
 
   return (
-    <div
-      className="plusExpander isOpen"
-      style={{ left: position.left, top: position.top, transformOrigin: position.origin }}
-    >
-      <div className="plusExpanderPanel" ref={panelRef} role="menu" aria-label="Créer">
-        <div className="stack stackGap8">
-          <Button onClick={onChooseAction}>
-            Créer une action
-          </Button>
-          <Button variant="ghost" onClick={onChooseObjective}>
-            Créer un objectif
-          </Button>
-          {hasDraft && typeof onResumeDraft === "function" ? (
-            <Button variant="ghost" onClick={onResumeDraft}>
-              Reprendre
+    <Portal>
+      <div
+        className="plusExpander isOpen"
+        style={{ left: position.left, top: position.top, transformOrigin: position.origin }}
+      >
+        <div className="plusExpanderPanel" ref={panelRef} role="menu" aria-label="Créer">
+          <div className="stack stackGap8">
+            <Button onClick={onChooseAction}>
+              Créer une action
             </Button>
-          ) : null}
+            <Button variant="ghost" onClick={onChooseObjective}>
+              Créer un objectif
+            </Button>
+            {hasDraft && typeof onResumeDraft === "function" ? (
+              <Button variant="ghost" onClick={onResumeDraft}>
+                Reprendre
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
-    </div>
+    </Portal>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SortableBlocks from "../components/SortableBlocks";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, IconButton, SelectMenu, Textarea } from "../components/UI";
@@ -7,24 +7,23 @@ import {
   addDays,
   addMonths,
   buildMonthGrid,
-  getMonthLabelFR,
   startOfMonth,
-  WEEKDAY_LABELS_FR,
 } from "../utils/dates";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { setMainGoal } from "../logic/goals";
 import { ensureWindowFromScheduleRules } from "../logic/occurrencePlanner";
-import { setOccurrenceStatus } from "../logic/occurrences";
-import { resolveExecutableOccurrence } from "../logic/sessionResolver";
 import { normalizeActiveSessionForUI, normalizeOccurrenceForUI } from "../logic/compat";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { isPrimaryCategory, isPrimaryGoal } from "../logic/priority";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
+import { resolveCurrentPlannedOccurrence, resolveNextPlannedOccurrence } from "../ui/session/sessionPlanner";
 import { resolveGoalType } from "../domain/goalType";
 import { linkProcessToOutcome, splitProcessByLink } from "../logic/linking";
 import { computeDisciplineScore } from "../logic/pilotage";
 import { uid } from "../utils/helpers";
+import CalendarCard from "../ui/calendar/CalendarCard";
+import FocusCard from "../ui/focus/FocusCard";
 
 // TOUR MAP:
 // - primary_action: start session (GO) for today
@@ -89,10 +88,25 @@ function normalizeBlockOrder(raw, defaults = DEFAULT_BLOCK_ORDER) {
     .map((item) => (typeof item === "string" ? item : item?.id))
     .filter(Boolean);
   const cleaned = ids.filter((id) => defaults.includes(id));
-  for (const id of defaults) {
-    if (!cleaned.includes(id)) cleaned.push(id);
+  if (!cleaned.length) return [...defaults];
+  const ordered = [...cleaned];
+  const present = new Set(ordered);
+  for (let i = 0; i < defaults.length; i += 1) {
+    const id = defaults[i];
+    if (present.has(id)) continue;
+    let insertAt = ordered.length;
+    for (let j = i + 1; j < defaults.length; j += 1) {
+      const nextId = defaults[j];
+      const existingIndex = ordered.indexOf(nextId);
+      if (existingIndex !== -1) {
+        insertAt = existingIndex;
+        break;
+      }
+    }
+    ordered.splice(insertAt, 0, id);
+    present.add(id);
   }
-  return cleaned.length ? cleaned : [...defaults];
+  return ordered;
 }
 
 const arrayEqual = (a, b) =>
@@ -125,11 +139,10 @@ export default function Home({
   planLimits = null,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
+  const legacyPendingDateKey = safeData.ui?.pendingDateKey;
   const selectedDateKey =
-    normalizeLocalDateKey(safeData.ui?.selectedDateKey || safeData.ui?.selectedDate) || todayLocalKey();
-  const pendingDateKey =
-    normalizeLocalDateKey(safeData.ui?.pendingDateKey) || selectedDateKey;
-  const activeRailKey = selectedDateKey;
+    normalizeLocalDateKey(safeData.ui?.selectedDateKey || safeData.ui?.selectedDate || legacyPendingDateKey) ||
+    todayLocalKey();
   const selectedDate = useMemo(() => fromLocalDateKey(selectedDateKey), [selectedDateKey]);
   const localTodayKey = toLocalDateKey(new Date());
   const selectedStatus =
@@ -163,12 +176,6 @@ export default function Home({
     return [...DEFAULT_BLOCK_ORDER];
   }, [safeData?.ui?.blocksByPage?.home, legacyOrder]);
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(selectedDate));
-  const [railRange, setRailRange] = useState(() => {
-    const active = fromLocalDateKey(activeRailKey);
-    if (!active) return { start: -7, end: 7 };
-    const buffer = 7;
-    return { start: -buffer, end: buffer };
-  });
 
   const handleReorder = useCallback(
     (nextOrder) => {
@@ -211,15 +218,7 @@ export default function Home({
   );
 
   // Refs
-  const railRef = useRef(null);
-  const railItemRefs = useRef(new Map());
-  const railScrollRaf = useRef(null);
-  const railExtendRef = useRef(0);
   const noteSaveRef = useRef(null);
-  const pendingCommitRef = useRef(null);
-  const isRailInteractingRef = useRef(false);
-  const railSettleTimerRef = useRef(null);
-  const railSmoothAnimRef = useRef({ raf: 0, start: 0, from: 0, to: 0, duration: 0 });
   const didHydrateLegacyRef = useRef(false);
   const legacyOrderSigRef = useRef("");
 
@@ -279,66 +278,7 @@ export default function Home({
     return counts;
   }, [goalIdSet, occurrences]);
 
-  const prefersReducedMotion = useMemo(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return false;
-    try {
-      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    } catch (e) {
-      void e;
-      return false;
-    }
-  }, []);
-
   // Effects
-  const cancelRailSmooth = useCallback(() => {
-    const a = railSmoothAnimRef.current;
-    if (a.raf) cancelAnimationFrame(a.raf);
-    a.raf = 0;
-  }, []);
-
-  const smoothScrollRailTo = useCallback(
-    (targetLeft, durationMs = 260) => {
-      const container = railRef.current;
-      if (!container || !Number.isFinite(targetLeft)) return;
-
-      // Respect reduced motion and avoid fighting the user.
-      if (prefersReducedMotion) {
-        container.scrollTo({ left: Math.max(0, targetLeft), behavior: "auto" });
-        return;
-      }
-
-      cancelRailSmooth();
-
-      const from = container.scrollLeft;
-      const to = Math.max(0, targetLeft);
-      const distance = Math.abs(to - from);
-      if (distance < 2) return;
-
-      const a = railSmoothAnimRef.current;
-      a.start = performance.now();
-      a.from = from;
-      a.to = to;
-      // Duration scales slightly with distance, capped.
-      a.duration = Math.min(420, Math.max(180, durationMs + distance * 0.25));
-
-      const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
-
-      const step = (now) => {
-        const p = Math.min(1, (now - a.start) / a.duration);
-        const eased = easeOutCubic(p);
-        container.scrollLeft = a.from + (a.to - a.from) * eased;
-        if (p < 1) {
-          a.raf = requestAnimationFrame(step);
-        } else {
-          a.raf = 0;
-        }
-      };
-
-      a.raf = requestAnimationFrame(step);
-    },
-    [cancelRailSmooth, prefersReducedMotion]
-  );
-
   useEffect(() => {
     if (didHydrateLegacyRef.current) return;
     if (typeof setData !== "function") return;
@@ -451,12 +391,6 @@ export default function Home({
     };
   }, [dailyNote, noteStorageKey]);
 
-  useEffect(() => {
-    return () => {
-      if (pendingCommitRef.current) clearTimeout(pendingCommitRef.current);
-    };
-  }, []);
-
   // Derived data
   const focusCategory = useMemo(() => {
     if (!categories.length) return null;
@@ -540,55 +474,35 @@ export default function Home({
 
   // Actions liées à l’objectif (toutes)
   const selectableHabits = linkedHabits;
-  const hasLinkedHabits = linkedHabits.length > 0;
   const hasSelectableHabits = selectableHabits.length > 0;
+  const focusPlannedGoalIds = useMemo(() => {
+    const source = linkedHabits.length ? linkedHabits : processGoals;
+    const ids = new Set();
+    for (const g of source) {
+      if (g && g.id) ids.add(g.id);
+    }
+    return ids;
+  }, [linkedHabits, processGoals]);
+  const plannedFocusOccurrences = useMemo(() => {
+    if (!focusPlannedGoalIds.size) return [];
+    return occurrences.filter((occ) => occ && occ.status === "planned" && focusPlannedGoalIds.has(occ.goalId));
+  }, [occurrences, focusPlannedGoalIds]);
+  const currentPlannedOccurrence = useMemo(
+    () => resolveCurrentPlannedOccurrence(plannedFocusOccurrences),
+    [plannedFocusOccurrences]
+  );
+  const nextPlannedOccurrence = useMemo(
+    () => resolveNextPlannedOccurrence(plannedFocusOccurrences),
+    [plannedFocusOccurrences]
+  );
   const ensureProcessIds = useMemo(() => {
     const base = selectedGoal?.id ? linkedHabits : processGoals;
     return base.map((g) => g.id).filter(Boolean);
   }, [linkedHabits, processGoals, selectedGoal?.id]);
-  const plannedLinkedDayCount = useMemo(() => {
-    if (!linkedHabits.length) return 0;
-    const linkedIds = new Set(linkedHabits.map((h) => h.id));
-    let count = 0;
-    for (const occ of occurrences) {
-      if (!occ || occ.status !== "planned") continue;
-      const dateKey = typeof occ.date === "string" ? occ.date : "";
-      if (!dateKey || dateKey !== selectedDateKey) continue;
-      if (!linkedIds.has(occ.goalId)) continue;
-      count += 1;
-    }
-    return count;
-  }, [linkedHabits, occurrences, selectedDateKey]);
-  const showTodayEmptyCta =
-    selectedStatus === "today" && (!selectedGoal || !hasLinkedHabits || plannedLinkedDayCount === 0);
-  const emptyCtaSubtitle = !selectedGoal
-    ? "Aucun objectif sélectionné pour le moment."
-    : !hasLinkedHabits
-      ? "Aucune action liée à cet objectif pour le moment."
-      : "Aucune occurrence planifiée pour cette journée.";
 
   // Actions actives uniquement (progression)
   const activeHabits = useMemo(() => linkedHabits.filter((g) => safeString(g.status) === "active"), [linkedHabits]);
   const canManageCategory = Boolean(typeof onOpenManageCategory === "function" && focusCategory?.id);
-  const selectedHabitsByGoal = safeData.ui?.selectedHabits || {};
-  const storedSelectedHabits =
-    selectedGoal?.id && Array.isArray(selectedHabitsByGoal[selectedGoal.id])
-      ? selectedHabitsByGoal[selectedGoal.id]
-      : null;
-  const selectedActionIds = useMemo(() => {
-    const valid = new Set(selectableHabits.map((h) => h.id));
-    if (Array.isArray(storedSelectedHabits)) {
-      const filtered = storedSelectedHabits.filter((id) => valid.has(id));
-      // If user previously had selections but the set is now empty due to link changes,
-      // fall back to all linked actions to avoid a dead GO.
-      if (storedSelectedHabits.length && filtered.length === 0) {
-        return selectableHabits.map((h) => h.id);
-      }
-      return filtered;
-    }
-    return selectableHabits.map((h) => h.id);
-  }, [selectableHabits, storedSelectedHabits]);
-  const hasSelectedActions = selectedActionIds.length > 0;
 
   // ---- Outcome goal lookup helpers and dominant outcome by date
   const goalsById = useMemo(() => {
@@ -623,9 +537,6 @@ export default function Home({
     const list = occurrences.filter((o) => o && o.date === selectedDateKey);
     return list.slice().sort(occurrenceSort);
   }, [occurrences, occurrenceSort, selectedDateKey]);
-  const visibleOccurrencesForSelectedDay = useMemo(() => {
-    return occurrencesForSelectedDay.filter((occ) => goalsById.has(occ.goalId));
-  }, [goalsById, occurrencesForSelectedDay]);
   useEffect(() => {
     const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
     if (!isDev) return;
@@ -687,34 +598,6 @@ export default function Home({
     [categoryDotsByDate]
   );
 
-  const planningListStyle = useMemo(() => {
-    const count = visibleOccurrencesForSelectedDay.length;
-    const needsScroll = count > 8;
-    return {
-      maxHeight: needsScroll ? 360 : "none",
-      overflowY: needsScroll ? "auto" : "visible",
-    };
-  }, [visibleOccurrencesForSelectedDay.length]);
-
-  const toggleOccurrence = useCallback(
-    (occ) => {
-      if (!occ || !occ.goalId || !occ.date) return;
-      if (!canEdit || typeof setData !== "function") return;
-      setData((prev) => {
-        const goalsList = Array.isArray(prev?.goals) ? prev.goals : [];
-        const prevOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
-        const nextStatus = occ.status === "done" ? "planned" : "done";
-        const start = occ.start || "00:00";
-        const nextOccurrences = setOccurrenceStatus(occ.goalId, occ.date, start, nextStatus, {
-          occurrences: prevOccurrences,
-          goals: goalsList,
-        });
-        if (nextOccurrences === prevOccurrences) return prev;
-        return { ...prev, occurrences: nextOccurrences };
-      });
-    },
-    [canEdit, setData]
-  );
 
   const outcomeById = useMemo(() => {
     const map = new Map();
@@ -795,7 +678,6 @@ export default function Home({
     return Math.min(3, count);
   }, [dayMicro]);
 
-  const canOpenSession = Boolean(canValidate && selectedGoal && hasSelectedActions);
 
   const coreProgress = useMemo(() => {
     const activeIds = new Set(activeHabits.map((h) => h.id));
@@ -927,37 +809,6 @@ export default function Home({
     return "Session en cours";
   }, [sessionForDay, sessionHabit]);
 
-  const railAnchorDate = useMemo(() => fromLocalDateKey(selectedDateKey), [selectedDateKey]);
-  const railItems = useMemo(() => {
-    const items = [];
-    for (let offset = railRange.start; offset <= railRange.end; offset += 1) {
-      const d = addDays(railAnchorDate, offset);
-      const key = toLocalDateKey(d);
-      const parts = key.split("-");
-      items.push({
-        key,
-        date: d,
-        day: parts[2] || "",
-        month: parts[1] || "",
-        isSelected: key === selectedDateKey,
-        status: key === localTodayKey ? "today" : key < localTodayKey ? "past" : "future",
-      });
-    }
-    return items;
-  }, [railAnchorDate, railRange.start, railRange.end, localTodayKey, selectedDateKey]);
-
-  const ensureRailRangeForOffset = useCallback((offset) => {
-    const buffer = 7;
-    setRailRange((prev) => {
-      let start = prev.start;
-      let end = prev.end;
-      if (offset < start + buffer) start = offset - buffer;
-      if (offset > end - buffer) end = offset + buffer;
-      if (start === prev.start && end === prev.end) return prev;
-      return { start, end };
-    });
-  }, []);
-
   const calendarRangeLabel = useMemo(() => {
     try {
       const fmt = new Intl.DateTimeFormat("fr-FR", {
@@ -973,15 +824,6 @@ export default function Home({
     }
   }, [selectedDate, selectedDateKey]);
 
-  useEffect(() => {
-    if (!activeRailKey) return;
-    const activeDate = fromLocalDateKey(activeRailKey);
-    if (!activeDate) return;
-    const offset = diffDays(railAnchorDate, activeDate);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    ensureRailRangeForOffset(offset);
-  }, [activeRailKey, railAnchorDate, ensureRailRangeForOffset]);
-
   const selectedDateLabel =
     selectedStatus === "today" ? `${calendarRangeLabel} · Aujourd’hui` : calendarRangeLabel;
 
@@ -992,6 +834,21 @@ export default function Home({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMicroState(initMicroState(selectedDateKey));
   }, [microState.dayKey, selectedDateKey]);
+  useEffect(() => {
+    if (!legacyPendingDateKey || typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+      if (!prevUi.pendingDateKey) return prev;
+      const nextUi = { ...prevUi };
+      delete nextUi.pendingDateKey;
+      if (!nextUi.selectedDateKey) nextUi.selectedDateKey = prevUi.pendingDateKey;
+      if (!nextUi.selectedDate) nextUi.selectedDate = prevUi.pendingDateKey;
+      return {
+        ...prev,
+        ui: nextUi,
+      };
+    });
+  }, [legacyPendingDateKey, setData]);
 
   useEffect(() => {
     // selectedDate is a Date object; avoid dependency loops by keying off the dateKey.
@@ -1015,32 +872,12 @@ export default function Home({
   }, [calendarView]);
 
   // Handlers
-  const setPendingKey = useCallback(
-    (nextKey) => {
-      if (!nextKey || typeof setData !== "function") return;
-      setData((prev) => {
-        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-        if (prevUi.pendingDateKey === nextKey) return prev;
-        return {
-          ...prev,
-          ui: { ...prevUi, pendingDateKey: nextKey },
-        };
-      });
-    },
-    [setData]
-  );
-
   const commitDateKey = useCallback(
     (nextKey) => {
       if (!nextKey || typeof setData !== "function") return;
-      if (pendingCommitRef.current) clearTimeout(pendingCommitRef.current);
       setData((prev) => {
         const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-        if (
-          prevUi.selectedDateKey === nextKey &&
-          prevUi.selectedDate === nextKey &&
-          prevUi.pendingDateKey === nextKey
-        ) {
+        if (prevUi.selectedDateKey === nextKey && prevUi.selectedDate === nextKey) {
           return prev;
         }
         return {
@@ -1049,36 +886,11 @@ export default function Home({
             ...prevUi,
             selectedDateKey: nextKey,
             selectedDate: nextKey,
-            pendingDateKey: nextKey,
           },
         };
       });
     },
     [setData]
-  );
-
-  const schedulePendingCommit = useCallback(
-    (nextKey) => {
-      if (!nextKey) return;
-      if (pendingCommitRef.current) clearTimeout(pendingCommitRef.current);
-      pendingCommitRef.current = setTimeout(() => {
-        commitDateKey(nextKey);
-      }, 160);
-    },
-    [commitDateKey]
-  );
-
-  const setPendingSelection = useCallback(
-    (nextKey, source = "scroll") => {
-      if (!nextKey) return;
-      setPendingKey(nextKey);
-      if (source === "scroll") {
-        schedulePendingCommit(nextKey);
-      } else {
-        commitDateKey(nextKey);
-      }
-    },
-    [commitDateKey, schedulePendingCommit, setPendingKey]
   );
 
   const handleDayOpen = useCallback(
@@ -1098,6 +910,58 @@ export default function Home({
     },
     [onAddOccurrence]
   );
+  const handleStartSession = useCallback(
+    (occurrence) => {
+      if (!occurrence || typeof setData !== "function") return;
+      const goal = occurrence.goalId ? goalsById.get(occurrence.goalId) || null : null;
+      const objective = occurrence.goalId ? getOutcomeForGoalId(occurrence.goalId) : null;
+      const categoryId = goal?.categoryId || focusCategory?.id || null;
+      setData((prev) => {
+        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+        const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+        const nextSession = {
+          id: current?.occurrenceId === occurrence.id && current?.id ? current.id : uid(),
+          occurrenceId: occurrence.id,
+          dateKey: occurrence.date || selectedDateKey,
+          objectiveId: objective?.id || null,
+          habitIds: occurrence.goalId ? [occurrence.goalId] : [],
+          status: "partial",
+          timerStartedAt: "",
+          timerAccumulatedSec: 0,
+          timerRunning: false,
+          doneHabitIds: [],
+        };
+        if (
+          current &&
+          current.occurrenceId === nextSession.occurrenceId &&
+          current.dateKey === nextSession.dateKey &&
+          current.objectiveId === nextSession.objectiveId &&
+          Array.isArray(current.habitIds) &&
+          current.habitIds.length === nextSession.habitIds.length &&
+          current.habitIds.every((id, idx) => id === nextSession.habitIds[idx]) &&
+          current.status === nextSession.status
+        ) {
+          return prev;
+        }
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            activeSession: nextSession,
+          },
+        };
+      });
+      if (typeof onOpenSession === "function") {
+        onOpenSession({ categoryId, dateKey: occurrence.date || selectedDateKey });
+      }
+    },
+    [focusCategory?.id, getOutcomeForGoalId, goalsById, onOpenSession, selectedDateKey, setData]
+  );
+  const handlePrepareSession = useCallback(() => {
+    if (typeof onOpenSession === "function") {
+      onOpenSession({ categoryId: focusCategory?.id || null, dateKey: selectedDateKey });
+    }
+  }, [focusCategory?.id, onOpenSession, selectedDateKey]);
 
   const lastEnsureSigRef = useRef("");
   const ensureDebugCountRef = useRef(0);
@@ -1127,219 +991,6 @@ export default function Home({
       return next;
     });
   }, [ensureProcessIds, selectedDateKey, setData]);
-
-  const getRailStepPx = useCallback(() => {
-    const fallback = 62;
-    if (typeof window === "undefined") return fallback;
-    const container = railRef.current;
-    if (!container) return fallback;
-    let itemWidth = 54;
-    const sample = railItemRefs.current.values().next().value;
-    if (sample && sample.offsetWidth) itemWidth = sample.offsetWidth;
-    let gap = 8;
-    const style = window.getComputedStyle(container);
-    const gapRaw = style.columnGap || style.gap || "0";
-    const parsedGap = parseFloat(gapRaw);
-    if (Number.isFinite(parsedGap)) gap = parsedGap;
-    return itemWidth + gap;
-  }, []);
-
-  const extendRailRange = useCallback(
-    (direction) => {
-      const now = Date.now();
-      if (now - railExtendRef.current < 200) return;
-      railExtendRef.current = now;
-      const delta = 14;
-      setRailRange((prev) => {
-        if (direction === "start") return { start: prev.start - delta, end: prev.end };
-        if (direction === "end") return { start: prev.start, end: prev.end + delta };
-        return prev;
-      });
-      if (direction === "start") {
-        const container = railRef.current;
-        if (!container) return;
-        const step = getRailStepPx();
-        container.scrollLeft += step * delta;
-      }
-    },
-    [getRailStepPx]
-  );
-
-  const maybeExtendRailRange = useCallback(() => {
-    const container = railRef.current;
-    if (!container) return;
-    const step = getRailStepPx();
-    const threshold = step * 2;
-    const left = container.scrollLeft;
-    const right = container.scrollWidth - (left + container.clientWidth);
-    if (left < threshold) {
-      extendRailRange("start");
-    } else if (right < threshold) {
-      extendRailRange("end");
-    }
-  }, [extendRailRange, getRailStepPx]);
-
-  const scrollRailToKey = useCallback(
-    (dateKeyValue, behavior = "smooth") => {
-      const container = railRef.current;
-      if (!container || !dateKeyValue) return;
-      const el = railItemRefs.current.get(dateKeyValue) ||
-        container.querySelector(`[data-datekey="${dateKeyValue}"]`);
-      if (!el) return;
-
-      const targetLeft = el.offsetLeft + el.offsetWidth / 2 - container.clientWidth / 2;
-
-      if (behavior === "auto") {
-        cancelRailSmooth();
-        container.scrollTo({ left: Math.max(0, targetLeft), behavior: "auto" });
-        return;
-      }
-
-      smoothScrollRailTo(targetLeft);
-    },
-    [cancelRailSmooth, smoothScrollRailTo]
-  );
-
-  const centerRailOnKey = useCallback(
-    (dateKeyValue, behavior = "auto") => {
-      scrollRailToKey(dateKeyValue, behavior);
-    },
-    [scrollRailToKey]
-  );
-
-  const updateSelectedFromScroll = useCallback(() => {
-    const container = railRef.current;
-    if (!container || !railItemRefs.current.size) return;
-    const centerX = container.scrollLeft + container.clientWidth / 2;
-    let closestKey = null;
-    let minDist = Number.POSITIVE_INFINITY;
-    railItemRefs.current.forEach((el, key) => {
-      if (!el) return;
-      const itemCenter = el.offsetLeft + el.offsetWidth / 2;
-      const dist = Math.abs(itemCenter - centerX);
-      if (dist < minDist) {
-        minDist = dist;
-        closestKey = key;
-      }
-    });
-    if (closestKey && closestKey !== pendingDateKey) {
-      setPendingSelection(closestKey, "scroll");
-    }
-  }, [pendingDateKey, setPendingSelection]);
-
-  const handleRailScroll = useCallback(() => {
-    if (railScrollRaf.current) return;
-    railScrollRaf.current = requestAnimationFrame(() => {
-      railScrollRaf.current = null;
-      updateSelectedFromScroll();
-      if (railSettleTimerRef.current) clearTimeout(railSettleTimerRef.current);
-      railSettleTimerRef.current = setTimeout(() => {
-        // After scrolling ends, gently center the currently pending day.
-        if (!isRailInteractingRef.current) {
-          scrollRailToKey(pendingDateKey || activeRailKey, "smooth");
-        }
-      }, 140);
-      if (!isRailInteractingRef.current) {
-        maybeExtendRailRange();
-      }
-    });
-  }, [maybeExtendRailRange, updateSelectedFromScroll, activeRailKey, pendingDateKey, scrollRailToKey]);
-
-  useLayoutEffect(() => {
-    if (calendarView !== "day") return;
-    if (!activeRailKey) return;
-    if (isRailInteractingRef.current) return;
-    const activeDate = fromLocalDateKey(activeRailKey);
-    if (!activeDate) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    ensureRailRangeForOffset(diffDays(railAnchorDate, activeDate));
-    requestAnimationFrame(() => {
-      if (isRailInteractingRef.current) return;
-      requestAnimationFrame(() => {
-        if (isRailInteractingRef.current) return;
-        centerRailOnKey(activeRailKey, "auto");
-      });
-    });
-  }, [activeRailKey, calendarView, centerRailOnKey, ensureRailRangeForOffset, railAnchorDate, railRange.start, railRange.end]);
-
-  useEffect(() => {
-    return () => {
-      if (railScrollRaf.current) cancelAnimationFrame(railScrollRaf.current);
-      if (railSettleTimerRef.current) clearTimeout(railSettleTimerRef.current);
-      cancelRailSmooth();
-    };
-  }, [cancelRailSmooth]);
-
-  function openSessionFlow() {
-    if (!selectedGoal?.id || !canValidate || !hasSelectedActions || typeof setData !== "function") return;
-    const existing =
-      safeData.ui && typeof safeData.ui.activeSession === "object" ? safeData.ui.activeSession : null;
-    if (existing && existing.status === "partial") {
-      if (typeof onOpenSession === "function") {
-        onOpenSession({ categoryId: focusCategory?.id || null, dateKey: selectedDateKey });
-      }
-      return;
-    }
-
-    const preview = ensureWindowFromScheduleRules(safeData, selectedDateKey, selectedDateKey, selectedActionIds);
-    const resolved = resolveExecutableOccurrence(preview, { dateKey: selectedDateKey, goalIds: selectedActionIds });
-    if (resolved.kind !== "ok" || !resolved.occurrenceId) {
-      if (resolved.kind === "final" && existing?.occurrenceId === resolved.occurrenceId) {
-        if (typeof onOpenSession === "function") {
-          onOpenSession({ categoryId: focusCategory?.id || null, dateKey: selectedDateKey });
-        }
-      }
-      return;
-    }
-
-    setData((prev) => {
-      const ensured = ensureWindowFromScheduleRules(prev, selectedDateKey, selectedDateKey, selectedActionIds);
-      const prevUi = ensured.ui || {};
-      const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
-      if (current && current.status === "partial") return ensured;
-
-      const resolvedNow = resolveExecutableOccurrence(ensured, { dateKey: selectedDateKey, goalIds: selectedActionIds });
-      if (resolvedNow.kind !== "ok" || !resolvedNow.occurrenceId) return ensured;
-      const target = (ensured.occurrences || []).find((o) => o && o.id === resolvedNow.occurrenceId) || null;
-      if (!target) return ensured;
-
-      const nextSession = {
-        id: current?.occurrenceId === target.id && current?.id ? current.id : uid(),
-        occurrenceId: target.id,
-        dateKey: selectedDateKey,
-        objectiveId: selectedGoal.id,
-        habitIds: target.goalId ? [target.goalId] : [],
-        status: "partial",
-        timerStartedAt: "",
-        timerAccumulatedSec: 0,
-        timerRunning: false,
-        doneHabitIds: [],
-      };
-      if (
-        current &&
-        current.occurrenceId === nextSession.occurrenceId &&
-        current.dateKey === nextSession.dateKey &&
-        current.objectiveId === nextSession.objectiveId &&
-        Array.isArray(current.habitIds) &&
-        current.habitIds.length === nextSession.habitIds.length &&
-        current.habitIds.every((id, idx) => id === nextSession.habitIds[idx]) &&
-        current.status === nextSession.status
-      ) {
-        return ensured;
-      }
-      return {
-        ...ensured,
-        ui: {
-          ...prevUi,
-          activeSession: nextSession,
-        },
-      };
-    });
-
-    if (typeof onOpenSession === "function") {
-      onOpenSession({ categoryId: focusCategory?.id || null, dateKey: selectedDateKey });
-    }
-  }
 
   const toggleActionSelection = useCallback(
     (habitId) => {
@@ -1738,599 +1389,24 @@ export default function Home({
           className="stack stackGap12"
           renderItem={(blockId, drag) => {
             const { attributes, listeners, setActivatorNodeRef } = drag || {};
-            if (blockId === "focus") {
-              return (
-                <Card data-tour-id="today-focus-card">
-                  <div className="p18">
-                    <div className="cardSectionTitleRow">
-                      {drag ? (
-                        <button
-                          ref={setActivatorNodeRef}
-                          {...listeners}
-                          {...attributes}
-                          className="dragHandle"
-                          aria-label="Réorganiser"
-                        >
-                          ⋮⋮
-                        </button>
-                      ) : null}
-                      <div className="cardSectionTitle">Focus du jour</div>
-                      <div className="flex1" />
-                      {canManageCategory ? (
-                        <Button
-                          variant="ghost"
-                          onClick={() => onOpenManageCategory(focusCategory.id)}
-                          aria-label="Gérer la catégorie"
-                        >
-                          Gérer
-                        </Button>
-                      ) : null}
-                    </div>
-                    <div className="mt12">
-                      <div className="small2">Catégorie</div>
-                      <div className="mt8" data-tour-id="today-focus-category">
-                        <AccentItem
-                          color={goalAccent}
-                          selected
-                          compact
-                          aria-label="Catégorie focus"
-                          style={{ cursor: "default" }}
-                        >
-                          <div className="itemTitle">{focusCategory?.name || "Catégorie"}</div>
-                        </AccentItem>
-                      </div>
-                    </div>
-
-                    <div className="mt12">
-                      <div className="small2">Objectif principal</div>
-                    {outcomeGoals.length ? (
-                      <div className="mt8">
-                        <AccentItem
-                          color={goalAccent}
-                          selected
-                          compact
-                          aria-label="Objectif principal"
-                          style={{ cursor: "default" }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <SelectMenu
-                              value={selectedGoal?.id || ""}
-                              onChange={(next) => setCategoryMainGoal(next)}
-                              disabled={!canEdit}
-                              placeholder="Choisir un objectif"
-                              options={outcomeGoals.map((g) => ({ value: g.id, label: g.title || "Objectif" }))}
-                              className="focusGoalSelect"
-                              style={{
-                                width: "100%",
-                                background: "transparent",
-                                border: "none",
-                                boxShadow: "none",
-                                paddingLeft: 0,
-                                paddingRight: 0,
-                              }}
-                            />
-                          </div>
-                        </AccentItem>
-                      </div>
-                    ) : (
-                      <div className="mt8 small2">Aucun objectif principal pour cette catégorie.</div>
-                    )}
-                    </div>
-
-                    {showTodayEmptyCta ? (
-                      <div className="mt12" data-tour-id="today-empty-cta">
-                        <div className="small2">Aujourd’hui est vide.</div>
-                        <div className="sectionSub" style={{ marginTop: 6 }}>
-                          {emptyCtaSubtitle}
-                        </div>
-                        <div className="mt10">
-                          <div className="small2 textMuted">
-                            Utilise le + pour créer un objectif ou une action.
-                          </div>
-                          {!canEdit ? (
-                            <div className="sectionSub" style={{ marginTop: 8 }}>
-                              {lockMessage}
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {selectedGoal && hasSelectableHabits ? (
-                      <div className="mt12">
-                        <div className="small2">Actions à faire</div>
-                        <div className="mt8 col gap8">
-                          {selectableHabits.map((habit) => {
-                            const isSelected = selectedActionIds.includes(habit.id);
-                            return (
-                              <AccentItem
-                                key={habit.id}
-                                color={goalAccent}
-                                selected={isSelected}
-                                compact
-                                onClick={canEdit ? () => toggleActionSelection(habit.id) : undefined}
-                                aria-label={`${isSelected ? "Désélectionner" : "Sélectionner"} ${habit.title}`}
-                              >
-                                <div className="itemTitle">{habit.title}</div>
-                              </AccentItem>
-                            );
-                          })}
-                        </div>
-                        {!hasSelectedActions ? (
-                          <div className="sectionSub mt8">
-                            Sélectionne au moins une action.
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-
-                    {selectedGoal && unlinkedHabits.length ? (
-                      <div className="mt12">
-                        <div className="small2">Actions non liées</div>
-                        <div className="sectionSub mt6">
-                          Ces actions existent dans la catégorie mais ne sont liées à aucun objectif.
-                        </div>
-                        <div className="mt8 col gap8">
-                          {unlinkedHabits.map((habit) => (
-                            <div key={habit.id} className="row gap8 alignCenter">
-                              <div className="itemTitle textMuted2">
-                                {habit.title || "Action"}
-                              </div>
-                              {typeof setData === "function" && selectedGoal ? (
-                                <button
-                                  className="linkBtn"
-                                  type="button"
-                                  onClick={() =>
-                                    setData((prev) => linkProcessToOutcome(prev, habit.id, selectedGoal.id))
-                                  }
-                                >
-                                  Lier
-                                </button>
-                              ) : null}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    <div className="mt12">
-                      <div className="row rowEnd">
-                        <Button onClick={openSessionFlow} disabled={!canOpenSession} data-tour-id="today-go">
-                          GO
-                        </Button>
-                      </div>
-                      {!selectedGoal ? (
-                        <div className="sectionSub mt8">
-                          Sélectionne un objectif pour activer GO.
-                        </div>
-                      ) : !canValidate ? (
-                        <div className="sectionSub mt8">
-                          {lockMessage}
-                        </div>
-                      ) : !hasLinkedHabits ? (
-                        <div className="sectionSub mt8">
-                          Aucune action liée à cet objectif (ou tes actions ne sont pas reliées correctement).
-                          {canManageCategory && !showTodayEmptyCta ? (
-                            <>
-                              {" "}
-                              <button
-                                className="linkBtn"
-                                type="button"
-                                onClick={() => onOpenManageCategory(focusCategory.id)}
-                              >
-                                Ajouter une action
-                              </button>
-                            </>
-                          ) : null}
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className="mt12">
-                      <div className="small2">Occurrences du jour</div>
-                      {visibleOccurrencesForSelectedDay.length ? (
-                        <div className="mt8 col gap8">
-                          {visibleOccurrencesForSelectedDay.map((occ) => {
-                            const occUI = normalizeOccurrenceForUI(occ);
-                            const goal = goalsById.get(occ.goalId) || null;
-                            const title = goal?.title || "Action";
-                            const categoryName = categoriesById.get(goal?.categoryId)?.name || "Général";
-                            const outcome = getOutcomeForGoalId(occ.goalId);
-                            const hasTime = Boolean(goal?.startTime || (occUI?.start && occUI.start !== "00:00"));
-                            const timeLabel = hasTime ? occUI.start : "";
-                            const duration = Number.isFinite(goal?.durationMinutes) ? goal.durationMinutes : null;
-                            const status =
-                              occ.status === "done" ? "Fait" : occ.status === "skipped" ? "Ignorée" : "Planifiée";
-                            const statusClass = occ.status === "done" ? "textAccent" : "textMuted2";
-                            const pointsLabel = Number.isFinite(occ.pointsAwarded) ? `+${occ.pointsAwarded} points` : "";
-                            return (
-                              <button
-                                key={`${occ.goalId}-${occ.date}-${occ.start}`}
-                                type="button"
-                                className="listItem row rowBetween gap10"
-                                onClick={() => toggleOccurrence(occ)}
-                                disabled={!canEdit}
-                              >
-                                <div className="col gap4">
-                                  <div className="itemTitle">
-                                    {(timeLabel ? `${timeLabel} · ` : "") + title}
-                                  </div>
-                                  <div className="row gap6 wrap">
-                                    <span className="badge">{categoryName}</span>
-                                    {outcome?.id ? <span className="badge">{outcome.title || "Objectif"}</span> : null}
-                                  </div>
-                                  <div className="small2 textMuted2">
-                                    {duration ? `${duration} min` : ""}
-                                    {duration && pointsLabel ? " · " : ""}
-                                    {pointsLabel}
-                                  </div>
-                                  <div className={`small2 ${statusClass}`}>{status}</div>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="small2 textMuted2 mt6">Aucune occurrence planifiée.</div>
-                      )}
-                    </div>
-                </div>
-              </Card>
-            );
-          }
-
-          if (blockId === "calendar") {
+          if (blockId === "focus") {
             return (
-              <Card
-                data-tour-id="today-calendar-card"
-              >
-                <div className="p18">
-                  <div className="row">
-                    <div className="cardSectionTitleRow">
-                      {drag ? (
-                        <button
-                          ref={setActivatorNodeRef}
-                          {...listeners}
-                          {...attributes}
-                          className="dragHandle"
-                          aria-label="Réorganiser"
-                        >
-                          ⋮⋮
-                        </button>
-                      ) : null}
-                      <div>
-                        <div className="cardSectionTitle">Calendrier</div>
-                        <div className="small2 mt8" aria-live="polite" aria-atomic="true">
-                          {selectedDateLabel || "—"}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="row" style={{ gap: 8 }}>
-                      {(() => {
-                        const isOnToday = selectedDateKey === toLocalDateKey(new Date());
-                        return (
-                          <IconButton
-                            onClick={() => {
-                              const today = toLocalDateKey(new Date());
-                              handleDayOpen(today);
-                              if (calendarView === "day") {
-                                requestAnimationFrame(() => scrollRailToKey(today));
-                              }
-                            }}
-                            aria-label="Revenir à aujourd’hui"
-                            title="Revenir à aujourd’hui"
-                            data-tour-id="today-calendar-today"
-                            disabled={isOnToday}
-                          >
-                            ⟳
-                          </IconButton>
-                        );
-                      })()}
-                      <Button
-                        variant="ghost"
-                        onClick={() => setCalendarView("day")}
-                        disabled={calendarView === "day"}
-                        aria-pressed={calendarView === "day"}
-                        data-tour-id="today-calendar-day"
-                      >
-                        Jour
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        onClick={() => setCalendarView("month")}
-                        disabled={calendarView === "month"}
-                        aria-pressed={calendarView === "month"}
-                        data-tour-id="today-calendar-month"
-                      >
-                        Mois
-                      </Button>
-                    </div>
-                  </div>
-                  <div
-                    key={calendarPaneKey}
-                    className={`calPane ${calendarPanePhase}`}
-                    style={{
-                      willChange: "transform, opacity",
-                      transition: "transform 220ms ease, opacity 220ms ease",
-                      opacity: calendarPanePhase === "enter" ? 0 : 1,
-                      transform: calendarPanePhase === "enter" ? "translateY(6px)" : "translateY(0px)",
-                    }}
-                  >
-                    {calendarView === "day" ? (
-                      <div className="calendarRailWrap mt12">
-                        <div className="calendarSelector" aria-hidden="true">
-                          <span className="calendarSelectorDot" />
-                        </div>
-                        <div
-                          className="calendarRail scrollNoBar"
-                          ref={railRef}
-                          onScroll={handleRailScroll}
-                          onPointerDown={() => {
-                            isRailInteractingRef.current = true;
-                            cancelRailSmooth();
-                          }}
-                          onPointerUp={() => {
-                            isRailInteractingRef.current = false;
-                            maybeExtendRailRange();
-                          }}
-                          onPointerCancel={() => {
-                            isRailInteractingRef.current = false;
-                          }}
-                          onMouseUp={() => {
-                            isRailInteractingRef.current = false;
-                            maybeExtendRailRange();
-                          }}
-                          onTouchStart={() => {
-                            isRailInteractingRef.current = true;
-                            cancelRailSmooth();
-                          }}
-                          onTouchEnd={() => {
-                            isRailInteractingRef.current = false;
-                            maybeExtendRailRange();
-                          }}
-                          data-tour-id="today-calendar-rail"
-                          role="listbox"
-                          aria-label="Sélecteur de jour"
-                          style={{
-                            scrollSnapType: "x mandatory",
-                            WebkitOverflowScrolling: "touch",
-                            overscrollBehaviorX: "contain",
-                          }}
-                        >
-                          {railItems.map((item) => {
-                            const plannedCount = plannedByDate.get(item.key) || 0;
-                            const doneCount = doneByDate.get(item.key) || 0;
-                            const isToday = item.key === localTodayKey;
-                            const plannedLabel = plannedCount
-                              ? `${plannedCount} planifié${plannedCount > 1 ? "s" : ""}`
-                              : "0 planifié";
-                            const doneLabel = doneCount ? `${doneCount} fait${doneCount > 1 ? "s" : ""}` : "0 fait";
-                            const ariaLabel = `${item.key} · ${plannedLabel} · ${doneLabel}${
-                              isToday ? " · Aujourd’hui" : ""
-                            }`;
-                            const isSelected = item.key === activeRailKey;
-                            const accentForItem = goalAccentByDate.get(item.key) || goalAccent || accent;
-                            return (
-                              <button
-                                key={item.key}
-                                ref={(el) => {
-                                  if (el) railItemRefs.current.set(item.key, el);
-                                  else railItemRefs.current.delete(item.key);
-                                }}
-                                className={`dayPill calendarItem ${
-                                  isSelected
-                                    ? "is-current"
-                                    : item.key < activeRailKey
-                                      ? "is-past"
-                                      : "is-future"
-                                }`}
-                                data-datekey={item.key}
-                                data-status={item.status}
-                                data-planned={plannedCount}
-                                data-done={doneCount}
-                                aria-label={ariaLabel}
-                                aria-pressed={isSelected}
-                                aria-current={isSelected ? "date" : undefined}
-                                role="option"
-                                onClick={() => {
-                                  scrollRailToKey(item.key);
-                                  handleDayOpen(item.key);
-                                }}
-                                type="button"
-                                style={{
-                                  scrollSnapAlign: "center",
-                                  borderColor:
-                                    isSelected
-                                      ? accentForItem
-                                      : goalAccentByDate.get(item.key) || "rgba(255,255,255,.14)",
-                                  boxShadow:
-                                    isSelected
-                                      ? `0 0 0 2px ${accentForItem}33`
-                                      : undefined,
-                                }}
-                              >
-                                <div className="dayPillDay">{item.day}</div>
-                                <div className="dayPillMonth">/{item.month}</div>
-                                {isToday ? <div className="calendarTodayBadge">Aujourd’hui</div> : null}
-                                {(() => {
-                                  const { dots, extra } = getDayDots(item.key, 3);
-                                  if (!dots.length) return null;
-                                  return (
-                                    <div className="calendarDots" aria-hidden="true">
-                                      {dots.map((d) => (
-                                        <span
-                                          key={d.categoryId}
-                                          className="calendarItemDot"
-                                          style={{ background: d.color || "rgba(255,255,255,.45)" }}
-                                        />
-                                      ))}
-                                      {extra > 0 ? <span className="calendarDotsMore">+{extra}</span> : null}
-                                    </div>
-                                  );
-                                })()}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="mt12">
-                        <div className="calendarMonthHeader" style={{ display: "grid", gridTemplateColumns: "48px 1fr 48px", alignItems: "center" }}>
-                          <Button
-                            variant="ghost"
-                            onClick={() => setMonthCursor((d) => addMonths(d, -1))}
-                            aria-label="Mois précédent"
-                          >
-                            ←
-                          </Button>
-                          <div className="titleSm calendarMonthTitle" style={{ textAlign: "center" }}>
-                            {getMonthLabelFR(monthCursor)}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            onClick={() => setMonthCursor((d) => addMonths(d, 1))}
-                            aria-label="Mois suivant"
-                          >
-                            →
-                          </Button>
-                        </div>
-                        {typeof onAddOccurrence === "function" ? (
-                          <div className="calendarMonthActions">
-                            <Button
-                              variant="ghost"
-                              onClick={() => handleAddOccurrence(selectedDateKey, selectedGoal?.id || null)}
-                              data-tour-id="today-calendar-add-occurrence"
-                            >
-                              Ajouter
-                            </Button>
-                          </div>
-                        ) : null}
-                        <div
-                          className="mt10 calMonthGrid"
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: `repeat(${WEEKDAY_LABELS_FR.length}, minmax(0, 1fr))`,
-                            gap: 6,
-                            textAlign: "center",
-                            contain: "content",
-                          }}
-                          data-tour-id="today-calendar-month-grid"
-                        >
-                          {WEEKDAY_LABELS_FR.map((label, idx) => (
-                            <div key={`${label}-${idx}`} className="small2">
-                              {label}
-                            </div>
-                          ))}
-                          {monthGrid.map((cell) => {
-                            const dayKey = toLocalDateKey(cell.dateObj);
-                            const plannedCount = plannedByDate.get(dayKey) || 0;
-                            const doneCount = doneByDate.get(dayKey) || 0;
-                            const isSelected = dayKey === selectedDateKey;
-                            const isToday = dayKey === localTodayKey;
-                            const plannedLabel = plannedCount
-                              ? `${plannedCount} planifié${plannedCount > 1 ? "s" : ""}`
-                              : "0 planifié";
-                            const doneLabel = doneCount ? `${doneCount} fait${doneCount > 1 ? "s" : ""}` : "0 fait";
-                            const ariaLabel = `${dayKey} · ${plannedLabel} · ${doneLabel}${isToday ? " · Aujourd’hui" : ""}`;
-                            return (
-                              <button
-                                key={dayKey}
-                                type="button"
-                                className={`dayPill${isSelected ? " dayPillActive" : ""}`}
-                                data-datekey={dayKey}
-                                data-planned={plannedCount}
-                                data-done={doneCount}
-                                aria-label={ariaLabel}
-                                aria-pressed={isSelected}
-                                aria-current={isToday ? "date" : undefined}
-                                onClick={() => handleDayOpen(dayKey)}
-                                style={{
-                                  width: "100%",
-                                  minHeight: 56,
-                                  borderRadius: 12,
-                                  padding: 6,
-                                  opacity: cell.inMonth ? 1 : 0.4,
-                                  borderColor: isSelected
-                                    ? selectedDayAccent
-                                    : goalAccentByDate.get(dayKey) || "rgba(255,255,255,.14)",
-                                  boxShadow: isSelected ? `0 0 0 2px ${selectedDayAccent}33` : undefined,
-                                }}
-                              >
-                                <div className="dayPillDay">{cell.dayNumber}</div>
-                                <div className="small2">{plannedCount ? `${plannedCount} planifié` : ""}{plannedCount && doneCount ? " · " : ""}{doneCount ? `${doneCount} fait` : ""}</div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt12">
-                    <div className="small2">Aperçu de la journée</div>
-                    <div
-                      className="mt8 col gap10"
-                      style={planningListStyle}
-                    >
-                      {visibleOccurrencesForSelectedDay.length ? (
-                        <div className="col gap8">
-                          {visibleOccurrencesForSelectedDay.map((occ) => {
-                            const occUI = normalizeOccurrenceForUI(occ);
-                            const goal = goalsById.get(occ.goalId) || null;
-                            const title = goal?.title || "Action";
-                            const categoryName = categoriesById.get(goal?.categoryId)?.name || "Général";
-                            const outcome = getOutcomeForGoalId(occ.goalId);
-                            const hasTime = Boolean(goal?.startTime || (occUI?.start && occUI.start !== "00:00"));
-                            const timeLabel = hasTime ? occUI.start : "";
-                            const duration = Number.isFinite(goal?.durationMinutes) ? goal.durationMinutes : null;
-                            const status =
-                              occ.status === "done"
-                                ? "Fait"
-                                : occ.status === "skipped"
-                                  ? "Ignorée"
-                                  : "Planifiée";
-                            const statusClass = occ.status === "done" ? "textAccent" : "textMuted2";
-                            const pointsLabel = Number.isFinite(occ.pointsAwarded) ? `+${occ.pointsAwarded} points` : "";
-                            return (
-                              <button
-                                key={`${occ.goalId}-${occ.date}-${occ.start}`}
-                                type="button"
-                                className="listItem row rowBetween gap10"
-                                onClick={() => toggleOccurrence(occ)}
-                                disabled={!canEdit}
-                              >
-                                <div className="col gap4">
-                                  <div className="itemTitle">
-                                    {(timeLabel ? `${timeLabel} · ` : "") + title}
-                                  </div>
-                                  <div className="row gap6 wrap">
-                                    <span className="badge">{categoryName}</span>
-                                    {outcome?.id ? <span className="badge">{outcome.title || "Objectif"}</span> : null}
-                                  </div>
-                                  <div className="small2 textMuted2">
-                                    {duration ? `${duration} min` : ""}
-                                    {duration && pointsLabel ? " · " : ""}
-                                    {pointsLabel}
-                                  </div>
-                                  <div className={`small2 ${statusClass}`}>{status}</div>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="small2 textMuted2">Rien de planifié ce jour</div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="sectionSub" style={{ marginTop: 8 }}>
-                    {selectedStatus === "past"
-                      ? "Lecture seule"
-                      : selectedStatus === "today"
-                        ? "Aujourd’hui"
-                        : "À venir"}
-                  </div>
-                </div>
-              </Card>
+              <FocusCard
+                drag={drag}
+                setActivatorNodeRef={setActivatorNodeRef}
+                listeners={listeners}
+                attributes={attributes}
+                focusCategory={focusCategory}
+                selectedGoal={selectedGoal}
+                canManageCategory={canManageCategory}
+                onOpenManageCategory={onOpenManageCategory}
+                currentPlannedOccurrence={currentPlannedOccurrence}
+                nextPlannedOccurrence={nextPlannedOccurrence}
+                onStartSession={handleStartSession}
+                onPrepareSession={handlePrepareSession}
+                normalizeOccurrenceForUI={normalizeOccurrenceForUI}
+                goalsById={goalsById}
+              />
             );
           }
 
@@ -2498,6 +1574,38 @@ export default function Home({
                   </div>
                 </div>
               </Card>
+            );
+          }
+          if (blockId === "calendar") {
+            return (
+              <CalendarCard
+                drag={drag}
+                setActivatorNodeRef={setActivatorNodeRef}
+                listeners={listeners}
+                attributes={attributes}
+                selectedDateKey={selectedDateKey}
+                selectedDateLabel={selectedDateLabel}
+                localTodayKey={localTodayKey}
+                calendarView={calendarView}
+                onSetCalendarView={setCalendarView}
+                calendarPaneKey={calendarPaneKey}
+                calendarPanePhase={calendarPanePhase}
+                plannedByDate={plannedByDate}
+                doneByDate={doneByDate}
+                goalAccentByDate={goalAccentByDate}
+                goalAccent={goalAccent}
+                accent={accent}
+                getDayDots={getDayDots}
+                onDayOpen={handleDayOpen}
+                onCommitDateKey={commitDateKey}
+                monthCursor={monthCursor}
+                onPrevMonth={() => setMonthCursor((d) => addMonths(d, -1))}
+                onNextMonth={() => setMonthCursor((d) => addMonths(d, 1))}
+                monthGrid={monthGrid}
+                selectedDayAccent={selectedDayAccent}
+                onAddOccurrence={typeof onAddOccurrence === "function" ? handleAddOccurrence : null}
+                selectedGoalId={selectedGoal?.id || null}
+              />
             );
           }
           return null;

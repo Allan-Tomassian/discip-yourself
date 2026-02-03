@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, Input, Select } from "../components/UI";
+import { Button, Card, Input } from "../components/UI";
+import Select from "../ui/select/Select";
+import DatePicker from "../ui/date/DatePicker";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_OUTCOME_NEXT_ACTION } from "../creation/creationSchema";
 import { resolveGoalType } from "../domain/goalType";
@@ -247,10 +249,9 @@ export default function CreateV2Outcome({
 
             <div className="stack stackGap6">
               <div className="small2 textMuted">Date de début (optionnel)</div>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
+              <DatePicker
+                value={startDate}
+                onChange={(e) => {
                   const nextValue = e.target.value;
                   setStartDate(nextValue);
                   if (!deadlineTouched) {
@@ -259,13 +260,12 @@ export default function CreateV2Outcome({
                     setDeadline(toLocalDateKey(base));
                   }
                   if (error) setError("");
-                  }}
-                />
+                }}
+              />
             </div>
             <div className="stack stackGap6">
               <div className="small2 textMuted">Date de fin (obligatoire, min 2 jours : {minDeadlineKey})</div>
-              <Input
-                type="date"
+              <DatePicker
                 value={deadline}
                 onChange={(e) => {
                   setDeadline(e.target.value);

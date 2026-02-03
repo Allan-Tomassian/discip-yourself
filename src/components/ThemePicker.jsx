@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { applyThemeTokens, getThemeAccent, getThemeName, listThemes } from "../theme/themeTokens";
+import { applyThemeTokens, BRAND_ACCENT, getThemeName, listThemes } from "../theme/themeTokens";
 import { Button, Card, SelectMenu } from "./UI";
 
 function toLabel(name) {
@@ -36,8 +36,8 @@ export default function ThemePicker({ data, setData }) {
   const persistedGlobalTheme = data?.ui?.theme;
   const savedTheme = persistedGlobalTheme || getThemeName(data, "home");
 
-  // Accent is still allowed to be per-page for now; default to home.
-  const savedAccent = getThemeAccent(data, "home");
+  // Accent is locked to brand globally.
+  const savedAccent = BRAND_ACCENT;
 
   const themeOptions = useMemo(() => {
     // Prefer the canonical theme list. If empty for any reason, fall back to aurora.

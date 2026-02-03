@@ -12,6 +12,7 @@ import { ensureBlocksConfig } from "./blocks/ensureBlocksConfig";
 import { validateBlocksState } from "./blocks/validateBlocksState";
 import { buildScheduleRuleSourceKey, buildScheduleRulesFromAction, normalizeScheduleRule } from "./scheduleRules";
 import { isFinalOccurrenceStatus } from "./metrics";
+import { BRAND_ACCENT } from "../theme/themeTokens";
 
 export const THEME_PRESETS = ["aurora", "midnight", "sunset", "ocean", "forest"];
 export const SYSTEM_INBOX_ID = "sys_inbox";
@@ -1039,11 +1040,11 @@ export function initialData() {
 
       // V2: per-page theming
       pageThemes: { home: "aurora" },
-      pageAccents: { home: "#7C3AED" },
+      pageAccents: { home: BRAND_ACCENT },
 
       // legacy (kept for backward compatibility during migration)
       pageThemeHome: "aurora",
-      accentHome: "#7C3AED",
+      accentHome: BRAND_ACCENT,
 
       // V2: one active goal at a time
       activeGoalId: null,
@@ -1122,9 +1123,9 @@ export function demoData() {
       },
 
       pageThemes: { home: "aurora" },
-      pageAccents: { home: "#7C3AED" },
+      pageAccents: { home: BRAND_ACCENT },
       pageThemeHome: "aurora",
-      accentHome: "#7C3AED",
+      accentHome: BRAND_ACCENT,
       activeGoalId: null,
       mainGoalId: outcomeId,
       selectedGoalByCategory: {},
@@ -1240,14 +1241,15 @@ export function migrate(prev) {
     if (next.ui.pageThemeHome) next.ui.pageThemes.home = next.ui.pageThemeHome;
     else next.ui.pageThemes.home = "aurora";
   }
-  if (!next.ui.pageAccents.home) {
-    if (next.ui.accentHome) next.ui.pageAccents.home = next.ui.accentHome;
-    else next.ui.pageAccents.home = "#7C3AED";
+  if (!next.ui.pageAccents.home || next.ui.pageAccents.home !== BRAND_ACCENT) {
+    next.ui.pageAccents.home = BRAND_ACCENT;
   }
 
   // legacy defaults (kept so old code paths don't crash)
   if (!next.ui.pageThemeHome) next.ui.pageThemeHome = next.ui.pageThemes?.home || "aurora";
-  if (!next.ui.accentHome) next.ui.accentHome = next.ui.pageAccents?.home || "#7C3AED";
+  if (!next.ui.accentHome || next.ui.accentHome !== BRAND_ACCENT) {
+    next.ui.accentHome = BRAND_ACCENT;
+  }
 
   if (typeof next.ui.activeGoalId === "undefined") next.ui.activeGoalId = null;
   if (typeof next.ui.mainGoalId === "undefined") next.ui.mainGoalId = null;

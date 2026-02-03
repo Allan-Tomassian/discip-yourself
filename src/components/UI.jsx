@@ -1,5 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import AccentContext from "./AccentContext";
+import SelectBase from "../ui/select/Select";
+
+export { default as Select } from "../ui/select/Select";
 
 function normalizeHex(hex) {
   if (typeof hex !== "string") return null;
@@ -115,52 +118,8 @@ export function Textarea({ className = "", style, ...props }) {
   );
 }
 
-export function Select({
-  className = "",
-  children,
-  value,
-  onChange,
-  disabled,
-  placeholder,
-  style,
-  "aria-label": ariaLabel,
-}) {
-  const options = useMemo(() => {
-    const list = [];
-    React.Children.forEach(children, (child) => {
-      if (!React.isValidElement(child)) return;
-      const optValue = child.props?.value;
-      const optLabel = child.props?.children;
-      if (optValue === undefined) return;
-      list.push({
-        value: optValue,
-        label: optLabel || String(optValue),
-        disabled: Boolean(child.props?.disabled),
-      });
-    });
-    return list;
-  }, [children]);
-
-  const derivedPlaceholder =
-    placeholder ||
-    options.find((opt) => opt.disabled && (opt.value === "" || opt.value == null))?.label ||
-    "Sélectionner";
-
-  return (
-    <SelectMenu
-      value={value}
-      onChange={(next) => (typeof onChange === "function" ? onChange({ target: { value: next } }) : null)}
-      disabled={disabled}
-      placeholder={derivedPlaceholder}
-      options={options.filter((opt) => opt.value !== "" || !opt.disabled)}
-      className={className}
-      style={style}
-      ariaLabel={ariaLabel}
-    />
-  );
-}
-
 export function SelectMenu({
+  children,
   value,
   options = [],
   onChange,
@@ -171,161 +130,41 @@ export function SelectMenu({
   style,
   ariaLabel,
 }) {
-  const [open, setOpen] = useState(false);
-  const triggerRef = useRef(null);
-  const menuRef = useRef(null);
-  const selected = useMemo(
-    () => options.find((opt) => opt.value === value) || null,
-    [options, value]
+  const isDev = typeof process !== "undefined" && process?.env?.NODE_ENV !== "production";
+
+  useEffect(() => {
+    if (!isDev) return;
+    console.warn(
+      "[SelectMenu] Legacy wrapper in use. Prefer importing `Select` from `src/ui/select/Select.jsx`."
+    );
+  }, [isDev]);
+
+  const handleChange = useCallback(
+    (event) => {
+      if (typeof onChange !== "function") return;
+      if (event && typeof event === "object" && "target" in event) {
+        onChange(event.target?.value);
+        return;
+      }
+      onChange(event);
+    },
+    [onChange]
   );
 
-  useEffect(() => {
-    if (!open) return;
-    // iPhone/iPad (touch) doesn't need keyboard trapping; keep it desktop-only.
-    if (!isDesktopLikeInput()) return;
-
-    function getOptionButtons() {
-      const root = menuRef.current;
-      if (!root) return [];
-      return Array.from(root.querySelectorAll("button.selectOption:not([disabled])"));
-    }
-
-    function focusSelectedOrFirst() {
-      const root = menuRef.current;
-      if (!root) return;
-      const selectedBtn = root.querySelector("button.selectOption[aria-selected='true']:not([disabled])");
-      if (selectedBtn) {
-        selectedBtn.focus();
-        return;
-      }
-      const first = root.querySelector("button.selectOption:not([disabled])");
-      if (first) first.focus();
-    }
-
-    // Move focus into the menu on open
-    const t = window.setTimeout(focusSelectedOrFirst, 0);
-
-    function handleKeyDown(event) {
-      if (!open) return;
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setOpen(false);
-        return;
-      }
-
-      const buttons = getOptionButtons();
-      if (!buttons.length) return;
-
-      const active = document.activeElement;
-      const idx = buttons.indexOf(active);
-
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        const next = idx >= 0 ? buttons[(idx + 1) % buttons.length] : buttons[0];
-        next.focus();
-      } else if (event.key === "ArrowUp") {
-        event.preventDefault();
-        const next = idx >= 0 ? buttons[(idx - 1 + buttons.length) % buttons.length] : buttons[buttons.length - 1];
-        next.focus();
-      } else if (event.key === "Home") {
-        event.preventDefault();
-        buttons[0].focus();
-      } else if (event.key === "End") {
-        event.preventDefault();
-        buttons[buttons.length - 1].focus();
-      } else if (event.key === "Enter") {
-        // Let the focused button's onClick handle selection
-        if (active && active.classList?.contains("selectOption")) {
-          event.preventDefault();
-          active.click();
-        }
-      } else if (event.key === "Tab") {
-        // Keep focus within the menu when open (simple trap)
-        event.preventDefault();
-        const dir = event.shiftKey ? -1 : 1;
-        const next = idx >= 0 ? buttons[(idx + dir + buttons.length) % buttons.length] : buttons[0];
-        next.focus();
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown, true);
-    return () => {
-      window.clearTimeout(t);
-      window.removeEventListener("keydown", handleKeyDown, true);
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(e) {
-      const wrap = e.target?.closest?.(".selectMenuWrap");
-      if (!wrap) setOpen(false);
-    }
-    window.addEventListener("pointerdown", onPointerDown, true);
-    return () => window.removeEventListener("pointerdown", onPointerDown, true);
-  }, [open]);
-
-  function handleSelect(opt) {
-    if (!opt || opt.disabled) return;
-    if (typeof onChange === "function") onChange(opt.value);
-    setOpen(false);
-    window.setTimeout(() => {
-      if (triggerRef.current) triggerRef.current.focus();
-    }, 0);
-  }
-
   return (
-    <div className="selectMenuWrap" style={{ maxWidth: "100%", ...(style || {}) }}>
-      <button
-        ref={triggerRef}
-        type="button"
-        className={`selectTrigger${className ? ` ${className}` : ""}`}
-        style={{ maxWidth: "100%", minWidth: 0 }}
-        onClick={() => (!disabled ? setOpen((prev) => !prev) : null)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-disabled={disabled}
-        aria-label={ariaLabel}
-        disabled={disabled}
-      >
-        <span className={`selectTriggerValue${selected ? "" : " isPlaceholder"}`}>
-          {selected?.label || placeholder}
-        </span>
-        <span className="selectChevron" aria-hidden="true">▾</span>
-      </button>
-      {open ? (
-        <>
-          <button
-            type="button"
-            className="selectMenuOverlay"
-            onClick={() => setOpen(false)}
-            aria-label="Fermer"
-          />
-          <div ref={menuRef} className={`selectMenu${menuClassName ? ` ${menuClassName}` : ""}`} role="listbox">
-            {options.length ? (
-              options.map((opt) => {
-                const isSelected = opt.value === value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    role="option"
-                    aria-selected={isSelected}
-                    disabled={opt.disabled}
-                    className={`selectOption${isSelected ? " isSelected" : ""}${opt.disabled ? " isDisabled" : ""}`}
-                    onClick={() => handleSelect(opt)}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })
-            ) : (
-              <div className="selectEmpty">Aucune option</div>
-            )}
-          </div>
-        </>
-      ) : null}
-    </div>
+    <SelectBase
+      value={value}
+      options={options}
+      onChange={handleChange}
+      placeholder={placeholder}
+      disabled={disabled}
+      className={className}
+      menuClassName={menuClassName}
+      style={style}
+      aria-label={ariaLabel}
+    >
+      {children}
+    </SelectBase>
   );
 }
 

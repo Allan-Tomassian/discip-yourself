@@ -15,6 +15,15 @@ export const BRAND_GLOW = "rgba(247,147,26,.22)";
 
 // CTA text tuned for the brand accent.
 const CTA_TEXT_DARK = "#1A1208";
+const IS_DEV = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
+let warnedAccentOverride = false;
+
+function warnAccentOverride(value, source) {
+  if (!IS_DEV || warnedAccentOverride) return;
+  warnedAccentOverride = true;
+  // eslint-disable-next-line no-console
+  console.warn("[theme] Accent override ignored (brand-locked).", { source, value });
+}
 
 // Shared surfaces, layout, and shadows tuned for iOS-like glass.
 const SHARED = {
@@ -515,12 +524,20 @@ export function getThemeName(data, page = "home") {
  */
 export function getThemeAccent(data, page = "home") {
   const byPage = data?.ui?.pageAccents?.[page];
-  if (typeof byPage === "string" && byPage.trim()) return byPage.trim();
+  if (typeof byPage === "string" && byPage.trim()) {
+    const normalized = normalizeHexColor(byPage);
+    if (normalized && normalized !== BRAND_ACCENT) warnAccentOverride(normalized, "state.pageAccents");
+    return normalized === BRAND_ACCENT ? normalized : null;
+  }
 
   // Legacy (home only)
   if (page === "home") {
     const legacy = data?.ui?.accentHome;
-    if (typeof legacy === "string" && legacy.trim()) return legacy.trim();
+    if (typeof legacy === "string" && legacy.trim()) {
+      const normalized = normalizeHexColor(legacy);
+      if (normalized && normalized !== BRAND_ACCENT) warnAccentOverride(normalized, "state.accentHome");
+      return normalized === BRAND_ACCENT ? normalized : null;
+    }
   }
 
   return null;
@@ -540,11 +557,14 @@ export function applyThemeTokens(themeName, accentOverride) {
 
   const tokens = resolveThemeTokens(themeName);
   const normalizedAccent = normalizeHexColor(accentOverride);
-  const accentBase = normalizedAccent || BRAND_ACCENT;
+  if (normalizedAccent && normalizedAccent !== BRAND_ACCENT) {
+    warnAccentOverride(normalizedAccent, "applyThemeTokens");
+  }
+  const accentBase = BRAND_ACCENT;
   const dangerBase = tokens?.danger || "#FB7185";
 
   // If the user overrides the accent, compute a matching glow automatically.
-  const nextGlow = normalizedAccent ? hexToRgba(normalizedAccent, 0.22) : null;
+  const nextGlow = hexToRgba(accentBase, 0.22);
   const accentTintSoft = hexToRgba(accentBase, 0.08);
   const accentTint = hexToRgba(accentBase, 0.12);
   const accentTintStrong = hexToRgba(accentBase, 0.16);

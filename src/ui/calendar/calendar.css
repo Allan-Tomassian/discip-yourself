@@ -1,0 +1,333 @@
+.calendarCard{
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.calendarCardBody{
+  padding: 18px;
+  padding-inline: calc(16px + env(safe-area-inset-left, 0px)) calc(16px + env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
+}
+
+.calendarHeader{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+}
+
+.calendarTitleRow{
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.calendarSubtitle{
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-3, var(--muted2));
+  font-variant-numeric: tabular-nums;
+}
+
+.calendarActions{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  justify-self: end;
+  min-width: 240px;
+  font-variant-numeric: tabular-nums;
+}
+
+.calendarTodayBtn{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--glass);
+  color: var(--text);
+  padding: 6px 12px;
+  font-size: 12px;
+  min-width: 112px;
+  justify-content: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.calendarTodayBtn:disabled{
+  opacity: 0.6;
+  cursor: default;
+}
+
+.calendarTodayBtn:not(:disabled):hover{
+  border-color: var(--border-strong, var(--border));
+  box-shadow: var(--shadowControl, 0 8px 20px rgba(0,0,0,.12));
+  transform: translateY(-1px);
+}
+
+.calendarTodayIcon{
+  font-size: 14px;
+}
+
+.calendarSeg{
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--glass2, rgba(255,255,255,.06));
+}
+
+.calendarSegBtn{
+  border: 0;
+  background: transparent;
+  color: var(--text-2, var(--muted2));
+  padding: 6px 12px;
+  border-radius: 999px;
+  min-width: 58px;
+  font-size: 12px;
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.calendarSegBtn.is-active{
+  background: var(--glass);
+  color: var(--text);
+  box-shadow: var(--shadowControl, 0 6px 14px rgba(0,0,0,.16));
+}
+
+.calendarPane{
+  margin-top: 12px;
+  will-change: transform, opacity;
+  transition: transform 200ms ease, opacity 200ms ease;
+}
+
+.calendarPane.enter{
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.calendarPane.enterActive{
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.calendarRailWrap{
+  position: relative;
+}
+
+.calendarRail{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: auto;
+  height: 80px;
+  padding: 6px 0;
+  padding-inline: max(var(--rail-pad, 12px), env(safe-area-inset-left, 0px)) max(var(--rail-pad, 12px), env(safe-area-inset-right, 0px));
+  --dayrail-item-half: 36px;
+  scroll-padding-inline: calc(50% - var(--dayrail-item-half));
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.railSpacer{
+  flex: 0 0 auto;
+  pointer-events: none;
+}
+
+.calendarDayPill{
+  width: 56px;
+  min-width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--glass);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 0 10px;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+
+.calendarPillDay{
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.calendarPillMonth{
+  font-size: 11px;
+  color: var(--text-3, var(--muted2));
+  line-height: 1;
+}
+
+.calendarPillBadge{
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--text-3, var(--muted2));
+}
+
+.calendarItem{
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  position: relative;
+  opacity: 0.55;
+  filter: saturate(0.9);
+}
+
+.calendarRail.is-scrolling .calendarItem{
+  transition: none;
+}
+
+.calendarItem.is-current{
+  opacity: 1;
+  filter: none;
+  transform: scale(1.06);
+}
+
+.calendarItem.is-past,
+.calendarItem.is-future{
+  opacity: 0.45;
+}
+
+.calendarItemDot{
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  opacity: 0.9;
+}
+
+.calendarSelectionDot{
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  opacity: 0.95;
+  box-shadow: 0 0 0 4px rgba(255,138,61,0.15);
+}
+
+.calendarDots{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.calendarDotsMore{
+  font-size: 10px;
+  color: var(--text-3, var(--muted2));
+}
+
+.calendarMonthWrap{
+  margin-top: 12px;
+}
+
+.calendarMonthHeader{
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  align-items: center;
+  gap: 8px;
+}
+
+.calendarMonthTitle{
+  text-align: center;
+  font-weight: 600;
+}
+
+.calendarMonthActions{
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.calendarMonthGrid{
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  text-align: center;
+  contain: content;
+}
+
+.calendarWeekday{
+  font-size: 11px;
+  color: var(--text-3, var(--muted2));
+}
+
+.calendarMonthCell{
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  background: var(--glass);
+  color: var(--text);
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  cursor: pointer;
+}
+
+.calendarMonthCell.is-selected{
+  box-shadow: var(--accent-ring, 0 0 0 2px rgba(255,255,255,0.18));
+}
+
+.calendarMonthCell.is-today{
+  border-color: var(--accent, #ff8a3d);
+}
+
+.calendarMonthDay{
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.calendarMonthMeta{
+  font-size: 10px;
+  color: var(--text-3, var(--muted2));
+}
+
+@media (max-width: 600px){
+  .calendarCardBody{
+    padding: 16px;
+    padding-inline: calc(14px + env(safe-area-inset-left, 0px)) calc(14px + env(safe-area-inset-right, 0px));
+  }
+  .calendarActions{
+    width: 100%;
+    justify-content: space-between;
+    min-width: 0;
+  }
+  .calendarDayPill{
+    width: 52px;
+    min-width: 52px;
+    height: 52px;
+  }
+  .calendarRail{
+    height: 76px;
+    --dayrail-item-half: 34px;
+  }
+}

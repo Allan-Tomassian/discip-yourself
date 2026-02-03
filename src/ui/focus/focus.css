@@ -1,0 +1,135 @@
+.focusCard{
+  width: 100%;
+  box-sizing: border-box;
+  font-variant-numeric: tabular-nums;
+}
+
+.focusCardBody{
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.focusHeader{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.focusHeaderLeft{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.focusCategoryBadge{
+  background: var(--glass2, rgba(255,255,255,.08));
+  border: 1px solid var(--border);
+}
+
+.focusHeaderActions{
+  display: flex;
+  justify-content: flex-end;
+  min-width: 92px;
+}
+
+.focusManageBtn{
+  min-width: 88px;
+  justify-content: center;
+}
+
+.focusManageBtn.is-hidden{
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.focusBody{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.focusLine{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.focusMainGoal{
+  font-size: 13px;
+  color: var(--text-3, var(--muted2));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.focusMainGoalValue{
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.focusNextRow{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  min-height: 40px;
+}
+
+.focusNextLabel{
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3, var(--muted2));
+}
+
+.focusNextValue{
+  font-size: 13px;
+  color: var(--text);
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.focusInlineLink{
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.focusCtaRow{
+  display: flex;
+  align-items: center;
+}
+
+.focusCtaBtn{
+  min-width: 140px;
+}
+
+@media (max-width: 600px){
+  .focusCardBody{
+    padding: 16px;
+  }
+  .focusHeader{
+    grid-template-columns: 1fr;
+  }
+  .focusHeaderActions{
+    justify-content: flex-start;
+  }
+}

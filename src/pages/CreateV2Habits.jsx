@@ -10,16 +10,17 @@ import {
   Divider,
   Hint,
   Input,
-  Select,
   Textarea,
   ToggleChip,
 } from "../components/UI";
+import Select from "../ui/select/Select";
+import DatePicker from "../ui/date/DatePicker";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_HABITS, STEP_LINK_OUTCOME, STEP_PICK_CATEGORY } from "../creation/creationSchema";
 import { uid } from "../utils/helpers";
 import { createGoal } from "../logic/goals";
 import { ensureWindowFromScheduleRules } from "../logic/occurrencePlanner";
-import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
+import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { createDefaultGoalSchedule, ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
 import { normalizeReminder } from "../logic/reminders";
 import { normalizeTimeFields } from "../logic/timeFields";
@@ -50,13 +51,9 @@ function appDowFromDate(d) {
 function addDaysLocal(dateKey, days) {
   const dk = typeof dateKey === "string" ? normalizeLocalDateKey(dateKey) : "";
   if (!dk) return "";
-  const base = new Date(`${dk}T12:00:00`);
-  if (Number.isNaN(base.getTime())) return "";
+  const base = fromLocalDateKey(dk);
   base.setDate(base.getDate() + (Number.isFinite(days) ? Math.trunc(days) : 0));
-  const y = base.getFullYear();
-  const m = String(base.getMonth() + 1).padStart(2, "0");
-  const d = String(base.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return toLocalDateKey(base);
 }
 
 function setDaysPreset(setter, preset) {
@@ -892,7 +889,7 @@ export default function CreateV2Habits({
                 <div className="stack stackGap12">
                   <div className="stack stackGap6">
                     <div className="small2 textMuted">Date (obligatoire)</div>
-                    <Input type="date" value={oneOffDate} onChange={(e) => setOneOffDate(e.target.value)} />
+                    <DatePicker value={oneOffDate} onChange={(e) => setOneOffDate(e.target.value)} />
                     <Hint>Cette action est valable uniquement ce jour-là (début = échéance).</Hint>
                   </div>
 
@@ -929,8 +926,8 @@ export default function CreateV2Habits({
                   <div className="stack stackGap6">
                     <div className="small2 textMuted">Période (obligatoire)</div>
                     <div className="row gap8">
-                      <Input type="date" value={activeFrom} onChange={(e) => setActiveFrom(e.target.value)} />
-                      <Input type="date" value={activeTo} onChange={(e) => setActiveTo(e.target.value)} />
+                      <DatePicker value={activeFrom} onChange={(e) => setActiveFrom(e.target.value)} />
+                      <DatePicker value={activeTo} onChange={(e) => setActiveTo(e.target.value)} />
                     </div>
                     {!periodValid ? <Hint tone="danger">Définis une période valide (échéance ≥ début).</Hint> : null}
                   </div>
@@ -976,8 +973,8 @@ export default function CreateV2Habits({
                   <div className="stack stackGap6">
                     <div className="small2 textMuted">Période (obligatoire)</div>
                     <div className="row gap8">
-                      <Input type="date" value={activeFrom} onChange={(e) => setActiveFrom(e.target.value)} />
-                      <Input type="date" value={activeTo} onChange={(e) => setActiveTo(e.target.value)} />
+                      <DatePicker value={activeFrom} onChange={(e) => setActiveFrom(e.target.value)} />
+                      <DatePicker value={activeTo} onChange={(e) => setActiveTo(e.target.value)} />
                     </div>
                     {!periodValid ? <Hint tone="danger">Définis une période valide (échéance ≥ début).</Hint> : null}
                   </div>

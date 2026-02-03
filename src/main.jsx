@@ -6,7 +6,7 @@ import "./index.css";
 
 // Theme bootstrap: ensure the selected theme is applied BEFORE first paint.
 // This prevents refresh on non-Settings pages from snapping back to a default theme.
-import { applyThemeTokens, getThemeAccent, getThemeName } from "./theme/themeTokens";
+import { applyThemeTokens, BRAND_ACCENT, getThemeName } from "./theme/themeTokens";
 import { LS_KEY } from "./utils/storage";
 
 function readStoredState() {
@@ -39,8 +39,7 @@ function applyThemeEarly() {
   try {
     const storedState = readStoredState();
     const themeId = storedState ? getThemeName(storedState, "home") : readLegacyThemeId();
-    const accent = storedState ? getThemeAccent(storedState, "home") : null;
-    applyThemeTokens(themeId, accent);
+    applyThemeTokens(themeId, BRAND_ACCENT);
   } catch {
     // Never block app boot on theme errors.
   }

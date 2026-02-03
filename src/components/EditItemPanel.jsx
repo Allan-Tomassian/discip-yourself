@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Button, Input, Select, Textarea } from "./UI";
+import { Button, Input, Textarea } from "./UI";
+import Select from "../ui/select/Select";
+import DatePicker from "../ui/date/DatePicker";
 import { todayKey } from "../utils/dates";
 import { toLocalDateKey } from "../utils/dateKey";
 import { createDefaultGoalSchedule } from "../logic/state";
@@ -334,7 +336,6 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
     <div
       className="modalBackdrop drawerBackdrop"
       onClick={onClose}
-      style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", justifyContent: "flex-end" }}
     >
       <div
         className="drawerPanel editPanel"
@@ -397,7 +398,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
                           Date / heure
                         </div>
                         <div className="grid2">
-                          <Input type="date" value={oneOffDate} onChange={(e) => setOneOffDate(e.target.value)} />
+                          <DatePicker value={oneOffDate} onChange={(e) => setOneOffDate(e.target.value)} />
                           <Input type="time" value={oneOffTime} onChange={(e) => setOneOffTime(e.target.value)} />
                         </div>
                       </div>
@@ -408,7 +409,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
                             Date / heure de départ
                           </div>
                           <div className="grid2">
-                            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                            <DatePicker value={startDate} onChange={(e) => setStartDate(e.target.value)} />
                             <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
                           </div>
                         </div>
@@ -506,7 +507,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
                       <div className="small" style={{ marginBottom: 6 }}>
                         Date cible
                       </div>
-                      <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+                      <DatePicker value={deadline} onChange={(e) => setDeadline(e.target.value)} />
                     </div>
                   </>
                 )}

@@ -1,18 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, Input, Select } from "../components/UI";
+import { Button, Card, Input } from "../components/UI";
+import Select from "../ui/select/Select";
+import DatePicker from "../ui/date/DatePicker";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_PICK_CATEGORY } from "../creation/creationSchema";
 import { createGoal } from "../logic/goals";
 import { safeUpdateGoal } from "../logic/goalGuards";
 import { ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
 import { resolveGoalType } from "../domain/goalType";
-import { normalizeLocalDateKey, todayLocalKey, toLocalDateKey } from "../utils/dateKey";
+import { fromLocalDateKey, normalizeLocalDateKey, todayLocalKey, toLocalDateKey } from "../utils/dateKey";
 import { uid } from "../utils/helpers";
 
 function buildMinDeadline(startKey) {
-  const date = new Date(`${startKey}T12:00:00`);
-  if (Number.isNaN(date.getTime())) return "";
+  const normalized = normalizeLocalDateKey(startKey);
+  if (!normalized) return "";
+  const date = fromLocalDateKey(normalized);
   date.setDate(date.getDate() + 1);
   return toLocalDateKey(date);
 }
@@ -213,13 +216,13 @@ export default function CreateV2LinkOutcome({
                     <div className="small" style={{ marginBottom: 6 }}>
                       Début
                     </div>
-                    <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                    <DatePicker value={startDate} onChange={(e) => setStartDate(e.target.value)} />
                   </div>
                   <div style={{ flex: 1 }}>
                     <div className="small" style={{ marginBottom: 6 }}>
                       Fin (min 2 jours)
                     </div>
-                    <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+                    <DatePicker value={deadline} onChange={(e) => setDeadline(e.target.value)} />
                   </div>
                 </div>
                 <div className="small2 textMuted2">Date de fin minimale : {minDeadlineKey}</div>

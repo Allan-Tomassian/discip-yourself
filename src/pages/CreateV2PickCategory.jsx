@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, Select } from "../components/UI";
+import { Button, Card } from "../components/UI";
+import Select from "../ui/select/Select";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { safeUpdateGoal } from "../logic/goalGuards";
 import { ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";

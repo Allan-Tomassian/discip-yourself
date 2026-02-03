@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import TopNav from "./components/TopNav";
 import CategoryRail from "./components/CategoryRail";
 import { migrate, usePersistedState } from "./logic/state";
@@ -24,7 +24,7 @@ import CategoryView from "./pages/CategoryView";
 import EditItem from "./pages/EditItem";
 import CategoryDetailView from "./pages/CategoryDetailView";
 import CategoryProgress from "./pages/CategoryProgress";
-import Session from "./pages/Session";
+import SessionMVP from "./pages/SessionMVP";
 import Pilotage from "./pages/Pilotage";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -843,7 +843,7 @@ export default function App() {
       window.history.replaceState({}, "", "/pilotage");
     }
   }, [tab]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Do not restore tab during onboarding flows.
     const completed = Boolean(safeData?.ui?.onboardingCompleted);
     if (!completed) return;
@@ -1435,17 +1435,13 @@ export default function App() {
           onOpenPaywall={openPaywall}
         />
       ) : tab === "session" ? (
-        <Session
+        <SessionMVP
           data={data}
           setData={setData}
           categoryId={sessionCategoryId}
-          dateKey={sessionDateKey}
           onBack={() => {
             setLibraryCategoryId(null);
             setTab("today");
-          }}
-          onOpenLibrary={() => {
-            openLibraryDetail();
           }}
         />
       ) : tab === "privacy" ? (
