@@ -102,6 +102,55 @@ export function findOccurrenceForGoalDateDeterministic(occurrences, goalId, date
   return sorted[0] || null;
 }
 
+export function resolveOccurrenceForSession(data, { dateKey, goalIds, preferredStart } = {}) {
+  const d = normalizeDateKey(dateKey);
+  const ids = Array.isArray(goalIds)
+    ? goalIds.map((id) => (typeof id === "string" ? id.trim() : "")).filter(Boolean)
+    : [];
+  if (!d || !ids.length) return { occurrence: null, reason: "invalid_input" };
+
+  const occurrences = resolveOccurrences(data);
+  const preferred = normalizeTimeHM(preferredStart);
+  const matches = [];
+  for (const goalId of ids) {
+    const occ = findOccurrenceForGoalDateDeterministic(occurrences, goalId, d, preferred);
+    if (occ) matches.push(occ);
+  }
+  if (!matches.length) return { occurrence: null, reason: "not_found" };
+
+  const sorted = matches.slice().sort((a, b) => {
+    const sa = resolveOccurrenceSlotKey(a) || "";
+    const sb = resolveOccurrenceSlotKey(b) || "";
+    if (sa !== sb) return sa.localeCompare(sb);
+    const ga = typeof a?.goalId === "string" ? a.goalId : "";
+    const gb = typeof b?.goalId === "string" ? b.goalId : "";
+    if (ga !== gb) return ga.localeCompare(gb);
+    const ia = typeof a?.id === "string" ? a.id : "";
+    const ib = typeof b?.id === "string" ? b.id : "";
+    if (ia !== ib) return ia.localeCompare(ib);
+    return 0;
+  });
+
+  const occurrence = sorted[0] || null;
+  if (!occurrence) return { occurrence: null, reason: "not_found" };
+  const st = normalizeStatus(occurrence.status);
+  if (st === "done" || st === "skipped" || st === "canceled") {
+    return { occurrence, reason: "final" };
+  }
+  return { occurrence, reason: "ok" };
+}
+
+export function setOccurrenceStatusById(occurrenceId, status, source) {
+  const occurrences = resolveOccurrences(source);
+  const id = typeof occurrenceId === "string" ? occurrenceId.trim() : "";
+  if (!id) return occurrences;
+  const st = normalizeStatus(status);
+  const current = occurrences.find((o) => o && o.id === id) || null;
+  if (!current) return occurrences;
+  if (current.status === st) return occurrences;
+  return updateOccurrence(id, { status: st }, source);
+}
+
 export function listOccurrencesByDate(date, source) {
   const occurrences = resolveOccurrences(source);
   if (typeof date !== "string" || !date.trim()) return occurrences.slice();

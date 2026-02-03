@@ -12,4 +12,7 @@ export default defineConfig({
     port: 4174,
     strictPort: true,
   },
+  test: {
+    environment: "node",
+  },
 })

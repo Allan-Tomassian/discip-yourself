@@ -56,7 +56,8 @@ import {
   isValidCreationStep,
 } from "./creation/creationSchema";
 import DiagnosticOverlay from "./components/DiagnosticOverlay";
-import { ensureWindowForGoal, validateOccurrences } from "./logic/occurrencePlanner";
+import { ensureWindowFromScheduleRules, validateOccurrences } from "./logic/occurrencePlanner";
+import { resolveExecutableOccurrence } from "./logic/sessionResolver";
 import { uid } from "./utils/helpers";
 import PaywallModal from "./components/PaywallModal";
 
@@ -71,7 +72,6 @@ function runSelfTests(data) {
 function localDateKey(d = new Date()) {
   return toLocalDateKey(d);
 }
-
 
 function getHomeSelectedCategoryId(data) {
   const safe = data && typeof data === "object" ? data : {};
@@ -1498,20 +1498,56 @@ export default function App() {
                       target &&
                       (target.type || target.kind || target.planType || "").toString().toUpperCase() !== "OUTCOME";
                     if (isProcess && target?.id) {
+                      const todayKey = todayLocalKey();
+                      const preview = ensureWindowFromScheduleRules(data, todayKey, todayKey, [target.id]);
+                      const resolved = resolveExecutableOccurrence(preview, {
+                        dateKey: todayKey,
+                        goalIds: [target.id],
+                      });
+                      if (resolved.kind !== "ok" || !resolved.occurrenceId) {
+                        setActiveReminder(null);
+                        return;
+                      }
                       setData((prev) => {
-                        const ensured = ensureWindowForGoal(prev, target.id, todayLocalKey(), 1);
+                        const ensured = ensureWindowFromScheduleRules(prev, todayKey, todayKey, [target.id]);
                         const prevUi = ensured.ui || {};
+                        const existing =
+                          prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+                        if (existing && existing.status === "partial") return ensured;
+
+                        const resolvedNow = resolveExecutableOccurrence(ensured, {
+                          dateKey: todayKey,
+                          goalIds: [target.id],
+                        });
+                        if (resolvedNow.kind !== "ok" || !resolvedNow.occurrenceId) return ensured;
+                        const occ =
+                          (ensured.occurrences || []).find((o) => o && o.id === resolvedNow.occurrenceId) || null;
+                        if (!occ) return ensured;
+
                         const nextSession = {
-                          id: prevUi.activeSession?.id || uid(),
+                          id: existing?.occurrenceId === occ.id && existing?.id ? existing.id : uid(),
+                          occurrenceId: occ.id,
                           dateKey: todayLocalKey(),
                           objectiveId: typeof target.parentId === "string" ? target.parentId : null,
-                          habitIds: [target.id],
+                          habitIds: [occ.goalId || target.id],
                           status: "partial",
                           timerStartedAt: "",
                           timerAccumulatedSec: 0,
                           timerRunning: false,
                           doneHabitIds: [],
                         };
+                        if (
+                          existing &&
+                          existing.occurrenceId === nextSession.occurrenceId &&
+                          existing.dateKey === nextSession.dateKey &&
+                          existing.objectiveId === nextSession.objectiveId &&
+                          Array.isArray(existing.habitIds) &&
+                          existing.habitIds.length === nextSession.habitIds.length &&
+                          existing.habitIds.every((id, idx) => id === nextSession.habitIds[idx]) &&
+                          existing.status === nextSession.status
+                        ) {
+                          return ensured;
+                        }
                         return {
                           ...ensured,
                           ui: { ...prevUi, activeSession: nextSession },

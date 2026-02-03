@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { AccentItem, Button, Card } from "../components/UI";
 import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
-import { findOccurrenceForGoalDateDeterministic, setOccurrenceStatus, upsertOccurrence } from "../logic/occurrences";
+import { setOccurrenceStatusById } from "../logic/occurrences";
+import { isFinalOccurrenceStatus, resolveExecutableOccurrence } from "../logic/sessionResolver";
+import { upsertSessionV2 } from "../logic/sessionsV2";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { resolveConflictNearest } from "../logic/occurrencePlanner";
@@ -52,26 +54,6 @@ function pickClosestOccurrence(list, preferredMin) {
   return best;
 }
 
-function applySingleOccurrenceStatus(nextOccurrences, goals, goalId, dateKey, status, preferredStart) {
-  const exact =
-    typeof preferredStart === "string" && preferredStart
-      ? nextOccurrences.find(
-          (o) => o && o.goalId === goalId && o.date === dateKey && typeof o.start === "string" && o.start === preferredStart
-        )
-      : null;
-
-  if (exact && exact.start) {
-    return setOccurrenceStatus(goalId, dateKey, exact.start, status, { occurrences: nextOccurrences, goals });
-  }
-
-  const picked = findOccurrenceForGoalDateDeterministic(nextOccurrences, goalId, dateKey);
-  if (picked && picked.start) {
-    return setOccurrenceStatus(goalId, dateKey, picked.start, status, { occurrences: nextOccurrences, goals });
-  }
-
-  return upsertOccurrence(goalId, dateKey, "00:00", null, { status }, { occurrences: nextOccurrences, goals });
-}
-
 export default function Session({ data, setData, onBack, onOpenLibrary, dateKey }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
@@ -90,14 +72,15 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [extraMinutes, setExtraMinutes] = useState(0);
   const [overrideStart, setOverrideStart] = useState("");
+  const autoEndSigRef = useRef("");
   const session = useMemo(() => {
     if (!activeSession) return null;
     const key = activeSession.dateKey || activeSession.date;
     if (key && key !== effectiveDateKey) return null;
     return activeSession;
   }, [activeSession, effectiveDateKey]);
+  const occurrenceId = typeof session?.occurrenceId === "string" ? session.occurrenceId : null;
   const isRunning = Boolean(session && session.status === "partial" && session.timerRunning);
-  const isEditable = Boolean(session && session.status === "partial");
   useEffect(() => {
     if (!isRunning) return;
     const t = setInterval(() => setTick(Date.now()), 1000);
@@ -117,6 +100,10 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
     () => (Array.isArray(safeData.occurrences) ? safeData.occurrences : []),
     [safeData.occurrences]
   );
+  const occurrenceById = useMemo(() => {
+    if (!occurrenceId) return null;
+    return occurrences.find((occ) => occ && occ.id === occurrenceId) || null;
+  }, [occurrences, occurrenceId]);
   const effectiveCategoryId = objective?.categoryId || habits[0]?.categoryId || null;
   const category = categories.find((c) => c.id === effectiveCategoryId) || null;
   const accent = category?.color || getAccentForPage(safeData, "home");
@@ -129,20 +116,34 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
   const elapsedSec = Math.max(0, timerAccumulatedSec + runningDeltaSec);
   const elapsedLabel = formatElapsed(elapsedSec * 1000);
   const preferredMinutes = resolvePreferredMinutes(session);
+  const resolution = useMemo(() => {
+    if (occurrenceId) {
+      if (!occurrenceById) return { occurrence: null, reason: "not_found" };
+      const st = typeof occurrenceById.status === "string" ? occurrenceById.status : "planned";
+      if (isFinalOccurrenceStatus(st)) return { occurrence: occurrenceById, reason: "final" };
+      return { occurrence: occurrenceById, reason: "ok" };
+    }
+
+    const resolved = resolveExecutableOccurrence(
+      { occurrences },
+      { dateKey: resolvedDateKey, goalIds: habitIds }
+    );
+    if (resolved.kind !== "ok" || !resolved.occurrenceId) {
+      return { occurrence: null, reason: resolved.kind === "final" ? "final" : "not_found" };
+    }
+    const occ = occurrences.find((o) => o && o.id === resolved.occurrenceId) || null;
+    if (!occ) return { occurrence: null, reason: "not_found" };
+    if (isFinalOccurrenceStatus(occ.status)) return { occurrence: occ, reason: "final" };
+    return { occurrence: occ, reason: "ok" };
+  }, [occurrenceId, occurrenceById, occurrences, resolvedDateKey, habitIds]);
   const candidateOccurrences = useMemo(() => {
     if (!habitIds.length) return [];
-    return occurrences.filter(
-      (occ) => occ && habitIds.includes(occ.goalId) && occ.date === resolvedDateKey
-    );
+    return occurrences.filter((occ) => occ && habitIds.includes(occ.goalId) && occ.date === resolvedDateKey);
   }, [occurrences, habitIds, resolvedDateKey]);
   const selectedOccurrence = useMemo(() => {
-    if (!candidateOccurrences.length) return null;
-    if (overrideStart) {
-      return candidateOccurrences.find((o) => o && typeof o.start === "string" && o.start === overrideStart) || null;
-    }
-    if (preferredMinutes == null) return candidateOccurrences[0] || null;
-    return pickClosestOccurrence(candidateOccurrences, preferredMinutes);
-  }, [candidateOccurrences, preferredMinutes, overrideStart]);
+    if (occurrenceId) return occurrenceById;
+    return resolution.occurrence;
+  }, [occurrenceId, occurrenceById, resolution.occurrence]);
 
   const availableStarts = useMemo(() => {
     const set = new Set();
@@ -152,8 +153,12 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
     }
     return Array.from(set).sort();
   }, [candidateOccurrences]);
-  const occurrenceStart = overrideStart || selectedOccurrence?.start || "";
+  const occurrenceStart = (occurrenceId ? selectedOccurrence?.start : overrideStart || selectedOccurrence?.start) || "";
   const hasOccurrence = Boolean(selectedOccurrence);
+  const resolvedDoneHabitIds = useMemo(() => {
+    if (occurrenceId && selectedOccurrence?.goalId) return [selectedOccurrence.goalId];
+    return habitIds;
+  }, [occurrenceId, selectedOccurrence?.goalId, habitIds]);
   const occurrenceDuration = Number.isFinite(selectedOccurrence?.durationMinutes)
     ? selectedOccurrence.durationMinutes
     : hasOccurrence
@@ -166,57 +171,160 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
       ? Math.max(0, Math.round(targetMinutes * 60 - elapsedSec))
       : null;
   const remainingLabel = remainingSec != null ? formatElapsed(remainingSec * 1000) : "";
-  const isFinal = Boolean(session && (session.status === "done" || session.status === "skipped"));
+  const isOccurrenceFinal = Boolean(selectedOccurrence && isFinalOccurrenceStatus(selectedOccurrence.status));
+  const resolutionBlocked = resolution.reason !== "ok";
+  const finalStatus =
+    session && session.status && session.status !== "partial"
+      ? session.status
+      : isOccurrenceFinal || resolution.reason === "final"
+        ? selectedOccurrence?.status || "canceled"
+        : null;
+  const isFinal = Boolean(finalStatus || resolutionBlocked);
+  const isEditable = Boolean(session && session.status === "partial" && !isOccurrenceFinal && !resolutionBlocked);
   useEffect(() => {
     setExtraMinutes(0);
     setOverrideStart("");
     setShowEndConfirm(false);
   }, [session?.id]);
 
+  const attachOccurrenceSigRef = useRef("");
+  useEffect(() => {
+    if (!session || occurrenceId) return;
+    if (resolution.reason !== "ok" || !resolution.occurrence?.id) return;
+    if (typeof setData !== "function") return;
+    const sig = `${session.id || ""}:${resolution.occurrence.id}`;
+    if (attachOccurrenceSigRef.current === sig) return;
+    attachOccurrenceSigRef.current = sig;
+    setData((prev) => {
+      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+      const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+      if (!current || current.occurrenceId) return prev;
+      if (session?.id && current.id && current.id !== session.id) return prev;
+      if (current.occurrenceId === resolution.occurrence.id) return prev;
+      const nextSession = { ...current, occurrenceId: resolution.occurrence.id };
+      return { ...prev, ui: { ...prevUi, activeSession: nextSession } };
+    });
+  }, [occurrenceId, resolution.reason, resolution.occurrence?.id, session?.id, setData]);
+
+  const ensureSessionHistorySigRef = useRef("");
+  useEffect(() => {
+    if (!session || session.status !== "partial" || !occurrenceId) return;
+    if (typeof setData !== "function") return;
+    const sig = `${session.id || ""}:${occurrenceId}:in_progress`;
+    if (ensureSessionHistorySigRef.current === sig) return;
+    ensureSessionHistorySigRef.current = sig;
+    setData((prev) => {
+      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+      const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+      if (!current || current.status !== "partial") return prev;
+      if (current.occurrenceId && current.occurrenceId !== occurrenceId) return prev;
+      const prevHistory = Array.isArray(prev?.sessionHistory) ? prev.sessionHistory : [];
+      const prevOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
+      const occurrence = prevOccurrences.find((occ) => occ && occ.id === occurrenceId) || null;
+      const actionId =
+        typeof occurrence?.goalId === "string"
+          ? occurrence.goalId
+          : typeof occurrence?.actionId === "string"
+            ? occurrence.actionId
+            : "";
+      const dateKey = occurrence?.date || current.dateKey || current.date || resolvedDateKey;
+      const record = {
+        id: current.id || occurrenceId,
+        occurrenceId,
+        actionId,
+        dateKey,
+        startAt: current.startedAt || current.timerStartedAt || "",
+        endAt: null,
+        state: "in_progress",
+        endedReason: null,
+        timerSeconds: Number.isFinite(current.timerAccumulatedSec) ? current.timerAccumulatedSec : 0,
+        notes: typeof current.notes === "string" ? current.notes : "",
+      };
+      const nextHistory = upsertSessionV2(prevHistory, record);
+      if (nextHistory === prevHistory) return prev;
+      return { ...prev, sessionHistory: nextHistory };
+    });
+  }, [session?.id, session?.status, occurrenceId, resolvedDateKey, setData]);
+
   useEffect(() => {
     if (!session || !isEditable) return;
     if (!isRunning) return;
     if (remainingSec == null) return;
     if (remainingSec > 0) return;
+    if (!occurrenceId) return;
+    const sig = `${session?.id || ""}:${occurrenceId || ""}:${resolvedDateKey}`;
+    if (autoEndSigRef.current === sig) return;
+    autoEndSigRef.current = sig;
 
     const durationSec = Math.max(0, Math.floor(elapsedSec));
     if (typeof setData === "function") {
       setData((prev) => {
         const goals = Array.isArray(prev?.goals) ? prev.goals : [];
-        let nextOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
-        for (const habitId of habitIds) {
-          if (!habitId) continue;
-          nextOccurrences = applySingleOccurrenceStatus(nextOccurrences, goals, habitId, resolvedDateKey, "done", occurrenceStart);
-        }
+        if (!occurrenceId) return prev;
+        const prevOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
+        const nextOccurrences = setOccurrenceStatusById(occurrenceId, "done", {
+          occurrences: prevOccurrences,
+          goals,
+        });
         const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
         const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+        const nowIso = new Date().toISOString();
         const nextSession = current
           ? {
               ...current,
               status: "done",
-              doneHabitIds: habitIds,
+              doneHabitIds: resolvedDoneHabitIds,
               durationSec,
               timerRunning: false,
               timerStartedAt: "",
               timerAccumulatedSec: durationSec,
-              finishedAt: new Date().toISOString(),
+              finishedAt: nowIso,
             }
           : current;
-        return { ...prev, occurrences: nextOccurrences, ui: { ...prevUi, activeSession: nextSession } };
+        const prevHistory = Array.isArray(prev?.sessionHistory) ? prev.sessionHistory : [];
+        const occurrence = prevOccurrences.find((occ) => occ && occ.id === occurrenceId) || null;
+        const actionId =
+          typeof occurrence?.goalId === "string"
+            ? occurrence.goalId
+            : typeof occurrence?.actionId === "string"
+              ? occurrence.actionId
+              : "";
+        const dateKey = occurrence?.date || current?.dateKey || current?.date || resolvedDateKey;
+        const record = {
+          id: current?.id || occurrenceId,
+          occurrenceId,
+          actionId,
+          dateKey,
+          startAt: current?.startedAt || current?.timerStartedAt || nowIso,
+          endAt: nowIso,
+          state: "ended",
+          endedReason: "done",
+          timerSeconds: durationSec,
+          notes: typeof current?.notes === "string" ? current.notes : "",
+        };
+        const nextHistory = upsertSessionV2(prevHistory, record);
+        if (nextOccurrences === prevOccurrences && nextSession === current && nextHistory === prevHistory) return prev;
+        return {
+          ...prev,
+          occurrences: nextOccurrences,
+          sessionHistory: nextHistory,
+          ui: { ...prevUi, activeSession: nextSession },
+        };
       });
     }
 
     if (typeof onBack === "function") onBack();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRunning, remainingSec]);
+  }, [isRunning, remainingSec, session?.id, occurrenceId, resolvedDateKey, isEditable]);
 
   function startTimer() {
-    if (!session || typeof setData !== "function" || !canRunTimer) return;
+    if (!session || typeof setData !== "function" || !canRunTimer || !isEditable || !occurrenceId) return;
     const nowIso = new Date().toISOString();
     setData((prev) => {
       const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
       const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
       if (!current) return prev;
+      if (current.timerRunning) return prev;
       return {
         ...prev,
         ui: {
@@ -234,11 +342,12 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
   }
 
   function pauseTimer() {
-    if (!session || typeof setData !== "function") return;
+    if (!session || typeof setData !== "function" || !occurrenceId) return;
     setData((prev) => {
       const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
       const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
       if (!current) return prev;
+      if (!current.timerRunning && !current.timerStartedAt && current.timerAccumulatedSec === elapsedSec) return prev;
       return {
         ...prev,
         ui: {
@@ -259,12 +368,13 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
   }
 
   function resumeTimer() {
-    if (!session || typeof setData !== "function" || !canRunTimer) return;
+    if (!session || typeof setData !== "function" || !canRunTimer || !isEditable || !occurrenceId) return;
     const nowIso = new Date().toISOString();
     setData((prev) => {
       const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
       const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
       if (!current) return prev;
+      if (current.timerRunning) return prev;
       return {
         ...prev,
         ui: {
@@ -281,30 +391,60 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
   }
 
   function endSession() {
-    if (!session || typeof setData !== "function" || !canRunTimer || !isEditable) return;
+    if (!session || typeof setData !== "function" || !canRunTimer || !isEditable || !occurrenceId) return;
     const durationSec = Math.max(0, Math.floor(elapsedSec));
     setData((prev) => {
       const goals = Array.isArray(prev?.goals) ? prev.goals : [];
-      let nextOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
-      for (const habitId of habitIds) {
-        if (!habitId) continue;
-        nextOccurrences = applySingleOccurrenceStatus(nextOccurrences, goals, habitId, resolvedDateKey, "done", occurrenceStart);
-      }
+      if (!occurrenceId) return prev;
+      const prevOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
+      const nextOccurrences = setOccurrenceStatusById(occurrenceId, "done", {
+        occurrences: prevOccurrences,
+        goals,
+      });
       const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
       const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+      const nowIso = new Date().toISOString();
       const nextSession = current
         ? {
             ...current,
             status: "done",
-            doneHabitIds: habitIds,
+            doneHabitIds: resolvedDoneHabitIds,
             durationSec,
             timerRunning: false,
             timerStartedAt: "",
             timerAccumulatedSec: durationSec,
-            finishedAt: new Date().toISOString(),
+            finishedAt: nowIso,
           }
         : current;
-      return { ...prev, occurrences: nextOccurrences, ui: { ...prevUi, activeSession: nextSession } };
+      const prevHistory = Array.isArray(prev?.sessionHistory) ? prev.sessionHistory : [];
+      const occurrence = prevOccurrences.find((occ) => occ && occ.id === occurrenceId) || null;
+      const actionId =
+        typeof occurrence?.goalId === "string"
+          ? occurrence.goalId
+          : typeof occurrence?.actionId === "string"
+            ? occurrence.actionId
+            : "";
+      const dateKey = occurrence?.date || current?.dateKey || current?.date || resolvedDateKey;
+      const record = {
+        id: current?.id || occurrenceId,
+        occurrenceId,
+        actionId,
+        dateKey,
+        startAt: current?.startedAt || current?.timerStartedAt || nowIso,
+        endAt: nowIso,
+        state: "ended",
+        endedReason: "done",
+        timerSeconds: durationSec,
+        notes: typeof current?.notes === "string" ? current.notes : "",
+      };
+      const nextHistory = upsertSessionV2(prevHistory, record);
+      if (nextOccurrences === prevOccurrences && nextSession === current && nextHistory === prevHistory) return prev;
+      return {
+        ...prev,
+        occurrences: nextOccurrences,
+        sessionHistory: nextHistory,
+        ui: { ...prevUi, activeSession: nextSession },
+      };
     });
 
     if (typeof onBack === "function") onBack();
@@ -332,21 +472,23 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
   }
 
   function cancelSession() {
-    if (typeof setData !== "function" || !isEditable) return;
+    if (typeof setData !== "function" || !isEditable || !occurrenceId) return;
     const targetHabitIds = habitIds.length ? habitIds : session?.habitId ? [session.habitId] : [];
-    if (!targetHabitIds.length) {
+    if (!targetHabitIds.length && !occurrenceId) {
       if (typeof onBack === "function") onBack();
       return;
     }
     setData((prev) => {
       const goals = Array.isArray(prev?.goals) ? prev.goals : [];
-      let nextOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
-      for (const habitId of targetHabitIds) {
-        if (!habitId) continue;
-        nextOccurrences = applySingleOccurrenceStatus(nextOccurrences, goals, habitId, resolvedDateKey, "skipped", occurrenceStart);
-      }
+      if (!occurrenceId) return prev;
+      const prevOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
+      const nextOccurrences = setOccurrenceStatusById(occurrenceId, "skipped", {
+        occurrences: prevOccurrences,
+        goals,
+      });
       const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
       const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+      const nowIso = new Date().toISOString();
       const nextSession = current
         ? {
             ...current,
@@ -354,10 +496,38 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
             doneHabitIds: [],
             timerRunning: false,
             timerStartedAt: "",
-            finishedAt: new Date().toISOString(),
+            finishedAt: nowIso,
           }
         : current;
-      return { ...prev, occurrences: nextOccurrences, ui: { ...prevUi, activeSession: nextSession } };
+      const prevHistory = Array.isArray(prev?.sessionHistory) ? prev.sessionHistory : [];
+      const occurrence = prevOccurrences.find((occ) => occ && occ.id === occurrenceId) || null;
+      const actionId =
+        typeof occurrence?.goalId === "string"
+          ? occurrence.goalId
+          : typeof occurrence?.actionId === "string"
+            ? occurrence.actionId
+            : "";
+      const dateKey = occurrence?.date || current?.dateKey || current?.date || resolvedDateKey;
+      const record = {
+        id: current?.id || occurrenceId,
+        occurrenceId,
+        actionId,
+        dateKey,
+        startAt: current?.startedAt || current?.timerStartedAt || nowIso,
+        endAt: nowIso,
+        state: "ended",
+        endedReason: "canceled",
+        timerSeconds: Number.isFinite(current?.timerAccumulatedSec) ? current.timerAccumulatedSec : 0,
+        notes: typeof current?.notes === "string" ? current.notes : "",
+      };
+      const nextHistory = upsertSessionV2(prevHistory, record);
+      if (nextOccurrences === prevOccurrences && nextSession === current && nextHistory === prevHistory) return prev;
+      return {
+        ...prev,
+        occurrences: nextOccurrences,
+        sessionHistory: nextHistory,
+        ui: { ...prevUi, activeSession: nextSession },
+      };
     });
     if (typeof onBack === "function") onBack();
   }
@@ -401,7 +571,8 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
   const sessionSubtitle = category?.name || "Catégorie";
 
   if (isFinal) {
-    const statusLabel = session.status === "done" ? "Session terminée" : "Session annulée";
+    const statusLabel =
+      finalStatus === "done" ? "Session terminée" : finalStatus ? "Session clôturée" : "Session clôturée";
 
     const durationSecStored = Number.isFinite(session?.durationSec) ? session.durationSec : null;
     const durationSec =
@@ -412,8 +583,8 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
 
     const doneHabitIds = Array.isArray(session?.doneHabitIds)
       ? session.doneHabitIds
-      : session.status === "done"
-        ? habitIds
+      : finalStatus === "done"
+        ? resolvedDoneHabitIds
         : [];
     const doneHabits = doneHabitIds
       .map((id) => goals.find((g) => g.id === id))
@@ -538,10 +709,17 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
               </div>
             ) : null}
             <div className="mt12 row gap10">
-              <Button variant="ghost" onClick={confirmPause} disabled={!canRunTimer || !isEditable}>
+              <Button
+                variant="ghost"
+                onClick={confirmPause}
+                disabled={!canRunTimer || !isEditable || !occurrenceId}
+              >
                 Pause
               </Button>
-              <Button onClick={elapsedSec > 0 ? resumeTimer : startTimer} disabled={!canRunTimer}>
+              <Button
+                onClick={elapsedSec > 0 ? resumeTimer : startTimer}
+                disabled={!canRunTimer || !isEditable || !occurrenceId}
+              >
                 {elapsedSec > 0 ? "Continuer" : "Démarrer"}
               </Button>
             </div>
@@ -581,10 +759,10 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
         </Card>
 
         <div className="mt12 row gap10">
-          <Button variant="ghost" onClick={cancelSession} disabled={!hasHabits || !isEditable}>
+          <Button variant="ghost" onClick={cancelSession} disabled={!hasHabits || !isEditable || !occurrenceId}>
             Annuler
           </Button>
-          <Button variant="ghost" onClick={confirmEndSession} disabled={!canRunTimer || !isEditable}>
+          <Button variant="ghost" onClick={confirmEndSession} disabled={!canRunTimer || !isEditable || !occurrenceId}>
             Terminer
           </Button>
         </div>

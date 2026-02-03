@@ -13,8 +13,9 @@ import {
 } from "../utils/dates";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { setMainGoal } from "../logic/goals";
-import { ensureWindowForGoals } from "../logic/occurrencePlanner";
+import { ensureWindowFromScheduleRules } from "../logic/occurrencePlanner";
 import { setOccurrenceStatus } from "../logic/occurrences";
+import { resolveExecutableOccurrence } from "../logic/sessionResolver";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { isPrimaryCategory, isPrimaryGoal } from "../logic/priority";
@@ -128,7 +129,7 @@ export default function Home({
   const pendingDateKey =
     normalizeLocalDateKey(safeData.ui?.pendingDateKey) || selectedDateKey;
   const activeRailKey = selectedDateKey;
-  const selectedDate = fromLocalDateKey(selectedDateKey);
+  const selectedDate = useMemo(() => fromLocalDateKey(selectedDateKey), [selectedDateKey]);
   const localTodayKey = toLocalDateKey(new Date());
   const selectedStatus =
     selectedDateKey === localTodayKey ? "today" : selectedDateKey < localTodayKey ? "past" : "future";
@@ -219,6 +220,7 @@ export default function Home({
   const railSettleTimerRef = useRef(null);
   const railSmoothAnimRef = useRef({ raf: 0, start: 0, from: 0, to: 0, duration: 0 });
   const didHydrateLegacyRef = useRef(false);
+  const legacyOrderSigRef = useRef("");
 
   // Data slices
   const profile = safeData.profile || {};
@@ -347,6 +349,9 @@ export default function Home({
     }
     didHydrateLegacyRef.current = true;
     const nextOrder = normalizeBlockOrder(legacyOrder, DEFAULT_BLOCK_ORDER);
+    const sig = nextOrder.join(",");
+    if (legacyOrderSigRef.current === sig) return;
+    legacyOrderSigRef.current = sig;
     setData((prev) => {
       const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
       const prevBlocksByPage =
@@ -984,9 +989,12 @@ export default function Home({
   }, [microState.dayKey, selectedDateKey]);
 
   useEffect(() => {
+    // selectedDate is a Date object; avoid dependency loops by keying off the dateKey.
+    const base = fromLocalDateKey(selectedDateKey);
+    if (!base) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMonthCursor(startOfMonth(selectedDate));
-  }, [selectedDate]);
+    setMonthCursor(startOfMonth(base));
+  }, [selectedDateKey]);
 
   useEffect(() => {
     // Lightweight in-app transition (GPU-friendly): opacity + translate.
@@ -1087,15 +1095,31 @@ export default function Home({
   );
 
   const lastEnsureSigRef = useRef("");
+  const ensureDebugCountRef = useRef(0);
   useEffect(() => {
-    if (!selectedDateKey || !ensureProcessIds.length || typeof setData !== "function") return;
-    const sig = `${selectedDateKey}:${ensureProcessIds.join(",")}`;
+    if (!selectedDateKey || typeof setData !== "function") return;
+
+    // Make signature stable even if ensureProcessIds order changes between renders.
+    const sortedIds = Array.isArray(ensureProcessIds)
+      ? ensureProcessIds.filter(Boolean).slice().sort()
+      : [];
+    if (!sortedIds.length) return;
+
+    const sig = `${selectedDateKey}:${sortedIds.join(",")}`;
     if (lastEnsureSigRef.current === sig) return;
     lastEnsureSigRef.current = sig;
+
     setData((prev) => {
       const baseDate = fromLocalDateKey(selectedDateKey);
       const fromKey = baseDate ? toLocalDateKey(addDays(baseDate, -1)) : selectedDateKey;
-      return ensureWindowForGoals(prev, ensureProcessIds, fromKey, 3);
+      const toKey = baseDate ? toLocalDateKey(addDays(baseDate, 1)) : selectedDateKey;
+      const next = ensureWindowFromScheduleRules(prev, fromKey, toKey, sortedIds);
+      if (import.meta.env?.DEV && next !== prev) {
+        ensureDebugCountRef.current += 1;
+        // eslint-disable-next-line no-console
+        console.debug("[home] ensureWindowFromScheduleRules", { sig, count: ensureDebugCountRef.current });
+      }
+      return next;
     });
   }, [ensureProcessIds, selectedDateKey, setData]);
 
@@ -1243,21 +1267,61 @@ export default function Home({
 
   function openSessionFlow() {
     if (!selectedGoal?.id || !canValidate || !hasSelectedActions || typeof setData !== "function") return;
+    const existing =
+      safeData.ui && typeof safeData.ui.activeSession === "object" ? safeData.ui.activeSession : null;
+    if (existing && existing.status === "partial") {
+      if (typeof onOpenSession === "function") {
+        onOpenSession({ categoryId: focusCategory?.id || null, dateKey: selectedDateKey });
+      }
+      return;
+    }
+
+    const preview = ensureWindowFromScheduleRules(safeData, selectedDateKey, selectedDateKey, selectedActionIds);
+    const resolved = resolveExecutableOccurrence(preview, { dateKey: selectedDateKey, goalIds: selectedActionIds });
+    if (resolved.kind !== "ok" || !resolved.occurrenceId) {
+      if (resolved.kind === "final" && existing?.occurrenceId === resolved.occurrenceId) {
+        if (typeof onOpenSession === "function") {
+          onOpenSession({ categoryId: focusCategory?.id || null, dateKey: selectedDateKey });
+        }
+      }
+      return;
+    }
+
     setData((prev) => {
-      const ensured = ensureWindowForGoals(prev, selectedActionIds, selectedDateKey, 1);
+      const ensured = ensureWindowFromScheduleRules(prev, selectedDateKey, selectedDateKey, selectedActionIds);
       const prevUi = ensured.ui || {};
-      const existing = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+      const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+      if (current && current.status === "partial") return ensured;
+
+      const resolvedNow = resolveExecutableOccurrence(ensured, { dateKey: selectedDateKey, goalIds: selectedActionIds });
+      if (resolvedNow.kind !== "ok" || !resolvedNow.occurrenceId) return ensured;
+      const target = (ensured.occurrences || []).find((o) => o && o.id === resolvedNow.occurrenceId) || null;
+      if (!target) return ensured;
+
       const nextSession = {
-        id: existing?.id || uid(),
+        id: current?.occurrenceId === target.id && current?.id ? current.id : uid(),
+        occurrenceId: target.id,
         dateKey: selectedDateKey,
         objectiveId: selectedGoal.id,
-        habitIds: selectedActionIds,
+        habitIds: target.goalId ? [target.goalId] : [],
         status: "partial",
         timerStartedAt: "",
         timerAccumulatedSec: 0,
         timerRunning: false,
         doneHabitIds: [],
       };
+      if (
+        current &&
+        current.occurrenceId === nextSession.occurrenceId &&
+        current.dateKey === nextSession.dateKey &&
+        current.objectiveId === nextSession.objectiveId &&
+        Array.isArray(current.habitIds) &&
+        current.habitIds.length === nextSession.habitIds.length &&
+        current.habitIds.every((id, idx) => id === nextSession.habitIds[idx]) &&
+        current.status === nextSession.status
+      ) {
+        return ensured;
+      }
       return {
         ...ensured,
         ui: {
@@ -1266,6 +1330,7 @@ export default function Home({
         },
       };
     });
+
     if (typeof onOpenSession === "function") {
       onOpenSession({ categoryId: focusCategory?.id || null, dateKey: selectedDateKey });
     }

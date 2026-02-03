@@ -10,6 +10,7 @@ import { normalizeTimeFields } from "./timeFields";
 import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "./blocks/registry";
 import { ensureBlocksConfig } from "./blocks/ensureBlocksConfig";
 import { validateBlocksState } from "./blocks/validateBlocksState";
+import { buildScheduleRuleSourceKey, buildScheduleRulesFromAction, normalizeScheduleRule } from "./scheduleRules";
 
 export const THEME_PRESETS = ["aurora", "midnight", "sunset", "ocean", "forest"];
 export const SYSTEM_INBOX_ID = "sys_inbox";
@@ -26,6 +27,8 @@ export const DEFAULT_BLOCKS = [
   { id: "block_habits", type: "HABITS", enabled: true },
   { id: "block_goal", type: "GOAL", enabled: true },
 ];
+
+const SCHEMA_VERSION = 1;
 
 const MEASURE_TYPES = new Set(["money", "counter", "time", "energy", "distance", "weight"]);
 const TRACKING_MODES = new Set(["none", "manual", "template"]);
@@ -1007,6 +1010,7 @@ export { normalizeGoal as normalizeGoalFields };
 
 export function initialData() {
   return {
+    schemaVersion: SCHEMA_VERSION,
     profile: {
       name: "",
       lastName: "",
@@ -1072,6 +1076,8 @@ export function initialData() {
     goals: [],
     habits: [],
     reminders: [],
+    scheduleRules: [],
+    sessionHistory: [],
     sessions: [],
     occurrences: [],
     checks: {},
@@ -1089,6 +1095,7 @@ export function demoData() {
   const processId = uid();
 
   return {
+    schemaVersion: SCHEMA_VERSION,
     profile: {
       name: "Démo",
       lastName: "",
@@ -1176,6 +1183,8 @@ export function demoData() {
       { id: uid(), categoryId: categories[1].id, title: "Action 2", cadence: "DAILY", target: 1 },
     ],
     reminders: [],
+    scheduleRules: [],
+    sessionHistory: [],
     sessions: [],
     checks: {},
     microChecks: {},
@@ -1184,6 +1193,8 @@ export function demoData() {
 
 export function migrate(prev) {
   let next = prev && typeof prev === "object" ? { ...prev } : initialData();
+  const prevSchemaVersion = Number.isFinite(next.schemaVersion) ? next.schemaVersion : 0;
+  if (!Number.isFinite(next.schemaVersion)) next.schemaVersion = 0;
 
   // profile
   if (!next.profile) next.profile = {};
@@ -1571,6 +1582,59 @@ export function migrate(prev) {
   }
   next.sessions = [];
   next.checks = {};
+
+  if (!Array.isArray(next.scheduleRules)) next.scheduleRules = [];
+  if (!Array.isArray(next.sessionHistory)) next.sessionHistory = [];
+  {
+    const nowIso = new Date().toISOString();
+    const existingRaw = Array.isArray(next.scheduleRules) ? next.scheduleRules : [];
+    const normalizedRules = [];
+    const existingSourceKeys = new Set();
+
+    for (const raw of existingRaw) {
+      const normalized = normalizeScheduleRule(raw);
+      if (!normalized) continue;
+      const sourceKey = normalized.sourceKey || buildScheduleRuleSourceKey(normalized);
+      if (!sourceKey) continue;
+      const createdAt = normalized.createdAt || nowIso;
+      const updatedAt = normalized.updatedAt || createdAt;
+      const merged = {
+        ...normalized,
+        sourceKey,
+        createdAt,
+        updatedAt,
+      };
+      normalizedRules.push(merged);
+      existingSourceKeys.add(sourceKey);
+    }
+
+    const shouldSeed = prevSchemaVersion < SCHEMA_VERSION || normalizedRules.length === 0;
+    if (shouldSeed) {
+      const actions = Array.isArray(next.goals) ? next.goals : [];
+      for (const action of actions) {
+        if (!action || !isProcess(action)) continue;
+        const desired = buildScheduleRulesFromAction(action);
+        for (const rule of desired) {
+          const sourceKey = rule.sourceKey || buildScheduleRuleSourceKey(rule);
+          if (!sourceKey || existingSourceKeys.has(sourceKey)) continue;
+          existingSourceKeys.add(sourceKey);
+          normalizedRules.push({
+            ...rule,
+            id: rule.id || uid(),
+            actionId: action.id,
+            sourceKey,
+            isActive: rule.isActive !== false,
+            createdAt: nowIso,
+            updatedAt: nowIso,
+          });
+        }
+      }
+    }
+
+    next.scheduleRules = normalizedRules;
+  }
+
+  if (next.schemaVersion < SCHEMA_VERSION) next.schemaVersion = SCHEMA_VERSION;
 
   const normalized = normalizeGoalsState(next);
 

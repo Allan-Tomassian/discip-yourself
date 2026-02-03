@@ -1,7 +1,7 @@
 // src/logic/goals.js
-import { todayKey } from "../utils/dates";
-import { todayLocalKey } from "../utils/dateKey";
-import { ensureWindowForGoal, validateOccurrences } from "./occurrencePlanner";
+import { addDays, todayKey } from "../utils/dates";
+import { fromLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
+import { ensureWindowFromScheduleRules, validateOccurrences } from "./occurrencePlanner";
 import { getGenerationWindowDays } from "./entitlements";
 import { ensureSystemInboxCategory, normalizeGoalFields, normalizeResetPolicy } from "./state";
 import { resolveGoalType, isOutcome, isProcess } from "../domain/goalType";
@@ -622,7 +622,10 @@ function getNextOrder(goals) {
 function ensureOccurrencesWindow(state, goalId) {
   if (!state || !goalId) return state;
   const days = getGenerationWindowDays(state);
-  const next = ensureWindowForGoal(state, goalId, todayLocalKey(), days);
+  const fromKey = todayLocalKey();
+  const baseDate = fromLocalDateKey(fromKey);
+  const toKey = baseDate ? toLocalDateKey(addDays(baseDate, Math.max(0, days - 1))) : fromKey;
+  const next = ensureWindowFromScheduleRules(state, fromKey, toKey, [goalId]);
   if (isDev) validateOccurrences(next);
   return next;
 }

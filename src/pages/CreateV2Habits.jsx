@@ -18,7 +18,7 @@ import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDr
 import { STEP_HABITS, STEP_LINK_OUTCOME, STEP_PICK_CATEGORY } from "../creation/creationSchema";
 import { uid } from "../utils/helpers";
 import { createGoal } from "../logic/goals";
-import { ensureWindowForGoals } from "../logic/occurrencePlanner";
+import { ensureWindowFromScheduleRules } from "../logic/occurrencePlanner";
 import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { createDefaultGoalSchedule, ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
 import { normalizeReminder } from "../logic/reminders";
@@ -804,7 +804,7 @@ export default function CreateV2Habits({
         }
 
         if (isOneOff && oneOffDate) {
-          finalState = ensureWindowForGoals(finalState, [habitId], oneOffDate, 1);
+          finalState = ensureWindowFromScheduleRules(finalState, oneOffDate, oneOffDate, [habitId]);
         }
       }
 
@@ -815,7 +815,9 @@ export default function CreateV2Habits({
             : isPremiumPlan
             ? 90
             : 7;
-        finalState = ensureWindowForGoals(finalState, createdProcessIds, todayLocalKey(), days);
+        const fromKey = todayLocalKey();
+        const toKey = addDaysLocal(fromKey, Math.max(0, days - 1));
+        finalState = ensureWindowFromScheduleRules(finalState, fromKey, toKey, createdProcessIds);
       }
 
       const seededOutcomeId = draft?.activeOutcomeId ? String(draft.activeOutcomeId) : null;

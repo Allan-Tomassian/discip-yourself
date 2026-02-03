@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Card } from "../components/UI";
+import { Button, Card, Input, Select } from "../components/UI";
 import AccentItem from "../components/AccentItem";
+import { getCategoryPilotageCounts, getCategoryStatus } from "../logic/pilotage";
 import {
-  getCategoryPilotageCounts,
-  getCategoryStatus,
-  getCategoryWeekBreakdown,
-  getDisciplineStreak7d,
-  getDisciplineSummary,
-  getLoadSummary,
-} from "../logic/pilotage";
+  computeDailyStats,
+  computeStats,
+  getWindowBounds,
+  selectOccurrencesInRange,
+} from "../logic/metrics";
+import { buildReport, exportReportToCSV } from "../logic/reporting";
 import SortableBlocks from "../components/SortableBlocks";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
 
@@ -47,6 +47,7 @@ const PILOTAGE_BLOCKS = {
   "pilotage.categories": { id: "pilotage.categories" },
   "pilotage.charge": { id: "pilotage.charge" },
   "pilotage.discipline": { id: "pilotage.discipline" },
+  "pilotage.reporting": { id: "pilotage.reporting" },
 };
 
 const arrayEqual = (a, b) =>
@@ -135,6 +136,7 @@ export default function Pilotage({
     () => (Array.isArray(safeData.categories) ? safeData.categories : []),
     [safeData.categories]
   );
+  const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
 
   const now = useMemo(() => {
     void safeData;
@@ -157,57 +159,91 @@ export default function Pilotage({
     return map;
   }, [categories, safeData, now]);
 
-  const loadSummary = useMemo(() => getLoadSummary(safeData, now), [safeData, now]);
-  const disciplineSummary = useMemo(() => getDisciplineSummary(safeData, now), [safeData, now]);
+  const todayBounds = useMemo(() => getWindowBounds("today", now), [now]);
+  const weekBounds = useMemo(() => getWindowBounds("7d", now), [now]);
+  const twoWeekBounds = useMemo(() => getWindowBounds("14d", now), [now]);
+  const ninetyBounds = useMemo(() => getWindowBounds("90d", now), [now]);
+
+  const weekDailyStats = useMemo(
+    () => computeDailyStats(safeData, weekBounds.fromKey, weekBounds.toKey),
+    [safeData, weekBounds.fromKey, weekBounds.toKey]
+  );
+
+  const todayStats = useMemo(() => {
+    const todayKey = todayBounds.fromKey;
+    const bucket = weekDailyStats.byDate.get(todayKey);
+    if (bucket) return bucket;
+    const list = selectOccurrencesInRange(safeData, todayKey, todayKey);
+    return computeStats(list);
+  }, [safeData, todayBounds.fromKey, weekDailyStats.byDate]);
+
+  const stats14d = useMemo(() => {
+    const list = selectOccurrencesInRange(safeData, twoWeekBounds.fromKey, twoWeekBounds.toKey);
+    return computeStats(list);
+  }, [safeData, twoWeekBounds.fromKey, twoWeekBounds.toKey]);
+
+  const stats90d = useMemo(() => {
+    const list = selectOccurrencesInRange(safeData, ninetyBounds.fromKey, ninetyBounds.toKey);
+    return computeStats(list);
+  }, [safeData, ninetyBounds.fromKey, ninetyBounds.toKey]);
 
   const selectedCategoryId =
     safeData?.ui?.selectedCategoryByView?.pilotage || categories?.[0]?.id || null;
 
   const [disciplineWindow, setDisciplineWindow] = useState("7d");
+  const [reportWindow, setReportWindow] = useState("7d");
+  const [reportFrom, setReportFrom] = useState("");
+  const [reportTo, setReportTo] = useState("");
+  const [reportCategoryId, setReportCategoryId] = useState("");
+  const [reportGoalId, setReportGoalId] = useState("");
+
+  useEffect(() => {
+    if (reportWindow === "custom") return;
+    const bounds = getWindowBounds(reportWindow, now);
+    setReportFrom(bounds.fromKey);
+    setReportTo(bounds.toKey);
+  }, [reportWindow, now]);
 
   const disciplineModel = useMemo(() => {
-    const is30 = disciplineWindow === "30d";
-    const score = is30
-      ? Number(disciplineSummary?.disciplineScore30d)
-      : Number(disciplineSummary?.disciplineScore7d);
-    const expected = is30
-      ? Number(disciplineSummary?.disciplineExpected30d)
-      : Number(disciplineSummary?.disciplineExpected7d);
-    const missed = is30
-      ? Number(disciplineSummary?.disciplineMissed30d)
-      : Number(disciplineSummary?.disciplineMissed7d);
-    const done = is30
-      ? Number(disciplineSummary?.disciplineDone30d)
-      : Number(disciplineSummary?.disciplineDone7d);
-
+    const byWindow = {
+      "7d": weekDailyStats.totals,
+      "14d": stats14d,
+      "90d": stats90d,
+    };
+    const stats = byWindow[disciplineWindow] || weekDailyStats.totals;
+    const expected = Number(stats?.expected) || 0;
+    const done = Number(stats?.done) || 0;
+    const missed = Number(stats?.missed) || 0;
+    const score = expected > 0 ? Math.round((done / expected) * 100) : 100;
     return {
       window: disciplineWindow,
-      score: Number.isFinite(score) ? score : 100,
-      expected: Number.isFinite(expected) ? expected : 0,
-      missed: Number.isFinite(missed) ? missed : 0,
-      done: Number.isFinite(done) ? done : 0,
+      score,
+      expected,
+      missed,
+      done,
+      canceled: Number(stats?.canceled) || 0,
     };
-  }, [disciplineSummary, disciplineWindow]);
+  }, [disciplineWindow, stats14d, stats90d, weekDailyStats.totals]);
 
   const disciplineScore = disciplineModel.score;
 
   const todayPct = useMemo(
-    () => pct(loadSummary?.today?.done, loadSummary?.today?.expected),
-    [loadSummary]
+    () => pct(todayStats?.done, todayStats?.expected),
+    [todayStats]
   );
   const weekPct = useMemo(
-    () => pct(loadSummary?.week?.done, loadSummary?.week?.expected),
-    [loadSummary]
+    () => pct(weekDailyStats.totals?.done, weekDailyStats.totals?.expected),
+    [weekDailyStats.totals]
   );
 
-  const todayRemaining = useMemo(() => remainingCount(loadSummary?.today), [loadSummary]);
-  const weekRemaining = useMemo(() => remainingCount(loadSummary?.week), [loadSummary]);
+  const todayRemaining = useMemo(() => remainingCount(todayStats), [todayStats]);
+  const weekRemaining = useMemo(() => remainingCount(weekDailyStats.totals), [weekDailyStats.totals]);
 
-  const todayExpected = Number(loadSummary?.today?.expected) || 0;
-  const todayDone = Number(loadSummary?.today?.done) || 0;
-  const weekExpected = Number(loadSummary?.week?.expected) || 0;
-  const weekDone = Number(loadSummary?.week?.done) || 0;
-  const weekMissed = Number(loadSummary?.week?.missed) || 0;
+  const todayExpected = Number(todayStats?.expected) || 0;
+  const todayDone = Number(todayStats?.done) || 0;
+  const weekExpected = Number(weekDailyStats.totals?.expected) || 0;
+  const weekDone = Number(weekDailyStats.totals?.done) || 0;
+  const weekMissed = Number(weekDailyStats.totals?.missed) || 0;
 
   const disciplineTone = useMemo(() => {
     if (disciplineScore >= 95) return "good";
@@ -215,10 +251,28 @@ export default function Pilotage({
     return "bad";
   }, [disciplineScore]);
 
+  const disciplineWindowLabel = useMemo(() => {
+    if (disciplineWindow === "14d") return "14j";
+    if (disciplineWindow === "90d") return "90j";
+    return "7j";
+  }, [disciplineWindow]);
+
+  const noExecutionDays7d = useMemo(() => {
+    let count = 0;
+    for (const stats of weekDailyStats.byDate.values()) {
+      const expected = Number(stats?.expected) || 0;
+      const done = Number(stats?.done) || 0;
+      if (expected > 0 && done === 0) count += 1;
+    }
+    return count;
+  }, [weekDailyStats.byDate]);
+
+  const cancelledSessions7d = Number(weekDailyStats.totals?.canceled) || 0;
+
   const disciplineInsights = useMemo(() => {
     const items = [];
-    const cancelled = Number(disciplineSummary?.cancelledSessions7d) || 0;
-    const noExec = Number(disciplineSummary?.noExecutionDays7d) || 0;
+    const cancelled = cancelledSessions7d;
+    const noExec = noExecutionDays7d;
 
     const expected = disciplineModel.expected;
     const missed = disciplineModel.missed;
@@ -226,14 +280,14 @@ export default function Pilotage({
     if (expected === 0) {
       items.push({
         tone: "warn",
-        title: `Aucune occurrence attendue (${disciplineModel.window})`,
+        title: `Aucune occurrence attendue (${disciplineWindowLabel})`,
         detail:
           "Sans occurrence attendue, la discipline reste à 100% mais tu ne progresses pas. Planifie au moins 1 action récurrente clé.",
       });
     } else if (missed > 0) {
       items.push({
         tone: "bad",
-        title: `${missed} occurrence${missed > 1 ? "s" : ""} manquée${missed > 1 ? "s" : ""} (${disciplineModel.window})`,
+        title: `${missed} occurrence${missed > 1 ? "s" : ""} manquée${missed > 1 ? "s" : ""} (${disciplineWindowLabel})`,
         detail: "Ton score baisse uniquement quand une occurrence attendue n'est pas exécutée.",
       });
     } else {
@@ -255,13 +309,13 @@ export default function Pilotage({
     if (cancelled > 0) {
       items.push({
         tone: "warn",
-        title: `${cancelled} session${cancelled > 1 ? "s" : ""} annulée${cancelled > 1 ? "s" : ""} (7j)`,
+        title: `${cancelled} occurrence${cancelled > 1 ? "s" : ""} annulée${cancelled > 1 ? "s" : ""} (7j)`,
         detail: "Trop d'annulations = plan trop ambitieux ou mal placé.",
       });
     }
 
     return items;
-  }, [disciplineSummary, disciplineModel]);
+  }, [cancelledSessions7d, disciplineModel, disciplineWindowLabel, noExecutionDays7d]);
 
   const selectedCategory = useMemo(
     () => categories.find((c) => c.id === selectedCategoryId) || null,
@@ -280,10 +334,50 @@ export default function Pilotage({
 
   const selectedWeek = useMemo(() => {
     if (!selectedCategoryId) return null;
-    return getCategoryWeekBreakdown(safeData, selectedCategoryId, now);
-  }, [safeData, selectedCategoryId, now]);
+    const list = selectOccurrencesInRange(safeData, weekBounds.fromKey, weekBounds.toKey, {
+      categoryId: selectedCategoryId,
+    });
+    return computeStats(list);
+  }, [safeData, selectedCategoryId, weekBounds.fromKey, weekBounds.toKey]);
 
-  const streak7d = useMemo(() => getDisciplineStreak7d(safeData, now), [safeData, now]);
+  const streak7d = useMemo(() => {
+    const todayKey = todayBounds.fromKey;
+    const keys = Array.from(weekDailyStats.byDate.keys()).filter((k) => k < todayKey);
+    let streak = 0;
+    for (let i = keys.length - 1; i >= 0; i -= 1) {
+      const key = keys[i];
+      const stats = weekDailyStats.byDate.get(key);
+      const expected = Number(stats?.expected) || 0;
+      const done = Number(stats?.done) || 0;
+      if (expected === 0) continue;
+      if (done >= expected) {
+        streak += 1;
+        continue;
+      }
+      break;
+    }
+    return streak;
+  }, [todayBounds.fromKey, weekDailyStats.byDate]);
+
+  const reportGoals = useMemo(() => {
+    const list = goals.filter((g) => g && typeof g.id === "string");
+    if (!reportCategoryId) return list;
+    return list.filter((g) => g.categoryId === reportCategoryId);
+  }, [goals, reportCategoryId]);
+
+  useEffect(() => {
+    if (!reportGoalId) return;
+    const exists = reportGoals.some((g) => g.id === reportGoalId);
+    if (exists) return;
+    setReportGoalId("");
+  }, [reportGoalId, reportGoals]);
+
+  const reportPreview = useMemo(() => {
+    if (!reportFrom || !reportTo) return null;
+    const goalIds = reportGoalId ? [reportGoalId] : null;
+    const categoryId = reportCategoryId || null;
+    return buildReport(safeData, { fromKey: reportFrom, toKey: reportTo, categoryId, goalIds });
+  }, [safeData, reportFrom, reportTo, reportCategoryId, reportGoalId]);
 
   const blockOrder = useMemo(() => {
     const raw = safeData?.ui?.blocksByPage?.pilotage;
@@ -329,7 +423,7 @@ export default function Pilotage({
     [blockOrder]
   );
 
-  const showPlanningCta = Boolean(categories.length && (Number(loadSummary?.week?.expected) || 0) === 0);
+  const showPlanningCta = Boolean(categories.length && weekExpected === 0);
 
   const handleReorder = useCallback(
     (nextItems) => {
@@ -437,6 +531,35 @@ export default function Pilotage({
       setPilotageSelectedCategory(categories[0].id);
     }
   }, [categories, safeData?.ui?.selectedCategoryByView?.pilotage, setData, setPilotageSelectedCategory]);
+
+  const downloadFile = useCallback((filename, content, type) => {
+    try {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      void err;
+    }
+  }, []);
+
+  const handleExportReport = useCallback(() => {
+    if (!reportPreview) return;
+    const meta = reportPreview.meta || {};
+    const from = meta.fromKey || reportFrom || "report";
+    const to = meta.toKey || reportTo || "report";
+    const base = `report-${from}-${to}`;
+    const payload = JSON.stringify(reportPreview, null, 2);
+    const { dailyCsv, goalsCsv } = exportReportToCSV(reportPreview);
+    downloadFile(`${base}.json`, payload, "application/json");
+    downloadFile(`${base}-daily.csv`, dailyCsv, "text/csv");
+    downloadFile(`${base}-goals.csv`, goalsCsv, "text/csv");
+  }, [downloadFile, reportPreview, reportFrom, reportTo]);
 
   const getCategoryColor = useCallback((c) => {
     return c?.color || c?.accentColor || c?.hex || c?.themeColor || "#6EE7FF";
@@ -698,7 +821,12 @@ export default function Pilotage({
                       <div>
                         <div className="itemTitle">Score discipline</div>
                         <div className="small2 textMuted">
-                          {disciplineModel.window === "30d" ? "Fenêtre 30 jours" : "Fenêtre 7 jours"} · 100% = aucune occurrence manquée
+                          {disciplineWindow === "90d"
+                            ? "Fenêtre 90 jours"
+                            : disciplineWindow === "14d"
+                              ? "Fenêtre 14 jours"
+                              : "Fenêtre 7 jours"}{" "}
+                          · 100% = aucune occurrence manquée
                         </div>
                       </div>
                       <span
@@ -742,18 +870,33 @@ export default function Pilotage({
                         </button>
                         <button
                           type="button"
-                          className={disciplineWindow === "30d" ? "segBtn segBtnActive" : "segBtn"}
-                          onClick={() => setDisciplineWindow("30d")}
+                          className={disciplineWindow === "14d" ? "segBtn segBtnActive" : "segBtn"}
+                          onClick={() => setDisciplineWindow("14d")}
                           style={{
                             padding: "8px 10px",
                             borderRadius: 12,
                             border: "1px solid rgba(255,255,255,0.14)",
-                            background: disciplineWindow === "30d" ? "rgba(124,58,237,0.22)" : "rgba(255,255,255,0.06)",
+                            background: disciplineWindow === "14d" ? "rgba(124,58,237,0.22)" : "rgba(255,255,255,0.06)",
                             color: "rgba(255,255,255,0.92)",
                             fontSize: 12,
                           }}
                         >
-                          30j
+                          14j
+                        </button>
+                        <button
+                          type="button"
+                          className={disciplineWindow === "90d" ? "segBtn segBtnActive" : "segBtn"}
+                          onClick={() => setDisciplineWindow("90d")}
+                          style={{
+                            padding: "8px 10px",
+                            borderRadius: 12,
+                            border: "1px solid rgba(255,255,255,0.14)",
+                            background: disciplineWindow === "90d" ? "rgba(124,58,237,0.22)" : "rgba(255,255,255,0.06)",
+                            color: "rgba(255,255,255,0.92)",
+                            fontSize: 12,
+                          }}
+                        >
+                          90j
                         </button>
                       </div>
 
@@ -769,8 +912,8 @@ export default function Pilotage({
                       <StatRow label="Occurrences attendues" value={String(disciplineModel.expected)} />
                       <StatRow label="Occurrences faites" value={String(disciplineModel.done)} />
                       <StatRow label="Occurrences manquées" value={String(disciplineModel.missed)} />
-                      <StatRow label="Sessions annulées (7j)" value={String(disciplineSummary.cancelledSessions7d)} />
-                      <StatRow label="Jours sans exécution (7j)" value={String(disciplineSummary.noExecutionDays7d)} />
+                      <StatRow label="Occurrences annulées (7j)" value={String(cancelledSessions7d)} />
+                      <StatRow label="Jours sans exécution (7j)" value={String(noExecutionDays7d)} />
                     </div>
 
                     <div style={{ paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
@@ -828,6 +971,97 @@ export default function Pilotage({
                         </div>
                       </div>
                     ) : null}
+                  </div>
+                </div>
+              </Card>
+            );
+          }
+
+          if (blockId === "pilotage.reporting") {
+            const totals = reportPreview?.totals || null;
+            return (
+              <Card data-tour-id="pilotage-reporting">
+                <div className="p18">
+                  <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                    {drag ? (
+                      <button
+                        ref={setActivatorNodeRef}
+                        {...listeners}
+                        {...attributes}
+                        className="dragHandle"
+                        aria-label="Réorganiser"
+                      >
+                        ⋮⋮
+                      </button>
+                    ) : null}
+                    <div className="sectionTitle">Reporting</div>
+                  </div>
+
+                  <div className="mt12 col" style={{ gap: 12 }}>
+                    <div className="col" style={{ gap: 6 }}>
+                      <div className="small2 textMuted">Période</div>
+                      <Select value={reportWindow} onChange={(e) => setReportWindow(e.target.value)}>
+                        <option value="7d">7 jours</option>
+                        <option value="14d">14 jours</option>
+                        <option value="90d">90 jours</option>
+                        <option value="custom">Personnalisée</option>
+                      </Select>
+                    </div>
+
+                    {reportWindow === "custom" ? (
+                      <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+                        <div className="col" style={{ gap: 6 }}>
+                          <div className="small2 textMuted">Du</div>
+                          <Input type="date" value={reportFrom} onChange={(e) => setReportFrom(e.target.value)} />
+                        </div>
+                        <div className="col" style={{ gap: 6 }}>
+                          <div className="small2 textMuted">Au</div>
+                          <Input type="date" value={reportTo} onChange={(e) => setReportTo(e.target.value)} />
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+                      <div className="col" style={{ gap: 6, minWidth: 180 }}>
+                        <div className="small2 textMuted">Catégorie</div>
+                        <Select value={reportCategoryId} onChange={(e) => setReportCategoryId(e.target.value)}>
+                          <option value="">Toutes</option>
+                          {categories.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name || "Catégorie"}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                      <div className="col" style={{ gap: 6, minWidth: 200 }}>
+                        <div className="small2 textMuted">Action</div>
+                        <Select value={reportGoalId} onChange={(e) => setReportGoalId(e.target.value)}>
+                          <option value="">Toutes</option>
+                          {reportGoals.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.title || "Action"}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="col" style={{ gap: 8 }}>
+                      <StatRow label="Occurrences attendues" value={String(totals?.expected || 0)} />
+                      <StatRow label="Occurrences faites" value={String(totals?.done || 0)} />
+                      <StatRow label="Occurrences manquées" value={String(totals?.missed || 0)} />
+                      <StatRow label="Occurrences annulées" value={String(totals?.canceled || 0)} />
+                      <StatRow label="Occurrences planifiées" value={String(totals?.planned || 0)} />
+                    </div>
+
+                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                      <div className="small2 textMuted">
+                        Exporte JSON + CSV (par jour et par action).
+                      </div>
+                      <Button onClick={handleExportReport} disabled={!reportPreview}>
+                        Exporter
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </Card>

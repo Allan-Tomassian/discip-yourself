@@ -6,6 +6,7 @@ import {
   toLocalDateKey,
 } from "../utils/dateKey";
 import { resolveGoalType } from "../domain/goalType";
+import { ensureScheduleRulesForActions } from "./scheduleRules";
 
 // P0.4 single source of truth: planned occurrences generation only here.
 // Example: const next = ensureWindowForGoal(state, goalId, todayLocalKey(), 14);
@@ -25,11 +26,24 @@ function normalizeDateKeyLoose(value) {
   return normalizeLocalDateKey(raw) || "";
 }
 
+function parseDateKeyParts(value) {
+  const raw = typeof value === "string" ? value.trim() : "";
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  if (month < 1 || month > 12) return null;
+  if (day < 1 || day > 31) return null;
+  return { year, month, day };
+}
+
 function addDaysDateKey(dateKey, days) {
   const k = normalizeDateKeyLoose(dateKey);
-  if (!k) return "";
-  const base = new Date(`${k}T12:00:00`);
-  if (Number.isNaN(base.getTime())) return "";
+  const parts = parseDateKeyParts(k);
+  if (!parts) return "";
+  const base = new Date(parts.year, parts.month - 1, parts.day, 12, 0, 0, 0);
   base.setDate(base.getDate() + (Number.isFinite(days) ? Math.trunc(days) : 0));
   return toLocalDateKey(base);
 }
@@ -40,6 +54,53 @@ function clampPeriod(fromKey, toKey) {
   if (!from && !to) return { from: "", to: "" };
   if (from && to && to < from) return { from, to: from };
   return { from: from || "", to: to || "" };
+}
+
+function formatLocalDateTime(d) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(
+    d.getMinutes()
+  )}`;
+}
+
+function parseLocalDateTime(value) {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const raw = value.trim();
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6] || 0);
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hour) ||
+    !Number.isFinite(minute) ||
+    !Number.isFinite(second)
+  )
+    return null;
+  const d = new Date(year, month - 1, day, hour, minute, second, 0);
+  const ts = d.getTime();
+  return Number.isNaN(ts) ? null : ts;
+}
+
+function addMinutesLocal(dateKey, timeHM, minutes) {
+  const date = normalizeLocalDateKey(dateKey);
+  const parts = parseDateKeyParts(date);
+  if (!parts) return "";
+  const time = typeof timeHM === "string" ? timeHM.trim() : "";
+  if (!/^\d{2}:\d{2}$/.test(time)) return "";
+  const [h, m] = time.split(":").map((v) => Number(v));
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return "";
+  const base = new Date(parts.year, parts.month - 1, parts.day, h, m, 0, 0);
+  const mins = Number.isFinite(minutes) ? Math.round(minutes) : 0;
+  base.setMinutes(base.getMinutes() + mins);
+  return formatLocalDateTime(base);
 }
 
 function resolveActivePeriod(goal) {
@@ -387,6 +448,16 @@ function isValidStart(value) {
   return /^\d{2}:\d{2}$/.test(raw);
 }
 
+function isSameOccurrenceArray(a, b) {
+  if (a === b) return true;
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
 function resolveOccurrenceSlotKey(occ) {
   const raw = typeof occ?.slotKey === "string" ? occ.slotKey : typeof occ?.start === "string" ? occ.start : "";
   return isValidStart(raw) ? raw : "";
@@ -454,9 +525,268 @@ function buildWindowDates(fromDateKey, days) {
   return dates;
 }
 
+function resolveWindowRange(fromKey, toKey, now = new Date()) {
+  const today = toLocalDateKey(now);
+  const fallbackFrom = addDaysDateKey(today, -7);
+  const fallbackTo = addDaysDateKey(today, 14);
+  const from = normalizeDateKeyLoose(fromKey) || fallbackFrom;
+  const to = normalizeDateKeyLoose(toKey) || fallbackTo;
+  const clamped = clampPeriod(from, to);
+  return { from: clamped.from || fallbackFrom, to: clamped.to || fallbackTo };
+}
+
+function buildDateRange(fromKey, toKey) {
+  const from = normalizeDateKeyLoose(fromKey);
+  const to = normalizeDateKeyLoose(toKey);
+  if (!from || !to) return [];
+  if (to < from) return [];
+  const start = fromLocalDateKey(from);
+  const end = fromLocalDateKey(to);
+  if (!start || !end) return [];
+  const dates = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    dates.push(toLocalDateKey(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
 function getGoalById(data, goalId) {
   const list = Array.isArray(data?.goals) ? data.goals : [];
   return list.find((g) => g && g.id === goalId) || null;
+}
+
+function extractTimeFromLocalDateTime(value) {
+  if (typeof value !== "string") return "";
+  const match = value.match(/T(\d{2}:\d{2})/);
+  return match ? match[1] : "";
+}
+
+function normalizeDurationMinutesValue(value) {
+  if (!Number.isFinite(value)) return null;
+  const rounded = Math.round(value);
+  return rounded > 0 ? rounded : null;
+}
+
+function classifyOccurrencePriority(occ) {
+  if (!occ || typeof occ !== "object") return "window";
+  const timeType = occ.timeType === "fixed" ? "fixed" : occ.timeType === "window" ? "window" : "";
+  if (timeType === "fixed") return "fixed";
+  const hasWindowBounds = Boolean(occ.windowStartAt || occ.windowEndAt);
+  if ((occ.noTime === true || occ.start === "00:00") && !hasWindowBounds) return "anytime";
+  if (timeType === "window") return "window";
+  if (occ.noTime === true || occ.start === "00:00") return "window";
+  return "fixed";
+}
+
+function mergeIntervals(intervals) {
+  if (!Array.isArray(intervals) || !intervals.length) return [];
+  const sorted = intervals
+    .filter((i) => Number.isFinite(i.start) && Number.isFinite(i.end) && i.end > i.start)
+    .sort((a, b) => a.start - b.start);
+  if (!sorted.length) return [];
+  const merged = [sorted[0]];
+  for (let i = 1; i < sorted.length; i += 1) {
+    const last = merged[merged.length - 1];
+    const current = sorted[i];
+    if (current.start <= last.end) {
+      last.end = Math.max(last.end, current.end);
+    } else {
+      merged.push({ ...current });
+    }
+  }
+  return merged;
+}
+
+function findPlacementWithinWindow(windowStart, windowEnd, duration, occupied) {
+  if (!Number.isFinite(windowStart) || !Number.isFinite(windowEnd)) return null;
+  if (!Number.isFinite(duration) || duration <= 0) return null;
+  if (windowEnd <= windowStart) return null;
+  const intervals = mergeIntervals(occupied);
+  let cursor = windowStart;
+  for (const block of intervals) {
+    if (cursor + duration <= block.start) return cursor;
+    if (block.end > cursor) cursor = block.end;
+    if (cursor + duration > windowEnd) return null;
+  }
+  return cursor + duration <= windowEnd ? cursor : null;
+}
+
+export function resolveWindowConflictsForDay(occurrences, dateKey) {
+  const list = Array.isArray(occurrences) ? occurrences : [];
+  const targetDate = normalizeLocalDateKey(dateKey);
+  if (!targetDate || !list.length) return occurrences;
+
+  const planned = [];
+  for (let i = 0; i < list.length; i += 1) {
+    const occ = list[i];
+    if (!occ || typeof occ !== "object") continue;
+    const date = normalizeLocalDateKey(occ.date);
+    if (date !== targetDate) continue;
+    const status = typeof occ.status === "string" ? occ.status : "planned";
+    if (status !== "planned") continue;
+    planned.push({ occ, index: i });
+  }
+
+  if (!planned.length) return occurrences;
+
+  const fixedIntervals = [];
+  const windowItems = [];
+
+  for (const item of planned) {
+    const occ = item.occ;
+    const priority = classifyOccurrencePriority(occ);
+    if (priority === "fixed") {
+      const startMin = parseTimeToMinutes(occ.start);
+      const duration = normalizeDurationMinutesValue(occ.durationMinutes) || 0;
+      if (Number.isFinite(startMin) && duration > 0) {
+        fixedIntervals.push({ start: startMin, end: startMin + duration });
+      }
+    } else if (priority === "window") {
+      const duration = normalizeDurationMinutesValue(occ.durationMinutes);
+      const windowStartAt = extractTimeFromLocalDateTime(occ.windowStartAt);
+      const windowEndAt = extractTimeFromLocalDateTime(occ.windowEndAt);
+      const windowStart = parseTimeToMinutes(windowStartAt);
+      const windowEnd = parseTimeToMinutes(windowEndAt);
+      windowItems.push({
+        occ,
+        index: item.index,
+        duration,
+        windowStart,
+        windowEnd,
+      });
+    }
+  }
+
+  if (!windowItems.length) return occurrences;
+
+  const occupied = mergeIntervals(fixedIntervals);
+  const sortedWindows = windowItems.slice().sort((a, b) => {
+    if (a.windowStart !== b.windowStart) return a.windowStart - b.windowStart;
+    const ida = typeof a.occ?.id === "string" ? a.occ.id : "";
+    const idb = typeof b.occ?.id === "string" ? b.occ.id : "";
+    return ida.localeCompare(idb);
+  });
+
+  let next = occurrences;
+  let changed = false;
+
+  for (const item of sortedWindows) {
+    const occ = item.occ;
+    const duration = item.duration;
+    const canPlace =
+      Number.isFinite(item.windowStart) &&
+      Number.isFinite(item.windowEnd) &&
+      Number.isFinite(duration) &&
+      duration > 0;
+
+    let resolvedStart = "";
+    let resolvedStartAt = "";
+    let conflict = true;
+
+    if (canPlace) {
+      const placement = findPlacementWithinWindow(item.windowStart, item.windowEnd, duration, occupied);
+      if (Number.isFinite(placement)) {
+        resolvedStart = minutesToTime(placement);
+        resolvedStartAt = `${targetDate}T${resolvedStart}`;
+        conflict = false;
+        occupied.push({ start: placement, end: placement + duration });
+      }
+    }
+
+    const patch = {};
+    patch.resolvedStart = resolvedStart;
+    patch.resolvedStartAt = resolvedStartAt;
+    patch.conflict = conflict;
+
+    const current = next[item.index];
+    if (
+      current?.resolvedStart === patch.resolvedStart &&
+      current?.resolvedStartAt === patch.resolvedStartAt &&
+      current?.conflict === patch.conflict
+    ) {
+      continue;
+    }
+    if (next === occurrences) next = occurrences.slice();
+    next[item.index] = { ...current, ...patch };
+    changed = true;
+  }
+
+  return changed ? next : occurrences;
+}
+
+function normalizeRuleTime(value, fallback = "") {
+  const raw = typeof value === "string" ? value.trim() : "";
+  return /^\d{2}:\d{2}$/.test(raw) ? raw : fallback;
+}
+
+function resolveRuleDurationMinutes(rule) {
+  const base = Number.isFinite(rule?.durationMin) && rule.durationMin > 0 ? Math.round(rule.durationMin) : null;
+  if (base != null) return base;
+  const start = parseTimeToMinutes(rule?.startTime);
+  const end = parseTimeToMinutes(rule?.endTime);
+  if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+    return Math.round(end - start);
+  }
+  return null;
+}
+
+function ruleAppliesOnDate(rule, dateKey) {
+  if (!rule || !dateKey) return false;
+  const date = normalizeLocalDateKey(dateKey);
+  if (!date) return false;
+  const kind = rule.kind === "one_time" ? "one_time" : "recurring";
+  const startDate = normalizeDateKeyLoose(rule.startDate);
+  const endDate = normalizeDateKeyLoose(rule.endDate);
+
+  if (kind === "one_time") return Boolean(startDate && startDate === date);
+  if (startDate && date < startDate) return false;
+  if (endDate && date > endDate) return false;
+  const days = Array.isArray(rule.daysOfWeek) ? rule.daysOfWeek : [];
+  if (!days.length) return false;
+  const dow = appDowFromDate(fromLocalDateKey(date));
+  return days.includes(dow);
+}
+
+function buildOccurrenceFromRule(rule, dateKey) {
+  const timeType = rule?.timeType === "window" ? "window" : "fixed";
+  const durationMinutes = resolveRuleDurationMinutes(rule) ?? 0;
+  const startTime = normalizeRuleTime(rule?.startTime);
+  const endTime = normalizeRuleTime(rule?.endTime);
+  const windowStart = normalizeRuleTime(rule?.windowStart, "00:00");
+  const windowEnd = normalizeRuleTime(rule?.windowEnd, "23:59");
+
+  if (timeType === "fixed" && !startTime) return null;
+
+  const base = {
+    id: uidFn(),
+    goalId: rule.actionId,
+    date: dateKey,
+    start: timeType === "fixed" ? startTime : "00:00",
+    slotKey: timeType === "fixed" ? startTime : "00:00",
+    durationMinutes,
+    status: "planned",
+    scheduleRuleId: rule.id,
+    timeType,
+  };
+
+  if (timeType === "fixed") {
+    const startAt = startTime ? `${dateKey}T${startTime}` : "";
+    const endAt = endTime ? `${dateKey}T${endTime}` : startTime && durationMinutes ? addMinutesLocal(dateKey, startTime, durationMinutes) : "";
+    return {
+      ...base,
+      startAt,
+      endAt,
+    };
+  }
+
+  return {
+    ...base,
+    noTime: true,
+    windowStartAt: `${dateKey}T${windowStart}`,
+    windowEndAt: `${dateKey}T${windowEnd}`,
+  };
 }
 
 export function dedupeOccurrences(occurrences) {
@@ -491,6 +821,7 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
   if (!goal) return data;
   if (resolveGoalType(goal) !== "PROCESS") return data;
 
+  const prevOccurrences = Array.isArray(data?.occurrences) ? data.occurrences : [];
   const schedule = goal.schedule && typeof goal.schedule === "object" ? goal.schedule : null;
   const scheduleMode = resolveScheduleMode(goal, schedule);
 
@@ -531,6 +862,7 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
 
   if (!dates.length) {
     const nextOccurrences = dedupeOccurrences(occurrences);
+    if (isSameOccurrenceArray(prevOccurrences, nextOccurrences)) return data;
     return { ...data, occurrences: nextOccurrences };
   }
 
@@ -617,6 +949,7 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
   }
 
   const nextOccurrences = dedupeOccurrences(occurrences);
+  if (isSameOccurrenceArray(prevOccurrences, nextOccurrences)) return data;
   return { ...data, occurrences: nextOccurrences };
 }
 
@@ -627,6 +960,249 @@ export function ensureWindowForGoals(data, goalIds, fromDateKey, days = 14) {
     next = ensureWindowForGoal(next, goalId, fromDateKey, days);
   }
   return next;
+}
+
+export function ensureWindowFromScheduleRules(data, fromKey, toKey, actionIds = null, now = new Date()) {
+  if (!data || typeof data !== "object") return data;
+  const ids = Array.isArray(actionIds) ? actionIds.filter(Boolean) : [];
+  let working = data;
+  if (ids.length) {
+    const synced = ensureScheduleRulesForActions(working, ids, now);
+    if (synced !== working) working = synced;
+  }
+
+  const rulesRaw = Array.isArray(working.scheduleRules) ? working.scheduleRules : [];
+  const activeRules = rulesRaw.filter((r) => r && r.isActive !== false && r.id && r.actionId);
+  const ruleList = ids.length ? activeRules.filter((r) => ids.includes(r.actionId)) : activeRules;
+  if (!ruleList.length) return working;
+
+  const { from, to } = resolveWindowRange(fromKey, toKey, now);
+  const windowDates = buildDateRange(from, to);
+  if (!windowDates.length) return working;
+
+  const windowSet = new Set(windowDates);
+  const occurrences = Array.isArray(working.occurrences) ? working.occurrences : [];
+  let nextOccurrences = occurrences;
+  let changed = false;
+
+  const byRuleDate = new Map();
+  const legacyByKey = new Map();
+
+  occurrences.forEach((occ, idx) => {
+    if (!occ || typeof occ !== "object") return;
+    const date = normalizeLocalDateKey(occ.date);
+    if (!date || !windowSet.has(date)) return;
+    const ruleId = typeof occ.scheduleRuleId === "string" ? occ.scheduleRuleId : "";
+    if (ruleId) {
+      const key = `${ruleId}::${date}`;
+      if (!byRuleDate.has(key)) byRuleDate.set(key, idx);
+      return;
+    }
+    const goalId = typeof occ.goalId === "string" ? occ.goalId : "";
+    const start = typeof occ.start === "string" ? occ.start : "";
+    if (!goalId || !start) return;
+    const key = `${goalId}::${date}::${start}`;
+    if (!legacyByKey.has(key)) legacyByKey.set(key, idx);
+  });
+
+  function applyPatch(idx, patch) {
+    const current = nextOccurrences[idx];
+    if (!current || typeof current !== "object") return false;
+    let localChanged = false;
+    const next = { ...current };
+    for (const [key, value] of Object.entries(patch)) {
+      if (typeof value === "undefined") continue;
+      if (next[key] !== value) {
+        next[key] = value;
+        localChanged = true;
+      }
+    }
+    if (!localChanged) return false;
+    if (nextOccurrences === occurrences) nextOccurrences = occurrences.slice();
+    nextOccurrences[idx] = next;
+    changed = true;
+    return true;
+  }
+
+  for (const rule of ruleList) {
+    if (!rule || !rule.id || !rule.actionId) continue;
+    const candidateDates = rule.kind === "one_time" ? [normalizeDateKeyLoose(rule.startDate)] : windowDates;
+    for (const dateKey of candidateDates) {
+      if (!dateKey || !windowSet.has(dateKey)) continue;
+      if (!ruleAppliesOnDate(rule, dateKey)) continue;
+
+      const ruleKey = `${rule.id}::${dateKey}`;
+      if (byRuleDate.has(ruleKey)) {
+        const idx = byRuleDate.get(ruleKey);
+        const current = nextOccurrences[idx];
+        const status = typeof current?.status === "string" ? current.status : "planned";
+        if (status !== "planned") continue;
+        const patch = {};
+        patch.scheduleRuleId = rule.id;
+        patch.timeType = rule.timeType === "window" ? "window" : "fixed";
+        if (patch.timeType === "fixed") {
+          const startTime = normalizeRuleTime(rule.startTime);
+          if (startTime) {
+            patch.start = startTime;
+            patch.slotKey = startTime;
+            const startAt = `${dateKey}T${startTime}`;
+            patch.startAt = startAt;
+            const durationMinutes = resolveRuleDurationMinutes(rule);
+            const endTime = normalizeRuleTime(rule.endTime);
+            const endAt = endTime
+              ? `${dateKey}T${endTime}`
+              : startTime && durationMinutes
+                ? addMinutesLocal(dateKey, startTime, durationMinutes)
+                : "";
+            if (endAt) patch.endAt = endAt;
+            if (Number.isFinite(durationMinutes)) {
+              patch.durationMinutes = durationMinutes;
+            }
+          }
+        } else {
+          const windowStart = normalizeRuleTime(rule.windowStart, "00:00");
+          const windowEnd = normalizeRuleTime(rule.windowEnd, "23:59");
+          const windowStartAt = `${dateKey}T${windowStart}`;
+          const windowEndAt = `${dateKey}T${windowEnd}`;
+          patch.noTime = true;
+          patch.start = "00:00";
+          patch.slotKey = "00:00";
+          patch.windowStartAt = windowStartAt;
+          patch.windowEndAt = windowEndAt;
+          const durationMinutes = resolveRuleDurationMinutes(rule);
+          if (Number.isFinite(durationMinutes)) {
+            patch.durationMinutes = durationMinutes;
+          }
+        }
+        applyPatch(idx, patch);
+        continue;
+      }
+
+      const matchStart =
+        rule.timeType === "window"
+          ? "00:00"
+          : normalizeRuleTime(rule.startTime);
+      if (matchStart) {
+        const legacyKey = `${rule.actionId}::${dateKey}::${matchStart}`;
+        const legacyIdx = legacyByKey.get(legacyKey);
+        if (typeof legacyIdx === "number") {
+          const current = nextOccurrences[legacyIdx];
+          const status = typeof current?.status === "string" ? current.status : "planned";
+          if (status !== "planned") {
+            byRuleDate.set(ruleKey, legacyIdx);
+            continue;
+          }
+          const patch = {};
+          patch.scheduleRuleId = rule.id;
+          patch.timeType = rule.timeType === "window" ? "window" : "fixed";
+          if (patch.timeType === "fixed") {
+            const startAt = `${dateKey}T${matchStart}`;
+            const durationMinutes = resolveRuleDurationMinutes(rule);
+            const endTime = normalizeRuleTime(rule.endTime);
+            const endAt = endTime
+              ? `${dateKey}T${endTime}`
+              : matchStart && durationMinutes
+                ? addMinutesLocal(dateKey, matchStart, durationMinutes)
+                : "";
+            patch.startAt = startAt;
+            if (endAt) patch.endAt = endAt;
+            if (Number.isFinite(durationMinutes)) {
+              patch.durationMinutes = durationMinutes;
+            }
+          } else {
+            const windowStart = normalizeRuleTime(rule.windowStart, "00:00");
+            const windowEnd = normalizeRuleTime(rule.windowEnd, "23:59");
+            const windowStartAt = `${dateKey}T${windowStart}`;
+            const windowEndAt = `${dateKey}T${windowEnd}`;
+            patch.noTime = true;
+            patch.windowStartAt = windowStartAt;
+            patch.windowEndAt = windowEndAt;
+            const durationMinutes = resolveRuleDurationMinutes(rule);
+            if (Number.isFinite(durationMinutes)) {
+              patch.durationMinutes = durationMinutes;
+            }
+          }
+          applyPatch(legacyIdx, patch);
+          byRuleDate.set(ruleKey, legacyIdx);
+          continue;
+        }
+      }
+
+      const created = buildOccurrenceFromRule(rule, dateKey);
+      if (!created) continue;
+      if (nextOccurrences === occurrences) nextOccurrences = occurrences.slice();
+      nextOccurrences.push(created);
+      changed = true;
+      byRuleDate.set(`${rule.id}::${dateKey}`, nextOccurrences.length - 1);
+    }
+  }
+
+  const nowMs = now.getTime();
+  const nowIso = now.toISOString();
+  for (let i = 0; i < nextOccurrences.length; i += 1) {
+    const occ = nextOccurrences[i];
+    if (!occ || typeof occ !== "object") continue;
+    const date = normalizeLocalDateKey(occ.date);
+    if (!date || !windowSet.has(date)) continue;
+    const status = typeof occ.status === "string" ? occ.status : "planned";
+    if (status !== "planned") continue;
+    const timeType =
+      occ.timeType === "window" || occ.noTime === true || typeof occ.windowEndAt === "string"
+        ? "window"
+        : "fixed";
+    let endMs = null;
+    if (timeType === "fixed") {
+      const endAt = occ.endAt || occ.startAt || (occ.start ? `${date}T${occ.start}` : "");
+      const endAtMs = parseLocalDateTime(endAt);
+      if (endAtMs != null) endMs = endAtMs;
+    } else {
+      const windowEndAt = occ.windowEndAt || `${date}T23:59`;
+      const windowEndMs = parseLocalDateTime(windowEndAt);
+      if (windowEndMs != null) endMs = windowEndMs;
+    }
+    if (endMs == null || nowMs <= endMs) continue;
+    const patch = { status: "missed", updatedAt: nowIso };
+    applyPatch(i, patch);
+  }
+
+  let resolved = nextOccurrences;
+  let placementChanged = false;
+  for (const dateKey of windowDates) {
+    const updated = resolveWindowConflictsForDay(resolved, dateKey);
+    if (updated !== resolved) {
+      resolved = updated;
+      placementChanged = true;
+    }
+  }
+  if (placementChanged) {
+    nextOccurrences = resolved;
+    changed = true;
+  }
+
+  if (!changed) return working;
+  return { ...working, occurrences: nextOccurrences };
+}
+
+export function regenerateWindowFromScheduleRules(data, actionId, fromKey, toKey, now = new Date()) {
+  if (!data || !actionId) return data;
+  const dateRange = resolveWindowRange(fromKey, toKey, now);
+  const windowDates = buildDateRange(dateRange.from, dateRange.to);
+  if (!windowDates.length) return data;
+  const windowSet = new Set(windowDates);
+
+  const occurrences = Array.isArray(data.occurrences) ? data.occurrences : [];
+  const filtered = occurrences.filter((occ) => {
+    if (!occ || occ.goalId !== actionId) return true;
+    const date = normalizeLocalDateKey(occ.date);
+    if (!date || !windowSet.has(date)) return true;
+    return occ.status && occ.status !== "planned";
+  });
+
+  if (filtered.length === occurrences.length) {
+    return ensureWindowFromScheduleRules(data, dateRange.from, dateRange.to, [actionId], now);
+  }
+  const next = { ...data, occurrences: filtered };
+  return ensureWindowFromScheduleRules(next, dateRange.from, dateRange.to, [actionId], now);
 }
 
 export function regenerateWindowForGoal(data, goalId, fromDateKey, days = 14) {

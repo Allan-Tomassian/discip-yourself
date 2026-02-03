@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input, Select, Textarea } from "../components/UI";
 import { safeConfirm } from "../utils/dialogs";
-import { normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
+import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
+import { addDays } from "../utils/dates";
 import { uid } from "../utils/helpers";
 import { createDefaultGoalSchedule, ensureSystemInboxCategory, normalizeCategory, SYSTEM_INBOX_ID } from "../logic/state";
 import { updateGoal } from "../logic/goals";
 import { setPrimaryGoalForCategory } from "../logic/priority";
 import { resolveGoalType } from "../domain/goalType";
-import { regenerateWindowForGoal } from "../logic/occurrencePlanner";
+import { regenerateWindowFromScheduleRules } from "../logic/occurrencePlanner";
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
 import { canCreateCategory } from "../logic/entitlements";
 import { normalizeTimeFields } from "../logic/timeFields";
@@ -656,7 +657,10 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
             Number.isFinite(generationWindowDays) && generationWindowDays > 0
               ? Math.floor(generationWindowDays)
               : 14;
-          next = regenerateWindowForGoal(next, goalId, todayLocalKey(), days);
+          const fromKey = todayLocalKey();
+          const baseDate = fromLocalDateKey(fromKey);
+          const toKey = baseDate ? toLocalDateKey(addDays(baseDate, Math.max(0, days - 1))) : fromKey;
+          next = regenerateWindowFromScheduleRules(next, goalId, fromKey, toKey);
         }
         return next;
       });
