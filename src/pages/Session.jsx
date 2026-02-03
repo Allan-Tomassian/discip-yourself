@@ -8,6 +8,7 @@ import { upsertSessionV2 } from "../logic/sessionsV2";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { resolveConflictNearest } from "../logic/occurrencePlanner";
+import { normalizeActiveSessionForUI, normalizeOccurrenceForUI } from "../logic/compat";
 
 function formatElapsed(ms) {
   const safe = Number.isFinite(ms) && ms > 0 ? ms : 0;
@@ -58,8 +59,12 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
-  const activeSession =
+  const rawActiveSession =
     safeData.ui && typeof safeData.ui.activeSession === "object" ? safeData.ui.activeSession : null;
+  const activeSession = useMemo(
+    () => normalizeActiveSessionForUI(rawActiveSession),
+    [rawActiveSession]
+  );
   const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const urlDateKey = urlParams?.get("date") || null;
   const effectiveDateKey =
@@ -104,6 +109,10 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
     if (!occurrenceId) return null;
     return occurrences.find((occ) => occ && occ.id === occurrenceId) || null;
   }, [occurrences, occurrenceId]);
+  const normalizedOccurrenceById = useMemo(
+    () => normalizeOccurrenceForUI(occurrenceById),
+    [occurrenceById]
+  );
   const effectiveCategoryId = objective?.categoryId || habits[0]?.categoryId || null;
   const category = categories.find((c) => c.id === effectiveCategoryId) || null;
   const accent = category?.color || getAccentForPage(safeData, "home");
@@ -144,6 +153,10 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
     if (occurrenceId) return occurrenceById;
     return resolution.occurrence;
   }, [occurrenceId, occurrenceById, resolution.occurrence]);
+  const normalizedSelectedOccurrence = useMemo(
+    () => normalizeOccurrenceForUI(selectedOccurrence),
+    [selectedOccurrence]
+  );
 
   const availableStarts = useMemo(() => {
     const set = new Set();
@@ -153,7 +166,8 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
     }
     return Array.from(set).sort();
   }, [candidateOccurrences]);
-  const occurrenceStart = (occurrenceId ? selectedOccurrence?.start : overrideStart || selectedOccurrence?.start) || "";
+  const occurrenceStart =
+    (occurrenceId ? normalizedOccurrenceById?.start : overrideStart || normalizedSelectedOccurrence?.start) || "";
   const hasOccurrence = Boolean(selectedOccurrence);
   const resolvedDoneHabitIds = useMemo(() => {
     if (occurrenceId && selectedOccurrence?.goalId) return [selectedOccurrence.goalId];

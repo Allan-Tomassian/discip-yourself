@@ -35,6 +35,12 @@ describe("ensureWindowFromScheduleRules", () => {
     expect(second).toBe(first);
   });
 
+  it("returns the same object when there are no changes to apply", () => {
+    const state = baseState();
+    const next = ensureWindowFromScheduleRules(state, "2026-02-02", "2026-02-02");
+    expect(next).toBe(state);
+  });
+
   it("generates one_time occurrence once", () => {
     const state = baseState({
       scheduleRules: [

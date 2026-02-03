@@ -46,4 +46,22 @@ describe("migrate scheduleRules", () => {
     const keys = migrated.scheduleRules.map((r) => r.sourceKey);
     expect(keys.filter((k) => k === sourceKey).length).toBe(1);
   });
+
+  it("keeps unique sourceKey per actionId after 3 migrations", () => {
+    const first = migrate(buildBaseState());
+    const second = migrate(first);
+    const third = migrate(second);
+
+    const seen = new Set();
+    const duplicates = [];
+    for (const rule of third.scheduleRules) {
+      const actionId = typeof rule.actionId === "string" ? rule.actionId : "";
+      const sourceKey = typeof rule.sourceKey === "string" ? rule.sourceKey : "";
+      if (!actionId || !sourceKey) continue;
+      const key = `${actionId}::${sourceKey}`;
+      if (seen.has(key)) duplicates.push(key);
+      else seen.add(key);
+    }
+    expect(duplicates.length).toBe(0);
+  });
 });

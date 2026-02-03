@@ -1,6 +1,13 @@
 import { uid } from "../utils/helpers";
+import { isFinalOccurrenceStatus } from "./metrics";
 
-const CLOSED_STATUSES = new Set(["done", "missed", "canceled", "rescheduled"]);
+export function isActiveSessionState(value) {
+  return value === "in_progress";
+}
+
+export function isEndedSessionState(value) {
+  return value === "ended";
+}
 
 function resolveOccurrences(source) {
   if (Array.isArray(source)) return source;
@@ -43,15 +50,15 @@ export function findActiveSession(sessions, activeSessionId) {
     const match = list.find((s) => s && s.id === activeSessionId) || null;
     if (match) return match;
   }
-  return list.find((s) => s && s.state === "in_progress") || null;
+  return list.find((s) => s && isActiveSessionState(s.state)) || null;
 }
 
 export function canStartSessionForOccurrence(occurrence, sessions) {
   if (!occurrence) return false;
   const status = typeof occurrence.status === "string" ? occurrence.status : "planned";
-  if (CLOSED_STATUSES.has(status)) return false;
+  if (isFinalOccurrenceStatus(status)) return false;
   const existing = findSessionByOccurrenceId(sessions, occurrence.id);
-  if (existing && existing.state === "ended") return false;
+  if (existing && isEndedSessionState(existing.state)) return false;
   return true;
 }
 
@@ -65,7 +72,7 @@ export function startSessionForOccurrence(state, occurrenceId, now = new Date())
   if (!occurrence) return state;
 
   const activeSession = findActiveSession(sessions, ui.activeSessionId);
-  if (activeSession && activeSession.state === "in_progress") {
+  if (activeSession && isActiveSessionState(activeSession.state)) {
     // Do not start a new one if another session is already running.
     if (activeSession.occurrenceId === occurrenceId) {
       return { ...state, ui: { ...ui, activeSessionId: activeSession.id } };
@@ -75,12 +82,12 @@ export function startSessionForOccurrence(state, occurrenceId, now = new Date())
 
   const existing = findSessionByOccurrenceId(sessions, occurrenceId);
   if (existing) {
-    if (existing.state === "ended") return state;
+    if (isEndedSessionState(existing.state)) return state;
     return { ...state, ui: { ...ui, activeSessionId: existing.id } };
   }
 
   const status = typeof occurrence.status === "string" ? occurrence.status : "planned";
-  if (CLOSED_STATUSES.has(status)) return state;
+  if (isFinalOccurrenceStatus(status)) return state;
 
   const nowIso = now.toISOString();
   const actionId = resolveActionId(occurrence);
@@ -120,7 +127,7 @@ export function endSession(state, sessionId, reason = "done", now = new Date()) 
   const ui = state.ui && typeof state.ui === "object" ? state.ui : {};
   const session = sessions.find((s) => s && s.id === sessionId) || null;
   if (!session) return state;
-  if (session.state === "ended") return state;
+  if (isEndedSessionState(session.state)) return state;
 
   const nowIso = now.toISOString();
   const endedReason = reason === "canceled" ? "canceled" : "done";

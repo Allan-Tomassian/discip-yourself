@@ -16,6 +16,7 @@ import { setMainGoal } from "../logic/goals";
 import { ensureWindowFromScheduleRules } from "../logic/occurrencePlanner";
 import { setOccurrenceStatus } from "../logic/occurrences";
 import { resolveExecutableOccurrence } from "../logic/sessionResolver";
+import { normalizeActiveSessionForUI, normalizeOccurrenceForUI } from "../logic/compat";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { isPrimaryCategory, isPrimaryGoal } from "../logic/priority";
@@ -486,8 +487,12 @@ export default function Home({
     return primary || outcomeGoals[0] || null;
   }, [focusCategory?.id, mainGoalId, outcomeGoals]);
 
-  const activeSession =
+  const rawActiveSession =
     safeData.ui && typeof safeData.ui.activeSession === "object" ? safeData.ui.activeSession : null;
+  const activeSession = useMemo(
+    () => normalizeActiveSessionForUI(rawActiveSession),
+    [rawActiveSession]
+  );
   const sessionForDay = useMemo(() => {
     if (!activeSession) return null;
     const key = activeSession.dateKey || activeSession.date;
@@ -1926,12 +1931,13 @@ export default function Home({
                       {visibleOccurrencesForSelectedDay.length ? (
                         <div className="mt8 col gap8">
                           {visibleOccurrencesForSelectedDay.map((occ) => {
+                            const occUI = normalizeOccurrenceForUI(occ);
                             const goal = goalsById.get(occ.goalId) || null;
                             const title = goal?.title || "Action";
                             const categoryName = categoriesById.get(goal?.categoryId)?.name || "Général";
                             const outcome = getOutcomeForGoalId(occ.goalId);
-                            const hasTime = Boolean(goal?.startTime || (occ.start && occ.start !== "00:00"));
-                            const timeLabel = hasTime ? occ.start : "";
+                            const hasTime = Boolean(goal?.startTime || (occUI?.start && occUI.start !== "00:00"));
+                            const timeLabel = hasTime ? occUI.start : "";
                             const duration = Number.isFinite(goal?.durationMinutes) ? goal.durationMinutes : null;
                             const status =
                               occ.status === "done" ? "Fait" : occ.status === "skipped" ? "Ignorée" : "Planifiée";
@@ -2268,12 +2274,13 @@ export default function Home({
                       {visibleOccurrencesForSelectedDay.length ? (
                         <div className="col gap8">
                           {visibleOccurrencesForSelectedDay.map((occ) => {
+                            const occUI = normalizeOccurrenceForUI(occ);
                             const goal = goalsById.get(occ.goalId) || null;
                             const title = goal?.title || "Action";
                             const categoryName = categoriesById.get(goal?.categoryId)?.name || "Général";
                             const outcome = getOutcomeForGoalId(occ.goalId);
-                            const hasTime = Boolean(goal?.startTime || (occ.start && occ.start !== "00:00"));
-                            const timeLabel = hasTime ? occ.start : "";
+                            const hasTime = Boolean(goal?.startTime || (occUI?.start && occUI.start !== "00:00"));
+                            const timeLabel = hasTime ? occUI.start : "";
                             const duration = Number.isFinite(goal?.durationMinutes) ? goal.durationMinutes : null;
                             const status =
                               occ.status === "done"
