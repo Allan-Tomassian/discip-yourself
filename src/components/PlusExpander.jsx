@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "./UI";
 import Portal from "../ui/portal/Portal";
+import { LABELS } from "../ui/labels";
 
 function toAnchorRect(rect) {
   if (!rect) return null;
@@ -92,7 +93,7 @@ export default function PlusExpander({
               Créer une action
             </Button>
             <Button variant="ghost" onClick={onChooseObjective}>
-              Créer un objectif
+              Créer un {LABELS.goalLower}
             </Button>
             {hasDraft && typeof onResumeDraft === "function" ? (
               <Button variant="ghost" onClick={onResumeDraft}>

@@ -4,6 +4,7 @@ import { Button, Card } from "../components/UI";
 import Gauge from "../components/Gauge";
 import { getAccentForPage } from "../utils/_theme";
 import { resolveGoalType } from "../domain/goalType";
+import { LABELS } from "../ui/labels";
 
 const MEASURE_UNITS = {
   money: "€",
@@ -68,13 +69,13 @@ export default function CategoryProgress({ data, categoryId, onBack }) {
 
       <Card accentBorder style={{ marginTop: 12, borderColor: accent }}>
         <div className="p18">
-          <div className="titleSm">Objectifs</div>
+          <div className="titleSm">{LABELS.goals}</div>
           {outcomeGoals.length ? (
             <div className="mt12 col" style={{ gap: 12 }}>
               {outcomeGoals.map((g) => (
                 <Gauge
                   key={g.id}
-                  label={g.title || "Objectif"}
+                  label={g.title || LABELS.goal}
                   currentValue={Number(g.currentValue) || 0}
                   targetValue={Number(g.targetValue) || 0}
                   unit={MEASURE_UNITS[g.measureType] || ""}
@@ -83,7 +84,7 @@ export default function CategoryProgress({ data, categoryId, onBack }) {
               ))}
             </div>
           ) : (
-            <div className="small2 mt10">Aucun objectif dans cette catégorie.</div>
+            <div className="small2 mt10">Aucun {LABELS.goalLower} dans cette catégorie.</div>
           )}
         </div>
       </Card>

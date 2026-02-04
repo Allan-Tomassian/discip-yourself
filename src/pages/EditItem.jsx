@@ -3,6 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input, Textarea } from "../components/UI";
 import Select from "../ui/select/Select";
 import DatePicker from "../ui/date/DatePicker";
+import ConflictResolver from "../ui/scheduling/ConflictResolver";
 import { safeConfirm } from "../utils/dialogs";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { addDays } from "../utils/dates";
@@ -15,6 +16,9 @@ import { regenerateWindowFromScheduleRules } from "../logic/occurrencePlanner";
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
 import { canCreateCategory } from "../logic/entitlements";
 import { normalizeTimeFields } from "../logic/timeFields";
+import { setOccurrenceStatusById } from "../logic/occurrences";
+import { findConflicts, suggestNextSlots } from "../core/scheduling/intervals";
+import { LABELS } from "../ui/labels";
 
 const PRIORITY_OPTIONS = [
   { value: "prioritaire", label: "Prioritaire" },
@@ -43,6 +47,8 @@ const DAY_OPTIONS = [
   { value: 6, label: "Sam" },
   { value: 7, label: "Dim" },
 ];
+
+const DEFAULT_CONFLICT_DURATION = 30;
 
 function resolvePlanType(item) {
   const rawPlan = typeof item?.planType === "string" ? item.planType.toUpperCase() : "";
@@ -127,6 +133,34 @@ function normalizeTimes(times) {
     if (seen.has(t)) continue;
     seen.add(t);
     out.push(t);
+  }
+  return out;
+}
+
+function appDowFromDate(d) {
+  const js = d.getDay();
+  return js === 0 ? 7 : js;
+}
+
+function minutesToTime(minutes) {
+  if (!Number.isFinite(minutes)) return "";
+  const clamped = Math.max(0, Math.min(24 * 60 - 1, Math.round(minutes)));
+  const h = Math.floor(clamped / 60);
+  const m = clamped % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function buildDateRange(fromKey, toKey) {
+  const from = normalizeLocalDateKey(fromKey);
+  const to = normalizeLocalDateKey(toKey);
+  if (!from || !to) return [];
+  const start = fromLocalDateKey(from);
+  const end = fromLocalDateKey(to);
+  const out = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    out.push(toLocalDateKey(cursor));
+    cursor.setDate(cursor.getDate() + 1);
   }
   return out;
 }
@@ -234,6 +268,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   const safeData = useMemo(() => (data && typeof data === "object" ? data : {}), [data]);
   const backgroundImage = safeData?.profile?.whyImage || "";
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
+  const goalsById = useMemo(() => new Map(goals.map((g) => [g.id, g])), [goals]);
   const reminders = useMemo(
     () => (Array.isArray(safeData.reminders) ? safeData.reminders : []),
     [safeData.reminders]
@@ -302,6 +337,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   const [deadlineTouched, setDeadlineTouched] = useState(false);
   const [error, setError] = useState("");
   const [planOpen, setPlanOpen] = useState(false);
+  const [conflictState, setConflictState] = useState(null);
 
   const isProcess = type === "PROCESS";
   const effectiveSelectedOutcomeId =
@@ -321,6 +357,29 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   const canUseReminders = hasOccurrenceSource || hasScheduleSource;
   const hasMultipleSlots = isProcess && Array.isArray(timeSlots) && timeSlots.length > 1;
   const timeInputValue = repeat === "none" ? oneOffTime : startTime;
+
+  const fixedOccurrencesByDate = useMemo(() => {
+    const map = new Map();
+    for (const occ of occurrences) {
+      if (!occ || occ.noTime === true) continue;
+      if (occ.timeType === "window") continue;
+      const dateKey = normalizeLocalDateKey(occ.date);
+      if (!dateKey) continue;
+      const start = normalizeStartTime(occ.start || occ.slotKey || "");
+      if (!start) continue;
+      const list = map.get(dateKey) || [];
+      list.push({
+        id: occ.id,
+        goalId: occ.goalId,
+        dateKey,
+        startHHmm: start,
+        durationMin: occ.durationMinutes,
+        occurrence: occ,
+      });
+      map.set(dateKey, list);
+    }
+    return map;
+  }, [occurrences]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -400,6 +459,74 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     setError("");
     setPlanOpen(false);
   }, [item, isProcess, canUseReminders]);
+
+  function buildCandidateIntervalsForEdit(windowFromKey, windowToKey, overrides = {}) {
+    if (!isProcess) return [];
+    if (hasMultipleSlots) return [];
+    const effectiveTimeMode = overrides.timeMode || timeMode;
+    if (effectiveTimeMode !== "FIXED") return [];
+    const effectiveTimeInput = overrides.timeInput ?? timeInputValue;
+    const start = normalizeStartTime(effectiveTimeInput);
+    if (!start) return [];
+    const durationMin = normalizeDurationMinutes(sessionMinutes);
+
+    if (repeat === "none") {
+      const dateKey = normalizeLocalDateKey(oneOffDate);
+      if (!dateKey) return [];
+      return [{ dateKey, startHHmm: start, durationMin }];
+    }
+
+    const days =
+      repeat === "daily"
+        ? [1, 2, 3, 4, 5, 6, 7]
+        : normalizeDays(daysOfWeek);
+    if (!days.length) return [];
+
+    const dates = buildDateRange(windowFromKey, windowToKey);
+    const out = [];
+    for (const dateKey of dates) {
+      const dow = appDowFromDate(fromLocalDateKey(dateKey));
+      if (!days.includes(dow)) continue;
+      out.push({ dateKey, startHHmm: start, durationMin });
+    }
+    return out;
+  }
+
+  function findFirstConflictForEdit(ignoreOccurrenceIds, overrides = {}) {
+    const ignoreSet = ignoreOccurrenceIds || new Set();
+    const days =
+      Number.isFinite(generationWindowDays) && generationWindowDays > 0
+        ? Math.floor(generationWindowDays)
+        : 14;
+    const fromKey = todayLocalKey();
+    const baseDate = fromLocalDateKey(fromKey);
+    const toKey = baseDate ? toLocalDateKey(addDays(baseDate, Math.max(0, days - 1))) : fromKey;
+
+    const candidates = buildCandidateIntervalsForEdit(fromKey, toKey, overrides);
+    for (const candidate of candidates) {
+      const existing = (fixedOccurrencesByDate.get(candidate.dateKey) || []).filter(
+        (occ) => occ && occ.goalId !== item?.id && !ignoreSet.has(occ.id)
+      );
+      const conflicts = findConflicts({
+        dateKey: candidate.dateKey,
+        candidate,
+        existingFixedOccurrences: existing,
+        defaultDuration: DEFAULT_CONFLICT_DURATION,
+      });
+      if (conflicts.length) {
+        const suggestions = suggestNextSlots({
+          dateKey: candidate.dateKey,
+          candidate,
+          existing,
+          step: 15,
+          limit: 3,
+          defaultDuration: DEFAULT_CONFLICT_DURATION,
+        });
+        return { candidate, conflicts, suggestions };
+      }
+    }
+    return null;
+  }
   /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!item) {
@@ -453,7 +580,8 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     setSelectedCategoryId(cat.id);
   }
 
-  function handleSave() {
+  function handleSave(options = {}) {
+    const { conflictResolution, overrideStartTime, overrideTimeMode } = options || {};
     const cleanTitle = (title || "").trim();
     if (!cleanTitle) {
       setError("Titre requis.");
@@ -487,6 +615,8 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       const repeatMode = normalizeRepeat(repeat);
       const isWeekly = repeatMode === "weekly";
       const isOneOff = repeatMode === "none";
+      const effectiveTimeMode = overrideTimeMode || timeMode;
+      const effectiveTimeInput = typeof overrideStartTime === "string" ? overrideStartTime : timeInputValue;
       const normalizedOneOff = normalizeLocalDateKey(oneOffDate);
       if (isOneOff && !normalizedOneOff) {
         setError("Sélectionne une date pour l’action \"Une fois\".");
@@ -496,8 +626,8 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
         setError("Choisis au moins un jour.");
         return;
       }
-      const normalizedTimeInput = normalizeStartTime(timeInputValue);
-      if (!hasMultipleSlots && timeMode === "FIXED" && !normalizedTimeInput) {
+      const normalizedTimeInput = normalizeStartTime(effectiveTimeInput);
+      if (!hasMultipleSlots && effectiveTimeMode === "FIXED" && !normalizedTimeInput) {
         setError("Choisis une heure.");
         return;
       }
@@ -573,8 +703,8 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       const timeFieldsToPersist = hasMultipleSlots
         ? existingTimeFields
         : normalizeTimeFields({
-            timeMode,
-            timeSlots: timeMode === "FIXED" && normalizedTimeInput ? [normalizedTimeInput] : [],
+            timeMode: effectiveTimeMode,
+            timeSlots: effectiveTimeMode === "FIXED" && normalizedTimeInput ? [normalizedTimeInput] : [],
             startTime: normalizedTimeInput,
             reminderTime: normalizedReminderTime,
           });
@@ -585,7 +715,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       const normalizedStart = normalizeLocalDateKey(startDate) || todayLocalKey();
       const normalizedDeadline = normalizeLocalDateKey(deadline);
       if (!normalizedDeadline || (minDeadlineKey && normalizedDeadline < minDeadlineKey)) {
-        setError(`Un objectif dure min. 2 jours. Pour < 2 jours, crée une Action.`);
+        setError(`Un ${LABELS.goalLower} dure min. 2 jours. Pour < 2 jours, crée une ${LABELS.action}.`);
         return;
       }
       updates.categoryId = normalizedCategoryId;
@@ -593,6 +723,38 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       updates.deadline = normalizedDeadline;
       updates.notes = (notes || "").trim();
       updates.priority = priority;
+    }
+
+    if (isProcess) {
+      const ignoreIds = new Set(conflictResolution?.cancelOccurrenceIds || []);
+      const conflict = findFirstConflictForEdit(ignoreIds, {
+        timeMode: overrideTimeMode || timeMode,
+        timeInput: typeof overrideStartTime === "string" ? overrideStartTime : timeInputValue,
+      });
+      if (conflict) {
+        const { candidate, conflicts, suggestions } = conflict;
+        const conflictItems = conflicts.map((entry, idx) => {
+          const source = entry.source || {};
+          const goal = goalsById.get(source.goalId);
+          const start = minutesToTime(entry.conflict?.startMin);
+          const end = minutesToTime(entry.conflict?.endMin);
+          return {
+            id: source.id || `${source.goalId || "occ"}-${idx}`,
+            title: goal?.title || "Action",
+            dateKey: candidate.dateKey,
+            start,
+            end,
+            occurrenceId: source.id,
+          };
+        });
+        setConflictState({
+          candidate,
+          conflicts: conflictItems,
+          suggestions,
+          label: `Cette action chevauche une occurrence planifiée le ${candidate.dateKey}.`,
+        });
+        return;
+      }
     }
 
     const reminderConfig =
@@ -611,6 +773,15 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       const categoryId = updates.categoryId || item.categoryId;
       setData((prev) => {
         let nextState = prev;
+        if (conflictResolution?.cancelOccurrenceIds?.length) {
+          let updatedOccurrences = Array.isArray(prev.occurrences) ? prev.occurrences : [];
+          for (const occId of conflictResolution.cancelOccurrenceIds) {
+            updatedOccurrences = setOccurrenceStatusById(occId, "canceled", { occurrences: updatedOccurrences });
+          }
+          if (updatedOccurrences !== prev.occurrences) {
+            nextState = { ...nextState, occurrences: updatedOccurrences };
+          }
+        }
         if (categoryId === SYSTEM_INBOX_ID) {
           nextState = ensureSystemInboxCategory(nextState).state;
         }
@@ -670,6 +841,34 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     }
 
     if (typeof onBack === "function") onBack();
+  }
+
+  function applyConflictShift(nextStart) {
+    if (!nextStart) return;
+    setConflictState(null);
+    setTimeMode("FIXED");
+    setStartTime(nextStart);
+    setOneOffTime(nextStart);
+    setTimeSlots([nextStart]);
+    handleSave({ overrideStartTime: nextStart, overrideTimeMode: "FIXED" });
+  }
+
+  function applyConflictNoTime() {
+    setConflictState(null);
+    setTimeMode("NONE");
+    setStartTime("");
+    setOneOffTime("");
+    setTimeSlots([]);
+    handleSave({ overrideStartTime: "", overrideTimeMode: "NONE" });
+  }
+
+  function applyConflictReplace() {
+    if (!conflictState?.conflicts?.length) return;
+    const cancelOccurrenceIds = conflictState.conflicts
+      .map((c) => c.occurrenceId)
+      .filter((id) => typeof id === "string" && id.trim());
+    setConflictState(null);
+    handleSave({ conflictResolution: { cancelOccurrenceIds } });
   }
 
   function handleDelete() {
@@ -744,7 +943,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       headerTitle={<span className="textAccent">Modifier</span>}
       headerSubtitle={
         <div className="stack stackGap12">
-          <div>{item.title || (isProcess ? "Action" : "Objectif")}</div>
+          <div>{item.title || (isProcess ? LABELS.action : LABELS.goal)}</div>
           <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
             ← Retour
           </Button>
@@ -793,13 +992,13 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
                 {isProcess ? (
                   <div>
                     <div className="small" style={{ marginBottom: 6 }}>
-                      Objectif lié (optionnel)
+                      {LABELS.goal} lié (optionnel)
                     </div>
                     <Select value={effectiveSelectedOutcomeId} onChange={(e) => setSelectedOutcomeId(e.target.value)}>
-                      <option value="">Sans objectif</option>
+                      <option value="">{`Sans ${LABELS.goalLower}`}</option>
                       {outcomes.map((o) => (
                         <option key={o.id} value={o.id}>
-                          {o.title || "Objectif"}
+                          {o.title || LABELS.goal}
                         </option>
                       ))}
                     </Select>
@@ -1102,6 +1301,17 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
         </div>
       </Card>
       </div>
+
+      <ConflictResolver
+        open={Boolean(conflictState)}
+        onClose={() => setConflictState(null)}
+        candidateLabel={conflictState?.label}
+        conflicts={conflictState?.conflicts || []}
+        suggestions={conflictState?.suggestions || []}
+        onReplace={applyConflictReplace}
+        onShift={applyConflictShift}
+        onUnset={applyConflictNoTime}
+      />
     </ScreenShell>
   );
 }

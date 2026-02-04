@@ -13,6 +13,7 @@ import { canCreateCategory, isPremium } from "../logic/entitlements";
 import { safePrompt } from "../utils/dialogs";
 import { uid } from "../utils/helpers";
 import { buildPlanningSections } from "../utils/librarySections";
+import { LABELS } from "../ui/labels";
 
 // TOUR MAP:
 // - primary_action: open category detail
@@ -290,7 +291,7 @@ export default function Categories({
     const hasContent = objectives > 0 || habits > 0;
     const summary =
       objectives || habits
-        ? `${formatCount(objectives, "objectif", "objectifs")} · ${formatCount(habits, "action", "actions")}`
+        ? `${formatCount(objectives, LABELS.goalLower, LABELS.goalsLower)} · ${formatCount(habits, LABELS.actionLower, LABELS.actionsLower)}`
         : "Aucun élément";
 
     const isSelected = libraryViewSelectedId === category.id;
@@ -371,7 +372,7 @@ export default function Categories({
             </AccentItem>
             <div className="col gap8">
               <div className="small2 textMuted">
-                Objectifs
+                {LABELS.goals}
               </div>
               {outcomeGoals.length ? (
                 <div className="col gap8">
@@ -380,7 +381,7 @@ export default function Categories({
                     return (
                       <AccentItem key={g.id} className="listItem" style={detailAccentVars}>
                         <div className="row rowBetween gap8">
-                          <div className="itemTitle">{g.title || "Objectif"}</div>
+                          <div className="itemTitle">{g.title || LABELS.goal}</div>
                           {isPrimaryGoal ? (
                             <span className="badge badgeAccent">
                               Prioritaire
@@ -392,7 +393,7 @@ export default function Categories({
                   })}
                 </div>
               ) : (
-                <div className="small2">Aucun objectif dans cette catégorie.</div>
+                <div className="small2">Aucun {LABELS.goalLower} dans cette catégorie.</div>
               )}
             </div>
             {actionSections.length ? (
@@ -440,7 +441,7 @@ export default function Categories({
                   ))}
                   {!linkTargetId && unlinkedHabits.length ? (
                     <div className="small2 textMuted">
-                      Ajoute un objectif pour pouvoir lier ces actions.
+                      Ajoute un {LABELS.goalLower} pour pouvoir lier ces actions.
                     </div>
                   ) : null}
                 </div>

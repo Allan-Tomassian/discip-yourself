@@ -6,6 +6,7 @@ import AccentItem from "../components/AccentItem";
 import { getCategoryPilotageCounts, getCategoryStatus } from "../logic/pilotage";
 import {
   computeDailyStats,
+  computeGoalStats,
   computeStats,
   getWindowBounds,
   selectOccurrencesInRange,
@@ -13,6 +14,8 @@ import {
 import { buildReport, exportReportToCSV } from "../logic/reporting";
 import SortableBlocks from "../components/SortableBlocks";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
+import { LABELS } from "../ui/labels";
+import "./pilotage.css";
 
 // TOUR MAP:
 // - primary_action: planifier depuis l'état des catégories
@@ -65,11 +68,32 @@ const pct = (done, expected) => {
   return Math.round((d / e) * 100);
 };
 
-const remainingCount = (bucket) => {
-  if (!bucket || typeof bucket !== "object") return 0;
-  const v = bucket.remaining ?? bucket.planned;
-  return Number(v) || 0;
+const toMinutes = (time) => {
+  if (typeof time !== "string") return null;
+  const clean = time.trim();
+  if (!/^\d{2}:\d{2}$/.test(clean)) return null;
+  const [h, m] = clean.split(":").map((n) => Number(n));
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return h * 60 + m;
 };
+
+const resolveOccurrenceTime = (occ) => {
+  if (!occ || typeof occ !== "object") return "";
+  const start = typeof occ.start === "string" ? occ.start : "";
+  if (start && start !== "00:00") return start;
+  const resolved = typeof occ.resolvedStart === "string" ? occ.resolvedStart : "";
+  return resolved && resolved !== "00:00" ? resolved : "";
+};
+
+const TIME_BUCKETS = [
+  { id: "06-09", label: "06h–09h", from: 6 * 60, to: 9 * 60 },
+  { id: "09-12", label: "09h–12h", from: 9 * 60, to: 12 * 60 },
+  { id: "12-15", label: "12h–15h", from: 12 * 60, to: 15 * 60 },
+  { id: "15-18", label: "15h–18h", from: 15 * 60, to: 18 * 60 },
+  { id: "18-21", label: "18h–21h", from: 18 * 60, to: 21 * 60 },
+  { id: "21-24", label: "21h–24h", from: 21 * 60, to: 24 * 60 },
+];
 
 function Meter({ value01 = 0, label = "", tone = "accent" }) {
   const v = clamp01(value01);
@@ -138,6 +162,11 @@ export default function Pilotage({
     [safeData.categories]
   );
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
+  const goalsById = useMemo(() => {
+    const map = new Map();
+    for (const g of goals) if (g && g.id) map.set(g.id, g);
+    return map;
+  }, [goals]);
 
   const now = useMemo(() => {
     void safeData;
@@ -160,38 +189,23 @@ export default function Pilotage({
     return map;
   }, [categories, safeData, now]);
 
-  const todayBounds = useMemo(() => getWindowBounds("today", now), [now]);
   const weekBounds = useMemo(() => getWindowBounds("7d", now), [now]);
   const twoWeekBounds = useMemo(() => getWindowBounds("14d", now), [now]);
-  const ninetyBounds = useMemo(() => getWindowBounds("90d", now), [now]);
 
   const weekDailyStats = useMemo(
     () => computeDailyStats(safeData, weekBounds.fromKey, weekBounds.toKey),
     [safeData, weekBounds.fromKey, weekBounds.toKey]
   );
 
-  const todayStats = useMemo(() => {
-    const todayKey = todayBounds.fromKey;
-    const bucket = weekDailyStats.byDate.get(todayKey);
-    if (bucket) return bucket;
-    const list = selectOccurrencesInRange(safeData, todayKey, todayKey);
-    return computeStats(list);
-  }, [safeData, todayBounds.fromKey, weekDailyStats.byDate]);
-
   const stats14d = useMemo(() => {
     const list = selectOccurrencesInRange(safeData, twoWeekBounds.fromKey, twoWeekBounds.toKey);
     return computeStats(list);
   }, [safeData, twoWeekBounds.fromKey, twoWeekBounds.toKey]);
 
-  const stats90d = useMemo(() => {
-    const list = selectOccurrencesInRange(safeData, ninetyBounds.fromKey, ninetyBounds.toKey);
-    return computeStats(list);
-  }, [safeData, ninetyBounds.fromKey, ninetyBounds.toKey]);
 
   const selectedCategoryId =
     safeData?.ui?.selectedCategoryByView?.pilotage || categories?.[0]?.id || null;
 
-  const [disciplineWindow, setDisciplineWindow] = useState("7d");
   const [reportWindow, setReportWindow] = useState("7d");
   const [reportFrom, setReportFrom] = useState("");
   const [reportTo, setReportTo] = useState("");
@@ -205,118 +219,22 @@ export default function Pilotage({
     setReportTo(bounds.toKey);
   }, [reportWindow, now]);
 
-  const disciplineModel = useMemo(() => {
-    const byWindow = {
-      "7d": weekDailyStats.totals,
-      "14d": stats14d,
-      "90d": stats90d,
-    };
-    const stats = byWindow[disciplineWindow] || weekDailyStats.totals;
-    const expected = Number(stats?.expected) || 0;
-    const done = Number(stats?.done) || 0;
-    const missed = Number(stats?.missed) || 0;
-    const score = expected > 0 ? Math.round((done / expected) * 100) : 100;
-    return {
-      window: disciplineWindow,
-      score,
-      expected,
-      missed,
-      done,
-      canceled: Number(stats?.canceled) || 0,
-    };
-  }, [disciplineWindow, stats14d, stats90d, weekDailyStats.totals]);
-
-  const disciplineScore = disciplineModel.score;
-
-  const todayPct = useMemo(
-    () => pct(todayStats?.done, todayStats?.expected),
-    [todayStats]
-  );
   const weekPct = useMemo(
     () => pct(weekDailyStats.totals?.done, weekDailyStats.totals?.expected),
     [weekDailyStats.totals]
   );
+  const twoWeekPct = useMemo(
+    () => pct(stats14d?.done, stats14d?.expected),
+    [stats14d]
+  );
 
-  const todayRemaining = useMemo(() => remainingCount(todayStats), [todayStats]);
-  const weekRemaining = useMemo(() => remainingCount(weekDailyStats.totals), [weekDailyStats.totals]);
-
-  const todayExpected = Number(todayStats?.expected) || 0;
-  const todayDone = Number(todayStats?.done) || 0;
   const weekExpected = Number(weekDailyStats.totals?.expected) || 0;
   const weekDone = Number(weekDailyStats.totals?.done) || 0;
-  const weekMissed = Number(weekDailyStats.totals?.missed) || 0;
 
-  const disciplineTone = useMemo(() => {
-    if (disciplineScore >= 95) return "good";
-    if (disciplineScore >= 80) return "warn";
-    return "bad";
-  }, [disciplineScore]);
-
-  const disciplineWindowLabel = useMemo(() => {
-    if (disciplineWindow === "14d") return "14j";
-    if (disciplineWindow === "90d") return "90j";
-    return "7j";
-  }, [disciplineWindow]);
-
-  const noExecutionDays7d = useMemo(() => {
-    let count = 0;
-    for (const stats of weekDailyStats.byDate.values()) {
-      const expected = Number(stats?.expected) || 0;
-      const done = Number(stats?.done) || 0;
-      if (expected > 0 && done === 0) count += 1;
-    }
-    return count;
-  }, [weekDailyStats.byDate]);
-
-  const cancelledSessions7d = Number(weekDailyStats.totals?.canceled) || 0;
-
-  const disciplineInsights = useMemo(() => {
-    const items = [];
-    const cancelled = cancelledSessions7d;
-    const noExec = noExecutionDays7d;
-
-    const expected = disciplineModel.expected;
-    const missed = disciplineModel.missed;
-
-    if (expected === 0) {
-      items.push({
-        tone: "warn",
-        title: `Aucune occurrence attendue (${disciplineWindowLabel})`,
-        detail:
-          "Sans occurrence attendue, la discipline reste à 100% mais tu ne progresses pas. Planifie au moins 1 action récurrente clé.",
-      });
-    } else if (missed > 0) {
-      items.push({
-        tone: "bad",
-        title: `${missed} occurrence${missed > 1 ? "s" : ""} manquée${missed > 1 ? "s" : ""} (${disciplineWindowLabel})`,
-        detail: "Ton score baisse uniquement quand une occurrence attendue n'est pas exécutée.",
-      });
-    } else {
-      items.push({
-        tone: "good",
-        title: "Fenêtre parfaite",
-        detail: "Aucune occurrence manquée sur la période sélectionnée.",
-      });
-    }
-
-    if (noExec > 0) {
-      items.push({
-        tone: "warn",
-        title: `${noExec} jour${noExec > 1 ? "s" : ""} sans exécution (7j)`,
-        detail: "Objectif : 0. Même 1 action simple compte.",
-      });
-    }
-
-    if (cancelled > 0) {
-      items.push({
-        tone: "warn",
-        title: `${cancelled} occurrence${cancelled > 1 ? "s" : ""} annulée${cancelled > 1 ? "s" : ""} (7j)`,
-        detail: "Trop d'annulations = plan trop ambitieux ou mal placé.",
-      });
-    }
-
-    return items;
-  }, [cancelledSessions7d, disciplineModel, disciplineWindowLabel, noExecutionDays7d]);
+  const trendDelta = useMemo(() => {
+    if (weekPct == null || twoWeekPct == null) return null;
+    return Math.round(weekPct - twoWeekPct);
+  }, [weekPct, twoWeekPct]);
 
   const selectedCategory = useMemo(
     () => categories.find((c) => c.id === selectedCategoryId) || null,
@@ -341,24 +259,175 @@ export default function Pilotage({
     return computeStats(list);
   }, [safeData, selectedCategoryId, weekBounds.fromKey, weekBounds.toKey]);
 
-  const streak7d = useMemo(() => {
-    const todayKey = todayBounds.fromKey;
-    const keys = Array.from(weekDailyStats.byDate.keys()).filter((k) => k < todayKey);
-    let streak = 0;
-    for (let i = keys.length - 1; i >= 0; i -= 1) {
-      const key = keys[i];
-      const stats = weekDailyStats.byDate.get(key);
-      const expected = Number(stats?.expected) || 0;
-      const done = Number(stats?.done) || 0;
-      if (expected === 0) continue;
-      if (done >= expected) {
-        streak += 1;
-        continue;
+  const radarWindow = twoWeekBounds;
+
+  const categoryRadarRows = useMemo(() => {
+    if (!categories.length) return [];
+    const out = [];
+    for (const c of categories) {
+      const list = selectOccurrencesInRange(safeData, radarWindow.fromKey, radarWindow.toKey, {
+        categoryId: c.id,
+      });
+      const stats = computeStats(list);
+      const daily = computeDailyStats(safeData, radarWindow.fromKey, radarWindow.toKey, {
+        categoryId: c.id,
+      });
+      const totalDays = Math.max(1, daily.byDate.size);
+      let activeDays = 0;
+      for (const bucket of daily.byDate.values()) {
+        const done = Number(bucket?.done) || 0;
+        if (done > 0) activeDays += 1;
       }
-      break;
+      const expected = Number(stats.expected) || 0;
+      const done = Number(stats.done) || 0;
+      const discipline = expected > 0 ? done / expected : 0;
+      const regularity = activeDays / totalDays;
+      const expectedPerDay = expected / totalDays;
+      const load = clamp01(expectedPerDay / 3);
+      const byGoal = computeGoalStats(safeData, radarWindow.fromKey, radarWindow.toKey, { categoryId: c.id });
+      let topExpected = 0;
+      for (const bucket of byGoal.values()) {
+        const v = Number(bucket?.expected) || 0;
+        if (v > topExpected) topExpected = v;
+      }
+      const focus = expected > 0 ? topExpected / expected : 0;
+      out.push({
+        categoryId: c.id,
+        label: c.name || "Catégorie",
+        color: c.color || c.accentColor || c.hex || c.themeColor || "#6EE7FF",
+        values: [
+          { axis: "Discipline", value: discipline },
+          { axis: "Régularité", value: regularity },
+          { axis: "Charge", value: load },
+          { axis: "Focus", value: focus },
+        ],
+        raw: { discipline, regularity, load, focus, expected, done },
+      });
     }
-    return streak;
-  }, [todayBounds.fromKey, weekDailyStats.byDate]);
+    out.sort((a, b) => (b.raw.expected || 0) - (a.raw.expected || 0));
+    return out;
+  }, [categories, radarWindow.fromKey, radarWindow.toKey, safeData]);
+
+  const defaultRadarSelection = useMemo(
+    () => categoryRadarRows.slice(0, 3).map((row) => row.categoryId),
+    [categoryRadarRows]
+  );
+  const [radarSelection, setRadarSelection] = useState(defaultRadarSelection);
+
+  useEffect(() => {
+    if (!defaultRadarSelection.length) {
+      setRadarSelection([]);
+      return;
+    }
+    setRadarSelection((prev) => {
+      const next = defaultRadarSelection.map((id, idx) => prev?.[idx] || id);
+      return next.slice(0, 3);
+    });
+  }, [defaultRadarSelection]);
+
+  const radarVisibleRows = useMemo(() => {
+    const selected = radarSelection.filter(Boolean);
+    const rows = selected
+      .map((id) => categoryRadarRows.find((row) => row.categoryId === id))
+      .filter(Boolean);
+    return rows.slice(0, 3);
+  }, [categoryRadarRows, radarSelection]);
+
+  const handleRadarSelect = useCallback(
+    (slotIndex, nextId) => {
+      setRadarSelection((prev) => {
+        const next = Array.isArray(prev) ? [...prev] : [];
+        const existingIndex = next.findIndex((id) => id === nextId);
+        if (existingIndex >= 0 && existingIndex !== slotIndex) {
+          next[existingIndex] = next[slotIndex];
+        }
+        next[slotIndex] = nextId;
+        return next.slice(0, 3);
+      });
+    },
+    []
+  );
+
+  const insights = useMemo(() => {
+    const list = selectOccurrencesInRange(safeData, radarWindow.fromKey, radarWindow.toKey);
+    const byCategory = new Map();
+    const missedByGoal = new Map();
+    const timeBuckets = new Map(TIME_BUCKETS.map((b) => [b.id, { done: 0, expected: 0 }]));
+
+    for (const occ of list) {
+      if (!occ || typeof occ.goalId !== "string") continue;
+      const goal = goalsById.get(occ.goalId);
+      const categoryId = goal?.categoryId;
+      if (categoryId) {
+        const bucket = byCategory.get(categoryId) || { done: 0, expected: 0 };
+        if (occ.status !== "canceled" && occ.status !== "skipped") bucket.expected += 1;
+        if (occ.status === "done") bucket.done += 1;
+        byCategory.set(categoryId, bucket);
+      }
+
+      if (occ.status === "missed") {
+        missedByGoal.set(occ.goalId, (missedByGoal.get(occ.goalId) || 0) + 1);
+      }
+
+      const start = resolveOccurrenceTime(occ);
+      const minutes = toMinutes(start);
+      if (minutes == null) continue;
+      const bucket = TIME_BUCKETS.find((b) => minutes >= b.from && minutes < b.to);
+      if (!bucket) continue;
+      const entry = timeBuckets.get(bucket.id);
+      if (!entry) continue;
+      entry.expected += 1;
+      if (occ.status === "done") entry.done += 1;
+    }
+
+    let topCategoryId = null;
+    let topScore = -1;
+    for (const [catId, stats] of byCategory.entries()) {
+      const expected = stats.expected || 0;
+      const done = stats.done || 0;
+      const score = expected > 0 ? done / expected : 0;
+      if (score > topScore) {
+        topScore = score;
+        topCategoryId = catId;
+      }
+    }
+    const topCategory = categories.find((c) => c.id === topCategoryId) || null;
+
+    let missedGoalId = "";
+    let missedCount = 0;
+    for (const [goalId, count] of missedByGoal.entries()) {
+      if (count > missedCount) {
+        missedCount = count;
+        missedGoalId = goalId;
+      }
+    }
+    const missedGoal = missedGoalId ? goalsById.get(missedGoalId) : null;
+
+    let bestBucket = null;
+    let bestRate = -1;
+    for (const bucket of TIME_BUCKETS) {
+      const stats = timeBuckets.get(bucket.id);
+      const expected = stats?.expected || 0;
+      if (!expected) continue;
+      const rate = (stats?.done || 0) / expected;
+      if (rate > bestRate) {
+        bestRate = rate;
+        bestBucket = bucket;
+      }
+    }
+
+    return {
+      topCategory:
+        topCategory && topScore >= 0
+          ? `Top catégorie : ${topCategory.name || "Catégorie"}`
+          : "Top catégorie : —",
+      missedAction:
+        missedGoal && missedCount > 0
+          ? `1 action clé manquée : ${missedGoal.title || "Action"}`
+          : "1 action clé manquée : aucune",
+      bestSlot: bestBucket ? `Meilleur créneau : ${bestBucket.label}` : "Meilleur créneau : —",
+    };
+  }, [categories, goalsById, radarWindow.fromKey, radarWindow.toKey, safeData]);
 
   const reportGoals = useMemo(() => {
     const list = goals.filter((g) => g && typeof g.id === "string");
@@ -424,7 +493,6 @@ export default function Pilotage({
     [blockOrder]
   );
 
-  const showPlanningCta = Boolean(categories.length && weekExpected === 0);
 
   const handleReorder = useCallback(
     (nextItems) => {
@@ -608,7 +676,7 @@ export default function Pilotage({
                       const label = statusByCategory.get(c.id) || "ACTIVE";
                       const summary =
                         counts.activeOutcomesCount || counts.processCount
-                          ? `${counts.activeOutcomesCount} objectifs · ${counts.processCount} actions`
+                          ? `${counts.activeOutcomesCount} ${LABELS.goalsLower} · ${counts.processCount} ${LABELS.actionsLower}`
                           : "Aucun élément";
 
                       const isSelected = selectedCategoryId === c.id;
@@ -667,7 +735,7 @@ export default function Pilotage({
                           label={selectedCategory?.name || "Catégorie"}
                           value={
                             selectedCounts
-                              ? `${selectedCounts.activeOutcomesCount || 0} objectifs · ${selectedCounts.processCount || 0} actions`
+                              ? `${selectedCounts.activeOutcomesCount || 0} ${LABELS.goalsLower} · ${selectedCounts.processCount || 0} ${LABELS.actionsLower}`
                               : "—"
                           }
                         />
@@ -686,7 +754,7 @@ export default function Pilotage({
                           }
                         />
                         <div className="small2 textMuted">
-                          Conseil : vise 1 objectif actif + 1 à 3 actions récurrentes. Le reste = bruit.
+                          Conseil : vise 1 {LABELS.goalLower} actif + 1 à 3 actions récurrentes. Le reste = bruit.
                         </div>
                       </div>
                     </div>
@@ -698,103 +766,54 @@ export default function Pilotage({
 
           if (blockId === "pilotage.charge") {
             return (
-              <Card data-tour-id="pilotage-load">
-                <div className="p18">
-                  <div className="row" style={{ alignItems: "center", gap: 8 }}>
-                    {drag ? (
-                      <button
-                        ref={setActivatorNodeRef}
-                        {...listeners}
-                        {...attributes}
-                        className="dragHandle"
-                        aria-label="Réorganiser"
+              <div className="pilotageTopGrid" data-tour-id="pilotage-load">
+                <Card>
+                  <div className="p18">
+                    <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                      {drag ? (
+                        <button
+                          ref={setActivatorNodeRef}
+                          {...listeners}
+                          {...attributes}
+                          className="dragHandle"
+                          aria-label="Réorganiser"
+                        >
+                          ⋮⋮
+                        </button>
+                      ) : null}
+                      <div className="sectionTitle">Discipline</div>
+                    </div>
+                    <div className="pilotageMetricMain">
+                      <div className="pilotageMetricValue">
+                        {weekDone}/{weekExpected}
+                      </div>
+                      <div className="small2 textMuted">fait / attendu (7j)</div>
+                    </div>
+                    <Meter
+                      value01={weekPct == null ? 0 : weekPct / 100}
+                      tone={weekPct == null ? "accent" : weekPct >= 95 ? "good" : weekPct >= 80 ? "warn" : "bad"}
+                    />
+                  </div>
+                </Card>
+
+                <Card>
+                  <div className="p18">
+                    <div className="sectionTitle">Tendance</div>
+                    <div className="pilotageMetricMain">
+                      <div
+                        className={`pilotageTrendValue ${trendDelta != null && trendDelta >= 0 ? "is-up" : "is-down"}`}
                       >
-                        ⋮⋮
-                      </button>
-                    ) : null}
-                    <div className="sectionTitle">Charge</div>
+                        {trendDelta == null ? "—" : `${trendDelta >= 0 ? "+" : ""}${trendDelta} pts`}
+                      </div>
+                      <div className="small2 textMuted">7j vs 14j</div>
+                    </div>
+                    <div className="small2 textMuted">
+                      {weekPct == null ? "7j : —" : `7j : ${weekPct}%`} ·{" "}
+                      {twoWeekPct == null ? "14j : —" : `14j : ${twoWeekPct}%`}
+                    </div>
                   </div>
-
-                  <div className="mt12 col" style={{ gap: 10 }}>
-                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                      <div className="itemTitle">Aujourd'hui</div>
-                      <div className="row" style={{ alignItems: "center", gap: 8 }}>
-                        {todayExpected > 0 ? (
-                          <span className="badge" style={{ ...STATUS_STYLES.ACTIVE, borderWidth: 1, borderStyle: "solid" }}>
-                            {todayDone}/{todayExpected}
-                          </span>
-                        ) : (
-                          <span className="badge" style={{ ...STATUS_STYLES.DONE, borderWidth: 1, borderStyle: "solid" }}>
-                            0 attendue
-                          </span>
-                        )}
-                        {todayRemaining > 0 ? (
-                          <span className="badge" style={{ ...STATUS_STYLES.EMPTY, borderWidth: 1, borderStyle: "solid" }}>
-                            {todayRemaining} restante{todayRemaining > 1 ? "s" : ""}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                      <div className="itemTitle">Cette semaine</div>
-                      <div className="row" style={{ alignItems: "center", gap: 8 }}>
-                        {weekExpected > 0 ? (
-                          <span className="badge" style={{ ...STATUS_STYLES.ACTIVE, borderWidth: 1, borderStyle: "solid" }}>
-                            {weekDone}/{weekExpected}
-                          </span>
-                        ) : (
-                          <span className="badge" style={{ ...STATUS_STYLES.DONE, borderWidth: 1, borderStyle: "solid" }}>
-                            0 attendue
-                          </span>
-                        )}
-                        {weekRemaining > 0 ? (
-                          <span className="badge" style={{ ...STATUS_STYLES.EMPTY, borderWidth: 1, borderStyle: "solid" }}>
-                            {weekRemaining} restante{weekRemaining > 1 ? "s" : ""}
-                          </span>
-                        ) : null}
-                        {weekMissed > 0 ? (
-                          <span className="badge" style={{
-                            backgroundColor: "rgba(244,67,54,0.14)",
-                            borderColor: "rgba(244,67,54,0.8)",
-                            color: "#FFECEC",
-                            borderWidth: 1,
-                            borderStyle: "solid",
-                          }}>
-                            {weekMissed} manquée{weekMissed > 1 ? "s" : ""}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <div className="mt6 col" style={{ gap: 12 }}>
-                      <Meter
-                        label={todayPct == null ? "Aujourd’hui · aucune occurrence attendue" : `Aujourd’hui · ${todayPct}%`}
-                        value01={todayPct == null ? 0 : todayPct / 100}
-                        tone={todayPct == null ? "accent" : todayPct >= 95 ? "good" : todayPct >= 80 ? "warn" : "bad"}
-                      />
-                      <Meter
-                        label={weekPct == null ? "Cette semaine · aucune occurrence attendue" : `Cette semaine · ${weekPct}%`}
-                        value01={weekPct == null ? 0 : weekPct / 100}
-                        tone={weekPct == null ? "accent" : weekPct >= 95 ? "good" : weekPct >= 80 ? "warn" : "bad"}
-                      />
-                    </div>
-
-                    {showPlanningCta ? (
-                      <div className="mt10">
-                        <div className="small2 textMuted">
-                          {isPlanningUnlimited
-                            ? "Planning illimité : aucune occurrence attendue pour le moment."
-                            : Number.isFinite(generationWindowDays) && generationWindowDays > 0
-                              ? `0 occurrence attendue sur ${Math.floor(generationWindowDays)} jours.`
-                              : "0 occurrence attendue sur les prochains jours."}
-                        </div>
-                        <div className="mt8 small2 textMuted">Utilise le bouton + pour créer une action attendue.</div>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              </Card>
+                </Card>
+              </div>
             );
           }
 
@@ -814,165 +833,114 @@ export default function Pilotage({
                         ⋮⋮
                       </button>
                     ) : null}
-                    <div className="sectionTitle">Discipline</div>
+                    <div className="sectionTitle">Radar & insights</div>
                   </div>
 
-                  <div className="mt12 col" style={{ gap: 12 }}>
-                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <div className="itemTitle">Score discipline</div>
-                        <div className="small2 textMuted">
-                          {disciplineWindow === "90d"
-                            ? "Fenêtre 90 jours"
-                            : disciplineWindow === "14d"
-                              ? "Fenêtre 14 jours"
-                              : "Fenêtre 7 jours"}{" "}
-                          · 100% = aucune occurrence manquée
-                        </div>
+                  <div className="pilotageRadarGrid">
+                    <div className="pilotageRadarPanel">
+                      <div className="pilotageRadarSvg">
+                        {radarVisibleRows.length ? (
+                          <svg viewBox="0 0 240 240" role="img" aria-label="Radar discipline">
+                            <circle cx="120" cy="120" r="96" className="pilotageRadarGridLine" />
+                            <circle cx="120" cy="120" r="64" className="pilotageRadarGridLine" />
+                            <circle cx="120" cy="120" r="32" className="pilotageRadarGridLine" />
+                            {["Discipline", "Régularité", "Charge", "Focus"].map((label, idx) => {
+                              const angle = (Math.PI * 2 * idx) / 4 - Math.PI / 2;
+                              const x = 120 + Math.cos(angle) * 110;
+                              const y = 120 + Math.sin(angle) * 110;
+                              return (
+                                <g key={label}>
+                                  <line
+                                    x1="120"
+                                    y1="120"
+                                    x2={x}
+                                    y2={y}
+                                    className="pilotageRadarAxis"
+                                  />
+                                  <text x={x} y={y} className="pilotageRadarLabel">
+                                    {label}
+                                  </text>
+                                </g>
+                              );
+                            })}
+                            {radarVisibleRows.map((row) => {
+                              const points = row.values
+                                .map((axis, idx) => {
+                                  const angle = (Math.PI * 2 * idx) / 4 - Math.PI / 2;
+                                  const r = 96 * clamp01(axis.value || 0);
+                                  const x = 120 + Math.cos(angle) * r;
+                                  const y = 120 + Math.sin(angle) * r;
+                                  return `${x},${y}`;
+                                })
+                                .join(" ");
+                              return (
+                                <polygon
+                                  key={row.categoryId}
+                                  points={points}
+                                  fill={row.color}
+                                  fillOpacity="0.18"
+                                  stroke={row.color}
+                                  strokeWidth="2"
+                                />
+                              );
+                            })}
+                          </svg>
+                        ) : (
+                          <div className="small2 textMuted">Aucune donnée récente.</div>
+                        )}
                       </div>
-                      <span
-                        className="badge"
-                        style={{
-                          ...(disciplineTone === "good"
-                            ? STATUS_STYLES.ACTIVE
-                            : disciplineTone === "warn"
-                              ? STATUS_STYLES.EMPTY
-                              : {
-                                  backgroundColor: "rgba(244,67,54,0.14)",
-                                  borderColor: "rgba(244,67,54,0.8)",
-                                  color: "#FFECEC",
-                                }),
-                          borderWidth: 1,
-                          borderStyle: "solid",
-                        }}
-                      >
-                        {disciplineScore}%
-                      </span>
-                    </div>
-
-                    <Meter value01={disciplineScore / 100} tone={disciplineTone} />
-
-                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                      <div className="row" style={{ gap: 8 }}>
-                        <button
-                          type="button"
-                          className={disciplineWindow === "7d" ? "segBtn segBtnActive" : "segBtn"}
-                          onClick={() => setDisciplineWindow("7d")}
-                          style={{
-                            padding: "8px 10px",
-                            borderRadius: 12,
-                            border: "1px solid rgba(255,255,255,0.14)",
-                            background: disciplineWindow === "7d" ? "rgba(124,58,237,0.22)" : "rgba(255,255,255,0.06)",
-                            color: "rgba(255,255,255,0.92)",
-                            fontSize: 12,
-                          }}
-                        >
-                          7j
-                        </button>
-                        <button
-                          type="button"
-                          className={disciplineWindow === "14d" ? "segBtn segBtnActive" : "segBtn"}
-                          onClick={() => setDisciplineWindow("14d")}
-                          style={{
-                            padding: "8px 10px",
-                            borderRadius: 12,
-                            border: "1px solid rgba(255,255,255,0.14)",
-                            background: disciplineWindow === "14d" ? "rgba(124,58,237,0.22)" : "rgba(255,255,255,0.06)",
-                            color: "rgba(255,255,255,0.92)",
-                            fontSize: 12,
-                          }}
-                        >
-                          14j
-                        </button>
-                        <button
-                          type="button"
-                          className={disciplineWindow === "90d" ? "segBtn segBtnActive" : "segBtn"}
-                          onClick={() => setDisciplineWindow("90d")}
-                          style={{
-                            padding: "8px 10px",
-                            borderRadius: 12,
-                            border: "1px solid rgba(255,255,255,0.14)",
-                            background: disciplineWindow === "90d" ? "rgba(124,58,237,0.22)" : "rgba(255,255,255,0.06)",
-                            color: "rgba(255,255,255,0.92)",
-                            fontSize: 12,
-                          }}
-                        >
-                          90j
-                        </button>
-                      </div>
-
-                      <span
-                        className="badge"
-                        style={{ ...STATUS_STYLES.ACTIVE, borderWidth: 1, borderStyle: "solid" }}
-                      >
-                        Streak: {streak7d}j
-                      </span>
-                    </div>
-
-                    <div className="col" style={{ gap: 10 }}>
-                      <StatRow label="Occurrences attendues" value={String(disciplineModel.expected)} />
-                      <StatRow label="Occurrences faites" value={String(disciplineModel.done)} />
-                      <StatRow label="Occurrences manquées" value={String(disciplineModel.missed)} />
-                      <StatRow label="Occurrences annulées (7j)" value={String(cancelledSessions7d)} />
-                      <StatRow label="Jours sans exécution (7j)" value={String(noExecutionDays7d)} />
-                    </div>
-
-                    <div style={{ paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                      <div className="sectionTitle">Analyse</div>
-                      <div className="mt10 col" style={{ gap: 10 }}>
-                        {disciplineInsights.map((it, idx) => {
-                          const tone = it.tone || "accent";
-                          const style =
-                            tone === "good"
-                              ? STATUS_STYLES.ACTIVE
-                              : tone === "warn"
-                                ? STATUS_STYLES.EMPTY
-                                : {
-                                    backgroundColor: "rgba(244,67,54,0.14)",
-                                    borderColor: "rgba(244,67,54,0.8)",
-                                    color: "#FFECEC",
-                                  };
-                          return (
-                            <div
-                              key={`${it.title}-${idx}`}
-                              className="row"
-                              style={{
-                                gap: 10,
-                                alignItems: "flex-start",
-                                padding: 10,
-                                borderRadius: 14,
-                                border: `1px solid ${style.borderColor}`,
-                                background: style.backgroundColor,
-                              }}
-                            >
-                              <div style={{ minWidth: 0 }}>
-                                <div className="itemTitle" style={{ color: style.color }}>
-                                  {it.title}
-                                </div>
-                                <div className="small2" style={{ opacity: 0.95 }}>
-                                  {it.detail}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      <div className="mt12">
-                        <div className="small2 textMuted">
-                          Règle : ton score baisse uniquement quand une occurrence attendue n’est pas exécutée.
-                        </div>
+                      <div className="pilotageRadarLegend">
+                        {radarVisibleRows.map((row) => (
+                          <div key={row.categoryId} className="pilotageLegendRow">
+                            <span className="pilotageLegendDot" style={{ background: row.color }} />
+                            <span className="small2">{row.label}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
-
-                    {showPlanningCta ? (
-                      <div className="mt10">
-                        <div className="small2 textMuted">
-                          Aucune occurrence attendue. Crée une action (récurrente, ponctuelle, ou “sans heure”) pour rendre la discipline mesurable.
-                        </div>
+                    <div className="pilotageRadarPanel">
+                      <div className="sectionTitle">Catégories visibles</div>
+                      <div className="pilotageRadarSelects">
+                        {radarSelection.slice(0, 3).map((id, idx) => (
+                          <Select
+                            key={`radar-slot-${idx}`}
+                            value={id || ""}
+                            onChange={(e) => handleRadarSelect(idx, e.target.value)}
+                          >
+                            {categoryRadarRows.map((row) => (
+                              <option key={row.categoryId} value={row.categoryId}>
+                                {row.label}
+                              </option>
+                            ))}
+                          </Select>
+                        ))}
                       </div>
-                    ) : null}
+                      <div className="small2 textMuted">
+                        Règles: Discipline=fait/attendu (14j), Régularité=jours actifs/14,
+                        Charge=attendu/jour (cap 3), Focus=part de l’action n°1.
+                      </div>
+                    </div>
                   </div>
+
+                  <div className="pilotageInsights">
+                    <div className="sectionTitle">Insights</div>
+                    <div className="pilotageInsightItem">{insights.topCategory}</div>
+                    <div className="pilotageInsightItem">{insights.missedAction}</div>
+                    <div className="pilotageInsightItem">{insights.bestSlot}</div>
+                  </div>
+
+                  <details className="pilotageDetails">
+                    <summary>Détails</summary>
+                    <div className="pilotageDetailsBody">
+                      <StatRow label="7j · attendues" value={String(weekDailyStats.totals?.expected || 0)} />
+                      <StatRow label="7j · faites" value={String(weekDailyStats.totals?.done || 0)} />
+                      <StatRow label="7j · manquées" value={String(weekDailyStats.totals?.missed || 0)} />
+                      <StatRow label="14j · attendues" value={String(stats14d?.expected || 0)} />
+                      <StatRow label="14j · faites" value={String(stats14d?.done || 0)} />
+                      <StatRow label="14j · manquées" value={String(stats14d?.missed || 0)} />
+                      <StatRow label="14j · annulées" value={String(stats14d?.canceled || 0)} />
+                    </div>
+                  </details>
                 </div>
               </Card>
             );

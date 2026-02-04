@@ -18,6 +18,7 @@
   --border-strong: var(--borderStrong);
   --text-strong: var(--textStrong);
   --shadow-soft: var(--shadowSoft);
+  --app-modal-max: 720px;
   --shadow-card: var(--shadowCard);
 
   /* Z-index scale */
@@ -975,14 +976,6 @@ a{ color:inherit; }
   cursor:pointer;
   padding:0;
   font-size:var(--font-sm);
-}
-.microToggle{
-  text-decoration:none;
-  width:18px;
-  height:18px;
-  display:inline-grid;
-  place-items:center;
-  line-height:1;
 }
 .statButton{
   width:100%;

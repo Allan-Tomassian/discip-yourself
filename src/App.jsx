@@ -1,11 +1,17 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import TopNav from "./components/TopNav";
 import CategoryRail from "./components/CategoryRail";
-import { migrate, usePersistedState } from "./logic/state";
+import {
+  ensureSystemInboxCategory,
+  migrate,
+  normalizeCategory,
+  usePersistedState,
+} from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
 import { getDueReminders, playReminderSound, sendReminderNotification } from "./logic/reminders";
 import { Button, Card } from "./components/UI";
 import PlusExpander from "./components/PlusExpander";
+import CategoryGateModal from "./components/CategoryGateModal";
 import { markIOSRootClass, safeAlert } from "./utils/dialogs";
 
 import Onboarding from "./pages/Onboarding";
@@ -33,8 +39,12 @@ import { applyThemeTokens } from "./theme/themeTokens";
 import { toLocalDateKey, todayLocalKey } from "./utils/dateKey";
 import { isPrimaryCategory, normalizePriorities } from "./logic/priority";
 import { resolveGoalType } from "./domain/goalType";
+import { canCreate } from "./logic/categoryGate";
+import { LABELS } from "./ui/labels";
+import { findSuggestedCategory } from "./utils/categoriesSuggested";
 import {
   canCreateAction,
+  canCreateCategory,
   canCreateOutcome,
   getGenerationWindowDays,
   getPlanLimits,
@@ -511,6 +521,7 @@ export default function App() {
     () => (Array.isArray(safeData.categories) ? safeData.categories : []),
     [safeData.categories]
   );
+  const categoriesById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   const categoryIdsKey = useMemo(() => categories.map((c) => c.id).join("|"), [categories]);
   const categoryRailOrder = useMemo(
     () => ensureOrder(safeData?.ui?.categoryRailOrder, categories),
@@ -531,7 +542,24 @@ export default function App() {
   const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
   const homeActiveCategoryId =
     safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
+  const selectedCategoryId = safeData?.ui?.selectedCategoryId || null;
+  const hasSelectedCategory = Boolean(selectedCategoryId && categoriesById.has(selectedCategoryId));
   const homeSelectedCategoryId = getHomeSelectedCategoryId(safeData);
+  const canCreateWithActiveCategory = useMemo(
+    () => canCreate({ activeCategoryId: homeActiveCategoryId, categories }),
+    [homeActiveCategoryId, categories]
+  );
+  const [plusOpen, setPlusOpen] = useState(false);
+  const [plusAnchorRect, setPlusAnchorRect] = useState(null);
+  const [plusContext, setPlusContext] = useState({ source: null, categoryId: null });
+  const plusAnchorElRef = useRef(null);
+  const [categoryGateOpen, setCategoryGateOpen] = useState(false);
+  const [categoryGateContext, setCategoryGateContext] = useState({
+    source: null,
+    intent: null,
+    anchorRect: null,
+    anchorEl: null,
+  });
   const resetCreateDraft = () => {
     if (typeof setData !== "function") return;
     setData((prev) => {
@@ -547,6 +575,39 @@ export default function App() {
       };
     });
   };
+  useEffect(() => {
+    if (!isCreateTab || typeof setData !== "function") return;
+    if (!hasSelectedCategory) {
+      if (!categoryGateOpen) openCategoryGate({ source: "create-block" });
+      if (tab !== "today") setTab("today");
+      return;
+    }
+    const draftCategoryId =
+      draft?.category && draft.category.mode === "existing" ? draft.category.id : null;
+    if (draftCategoryId) return;
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      const prevDraft = normalizeCreationDraft(prevUi.createDraft);
+      const prevCatId =
+        prevDraft?.category && prevDraft.category.mode === "existing" ? prevDraft.category.id : null;
+      if (prevCatId) return prev;
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          createDraft: { ...prevDraft, category: { mode: "existing", id: selectedCategoryId } },
+        },
+      };
+    });
+  }, [
+    isCreateTab,
+    selectedCategoryId,
+    hasSelectedCategory,
+    draft?.category,
+    setData,
+    categoryGateOpen,
+    tab,
+  ]);
   const seedCreateDraft = ({ source, categoryId, outcomeId, step } = {}) => {
     if (typeof setData !== "function") return;
     setData((prev) => {
@@ -864,11 +925,6 @@ export default function App() {
     openCreateOutcomeDirect({ source: "pilotage", categoryId });
   };
 
-  const [plusOpen, setPlusOpen] = useState(false);
-  const [plusAnchorRect, setPlusAnchorRect] = useState(null);
-  const [plusContext, setPlusContext] = useState({ source: null, categoryId: null });
-  const plusAnchorElRef = useRef(null);
-
   const normalizeAnchorRect = (rect) => {
     if (!rect) return null;
     return {
@@ -881,6 +937,42 @@ export default function App() {
     };
   };
 
+  const setActiveCategory = useCallback(
+    (categoryId) => {
+      if (!categoryId || typeof setData !== "function") return;
+      setData((prev) => {
+        const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
+        if (!prevCategories.some((c) => c && c.id === categoryId)) return prev;
+        const prevUi = prev.ui || {};
+        const prevSel =
+          prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+            ? prevUi.selectedCategoryByView
+            : {};
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            selectedCategoryId: categoryId,
+            librarySelectedCategoryId: categoryId,
+            selectedCategoryByView: { ...prevSel, home: categoryId, library: categoryId, pilotage: categoryId },
+          },
+        };
+      });
+    },
+    [setData]
+  );
+
+  const openCategoryGate = ({ source, intent, anchorRect, anchorEl } = {}) => {
+    setPlusOpen(false);
+    setCategoryGateContext({
+      source: source || "unknown",
+      intent: intent || null,
+      anchorRect: normalizeAnchorRect(anchorRect),
+      anchorEl: anchorEl || null,
+    });
+    setCategoryGateOpen(true);
+  };
+
   const resolveTopNavAnchor = () => {
     if (typeof document === "undefined") return { anchorRect: null, anchorEl: null };
     const bottomEl = document.querySelector("[data-create-anchor='bottomrail']");
@@ -890,6 +982,129 @@ export default function App() {
     const topEl = document.querySelector("[data-create-anchor='topnav']");
     if (!topEl) return { anchorRect: null, anchorEl: null };
     return { anchorRect: normalizeAnchorRect(topEl.getBoundingClientRect()), anchorEl: topEl };
+  };
+
+  const createCategoryFromGate = useCallback(
+    ({ name, color }) => {
+      if (!name || typeof setData !== "function") return null;
+      let createdId = null;
+      setData((prev) => {
+        const ensured = ensureSystemInboxCategory(prev);
+        const prevCategories = Array.isArray(ensured.state.categories) ? ensured.state.categories : [];
+        const exists = prevCategories.some(
+          (c) => String(c?.name || "").trim().toLowerCase() === String(name).trim().toLowerCase()
+        );
+        if (exists) return ensured.state;
+        const created = normalizeCategory(
+          { id: `cat_${uid()}`, name: String(name).trim(), color: color || "#7C3AED" },
+          prevCategories.length
+        );
+        createdId = created.id;
+        return { ...ensured.state, categories: [...prevCategories, created] };
+      });
+      return createdId;
+    },
+    [setData]
+  );
+
+  const toggleCategoryActive = useCallback(
+    (cat, nextActive) => {
+      if (!cat || typeof setData !== "function") return;
+      if (nextActive) {
+        if (!canCreateCategory(safeData)) {
+          openPaywall("Limite de catégories atteinte.");
+          return;
+        }
+        setData((prev) => {
+          const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
+          if (prevCategories.some((c) => c?.id === cat.id)) return prev;
+          if (
+            prevCategories.some(
+              (c) => String(c?.name || "").trim().toLowerCase() === String(cat.name || "").trim().toLowerCase()
+            )
+          ) {
+            return prev;
+          }
+          const created = normalizeCategory(
+            { id: cat.id || `cat_${uid()}`, name: cat.name || "Catégorie", color: cat.color || "#F97316" },
+            prevCategories.length
+          );
+          return { ...prev, categories: [...prevCategories, created] };
+        });
+        return;
+      }
+      if (cat.id === SYSTEM_INBOX_ID) return;
+      setData((prev) => {
+        let next = prev;
+        const ensured = ensureSystemInboxCategory(next);
+        next = ensured.state;
+        const sysId = ensured.category?.id || SYSTEM_INBOX_ID;
+        const nextCategories = (next.categories || []).filter((c) => c.id !== cat.id);
+        const nextGoals = (next.goals || []).map((g) =>
+          g && g.categoryId === cat.id ? { ...g, categoryId: sysId } : g
+        );
+        const nextHabits = (next.habits || []).map((h) =>
+          h && h.categoryId === cat.id ? { ...h, categoryId: sysId } : h
+        );
+        const nextUi = { ...(next.ui || {}) };
+        if (nextUi.selectedCategoryId === cat.id) nextUi.selectedCategoryId = sysId;
+        if (nextUi.selectedCategoryByView) {
+          const scv = { ...nextUi.selectedCategoryByView };
+          if (scv.library === cat.id) scv.library = sysId;
+          if (scv.plan === cat.id) scv.plan = sysId;
+          if (scv.home === cat.id) scv.home = sysId;
+          if (scv.pilotage === cat.id) scv.pilotage = sysId;
+          nextUi.selectedCategoryByView = scv;
+        }
+        return {
+          ...next,
+          categories: nextCategories,
+          goals: nextGoals,
+          habits: nextHabits,
+          ui: nextUi,
+        };
+      });
+    },
+    [setData, safeData, openPaywall]
+  );
+
+  const handleCategoryGateConfirm = (categoryId) => {
+    if (!categoryId || typeof setData !== "function") return;
+    const existing = categories.find((c) => c?.id === categoryId) || null;
+    const suggestion = !existing ? findSuggestedCategory(categoryId) : null;
+    if (!existing && suggestion && !canCreateCategory(safeData)) {
+      openPaywall("Limite de catégories atteinte.");
+      return;
+    }
+    setCategoryGateOpen(false);
+    setData((prev) => {
+      let next = prev;
+      const ensured = ensureSystemInboxCategory(next);
+      next = ensured.state;
+      const prevCategories = Array.isArray(next.categories) ? next.categories : [];
+      let nextCategories = prevCategories;
+      if (!prevCategories.some((c) => c?.id === categoryId) && suggestion) {
+        const created = normalizeCategory(
+          { id: suggestion.id, name: suggestion.name, color: suggestion.color || "#F97316" },
+          prevCategories.length
+        );
+        nextCategories = [...prevCategories, created];
+      }
+      const prevUi = next.ui || {};
+      const prevSel =
+        prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
+          ? prevUi.selectedCategoryByView
+          : {};
+      return {
+        ...next,
+        categories: nextCategories,
+        ui: {
+          ...prevUi,
+          selectedCategoryId: categoryId,
+          selectedCategoryByView: { ...prevSel, home: categoryId, library: categoryId, pilotage: categoryId },
+        },
+      };
+    });
   };
 
   const openCreateExpander = ({ source, categoryId, anchorRect, anchorEl } = {}) => {
@@ -957,16 +1172,24 @@ export default function App() {
 
     setPlusOpen(false);
   };
-  const openCreateOutcomeDirect = ({ source, categoryId } = {}) => {
+  const openCreateOutcomeDirect = ({ source, categoryId, skipCategoryGate } = {}) => {
+    if (!skipCategoryGate && !categoryId && !hasSelectedCategory) {
+      openCategoryGate({ source: source || "unknown", intent: "outcome" });
+      return;
+    }
     if (!canCreateOutcomeNow) {
-      openPaywall("Limite d’objectifs atteinte.");
+      openPaywall(`Limite de ${LABELS.goalsLower} atteinte.`);
       return;
     }
     seedCreateDraft({ source: source || "unknown", categoryId: categoryId || null, step: STEP_OUTCOME });
     setTab("create-goal");
     setPlusOpen(false);
   };
-  const openCreateHabitDirect = ({ source, categoryId, outcomeId } = {}) => {
+  const openCreateHabitDirect = ({ source, categoryId, outcomeId, skipCategoryGate } = {}) => {
+    if (!skipCategoryGate && !categoryId && !hasSelectedCategory) {
+      openCategoryGate({ source: source || "unknown", intent: "habit" });
+      return;
+    }
     if (!canCreateActionNow) {
       openPaywall("Limite d’actions atteinte.");
       return;
@@ -1096,6 +1319,15 @@ export default function App() {
         {headerSpacer}
         <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />
         <DiagnosticOverlay data={safeData} tab={tab} />
+        <CategoryGateModal
+          open={categoryGateOpen}
+          categories={categories}
+          activeCategoryId={homeActiveCategoryId}
+          onClose={() => setCategoryGateOpen(false)}
+          onConfirm={handleCategoryGateConfirm}
+          onCreateCategory={createCategoryFromGate}
+          onToggleActive={toggleCategoryActive}
+        />
         <PlusExpander
           open={plusOpen}
           anchorRect={plusAnchorRect}
@@ -1138,7 +1370,11 @@ export default function App() {
               onClick={(event) => {
                 const el = event?.currentTarget || null;
                 const rect = el?.getBoundingClientRect ? el.getBoundingClientRect() : null;
-                openCreateExpander({ source: "bottomrail", anchorEl: el, anchorRect: rect });
+                if (hasSelectedCategory) {
+                  openCreateExpander({ source: "bottomrail", anchorEl: el, anchorRect: rect });
+                } else {
+                  openCategoryGate({ source: "bottomrail", anchorEl: el, anchorRect: rect });
+                }
               }}
             >
               +
@@ -1168,10 +1404,12 @@ export default function App() {
             setTab("library");
           }}
           onOpenCreateOutcome={() => {
-            openCreateOutcomeDirect({ source: "today", categoryId: homeSelectedCategoryId });
+            if (hasSelectedCategory) openCreateOutcomeDirect({ source: "today" });
+            else openCategoryGate({ source: "today", intent: "outcome" });
           }}
           onOpenCreateHabit={() => {
-            openCreateHabitDirect({ source: "today", categoryId: homeSelectedCategoryId });
+            if (hasSelectedCategory) openCreateHabitDirect({ source: "today" });
+            else openCategoryGate({ source: "today", intent: "habit" });
           }}
           onOpenSession={({ categoryId, dateKey }) =>
             setTab("session", { sessionCategoryId: categoryId || null, sessionDateKey: dateKey || null })
@@ -1591,6 +1829,15 @@ export default function App() {
         />
       ) : null}
       <DiagnosticOverlay data={safeData} tab={tab} />
+      <CategoryGateModal
+        open={categoryGateOpen}
+        categories={categories}
+        activeCategoryId={homeActiveCategoryId}
+        onClose={() => setCategoryGateOpen(false)}
+        onConfirm={handleCategoryGateConfirm}
+        onCreateCategory={createCategoryFromGate}
+        onToggleActive={toggleCategoryActive}
+      />
       <PlusExpander
         open={plusOpen}
         anchorRect={plusAnchorRect}

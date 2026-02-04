@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
 import Select from "../ui/select/Select";
+import CreateSection from "../ui/create/CreateSection";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { safeUpdateGoal } from "../logic/goalGuards";
 import { ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
@@ -101,14 +102,16 @@ export default function CreateV2PickCategory({ data, setData, onDone, onOpenPayw
       <div className="stack stackGap12">
         <Card accentBorder>
           <div className="p18 col gap12">
-            <div className="small2">Dans quelle catégorie veux-tu agir ?</div>
-            <Select value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)}>
-              {options.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name || "Catégorie"}
-                </option>
-              ))}
-            </Select>
+            <CreateSection title="Catégorie" description="Dernière étape" collapsible={false}>
+              <div className="small2">Dans quelle catégorie veux-tu agir ?</div>
+              <Select value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)}>
+                {options.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name || "Catégorie"}
+                  </option>
+                ))}
+              </Select>
+            </CreateSection>
             <div className="row rowBetween">
               <Button variant="ghost" onClick={finalize}>
                 Plus tard

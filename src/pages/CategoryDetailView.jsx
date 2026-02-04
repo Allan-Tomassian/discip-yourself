@@ -5,6 +5,7 @@ import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { resolveGoalType } from "../domain/goalType";
 import { isProcessLinkedToOutcome } from "../logic/linking";
+import { LABELS } from "../ui/labels";
 
 export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
   const safeData = data && typeof data === "object" ? data : {};
@@ -80,7 +81,7 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
 
       <Card accentBorder className="mt12">
         <div className="p18">
-          <div className="sectionTitle">Objectifs</div>
+          <div className="sectionTitle">{LABELS.goals}</div>
           {outcomeGoals.length ? (
             <div className="mt12 col gap12">
               {outcomeGoals.map((g) => {
@@ -89,7 +90,7 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
                   <div key={g.id} className="col gap8">
                     <AccentItem className="listItem" style={catAccentVars}>
                       <div className="row rowBetween gap8">
-                        <div className="itemTitle">{g.title || "Objectif"}</div>
+                        <div className="itemTitle">{g.title || LABELS.goal}</div>
                         {category?.mainGoalId && g.id === category.mainGoalId ? (
                           <span className="badge badgeAccent">
                             Prioritaire
@@ -118,7 +119,7 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
               })}
             </div>
           ) : (
-            <div className="small2 mt10">Aucun objectif dans cette catégorie.</div>
+            <div className="small2 mt10">Aucun {LABELS.goalLower} dans cette catégorie.</div>
           )}
         </div>
       </Card>

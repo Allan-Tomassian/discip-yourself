@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
+import CreateSection from "../ui/create/CreateSection";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { SYSTEM_INBOX_ID } from "../logic/state";
 import { resolveGoalType } from "../domain/goalType";
+import { LABELS } from "../ui/labels";
 
 export default function CreateV2OutcomeNextAction({ data, setData, onCreateAction, onDone }) {
   const safeData = data && typeof data === "object" ? data : {};
@@ -52,27 +54,29 @@ export default function CreateV2OutcomeNextAction({ data, setData, onCreateActio
       <div className="stack stackGap12">
         <Card accentBorder>
           <div className="p18 col gap12">
-            <div className="small2">Créer une première action pour cet objectif ?</div>
-            <div className="small textMuted">
-              {outcome?.title || "Objectif"} · {categoryId === SYSTEM_INBOX_ID ? "Général" : "Catégorie choisie"}
-            </div>
-            <div className="row rowBetween">
-              <Button variant="ghost" onClick={clearDraftAndExit}>
-                Plus tard
-              </Button>
-              <Button
-                onClick={() => {
-                  if (typeof onCreateAction === "function") {
-                    onCreateAction(outcomeId, categoryId || SYSTEM_INBOX_ID);
-                  }
-                }}
-              >
-                Créer 1ère action
-              </Button>
-            </div>
-            <div className="small2 textMuted2">
-              L’objectif sera en brouillon tant qu’aucune action n’est liée.
-            </div>
+            <CreateSection title="Première action" description="Optionnel" collapsible={false}>
+              <div className="small2">Créer une première action pour ce {LABELS.goalLower} ?</div>
+              <div className="small textMuted">
+                {outcome?.title || LABELS.goal} · {categoryId === SYSTEM_INBOX_ID ? "Général" : "Catégorie choisie"}
+              </div>
+              <div className="row rowBetween">
+                <Button variant="ghost" onClick={clearDraftAndExit}>
+                  Plus tard
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (typeof onCreateAction === "function") {
+                      onCreateAction(outcomeId, categoryId || SYSTEM_INBOX_ID);
+                    }
+                  }}
+                >
+                  Créer 1ère action
+                </Button>
+              </div>
+              <div className="small2 textMuted2">
+                Le {LABELS.goalLower} sera en brouillon tant qu’aucune action n’est liée.
+              </div>
+            </CreateSection>
           </div>
         </Card>
       </div>

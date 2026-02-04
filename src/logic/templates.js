@@ -120,7 +120,7 @@ export const GOAL_TEMPLATES = [
   },
   {
     id: "travail_automatisation",
-    label: "Automatiser une tâche récurrente",
+    label: "Automatiser une action récurrente",
     categoryKey: "travail",
   },
 

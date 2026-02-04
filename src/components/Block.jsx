@@ -5,6 +5,7 @@ import { clamp } from "../utils/helpers";
 import { computeHabitProgress, incHabit, decHabit } from "../logic/habits";
 import { addXp } from "../logic/xp";
 import { safePrompt } from "../utils/dialogs";
+import { LABELS } from "../ui/labels";
 
 // Reserved for future composition; currently unused.
 export default function Block({
@@ -147,7 +148,7 @@ export default function Block({
         <div className="p18">
         <div className="row">
           <div>
-            <div className="small">Objectif</div>
+            <div className="small">{LABELS.goal}</div>
             <div className="titleSm" style={{ color: accent }}>Cible — {selectedCategory.name}</div>
           </div>
           <Badge>{goalForCategory ? (goalForCategory.cadence === "DAILY" ? "Jour" : goalForCategory.cadence === "YEARLY" ? "Année" : "Semaine") : "—"}</Badge>
@@ -158,7 +159,11 @@ export default function Block({
             <AccentItem className="listItem" color={accent}>
               <div style={{ fontSize: 14, fontWeight: 700 }}>{goalForCategory.title}</div>
               <div className="small2">
-                {goalForCategory.cadence === "DAILY" ? "Objectif quotidien" : goalForCategory.cadence === "YEARLY" ? "Objectif annuel" : "Objectif hebdomadaire"} · cible {goalForCategory.target}
+                {goalForCategory.cadence === "DAILY"
+                  ? `${LABELS.goal} quotidien`
+                  : goalForCategory.cadence === "YEARLY"
+                    ? `${LABELS.goal} annuel`
+                    : `${LABELS.goal} hebdomadaire`} · cible {goalForCategory.target}
               </div>
 
               <div className="mt14 grid2">
@@ -188,7 +193,7 @@ export default function Block({
               </div>
             </AccentItem>
           ) : (
-            <div className="listItem">Aucun objectif pour cette catégorie.</div>
+            <div className="listItem">Aucun {LABELS.goalLower} pour cette catégorie.</div>
           )}
         </div>
       </div>

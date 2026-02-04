@@ -736,7 +736,7 @@ export function preventOverlap(state, candidateGoalId, newStartAt, sessionMinute
     if (overlaps) {
       conflicts.push({
         goalId: g.id,
-        title: g.title || g.name || "Objectif",
+        title: g.title || g.name || "Projet",
         startAt: g.startAt || null,
         endAt: resolveGoalEndAt(g),
       });

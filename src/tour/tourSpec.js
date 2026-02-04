@@ -1,3 +1,4 @@
+import { LABELS } from "../ui/labels";
 // FIRST_USE_TOUR rationale:
 // - Minimal first-use tour designed for an empty app state (no categories).
 // - Anchors are guaranteed to exist on Today empty state only.
@@ -43,7 +44,7 @@ export const TOUR_STEPS = [
     screen: "today",
     anchor: "topnav-tab-library",
     title: "Bibliotheque",
-    body: "Toutes tes categories et objectifs.",
+    body: `Toutes tes categories et ${LABELS.goalsLower}.`,
     placement: "bottom",
     nextActionHint: "Ouvre la Bibliotheque.",
     skippableAfterMs: 3000,
@@ -193,10 +194,10 @@ export const TOUR_STEPS = [
     id: "today-focus-goal-select",
     screen: "today",
     anchor: "today-focus-card",
-    title: "Objectif principal",
-    body: "Choisis un objectif.",
+    title: `${LABELS.goal} principal`,
+    body: `Choisis un ${LABELS.goalLower}.`,
     placement: "top",
-    nextActionHint: "Selectionne un objectif.",
+    nextActionHint: `Selectionne un ${LABELS.goalLower}.`,
     skippableAfterMs: 3000,
   },
   {
@@ -488,10 +489,10 @@ export const TOUR_STEPS = [
     id: "manage-objectives-section",
     screen: "manage",
     anchor: "manage-objectives-section",
-    title: "Objectifs",
-    body: "Liste des objectifs.",
+    title: LABELS.goals,
+    body: `Liste des ${LABELS.goalsLower}.`,
     placement: "top",
-    nextActionHint: "Ouvre un objectif.",
+    nextActionHint: `Ouvre un ${LABELS.goalLower}.`,
     skippableAfterMs: 3000,
   },
   {

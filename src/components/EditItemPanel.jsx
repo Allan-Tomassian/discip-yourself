@@ -6,6 +6,7 @@ import DatePicker from "../ui/date/DatePicker";
 import { todayKey } from "../utils/dates";
 import { toLocalDateKey } from "../utils/dateKey";
 import { createDefaultGoalSchedule } from "../logic/state";
+import { LABELS } from "../ui/labels";
 
 const PRIORITY_OPTIONS = [
   { value: "prioritaire", label: "Prioritaire" },
@@ -352,7 +353,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
         }}
       >
         <div className="drawerHeader">
-          <div style={{ fontWeight: 800 }}>{isProcess ? "Modifier l’action" : "Modifier l’objectif"}</div>
+          <div style={{ fontWeight: 800 }}>{isProcess ? `Modifier l’${LABELS.actionLower}` : `Modifier le ${LABELS.goalLower}`}</div>
           <Button variant="ghost" onClick={onClose}>
             Fermer
           </Button>

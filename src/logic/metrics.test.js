@@ -106,4 +106,19 @@ describe("metrics", () => {
     expect(daily.byDate.get("2026-02-01")?.expected).toBe(1);
     expect(daily.byDate.get("2026-02-02")?.expected).toBe(1);
   });
+
+  it("computeDailyStats is idempotent and does not mutate input", () => {
+    const state = {
+      goals: [{ id: "g1", categoryId: "c1" }],
+      occurrences: [
+        { id: "o1", date: "2026-02-01", goalId: "g1", status: "done" },
+        { id: "o2", date: "2026-02-02", goalId: "g1", status: "planned" },
+      ],
+    };
+    const snapshot = JSON.stringify(state);
+    const first = computeDailyStats(state, "2026-02-01", "2026-02-02");
+    const second = computeDailyStats(state, "2026-02-01", "2026-02-02");
+    expect(JSON.stringify(state)).toBe(snapshot);
+    expect(first.totals).toEqual(second.totals);
+  });
 });

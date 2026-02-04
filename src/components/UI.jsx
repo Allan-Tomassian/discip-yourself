@@ -178,8 +178,9 @@ export function CardSectionHeader({ title, action = null, className = "" }) {
   );
 }
 
-export function Modal({ open, onClose, children, className = "" }) {
+export function Modal({ open, onClose, children, className = "", backdropClassName = "" }) {
   const panelRef = useRef(null);
+  const prevOverflowRef = useRef("");
 
   useEffect(() => {
     if (!open) return;
@@ -209,9 +210,24 @@ export function Modal({ open, onClose, children, className = "" }) {
     };
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!open) return;
+    if (typeof document === "undefined") return;
+    const body = document.body;
+    prevOverflowRef.current = body.style.overflow || "";
+    body.style.overflow = "hidden";
+    return () => {
+      body.style.overflow = prevOverflowRef.current;
+    };
+  }, [open]);
+
   if (!open) return null;
   return (
-    <div className="modalBackdrop" onClick={onClose} role="presentation">
+    <div
+      className={`modalBackdrop${backdropClassName ? ` ${backdropClassName}` : ""}`}
+      onClick={onClose}
+      role="presentation"
+    >
       <div
         ref={panelRef}
         className={`modalPanel${className ? ` ${className}` : ""}`}

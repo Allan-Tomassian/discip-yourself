@@ -10,6 +10,7 @@ import { resolveGoalType } from "../domain/goalType";
 import { linkProcessToOutcome, splitProcessByLink } from "../logic/linking";
 import { ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
 import { buildPlanningSections } from "../utils/librarySections";
+import { LABELS } from "../ui/labels";
 
 // TOUR MAP:
 // - primary_action: manage goals/actions in a category
@@ -242,7 +243,7 @@ export default function CategoryView({
 
   function deleteOutcome(goal) {
     if (!goal?.id || typeof setData !== "function") return;
-    const ok = safeConfirm("Supprimer cet objectif ?");
+    const ok = safeConfirm(`Supprimer ce ${LABELS.goalLower} ?`);
     if (!ok) return;
     setData((prev) => {
       const nextGoals = (prev.goals || [])
@@ -338,7 +339,7 @@ export default function CategoryView({
           <div className="p18">
             <div className="titleSm">Aucune catégorie</div>
             <div className="small mt6">
-              Crée un objectif ou une action depuis la bibliothèque pour commencer.
+              Crée un {LABELS.goalLower} ou une {LABELS.actionLower} depuis la bibliothèque pour commencer.
             </div>
             <div className="mt12">
               <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack} data-tour-id="manage-back">
@@ -388,7 +389,7 @@ export default function CategoryView({
               <Gauge
                 key={g.id}
                 className="manageGauge"
-                label={g.title || "Objectif"}
+                label={g.title || LABELS.goal}
                 currentValue={g.currentValue}
                 targetValue={g.targetValue}
                 unit={MEASURE_UNITS[g.measureType] || ""}
@@ -517,14 +518,14 @@ export default function CategoryView({
 
         <Card accentBorder data-tour-id="manage-objectives-section">
           <div className="p18 stack stackGap12">
-            <div className="titleSm">Objectifs</div>
+            <div className="titleSm">{LABELS.goals}</div>
             {outcomeGoals.length ? (
               <div className="stack stackGap12">
                 {outcomeGoals.map((g) => (
                   <AccentItem key={g.id} color={category.color || accent}>
                     <div className="minW0">
                       <div className="itemTitle">
-                        {g.title || "Objectif"}
+                        {g.title || LABELS.goal}
                         {isPrimaryGoal(g) ? (
                           <span
                             className="badge badgeAccent ml8"
@@ -538,12 +539,12 @@ export default function CategoryView({
                     <div className="row gap8">
                       <IconButton
                         icon="gear"
-                        aria-label="Paramètres objectif"
+                        aria-label={`Paramètres ${LABELS.goalLower}`}
                         onClick={() => openEditItem(g)}
                       />
                       <IconButton
                         icon="close"
-                        aria-label="Supprimer l’objectif"
+                        aria-label={`Supprimer le ${LABELS.goalLower}`}
                         onClick={() => deleteOutcome(g)}
                       />
                     </div>
@@ -552,7 +553,7 @@ export default function CategoryView({
               </div>
             ) : (
               <div className="stack stackGap12">
-                <div className="small2">Aucun objectif dans cette catégorie.</div>
+                <div className="small2">Aucun {LABELS.goalLower} dans cette catégorie.</div>
               </div>
             )}
           </div>
@@ -638,7 +639,7 @@ export default function CategoryView({
                   </div>
                 ))}
                 {!selectedOutcome?.id ? (
-                  <div className="small2 textMuted">Sélectionne un objectif pour lier ces actions.</div>
+                  <div className="small2 textMuted">Sélectionne un {LABELS.goalLower} pour lier ces actions.</div>
                 ) : null}
               </div>
             ) : (

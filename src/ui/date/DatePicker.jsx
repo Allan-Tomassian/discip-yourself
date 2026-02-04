@@ -8,7 +8,7 @@ import { addMonths, buildMonthGrid, getMonthLabelFR, startOfMonth, WEEKDAY_LABEL
 const DEFAULT_MENU_WIDTH = 320;
 const DEFAULT_MENU_HEIGHT = 360;
 
-function formatDisplayValue(value) {
+export function formatDisplayValue(value) {
   const normalized = normalizeLocalDateKey(value);
   if (!normalized) return "";
   const [y, m, d] = normalized.split("-");

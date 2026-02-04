@@ -1,6 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button, Card } from "../../components/UI";
-import { toLocalDateKey } from "../../utils/dateKey";
 import "./focus.css";
 
 export default function FocusCard({
@@ -8,45 +7,48 @@ export default function FocusCard({
   setActivatorNodeRef,
   listeners,
   attributes,
-  focusCategory = null,
-  selectedGoal = null,
-  canManageCategory = false,
-  onOpenManageCategory,
-  currentPlannedOccurrence = null,
-  nextPlannedOccurrence = null,
+  focusOccurrence = null,
+  baseOccurrence = null,
+  alternativeCandidates = [],
+  onSelectAlternative,
+  onResetOverride,
+  isOverride = false,
   onStartSession,
-  onPrepareSession,
   normalizeOccurrenceForUI = (occ) => occ,
   goalsById = new Map(),
+  categoriesById = new Map(),
+  activeOccurrenceId = null,
 }) {
-  const categoryName = focusCategory?.name || "Sans catégorie";
-  const goalTitle = selectedGoal?.title || "Aucun objectif principal";
-  const canManage = Boolean(canManageCategory && focusCategory?.id && typeof onOpenManageCategory === "function");
-  const displayOccurrence = currentPlannedOccurrence || nextPlannedOccurrence || null;
+  const displayOccurrence = focusOccurrence || null;
   const displayOccurrenceUI = displayOccurrence ? normalizeOccurrenceForUI(displayOccurrence) : null;
   const displayGoal = displayOccurrence ? goalsById.get(displayOccurrence.goalId) || null : null;
+  const displayCategory = displayGoal ? categoriesById.get(displayGoal.categoryId) || null : null;
   const displayTitle = displayGoal?.title || "Action";
-  const todayKey = toLocalDateKey(new Date());
-  const displayDateKey = typeof displayOccurrence?.date === "string" ? displayOccurrence.date : "";
+  const displayCategoryName = displayCategory?.name || "Sans catégorie";
   const displayTime =
-    displayOccurrenceUI?.start && displayOccurrenceUI.start !== "00:00"
-      ? displayOccurrenceUI.start
-      : displayDateKey === todayKey
-        ? "Aujourd’hui"
-        : displayDateKey
-          ? `${displayDateKey.slice(8, 10)}/${displayDateKey.slice(5, 7)}`
-          : "";
+    displayOccurrenceUI?.start && displayOccurrenceUI.start !== "00:00" ? displayOccurrenceUI.start : "Journée";
+  const displayDuration = Number.isFinite(displayOccurrence?.durationMinutes)
+    ? displayOccurrence.durationMinutes
+    : Number.isFinite(displayGoal?.durationMinutes)
+      ? displayGoal.durationMinutes
+      : Number.isFinite(displayGoal?.sessionMinutes)
+        ? displayGoal.sessionMinutes
+        : null;
   const statusText = displayOccurrence
-    ? displayOccurrence.status === "done"
-      ? "Fait"
-      : displayOccurrence.status === "skipped"
-        ? "Reportée"
-        : displayOccurrence.status === "canceled"
-          ? "Annulée"
-          : "Planifiée"
-    : "Aucune action planifiée";
-  const canStart = Boolean(currentPlannedOccurrence && typeof onStartSession === "function");
-  const canPrepare = Boolean(!currentPlannedOccurrence && typeof onPrepareSession === "function");
+    ? activeOccurrenceId && displayOccurrence.id === activeOccurrenceId
+      ? "En cours"
+      : displayOccurrence.status === "done"
+        ? "Fait"
+        : displayOccurrence.status === "skipped"
+          ? "Reportée"
+          : displayOccurrence.status === "canceled"
+            ? "Annulée"
+            : "Planifiée"
+    : "Rien de prévu, choisis une action prioritaire.";
+  const canStart = Boolean(displayOccurrence && typeof onStartSession === "function");
+  const hasAlternatives = Array.isArray(alternativeCandidates) && alternativeCandidates.length > 0;
+
+  const [showAlternatives, setShowAlternatives] = useState(false);
 
   return (
     <Card className="focusCard" data-tour-id="today-focus-card">
@@ -69,58 +71,61 @@ export default function FocusCard({
             </div>
           </div>
           <div className="focusHeaderActions">
-            <Button
-              variant="ghost"
-              onClick={() => onOpenManageCategory?.(focusCategory?.id)}
-              aria-label="Gérer la catégorie"
-              className={`focusManageBtn${canManage ? "" : " is-hidden"}`}
-              disabled={!canManage}
-              tabIndex={canManage ? 0 : -1}
-            >
-              Gérer
-            </Button>
+            {isOverride ? (
+              <Button variant="ghost" className="focusManageBtn" onClick={onResetOverride}>
+                Revenir au plan
+              </Button>
+            ) : null}
           </div>
         </div>
         <div className="focusBody">
           <div className="focusLine">
-            <span className="badge focusCategoryBadge">Catégorie · {categoryName}</span>
-          </div>
-          <div className="focusMainGoal">
-            Objectif principal · <span className="focusMainGoalValue">{goalTitle}</span>
+            <span className="badge focusCategoryBadge">Catégorie · {displayCategoryName}</span>
           </div>
           <div className="focusNextRow">
-            <span className="focusNextLabel">Prochaine</span>
+            <span className="focusNextLabel">Prévu maintenant</span>
             <span className="focusNextValue">
               {displayOccurrence
-                ? `${displayTitle} • ${displayTime || "Journée"} • ${statusText}`
+                ? `${displayTitle} • ${displayTime}${displayDuration ? ` • ${displayDuration} min` : ""} • ${statusText}`
                 : statusText}
             </span>
-            {!displayOccurrence && canManage ? (
-              <button
-                type="button"
-                className="focusInlineLink"
-                onClick={() => onOpenManageCategory?.(focusCategory?.id)}
-              >
-                Créer une action
-              </button>
-            ) : null}
           </div>
           <div className="focusCtaRow">
-            <Button
-              variant={currentPlannedOccurrence ? "primary" : "secondary"}
-              className="focusCtaBtn"
-              onClick={() => {
-                if (currentPlannedOccurrence) {
-                  onStartSession?.(currentPlannedOccurrence);
-                } else {
-                  onPrepareSession?.();
-                }
-              }}
-              disabled={currentPlannedOccurrence ? !canStart : !canPrepare}
-            >
-              {currentPlannedOccurrence ? "Démarrer" : "Préparer"}
+            <Button variant="primary" className="focusCtaBtn" onClick={() => onStartSession?.(displayOccurrence)} disabled={!canStart}>
+              Démarrer
             </Button>
+            {hasAlternatives ? (
+              <Button variant="ghost" className="focusAltBtn" onClick={() => setShowAlternatives((v) => !v)}>
+                Changer
+              </Button>
+            ) : null}
           </div>
+          {hasAlternatives && showAlternatives && typeof onSelectAlternative === "function" ? (
+            <div className="focusAltList">
+              {alternativeCandidates.map((item) => (
+                <button
+                  key={item.occ.id}
+                  type="button"
+                  className="focusAltItem"
+                  onClick={() => {
+                    onSelectAlternative(item);
+                    setShowAlternatives(false);
+                  }}
+                >
+                  <span className="focusAltTitle">
+                    {goalsById.get(item.occ.goalId)?.title || "Action"}
+                  </span>
+                  <span className="focusAltMeta">
+                    {item.occ.start && item.occ.start !== "00:00" ? item.occ.start : "Journée"}
+                    {item.warning ? " · déviation" : ""}
+                  </span>
+                </button>
+              ))}
+              {baseOccurrence && isOverride ? (
+                <div className="focusAltNote">Plan initial: {goalsById.get(baseOccurrence.goalId)?.title || "Action"}</div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
     </Card>

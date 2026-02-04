@@ -328,7 +328,7 @@ function normalizeLegacyHabit(rawHabit, index = 0) {
   }
   if (typeof h.cadence !== "string") h.cadence = "WEEKLY";
   if (!Number.isFinite(h.target)) h.target = 1;
-  if (typeof h.categoryId !== "string" || !h.categoryId.trim()) h.categoryId = DEFAULT_CATEGORY_ID;
+  h.categoryId = ensureCategoryId(h).categoryId;
   return h;
 }
 
@@ -623,6 +623,13 @@ export function ensureSystemInboxCategory(state) {
   return { state: { ...next, categories: [...categories, inbox] }, category: inbox };
 }
 
+export function ensureCategoryId(entity, fallbackId = DEFAULT_CATEGORY_ID) {
+  const next = entity && typeof entity === "object" ? { ...entity } : {};
+  const raw = typeof next.categoryId === "string" ? next.categoryId.trim() : "";
+  next.categoryId = raw || fallbackId;
+  return next;
+}
+
 export function normalizeGoal(rawGoal, index = 0) {
   const g = rawGoal && typeof rawGoal === "object" ? { ...rawGoal } : {};
 
@@ -635,7 +642,7 @@ export function normalizeGoal(rawGoal, index = 0) {
   const process = goalType === "PROCESS";
   const inferredPlanType = g.oneOffDate ? "ONE_OFF" : "ACTION";
 
-  if (!g.categoryId) g.categoryId = DEFAULT_CATEGORY_ID;
+  g.categoryId = ensureCategoryId(g).categoryId;
 
   const rawOutcomeId = typeof g.outcomeId === "string" ? g.outcomeId.trim() : "";
   const rawObjectiveId = typeof g.objectiveId === "string" ? g.objectiveId.trim() : "";
@@ -654,7 +661,7 @@ export function normalizeGoal(rawGoal, index = 0) {
   if (!g.kind && outcome) g.kind = "OUTCOME";
   if (!g.kind && process) g.kind = "ACTION";
 
-  if (!g.title) g.title = "Objectif";
+  if (!g.title) g.title = "Projet";
   if (!outcome) {
     if (!g.cadence) g.cadence = "WEEKLY";
     if (typeof g.target !== "number") g.target = 1;

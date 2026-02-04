@@ -3,9 +3,11 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input } from "../components/UI";
 import Select from "../ui/select/Select";
 import DatePicker from "../ui/date/DatePicker";
+import CreateSection from "../ui/create/CreateSection";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_OUTCOME_NEXT_ACTION } from "../creation/creationSchema";
 import { resolveGoalType } from "../domain/goalType";
+import { LABELS } from "../ui/labels";
 import { uid } from "../utils/helpers";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { createGoal } from "../logic/goals";
@@ -118,11 +120,11 @@ export default function CreateV2Outcome({
     }
     const limit = Number(planLimits?.outcomes) || 0;
     if (!isPremiumPlan && limit > 0 && existingOutcomeCount >= limit) {
-      if (typeof onOpenPaywall === "function") onOpenPaywall("Limite d’objectifs atteinte.");
+      if (typeof onOpenPaywall === "function") onOpenPaywall(`Limite de ${LABELS.goalsLower} atteinte.`);
       return;
     }
     if (!canCreateOutcome) {
-      if (typeof onOpenPaywall === "function") onOpenPaywall("Limite d’objectifs atteinte.");
+      if (typeof onOpenPaywall === "function") onOpenPaywall(`Limite de ${LABELS.goalsLower} atteinte.`);
       return;
     }
     if (typeof setData !== "function") return;
@@ -199,7 +201,7 @@ export default function CreateV2Outcome({
       headerTitle="Créer"
       headerSubtitle={
         <>
-          <span className="textMuted2">1.</span> Objectif
+          <span className="textMuted2">1.</span> {LABELS.goal}
         </>
       }
       backgroundImage={backgroundImage}
@@ -210,8 +212,7 @@ export default function CreateV2Outcome({
         </Button>
         <Card accentBorder>
           <div className="p18 col gap12">
-            <div className="stack stackGap8">
-              <div className="small textMuted">Catégorie</div>
+            <CreateSection title="Catégorie" collapsible={false}>
               <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
                 {categoryOptions.map((category) => (
                   <option key={category.id} value={category.id}>
@@ -228,66 +229,67 @@ export default function CreateV2Outcome({
                   </Button>
                 </div>
               ) : null}
-            </div>
+            </CreateSection>
 
-            <div className="stack stackGap8">
-              <div className="small textMuted">Objectif</div>
+            <CreateSection title={LABELS.goal} description="Nom + priorité" collapsible={false}>
               <Input
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
                   if (error) setError("");
                 }}
-                placeholder="Nom de l’objectif"
+                placeholder={`Nom du ${LABELS.goalLower}`}
               />
               <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
                 <option value="secondaire">Secondaire</option>
                 <option value="prioritaire">Prioritaire</option>
                 <option value="bonus">Bonus</option>
               </Select>
-            </div>
+            </CreateSection>
 
-            <div className="stack stackGap6">
-              <div className="small2 textMuted">Date de début (optionnel)</div>
-              <DatePicker
-                value={startDate}
-                onChange={(e) => {
-                  const nextValue = e.target.value;
-                  setStartDate(nextValue);
-                  if (!deadlineTouched) {
-                    const base = fromLocalDateKey(normalizeLocalDateKey(nextValue) || todayLocalKey());
-                    base.setDate(base.getDate() + 1);
-                    setDeadline(toLocalDateKey(base));
-                  }
-                  if (error) setError("");
-                }}
-              />
-            </div>
-            <div className="stack stackGap6">
-              <div className="small2 textMuted">Date de fin (obligatoire, min 2 jours : {minDeadlineKey})</div>
-              <DatePicker
-                value={deadline}
-                onChange={(e) => {
-                  setDeadline(e.target.value);
-                  if (!deadlineTouched) setDeadlineTouched(true);
-                  if (error) setError("");
-                }}
-              />
-              {error ? (
-                <div className="stack stackGap6">
-                  <div className="small2 textAccent">{error}</div>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      if (typeof onNext === "function") onNext();
-                    }}
-                  >
-                    Créer une action à la place
-                  </Button>
-                </div>
-              ) : null}
-              <div className="small2 textMuted2">{startDateHelper}</div>
-            </div>
+            <CreateSection title="Dates" description="Début + fin" collapsible={false}>
+              <div className="stack stackGap6">
+                <div className="small2 textMuted">Date de début (optionnel)</div>
+                <DatePicker
+                  value={startDate}
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
+                    setStartDate(nextValue);
+                    if (!deadlineTouched) {
+                      const base = fromLocalDateKey(normalizeLocalDateKey(nextValue) || todayLocalKey());
+                      base.setDate(base.getDate() + 1);
+                      setDeadline(toLocalDateKey(base));
+                    }
+                    if (error) setError("");
+                  }}
+                />
+              </div>
+              <div className="stack stackGap6">
+                <div className="small2 textMuted">Date de fin (min 2 jours : {minDeadlineKey})</div>
+                <DatePicker
+                  value={deadline}
+                  onChange={(e) => {
+                    setDeadline(e.target.value);
+                    if (!deadlineTouched) setDeadlineTouched(true);
+                    if (error) setError("");
+                  }}
+                />
+                {error ? (
+                  <div className="stack stackGap6">
+                    <div className="small2 textAccent">{error}</div>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        if (typeof onNext === "function") onNext();
+                      }}
+                    >
+                      Créer une action à la place
+                    </Button>
+                  </div>
+                ) : null}
+                <div className="small2 textMuted2">{startDateHelper}</div>
+              </div>
+            </CreateSection>
             <div className="row rowEnd gap10">
               <Button
                 variant="ghost"

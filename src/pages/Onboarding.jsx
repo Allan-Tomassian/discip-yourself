@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Badge, Button, Card, Input, Textarea } from "../components/UI";
 import ScreenShell from "./_ScreenShell";
 import { BRAND_ACCENT } from "../theme/themeTokens";
+import { LABELS } from "../ui/labels";
 
 const ACCENT = `var(--accent, ${BRAND_ACCENT})`;
 const BORDER_DEFAULT = "var(--border)";
@@ -62,7 +63,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
               Pas de surcharge. Pas de listes interminables. Tu clarifies ton intention et tu suis un plan lisible.
             </div>
             <div className="card" style={{ marginTop: 12, padding: 12, background: SURFACE_SOFT, border: `1px solid ${BORDER_DEFAULT}`, borderRadius: 14 }}>
-              <div className="small">Objectif : te faire gagner du temps mental et verrouiller l’exécution.</div>
+              <div className="small">{LABELS.goal} : te faire gagner du temps mental et verrouiller l’exécution.</div>
             </div>
           </div>
         ),
@@ -70,12 +71,12 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
       {
         key: "how",
         title: "Le système",
-        subtitle: "Catégorie → Objectif → Action → Aujourd’hui",
+        subtitle: `Catégorie → ${LABELS.goal} → ${LABELS.action} → Aujourd’hui`,
         content: (
           <div className="col">
             {[
               { n: "1", t: "Catégorie", d: "Le domaine de ta vie (ex : Finance, Santé)." },
-              { n: "2", t: "Objectif", d: "Le résultat à atteindre, sur une période." },
+              { n: "2", t: LABELS.goal, d: "Le résultat à atteindre, sur une période." },
               { n: "3", t: "Action", d: "Le comportement concret à exécuter." },
               { n: "4", t: "Aujourd’hui", d: "La liste exacte de ce qui est attendu maintenant." },
             ].map((x) => (

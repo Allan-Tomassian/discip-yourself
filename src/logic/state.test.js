@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { initialData, migrate } from "./state";
+import { DEFAULT_CATEGORY_ID, ensureCategoryId, initialData, migrate } from "./state";
 import { buildScheduleRuleSourceKey, buildScheduleRulesFromAction } from "./scheduleRules";
 
 function buildBaseState() {
@@ -63,5 +63,17 @@ describe("migrate scheduleRules", () => {
       else seen.add(key);
     }
     expect(duplicates.length).toBe(0);
+  });
+});
+
+describe("ensureCategoryId", () => {
+  it("falls back to DEFAULT_CATEGORY_ID when missing", () => {
+    const ensured = ensureCategoryId({ id: "g1" });
+    expect(ensured.categoryId).toBe(DEFAULT_CATEGORY_ID);
+  });
+
+  it("trims and preserves a provided categoryId", () => {
+    const ensured = ensureCategoryId({ id: "g1", categoryId: "  cat_1 " });
+    expect(ensured.categoryId).toBe("cat_1");
   });
 });

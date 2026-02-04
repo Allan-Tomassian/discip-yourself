@@ -11,14 +11,14 @@ describe("FocusCard", () => {
 
   it("renders the empty state copy", () => {
     const html = renderToStaticMarkup(<FocusCard />);
-    expect(html).toContain("Aucune action planifiée");
-    expect(html).toContain("Préparer");
+    expect(html).toContain("Rien de prévu");
+    expect(html).toContain("Démarrer");
   });
 
   it("renders Démarrer when a current occurrence is provided", () => {
     const occ = { id: "occ-1", goalId: "g1", date: "2026-02-03", start: "16:00", status: "planned" };
     const goalsById = new Map([["g1", { id: "g1", title: "Action" }]]);
-    const html = renderToStaticMarkup(<FocusCard currentPlannedOccurrence={occ} goalsById={goalsById} />);
+    const html = renderToStaticMarkup(<FocusCard focusOccurrence={occ} goalsById={goalsById} />);
     expect(html).toContain("Démarrer");
   });
 });

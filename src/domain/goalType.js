@@ -1,3 +1,5 @@
+import { LABELS } from "../ui/labels";
+
 export function resolveGoalType(goal) {
   const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
   if (raw === "OUTCOME" || raw === "PROCESS") return raw;
@@ -22,7 +24,7 @@ export function isProcess(goal) {
 
 export function labelForGoalType(goal) {
   const type = resolveGoalType(goal);
-  if (type === "OUTCOME") return "Objectif";
-  if (type === "PROCESS") return "Action";
+  if (type === "OUTCOME") return LABELS.goal;
+  if (type === "PROCESS") return LABELS.action;
   return "";
 }

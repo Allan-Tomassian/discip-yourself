@@ -3,6 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input } from "../components/UI";
 import Select from "../ui/select/Select";
 import DatePicker from "../ui/date/DatePicker";
+import CreateSection from "../ui/create/CreateSection";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_PICK_CATEGORY } from "../creation/creationSchema";
 import { createGoal } from "../logic/goals";
@@ -11,6 +12,7 @@ import { ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
 import { resolveGoalType } from "../domain/goalType";
 import { fromLocalDateKey, normalizeLocalDateKey, todayLocalKey, toLocalDateKey } from "../utils/dateKey";
 import { uid } from "../utils/helpers";
+import { LABELS } from "../ui/labels";
 
 function buildMinDeadline(startKey) {
   const normalized = normalizeLocalDateKey(startKey);
@@ -101,7 +103,7 @@ export default function CreateV2LinkOutcome({
       return;
     }
     if (!canCreateOutcome) {
-      if (typeof onOpenPaywall === "function") onOpenPaywall("Limite d’objectifs atteinte.");
+      if (typeof onOpenPaywall === "function") onOpenPaywall(`Limite de ${LABELS.goalsLower} atteinte.`);
       return;
     }
     const startKey = normalizeLocalDateKey(startDate) || todayLocalKey();
@@ -156,7 +158,7 @@ export default function CreateV2LinkOutcome({
     }
     if (choice === "existing") {
       if (!selectedOutcomeId) {
-        setError("Choisis un objectif.");
+        setError(`Choisis un ${LABELS.goalLower}.`);
         return;
       }
       linkToOutcome(selectedOutcomeId);
@@ -174,7 +176,7 @@ export default function CreateV2LinkOutcome({
       headerTitle="Créer"
       headerSubtitle={
         <>
-          <span className="textMuted2">2.</span> Objectif
+          <span className="textMuted2">2.</span> {LABELS.goal}
         </>
       }
       backgroundImage={safeData?.profile?.whyImage || ""}
@@ -182,51 +184,49 @@ export default function CreateV2LinkOutcome({
       <div className="stack stackGap12">
         <Card accentBorder>
           <div className="p18 col gap12">
-            <div className="small2">Quelle est l’objectif de cette action ?</div>
-            {error ? <div className="small2 textAccent">{error}</div> : null}
-            <Select value={choice} onChange={(e) => setChoice(e.target.value)}>
-              <option value="none">Aucun</option>
-              <option value="existing">Lier à un objectif existant</option>
-              <option value="new">Créer un nouvel objectif</option>
-            </Select>
+            <CreateSection title={LABELS.goal} description="Lier ou créer" collapsible={false}>
+              <div className="small2">Quel est le {LABELS.goalLower} de cette action ?</div>
+              {error ? <div className="small2 textAccent">{error}</div> : null}
+              <Select value={choice} onChange={(e) => setChoice(e.target.value)}>
+                <option value="none">Aucun</option>
+                <option value="existing">Lier à un {LABELS.goalLower} existant</option>
+                <option value="new">Créer un nouveau {LABELS.goalLower}</option>
+              </Select>
+            </CreateSection>
 
             {choice === "existing" ? (
-              <div className="stack stackGap8">
-                <div className="small textMuted">Objectifs disponibles</div>
+              <CreateSection title={`${LABELS.goal} existant`} collapsible={false}>
+                <div className="small textMuted">{LABELS.goals} disponibles</div>
                 <Select value={selectedOutcomeId} onChange={(e) => setSelectedOutcomeId(e.target.value)}>
-                  <option value="">Choisir un objectif</option>
+                  <option value="">{`Choisir un ${LABELS.goalLower}`}</option>
                   {outcomes.map((o) => (
                     <option key={o.id} value={o.id}>
-                      {o.title || "Objectif"}
+                      {o.title || LABELS.goal}
                     </option>
                   ))}
                 </Select>
-              </div>
+              </CreateSection>
             ) : null}
 
             {choice === "new" ? (
-              <div className="stack stackGap8">
+              <CreateSection title={`Nouveau ${LABELS.goalLower}`} collapsible={false}>
                 <Input
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Nom de l’objectif"
+                  placeholder={`Nom du ${LABELS.goalLower}`}
                 />
-                <div className="row" style={{ gap: 10 }}>
-                  <div style={{ flex: 1 }}>
-                    <div className="small" style={{ marginBottom: 6 }}>
-                      Début
-                    </div>
+                <div className="createFieldGrid">
+                  <div className="stack stackGap6">
+                    <div className="small textMuted">Début</div>
                     <DatePicker value={startDate} onChange={(e) => setStartDate(e.target.value)} />
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div className="small" style={{ marginBottom: 6 }}>
-                      Fin (min 2 jours)
-                    </div>
+                  <div className="stack stackGap6">
+                    <div className="small textMuted">Fin (min 2 jours)</div>
                     <DatePicker value={deadline} onChange={(e) => setDeadline(e.target.value)} />
                   </div>
                 </div>
                 <div className="small2 textMuted2">Date de fin minimale : {minDeadlineKey}</div>
-              </div>
+              </CreateSection>
             ) : null}
 
             <div className="row rowBetween">

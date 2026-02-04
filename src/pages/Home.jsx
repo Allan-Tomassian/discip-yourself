@@ -18,12 +18,15 @@ import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { isPrimaryCategory, isPrimaryGoal } from "../logic/priority";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
 import { resolveCurrentPlannedOccurrence, resolveNextPlannedOccurrence } from "../ui/session/sessionPlanner";
+import { getAlternativeCandidates, getNextPlannedOccurrence } from "../core/focus/focusSelector";
 import { resolveGoalType } from "../domain/goalType";
 import { linkProcessToOutcome, splitProcessByLink } from "../logic/linking";
 import { computeDisciplineScore } from "../logic/pilotage";
 import { uid } from "../utils/helpers";
 import CalendarCard from "../ui/calendar/CalendarCard";
 import FocusCard from "../ui/focus/FocusCard";
+import MicroActionsCard from "../ui/today/MicroActionsCard";
+import { LABELS } from "../ui/labels";
 
 // TOUR MAP:
 // - primary_action: start session (GO) for today
@@ -50,29 +53,7 @@ function safeString(v) {
   return typeof v === "string" ? v : "";
 }
 
-// ---- Micro-actions
-const MICRO_ACTIONS = [
-  { id: "micro_flexions", label: "Faire 10 flexions" },
-  { id: "micro_mot", label: "Apprendre un mot" },
-  { id: "micro_respiration", label: "10 respirations" },
-  { id: "micro_eau", label: "Boire un verre d’eau" },
-  { id: "micro_rangement", label: "Ranger 2 minutes" },
-  { id: "micro_etirements", label: "Étirements rapides" },
-];
 const DEFAULT_BLOCK_ORDER = getDefaultBlockIds("home");
-
-function initMicroState(dayKeyValue) {
-  const key = dayKeyValue || toLocalDateKey(new Date());
-  return {
-    dayKey: key,
-    cursor: Math.min(3, MICRO_ACTIONS.length),
-    items: MICRO_ACTIONS.slice(0, 3).map((item, idx) => ({
-      uid: `${item.id}-${key}-${idx}`,
-      id: item.id,
-      label: item.label,
-    })),
-  };
-}
 
 function diffDays(anchor, target) {
   if (!(anchor instanceof Date) || !(target instanceof Date)) return 0;
@@ -155,15 +136,14 @@ export default function Home({
 
   // State
   const [showWhy, setShowWhy] = useState(true);
-  const [microState, setMicroState] = useState(() => initMicroState(selectedDateKey));
   const [showDayStats, setShowDayStats] = useState(false);
   const [showDisciplineStats, setShowDisciplineStats] = useState(false);
   const [calendarView, setCalendarView] = useState("day");
   const [calendarPanePhase, setCalendarPanePhase] = useState("enterActive");
   const [calendarPaneKey, setCalendarPaneKey] = useState(0);
-  const [microOpen, setMicroOpen] = useState(false);
   const [dailyNote, setDailyNote] = useState("");
   const [noteMeta, setNoteMeta] = useState({ forme: "", humeur: "", motivation: "" });
+  const [focusOverride, setFocusOverride] = useState(null);
   const [showNotesHistory, setShowNotesHistory] = useState(false);
   const [noteDeleteMode, setNoteDeleteMode] = useState(false);
   const [noteDeleteTargetId, setNoteDeleteTargetId] = useState(null);
@@ -224,14 +204,19 @@ export default function Home({
 
   // Data slices
   const profile = safeData.profile || {};
+  // per-view category selection for Home (fallback to legacy)
+  const homeSelectedCategoryIdRaw =
+    safeData.ui?.selectedCategoryByView?.home || safeData.ui?.selectedCategoryId || null;
+  const homeSelectedCategoryId = homeSelectedCategoryIdRaw || "general";
   const categories = useMemo(
     () => (Array.isArray(safeData.categories) ? safeData.categories : []),
     [safeData.categories]
   );
+  const selectedCategory = useMemo(
+    () => categories.find((c) => c && c.id === homeSelectedCategoryId) || null,
+    [categories, homeSelectedCategoryId]
+  );
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
-  // per-view category selection for Home (fallback to legacy)
-  const homeSelectedCategoryId =
-    safeData.ui?.selectedCategoryByView?.home || safeData.ui?.selectedCategoryId || null;
   const noteCategoryId = homeSelectedCategoryId;
   const noteKeyPrefix = noteCategoryId ? `dailyNote:${noteCategoryId}:` : "dailyNote:";
   const noteMetaKeyPrefix = noteCategoryId ? `dailyNoteMeta:${noteCategoryId}:` : "dailyNoteMeta:";
@@ -241,6 +226,10 @@ export default function Home({
   const occurrences = useMemo(
     () => (Array.isArray(safeData.occurrences) ? safeData.occurrences : []),
     [safeData.occurrences]
+  );
+  const plannedOccurrencesForDay = useMemo(
+    () => occurrences.filter((occ) => occ && occ.status === "planned" && occ.date === selectedDateKey),
+    [occurrences, selectedDateKey]
   );
   const goalIdSet = useMemo(() => new Set(goals.map((g) => g?.id).filter(Boolean)), [goals]);
   const microChecks = useMemo(
@@ -391,6 +380,11 @@ export default function Home({
     };
   }, [dailyNote, noteStorageKey]);
 
+  useEffect(() => {
+    if (!focusOverride?.dateKey) return;
+    if (focusOverride.dateKey !== selectedDateKey) setFocusOverride(null);
+  }, [focusOverride?.dateKey, selectedDateKey]);
+
   // Derived data
   const focusCategory = useMemo(() => {
     if (!categories.length) return null;
@@ -515,6 +509,78 @@ export default function Home({
     for (const c of categories) if (c && c.id) map.set(c.id, c);
     return map;
   }, [categories]);
+  const focusBaseOccurrence = useMemo(
+    () => getNextPlannedOccurrence({ dateKey: selectedDateKey, now: new Date(), occurrences: plannedOccurrencesForDay }),
+    [plannedOccurrencesForDay, selectedDateKey]
+  );
+  const focusOverrideOccurrence = useMemo(() => {
+    if (!focusOverride?.dateKey || focusOverride.dateKey !== selectedDateKey) return null;
+    return plannedOccurrencesForDay.find((occ) => occ && occ.id === focusOverride.occurrenceId) || null;
+  }, [focusOverride?.dateKey, focusOverride?.occurrenceId, plannedOccurrencesForDay, selectedDateKey]);
+  const focusOccurrence = focusOverrideOccurrence || focusBaseOccurrence;
+  const isFocusOverride =
+    Boolean(focusOverrideOccurrence && focusBaseOccurrence && focusOverrideOccurrence.id !== focusBaseOccurrence.id);
+  const alternativeCandidates = useMemo(
+    () =>
+      getAlternativeCandidates({
+        dateKey: selectedDateKey,
+        now: new Date(),
+        occurrences: plannedOccurrencesForDay,
+        limit: 4,
+        excludeId: focusOccurrence?.id || null,
+      }),
+    [focusOccurrence?.id, plannedOccurrencesForDay, selectedDateKey]
+  );
+  useEffect(() => {
+    if (!focusOverride?.dateKey || focusOverride.dateKey !== selectedDateKey) return;
+    if (!focusOverrideOccurrence) setFocusOverride(null);
+  }, [focusOverride?.dateKey, focusOverrideOccurrence, selectedDateKey]);
+  const logFocusDeviation = useCallback((event) => {
+    try {
+      const key = "focusDeviationEvents";
+      const raw = localStorage.getItem(key);
+      const list = raw ? JSON.parse(raw) : [];
+      const next = Array.isArray(list) ? [...list, event] : [event];
+      localStorage.setItem(key, JSON.stringify(next.slice(-200)));
+    } catch (err) {
+   void err;
+    }
+  }, []);
+  const handleSelectFocusAlternative = useCallback(
+    (item) => {
+      if (!item?.occ || !item.occ.id) return;
+      setFocusOverride({ dateKey: selectedDateKey, occurrenceId: item.occ.id });
+      if (focusBaseOccurrence?.id && item.occ.id !== focusBaseOccurrence.id) {
+        logFocusDeviation({
+          dateKey: selectedDateKey,
+          occurrenceId: item.occ.id,
+          baseOccurrenceId: focusBaseOccurrence.id,
+          kind: item.kind,
+          chosenAt: new Date().toISOString(),
+        });
+      }
+    },
+    [focusBaseOccurrence?.id, logFocusDeviation, selectedDateKey]
+  );
+  const plannedToday = useMemo(() => {
+    return occurrences.filter((occ) => occ && occ.status === "planned" && occ.date === localTodayKey);
+  }, [occurrences, localTodayKey]);
+  const plannedTodayWithMeta = useMemo(() => {
+    return plannedToday.map((occ) => {
+      const goal = goalsById.get(occ.goalId) || null;
+      const actionTitle = goal?.title || "";
+      return {
+        ...occ,
+        categoryId: goal?.categoryId || null,
+        actionTitle,
+        goalTitle: actionTitle,
+      };
+    });
+  }, [plannedToday, goalsById]);
+  const nextPlannedOccurrenceToday = useMemo(
+    () => resolveNextPlannedOccurrence(plannedTodayWithMeta, new Date()),
+    [plannedTodayWithMeta]
+  );
 
   const occurrenceSort = useCallback(
     (a, b) => {
@@ -669,9 +735,6 @@ export default function Home({
     return map;
   }, [dominantOutcomeIdByDate, goalsById, categories]);
 
-  const microItems = useMemo(() => {
-    return microState.items;
-  }, [microState.items]);
 
   const microDoneToday = useMemo(() => {
     const count = Object.keys(dayMicro || {}).length;
@@ -830,11 +893,6 @@ export default function Home({
   const monthGrid = useMemo(() => buildMonthGrid(monthCursor), [monthCursor]);
 
   useEffect(() => {
-    if (microState.dayKey === selectedDateKey) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMicroState(initMicroState(selectedDateKey));
-  }, [microState.dayKey, selectedDateKey]);
-  useEffect(() => {
     if (!legacyPendingDateKey || typeof setData !== "function") return;
     setData((prev) => {
       const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
@@ -915,7 +973,7 @@ export default function Home({
       if (!occurrence || typeof setData !== "function") return;
       const goal = occurrence.goalId ? goalsById.get(occurrence.goalId) || null : null;
       const objective = occurrence.goalId ? getOutcomeForGoalId(occurrence.goalId) : null;
-      const categoryId = goal?.categoryId || focusCategory?.id || null;
+      const categoryId = goal?.categoryId || null;
       setData((prev) => {
         const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
         const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
@@ -955,14 +1013,8 @@ export default function Home({
         onOpenSession({ categoryId, dateKey: occurrence.date || selectedDateKey });
       }
     },
-    [focusCategory?.id, getOutcomeForGoalId, goalsById, onOpenSession, selectedDateKey, setData]
+    [getOutcomeForGoalId, goalsById, onOpenSession, selectedDateKey, setData]
   );
-  const handlePrepareSession = useCallback(() => {
-    if (typeof onOpenSession === "function") {
-      onOpenSession({ categoryId: focusCategory?.id || null, dateKey: selectedDateKey });
-    }
-  }, [focusCategory?.id, onOpenSession, selectedDateKey]);
-
   const lastEnsureSigRef = useRef("");
   const ensureDebugCountRef = useRef(0);
   useEffect(() => {
@@ -1396,77 +1448,39 @@ export default function Home({
                 setActivatorNodeRef={setActivatorNodeRef}
                 listeners={listeners}
                 attributes={attributes}
-                focusCategory={focusCategory}
-                selectedGoal={selectedGoal}
-                canManageCategory={canManageCategory}
-                onOpenManageCategory={onOpenManageCategory}
-                currentPlannedOccurrence={currentPlannedOccurrence}
-                nextPlannedOccurrence={nextPlannedOccurrence}
+                focusOccurrence={focusOccurrence}
+                baseOccurrence={focusBaseOccurrence}
+                alternativeCandidates={alternativeCandidates}
+                onSelectAlternative={handleSelectFocusAlternative}
+                onResetOverride={() => setFocusOverride(null)}
+                isOverride={isFocusOverride}
                 onStartSession={handleStartSession}
-                onPrepareSession={handlePrepareSession}
                 normalizeOccurrenceForUI={normalizeOccurrenceForUI}
                 goalsById={goalsById}
+                categoriesById={categoriesById}
+                activeOccurrenceId={activeSession?.occurrenceId || null}
               />
             );
           }
 
           if (blockId === "micro") {
             return (
-              <Card data-tour-id="today-micro-card">
-                <div className="p18">
-                  <div className="row">
-                    <div className="cardSectionTitleRow">
-                      {drag ? (
-                        <button
-                          ref={setActivatorNodeRef}
-                          {...listeners}
-                          {...attributes}
-                          className="dragHandle"
-                          aria-label="Réorganiser"
-                        >
-                          ⋮⋮
-                        </button>
-                      ) : null}
-                      <div className="cardSectionTitle">Micro-actions</div>
-                    </div>
-                    <button
-                      className="linkBtn microToggle"
-                      type="button"
-                      onClick={() => setMicroOpen((v) => !v)}
-                      data-tour-id="today-micro-toggle"
-                    >
-                      {microOpen ? "▾" : "▸"}
-                    </button>
-                  </div>
-                  {microOpen ? (
-                    <>
-                      <div className="sectionSub">Trois impulsions simples</div>
-                      <div className="mt12 col" style={{ gap: 10 }}>
-                        {microItems.map((item) => {
-                          const isMicroDone = Boolean(dayMicro?.[item.id]);
-                          const canAddMicro = canValidate && microDoneToday < 3 && !isMicroDone;
-                          return (
-                            <AccentItem key={item.uid} color={accent} className="listItem">
-                              <div className="row" style={{ justifyContent: "space-between" }}>
-                                <div className="itemTitle">{item.label}</div>
-                                <Button
-                                  variant="ghost"
-                                  onClick={() => addMicroCheck(item.id)}
-                                  disabled={!canAddMicro}
-                                  aria-label={isMicroDone ? "Déjà fait" : "Ajouter +1"}
-                                  title={isMicroDone ? "Déjà fait" : microDoneToday >= 3 ? "Limite atteinte (3/jour)" : "Ajouter"}
-                                >
-                                  +1
-                                </Button>
-                              </div>
-                            </AccentItem>
-                          );
-                        })}
-                      </div>
-                    </>
-                  ) : null}
-                </div>
-              </Card>
+              <MicroActionsCard
+                drag={drag}
+                setActivatorNodeRef={setActivatorNodeRef}
+                listeners={listeners}
+                attributes={attributes}
+                categoryId={homeSelectedCategoryId || ""}
+                categoryName={selectedCategory?.name || ""}
+                goalId={selectedGoal?.id || ""}
+                goalTitle={selectedGoal?.title || ""}
+                nextOccurrence={nextPlannedOccurrenceToday}
+                plannedToday={plannedTodayWithMeta}
+                dayMicro={dayMicro}
+                microDoneToday={microDoneToday}
+                canValidate={canValidate}
+                onAddMicroCheck={addMicroCheck}
+              />
             );
           }
 
@@ -1627,7 +1641,7 @@ export default function Home({
                 <div className="titleSm">{selectedDateKey}</div>
               </div>
               <div className="row" style={{ justifyContent: "space-between" }}>
-                <div className="small2">Objectif principal</div>
+                <div className="small2">{LABELS.goal} principal</div>
                 <div className="titleSm">
                   {selectedGoal ? (goalDone ? "Terminé" : "En cours") : "—"}
                 </div>

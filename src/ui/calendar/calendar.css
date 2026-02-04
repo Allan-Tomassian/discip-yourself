@@ -30,11 +30,12 @@
 }
 
 .calendarActions{
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
   align-items: center;
   gap: 10px;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
+  justify-content: end;
   justify-self: end;
   min-width: 240px;
   font-variant-numeric: tabular-nums;
@@ -133,7 +134,7 @@
   height: 80px;
   padding: 6px 0;
   padding-inline: max(var(--rail-pad, 12px), env(safe-area-inset-left, 0px)) max(var(--rail-pad, 12px), env(safe-area-inset-right, 0px));
-  --dayrail-item-half: 36px;
+  --dayrail-item-half: 28px;
   scroll-padding-inline: calc(50% - var(--dayrail-item-half));
   touch-action: pan-x;
   overscroll-behavior-x: contain;
@@ -164,25 +165,40 @@
   box-sizing: border-box;
   cursor: pointer;
   transition: transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+  font-variant-numeric: tabular-nums;
+}
+
+.calendarPillWeekday{
+  font-size: 10px;
+  line-height: 1;
+  text-transform: uppercase;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.6px;
+  color: var(--text-3, var(--muted2));
 }
 
 .calendarPillDay{
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .calendarPillMonth{
   font-size: 11px;
   color: var(--text-3, var(--muted2));
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .calendarPillBadge{
-  margin-top: 2px;
-  font-size: 10px;
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 9px;
   line-height: 1;
   color: var(--text-3, var(--muted2));
+  opacity: 0.85;
 }
 
 .calendarItem{
@@ -194,6 +210,10 @@
 }
 
 .calendarRail.is-scrolling .calendarItem{
+  transition: none;
+}
+
+.calendarRail.is-scrolling .calendarDayPill{
   transition: none;
 }
 
@@ -229,6 +249,7 @@
   border-radius: 999px;
   opacity: 0.95;
   box-shadow: 0 0 0 4px rgba(255,138,61,0.15);
+  pointer-events: none;
 }
 
 .calendarDots{
@@ -318,6 +339,7 @@
   }
   .calendarActions{
     width: 100%;
+    grid-template-columns: minmax(120px, 1fr) auto;
     justify-content: space-between;
     min-width: 0;
   }
@@ -328,6 +350,12 @@
   }
   .calendarRail{
     height: 76px;
-    --dayrail-item-half: 34px;
+    --dayrail-item-half: 26px;
+  }
+  .calendarPillDay{
+    font-size: 15px;
+  }
+  .calendarPillWeekday{
+    font-size: 9px;
   }
 }

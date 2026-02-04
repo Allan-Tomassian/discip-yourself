@@ -9,6 +9,7 @@ import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { resolveConflictNearest } from "../logic/occurrencePlanner";
 import { normalizeActiveSessionForUI, normalizeOccurrenceForUI } from "../logic/compat";
+import { LABELS } from "../ui/labels";
 
 function formatElapsed(ms) {
   const safe = Number.isFinite(ms) && ms > 0 ? ms : 0;
@@ -581,7 +582,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
     );
   }
 
-  const sessionTitle = objective?.title || "Objectif";
+  const sessionTitle = objective?.title || LABELS.goal;
   const sessionSubtitle = category?.name || "Catégorie";
 
   if (isFinal) {

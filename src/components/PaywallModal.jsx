@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button, Card } from "./UI";
 import { getPlanLimits, getTrialDays } from "../logic/entitlements";
 import { loadProducts, PRODUCT_IDS } from "../logic/purchases";
+import { LABELS } from "../ui/labels";
 
 export default function PaywallModal({
   open,
@@ -73,13 +74,13 @@ export default function PaywallModal({
           <div className="col" style={{ gap: 6 }}>
             <div className="small">Inclus :</div>
             <div className="small2">• Catégories illimitées</div>
-            <div className="small2">• Objectifs illimités</div>
+            <div className="small2">• {LABELS.goals} illimités</div>
             <div className="small2">• Actions illimitées</div>
             <div className="small2">• Planning & historique complets</div>
             <div className="small2">• Export des données</div>
           </div>
           <div className="small2" style={{ opacity: 0.6 }}>
-            Limites gratuites : {limits.categories} catégories · {limits.outcomes} objectifs · {limits.actions} actions
+            Limites gratuites : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} · {limits.actions} {LABELS.actionsLower}
           </div>
           <div className="col" style={{ gap: 8 }}>
             <Button

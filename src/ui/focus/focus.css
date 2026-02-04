@@ -116,10 +116,54 @@
 .focusCtaRow{
   display: flex;
   align-items: center;
+  gap: 10px;
 }
 
 .focusCtaBtn{
   min-width: 140px;
+}
+
+.focusAltBtn{
+  min-width: 110px;
+}
+
+.focusAltList{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+}
+
+.focusAltItem{
+  border: 1px solid var(--border-subtle, var(--border));
+  background: transparent;
+  color: inherit;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.focusAltTitle{
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.focusAltMeta{
+  font-size: 12px;
+  color: var(--text-3, var(--muted2));
+  white-space: nowrap;
+}
+
+.focusAltNote{
+  font-size: 12px;
+  color: var(--text-3, var(--muted2));
 }
 
 @media (max-width: 600px){

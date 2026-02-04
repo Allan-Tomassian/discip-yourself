@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
+import CreateSection from "../ui/create/CreateSection";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_HABIT_TYPE, STEP_HABITS } from "../creation/creationSchema";
 
@@ -52,17 +53,19 @@ export default function CreateV2HabitType({ data, setData, onBack, onNext }) {
 
         <Card accentBorder>
           <div className="p18 col gap12">
-            <div className="small2 textMuted">
-              Choisis le type. Tu configures le planning à l’étape suivante.
-            </div>
+            <CreateSection title="Type d’action" description="Choisis le planning" collapsible={false}>
+              <div className="small2 textMuted">
+                Choisis le type. Tu configures le planning à l’étape suivante.
+              </div>
 
-            <Button onClick={() => setType("ONE_OFF")}>Ponctuelle (une fois)</Button>
-            <Button onClick={() => setType("RECURRING")}>Récurrente (planifiée)</Button>
-            <Button onClick={() => setType("ANYTIME")}>Anytime (sans planification)</Button>
+              <Button onClick={() => setType("ONE_OFF")}>Ponctuelle (une fois)</Button>
+              <Button onClick={() => setType("RECURRING")}>Récurrente (planifiée)</Button>
+              <Button onClick={() => setType("ANYTIME")}>Anytime (sans planification)</Button>
 
-            {draft?.habitType ? (
-              <div className="small2 textMuted">Sélection actuelle : {draft.habitType}</div>
-            ) : null}
+              {draft?.habitType ? (
+                <div className="small2 textMuted">Sélection actuelle : {draft.habitType}</div>
+              ) : null}
+            </CreateSection>
           </div>
         </Card>
       </div>

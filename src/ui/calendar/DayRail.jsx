@@ -8,7 +8,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { buildDateWindow } from "../../utils/dates";
+import { buildDateWindow, getWeekdayShortLabel } from "../../utils/dates";
 import { toLocalDateKey, fromLocalDateKey } from "../../utils/dateKey";
 import { computeTargetScrollLeftFromRects, indexAtCenter, targetScrollLeft } from "./railMath";
 
@@ -100,6 +100,7 @@ function DayRail(
       return {
         key,
         date: d,
+        weekday: getWeekdayShortLabel(d),
         day: parts[2] || "",
         month: parts[1] || "",
         status: key === localTodayKey ? "today" : key < localTodayKey ? "past" : "future",
@@ -124,6 +125,12 @@ function DayRail(
     const next = getStrideMeasurements(container, sampleEl);
     if (!next || !next.stride) return null;
     const prevSpacer = measurementsRef.current.spacerWidth;
+    const halfWidth = Math.round(next.itemWidth / 2);
+    const prevHalfRaw = container.style.getPropertyValue("--dayrail-item-half");
+    const prevHalf = Number.parseFloat(prevHalfRaw) || 0;
+    if (halfWidth && prevHalf !== halfWidth) {
+      container.style.setProperty("--dayrail-item-half", `${halfWidth}px`);
+    }
     if (prevSpacer !== next.spacerWidth) {
       setSpacerWidth(next.spacerWidth);
     }
@@ -431,6 +438,7 @@ function DayRail(
                 boxShadow: isSelected ? `0 0 0 2px ${accentForItem}33` : undefined,
               }}
             >
+              <div className="calendarPillWeekday">{item.weekday}</div>
               <div className="calendarPillDay">{item.day}</div>
               <div className="calendarPillMonth">/{item.month}</div>
               {isToday ? <div className="calendarPillBadge">Aujourd’hui</div> : null}

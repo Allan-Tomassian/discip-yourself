@@ -1,3 +1,5 @@
+import { LABELS } from "../ui/labels";
+
 const SECTION_ORDER = [
   { key: "oneOff", title: "Ponctuelles" },
   { key: "recurring", title: "Planifiées" },
@@ -139,7 +141,7 @@ function buildBadges(goal, outcomeMap) {
   const outcomeId = resolveOutcomeId(goal);
   if (outcomeId) {
     const outcomeTitle = outcomeMap?.get(outcomeId)?.title || "";
-    badges.push(outcomeTitle ? `Objectif: ${outcomeTitle}` : "Objectif lié");
+    badges.push(outcomeTitle ? `${LABELS.goal}: ${outcomeTitle}` : `${LABELS.goal} lié`);
   }
 
   return badges;

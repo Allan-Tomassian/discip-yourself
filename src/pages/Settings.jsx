@@ -3,6 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import ThemePicker from "../components/ThemePicker";
 import { Button, Card, Textarea } from "../components/UI";
 import { getPlanLimits, isPremium } from "../logic/entitlements";
+import { LABELS } from "../ui/labels";
 
 // TOUR MAP:
 // - primary_action: adjust settings and replay onboarding/tutorial
@@ -126,7 +127,7 @@ export default function Settings({
             </div>
             <div className="mt10 col">
               <div className="small2">
-                Limites gratuites : {limits.categories} catégories · {limits.outcomes} objectifs · {limits.actions} actions
+                Limites gratuites : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} · {limits.actions} {LABELS.actionsLower}
               </div>
               {isPremiumPlan && showExpiry ? (
                 <div className="small2">Expire le {expiryLabel}</div>
