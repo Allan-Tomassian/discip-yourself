@@ -12,6 +12,7 @@ import {
   Textarea,
   ToggleChip,
 } from "../components/UI";
+import FlowShell from "../ui/create/FlowShell";
 import Select from "../ui/select/Select";
 import DatePicker from "../ui/date/DatePicker";
 import CreateSection from "../ui/create/CreateSection";
@@ -21,7 +22,19 @@ import { STEP_HABITS, STEP_LINK_OUTCOME, STEP_PICK_CATEGORY } from "../creation/
 import { uid } from "../utils/helpers";
 import { createGoal } from "../logic/goals";
 import { ensureWindowFromScheduleRules } from "../logic/occurrencePlanner";
-import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
+import {
+  addDaysLocal,
+  appDowFromDate,
+  buildDateRangeLocalKeys,
+  fromLocalDateKey,
+  normalizeLocalDateKey,
+  normalizeStartTime,
+  parseTimeToMinutes,
+  toLocalDateKey,
+  todayLocalKey,
+  minutesToTimeStr,
+  clampTimeToDay,
+} from "../utils/datetime";
 import { createDefaultGoalSchedule, ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
 import { normalizeReminder } from "../logic/reminders";
 import { normalizeTimeFields } from "../logic/timeFields";
@@ -48,29 +61,11 @@ const QUANTITY_PERIODS = [
 
 const DEFAULT_CONFLICT_DURATION = 30;
 
-function appDowFromDate(d) {
-  const js = d.getDay();
-  return js === 0 ? 7 : js;
-}
-
-function addDaysLocal(dateKey, days) {
-  const dk = typeof dateKey === "string" ? normalizeLocalDateKey(dateKey) : "";
-  if (!dk) return "";
-  const base = fromLocalDateKey(dk);
-  base.setDate(base.getDate() + (Number.isFinite(days) ? Math.trunc(days) : 0));
-  return toLocalDateKey(base);
-}
-
 function setDaysPreset(setter, preset) {
   if (preset === "ALL") return setter([1, 2, 3, 4, 5, 6, 7]);
   if (preset === "WEEKDAYS") return setter([1, 2, 3, 4, 5]);
   if (preset === "CLEAR") return setter([]);
   return setter([appDowFromDate(new Date())]);
-}
-
-function normalizeStartTime(value) {
-  const raw = typeof value === "string" ? value.trim() : "";
-  return /^\d{2}:\d{2}$/.test(raw) ? raw : "";
 }
 
 function normalizeDurationMinutes(value) {
@@ -118,44 +113,12 @@ function normalizeDaysOfWeek(value) {
   return out;
 }
 
-function timeToMinutes(hhmm) {
-  const raw = typeof hhmm === "string" ? hhmm.trim() : "";
-  if (!/^\d{2}:\d{2}$/.test(raw)) return null;
-  const [h, m] = raw.split(":").map((x) => Number(x));
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
-  return h * 60 + m;
-}
-
-function minutesToTime(minutes) {
-  if (!Number.isFinite(minutes)) return "";
-  const clamped = Math.max(0, Math.min(24 * 60 - 1, Math.round(minutes)));
-  const h = Math.floor(clamped / 60);
-  const m = clamped % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
-
-function buildDateRange(fromKey, toKey) {
-  const from = normalizeLocalDateKey(fromKey);
-  const to = normalizeLocalDateKey(toKey);
-  if (!from || !to) return [];
-  const start = fromLocalDateKey(from);
-  const end = fromLocalDateKey(to);
-  const out = [];
-  const cursor = new Date(start);
-  while (cursor <= end) {
-    out.push(toLocalDateKey(cursor));
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return out;
-}
-
 function resolveSlotDuration(slot, fallbackMinutes) {
   const start = normalizeStartTime(slot?.start);
   const end = normalizeStartTime(slot?.end);
   if (start && end) {
-    const startMin = timeToMinutes(start);
-    const endMin = timeToMinutes(end);
+    const startMin = parseTimeToMinutes(start);
+    const endMin = parseTimeToMinutes(end);
     if (Number.isFinite(startMin) && Number.isFinite(endMin) && endMin > startMin) {
       return endMin - startMin;
     }
@@ -198,8 +161,8 @@ function validateWeeklySlotsByDay(daysOfWeek, weeklySlotsByDay) {
       const start = normalizeStartTime(s?.start);
       const end = normalizeStartTime(s?.end);
       if (!start || !end) continue;
-      const a = timeToMinutes(start);
-      const b = timeToMinutes(end);
+      const a = parseTimeToMinutes(start);
+      const b = parseTimeToMinutes(end);
       if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) return false;
     }
   }
@@ -292,6 +255,9 @@ export default function CreateV2Habits({
   onBack,
   onDone,
   onCancel,
+  embedded = false,
+  hideBack = false,
+  skin = "",
   canCreateAction = true,
   onOpenPaywall,
   isPremiumPlan = false,
@@ -299,6 +265,7 @@ export default function CreateV2Habits({
   generationWindowDays = null,
   onNext,
 }) {
+  const isGate = skin === "gate";
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
@@ -568,7 +535,7 @@ export default function CreateV2Habits({
     const days = normalizeDaysOfWeek(habit.daysOfWeek);
     if (!days.length) return [];
 
-    const dates = buildDateRange(fromKey, toKey);
+    const dates = buildDateRangeLocalKeys(fromKey, toKey);
     const out = [];
     for (const dateKey of dates) {
       const dow = appDowFromDate(fromLocalDateKey(dateKey));
@@ -824,8 +791,8 @@ export default function CreateV2Habits({
       const conflictItems = conflicts.map((entry, idx) => {
         const source = entry.source || {};
         const goal = goalsById.get(source.goalId);
-        const start = minutesToTime(entry.conflict?.startMin);
-        const end = minutesToTime(entry.conflict?.endMin);
+        const start = minutesToTimeStr(clampTimeToDay(entry.conflict?.startMin));
+        const end = minutesToTimeStr(clampTimeToDay(entry.conflict?.endMin));
         return {
           id: source.id || `${source.goalId || "occ"}-${idx}`,
           title: goal?.title || "Action",
@@ -1073,6 +1040,9 @@ export default function CreateV2Habits({
     handleDone({ conflictResolution: { cancelOccurrenceIds } });
   }
 
+  const Wrapper = isGate ? FlowShell : Card;
+  const wrapperProps = isGate ? {} : { accentBorder: true };
+
   return (
     <ScreenShell
       data={safeData}
@@ -1085,18 +1055,21 @@ export default function CreateV2Habits({
         </>
       }
       backgroundImage={backgroundImage}
+      embedded={embedded || isGate}
     >
       <div className="stack stackGap12">
-        <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
-          ← Retour
-        </Button>
+        {!hideBack && !isGate ? (
+          <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+            ← Retour
+          </Button>
+        ) : null}
 
-        <Card accentBorder>
-          <div className="p18 col gap12">
+        <Wrapper {...wrapperProps}>
+          <div className="flowShellBody p18 col gap12">
             <CreateSection title="Action" description="Titre + contexte" collapsible={false}>
               <div className="createFieldRow">
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nouvelle action" />
-                <Button onClick={addHabit} disabled={!canAddHabit}>
+                <Button onClick={addHabit} disabled={!canAddHabit} data-testid="action-add">
                   Ajouter
                 </Button>
               </div>
@@ -1430,12 +1403,12 @@ export default function CreateV2Habits({
               >
                 Annuler
               </Button>
-              <Button onClick={handleDone} disabled={!habits.length || hasInvalidHabits}>
+              <Button onClick={handleDone} disabled={!habits.length || hasInvalidHabits} data-testid="action-save">
                 Terminer
               </Button>
             </div>
           </div>
-        </Card>
+        </Wrapper>
       </div>
 
       <ConflictResolver

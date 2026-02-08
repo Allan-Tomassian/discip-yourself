@@ -5,7 +5,17 @@ import Select from "../ui/select/Select";
 import DatePicker from "../ui/date/DatePicker";
 import ConflictResolver from "../ui/scheduling/ConflictResolver";
 import { safeConfirm } from "../utils/dialogs";
-import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
+import {
+  appDowFromDate,
+  buildDateRangeLocalKeys,
+  clampTimeToDay,
+  fromLocalDateKey,
+  minutesToTimeStr,
+  normalizeLocalDateKey,
+  normalizeStartTime,
+  toLocalDateKey,
+  todayLocalKey,
+} from "../utils/datetime";
 import { addDays } from "../utils/dates";
 import { uid } from "../utils/helpers";
 import { createDefaultGoalSchedule, ensureSystemInboxCategory, normalizeCategory, SYSTEM_INBOX_ID } from "../logic/state";
@@ -84,11 +94,6 @@ function buildStartAt(date, time) {
   return `${cleanDate}T${cleanTime}`;
 }
 
-function normalizeStartTime(value) {
-  const raw = typeof value === "string" ? value.trim() : "";
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(raw) ? raw : "";
-}
-
 function normalizeDurationMinutes(value) {
   const raw = typeof value === "string" ? Number(value) : value;
   if (!Number.isFinite(raw) || raw <= 0) return null;
@@ -133,34 +138,6 @@ function normalizeTimes(times) {
     if (seen.has(t)) continue;
     seen.add(t);
     out.push(t);
-  }
-  return out;
-}
-
-function appDowFromDate(d) {
-  const js = d.getDay();
-  return js === 0 ? 7 : js;
-}
-
-function minutesToTime(minutes) {
-  if (!Number.isFinite(minutes)) return "";
-  const clamped = Math.max(0, Math.min(24 * 60 - 1, Math.round(minutes)));
-  const h = Math.floor(clamped / 60);
-  const m = clamped % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
-
-function buildDateRange(fromKey, toKey) {
-  const from = normalizeLocalDateKey(fromKey);
-  const to = normalizeLocalDateKey(toKey);
-  if (!from || !to) return [];
-  const start = fromLocalDateKey(from);
-  const end = fromLocalDateKey(to);
-  const out = [];
-  const cursor = new Date(start);
-  while (cursor <= end) {
-    out.push(toLocalDateKey(cursor));
-    cursor.setDate(cursor.getDate() + 1);
   }
   return out;
 }
@@ -482,7 +459,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
         : normalizeDays(daysOfWeek);
     if (!days.length) return [];
 
-    const dates = buildDateRange(windowFromKey, windowToKey);
+    const dates = buildDateRangeLocalKeys(windowFromKey, windowToKey);
     const out = [];
     for (const dateKey of dates) {
       const dow = appDowFromDate(fromLocalDateKey(dateKey));
@@ -736,8 +713,8 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
         const conflictItems = conflicts.map((entry, idx) => {
           const source = entry.source || {};
           const goal = goalsById.get(source.goalId);
-          const start = minutesToTime(entry.conflict?.startMin);
-          const end = minutesToTime(entry.conflict?.endMin);
+          const start = minutesToTimeStr(clampTimeToDay(entry.conflict?.startMin));
+          const end = minutesToTimeStr(clampTimeToDay(entry.conflict?.endMin));
           return {
             id: source.id || `${source.goalId || "occ"}-${idx}`,
             title: goal?.title || "Action",

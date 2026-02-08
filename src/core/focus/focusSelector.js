@@ -1,13 +1,4 @@
-import { normalizeLocalDateKey } from "../../utils/dateKey";
-
-function parseTimeToMinutes(value) {
-  const raw = typeof value === "string" ? value.trim() : "";
-  if (!/^\d{2}:\d{2}$/.test(raw)) return null;
-  const [h, m] = raw.split(":").map((v) => Number(v));
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
-  return h * 60 + m;
-}
+import { normalizeLocalDateKey, parseTimeToMinutes } from "../../utils/datetime";
 
 function resolveStartMinutes(occ) {
   if (!occ || typeof occ !== "object") return null;

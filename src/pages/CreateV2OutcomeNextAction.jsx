@@ -1,13 +1,22 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
+import FlowShell from "../ui/create/FlowShell";
 import CreateSection from "../ui/create/CreateSection";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { SYSTEM_INBOX_ID } from "../logic/state";
 import { resolveGoalType } from "../domain/goalType";
 import { LABELS } from "../ui/labels";
 
-export default function CreateV2OutcomeNextAction({ data, setData, onCreateAction, onDone }) {
+export default function CreateV2OutcomeNextAction({
+  data,
+  setData,
+  onCreateAction,
+  onDone,
+  embedded = false,
+  skin = "",
+}) {
+  const isGate = skin === "gate";
   const safeData = data && typeof data === "object" ? data : {};
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
@@ -39,6 +48,34 @@ export default function CreateV2OutcomeNextAction({ data, setData, onCreateActio
 
   if (!outcomeId) return null;
 
+  const content = (
+    <div className={`flowShellBody col gap12${isGate ? "" : " p18"}`}>
+      <CreateSection title="Première action" description="Optionnel" collapsible={false}>
+        <div className="small2">Créer une première action pour ce {LABELS.goalLower} ?</div>
+        <div className="small textMuted">
+          {outcome?.title || LABELS.goal} · {categoryId === SYSTEM_INBOX_ID ? "Général" : "Catégorie choisie"}
+        </div>
+        <div className="row rowBetween">
+          <Button variant="ghost" onClick={clearDraftAndExit}>
+            Plus tard
+          </Button>
+          <Button
+            onClick={() => {
+              if (typeof onCreateAction === "function") {
+                onCreateAction(outcomeId, categoryId || SYSTEM_INBOX_ID);
+              }
+            }}
+          >
+            Créer 1ère action
+          </Button>
+        </div>
+        <div className="small2 textMuted2">
+          Le {LABELS.goalLower} sera en brouillon tant qu’aucune action n’est liée.
+        </div>
+      </CreateSection>
+    </div>
+  );
+
   return (
     <ScreenShell
       data={safeData}
@@ -50,35 +87,10 @@ export default function CreateV2OutcomeNextAction({ data, setData, onCreateActio
         </>
       }
       backgroundImage={safeData?.profile?.whyImage || ""}
+      embedded={embedded || isGate}
     >
       <div className="stack stackGap12">
-        <Card accentBorder>
-          <div className="p18 col gap12">
-            <CreateSection title="Première action" description="Optionnel" collapsible={false}>
-              <div className="small2">Créer une première action pour ce {LABELS.goalLower} ?</div>
-              <div className="small textMuted">
-                {outcome?.title || LABELS.goal} · {categoryId === SYSTEM_INBOX_ID ? "Général" : "Catégorie choisie"}
-              </div>
-              <div className="row rowBetween">
-                <Button variant="ghost" onClick={clearDraftAndExit}>
-                  Plus tard
-                </Button>
-                <Button
-                  onClick={() => {
-                    if (typeof onCreateAction === "function") {
-                      onCreateAction(outcomeId, categoryId || SYSTEM_INBOX_ID);
-                    }
-                  }}
-                >
-                  Créer 1ère action
-                </Button>
-              </div>
-              <div className="small2 textMuted2">
-                Le {LABELS.goalLower} sera en brouillon tant qu’aucune action n’est liée.
-              </div>
-            </CreateSection>
-          </div>
-        </Card>
+        {isGate ? <FlowShell>{content}</FlowShell> : <Card accentBorder>{content}</Card>}
       </div>
     </ScreenShell>
   );

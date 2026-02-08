@@ -1,11 +1,21 @@
 import React, { useEffect } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
+import FlowShell from "../ui/create/FlowShell";
 import CreateSection from "../ui/create/CreateSection";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_HABIT_TYPE, STEP_HABITS } from "../creation/creationSchema";
 
-export default function CreateV2HabitType({ data, setData, onBack, onNext }) {
+export default function CreateV2HabitType({
+  data,
+  setData,
+  onBack,
+  onNext,
+  embedded = false,
+  hideBack = false,
+  skin = "",
+}) {
+  const isGate = skin === "gate";
   const safeData = data && typeof data === "object" ? data : {};
   const draft = normalizeCreationDraft(safeData?.ui?.createDraft);
 
@@ -34,6 +44,30 @@ export default function CreateV2HabitType({ data, setData, onBack, onNext }) {
     if (typeof onNext === "function") onNext(type);
   }
 
+  const content = (
+    <div className={`flowShellBody col gap12${isGate ? "" : " p18"}`}>
+      <CreateSection title="Type d’action" description="Choisis le planning" collapsible={false}>
+        <div className="small2 textMuted">
+          Choisis le type. Tu configures le planning à l’étape suivante.
+        </div>
+
+        <Button onClick={() => setType("ONE_OFF")} data-testid="create-type-oneoff">
+          Ponctuelle (une fois)
+        </Button>
+        <Button onClick={() => setType("RECURRING")} data-testid="create-type-recurring">
+          Récurrente (planifiée)
+        </Button>
+        <Button onClick={() => setType("ANYTIME")} data-testid="create-type-anytime">
+          Anytime (sans planification)
+        </Button>
+
+        {draft?.habitType ? (
+          <div className="small2 textMuted">Sélection actuelle : {draft.habitType}</div>
+        ) : null}
+      </CreateSection>
+    </div>
+  );
+
   return (
     <ScreenShell
       data={safeData}
@@ -45,29 +79,15 @@ export default function CreateV2HabitType({ data, setData, onBack, onNext }) {
         </>
       }
       backgroundImage={safeData?.profile?.whyImage || ""}
+      embedded={embedded || isGate}
     >
       <div className="stack stackGap12">
-        <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
-          ← Retour
-        </Button>
-
-        <Card accentBorder>
-          <div className="p18 col gap12">
-            <CreateSection title="Type d’action" description="Choisis le planning" collapsible={false}>
-              <div className="small2 textMuted">
-                Choisis le type. Tu configures le planning à l’étape suivante.
-              </div>
-
-              <Button onClick={() => setType("ONE_OFF")}>Ponctuelle (une fois)</Button>
-              <Button onClick={() => setType("RECURRING")}>Récurrente (planifiée)</Button>
-              <Button onClick={() => setType("ANYTIME")}>Anytime (sans planification)</Button>
-
-              {draft?.habitType ? (
-                <div className="small2 textMuted">Sélection actuelle : {draft.habitType}</div>
-              ) : null}
-            </CreateSection>
-          </div>
-        </Card>
+        {!hideBack && !isGate ? (
+          <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+            ← Retour
+          </Button>
+        ) : null}
+        {isGate ? <FlowShell>{content}</FlowShell> : <Card accentBorder>{content}</Card>}
       </div>
     </ScreenShell>
   );

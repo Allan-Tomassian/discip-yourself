@@ -46,6 +46,16 @@ export function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
 
+export function sameArray(a, b) {
+  if (a === b) return true;
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
 export async function readFileAsDataUrl(file) {
   return await new Promise((resolve, reject) => {
     try {

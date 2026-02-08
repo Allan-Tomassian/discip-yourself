@@ -1,4 +1,4 @@
-import { normalizeLocalDateKey } from "../utils/dateKey";
+import { normalizeLocalDateKey, normalizeStartTime } from "../utils/datetime";
 import { normalizeTimeFields } from "../logic/timeFields";
 import {
   CREATION_STEPS,
@@ -109,11 +109,6 @@ function normalizeDaysOfWeek(value) {
     out.push(id);
   }
   return out;
-}
-
-function normalizeStartTime(value) {
-  const raw = typeof value === "string" ? value.trim() : "";
-  return /^\d{2}:\d{2}$/.test(raw) ? raw : "";
 }
 
 function normalizeDurationMinutes(value) {

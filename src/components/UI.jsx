@@ -189,7 +189,7 @@ export function Modal({ open, onClose, children, className = "", backdropClassNa
     function onKeyDown(e) {
       if (e.key === "Escape") {
         e.preventDefault();
-        if (typeof onClose === "function") onClose();
+        if (typeof onClose === "function") onClose({ reason: "escape", event: e });
       }
     }
     window.addEventListener("keydown", onKeyDown, true);
@@ -225,7 +225,10 @@ export function Modal({ open, onClose, children, className = "", backdropClassNa
   return (
     <div
       className={`modalBackdrop${backdropClassName ? ` ${backdropClassName}` : ""}`}
-      onClick={onClose}
+      onClick={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (typeof onClose === "function") onClose({ reason: "backdrop", event: e });
+      }}
       role="presentation"
     >
       <div
@@ -234,6 +237,8 @@ export function Modal({ open, onClose, children, className = "", backdropClassNa
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
       >
         {children}
       </div>

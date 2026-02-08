@@ -1039,6 +1039,13 @@ a{ color:inherit; }
   max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
   overflow:auto;
 }
+.paywallBackdrop{
+  z-index: 10000;
+}
+.paywallPanel{
+  position: relative;
+  z-index: 10001;
+}
 .selectMenuWrap{
   position:relative;
 }

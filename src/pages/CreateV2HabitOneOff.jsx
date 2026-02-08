@@ -2,22 +2,8 @@ import React, { useEffect } from "react";
 import CreateV2Habits from "./CreateV2Habits";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_HABITS } from "../creation/creationSchema";
-
-function localDateKey(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function sameArray(a, b) {
-  if (!Array.isArray(a) || !Array.isArray(b)) return false;
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i += 1) {
-    if (a[i] !== b[i]) return false;
-  }
-  return true;
-}
+import { toLocalDateKey } from "../utils/datetime";
+import { sameArray } from "../utils/helpers";
 
 /**
  * One-off (ponctuelle) action entry point.
@@ -41,7 +27,7 @@ export default function CreateV2HabitOneOff(props) {
       const current = normalizeCreationDraft(ui.createDraft);
 
       const seededOneOffDate = typeof current.oneOffDate === "string" ? current.oneOffDate : "";
-      const nextOneOffDate = seededOneOffDate || localDateKey(new Date());
+      const nextOneOffDate = seededOneOffDate || toLocalDateKey(new Date());
 
       const nextDraft = {
         ...current,
@@ -118,5 +104,5 @@ export default function CreateV2HabitOneOff(props) {
     });
   }, [setData]);
 
-  return <CreateV2Habits {...props} createVariant="ONE_OFF" />;
+  return <CreateV2Habits {...props} createVariant="ONE_OFF" skin={props.skin || ""} />;
 }

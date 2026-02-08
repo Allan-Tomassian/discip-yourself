@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import TopNav from "./components/TopNav";
 import CategoryRail from "./components/CategoryRail";
 import {
@@ -8,11 +8,10 @@ import {
   usePersistedState,
 } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
-import { getDueReminders, playReminderSound, sendReminderNotification } from "./logic/reminders";
 import { Button, Card } from "./components/UI";
 import PlusExpander from "./components/PlusExpander";
 import CategoryGateModal from "./components/CategoryGateModal";
-import { markIOSRootClass, safeAlert } from "./utils/dialogs";
+import { markIOSRootClass } from "./utils/dialogs";
 
 import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
@@ -25,6 +24,7 @@ import CreateV2HabitAnytime from "./pages/CreateV2HabitAnytime";
 import CreateV2LinkOutcome from "./pages/CreateV2LinkOutcome";
 import CreateV2PickCategory from "./pages/CreateV2PickCategory";
 import CreateV2OutcomeNextAction from "./pages/CreateV2OutcomeNextAction";
+import CreateFlowModal from "./ui/create/CreateFlowModal";
 import Settings from "./pages/Settings";
 import CategoryView from "./pages/CategoryView";
 import EditItem from "./pages/EditItem";
@@ -36,40 +36,26 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Support from "./pages/Support";
 import { applyThemeTokens } from "./theme/themeTokens";
-import { toLocalDateKey, todayLocalKey } from "./utils/dateKey";
-import { isPrimaryCategory, normalizePriorities } from "./logic/priority";
-import { resolveGoalType } from "./domain/goalType";
-import { canCreate } from "./logic/categoryGate";
-import { LABELS } from "./ui/labels";
-import { findSuggestedCategory } from "./utils/categoriesSuggested";
-import {
-  canCreateAction,
-  canCreateCategory,
-  canCreateOutcome,
-  getGenerationWindowDays,
-  getPlanLimits,
-  isPlanningUnlimited,
-  isPremium,
-} from "./logic/entitlements";
-import { getPremiumEntitlement, purchase, restore } from "./logic/purchases";
+import { todayLocalKey } from "./utils/dateKey";
+import { normalizePriorities } from "./logic/priority";
 import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
 import { useTour } from "./tour/useTour";
 import TourOverlay from "./tour/TourOverlay";
-import { createEmptyDraft, normalizeCreationDraft } from "./creation/creationDraft";
 import {
-  STEP_HABIT_TYPE,
-  STEP_HABITS,
-  STEP_OUTCOME,
-  STEP_OUTCOME_NEXT_ACTION,
   STEP_LINK_OUTCOME,
   STEP_PICK_CATEGORY,
-  isValidCreationStep,
 } from "./creation/creationSchema";
 import DiagnosticOverlay from "./components/DiagnosticOverlay";
 import { ensureWindowFromScheduleRules, validateOccurrences } from "./logic/occurrencePlanner";
 import { resolveExecutableOccurrence } from "./logic/sessionResolver";
 import { uid } from "./utils/helpers";
 import PaywallModal from "./components/PaywallModal";
+import { useAppNavigation } from "./hooks/useAppNavigation";
+import { useEntitlementsPaywall } from "./hooks/useEntitlementsPaywall";
+import { useRemindersLoop } from "./hooks/useRemindersLoop";
+import { useCreateFlowOrchestration } from "./hooks/useCreateFlowOrchestration";
+import { useCategorySelectionSync } from "./hooks/useCategorySelectionSync";
+import { getInboxId } from "./app/inbox";
 
 function runSelfTests(data) {
   const isProd = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
@@ -77,51 +63,6 @@ function runSelfTests(data) {
   // minimal sanity
   console.assert(typeof window !== "undefined", "browser env");
   validateOccurrences(data);
-}
-
-function localDateKey(d = new Date()) {
-  return toLocalDateKey(d);
-}
-
-function getHomeSelectedCategoryId(data) {
-  const safe = data && typeof data === "object" ? data : {};
-  const categories = Array.isArray(safe.categories) ? safe.categories : [];
-  const goals = Array.isArray(safe.goals) ? safe.goals : [];
-  const homeSelectedId = safe.ui?.selectedCategoryByView?.home || safe.ui?.selectedCategoryId || null;
-  if (homeSelectedId && categories.some((c) => c.id === homeSelectedId)) return homeSelectedId;
-  const primary = categories.find((c) => isPrimaryCategory(c)) || null;
-  if (primary) return primary.id;
-  const withGoal = categories.find((c) =>
-    goals.some((g) => g.categoryId === c.id && resolveGoalType(g) === "OUTCOME")
-  );
-  return withGoal?.id || categories[0]?.id || null;
-}
-
-const TABS = new Set([
-  "today",
-  "library",
-  "pilotage",
-  "create-goal",
-  "create-outcome-next",
-  "create-habit-type",
-  "create-habit-oneoff",
-  "create-habit-recurring",
-  "create-habit-anytime",
-  "create-link-outcome",
-  "create-pick-category",
-  "edit-item",
-  "session",
-  "category-progress",
-  "category-detail",
-  "settings",
-  "privacy",
-  "terms",
-  "support",
-]);
-function normalizeTab(t) {
-  if (t === "tools" || t === "plan") return "pilotage";
-  if (t === "create") return "today";
-  return TABS.has(t) ? t : "today";
 }
 
 function ensureOrder(order, categories) {
@@ -140,168 +81,28 @@ function isSameOrder(a, b) {
 
 export default function App() {
   const [data, setData] = usePersistedState(React);
-  const initialPath = typeof window !== "undefined" ? window.location.pathname : "/";
-  const initialSearch =
-    typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-  const pathParts = initialPath.split("/").filter(Boolean);
-  const initialCategoryProgressId =
-    pathParts[0] === "category" && pathParts[2] === "progress"
-      ? decodeURIComponent(pathParts[1] || "")
-      : null;
-  const initialCategoryDetailId =
-    pathParts[0] === "category" && pathParts.length === 2 ? decodeURIComponent(pathParts[1] || "") : null;
-  const isPilotagePath = initialPath.startsWith("/pilotage") || initialPath.startsWith("/tools");
-  const initialTab = isPilotagePath
-    ? "pilotage"
-    : initialPath.startsWith("/session")
-      ? "session"
-      : initialPath.startsWith("/privacy")
-        ? "privacy"
-        : initialPath.startsWith("/terms")
-          ? "terms"
-          : initialPath.startsWith("/support")
-            ? "support"
-      : initialCategoryProgressId
-        ? "category-progress"
-        : initialCategoryDetailId
-          ? "category-detail"
-          : "today";
-  const [tab, _setTab] = useState(initialTab);
-  const [categoryDetailId, setCategoryDetailId] = useState(initialCategoryDetailId);
-  const [categoryProgressId, setCategoryProgressId] = useState(initialCategoryProgressId);
-  const [libraryCategoryId, setLibraryCategoryId] = useState(null);
-  const [sessionCategoryId, setSessionCategoryId] = useState(initialSearch?.get("cat") || null);
-  const [sessionDateKey, setSessionDateKey] = useState(initialSearch?.get("date") || null);
-  const [activeReminder, setActiveReminder] = useState(null);
+  const safeData = data && typeof data === "object" ? data : {};
+  const {
+    tab,
+    setTab,
+    categoryDetailId,
+    setCategoryDetailId,
+    categoryProgressId,
+    setCategoryProgressId,
+    libraryCategoryId,
+    setLibraryCategoryId,
+    sessionCategoryId,
+    setSessionCategoryId,
+  } = useAppNavigation({ safeData, setData });
   const [editItem, setEditItem] = useState(null);
-  const [paywallOpen, setPaywallOpen] = useState(false);
-  const [paywallReason, setPaywallReason] = useState("");
   const dataRef = useRef(data);
-  const lastReminderRef = useRef({});
-  const activeReminderRef = useRef(activeReminder);
-  const prevTabRef = useRef(tab);
+  const invariantLogRef = useRef(new Set());
   const tour = useTour({ data, setData, steps: FIRST_USE_TOUR_STEPS, tourVersion: TOUR_VERSION });
-
-  const setTab = (next, opts = {}) => {
-    const t = normalizeTab(next);
-    const nextSessionCategoryId =
-      typeof opts.sessionCategoryId === "string" ? opts.sessionCategoryId : sessionCategoryId;
-    const nextSessionDateKey =
-      typeof opts.sessionDateKey === "string" ? opts.sessionDateKey : sessionDateKey;
-    const nextCategoryProgressId =
-      typeof opts.categoryProgressId === "string" ? opts.categoryProgressId : categoryProgressId;
-    const nextCategoryDetailId =
-      typeof opts.categoryDetailId === "string" ? opts.categoryDetailId : categoryDetailId;
-    if (t === "session" && typeof opts.sessionCategoryId === "string") {
-      setSessionCategoryId(opts.sessionCategoryId);
-    } else if (t === "session" && opts.sessionCategoryId === null) {
-      setSessionCategoryId(null);
-    }
-    if (t === "session" && typeof opts.sessionDateKey === "string") {
-      setSessionDateKey(opts.sessionDateKey);
-    } else if (t === "session" && opts.sessionDateKey === null) {
-      setSessionDateKey(null);
-    }
-    if (t === "category-progress" && typeof opts.categoryProgressId === "string") {
-      setCategoryProgressId(opts.categoryProgressId);
-    } else if (t === "category-progress" && opts.categoryProgressId === null) {
-      setCategoryProgressId(null);
-    }
-    if (t === "category-detail" && typeof opts.categoryDetailId === "string") {
-      setCategoryDetailId(opts.categoryDetailId);
-    } else if (t === "category-detail" && opts.categoryDetailId === null) {
-      setCategoryDetailId(null);
-    }
-    _setTab(t);
-    // persist last tab for better UX (non-blocking)
-    setData((prev) => ({
-      ...prev,
-      ui: { ...(prev.ui || {}), lastTab: t },
-    }));
-    if (typeof window !== "undefined") {
-      const nextPath =
-        t === "session"
-          ? nextSessionCategoryId || nextSessionDateKey
-            ? `/session?${[
-                nextSessionCategoryId ? `cat=${encodeURIComponent(nextSessionCategoryId)}` : "",
-                nextSessionDateKey ? `date=${encodeURIComponent(nextSessionDateKey)}` : "",
-              ]
-                .filter(Boolean)
-                .join("&")}`
-            : "/session"
-          : t === "category-progress"
-            ? nextCategoryProgressId
-              ? `/category/${nextCategoryProgressId}/progress`
-              : "/category"
-          : t === "category-detail"
-            ? nextCategoryDetailId
-              ? `/category/${nextCategoryDetailId}`
-              : "/category"
-            : t === "pilotage"
-              ? "/pilotage"
-              : t === "privacy"
-                ? "/privacy"
-                : t === "terms"
-                  ? "/terms"
-                  : t === "support"
-                    ? "/support"
-                    : "/";
-      if (window.location.pathname !== nextPath) {
-        const state =
-          t === "session"
-            ? { categoryId: nextSessionCategoryId || null, date: nextSessionDateKey || null }
-            : {};
-        window.history.pushState(state, "", nextPath);
-      }
-    }
-  };
 
   useEffect(() => {
     dataRef.current = data;
   }, [data]);
-
-  useEffect(() => {
-    activeReminderRef.current = activeReminder;
-  }, [activeReminder]);
-
-  const reminderFingerprint = useMemo(() => {
-    const reminders = Array.isArray(data?.reminders) ? data.reminders : [];
-    const goals = Array.isArray(data?.goals) ? data.goals : [];
-    const occurrences = Array.isArray(data?.occurrences) ? data.occurrences : [];
-    const reminderSig = reminders
-      .map((r) => {
-        const days = Array.isArray(r?.days) ? r.days.join(",") : "";
-        return `${r?.id || ""}:${r?.goalId || ""}:${r?.time || ""}:${r?.enabled === false ? 0 : 1}:${days}:${
-          r?.channel || ""
-        }`;
-      })
-      .sort()
-      .join("|");
-    const scheduleSig = goals
-      .filter((g) => (g?.type || g?.kind || "").toString().toUpperCase() === "PROCESS")
-      .map((g) => {
-        const slots = Array.isArray(g?.schedule?.timeSlots) ? g.schedule.timeSlots.join(",") : "";
-        const days = Array.isArray(g?.schedule?.daysOfWeek) ? g.schedule.daysOfWeek.join(",") : "";
-        const enabled = g?.schedule?.remindersEnabled ? 1 : 0;
-        return `${g?.id || ""}:${slots}:${days}:${enabled}`;
-      })
-      .sort()
-      .join("|");
-    const occurrenceSig = occurrences
-      .map((o) => `${o?.id || ""}:${o?.goalId || ""}:${o?.date || ""}:${o?.start || ""}:${o?.status || ""}`)
-      .sort()
-      .join("|");
-    return `${reminderSig}||${scheduleSig}||${occurrenceSig}`;
-  }, [data?.reminders, data?.goals, data?.occurrences]);
-
-  useEffect(() => {
-    lastReminderRef.current = {};
-    const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
-    if (isDev && typeof window !== "undefined" && window.__debugReminders) {
-      // eslint-disable-next-line no-console
-      console.debug("[reminders] cache cleared");
-    }
-  }, [reminderFingerprint]);
+  const { activeReminder, setActiveReminder } = useRemindersLoop({ data, dataRef });
 
   useEffect(() => {
     const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
@@ -321,40 +122,20 @@ export default function App() {
       delete window.__runP2Tests;
     };
   }, []);
-
-  const refreshEntitlement = useCallback(
-    async (cancelledRef) => {
-      const result = await getPremiumEntitlement();
-      if (cancelledRef?.current) return result;
-      if (typeof setData !== "function") return result;
-      setData((prev) => {
-        const profile = prev.profile && typeof prev.profile === "object" ? prev.profile : {};
-        const prevEntitlements =
-          profile.entitlements && typeof profile.entitlements === "object" ? profile.entitlements : {};
-        const premium = Boolean(result?.premium);
-        const expiresAt = typeof result?.expiresAt === "string" ? result.expiresAt : null;
-        const entitlements = {
-          ...prevEntitlements,
-          premium,
-          expiresAt,
-          lastCheckedAt: new Date().toISOString(),
-          source: result?.source || prevEntitlements.source || "none",
-        };
-        const nextPlan = premium ? "premium" : profile.plan || "free";
-        return { ...prev, profile: { ...profile, plan: nextPlan, entitlements } };
-      });
-      return result;
-    },
-    [setData]
-  );
-
-  useEffect(() => {
-    const cancelledRef = { current: false };
-    refreshEntitlement(cancelledRef);
-    return () => {
-      cancelledRef.current = true;
-    };
-  }, [refreshEntitlement]);
+  const {
+    paywallOpen,
+    paywallReason,
+    setPaywallOpen,
+    openPaywall,
+    handlePurchase,
+    handleRestorePurchases,
+    planLimits,
+    isPremiumPlan,
+    generationWindowDays,
+    planningUnlimited,
+    canCreateOutcomeNow,
+    canCreateActionNow,
+  } = useEntitlementsPaywall({ safeData, setData });
 
   useEffect(() => {
     setData((prev) => {
@@ -373,76 +154,6 @@ export default function App() {
     return () => clearInterval(id);
   }, [setData]);
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
-      const debug = isDev && typeof window !== "undefined" && window.__debugReminders;
-      if (activeReminderRef.current) {
-        if (debug) {
-          // eslint-disable-next-line no-console
-          console.debug("[reminders] skipped: active reminder");
-        }
-        return;
-      }
-      const current = dataRef.current;
-      const now = new Date();
-      const due = getDueReminders(current, now, lastReminderRef.current);
-      if (debug) {
-        // eslint-disable-next-line no-console
-        console.debug("[reminders] tick", { now: now.toISOString(), due: due.length });
-      }
-      if (!due.length) return;
-      const reminder = due[0];
-      const goal = (current.goals || []).find((g) => g.id === reminder.goalId) || null;
-      const habit = !goal ? (current.habits || []).find((h) => h.id === reminder.goalId) || null : null;
-      const soundEnabled = Boolean(current?.ui?.soundEnabled);
-      if (debug) {
-        // eslint-disable-next-line no-console
-        console.debug("[reminders] dispatch", {
-          goalId: reminder.goalId,
-          id: reminder.id,
-          source: reminder.__source || "unknown",
-          time: reminder.time,
-        });
-      }
-      setActiveReminder({ reminder, goal, habit });
-      if (soundEnabled) playReminderSound();
-      if ((reminder.channel || "IN_APP") === "NOTIFICATION") {
-        sendReminderNotification(reminder, goal?.title || habit?.title || "");
-      }
-    }, 30000);
-    return () => clearInterval(id);
-  }, [setData]);
-
-
-  const safeData = data && typeof data === "object" ? data : {};
-  const planLimits = getPlanLimits();
-  const isPremiumPlan = isPremium(safeData);
-  const generationWindowDays = getGenerationWindowDays(safeData);
-  const planningUnlimited = isPlanningUnlimited(safeData);
-  const canCreateOutcomeNow = canCreateOutcome(safeData);
-  const canCreateActionNow = canCreateAction(safeData);
-  const openPaywall = (reason) => {
-    setPaywallReason(reason || "");
-    setPaywallOpen(true);
-  };
-  const handlePurchase = async (productId) => {
-    const result = await purchase(productId);
-    if (!result?.success) {
-      if (typeof safeAlert === "function") safeAlert("Achat indisponible pour le moment.");
-      return;
-    }
-    await refreshEntitlement();
-    setPaywallOpen(false);
-  };
-  const handleRestorePurchases = async () => {
-    const result = await restore();
-    if (!result?.success) {
-      if (typeof safeAlert === "function") safeAlert("Restauration indisponible pour le moment.");
-      return;
-    }
-    await refreshEntitlement();
-  };
   const isCreateTab =
     tab === "create-goal" ||
     tab === "create-outcome-next" ||
@@ -521,230 +232,73 @@ export default function App() {
     () => (Array.isArray(safeData.categories) ? safeData.categories : []),
     [safeData.categories]
   );
-  const categoriesById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   const categoryIdsKey = useMemo(() => categories.map((c) => c.id).join("|"), [categories]);
   const categoryRailOrder = useMemo(
     () => ensureOrder(safeData?.ui?.categoryRailOrder, categories),
     [safeData?.ui?.categoryRailOrder, categories]
   );
+  const isDevEnv = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
   const orderedCategories = useMemo(() => {
     const map = new Map(categories.map((c) => [c.id, c]));
     return categoryRailOrder.map((id) => map.get(id)).filter(Boolean);
   }, [categories, categoryRailOrder]);
   const railCategories = orderedCategories;
-  const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
-  const hasDraft = Boolean(
-    (draft.outcomes && draft.outcomes.length) ||
-      (draft.habits && draft.habits.length) ||
-      (draft.createdActionIds && draft.createdActionIds.length) ||
-      draft.createdOutcomeId
-  );
-  const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
-  const homeActiveCategoryId =
-    safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
-  const selectedCategoryId = safeData?.ui?.selectedCategoryId || null;
-  const hasSelectedCategory = Boolean(selectedCategoryId && categoriesById.has(selectedCategoryId));
-  const homeSelectedCategoryId = getHomeSelectedCategoryId(safeData);
-  const canCreateWithActiveCategory = useMemo(
-    () => canCreate({ activeCategoryId: homeActiveCategoryId, categories }),
-    [homeActiveCategoryId, categories]
-  );
-  const [plusOpen, setPlusOpen] = useState(false);
-  const [plusAnchorRect, setPlusAnchorRect] = useState(null);
-  const [plusContext, setPlusContext] = useState({ source: null, categoryId: null });
-  const plusAnchorElRef = useRef(null);
-  const [categoryGateOpen, setCategoryGateOpen] = useState(false);
-  const [categoryGateContext, setCategoryGateContext] = useState({
-    source: null,
-    intent: null,
-    anchorRect: null,
-    anchorEl: null,
-  });
-  const resetCreateDraft = () => {
-    if (typeof setData !== "function") return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          createDraft: createEmptyDraft(),
-          createDraftWasCanceled: true,
-          createDraftWasCompleted: false,
-        },
-      };
-    });
-  };
-  useEffect(() => {
-    if (!isCreateTab || typeof setData !== "function") return;
-    if (!hasSelectedCategory) {
-      if (!categoryGateOpen) openCategoryGate({ source: "create-block" });
-      if (tab !== "today") setTab("today");
-      return;
-    }
-    const draftCategoryId =
-      draft?.category && draft.category.mode === "existing" ? draft.category.id : null;
-    if (draftCategoryId) return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      const prevDraft = normalizeCreationDraft(prevUi.createDraft);
-      const prevCatId =
-        prevDraft?.category && prevDraft.category.mode === "existing" ? prevDraft.category.id : null;
-      if (prevCatId) return prev;
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          createDraft: { ...prevDraft, category: { mode: "existing", id: selectedCategoryId } },
-        },
-      };
-    });
-  }, [
-    isCreateTab,
+  const {
+    librarySelectedCategoryId,
+    homeActiveCategoryId,
     selectedCategoryId,
-    hasSelectedCategory,
-    draft?.category,
-    setData,
-    categoryGateOpen,
+    openLibraryDetail,
+    handleSelectCategory,
+    railSelectedId,
+    detailCategoryId,
+  } = useCategorySelectionSync({
     tab,
-  ]);
-  const seedCreateDraft = ({ source, categoryId, outcomeId, step } = {}) => {
-    if (typeof setData !== "function") return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      const shouldReset = prevUi.createDraftWasCompleted || prevUi.createDraftWasCanceled;
-      const baseUi = shouldReset
-        ? {
-            ...prevUi,
-            createDraft: createEmptyDraft(),
-            createDraftWasCanceled: false,
-            createDraftWasCompleted: false,
-          }
-        : prevUi;
-      const baseState = shouldReset ? { ...prev, ui: baseUi } : prev;
-      const prevCategories = Array.isArray(baseState.categories) ? baseState.categories : [];
-      let resolvedCategoryId = categoryId || null;
-      if (!resolvedCategoryId) {
-        if (source === "library") {
-          resolvedCategoryId =
-            prevUi?.selectedCategoryByView?.library ||
-            prevUi?.librarySelectedCategoryId ||
-            prevUi?.selectedCategoryByView?.home ||
-            prevUi?.selectedCategoryId ||
-            null;
-        } else if (source === "pilotage") {
-          resolvedCategoryId =
-            prevUi?.selectedCategoryByView?.pilotage ||
-            prevUi?.selectedCategoryByView?.home ||
-            prevUi?.selectedCategoryId ||
-            null;
-        } else if (source === "today") {
-          resolvedCategoryId = prevUi?.selectedCategoryByView?.home || prevUi?.selectedCategoryId || null;
-        } else {
-          resolvedCategoryId = prevUi?.selectedCategoryByView?.home || prevUi?.selectedCategoryId || null;
-        }
-      }
-      if (resolvedCategoryId && !prevCategories.some((c) => c.id === resolvedCategoryId)) {
-        resolvedCategoryId = null;
-      }
-      let resolvedOutcomeId = outcomeId || null;
-      if (resolvedOutcomeId && !Array.isArray(baseState.goals)) resolvedOutcomeId = null;
-      if (resolvedOutcomeId && !baseState.goals.some((g) => g && g.id === resolvedOutcomeId)) {
-        resolvedOutcomeId = null;
-      }
-      const nextDraft = createEmptyDraft();
-      if (resolvedCategoryId) nextDraft.category = { mode: "existing", id: resolvedCategoryId };
-      if (resolvedOutcomeId) nextDraft.activeOutcomeId = resolvedOutcomeId;
-      if (isValidCreationStep(step)) nextDraft.step = step;
-      return {
-        ...baseState,
-        ui: {
-          ...baseUi,
-          createDraft: nextDraft,
-          createDraftWasCanceled: shouldReset ? false : baseUi.createDraftWasCanceled,
-          createDraftWasCompleted: false,
-        },
-      };
-    });
-  };
-  const openLibraryDetail = () => {
-    let touched = false;
-    try {
-      touched = sessionStorage.getItem("library:selectedCategoryTouched") === "1";
-    } catch (err) {
-      void err;
-      touched = false;
-    }
-    const libraryViewSelectedId = touched
-      ? safeData?.ui?.selectedCategoryByView?.library || librarySelectedCategoryId || null
-      : null;
-    const hasLibrarySelection =
-      libraryViewSelectedId && categories.some((c) => c.id === libraryViewSelectedId);
-    const targetId = hasLibrarySelection ? libraryViewSelectedId : homeSelectedCategoryId;
-    if (!targetId) {
-      setLibraryCategoryId(null);
-      setCategoryDetailId(null);
-      setTab("library");
-      return;
-    }
-    if (!hasLibrarySelection) {
-      setData((prev) => {
-        const prevUi = prev.ui || {};
-        const prevSel =
-          prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-            ? prevUi.selectedCategoryByView
-            : {};
-        return {
-          ...prev,
-          ui: {
-            ...prevUi,
-            librarySelectedCategoryId: targetId,
-            selectedCategoryByView: { ...prevSel, library: targetId },
-            libraryDetailExpandedId: null,
-          },
-        };
-      });
-    }
-    if (hasLibrarySelection) {
-      setData((prev) => {
-        const prevUi = prev.ui || {};
-        if (!prevUi.libraryDetailExpandedId) return prev;
-        return { ...prev, ui: { ...prevUi, libraryDetailExpandedId: null } };
-      });
-    }
-    setLibraryCategoryId(null);
-    setCategoryDetailId(null);
-    setTab("library");
-  };
-  useEffect(() => {
-    if (tab !== "library") return;
-    if (typeof setData !== "function") return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      if (!prevUi.libraryDetailExpandedId) return prev;
-      return { ...prev, ui: { ...prevUi, libraryDetailExpandedId: null } };
-    });
-  }, [tab, setData]);
-  useEffect(() => {
-    if (!isCreateTab) return;
-    if (typeof setData !== "function") return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      let nextUi = prevUi;
-      let nextDraft = prevUi.createDraft;
-      let changed = false;
-      if (!nextDraft || typeof nextDraft !== "object") {
-        nextDraft = normalizeCreationDraft(nextDraft);
-        nextUi = { ...nextUi, createDraft: nextDraft };
-        changed = true;
-      } else if (nextDraft !== prevUi.createDraft) {
-        nextUi = { ...nextUi, createDraft: nextDraft };
-        changed = true;
-      }
-      if (!changed) return prev;
-      return { ...prev, ui: nextUi };
-    });
-  }, [isCreateTab, setData, tab]);
+    isCreateTab,
+    safeData,
+    categories,
+    setData,
+    setTab,
+    libraryCategoryId,
+    setLibraryCategoryId,
+    categoryDetailId,
+    setCategoryDetailId,
+    categoryProgressId,
+    setCategoryProgressId,
+    setSessionCategoryId,
+  });
+  const {
+    draft,
+    hasDraft,
+    plusOpen,
+    plusAnchorRect,
+    plusAnchorElRef,
+    createFlowOpen,
+    setCreateFlowOpen,
+    createFlowCategoryId,
+    categoryGateOpen,
+    setCategoryGateOpen,
+    resetCreateDraft,
+    seedCreateDraft,
+    openCategoryGate,
+    createCategoryFromGate,
+    toggleCategoryActive,
+    handleCategoryGateConfirm,
+    closePlusExpander,
+    handleChooseObjective,
+    handleChooseAction,
+    handleResumeDraft,
+    openCreateOutcomeDirect,
+    openCreateHabitDirect,
+  } = useCreateFlowOrchestration({
+    tab,
+    isCreateTab,
+    setTab,
+    safeData,
+    categories,
+    setData,
+    dataRef,
+    openPaywall,
+  });
   const handleEditBack = () => {
     const returnTab = editItem?.returnTab || "library";
     if (returnTab === "library") {
@@ -754,85 +308,6 @@ export default function App() {
     setEditItem(null);
     setTab(returnTab);
   };
-  useEffect(() => {
-    const prevTab = prevTabRef.current;
-    if (prevTab !== "today" && tab === "today") {
-      const today = localDateKey();
-      setData((prev) => {
-        const prevUi = prev.ui || {};
-        if (prevUi.selectedDate === today) return prev;
-        return { ...prev, ui: { ...prevUi, selectedDate: today } };
-      });
-    }
-    if (prevTab !== "library" && tab === "library") {
-      let touched = false;
-      try {
-        touched = sessionStorage.getItem("library:selectedCategoryTouched") === "1";
-      } catch (err) {
-        void err;
-        touched = false;
-      }
-      if (!touched) {
-        const libraryId =
-          safeData?.ui?.selectedCategoryByView?.library || safeData?.ui?.librarySelectedCategoryId || null;
-        const hasHome =
-          homeActiveCategoryId && categories.some((category) => category.id === homeActiveCategoryId);
-        if (hasHome && homeActiveCategoryId !== libraryId) {
-          setData((prev) => {
-            const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
-            if (!prevCategories.some((category) => category.id === homeActiveCategoryId)) return prev;
-            const prevUi = prev.ui || {};
-            const prevSel =
-              prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-                ? prevUi.selectedCategoryByView
-                : {};
-            if (prevUi.librarySelectedCategoryId === homeActiveCategoryId && prevSel.library === homeActiveCategoryId) {
-              return prev;
-            }
-            return {
-              ...prev,
-              ui: {
-                ...prevUi,
-                librarySelectedCategoryId: homeActiveCategoryId,
-                selectedCategoryByView: { ...prevSel, library: homeActiveCategoryId },
-              },
-            };
-          });
-        }
-      }
-    }
-    prevTabRef.current = tab;
-  }, [
-    tab,
-    categories,
-    homeActiveCategoryId,
-    safeData?.ui?.selectedCategoryByView?.library,
-    safeData?.ui?.librarySelectedCategoryId,
-    setData,
-  ]);
-  const railSelectedId =
-    tab === "category-detail"
-      ? categoryDetailId
-      : tab === "category-progress"
-        ? categoryProgressId
-        : tab === "pilotage"
-          ? safeData?.ui?.selectedCategoryByView?.pilotage ||
-            safeData?.ui?.selectedCategoryByView?.home ||
-            safeData?.ui?.selectedCategoryId ||
-            null
-          : tab === "library" || tab === "edit-item" || isCreateTab
-            ? safeData?.ui?.selectedCategoryByView?.library ||
-              librarySelectedCategoryId ||
-              safeData?.ui?.selectedCategoryByView?.home ||
-              safeData?.ui?.selectedCategoryId ||
-              null
-            : safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
-  const detailCategoryId =
-    categoryDetailId ||
-    safeData?.ui?.selectedCategoryByView?.home ||
-    safeData?.ui?.selectedCategoryId ||
-    safeData?.categories?.[0]?.id ||
-    null;
 
   // Theme reconciliation:
   // - If ui.theme is missing but legacy pageThemes exist, promote them into ui.theme.
@@ -891,424 +366,100 @@ export default function App() {
       }));
     }
   }, [categoryIdsKey, categoryRailOrder, safeData?.ui?.categoryRailOrder, setData]);
+
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (tab !== "category-detail") return;
-    const nextPath = categoryDetailId ? `/category/${categoryDetailId}` : "/category";
-    if (window.location.pathname !== nextPath) window.history.pushState({}, "", nextPath);
-  }, [tab, categoryDetailId]);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (tab !== "pilotage") return;
-    if (window.location.pathname === "/tools") {
-      window.history.replaceState({}, "", "/pilotage");
+    if (!isDevEnv || typeof setData !== "function") return;
+    try {
+      const data = safeData && typeof safeData === "object" ? safeData : null;
+      if (!data) return;
+      const cats = Array.isArray(data.categories) ? data.categories : [];
+      const ids = new Set(cats.map((c) => c && c.id).filter(Boolean));
+      const ui = data.ui && typeof data.ui === "object" ? data.ui : {};
+      const issues = [];
+      const inboxId = getInboxId(dataRef.current || safeData || data);
+      if (!ids.has(inboxId)) issues.push("systemInboxMissing");
+      if (Array.isArray(ui.categoryRailOrder) && ui.categoryRailOrder.some((id) => !ids.has(id))) {
+        issues.push("categoryRailOrder");
+      }
+      if (ui.selectedCategoryId && !ids.has(ui.selectedCategoryId)) issues.push("selectedCategoryId");
+      if (ui.librarySelectedCategoryId && !ids.has(ui.librarySelectedCategoryId)) {
+        issues.push("librarySelectedCategoryId");
+      }
+      if (ui.selectedCategoryByView && typeof ui.selectedCategoryByView === "object") {
+        const scv = ui.selectedCategoryByView;
+        ["home", "library", "plan", "pilotage"].forEach((key) => {
+          if (scv[key] && !ids.has(scv[key])) issues.push(`selectedCategoryByView.${key}`);
+        });
+      }
+      if (!issues.length) return;
+
+      setData((prev) => {
+        try {
+          const base = prev && typeof prev === "object" ? prev : {};
+          const ensured = ensureSystemInboxCategory(base);
+          const next = ensured?.state && typeof ensured.state === "object" ? ensured.state : base;
+          const inboxIdNext = getInboxId(next);
+          const nextCats = Array.isArray(next.categories) ? next.categories : [];
+          const nextIds = new Set(nextCats.map((c) => c && c.id).filter(Boolean));
+          const nextUi = { ...(next.ui || {}) };
+          const fixed = new Set();
+          let didChange = next !== base;
+
+          if (Array.isArray(nextUi.categoryRailOrder)) {
+            const filtered = nextUi.categoryRailOrder.filter((id) => nextIds.has(id));
+            if (filtered.length !== nextUi.categoryRailOrder.length) {
+              nextUi.categoryRailOrder = filtered;
+              fixed.add("categoryRailOrder");
+              didChange = true;
+            }
+          }
+          if (nextUi.selectedCategoryId && !nextIds.has(nextUi.selectedCategoryId)) {
+            nextUi.selectedCategoryId = inboxIdNext;
+            fixed.add("selectedCategoryId");
+            didChange = true;
+          }
+          if (nextUi.librarySelectedCategoryId && !nextIds.has(nextUi.librarySelectedCategoryId)) {
+            nextUi.librarySelectedCategoryId = inboxIdNext;
+            fixed.add("librarySelectedCategoryId");
+            didChange = true;
+          }
+          if (nextUi.selectedCategoryByView && typeof nextUi.selectedCategoryByView === "object") {
+            const scv = { ...nextUi.selectedCategoryByView };
+            let scvChanged = false;
+            ["home", "library", "plan", "pilotage"].forEach((key) => {
+              if (scv[key] && !nextIds.has(scv[key])) {
+                scv[key] = inboxIdNext;
+                scvChanged = true;
+                fixed.add(`selectedCategoryByView.${key}`);
+                didChange = true;
+              }
+            });
+            if (scvChanged) nextUi.selectedCategoryByView = scv;
+          }
+
+          if (!didChange) return prev;
+          if (fixed.size) {
+            const msg = `[INV] fixed ${Array.from(fixed).join(", ")}`;
+            if (invariantLogRef.current && !invariantLogRef.current.has(msg)) {
+              console.warn(msg);
+              invariantLogRef.current.add(msg);
+            }
+          }
+          return fixed.size ? { ...next, ui: nextUi } : next;
+        } catch {
+          return prev;
+        }
+      });
+    } catch {
+      // dev guard must never throw
     }
-  }, [tab]);
-  useLayoutEffect(() => {
-    // Do not restore tab during onboarding flows.
-    const completed = Boolean(safeData?.ui?.onboardingCompleted);
-    if (!completed) return;
-    if (
-      typeof window !== "undefined" &&
-      (window.location.pathname.startsWith("/session") || window.location.pathname.startsWith("/category"))
-    )
-      return;
-    const last = normalizeTab(safeData?.ui?.lastTab);
-    // keep current if already valid
-    _setTab((cur) => (normalizeTab(cur) === last ? cur : last));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isDevEnv, safeData, setData]);
   const onboardingCompleted = Boolean(safeData.ui?.onboardingCompleted);
   const showPlanStep = Boolean(safeData.ui?.showPlanStep);
   const showTourOverlay = onboardingCompleted;
   const handlePlanCategory = ({ categoryId } = {}) => {
     openCreateOutcomeDirect({ source: "pilotage", categoryId });
   };
-
-  const normalizeAnchorRect = (rect) => {
-    if (!rect) return null;
-    return {
-      top: rect.top,
-      left: rect.left,
-      right: rect.right,
-      bottom: rect.bottom,
-      width: rect.width,
-      height: rect.height,
-    };
-  };
-
-  const setActiveCategory = useCallback(
-    (categoryId) => {
-      if (!categoryId || typeof setData !== "function") return;
-      setData((prev) => {
-        const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
-        if (!prevCategories.some((c) => c && c.id === categoryId)) return prev;
-        const prevUi = prev.ui || {};
-        const prevSel =
-          prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-            ? prevUi.selectedCategoryByView
-            : {};
-        return {
-          ...prev,
-          ui: {
-            ...prevUi,
-            selectedCategoryId: categoryId,
-            librarySelectedCategoryId: categoryId,
-            selectedCategoryByView: { ...prevSel, home: categoryId, library: categoryId, pilotage: categoryId },
-          },
-        };
-      });
-    },
-    [setData]
-  );
-
-  const openCategoryGate = ({ source, intent, anchorRect, anchorEl } = {}) => {
-    setPlusOpen(false);
-    setCategoryGateContext({
-      source: source || "unknown",
-      intent: intent || null,
-      anchorRect: normalizeAnchorRect(anchorRect),
-      anchorEl: anchorEl || null,
-    });
-    setCategoryGateOpen(true);
-  };
-
-  const resolveTopNavAnchor = () => {
-    if (typeof document === "undefined") return { anchorRect: null, anchorEl: null };
-    const bottomEl = document.querySelector("[data-create-anchor='bottomrail']");
-    if (bottomEl) {
-      return { anchorRect: normalizeAnchorRect(bottomEl.getBoundingClientRect()), anchorEl: bottomEl };
-    }
-    const topEl = document.querySelector("[data-create-anchor='topnav']");
-    if (!topEl) return { anchorRect: null, anchorEl: null };
-    return { anchorRect: normalizeAnchorRect(topEl.getBoundingClientRect()), anchorEl: topEl };
-  };
-
-  const createCategoryFromGate = useCallback(
-    ({ name, color }) => {
-      if (!name || typeof setData !== "function") return null;
-      let createdId = null;
-      setData((prev) => {
-        const ensured = ensureSystemInboxCategory(prev);
-        const prevCategories = Array.isArray(ensured.state.categories) ? ensured.state.categories : [];
-        const exists = prevCategories.some(
-          (c) => String(c?.name || "").trim().toLowerCase() === String(name).trim().toLowerCase()
-        );
-        if (exists) return ensured.state;
-        const created = normalizeCategory(
-          { id: `cat_${uid()}`, name: String(name).trim(), color: color || "#7C3AED" },
-          prevCategories.length
-        );
-        createdId = created.id;
-        return { ...ensured.state, categories: [...prevCategories, created] };
-      });
-      return createdId;
-    },
-    [setData]
-  );
-
-  const toggleCategoryActive = useCallback(
-    (cat, nextActive) => {
-      if (!cat || typeof setData !== "function") return;
-      if (nextActive) {
-        if (!canCreateCategory(safeData)) {
-          openPaywall("Limite de catégories atteinte.");
-          return;
-        }
-        setData((prev) => {
-          const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
-          if (prevCategories.some((c) => c?.id === cat.id)) return prev;
-          if (
-            prevCategories.some(
-              (c) => String(c?.name || "").trim().toLowerCase() === String(cat.name || "").trim().toLowerCase()
-            )
-          ) {
-            return prev;
-          }
-          const created = normalizeCategory(
-            { id: cat.id || `cat_${uid()}`, name: cat.name || "Catégorie", color: cat.color || "#F97316" },
-            prevCategories.length
-          );
-          return { ...prev, categories: [...prevCategories, created] };
-        });
-        return;
-      }
-      if (cat.id === SYSTEM_INBOX_ID) return;
-      setData((prev) => {
-        let next = prev;
-        const ensured = ensureSystemInboxCategory(next);
-        next = ensured.state;
-        const sysId = ensured.category?.id || SYSTEM_INBOX_ID;
-        const nextCategories = (next.categories || []).filter((c) => c.id !== cat.id);
-        const nextGoals = (next.goals || []).map((g) =>
-          g && g.categoryId === cat.id ? { ...g, categoryId: sysId } : g
-        );
-        const nextHabits = (next.habits || []).map((h) =>
-          h && h.categoryId === cat.id ? { ...h, categoryId: sysId } : h
-        );
-        const nextUi = { ...(next.ui || {}) };
-        if (nextUi.selectedCategoryId === cat.id) nextUi.selectedCategoryId = sysId;
-        if (nextUi.selectedCategoryByView) {
-          const scv = { ...nextUi.selectedCategoryByView };
-          if (scv.library === cat.id) scv.library = sysId;
-          if (scv.plan === cat.id) scv.plan = sysId;
-          if (scv.home === cat.id) scv.home = sysId;
-          if (scv.pilotage === cat.id) scv.pilotage = sysId;
-          nextUi.selectedCategoryByView = scv;
-        }
-        return {
-          ...next,
-          categories: nextCategories,
-          goals: nextGoals,
-          habits: nextHabits,
-          ui: nextUi,
-        };
-      });
-    },
-    [setData, safeData, openPaywall]
-  );
-
-  const handleCategoryGateConfirm = (categoryId) => {
-    if (!categoryId || typeof setData !== "function") return;
-    const existing = categories.find((c) => c?.id === categoryId) || null;
-    const suggestion = !existing ? findSuggestedCategory(categoryId) : null;
-    if (!existing && suggestion && !canCreateCategory(safeData)) {
-      openPaywall("Limite de catégories atteinte.");
-      return;
-    }
-    setCategoryGateOpen(false);
-    setData((prev) => {
-      let next = prev;
-      const ensured = ensureSystemInboxCategory(next);
-      next = ensured.state;
-      const prevCategories = Array.isArray(next.categories) ? next.categories : [];
-      let nextCategories = prevCategories;
-      if (!prevCategories.some((c) => c?.id === categoryId) && suggestion) {
-        const created = normalizeCategory(
-          { id: suggestion.id, name: suggestion.name, color: suggestion.color || "#F97316" },
-          prevCategories.length
-        );
-        nextCategories = [...prevCategories, created];
-      }
-      const prevUi = next.ui || {};
-      const prevSel =
-        prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-          ? prevUi.selectedCategoryByView
-          : {};
-      return {
-        ...next,
-        categories: nextCategories,
-        ui: {
-          ...prevUi,
-          selectedCategoryId: categoryId,
-          selectedCategoryByView: { ...prevSel, home: categoryId, library: categoryId, pilotage: categoryId },
-        },
-      };
-    });
-  };
-
-  const openCreateExpander = ({ source, categoryId, anchorRect, anchorEl } = {}) => {
-    const normalizedRect = normalizeAnchorRect(anchorRect);
-    const hasExplicitAnchor = Boolean(normalizedRect || anchorEl);
-    const fallback = hasExplicitAnchor ? { anchorRect: normalizedRect, anchorEl } : resolveTopNavAnchor();
-    plusAnchorElRef.current = anchorEl || fallback.anchorEl || null;
-    setPlusAnchorRect(normalizedRect || fallback.anchorRect || null);
-    setPlusContext({ source: source || "unknown", categoryId: categoryId || null });
-    setPlusOpen(true);
-  };
-  const closePlusExpander = () => setPlusOpen(false);
-  const handleChooseObjective = () => {
-    const { source, categoryId } = plusContext || {};
-    openCreateOutcomeDirect({ source, categoryId });
-  };
-  const handleChooseAction = () => {
-    const { source, categoryId } = plusContext || {};
-    openCreateHabitDirect({ source, categoryId });
-  };
-  const handleResumeDraft = () => {
-    const hasHabitDraft =
-      Boolean(draft?.habitType) ||
-      Boolean(Array.isArray(draft?.habits) && draft.habits.length) ||
-      Boolean(Array.isArray(draft?.createdActionIds) && draft.createdActionIds.length);
-
-    const step = isValidCreationStep(draft.step)
-      ? draft.step
-      : hasHabitDraft
-        ? STEP_HABIT_TYPE
-        : STEP_OUTCOME;
-
-    if (step === STEP_HABIT_TYPE) {
-      setTab("create-habit-type");
-    } else if (step === STEP_HABITS) {
-      const raw = (draft?.habitType || "").toString().trim();
-      const ht = raw.toUpperCase();
-
-      // Support both legacy and new naming variants
-      const isOneOff = ht === "ONE_OFF" || ht === "ONEOFF" || ht === "ONE-OFF";
-      const isRecurring =
-        ht === "RECURRING" ||
-        ht === "RECURRING_SCHEDULED" ||
-        ht === "RECURRING-SCHEDULED" ||
-        ht.startsWith("RECURRING");
-      const isAnytime =
-        ht === "ANYTIME" ||
-        ht === "ANYTIME_EXPECTED" ||
-        ht === "ANYTIME-EXPECTED" ||
-        ht.startsWith("ANYTIME");
-
-      if (isOneOff) setTab("create-habit-oneoff");
-      else if (isRecurring) setTab("create-habit-recurring");
-      else if (isAnytime) setTab("create-habit-anytime");
-      else setTab("create-habit-type");
-    } else if (step === STEP_OUTCOME_NEXT_ACTION) {
-      setTab("create-outcome-next");
-    } else if (step === STEP_LINK_OUTCOME) {
-      setTab("create-link-outcome");
-    } else if (step === STEP_PICK_CATEGORY) {
-      setTab("create-pick-category");
-    } else {
-      setTab("create-goal");
-    }
-
-    setPlusOpen(false);
-  };
-  const openCreateOutcomeDirect = ({ source, categoryId, skipCategoryGate } = {}) => {
-    if (!skipCategoryGate && !categoryId && !hasSelectedCategory) {
-      openCategoryGate({ source: source || "unknown", intent: "outcome" });
-      return;
-    }
-    if (!canCreateOutcomeNow) {
-      openPaywall(`Limite de ${LABELS.goalsLower} atteinte.`);
-      return;
-    }
-    seedCreateDraft({ source: source || "unknown", categoryId: categoryId || null, step: STEP_OUTCOME });
-    setTab("create-goal");
-    setPlusOpen(false);
-  };
-  const openCreateHabitDirect = ({ source, categoryId, outcomeId, skipCategoryGate } = {}) => {
-    if (!skipCategoryGate && !categoryId && !hasSelectedCategory) {
-      openCategoryGate({ source: source || "unknown", intent: "habit" });
-      return;
-    }
-    if (!canCreateActionNow) {
-      openPaywall("Limite d’actions atteinte.");
-      return;
-    }
-    seedCreateDraft({
-      source: source || "unknown",
-      categoryId: categoryId || null,
-      outcomeId: outcomeId || null,
-      step: STEP_HABIT_TYPE,
-    });
-    setTab("create-habit-type");
-    setPlusOpen(false);
-  };
-  const handleSelectCategory = (categoryId) => {
-    if (!categoryId) return;
-    const markLibraryTouched = () => {
-      try {
-        sessionStorage.setItem("library:selectedCategoryTouched", "1");
-      } catch (err) {
-        void err;
-      }
-    };
-    const syncCategorySelection = ({ updateLegacy } = {}) => {
-      const shouldUpdateLegacy = Boolean(updateLegacy);
-      setData((prev) => {
-        const prevUi = prev.ui || {};
-        const prevSel =
-          prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-            ? prevUi.selectedCategoryByView
-            : {};
-        if (
-          prevUi.librarySelectedCategoryId === categoryId &&
-          prevSel.library === categoryId &&
-          prevSel.home === categoryId &&
-          (!shouldUpdateLegacy || prevUi.selectedCategoryId === categoryId)
-        ) {
-          return prev;
-        }
-        return {
-          ...prev,
-          ui: {
-            ...prevUi,
-            librarySelectedCategoryId: categoryId,
-            selectedCategoryByView: { ...prevSel, library: categoryId, home: categoryId },
-            ...(shouldUpdateLegacy ? { selectedCategoryId: categoryId } : {}),
-          },
-        };
-      });
-    };
-    if (tab === "today") {
-      syncCategorySelection({ updateLegacy: true });
-      setCategoryDetailId(categoryId);
-      return;
-    }
-    if (tab === "library") {
-      markLibraryTouched();
-      syncCategorySelection();
-      if (libraryCategoryId) {
-        setLibraryCategoryId(categoryId);
-        return;
-      }
-      setData((prev) => {
-        const prevUi = prev.ui || {};
-        const prevSel =
-          prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-            ? prevUi.selectedCategoryByView
-            : {};
-        const isExpanded = prevUi.libraryDetailExpandedId === categoryId;
-        return {
-          ...prev,
-          ui: {
-            ...prevUi,
-            librarySelectedCategoryId: categoryId,
-            selectedCategoryByView: { ...prevSel, library: categoryId },
-            libraryDetailExpandedId: isExpanded ? null : categoryId,
-          },
-        };
-      });
-      setLibraryCategoryId(null);
-      setCategoryDetailId(null);
-      setTab("library");
-      return;
-    }
-    if (tab === "category-detail") {
-      markLibraryTouched();
-      syncCategorySelection();
-      setLibraryCategoryId(null);
-      setCategoryDetailId(null);
-      setTab("library");
-      return;
-    }
-    if (tab === "category-progress") {
-      markLibraryTouched();
-      syncCategorySelection();
-      setLibraryCategoryId(null);
-      setCategoryProgressId(categoryId);
-      setTab("category-progress", { categoryProgressId: categoryId });
-      return;
-    }
-    if (tab === "edit-item") {
-      markLibraryTouched();
-      syncCategorySelection();
-      return;
-    }
-    if (tab === "pilotage") {
-      setData((prev) => ({
-        ...prev,
-        ui: {
-          ...(prev.ui || {}),
-          selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), pilotage: categoryId },
-        },
-      }));
-      return;
-    }
-    if (tab === "session") {
-      setSessionCategoryId(categoryId);
-    }
-  };
-
 
   const showBottomRail = tab === "today" || tab === "library" || tab === "pilotage";
 
@@ -1319,15 +470,6 @@ export default function App() {
         {headerSpacer}
         <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />
         <DiagnosticOverlay data={safeData} tab={tab} />
-        <CategoryGateModal
-          open={categoryGateOpen}
-          categories={categories}
-          activeCategoryId={homeActiveCategoryId}
-          onClose={() => setCategoryGateOpen(false)}
-          onConfirm={handleCategoryGateConfirm}
-          onCreateCategory={createCategoryFromGate}
-          onToggleActive={toggleCategoryActive}
-        />
         <PlusExpander
           open={plusOpen}
           anchorRect={plusAnchorRect}
@@ -1367,14 +509,11 @@ export default function App() {
               aria-label="Créer"
               title="Créer"
               data-create-anchor="bottomrail"
+              data-testid="create-plus-button"
               onClick={(event) => {
                 const el = event?.currentTarget || null;
                 const rect = el?.getBoundingClientRect ? el.getBoundingClientRect() : null;
-                if (hasSelectedCategory) {
-                  openCreateExpander({ source: "bottomrail", anchorEl: el, anchorRect: rect });
-                } else {
-                  openCategoryGate({ source: "bottomrail", anchorEl: el, anchorRect: rect });
-                }
+                openCategoryGate({ source: "bottomrail", anchorEl: el, anchorRect: rect, next: "flow" });
               }}
             >
               +
@@ -1404,12 +543,10 @@ export default function App() {
             setTab("library");
           }}
           onOpenCreateOutcome={() => {
-            if (hasSelectedCategory) openCreateOutcomeDirect({ source: "today" });
-            else openCategoryGate({ source: "today", intent: "outcome" });
+            openCategoryGate({ source: "today", intent: "outcome", next: "flow" });
           }}
           onOpenCreateHabit={() => {
-            if (hasSelectedCategory) openCreateHabitDirect({ source: "today" });
-            else openCategoryGate({ source: "today", intent: "habit" });
+            openCategoryGate({ source: "today", intent: "habit", next: "flow" });
           }}
           onOpenSession={({ categoryId, dateKey }) =>
             setTab("session", { sessionCategoryId: categoryId || null, sessionDateKey: dateKey || null })
@@ -1805,16 +942,6 @@ export default function App() {
           </Card>
         </div>
       ) : null}
-      <PaywallModal
-        open={paywallOpen}
-        reason={paywallReason}
-        onClose={() => setPaywallOpen(false)}
-        onSubscribeMonthly={handlePurchase}
-        onSubscribeYearly={handlePurchase}
-        onRestore={handleRestorePurchases}
-        onOpenTerms={() => setTab("terms")}
-        onOpenPrivacy={() => setTab("privacy")}
-      />
       {showTourOverlay ? (
         <TourOverlay
           isActive={tour.isActive}
@@ -1832,11 +959,34 @@ export default function App() {
       <CategoryGateModal
         open={categoryGateOpen}
         categories={categories}
+        categoryRailOrder={safeData?.ui?.categoryRailOrder}
         activeCategoryId={homeActiveCategoryId}
+        goals={data?.goals || []}
+        habits={data?.habits || []}
         onClose={() => setCategoryGateOpen(false)}
         onConfirm={handleCategoryGateConfirm}
         onCreateCategory={createCategoryFromGate}
         onToggleActive={toggleCategoryActive}
+      />
+      <CreateFlowModal
+        open={createFlowOpen}
+        data={data}
+        setData={setData}
+        categories={categories}
+        selectedCategoryId={createFlowCategoryId || selectedCategoryId}
+        seedCreateDraft={seedCreateDraft}
+        resetCreateDraft={resetCreateDraft}
+        canCreateOutcome={canCreateOutcomeNow}
+        canCreateAction={canCreateActionNow}
+        isPremiumPlan={isPremiumPlan}
+        planLimits={planLimits}
+        generationWindowDays={generationWindowDays}
+        onOpenPaywall={openPaywall}
+        onChangeCategory={() => {
+          setCreateFlowOpen(false);
+          openCategoryGate({ source: "create-flow", next: "flow" });
+        }}
+        onClose={() => setCreateFlowOpen(false)}
       />
       <PlusExpander
         open={plusOpen}
@@ -1847,6 +997,16 @@ export default function App() {
         onChooseAction={handleChooseAction}
         onResumeDraft={hasDraft ? handleResumeDraft : null}
         hasDraft={hasDraft}
+      />
+      <PaywallModal
+        open={paywallOpen}
+        reason={paywallReason}
+        onClose={() => setPaywallOpen(false)}
+        onSubscribeMonthly={handlePurchase}
+        onSubscribeYearly={handlePurchase}
+        onRestore={handleRestorePurchases}
+        onOpenTerms={() => setTab("terms")}
+        onOpenPrivacy={() => setTab("privacy")}
       />
     </>
   );

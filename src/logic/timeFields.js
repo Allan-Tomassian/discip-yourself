@@ -1,9 +1,6 @@
-const TIME_MODES = new Set(["NONE", "FIXED", "WINDOW", "SLOTS"]);
+import { normalizeStartTime } from "../utils/datetime";
 
-function normalizeStartTime(value) {
-  const raw = typeof value === "string" ? value.trim() : "";
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(raw) ? raw : "";
-}
+const TIME_MODES = new Set(["NONE", "FIXED", "WINDOW", "SLOTS"]);
 
 function normalizeTimeSlots(value) {
   if (!Array.isArray(value)) return [];

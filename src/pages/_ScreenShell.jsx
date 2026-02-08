@@ -11,8 +11,18 @@ export default function ScreenShell({
   headerRight,
   headerAlign = "left",
   headerRowAlign = "end",
+  embedded = false,
   children,
 }) {
+  if (embedded) {
+    return (
+      <AccentContext.Provider value={{ accent }}>
+        <div className="screenShellEmbedded" style={{ "--accent": accent }}>
+          {children}
+        </div>
+      </AccentContext.Provider>
+    );
+  }
   const alignClass =
     headerAlign === "left"
       ? "pageHeaderAlignLeft"

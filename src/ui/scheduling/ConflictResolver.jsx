@@ -21,7 +21,7 @@ export default function ConflictResolver({
   if (!open) return null;
   return (
     <Modal open={open} onClose={onClose} className="conflictModal">
-      <div className="stack stackGap12">
+      <div className="stack stackGap12" data-testid="conflict-resolver-modal">
         <div className="titleSm">Conflit d’horaire</div>
         <div className="small2 textMuted">
           {candidateLabel || "Cette action chevauche une occurrence existante."}
@@ -54,13 +54,13 @@ export default function ConflictResolver({
         ) : null}
 
         <div className="row rowWrap gap8">
-          <Button variant="primary" onClick={onReplace}>
+          <Button variant="primary" onClick={onReplace} data-testid="conflict-resolver-replace">
             Remplacer
           </Button>
-          <Button variant="ghost" onClick={onUnset}>
+          <Button variant="ghost" onClick={onUnset} data-testid="conflict-resolver-unset">
             Mettre sans horaire
           </Button>
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={onClose} data-testid="conflict-resolver-cancel">
             Annuler
           </Button>
         </div>

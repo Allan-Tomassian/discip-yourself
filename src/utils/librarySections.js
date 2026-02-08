@@ -1,4 +1,5 @@
 import { LABELS } from "../ui/labels";
+import { parseTimeToMinutes } from "./datetime";
 
 const SECTION_ORDER = [
   { key: "oneOff", title: "Ponctuelles" },
@@ -42,13 +43,6 @@ function daysBadge(goal) {
   if (!days.length) return "";
   const labels = days.map((d) => DAY_LABELS[d - 1]).filter(Boolean);
   return labels.join(" · ");
-}
-
-function parseTimeToMinutes(t) {
-  if (typeof t !== "string") return null;
-  const m = t.trim().match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
-  if (!m) return null;
-  return Number(m[1]) * 60 + Number(m[2]);
 }
 
 function timeOfDayLabel(minutes) {

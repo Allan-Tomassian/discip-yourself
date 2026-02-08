@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { AccentItem, Button, Card } from "../components/UI";
-import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
+import { normalizeLocalDateKey, parseTimeToMinutes, todayLocalKey } from "../utils/datetime";
 import { setOccurrenceStatusById } from "../logic/occurrences";
 import { isFinalOccurrenceStatus, resolveExecutableOccurrence } from "../logic/sessionResolver";
 import { upsertSessionV2 } from "../logic/sessionsV2";
@@ -17,17 +17,6 @@ function formatElapsed(ms) {
   const minutes = Math.floor(totalSec / 60);
   const seconds = totalSec % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
-function parseTimeToMinutes(value) {
-  if (typeof value !== "string") return null;
-  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
-  if (!m) return null;
-  const h = Number(m[1]);
-  const min = Number(m[2]);
-  if (Number.isNaN(h) || Number.isNaN(min)) return null;
-  if (h < 0 || h > 23 || min < 0 || min > 59) return null;
-  return h * 60 + min;
 }
 
 function resolvePreferredMinutes(session) {

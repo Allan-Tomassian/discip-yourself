@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input } from "../components/UI";
+import FlowShell from "../ui/create/FlowShell";
 import Select from "../ui/select/Select";
 import DatePicker from "../ui/date/DatePicker";
 import CreateSection from "../ui/create/CreateSection";
@@ -28,9 +29,12 @@ export default function CreateV2LinkOutcome({
   onNext,
   onCancel,
   onDone,
+  embedded = false,
+  skin = "",
   canCreateOutcome = true,
   onOpenPaywall,
 }) {
+  const isGate = skin === "gate";
   const safeData = data && typeof data === "object" ? data : {};
   const goals = useMemo(
     () => (Array.isArray(safeData.goals) ? safeData.goals : []),
@@ -169,6 +173,70 @@ export default function CreateV2LinkOutcome({
     }
   }
 
+  const content = (
+    <div className={`flowShellBody col gap12${isGate ? "" : " p18"}`}>
+      <CreateSection title={LABELS.goal} description="Lier ou créer" collapsible={false}>
+        <div className="small2">Quel est le {LABELS.goalLower} de cette action ?</div>
+        {error ? <div className="small2 textAccent">{error}</div> : null}
+        <Select value={choice} onChange={(e) => setChoice(e.target.value)}>
+          <option value="none">Aucun</option>
+          <option value="existing">Lier à un {LABELS.goalLower} existant</option>
+          <option value="new">Créer un nouveau {LABELS.goalLower}</option>
+        </Select>
+      </CreateSection>
+
+      {choice === "existing" ? (
+        <CreateSection title={`${LABELS.goal} existant`} collapsible={false}>
+          <div className="small textMuted">{LABELS.goals} disponibles</div>
+          <Select value={selectedOutcomeId} onChange={(e) => setSelectedOutcomeId(e.target.value)}>
+            <option value="">{`Choisir un ${LABELS.goalLower}`}</option>
+            {outcomes.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.title || LABELS.goal}
+              </option>
+            ))}
+          </Select>
+        </CreateSection>
+      ) : null}
+
+      {choice === "new" ? (
+        <CreateSection title={`Nouveau ${LABELS.goalLower}`} collapsible={false}>
+          <Input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder={`Nom du ${LABELS.goalLower}`}
+          />
+          <div className="createFieldGrid">
+            <div className="stack stackGap6">
+              <div className="small textMuted">Début</div>
+              <DatePicker value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </div>
+            <div className="stack stackGap6">
+              <div className="small textMuted">Fin (min 2 jours)</div>
+              <DatePicker value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+            </div>
+          </div>
+          <div className="small2 textMuted2">Date de fin minimale : {minDeadlineKey}</div>
+        </CreateSection>
+      ) : null}
+
+      <div className="row rowBetween">
+        <Button
+          variant="ghost"
+          onClick={() => {
+            advanceDraft(null);
+            if (typeof onNext === "function") onNext();
+            else if (typeof onCancel === "function") onCancel();
+          }}
+        >
+          Plus tard
+        </Button>
+        <Button onClick={handleContinue}>Continuer</Button>
+      </div>
+      <div className="small2 textMuted2">L’action restera autonome. Tu pourras la lier plus tard.</div>
+    </div>
+  );
+
   return (
     <ScreenShell
       data={safeData}
@@ -180,71 +248,10 @@ export default function CreateV2LinkOutcome({
         </>
       }
       backgroundImage={safeData?.profile?.whyImage || ""}
+      embedded={embedded || isGate}
     >
       <div className="stack stackGap12">
-        <Card accentBorder>
-          <div className="p18 col gap12">
-            <CreateSection title={LABELS.goal} description="Lier ou créer" collapsible={false}>
-              <div className="small2">Quel est le {LABELS.goalLower} de cette action ?</div>
-              {error ? <div className="small2 textAccent">{error}</div> : null}
-              <Select value={choice} onChange={(e) => setChoice(e.target.value)}>
-                <option value="none">Aucun</option>
-                <option value="existing">Lier à un {LABELS.goalLower} existant</option>
-                <option value="new">Créer un nouveau {LABELS.goalLower}</option>
-              </Select>
-            </CreateSection>
-
-            {choice === "existing" ? (
-              <CreateSection title={`${LABELS.goal} existant`} collapsible={false}>
-                <div className="small textMuted">{LABELS.goals} disponibles</div>
-                <Select value={selectedOutcomeId} onChange={(e) => setSelectedOutcomeId(e.target.value)}>
-                  <option value="">{`Choisir un ${LABELS.goalLower}`}</option>
-                  {outcomes.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.title || LABELS.goal}
-                    </option>
-                  ))}
-                </Select>
-              </CreateSection>
-            ) : null}
-
-            {choice === "new" ? (
-              <CreateSection title={`Nouveau ${LABELS.goalLower}`} collapsible={false}>
-                <Input
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder={`Nom du ${LABELS.goalLower}`}
-                />
-                <div className="createFieldGrid">
-                  <div className="stack stackGap6">
-                    <div className="small textMuted">Début</div>
-                    <DatePicker value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                  </div>
-                  <div className="stack stackGap6">
-                    <div className="small textMuted">Fin (min 2 jours)</div>
-                    <DatePicker value={deadline} onChange={(e) => setDeadline(e.target.value)} />
-                  </div>
-                </div>
-                <div className="small2 textMuted2">Date de fin minimale : {minDeadlineKey}</div>
-              </CreateSection>
-            ) : null}
-
-            <div className="row rowBetween">
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  advanceDraft(null);
-                  if (typeof onNext === "function") onNext();
-                  else if (typeof onCancel === "function") onCancel();
-                }}
-              >
-                Plus tard
-              </Button>
-              <Button onClick={handleContinue}>Continuer</Button>
-            </div>
-            <div className="small2 textMuted2">L’action restera autonome. Tu pourras la lier plus tard.</div>
-          </div>
-        </Card>
+        {isGate ? <FlowShell>{content}</FlowShell> : <Card accentBorder>{content}</Card>}
       </div>
     </ScreenShell>
   );

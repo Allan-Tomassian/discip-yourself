@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card, Input } from "../components/UI";
+import FlowShell from "../ui/create/FlowShell";
 import Select from "../ui/select/Select";
 import DatePicker from "../ui/date/DatePicker";
 import CreateSection from "../ui/create/CreateSection";
@@ -27,11 +28,15 @@ export default function CreateV2Outcome({
   onNext,
   onCancel,
   onAfterSave,
+  embedded = false,
+  hideBack = false,
+  skin = "",
   canCreateOutcome = true,
   onOpenPaywall,
   isPremiumPlan = false,
   planLimits = null,
 }) {
+  const isGate = skin === "gate";
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
   const categories = useMemo(
@@ -194,6 +199,106 @@ export default function CreateV2Outcome({
 
   const selectedSuggestion = suggestedCategories.find((cat) => cat.id === categoryId) || null;
 
+  const content = (
+    <div className={`flowShellBody col gap12${isGate ? "" : " p18"}`}>
+      <CreateSection title="Catégorie" collapsible={false}>
+        <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+          {categoryOptions.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name || "Catégorie"}
+              {category.suggested ? " (suggestion)" : ""}
+            </option>
+          ))}
+        </Select>
+        {selectedSuggestion ? (
+          <div className="row rowBetween alignCenter">
+            <div className="small2 textMuted">Suggestion non activée.</div>
+            <Button variant="ghost" onClick={() => activateSuggestedCategory(selectedSuggestion)}>
+              Activer
+            </Button>
+          </div>
+        ) : null}
+      </CreateSection>
+
+      <CreateSection title={LABELS.goal} description="Nom + priorité" collapsible={false}>
+        <Input
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            if (error) setError("");
+          }}
+          placeholder={`Nom du ${LABELS.goalLower}`}
+        />
+        <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
+          <option value="secondaire">Secondaire</option>
+          <option value="prioritaire">Prioritaire</option>
+          <option value="bonus">Bonus</option>
+        </Select>
+      </CreateSection>
+
+      <CreateSection title="Dates" description="Début + fin" collapsible={false}>
+        <div className="stack stackGap6">
+          <div className="small2 textMuted">Date de début (optionnel)</div>
+          <DatePicker
+            value={startDate}
+            onChange={(e) => {
+              const nextValue = e.target.value;
+              setStartDate(nextValue);
+              if (!deadlineTouched) {
+                const base = fromLocalDateKey(normalizeLocalDateKey(nextValue) || todayLocalKey());
+                base.setDate(base.getDate() + 1);
+                setDeadline(toLocalDateKey(base));
+              }
+              if (error) setError("");
+            }}
+          />
+        </div>
+        <div className="stack stackGap6">
+          <div className="small2 textMuted">Date de fin (min 2 jours : {minDeadlineKey})</div>
+          <DatePicker
+            value={deadline}
+            onChange={(e) => {
+              setDeadline(e.target.value);
+              if (!deadlineTouched) setDeadlineTouched(true);
+              if (error) setError("");
+            }}
+          />
+          {error ? (
+            <div className="stack stackGap6">
+              <div className="small2 textAccent">{error}</div>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  if (typeof onNext === "function") onNext();
+                }}
+              >
+                Créer une action à la place
+              </Button>
+            </div>
+          ) : null}
+          <div className="small2 textMuted2">{startDateHelper}</div>
+        </div>
+      </CreateSection>
+      <div className="row rowEnd gap10">
+        <Button
+          variant="ghost"
+          onClick={() => {
+            if (typeof onCancel === "function") {
+              onCancel();
+              return;
+            }
+            if (typeof onBack === "function") onBack();
+          }}
+        >
+          Annuler
+        </Button>
+        <Button onClick={handleNext} disabled={!canContinue}>
+          Continuer
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <ScreenShell
       data={safeData}
@@ -205,110 +310,15 @@ export default function CreateV2Outcome({
         </>
       }
       backgroundImage={backgroundImage}
+      embedded={embedded || isGate}
     >
       <div className="stack stackGap12">
-        <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
-          ← Retour
-        </Button>
-        <Card accentBorder>
-          <div className="p18 col gap12">
-            <CreateSection title="Catégorie" collapsible={false}>
-              <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                {categoryOptions.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name || "Catégorie"}
-                    {category.suggested ? " (suggestion)" : ""}
-                  </option>
-                ))}
-              </Select>
-              {selectedSuggestion ? (
-                <div className="row rowBetween alignCenter">
-                  <div className="small2 textMuted">Suggestion non activée.</div>
-                  <Button variant="ghost" onClick={() => activateSuggestedCategory(selectedSuggestion)}>
-                    Activer
-                  </Button>
-                </div>
-              ) : null}
-            </CreateSection>
-
-            <CreateSection title={LABELS.goal} description="Nom + priorité" collapsible={false}>
-              <Input
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  if (error) setError("");
-                }}
-                placeholder={`Nom du ${LABELS.goalLower}`}
-              />
-              <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
-                <option value="secondaire">Secondaire</option>
-                <option value="prioritaire">Prioritaire</option>
-                <option value="bonus">Bonus</option>
-              </Select>
-            </CreateSection>
-
-            <CreateSection title="Dates" description="Début + fin" collapsible={false}>
-              <div className="stack stackGap6">
-                <div className="small2 textMuted">Date de début (optionnel)</div>
-                <DatePicker
-                  value={startDate}
-                  onChange={(e) => {
-                    const nextValue = e.target.value;
-                    setStartDate(nextValue);
-                    if (!deadlineTouched) {
-                      const base = fromLocalDateKey(normalizeLocalDateKey(nextValue) || todayLocalKey());
-                      base.setDate(base.getDate() + 1);
-                      setDeadline(toLocalDateKey(base));
-                    }
-                    if (error) setError("");
-                  }}
-                />
-              </div>
-              <div className="stack stackGap6">
-                <div className="small2 textMuted">Date de fin (min 2 jours : {minDeadlineKey})</div>
-                <DatePicker
-                  value={deadline}
-                  onChange={(e) => {
-                    setDeadline(e.target.value);
-                    if (!deadlineTouched) setDeadlineTouched(true);
-                    if (error) setError("");
-                  }}
-                />
-                {error ? (
-                  <div className="stack stackGap6">
-                    <div className="small2 textAccent">{error}</div>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        if (typeof onNext === "function") onNext();
-                      }}
-                    >
-                      Créer une action à la place
-                    </Button>
-                  </div>
-                ) : null}
-                <div className="small2 textMuted2">{startDateHelper}</div>
-              </div>
-            </CreateSection>
-            <div className="row rowEnd gap10">
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  if (typeof onCancel === "function") {
-                    onCancel();
-                    return;
-                  }
-                  if (typeof onBack === "function") onBack();
-                }}
-              >
-                Annuler
-              </Button>
-              <Button onClick={handleNext} disabled={!canContinue}>
-                Continuer
-              </Button>
-            </div>
-          </div>
-        </Card>
+        {!hideBack && !isGate ? (
+          <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+            ← Retour
+          </Button>
+        ) : null}
+        {isGate ? <FlowShell>{content}</FlowShell> : <Card accentBorder>{content}</Card>}
       </div>
     </ScreenShell>
   );

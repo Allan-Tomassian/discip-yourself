@@ -1,13 +1,22 @@
 import React, { useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
+import FlowShell from "../ui/create/FlowShell";
 import Select from "../ui/select/Select";
 import CreateSection from "../ui/create/CreateSection";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { safeUpdateGoal } from "../logic/goalGuards";
 import { ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
 
-export default function CreateV2PickCategory({ data, setData, onDone, onOpenPaywall }) {
+export default function CreateV2PickCategory({
+  data,
+  setData,
+  onDone,
+  onOpenPaywall,
+  embedded = false,
+  skin = "",
+}) {
+  const isGate = skin === "gate";
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -87,6 +96,27 @@ export default function CreateV2PickCategory({ data, setData, onDone, onOpenPayw
     if (typeof onDone === "function") onDone();
   }
 
+  const content = (
+    <div className={`flowShellBody col gap12${isGate ? "" : " p18"}`}>
+      <CreateSection title="Catégorie" description="Dernière étape" collapsible={false}>
+        <div className="small2">Dans quelle catégorie veux-tu agir ?</div>
+        <Select value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)}>
+          {options.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name || "Catégorie"}
+            </option>
+          ))}
+        </Select>
+      </CreateSection>
+      <div className="row rowBetween">
+        <Button variant="ghost" onClick={finalize}>
+          Plus tard
+        </Button>
+        <Button onClick={applyCategory}>Terminer</Button>
+      </div>
+    </div>
+  );
+
   return (
     <ScreenShell
       data={safeData}
@@ -98,28 +128,10 @@ export default function CreateV2PickCategory({ data, setData, onDone, onOpenPayw
         </>
       }
       backgroundImage={safeData?.profile?.whyImage || ""}
+      embedded={embedded || isGate}
     >
       <div className="stack stackGap12">
-        <Card accentBorder>
-          <div className="p18 col gap12">
-            <CreateSection title="Catégorie" description="Dernière étape" collapsible={false}>
-              <div className="small2">Dans quelle catégorie veux-tu agir ?</div>
-              <Select value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)}>
-                {options.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name || "Catégorie"}
-                  </option>
-                ))}
-              </Select>
-            </CreateSection>
-            <div className="row rowBetween">
-              <Button variant="ghost" onClick={finalize}>
-                Plus tard
-              </Button>
-              <Button onClick={applyCategory}>Terminer</Button>
-            </div>
-          </div>
-        </Card>
+        {isGate ? <FlowShell>{content}</FlowShell> : <Card accentBorder>{content}</Card>}
       </div>
     </ScreenShell>
   );

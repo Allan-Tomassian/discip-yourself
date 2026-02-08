@@ -1,10 +1,4 @@
-function parseTimeToMinutes(value) {
-  if (typeof value !== "string") return null;
-  const [h, m] = value.split(":").map((v) => Number(v));
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
-  return h * 60 + m;
-}
+import { parseTimeToMinutes } from "../utils/datetime";
 
 export function buildTimeWindow({ dateKey, time, durationMinutes }) {
   const startMinutes = parseTimeToMinutes(time);

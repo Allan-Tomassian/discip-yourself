@@ -1,0 +1,173 @@
+.createFlowBackdrop{
+  background: var(--overlayBackdrop, rgba(0,0,0,.6));
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.createFlowModal{
+  width:100%;
+  max-width:clamp(360px, 92vw, var(--app-modal-max, 720px));
+  max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  overflow:hidden;
+  background: linear-gradient(180deg, var(--surface-3, var(--surface-2)), var(--surface-2, var(--surface)));
+  align-self:center;
+}
+
+.createFlowShell{
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  height:100%;
+  gap:12px;
+  min-width:0;
+}
+
+.createFlowHeader{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-bottom:6px;
+}
+
+.createFlowCategoryRow{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:10px;
+  align-items:center;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid var(--border-subtle, var(--border));
+  background: var(--surface-2, var(--surface));
+  cursor: default;
+}
+
+.createFlowCategoryName{
+  font-weight:600;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.createFlowSwatch{
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.25);
+  flex:0 0 auto;
+}
+
+.createFlowBody{
+  min-height:0;
+  overflow:auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right:2px;
+}
+
+.createFlowChoiceGrid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+}
+
+.createFlowChoiceCard{
+  cursor:pointer;
+}
+
+.createFlowChoiceCard.isDisabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
+
+.createFlowChoiceText{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.createFlowFooter{
+  display:flex;
+  justify-content:flex-end;
+  padding-top:12px;
+  border-top:1px solid var(--border-subtle, var(--border));
+  background: var(--surface-2, var(--surface));
+}
+
+.createFlowStep{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.gateModal--flow .createFlowStep .card{
+  border:0;
+  background: transparent;
+  box-shadow:none;
+}
+
+.gateModal--flow .createFlowStep .p18{
+  padding:12px;
+}
+
+.gateModal--flow .createFlowStep .accentRail::before,
+.gateModal--flow .createFlowStep .accentBorder::before{
+  display:none;
+}
+
+.gateModal--flow .createFlowStep .accentSurface{
+  background: transparent;
+}
+
+.gateModal--flow .createFlowStep .createSection{
+  border:1px solid var(--border-subtle, var(--border));
+  background: var(--surface-2, var(--surface));
+  box-shadow:none;
+}
+
+.gateModal--flow .createFlowStep .createSectionHeader{
+  cursor: default;
+}
+
+.gateModal--flow .createFlowStep .createSectionChevron{
+  display:none;
+}
+
+.gateModal--flow .createFlowStep .btnBackCompact{
+  display:none;
+}
+
+.gateModal--flow .createFlowStep .pageHeader,
+.gateModal--flow .createFlowStep .pageTitle,
+.gateModal--flow .createFlowStep .pageSubtitle{
+  display:none;
+}
+
+.gateModal--flow .createFlowStep .screenShellEmbedded{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  min-height:0;
+}
+
+.gateModal--flow .createFlowStep .pageContent{
+  margin-top:0;
+}
+
+@media (min-width: 720px){
+  .gateModal--flow .createFlowChoiceGrid{
+    grid-template-columns:1fr;
+  }
+}
+
+@media (max-width: 720px){
+  .createFlowModal{
+    width:calc(100vw - 16px);
+    max-width:calc(100vw - 16px);
+    max-height:calc(100dvh - 16px);
+    padding:16px;
+  }
+}

@@ -1,21 +1,12 @@
 import { uid } from "../utils/helpers";
-import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
+import { isValidTimeStr, normalizeLocalDateKey, parseTimeToMinutes, todayLocalKey } from "../utils/datetime";
 
 const DOW_VALUES = new Set([1, 2, 3, 4, 5, 6, 7]); // 1=Mon .. 7=Sun
-const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 function normalizeTimeHM(value) {
   const raw = typeof value === "string" ? value.trim() : "";
-  if (!TIME_RE.test(raw)) return "";
+  if (!isValidTimeStr(raw)) return "";
   return raw;
-}
-
-function parseTimeToMinutes(value) {
-  const raw = normalizeTimeHM(value);
-  if (!raw) return null;
-  const [h, m] = raw.split(":").map((v) => Number(v));
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-  return h * 60 + m;
 }
 
 function normalizeDaysOfWeek(value) {

@@ -1,10 +1,16 @@
 import { uid as uidFn } from "../utils/helpers";
 import {
+  addDaysLocal,
+  appDowFromDate,
+  buildDateRangeLocalKeys,
   fromLocalDateKey,
+  minutesToTimeStr,
   normalizeLocalDateKey,
+  parseTimeToMinutes,
+  isValidTimeStr,
   todayLocalKey,
   toLocalDateKey,
-} from "../utils/dateKey";
+} from "../utils/datetime";
 import { resolveGoalType } from "../domain/goalType";
 import { ensureScheduleRulesForActions } from "./scheduleRules";
 
@@ -15,37 +21,13 @@ import { ensureScheduleRulesForActions } from "./scheduleRules";
 const STATUS_RANK = { done: 3, planned: 2, skipped: 1 };
 const DOW_VALUES = new Set([1, 2, 3, 4, 5, 6, 7]); // 1=Mon .. 7=Sun (app convention)
 
-
-function appDowFromDate(d) {
-  const js = d.getDay();
-  return js === 0 ? 7 : js;
-}
-
 function normalizeDateKeyLoose(value) {
   const raw = typeof value === "string" ? value.trim() : "";
   return normalizeLocalDateKey(raw) || "";
 }
 
-function parseDateKeyParts(value) {
-  const raw = typeof value === "string" ? value.trim() : "";
-  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
-  if (month < 1 || month > 12) return null;
-  if (day < 1 || day > 31) return null;
-  return { year, month, day };
-}
-
 function addDaysDateKey(dateKey, days) {
-  const k = normalizeDateKeyLoose(dateKey);
-  const parts = parseDateKeyParts(k);
-  if (!parts) return "";
-  const base = new Date(parts.year, parts.month - 1, parts.day, 12, 0, 0, 0);
-  base.setDate(base.getDate() + (Number.isFinite(days) ? Math.trunc(days) : 0));
-  return toLocalDateKey(base);
+  return addDaysLocal(dateKey, days);
 }
 
 function clampPeriod(fromKey, toKey) {
@@ -91,13 +73,11 @@ function parseLocalDateTime(value) {
 
 function addMinutesLocal(dateKey, timeHM, minutes) {
   const date = normalizeLocalDateKey(dateKey);
-  const parts = parseDateKeyParts(date);
-  if (!parts) return "";
-  const time = typeof timeHM === "string" ? timeHM.trim() : "";
-  if (!/^\d{2}:\d{2}$/.test(time)) return "";
-  const [h, m] = time.split(":").map((v) => Number(v));
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return "";
-  const base = new Date(parts.year, parts.month - 1, parts.day, h, m, 0, 0);
+  if (!date) return "";
+  const minutesStart = parseTimeToMinutes(timeHM);
+  if (!Number.isFinite(minutesStart)) return "";
+  const base = fromLocalDateKey(date);
+  base.setHours(Math.floor(minutesStart / 60), minutesStart % 60, 0, 0);
   const mins = Number.isFinite(minutes) ? Math.round(minutes) : 0;
   base.setMinutes(base.getMinutes() + mins);
   return formatLocalDateTime(base);
@@ -132,22 +112,7 @@ function isDateWithinPeriod(dateKey, period) {
   return true;
 }
 
-function parseTimeToMinutes(hm) {
-  const raw = typeof hm === "string" ? hm.trim() : "";
-  if (!/^\d{2}:\d{2}$/.test(raw)) return null;
-  const [h, m] = raw.split(":").map((v) => Number(v));
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
-  return h * 60 + m;
-}
-
-function minutesToTime(minutes) {
-  if (!Number.isFinite(minutes)) return "";
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h < 0 || h > 23 || m < 0 || m > 59) return "";
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
+const minutesToTime = minutesToTimeStr;
 
 function overlaps(startMin, durationMinutes, otherStartMin, otherDurationMinutes) {
   if (!Number.isFinite(startMin) || !Number.isFinite(otherStartMin)) return false;
@@ -445,7 +410,7 @@ function occurrenceKey(goalId, dateKey, start) {
 
 function isValidStart(value) {
   const raw = typeof value === "string" ? value.trim() : "";
-  return /^\d{2}:\d{2}$/.test(raw);
+  return isValidTimeStr(raw);
 }
 
 function isSameOccurrenceArray(a, b) {
@@ -533,23 +498,6 @@ function resolveWindowRange(fromKey, toKey, now = new Date()) {
   const to = normalizeDateKeyLoose(toKey) || fallbackTo;
   const clamped = clampPeriod(from, to);
   return { from: clamped.from || fallbackFrom, to: clamped.to || fallbackTo };
-}
-
-function buildDateRange(fromKey, toKey) {
-  const from = normalizeDateKeyLoose(fromKey);
-  const to = normalizeDateKeyLoose(toKey);
-  if (!from || !to) return [];
-  if (to < from) return [];
-  const start = fromLocalDateKey(from);
-  const end = fromLocalDateKey(to);
-  if (!start || !end) return [];
-  const dates = [];
-  const cursor = new Date(start);
-  while (cursor <= end) {
-    dates.push(toLocalDateKey(cursor));
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return dates;
 }
 
 function getGoalById(data, goalId) {
@@ -977,7 +925,7 @@ export function ensureWindowFromScheduleRules(data, fromKey, toKey, actionIds = 
   if (!ruleList.length) return working;
 
   const { from, to } = resolveWindowRange(fromKey, toKey, now);
-  const windowDates = buildDateRange(from, to);
+  const windowDates = buildDateRangeLocalKeys(from, to);
   if (!windowDates.length) return working;
 
   const windowSet = new Set(windowDates);
@@ -1186,7 +1134,7 @@ export function ensureWindowFromScheduleRules(data, fromKey, toKey, actionIds = 
 export function regenerateWindowFromScheduleRules(data, actionId, fromKey, toKey, now = new Date()) {
   if (!data || !actionId) return data;
   const dateRange = resolveWindowRange(fromKey, toKey, now);
-  const windowDates = buildDateRange(dateRange.from, dateRange.to);
+  const windowDates = buildDateRangeLocalKeys(dateRange.from, dateRange.to);
   if (!windowDates.length) return data;
   const windowSet = new Set(windowDates);
 

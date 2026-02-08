@@ -1,24 +1,7 @@
-import { normalizeLocalDateKey } from "../../utils/dateKey";
+import { clampTimeToDay, minutesToTimeStr, normalizeLocalDateKey, parseTimeToMinutes } from "../../utils/datetime";
 
 const DEFAULT_DURATION_MIN = 30;
 const MINUTES_PER_DAY = 24 * 60;
-
-function parseTimeToMinutes(value) {
-  const raw = typeof value === "string" ? value.trim() : "";
-  if (!/^\d{2}:\d{2}$/.test(raw)) return null;
-  const [h, m] = raw.split(":").map((v) => Number(v));
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
-  return h * 60 + m;
-}
-
-function minutesToTime(minutes) {
-  if (!Number.isFinite(minutes)) return "";
-  const clamped = Math.max(0, Math.min(MINUTES_PER_DAY - 1, Math.round(minutes)));
-  const h = Math.floor(clamped / 60);
-  const m = clamped % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
 
 function resolveDuration(value, fallback = DEFAULT_DURATION_MIN) {
   if (Number.isFinite(value) && value > 0) return Math.round(value);
@@ -112,7 +95,7 @@ export function suggestNextSlots({
   for (const startMin of candidates) {
     if (startMin < 0 || startMin > MINUTES_PER_DAY - 1) continue;
     if (!isFree(startMin)) continue;
-    const label = minutesToTime(startMin);
+    const label = minutesToTimeStr(clampTimeToDay(startMin));
     if (label && !suggestions.includes(label)) suggestions.push(label);
   }
 
@@ -122,7 +105,7 @@ export function suggestNextSlots({
       const startMin = candidateInterval.startMin + step * i;
       if (startMin < 0 || startMin > MINUTES_PER_DAY - 1) continue;
       if (!isFree(startMin)) continue;
-      const label = minutesToTime(startMin);
+      const label = minutesToTimeStr(clampTimeToDay(startMin));
       if (label && !suggestions.includes(label)) suggestions.push(label);
     }
   }

@@ -1,5 +1,5 @@
 import { uid } from "../utils/helpers";
-import { toLocalDateKey } from "../utils/dateKey";
+import { minutesToTimeStr, parseTimeToMinutes, toLocalDateKey } from "../utils/datetime";
 import { resolveGoalType } from "../domain/goalType";
 
 export const ENABLE_WEB_NOTIFICATIONS = false;
@@ -8,27 +8,8 @@ export const ENABLE_WEB_NOTIFICATIONS = false;
 export const DUE_SOON_MINUTES = 15;
 const COOLDOWN_MS = 60_000;
 
-function parseTimeToMinutes(value) {
-  if (typeof value !== "string") return null;
-  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
-  if (!m) return null;
-  const h = Number(m[1]);
-  const min = Number(m[2]);
-  if (Number.isNaN(h) || Number.isNaN(min)) return null;
-  if (h < 0 || h > 23 || min < 0 || min > 59) return null;
-  return h * 60 + min;
-}
-
 function minutesSinceMidnight(now) {
   return now.getHours() * 60 + now.getMinutes();
-}
-
-function minutesToTime(minutes) {
-  if (!Number.isFinite(minutes)) return "";
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h < 0 || h > 23 || m < 0 || m > 59) return "";
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
 function isOccurrenceDueSoon(occ, nowMinutes, windowMinutes) {
@@ -97,7 +78,7 @@ export function getDueReminders(state, now, lastFiredMap) {
     if (!isOccurrenceDueSoon(occ, nowMinutes, DUE_SOON_MINUTES)) continue;
     const occMinutes = parseTimeToMinutes(occ.start);
     if (!Number.isFinite(occMinutes)) continue;
-    const normalizedStart = minutesToTime(occMinutes);
+    const normalizedStart = minutesToTimeStr(occMinutes);
     if (!normalizedStart) continue;
     const existing = dueByGoal.get(occ.goalId);
     if (!existing || occMinutes < existing.minutes) {

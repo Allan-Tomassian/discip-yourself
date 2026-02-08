@@ -1,4 +1,4 @@
-import { toLocalDateKey } from "./dateKey";
+import { getWeekdayShortLabel as getWeekdayShortLabelShared, toLocalDateKey } from "./datetime";
 
 // LOCAL DATE KEY ONLY (no UTC)
 export function todayKey(d = new Date()) {
@@ -56,27 +56,7 @@ export function isSameDayKey(aKey, bKey) {
 
 export const WEEK_DAYS_PER_WEEK = 7;
 export const WEEKDAY_LABELS_FR = ["L", "M", "M", "J", "V", "S", "D"];
-const WEEKDAY_FALLBACK_FR = ["DIM", "LUN", "MAR", "MER", "JEU", "VEN", "SAM"];
-const weekdayShortFormatters = new Map();
-
-export function getWeekdayShortLabel(d, locale = undefined) {
-  if (!(d instanceof Date)) return "";
-  try {
-    const key = locale || "default";
-    let formatter = weekdayShortFormatters.get(key);
-    if (!formatter) {
-      formatter = new Intl.DateTimeFormat(locale || undefined, { weekday: "short" });
-      weekdayShortFormatters.set(key, formatter);
-    }
-    const raw = formatter.format(d);
-    const cleaned = raw.replace(/[^A-Za-z]/g, "");
-    const label = cleaned || raw;
-    return label.slice(0, 3).toUpperCase();
-  } catch (err) {
-    const idx = d.getDay();
-    return WEEKDAY_FALLBACK_FR[idx] || "";
-  }
-}
+export { getWeekdayShortLabelShared as getWeekdayShortLabel };
 
 const MONTH_LABEL_FR = new Intl.DateTimeFormat("fr-FR", {
   month: "long",

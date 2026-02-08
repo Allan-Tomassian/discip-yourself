@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button, Card } from "./UI";
 import { getPlanLimits, getTrialDays } from "../logic/entitlements";
 import { loadProducts, PRODUCT_IDS } from "../logic/purchases";
@@ -53,13 +54,21 @@ export default function PaywallModal({
   const monthlyLabel = products.monthly?.priceString || "—";
   const yearlyLabel = products.yearly?.priceString || "—";
 
-  return (
-    <div className="modalBackdrop" onClick={onClose}>
+  const content = (
+    <div
+      className="modalBackdrop paywallBackdrop"
+      onClick={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (typeof onClose === "function") onClose();
+      }}
+    >
       <Card
         accentBorder
-        className="reminderCard"
+        className="reminderCard paywallPanel"
         style={{ maxWidth: 520, width: "100%" }}
         onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
       >
         <div className="p18 col" style={{ gap: 12 }}>
           <div className="titleSm">Passer Premium</div>
@@ -130,4 +139,6 @@ export default function PaywallModal({
       </Card>
     </div>
   );
+  if (typeof document === "undefined") return content;
+  return createPortal(content, document.body);
 }

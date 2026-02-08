@@ -15,7 +15,9 @@
     "lint:fix": "eslint src --ext .js,.jsx --fix",
     "preview": "vite preview --port 4174 --strictPort --host 127.0.0.1",
     "preview:lan": "vite preview --port 4174 --strictPort --host 0.0.0.0",
-    "test": "vitest run",
+    "test": "vitest run src",
+    "test:e2e": "playwright test",
+    "check:da": "node scripts/check-da.mjs",
     "check": "npm run lint && npm run build && npm run test"
   },
   "dependencies": {
@@ -30,6 +32,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.58.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",

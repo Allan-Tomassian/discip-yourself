@@ -2,31 +2,8 @@ import React, { useEffect } from "react";
 import CreateV2Habits from "./CreateV2Habits";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_HABITS } from "../creation/creationSchema";
-import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey } from "../utils/dateKey";
-
-// App convention: 1 = Monday ... 7 = Sunday
-function appDowFromDate(d) {
-  const js = d.getDay();
-  return js === 0 ? 7 : js;
-}
-
-function addDaysLocal(dateKey, days) {
-  const normalized = normalizeLocalDateKey(dateKey);
-  if (!normalized) return "";
-  const base = fromLocalDateKey(normalized);
-  base.setDate(base.getDate() + (Number.isFinite(days) ? Math.trunc(days) : 0));
-  return toLocalDateKey(base);
-}
-
-function sameArray(a, b) {
-  if (a === b) return true;
-  if (!Array.isArray(a) || !Array.isArray(b)) return false;
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i += 1) {
-    if (a[i] !== b[i]) return false;
-  }
-  return true;
-}
+import { addDaysLocal, appDowFromDate, toLocalDateKey } from "../utils/datetime";
+import { sameArray } from "../utils/helpers";
 
 /**
  * Flexible action entry point.
@@ -131,5 +108,5 @@ export default function CreateV2HabitAnytime(props) {
     });
   }, [setData]);
 
-  return <CreateV2Habits {...props} createVariant="ANYTIME" />;
+  return <CreateV2Habits {...props} createVariant="ANYTIME" skin={props.skin || ""} />;
 }
