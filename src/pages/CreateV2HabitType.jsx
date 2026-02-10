@@ -1,8 +1,8 @@
 import React, { useEffect } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card } from "../components/UI";
+import { Button } from "../components/UI";
 import FlowShell from "../ui/create/FlowShell";
-import CreateSection from "../ui/create/CreateSection";
+import { GateSection } from "../shared/ui/gate/Gate";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_HABIT_TYPE, STEP_HABITS } from "../creation/creationSchema";
 
@@ -45,8 +45,8 @@ export default function CreateV2HabitType({
   }
 
   const content = (
-    <div className={`flowShellBody col gap12${isGate ? "" : " p18"}`}>
-      <CreateSection title="Type d’action" description="Choisis le planning" collapsible={false}>
+    <div className="flowShellBody col gap12">
+      <GateSection title="Type d’action" description="Choisis le planning" collapsible={false}>
         <div className="small2 textMuted">
           Choisis le type. Tu configures le planning à l’étape suivante.
         </div>
@@ -64,7 +64,7 @@ export default function CreateV2HabitType({
         {draft?.habitType ? (
           <div className="small2 textMuted">Sélection actuelle : {draft.habitType}</div>
         ) : null}
-      </CreateSection>
+      </GateSection>
     </div>
   );
 
@@ -87,7 +87,7 @@ export default function CreateV2HabitType({
             ← Retour
           </Button>
         ) : null}
-        {isGate ? <FlowShell>{content}</FlowShell> : <Card accentBorder>{content}</Card>}
+        <FlowShell>{content}</FlowShell>
       </div>
     </ScreenShell>
   );

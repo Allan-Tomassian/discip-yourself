@@ -15,7 +15,7 @@ import { buildReport, exportReportToCSV } from "../logic/reporting";
 import SortableBlocks from "../components/SortableBlocks";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
 import { LABELS } from "../ui/labels";
-import "./pilotage.css";
+import "../features/pilotage/pilotage.css";
 
 // TOUR MAP:
 // - primary_action: planifier depuis l'état des catégories

@@ -1,0 +1,176 @@
+.createFlowBackdrop {
+  background: var(--overlayBackdrop, rgba(0, 0, 0, 0.6));
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.createFlowModal {
+  width: 100%;
+  max-width: clamp(360px, 92vw, var(--app-modal-max, 720px));
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--surface-3, var(--surface-2)), var(--surface-2, var(--surface)));
+  align-self: center;
+}
+
+.createFlowShell {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  gap: 12px;
+  min-width: 0;
+}
+
+.createFlowCategoryRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle, var(--border));
+  background: var(--surface-2, var(--surface));
+  cursor: default;
+}
+
+.createFlowCategoryName {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.createFlowSwatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  flex: 0 0 auto;
+}
+
+.createFlowBody {
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 2px;
+}
+
+.createFlowChoiceGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.createFlowChoiceCard {
+  cursor: pointer;
+}
+
+.createFlowChoiceCard.isDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.createFlowChoiceText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.createFlowStep {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.flowShell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.flowShellBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.flowShell .card {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.flowShell .accentSurface {
+  background: transparent;
+}
+
+.flowShell .btnBackCompact {
+  display: none;
+}
+
+.flowShell .pageHeader,
+.flowShell .pageTitle,
+.flowShell .pageSubtitle {
+  display: none;
+}
+
+.flowShell .screenShellEmbedded {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.flowShell .pageContent {
+  margin-top: 0;
+}
+
+.createFieldRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.createFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.createHelper {
+  font-size: 11px;
+  color: var(--text-3, var(--muted2));
+}
+
+.createError {
+  font-size: 11px;
+  color: var(--accent, #ff8a3d);
+}
+
+.createFlowScope .p18 {
+  padding: 0;
+}
+
+@media (max-width: 720px) {
+  .createFlowModal {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    padding: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .createFieldGrid {
+    grid-template-columns: 1fr;
+  }
+}

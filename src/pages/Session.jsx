@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { AccentItem, Button, Card } from "../components/UI";
+import { AccentItem, Button } from "../components/UI";
 import { normalizeLocalDateKey, parseTimeToMinutes, todayLocalKey } from "../utils/datetime";
 import { setOccurrenceStatusById } from "../logic/occurrences";
 import { isFinalOccurrenceStatus, resolveExecutableOccurrence } from "../logic/sessionResolver";
@@ -10,6 +10,8 @@ import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { resolveConflictNearest } from "../logic/occurrencePlanner";
 import { normalizeActiveSessionForUI, normalizeOccurrenceForUI } from "../logic/compat";
 import { LABELS } from "../ui/labels";
+import { GateSection } from "../shared/ui/gate/Gate";
+import "../features/session/session.css";
 
 function formatElapsed(ms) {
   const safe = Number.isFinite(ms) && ms > 0 ? ms : 0;
@@ -552,21 +554,16 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
           </div>
         }
       >
-        <Card accentBorder>
-          <div className="p18">
-            <div className="titleSm">Aucune session en cours</div>
-            <div className="small2 mt6">
-              Lance une session depuis Aujourd’hui.
+        <GateSection title="Aucune session en cours" collapsible={false}>
+          <div className="small2 mt6">Lance une session depuis Aujourd’hui.</div>
+          {typeof onOpenLibrary === "function" ? (
+            <div className="mt12">
+              <Button variant="ghost" onClick={onOpenLibrary}>
+                Aller à Bibliothèque
+              </Button>
             </div>
-            {typeof onOpenLibrary === "function" ? (
-              <div className="mt12">
-                <Button variant="ghost" onClick={onOpenLibrary}>
-                  Aller à Bibliothèque
-                </Button>
-              </div>
-            ) : null}
-          </div>
-        </Card>
+          ) : null}
+        </GateSection>
       </ScreenShell>
     );
   }
@@ -608,46 +605,38 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
         }
         backgroundImage={category?.wallpaper || safeData.profile?.whyImage || ""}
       >
-        <Card accentBorder>
-          <div className="p18">
-            <div className="titleSm">{statusLabel}</div>
-            <div className="small2 mt6">
-              Date : {effectiveDateKey}
-            </div>
+        <GateSection title={statusLabel} collapsible={false}>
+          <div className="small2 mt6">Date : {effectiveDateKey}</div>
+        </GateSection>
+
+        <GateSection title="Débrief" className="mt12" collapsible={false}>
+
+          <div className="mt12">
+            <div className="small2">Durée : {durationLabel}</div>
           </div>
-        </Card>
 
-        <Card accentBorder className="mt12">
-          <div className="p18">
-            <div className="sectionTitle">Débrief</div>
-
+          {session.status === "done" ? (
             <div className="mt12">
-              <div className="small2">Durée : {durationLabel}</div>
+              <div className="small2">Actions accomplies</div>
+              {doneHabits.length ? (
+                <div className="mt10 col gap10">
+                  {doneHabits.map((h) => (
+                    <AccentItem key={h.id} className="listItem" style={catAccentVars}>
+                      <div className="row rowBetween alignCenter">
+                        <div className="itemTitle">{h.title || "Action"}</div>
+                        <span className="actionStatus running">Fait</span>
+                      </div>
+                    </AccentItem>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt10 small2">Aucune action enregistrée.</div>
+              )}
             </div>
-
-            {session.status === "done" ? (
-              <div className="mt12">
-                <div className="small2">Actions accomplies</div>
-                {doneHabits.length ? (
-                  <div className="mt10 col gap10">
-                    {doneHabits.map((h) => (
-                      <AccentItem key={h.id} className="listItem" style={catAccentVars}>
-                        <div className="row rowBetween alignCenter">
-                          <div className="itemTitle">{h.title || "Action"}</div>
-                          <span className="actionStatus running">Fait</span>
-                        </div>
-                      </AccentItem>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="mt10 small2">Aucune action enregistrée.</div>
-                )}
-              </div>
-            ) : (
-              <div className="mt12 small2">Aucune action validée (session annulée).</div>
-            )}
-          </div>
-        </Card>
+          ) : (
+            <div className="mt12 small2">Aucune action validée (session annulée).</div>
+          )}
+        </GateSection>
       </ScreenShell>
     );
   }
@@ -667,100 +656,83 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
       backgroundImage={category?.wallpaper || safeData.profile?.whyImage || ""}
     >
       <div style={catAccentVars}>
-        <Card accentBorder className="mt12">
-          <div className="p18">
-            <div className="sectionTitle">Timer</div>
-            <div className="titleSm mt6">
-              {elapsedLabel}
+        <GateSection title="Timer" className="mt12" collapsible={false}>
+          <div className="titleSm mt6">{elapsedLabel}</div>
+          {remainingLabel ? (
+            <div className="small2 mt6">Reste : {remainingLabel}</div>
+          ) : null}
+          {!isRunning ? (
+            <div className="small2 mt6">
+              {!hasOccurrence
+                ? "Aucune occurrence planifiée pour cette session."
+                : elapsedSec > 0
+                  ? "Continue quand tu es prêt."
+                  : "Appuie sur Démarrer pour lancer le timer."}
             </div>
-            {remainingLabel ? (
-              <div className="small2 mt6">
-                Reste : {remainingLabel}
-              </div>
-            ) : null}
-            {!isRunning ? (
-              <div className="small2 mt6">
-                {!hasOccurrence
-                  ? "Aucune occurrence planifiée pour cette session."
-                  : elapsedSec > 0
-                    ? "Continue quand tu es prêt."
-                    : "Appuie sur Démarrer pour lancer le timer."}
-              </div>
-            ) : null}
-            {availableStarts.length > 1 ? (
-              <div className="mt12">
-                <div className="small2">Créneau</div>
-                <div className="mt8 row gap8 rowWrap">
-                  {availableStarts.map((t) => (
-                    <Button
-                      key={t}
-                      variant="ghost"
-                      onClick={() => setOverrideStart(t)}
-                      disabled={!isEditable}
-                      style={
-                        t === occurrenceStart
-                          ? {
-                              background: "rgba(255,255,255,0.10)",
-                              borderColor: "var(--catAccent, rgba(255,255,255,0.35))",
-                            }
-                          : null
-                      }
-                    >
-                      {t}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            <div className="mt12 row gap10">
-              <Button
-                variant="ghost"
-                onClick={confirmPause}
-                disabled={!canRunTimer || !isEditable || !occurrenceId}
-              >
-                Pause
-              </Button>
-              <Button
-                onClick={elapsedSec > 0 ? resumeTimer : startTimer}
-                disabled={!canRunTimer || !isEditable || !occurrenceId}
-              >
-                {elapsedSec > 0 ? "Continuer" : "Démarrer"}
-              </Button>
-            </div>
-          </div>
-        </Card>
-
-        <Card accentBorder className="mt12">
-          <div className="p18">
-            <div className="sectionTitle">Actions</div>
-            {habits.length ? (
-              <div className="mt12 col gap10">
-                {habits.map((h) => (
-                  <AccentItem key={h.id} className="listItem" style={catAccentVars}>
-                    <div className="row rowBetween alignCenter">
-                      <div className="itemTitle">{h.title || "Action"}</div>
-                      <span className={`actionStatus ${isRunning ? "running" : "todo"}`}>
-                        {isRunning ? "En cours" : "À faire"}
-                      </span>
-                    </div>
-                  </AccentItem>
+          ) : null}
+          {availableStarts.length > 1 ? (
+            <div className="mt12">
+              <div className="small2">Créneau</div>
+              <div className="mt8 row gap8 rowWrap">
+                {availableStarts.map((t) => (
+                  <Button
+                    key={t}
+                    variant="ghost"
+                    className={`sessionSlotBtn${t === occurrenceStart ? " isSelected" : ""}`}
+                    onClick={() => setOverrideStart(t)}
+                    disabled={!isEditable}
+                  >
+                    {t}
+                  </Button>
                 ))}
               </div>
-            ) : (
-              <div className="mt12 col">
-                <div className="small2">Aucune action sélectionnée pour cette session.</div>
-                <div className="mt10">
-                  <Button
-                    variant="ghost"
-                    onClick={typeof onOpenLibrary === "function" ? onOpenLibrary : onBack}
-                  >
-                    Choisir des actions
-                  </Button>
-                </div>
-              </div>
-            )}
+            </div>
+          ) : null}
+          <div className="mt12 row gap10">
+            <Button
+              variant="ghost"
+              onClick={confirmPause}
+              disabled={!canRunTimer || !isEditable || !occurrenceId}
+            >
+              Pause
+            </Button>
+            <Button
+              onClick={elapsedSec > 0 ? resumeTimer : startTimer}
+              disabled={!canRunTimer || !isEditable || !occurrenceId}
+            >
+              {elapsedSec > 0 ? "Continuer" : "Démarrer"}
+            </Button>
           </div>
-        </Card>
+        </GateSection>
+
+        <GateSection title="Actions" className="mt12" collapsible={false}>
+          {habits.length ? (
+            <div className="mt12 col gap10">
+              {habits.map((h) => (
+                <AccentItem key={h.id} className="listItem" style={catAccentVars}>
+                  <div className="row rowBetween alignCenter">
+                    <div className="itemTitle">{h.title || "Action"}</div>
+                    <span className={`actionStatus ${isRunning ? "running" : "todo"}`}>
+                      {isRunning ? "En cours" : "À faire"}
+                    </span>
+                  </div>
+                </AccentItem>
+              ))}
+            </div>
+          ) : (
+            <div className="mt12 col">
+              <div className="small2">Aucune action sélectionnée pour cette session.</div>
+              <div className="mt10">
+                <Button
+                  variant="ghost"
+                  onClick={typeof onOpenLibrary === "function" ? onOpenLibrary : onBack}
+                >
+                  Choisir des actions
+                </Button>
+              </div>
+            </div>
+          )}
+        </GateSection>
 
         <div className="mt12 row gap10">
           <Button variant="ghost" onClick={cancelSession} disabled={!hasHabits || !isEditable || !occurrenceId}>
@@ -771,18 +743,15 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
           </Button>
         </div>
         {showEndConfirm ? (
-          <Card accentBorder className="mt12">
-            <div className="p18">
-              <div className="sectionTitle">Terminer ?</div>
-              <div className="mt12 row gap8 rowWrap">
-                <Button onClick={() => applyExtension(5)}>+5</Button>
-                <Button onClick={() => applyExtension(10)}>+10</Button>
-                <Button onClick={() => applyExtension(15)}>+15</Button>
-                <Button variant="ghost" onClick={endSession}>Terminer</Button>
-                <Button variant="ghost" onClick={closeEndConfirm}>Annuler</Button>
-              </div>
+          <GateSection title="Terminer ?" className="mt12" collapsible={false}>
+            <div className="mt12 row gap8 rowWrap">
+              <Button onClick={() => applyExtension(5)}>+5</Button>
+              <Button onClick={() => applyExtension(10)}>+10</Button>
+              <Button onClick={() => applyExtension(15)}>+15</Button>
+              <Button variant="ghost" onClick={endSession}>Terminer</Button>
+              <Button variant="ghost" onClick={closeEndConfirm}>Annuler</Button>
             </div>
-          </Card>
+          </GateSection>
         ) : null}
       </div>
     </ScreenShell>

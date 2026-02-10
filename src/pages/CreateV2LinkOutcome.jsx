@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, Input } from "../components/UI";
+import { Button, Input } from "../components/UI";
 import FlowShell from "../ui/create/FlowShell";
 import Select from "../ui/select/Select";
 import DatePicker from "../ui/date/DatePicker";
-import CreateSection from "../ui/create/CreateSection";
+import { GateSection } from "../shared/ui/gate/Gate";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_PICK_CATEGORY } from "../creation/creationSchema";
 import { createGoal } from "../logic/goals";
@@ -174,8 +174,8 @@ export default function CreateV2LinkOutcome({
   }
 
   const content = (
-    <div className={`flowShellBody col gap12${isGate ? "" : " p18"}`}>
-      <CreateSection title={LABELS.goal} description="Lier ou créer" collapsible={false}>
+    <div className="flowShellBody col gap12">
+      <GateSection title={LABELS.goal} description="Lier ou créer" collapsible={false}>
         <div className="small2">Quel est le {LABELS.goalLower} de cette action ?</div>
         {error ? <div className="small2 textAccent">{error}</div> : null}
         <Select value={choice} onChange={(e) => setChoice(e.target.value)}>
@@ -183,10 +183,10 @@ export default function CreateV2LinkOutcome({
           <option value="existing">Lier à un {LABELS.goalLower} existant</option>
           <option value="new">Créer un nouveau {LABELS.goalLower}</option>
         </Select>
-      </CreateSection>
+      </GateSection>
 
       {choice === "existing" ? (
-        <CreateSection title={`${LABELS.goal} existant`} collapsible={false}>
+        <GateSection title={`${LABELS.goal} existant`} collapsible={false}>
           <div className="small textMuted">{LABELS.goals} disponibles</div>
           <Select value={selectedOutcomeId} onChange={(e) => setSelectedOutcomeId(e.target.value)}>
             <option value="">{`Choisir un ${LABELS.goalLower}`}</option>
@@ -196,11 +196,11 @@ export default function CreateV2LinkOutcome({
               </option>
             ))}
           </Select>
-        </CreateSection>
+        </GateSection>
       ) : null}
 
       {choice === "new" ? (
-        <CreateSection title={`Nouveau ${LABELS.goalLower}`} collapsible={false}>
+        <GateSection title={`Nouveau ${LABELS.goalLower}`} collapsible={false}>
           <Input
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
@@ -217,7 +217,7 @@ export default function CreateV2LinkOutcome({
             </div>
           </div>
           <div className="small2 textMuted2">Date de fin minimale : {minDeadlineKey}</div>
-        </CreateSection>
+        </GateSection>
       ) : null}
 
       <div className="row rowBetween">
@@ -251,7 +251,7 @@ export default function CreateV2LinkOutcome({
       embedded={embedded || isGate}
     >
       <div className="stack stackGap12">
-        {isGate ? <FlowShell>{content}</FlowShell> : <Card accentBorder>{content}</Card>}
+        <FlowShell>{content}</FlowShell>
       </div>
     </ScreenShell>
   );

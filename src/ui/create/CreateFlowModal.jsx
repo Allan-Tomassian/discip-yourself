@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Button, Modal } from "../../components/UI";
+import { Modal } from "../../components/UI";
 import { SYSTEM_INBOX_ID } from "../../logic/state";
 import { LABELS } from "../labels";
-import { GateFooter, GateHeader, GatePanel, GateRow } from "./_GatePanel";
+import { GateButton, GateCard, GateFooter, GateHeader, GatePanel, GateRow } from "../../shared/ui/gate/Gate";
 import CreateV2Outcome from "../../pages/CreateV2Outcome";
 import CreateV2HabitType from "../../pages/CreateV2HabitType";
 import CreateV2HabitOneOff from "../../pages/CreateV2HabitOneOff";
@@ -11,7 +11,7 @@ import CreateV2HabitAnytime from "../../pages/CreateV2HabitAnytime";
 import CreateV2LinkOutcome from "../../pages/CreateV2LinkOutcome";
 import CreateV2PickCategory from "../../pages/CreateV2PickCategory";
 import { STEP_HABIT_TYPE, STEP_LINK_OUTCOME, STEP_PICK_CATEGORY, STEP_OUTCOME } from "../../creation/creationSchema";
-import "./createFlow.css";
+import "../../features/create-flow/createFlow.css";
 
 function resolveCategory(categories, categoryId) {
   const list = Array.isArray(categories) ? categories : [];
@@ -129,17 +129,17 @@ export default function CreateFlowModal({
       open={open}
       onClose={(info) => handleClose(info?.reason)}
       className="createFlowModal card gateModal gateModal--flow"
-      backdropClassName="categoryGateBackdrop createFlowBackdrop"
+      backdropClassName="createFlowBackdrop"
     >
-      <GatePanel className="createFlowShell gateModal gateModal--flow" data-testid="create-flow-modal">
+      <GatePanel className="createFlowShell gateModal gateModal--flow createFlowScope" data-testid="create-flow-modal">
         <GateHeader title="Créer" subtitle="Choisis ce que tu veux créer" />
 
         <GateRow
           className="createFlowCategoryRow"
           right={
-            <Button variant="ghost" onClick={onChangeCategory} data-testid="create-change-category">
+            <GateButton variant="ghost" onClick={onChangeCategory} data-testid="create-change-category">
               Modifier
-            </Button>
+            </GateButton>
           }
         >
           <span className="createFlowSwatch" style={{ background: categoryColor }} />
@@ -149,7 +149,7 @@ export default function CreateFlowModal({
         <div className="createFlowBody">
           {step === "choice" ? (
             <div className="createFlowChoiceGrid">
-              <GateRow
+              <GateCard
                 className={`createFlowChoiceCard${!canProceed ? " isDisabled" : ""}`}
                 data-testid="create-choice-guided"
                 onClick={(e) => {
@@ -162,8 +162,8 @@ export default function CreateFlowModal({
                   <div className="titleSm">{LABELS.goal} + {LABELS.action}</div>
                   <div className="small2">Guidé, pour structurer ton plan.</div>
                 </div>
-              </GateRow>
-              <GateRow
+              </GateCard>
+              <GateCard
                 className={`createFlowChoiceCard${!canProceed ? " isDisabled" : ""}`}
                 data-testid="create-choice-project"
                 onClick={(e) => {
@@ -176,8 +176,8 @@ export default function CreateFlowModal({
                   <div className="titleSm">{LABELS.goal}</div>
                   <div className="small2">Définis un {LABELS.goalLower} clair.</div>
                 </div>
-              </GateRow>
-              <GateRow
+              </GateCard>
+              <GateCard
                 className={`createFlowChoiceCard${!canProceed ? " isDisabled" : ""}`}
                 data-testid="create-choice-action"
                 onClick={(e) => {
@@ -190,7 +190,7 @@ export default function CreateFlowModal({
                   <div className="titleSm">{LABELS.action}</div>
                   <div className="small2">Planifie une action concrète.</div>
                 </div>
-              </GateRow>
+              </GateCard>
             </div>
           ) : (
             <div className="createFlowStep">
@@ -308,7 +308,7 @@ export default function CreateFlowModal({
 
         {step === "choice" ? (
           <GateFooter>
-            <Button variant="ghost" onClick={() => handleClose("cancel")}>Annuler</Button>
+            <GateButton variant="ghost" onClick={() => handleClose("cancel")}>Annuler</GateButton>
           </GateFooter>
         ) : null}
       </GatePanel>

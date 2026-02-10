@@ -1566,7 +1566,7 @@ export default function Home({
                         />
                       </div>
                       <div>
-                        <div className="small2">Motivation</div>
+                        <div className="small2">Énergie</div>
                         <input
                           className="input accentSurface"
                           type="number"
@@ -1746,7 +1746,7 @@ export default function Home({
                   const metaParts = [];
                   if (meta.forme) metaParts.push(`Forme: ${meta.forme}`);
                   if (meta.humeur) metaParts.push(`Humeur: ${meta.humeur}`);
-                  if (meta.motivation) metaParts.push(`Motivation: ${meta.motivation}/10`);
+                  if (meta.motivation) metaParts.push(`Énergie: ${meta.motivation}/10`);
                   const isSelected = noteDeleteMode && noteDeleteTargetId === item.id;
                   if (isSelected) {
                     return (

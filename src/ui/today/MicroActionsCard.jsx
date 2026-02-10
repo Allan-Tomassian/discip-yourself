@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState, useEffect, useCallback } from "react"
 import { Button, Card } from "../../components/UI";
 import { getMicroActionsForToday } from "../../core/microActions/microActionsEngine";
 import { MICRO_ACTIONS_LIBRARY } from "../../core/microActions/microActionsLibrary";
-import "./microActions.css";
+import "../../features/today/today.css";
 
 const SEEN_KEY = "microActionsSeen";
 const DONE_KEY = "microActionsDone";

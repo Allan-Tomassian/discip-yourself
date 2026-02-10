@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, Input } from "../components/UI";
+import { Button, Input } from "../components/UI";
 import FlowShell from "../ui/create/FlowShell";
 import Select from "../ui/select/Select";
 import DatePicker from "../ui/date/DatePicker";
-import CreateSection from "../ui/create/CreateSection";
+import { GateSection } from "../shared/ui/gate/Gate";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_OUTCOME_NEXT_ACTION } from "../creation/creationSchema";
 import { resolveGoalType } from "../domain/goalType";
@@ -200,8 +200,8 @@ export default function CreateV2Outcome({
   const selectedSuggestion = suggestedCategories.find((cat) => cat.id === categoryId) || null;
 
   const content = (
-    <div className={`flowShellBody col gap12${isGate ? "" : " p18"}`}>
-      <CreateSection title="Catégorie" collapsible={false}>
+    <div className="flowShellBody col gap12">
+      <GateSection title="Catégorie" collapsible={false}>
         <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
           {categoryOptions.map((category) => (
             <option key={category.id} value={category.id}>
@@ -218,9 +218,9 @@ export default function CreateV2Outcome({
             </Button>
           </div>
         ) : null}
-      </CreateSection>
+      </GateSection>
 
-      <CreateSection title={LABELS.goal} description="Nom + priorité" collapsible={false}>
+      <GateSection title={LABELS.goal} description="Nom + priorité" collapsible={false}>
         <Input
           value={title}
           onChange={(e) => {
@@ -234,13 +234,14 @@ export default function CreateV2Outcome({
           <option value="prioritaire">Prioritaire</option>
           <option value="bonus">Bonus</option>
         </Select>
-      </CreateSection>
+      </GateSection>
 
-      <CreateSection title="Dates" description="Début + fin" collapsible={false}>
+      <GateSection title="Dates" description="Début + fin" collapsible={false}>
         <div className="stack stackGap6">
           <div className="small2 textMuted">Date de début (optionnel)</div>
           <DatePicker
             value={startDate}
+            aria-label="Date de début"
             onChange={(e) => {
               const nextValue = e.target.value;
               setStartDate(nextValue);
@@ -257,6 +258,7 @@ export default function CreateV2Outcome({
           <div className="small2 textMuted">Date de fin (min 2 jours : {minDeadlineKey})</div>
           <DatePicker
             value={deadline}
+            aria-label="Date de fin"
             onChange={(e) => {
               setDeadline(e.target.value);
               if (!deadlineTouched) setDeadlineTouched(true);
@@ -278,7 +280,7 @@ export default function CreateV2Outcome({
           ) : null}
           <div className="small2 textMuted2">{startDateHelper}</div>
         </div>
-      </CreateSection>
+      </GateSection>
       <div className="row rowEnd gap10">
         <Button
           variant="ghost"
@@ -318,7 +320,7 @@ export default function CreateV2Outcome({
             ← Retour
           </Button>
         ) : null}
-        {isGate ? <FlowShell>{content}</FlowShell> : <Card accentBorder>{content}</Card>}
+        <FlowShell>{content}</FlowShell>
       </div>
     </ScreenShell>
   );

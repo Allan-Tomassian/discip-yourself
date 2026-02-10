@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Button, Card } from "./UI";
+import { GateBadge, GateButton, GateHeader, GatePanel, GateSection } from "../shared/ui/gate/Gate";
 import { getPlanLimits, getTrialDays } from "../logic/entitlements";
 import { loadProducts, PRODUCT_IDS } from "../logic/purchases";
 import { LABELS } from "../ui/labels";
+import "../features/paywall/paywall.css";
 
 export default function PaywallModal({
   open,
@@ -62,63 +63,59 @@ export default function PaywallModal({
         if (typeof onClose === "function") onClose();
       }}
     >
-      <Card
-        accentBorder
-        className="reminderCard paywallPanel"
-        style={{ maxWidth: 520, width: "100%" }}
+      <GatePanel
+        className="card paywallPanel"
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <div className="p18 col" style={{ gap: 12 }}>
-          <div className="titleSm">Passer Premium</div>
-          {showTrial ? (
-            <div className="small2" style={{ opacity: 0.8 }}>
-              Essai 14 jours
+        <div className="paywallBody">
+          <GateHeader
+            title="Passer Premium"
+            subtitle={reason || "Débloque toutes les fonctionnalités et enlève les limites."}
+            actions={showTrial ? <GateBadge>Essai 14 jours</GateBadge> : null}
+          />
+          <GateSection title="Inclus" collapsible={false}>
+            <div className="paywallFeatures">
+              <div className="small2">• Catégories illimitées</div>
+              <div className="small2">• {LABELS.goals} illimités</div>
+              <div className="small2">• Actions illimitées</div>
+              <div className="small2">• Planning & historique complets</div>
+              <div className="small2">• Export des données</div>
             </div>
-          ) : null}
-          <div className="small2" style={{ opacity: 0.8 }}>
-            {reason || "Débloque toutes les fonctionnalités et enlève les limites."}
+          </GateSection>
+          <div className="small2 paywallLimits">
+            Limites gratuites : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} ·{" "}
+            {limits.actions} {LABELS.actionsLower}
           </div>
-          <div className="col" style={{ gap: 6 }}>
-            <div className="small">Inclus :</div>
-            <div className="small2">• Catégories illimitées</div>
-            <div className="small2">• {LABELS.goals} illimités</div>
-            <div className="small2">• Actions illimitées</div>
-            <div className="small2">• Planning & historique complets</div>
-            <div className="small2">• Export des données</div>
-          </div>
-          <div className="small2" style={{ opacity: 0.6 }}>
-            Limites gratuites : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} · {limits.actions} {LABELS.actionsLower}
-          </div>
-          <div className="col" style={{ gap: 8 }}>
-            <Button
+          <div className="paywallActions">
+            <GateButton
               onClick={() => {
                 if (typeof onSubscribeMonthly === "function") onSubscribeMonthly(PRODUCT_IDS.monthly);
               }}
             >
               S’abonner (Mensuel) · {monthlyLabel}
-            </Button>
-            <Button
+            </GateButton>
+            <GateButton
               variant="ghost"
               onClick={() => {
                 if (typeof onSubscribeYearly === "function") onSubscribeYearly(PRODUCT_IDS.yearly);
               }}
             >
               S’abonner (Annuel) · {yearlyLabel} {yearlyBadge}
-            </Button>
+            </GateButton>
           </div>
           {!products.available ? (
-            <div className="small2" style={{ opacity: 0.6 }}>
+            <div className="small2 paywallStoreNote">
               Offres StoreKit indisponibles sur cet appareil.
             </div>
           ) : null}
-          <div className="small2" style={{ opacity: 0.7 }}>
+          <div className="small2 paywallLegal">
             Abonnement auto-renouvelable. Annulable à tout moment dans les réglages iOS. Le paiement est débité via
             l’Apple ID.
           </div>
-          <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-            <div className="row" style={{ gap: 8 }}>
+          <div className="paywallFooter">
+            <div className="paywallLinks">
               <button className="linkBtn" type="button" onClick={() => (onOpenTerms ? onOpenTerms() : null)}>
                 Conditions
               </button>
@@ -126,17 +123,17 @@ export default function PaywallModal({
                 Confidentialité
               </button>
             </div>
-            <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
-              <Button variant="ghost" onClick={onRestore}>
+            <div className="paywallFooterActions">
+              <GateButton variant="ghost" onClick={onRestore}>
                 Restaurer
-              </Button>
-              <Button variant="ghost" onClick={onClose}>
+              </GateButton>
+              <GateButton variant="ghost" onClick={onClose}>
                 Plus tard
-              </Button>
+              </GateButton>
             </div>
           </div>
         </div>
-      </Card>
+      </GatePanel>
     </div>
   );
   if (typeof document === "undefined") return content;

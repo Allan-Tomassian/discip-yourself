@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Input, Modal } from "./UI";
+import { Input, Modal } from "./UI";
 import { SYSTEM_INBOX_ID } from "../logic/state";
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
-import "./categoryGate.css";
+import { GateButton, GateHeader, GatePanel } from "../shared/ui/gate/Gate";
+import "../features/library/library.css";
 
 export default function CategoryGateModal({
   open,
@@ -162,12 +163,9 @@ export default function CategoryGateModal({
       className="categoryGateModal card"
       backdropClassName="categoryGateBackdrop"
     >
-      <div className="categoryGateShell" data-testid="category-gate-modal">
+      <GatePanel className="categoryGateShell" data-testid="category-gate-modal">
         <div className="categoryGateScroll">
-          <div className="categoryGateHeader">
-            <div className="cardSectionTitle">Catégorie</div>
-            <div className="titleSm">Active une catégorie pour continuer</div>
-          </div>
+          <GateHeader className="categoryGateHeader" title="Catégorie" subtitle="Active une catégorie pour continuer" />
 
           <div
             className={`categoryGateList${expanded ? " isExpanded" : " isCollapsed"}`}
@@ -262,9 +260,9 @@ export default function CategoryGateModal({
 
           {canToggleExpand ? (
             <div className="categoryGateExpand">
-              <Button variant="ghost" onClick={() => setExpanded((prev) => !prev)}>
+              <GateButton variant="ghost" onClick={() => setExpanded((prev) => !prev)}>
                 {expanded ? "Réduire" : `Afficher toutes (${rows.length})`}
-              </Button>
+              </GateButton>
             </div>
           ) : null}
 
@@ -284,21 +282,21 @@ export default function CategoryGateModal({
                 onChange={(e) => setNewColor(e.target.value)}
                 aria-label="Couleur"
               />
-              <Button variant="ghost" onClick={handleCreate}>
+              <GateButton variant="ghost" onClick={handleCreate}>
                 Ajouter
-              </Button>
+              </GateButton>
             </div>
           </div>
         </div>
 
         {isDev ? (
-          <div className="categoryGateHelper" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="categoryGateHelper categoryGateDebug">
             <div className="row rowBetween alignCenter">
-              <Button variant="ghost" onClick={() => setDebugOpen((prev) => !prev)}>
+              <GateButton variant="ghost" onClick={() => setDebugOpen((prev) => !prev)}>
                 {debugOpen ? "Masquer debug" : "Afficher debug"}
-              </Button>
+              </GateButton>
               <div className="row gap8 alignCenter">
-                <Button
+                <GateButton
                   variant="ghost"
                   onClick={() => {
                     const text = debugEvents.join("\n");
@@ -312,21 +310,12 @@ export default function CategoryGateModal({
                   }}
                 >
                   Copier
-                </Button>
+                </GateButton>
                 {debugCopied ? <span className="small2 textMuted">Copié</span> : null}
               </div>
             </div>
             {debugOpen ? (
-              <pre
-                style={{
-                  maxHeight: 160,
-                  overflow: "auto",
-                  background: "rgba(0,0,0,0.2)",
-                  padding: 8,
-                  borderRadius: 8,
-                  whiteSpace: "pre-wrap",
-                }}
-              >
+              <pre className="categoryGateDebugLog">
                 {debugEvents.length ? debugEvents.join("\n") : "Aucun log"}
               </pre>
             ) : null}
@@ -334,14 +323,14 @@ export default function CategoryGateModal({
         ) : null}
 
         <div className="categoryGateFooter">
-          <Button variant="ghost" onClick={onClose}>
+          <GateButton variant="ghost" onClick={onClose}>
             Annuler
-          </Button>
-          <Button disabled={!canContinue} onClick={() => onConfirm(selectedId)} data-testid="category-gate-continue">
+          </GateButton>
+          <GateButton disabled={!canContinue} onClick={() => onConfirm(selectedId)} data-testid="category-gate-continue">
             Continuer
-          </Button>
+          </GateButton>
         </div>
-      </div>
+      </GatePanel>
     </Modal>
     <Modal
       open={confirmOpen}
@@ -349,23 +338,22 @@ export default function CategoryGateModal({
       className="categoryGateModal card"
       backdropClassName="categoryGateBackdrop"
     >
-      <div className="categoryGateShell" data-testid="category-gate-confirm">
+      <GatePanel className="categoryGateShell" data-testid="category-gate-confirm">
         <div className="categoryGateScroll">
-          <div className="categoryGateHeader">
-            <div className="cardSectionTitle">Désactiver “{confirmCat?.name || "Catégorie"}” ?</div>
-            <div className="titleSm">
-              Cette catégorie contient {confirmCounts.goalsCount} projet(s) et {confirmCounts.habitsCount} action(s).
-            </div>
-          </div>
+          <GateHeader
+            className="categoryGateHeader"
+            title={`Désactiver “${confirmCat?.name || "Catégorie"}” ?`}
+            subtitle={`Cette catégorie contient ${confirmCounts.goalsCount} projet(s) et ${confirmCounts.habitsCount} action(s).`}
+          />
           <div className="categoryGateHelper small2 textAccent">
             Si tu supprimes, tout sera perdu (irréversible).
           </div>
         </div>
         <div className="categoryGateFooter">
-          <Button variant="ghost" onClick={closeConfirm}>
+          <GateButton variant="ghost" onClick={closeConfirm}>
             Annuler
-          </Button>
-          <Button
+          </GateButton>
+          <GateButton
             variant="ghost"
             data-testid="category-confirm-migrate"
             onClick={() => {
@@ -382,8 +370,8 @@ export default function CategoryGateModal({
             }}
           >
             Migrer vers Général
-          </Button>
-          <Button
+          </GateButton>
+          <GateButton
             data-testid="category-confirm-delete"
             onClick={() => {
               if (!confirmCat) return;
@@ -399,9 +387,9 @@ export default function CategoryGateModal({
             }}
           >
             Supprimer contenu
-          </Button>
+          </GateButton>
         </div>
-      </div>
+      </GatePanel>
     </Modal>
     </>
   );

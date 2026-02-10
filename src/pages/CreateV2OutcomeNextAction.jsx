@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card } from "../components/UI";
+import { Button } from "../components/UI";
 import FlowShell from "../ui/create/FlowShell";
-import CreateSection from "../ui/create/CreateSection";
+import { GateSection } from "../shared/ui/gate/Gate";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { SYSTEM_INBOX_ID } from "../logic/state";
 import { resolveGoalType } from "../domain/goalType";
@@ -49,8 +49,8 @@ export default function CreateV2OutcomeNextAction({
   if (!outcomeId) return null;
 
   const content = (
-    <div className={`flowShellBody col gap12${isGate ? "" : " p18"}`}>
-      <CreateSection title="Première action" description="Optionnel" collapsible={false}>
+    <div className="flowShellBody col gap12">
+      <GateSection title="Première action" description="Optionnel" collapsible={false}>
         <div className="small2">Créer une première action pour ce {LABELS.goalLower} ?</div>
         <div className="small textMuted">
           {outcome?.title || LABELS.goal} · {categoryId === SYSTEM_INBOX_ID ? "Général" : "Catégorie choisie"}
@@ -72,7 +72,7 @@ export default function CreateV2OutcomeNextAction({
         <div className="small2 textMuted2">
           Le {LABELS.goalLower} sera en brouillon tant qu’aucune action n’est liée.
         </div>
-      </CreateSection>
+      </GateSection>
     </div>
   );
 
@@ -90,7 +90,7 @@ export default function CreateV2OutcomeNextAction({
       embedded={embedded || isGate}
     >
       <div className="stack stackGap12">
-        {isGate ? <FlowShell>{content}</FlowShell> : <Card accentBorder>{content}</Card>}
+        <FlowShell>{content}</FlowShell>
       </div>
     </ScreenShell>
   );

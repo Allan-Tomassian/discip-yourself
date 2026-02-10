@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import AccentContext from "./AccentContext";
 import SelectBase from "../ui/select/Select";
+import "../shared/ui/overlays/overlays.css";
 
 export { default as Select } from "../ui/select/Select";
 

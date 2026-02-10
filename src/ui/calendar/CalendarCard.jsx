@@ -3,7 +3,7 @@ import { Button, Card } from "../../components/UI";
 import DayRail from "./DayRail";
 import { getMonthLabelFR, WEEKDAY_LABELS_FR } from "../../utils/dates";
 import { toLocalDateKey } from "../../utils/dateKey";
-import "./calendar.css";
+import "../../features/calendar/calendar.css";
 
 export default function CalendarCard({
   drag = false,

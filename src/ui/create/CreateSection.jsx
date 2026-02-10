@@ -1,5 +1,6 @@
-import React, { useId, useState } from "react";
-import "./create.css";
+import React from "react";
+import { GateSection } from "../../shared/ui/gate/Gate";
+import "../../features/create-flow/createFlow.css";
 
 export default function CreateSection({
   title,
@@ -8,43 +9,14 @@ export default function CreateSection({
   collapsible = true,
   defaultOpen = true,
 }) {
-  const contentId = useId();
-  const [open, setOpen] = useState(defaultOpen);
-
-  const headerContent = (
-    <>
-      <div className="createSectionHeaderText">
-        <div className="createSectionTitle">{title}</div>
-        {description ? <div className="createSectionDesc">{description}</div> : null}
-      </div>
-      {collapsible ? (
-        <span className="createSectionChevron" aria-hidden="true">
-          {open ? "▾" : "▸"}
-        </span>
-      ) : null}
-    </>
-  );
-
   return (
-    <section className={`createSection ${open ? "is-open" : "is-closed"}`}>
-      {collapsible ? (
-        <button
-          type="button"
-          className="createSectionHeader"
-          onClick={() => setOpen((value) => !value)}
-          aria-expanded={open}
-          aria-controls={contentId}
-        >
-          {headerContent}
-        </button>
-      ) : (
-        <div className="createSectionHeader createSectionHeaderStatic">{headerContent}</div>
-      )}
-      {!collapsible || open ? (
-        <div id={contentId} className="createSectionBody">
-          {children}
-        </div>
-      ) : null}
-    </section>
+    <GateSection
+      title={title}
+      description={description}
+      collapsible={collapsible}
+      defaultOpen={defaultOpen}
+    >
+      {children}
+    </GateSection>
   );
 }

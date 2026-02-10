@@ -1,0 +1,209 @@
+.gatePanel {
+  --gate-space-2: 6px;
+  --gate-space-3: 8px;
+  --gate-space-4: 10px;
+  --gate-space-5: 12px;
+  --gate-space-6: 14px;
+  --gate-radius-sm: 10px;
+  --gate-radius-md: 12px;
+  --gate-radius-lg: 16px;
+  --gate-surface-1: var(--surface-2, var(--surface));
+  --gate-surface-2: var(--surface-3, var(--surface-2));
+  --gate-border: var(--border-subtle, var(--border));
+  --gate-text: var(--text-1, var(--text));
+  --gate-text-muted: var(--text-3, var(--muted2));
+  display: flex;
+  flex-direction: column;
+  gap: var(--gate-space-5);
+  min-height: 0;
+}
+
+.gateHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gate-space-5);
+}
+
+.gateHeaderText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gate-space-2);
+}
+
+.gateHeaderTitle {
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--gate-text);
+}
+
+.gateHeaderSubtitle {
+  font-size: var(--font-sm);
+  color: var(--gate-text-muted);
+}
+
+.gateHeaderActions {
+  flex: 0 0 auto;
+}
+
+.gateSection {
+  border: 1px solid var(--gate-border);
+  border-radius: var(--gate-radius-md);
+  background: var(--gate-surface-1);
+  padding: var(--gate-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gate-space-4);
+}
+
+.gateSectionHeader {
+  display: flex;
+  align-items: center;
+}
+
+.gateSectionHeaderText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gateSectionTitle {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--gate-text);
+}
+
+.gateSectionDescription {
+  font-size: var(--font-xs);
+  color: var(--gate-text-muted);
+}
+
+.gateSectionToggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gate-space-4);
+  text-align: left;
+}
+
+.gateSectionChevron {
+  color: var(--gate-text-muted);
+  flex: 0 0 auto;
+}
+
+.gateSectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gate-space-4);
+}
+
+.gateRow {
+  border: 1px solid var(--gate-border);
+  background: var(--gate-surface-1);
+  border-radius: var(--gate-radius-md);
+  padding: 10px 12px;
+  color: var(--gate-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gate-space-4);
+}
+
+.gateRow.isInteractive {
+  cursor: pointer;
+}
+
+.gateRow.isSelected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.gateRowBody {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--gate-space-3);
+}
+
+.gateRowIcon {
+  flex: 0 0 auto;
+}
+
+.gateRowText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gateRowLabel {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--gate-text);
+}
+
+.gateRowMeta {
+  font-size: var(--font-xs);
+  color: var(--gate-text-muted);
+}
+
+.gateRowRight {
+  flex: 0 0 auto;
+}
+
+.gateCard {
+  padding: 12px;
+}
+
+.gateBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--gate-border);
+  background: color-mix(in srgb, var(--gateBadgeColor, var(--gate-surface-2)) 24%, transparent);
+  color: var(--gate-text);
+  font-size: var(--font-xs);
+  line-height: 1.2;
+}
+
+.gateButton {
+  border-radius: var(--radius-btn);
+  height: var(--btn-height);
+  padding: 0 14px;
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.gateButton--primary {
+  border: 1px solid var(--cta);
+  background: var(--cta);
+  color: var(--ctaText);
+}
+
+.gateButton--ghost {
+  border: 1px solid var(--gate-border);
+  background: transparent;
+  color: var(--gate-text);
+}
+
+.gateFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--gate-space-4);
+  border-top: 1px solid var(--gate-border);
+  padding-top: var(--gate-space-5);
+}
+

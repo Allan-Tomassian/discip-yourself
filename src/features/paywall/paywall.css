@@ -1,0 +1,63 @@
+.paywallBackdrop {
+  z-index: 10000;
+}
+
+.paywallPanel {
+  position: relative;
+  z-index: 10001;
+  width: min(520px, 100%);
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
+  overflow: auto;
+}
+
+.paywallBody {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.paywallReason,
+.paywallTrial,
+.paywallLimits,
+.paywallStoreNote,
+.paywallLegal {
+  opacity: 0.8;
+}
+
+.paywallLimits,
+.paywallStoreNote {
+  opacity: 0.65;
+}
+
+.paywallLegal {
+  opacity: 0.75;
+}
+
+.paywallFeatures {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.paywallActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.paywallFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.paywallLinks,
+.paywallFooterActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+

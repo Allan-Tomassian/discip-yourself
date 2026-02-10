@@ -1,0 +1,114 @@
+.sessionCard {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sessionCardBody {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sessionTitleRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sessionMeta {
+  font-size: 12px;
+  color: var(--text-3, var(--muted2));
+}
+
+.sessionOccurrence {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sessionOccurrenceTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sessionOccurrenceMeta {
+  font-size: 12px;
+  color: var(--text-3, var(--muted2));
+}
+
+.sessionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sessionChangeRow {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sessionPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sessionPickerItem {
+  border: 1px solid var(--border);
+  background: var(--glass2, rgba(255, 255, 255, 0.06));
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sessionPickerItem.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18);
+}
+
+.sessionEmpty {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sessionCheck {
+  appearance: none;
+  border: 1px solid var(--sessionCheckBorder, rgba(255, 255, 255, 0.35));
+  background: var(--sessionCheckBg, rgba(255, 255, 255, 0.08));
+  border-radius: 4px;
+  display: inline-grid;
+  place-items: center;
+}
+
+.sessionCheck:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.sessionCheck:checked::after {
+  content: "";
+  width: 8px;
+  height: 4px;
+  border: 2px solid var(--sessionCheckMark, #111);
+  border-top: none;
+  border-right: none;
+  transform: rotate(-45deg);
+}
+
+.sessionSlotBtn.isSelected {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--catAccent, rgba(255, 255, 255, 0.35));
+}
+
+@media (max-width: 600px) {
+  .sessionCardBody {
+    padding: 16px;
+  }
+}

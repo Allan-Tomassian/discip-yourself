@@ -11,7 +11,7 @@ import {
   resolveCurrentPlannedOccurrence,
   resolveOccurrenceStartMs,
 } from "../ui/session/sessionPlanner";
-import "../ui/session/session.css";
+import "../features/session/session.css";
 
 function formatStatusLabel(status) {
   if (status === "done") return "Fait";

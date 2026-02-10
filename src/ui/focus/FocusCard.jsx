@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button, Card } from "../../components/UI";
-import "./focus.css";
+import "../../features/today/today.css";
 
 export default function FocusCard({
   drag = false,

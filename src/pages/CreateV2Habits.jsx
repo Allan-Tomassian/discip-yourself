@@ -3,7 +3,6 @@ import ScreenShell from "./_ScreenShell";
 import {
   AccentItem,
   Button,
-  Card,
   Chip,
   ChipRow,
   CheckboxRow,
@@ -15,8 +14,8 @@ import {
 import FlowShell from "../ui/create/FlowShell";
 import Select from "../ui/select/Select";
 import DatePicker from "../ui/date/DatePicker";
-import CreateSection from "../ui/create/CreateSection";
 import ConflictResolver from "../ui/scheduling/ConflictResolver";
+import { GateSection } from "../shared/ui/gate/Gate";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_HABITS, STEP_LINK_OUTCOME, STEP_PICK_CATEGORY } from "../creation/creationSchema";
 import { uid } from "../utils/helpers";
@@ -1040,9 +1039,6 @@ export default function CreateV2Habits({
     handleDone({ conflictResolution: { cancelOccurrenceIds } });
   }
 
-  const Wrapper = isGate ? FlowShell : Card;
-  const wrapperProps = isGate ? {} : { accentBorder: true };
-
   return (
     <ScreenShell
       data={safeData}
@@ -1064,9 +1060,9 @@ export default function CreateV2Habits({
           </Button>
         ) : null}
 
-        <Wrapper {...wrapperProps}>
-          <div className="flowShellBody p18 col gap12">
-            <CreateSection title="Action" description="Titre + contexte" collapsible={false}>
+        <FlowShell>
+          <div className="flowShellBody col gap12">
+            <GateSection title="Action" description="Titre + contexte" collapsible={false}>
               <div className="createFieldRow">
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nouvelle action" />
                 <Button onClick={addHabit} disabled={!canAddHabit} data-testid="action-add">
@@ -1082,9 +1078,9 @@ export default function CreateV2Habits({
                   placeholder="Ex: Salle, Bureau, 12 rue…"
                 />
               </div>
-            </CreateSection>
+            </GateSection>
 
-            <CreateSection
+            <GateSection
               title="Planification"
               description={isTypeOneOff ? "Ponctuelle" : isTypeAnytime ? "Flexible" : "Planifiée"}
               collapsible={false}
@@ -1306,9 +1302,9 @@ export default function CreateV2Habits({
               ) : null}
 
               {planningError ? <Hint tone="danger">{planningError}</Hint> : null}
-            </CreateSection>
+            </GateSection>
 
-            <CreateSection title="Quantification" description="Optionnel" defaultOpen={false}>
+            <GateSection title="Quantification" description="Optionnel" defaultOpen={false} collapsible>
               <div className="createFieldRow">
                 <Input
                   type="number"
@@ -1325,9 +1321,9 @@ export default function CreateV2Habits({
                 </Select>
               </div>
               {quantityError ? <Hint tone="danger">{quantityError}</Hint> : null}
-            </CreateSection>
+            </GateSection>
 
-            <CreateSection title="Rappel" description="Optionnel" defaultOpen={false}>
+            <GateSection title="Rappel" description="Optionnel" defaultOpen={false} collapsible>
               <div className="createFieldRow">
                 <Input type="time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} />
                 {!isTypeAnytime ? (
@@ -1347,13 +1343,13 @@ export default function CreateV2Habits({
               </div>
               <div className="createHelper">Fenêtre optionnelle (début / fin).</div>
               {reminderError ? <Hint tone="danger">{reminderError}</Hint> : null}
-            </CreateSection>
+            </GateSection>
 
-            <CreateSection title="Mémo" description="Optionnel" defaultOpen={false}>
+            <GateSection title="Mémo" description="Optionnel" defaultOpen={false} collapsible>
               <Textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="Note personnelle" />
-            </CreateSection>
+            </GateSection>
 
-            <CreateSection
+            <GateSection
               title="Récapitulatif"
               description={`${habits.length} action${habits.length > 1 ? "s" : ""}`}
               collapsible={false}
@@ -1391,7 +1387,7 @@ export default function CreateV2Habits({
                 {hasInvalidHabits ? <Hint tone="danger">Corrige les actions invalides.</Hint> : null}
                 {error ? <Hint tone="danger">{error}</Hint> : null}
               </div>
-            </CreateSection>
+            </GateSection>
 
             <div className="row rowEnd gap10">
               <Button
@@ -1408,7 +1404,7 @@ export default function CreateV2Habits({
               </Button>
             </div>
           </div>
-        </Wrapper>
+        </FlowShell>
       </div>
 
       <ConflictResolver
