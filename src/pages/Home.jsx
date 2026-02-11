@@ -201,6 +201,7 @@ export default function Home({
   const noteSaveRef = useRef(null);
   const didHydrateLegacyRef = useRef(false);
   const legacyOrderSigRef = useRef("");
+  const calendarDateInvariantLogRef = useRef(new Set());
 
   // Data slices
   const profile = safeData.profile || {};
@@ -227,11 +228,33 @@ export default function Home({
     () => (Array.isArray(safeData.occurrences) ? safeData.occurrences : []),
     [safeData.occurrences]
   );
-  const plannedOccurrencesForDay = useMemo(
-    () => occurrences.filter((occ) => occ && occ.status === "planned" && occ.date === selectedDateKey),
-    [occurrences, selectedDateKey]
-  );
   const goalIdSet = useMemo(() => new Set(goals.map((g) => g?.id).filter(Boolean)), [goals]);
+  const plannedCalendarOccurrences = useMemo(() => {
+    const list = [];
+    const mismatches = [];
+    for (const occ of occurrences) {
+      if (!occ || occ.status !== "planned") continue;
+      const goalId = typeof occ.goalId === "string" ? occ.goalId : "";
+      if (!goalIdSet.has(goalId)) continue;
+      const rawDate = typeof occ.date === "string" ? occ.date : "";
+      const dateKey = normalizeLocalDateKey(rawDate);
+      if (!dateKey) continue;
+      list.push({ occ, goalId, dateKey });
+      if (rawDate && rawDate !== dateKey) {
+        mismatches.push({ id: occ.id || "", rawDate, dateKey });
+      }
+    }
+    return { list, mismatches };
+  }, [goalIdSet, occurrences]);
+  const plannedOccurrencesForDay = useMemo(
+    () =>
+      plannedCalendarOccurrences.list
+        .filter((entry) => entry.dateKey === selectedDateKey)
+        .map((entry) =>
+          entry.occ?.date === entry.dateKey ? entry.occ : { ...entry.occ, date: entry.dateKey }
+        ),
+    [plannedCalendarOccurrences, selectedDateKey]
+  );
   const microChecks = useMemo(
     () => (safeData.microChecks && typeof safeData.microChecks === "object" ? safeData.microChecks : {}),
     [safeData.microChecks]
@@ -243,19 +266,16 @@ export default function Home({
   }, [microChecks, selectedDateKey]);
   const plannedByDate = useMemo(() => {
     const map = new Map();
-    for (const occ of occurrences) {
-      if (!occ || typeof occ.date !== "string") continue;
-      if (!goalIdSet.has(occ.goalId)) continue;
-      if (occ.status !== "planned") continue;
-      map.set(occ.date, (map.get(occ.date) || 0) + 1);
+    for (const entry of plannedCalendarOccurrences.list) {
+      map.set(entry.dateKey, (map.get(entry.dateKey) || 0) + 1);
     }
     return map;
-  }, [goalIdSet, occurrences]);
+  }, [plannedCalendarOccurrences]);
   const doneByDate = useMemo(() => {
     const map = new Map();
     for (const occ of occurrences) {
       if (!occ || occ.status !== "done") continue;
-      const key = typeof occ.date === "string" ? occ.date : "";
+      const key = normalizeLocalDateKey(occ.date);
       const id = typeof occ.goalId === "string" ? occ.goalId : "";
       if (!key || !id || !goalIdSet.has(id)) continue;
       const set = map.get(key) || new Set();
@@ -266,6 +286,19 @@ export default function Home({
     for (const [key, set] of map.entries()) counts.set(key, set.size);
     return counts;
   }, [goalIdSet, occurrences]);
+  useEffect(() => {
+    const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
+    if (!isDev || typeof console === "undefined") return;
+    for (const item of plannedCalendarOccurrences.mismatches) {
+      const sig = `${item.id}|${item.rawDate}|${item.dateKey}`;
+      if (calendarDateInvariantLogRef.current.has(sig)) continue;
+      calendarDateInvariantLogRef.current.add(sig);
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[calendar-datekey-invariant] occurrence=${item.id || "unknown"} rawDate=${item.rawDate} cellDate=${item.dateKey}`
+      );
+    }
+  }, [plannedCalendarOccurrences.mismatches]);
 
   // Effects
   useEffect(() => {
@@ -563,8 +596,12 @@ export default function Home({
     [focusBaseOccurrence?.id, logFocusDeviation, selectedDateKey]
   );
   const plannedToday = useMemo(() => {
-    return occurrences.filter((occ) => occ && occ.status === "planned" && occ.date === localTodayKey);
-  }, [occurrences, localTodayKey]);
+    return plannedCalendarOccurrences.list
+      .filter((entry) => entry.dateKey === localTodayKey)
+      .map((entry) =>
+        entry.occ?.date === entry.dateKey ? entry.occ : { ...entry.occ, date: entry.dateKey }
+      );
+  }, [plannedCalendarOccurrences, localTodayKey]);
   const plannedTodayWithMeta = useMemo(() => {
     return plannedToday.map((occ) => {
       const goal = goalsById.get(occ.goalId) || null;
@@ -600,7 +637,13 @@ export default function Home({
   );
 
   const occurrencesForSelectedDay = useMemo(() => {
-    const list = occurrences.filter((o) => o && o.date === selectedDateKey);
+    const list = [];
+    for (const occ of occurrences) {
+      if (!occ) continue;
+      const dateKey = normalizeLocalDateKey(occ.date);
+      if (!dateKey || dateKey !== selectedDateKey) continue;
+      list.push(occ?.date === dateKey ? occ : { ...occ, date: dateKey });
+    }
     return list.slice().sort(occurrenceSort);
   }, [occurrences, occurrenceSort, selectedDateKey]);
   useEffect(() => {
@@ -616,9 +659,11 @@ export default function Home({
   const occurrencesCountByDateKey = useMemo(() => {
     const map = new Map();
     for (const occ of occurrences) {
-      if (!occ || typeof occ.date !== "string") continue;
+      if (!occ) continue;
+      const dateKey = normalizeLocalDateKey(occ.date);
       if (!goalsById.has(occ.goalId)) continue;
-      map.set(occ.date, (map.get(occ.date) || 0) + 1);
+      if (!dateKey) continue;
+      map.set(dateKey, (map.get(dateKey) || 0) + 1);
     }
     return map;
   }, [goalsById, occurrences]);
@@ -628,11 +673,8 @@ export default function Home({
   const categoryDotsByDate = useMemo(() => {
     const map = new Map(); // dateKey -> Map(categoryId -> { categoryId, color })
 
-    for (const occ of occurrences) {
-      if (!occ || typeof occ.date !== "string") continue;
-      if (occ.status !== "planned") continue;
-
-      const g = goalsById.get(occ.goalId);
+    for (const entry of plannedCalendarOccurrences.list) {
+      const g = goalsById.get(entry.goalId);
       if (!g) continue;
 
       const catId = typeof g.categoryId === "string" ? g.categoryId : "";
@@ -642,9 +684,9 @@ export default function Home({
       const color = (c && c.color) || (g && g.color) || "";
       if (!color) continue;
 
-      const dayMap = map.get(occ.date) || new Map();
+      const dayMap = map.get(entry.dateKey) || new Map();
       if (!dayMap.has(catId)) dayMap.set(catId, { categoryId: catId, color });
-      map.set(occ.date, dayMap);
+      map.set(entry.dateKey, dayMap);
     }
 
     const out = new Map();
@@ -652,7 +694,7 @@ export default function Home({
       out.set(dateKey, Array.from(dayMap.values()));
     }
     return out;
-  }, [occurrences, goalsById, categoriesById]);
+  }, [plannedCalendarOccurrences, goalsById, categoriesById]);
 
   const getDayDots = useCallback(
     (dateKey, max = 3) => {
@@ -707,12 +749,10 @@ export default function Home({
     };
 
     // Occurrences planned: map PROCESS -> parent OUTCOME
-    for (const occ of occurrences) {
-      if (!occ || typeof occ.date !== "string") continue;
-      if (occ.status !== "planned") continue;
-      const out = getOutcomeForGoalId(occ.goalId);
+    for (const entry of plannedCalendarOccurrences.list) {
+      const out = getOutcomeForGoalId(entry.goalId);
       if (!out?.id) continue;
-      const key = occ.date;
+      const key = entry.dateKey;
       const prev = map.get(key);
       if (!prev) {
         map.set(key, out.id);
@@ -722,7 +762,7 @@ export default function Home({
     }
 
     return map;
-  }, [occurrences, goalsById, getOutcomeForGoalId]);
+  }, [plannedCalendarOccurrences, goalsById, getOutcomeForGoalId]);
 
   const goalAccentByDate = useMemo(() => {
     const map = new Map();

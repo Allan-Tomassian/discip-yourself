@@ -1,4 +1,9 @@
-import { getWeekdayShortLabel as getWeekdayShortLabelShared, toLocalDateKey } from "./datetime";
+import {
+  addDaysLocal,
+  fromLocalDateKey,
+  getWeekdayShortLabel as getWeekdayShortLabelShared,
+  toLocalDateKey,
+} from "./datetime";
 
 // LOCAL DATE KEY ONLY (no UTC)
 export function todayKey(d = new Date()) {
@@ -68,20 +73,21 @@ export function getMonthLabelFR(d) {
 }
 
 export function buildMonthGrid(d = new Date()) {
-  const first = startOfMonth(d);
-  const weekday = first.getDay(); // 0=Dim, 1=Lun
-  const mondayIndex = (weekday + 6) % 7;
-  const gridStart = new Date(first);
-  gridStart.setDate(first.getDate() - mondayIndex);
+  const monthStart = new Date(d.getFullYear(), d.getMonth(), 1, 12, 0, 0, 0);
+  const weekday = monthStart.getDay(); // 0=Dim, 1=Lun
+  const mondayOffset = weekday === 0 ? -6 : 1 - weekday;
+  const gridStart = new Date(monthStart);
+  gridStart.setDate(monthStart.getDate() + mondayOffset);
+  const gridStartKey = toLocalDateKey(gridStart);
   const cells = [];
   const totalCells = WEEK_DAYS_PER_WEEK * 6;
   for (let i = 0; i < totalCells; i += 1) {
-    const dateObj = new Date(gridStart);
-    dateObj.setDate(gridStart.getDate() + i);
+    const key = addDaysLocal(gridStartKey, i);
+    const dateObj = fromLocalDateKey(key);
     cells.push({
       dateObj,
-      key: dayKey(dateObj),
-      inMonth: dateObj.getMonth() === d.getMonth(),
+      key,
+      inMonth: dateObj.getMonth() === monthStart.getMonth(),
       dayNumber: dateObj.getDate(),
     });
   }

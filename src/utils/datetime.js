@@ -25,10 +25,6 @@ export function normalizeLocalDateKey(key) {
     const rebuilt = new Date(y, m - 1, d, 12, 0, 0, 0);
     return toLocalDateKey(rebuilt) === trimmed ? trimmed : "";
   }
-  if (/^\d{4}-\d{2}-\d{2}T/.test(trimmed)) {
-    const parsed = new Date(trimmed);
-    if (!Number.isNaN(parsed.getTime())) return toLocalDateKey(parsed);
-  }
   if (trimmed.length >= 10) {
     const candidate = trimmed.slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(candidate)) return "";

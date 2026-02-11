@@ -7,6 +7,13 @@ async function openGate(page) {
   await expect(page.getByTestId("category-gate-modal")).toBeVisible();
 }
 
+async function openLibrary(page) {
+  await page.goto("/");
+  const nav = page.locator("[data-tour-id=\"topnav-tabs\"]");
+  await nav.getByRole("button", { name: /Bibliothèque/i }).click();
+  await expect(page.locator("[data-tour-id=\"library-title\"]")).toBeVisible();
+}
+
 test("activer puis désactiver une suggestion vide", async ({ page }) => {
   const state = buildBaseState({ withContent: false });
   state.profile.plan = "premium";
@@ -105,4 +112,131 @@ test("inbox/system non désactivable", async ({ page }) => {
 
   await openGate(page);
   await expect(page.getByTestId("category-toggle-sys_inbox")).toBeDisabled();
+});
+
+test("Bibliothèque: gérer active l'édition inline sans navigation et persiste", async ({ page }) => {
+  const state = buildBaseState({ withContent: true });
+  state.categories = [
+    ...(state.categories || []),
+    { id: "cat_inline", name: "Inline Seed", color: "#A855F7" },
+  ];
+  state.ui.categoryRailOrder = ["cat_inline", ...(state.ui.categoryRailOrder || [])];
+  state.ui.selectedCategoryByView = {
+    ...(state.ui.selectedCategoryByView || {}),
+    library: "cat_inline",
+  };
+  await seedState(page, state);
+
+  const updatedName = "Inline Custom E2E";
+  const updatedWhy = "Mini-why inline e2e";
+
+  await openLibrary(page);
+  const beforeManageUrl = page.url();
+
+  await page.locator("[data-tour-id=\"library-category-list\"]").getByText("Inline Seed", { exact: true }).first().click();
+  await page.getByRole("button", { name: "Gérer" }).first().click();
+  await expect(page).toHaveURL(beforeManageUrl);
+  await expect(page.getByRole("button", { name: "Terminer" }).first()).toBeVisible();
+  await expect(page.getByTestId("library-detail-name-cat_inline")).toBeVisible();
+  await expect(page.getByTestId("library-detail-why-cat_inline")).toBeVisible();
+
+  await page.getByTestId("library-detail-name-cat_inline").fill(updatedName);
+  await page.getByTestId("library-detail-name-cat_inline").press("Enter");
+  await page.getByTestId("library-detail-why-cat_inline").fill(updatedWhy);
+  await page.getByRole("button", { name: "Terminer" }).first().click();
+  await expect(page.getByRole("button", { name: "Gérer" }).first()).toBeVisible();
+
+  await page.locator("[data-tour-id=\"library-category-list\"]").getByText("Business", { exact: true }).first().click();
+  await page.getByRole("button", { name: "Gérer" }).first().click();
+  await expect(page.getByTestId("library-detail-name-cat_inline")).toHaveCount(0);
+  await expect(page.getByTestId("library-detail-name-cat_business")).toBeVisible();
+  await page.getByRole("button", { name: "Terminer" }).first().click();
+
+  await expect
+    .poll(async () => {
+      const snapshot = await getState(page);
+      const inlineSnapshot = (snapshot.categories || []).find((c) => c?.id === "cat_inline");
+      return inlineSnapshot?.name || "";
+    })
+    .toBe(updatedName);
+  await expect
+    .poll(async () => {
+      const snapshot = await getState(page);
+      const inlineSnapshot = (snapshot.categories || []).find((c) => c?.id === "cat_inline");
+      return inlineSnapshot?.whyText || "";
+    })
+    .toBe(updatedWhy);
+
+  const persistedPage = await page.context().newPage();
+  await openLibrary(persistedPage);
+  const next = await getState(persistedPage);
+  const inlineCategory = (next.categories || []).find((c) => c?.id === "cat_inline");
+  expect(inlineCategory?.name).toBe(updatedName);
+  expect(inlineCategory?.whyText).toBe(updatedWhy);
+  await persistedPage.close();
+});
+
+test("Bibliothèque: gérer permet d'éditer projets/actions inline et d'ouvrir le panneau d'édition sans navigation", async ({ page }) => {
+  const state = buildBaseState({ withContent: true });
+  await seedState(page, state);
+
+  const updatedProject = "Projet Seed Renommé";
+  const updatedAction = "Action Seed Renommée";
+
+  await openLibrary(page);
+  const libraryUrl = page.url();
+
+  await page.locator("[data-tour-id=\"library-category-list\"]").getByText("Business", { exact: true }).first().click();
+  await page.getByRole("button", { name: "Gérer" }).first().click();
+  await expect(page).toHaveURL(libraryUrl);
+
+  await page.getByTestId("library-project-rename-goal_proj").click();
+  await page.getByTestId("library-project-title-input-goal_proj").fill(updatedProject);
+  await page.getByTestId("library-project-title-input-goal_proj").press("Enter");
+  await page.getByTestId("library-action-rename-goal_action").click();
+  await page.getByTestId("library-action-title-input-goal_action").fill(updatedAction);
+  await page.getByTestId("library-action-title-input-goal_action").press("Enter");
+
+  await page.getByTestId("library-action-edit-goal_action").click();
+  await expect(page).toHaveURL(libraryUrl);
+  await expect(page.getByRole("button", { name: "Fermer" })).toBeVisible();
+  await page.getByRole("button", { name: "Fermer" }).click();
+
+  await page.getByRole("button", { name: "Terminer" }).first().click();
+
+  await expect
+    .poll(async () => {
+      const snapshot = await getState(page);
+      const project = (snapshot.goals || []).find((g) => g?.id === "goal_proj");
+      const action = (snapshot.goals || []).find((g) => g?.id === "goal_action");
+      return {
+        projectTitle: project?.title || "",
+        actionTitle: action?.title || "",
+      };
+    })
+    .toEqual({ projectTitle: updatedProject, actionTitle: updatedAction });
+
+  await page.getByRole("button", { name: "Gérer" }).first().click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByTestId("library-project-delete-goal_proj").click();
+  await page.getByRole("button", { name: "Terminer" }).first().click();
+
+  await expect
+    .poll(async () => {
+      const snapshot = await getState(page);
+      const hasProject = (snapshot.goals || []).some((g) => g?.id === "goal_proj");
+      const action = (snapshot.goals || []).find((g) => g?.id === "goal_action");
+      return {
+        hasProject,
+        actionTitle: action?.title || "",
+      };
+    })
+    .toEqual({ hasProject: false, actionTitle: updatedAction });
+
+  const persistedPage = await page.context().newPage();
+  await openLibrary(persistedPage);
+  const persisted = await getState(persistedPage);
+  expect((persisted.goals || []).some((g) => g?.id === "goal_proj")).toBeFalsy();
+  expect((persisted.goals || []).find((g) => g?.id === "goal_action")?.title || "").toBe(updatedAction);
+  await persistedPage.close();
 });

@@ -6,7 +6,6 @@ import AccentItem from "../components/AccentItem";
 import { getCategoryPilotageCounts, getCategoryStatus } from "../logic/pilotage";
 import {
   computeDailyStats,
-  computeGoalStats,
   computeStats,
   getWindowBounds,
   selectOccurrencesInRange,
@@ -15,6 +14,8 @@ import { buildReport, exportReportToCSV } from "../logic/reporting";
 import SortableBlocks from "../components/SortableBlocks";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
 import { LABELS } from "../ui/labels";
+import { computeCategoryRadarRows, computePilotageInsights } from "../features/pilotage/radarModel";
+import { sanitizePilotageRadarSelection } from "../logic/state/normalizers";
 import "../features/pilotage/pilotage.css";
 
 // TOUR MAP:
@@ -68,32 +69,35 @@ const pct = (done, expected) => {
   return Math.round((d / e) * 100);
 };
 
-const toMinutes = (time) => {
-  if (typeof time !== "string") return null;
-  const clean = time.trim();
-  if (!/^\d{2}:\d{2}$/.test(clean)) return null;
-  const [h, m] = clean.split(":").map((n) => Number(n));
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
-  return h * 60 + m;
+const normalizeRadarSelection = (selection, availableIds, fallbackIds) => {
+  const available = Array.isArray(availableIds) ? availableIds.filter(Boolean) : [];
+  if (!available.length) return [];
+  const allowed = new Set(available);
+  const out = [];
+  const pushIfValid = (id) => {
+    if (typeof id !== "string" || !allowed.has(id)) return;
+    if (out.includes(id)) return;
+    out.push(id);
+  };
+  (Array.isArray(selection) ? selection : []).forEach(pushIfValid);
+  (Array.isArray(fallbackIds) ? fallbackIds : []).forEach(pushIfValid);
+  available.forEach(pushIfValid);
+  return out.slice(0, Math.min(3, available.length));
 };
 
-const resolveOccurrenceTime = (occ) => {
-  if (!occ || typeof occ !== "object") return "";
-  const start = typeof occ.start === "string" ? occ.start : "";
-  if (start && start !== "00:00") return start;
-  const resolved = typeof occ.resolvedStart === "string" ? occ.resolvedStart : "";
-  return resolved && resolved !== "00:00" ? resolved : "";
-};
+const PILOTAGE_RADAR_STORAGE_KEY = "pilotageRadarSelection";
 
-const TIME_BUCKETS = [
-  { id: "06-09", label: "06h–09h", from: 6 * 60, to: 9 * 60 },
-  { id: "09-12", label: "09h–12h", from: 9 * 60, to: 12 * 60 },
-  { id: "12-15", label: "12h–15h", from: 12 * 60, to: 15 * 60 },
-  { id: "15-18", label: "15h–18h", from: 15 * 60, to: 18 * 60 },
-  { id: "18-21", label: "18h–21h", from: 18 * 60, to: 21 * 60 },
-  { id: "21-24", label: "21h–24h", from: 21 * 60, to: 24 * 60 },
-];
+const loadRadarSelectionFromStorage = () => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(PILOTAGE_RADAR_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === "string") : [];
+  } catch (err) {
+    void err;
+    return [];
+  }
+};
 
 function Meter({ value01 = 0, label = "", tone = "accent" }) {
   const v = clamp01(value01);
@@ -162,11 +166,6 @@ export default function Pilotage({
     [safeData.categories]
   );
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
-  const goalsById = useMemo(() => {
-    const map = new Map();
-    for (const g of goals) if (g && g.id) map.set(g.id, g);
-    return map;
-  }, [goals]);
 
   const now = useMemo(() => {
     void safeData;
@@ -262,79 +261,111 @@ export default function Pilotage({
   const radarWindow = twoWeekBounds;
 
   const categoryRadarRows = useMemo(() => {
-    if (!categories.length) return [];
-    const out = [];
-    for (const c of categories) {
-      const list = selectOccurrencesInRange(safeData, radarWindow.fromKey, radarWindow.toKey, {
-        categoryId: c.id,
-      });
-      const stats = computeStats(list);
-      const daily = computeDailyStats(safeData, radarWindow.fromKey, radarWindow.toKey, {
-        categoryId: c.id,
-      });
-      const totalDays = Math.max(1, daily.byDate.size);
-      let activeDays = 0;
-      for (const bucket of daily.byDate.values()) {
-        const done = Number(bucket?.done) || 0;
-        if (done > 0) activeDays += 1;
-      }
-      const expected = Number(stats.expected) || 0;
-      const done = Number(stats.done) || 0;
-      const discipline = expected > 0 ? done / expected : 0;
-      const regularity = activeDays / totalDays;
-      const expectedPerDay = expected / totalDays;
-      const load = clamp01(expectedPerDay / 3);
-      const byGoal = computeGoalStats(safeData, radarWindow.fromKey, radarWindow.toKey, { categoryId: c.id });
-      let topExpected = 0;
-      for (const bucket of byGoal.values()) {
-        const v = Number(bucket?.expected) || 0;
-        if (v > topExpected) topExpected = v;
-      }
-      const focus = expected > 0 ? topExpected / expected : 0;
-      out.push({
-        categoryId: c.id,
-        label: c.name || "Catégorie",
-        color: c.color || c.accentColor || c.hex || c.themeColor || "#6EE7FF",
-        values: [
-          { axis: "Discipline", value: discipline },
-          { axis: "Régularité", value: regularity },
-          { axis: "Charge", value: load },
-          { axis: "Focus", value: focus },
-        ],
-        raw: { discipline, regularity, load, focus, expected, done },
-      });
-    }
-    out.sort((a, b) => (b.raw.expected || 0) - (a.raw.expected || 0));
-    return out;
-  }, [categories, radarWindow.fromKey, radarWindow.toKey, safeData]);
+    return computeCategoryRadarRows(safeData, radarWindow.fromKey, radarWindow.toKey);
+  }, [radarWindow.fromKey, radarWindow.toKey, safeData]);
 
-  const defaultRadarSelection = useMemo(
-    () => categoryRadarRows.slice(0, 3).map((row) => row.categoryId),
+  const availableRadarIds = useMemo(
+    () => categoryRadarRows.map((row) => row.categoryId).filter(Boolean),
     [categoryRadarRows]
   );
-  const [radarSelection, setRadarSelection] = useState(defaultRadarSelection);
+  const sanitizeRadarSelection = useCallback(
+    (selection) =>
+      sanitizePilotageRadarSelection(
+        { categories, ui: { pilotageRadarSelection: selection } },
+        { selection }
+      ),
+    [categories]
+  );
+  const defaultRadarSelection = useMemo(() => {
+    const seed = categoryRadarRows.slice(0, 3).map((row) => row.categoryId);
+    return normalizeRadarSelection(seed, availableRadarIds, availableRadarIds);
+  }, [availableRadarIds, categoryRadarRows]);
+  const uiRadarSelection = useMemo(() => {
+    return sanitizeRadarSelection(safeData?.ui?.pilotageRadarSelection);
+  }, [safeData?.ui?.pilotageRadarSelection, sanitizeRadarSelection]);
+  const persistedRadarSelection = useMemo(() => {
+    const source = uiRadarSelection.length ? uiRadarSelection : loadRadarSelectionFromStorage();
+    return sanitizeRadarSelection(source);
+  }, [sanitizeRadarSelection, uiRadarSelection]);
+  const persistedNormalizedRadarSelection = useMemo(
+    () =>
+      normalizeRadarSelection(
+        persistedRadarSelection.length ? persistedRadarSelection : defaultRadarSelection,
+        availableRadarIds,
+        defaultRadarSelection
+      ),
+    [availableRadarIds, defaultRadarSelection, persistedRadarSelection]
+  );
+  const [radarSelection, setRadarSelection] = useState(persistedNormalizedRadarSelection);
 
   useEffect(() => {
-    if (!defaultRadarSelection.length) {
-      setRadarSelection([]);
-      return;
-    }
     setRadarSelection((prev) => {
-      const next = defaultRadarSelection.map((id, idx) => prev?.[idx] || id);
-      return next.slice(0, 3);
+      const normalizedPrev = sanitizeRadarSelection(
+        normalizeRadarSelection(prev, availableRadarIds, defaultRadarSelection)
+      );
+      return arrayEqual(prev, normalizedPrev) ? prev : normalizedPrev;
     });
-  }, [defaultRadarSelection]);
+  }, [availableRadarIds, defaultRadarSelection, sanitizeRadarSelection]);
+
+  useEffect(() => {
+    if (typeof setData !== "function") return;
+    const normalized = sanitizeRadarSelection(
+      normalizeRadarSelection(radarSelection, availableRadarIds, defaultRadarSelection)
+    );
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(PILOTAGE_RADAR_STORAGE_KEY, JSON.stringify(normalized));
+      } catch (err) {
+        void err;
+      }
+    }
+    const normalizedUiRadarSelection = sanitizeRadarSelection(
+      normalizeRadarSelection(
+        uiRadarSelection.length ? uiRadarSelection : defaultRadarSelection,
+        availableRadarIds,
+        defaultRadarSelection
+      )
+    );
+    if (arrayEqual(normalized, normalizedUiRadarSelection)) return;
+    setData((prev) => {
+      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+      const prevSelection = Array.isArray(prevUi.pilotageRadarSelection)
+        ? prevUi.pilotageRadarSelection
+        : [];
+      if (arrayEqual(prevSelection, normalized)) return prev;
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          pilotageRadarSelection: normalized,
+        },
+      };
+    });
+  }, [
+    availableRadarIds,
+    defaultRadarSelection,
+    radarSelection,
+    sanitizeRadarSelection,
+    setData,
+    uiRadarSelection,
+  ]);
+
+  const safeRadarSelection = useMemo(
+    () => sanitizeRadarSelection(radarSelection),
+    [radarSelection, sanitizeRadarSelection]
+  );
 
   const radarVisibleRows = useMemo(() => {
-    const selected = radarSelection.filter(Boolean);
+    const selected = safeRadarSelection.filter(Boolean);
     const rows = selected
       .map((id) => categoryRadarRows.find((row) => row.categoryId === id))
       .filter(Boolean);
     return rows.slice(0, 3);
-  }, [categoryRadarRows, radarSelection]);
+  }, [categoryRadarRows, safeRadarSelection]);
 
   const handleRadarSelect = useCallback(
     (slotIndex, nextId) => {
+      if (!availableRadarIds.includes(nextId)) return;
       setRadarSelection((prev) => {
         const next = Array.isArray(prev) ? [...prev] : [];
         const existingIndex = next.findIndex((id) => id === nextId);
@@ -342,92 +373,17 @@ export default function Pilotage({
           next[existingIndex] = next[slotIndex];
         }
         next[slotIndex] = nextId;
-        return next.slice(0, 3);
+        return sanitizeRadarSelection(
+          normalizeRadarSelection(next, availableRadarIds, defaultRadarSelection)
+        );
       });
     },
-    []
+    [availableRadarIds, defaultRadarSelection, sanitizeRadarSelection]
   );
 
   const insights = useMemo(() => {
-    const list = selectOccurrencesInRange(safeData, radarWindow.fromKey, radarWindow.toKey);
-    const byCategory = new Map();
-    const missedByGoal = new Map();
-    const timeBuckets = new Map(TIME_BUCKETS.map((b) => [b.id, { done: 0, expected: 0 }]));
-
-    for (const occ of list) {
-      if (!occ || typeof occ.goalId !== "string") continue;
-      const goal = goalsById.get(occ.goalId);
-      const categoryId = goal?.categoryId;
-      if (categoryId) {
-        const bucket = byCategory.get(categoryId) || { done: 0, expected: 0 };
-        if (occ.status !== "canceled" && occ.status !== "skipped") bucket.expected += 1;
-        if (occ.status === "done") bucket.done += 1;
-        byCategory.set(categoryId, bucket);
-      }
-
-      if (occ.status === "missed") {
-        missedByGoal.set(occ.goalId, (missedByGoal.get(occ.goalId) || 0) + 1);
-      }
-
-      const start = resolveOccurrenceTime(occ);
-      const minutes = toMinutes(start);
-      if (minutes == null) continue;
-      const bucket = TIME_BUCKETS.find((b) => minutes >= b.from && minutes < b.to);
-      if (!bucket) continue;
-      const entry = timeBuckets.get(bucket.id);
-      if (!entry) continue;
-      entry.expected += 1;
-      if (occ.status === "done") entry.done += 1;
-    }
-
-    let topCategoryId = null;
-    let topScore = -1;
-    for (const [catId, stats] of byCategory.entries()) {
-      const expected = stats.expected || 0;
-      const done = stats.done || 0;
-      const score = expected > 0 ? done / expected : 0;
-      if (score > topScore) {
-        topScore = score;
-        topCategoryId = catId;
-      }
-    }
-    const topCategory = categories.find((c) => c.id === topCategoryId) || null;
-
-    let missedGoalId = "";
-    let missedCount = 0;
-    for (const [goalId, count] of missedByGoal.entries()) {
-      if (count > missedCount) {
-        missedCount = count;
-        missedGoalId = goalId;
-      }
-    }
-    const missedGoal = missedGoalId ? goalsById.get(missedGoalId) : null;
-
-    let bestBucket = null;
-    let bestRate = -1;
-    for (const bucket of TIME_BUCKETS) {
-      const stats = timeBuckets.get(bucket.id);
-      const expected = stats?.expected || 0;
-      if (!expected) continue;
-      const rate = (stats?.done || 0) / expected;
-      if (rate > bestRate) {
-        bestRate = rate;
-        bestBucket = bucket;
-      }
-    }
-
-    return {
-      topCategory:
-        topCategory && topScore >= 0
-          ? `Top catégorie : ${topCategory.name || "Catégorie"}`
-          : "Top catégorie : —",
-      missedAction:
-        missedGoal && missedCount > 0
-          ? `1 action clé manquée : ${missedGoal.title || "Action"}`
-          : "1 action clé manquée : aucune",
-      bestSlot: bestBucket ? `Meilleur créneau : ${bestBucket.label}` : "Meilleur créneau : —",
-    };
-  }, [categories, goalsById, radarWindow.fromKey, radarWindow.toKey, safeData]);
+    return computePilotageInsights(safeData, radarWindow.fromKey, radarWindow.toKey);
+  }, [radarWindow.fromKey, radarWindow.toKey, safeData]);
 
   const reportGoals = useMemo(() => {
     const list = goals.filter((g) => g && typeof g.id === "string");

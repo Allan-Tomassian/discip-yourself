@@ -90,6 +90,51 @@ export function ensureCategoryId(entity, fallbackId = DEFAULT_CATEGORY_ID) {
   return next;
 }
 
+export function sanitizePilotageRadarSelection(state, options = {}) {
+  const safeState = state && typeof state === "object" ? state : {};
+  const categories = Array.isArray(options.categories)
+    ? options.categories
+    : Array.isArray(safeState.categories)
+      ? safeState.categories
+      : [];
+  const rawSelection = Array.isArray(options.selection)
+    ? options.selection
+    : Array.isArray(safeState?.ui?.pilotageRadarSelection)
+      ? safeState.ui.pilotageRadarSelection
+      : [];
+  const max = Number.isFinite(options.max) ? Math.max(0, Math.floor(options.max)) : 3;
+  const reserveInbox = options.reserveInbox === true;
+  const inboxId =
+    typeof options.inboxId === "string" && options.inboxId.trim()
+      ? options.inboxId.trim()
+      : SYSTEM_INBOX_ID;
+
+  const categoryIds = [];
+  const seenCategories = new Set();
+  for (const category of categories) {
+    const rawId = typeof category?.id === "string" ? category.id.trim() : "";
+    if (!rawId || seenCategories.has(rawId)) continue;
+    seenCategories.add(rawId);
+    categoryIds.push(rawId);
+  }
+
+  const allowedIds = reserveInbox ? categoryIds.filter((id) => id !== inboxId) : categoryIds;
+  const allowedSet = new Set(allowedIds);
+  const out = [];
+  for (const rawId of rawSelection) {
+    const id = typeof rawId === "string" ? rawId.trim() : "";
+    if (!id || !allowedSet.has(id) || out.includes(id)) continue;
+    out.push(id);
+    if (out.length >= max) return out;
+  }
+  for (const id of allowedIds) {
+    if (out.includes(id)) continue;
+    out.push(id);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 export function normalizeGoal(rawGoal, index = 0) {
   const g = rawGoal && typeof rawGoal === "object" ? { ...rawGoal } : {};
 
@@ -478,7 +523,7 @@ export function normalizeGoal(rawGoal, index = 0) {
 export { normalizeGoal as normalizeGoalFields };
 
 export function initialData() {
-  return {
+  const data = {
     schemaVersion: SCHEMA_VERSION,
     profile: {
       name: "",
@@ -538,6 +583,7 @@ export function initialData() {
       soundEnabled: false,
       selectedDate: toLocalDateKey(),
       selectedHabits: {},
+      pilotageRadarSelection: [],
       sessionDraft: null,
       activeSession: null,
     },
@@ -552,6 +598,10 @@ export function initialData() {
     checks: {},
     microChecks: {},
   };
+  data.ui.pilotageRadarSelection = sanitizePilotageRadarSelection(data, {
+    selection: data.ui.pilotageRadarSelection,
+  });
+  return data;
 }
 
 export function demoData() {
@@ -563,7 +613,7 @@ export function demoData() {
   const outcomeId = uid();
   const processId = uid();
 
-  return {
+  const data = {
     schemaVersion: SCHEMA_VERSION,
     profile: {
       name: "Démo",
@@ -617,6 +667,7 @@ export function demoData() {
       soundEnabled: false,
       selectedDate: toLocalDateKey(),
       selectedHabits: {},
+      pilotageRadarSelection: [],
       sessionDraft: null,
       activeSession: null,
     },
@@ -658,4 +709,8 @@ export function demoData() {
     checks: {},
     microChecks: {},
   };
+  data.ui.pilotageRadarSelection = sanitizePilotageRadarSelection(data, {
+    selection: data.ui.pilotageRadarSelection,
+  });
+  return data;
 }

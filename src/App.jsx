@@ -661,11 +661,6 @@ export default function App() {
           onOpenCreateOutcome={() => {
             openCreateOutcomeDirect({ source: "library" });
           }}
-          onOpenManage={(categoryId) => {
-            if (!categoryId) return;
-            setLibraryCategoryId(categoryId);
-            setTab("library");
-          }}
         />
       ) : tab === "create-goal" ? (
         <CreateV2Outcome

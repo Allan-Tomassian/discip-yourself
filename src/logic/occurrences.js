@@ -153,8 +153,9 @@ export function setOccurrenceStatusById(occurrenceId, status, source) {
 
 export function listOccurrencesByDate(date, source) {
   const occurrences = resolveOccurrences(source);
-  if (typeof date !== "string" || !date.trim()) return occurrences.slice();
-  return occurrences.filter((o) => o && o.date === date);
+  const targetDate = normalizeDateKey(date);
+  if (!targetDate) return occurrences.slice();
+  return occurrences.filter((o) => o && normalizeDateKey(o.date) === targetDate);
 }
 
 export function listOccurrencesForGoal(goalId, source) {
@@ -221,7 +222,7 @@ export function listOccurrencesByMonth(year, month1to12, source) {
   const m = Number(month1to12);
   if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return occurrences.slice();
   const prefix = `${y}-${pad2(m)}-`;
-  return occurrences.filter((o) => o && typeof o.date === "string" && o.date.startsWith(prefix));
+  return occurrences.filter((o) => o && normalizeDateKey(o.date).startsWith(prefix));
 }
 
 // --- New: upsert by (goalId,date,start) to avoid duplicates ---

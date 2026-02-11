@@ -10,7 +10,9 @@ function toDateKey(date) {
 }
 
 function addDaysKey(baseKey, days) {
-  const d = new Date(baseKey);
+  const [yyyy, mm, dd] = String(baseKey || "").split("-").map((v) => Number(v));
+  if (!Number.isFinite(yyyy) || !Number.isFinite(mm) || !Number.isFinite(dd)) return "";
+  const d = new Date(yyyy, mm - 1, dd, 12, 0, 0, 0);
   d.setDate(d.getDate() + days);
   return toDateKey(d);
 }

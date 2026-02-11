@@ -10,7 +10,14 @@ import { validateBlocksState } from "../blocks/validateBlocksState";
 import { buildScheduleRuleSourceKey, buildScheduleRulesFromAction, normalizeScheduleRule } from "../scheduleRules";
 import { BRAND_ACCENT } from "../../theme/themeTokens";
 import { ensureSystemInboxCategory } from "./inbox";
-import { DEFAULT_BLOCKS, ensureCategoryId, initialData, normalizeCategory, normalizeGoal } from "./normalizers";
+import {
+  DEFAULT_BLOCKS,
+  ensureCategoryId,
+  initialData,
+  normalizeCategory,
+  normalizeGoal,
+  sanitizePilotageRadarSelection,
+} from "./normalizers";
 import {
   SCHEMA_VERSION,
   normalizeCadence,
@@ -449,6 +456,9 @@ export function migrate(prev) {
   }
 
   if (typeof next.ui.soundEnabled === "undefined") next.ui.soundEnabled = false;
+  next.ui.pilotageRadarSelection = sanitizePilotageRadarSelection(next, {
+    selection: next.ui.pilotageRadarSelection,
+  });
   if (typeof next.ui.onboardingCompleted === "undefined") next.ui.onboardingCompleted = false;
   if (typeof next.ui.onboardingSeenVersion !== "number") next.ui.onboardingSeenVersion = 0;
   if (typeof next.ui.onboardingStep === "undefined") next.ui.onboardingStep = 1;
@@ -836,6 +846,9 @@ export function migrate(prev) {
   const goalList = Array.isArray(normalized.goals) ? normalized.goals : [];
 
   const scv = normalized.ui?.selectedCategoryByView || { home: null, library: null, plan: null, pilotage: null };
+  const safeRadarSelection = sanitizePilotageRadarSelection(normalized, {
+    selection: normalized.ui?.pilotageRadarSelection,
+  });
 
   const safeHome = scv.home && cats.some((c) => c.id === scv.home) ? scv.home : first;
   const safeLibrary = scv.library && cats.some((c) => c.id === scv.library) ? scv.library : first;
@@ -863,6 +876,7 @@ export function migrate(prev) {
         plan: safePlan,
         pilotage: safePilotage,
       },
+      pilotageRadarSelection: safeRadarSelection,
     },
   };
 }

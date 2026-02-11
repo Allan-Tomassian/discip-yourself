@@ -28,7 +28,6 @@ export default function CalendarCard({
   monthCursor,
   onPrevMonth,
   onNextMonth,
-  monthGrid,
   selectedDayAccent,
   onAddOccurrence,
   selectedGoalId,
@@ -36,6 +35,29 @@ export default function CalendarCard({
   const dayRailRef = useRef(null);
   const isOnToday = selectedDateKey === localTodayKey;
   const monthLabel = useMemo(() => getMonthLabelFR(monthCursor), [monthCursor]);
+  const monthCells = useMemo(() => {
+    if (!(monthCursor instanceof Date) || Number.isNaN(monthCursor.getTime())) return [];
+    const year = monthCursor.getFullYear();
+    const monthIndex = monthCursor.getMonth();
+    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+    const firstDow = (new Date(year, monthIndex, 1).getDay() + 6) % 7; // 0..6 => L..D
+    const cells = [];
+    for (let i = 0; i < firstDow; i += 1) {
+      cells.push({ placeholder: true, id: `head-${i}` });
+    }
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      cells.push({
+        placeholder: false,
+        key: toLocalDateKey(new Date(year, monthIndex, day)),
+        dayNumber: day,
+      });
+    }
+    const trailing = (7 - (cells.length % 7)) % 7;
+    for (let i = 0; i < trailing; i += 1) {
+      cells.push({ placeholder: true, id: `tail-${i}` });
+    }
+    return cells;
+  }, [monthCursor]);
 
   return (
     <Card className="calendarCard" data-tour-id="today-calendar-card">
@@ -146,8 +168,17 @@ export default function CalendarCard({
                     {label}
                   </div>
                 ))}
-                {monthGrid.map((cell) => {
-                  const dayKey = toLocalDateKey(cell.dateObj);
+                {monthCells.map((cell, idx) => {
+                  if (cell?.placeholder) {
+                    return (
+                      <div
+                        key={`placeholder-${cell.id || idx}`}
+                        className="calendarMonthCell calendarMonthCellPlaceholder"
+                        aria-hidden="true"
+                      />
+                    );
+                  }
+                  const dayKey = cell?.key || "";
                   const plannedCount = plannedByDate.get(dayKey) || 0;
                   const doneCount = doneByDate.get(dayKey) || 0;
                   const isSelected = dayKey === selectedDateKey;
@@ -170,14 +201,13 @@ export default function CalendarCard({
                       aria-current={isToday ? "date" : undefined}
                       onClick={() => onDayOpen(dayKey)}
                       style={{
-                        opacity: cell.inMonth ? 1 : 0.45,
                         borderColor: isSelected
                           ? selectedDayAccent
                           : goalAccentByDate.get(dayKey) || "rgba(255,255,255,.14)",
                         boxShadow: isSelected ? `0 0 0 2px ${selectedDayAccent}33` : undefined,
                       }}
                     >
-                      <div className="calendarMonthDay">{cell.dayNumber}</div>
+                      <div className="calendarMonthDay">{cell.dayNumber || ""}</div>
                       <div className="calendarMonthMeta">
                         {plannedCount ? `${plannedCount} planifié` : ""}
                         {plannedCount && doneCount ? " · " : ""}

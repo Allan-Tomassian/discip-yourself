@@ -334,23 +334,35 @@
 .calendarWeekday {
   font-size: 11px;
   color: var(--text-3, var(--muted2));
+  min-height: 14px;
+  line-height: 14px;
 }
 
 .calendarMonthCell {
+  --month-cell-pad-y: 6px;
+  --month-cell-pad-x: 6px;
+  --month-cell-gap: 4px;
+  --month-day-line: 14px;
+  --month-meta-line: 11px;
+  --month-meta-lines: 2;
+  --month-meta-height: calc(var(--month-meta-line) * var(--month-meta-lines));
   width: 100%;
-  min-height: 48px;
+  height: calc(
+    var(--month-cell-pad-y) * 2 + var(--month-day-line) + var(--month-cell-gap) + var(--month-meta-height)
+  );
   border-radius: 12px;
-  padding: 6px;
+  padding: var(--month-cell-pad-y) var(--month-cell-pad-x);
   border: 1px solid var(--border);
   background: var(--glass);
   color: var(--text);
   display: grid;
-  grid-template-rows: 14px 12px;
-  align-content: center;
-  gap: 4px;
+  grid-template-rows: var(--month-day-line) var(--month-meta-height);
+  align-content: start;
+  gap: var(--month-cell-gap);
   justify-items: center;
   cursor: pointer;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .calendarMonthCell.is-selected {
@@ -361,22 +373,38 @@
   border-color: var(--accent, #ff8a3d);
 }
 
+.calendarMonthCellPlaceholder {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  cursor: default;
+  pointer-events: none;
+}
+
 .calendarMonthDay {
   font-size: 13px;
   font-weight: 700;
-  min-height: 14px;
-  line-height: 1;
-}
-
-.calendarMonthMeta {
-  font-size: 10px;
-  line-height: 1.1;
-  min-height: 11px;
-  color: var(--text-3, var(--muted2));
+  min-height: var(--month-day-line);
+  line-height: var(--month-day-line);
   width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.calendarMonthMeta {
+  font-size: 10px;
+  line-height: var(--month-meta-line);
+  min-height: var(--month-meta-height);
+  height: var(--month-meta-height);
+  color: var(--text-3, var(--muted2));
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 @media (max-width: 600px) {

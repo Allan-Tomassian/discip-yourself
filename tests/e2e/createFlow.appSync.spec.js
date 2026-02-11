@@ -19,6 +19,13 @@ async function plannedCount(locator) {
   return Number((await locator.getAttribute("data-planned")) || "0");
 }
 
+async function expectMonthCellPlannedCount(page, dateKey, expected) {
+  const cell = page.locator(`[data-tour-id="today-calendar-month-grid"] [data-datekey="${dateKey}"]`).first();
+  await expect(cell).toBeVisible();
+  await expect(cell).toHaveAttribute("aria-label", new RegExp(`^${dateKey}\\s·`));
+  await expect.poll(async () => plannedCount(cell)).toBe(expected);
+}
+
 async function selectBusinessInRail(page) {
   const rail = page.locator(".categoryRailScroll");
   await expect(rail.getByRole("button", { name: "Business", exact: true }).first()).toBeVisible();
@@ -71,6 +78,8 @@ async function completeLinkOutcomeThenPickBusiness(page) {
 
 async function assertCalendarIndicatorsForDate(page, dateKey) {
   const neighborDateKey = addDaysKey(dateKey, 1);
+  const monthNeighborDateKey =
+    neighborDateKey.slice(0, 7) === String(dateKey || "").slice(0, 7) ? neighborDateKey : addDaysKey(dateKey, -1);
 
   const dayCell = page.locator(`[data-tour-id="today-calendar-rail"] [data-datekey="${dateKey}"]`).first();
   const dayNeighborCell = page.locator(
@@ -85,7 +94,7 @@ async function assertCalendarIndicatorsForDate(page, dateKey) {
   await page.locator("[data-tour-id=\"today-calendar-month\"]").click();
   const monthCell = page.locator(`[data-tour-id="today-calendar-month-grid"] [data-datekey="${dateKey}"]`).first();
   const monthNeighborCell = page
-    .locator(`[data-tour-id="today-calendar-month-grid"] [data-datekey="${neighborDateKey}"]`)
+    .locator(`[data-tour-id="today-calendar-month-grid"] [data-datekey="${monthNeighborDateKey}"]`)
     .first();
   await expect(monthCell).toBeVisible();
   await expect(monthCell).toHaveAttribute("aria-label", new RegExp(`^${dateKey}\\s·`));
@@ -325,6 +334,96 @@ test("CreateFlow: action anytime sans horaire + présence dans les vues attendue
   const persistedOccurrences = (persisted.occurrences || []).filter((o) => o?.goalId === persistedAction?.id);
   expect(persistedOccurrences.every((o) => o?.noTime === true || o?.start === "00:00")).toBeTruthy();
   await persistedPage.close();
+});
+
+test("Calendrier mois: anti-décalage fin de mois vers mois suivant", async ({ page }) => {
+  const state = buildBaseState({ withContent: false });
+  state.ui.selectedDate = "2026-02-10";
+  state.ui.selectedDateKey = "2026-02-10";
+  state.goals = [
+    {
+      id: "goal_month_boundary",
+      categoryId: BUSINESS_ID,
+      title: "E2E Frontière Mois",
+      type: "PROCESS",
+      planType: "ONE_OFF",
+      status: "active",
+      oneOffDate: "2026-02-28",
+      timeMode: "NONE",
+    },
+  ];
+  state.occurrences = [
+    {
+      id: "occ_feb_28",
+      goalId: "goal_month_boundary",
+      date: "2026-02-28",
+      start: "00:00",
+      slotKey: "00:00",
+      status: "planned",
+      noTime: true,
+    },
+    {
+      id: "occ_mar_01",
+      goalId: "goal_month_boundary",
+      date: "2026-03-01",
+      start: "00:00",
+      slotKey: "00:00",
+      status: "planned",
+      noTime: true,
+    },
+  ];
+  await seedState(page, state);
+
+  await page.goto("/");
+  await openTabToday(page);
+  await page.locator("[data-tour-id=\"today-calendar-month\"]").click();
+  await expect(page.locator(".calendarMonthTitle").first()).toContainText(/f[eé]vrier 2026/i);
+
+  await expectMonthCellPlannedCount(page, "2026-02-28", 1);
+  await expect(page.locator(`[data-tour-id="today-calendar-month-grid"] [data-datekey="2026-03-01"]`)).toHaveCount(0);
+  await expectMonthCellPlannedCount(page, "2026-02-27", 0);
+  const febCells = page.locator(`[data-tour-id="today-calendar-month-grid"] .calendarMonthCell[data-datekey]`);
+  await expect(febCells).toHaveCount(28);
+  const febKeys = await febCells.evaluateAll((nodes) => nodes.map((n) => n.getAttribute("data-datekey") || ""));
+  expect(febKeys.every((key) => /^2026-02-\d{2}$/.test(key))).toBeTruthy();
+  const febDayNumbers = await febCells.locator(".calendarMonthDay").allTextContents();
+  expect(
+    febDayNumbers.every((text) => {
+      const day = Number(text.trim());
+      return Number.isInteger(day) && day >= 1 && day <= 28;
+    })
+  ).toBeTruthy();
+  const placeholderWithData = page.locator(
+    `[data-tour-id="today-calendar-month-grid"] .calendarMonthCellPlaceholder[data-datekey], ` +
+      `[data-tour-id="today-calendar-month-grid"] .calendarMonthCellPlaceholder[data-planned], ` +
+      `[data-tour-id="today-calendar-month-grid"] .calendarMonthCellPlaceholder[data-done]`
+  );
+  await expect(placeholderWithData).toHaveCount(0);
+  const placeholderTexts = await page
+    .locator(`[data-tour-id="today-calendar-month-grid"] .calendarMonthCellPlaceholder`)
+    .allTextContents();
+  expect(placeholderTexts.every((text) => !/\d/.test(text))).toBeTruthy();
+
+  await page
+    .locator('.calendarMonthHeader button[aria-label="Mois suivant"]')
+    .first()
+    .click();
+  await expect(page.locator(".calendarMonthTitle").first()).toContainText(/mars 2026/i);
+  await expectMonthCellPlannedCount(page, "2026-03-01", 1);
+  await expect(page.locator(`[data-tour-id="today-calendar-month-grid"] [data-datekey="2026-02-28"]`)).toHaveCount(0);
+  await expectMonthCellPlannedCount(page, "2026-03-02", 0);
+
+  await page
+    .locator(`[data-tour-id="today-calendar-month-grid"] [data-datekey="2026-03-01"]`)
+    .first()
+    .click();
+  await page.locator("[data-tour-id=\"today-calendar-day\"]").click();
+
+  const dayCell = page.locator(`[data-tour-id="today-calendar-rail"] [data-datekey="2026-03-01"]`).first();
+  const dayNeighborCell = page.locator(`[data-tour-id="today-calendar-rail"] [data-datekey="2026-03-02"]`).first();
+  await expect(dayCell).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(async () => plannedCount(dayCell)).toBe(1);
+  await expect.poll(async () => plannedCount(dayNeighborCell)).toBe(0);
 });
 
 test("CategoryGate: désactivation non vide avec migration vers Général", async ({ page }) => {

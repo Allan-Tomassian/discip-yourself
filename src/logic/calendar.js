@@ -41,9 +41,12 @@ function statusRank(o) {
  * Lexicographic compare works for ISO dates YYYY-MM-DD.
  */
 function inRange(date, startDate, endDate) {
-  if (!isIsoDateString(date)) return false;
-  if (isIsoDateString(startDate) && date < startDate) return false;
-  if (isIsoDateString(endDate) && date > endDate) return false;
+  const dayKey = normalizeLocalDateKey(date);
+  if (!dayKey) return false;
+  const startKey = normalizeLocalDateKey(startDate);
+  const endKey = normalizeLocalDateKey(endDate);
+  if (startKey && dayKey < startKey) return false;
+  if (endKey && dayKey > endKey) return false;
   return true;
 }
 
@@ -63,9 +66,11 @@ export function groupOccurrencesByDate(startDate, endDate, source) {
   const occurrences = listOccurrencesInRange(startDate, endDate, source);
   const map = Object.create(null);
   for (const o of occurrences) {
-    if (!o || !isIsoDateString(o.date)) continue;
-    if (!map[o.date]) map[o.date] = [];
-    map[o.date].push(o);
+    if (!o) continue;
+    const dateKey = normalizeLocalDateKey(o.date);
+    if (!dateKey) continue;
+    if (!map[dateKey]) map[dateKey] = [];
+    map[dateKey].push(o);
   }
   return map;
 }

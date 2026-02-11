@@ -51,24 +51,14 @@ export default function CategoryGateModal({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmCat, setConfirmCat] = useState(null);
   const [confirmCounts, setConfirmCounts] = useState({ goalsCount: 0, habitsCount: 0, total: 0 });
-  const [debugOpen, setDebugOpen] = useState(false);
-  const [debugEvents, setDebugEvents] = useState([]);
-  const [debugCopied, setDebugCopied] = useState(false);
   const isDev = Boolean(typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV);
 
   const logDebug = useCallback(
     (msg) => {
       if (!isDev) return;
-      const now = new Date();
-      const stamp = [
-        String(now.getHours()).padStart(2, "0"),
-        String(now.getMinutes()).padStart(2, "0"),
-        String(now.getSeconds()).padStart(2, "0"),
-      ].join(":");
-      setDebugEvents((prev) => {
-        const next = [...prev, `${stamp} ${msg}`];
-        return next.length > 30 ? next.slice(next.length - 30) : next;
-      });
+      if (typeof console !== "undefined" && typeof console.debug === "function") {
+        console.debug("[CategoryGateModal]", msg);
+      }
     },
     [isDev]
   );
@@ -288,39 +278,6 @@ export default function CategoryGateModal({
             </div>
           </div>
         </div>
-
-        {isDev ? (
-          <div className="categoryGateHelper categoryGateDebug">
-            <div className="row rowBetween alignCenter">
-              <GateButton variant="ghost" onClick={() => setDebugOpen((prev) => !prev)}>
-                {debugOpen ? "Masquer debug" : "Afficher debug"}
-              </GateButton>
-              <div className="row gap8 alignCenter">
-                <GateButton
-                  variant="ghost"
-                  onClick={() => {
-                    const text = debugEvents.join("\n");
-                    if (!text) return;
-                    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-                      navigator.clipboard.writeText(text).then(() => {
-                        setDebugCopied(true);
-                        window.setTimeout(() => setDebugCopied(false), 1200);
-                      });
-                    }
-                  }}
-                >
-                  Copier
-                </GateButton>
-                {debugCopied ? <span className="small2 textMuted">Copié</span> : null}
-              </div>
-            </div>
-            {debugOpen ? (
-              <pre className="categoryGateDebugLog">
-                {debugEvents.length ? debugEvents.join("\n") : "Aucun log"}
-              </pre>
-            ) : null}
-          </div>
-        ) : null}
 
         <div className="categoryGateFooter">
           <GateButton variant="ghost" onClick={onClose}>
