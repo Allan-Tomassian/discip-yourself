@@ -2,6 +2,7 @@ import { initialData } from "../../../src/logic/state.js";
 import { LS_KEY } from "../../../src/utils/storage.js";
 import { E2E_AUTH_SESSION_KEY } from "../../../src/auth/constants.js";
 import { buildLocalUserDataKey } from "../../../src/data/userDataApi.js";
+import { buildLocalProfileKey, LOCAL_PROFILE_USERNAME_MAP_KEY } from "../../../src/profile/profileApi.js";
 
 function toDateKey(date) {
   const d = date instanceof Date ? date : new Date(date);
@@ -136,6 +137,25 @@ export function buildMockAuthSession({ userId = "e2e-user-id", email = "e2e@exam
   };
 }
 
+function defaultUsernameFromUserId(userId) {
+  const normalized = String(userId || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .slice(0, 24);
+  if (normalized.length >= 3) return normalized;
+  return `user${normalized}`.slice(0, 24);
+}
+
+export function buildMockProfile({ userId = "e2e-user-id", username = "", displayName = "", birthdate = "" } = {}) {
+  const normalizedUsername = username || defaultUsernameFromUserId(userId);
+  return {
+    user_id: userId,
+    username: normalizedUsername,
+    display_name: displayName,
+    birthdate: birthdate || null,
+  };
+}
+
 export async function seedAuthSession(page, session = buildMockAuthSession()) {
   await page.addInitScript(
     ({ key, sessionData }) => {
@@ -153,14 +173,25 @@ export async function clearAuthSession(page) {
 
 export async function seedState(page, state, options = {}) {
   const withAuth = options.withAuth !== false;
+  const withProfile = options.withProfile !== false;
   const authSession = withAuth ? options.authSession || buildMockAuthSession() : null;
   const authUserId = authSession?.user?.id || "";
+  const profileData = withAuth && withProfile && authUserId
+    ? options.profile || buildMockProfile({ userId: authUserId, username: `u_${authUserId.replace(/[^a-zA-Z0-9]/g, "")}` })
+    : null;
+  const profileUsername = String(profileData?.username || "").toLowerCase();
   await page.addInitScript(
-    ({ key, data, authKey, sessionData, userDataKey }) => {
+    ({ key, data, authKey, sessionData, userDataKey, profileKey, profileValue, usernamesKey, profileUsernameValue, profileUserId }) => {
       localStorage.setItem(key, JSON.stringify(data));
       if (sessionData) {
         localStorage.setItem(authKey, JSON.stringify(sessionData));
         if (userDataKey) localStorage.setItem(userDataKey, JSON.stringify(data));
+        if (profileKey && profileValue) {
+          localStorage.setItem(profileKey, JSON.stringify(profileValue));
+          const currentMap = JSON.parse(localStorage.getItem(usernamesKey) || "{}");
+          if (profileUsernameValue) currentMap[profileUsernameValue] = profileUserId;
+          localStorage.setItem(usernamesKey, JSON.stringify(currentMap));
+        }
       } else {
         localStorage.removeItem(authKey);
         if (userDataKey) localStorage.removeItem(userDataKey);
@@ -172,6 +203,11 @@ export async function seedState(page, state, options = {}) {
       authKey: E2E_AUTH_SESSION_KEY,
       sessionData: authSession,
       userDataKey: authUserId ? buildLocalUserDataKey(authUserId) : "",
+      profileKey: authUserId ? buildLocalProfileKey(authUserId) : "",
+      profileValue: profileData,
+      usernamesKey: LOCAL_PROFILE_USERNAME_MAP_KEY,
+      profileUsernameValue: profileUsername,
+      profileUserId: authUserId,
     }
   );
 }
@@ -183,6 +219,47 @@ export async function seedUserData(page, userId, data) {
       localStorage.setItem(storageKey, JSON.stringify(payload));
     },
     { storageKey: key, payload: data }
+  );
+}
+
+export async function seedProfile(page, userId, profile) {
+  const profileKey = buildLocalProfileKey(userId);
+  const normalizedUsername = String(profile?.username || "").toLowerCase();
+  await page.addInitScript(
+    ({ key, value, usernamesKey, username, profileUserId }) => {
+      localStorage.setItem(key, JSON.stringify(value));
+      const currentMap = JSON.parse(localStorage.getItem(usernamesKey) || "{}");
+      if (username) currentMap[username] = profileUserId;
+      localStorage.setItem(usernamesKey, JSON.stringify(currentMap));
+    },
+    {
+      key: profileKey,
+      value: profile,
+      usernamesKey: LOCAL_PROFILE_USERNAME_MAP_KEY,
+      username: normalizedUsername,
+      profileUserId: userId,
+    }
+  );
+}
+
+export async function clearProfile(page, userId) {
+  const profileKey = buildLocalProfileKey(userId);
+  await page.addInitScript(
+    ({ key, usernamesKey, profileUserId }) => {
+      const current = JSON.parse(localStorage.getItem(key) || "null");
+      localStorage.removeItem(key);
+      const currentMap = JSON.parse(localStorage.getItem(usernamesKey) || "{}");
+      const username = String(current?.username || "").toLowerCase();
+      if (username && currentMap[username] === profileUserId) {
+        delete currentMap[username];
+      }
+      localStorage.setItem(usernamesKey, JSON.stringify(currentMap));
+    },
+    {
+      key: profileKey,
+      usernamesKey: LOCAL_PROFILE_USERNAME_MAP_KEY,
+      profileUserId: userId,
+    }
   );
 }
 

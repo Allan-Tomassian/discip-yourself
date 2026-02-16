@@ -3,8 +3,10 @@ import { LS_KEY } from "../../src/utils/storage.js";
 import {
   buildBaseState,
   buildMockAuthSession,
+  buildMockProfile,
   getUserData,
   seedAuthSession,
+  seedProfile,
   seedUserData,
 } from "./utils/seed.js";
 
@@ -17,6 +19,7 @@ test("user_data: charge puis persiste une modification après reload", async ({ 
   remoteState.ui.onboardingCompleted = true;
 
   await seedAuthSession(page, authSession);
+  await seedProfile(page, userId, buildMockProfile({ userId, username: "userdatauser" }));
   await seedUserData(page, userId, remoteState);
   await page.addInitScript((key) => {
     localStorage.removeItem(key);

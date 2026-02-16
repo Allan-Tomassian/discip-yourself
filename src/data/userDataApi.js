@@ -42,9 +42,13 @@ export async function loadUserData(userId) {
     .eq("user_id", normalizedUserId)
     .maybeSingle();
 
-  if (error) throw error;
+  if (error) {
+    return loadLocalUserData(normalizedUserId);
+  }
   const payload = data?.data;
-  return payload && typeof payload === "object" ? payload : {};
+  const safePayload = payload && typeof payload === "object" ? payload : {};
+  saveLocalUserData(normalizedUserId, safePayload);
+  return safePayload;
 }
 
 export async function upsertUserData(userId, data) {
@@ -68,6 +72,7 @@ export async function upsertUserData(userId, data) {
       { onConflict: "user_id" }
     );
 
+  saveLocalUserData(normalizedUserId, payload);
   if (error) throw error;
   return payload;
 }

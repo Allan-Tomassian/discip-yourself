@@ -5,11 +5,14 @@ export function isValidEmail(value) {
   return EMAIL_RE.test(email);
 }
 
-export function getLoginAvailability({ supabaseReady, email, sending } = {}) {
+export function getLoginAvailability({ supabaseReady, email, sending, supabaseConfigError = "" } = {}) {
   const ready = Boolean(supabaseReady);
   const busy = Boolean(sending);
   const emailOk = isValidEmail(email);
   const canSend = ready && emailOk && !busy;
+  const configMessage =
+    String(supabaseConfigError || "").trim()
+    || "Configuration Supabase manquante. Renseigne VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.";
 
   if (!ready) {
     return {
@@ -18,7 +21,7 @@ export function getLoginAvailability({ supabaseReady, email, sending } = {}) {
       sending: busy,
       canSend,
       reasonKey: "supabase_missing",
-      reasonMessage: "Configuration Supabase manquante. Renseigne VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.",
+      reasonMessage: configMessage,
     };
   }
 

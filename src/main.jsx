@@ -4,6 +4,8 @@ import App from "./App.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import AuthProvider from "./auth/AuthProvider.jsx";
 import AuthGate from "./auth/AuthGate.jsx";
+import ProfileProvider from "./profile/ProfileProvider.jsx";
+import ProfileGate from "./profile/ProfileGate.jsx";
 import "./index.css";
 
 // Theme bootstrap: ensure the selected theme is applied BEFORE first paint.
@@ -56,7 +58,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <ErrorBoundary>
       <AuthProvider>
         <AuthGate>
-          <App />
+          <ProfileProvider>
+            <ProfileGate>
+              <App />
+            </ProfileGate>
+          </ProfileProvider>
         </AuthGate>
       </AuthProvider>
     </ErrorBoundary>

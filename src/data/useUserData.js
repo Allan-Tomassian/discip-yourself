@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../auth/useAuth";
+import { E2E_AUTH_SESSION_KEY } from "../auth/constants";
 import { migrate, initialData } from "../logic/state";
 import { loadState, saveState } from "../utils/storage";
 import { isRemoteUserDataEnabled, loadUserData, upsertUserData } from "./userDataApi";
@@ -54,6 +55,19 @@ function logSaveError(error) {
   console.error("[user-data] save failed", error);
 }
 
+function isUsingE2EMockedSession(userId) {
+  if (!userId || typeof window === "undefined") return false;
+  if (!import.meta.env.DEV) return false;
+  try {
+    const raw = window.localStorage.getItem(E2E_AUTH_SESSION_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return parsed?.user?.id === userId;
+  } catch {
+    return false;
+  }
+}
+
 export function createDebouncedSave({ delayMs = USER_DATA_SAVE_DEBOUNCE_MS, onSave, onError } = {}) {
   let timerId = null;
   let lastPayload;
@@ -89,6 +103,7 @@ export function useUserData() {
 
   const skipNextRemoteSaveRef = useRef(true);
   const saverRef = useRef(null);
+  const useDebounceRef = useRef(false);
 
   const setData = useCallback((next) => {
     setDataState((prev) => (typeof next === "function" ? next(prev) : next));
@@ -104,7 +119,9 @@ export function useUserData() {
       return undefined;
     }
 
-    if (isRemoteUserDataEnabled) {
+    useDebounceRef.current = isRemoteUserDataEnabled && !isUsingE2EMockedSession(userId);
+
+    if (useDebounceRef.current) {
       saverRef.current = createDebouncedSave({
         delayMs: USER_DATA_SAVE_DEBOUNCE_MS,
         onSave: async (nextData) => {
@@ -167,7 +184,7 @@ export function useUserData() {
       return;
     }
 
-    if (!isRemoteUserDataEnabled) {
+    if (!isRemoteUserDataEnabled || !useDebounceRef.current) {
       upsertUserData(userId, safeData).catch(logSaveError);
       return;
     }

@@ -40,6 +40,23 @@ Commands:
 - `npx cap sync`
 - `npx cap open ios`
 
+## Supabase Auth (Magic Link)
+
+Configuration env requise:
+- `VITE_SUPABASE_URL` au format strict `https://<ref>.supabase.co`
+- `VITE_SUPABASE_ANON_KEY`
+
+Checklist Supabase Dashboard:
+- `Authentication` > `URL Configuration`
+- `Site URL`: URL de ton app (ex: `http://127.0.0.1:5173` en dev)
+- `Redirect URLs`: inclure les URLs de dev/prod autorisées
+
+Si l’envoi magic link affiche `Failed to fetch`:
+- Vérifier que le projet Supabase n’est pas en pause
+- Vérifier URL/clé dans `.env`
+- Désactiver temporairement adblock / privacy shields
+- Utiliser le bouton dev `Test de connexion Supabase` sur l’écran de login pour isoler réseau/CORS
+
 Notes:
 - The `ios/` folder is generated locally by Capacitor and is not committed.
 - Configure icons/splash in Xcode under `ios/App/App/Assets.xcassets`.
