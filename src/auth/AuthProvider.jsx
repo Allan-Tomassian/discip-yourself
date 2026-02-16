@@ -77,10 +77,8 @@ export default function AuthProvider({ children }) {
     const normalizedEmail = String(email || "").trim();
     if (!normalizedEmail) throw new Error("Adresse email requise.");
     if (!supabase) throw new Error("Configuration Supabase manquante.");
-    const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
     const { error } = await supabase.auth.signInWithOtp({
       email: normalizedEmail,
-      options: { emailRedirectTo: redirectTo },
     });
     if (error) throw error;
   }, []);

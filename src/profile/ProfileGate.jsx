@@ -5,6 +5,7 @@ import ProfileSetupScreen from "./ProfileSetupScreen";
 
 export default function ProfileGate({ children }) {
   const { loading, profile, loadError, refreshProfile } = useProfile();
+  const hasUsername = Boolean(String(profile?.username || "").trim());
 
   if (loading) {
     return (
@@ -40,7 +41,7 @@ export default function ProfileGate({ children }) {
     );
   }
 
-  if (!profile) {
+  if (!profile || !hasUsername) {
     return <ProfileSetupScreen />;
   }
 

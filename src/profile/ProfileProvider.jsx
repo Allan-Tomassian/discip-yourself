@@ -32,6 +32,8 @@ export default function ProfileProvider({ children }) {
       const next = await loadProfile(userId, {
         preferLocal: isE2EMockedSession(userId),
         throwOnRemoteError: true,
+        ensureOnMissing: true,
+        email: user?.email || "",
       });
       setProfile(next);
       return next;
@@ -40,7 +42,7 @@ export default function ProfileProvider({ children }) {
       setLoadError(message);
       throw error;
     }
-  }, [userId]);
+  }, [user?.email, userId]);
 
   useEffect(() => {
     if (!session || !userId) {
@@ -57,6 +59,8 @@ export default function ProfileProvider({ children }) {
     loadProfile(userId, {
       preferLocal: isE2EMockedSession(userId),
       throwOnRemoteError: true,
+      ensureOnMissing: true,
+      email: user?.email || "",
     })
       .then((next) => {
         if (!active) return;
@@ -76,7 +80,7 @@ export default function ProfileProvider({ children }) {
     return () => {
       active = false;
     };
-  }, [session, userId]);
+  }, [session, user?.email, userId]);
 
   const handleCheckUsernameAvailability = useCallback(
     async (username) => {

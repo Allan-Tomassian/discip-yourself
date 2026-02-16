@@ -149,7 +149,7 @@ function defaultUsernameFromUserId(userId) {
 export function buildMockProfile({ userId = "e2e-user-id", username = "", displayName = "", birthdate = "" } = {}) {
   const normalizedUsername = username || defaultUsernameFromUserId(userId);
   return {
-    user_id: userId,
+    id: userId,
     username: normalizedUsername,
     display_name: displayName,
     birthdate: birthdate || null,

@@ -1,5 +1,5 @@
 create table if not exists public.profiles (
-  user_id uuid primary key references auth.users(id) on delete cascade,
+  id uuid primary key references auth.users(id) on delete cascade,
   username text not null,
   display_name text,
   birthdate date,
@@ -16,20 +16,20 @@ drop policy if exists "profiles_select_own" on public.profiles;
 create policy "profiles_select_own"
   on public.profiles
   for select
-  using (auth.uid() = user_id);
+  using (auth.uid() = id);
 
 drop policy if exists "profiles_insert_own" on public.profiles;
 create policy "profiles_insert_own"
   on public.profiles
   for insert
-  with check (auth.uid() = user_id);
+  with check (auth.uid() = id);
 
 drop policy if exists "profiles_update_own" on public.profiles;
 create policy "profiles_update_own"
   on public.profiles
   for update
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
 
 create or replace function public.set_profiles_updated_at()
 returns trigger

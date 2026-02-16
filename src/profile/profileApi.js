@@ -28,15 +28,19 @@ export function buildLocalProfileKey(userId) {
   return `${LOCAL_PROFILE_PREFIX}${String(userId || "")}`;
 }
 
+function getProfileId(value) {
+  return String(value?.id || "").trim();
+}
+
 function readLocalProfile(userId) {
   if (typeof window === "undefined") return null;
   const parsed = safeParse(window.localStorage.getItem(buildLocalProfileKey(userId)), null);
-  return parsed && typeof parsed === "object" ? parsed : null;
+  return toProfileRow(parsed);
 }
 
 function saveLocalProfile(profile) {
   if (typeof window === "undefined") return;
-  const userId = String(profile?.user_id || "").trim();
+  const userId = getProfileId(profile);
   if (!userId) return;
 
   const key = buildLocalProfileKey(userId);
@@ -58,10 +62,10 @@ function saveLocalProfile(profile) {
 
 function toProfileRow(row) {
   if (!row || typeof row !== "object") return null;
-  const userId = String(row.user_id || "").trim();
+  const userId = getProfileId(row);
   if (!userId) return null;
   return {
-    user_id: userId,
+    id: userId,
     username: normalizeUsername(row.username),
     display_name: String(row.display_name || "").trim(),
     birthdate: row.birthdate ? String(row.birthdate) : "",
@@ -87,6 +91,12 @@ function isNetworkFailure(error) {
   return message.includes("failed to fetch") || message.includes("network");
 }
 
+function isBootstrapSchemaError(error) {
+  const code = String(error?.code || "").trim();
+  const message = String(error?.message || "").toLowerCase();
+  return code === "42703" || code === "23502" || message.includes("column") || message.includes("not-null");
+}
+
 function mapProfileError(error) {
   if (isUniqueViolation(error)) {
     const err = new Error("Nom d'utilisateur déjà pris.");
@@ -106,11 +116,70 @@ function mapProfileError(error) {
   return error;
 }
 
-export async function loadProfile(userId, options = {}) {
+function mapEnsureProfileError(error) {
+  if (isBootstrapSchemaError(error)) {
+    const err = new Error(
+      "Profil absent. Création automatique impossible (schéma profiles incompatible avec { id, email })."
+    );
+    err.code = "PROFILE_BOOTSTRAP_FAILED";
+    return err;
+  }
+  return mapProfileError(error);
+}
+
+export async function upsertProfile(userId, data = {}, options = {}) {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) throw new Error("Utilisateur non authentifié.");
+  const preferLocal = Boolean(options?.preferLocal);
+
+  const payload = { id: normalizedUserId };
+  if (Object.prototype.hasOwnProperty.call(data, "email")) {
+    payload.email = data.email ? String(data.email).trim() : null;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "username")) {
+    const parsed = validateUsername(data.username);
+    if (!parsed.ok) throw new Error(parsed.reason);
+    payload.username = parsed.normalized;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "display_name")) {
+    payload.display_name = String(data.display_name || "").trim();
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "birthdate")) {
+    payload.birthdate = data.birthdate ? String(data.birthdate) : null;
+  }
+
+  if (preferLocal || !supabase) {
+    const localExisting = readLocalProfile(normalizedUserId);
+    const localPayload = { ...(localExisting || { id: normalizedUserId }), ...payload };
+    const row = toProfileRow(localPayload);
+    saveLocalProfile(row);
+    return row;
+  }
+
+  const { data: next, error } = await supabase
+    .from("profiles")
+    .upsert(payload, { onConflict: "id" })
+    .select("id, username, display_name, birthdate, created_at, updated_at")
+    .single();
+
+  if (error) throw mapEnsureProfileError(error);
+
+  const row = toProfileRow(next || payload);
+  saveLocalProfile(row);
+  return row;
+}
+
+export async function ensureProfile(userId, email = "", options = {}) {
+  return upsertProfile(userId, { email }, options);
+}
+
+export async function getProfile(userId, options = {}) {
   const normalizedUserId = String(userId || "").trim();
   if (!normalizedUserId) return null;
   const preferLocal = Boolean(options?.preferLocal);
   const throwOnRemoteError = Boolean(options?.throwOnRemoteError);
+  const ensureOnMissing = Boolean(options?.ensureOnMissing);
+  const email = String(options?.email || "").trim();
 
   if (preferLocal || !supabase) {
     return readLocalProfile(normalizedUserId);
@@ -118,8 +187,8 @@ export async function loadProfile(userId, options = {}) {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("user_id, username, display_name, birthdate, created_at, updated_at")
-    .eq("user_id", normalizedUserId)
+    .select("id, username, display_name, birthdate, created_at, updated_at")
+    .eq("id", normalizedUserId)
     .maybeSingle();
 
   if (error) {
@@ -130,8 +199,15 @@ export async function loadProfile(userId, options = {}) {
   }
 
   const row = toProfileRow(data);
+  if (!row && ensureOnMissing) {
+    return ensureProfile(normalizedUserId, email, options);
+  }
   if (row) saveLocalProfile(row);
   return row;
+}
+
+export async function loadProfile(userId, options = {}) {
+  return getProfile(userId, options);
 }
 
 export async function isUsernameAvailable(username, options = {}) {
@@ -153,7 +229,7 @@ export async function isUsernameAvailable(username, options = {}) {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("user_id")
+    .select("id")
     .ilike("username", normalized)
     .limit(1);
 
@@ -165,7 +241,7 @@ export async function isUsernameAvailable(username, options = {}) {
   }
 
   const row = Array.isArray(data) && data.length > 0 ? data[0] : null;
-  const owner = String(row?.user_id || "").trim();
+  const owner = String(row?.id || "").trim();
   const available = !owner || owner === currentUserId;
   return { available, normalized, reason: available ? "" : "Nom d'utilisateur déjà pris." };
 }
@@ -194,29 +270,11 @@ export async function createProfile(userId, input = {}, options = {}) {
   }
 
   const payload = {
-    user_id: normalizedUserId,
+    id: normalizedUserId,
     username: normalized,
     display_name: displayName,
     birthdate: birthdate || null,
   };
 
-  if (preferLocal || !supabase) {
-    const row = toProfileRow(payload);
-    saveLocalProfile(row);
-    return row;
-  }
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .insert(payload)
-    .select("user_id, username, display_name, birthdate, created_at, updated_at")
-    .single();
-
-  if (error) {
-    throw mapProfileError(error);
-  }
-
-  const row = toProfileRow(data || payload);
-  saveLocalProfile(row);
-  return row;
+  return upsertProfile(normalizedUserId, payload, { ...options, preferLocal });
 }
