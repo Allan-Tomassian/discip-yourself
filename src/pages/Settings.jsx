@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import ThemePicker from "../components/ThemePicker";
 import { Button, Card, Textarea } from "../components/UI";
@@ -89,6 +89,8 @@ export default function Settings({
   const expiryLabel = Number.isFinite(expiryMs) ? new Date(expiryMs).toLocaleDateString() : "";
   const showExpiry = Boolean(expiryLabel);
   const isIOS = globalThis?.Capacitor?.getPlatform ? globalThis.Capacitor.getPlatform() === "ios" : false;
+  const importInputRef = useRef(null);
+  const [importStatus, setImportStatus] = useState("");
 
   function downloadJsonFile(filename, payload) {
     try {
@@ -104,6 +106,28 @@ export default function Settings({
     } catch (err) {
       void err;
     }
+  }
+
+  function handleImportFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result || "{}"));
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          setImportStatus("Import impossible: JSON invalide.");
+          return;
+        }
+        setData(() => parsed);
+        setImportStatus("Import terminé.");
+      } catch {
+        setImportStatus("Import impossible: JSON invalide.");
+      }
+    };
+    reader.onerror = () => {
+      setImportStatus("Import impossible: lecture du fichier.");
+    };
+    reader.readAsText(file);
   }
 
   return (
@@ -170,9 +194,9 @@ export default function Settings({
           <div className="p18 col">
             <div className="sectionTitle">Données</div>
             <div className="sectionSub mt6">
-              Export JSON complet de l’app.
+              Export / import JSON complet de l’app.
             </div>
-            <div className="mt10">
+            <div className="mt10 col">
               <Button
                 onClick={() => {
                   if (!isPremiumPlan) {
@@ -184,6 +208,26 @@ export default function Settings({
               >
                 Exporter mes données (JSON)
               </Button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json"
+                style={{ display: "none" }}
+                onChange={(event) => {
+                  const file = event.target.files && event.target.files[0] ? event.target.files[0] : null;
+                  handleImportFile(file);
+                  event.target.value = "";
+                }}
+              />
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  importInputRef.current?.click();
+                }}
+              >
+                Importer un JSON
+              </Button>
+              {importStatus ? <div className="small2">{importStatus}</div> : null}
             </div>
           </div>
         </Card>

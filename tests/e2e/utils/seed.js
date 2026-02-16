@@ -1,5 +1,7 @@
 import { initialData } from "../../../src/logic/state.js";
 import { LS_KEY } from "../../../src/utils/storage.js";
+import { E2E_AUTH_SESSION_KEY } from "../../../src/auth/constants.js";
+import { buildLocalUserDataKey } from "../../../src/data/userDataApi.js";
 
 function toDateKey(date) {
   const d = date instanceof Date ? date : new Date(date);
@@ -117,13 +119,79 @@ export function buildBaseState({ withContent = false } = {}) {
   return data;
 }
 
-export async function seedState(page, state) {
-  await page.addInitScript(
-    ({ key, data }) => {
-      localStorage.setItem(key, JSON.stringify(data));
+export function buildMockAuthSession({ userId = "e2e-user-id", email = "e2e@example.com" } = {}) {
+  return {
+    access_token: "e2e-access-token",
+    refresh_token: "e2e-refresh-token",
+    expires_at: 4_102_444_800,
+    token_type: "bearer",
+    user: {
+      id: userId,
+      email,
+      aud: "authenticated",
+      role: "authenticated",
+      app_metadata: { provider: "email" },
+      user_metadata: {},
     },
-    { key: LS_KEY, data: state }
+  };
+}
+
+export async function seedAuthSession(page, session = buildMockAuthSession()) {
+  await page.addInitScript(
+    ({ key, sessionData }) => {
+      localStorage.setItem(key, JSON.stringify(sessionData));
+    },
+    { key: E2E_AUTH_SESSION_KEY, sessionData: session }
   );
+}
+
+export async function clearAuthSession(page) {
+  await page.addInitScript((key) => {
+    localStorage.removeItem(key);
+  }, E2E_AUTH_SESSION_KEY);
+}
+
+export async function seedState(page, state, options = {}) {
+  const withAuth = options.withAuth !== false;
+  const authSession = withAuth ? options.authSession || buildMockAuthSession() : null;
+  const authUserId = authSession?.user?.id || "";
+  await page.addInitScript(
+    ({ key, data, authKey, sessionData, userDataKey }) => {
+      localStorage.setItem(key, JSON.stringify(data));
+      if (sessionData) {
+        localStorage.setItem(authKey, JSON.stringify(sessionData));
+        if (userDataKey) localStorage.setItem(userDataKey, JSON.stringify(data));
+      } else {
+        localStorage.removeItem(authKey);
+        if (userDataKey) localStorage.removeItem(userDataKey);
+      }
+    },
+    {
+      key: LS_KEY,
+      data: state,
+      authKey: E2E_AUTH_SESSION_KEY,
+      sessionData: authSession,
+      userDataKey: authUserId ? buildLocalUserDataKey(authUserId) : "",
+    }
+  );
+}
+
+export async function seedUserData(page, userId, data) {
+  const key = buildLocalUserDataKey(userId);
+  await page.addInitScript(
+    ({ storageKey, payload }) => {
+      localStorage.setItem(storageKey, JSON.stringify(payload));
+    },
+    { storageKey: key, payload: data }
+  );
+}
+
+export async function getUserData(page, userId) {
+  const key = buildLocalUserDataKey(userId);
+  return page.evaluate((storageKey) => {
+    const raw = localStorage.getItem(storageKey);
+    return raw ? JSON.parse(raw) : null;
+  }, key);
 }
 
 export async function getState(page) {

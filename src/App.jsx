@@ -5,7 +5,6 @@ import {
   ensureSystemInboxCategory,
   migrate,
   normalizeCategory,
-  usePersistedState,
 } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
 import { Button, Card } from "./components/UI";
@@ -56,6 +55,7 @@ import { useRemindersLoop } from "./hooks/useRemindersLoop";
 import { useCreateFlowOrchestration } from "./hooks/useCreateFlowOrchestration";
 import { useCategorySelectionSync } from "./hooks/useCategorySelectionSync";
 import { getInboxId } from "./app/inbox";
+import { useUserData } from "./data/useUserData";
 
 function runSelfTests(data) {
   const isProd = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
@@ -80,7 +80,7 @@ function isSameOrder(a, b) {
 }
 
 export default function App() {
-  const [data, setData] = usePersistedState(React);
+  const { data, setData, loading: dataLoading } = useUserData();
   const safeData = data && typeof data === "object" ? data : {};
   const {
     tab,
@@ -462,6 +462,17 @@ export default function App() {
   };
 
   const showBottomRail = tab === "today" || tab === "library" || tab === "pilotage";
+
+  if (dataLoading) {
+    return (
+      <div
+        data-testid="user-data-loading-screen"
+        style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}
+      >
+        <p>Chargement...</p>
+      </div>
+    );
+  }
 
   if (showPlanStep && onboardingCompleted) {
     return (
