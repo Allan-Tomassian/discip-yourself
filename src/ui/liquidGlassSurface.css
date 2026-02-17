@@ -1,0 +1,213 @@
+.liquidGlassSurface {
+  --lg-blur: 16px;
+  --lg-saturation: 1.24;
+  --lg-radius: var(--radius-card, 16px);
+  --lg-border: color-mix(in srgb, var(--border-subtle, var(--border)) 88%, rgba(255, 255, 255, 0.22));
+  --lg-top: var(--surface-3, var(--surface-2));
+  --lg-bottom: var(--surface-2, var(--surface-1));
+  --lg-overlay: 0.16;
+  --lg-highlight: 0.16;
+  position: relative;
+  border-radius: var(--lg-radius);
+  border: 1px solid var(--lg-border);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, var(--lg-highlight)) 0%,
+      rgba(255, 255, 255, 0.05) 26%,
+      rgba(255, 255, 255, 0) 54%
+    ),
+    linear-gradient(180deg, var(--lg-top), var(--lg-bottom));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04),
+    0 16px 34px rgba(0, 0, 0, 0.36);
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturation));
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturation));
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.liquidGlassSurface::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, var(--lg-overlay)) 0%, rgba(0, 0, 0, calc(var(--lg-overlay) + 0.05)) 100%);
+  pointer-events: none;
+}
+
+.liquidGlassSurface.isNoisy::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 0.6px, transparent 0.6px);
+  background-size: 3px 3px;
+  opacity: 0.06;
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+
+.liquidGlass--panel {
+  --lg-radius: var(--radius-card, 16px);
+  --lg-blur: 14px;
+  padding: 8px;
+}
+
+.liquidGlass--card {
+  --lg-radius: var(--radius-card, 16px);
+  --lg-blur: 15px;
+  padding: 16px;
+}
+
+.liquidGlass--popover {
+  --lg-radius: 14px;
+  --lg-blur: 17px;
+  padding: 10px;
+}
+
+.liquidGlass--solid {
+  --lg-top: color-mix(in srgb, var(--surface-3, #1a1f2b) 94%, #0a0d14);
+  --lg-bottom: color-mix(in srgb, var(--surface-2, #141a23) 92%, #080b12);
+  --lg-overlay: 0.2;
+  --lg-highlight: 0.2;
+}
+
+.liquidGlass--medium {
+  --lg-top: color-mix(in srgb, var(--surface-3, #1a1f2b) 88%, var(--surface-2, #141a23));
+  --lg-bottom: color-mix(in srgb, var(--surface-2, #141a23) 90%, var(--surface-1, #10151d));
+  --lg-overlay: 0.16;
+  --lg-highlight: 0.16;
+}
+
+.liquidGlass--light {
+  --lg-top: color-mix(in srgb, var(--surface-2, #141a23) 84%, var(--surface-1, #10151d));
+  --lg-bottom: color-mix(in srgb, var(--surface-1, #10151d) 88%, #0b1018);
+  --lg-overlay: 0.12;
+  --lg-highlight: 0.12;
+}
+
+.liquidSurfaceHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.liquidSurfaceHeaderText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.liquidSurfaceTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-1, var(--text));
+  letter-spacing: -0.01em;
+}
+
+.liquidSurfaceSubtitle {
+  font-size: 13px;
+  color: var(--text-3, var(--textSubtle, rgba(255, 255, 255, 0.64)));
+}
+
+.liquidSurfaceBody {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.liquidForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.liquidFieldLabel {
+  font-size: 12px;
+  color: var(--text-3, var(--textSubtle, rgba(255, 255, 255, 0.62)));
+}
+
+.liquidActionsRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.liquidActionsCol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.liquidNote {
+  font-size: 12px;
+  color: var(--text-2, rgba(255, 255, 255, 0.76));
+}
+
+.liquidNoteSuccess {
+  color: #10b981;
+}
+
+.liquidNoteError {
+  color: #ef4444;
+}
+
+.liquidMenuItem {
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--border-subtle, var(--border)) 90%, rgba(255, 255, 255, 0.18));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border-radius: 12px;
+  color: var(--text-1, var(--text));
+  text-align: left;
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.liquidMenuItem:hover {
+  border-color: color-mix(in srgb, var(--accent) 36%, rgba(255, 255, 255, 0.28));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+  transform: translateY(-1px);
+}
+
+.liquidMenuItem:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 75%, #ffffff);
+  outline-offset: 2px;
+}
+
+.liquidMenuItem:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.liquidMenuItemTitle {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.liquidMenuItemSubtitle {
+  font-size: 11px;
+  color: var(--text-3, rgba(255, 255, 255, 0.66));
+}
+
+.liquidMenuItemDanger {
+  color: #ffabab;
+}
+
+.liquidPageStack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

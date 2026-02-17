@@ -30,6 +30,7 @@ test("user_data: charge puis persiste une modification après reload", async ({ 
 
   await page.getByTestId("user-data-loading-screen").waitFor({ state: "hidden" }).catch(() => {});
   await page.locator("[data-tour-id=\"topnav-settings\"]").click();
+  await page.getByRole("menuitem", { name: /Réglages/i }).click();
   await expect(page.locator("[data-tour-id=\"settings-title\"]")).toBeVisible();
   await expect(page.getByPlaceholder("Ton pourquoi")).toHaveValue("Pourquoi distant initial");
 
@@ -46,6 +47,7 @@ test("user_data: charge puis persiste une modification après reload", async ({ 
   await reloaded.goto("/");
   await expect(reloaded.locator("[data-tour-id=\"topnav-tabs\"]")).toBeVisible();
   await reloaded.locator("[data-tour-id=\"topnav-settings\"]").click();
+  await reloaded.getByRole("menuitem", { name: /Réglages/i }).click();
   await expect(reloaded.getByPlaceholder("Ton pourquoi")).toHaveValue(updatedWhy);
   await reloaded.close();
 });

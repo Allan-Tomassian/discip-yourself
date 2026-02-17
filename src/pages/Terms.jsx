@@ -1,8 +1,9 @@
 import React from "react";
 import ScreenShell from "./_ScreenShell";
-import { Card } from "../components/UI";
+import { Button } from "../components/UI";
+import LiquidGlassSurface from "../ui/LiquidGlassSurface";
 
-export default function Terms({ data, onBack }) {
+export default function Terms({ data, onOpenSupport }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
 
@@ -14,32 +15,33 @@ export default function Terms({ data, onBack }) {
       headerSubtitle="Conditions d’utilisation"
       backgroundImage={backgroundImage}
     >
-      <div className="stack stackGap12">
-        <Card accentBorder>
-          <div className="p18 col" style={{ gap: 10 }}>
-            <div className="titleSm">Utilisation</div>
-            <div className="small">
-              L’app fournit des outils de planification et de suivi. L’utilisateur reste responsable de son usage.
-            </div>
-            <div className="titleSm">Abonnement</div>
-            <div className="small">
-              Les fonctionnalités Premium débloquent des limites. L’abonnement peut être annulé à tout moment.
-            </div>
-            <div className="titleSm">Résiliation</div>
-            <div className="small">
-              La résiliation prend effet à la fin de la période de facturation en cours.
-            </div>
-            <div className="titleSm">Responsabilité</div>
-            <div className="small">
-              Discip-Yourself ne garantit pas de résultats. Les données sont conservées localement.
+      <div className="liquidPageStack">
+        <LiquidGlassSurface variant="card" density="medium">
+          <div className="liquidSurfaceHeader">
+            <div className="liquidSurfaceHeaderText">
+              <div className="liquidSurfaceTitle">Utilisation</div>
+              <div className="liquidSurfaceSubtitle">Version simplifiée (placeholder)</div>
             </div>
           </div>
-        </Card>
-        {typeof onBack === "function" ? (
-          <button className="btnBackCompact backBtn" onClick={onBack}>
-            ← Retour
-          </button>
-        ) : null}
+          <div className="liquidSurfaceBody">
+            <div className="small">L’application fournit des outils de planification et de suivi personnel.</div>
+            <div className="small">L’utilisateur reste responsable de l’usage et des décisions prises.</div>
+          </div>
+        </LiquidGlassSurface>
+
+        <LiquidGlassSurface variant="card" density="solid">
+          <div className="liquidSurfaceHeader">
+            <div className="liquidSurfaceHeaderText">
+              <div className="liquidSurfaceTitle">Support</div>
+              <div className="liquidSurfaceSubtitle">Besoin d’aide juridique ou produit ?</div>
+            </div>
+          </div>
+          <div className="liquidSurfaceBody">
+            <Button variant="ghost" onClick={() => (typeof onOpenSupport === "function" ? onOpenSupport() : null)}>
+              Ouvrir le support
+            </Button>
+          </div>
+        </LiquidGlassSurface>
       </div>
     </ScreenShell>
   );

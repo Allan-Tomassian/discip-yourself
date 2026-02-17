@@ -1,5 +1,6 @@
 import React, { useId, useState } from "react";
 import "./gate.css";
+import { playClickSound } from "../sound/useClickSound";
 
 export function cx(...parts) {
   return parts.filter(Boolean).join(" ");
@@ -83,6 +84,8 @@ export function GateRow({
   className = "",
   children,
   onClick,
+  withSound = false,
+  onKeyDown,
   ...props
 }) {
   const interactive = typeof onClick === "function";
@@ -91,11 +94,17 @@ export function GateRow({
       className={cx("gateRow", selected && "isSelected", interactive && "isInteractive", className)}
       role={interactive ? "button" : undefined}
       tabIndex={interactive ? 0 : undefined}
-      onClick={onClick}
+      onClick={(event) => {
+        if (interactive && withSound) playClickSound();
+        onClick?.(event);
+      }}
       onKeyDown={(event) => {
+        onKeyDown?.(event);
+        if (event.defaultPrevented) return;
         if (!interactive) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
+          if (withSound) playClickSound();
           onClick?.(event);
         }
       }}
@@ -138,10 +147,26 @@ export function GateBadge({ children, color = "", className = "", ...props }) {
   );
 }
 
-export function GateButton({ children, variant = "primary", className = "", type = "button", ...props }) {
+export function GateButton({
+  children,
+  variant = "primary",
+  className = "",
+  type = "button",
+  withSound = false,
+  onClick,
+  ...props
+}) {
   const gateVariant = variant === "ghost" ? "gateButton--ghost" : "gateButton--primary";
   return (
-    <button className={cx("gateButton", gateVariant, className)} type={type} {...props}>
+    <button
+      className={cx("gateButton", gateVariant, className)}
+      type={type}
+      onClick={(event) => {
+        if (!props.disabled && withSound) playClickSound();
+        onClick?.(event);
+      }}
+      {...props}
+    >
       {children}
     </button>
   );
@@ -154,4 +179,3 @@ export function GateFooter({ children, className = "", ...props }) {
     </div>
   );
 }
-

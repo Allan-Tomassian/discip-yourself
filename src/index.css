@@ -248,11 +248,19 @@ a{ color:inherit; }
 .navWrap{
   max-width:var(--page-max);
   margin:0 auto;
-  border:1px solid var(--border-subtle, var(--border));
-  background: linear-gradient(180deg, var(--surface-2, var(--glass2)), var(--surface-1, var(--glass)));
-  border-radius:var(--radius-card);
   padding:8px;
-  box-shadow: var(--navShadow, var(--shadow));
+}
+.glassTopbarSurface,
+.glassMenuSurface{
+  border:1px solid var(--glassBorder, var(--border-subtle, var(--border)));
+  background: linear-gradient(180deg, var(--glassTop, var(--surface-2, var(--glass2))), var(--glassBottom, var(--surface-1, var(--glass))));
+  border-radius:var(--radius-card);
+  box-shadow: var(--glassShadow, var(--shadow-soft));
+  backdrop-filter: blur(var(--cardBlur, 16px));
+  -webkit-backdrop-filter: blur(var(--cardBlur, 16px));
+}
+.glassTopbarSurface{
+  box-shadow: var(--navShadow, var(--glassShadow, var(--shadow-soft)));
 }
 .navRailWrap{
   max-width:var(--page-max);
@@ -314,6 +322,7 @@ a{ color:inherit; }
   display:flex;
   align-items:center;
   gap:6px;
+  position:relative;
 }
 .navGrid{
   flex:1;
@@ -333,27 +342,198 @@ a{ color:inherit; }
 }
 .navBtn:hover{ background: var(--navBtnHoverBg, rgba(255,255,255,.08)); }
 .navBtnActive{
-  background: var(--navBtnActiveBg, rgba(255,255,255,.92));
-  color:var(--navBtnActiveText, var(--textOnLight, #000));
-  box-shadow: var(--navBtnActiveShadow, 0 10px 30px rgba(0,0,0,.20));
+  background: var(--navBtnActiveBg, var(--accent-soft, rgba(255,125,0,.18)));
+  color:var(--navBtnActiveText, var(--text, #fff));
+  border-color: var(--accentBorder, rgba(255,125,0,.35));
+  box-shadow: var(--navBtnActiveShadow, inset 0 0 0 1px rgba(255,255,255,.04));
 }
-.navGear{
-  border:0;
-  background: var(--navGearBg, rgba(255,255,255,.10));
-  color:var(--navGearText, rgba(255,255,255,.85));
-  width:34px;
-  height:34px;
+.navMenuTrigger{
+  border:1px solid var(--glassBorder, var(--border-subtle, var(--border)));
+  background: var(--glassControlBg, rgba(255,255,255,.03));
+  color:var(--text);
+  width:36px;
+  height:36px;
   border-radius:var(--radius-12);
   cursor:pointer;
-  font-size:16px;
   display:grid;
   place-items:center;
+  transition: background .15s ease, border-color .15s ease;
 }
-.navGear:hover{ background: var(--navGearHoverBg, rgba(255,255,255,.18)); }
-.navGearActive{
-  background: var(--navGearActiveBg, rgba(255,255,255,.92));
-  color:var(--navGearActiveText, var(--textOnLight, #000));
-  box-shadow: var(--navGearActiveShadow, 0 10px 30px rgba(0,0,0,.20));
+.navMenuTrigger:hover{
+  background: var(--glassControlHoverBg, rgba(255,255,255,.08));
+}
+.navMenuTriggerOpen{
+  background: var(--accent-soft, rgba(255,125,0,.16));
+  border-color: var(--accentBorder, rgba(255,125,0,.35));
+}
+.navMenuBars{
+  width:16px;
+  height:12px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+.navMenuBars span{
+  display:block;
+  width:100%;
+  height:1.5px;
+  border-radius:999px;
+  background: currentColor;
+  opacity:.9;
+}
+.navMenuPanel{
+  position:absolute;
+  top:calc(100% + 8px);
+  right:0;
+  width:min(320px, calc(100vw - 40px));
+  padding:8px;
+  z-index: var(--z-dropdown);
+}
+.navMenuScroll{
+  max-height:min(66vh, 520px);
+  overflow:auto;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.navMenuItem{
+  width:100%;
+  border:0;
+  background:transparent;
+  color:var(--text);
+  text-align:left;
+  font-size:13px;
+  padding:10px 12px;
+  border-radius:12px;
+  cursor:pointer;
+}
+.navMenuItem:hover{
+  background: var(--menuOptionHover, rgba(255,255,255,.06));
+}
+.navMenuItemDanger{
+  color:#ff8b8b;
+}
+.navMenuDivider{
+  height:1px;
+  margin:6px 2px;
+  background: var(--border-subtle, rgba(255,255,255,.14));
+}
+.navMenuError{
+  margin:8px 6px 2px;
+  color:#ff8b8b;
+  font-size:12px;
+}
+
+.glassPanel{
+  padding:16px;
+}
+.glassPanelHeader{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.glassPanelHeaderText{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.glassPanelTitle{
+  font-size:15px;
+  font-weight:700;
+}
+.glassPanelSubtitle{
+  color:var(--text-3, var(--textSubtle, rgba(255,255,255,.6)));
+  font-size:13px;
+}
+.glassPanelHeaderRight{
+  flex:0 0 auto;
+}
+.glassPanelBody{
+  margin-top:12px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.glassForm{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.glassFieldLabel{
+  font-size:12px;
+  color:var(--text-3, var(--textSubtle, rgba(255,255,255,.6)));
+}
+.glassActionsRow{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.glassActionsCol{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.glassInlineMessage{
+  font-size:12px;
+  color:var(--text-2, rgba(255,255,255,.75));
+}
+.glassInlineMessageSuccess{
+  color:#10B981;
+}
+.glassInlineMessageError{
+  color:#EF4444;
+}
+.glassButton{
+  min-height:36px;
+}
+.glassListItem{
+  width:100%;
+  border:1px solid var(--border-subtle, rgba(255,255,255,.14));
+  background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+  color:var(--text);
+  border-radius:12px;
+  padding:10px 12px;
+  text-align:left;
+  cursor:pointer;
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+}
+.glassListItem:hover{
+  background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+  border-color: rgba(255,255,255,.22);
+}
+.glassListItem:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+}
+.glassListItemDanger{
+  color:#ff9d9d;
+}
+.glassListItemIcon{
+  width:18px;
+  line-height:1;
+}
+.glassListItemText{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  min-width:0;
+}
+.glassListItemTitle{
+  font-size:13px;
+  font-weight:600;
+}
+.glassListItemSubtitle{
+  font-size:11px;
+  color:var(--text-3, rgba(255,255,255,.58));
+}
+.glassModal{
+  border:1px solid var(--glassBorder, var(--border-subtle, var(--border)));
+  background: linear-gradient(180deg, var(--glassTop, var(--surface-2, var(--glass2))), var(--glassBottom, var(--surface-1, var(--glass))));
+  box-shadow: var(--glassShadow, var(--shadow-soft));
 }
 
 .bottomBar{

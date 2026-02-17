@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { E2E_AUTH_SESSION_KEY } from "../auth/constants";
 import { useAuth } from "../auth/useAuth";
-import { createProfile, isUsernameAvailable, loadProfile } from "./profileApi";
+import { createProfile, isUsernameAvailable, loadProfile, upsertProfile } from "./profileApi";
 import ProfileContext from "./ProfileContext";
 
 function isE2EMockedSession(userId) {
@@ -105,16 +105,44 @@ export default function ProfileProvider({ children }) {
     [userId]
   );
 
+  const handleSaveProfile = useCallback(
+    async (input) => {
+      if (!userId) throw new Error("Utilisateur non authentifié.");
+      const next = await upsertProfile(
+        userId,
+        {
+          email: user?.email || "",
+          ...input,
+        },
+        {
+          preferLocal: isE2EMockedSession(userId),
+        }
+      );
+      setProfile(next);
+      return next;
+    },
+    [user?.email, userId]
+  );
+
   const value = useMemo(
     () => ({
       profile,
       loading,
       loadError,
       createProfile: handleCreateProfile,
+      saveProfile: handleSaveProfile,
       checkUsernameAvailability: handleCheckUsernameAvailability,
       refreshProfile,
     }),
-    [handleCheckUsernameAvailability, handleCreateProfile, loadError, loading, profile, refreshProfile]
+    [
+      handleCheckUsernameAvailability,
+      handleCreateProfile,
+      handleSaveProfile,
+      loadError,
+      loading,
+      profile,
+      refreshProfile,
+    ]
   );
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;

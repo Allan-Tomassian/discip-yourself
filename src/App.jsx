@@ -24,7 +24,10 @@ import CreateV2LinkOutcome from "./pages/CreateV2LinkOutcome";
 import CreateV2PickCategory from "./pages/CreateV2PickCategory";
 import CreateV2OutcomeNextAction from "./pages/CreateV2OutcomeNextAction";
 import CreateFlowModal from "./ui/create/CreateFlowModal";
-import Settings from "./pages/Settings";
+import Preferences from "./pages/Preferences";
+import Account from "./pages/Account";
+import Subscription from "./pages/Subscription";
+import DataPage from "./pages/Data";
 import CategoryView from "./pages/CategoryView";
 import EditItem from "./pages/EditItem";
 import CategoryDetailView from "./pages/CategoryDetailView";
@@ -56,6 +59,8 @@ import { useCreateFlowOrchestration } from "./hooks/useCreateFlowOrchestration";
 import { useCategorySelectionSync } from "./hooks/useCategorySelectionSync";
 import { getInboxId } from "./app/inbox";
 import { useUserData } from "./data/useUserData";
+import { useProfile } from "./profile/useProfile";
+import { isProfileComplete } from "./profile/profileApi";
 
 function runSelfTests(data) {
   const isProd = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
@@ -80,6 +85,8 @@ function isSameOrder(a, b) {
 }
 
 export default function App() {
+  const { profile: supabaseProfile } = useProfile();
+  const profileNeedsCompletion = !isProfileComplete(supabaseProfile);
   const { data, setData, loading: dataLoading } = useUserData();
   const safeData = data && typeof data === "object" ? data : {};
   const {
@@ -163,6 +170,7 @@ export default function App() {
     tab === "create-habit-anytime" ||
     tab === "create-link-outcome" ||
     tab === "create-pick-category";
+  const currentTab = profileNeedsCompletion ? "account" : tab;
   // Single source of truth for theme:
   // - ui.theme is authoritative
   // - legacy fallbacks are read ONCE and immediately promoted into ui.theme
@@ -197,19 +205,19 @@ export default function App() {
   const topNav = (
     <TopNav
       active={
-        tab === "session"
+        currentTab === "session"
           ? "today"
-          : tab === "pilotage"
+          : currentTab === "pilotage"
             ? "pilotage"
-            : tab === "settings"
-              ? "settings"
-              : tab === "library" ||
-                  tab === "edit-item" ||
-                  tab === "category-detail" ||
-                  tab === "category-progress" ||
-                  (typeof tab === "string" && tab.startsWith("create-"))
+            : currentTab === "preferences"
+              ? "preferences"
+              : currentTab === "library" ||
+                  currentTab === "edit-item" ||
+                  currentTab === "category-detail" ||
+                  currentTab === "category-progress" ||
+                  (typeof currentTab === "string" && currentTab.startsWith("create-"))
                 ? "library"
-                : tab
+                : currentTab
       }
       setActive={(next) => {
         if (next === "library") {
@@ -218,7 +226,9 @@ export default function App() {
         }
         setTab(next);
       }}
-      onOpenSettings={() => setTab("settings")}
+      onMenuNavigate={(action) => {
+        setTab(action);
+      }}
     />
   );
 
@@ -479,7 +489,7 @@ export default function App() {
       <>
         {headerStack}
         {headerSpacer}
-        <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />
+        <Onboarding data={data} setData={setData} onDone={() => setTab("preferences")} planOnly />
         <DiagnosticOverlay data={safeData} tab={tab} />
         <PlusExpander
           open={plusOpen}
@@ -502,6 +512,18 @@ export default function App() {
       </>
     );
   }
+
+  if (profileNeedsCompletion) {
+    return (
+      <>
+        {headerStack}
+        {headerSpacer}
+        <Account data={data} />
+        <DiagnosticOverlay data={safeData} tab={tab} />
+      </>
+    );
+  }
+
   return (
     <>
       {headerStack}
@@ -825,22 +847,22 @@ export default function App() {
             setTab("today");
           }}
         />
+      ) : tab === "account" ? (
+        <Account data={data} />
+      ) : tab === "subscription" ? (
+        <Subscription data={data} onOpenPaywall={openPaywall} onRestorePurchases={handleRestorePurchases} />
+      ) : tab === "data" ? (
+        <DataPage data={data} setData={setData} onOpenPaywall={openPaywall} />
       ) : tab === "privacy" ? (
-        <Privacy data={data} onBack={() => setTab("settings")} />
+        <Privacy data={data} onOpenSupport={() => setTab("support")} />
       ) : tab === "terms" ? (
-        <Terms data={data} onBack={() => setTab("settings")} />
+        <Terms data={data} onOpenSupport={() => setTab("support")} />
       ) : tab === "support" ? (
-        <Support data={data} onBack={() => setTab("settings")} />
+        <Support data={data} />
+      ) : tab === "preferences" ? (
+        <Preferences data={data} setData={setData} />
       ) : (
-        <Settings
-          data={data}
-          setData={setData}
-          onOpenPrivacy={() => setTab("privacy")}
-          onOpenTerms={() => setTab("terms")}
-          onOpenSupport={() => setTab("support")}
-          onOpenPaywall={openPaywall}
-          onRestorePurchases={handleRestorePurchases}
-        />
+        <Preferences data={data} setData={setData} />
       )}
 
       {activeReminder ? (

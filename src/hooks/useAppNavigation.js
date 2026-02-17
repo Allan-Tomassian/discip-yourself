@@ -16,7 +16,11 @@ const TABS = new Set([
   "session",
   "category-progress",
   "category-detail",
+  "account",
+  "preferences",
   "settings",
+  "subscription",
+  "data",
   "privacy",
   "terms",
   "support",
@@ -25,6 +29,7 @@ const TABS = new Set([
 export function normalizeTab(t) {
   if (t === "tools" || t === "plan") return "pilotage";
   if (t === "create") return "today";
+  if (t === "settings") return "preferences";
   return TABS.has(t) ? t : "today";
 }
 
@@ -40,21 +45,20 @@ function getInitialNavigationState() {
   const initialCategoryDetailId =
     pathParts[0] === "category" && pathParts.length === 2 ? decodeURIComponent(pathParts[1] || "") : null;
   const isPilotagePath = initialPath.startsWith("/pilotage") || initialPath.startsWith("/tools");
-  const initialTab = isPilotagePath
-    ? "pilotage"
-    : initialPath.startsWith("/session")
-      ? "session"
-      : initialPath.startsWith("/privacy")
-        ? "privacy"
-        : initialPath.startsWith("/terms")
-          ? "terms"
-          : initialPath.startsWith("/support")
-            ? "support"
-            : initialCategoryProgressId
-              ? "category-progress"
-              : initialCategoryDetailId
-                ? "category-detail"
-                : "today";
+  let initialTab = "today";
+  if (isPilotagePath) initialTab = "pilotage";
+  else if (initialPath.startsWith("/session")) initialTab = "session";
+  else if (initialPath.startsWith("/account")) initialTab = "account";
+  else if (initialPath.startsWith("/preferences") || initialPath.startsWith("/settings")) {
+    initialTab = "preferences";
+  }
+  else if (initialPath.startsWith("/subscription")) initialTab = "subscription";
+  else if (initialPath.startsWith("/data")) initialTab = "data";
+  else if (initialPath.startsWith("/privacy")) initialTab = "privacy";
+  else if (initialPath.startsWith("/terms")) initialTab = "terms";
+  else if (initialPath.startsWith("/support")) initialTab = "support";
+  else if (initialCategoryProgressId) initialTab = "category-progress";
+  else if (initialCategoryDetailId) initialTab = "category-detail";
 
   return {
     initialTab,
@@ -111,33 +115,29 @@ export function useAppNavigation({ safeData, setData }) {
         ui: { ...(prev.ui || {}), lastTab: t },
       }));
       if (typeof window !== "undefined") {
-        const nextPath =
-          t === "session"
-            ? nextSessionCategoryId || nextSessionDateKey
-              ? `/session?${[
-                  nextSessionCategoryId ? `cat=${encodeURIComponent(nextSessionCategoryId)}` : "",
-                  nextSessionDateKey ? `date=${encodeURIComponent(nextSessionDateKey)}` : "",
-                ]
-                  .filter(Boolean)
-                  .join("&")}`
-              : "/session"
-            : t === "category-progress"
-              ? nextCategoryProgressId
-                ? `/category/${nextCategoryProgressId}/progress`
-                : "/category"
-              : t === "category-detail"
-                ? nextCategoryDetailId
-                  ? `/category/${nextCategoryDetailId}`
-                  : "/category"
-                : t === "pilotage"
-                  ? "/pilotage"
-                  : t === "privacy"
-                    ? "/privacy"
-                    : t === "terms"
-                      ? "/terms"
-                      : t === "support"
-                        ? "/support"
-                        : "/";
+        let nextPath = "/";
+        if (t === "session") {
+          nextPath = nextSessionCategoryId || nextSessionDateKey
+            ? `/session?${[
+                nextSessionCategoryId ? `cat=${encodeURIComponent(nextSessionCategoryId)}` : "",
+                nextSessionDateKey ? `date=${encodeURIComponent(nextSessionDateKey)}` : "",
+              ]
+                .filter(Boolean)
+                .join("&")}`
+            : "/session";
+        } else if (t === "category-progress") {
+          nextPath = nextCategoryProgressId ? `/category/${nextCategoryProgressId}/progress` : "/category";
+        } else if (t === "category-detail") {
+          nextPath = nextCategoryDetailId ? `/category/${nextCategoryDetailId}` : "/category";
+        } else if (t === "pilotage") nextPath = "/pilotage";
+        else if (t === "account") nextPath = "/account";
+        else if (t === "preferences") nextPath = "/preferences";
+        else if (t === "subscription") nextPath = "/subscription";
+        else if (t === "data") nextPath = "/data";
+        else if (t === "privacy") nextPath = "/privacy";
+        else if (t === "terms") nextPath = "/terms";
+        else if (t === "support") nextPath = "/support";
+
         if (window.location.pathname !== nextPath) {
           const state =
             t === "session"
@@ -165,13 +165,17 @@ export function useAppNavigation({ safeData, setData }) {
     }
   }, [tab]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.pathname === "/settings") {
+      window.history.replaceState({}, "", "/preferences");
+    }
+  }, []);
+
   useLayoutEffect(() => {
     const completed = Boolean(safeData?.ui?.onboardingCompleted);
     if (!completed) return;
-    if (
-      typeof window !== "undefined" &&
-      (window.location.pathname.startsWith("/session") || window.location.pathname.startsWith("/category"))
-    )
+    if (typeof window !== "undefined" && window.location.pathname !== "/")
       return;
     const last = normalizeTab(safeData?.ui?.lastTab);
     _setTab((cur) => (normalizeTab(cur) === last ? cur : last));

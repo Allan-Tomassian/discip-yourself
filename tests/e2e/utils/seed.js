@@ -146,13 +146,15 @@ function defaultUsernameFromUserId(userId) {
   return `user${normalized}`.slice(0, 24);
 }
 
-export function buildMockProfile({ userId = "e2e-user-id", username = "", displayName = "", birthdate = "" } = {}) {
+export function buildMockProfile({ userId = "e2e-user-id", username = "", fullName = "", avatarUrl = "" } = {}) {
   const normalizedUsername = username || defaultUsernameFromUserId(userId);
+  const normalizedFullName = fullName || `User ${String(userId || "").slice(0, 8)}`;
   return {
     id: userId,
+    email: `${normalizedUsername}@example.com`,
     username: normalizedUsername,
-    display_name: displayName,
-    birthdate: birthdate || null,
+    full_name: normalizedFullName,
+    avatar_url: avatarUrl || "",
   };
 }
 

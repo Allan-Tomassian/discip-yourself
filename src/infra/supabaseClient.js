@@ -4,13 +4,20 @@ const ENV =
   typeof import.meta !== "undefined" && import.meta.env && typeof import.meta.env === "object"
     ? import.meta.env
     : {};
+const PROCESS_ENV = typeof process !== "undefined" && process.env && typeof process.env === "object"
+  ? process.env
+  : {};
 
-export const SUPABASE_URL = String(ENV.VITE_SUPABASE_URL || "").trim();
-export const SUPABASE_ANON_KEY = String(ENV.VITE_SUPABASE_ANON_KEY || "").trim();
+export const SUPABASE_URL = String(
+  ENV.VITE_SUPABASE_URL || PROCESS_ENV.VITE_SUPABASE_URL || PROCESS_ENV.E2E_SUPABASE_URL || ""
+).trim();
+export const SUPABASE_ANON_KEY = String(
+  ENV.VITE_SUPABASE_ANON_KEY || PROCESS_ENV.VITE_SUPABASE_ANON_KEY || PROCESS_ENV.E2E_SUPABASE_ANON_KEY || ""
+).trim();
 
 const SUPABASE_URL_RE = /^https:\/\/([a-z0-9-]+)\.supabase\.co$/i;
 const SUPABASE_PUBLISHABLE_KEY_RE = /^sb_publishable_[a-z0-9._-]+$/i;
-const SUPABASE_ENV_ERROR_MESSAGE =
+export const SUPABASE_ENV_ERROR_MESSAGE =
   "Supabase env invalid: configure .env with Project URL + anon/publishable key";
 
 export function validateSupabaseUrl(rawUrl) {
@@ -85,4 +92,3 @@ export const supabase = createClient(validatedEnv.url, validatedEnv.anonKey, {
     detectSessionInUrl: false,
   },
 });
-

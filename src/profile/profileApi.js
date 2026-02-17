@@ -32,6 +32,22 @@ function getProfileId(value) {
   return String(value?.id || "").trim();
 }
 
+function toProfileRow(row) {
+  if (!row || typeof row !== "object") return null;
+  const userId = getProfileId(row);
+  if (!userId) return null;
+
+  return {
+    id: userId,
+    email: row.email ? String(row.email).trim() : "",
+    username: normalizeUsername(row.username),
+    full_name: String(row.full_name || "").trim(),
+    avatar_url: String(row.avatar_url || "").trim(),
+    created_at: row.created_at ? String(row.created_at) : "",
+    updated_at: row.updated_at ? String(row.updated_at) : "",
+  };
+}
+
 function readLocalProfile(userId) {
   if (typeof window === "undefined") return null;
   const parsed = safeParse(window.localStorage.getItem(buildLocalProfileKey(userId)), null);
@@ -45,10 +61,13 @@ function saveLocalProfile(profile) {
 
   const key = buildLocalProfileKey(userId);
   const prev = readLocalProfile(userId);
-  window.localStorage.setItem(key, JSON.stringify(profile));
+  const next = toProfileRow(profile);
+  if (!next) return;
+
+  window.localStorage.setItem(key, JSON.stringify(next));
 
   const map = readLocalUsernameMap();
-  const nextUsername = normalizeUsername(profile?.username);
+  const nextUsername = normalizeUsername(next.username);
   const prevUsername = normalizeUsername(prev?.username);
 
   if (prevUsername && map[prevUsername] === userId && prevUsername !== nextUsername) {
@@ -60,18 +79,9 @@ function saveLocalProfile(profile) {
   writeLocalUsernameMap(map);
 }
 
-function toProfileRow(row) {
-  if (!row || typeof row !== "object") return null;
-  const userId = getProfileId(row);
-  if (!userId) return null;
-  return {
-    id: userId,
-    username: normalizeUsername(row.username),
-    display_name: String(row.display_name || "").trim(),
-    birthdate: row.birthdate ? String(row.birthdate) : "",
-    created_at: row.created_at ? String(row.created_at) : "",
-    updated_at: row.updated_at ? String(row.updated_at) : "",
-  };
+export function isProfileComplete(profile) {
+  if (!profile || typeof profile !== "object") return false;
+  return Boolean(String(profile.username || "").trim());
 }
 
 function isUniqueViolation(error) {
@@ -89,12 +99,6 @@ function isRlsViolation(error) {
 function isNetworkFailure(error) {
   const message = String(error?.message || "").toLowerCase();
   return message.includes("failed to fetch") || message.includes("network");
-}
-
-function isBootstrapSchemaError(error) {
-  const code = String(error?.code || "").trim();
-  const message = String(error?.message || "").toLowerCase();
-  return code === "42703" || code === "23502" || message.includes("column") || message.includes("not-null");
 }
 
 function mapProfileError(error) {
@@ -116,37 +120,39 @@ function mapProfileError(error) {
   return error;
 }
 
-function mapEnsureProfileError(error) {
-  if (isBootstrapSchemaError(error)) {
-    const err = new Error(
-      "Profil absent. Création automatique impossible (schéma profiles incompatible avec { id, email })."
-    );
-    err.code = "PROFILE_BOOTSTRAP_FAILED";
-    return err;
-  }
-  return mapProfileError(error);
-}
+function normalizeProfilePayload(userId, data = {}) {
+  const payload = { id: String(userId || "").trim() };
 
-export async function upsertProfile(userId, data = {}, options = {}) {
-  const normalizedUserId = String(userId || "").trim();
-  if (!normalizedUserId) throw new Error("Utilisateur non authentifié.");
-  const preferLocal = Boolean(options?.preferLocal);
-
-  const payload = { id: normalizedUserId };
   if (Object.prototype.hasOwnProperty.call(data, "email")) {
-    payload.email = data.email ? String(data.email).trim() : null;
+    const email = String(data.email || "").trim();
+    payload.email = email || null;
   }
+
   if (Object.prototype.hasOwnProperty.call(data, "username")) {
     const parsed = validateUsername(data.username);
     if (!parsed.ok) throw new Error(parsed.reason);
     payload.username = parsed.normalized;
   }
-  if (Object.prototype.hasOwnProperty.call(data, "display_name")) {
-    payload.display_name = String(data.display_name || "").trim();
+
+  if (Object.prototype.hasOwnProperty.call(data, "full_name")) {
+    const fullName = String(data.full_name || "").trim();
+    payload.full_name = fullName || null;
   }
-  if (Object.prototype.hasOwnProperty.call(data, "birthdate")) {
-    payload.birthdate = data.birthdate ? String(data.birthdate) : null;
+
+  if (Object.prototype.hasOwnProperty.call(data, "avatar_url")) {
+    const avatarUrl = String(data.avatar_url || "").trim();
+    payload.avatar_url = avatarUrl || null;
   }
+
+  return payload;
+}
+
+export async function upsertProfile(userId, data = {}, options = {}) {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) throw new Error("Utilisateur non authentifié.");
+
+  const preferLocal = Boolean(options?.preferLocal);
+  const payload = normalizeProfilePayload(normalizedUserId, data);
 
   if (preferLocal || !supabase) {
     const localExisting = readLocalProfile(normalizedUserId);
@@ -159,10 +165,10 @@ export async function upsertProfile(userId, data = {}, options = {}) {
   const { data: next, error } = await supabase
     .from("profiles")
     .upsert(payload, { onConflict: "id" })
-    .select("id, username, display_name, birthdate, created_at, updated_at")
+    .select("*")
     .single();
 
-  if (error) throw mapEnsureProfileError(error);
+  if (error) throw mapProfileError(error);
 
   const row = toProfileRow(next || payload);
   saveLocalProfile(row);
@@ -176,6 +182,7 @@ export async function ensureProfile(userId, email = "", options = {}) {
 export async function getProfile(userId, options = {}) {
   const normalizedUserId = String(userId || "").trim();
   if (!normalizedUserId) return null;
+
   const preferLocal = Boolean(options?.preferLocal);
   const throwOnRemoteError = Boolean(options?.throwOnRemoteError);
   const ensureOnMissing = Boolean(options?.ensureOnMissing);
@@ -187,7 +194,7 @@ export async function getProfile(userId, options = {}) {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, username, display_name, birthdate, created_at, updated_at")
+    .select("*")
     .eq("id", normalizedUserId)
     .maybeSingle();
 
@@ -202,6 +209,7 @@ export async function getProfile(userId, options = {}) {
   if (!row && ensureOnMissing) {
     return ensureProfile(normalizedUserId, email, options);
   }
+
   if (row) saveLocalProfile(row);
   return row;
 }
@@ -229,9 +237,9 @@ export async function isUsernameAvailable(username, options = {}) {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("id")
+    .select("id, username")
     .ilike("username", normalized)
-    .limit(1);
+    .limit(3);
 
   if (error) {
     const map = readLocalUsernameMap();
@@ -240,27 +248,24 @@ export async function isUsernameAvailable(username, options = {}) {
     return { available, normalized, reason: available ? "" : "Nom d'utilisateur déjà pris." };
   }
 
-  const row = Array.isArray(data) && data.length > 0 ? data[0] : null;
-  const owner = String(row?.id || "").trim();
+  const rows = Array.isArray(data) ? data : [];
+  const ownerRow = rows.find((row) => normalizeUsername(row?.username) === normalized) || null;
+  const owner = String(ownerRow?.id || "").trim();
   const available = !owner || owner === currentUserId;
+
   return { available, normalized, reason: available ? "" : "Nom d'utilisateur déjà pris." };
 }
 
 export async function createProfile(userId, input = {}, options = {}) {
   const normalizedUserId = String(userId || "").trim();
   if (!normalizedUserId) throw new Error("Utilisateur non authentifié.");
-  const preferLocal = Boolean(options?.preferLocal);
 
   const parsed = validateUsername(input.username);
   if (!parsed.ok) throw new Error(parsed.reason);
 
-  const normalized = parsed.normalized;
-  const displayName = String(input.display_name || "").trim();
-  const birthdate = input.birthdate ? String(input.birthdate) : "";
-
-  const availability = await isUsernameAvailable(normalized, {
+  const availability = await isUsernameAvailable(parsed.normalized, {
     currentUserId: normalizedUserId,
-    preferLocal,
+    preferLocal: Boolean(options?.preferLocal),
   });
 
   if (!availability.available) {
@@ -269,12 +274,14 @@ export async function createProfile(userId, input = {}, options = {}) {
     throw err;
   }
 
-  const payload = {
-    id: normalizedUserId,
-    username: normalized,
-    display_name: displayName,
-    birthdate: birthdate || null,
-  };
-
-  return upsertProfile(normalizedUserId, payload, { ...options, preferLocal });
+  return upsertProfile(
+    normalizedUserId,
+    {
+      email: input.email,
+      username: parsed.normalized,
+      full_name: input.full_name,
+      avatar_url: input.avatar_url,
+    },
+    options
+  );
 }

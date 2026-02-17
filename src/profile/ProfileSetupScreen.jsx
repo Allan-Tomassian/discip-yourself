@@ -5,15 +5,14 @@ import { useProfile } from "./useProfile";
 import { normalizeUsername, validateUsername } from "./username";
 
 const AVAILABILITY_DEBOUNCE_MS = 450;
-const BIRTHDATE_REQUIRED = String(import.meta.env.VITE_PROFILE_BIRTHDATE_REQUIRED || "").toLowerCase() === "true";
 
 export default function ProfileSetupScreen() {
   const { user } = useAuth();
-  const { createProfile, checkUsernameAvailability } = useProfile();
+  const { profile, createProfile, checkUsernameAvailability } = useProfile();
 
   const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [birthdate, setBirthdate] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState({ type: "", message: "" });
   const [availability, setAvailability] = useState({
@@ -23,8 +22,13 @@ export default function ProfileSetupScreen() {
   });
 
   const usernameValidation = useMemo(() => validateUsername(username), [username]);
-  const birthdateValue = String(birthdate || "").trim();
-  const birthdateOk = !BIRTHDATE_REQUIRED || Boolean(birthdateValue);
+
+  useEffect(() => {
+    if (!profile) return;
+    if (!username) setUsername(String(profile.username || "").trim());
+    if (!fullName) setFullName(String(profile.full_name || "").trim());
+    if (!avatarUrl) setAvatarUrl(String(profile.avatar_url || "").trim());
+  }, [avatarUrl, fullName, profile, username]);
 
   useEffect(() => {
     if (!username.trim()) {
@@ -90,17 +94,13 @@ export default function ProfileSetupScreen() {
       return;
     }
 
-    if (!birthdateOk) {
-      setStatus({ type: "error", message: "La date de naissance est requise." });
-      return;
-    }
-
     setSubmitting(true);
     try {
       await createProfile({
+        email: user?.email || "",
         username: normalizeUsername(username),
-        display_name: displayName,
-        birthdate: birthdateValue,
+        full_name: fullName,
+        avatar_url: avatarUrl,
       });
       setStatus({ type: "success", message: "Profil créé." });
     } catch (error) {
@@ -126,7 +126,6 @@ export default function ProfileSetupScreen() {
   const canSubmit =
     !submitting &&
     usernameValidation.ok &&
-    birthdateOk &&
     availability.state !== "taken" &&
     availability.state !== "checking";
 
@@ -152,18 +151,19 @@ export default function ProfileSetupScreen() {
           />
           <div style={{ height: 10 }} />
           <Input
-            data-testid="profile-display-name-input"
-            placeholder="Nom affiché (optionnel)"
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
+            data-testid="profile-full-name-input"
+            placeholder="Nom complet (optionnel)"
+            value={fullName}
+            onChange={(event) => setFullName(event.target.value)}
+            autoComplete="name"
           />
           <div style={{ height: 10 }} />
           <Input
-            data-testid="profile-birthdate-input"
-            type="date"
-            value={birthdate}
-            onChange={(event) => setBirthdate(event.target.value)}
-            required={BIRTHDATE_REQUIRED}
+            data-testid="profile-avatar-url-input"
+            placeholder="URL avatar (optionnel)"
+            value={avatarUrl}
+            onChange={(event) => setAvatarUrl(event.target.value)}
+            autoComplete="url"
           />
           <div style={{ height: 12 }} />
           <Button data-testid="profile-submit-button" type="submit" disabled={!canSubmit}>

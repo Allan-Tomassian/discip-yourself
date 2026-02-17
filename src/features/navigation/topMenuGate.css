@@ -1,0 +1,177 @@
+.topNavGateWrap {
+  padding: 0;
+  position: relative;
+  z-index: 8500; /* topbar au-dessus du scrim */
+}
+
+.topNavGateBar {
+  --gate-surface-1: color-mix(in srgb, var(--surface-3, #1b202b) 92%, #090d14);
+  --gate-surface-2: color-mix(in srgb, var(--surface-2, #151b24) 90%, #070b11);
+  --gate-border: color-mix(in srgb, var(--border-subtle, var(--border)) 92%, rgba(255, 255, 255, 0.18));
+  border: 1px solid var(--gate-border);
+  border-radius: var(--radius-card, 16px);
+  background: linear-gradient(180deg, var(--gate-surface-1), var(--gate-surface-2));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 14px 28px rgba(0, 0, 0, 0.3);
+  padding: 8px;
+  gap: 0;
+}
+
+.topNavGateBar .navBtn {
+  border-color: color-mix(in srgb, var(--gate-border) 90%, rgba(255, 255, 255, 0.14));
+  background: color-mix(in srgb, var(--gate-surface-2) 86%, transparent);
+  color: var(--text-2, rgba(255, 255, 255, 0.8));
+}
+
+.topNavGateBar .navBtn:hover {
+  background: color-mix(in srgb, var(--gate-surface-1) 86%, rgba(255, 255, 255, 0.05));
+}
+
+.topNavGateBar .navBtnActive {
+  background: color-mix(in srgb, var(--accent-soft, rgba(255, 125, 0, 0.18)) 75%, var(--gate-surface-1));
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--gate-border));
+  color: var(--text-1, var(--text));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 34%, transparent);
+}
+
+.topNavGateBar .navMenuTrigger {
+  border-color: color-mix(in srgb, var(--gate-border) 90%, rgba(255, 255, 255, 0.14));
+  background: color-mix(in srgb, var(--gate-surface-2) 88%, rgba(255, 255, 255, 0.04));
+}
+
+.topNavGateBar .navMenuTrigger:hover {
+  background: color-mix(in srgb, var(--gate-surface-1) 88%, rgba(255, 255, 255, 0.08));
+}
+
+.topNavGateBar .navMenuTriggerOpen {
+  background: color-mix(in srgb, var(--accent-soft, rgba(255, 125, 0, 0.18)) 78%, var(--gate-surface-1));
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--gate-border));
+}
+
+.topMenuGatePopover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(336px, calc(100vw - 40px));
+  z-index: var(--z-dropdown);
+}
+
+.topMenuScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 8000; /* scrim au-dessus du contenu */
+  background: color-mix(in srgb, #05070c 56%, transparent);
+  backdrop-filter: blur(10px) saturate(1.08);
+  -webkit-backdrop-filter: blur(10px) saturate(1.08);
+}
+
+.topMenuPopoverLayer {
+  position: relative;
+  z-index: 9000; /* popover au-dessus du scrim */
+}
+
+.topMenuGate {
+  --gate-surface-1: color-mix(in srgb, var(--surface-3, #1b202b) 94%, #070b12);
+  --gate-surface-2: color-mix(in srgb, var(--surface-2, #151b24) 92%, #05080f);
+  --gate-border: color-mix(in srgb, var(--border-subtle, var(--border)) 90%, rgba(255, 255, 255, 0.18));
+  --gate-text-muted: color-mix(in srgb, var(--text-3, rgba(255, 255, 255, 0.56)) 90%, rgba(255, 255, 255, 0.76));
+  border: 1px solid var(--gate-border);
+  border-radius: 14px;
+  background: linear-gradient(180deg, var(--gate-surface-1), var(--gate-surface-2));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    0 18px 34px rgba(0, 0, 0, 0.38);
+  padding: 10px;
+  gap: 10px;
+}
+
+.topMenuGateHeader {
+  padding: 0 2px;
+}
+
+.topMenuGateList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.topMenuGateItem {
+  padding: 9px 10px;
+}
+
+.topMenuGateSectionFlat {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.topMenuGateRowFlat {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.topMenuGateRowFlat .gateRowLabel {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.topMenuGateRowFlat .gateRowMeta {
+  font-size: 11px;
+}
+
+.topMenuGateRowFlat.isInteractive:hover {
+  border: 0;
+  background: color-mix(in srgb, var(--gate-surface-1) 82%, rgba(255, 255, 255, 0.11));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.topMenuGateRowFlat.isInteractive:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--accent) 46%, transparent);
+  outline-offset: 0;
+}
+
+.topMenuGateChevron {
+  color: var(--gate-text-muted);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.topMenuGateDivider {
+  height: 1px;
+  background: color-mix(in srgb, var(--gate-border) 88%, transparent);
+  margin: 2px 2px 4px;
+}
+
+.topMenuGateFooter {
+  padding-top: 10px;
+  justify-content: stretch;
+}
+
+.topMenuGateLogout {
+  width: 100%;
+  justify-content: center;
+  border-color: color-mix(in srgb, #ff7f7f 34%, var(--gate-border));
+  color: color-mix(in srgb, #ffd0d0 76%, var(--gate-text));
+  background: color-mix(in srgb, #571616 24%, transparent);
+}
+
+.topMenuGateLogout:hover {
+  border-color: color-mix(in srgb, #ff8f8f 42%, var(--gate-border));
+  background: color-mix(in srgb, #672020 30%, transparent);
+}
+
+.topMenuGateError {
+  margin: 0;
+  font-size: 12px;
+  color: color-mix(in srgb, #ff9999 82%, var(--gate-text));
+  padding: 0 2px;
+}
+
+@media (max-width: 520px) {
+  .topMenuGatePopover {
+    width: min(336px, calc(100vw - 24px));
+  }
+}
