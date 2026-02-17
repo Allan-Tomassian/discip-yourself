@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Button, Input, Textarea } from "./UI";
+import { GateButton } from "../shared/ui/gate/Gate";
 import Select from "../ui/select/Select";
 import DatePicker from "../ui/date/DatePicker";
 import { todayKey } from "../utils/dates";
 import { toLocalDateKey } from "../utils/dateKey";
 import { createDefaultGoalSchedule } from "../logic/state";
 import { LABELS } from "../ui/labels";
+import "../features/library/editItemPanelGate.css";
 
 const PRIORITY_OPTIONS = [
   { value: "prioritaire", label: "Prioritaire" },
@@ -134,6 +135,28 @@ function resolvePriority(item) {
   if (tier === "essential") return "prioritaire";
   if (tier === "optional" || tier === "someday") return "bonus";
   return "secondaire";
+}
+
+function Button({ variant = "primary", className = "", ...props }) {
+  const gateVariant = variant === "ghost" || variant === "danger" ? "ghost" : "primary";
+  const dangerClass = variant === "danger" ? "editDangerButton" : "";
+  const mergedClassName = [className, dangerClass, "GatePressable"].filter(Boolean).join(" ");
+  return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;
+}
+
+function Input({ className = "", ...props }) {
+  const mergedClassName = ["GateInputPremium", className].filter(Boolean).join(" ");
+  return <input className={mergedClassName} {...props} />;
+}
+
+function Textarea({ className = "", ...props }) {
+  const mergedClassName = ["GateTextareaPremium", className].filter(Boolean).join(" ");
+  return <textarea className={mergedClassName} {...props} />;
+}
+
+function FieldSelect({ className = "", ...props }) {
+  const mergedClassName = ["GateSelectPremium", className].filter(Boolean).join(" ");
+  return <Select className={mergedClassName} {...props} />;
 }
 
 export default function EditItemPanel({ item, type, onSave, onDelete, onClose }) {
@@ -339,7 +362,7 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
       onClick={onClose}
     >
       <div
-        className="drawerPanel editPanel"
+        className="drawerPanelOuter editPanelOuter GateGlassOuter"
         onClick={(e) => e.stopPropagation()}
         style={{
           position: "fixed",
@@ -352,25 +375,27 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
           paddingTop: "env(safe-area-inset-top)",
         }}
       >
-        <div className="drawerHeader">
-          <div style={{ fontWeight: 800 }}>{isProcess ? `Modifier l’${LABELS.actionLower}` : `Modifier le ${LABELS.goalLower}`}</div>
-          <Button variant="ghost" onClick={onClose}>
-            Fermer
-          </Button>
-        </div>
+        <div className="drawerPanelClip GateGlassClip GateGlassBackdrop">
+          <div className="drawerPanel editPanel GateSurfacePremium GateGlassContent">
+            <div className="drawerHeader">
+              <div style={{ fontWeight: 800 }}>{isProcess ? `Modifier l’${LABELS.actionLower}` : `Modifier le ${LABELS.goalLower}`}</div>
+              <Button variant="ghost" onClick={onClose}>
+                Fermer
+              </Button>
+            </div>
 
-        <div className="editPanelBody">
+            <div className="editPanelBody">
           <div className="editSection">
             <div className="editSectionTitle">Identité</div>
             <div className="editSectionBody">
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titre" />
-              <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
+              <FieldSelect value={priority} onChange={(e) => setPriority(e.target.value)}>
                 {PRIORITY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
                 ))}
-              </Select>
+              </FieldSelect>
             </div>
           </div>
 
@@ -387,10 +412,10 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
                       <div className="small" style={{ marginBottom: 6 }}>
                         Type
                       </div>
-                      <Select value={planType} onChange={(e) => setPlanType(e.target.value)}>
+                      <FieldSelect value={planType} onChange={(e) => setPlanType(e.target.value)}>
                         <option value="ONE_OFF">Une fois</option>
                         <option value="ACTION">Répétitif</option>
-                      </Select>
+                      </FieldSelect>
                     </div>
 
                     {planType === "ONE_OFF" ? (
@@ -427,13 +452,13 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
                               onChange={(e) => setFreqCount(e.target.value)}
                               placeholder="Nombre"
                             />
-                            <Select value={freqUnit} onChange={(e) => setFreqUnit(e.target.value)}>
+                            <FieldSelect value={freqUnit} onChange={(e) => setFreqUnit(e.target.value)}>
                               <option value="DAY">par jour</option>
                               <option value="WEEK">par semaine</option>
                               <option value="MONTH">par mois</option>
                               <option value="QUARTER">par trimestre</option>
                               <option value="YEAR">par an</option>
-                            </Select>
+                            </FieldSelect>
                           </div>
                         </div>
 
@@ -487,14 +512,14 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
                       <div className="small" style={{ marginBottom: 6 }}>
                         Type de mesure
                       </div>
-                      <Select value={measureType} onChange={(e) => setMeasureType(e.target.value)} style={{ fontSize: 16 }}>
+                      <FieldSelect value={measureType} onChange={(e) => setMeasureType(e.target.value)} style={{ fontSize: 16 }}>
                         <option value="">Sélectionner un type</option>
                         {MEASURE_OPTIONS.map((opt) => (
                           <option key={opt.value} value={opt.value}>
                             {opt.label}
                           </option>
                         ))}
-                      </Select>
+                      </FieldSelect>
                     </div>
                     {measureType ? (
                       <Input
@@ -546,13 +571,13 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
                     <Button variant="ghost" onClick={addReminderTime}>
                       + Ajouter une heure
                     </Button>
-                    <Select value={reminderChannel} onChange={(e) => setReminderChannel(e.target.value)}>
+                    <FieldSelect value={reminderChannel} onChange={(e) => setReminderChannel(e.target.value)}>
                       {CHANNEL_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
                           {opt.label}
                         </option>
                       ))}
-                    </Select>
+                    </FieldSelect>
                   </>
                 ) : null}
               </div>
@@ -587,6 +612,8 @@ export default function EditItemPanel({ item, type, onSave, onDelete, onClose })
             Annuler
           </Button>
           <Button onClick={handleSave}>Enregistrer</Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

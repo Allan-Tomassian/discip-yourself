@@ -1,0 +1,5614 @@
+{
+  "generatedAt": "2026-02-17T16:18:01.850Z",
+  "scope": "Read-only static audit for hamburger visibility/stacking",
+  "commandsRun": [
+    "node scripts/hamburger-layer-audit.mjs && node scripts/hamburger-layer-report.mjs",
+    "node scripts/menu-intent-audit.mjs",
+    "node scripts/ui-uniformity-scan.mjs && node scripts/ui-uniformity-report.mjs",
+    "node scripts/text-audit-scan.mjs && node scripts/text-audit-report.mjs"
+  ],
+  "indexedFiles": [
+    "src/App.jsx",
+    "src/components/AdvancedDrawer.jsx",
+    "src/components/EditItemPanel.jsx",
+    "src/components/PaywallModal.jsx",
+    "src/components/PlusExpander.jsx",
+    "src/components/TopMenuPopover.jsx",
+    "src/components/TopNav.jsx",
+    "src/components/UI.jsx",
+    "src/features/navigation/topMenuGate.css",
+    "src/hooks/useCreateFlowOrchestration.js",
+    "src/index.css",
+    "src/shared/ui/gate/gate-premium.css",
+    "src/ui/LiquidGlassSurface.jsx",
+    "src/ui/date/DatePicker.jsx",
+    "src/ui/liquidGlassSurface.css",
+    "src/ui/select/Select.jsx"
+  ],
+  "jsFindings": [
+    {
+      "file": "src/App.jsx",
+      "line": 159,
+      "type": "js-line",
+      "snippet": "if (typeof window === \"undefined\" || !window.visualViewport) return undefined;"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 162,
+      "type": "js-line",
+      "snippet": "const vv = window.visualViewport;"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 169,
+      "type": "js-line",
+      "snippet": "window.visualViewport.addEventListener(\"resize\", updateKeyboardClass);"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 170,
+      "type": "js-line",
+      "snippet": "window.visualViewport.addEventListener(\"scroll\", updateKeyboardClass);"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 172,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.removeEventListener(\"resize\", updateKeyboardClass);"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 173,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.removeEventListener(\"scroll\", updateKeyboardClass);"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 248,
+      "type": "js-line",
+      "snippet": "setTab(next);"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 250,
+      "type": "js-line",
+      "snippet": "onMenuNavigate={(action) => {"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 251,
+      "type": "js-line",
+      "snippet": "setTab(action);"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 260,
+      "type": "js-line",
+      "snippet": "<div aria-hidden=\"true\" className=\"appHeaderSpacer\" style={{ height: 48 }} />"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 340,
+      "type": "js-line",
+      "snippet": "setTab(returnTab);"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 501,
+      "type": "js-line",
+      "snippet": "style={{ minHeight: \"100vh\", display: \"grid\", placeItems: \"center\", padding: 24 }}"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 513,
+      "type": "js-line",
+      "snippet": "<Onboarding data={data} setData={setData} onDone={() => setTab(\"preferences\")} planOnly />"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 531,
+      "type": "js-line",
+      "snippet": "<Onboarding data={data} setData={setData} onDone={() => setTab(\"today\")} />"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 554,
+      "type": "js-line",
+      "snippet": "<div className=\"BottomBarSurfaceOuter GateGlassOuter\">"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 555,
+      "type": "js-line",
+      "snippet": "<div className=\"BottomBarSurfaceClip BottomBarBackdrop GateGlassClip GateGlassBackdrop\">"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 556,
+      "type": "js-line",
+      "snippet": "<GatePanel className=\"bottomCategoryBarPanel GateSurfacePremium GateCardPremium GateGlassContent\">"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 573,
+      "type": "js-line",
+      "snippet": "const rect = el?.getBoundingClientRect ? el.getBoundingClientRect() : null;"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 604,
+      "type": "js-line",
+      "snippet": "setTab(\"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 613,
+      "type": "js-line",
+      "snippet": "setTab(\"session\", { sessionCategoryId: categoryId || null, sessionDateKey: dateKey || null })"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 637,
+      "type": "js-line",
+      "snippet": "setTab(\"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 659,
+      "type": "js-line",
+      "snippet": "setTab(\"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 687,
+      "type": "js-line",
+      "snippet": "setTab(\"pilotage\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 698,
+      "type": "js-line",
+      "snippet": "setTab(\"category-progress\", { categoryProgressId: categoryIdValue });"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 714,
+      "type": "js-line",
+      "snippet": "setTab(\"edit-item\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 730,
+      "type": "js-line",
+      "snippet": "onBack={() => setTab(\"library\")}"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 733,
+      "type": "js-line",
+      "snippet": "setTab(\"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 735,
+      "type": "js-line",
+      "snippet": "onNext={() => setTab(\"create-outcome-next\")}"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 736,
+      "type": "js-line",
+      "snippet": "onAfterSave={() => setTab(\"create-outcome-next\")}"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 751,
+      "type": "js-line",
+      "snippet": "setTab(\"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 761,
+      "type": "js-line",
+      "snippet": "setTab(hasOutcomeDraft ? \"create-goal\" : \"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 765,
+      "type": "js-line",
+      "snippet": "if (ht === \"ONE_OFF\") setTab(\"create-habit-oneoff\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 766,
+      "type": "js-line",
+      "snippet": "else if (ht === \"RECURRING\") setTab(\"create-habit-recurring\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 767,
+      "type": "js-line",
+      "snippet": "else if (ht === \"ANYTIME\") setTab(\"create-habit-anytime\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 768,
+      "type": "js-line",
+      "snippet": "else setTab(\"create-habit-type\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 775,
+      "type": "js-line",
+      "snippet": "onBack={() => setTab(\"create-habit-type\")}"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 777,
+      "type": "js-line",
+      "snippet": "if (step === STEP_LINK_OUTCOME) setTab(\"create-link-outcome\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 778,
+      "type": "js-line",
+      "snippet": "else if (step === STEP_PICK_CATEGORY) setTab(\"create-pick-category\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 779,
+      "type": "js-line",
+      "snippet": "else setTab(\"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 781,
+      "type": "js-line",
+      "snippet": "onOpenCategories={() => setTab(\"library\")}"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 784,
+      "type": "js-line",
+      "snippet": "setTab(\"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 788,
+      "type": "js-line",
+      "snippet": "setTab(\"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 800,
+      "type": "js-line",
+      "snippet": "onBack={() => setTab(\"create-habit-type\")}"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 802,
+      "type": "js-line",
+      "snippet": "if (step === STEP_LINK_OUTCOME) setTab(\"create-link-outcome\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 803,
+      "type": "js-line",
+      "snippet": "else if (step === STEP_PICK_CATEGORY) setTab(\"create-pick-category\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 804,
+      "type": "js-line",
+      "snippet": "else setTab(\"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 806,
+      "type": "js-line",
+      "snippet": "onOpenCategories={() => setTab(\"library\")}"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 809,
+      "type": "js-line",
+      "snippet": "setTab(\"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 813,
+      "type": "js-line",
+      "snippet": "setTab(\"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 825,
+      "type": "js-line",
+      "snippet": "onBack={() => setTab(\"create-habit-type\")}"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 827,
+      "type": "js-line",
+      "snippet": "if (step === STEP_LINK_OUTCOME) setTab(\"create-link-outcome\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 828,
+      "type": "js-line",
+      "snippet": "else if (step === STEP_PICK_CATEGORY) setTab(\"create-pick-category\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 829,
+      "type": "js-line",
+      "snippet": "else setTab(\"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 831,
+      "type": "js-line",
+      "snippet": "onOpenCategories={() => setTab(\"library\")}"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 834,
+      "type": "js-line",
+      "snippet": "setTab(\"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 838,
+      "type": "js-line",
+      "snippet": "setTab(\"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 850,
+      "type": "js-line",
+      "snippet": "onNext={() => setTab(\"create-pick-category\")}"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 851,
+      "type": "js-line",
+      "snippet": "onCancel={() => setTab(\"create-pick-category\")}"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 852,
+      "type": "js-line",
+      "snippet": "onDone={() => setTab(\"library\")}"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 861,
+      "type": "js-line",
+      "snippet": "setTab(\"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 864,
+      "type": "js-line",
+      "snippet": "setTab(\"library\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 875,
+      "type": "js-line",
+      "snippet": "setTab(\"today\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 885,
+      "type": "js-line",
+      "snippet": "<Privacy data={data} onOpenSupport={() => setTab(\"support\")} />"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 887,
+      "type": "js-line",
+      "snippet": "<Terms data={data} onOpenSupport={() => setTab(\"support\")} />"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 900,
+      "type": "js-line",
+      "snippet": "style={{ maxWidth: 420, width: \"100%\" }}"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 900,
+      "type": "inline-style-prop",
+      "prop": "maxWidth",
+      "value": "420",
+      "snippet": "style={{ maxWidth: 420, width: \"100%\" }}"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 905,
+      "type": "js-line",
+      "snippet": "<div className=\"small2\" style={{ marginTop: 6 }}>"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 905,
+      "type": "inline-style-prop",
+      "prop": "marginTop",
+      "value": "6",
+      "snippet": "<div className=\"small2\" style={{ marginTop: 6 }}>"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 908,
+      "type": "js-line",
+      "snippet": "<div className=\"small2\" style={{ marginTop: 4 }}>"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 908,
+      "type": "inline-style-prop",
+      "prop": "marginTop",
+      "value": "4",
+      "snippet": "<div className=\"small2\" style={{ marginTop: 4 }}>"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 916,
+      "type": "js-line",
+      "snippet": "<div className=\"row\" style={{ marginTop: 12, justifyContent: \"flex-end\" }}>"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 916,
+      "type": "inline-style-prop",
+      "prop": "marginTop",
+      "value": "12",
+      "snippet": "<div className=\"row\" style={{ marginTop: 12, justifyContent: \"flex-end\" }}>"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 989,
+      "type": "js-line",
+      "snippet": "setTab(\"pilotage\");"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 1064,
+      "type": "js-line",
+      "snippet": "onOpenTerms={() => setTab(\"terms\")}"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 1065,
+      "type": "js-line",
+      "snippet": "onOpenPrivacy={() => setTab(\"privacy\")}"
+    },
+    {
+      "file": "src/components/AdvancedDrawer.jsx",
+      "line": 9,
+      "type": "js-line",
+      "snippet": "<div className=\"drawerPanelOuter GateGlassOuter\" onClick={(e) => e.stopPropagation()}>"
+    },
+    {
+      "file": "src/components/AdvancedDrawer.jsx",
+      "line": 10,
+      "type": "js-line",
+      "snippet": "<div className=\"drawerPanelClip GateGlassClip GateGlassBackdrop\">"
+    },
+    {
+      "file": "src/components/AdvancedDrawer.jsx",
+      "line": 11,
+      "type": "js-line",
+      "snippet": "<div className=\"drawerPanel GateGlassContent\">"
+    },
+    {
+      "file": "src/components/AdvancedDrawer.jsx",
+      "line": 13,
+      "type": "js-line",
+      "snippet": "<div style={{ fontWeight: 800 }}>{title}</div>"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 2,
+      "type": "js-line",
+      "snippet": "import { createPortal } from \"react-dom\";"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 365,
+      "type": "js-line",
+      "snippet": "className=\"drawerPanelOuter editPanelOuter GateGlassOuter\""
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 367,
+      "type": "js-line",
+      "snippet": "style={{"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 368,
+      "type": "js-line",
+      "snippet": "position: \"fixed\","
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 368,
+      "type": "inline-style-prop",
+      "prop": "position",
+      "value": "\"fixed\"",
+      "snippet": "position: \"fixed\","
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 370,
+      "type": "inline-style-prop",
+      "prop": "top",
+      "value": "0",
+      "snippet": "top: 0,"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 373,
+      "type": "inline-style-prop",
+      "prop": "maxWidth",
+      "value": "420",
+      "snippet": "maxWidth: 420,"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 374,
+      "type": "inline-style-prop",
+      "prop": "width",
+      "value": "\"min(92vw",
+      "snippet": "width: \"min(92vw, 420px)\","
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 375,
+      "type": "inline-style-prop",
+      "prop": "paddingTop",
+      "value": "\"env(safe-area-inset-top)\"",
+      "snippet": "paddingTop: \"env(safe-area-inset-top)\","
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 378,
+      "type": "js-line",
+      "snippet": "<div className=\"drawerPanelClip GateGlassClip GateGlassBackdrop\">"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 379,
+      "type": "js-line",
+      "snippet": "<div className=\"drawerPanel editPanel GateSurfacePremium GateGlassContent\">"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 381,
+      "type": "js-line",
+      "snippet": "<div style={{ fontWeight: 800 }}>{isProcess ? `Modifier l’${LABELS.actionLower}` : `Modifier le ${LABELS.goalLower}`}</div>"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 412,
+      "type": "js-line",
+      "snippet": "<div className=\"small\" style={{ marginBottom: 6 }}>"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 423,
+      "type": "js-line",
+      "snippet": "<div className=\"small\" style={{ marginBottom: 6 }}>"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 434,
+      "type": "js-line",
+      "snippet": "<div className=\"small\" style={{ marginBottom: 6 }}>"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 444,
+      "type": "js-line",
+      "snippet": "<div className=\"small\" style={{ marginBottom: 6 }}>"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 447,
+      "type": "js-line",
+      "snippet": "<div className=\"row\" style={{ gap: 10 }}>"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 466,
+      "type": "js-line",
+      "snippet": "<div className=\"small\" style={{ marginBottom: 6 }}>"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 484,
+      "type": "js-line",
+      "snippet": "<div className=\"small\" style={{ marginBottom: 6 }}>"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 498,
+      "type": "js-line",
+      "snippet": "<div className=\"small\" style={{ marginBottom: 6 }}>"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 512,
+      "type": "js-line",
+      "snippet": "<div className=\"small\" style={{ marginBottom: 6 }}>"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 515,
+      "type": "js-line",
+      "snippet": "<FieldSelect value={measureType} onChange={(e) => setMeasureType(e.target.value)} style={{ fontSize: 16 }}>"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 533,
+      "type": "js-line",
+      "snippet": "<div className=\"small\" style={{ marginBottom: 6 }}>"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 607,
+      "type": "js-line",
+      "snippet": "{error ? <div className=\"small2\" style={{ color: \"rgba(255,120,120,.95)\" }}>{error}</div> : null}"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 621,
+      "type": "js-line",
+      "snippet": "return createPortal(overlay, document.body);"
+    },
+    {
+      "file": "src/components/PaywallModal.jsx",
+      "line": 2,
+      "type": "js-line",
+      "snippet": "import { createPortal } from \"react-dom\";"
+    },
+    {
+      "file": "src/components/PaywallModal.jsx",
+      "line": 67,
+      "type": "js-line",
+      "snippet": "className=\"paywallPanelOuter GateGlassOuter\""
+    },
+    {
+      "file": "src/components/PaywallModal.jsx",
+      "line": 72,
+      "type": "js-line",
+      "snippet": "<div className=\"paywallPanelClip GateGlassClip GateGlassBackdrop\">"
+    },
+    {
+      "file": "src/components/PaywallModal.jsx",
+      "line": 74,
+      "type": "js-line",
+      "snippet": "className=\"card paywallPanel GateGlassContent\""
+    },
+    {
+      "file": "src/components/PaywallModal.jsx",
+      "line": 149,
+      "type": "js-line",
+      "snippet": "return createPortal(content, document.body);"
+    },
+    {
+      "file": "src/components/PlusExpander.jsx",
+      "line": 33,
+      "type": "js-line",
+      "snippet": "setPanelRect(toAnchorRect(panelRef.current.getBoundingClientRect()));"
+    },
+    {
+      "file": "src/components/PlusExpander.jsx",
+      "line": 64,
+      "type": "js-line",
+      "snippet": "const vv = window.visualViewport;"
+    },
+    {
+      "file": "src/components/PlusExpander.jsx",
+      "line": 71,
+      "type": "js-line",
+      "snippet": "const safeTop = Number.parseFloat(styles.getPropertyValue(\"--safe-top\")) || 0;"
+    },
+    {
+      "file": "src/components/PlusExpander.jsx",
+      "line": 95,
+      "type": "js-line",
+      "snippet": "style={{ left: position.left, top: position.top, transformOrigin: position.origin }}"
+    },
+    {
+      "file": "src/components/PlusExpander.jsx",
+      "line": 95,
+      "type": "inline-style-prop",
+      "prop": "left",
+      "value": "position.left",
+      "snippet": "style={{ left: position.left, top: position.top, transformOrigin: position.origin }}"
+    },
+    {
+      "file": "src/components/PlusExpander.jsx",
+      "line": 97,
+      "type": "js-line",
+      "snippet": "<div className=\"plusExpanderPanel GateGlassOuter\">"
+    },
+    {
+      "file": "src/components/PlusExpander.jsx",
+      "line": 98,
+      "type": "js-line",
+      "snippet": "<div className=\"plusExpanderPanelClip GateGlassClip GateGlassBackdrop\">"
+    },
+    {
+      "file": "src/components/PlusExpander.jsx",
+      "line": 99,
+      "type": "js-line",
+      "snippet": "<div className=\"plusExpanderPanelContent GateGlassContent\" ref={panelRef} role=\"menu\" aria-label=\"Créer\">"
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 16,
+      "type": "js-line",
+      "snippet": "export default function TopMenuPopover({ onNavigate, onClose }) {"
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 45,
+      "type": "js-line",
+      "snippet": "<div className=\"topMenuGatePopover\">"
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 46,
+      "type": "js-line",
+      "snippet": "<GatePanel className=\"topMenuGate GateSurfacePremium\" role=\"menu\" aria-label=\"Menu principal\">"
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 47,
+      "type": "js-line",
+      "snippet": "<GateHeader title=\"Menu\" subtitle=\"Navigation rapide\" className=\"topMenuGateHeader\" />"
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 49,
+      "type": "js-line",
+      "snippet": "<GateSection className=\"topMenuGateSectionFlat\">"
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 50,
+      "type": "js-line",
+      "snippet": "<div className=\"topMenuGateList\">"
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 56,
+      "type": "js-line",
+      "snippet": "right={<span className=\"topMenuGateChevron\" aria-hidden=\"true\">›</span>}"
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 57,
+      "type": "js-line",
+      "snippet": "className=\"topMenuGateItem topMenuGateRowFlat GatePressable\""
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 66,
+      "type": "js-line",
+      "snippet": "<div className=\"topMenuGateDivider\" />"
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 68,
+      "type": "js-line",
+      "snippet": "<GateSection className=\"topMenuGateSectionFlat\">"
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 69,
+      "type": "js-line",
+      "snippet": "<div className=\"topMenuGateList\">"
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 75,
+      "type": "js-line",
+      "snippet": "right={<span className=\"topMenuGateChevron\" aria-hidden=\"true\">›</span>}"
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 76,
+      "type": "js-line",
+      "snippet": "className=\"topMenuGateItem topMenuGateRowFlat GatePressable\""
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 85,
+      "type": "js-line",
+      "snippet": "<GateFooter className=\"topMenuGateFooter\">"
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 89,
+      "type": "js-line",
+      "snippet": "className=\"topMenuGateLogout GatePressable\""
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 100,
+      "type": "js-line",
+      "snippet": "<p className=\"topMenuGateError\" role=\"alert\">"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 2,
+      "type": "js-line",
+      "snippet": "import TopMenuPopover from \"./TopMenuPopover\";"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 18,
+      "type": "js-line",
+      "snippet": "onMenuNavigate,"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 23,
+      "type": "js-line",
+      "snippet": "const menuRef = useRef(null);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 24,
+      "type": "js-line",
+      "snippet": "const menuButtonRef = useRef(null);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 25,
+      "type": "js-line",
+      "snippet": "const [menuOpen, setMenuOpen] = useState(false);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 26,
+      "type": "layout-signal",
+      "snippet": "const [menuLayout, setMenuLayout] = useState({ top: 72, left: 180, width: 336, maxHeight: 420 });"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 28,
+      "type": "layout-signal",
+      "snippet": "const computeMenuLayout = useCallback(() => {"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 33,
+      "type": "js-line",
+      "snippet": "const rect = bar.getBoundingClientRect();"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 34,
+      "type": "js-line",
+      "snippet": "const vv = window.visualViewport;"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 38,
+      "type": "js-line",
+      "snippet": "const safeTop = Number.parseFloat(styles.getPropertyValue(\"--safe-top\")) || 0;"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 39,
+      "type": "js-line",
+      "snippet": "const safeBottom = Number.parseFloat(styles.getPropertyValue(\"--safe-bottom\")) || 0;"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 46,
+      "type": "layout-signal",
+      "snippet": "const maxWidth = Math.min(560, Math.max(260, vw - 24));"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 49,
+      "type": "layout-signal",
+      "snippet": "const left = clamp(desiredLeft, minLeft, maxLeft);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 50,
+      "type": "layout-signal",
+      "snippet": "const top = Math.max(desiredTop, 12 + safeTop);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 71,
+      "type": "js-line",
+      "snippet": "const h = Math.ceil(topEl.getBoundingClientRect().height);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 95,
+      "type": "js-line",
+      "snippet": "if (!menuOpen) return undefined;"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 99,
+      "type": "js-line",
+      "snippet": "if (menuRef.current && menuRef.current.contains(target)) return;"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 100,
+      "type": "js-line",
+      "snippet": "if (menuButtonRef.current && menuButtonRef.current.contains(target)) return;"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 101,
+      "type": "js-line",
+      "snippet": "setMenuOpen(false);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 106,
+      "type": "js-line",
+      "snippet": "setMenuOpen(false);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 118,
+      "type": "js-line",
+      "snippet": "}, [menuOpen]);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 121,
+      "type": "js-line",
+      "snippet": "if (!menuOpen) return undefined;"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 127,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.addEventListener(\"resize\", update);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 128,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.addEventListener(\"scroll\", update);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 133,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.removeEventListener(\"resize\", update);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 134,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.removeEventListener(\"scroll\", update);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 136,
+      "type": "js-line",
+      "snippet": "}, [menuOpen, computeMenuLayout]);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 139,
+      "type": "js-line",
+      "snippet": "<div className=\"navTop stickyStack TopNavShell\" ref={navTopRef} data-tour-id=\"topnav\">"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 140,
+      "type": "js-line",
+      "snippet": "{menuOpen ? ("
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 142,
+      "type": "js-line",
+      "snippet": "className=\"topMenuScrim GateOverlayBackdrop\""
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 143,
+      "type": "js-line",
+      "snippet": "style={{ position: \"fixed\", inset: 0, zIndex: 1000 }}"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 143,
+      "type": "inline-style-prop",
+      "prop": "position",
+      "value": "\"fixed\"",
+      "snippet": "style={{ position: \"fixed\", inset: 0, zIndex: 1000 }}"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 146,
+      "type": "js-line",
+      "snippet": "setMenuOpen(false);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 153,
+      "type": "js-line",
+      "snippet": "style={{ zIndex: menuOpen ? 1011 : 900 }}"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 153,
+      "type": "inline-style-prop",
+      "prop": "zIndex",
+      "value": "menuOpen ? 1011 : 900",
+      "snippet": "style={{ zIndex: menuOpen ? 1011 : 900 }}"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 155,
+      "type": "js-line",
+      "snippet": "<div className=\"TopNavSurfaceOuter GateGlassOuter\">"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 156,
+      "type": "js-line",
+      "snippet": "<div className=\"TopNavSurfaceClip TopNavBackdrop GateGlassClip GateGlassBackdrop\">"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 157,
+      "type": "js-line",
+      "snippet": "<GatePanel className=\"topNavGateBar GateGlassContent\" data-tour-id=\"topnav-row\">"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 175,
+      "type": "js-line",
+      "snippet": "ref={menuButtonRef}"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 176,
+      "type": "js-line",
+      "snippet": "className={`navMenuTrigger${menuOpen ? \" navMenuTriggerOpen\" : \"\"}`}"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 179,
+      "type": "js-line",
+      "snippet": "setMenuOpen((prev) => !prev);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 183,
+      "type": "js-line",
+      "snippet": "aria-expanded={menuOpen}"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 186,
+      "type": "js-line",
+      "snippet": "<span className=\"navMenuBars\" aria-hidden=\"true\">"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 193,
+      "type": "js-line",
+      "snippet": "{menuOpen ? ("
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 195,
+      "type": "js-line",
+      "snippet": "ref={menuRef}"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 196,
+      "type": "js-line",
+      "snippet": "className=\"topMenuPopoverLayer\""
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 197,
+      "type": "js-line",
+      "snippet": "style={{"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 198,
+      "type": "js-line",
+      "snippet": "position: \"fixed\","
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 198,
+      "type": "inline-style-prop",
+      "prop": "position",
+      "value": "\"fixed\"",
+      "snippet": "position: \"fixed\","
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 199,
+      "type": "js-line",
+      "snippet": "zIndex: 1010,"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 199,
+      "type": "inline-style-prop",
+      "prop": "zIndex",
+      "value": "1010",
+      "snippet": "zIndex: 1010,"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 200,
+      "type": "inline-style-prop",
+      "prop": "top",
+      "value": "`${menuLayout.top",
+      "snippet": "top: `${menuLayout.top}px`,"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 201,
+      "type": "inline-style-prop",
+      "prop": "left",
+      "value": "`${menuLayout.left",
+      "snippet": "left: `${menuLayout.left}px`,"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 202,
+      "type": "inline-style-prop",
+      "prop": "width",
+      "value": "`${menuLayout.width",
+      "snippet": "width: `${menuLayout.width}px`,"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 203,
+      "type": "js-line",
+      "snippet": "transform: \"translateX(-50%)\","
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 203,
+      "type": "inline-style-prop",
+      "prop": "transform",
+      "value": "\"translateX(-50%)\"",
+      "snippet": "transform: \"translateX(-50%)\","
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 204,
+      "type": "js-line",
+      "snippet": "opacity: 1,"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 204,
+      "type": "inline-style-prop",
+      "prop": "opacity",
+      "value": "1",
+      "snippet": "opacity: 1,"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 205,
+      "type": "js-line",
+      "snippet": "visibility: \"visible\","
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 205,
+      "type": "inline-style-prop",
+      "prop": "visibility",
+      "value": "\"visible\"",
+      "snippet": "visibility: \"visible\","
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 210,
+      "type": "js-line",
+      "snippet": "<TopMenuPopover"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 211,
+      "type": "js-line",
+      "snippet": "onNavigate={onMenuNavigate}"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 213,
+      "type": "js-line",
+      "snippet": "setMenuOpen(false);"
+    },
+    {
+      "file": "src/components/UI.jsx",
+      "line": 59,
+      "type": "js-line",
+      "snippet": "style={{"
+    },
+    {
+      "file": "src/components/UI.jsx",
+      "line": 104,
+      "type": "js-line",
+      "snippet": "style={{ maxWidth: \"100%\", minWidth: 0, ...(style || {}) }}"
+    },
+    {
+      "file": "src/components/UI.jsx",
+      "line": 104,
+      "type": "inline-style-prop",
+      "prop": "maxWidth",
+      "value": "\"100%\"",
+      "snippet": "style={{ maxWidth: \"100%\", minWidth: 0, ...(style || {}) }}"
+    },
+    {
+      "file": "src/components/UI.jsx",
+      "line": 116,
+      "type": "js-line",
+      "snippet": "style={{ maxWidth: \"100%\", minWidth: 0, ...(style || {}) }}"
+    },
+    {
+      "file": "src/components/UI.jsx",
+      "line": 116,
+      "type": "inline-style-prop",
+      "prop": "maxWidth",
+      "value": "\"100%\"",
+      "snippet": "style={{ maxWidth: \"100%\", minWidth: 0, ...(style || {}) }}"
+    },
+    {
+      "file": "src/components/UI.jsx",
+      "line": 236,
+      "type": "js-line",
+      "snippet": "className=\"modalPanelOuter GateGlassOuter\""
+    },
+    {
+      "file": "src/components/UI.jsx",
+      "line": 241,
+      "type": "js-line",
+      "snippet": "<div className=\"modalPanelClip GateGlassClip GateGlassBackdrop\">"
+    },
+    {
+      "file": "src/components/UI.jsx",
+      "line": 244,
+      "type": "js-line",
+      "snippet": "className={`modalPanel GateGlassContent${className ? ` ${className}` : \"\"}`}"
+    },
+    {
+      "file": "src/components/UI.jsx",
+      "line": 267,
+      "type": "js-line",
+      "snippet": "<div style={{ position: \"relative\", width: size, height: size }}>"
+    },
+    {
+      "file": "src/components/UI.jsx",
+      "line": 267,
+      "type": "inline-style-prop",
+      "prop": "position",
+      "value": "\"relative\"",
+      "snippet": "<div style={{ position: \"relative\", width: size, height: size }}>"
+    },
+    {
+      "file": "src/components/UI.jsx",
+      "line": 270,
+      "type": "js-line",
+      "snippet": "style={{ position: \"absolute\", inset: 0, filter: \"drop-shadow(0 6px 18px rgba(0,0,0,.35))\" }}"
+    },
+    {
+      "file": "src/components/UI.jsx",
+      "line": 270,
+      "type": "inline-style-prop",
+      "prop": "position",
+      "value": "\"absolute\"",
+      "snippet": "style={{ position: \"absolute\", inset: 0, filter: \"drop-shadow(0 6px 18px rgba(0,0,0,.35))\" }}"
+    },
+    {
+      "file": "src/components/UI.jsx",
+      "line": 293,
+      "type": "js-line",
+      "snippet": "style={{"
+    },
+    {
+      "file": "src/components/UI.jsx",
+      "line": 294,
+      "type": "js-line",
+      "snippet": "position: \"absolute\","
+    },
+    {
+      "file": "src/components/UI.jsx",
+      "line": 294,
+      "type": "inline-style-prop",
+      "prop": "position",
+      "value": "\"absolute\"",
+      "snippet": "position: \"absolute\","
+    },
+    {
+      "file": "src/hooks/useCreateFlowOrchestration.js",
+      "line": 92,
+      "type": "js-line",
+      "snippet": "if (tab !== \"today\") setTab(\"today\");"
+    },
+    {
+      "file": "src/hooks/useCreateFlowOrchestration.js",
+      "line": 180,
+      "type": "js-line",
+      "snippet": "return { anchorRect: normalizeAnchorRect(bottomEl.getBoundingClientRect()), anchorEl: bottomEl };"
+    },
+    {
+      "file": "src/hooks/useCreateFlowOrchestration.js",
+      "line": 184,
+      "type": "js-line",
+      "snippet": "return { anchorRect: normalizeAnchorRect(topEl.getBoundingClientRect()), anchorEl: topEl };"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 37,
+      "type": "js-line",
+      "snippet": "const menuRef = useRef(null);"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 62,
+      "type": "js-line",
+      "snippet": "const menuEl = menuRef.current;"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 65,
+      "type": "js-line",
+      "snippet": "const anchorRect = triggerEl.getBoundingClientRect();"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 66,
+      "type": "js-line",
+      "snippet": "const rawMenuRect = menuEl.getBoundingClientRect();"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 81,
+      "type": "js-line",
+      "snippet": "width: window.visualViewport?.width || window.innerWidth || 0,"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 82,
+      "type": "js-line",
+      "snippet": "height: window.visualViewport?.height || window.innerHeight || 0,"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 92,
+      "type": "js-line",
+      "snippet": "position: \"fixed\","
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 172,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.addEventListener(\"resize\", schedule);"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 173,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.addEventListener(\"scroll\", schedule);"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 182,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.removeEventListener(\"resize\", schedule);"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 183,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.removeEventListener(\"scroll\", schedule);"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 194,
+      "type": "js-line",
+      "snippet": "if (menuRef.current && menuRef.current.contains(target)) return;"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 237,
+      "type": "js-line",
+      "snippet": "<div className=\"selectMenuWrap\" style={{ maxWidth: \"100%\", ...(style || {}) }}>"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 237,
+      "type": "inline-style-prop",
+      "prop": "maxWidth",
+      "value": "\"100%\"",
+      "snippet": "<div className=\"selectMenuWrap\" style={{ maxWidth: \"100%\", ...(style || {}) }}>"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 242,
+      "type": "js-line",
+      "snippet": "style={{ maxWidth: \"100%\", minWidth: 0 }}"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 242,
+      "type": "inline-style-prop",
+      "prop": "maxWidth",
+      "value": "\"100%\"",
+      "snippet": "style={{ maxWidth: \"100%\", minWidth: 0 }}"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 261,
+      "type": "js-line",
+      "snippet": "style={{ zIndex: menuLayerZ }}"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 261,
+      "type": "inline-style-prop",
+      "prop": "zIndex",
+      "value": "menuLayerZ",
+      "snippet": "style={{ zIndex: menuLayerZ }}"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 266,
+      "type": "js-line",
+      "snippet": "ref={menuRef}"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 267,
+      "type": "js-line",
+      "snippet": "className=\"selectMenuOuter GateGlassOuter\""
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 268,
+      "type": "js-line",
+      "snippet": "style={{"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 269,
+      "type": "js-line",
+      "snippet": "...(isPositioned ? {} : { position: \"fixed\", left: 0, top: 0 }),"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 269,
+      "type": "inline-style-prop",
+      "prop": "position",
+      "value": "\"fixed\"",
+      "snippet": "...(isPositioned ? {} : { position: \"fixed\", left: 0, top: 0 }),"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 271,
+      "type": "js-line",
+      "snippet": "zIndex: menuLayerZ + 1,"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 271,
+      "type": "inline-style-prop",
+      "prop": "zIndex",
+      "value": "menuLayerZ + 1",
+      "snippet": "zIndex: menuLayerZ + 1,"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 272,
+      "type": "js-line",
+      "snippet": "opacity: isPositioned ? 1 : 0,"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 272,
+      "type": "inline-style-prop",
+      "prop": "opacity",
+      "value": "isPositioned ? 1 : 0",
+      "snippet": "opacity: isPositioned ? 1 : 0,"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 274,
+      "type": "js-line",
+      "snippet": "visibility: isPositioned ? \"visible\" : \"hidden\","
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 274,
+      "type": "inline-style-prop",
+      "prop": "visibility",
+      "value": "isPositioned ? \"visible\" : \"hidden\"",
+      "snippet": "visibility: isPositioned ? \"visible\" : \"hidden\","
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 277,
+      "type": "js-line",
+      "snippet": "<div className=\"selectMenuClip GateGlassClip GateGlassBackdrop\">"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 278,
+      "type": "js-line",
+      "snippet": "<div className={`selectMenu datePickerMenu GateGlassContent${menuClassName ? ` ${menuClassName}` : \"\"}`} role=\"dialog\">"
+    },
+    {
+      "file": "src/ui/LiquidGlassSurface.jsx",
+      "line": 32,
+      "type": "js-line",
+      "snippet": "<div className=\"liquidGlassSurfaceClip GateGlassClip GateGlassBackdrop\">"
+    },
+    {
+      "file": "src/ui/LiquidGlassSurface.jsx",
+      "line": 33,
+      "type": "js-line",
+      "snippet": "<div className=\"liquidGlassSurfaceContent GateGlassContent\">{children}</div>"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 73,
+      "type": "js-line",
+      "snippet": "const menuRef = useRef(null);"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 100,
+      "type": "js-line",
+      "snippet": "const menuEl = menuRef.current;"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 103,
+      "type": "js-line",
+      "snippet": "const anchorRect = triggerEl.getBoundingClientRect();"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 104,
+      "type": "js-line",
+      "snippet": "const rawMenuRect = menuEl.getBoundingClientRect();"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 119,
+      "type": "js-line",
+      "snippet": "width: window.visualViewport?.width || window.innerWidth || 0,"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 120,
+      "type": "js-line",
+      "snippet": "height: window.visualViewport?.height || window.innerHeight || 0,"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 130,
+      "type": "js-line",
+      "snippet": "position: \"fixed\","
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 229,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.addEventListener(\"resize\", schedule);"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 230,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.addEventListener(\"scroll\", schedule);"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 239,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.removeEventListener(\"resize\", schedule);"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 240,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.removeEventListener(\"scroll\", schedule);"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 251,
+      "type": "js-line",
+      "snippet": "const root = menuRef.current;"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 269,
+      "type": "js-line",
+      "snippet": "if (menuRef.current && menuRef.current.contains(target)) return;"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 285,
+      "type": "js-line",
+      "snippet": "const root = menuRef.current;"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 323,
+      "type": "js-line",
+      "snippet": "<div className=\"selectMenuWrap\" style={{ maxWidth: \"100%\", ...(style || {}) }}>"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 323,
+      "type": "inline-style-prop",
+      "prop": "maxWidth",
+      "value": "\"100%\"",
+      "snippet": "<div className=\"selectMenuWrap\" style={{ maxWidth: \"100%\", ...(style || {}) }}>"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 328,
+      "type": "js-line",
+      "snippet": "style={{ maxWidth: \"100%\", minWidth: 0 }}"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 328,
+      "type": "inline-style-prop",
+      "prop": "maxWidth",
+      "value": "\"100%\"",
+      "snippet": "style={{ maxWidth: \"100%\", minWidth: 0 }}"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 347,
+      "type": "js-line",
+      "snippet": "style={{ zIndex: menuLayerZ }}"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 347,
+      "type": "inline-style-prop",
+      "prop": "zIndex",
+      "value": "menuLayerZ",
+      "snippet": "style={{ zIndex: menuLayerZ }}"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 352,
+      "type": "js-line",
+      "snippet": "ref={menuRef}"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 353,
+      "type": "js-line",
+      "snippet": "className=\"selectMenuOuter GateGlassOuter\""
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 354,
+      "type": "js-line",
+      "snippet": "style={{"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 355,
+      "type": "js-line",
+      "snippet": "...(isPositioned ? {} : { position: \"fixed\", left: 0, top: 0 }),"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 355,
+      "type": "inline-style-prop",
+      "prop": "position",
+      "value": "\"fixed\"",
+      "snippet": "...(isPositioned ? {} : { position: \"fixed\", left: 0, top: 0 }),"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 357,
+      "type": "js-line",
+      "snippet": "zIndex: menuLayerZ + 1,"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 357,
+      "type": "inline-style-prop",
+      "prop": "zIndex",
+      "value": "menuLayerZ + 1",
+      "snippet": "zIndex: menuLayerZ + 1,"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 358,
+      "type": "js-line",
+      "snippet": "opacity: isPositioned ? 1 : 0,"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 358,
+      "type": "inline-style-prop",
+      "prop": "opacity",
+      "value": "isPositioned ? 1 : 0",
+      "snippet": "opacity: isPositioned ? 1 : 0,"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 360,
+      "type": "js-line",
+      "snippet": "visibility: isPositioned ? \"visible\" : \"hidden\","
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 360,
+      "type": "inline-style-prop",
+      "prop": "visibility",
+      "value": "isPositioned ? \"visible\" : \"hidden\"",
+      "snippet": "visibility: isPositioned ? \"visible\" : \"hidden\","
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 363,
+      "type": "js-line",
+      "snippet": "<div className=\"selectMenuClip GateGlassClip GateGlassBackdrop\">"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 364,
+      "type": "js-line",
+      "snippet": "<div className={`selectMenu GateGlassContent${menuClassName ? ` ${menuClassName}` : \"\"}`} role=\"listbox\">"
+    }
+  ],
+  "cssFindings": [
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 2,
+      "type": "css-prop",
+      "selector": ".TopNavShell",
+      "prop": "overflow-x",
+      "value": "hidden",
+      "snippet": "overflow-x: hidden;"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 5,
+      "type": "css-prop",
+      "selector": ".topNavGateWrap",
+      "prop": "position",
+      "value": "relative",
+      "snippet": ".topNavGateWrap {"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 6,
+      "type": "css-prop",
+      "selector": ".topNavGateWrap",
+      "prop": "z-index",
+      "value": "950",
+      "snippet": "padding: 0;"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 15,
+      "type": "css-prop",
+      "selector": ".TopNavSurfaceClip",
+      "prop": "position",
+      "value": "relative",
+      "snippet": ""
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 31,
+      "type": "css-prop",
+      "selector": ".topNavGateBar",
+      "prop": "border-radius",
+      "value": "inherit",
+      "snippet": "--gate-border: color-mix(in srgb, var(--border-subtle, var(--border)) 92%, rgba(255, 255, 255, 0.18));"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 40,
+      "type": "css-prop",
+      "selector": ".topNavGateBar",
+      "prop": "position",
+      "value": "relative",
+      "snippet": "padding: 8px;"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 41,
+      "type": "css-prop",
+      "selector": ".topNavGateBar",
+      "prop": "z-index",
+      "value": "1",
+      "snippet": "gap: 0;"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 67,
+      "type": "css-prop",
+      "selector": ".topNavGateBar .navMenuTrigger",
+      "prop": "border-radius",
+      "value": "var(--radius-12)",
+      "snippet": "width: 36px;"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 95,
+      "type": "css-prop",
+      "selector": ".topNavGateBar .navMenuBars span",
+      "prop": "border-radius",
+      "value": "999px",
+      "snippet": "width: 100%;"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 97,
+      "type": "css-prop",
+      "selector": ".topNavGateBar .navMenuBars span",
+      "prop": "opacity",
+      "value": "0.9",
+      "snippet": "border-radius: 999px;"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 101,
+      "type": "css-prop",
+      "selector": ".topMenuGatePopover",
+      "prop": "position",
+      "value": "relative",
+      "snippet": ""
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 108,
+      "type": "css-prop",
+      "selector": ".topMenuScrim",
+      "prop": "position",
+      "value": "fixed",
+      "snippet": ""
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 110,
+      "type": "css-prop",
+      "selector": ".topMenuScrim",
+      "prop": "z-index",
+      "value": "1000",
+      "snippet": "position: fixed;"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 115,
+      "type": "css-prop",
+      "selector": ".topMenuPopoverLayer",
+      "prop": "--safeTop",
+      "value": "env(safe-area-inset-top, 0px)",
+      "snippet": ""
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 116,
+      "type": "css-prop",
+      "selector": ".topMenuPopoverLayer",
+      "prop": "--safeBottom",
+      "value": "env(safe-area-inset-bottom, 0px)",
+      "snippet": ".topMenuPopoverLayer {"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 117,
+      "type": "css-prop",
+      "selector": ".topMenuPopoverLayer",
+      "prop": "--topMenuMaxH",
+      "value": "calc(100vh - 120px - (16px + var(--safeBottom)))",
+      "snippet": "--safeTop: env(safe-area-inset-top, 0px);"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 118,
+      "type": "css-prop",
+      "selector": ".topMenuPopoverLayer",
+      "prop": "position",
+      "value": "fixed",
+      "snippet": "--safeBottom: env(safe-area-inset-bottom, 0px);"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 119,
+      "type": "css-prop",
+      "selector": ".topMenuPopoverLayer",
+      "prop": "z-index",
+      "value": "1010",
+      "snippet": "--topMenuMaxH: calc(100vh - 120px - (16px + var(--safeBottom)));"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 120,
+      "type": "css-prop",
+      "selector": ".topMenuPopoverLayer",
+      "prop": "transform",
+      "value": "translateX(-50%)",
+      "snippet": "position: fixed;"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 124,
+      "type": "css-prop",
+      "selector": ".topMenuPopoverLayer",
+      "prop": "opacity",
+      "value": "1",
+      "snippet": "box-sizing: border-box;"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 125,
+      "type": "css-prop",
+      "selector": ".topMenuPopoverLayer",
+      "prop": "visibility",
+      "value": "visible",
+      "snippet": "pointer-events: auto;"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 129,
+      "type": "css-prop",
+      "selector": ".topMenuPopoverLayer > *",
+      "prop": "max-height",
+      "value": "var(--topMenuMaxH)",
+      "snippet": ""
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 130,
+      "type": "css-prop",
+      "selector": ".topMenuPopoverLayer > *",
+      "prop": "overflow",
+      "value": "auto",
+      "snippet": ".topMenuPopoverLayer > * {"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 132,
+      "type": "css-prop",
+      "selector": ".topMenuPopoverLayer > *",
+      "prop": "-webkit-overflow-scrolling",
+      "value": "touch",
+      "snippet": "overflow: auto;"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 140,
+      "type": "css-prop",
+      "selector": ".topMenuGate",
+      "prop": "border-radius",
+      "value": "14px",
+      "snippet": "--gate-border: color-mix(in srgb, var(--border-subtle, var(--border)) 90%, rgba(255, 255, 255, 0.18));"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 207,
+      "type": "css-prop",
+      "selector": ".topMenuGateFooter",
+      "prop": "padding-top",
+      "value": "10px",
+      "snippet": ""
+    },
+    {
+      "file": "src/index.css",
+      "line": 3,
+      "type": "css-prop",
+      "selector": "@import \"./styles/tokens.css\";\n\n:root",
+      "prop": "--safe-top",
+      "value": "env(safe-area-inset-top, 0px)",
+      "snippet": ""
+    },
+    {
+      "file": "src/index.css",
+      "line": 4,
+      "type": "css-prop",
+      "selector": "@import \"./styles/tokens.css\";\n\n:root",
+      "prop": "--safe-right",
+      "value": "env(safe-area-inset-right, 0px)",
+      "snippet": ":root{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 5,
+      "type": "css-prop",
+      "selector": "@import \"./styles/tokens.css\";\n\n:root",
+      "prop": "--safe-bottom",
+      "value": "env(safe-area-inset-bottom, 0px)",
+      "snippet": "/* iOS safe areas */"
+    },
+    {
+      "file": "src/index.css",
+      "line": 6,
+      "type": "css-prop",
+      "selector": "@import \"./styles/tokens.css\";\n\n:root",
+      "prop": "--safe-left",
+      "value": "env(safe-area-inset-left, 0px)",
+      "snippet": "--safe-top: env(safe-area-inset-top, 0px);"
+    },
+    {
+      "file": "src/index.css",
+      "line": 13,
+      "type": "css-prop",
+      "selector": "@import \"./styles/tokens.css\";\n\n:root",
+      "prop": "--background-position",
+      "value": "50% 50%",
+      "snippet": ""
+    },
+    {
+      "file": "src/index.css",
+      "line": 30,
+      "type": "css-prop",
+      "selector": "@import \"./styles/tokens.css\";\n\n:root",
+      "prop": "--bottomCategoryBarSpace",
+      "value": "112px",
+      "snippet": "--z-dropdown: 60;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 63,
+      "type": "css-prop",
+      "selector": "html,body",
+      "prop": "overflow-x",
+      "value": "hidden",
+      "snippet": "background-attachment: fixed;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 70,
+      "type": "css-prop",
+      "selector": "body",
+      "prop": "overflow-x",
+      "value": "hidden",
+      "snippet": "font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 81,
+      "type": "css-prop",
+      "selector": "#root",
+      "prop": "overflow-x",
+      "value": "hidden",
+      "snippet": "background: transparent;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 94,
+      "type": "css-prop",
+      "selector": ".container",
+      "prop": "overflow",
+      "value": "visible",
+      "snippet": "calc(var(--page-pad) + var(--safe-left));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 95,
+      "type": "css-prop",
+      "selector": ".container",
+      "prop": "padding-bottom",
+      "value": "calc(32px + var(--bottomCategoryBarSpace, var(--bottomRailOffset, 120px)) + var(--safe-bottom))",
+      "snippet": "min-height:100dvh;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 96,
+      "type": "css-prop",
+      "selector": ".container",
+      "prop": "overflow-x",
+      "value": "hidden",
+      "snippet": "overflow:visible;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 100,
+      "type": "css-prop",
+      "selector": ".pageContent",
+      "prop": "margin-top",
+      "value": "var(--subtitleToContent)",
+      "snippet": ".pageContent{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 103,
+      "type": "css-prop",
+      "selector": ".pageContent > :first-child",
+      "prop": "margin-top",
+      "value": "0",
+      "snippet": ".pageContent > :first-child{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 123,
+      "type": "css-prop",
+      "selector": ".pageHeaderRight",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "max-width:260px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 130,
+      "type": "css-prop",
+      "selector": ".pageTitle",
+      "prop": "margin-top",
+      "value": "var(--pageTitleMarginTop)",
+      "snippet": "margin:0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 137,
+      "type": "css-prop",
+      "selector": ".pageSubtitle",
+      "prop": "margin-top",
+      "value": "var(--pageTitleToSubtitle)",
+      "snippet": "margin:0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 142,
+      "type": "css-prop",
+      "selector": ".pageSection",
+      "prop": "margin-top",
+      "value": "var(--page-section-gap)",
+      "snippet": ".pageSection{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 145,
+      "type": "css-prop",
+      "selector": ".pageSectionTitle",
+      "prop": "margin-bottom",
+      "value": "var(--space-8)",
+      "snippet": ".pageSectionTitle{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 163,
+      "type": "css-prop",
+      "selector": ".cardSectionTitle",
+      "prop": "opacity",
+      "value": "1",
+      "snippet": "color:var(--text-2, var(--muted));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 191,
+      "type": "css-prop",
+      "selector": ".bg",
+      "prop": "position",
+      "value": "fixed",
+      "snippet": ""
+    },
+    {
+      "file": "src/index.css",
+      "line": 193,
+      "type": "css-prop",
+      "selector": ".bg",
+      "prop": "z-index",
+      "value": "-2",
+      "snippet": "position:fixed;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 196,
+      "type": "css-prop",
+      "selector": ".bg",
+      "prop": "background-position",
+      "value": "var(--background-position)",
+      "snippet": "background: var(--bg-base, var(--background));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 197,
+      "type": "css-prop",
+      "selector": ".bg",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "background-size: var(--background-size);"
+    },
+    {
+      "file": "src/index.css",
+      "line": 204,
+      "type": "css-prop",
+      "selector": "/* premium depth + subtle texture (no images) */\n.bg::before",
+      "prop": "position",
+      "value": "absolute",
+      "snippet": "/* premium depth + subtle texture (no images) */"
+    },
+    {
+      "file": "src/index.css",
+      "line": 208,
+      "type": "css-prop",
+      "selector": "/* premium depth + subtle texture (no images) */\n.bg::before",
+      "prop": "opacity",
+      "value": "var(--bg-vignette-opacity, var(--backgroundVignetteOpacity, 0))",
+      "snippet": "inset:0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 214,
+      "type": "css-prop",
+      "selector": ".bg::after",
+      "prop": "position",
+      "value": "absolute",
+      "snippet": ".bg::after{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 217,
+      "type": "css-prop",
+      "selector": ".bg::after",
+      "prop": "opacity",
+      "value": "var(--bg-noise-opacity, var(--backgroundGrainOpacity, 0))",
+      "snippet": "inset:0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 228,
+      "type": "css-prop",
+      "selector": "/* Backdrop blur is scoped to GateGlass wrappers to avoid iOS clipping artifacts. */\n\n.bgImg",
+      "prop": "position",
+      "value": "fixed",
+      "snippet": ""
+    },
+    {
+      "file": "src/index.css",
+      "line": 228,
+      "type": "css-prop",
+      "selector": "/* Backdrop blur is scoped to GateGlass wrappers to avoid iOS clipping artifacts. */\n\n.bgImg",
+      "prop": "z-index",
+      "value": "-1",
+      "snippet": ""
+    },
+    {
+      "file": "src/index.css",
+      "line": 230,
+      "type": "css-prop",
+      "selector": "/* Backdrop blur is scoped to GateGlass wrappers to avoid iOS clipping artifacts. */\n\n.bgImg",
+      "prop": "background-position",
+      "value": "center",
+      "snippet": ""
+    },
+    {
+      "file": "src/index.css",
+      "line": 231,
+      "type": "css-prop",
+      "selector": "/* Backdrop blur is scoped to GateGlass wrappers to avoid iOS clipping artifacts. */\n\n.bgImg",
+      "prop": "opacity",
+      "value": ".22",
+      "snippet": ".bgImg{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 232,
+      "type": "css-prop",
+      "selector": "/* Backdrop blur is scoped to GateGlass wrappers to avoid iOS clipping artifacts. */\n\n.bgImg",
+      "prop": "filter",
+      "value": "saturate(1.1) contrast(1.05)",
+      "snippet": "position:fixed; inset:0; z-index:-1;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 248,
+      "type": "css-prop",
+      "selector": ".stickyStack",
+      "prop": "position",
+      "value": "fixed",
+      "snippet": ".stickyStack{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 249,
+      "type": "css-prop",
+      "selector": ".stickyStack",
+      "prop": "top",
+      "value": "0",
+      "snippet": "position: fixed;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 250,
+      "type": "css-prop",
+      "selector": ".stickyStack",
+      "prop": "left",
+      "value": "0",
+      "snippet": "top: 0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 251,
+      "type": "css-prop",
+      "selector": ".stickyStack",
+      "prop": "right",
+      "value": "0",
+      "snippet": "left: 0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 252,
+      "type": "css-prop",
+      "selector": ".stickyStack",
+      "prop": "z-index",
+      "value": "var(--z-sticky)",
+      "snippet": "right: 0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 253,
+      "type": "css-prop",
+      "selector": ".stickyStack",
+      "prop": "padding-top",
+      "value": "var(--safe-top)",
+      "snippet": "z-index: var(--z-sticky);"
+    },
+    {
+      "file": "src/index.css",
+      "line": 275,
+      "type": "css-prop",
+      "selector": ".categoryRailScroll",
+      "prop": "overflow-x",
+      "value": "auto",
+      "snippet": "gap:8px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 276,
+      "type": "css-prop",
+      "selector": ".categoryRailScroll",
+      "prop": "padding-bottom",
+      "value": "4px",
+      "snippet": "overflow-x:auto;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 298,
+      "type": "css-prop",
+      "selector": ".categoryRailAdd",
+      "prop": "border-radius",
+      "value": "var(--radius-12)",
+      "snippet": "height:36px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 309,
+      "type": "css-prop",
+      "selector": ".categoryRailAdd.isOpen",
+      "prop": "transform",
+      "value": "scale(1.08)",
+      "snippet": ".categoryRailAdd.isOpen{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 321,
+      "type": "css-prop",
+      "selector": ".navActions",
+      "prop": "position",
+      "value": "relative",
+      "snippet": "gap:6px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 334,
+      "type": "css-prop",
+      "selector": ".navBtn",
+      "prop": "border-radius",
+      "value": "var(--radius-16)",
+      "snippet": "padding:10px 8px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 347,
+      "type": "css-prop",
+      "selector": ".bottomBar",
+      "prop": "position",
+      "value": "fixed",
+      "snippet": ".bottomBar{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 348,
+      "type": "css-prop",
+      "selector": ".bottomBar",
+      "prop": "left",
+      "value": "50%",
+      "snippet": "position: fixed;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 349,
+      "type": "css-prop",
+      "selector": ".bottomBar",
+      "prop": "bottom",
+      "value": "calc(16px + var(--safe-bottom))",
+      "snippet": "left: 50%;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 350,
+      "type": "css-prop",
+      "selector": ".bottomBar",
+      "prop": "transform",
+      "value": "translateX(-50%)",
+      "snippet": "bottom: calc(16px + var(--safe-bottom));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 351,
+      "type": "css-prop",
+      "selector": ".bottomBar",
+      "prop": "z-index",
+      "value": "var(--z-sticky)",
+      "snippet": "transform: translateX(-50%);"
+    },
+    {
+      "file": "src/index.css",
+      "line": 369,
+      "type": "css-prop",
+      "selector": ".hdrRight",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": ".hdrLeft{ flex:1 1 auto; min-width:0; }"
+    },
+    {
+      "file": "src/index.css",
+      "line": 373,
+      "type": "css-prop",
+      "selector": ".hdrSub",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "color:var(--text-3, var(--textSubtle, rgba(255,255,255,.60)));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 374,
+      "type": "css-prop",
+      "selector": ".hdrSub",
+      "prop": "text-overflow",
+      "value": "ellipsis",
+      "snippet": "overflow:hidden;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 376,
+      "type": "css-prop",
+      "selector": ".hdrSub",
+      "prop": "margin-top",
+      "value": "var(--pageTitleToSubtitle)",
+      "snippet": "white-space:nowrap;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 379,
+      "type": "css-prop",
+      "selector": ".hdrTitle",
+      "prop": "margin-top",
+      "value": "var(--pageTitleMarginTop)",
+      "snippet": ".hdrTitle{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 383,
+      "type": "css-prop",
+      "selector": ".hdrTitle",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "letter-spacing:-.02em;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 384,
+      "type": "css-prop",
+      "selector": ".hdrTitle",
+      "prop": "text-overflow",
+      "value": "ellipsis",
+      "snippet": "overflow:hidden;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 393,
+      "type": "css-prop",
+      "selector": ".sectionTitle",
+      "prop": "opacity",
+      "value": "1",
+      "snippet": "letter-spacing:-.01em;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 408,
+      "type": "css-prop",
+      "selector": ".manageHeaderSubtitle",
+      "prop": "margin-top",
+      "value": "4px",
+      "snippet": ".manageHeaderTitle{ font-size:var(--font-title); font-weight:700; letter-spacing:-.02em; }"
+    },
+    {
+      "file": "src/index.css",
+      "line": 436,
+      "type": "css-prop",
+      "selector": ".manageHeaderRightWrap",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "min-width:0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 448,
+      "type": "css-prop",
+      "selector": ".gaugeWrap",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "max-width:100%;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 465,
+      "type": "css-prop",
+      "selector": ".gaugeTitle",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "min-width:0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 466,
+      "type": "css-prop",
+      "selector": ".gaugeTitle",
+      "prop": "text-overflow",
+      "value": "ellipsis",
+      "snippet": "overflow:hidden;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 472,
+      "type": "css-prop",
+      "selector": ".gaugeValue",
+      "prop": "opacity",
+      "value": ".85",
+      "snippet": "white-space:nowrap;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 481,
+      "type": "css-prop",
+      "selector": ".card",
+      "prop": "border-radius",
+      "value": "var(--cardRadius, var(--radius-card))",
+      "snippet": "border:1px solid var(--border-subtle, var(--cardBorder, var(--border)));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 486,
+      "type": "css-prop",
+      "selector": ".accentSurface",
+      "prop": "position",
+      "value": "relative",
+      "snippet": ".accentSurface{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 493,
+      "type": "css-prop",
+      "selector": ".accentRail",
+      "prop": "position",
+      "value": "relative",
+      "snippet": ".accentRail{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 500,
+      "type": "css-prop",
+      "selector": ".accentRail::before",
+      "prop": "position",
+      "value": "absolute",
+      "snippet": "content:\"\";"
+    },
+    {
+      "file": "src/index.css",
+      "line": 501,
+      "type": "css-prop",
+      "selector": ".accentRail::before",
+      "prop": "left",
+      "value": "0",
+      "snippet": "position:absolute;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 502,
+      "type": "css-prop",
+      "selector": ".accentRail::before",
+      "prop": "top",
+      "value": "var(--accentRailInset)",
+      "snippet": "left:0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 503,
+      "type": "css-prop",
+      "selector": ".accentRail::before",
+      "prop": "bottom",
+      "value": "var(--accentRailInset)",
+      "snippet": "top:var(--accentRailInset);"
+    },
+    {
+      "file": "src/index.css",
+      "line": 505,
+      "type": "css-prop",
+      "selector": ".accentRail::before",
+      "prop": "border-radius",
+      "value": "var(--accentRailRadius)",
+      "snippet": "width:var(--accentRailWidth);"
+    },
+    {
+      "file": "src/index.css",
+      "line": 513,
+      "type": "css-prop",
+      "selector": ".accentItem",
+      "prop": "border-radius",
+      "value": "12px",
+      "snippet": "gap:10px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 520,
+      "type": "css-prop",
+      "selector": ".mt10",
+      "prop": "margin-top",
+      "value": "10px",
+      "snippet": ".p18{ padding:var(--space-18); }"
+    },
+    {
+      "file": "src/index.css",
+      "line": 521,
+      "type": "css-prop",
+      "selector": ".mt12",
+      "prop": "margin-top",
+      "value": "12px",
+      "snippet": ".mt10{ margin-top:10px; }"
+    },
+    {
+      "file": "src/index.css",
+      "line": 522,
+      "type": "css-prop",
+      "selector": ".mt14",
+      "prop": "margin-top",
+      "value": "14px",
+      "snippet": ".mt12{ margin-top:12px; }"
+    },
+    {
+      "file": "src/index.css",
+      "line": 523,
+      "type": "css-prop",
+      "selector": ".mt16",
+      "prop": "margin-top",
+      "value": "16px",
+      "snippet": ".mt14{ margin-top:14px; }"
+    },
+    {
+      "file": "src/index.css",
+      "line": 524,
+      "type": "css-prop",
+      "selector": ".mt18",
+      "prop": "margin-top",
+      "value": "18px",
+      "snippet": ".mt16{ margin-top:16px; }"
+    },
+    {
+      "file": "src/index.css",
+      "line": 525,
+      "type": "css-prop",
+      "selector": ".mt6",
+      "prop": "margin-top",
+      "value": "var(--space-6)",
+      "snippet": ".mt18{ margin-top:18px; }"
+    },
+    {
+      "file": "src/index.css",
+      "line": 526,
+      "type": "css-prop",
+      "selector": ".mt8",
+      "prop": "margin-top",
+      "value": "var(--space-8)",
+      "snippet": ".mt6{ margin-top:var(--space-6); }"
+    },
+    {
+      "file": "src/index.css",
+      "line": 527,
+      "type": "css-prop",
+      "selector": ".mt4",
+      "prop": "margin-top",
+      "value": "var(--space-4)",
+      "snippet": ".mt8{ margin-top:var(--space-8); }"
+    },
+    {
+      "file": "src/index.css",
+      "line": 561,
+      "type": "css-prop",
+      "selector": ".ml8",
+      "prop": "margin-left",
+      "value": "var(--space-8)",
+      "snippet": ".minW36{ min-width:36px; }"
+    },
+    {
+      "file": "src/index.css",
+      "line": 563,
+      "type": "css-prop",
+      "selector": ".pl10",
+      "prop": "padding-left",
+      "value": "10px",
+      "snippet": ".alignEnd{ align-items:flex-end; }"
+    },
+    {
+      "file": "src/index.css",
+      "line": 564,
+      "type": "css-prop",
+      "selector": ".pl12",
+      "prop": "padding-left",
+      "value": "12px",
+      "snippet": ".pl10{ padding-left:10px; }"
+    },
+    {
+      "file": "src/index.css",
+      "line": 571,
+      "type": "css-prop",
+      "selector": ".colorPickerRow",
+      "prop": "border-radius",
+      "value": "var(--radius-12)",
+      "snippet": "border:1px solid var(--border);"
+    },
+    {
+      "file": "src/index.css",
+      "line": 573,
+      "type": "css-prop",
+      "selector": ".colorPickerRow",
+      "prop": "position",
+      "value": "relative",
+      "snippet": "padding:var(--space-10);"
+    },
+    {
+      "file": "src/index.css",
+      "line": 578,
+      "type": "css-prop",
+      "selector": ".colorPickerSwatch",
+      "prop": "border-radius",
+      "value": "var(--radius-8)",
+      "snippet": "height:28px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 582,
+      "type": "css-prop",
+      "selector": ".colorPickerButton",
+      "prop": "position",
+      "value": "relative",
+      "snippet": ".colorPickerButton{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 586,
+      "type": "css-prop",
+      "selector": ".overlayInput",
+      "prop": "position",
+      "value": "absolute",
+      "snippet": ".overlayInput{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 588,
+      "type": "css-prop",
+      "selector": ".overlayInput",
+      "prop": "opacity",
+      "value": "0",
+      "snippet": "inset:0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 603,
+      "type": "css-prop",
+      "selector": ".badge",
+      "prop": "border-radius",
+      "value": "var(--radius-pill)",
+      "snippet": "padding:3px 8px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 617,
+      "type": "css-prop",
+      "selector": ".btn",
+      "prop": "border-radius",
+      "value": "var(--buttonRadius, var(--radius-btn))",
+      "snippet": "background: var(--buttonBg, var(--cta));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 626,
+      "type": "css-prop",
+      "selector": ".btn:hover",
+      "prop": "filter",
+      "value": "var(--buttonHoverFilter, brightness(.98))",
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 627,
+      "type": "css-prop",
+      "selector": ".btn:active",
+      "prop": "filter",
+      "value": "var(--buttonActiveFilter, brightness(.96))",
+      "snippet": ".btn:hover{ filter: var(--buttonHoverFilter, brightness(.98)); }"
+    },
+    {
+      "file": "src/index.css",
+      "line": 647,
+      "type": "css-prop",
+      "selector": ".btn:disabled",
+      "prop": "opacity",
+      "value": "var(--buttonDisabledOpacity, .55)",
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 654,
+      "type": "css-prop",
+      "selector": ".iconBtn",
+      "prop": "border-radius",
+      "value": "var(--radius-12)",
+      "snippet": "width:34px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 677,
+      "type": "css-prop",
+      "selector": ".input, .textarea, .select",
+      "prop": "border-radius",
+      "value": "var(--controlRadius, var(--radius-input))",
+      "snippet": "background: var(--controlBg, var(--surface-1, var(--surface)));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 706,
+      "type": "css-prop",
+      "selector": "/* --- iOS overflow/clipping fix for native date/time inputs (wrapper added in UI.jsx) --- */\n.controlClip",
+      "prop": "border-radius",
+      "value": "var(--controlRadius, var(--radius-input))",
+      "snippet": "min-width:0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 707,
+      "type": "css-prop",
+      "selector": "/* --- iOS overflow/clipping fix for native date/time inputs (wrapper added in UI.jsx) --- */\n.controlClip",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "border:1px solid var(--controlBorder, var(--border-subtle, var(--border)));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 723,
+      "type": "css-prop",
+      "selector": ".controlClip > .input,\n.controlClip > .select,\n.controlClip > .textarea",
+      "prop": "border-radius",
+      "value": "inherit",
+      "snippet": "border:0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 737,
+      "type": "css-prop",
+      "selector": ".scrollTarget",
+      "prop": "scroll-margin-top",
+      "value": "120px",
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 748,
+      "type": "css-prop",
+      "selector": ".focusHalo",
+      "prop": "position",
+      "value": "relative",
+      "snippet": ""
+    },
+    {
+      "file": "src/index.css",
+      "line": 749,
+      "type": "css-prop",
+      "selector": ".focusHalo",
+      "prop": "border-radius",
+      "value": "18px",
+      "snippet": ".focusHalo{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 754,
+      "type": "css-prop",
+      "selector": ".focusHalo::after",
+      "prop": "position",
+      "value": "absolute",
+      "snippet": "content:\"\";"
+    },
+    {
+      "file": "src/index.css",
+      "line": 756,
+      "type": "css-prop",
+      "selector": ".focusHalo::after",
+      "prop": "border-radius",
+      "value": "inherit",
+      "snippet": "inset:-2px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 757,
+      "type": "css-prop",
+      "selector": ".focusHalo::after",
+      "prop": "opacity",
+      "value": "0",
+      "snippet": "border-radius:inherit;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 759,
+      "type": "css-prop",
+      "selector": ".focusHalo::after",
+      "prop": "z-index",
+      "value": "0",
+      "snippet": "pointer-events:none;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 764,
+      "type": "css-prop",
+      "selector": ".focusHalo > *",
+      "prop": "position",
+      "value": "relative",
+      "snippet": ".focusHalo > *{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 765,
+      "type": "css-prop",
+      "selector": ".focusHalo > *",
+      "prop": "z-index",
+      "value": "1",
+      "snippet": "position:relative;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 768,
+      "type": "css-prop",
+      "selector": ".focusHalo:focus-within::after",
+      "prop": "opacity",
+      "value": ".65",
+      "snippet": ".focusHalo:focus-within::after{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 780,
+      "type": "css-prop",
+      "selector": ".progressTrack",
+      "prop": "border-radius",
+      "value": "999px",
+      "snippet": "height:10px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 782,
+      "type": "css-prop",
+      "selector": ".progressTrack",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "background: var(--progressTrackBg, rgba(255,255,255,.12));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 787,
+      "type": "css-prop",
+      "selector": ".progressFill",
+      "prop": "border-radius",
+      "value": "999px",
+      "snippet": "background: var(--progressFillBg, rgba(255,255,255,.9));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 802,
+      "type": "css-prop",
+      "selector": ".kpi",
+      "prop": "border-radius",
+      "value": "18px",
+      "snippet": "border:1px solid var(--border-subtle, var(--kpiBorder, rgba(255,255,255,.16)));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 807,
+      "type": "css-prop",
+      "selector": ".dot",
+      "prop": "border-radius",
+      "value": "999px",
+      "snippet": ""
+    },
+    {
+      "file": "src/index.css",
+      "line": 813,
+      "type": "css-prop",
+      "selector": ".listItem",
+      "prop": "border-radius",
+      "value": "var(--radius-card)",
+      "snippet": "border:1px solid var(--border-subtle, var(--border));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 820,
+      "type": "css-prop",
+      "selector": ".chip",
+      "prop": "border-radius",
+      "value": "var(--radius-chip)",
+      "snippet": "border:1px solid var(--border-subtle, var(--border));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 841,
+      "type": "css-prop",
+      "selector": ".chip:disabled",
+      "prop": "opacity",
+      "value": ".5",
+      "snippet": ".chip:disabled{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 860,
+      "type": "css-prop",
+      "selector": ".hint",
+      "prop": "border-radius",
+      "value": "14px",
+      "snippet": "border:1px solid var(--hintBorder, rgba(255,255,255,.12));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 884,
+      "type": "css-prop",
+      "selector": ".checkRow",
+      "prop": "border-radius",
+      "value": "14px",
+      "snippet": "border:1px solid var(--checkRowBorder, rgba(255,255,255,.12));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 893,
+      "type": "css-prop",
+      "selector": ".checkRow.isDisabled",
+      "prop": "opacity",
+      "value": ".55",
+      "snippet": ".checkRow.isDisabled{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 897,
+      "type": "css-prop",
+      "selector": ".checkRow input",
+      "prop": "margin-top",
+      "value": "2px",
+      "snippet": ".checkRow input{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 926,
+      "type": "css-prop",
+      "selector": ".hideScrollbar",
+      "prop": "-ms-overflow-style",
+      "value": "none",
+      "snippet": ""
+    },
+    {
+      "file": "src/index.css",
+      "line": 936,
+      "type": "css-prop",
+      "selector": ".scrollNoBar",
+      "prop": "-ms-overflow-style",
+      "value": "none",
+      "snippet": ""
+    },
+    {
+      "file": "src/index.css",
+      "line": 952,
+      "type": "css-prop",
+      "selector": ".dragHandle",
+      "prop": "border-radius",
+      "value": "12px",
+      "snippet": "background: var(--dragHandleBg, rgba(255,255,255,.06));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 979,
+      "type": "css-prop",
+      "selector": ".statButton:focus-visible",
+      "prop": "border-radius",
+      "value": "10px",
+      "snippet": "box-shadow: var(--accent-ring, var(--focusRing, 0 0 0 2px var(--focus)));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 994,
+      "type": "css-prop",
+      "selector": ".selectMenuWrap",
+      "prop": "position",
+      "value": "relative",
+      "snippet": ".selectMenuWrap{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1001,
+      "type": "css-prop",
+      "selector": ".selectTrigger",
+      "prop": "border-radius",
+      "value": "var(--controlRadius, var(--radius-input))",
+      "snippet": "color:var(--controlText, var(--text-1, var(--text)));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1013,
+      "type": "css-prop",
+      "selector": ".selectTrigger:disabled",
+      "prop": "opacity",
+      "value": "var(--controlDisabledOpacity, .6)",
+      "snippet": ".selectTrigger:disabled{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1021,
+      "type": "css-prop",
+      "selector": ".selectTriggerValue",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": ".selectTriggerValue{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1022,
+      "type": "css-prop",
+      "selector": ".selectTriggerValue",
+      "prop": "text-overflow",
+      "value": "ellipsis",
+      "snippet": "overflow:hidden;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1032,
+      "type": "css-prop",
+      "selector": ".selectMenuOverlay",
+      "prop": "position",
+      "value": "fixed",
+      "snippet": ".selectMenuOverlay{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1040,
+      "type": "css-prop",
+      "selector": ".selectMenuOuter",
+      "prop": "position",
+      "value": "fixed",
+      "snippet": ".selectMenuOuter{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1041,
+      "type": "css-prop",
+      "selector": ".selectMenuOuter",
+      "prop": "border-radius",
+      "value": "var(--radius-card)",
+      "snippet": "position:fixed;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1046,
+      "type": "css-prop",
+      "selector": ".selectMenuClip",
+      "prop": "border-radius",
+      "value": "inherit",
+      "snippet": ".selectMenuClip{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1049,
+      "type": "css-prop",
+      "selector": ".selectMenu",
+      "prop": "position",
+      "value": "relative",
+      "snippet": ".selectMenu{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1054,
+      "type": "css-prop",
+      "selector": ".selectMenu",
+      "prop": "border-radius",
+      "value": "inherit",
+      "snippet": "border:1px solid var(--border-subtle, var(--menuBorder, var(--border)));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1060,
+      "type": "css-prop",
+      "selector": ".selectMenu",
+      "prop": "max-height",
+      "value": "240px",
+      "snippet": "gap:4px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1061,
+      "type": "css-prop",
+      "selector": ".selectMenu",
+      "prop": "overflow",
+      "value": "auto",
+      "snippet": "max-height:240px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1069,
+      "type": "css-prop",
+      "selector": ".selectOption",
+      "prop": "border-radius",
+      "value": "var(--radius-12)",
+      "snippet": "padding:8px 10px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1080,
+      "type": "css-prop",
+      "selector": ".selectOption.isDisabled",
+      "prop": "opacity",
+      "value": ".5",
+      "snippet": ".selectOption.isDisabled{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1091,
+      "type": "css-prop",
+      "selector": ".datePickerMenu",
+      "prop": "max-height",
+      "value": "min(70dvh, 420px)",
+      "snippet": "padding:10px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1092,
+      "type": "css-prop",
+      "selector": ".datePickerMenu",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "max-height:min(70dvh, 420px);"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1104,
+      "type": "css-prop",
+      "selector": ".datePickerMonth",
+      "prop": "text-transform",
+      "value": "capitalize",
+      "snippet": "color:var(--text-1, var(--text));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1110,
+      "type": "css-prop",
+      "selector": ".datePickerNavBtn",
+      "prop": "border-radius",
+      "value": "var(--radius-12)",
+      "snippet": "color:var(--text-1, var(--text));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1140,
+      "type": "css-prop",
+      "selector": ".datePickerDay",
+      "prop": "border-radius",
+      "value": "var(--radius-12)",
+      "snippet": "color:var(--text-1, var(--text));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1150,
+      "type": "css-prop",
+      "selector": ".datePickerDay.isOutside",
+      "prop": "opacity",
+      "value": "0.6",
+      "snippet": "color:var(--text-3, var(--muted2));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1168,
+      "type": "css-prop",
+      "selector": ".datePickerAction",
+      "prop": "border-radius",
+      "value": "var(--radius-12)",
+      "snippet": "color:var(--text-1, var(--text));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1190,
+      "type": "css-prop",
+      "selector": ".selectMenu",
+      "prop": "position",
+      "value": "relative",
+      "snippet": ""
+    },
+    {
+      "file": "src/index.css",
+      "line": 1191,
+      "type": "css-prop",
+      "selector": ".selectMenu",
+      "prop": "top",
+      "value": "auto",
+      "snippet": ".selectMenu{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1192,
+      "type": "css-prop",
+      "selector": ".selectMenu",
+      "prop": "left",
+      "value": "auto",
+      "snippet": "position:relative;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1193,
+      "type": "css-prop",
+      "selector": ".selectMenu",
+      "prop": "right",
+      "value": "auto",
+      "snippet": "top:auto;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1195,
+      "type": "css-prop",
+      "selector": ".selectMenu",
+      "prop": "max-height",
+      "value": "min(70dvh, 520px)",
+      "snippet": "right:auto;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1196,
+      "type": "css-prop",
+      "selector": ".selectMenu",
+      "prop": "overflow",
+      "value": "auto",
+      "snippet": "width: min(560px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1198,
+      "type": "css-prop",
+      "selector": ".selectMenu",
+      "prop": "border-radius",
+      "value": "20px",
+      "snippet": "overflow:auto;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1219,
+      "type": "css-prop",
+      "selector": ".reminderCard",
+      "prop": "max-height",
+      "value": "calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px)",
+      "snippet": ".reminderCard{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1220,
+      "type": "css-prop",
+      "selector": ".reminderCard",
+      "prop": "overflow",
+      "value": "auto",
+      "snippet": "max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1223,
+      "type": "css-prop",
+      "selector": ".reminderPulse",
+      "prop": "position",
+      "value": "relative",
+      "snippet": ".reminderPulse{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1227,
+      "type": "css-prop",
+      "selector": ".reminderPulse::after",
+      "prop": "position",
+      "value": "absolute",
+      "snippet": "content:\"\";"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1229,
+      "type": "css-prop",
+      "selector": ".reminderPulse::after",
+      "prop": "border-radius",
+      "value": "24px",
+      "snippet": "inset:-10px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1240,
+      "type": "css-prop",
+      "selector": ".disciplineCard",
+      "prop": "overflow-x",
+      "value": "hidden",
+      "snippet": "box-sizing: border-box;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1249,
+      "type": "css-prop",
+      "selector": ".noteHistorySheet",
+      "prop": "border-top-left-radius",
+      "value": "20px",
+      "snippet": "margin:0 auto;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1250,
+      "type": "css-prop",
+      "selector": ".noteHistorySheet",
+      "prop": "border-top-right-radius",
+      "value": "20px",
+      "snippet": "border-top-left-radius:20px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1251,
+      "type": "css-prop",
+      "selector": ".noteHistorySheet",
+      "prop": "border-bottom-left-radius",
+      "value": "0",
+      "snippet": "border-top-right-radius:20px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1252,
+      "type": "css-prop",
+      "selector": ".noteHistorySheet",
+      "prop": "border-bottom-right-radius",
+      "value": "0",
+      "snippet": "border-bottom-left-radius:0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1254,
+      "type": "css-prop",
+      "selector": ".noteHistorySheet",
+      "prop": "max-height",
+      "value": "80dvh",
+      "snippet": "padding:16px 16px calc(16px + var(--safe-bottom));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1255,
+      "type": "css-prop",
+      "selector": ".noteHistorySheet",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "max-height:80dvh;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1262,
+      "type": "css-prop",
+      "selector": ".noteHistoryBody",
+      "prop": "overflow",
+      "value": "auto",
+      "snippet": ".noteHistoryBody{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1264,
+      "type": "css-prop",
+      "selector": ".noteHistoryBody",
+      "prop": "max-height",
+      "value": "100%",
+      "snippet": "min-height:0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1271,
+      "type": "css-prop",
+      "selector": ".drawerPanelOuter",
+      "prop": "position",
+      "value": "fixed",
+      "snippet": ".drawerPanelOuter{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1272,
+      "type": "css-prop",
+      "selector": ".drawerPanelOuter",
+      "prop": "top",
+      "value": "70px",
+      "snippet": "position:fixed;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1273,
+      "type": "css-prop",
+      "selector": ".drawerPanelOuter",
+      "prop": "right",
+      "value": "calc(var(--page-pad) + var(--safe-right))",
+      "snippet": "top:70px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1274,
+      "type": "css-prop",
+      "selector": ".drawerPanelOuter",
+      "prop": "bottom",
+      "value": "calc(12px + var(--safe-bottom))",
+      "snippet": "right:calc(var(--page-pad) + var(--safe-right));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1276,
+      "type": "css-prop",
+      "selector": ".drawerPanelOuter",
+      "prop": "border-radius",
+      "value": "20px",
+      "snippet": "width:min(360px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1279,
+      "type": "css-prop",
+      "selector": ".drawerPanelOuter",
+      "prop": "max-height",
+      "value": "calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px)",
+      "snippet": "--gate-glass-shadow: var(--shadow-lg, var(--drawerShadow, 0 24px 80px rgba(0,0,0,.4)));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1284,
+      "type": "css-prop",
+      "selector": ".drawerPanelClip",
+      "prop": "border-radius",
+      "value": "inherit",
+      "snippet": "height:100%;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1290,
+      "type": "css-prop",
+      "selector": ".drawerPanel",
+      "prop": "border-radius",
+      "value": "inherit",
+      "snippet": "background: linear-gradient(180deg, var(--surface-2, var(--glass2)), var(--surface-1, var(--glass)));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1292,
+      "type": "css-prop",
+      "selector": ".drawerPanel",
+      "prop": "overflow",
+      "value": "auto",
+      "snippet": "padding:16px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1293,
+      "type": "css-prop",
+      "selector": ".drawerPanel",
+      "prop": "overflow-x",
+      "value": "hidden",
+      "snippet": "overflow:auto;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1297,
+      "type": "css-prop",
+      "selector": ".plusExpander",
+      "prop": "position",
+      "value": "fixed",
+      "snippet": ".plusExpander{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1298,
+      "type": "css-prop",
+      "selector": ".plusExpander",
+      "prop": "z-index",
+      "value": "var(--z-dropdown)",
+      "snippet": "position:fixed;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1299,
+      "type": "css-prop",
+      "selector": ".plusExpander",
+      "prop": "transform",
+      "value": "translateY(6px) scale(.98)",
+      "snippet": "z-index:var(--z-dropdown);"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1300,
+      "type": "css-prop",
+      "selector": ".plusExpander",
+      "prop": "opacity",
+      "value": "0",
+      "snippet": "transform: translateY(6px) scale(.98);"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1305,
+      "type": "css-prop",
+      "selector": ".plusExpander.isOpen",
+      "prop": "transform",
+      "value": "translateY(0) scale(1.02)",
+      "snippet": ".plusExpander.isOpen{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1306,
+      "type": "css-prop",
+      "selector": ".plusExpander.isOpen",
+      "prop": "opacity",
+      "value": "1",
+      "snippet": "transform: translateY(0) scale(1.02);"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1310,
+      "type": "css-prop",
+      "selector": ".plusExpanderPanel",
+      "prop": "border-radius",
+      "value": "16px",
+      "snippet": ".plusExpanderPanel{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1314,
+      "type": "css-prop",
+      "selector": ".plusExpanderPanel",
+      "prop": "max-height",
+      "value": "calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px)",
+      "snippet": "max-width:calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1318,
+      "type": "css-prop",
+      "selector": ".plusExpanderPanelClip",
+      "prop": "border-radius",
+      "value": "inherit",
+      "snippet": ".plusExpanderPanelClip{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1323,
+      "type": "css-prop",
+      "selector": ".plusExpanderPanelContent",
+      "prop": "border-radius",
+      "value": "inherit",
+      "snippet": "background: linear-gradient(180deg, var(--surface-2, var(--glass2)), var(--surface-1, var(--glass)));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1325,
+      "type": "css-prop",
+      "selector": ".plusExpanderPanelContent",
+      "prop": "overflow",
+      "value": "auto",
+      "snippet": "padding:10px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1326,
+      "type": "css-prop",
+      "selector": ".plusExpanderPanelContent",
+      "prop": "overflow-x",
+      "value": "hidden",
+      "snippet": "overflow:auto;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1330,
+      "type": "css-prop",
+      "selector": ".keyboardOpen .bottomCategoryBar",
+      "prop": "opacity",
+      "value": "0",
+      "snippet": ""
+    },
+    {
+      "file": "src/index.css",
+      "line": 1349,
+      "type": "css-prop",
+      "selector": ".editPanelBody",
+      "prop": "margin-top",
+      "value": "12px",
+      "snippet": "gap:12px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1354,
+      "type": "css-prop",
+      "selector": ".editSection",
+      "prop": "border-radius",
+      "value": "14px",
+      "snippet": "background: var(--panelBg, rgba(255,255,255,.04));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1360,
+      "type": "css-prop",
+      "selector": ".editSectionTitle",
+      "prop": "margin-bottom",
+      "value": "8px",
+      "snippet": "font-weight:700;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1379,
+      "type": "css-prop",
+      "selector": ".editSectionBody",
+      "prop": "margin-top",
+      "value": "10px",
+      "snippet": "gap:10px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1382,
+      "type": "css-prop",
+      "selector": ".editPanelFooter",
+      "prop": "position",
+      "value": "sticky",
+      "snippet": ".editPanelFooter{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1383,
+      "type": "css-prop",
+      "selector": ".editPanelFooter",
+      "prop": "bottom",
+      "value": "-1px",
+      "snippet": "position:sticky;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1387,
+      "type": "css-prop",
+      "selector": ".editPanelFooter",
+      "prop": "padding-top",
+      "value": "12px",
+      "snippet": "gap:10px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1388,
+      "type": "css-prop",
+      "selector": ".editPanelFooter",
+      "prop": "margin-top",
+      "value": "12px",
+      "snippet": "padding-top:12px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1390,
+      "type": "css-prop",
+      "selector": ".editPanelFooter",
+      "prop": "border-top",
+      "value": "1px solid var(--panelFooterBorder, rgba(255,255,255,.12))",
+      "snippet": "background: var(--panelFooterBg, rgba(5,6,10,.6));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1403,
+      "type": "css-prop",
+      "selector": ".editDayOption",
+      "prop": "border-radius",
+      "value": "10px",
+      "snippet": "background: var(--editDayOptionBg, rgba(255,255,255,.06));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1423,
+      "type": "css-prop",
+      "selector": ".ios .drawerPanelOuter",
+      "prop": "position",
+      "value": "absolute",
+      "snippet": ".ios .drawerPanelOuter{"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 4,
+      "type": "css-prop",
+      "selector": ".GateGlassOuter",
+      "prop": "border-radius",
+      "value": "var(--gate-glass-radius)",
+      "snippet": "border-radius: var(--gate-glass-radius);"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 6,
+      "type": "css-prop",
+      "selector": ".GateGlassOuter",
+      "prop": "position",
+      "value": "relative",
+      "snippet": "position: relative;"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 8,
+      "type": "css-prop",
+      "selector": ".GateGlassClip",
+      "prop": "border-radius",
+      "value": "inherit",
+      "snippet": ""
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 9,
+      "type": "css-prop",
+      "selector": ".GateGlassClip",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": ".GateGlassClip {"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 10,
+      "type": "css-prop",
+      "selector": ".GateGlassClip",
+      "prop": "position",
+      "value": "relative",
+      "snippet": "border-radius: inherit;"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 12,
+      "type": "css-prop",
+      "selector": ".GateGlassClip",
+      "prop": "backface-visibility",
+      "value": "hidden",
+      "snippet": "position: relative;"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 13,
+      "type": "css-prop",
+      "selector": ".GateGlassClip",
+      "prop": "-webkit-backface-visibility",
+      "value": "hidden",
+      "snippet": "isolation: isolate;"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 14,
+      "type": "css-prop",
+      "selector": ".GateGlassClip",
+      "prop": "transform",
+      "value": "translateZ(0)",
+      "snippet": "backface-visibility: hidden;"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 19,
+      "type": "css-prop",
+      "selector": ".GateGlassBackdrop::before",
+      "prop": "position",
+      "value": "absolute",
+      "snippet": ".GateGlassBackdrop::before {"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 22,
+      "type": "css-prop",
+      "selector": ".GateGlassBackdrop::before",
+      "prop": "z-index",
+      "value": "0",
+      "snippet": "inset: 0;"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 24,
+      "type": "css-prop",
+      "selector": ".GateGlassBackdrop::before",
+      "prop": "backdrop-filter",
+      "value": "blur(var(--gate-glass-blur, 10px)) saturate(var(--gate-glass-saturation, 1.08))",
+      "snippet": "z-index: 0;"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 25,
+      "type": "css-prop",
+      "selector": ".GateGlassBackdrop::before",
+      "prop": "-webkit-backdrop-filter",
+      "value": "blur(var(--gate-glass-blur, 10px)) saturate(var(--gate-glass-saturation, 1.08))",
+      "snippet": "background: var(--gate-glass-backdrop-bg, color-mix(in srgb, #0a0f18 48%, transparent));"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 29,
+      "type": "css-prop",
+      "selector": ".GateGlassContent",
+      "prop": "position",
+      "value": "relative",
+      "snippet": ""
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 30,
+      "type": "css-prop",
+      "selector": ".GateGlassContent",
+      "prop": "z-index",
+      "value": "1",
+      "snippet": ".GateGlassContent {"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 34,
+      "type": "css-prop",
+      "selector": ".GateOverlayBackdrop",
+      "prop": "backdrop-filter",
+      "value": "blur(var(--gate-overlay-blur, 10px)) saturate(var(--gate-overlay-saturation, 1.08))",
+      "snippet": ""
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 35,
+      "type": "css-prop",
+      "selector": ".GateOverlayBackdrop",
+      "prop": "-webkit-backdrop-filter",
+      "value": "blur(var(--gate-overlay-blur, 10px)) saturate(var(--gate-overlay-saturation, 1.08))",
+      "snippet": ".GateOverlayBackdrop {"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 43,
+      "type": "css-prop",
+      "selector": ".GateSurfacePremium",
+      "prop": "border-radius",
+      "value": "16px",
+      "snippet": "--gate-border: color-mix(in srgb, var(--border-subtle, var(--border)) 91%, rgba(255, 255, 255, 0.2));"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 59,
+      "type": "css-prop",
+      "selector": ".GateCardPremium",
+      "prop": "border-radius",
+      "value": "16px",
+      "snippet": ""
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 94,
+      "type": "css-prop",
+      "selector": ".GateInputPremium,\n.GateTextareaPremium,\n.GateSelectPremium",
+      "prop": "border-radius",
+      "value": "12px",
+      "snippet": ".GateTextareaPremium,"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 136,
+      "type": "css-prop",
+      "selector": ".GateSelectWrap",
+      "prop": "position",
+      "value": "relative",
+      "snippet": ""
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 142,
+      "type": "css-prop",
+      "selector": ".GateSelectWrap::after",
+      "prop": "position",
+      "value": "absolute",
+      "snippet": ".GateSelectWrap::after {"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 143,
+      "type": "css-prop",
+      "selector": ".GateSelectWrap::after",
+      "prop": "right",
+      "value": "12px",
+      "snippet": "content: \"▾\";"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 144,
+      "type": "css-prop",
+      "selector": ".GateSelectWrap::after",
+      "prop": "top",
+      "value": "50%",
+      "snippet": "position: absolute;"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 145,
+      "type": "css-prop",
+      "selector": ".GateSelectWrap::after",
+      "prop": "transform",
+      "value": "translateY(-50%)",
+      "snippet": "right: 12px;"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 154,
+      "type": "css-prop",
+      "selector": ".GateSelectWrap .GateSelectPremium",
+      "prop": "padding-right",
+      "value": "30px",
+      "snippet": "appearance: none;"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 159,
+      "type": "css-prop",
+      "selector": ".GateRowPremium",
+      "prop": "border-radius",
+      "value": "12px",
+      "snippet": ".GateRowPremium {"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 168,
+      "type": "css-prop",
+      "selector": ".GateIconButtonPremium",
+      "prop": "border-radius",
+      "value": "999px",
+      "snippet": "height: 30px;"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 190,
+      "type": "css-prop",
+      "selector": ".gateButton.GatePressable:active,\n.gateRow.isInteractive.GatePressable:active",
+      "prop": "transform",
+      "value": "translateY(1px) scale(0.99)",
+      "snippet": ""
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 198,
+      "type": "css-prop",
+      "selector": ".gateButton.GatePressable.noPressFx:active,\n.gateRow.isInteractive.GatePressable.noPressFx:active",
+      "prop": "transform",
+      "value": "none",
+      "snippet": ""
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 6,
+      "type": "css-prop",
+      "selector": ".liquidGlassSurface",
+      "prop": "--lg-top",
+      "value": "var(--surface-3, var(--surface-2))",
+      "snippet": "--lg-top: var(--surface-3, var(--surface-2));"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 7,
+      "type": "css-prop",
+      "selector": ".liquidGlassSurface",
+      "prop": "--lg-bottom",
+      "value": "var(--surface-2, var(--surface-1))",
+      "snippet": "--lg-bottom: var(--surface-2, var(--surface-1));"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 10,
+      "type": "css-prop",
+      "selector": ".liquidGlassSurface",
+      "prop": "position",
+      "value": "relative",
+      "snippet": "position: relative;"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 15,
+      "type": "css-prop",
+      "selector": ".liquidGlassSurface",
+      "prop": "border-radius",
+      "value": "var(--lg-radius)",
+      "snippet": "border-radius: var(--lg-radius);"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 21,
+      "type": "css-prop",
+      "selector": ".liquidGlassSurfaceClip",
+      "prop": "position",
+      "value": "relative",
+      "snippet": ""
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 22,
+      "type": "css-prop",
+      "selector": ".liquidGlassSurfaceClip",
+      "prop": "border-radius",
+      "value": "var(--lg-radius)",
+      "snippet": ".liquidGlassSurfaceClip {"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 27,
+      "type": "css-prop",
+      "selector": ".liquidGlassSurfaceContent",
+      "prop": "border-radius",
+      "value": "inherit",
+      "snippet": ".liquidGlassSurfaceContent {"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 40,
+      "type": "css-prop",
+      "selector": ".liquidGlassSurfaceContent::after",
+      "prop": "position",
+      "value": "absolute",
+      "snippet": ".liquidGlassSurfaceContent::after {"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 48,
+      "type": "css-prop",
+      "selector": ".liquidGlassSurface.isNoisy .liquidGlassSurfaceContent::before",
+      "prop": "position",
+      "value": "absolute",
+      "snippet": ".liquidGlassSurface.isNoisy .liquidGlassSurfaceContent::before {"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 52,
+      "type": "css-prop",
+      "selector": ".liquidGlassSurface.isNoisy .liquidGlassSurfaceContent::before",
+      "prop": "opacity",
+      "value": "0.06",
+      "snippet": "background-image: radial-gradient(rgba(255, 255, 255, 0.06) 0.6px, transparent 0.6px);"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 76,
+      "type": "css-prop",
+      "selector": ".liquidGlass--solid",
+      "prop": "--lg-top",
+      "value": "color-mix(in srgb, var(--surface-3, #1a1f2b) 94%, #0a0d14)",
+      "snippet": ""
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 77,
+      "type": "css-prop",
+      "selector": ".liquidGlass--solid",
+      "prop": "--lg-bottom",
+      "value": "color-mix(in srgb, var(--surface-2, #141a23) 92%, #080b12)",
+      "snippet": ".liquidGlass--solid {"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 83,
+      "type": "css-prop",
+      "selector": ".liquidGlass--medium",
+      "prop": "--lg-top",
+      "value": "color-mix(in srgb, var(--surface-3, #1a1f2b) 88%, var(--surface-2, #141a23))",
+      "snippet": ""
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 84,
+      "type": "css-prop",
+      "selector": ".liquidGlass--medium",
+      "prop": "--lg-bottom",
+      "value": "color-mix(in srgb, var(--surface-2, #141a23) 90%, var(--surface-1, #10151d))",
+      "snippet": ".liquidGlass--medium {"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 90,
+      "type": "css-prop",
+      "selector": ".liquidGlass--light",
+      "prop": "--lg-top",
+      "value": "color-mix(in srgb, var(--surface-2, #141a23) 84%, var(--surface-1, #10151d))",
+      "snippet": ""
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 91,
+      "type": "css-prop",
+      "selector": ".liquidGlass--light",
+      "prop": "--lg-bottom",
+      "value": "color-mix(in srgb, var(--surface-1, #10151d) 88%, #0b1018)",
+      "snippet": ".liquidGlass--light {"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 101,
+      "type": "css-prop",
+      "selector": ".liquidSurfaceHeader",
+      "prop": "position",
+      "value": "relative",
+      "snippet": "justify-content: space-between;"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 102,
+      "type": "css-prop",
+      "selector": ".liquidSurfaceHeader",
+      "prop": "z-index",
+      "value": "1",
+      "snippet": "gap: 12px;"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 125,
+      "type": "css-prop",
+      "selector": ".liquidSurfaceBody",
+      "prop": "margin-top",
+      "value": "12px",
+      "snippet": ""
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 129,
+      "type": "css-prop",
+      "selector": ".liquidSurfaceBody",
+      "prop": "position",
+      "value": "relative",
+      "snippet": "flex-direction: column;"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 130,
+      "type": "css-prop",
+      "selector": ".liquidSurfaceBody",
+      "prop": "z-index",
+      "value": "1",
+      "snippet": "gap: 12px;"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 173,
+      "type": "css-prop",
+      "selector": ".liquidMenuItem",
+      "prop": "border-radius",
+      "value": "12px",
+      "snippet": "border: 1px solid color-mix(in srgb, var(--border-subtle, var(--border)) 90%, rgba(255, 255, 255, 0.18));"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 187,
+      "type": "css-prop",
+      "selector": ".liquidMenuItem:hover",
+      "prop": "transform",
+      "value": "translateY(-1px)",
+      "snippet": "border-color: color-mix(in srgb, var(--accent) 36%, rgba(255, 255, 255, 0.28));"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 196,
+      "type": "css-prop",
+      "selector": ".liquidMenuItem:disabled",
+      "prop": "opacity",
+      "value": "0.6",
+      "snippet": ""
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 198,
+      "type": "css-prop",
+      "selector": ".liquidMenuItem:disabled",
+      "prop": "transform",
+      "value": "none",
+      "snippet": "opacity: 0.6;"
+    }
+  ],
+  "stackingContexts": [
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 3,
+      "selector": ".topNavGateWrap",
+      "reason": "position+z-index",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 26,
+      "selector": ".topNavGateBar",
+      "reason": "position+z-index",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 91,
+      "selector": ".topNavGateBar .navMenuBars span",
+      "reason": "opacity<1",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 107,
+      "selector": ".topMenuScrim",
+      "reason": "position+z-index",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 114,
+      "selector": ".topMenuPopoverLayer",
+      "reason": "position+z-index, transform",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 190,
+      "selector": ".bg",
+      "reason": "position+z-index",
+      "hasOverflowClip": true,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 227,
+      "selector": "/* Backdrop blur is scoped to GateGlass wrappers to avoid iOS clipping artifacts. */\n\n.bgImg",
+      "reason": "position+z-index, filter/backdrop, opacity<1",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 247,
+      "selector": ".stickyStack",
+      "reason": "position+z-index",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 308,
+      "selector": ".categoryRailAdd.isOpen",
+      "reason": "transform",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 346,
+      "selector": ".bottomBar",
+      "reason": "position+z-index, transform",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 469,
+      "selector": ".gaugeValue",
+      "reason": "opacity<1",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 585,
+      "selector": ".overlayInput",
+      "reason": "opacity<1",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 626,
+      "selector": ".btn:hover",
+      "reason": "filter/backdrop",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 627,
+      "selector": ".btn:active",
+      "reason": "filter/backdrop",
+      "hasOverflowClip": false,
+      "snippet": ".btn:hover{ filter: var(--buttonHoverFilter, brightness(.98)); }"
+    },
+    {
+      "file": "src/index.css",
+      "line": 752,
+      "selector": ".focusHalo::after",
+      "reason": "position+z-index, opacity<1",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 763,
+      "selector": ".focusHalo > *",
+      "reason": "position+z-index",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 767,
+      "selector": ".focusHalo:focus-within::after",
+      "reason": "opacity<1",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 840,
+      "selector": ".chip:disabled",
+      "reason": "opacity<1",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 892,
+      "selector": ".checkRow.isDisabled",
+      "reason": "opacity<1",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1079,
+      "selector": ".selectOption.isDisabled",
+      "reason": "opacity<1",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1148,
+      "selector": ".datePickerDay.isOutside",
+      "reason": "opacity<1",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1296,
+      "selector": ".plusExpander",
+      "reason": "position+z-index, transform, opacity<1",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1304,
+      "selector": ".plusExpander.isOpen",
+      "reason": "transform",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1329,
+      "selector": ".keyboardOpen .bottomCategoryBar",
+      "reason": "opacity<1",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 7,
+      "selector": ".GateGlassClip",
+      "reason": "transform",
+      "hasOverflowClip": true,
+      "snippet": "}"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 17,
+      "selector": ".GateGlassBackdrop::before",
+      "reason": "position+z-index, filter/backdrop",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 28,
+      "selector": ".GateGlassContent",
+      "reason": "position+z-index",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 33,
+      "selector": ".GateOverlayBackdrop",
+      "reason": "filter/backdrop",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 140,
+      "selector": ".GateSelectWrap::after",
+      "reason": "transform",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 189,
+      "selector": ".gateButton.GatePressable:active,\n.gateRow.isInteractive.GatePressable:active",
+      "reason": "transform",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 197,
+      "selector": ".gateButton.GatePressable.noPressFx:active,\n.gateRow.isInteractive.GatePressable.noPressFx:active",
+      "reason": "transform",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 46,
+      "selector": ".liquidGlassSurface.isNoisy .liquidGlassSurfaceContent::before",
+      "reason": "opacity<1",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 96,
+      "selector": ".liquidSurfaceHeader",
+      "reason": "position+z-index",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 124,
+      "selector": ".liquidSurfaceBody",
+      "reason": "position+z-index",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 184,
+      "selector": ".liquidMenuItem:hover",
+      "reason": "transform",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "line": 195,
+      "selector": ".liquidMenuItem:disabled",
+      "reason": "transform, opacity<1",
+      "hasOverflowClip": false,
+      "snippet": "}"
+    }
+  ],
+  "overflowAncestors": [
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 2,
+      "type": "css-prop",
+      "selector": ".TopNavShell",
+      "prop": "overflow-x",
+      "value": "hidden",
+      "snippet": "overflow-x: hidden;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 63,
+      "type": "css-prop",
+      "selector": "html,body",
+      "prop": "overflow-x",
+      "value": "hidden",
+      "snippet": "background-attachment: fixed;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 70,
+      "type": "css-prop",
+      "selector": "body",
+      "prop": "overflow-x",
+      "value": "hidden",
+      "snippet": "font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 81,
+      "type": "css-prop",
+      "selector": "#root",
+      "prop": "overflow-x",
+      "value": "hidden",
+      "snippet": "background: transparent;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 96,
+      "type": "css-prop",
+      "selector": ".container",
+      "prop": "overflow-x",
+      "value": "hidden",
+      "snippet": "overflow:visible;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 123,
+      "type": "css-prop",
+      "selector": ".pageHeaderRight",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "max-width:260px;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 197,
+      "type": "css-prop",
+      "selector": ".bg",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "background-size: var(--background-size);"
+    },
+    {
+      "file": "src/index.css",
+      "line": 369,
+      "type": "css-prop",
+      "selector": ".hdrRight",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": ".hdrLeft{ flex:1 1 auto; min-width:0; }"
+    },
+    {
+      "file": "src/index.css",
+      "line": 373,
+      "type": "css-prop",
+      "selector": ".hdrSub",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "color:var(--text-3, var(--textSubtle, rgba(255,255,255,.60)));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 383,
+      "type": "css-prop",
+      "selector": ".hdrTitle",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "letter-spacing:-.02em;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 436,
+      "type": "css-prop",
+      "selector": ".manageHeaderRightWrap",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "min-width:0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 448,
+      "type": "css-prop",
+      "selector": ".gaugeWrap",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "max-width:100%;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 465,
+      "type": "css-prop",
+      "selector": ".gaugeTitle",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "min-width:0;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 707,
+      "type": "css-prop",
+      "selector": "/* --- iOS overflow/clipping fix for native date/time inputs (wrapper added in UI.jsx) --- */\n.controlClip",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "border:1px solid var(--controlBorder, var(--border-subtle, var(--border)));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 782,
+      "type": "css-prop",
+      "selector": ".progressTrack",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "background: var(--progressTrackBg, rgba(255,255,255,.12));"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1021,
+      "type": "css-prop",
+      "selector": ".selectTriggerValue",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": ".selectTriggerValue{"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1092,
+      "type": "css-prop",
+      "selector": ".datePickerMenu",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "max-height:min(70dvh, 420px);"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1240,
+      "type": "css-prop",
+      "selector": ".disciplineCard",
+      "prop": "overflow-x",
+      "value": "hidden",
+      "snippet": "box-sizing: border-box;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1255,
+      "type": "css-prop",
+      "selector": ".noteHistorySheet",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": "max-height:80dvh;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1293,
+      "type": "css-prop",
+      "selector": ".drawerPanel",
+      "prop": "overflow-x",
+      "value": "hidden",
+      "snippet": "overflow:auto;"
+    },
+    {
+      "file": "src/index.css",
+      "line": 1326,
+      "type": "css-prop",
+      "selector": ".plusExpanderPanelContent",
+      "prop": "overflow-x",
+      "value": "hidden",
+      "snippet": "overflow:auto;"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 9,
+      "type": "css-prop",
+      "selector": ".GateGlassClip",
+      "prop": "overflow",
+      "value": "hidden",
+      "snippet": ".GateGlassClip {"
+    }
+  ],
+  "safeAreaFindings": [
+    {
+      "file": "src/App.jsx",
+      "line": 159,
+      "type": "js-line",
+      "snippet": "if (typeof window === \"undefined\" || !window.visualViewport) return undefined;"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 162,
+      "type": "js-line",
+      "snippet": "const vv = window.visualViewport;"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 169,
+      "type": "js-line",
+      "snippet": "window.visualViewport.addEventListener(\"resize\", updateKeyboardClass);"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 170,
+      "type": "js-line",
+      "snippet": "window.visualViewport.addEventListener(\"scroll\", updateKeyboardClass);"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 172,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.removeEventListener(\"resize\", updateKeyboardClass);"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 173,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.removeEventListener(\"scroll\", updateKeyboardClass);"
+    },
+    {
+      "file": "src/components/PlusExpander.jsx",
+      "line": 64,
+      "type": "js-line",
+      "snippet": "const vv = window.visualViewport;"
+    },
+    {
+      "file": "src/components/PlusExpander.jsx",
+      "line": 71,
+      "type": "js-line",
+      "snippet": "const safeTop = Number.parseFloat(styles.getPropertyValue(\"--safe-top\")) || 0;"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 26,
+      "type": "layout-signal",
+      "snippet": "const [menuLayout, setMenuLayout] = useState({ top: 72, left: 180, width: 336, maxHeight: 420 });"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 34,
+      "type": "js-line",
+      "snippet": "const vv = window.visualViewport;"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 38,
+      "type": "js-line",
+      "snippet": "const safeTop = Number.parseFloat(styles.getPropertyValue(\"--safe-top\")) || 0;"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 39,
+      "type": "js-line",
+      "snippet": "const safeBottom = Number.parseFloat(styles.getPropertyValue(\"--safe-bottom\")) || 0;"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 127,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.addEventListener(\"resize\", update);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 128,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.addEventListener(\"scroll\", update);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 133,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.removeEventListener(\"resize\", update);"
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "line": 134,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.removeEventListener(\"scroll\", update);"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 115,
+      "type": "css-prop",
+      "selector": ".topMenuPopoverLayer",
+      "prop": "--safeTop",
+      "value": "env(safe-area-inset-top, 0px)",
+      "snippet": ""
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 116,
+      "type": "css-prop",
+      "selector": ".topMenuPopoverLayer",
+      "prop": "--safeBottom",
+      "value": "env(safe-area-inset-bottom, 0px)",
+      "snippet": ".topMenuPopoverLayer {"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 117,
+      "type": "css-prop",
+      "selector": ".topMenuPopoverLayer",
+      "prop": "--topMenuMaxH",
+      "value": "calc(100vh - 120px - (16px + var(--safeBottom)))",
+      "snippet": "--safeTop: env(safe-area-inset-top, 0px);"
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "line": 118,
+      "type": "css-prop",
+      "selector": ".topMenuPopoverLayer",
+      "prop": "position",
+      "value": "fixed",
+      "snippet": "--safeBottom: env(safe-area-inset-bottom, 0px);"
+    },
+    {
+      "file": "src/index.css",
+      "line": 3,
+      "type": "css-prop",
+      "selector": "@import \"./styles/tokens.css\";\n\n:root",
+      "prop": "--safe-top",
+      "value": "env(safe-area-inset-top, 0px)",
+      "snippet": ""
+    },
+    {
+      "file": "src/index.css",
+      "line": 5,
+      "type": "css-prop",
+      "selector": "@import \"./styles/tokens.css\";\n\n:root",
+      "prop": "--safe-bottom",
+      "value": "env(safe-area-inset-bottom, 0px)",
+      "snippet": "/* iOS safe areas */"
+    },
+    {
+      "file": "src/index.css",
+      "line": 6,
+      "type": "css-prop",
+      "selector": "@import \"./styles/tokens.css\";\n\n:root",
+      "prop": "--safe-left",
+      "value": "env(safe-area-inset-left, 0px)",
+      "snippet": "--safe-top: env(safe-area-inset-top, 0px);"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 81,
+      "type": "js-line",
+      "snippet": "width: window.visualViewport?.width || window.innerWidth || 0,"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 82,
+      "type": "js-line",
+      "snippet": "height: window.visualViewport?.height || window.innerHeight || 0,"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 172,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.addEventListener(\"resize\", schedule);"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 173,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.addEventListener(\"scroll\", schedule);"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 182,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.removeEventListener(\"resize\", schedule);"
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "line": 183,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.removeEventListener(\"scroll\", schedule);"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 119,
+      "type": "js-line",
+      "snippet": "width: window.visualViewport?.width || window.innerWidth || 0,"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 120,
+      "type": "js-line",
+      "snippet": "height: window.visualViewport?.height || window.innerHeight || 0,"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 229,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.addEventListener(\"resize\", schedule);"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 230,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.addEventListener(\"scroll\", schedule);"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 239,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.removeEventListener(\"resize\", schedule);"
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "line": 240,
+      "type": "js-line",
+      "snippet": "window.visualViewport?.removeEventListener(\"scroll\", schedule);"
+    }
+  ],
+  "portalUsage": [
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 2,
+      "type": "js-line",
+      "snippet": "import { createPortal } from \"react-dom\";"
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "line": 621,
+      "type": "js-line",
+      "snippet": "return createPortal(overlay, document.body);"
+    },
+    {
+      "file": "src/components/PaywallModal.jsx",
+      "line": 2,
+      "type": "js-line",
+      "snippet": "import { createPortal } from \"react-dom\";"
+    },
+    {
+      "file": "src/components/PaywallModal.jsx",
+      "line": 149,
+      "type": "js-line",
+      "snippet": "return createPortal(content, document.body);"
+    }
+  ],
+  "suspects": [
+    {
+      "id": "topbar-over-popover",
+      "severity": "high",
+      "title": "Topbar z-index au-dessus du popover",
+      "why": "Quand le menu est ouvert, la topbar passe à 1011 alors que le popover est à 1010. Cela peut masquer ou recouvrir la card du menu.",
+      "evidence": [
+        {
+          "file": "src/components/TopNav.jsx",
+          "line": 153,
+          "type": "js-line",
+          "snippet": "style={{ zIndex: menuOpen ? 1011 : 900 }}"
+        },
+        {
+          "file": "src/components/TopNav.jsx",
+          "line": 153,
+          "type": "inline-style-prop",
+          "prop": "zIndex",
+          "value": "menuOpen ? 1011 : 900",
+          "snippet": "style={{ zIndex: menuOpen ? 1011 : 900 }}"
+        },
+        {
+          "file": "src/components/TopNav.jsx",
+          "line": 199,
+          "type": "js-line",
+          "snippet": "zIndex: 1010,"
+        },
+        {
+          "file": "src/components/TopNav.jsx",
+          "line": 199,
+          "type": "inline-style-prop",
+          "prop": "zIndex",
+          "value": "1010",
+          "snippet": "zIndex: 1010,"
+        }
+      ]
+    },
+    {
+      "id": "fixed-inside-transformed-clip",
+      "severity": "critical",
+      "title": "Popover fixed potentiellement contraint par un ancêtre clip/transformed",
+      "why": "Le menu est rendu dans un arbre contenant `GateGlassClip` (`overflow:hidden` + `transform`). Sur Safari/iOS cela peut créer un containing block et clipper/masquer un descendant `position: fixed`.",
+      "evidence": [
+        {
+          "file": "src/components/TopNav.jsx",
+          "line": 156,
+          "type": "js-line",
+          "snippet": "<div className=\"TopNavSurfaceClip TopNavBackdrop GateGlassClip GateGlassBackdrop\">"
+        },
+        {
+          "file": "src/components/TopNav.jsx",
+          "line": 196,
+          "type": "js-line",
+          "snippet": "className=\"topMenuPopoverLayer\""
+        },
+        {
+          "file": "src/shared/ui/gate/gate-premium.css",
+          "line": 9,
+          "type": "css-prop",
+          "selector": ".GateGlassClip",
+          "prop": "overflow",
+          "value": "hidden",
+          "snippet": ".GateGlassClip {"
+        },
+        {
+          "file": "src/shared/ui/gate/gate-premium.css",
+          "line": 14,
+          "type": "css-prop",
+          "selector": ".GateGlassClip",
+          "prop": "transform",
+          "value": "translateZ(0)",
+          "snippet": "backface-visibility: hidden;"
+        }
+      ]
+    },
+    {
+      "id": "layout-clamp-edge-case",
+      "severity": "medium",
+      "title": "Clamp horizontal sans garde maxLeft>=minLeft",
+      "why": "Si la viewport reportée est anormale (iOS visualViewport transient), `maxLeft` peut passer sous `minLeft` et pousser la card hors écran.",
+      "evidence": [
+        {
+          "file": "src/components/TopNav.jsx",
+          "line": 38,
+          "type": "js-line",
+          "snippet": "const safeTop = Number.parseFloat(styles.getPropertyValue(\"--safe-top\")) || 0;"
+        },
+        {
+          "file": "src/components/TopNav.jsx",
+          "line": 39,
+          "type": "js-line",
+          "snippet": "const safeBottom = Number.parseFloat(styles.getPropertyValue(\"--safe-bottom\")) || 0;"
+        },
+        {
+          "file": "src/components/TopNav.jsx",
+          "line": 46,
+          "type": "layout-signal",
+          "snippet": "const maxWidth = Math.min(560, Math.max(260, vw - 24));"
+        },
+        {
+          "file": "src/components/TopNav.jsx",
+          "line": 49,
+          "type": "layout-signal",
+          "snippet": "const left = clamp(desiredLeft, minLeft, maxLeft);"
+        },
+        {
+          "file": "src/components/TopNav.jsx",
+          "line": 50,
+          "type": "layout-signal",
+          "snippet": "const top = Math.max(desiredTop, 12 + safeTop);"
+        }
+      ]
+    }
+  ],
+  "layerMap": {
+    "topbar": {
+      "selectors": [
+        ".stickyStack",
+        ".topNavGateWrap",
+        ".topNavGateBar"
+      ],
+      "evidence": [
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 5,
+          "type": "css-prop",
+          "selector": ".topNavGateWrap",
+          "prop": "position",
+          "value": "relative",
+          "snippet": ".topNavGateWrap {"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 6,
+          "type": "css-prop",
+          "selector": ".topNavGateWrap",
+          "prop": "z-index",
+          "value": "950",
+          "snippet": "padding: 0;"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 31,
+          "type": "css-prop",
+          "selector": ".topNavGateBar",
+          "prop": "border-radius",
+          "value": "inherit",
+          "snippet": "--gate-border: color-mix(in srgb, var(--border-subtle, var(--border)) 92%, rgba(255, 255, 255, 0.18));"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 40,
+          "type": "css-prop",
+          "selector": ".topNavGateBar",
+          "prop": "position",
+          "value": "relative",
+          "snippet": "padding: 8px;"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 41,
+          "type": "css-prop",
+          "selector": ".topNavGateBar",
+          "prop": "z-index",
+          "value": "1",
+          "snippet": "gap: 0;"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 67,
+          "type": "css-prop",
+          "selector": ".topNavGateBar .navMenuTrigger",
+          "prop": "border-radius",
+          "value": "var(--radius-12)",
+          "snippet": "width: 36px;"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 95,
+          "type": "css-prop",
+          "selector": ".topNavGateBar .navMenuBars span",
+          "prop": "border-radius",
+          "value": "999px",
+          "snippet": "width: 100%;"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 97,
+          "type": "css-prop",
+          "selector": ".topNavGateBar .navMenuBars span",
+          "prop": "opacity",
+          "value": "0.9",
+          "snippet": "border-radius: 999px;"
+        },
+        {
+          "file": "src/index.css",
+          "line": 248,
+          "type": "css-prop",
+          "selector": ".stickyStack",
+          "prop": "position",
+          "value": "fixed",
+          "snippet": ".stickyStack{"
+        },
+        {
+          "file": "src/index.css",
+          "line": 249,
+          "type": "css-prop",
+          "selector": ".stickyStack",
+          "prop": "top",
+          "value": "0",
+          "snippet": "position: fixed;"
+        },
+        {
+          "file": "src/index.css",
+          "line": 250,
+          "type": "css-prop",
+          "selector": ".stickyStack",
+          "prop": "left",
+          "value": "0",
+          "snippet": "top: 0;"
+        },
+        {
+          "file": "src/index.css",
+          "line": 251,
+          "type": "css-prop",
+          "selector": ".stickyStack",
+          "prop": "right",
+          "value": "0",
+          "snippet": "left: 0;"
+        },
+        {
+          "file": "src/index.css",
+          "line": 252,
+          "type": "css-prop",
+          "selector": ".stickyStack",
+          "prop": "z-index",
+          "value": "var(--z-sticky)",
+          "snippet": "right: 0;"
+        },
+        {
+          "file": "src/index.css",
+          "line": 253,
+          "type": "css-prop",
+          "selector": ".stickyStack",
+          "prop": "padding-top",
+          "value": "var(--safe-top)",
+          "snippet": "z-index: var(--z-sticky);"
+        }
+      ]
+    },
+    "scrim": {
+      "selectors": [
+        ".topMenuScrim"
+      ],
+      "evidence": [
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 108,
+          "type": "css-prop",
+          "selector": ".topMenuScrim",
+          "prop": "position",
+          "value": "fixed",
+          "snippet": ""
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 110,
+          "type": "css-prop",
+          "selector": ".topMenuScrim",
+          "prop": "z-index",
+          "value": "1000",
+          "snippet": "position: fixed;"
+        }
+      ]
+    },
+    "popover": {
+      "selectors": [
+        ".topMenuPopoverLayer",
+        ".topMenuGatePopover",
+        ".topMenuGate"
+      ],
+      "evidence": [
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 101,
+          "type": "css-prop",
+          "selector": ".topMenuGatePopover",
+          "prop": "position",
+          "value": "relative",
+          "snippet": ""
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 115,
+          "type": "css-prop",
+          "selector": ".topMenuPopoverLayer",
+          "prop": "--safeTop",
+          "value": "env(safe-area-inset-top, 0px)",
+          "snippet": ""
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 116,
+          "type": "css-prop",
+          "selector": ".topMenuPopoverLayer",
+          "prop": "--safeBottom",
+          "value": "env(safe-area-inset-bottom, 0px)",
+          "snippet": ".topMenuPopoverLayer {"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 117,
+          "type": "css-prop",
+          "selector": ".topMenuPopoverLayer",
+          "prop": "--topMenuMaxH",
+          "value": "calc(100vh - 120px - (16px + var(--safeBottom)))",
+          "snippet": "--safeTop: env(safe-area-inset-top, 0px);"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 118,
+          "type": "css-prop",
+          "selector": ".topMenuPopoverLayer",
+          "prop": "position",
+          "value": "fixed",
+          "snippet": "--safeBottom: env(safe-area-inset-bottom, 0px);"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 119,
+          "type": "css-prop",
+          "selector": ".topMenuPopoverLayer",
+          "prop": "z-index",
+          "value": "1010",
+          "snippet": "--topMenuMaxH: calc(100vh - 120px - (16px + var(--safeBottom)));"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 120,
+          "type": "css-prop",
+          "selector": ".topMenuPopoverLayer",
+          "prop": "transform",
+          "value": "translateX(-50%)",
+          "snippet": "position: fixed;"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 124,
+          "type": "css-prop",
+          "selector": ".topMenuPopoverLayer",
+          "prop": "opacity",
+          "value": "1",
+          "snippet": "box-sizing: border-box;"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 125,
+          "type": "css-prop",
+          "selector": ".topMenuPopoverLayer",
+          "prop": "visibility",
+          "value": "visible",
+          "snippet": "pointer-events: auto;"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 129,
+          "type": "css-prop",
+          "selector": ".topMenuPopoverLayer > *",
+          "prop": "max-height",
+          "value": "var(--topMenuMaxH)",
+          "snippet": ""
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 130,
+          "type": "css-prop",
+          "selector": ".topMenuPopoverLayer > *",
+          "prop": "overflow",
+          "value": "auto",
+          "snippet": ".topMenuPopoverLayer > * {"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 132,
+          "type": "css-prop",
+          "selector": ".topMenuPopoverLayer > *",
+          "prop": "-webkit-overflow-scrolling",
+          "value": "touch",
+          "snippet": "overflow: auto;"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 140,
+          "type": "css-prop",
+          "selector": ".topMenuGate",
+          "prop": "border-radius",
+          "value": "14px",
+          "snippet": "--gate-border: color-mix(in srgb, var(--border-subtle, var(--border)) 90%, rgba(255, 255, 255, 0.18));"
+        },
+        {
+          "file": "src/features/navigation/topMenuGate.css",
+          "line": 207,
+          "type": "css-prop",
+          "selector": ".topMenuGateFooter",
+          "prop": "padding-top",
+          "value": "10px",
+          "snippet": ""
+        }
+      ]
+    },
+    "clipPattern": {
+      "selectors": [
+        ".GateGlassOuter",
+        ".GateGlassClip",
+        ".GateGlassBackdrop"
+      ],
+      "evidence": [
+        {
+          "file": "src/shared/ui/gate/gate-premium.css",
+          "line": 4,
+          "type": "css-prop",
+          "selector": ".GateGlassOuter",
+          "prop": "border-radius",
+          "value": "var(--gate-glass-radius)",
+          "snippet": "border-radius: var(--gate-glass-radius);"
+        },
+        {
+          "file": "src/shared/ui/gate/gate-premium.css",
+          "line": 6,
+          "type": "css-prop",
+          "selector": ".GateGlassOuter",
+          "prop": "position",
+          "value": "relative",
+          "snippet": "position: relative;"
+        },
+        {
+          "file": "src/shared/ui/gate/gate-premium.css",
+          "line": 8,
+          "type": "css-prop",
+          "selector": ".GateGlassClip",
+          "prop": "border-radius",
+          "value": "inherit",
+          "snippet": ""
+        },
+        {
+          "file": "src/shared/ui/gate/gate-premium.css",
+          "line": 9,
+          "type": "css-prop",
+          "selector": ".GateGlassClip",
+          "prop": "overflow",
+          "value": "hidden",
+          "snippet": ".GateGlassClip {"
+        },
+        {
+          "file": "src/shared/ui/gate/gate-premium.css",
+          "line": 10,
+          "type": "css-prop",
+          "selector": ".GateGlassClip",
+          "prop": "position",
+          "value": "relative",
+          "snippet": "border-radius: inherit;"
+        },
+        {
+          "file": "src/shared/ui/gate/gate-premium.css",
+          "line": 12,
+          "type": "css-prop",
+          "selector": ".GateGlassClip",
+          "prop": "backface-visibility",
+          "value": "hidden",
+          "snippet": "position: relative;"
+        },
+        {
+          "file": "src/shared/ui/gate/gate-premium.css",
+          "line": 13,
+          "type": "css-prop",
+          "selector": ".GateGlassClip",
+          "prop": "-webkit-backface-visibility",
+          "value": "hidden",
+          "snippet": "isolation: isolate;"
+        },
+        {
+          "file": "src/shared/ui/gate/gate-premium.css",
+          "line": 14,
+          "type": "css-prop",
+          "selector": ".GateGlassClip",
+          "prop": "transform",
+          "value": "translateZ(0)",
+          "snippet": "backface-visibility: hidden;"
+        },
+        {
+          "file": "src/shared/ui/gate/gate-premium.css",
+          "line": 19,
+          "type": "css-prop",
+          "selector": ".GateGlassBackdrop::before",
+          "prop": "position",
+          "value": "absolute",
+          "snippet": ".GateGlassBackdrop::before {"
+        },
+        {
+          "file": "src/shared/ui/gate/gate-premium.css",
+          "line": 22,
+          "type": "css-prop",
+          "selector": ".GateGlassBackdrop::before",
+          "prop": "z-index",
+          "value": "0",
+          "snippet": "inset: 0;"
+        },
+        {
+          "file": "src/shared/ui/gate/gate-premium.css",
+          "line": 24,
+          "type": "css-prop",
+          "selector": ".GateGlassBackdrop::before",
+          "prop": "backdrop-filter",
+          "value": "blur(var(--gate-glass-blur, 10px)) saturate(var(--gate-glass-saturation, 1.08))",
+          "snippet": "z-index: 0;"
+        },
+        {
+          "file": "src/shared/ui/gate/gate-premium.css",
+          "line": 25,
+          "type": "css-prop",
+          "selector": ".GateGlassBackdrop::before",
+          "prop": "-webkit-backdrop-filter",
+          "value": "blur(var(--gate-glass-blur, 10px)) saturate(var(--gate-glass-saturation, 1.08))",
+          "snippet": "background: var(--gate-glass-backdrop-bg, color-mix(in srgb, #0a0f18 48%, transparent));"
+        }
+      ]
+    }
+  }
+}

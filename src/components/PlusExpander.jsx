@@ -61,17 +61,24 @@ export default function PlusExpander({
 
   const position = useMemo(() => {
     if (typeof window === "undefined") return { left: 16, top: 72, origin: "top right" };
-    const viewportW = window.innerWidth || 0;
-    const viewportH = window.innerHeight || 0;
+    const vv = window.visualViewport;
+    const viewportW = vv?.width || window.innerWidth || 0;
+    const viewportH = vv?.height || window.innerHeight || 0;
+    const styles = window.getComputedStyle(document.documentElement);
+    const pagePad = Number.parseFloat(styles.getPropertyValue("--page-pad")) || 16;
+    const safeLeft = Number.parseFloat(styles.getPropertyValue("--safe-left")) || 0;
+    const safeRight = Number.parseFloat(styles.getPropertyValue("--safe-right")) || 0;
+    const safeTop = Number.parseFloat(styles.getPropertyValue("--safe-top")) || 0;
+    const minMargin = Math.max(8, pagePad + Math.max(safeLeft, safeRight));
     const menuW = panelRect?.width || 220;
     const menuH = panelRect?.height || 180;
-    const anchor = anchorRect || { top: 56, left: viewportW - 56, right: viewportW - 16, bottom: 56 };
-    const shouldDropUp = anchor.bottom + menuH + 10 > viewportH && anchor.top - menuH - 10 > 8;
+    const anchor = anchorRect || { top: 56, left: viewportW - 56, right: viewportW - minMargin, bottom: 56 };
+    const shouldDropUp = anchor.bottom + menuH + 10 > viewportH && anchor.top - menuH - 10 > minMargin;
     const top = shouldDropUp
-      ? Math.max(8, anchor.top - menuH - 10)
-      : Math.min(viewportH - menuH - 8, anchor.bottom + 10);
+      ? Math.max(minMargin, anchor.top - menuH - 10)
+      : Math.min(viewportH - menuH - Math.max(minMargin, safeTop), anchor.bottom + 10);
     let left = anchor.right - menuW;
-    left = Math.max(8, Math.min(left, viewportW - menuW - 8));
+    left = Math.max(minMargin, Math.min(left, viewportW - menuW - minMargin));
     return {
       left,
       top,
@@ -87,19 +94,23 @@ export default function PlusExpander({
         className="plusExpander isOpen"
         style={{ left: position.left, top: position.top, transformOrigin: position.origin }}
       >
-        <div className="plusExpanderPanel" ref={panelRef} role="menu" aria-label="Créer">
-          <div className="stack stackGap8">
-            <Button onClick={onChooseAction}>
-              Créer une action
-            </Button>
-            <Button variant="ghost" onClick={onChooseObjective}>
-              Créer un {LABELS.goalLower}
-            </Button>
-            {hasDraft && typeof onResumeDraft === "function" ? (
-              <Button variant="ghost" onClick={onResumeDraft}>
-                Reprendre
-              </Button>
-            ) : null}
+        <div className="plusExpanderPanel GateGlassOuter">
+          <div className="plusExpanderPanelClip GateGlassClip GateGlassBackdrop">
+            <div className="plusExpanderPanelContent GateGlassContent" ref={panelRef} role="menu" aria-label="Créer">
+              <div className="stack stackGap8">
+                <Button onClick={onChooseAction}>
+                  Créer une action
+                </Button>
+                <Button variant="ghost" onClick={onChooseObjective}>
+                  Créer un {LABELS.goalLower}
+                </Button>
+                {hasDraft && typeof onResumeDraft === "function" ? (
+                  <Button variant="ghost" onClick={onResumeDraft}>
+                    Reprendre
+                  </Button>
+                ) : null}
+              </div>
+            </div>
           </div>
         </div>
       </div>

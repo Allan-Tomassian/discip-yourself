@@ -1,7 +1,7 @@
 // src/pages/Categories.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, AccentItem, Input, Textarea } from "../components/UI";
+import { GateButton, GateRow, GateSection } from "../shared/ui/gate/Gate";
 import SortableBlocks from "../components/SortableBlocks";
 import EditItemPanel from "../components/EditItemPanel";
 import { getCategoryCounts } from "../logic/pilotage";
@@ -38,6 +38,66 @@ function parseScopeKey(scopeKey) {
   const idx = raw.indexOf(":");
   if (idx <= 0) return { kind: "", id: "" };
   return { kind: raw.slice(0, idx), id: raw.slice(idx + 1) };
+}
+
+function Button({ variant = "primary", className = "", ...props }) {
+  const gateVariant = variant === "ghost" ? "ghost" : "primary";
+  const mergedClassName = [className, "GatePressable"].filter(Boolean).join(" ");
+  return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;
+}
+
+function Card({ className = "", children, ...props }) {
+  const mergedClassName = ["GateSurfacePremium", "GateCardPremium", className].filter(Boolean).join(" ");
+  return (
+    <GateSection className={mergedClassName} collapsible={false} {...props}>
+      {children}
+    </GateSection>
+  );
+}
+
+function Input({ className = "", ...props }) {
+  const mergedClassName = ["GateInputPremium", className].filter(Boolean).join(" ");
+  return <input className={mergedClassName} {...props} />;
+}
+
+function Textarea({ className = "", ...props }) {
+  const mergedClassName = ["GateTextareaPremium", className].filter(Boolean).join(" ");
+  return <textarea className={mergedClassName} {...props} />;
+}
+
+function AccentItem({
+  color = "#6EE7FF",
+  selected = false,
+  onClick,
+  children,
+  rightSlot = null,
+  style = {},
+  className = "",
+  onKeyDown,
+  ...props
+}) {
+  const mergedClassName = [
+    "accentItem",
+    "libraryAccentItem",
+    "GateRowPremium",
+    onClick ? "GatePressable" : "",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <GateRow
+      className={mergedClassName}
+      selected={selected}
+      onClick={onClick}
+      onKeyDown={onKeyDown}
+      right={rightSlot}
+      style={{ "--libraryAccent": color || "#6EE7FF", ...style }}
+      {...props}
+    >
+      <div className="libraryAccentItemBody">{children}</div>
+    </GateRow>
+  );
 }
 
 function buildOccurrencesByGoal(list) {
@@ -1115,7 +1175,7 @@ export default function Categories({
                   {suggestionsOpen ? (
                     <div className="categoryGateList isCollapsed">
                       {remainingSuggestions.map((cat) => (
-                        <div key={cat.id} className="categoryGateItem">
+                        <div key={cat.id} className="categoryGateItem GateRowPremium">
                           <span className="categoryGateSwatch" style={{ background: cat.color || "#F97316" }} />
                           <span className="categoryGateName">{cat.name || "Catégorie"}</span>
                           <button

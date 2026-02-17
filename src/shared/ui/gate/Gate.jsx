@@ -1,5 +1,6 @@
 import React, { useId, useState } from "react";
 import "./gate.css";
+import "./gate-premium.css";
 import { playClickSound } from "../sound/useClickSound";
 
 export function cx(...parts) {

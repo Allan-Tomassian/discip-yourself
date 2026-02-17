@@ -1,7 +1,7 @@
 import React from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button } from "../components/UI";
-import LiquidGlassSurface from "../ui/LiquidGlassSurface";
+import { GateButton, GateSection } from "../shared/ui/gate/Gate";
+import GatePage from "../shared/ui/gate/GatePage";
 import { getPlanLimits, isPremium } from "../logic/entitlements";
 import { LABELS } from "../ui/labels";
 
@@ -19,50 +19,45 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
   const expiryLabel = Number.isFinite(expiryMs) ? new Date(expiryMs).toLocaleDateString() : "";
 
   return (
-    <ScreenShell
-      data={safeData}
-      pageId="settings"
-      headerTitle="Abonnement"
-      headerSubtitle="Plan et accès Premium"
-      backgroundImage={backgroundImage}
-    >
-      <div className="liquidPageStack">
-        <LiquidGlassSurface variant="card" density="solid">
-          <div className="liquidSurfaceHeader">
-            <div className="liquidSurfaceHeaderText">
-              <div className="liquidSurfaceTitle">{premium ? "Premium actif" : "Version gratuite"}</div>
-              <div className="liquidSurfaceSubtitle">Gère ton plan et tes achats.</div>
-            </div>
+    <ScreenShell data={safeData} pageId="settings" backgroundImage={backgroundImage}>
+      <GatePage
+        title={<span className="GatePageTitle">Abonnement</span>}
+        subtitle={<span className="GatePageSubtitle">Plan et accès Premium</span>}
+      >
+        <GateSection
+          title={premium ? "Premium actif" : "Version gratuite"}
+          description="Gère ton plan et tes achats."
+          collapsible={false}
+          className="GateSurfacePremium GateCardPremium"
+        >
+          <div className="small2">
+            Limites gratuites : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} · {limits.actions}{" "}
+            {LABELS.actionsLower}
           </div>
-
-          <div className="liquidSurfaceBody">
-            <div className="small2">
-              Limites gratuites : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} · {limits.actions}{" "}
-              {LABELS.actionsLower}
-            </div>
-            {premium && expiryLabel ? <div className="small2">Expire le {expiryLabel}</div> : null}
-            <div className="liquidActionsRow">
-              <Button
-                onClick={() => {
-                  if (premium) return;
-                  if (typeof onOpenPaywall === "function") onOpenPaywall("Abonnement");
-                }}
-                disabled={premium}
-              >
-                {premium ? "Premium activé" : "Passer Premium"}
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  if (typeof onRestorePurchases === "function") onRestorePurchases();
-                }}
-              >
-                Restaurer
-              </Button>
-            </div>
+          {premium && expiryLabel ? <div className="small2">Expire le {expiryLabel}</div> : null}
+          <div className="GatePrimaryCtaRow">
+            <GateButton
+              className="GatePressable"
+              onClick={() => {
+                if (premium) return;
+                if (typeof onOpenPaywall === "function") onOpenPaywall("Abonnement");
+              }}
+              disabled={premium}
+            >
+              {premium ? "Premium activé" : "Passer Premium"}
+            </GateButton>
+            <GateButton
+              variant="ghost"
+              className="GatePressable"
+              onClick={() => {
+                if (typeof onRestorePurchases === "function") onRestorePurchases();
+              }}
+            >
+              Restaurer
+            </GateButton>
           </div>
-        </LiquidGlassSurface>
-      </div>
+        </GateSection>
+      </GatePage>
     </ScreenShell>
   );
 }

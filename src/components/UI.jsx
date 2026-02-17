@@ -225,7 +225,7 @@ export function Modal({ open, onClose, children, className = "", backdropClassNa
   if (!open) return null;
   return (
     <div
-      className={`modalBackdrop${backdropClassName ? ` ${backdropClassName}` : ""}`}
+      className={`modalBackdrop GateOverlayBackdrop${backdropClassName ? ` ${backdropClassName}` : ""}`}
       onClick={(e) => {
         if (e.target !== e.currentTarget) return;
         if (typeof onClose === "function") onClose({ reason: "backdrop", event: e });
@@ -233,15 +233,24 @@ export function Modal({ open, onClose, children, className = "", backdropClassNa
       role="presentation"
     >
       <div
-        ref={panelRef}
-        className={`modalPanel${className ? ` ${className}` : ""}`}
-        role="dialog"
-        aria-modal="true"
+        className="modalPanelOuter GateGlassOuter"
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
       >
-        {children}
+        <div className="modalPanelClip GateGlassClip GateGlassBackdrop">
+          <div
+            ref={panelRef}
+            className={`modalPanel GateGlassContent${className ? ` ${className}` : ""}`}
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {children}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,0 +1,693 @@
+{
+  "generatedAt": "2026-02-17T16:02:07.191Z",
+  "components": {
+    "topNav": {
+      "file": "src/components/TopNav.jsx",
+      "importedInApp": [
+        {
+          "file": "src/App.jsx",
+          "line": 2
+        }
+      ],
+      "renderedInApp": [
+        {
+          "file": "src/App.jsx",
+          "line": 227
+        }
+      ]
+    },
+    "topMenuPopover": {
+      "file": "src/components/TopMenuPopover.jsx",
+      "importedInTopNav": [
+        {
+          "file": "src/components/TopNav.jsx",
+          "line": 2
+        }
+      ],
+      "mountedInTopNav": [
+        {
+          "file": "src/components/TopNav.jsx",
+          "line": 210
+        }
+      ]
+    },
+    "gatePrimitivesMentions": [
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 3,
+        "token": "GateButton"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 3,
+        "token": "GateFooter"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 3,
+        "token": "GateHeader"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 3,
+        "token": "GatePanel"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 3,
+        "token": "GateRow"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 3,
+        "token": "GateSection"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 46,
+        "token": "GatePanel"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 47,
+        "token": "GateHeader"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 47,
+        "token": "GateHeader"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 49,
+        "token": "GateSection"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 49,
+        "token": "GateSection"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 52,
+        "token": "GateRow"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 57,
+        "token": "GateRow"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 64,
+        "token": "GateSection"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 68,
+        "token": "GateSection"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 68,
+        "token": "GateSection"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 71,
+        "token": "GateRow"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 76,
+        "token": "GateRow"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 83,
+        "token": "GateSection"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 85,
+        "token": "GateFooter"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 85,
+        "token": "GateFooter"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 86,
+        "token": "GateButton"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 96,
+        "token": "GateButton"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 97,
+        "token": "GateFooter"
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 104,
+        "token": "GatePanel"
+      }
+    ]
+  },
+  "hamburgerTrigger": {
+    "selectorCandidates": [
+      "navMenuTrigger",
+      "navMenuBars",
+      "topnav-settings"
+    ],
+    "buttonNode": {
+      "file": "src/components/TopNav.jsx",
+      "line": 184
+    },
+    "triggerClassNode": {
+      "file": "src/components/TopNav.jsx",
+      "line": 176
+    },
+    "triggerOnClickNode": {
+      "file": "src/components/TopNav.jsx",
+      "line": 178
+    },
+    "triggerAriaExpanded": [
+      {
+        "file": "src/components/TopNav.jsx",
+        "line": 183
+      }
+    ]
+  },
+  "menuPopover": {
+    "conditionals": [
+      {
+        "file": "src/components/TopNav.jsx",
+        "line": 140
+      },
+      {
+        "file": "src/components/TopNav.jsx",
+        "line": 193
+      }
+    ],
+    "popoverLayerNode": {
+      "file": "src/components/TopNav.jsx",
+      "line": 196
+    },
+    "scrimNode": {
+      "file": "src/components/TopNav.jsx",
+      "line": 142
+    },
+    "inlineStacking": {
+      "scrimZIndex": {
+        "file": "src/components/TopNav.jsx",
+        "line": 142,
+        "zIndex": 1000
+      },
+      "layerZIndex": {
+        "file": "src/components/TopNav.jsx",
+        "line": 196,
+        "zIndex": 1010
+      }
+    },
+    "usesPortal": false,
+    "portalMentions": [
+      {
+        "file": "src/components/EditItemPanel.jsx",
+        "line": 2,
+        "token": "createPortal"
+      },
+      {
+        "file": "src/components/EditItemPanel.jsx",
+        "line": 621,
+        "token": "createPortal"
+      },
+      {
+        "file": "src/components/PaywallModal.jsx",
+        "line": 2,
+        "token": "createPortal"
+      },
+      {
+        "file": "src/components/PaywallModal.jsx",
+        "line": 149,
+        "token": "createPortal"
+      },
+      {
+        "file": "src/tour/TourOverlay.jsx",
+        "line": 2,
+        "token": "createPortal"
+      },
+      {
+        "file": "src/tour/TourOverlay.jsx",
+        "line": 127,
+        "token": "createPortal"
+      },
+      {
+        "file": "src/ui/portal/Portal.jsx",
+        "line": 2,
+        "token": "createPortal"
+      },
+      {
+        "file": "src/ui/portal/Portal.jsx",
+        "line": 33,
+        "token": "createPortal"
+      },
+      {
+        "file": "src/ui/select/Select.test.jsx",
+        "line": 42,
+        "token": "createPortal"
+      }
+    ]
+  },
+  "state": {
+    "openStates": [
+      {
+        "file": "src/components/TopNav.jsx",
+        "line": 25,
+        "state": "menuOpen",
+        "setter": "setMenuOpen"
+      },
+      {
+        "file": "src/components/TopNav.jsx",
+        "line": 26,
+        "state": "menuLayout",
+        "setter": "setMenuLayout"
+      }
+    ],
+    "refs": {
+      "topbarRef": {
+        "file": "src/components/TopNav.jsx",
+        "line": 22
+      },
+      "menuRef": {
+        "file": "src/components/TopNav.jsx",
+        "line": 23
+      },
+      "menuButtonRef": {
+        "file": "src/components/TopNav.jsx",
+        "line": 24
+      }
+    },
+    "computeLayout": {
+      "file": "src/components/TopNav.jsx",
+      "line": 28
+    },
+    "closeHandlers": {
+      "esc": [
+        {
+          "file": "src/components/TopNav.jsx",
+          "line": 105
+        }
+      ],
+      "outsideClick": []
+    }
+  },
+  "routing": {
+    "mode": "tab-history",
+    "reactRouterMentions": [],
+    "tabsRegistry": [
+      "today",
+      "library",
+      "pilotage",
+      "create-goal",
+      "create-outcome-next",
+      "create-habit-type",
+      "create-habit-oneoff",
+      "create-habit-recurring",
+      "create-habit-anytime",
+      "create-link-outcome",
+      "create-pick-category",
+      "edit-item",
+      "session",
+      "category-progress",
+      "category-detail",
+      "account",
+      "preferences",
+      "settings",
+      "subscription",
+      "data",
+      "privacy",
+      "terms",
+      "support"
+    ],
+    "tabToPath": [
+      {
+        "tab": "pilotage",
+        "path": "/pilotage",
+        "line": 132,
+        "file": "src/hooks/useAppNavigation.js"
+      },
+      {
+        "tab": "account",
+        "path": "/account",
+        "line": 133,
+        "file": "src/hooks/useAppNavigation.js"
+      },
+      {
+        "tab": "preferences",
+        "path": "/preferences",
+        "line": 134,
+        "file": "src/hooks/useAppNavigation.js"
+      },
+      {
+        "tab": "subscription",
+        "path": "/subscription",
+        "line": 135,
+        "file": "src/hooks/useAppNavigation.js"
+      },
+      {
+        "tab": "data",
+        "path": "/data",
+        "line": 136,
+        "file": "src/hooks/useAppNavigation.js"
+      },
+      {
+        "tab": "privacy",
+        "path": "/privacy",
+        "line": 137,
+        "file": "src/hooks/useAppNavigation.js"
+      },
+      {
+        "tab": "terms",
+        "path": "/terms",
+        "line": 138,
+        "file": "src/hooks/useAppNavigation.js"
+      },
+      {
+        "tab": "support",
+        "path": "/support",
+        "line": 139,
+        "file": "src/hooks/useAppNavigation.js"
+      }
+    ],
+    "pathToTab": [
+      {
+        "path": "/session",
+        "tab": "session",
+        "line": 50,
+        "file": "src/hooks/useAppNavigation.js"
+      },
+      {
+        "path": "/account",
+        "tab": "account",
+        "line": 51,
+        "file": "src/hooks/useAppNavigation.js"
+      },
+      {
+        "path": "/subscription",
+        "tab": "subscription",
+        "line": 55,
+        "file": "src/hooks/useAppNavigation.js"
+      },
+      {
+        "path": "/data",
+        "tab": "data",
+        "line": 56,
+        "file": "src/hooks/useAppNavigation.js"
+      },
+      {
+        "path": "/privacy",
+        "tab": "privacy",
+        "line": 57,
+        "file": "src/hooks/useAppNavigation.js"
+      },
+      {
+        "path": "/terms",
+        "tab": "terms",
+        "line": 58,
+        "file": "src/hooks/useAppNavigation.js"
+      },
+      {
+        "path": "/support",
+        "tab": "support",
+        "line": 59,
+        "file": "src/hooks/useAppNavigation.js"
+      }
+    ],
+    "settingsRedirect": {
+      "file": "src/hooks/useAppNavigation.js",
+      "line": 171
+    },
+    "pageFiles": {
+      "src/pages/Account.jsx": true,
+      "src/pages/Preferences.jsx": true,
+      "src/pages/Subscription.jsx": true,
+      "src/pages/Data.jsx": true,
+      "src/pages/Privacy.jsx": true,
+      "src/pages/Terms.jsx": true,
+      "src/pages/Support.jsx": true
+    },
+    "missingPageFiles": []
+  },
+  "menuItems": {
+    "sourceFile": "src/components/TopMenuPopover.jsx",
+    "items": [
+      {
+        "id": "account",
+        "label": "Compte / Profil",
+        "subtitle": "Username, nom, avatar",
+        "group": "main",
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 6
+      },
+      {
+        "id": "preferences",
+        "label": "Réglages",
+        "subtitle": "App / apparence",
+        "group": "main",
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 7
+      },
+      {
+        "id": "subscription",
+        "label": "Abonnement",
+        "subtitle": "Statut et options Premium",
+        "group": "main",
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 8
+      },
+      {
+        "id": "data",
+        "label": "Données",
+        "subtitle": "Exporter / importer",
+        "group": "main",
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 9
+      },
+      {
+        "id": "privacy",
+        "label": "Confidentialité",
+        "subtitle": "Politique de données",
+        "group": "secondary",
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 10
+      },
+      {
+        "id": "terms",
+        "label": "Conditions",
+        "subtitle": "Conditions d'utilisation",
+        "group": "secondary",
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 11
+      },
+      {
+        "id": "support",
+        "label": "Support",
+        "subtitle": "Contact et FAQ",
+        "group": "secondary",
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 12
+      }
+    ],
+    "onNavigateDispatch": {
+      "file": "src/components/TopMenuPopover.jsx",
+      "line": 36
+    },
+    "targetsMissingInTabs": [],
+    "targetsWithoutKnownPageFile": []
+  },
+  "css": {
+    "sourceFile": "src/features/navigation/topMenuGate.css",
+    "selectors": {
+      ".topMenuScrim": {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 109,
+        "props": {
+          "position": "fixed",
+          "inset": "0",
+          "z-index": "1000",
+          "background": "color-mix(in srgb, #05070c 56%, transparent)"
+        }
+      },
+      ".topMenuPopoverLayer": {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 116,
+        "props": {
+          "--safeTop": "env(safe-area-inset-top, 0px)",
+          "--safeBottom": "env(safe-area-inset-bottom, 0px)",
+          "--topMenuMaxH": "calc(100vh - 120px - (16px + var(--safeBottom)))",
+          "position": "fixed",
+          "z-index": "1010",
+          "transform": "translateX(-50%)",
+          "max-width": "calc(100vw - 24px)",
+          "box-sizing": "border-box",
+          "pointer-events": "auto",
+          "opacity": "1",
+          "visibility": "visible"
+        }
+      },
+      ".topMenuGatePopover": {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 102,
+        "props": {
+          "position": "relative",
+          "width": "100%",
+          "max-width": "100%",
+          "box-sizing": "border-box"
+        }
+      },
+      ".topNavGateWrap": {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 5,
+        "props": {
+          "padding": "0",
+          "position": "relative",
+          "z-index": "950"
+        }
+      },
+      ".TopNavShell": {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 1,
+        "props": {
+          "overflow-x": "hidden"
+        }
+      }
+    },
+    "relatedSelectorsMentions": [
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 2,
+        "token": "overflow"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 8,
+        "token": "z-index"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 43,
+        "token": "z-index"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 71,
+        "token": "display"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 88,
+        "token": "display"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 94,
+        "token": "display"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 99,
+        "token": "opacity"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 102,
+        "token": "topMenuGatePopover"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 109,
+        "token": "topMenuScrim"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 112,
+        "token": "z-index"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 116,
+        "token": "topMenuPopoverLayer"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 121,
+        "token": "z-index"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 122,
+        "token": "transform"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 126,
+        "token": "opacity"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 127,
+        "token": "visibility"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 130,
+        "token": "topMenuPopoverLayer"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 132,
+        "token": "overflow"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 134,
+        "token": "overflow"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 152,
+        "token": "display"
+      },
+      {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 234,
+        "token": "topMenuPopoverLayer"
+      }
+    ],
+    "parentContextChecks": {
+      "topNavShell": {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 1,
+        "props": {
+          "overflow-x": "hidden"
+        }
+      },
+      "topNavGateWrap": {
+        "file": "src/features/navigation/topMenuGate.css",
+        "line": 5,
+        "props": {
+          "padding": "0",
+          "position": "relative",
+          "z-index": "950"
+        }
+      }
+    }
+  },
+  "suspects": []
+}

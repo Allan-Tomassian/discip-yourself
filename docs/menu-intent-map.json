@@ -1,0 +1,706 @@
+{
+  "generatedAt": "2026-02-17T16:16:34.027Z",
+  "mode": "read-only",
+  "files": {
+    "topMenu": "src/components/TopMenuPopover.jsx",
+    "topNav": "src/components/TopNav.jsx",
+    "app": "src/App.jsx",
+    "navHook": "src/hooks/useAppNavigation.js"
+  },
+  "menuItems": [
+    {
+      "id": "account",
+      "label": "Compte / Profil",
+      "line": 6,
+      "file": "src/components/TopMenuPopover.jsx",
+      "snippet": "const MENU_ITEMS = ["
+    },
+    {
+      "id": "preferences",
+      "label": "Réglages",
+      "line": 7,
+      "file": "src/components/TopMenuPopover.jsx",
+      "snippet": "{ id: \"account\", label: \"Compte / Profil\", subtitle: \"Username, nom, avatar\", group: \"main\" },"
+    },
+    {
+      "id": "subscription",
+      "label": "Abonnement",
+      "line": 8,
+      "file": "src/components/TopMenuPopover.jsx",
+      "snippet": "{ id: \"preferences\", label: \"Réglages\", subtitle: \"App / apparence\", group: \"main\" },"
+    },
+    {
+      "id": "data",
+      "label": "Données",
+      "line": 9,
+      "file": "src/components/TopMenuPopover.jsx",
+      "snippet": "{ id: \"subscription\", label: \"Abonnement\", subtitle: \"Statut et options Premium\", group: \"main\" },"
+    },
+    {
+      "id": "privacy",
+      "label": "Confidentialité",
+      "line": 10,
+      "file": "src/components/TopMenuPopover.jsx",
+      "snippet": "{ id: \"data\", label: \"Données\", subtitle: \"Exporter / importer\", group: \"main\" },"
+    },
+    {
+      "id": "terms",
+      "label": "Conditions",
+      "line": 11,
+      "file": "src/components/TopMenuPopover.jsx",
+      "snippet": "{ id: \"privacy\", label: \"Confidentialité\", subtitle: \"Politique de données\", group: \"secondary\" },"
+    },
+    {
+      "id": "support",
+      "label": "Support",
+      "line": 12,
+      "file": "src/components/TopMenuPopover.jsx",
+      "snippet": "{ id: \"terms\", label: \"Conditions\", subtitle: \"Conditions d'utilisation\", group: \"secondary\" },"
+    }
+  ],
+  "wiring": {
+    "topMenu": [
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 35,
+        "type": "handleAction",
+        "snippet": "function handleAction(itemId) {",
+        "groups": []
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 36,
+        "type": "onNavigate-call",
+        "snippet": "if (typeof onNavigate === \"function\") onNavigate(itemId);",
+        "groups": []
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 26,
+        "type": "onClose-call",
+        "snippet": "if (typeof onClose === \"function\") onClose();",
+        "groups": []
+      },
+      {
+        "file": "src/components/TopMenuPopover.jsx",
+        "line": 37,
+        "type": "onClose-call",
+        "snippet": "if (typeof onClose === \"function\") onClose();",
+        "groups": []
+      }
+    ],
+    "topNav": [
+      {
+        "file": "src/components/TopNav.jsx",
+        "line": 210,
+        "type": "popover-render",
+        "snippet": "<TopMenuPopover",
+        "groups": []
+      },
+      {
+        "file": "src/components/TopNav.jsx",
+        "line": 211,
+        "type": "forward-onMenuNavigate",
+        "snippet": "onNavigate={onMenuNavigate}",
+        "groups": []
+      },
+      {
+        "file": "src/components/TopNav.jsx",
+        "line": 179,
+        "type": "toggle-menu",
+        "snippet": "setMenuOpen((prev) => !prev);",
+        "groups": []
+      }
+    ],
+    "app": [
+      {
+        "file": "src/App.jsx",
+        "line": 250,
+        "type": "menu-to-setTab",
+        "snippet": "onMenuNavigate={(action) => {",
+        "groups": []
+      },
+      {
+        "file": "src/App.jsx",
+        "line": 878,
+        "type": "tab-render-branch",
+        "snippet": ") : tab === \"account\" ? (",
+        "groups": [
+          "account"
+        ]
+      },
+      {
+        "file": "src/App.jsx",
+        "line": 880,
+        "type": "tab-render-branch",
+        "snippet": ") : tab === \"subscription\" ? (",
+        "groups": [
+          "subscription"
+        ]
+      },
+      {
+        "file": "src/App.jsx",
+        "line": 882,
+        "type": "tab-render-branch",
+        "snippet": ") : tab === \"data\" ? (",
+        "groups": [
+          "data"
+        ]
+      },
+      {
+        "file": "src/App.jsx",
+        "line": 884,
+        "type": "tab-render-branch",
+        "snippet": ") : tab === \"privacy\" ? (",
+        "groups": [
+          "privacy"
+        ]
+      },
+      {
+        "file": "src/App.jsx",
+        "line": 886,
+        "type": "tab-render-branch",
+        "snippet": ") : tab === \"terms\" ? (",
+        "groups": [
+          "terms"
+        ]
+      },
+      {
+        "file": "src/App.jsx",
+        "line": 888,
+        "type": "tab-render-branch",
+        "snippet": ") : tab === \"support\" ? (",
+        "groups": [
+          "support"
+        ]
+      },
+      {
+        "file": "src/App.jsx",
+        "line": 890,
+        "type": "tab-render-branch",
+        "snippet": ") : tab === \"preferences\" ? (",
+        "groups": [
+          "preferences"
+        ]
+      },
+      {
+        "file": "src/App.jsx",
+        "line": 513,
+        "type": "direct-setTab",
+        "snippet": "<Onboarding data={data} setData={setData} onDone={() => setTab(\"preferences\")} planOnly />",
+        "groups": [
+          "preferences"
+        ]
+      },
+      {
+        "file": "src/App.jsx",
+        "line": 885,
+        "type": "direct-setTab",
+        "snippet": "<Privacy data={data} onOpenSupport={() => setTab(\"support\")} />",
+        "groups": [
+          "support"
+        ]
+      },
+      {
+        "file": "src/App.jsx",
+        "line": 887,
+        "type": "direct-setTab",
+        "snippet": "<Terms data={data} onOpenSupport={() => setTab(\"support\")} />",
+        "groups": [
+          "support"
+        ]
+      },
+      {
+        "file": "src/App.jsx",
+        "line": 1064,
+        "type": "direct-setTab",
+        "snippet": "onOpenTerms={() => setTab(\"terms\")}",
+        "groups": [
+          "terms"
+        ]
+      },
+      {
+        "file": "src/App.jsx",
+        "line": 1065,
+        "type": "direct-setTab",
+        "snippet": "onOpenPrivacy={() => setTab(\"privacy\")}",
+        "groups": [
+          "privacy"
+        ]
+      }
+    ],
+    "navigation": [
+      {
+        "file": "src/hooks/useAppNavigation.js",
+        "line": 132,
+        "type": "tab-to-path",
+        "snippet": "} else if (t === \"pilotage\") nextPath = \"/pilotage\";",
+        "groups": [
+          "pilotage",
+          "/pilotage"
+        ]
+      },
+      {
+        "file": "src/hooks/useAppNavigation.js",
+        "line": 133,
+        "type": "tab-to-path",
+        "snippet": "else if (t === \"account\") nextPath = \"/account\";",
+        "groups": [
+          "account",
+          "/account"
+        ]
+      },
+      {
+        "file": "src/hooks/useAppNavigation.js",
+        "line": 134,
+        "type": "tab-to-path",
+        "snippet": "else if (t === \"preferences\") nextPath = \"/preferences\";",
+        "groups": [
+          "preferences",
+          "/preferences"
+        ]
+      },
+      {
+        "file": "src/hooks/useAppNavigation.js",
+        "line": 135,
+        "type": "tab-to-path",
+        "snippet": "else if (t === \"subscription\") nextPath = \"/subscription\";",
+        "groups": [
+          "subscription",
+          "/subscription"
+        ]
+      },
+      {
+        "file": "src/hooks/useAppNavigation.js",
+        "line": 136,
+        "type": "tab-to-path",
+        "snippet": "else if (t === \"data\") nextPath = \"/data\";",
+        "groups": [
+          "data",
+          "/data"
+        ]
+      },
+      {
+        "file": "src/hooks/useAppNavigation.js",
+        "line": 137,
+        "type": "tab-to-path",
+        "snippet": "else if (t === \"privacy\") nextPath = \"/privacy\";",
+        "groups": [
+          "privacy",
+          "/privacy"
+        ]
+      },
+      {
+        "file": "src/hooks/useAppNavigation.js",
+        "line": 138,
+        "type": "tab-to-path",
+        "snippet": "else if (t === \"terms\") nextPath = \"/terms\";",
+        "groups": [
+          "terms",
+          "/terms"
+        ]
+      },
+      {
+        "file": "src/hooks/useAppNavigation.js",
+        "line": 139,
+        "type": "tab-to-path",
+        "snippet": "else if (t === \"support\") nextPath = \"/support\";",
+        "groups": [
+          "support",
+          "/support"
+        ]
+      },
+      {
+        "file": "src/hooks/useAppNavigation.js",
+        "line": 146,
+        "type": "history-pushState",
+        "snippet": "window.history.pushState(state, \"\", nextPath);",
+        "groups": []
+      },
+      {
+        "file": "src/hooks/useAppNavigation.js",
+        "line": 51,
+        "type": "path-to-tab",
+        "snippet": "else if (initialPath.startsWith(\"/account\")) initialTab = \"account\";",
+        "groups": [
+          "account"
+        ]
+      },
+      {
+        "file": "src/hooks/useAppNavigation.js",
+        "line": 55,
+        "type": "path-to-tab",
+        "snippet": "else if (initialPath.startsWith(\"/subscription\")) initialTab = \"subscription\";",
+        "groups": [
+          "subscription"
+        ]
+      },
+      {
+        "file": "src/hooks/useAppNavigation.js",
+        "line": 56,
+        "type": "path-to-tab",
+        "snippet": "else if (initialPath.startsWith(\"/data\")) initialTab = \"data\";",
+        "groups": [
+          "data"
+        ]
+      },
+      {
+        "file": "src/hooks/useAppNavigation.js",
+        "line": 57,
+        "type": "path-to-tab",
+        "snippet": "else if (initialPath.startsWith(\"/privacy\")) initialTab = \"privacy\";",
+        "groups": [
+          "privacy"
+        ]
+      },
+      {
+        "file": "src/hooks/useAppNavigation.js",
+        "line": 58,
+        "type": "path-to-tab",
+        "snippet": "else if (initialPath.startsWith(\"/terms\")) initialTab = \"terms\";",
+        "groups": [
+          "terms"
+        ]
+      },
+      {
+        "file": "src/hooks/useAppNavigation.js",
+        "line": 59,
+        "type": "path-to-tab",
+        "snippet": "else if (initialPath.startsWith(\"/support\")) initialTab = \"support\";",
+        "groups": [
+          "support"
+        ]
+      },
+      {
+        "file": "src/hooks/useAppNavigation.js",
+        "line": 171,
+        "type": "settings-redirect",
+        "snippet": "window.history.replaceState({}, \"\", \"/preferences\");",
+        "groups": []
+      }
+    ]
+  },
+  "itemActions": [
+    {
+      "id": "account",
+      "label": "Compte / Profil",
+      "action": "setTab(item.id) via onNavigate",
+      "targetPath": "/account",
+      "evidence": [
+        {
+          "id": "account",
+          "label": "Compte / Profil",
+          "line": 6,
+          "file": "src/components/TopMenuPopover.jsx",
+          "snippet": "const MENU_ITEMS = ["
+        },
+        {
+          "file": "src/components/TopMenuPopover.jsx",
+          "line": 36,
+          "type": "onNavigate-call",
+          "snippet": "if (typeof onNavigate === \"function\") onNavigate(itemId);",
+          "groups": []
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 250,
+          "type": "menu-to-setTab",
+          "snippet": "onMenuNavigate={(action) => {",
+          "groups": []
+        },
+        {
+          "file": "src/hooks/useAppNavigation.js",
+          "line": 133,
+          "type": "tab-to-path",
+          "snippet": "else if (t === \"account\") nextPath = \"/account\";",
+          "groups": [
+            "account",
+            "/account"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preferences",
+      "label": "Réglages",
+      "action": "setTab(item.id) via onNavigate",
+      "targetPath": "/preferences",
+      "evidence": [
+        {
+          "id": "preferences",
+          "label": "Réglages",
+          "line": 7,
+          "file": "src/components/TopMenuPopover.jsx",
+          "snippet": "{ id: \"account\", label: \"Compte / Profil\", subtitle: \"Username, nom, avatar\", group: \"main\" },"
+        },
+        {
+          "file": "src/components/TopMenuPopover.jsx",
+          "line": 36,
+          "type": "onNavigate-call",
+          "snippet": "if (typeof onNavigate === \"function\") onNavigate(itemId);",
+          "groups": []
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 250,
+          "type": "menu-to-setTab",
+          "snippet": "onMenuNavigate={(action) => {",
+          "groups": []
+        },
+        {
+          "file": "src/hooks/useAppNavigation.js",
+          "line": 134,
+          "type": "tab-to-path",
+          "snippet": "else if (t === \"preferences\") nextPath = \"/preferences\";",
+          "groups": [
+            "preferences",
+            "/preferences"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "subscription",
+      "label": "Abonnement",
+      "action": "setTab(item.id) via onNavigate",
+      "targetPath": "/subscription",
+      "evidence": [
+        {
+          "id": "subscription",
+          "label": "Abonnement",
+          "line": 8,
+          "file": "src/components/TopMenuPopover.jsx",
+          "snippet": "{ id: \"preferences\", label: \"Réglages\", subtitle: \"App / apparence\", group: \"main\" },"
+        },
+        {
+          "file": "src/components/TopMenuPopover.jsx",
+          "line": 36,
+          "type": "onNavigate-call",
+          "snippet": "if (typeof onNavigate === \"function\") onNavigate(itemId);",
+          "groups": []
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 250,
+          "type": "menu-to-setTab",
+          "snippet": "onMenuNavigate={(action) => {",
+          "groups": []
+        },
+        {
+          "file": "src/hooks/useAppNavigation.js",
+          "line": 135,
+          "type": "tab-to-path",
+          "snippet": "else if (t === \"subscription\") nextPath = \"/subscription\";",
+          "groups": [
+            "subscription",
+            "/subscription"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "label": "Données",
+      "action": "setTab(item.id) via onNavigate",
+      "targetPath": "/data",
+      "evidence": [
+        {
+          "id": "data",
+          "label": "Données",
+          "line": 9,
+          "file": "src/components/TopMenuPopover.jsx",
+          "snippet": "{ id: \"subscription\", label: \"Abonnement\", subtitle: \"Statut et options Premium\", group: \"main\" },"
+        },
+        {
+          "file": "src/components/TopMenuPopover.jsx",
+          "line": 36,
+          "type": "onNavigate-call",
+          "snippet": "if (typeof onNavigate === \"function\") onNavigate(itemId);",
+          "groups": []
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 250,
+          "type": "menu-to-setTab",
+          "snippet": "onMenuNavigate={(action) => {",
+          "groups": []
+        },
+        {
+          "file": "src/hooks/useAppNavigation.js",
+          "line": 136,
+          "type": "tab-to-path",
+          "snippet": "else if (t === \"data\") nextPath = \"/data\";",
+          "groups": [
+            "data",
+            "/data"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "privacy",
+      "label": "Confidentialité",
+      "action": "setTab(item.id) via onNavigate",
+      "targetPath": "/privacy",
+      "evidence": [
+        {
+          "id": "privacy",
+          "label": "Confidentialité",
+          "line": 10,
+          "file": "src/components/TopMenuPopover.jsx",
+          "snippet": "{ id: \"data\", label: \"Données\", subtitle: \"Exporter / importer\", group: \"main\" },"
+        },
+        {
+          "file": "src/components/TopMenuPopover.jsx",
+          "line": 36,
+          "type": "onNavigate-call",
+          "snippet": "if (typeof onNavigate === \"function\") onNavigate(itemId);",
+          "groups": []
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 250,
+          "type": "menu-to-setTab",
+          "snippet": "onMenuNavigate={(action) => {",
+          "groups": []
+        },
+        {
+          "file": "src/hooks/useAppNavigation.js",
+          "line": 137,
+          "type": "tab-to-path",
+          "snippet": "else if (t === \"privacy\") nextPath = \"/privacy\";",
+          "groups": [
+            "privacy",
+            "/privacy"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "terms",
+      "label": "Conditions",
+      "action": "setTab(item.id) via onNavigate",
+      "targetPath": "/terms",
+      "evidence": [
+        {
+          "id": "terms",
+          "label": "Conditions",
+          "line": 11,
+          "file": "src/components/TopMenuPopover.jsx",
+          "snippet": "{ id: \"privacy\", label: \"Confidentialité\", subtitle: \"Politique de données\", group: \"secondary\" },"
+        },
+        {
+          "file": "src/components/TopMenuPopover.jsx",
+          "line": 36,
+          "type": "onNavigate-call",
+          "snippet": "if (typeof onNavigate === \"function\") onNavigate(itemId);",
+          "groups": []
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 250,
+          "type": "menu-to-setTab",
+          "snippet": "onMenuNavigate={(action) => {",
+          "groups": []
+        },
+        {
+          "file": "src/hooks/useAppNavigation.js",
+          "line": 138,
+          "type": "tab-to-path",
+          "snippet": "else if (t === \"terms\") nextPath = \"/terms\";",
+          "groups": [
+            "terms",
+            "/terms"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "support",
+      "label": "Support",
+      "action": "setTab(item.id) via onNavigate",
+      "targetPath": "/support",
+      "evidence": [
+        {
+          "id": "support",
+          "label": "Support",
+          "line": 12,
+          "file": "src/components/TopMenuPopover.jsx",
+          "snippet": "{ id: \"terms\", label: \"Conditions\", subtitle: \"Conditions d'utilisation\", group: \"secondary\" },"
+        },
+        {
+          "file": "src/components/TopMenuPopover.jsx",
+          "line": 36,
+          "type": "onNavigate-call",
+          "snippet": "if (typeof onNavigate === \"function\") onNavigate(itemId);",
+          "groups": []
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 250,
+          "type": "menu-to-setTab",
+          "snippet": "onMenuNavigate={(action) => {",
+          "groups": []
+        },
+        {
+          "file": "src/hooks/useAppNavigation.js",
+          "line": 139,
+          "type": "tab-to-path",
+          "snippet": "else if (t === \"support\") nextPath = \"/support\";",
+          "groups": [
+            "support",
+            "/support"
+          ]
+        }
+      ]
+    }
+  ],
+  "pageTargets": [
+    {
+      "file": "src/pages/Account.jsx",
+      "exists": true
+    },
+    {
+      "file": "src/pages/Preferences.jsx",
+      "exists": true
+    },
+    {
+      "file": "src/pages/Subscription.jsx",
+      "exists": true
+    },
+    {
+      "file": "src/pages/Data.jsx",
+      "exists": true
+    },
+    {
+      "file": "src/pages/Privacy.jsx",
+      "exists": true
+    },
+    {
+      "file": "src/pages/Terms.jsx",
+      "exists": true
+    },
+    {
+      "file": "src/pages/Support.jsx",
+      "exists": true
+    },
+    {
+      "file": "src/pages/Settings.jsx",
+      "exists": false
+    }
+  ],
+  "inPlaceMenuRequirements": {
+    "suggestedState": "menuView = 'root' | 'account' | 'preferences' | 'subscription' | 'data' | 'privacy' | 'terms' | 'support'",
+    "requiredBehaviors": [
+      "Menu items ne déclenchent plus setTab/history mais setMenuView(...)",
+      "Back interne (retour sous-vue -> root) dans la même card",
+      "Close/ESC/click-outside conserve la fermeture globale",
+      "Option future: deep-link facultatif (opt-in) sans forcer navigation par défaut"
+    ]
+  },
+  "conclusion": {
+    "navigationDrivenMenu": true,
+    "likelyInvisibleRootCause": "layout/stacking",
+    "pagesMissingImpact": true
+  }
+}

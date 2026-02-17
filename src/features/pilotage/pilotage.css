@@ -4,6 +4,31 @@
   gap: 12px;
 }
 
+.pilotageCategoryRow {
+  position: relative;
+}
+
+.pilotageCategoryRow::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pilotageCategoryColor, var(--accent)) 72%, transparent);
+  opacity: 0.85;
+}
+
+.pilotageCategoryRow .gateRowBody {
+  padding-left: 8px;
+}
+
+.pilotageStatusBadge {
+  min-width: 72px;
+  justify-content: center;
+}
+
 .pilotageMetricMain {
   margin-top: 12px;
   display: flex;
@@ -99,8 +124,8 @@
 .pilotageInsightItem {
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--gate-border);
+  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
   font-size: 12px;
 }
 
@@ -114,6 +139,10 @@
   cursor: pointer;
   font-size: 12px;
   color: rgba(255, 255, 255, 0.7);
+}
+
+.pilotageRadarSelects .GateSelectWrap {
+  width: 100%;
 }
 
 .pilotageDetailsBody {
@@ -132,4 +161,3 @@
     grid-template-columns: 1fr;
   }
 }
-

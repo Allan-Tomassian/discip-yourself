@@ -140,27 +140,27 @@ export default function Account({ data }) {
     <ScreenShell data={safeData} pageId="settings" backgroundImage={backgroundImage}>
       <GatePage
         className="accountGatePage"
-        title="Compte / Profil"
-        subtitle="Identité et accès"
+        title={<span className="GatePageTitle">Compte / Profil</span>}
+        subtitle={<span className="GatePageSubtitle">Identité et accès</span>}
       >
         <GateSection
           title="Profil"
           description={profile?.username ? "Ton profil est actif." : "Complète ton profil pour continuer."}
-          className="accountGateCard gateCardDense"
+          className="accountGateCard GateSurfacePremium GateCardPremium"
           collapsible={false}
         >
           {loadError ? <p className="accountGateNote accountGateNoteError" role="alert">{loadError}</p> : null}
           <form className="accountGateForm" onSubmit={handleSave}>
-            <label className="accountGateField" htmlFor="account-email">
-              <span className="accountGateFieldLabel">Email</span>
-              <input id="account-email" className="accountGateInput isReadonly" value={String(user?.email || profile?.email || "")} readOnly disabled />
+            <label className="accountGateField GateFormField" htmlFor="account-email">
+              <span className="accountGateFieldLabel GateFormLabel">Email</span>
+              <input id="account-email" className="accountGateInput GateInputPremium isReadonly" value={String(user?.email || profile?.email || "")} readOnly disabled />
             </label>
 
-            <label className="accountGateField" htmlFor="account-username">
-              <span className="accountGateFieldLabel">Username</span>
+            <label className="accountGateField GateFormField" htmlFor="account-username">
+              <span className="accountGateFieldLabel GateFormLabel">Username</span>
               <input
                 id="account-username"
-                className="accountGateInput"
+                className="accountGateInput GateInputPremium"
                 data-testid="account-username-input"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
@@ -170,11 +170,11 @@ export default function Account({ data }) {
               />
             </label>
 
-            <label className="accountGateField" htmlFor="account-full-name">
-              <span className="accountGateFieldLabel">Nom complet</span>
+            <label className="accountGateField GateFormField" htmlFor="account-full-name">
+              <span className="accountGateFieldLabel GateFormLabel">Nom complet</span>
               <input
                 id="account-full-name"
-                className="accountGateInput"
+                className="accountGateInput GateInputPremium"
                 data-testid="account-full-name-input"
                 value={fullName}
                 onChange={(event) => setFullName(event.target.value)}
@@ -183,11 +183,11 @@ export default function Account({ data }) {
               />
             </label>
 
-            <label className="accountGateField" htmlFor="account-avatar-url">
-              <span className="accountGateFieldLabel">Avatar URL</span>
+            <label className="accountGateField GateFormField" htmlFor="account-avatar-url">
+              <span className="accountGateFieldLabel GateFormLabel">Avatar URL</span>
               <input
                 id="account-avatar-url"
-                className="accountGateInput"
+                className="accountGateInput GateInputPremium"
                 data-testid="account-avatar-url-input"
                 value={avatarUrl}
                 onChange={(event) => setAvatarUrl(event.target.value)}
@@ -215,13 +215,14 @@ export default function Account({ data }) {
               </p>
             ) : null}
 
-            <div className="accountGateActions">
-              <GateButton type="submit" withSound disabled={!canSave} data-testid="account-save-button">
+            <div className="accountGateActions GatePrimaryCtaRow">
+              <GateButton type="submit" className="GatePressable" withSound disabled={!canSave} data-testid="account-save-button">
                 {saving ? "Enregistrement..." : "Enregistrer"}
               </GateButton>
               <GateButton
                 type="button"
                 variant="ghost"
+                className="GatePressable"
                 withSound
                 onClick={() => {
                   refreshProfile().catch(() => {});
@@ -236,14 +237,14 @@ export default function Account({ data }) {
         <GateSection
           title="Session"
           description="Actions liées à ton compte"
-          className="accountGateCard gateCardDense"
+          className="accountGateCard GateSurfacePremium GateCardPremium"
           collapsible={false}
         >
-          <div className="accountGateActions">
+          <div className="accountGateActions GatePrimaryCtaRow">
             <GateButton
               type="button"
               variant="ghost"
-              className="accountGateDangerButton"
+              className="accountGateDangerButton GatePressable"
               withSound
               onClick={() => {
                 signOut().catch(() => {});
@@ -251,7 +252,7 @@ export default function Account({ data }) {
             >
               Déconnexion
             </GateButton>
-            <GateButton type="button" variant="ghost" disabled>
+            <GateButton type="button" variant="ghost" className="GatePressable" disabled>
               Supprimer mon compte (bientôt)
             </GateButton>
           </div>

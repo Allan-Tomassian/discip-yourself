@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Input, Modal } from "./UI";
+import { Modal } from "./UI";
 import { SYSTEM_INBOX_ID } from "../logic/state";
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
-import { GateButton, GateHeader, GatePanel } from "../shared/ui/gate/Gate";
+import { GateButton, GateHeader, GatePanel, GateRow, GateSection } from "../shared/ui/gate/Gate";
 import "../features/library/library.css";
 
 export default function CategoryGateModal({
@@ -150,99 +150,97 @@ export default function CategoryGateModal({
     <Modal
       open={open}
       onClose={onClose}
-      className="categoryGateModal card"
-      backdropClassName="categoryGateBackdrop"
+      className="categoryGateModal"
+      backdropClassName="categoryGateBackdrop GateOverlayBackdrop"
     >
-      <GatePanel className="categoryGateShell" data-testid="category-gate-modal">
+      <GatePanel className="categoryGateShell GateSurfacePremium GateCardPremium" data-testid="category-gate-modal">
         <div className="categoryGateScroll">
           <GateHeader className="categoryGateHeader" title="Catégorie" subtitle="Active une catégorie pour continuer" />
 
-          <div
-            className={`categoryGateList${expanded ? " isExpanded" : " isCollapsed"}`}
-            role="listbox"
-            aria-label="Catégories"
-          >
-            {visibleList.map((cat) => {
-              const isSelected = cat.id === selectedId;
-              const isActive = categoryList.some((c) => c?.id === cat.id);
-              const isSystem = cat.id === SYSTEM_INBOX_ID;
-              const counts = countsByCategory.get(cat.id) || { goalsCount: 0, habitsCount: 0, total: 0 };
-              const fallbackCount =
-                Number(cat?.goalsCount || cat?.habitsCount || cat?.itemsCount || cat?.contentCount || 0) || 0;
-              const hasContent = counts.total > 0 || fallbackCount > 0;
-              const rowKind = cat?.__kind || (isActive ? "active" : "suggestion");
-              return (
-                <div
-                  key={cat.id}
-                  className={`categoryGateItem${isSelected ? " isSelected" : ""}`}
-                  role="option"
-                  aria-selected={isSelected}
-                  tabIndex={0}
-                  data-testid={`category-row-${cat.id}`}
-                  onClick={() => setSelectedId(cat.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      setSelectedId(cat.id);
-                    }
-                  }}
-                >
-                  <span className="categoryGateSwatch" style={{ background: cat.color || "#F97316" }} />
-                  <span className="categoryGateName">
-                    {cat.name || "Catégorie"}
-                    {isSystem ? <span className="categoryGateHint">(Général · indispensable)</span> : null}
-                  </span>
-                  <button
-                    type="button"
-                    className={`categoryGateSwitch${isActive ? " isActive" : ""}${!isActive && isSelected ? " isAttention" : ""}`}
-                    data-testid={`category-toggle-${cat.id}`}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      logDebug(
-                        `toggle id=${cat?.id} kind=${rowKind} isActive=${isActive} next=${!isActive}`
-                      );
-                      if (isSystem) return;
-                      if (isActive && hasContent) {
-                        setConfirmCat(cat);
-                        setConfirmCounts(counts);
-                        setConfirmOpen(true);
-                        logDebug(`confirm-open id=${cat?.id} counts=${counts.goalsCount}/${counts.habitsCount}`);
-                        return;
-                      }
-                      if (typeof onToggleActive === "function") {
-                        if (isActive) {
-                          onToggleActive({ id: cat.id }, false, isDev ? { __debugSink: logDebug } : undefined);
-                        } else {
-                          onToggleActive(
-                            { id: cat.id, name: cat.name, color: cat.color },
-                            true,
-                            isDev ? { __debugSink: logDebug } : undefined
+          <GateSection className="categoryGateSectionFlat">
+            <div
+              className={`categoryGateList${expanded ? " isExpanded" : " isCollapsed"}`}
+              role="listbox"
+              aria-label="Catégories"
+            >
+              {visibleList.map((cat) => {
+                const isSelected = cat.id === selectedId;
+                const isActive = categoryList.some((c) => c?.id === cat.id);
+                const isSystem = cat.id === SYSTEM_INBOX_ID;
+                const counts = countsByCategory.get(cat.id) || { goalsCount: 0, habitsCount: 0, total: 0 };
+                const fallbackCount =
+                  Number(cat?.goalsCount || cat?.habitsCount || cat?.itemsCount || cat?.contentCount || 0) || 0;
+                const hasContent = counts.total > 0 || fallbackCount > 0;
+                const rowKind = cat?.__kind || (isActive ? "active" : "suggestion");
+                return (
+                  <GateRow
+                    key={cat.id}
+                    className={`categoryGateItem GateRowPremium GatePressable${isSelected ? " isSelected" : ""}`}
+                    role="option"
+                    aria-selected={isSelected}
+                    data-testid={`category-row-${cat.id}`}
+                    withSound
+                    onClick={() => setSelectedId(cat.id)}
+                    right={(
+                      <button
+                        type="button"
+                        className={`categoryGateSwitch${isActive ? " isActive" : ""}${!isActive && isSelected ? " isAttention" : ""}`}
+                        data-testid={`category-toggle-${cat.id}`}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          logDebug(
+                            `toggle id=${cat?.id} kind=${rowKind} isActive=${isActive} next=${!isActive}`
                           );
-                        }
-                      }
-                    }}
-                    onPointerDown={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                    }}
-                    onMouseDown={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                    }}
-                    disabled={isSystem}
-                    aria-pressed={isActive}
-                    title={isSystem ? "Catégorie indispensable." : "Active pour l’utiliser et créer du contenu."}
+                          if (isSystem) return;
+                          if (isActive && hasContent) {
+                            setConfirmCat(cat);
+                            setConfirmCounts(counts);
+                            setConfirmOpen(true);
+                            logDebug(`confirm-open id=${cat?.id} counts=${counts.goalsCount}/${counts.habitsCount}`);
+                            return;
+                          }
+                          if (typeof onToggleActive === "function") {
+                            if (isActive) {
+                              onToggleActive({ id: cat.id }, false, isDev ? { __debugSink: logDebug } : undefined);
+                            } else {
+                              onToggleActive(
+                                { id: cat.id, name: cat.name, color: cat.color },
+                                true,
+                                isDev ? { __debugSink: logDebug } : undefined
+                              );
+                            }
+                          }
+                        }}
+                        onPointerDown={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }}
+                        disabled={isSystem}
+                        aria-pressed={isActive}
+                        title={isSystem ? "Catégorie indispensable." : "Active pour l’utiliser et créer du contenu."}
+                      >
+                        <span className="categoryGateSwitchLabel">{isActive ? "Activée" : "Activer"}</span>
+                        <span className="categoryGateSwitchThumb" aria-hidden="true">
+                          {isActive ? "✓" : ""}
+                        </span>
+                      </button>
+                    )}
                   >
-                    <span className="categoryGateSwitchLabel">{isActive ? "Activée" : "Activer"}</span>
-                    <span className="categoryGateSwitchThumb" aria-hidden="true">
-                      {isActive ? "✓" : ""}
+                    <span className="categoryGateSwatch" style={{ background: cat.color || "#F97316" }} />
+                    <span className="categoryGateName">
+                      {cat.name || "Catégorie"}
+                      {isSystem ? <span className="categoryGateHint">(Général · indispensable)</span> : null}
                     </span>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                  </GateRow>
+                );
+              })}
+            </div>
+          </GateSection>
 
           <div className="categoryGateHelper small2 textMuted">
             Active pour l’utiliser et créer du contenu.
@@ -250,40 +248,45 @@ export default function CategoryGateModal({
 
           {canToggleExpand ? (
             <div className="categoryGateExpand">
-              <GateButton variant="ghost" onClick={() => setExpanded((prev) => !prev)}>
+              <GateButton variant="ghost" className="GatePressable" withSound onClick={() => setExpanded((prev) => !prev)}>
                 {expanded ? "Réduire" : `Afficher toutes (${rows.length})`}
               </GateButton>
             </div>
           ) : null}
 
-          <div className="categoryGateCreate">
+          <div className="categoryGateCreate GateRowPremium">
             <div className="titleSm">Créer une catégorie</div>
             <div className="categoryGateCreateRow">
-              <Input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="Nom de la catégorie"
-                aria-label="Nom de la catégorie"
-              />
+              <div className="GateFormField categoryGateCreateName">
+                <label className="GateFormLabel" htmlFor="categoryGateNewName">Nom</label>
+                <input
+                  id="categoryGateNewName"
+                  className="GateInputPremium"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Nom de la catégorie"
+                  aria-label="Nom de la catégorie"
+                />
+              </div>
               <input
                 type="color"
-                className="categoryGateColor"
+                className="categoryGateColor GateInputPremium"
                 value={newColor}
                 onChange={(e) => setNewColor(e.target.value)}
                 aria-label="Couleur"
               />
-              <GateButton variant="ghost" onClick={handleCreate}>
+              <GateButton variant="ghost" className="GatePressable" withSound onClick={handleCreate}>
                 Ajouter
               </GateButton>
             </div>
           </div>
         </div>
 
-        <div className="categoryGateFooter">
-          <GateButton variant="ghost" onClick={onClose}>
+        <div className="categoryGateFooter GatePrimaryCtaRow">
+          <GateButton variant="ghost" className="GatePressable" withSound onClick={onClose}>
             Annuler
           </GateButton>
-          <GateButton disabled={!canContinue} onClick={() => onConfirm(selectedId)} data-testid="category-gate-continue">
+          <GateButton className="GatePressable" withSound disabled={!canContinue} onClick={() => onConfirm(selectedId)} data-testid="category-gate-continue">
             Continuer
           </GateButton>
         </div>
@@ -292,10 +295,10 @@ export default function CategoryGateModal({
     <Modal
       open={confirmOpen}
       onClose={closeConfirm}
-      className="categoryGateModal card"
-      backdropClassName="categoryGateBackdrop"
+      className="categoryGateModal"
+      backdropClassName="categoryGateBackdrop GateOverlayBackdrop"
     >
-      <GatePanel className="categoryGateShell" data-testid="category-gate-confirm">
+      <GatePanel className="categoryGateShell GateSurfacePremium GateCardPremium" data-testid="category-gate-confirm">
         <div className="categoryGateScroll">
           <GateHeader
             className="categoryGateHeader"
@@ -306,12 +309,14 @@ export default function CategoryGateModal({
             Si tu supprimes, tout sera perdu (irréversible).
           </div>
         </div>
-        <div className="categoryGateFooter">
-          <GateButton variant="ghost" onClick={closeConfirm}>
+        <div className="categoryGateFooter GatePrimaryCtaRow">
+          <GateButton variant="ghost" className="GatePressable" withSound onClick={closeConfirm}>
             Annuler
           </GateButton>
           <GateButton
             variant="ghost"
+            className="GatePressable"
+            withSound
             data-testid="category-confirm-migrate"
             onClick={() => {
               if (!confirmCat) return;
@@ -329,6 +334,8 @@ export default function CategoryGateModal({
             Migrer vers Général
           </GateButton>
           <GateButton
+            className="GatePressable"
+            withSound
             data-testid="category-confirm-delete"
             onClick={() => {
               if (!confirmCat) return;

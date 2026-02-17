@@ -1,7 +1,28 @@
+.TopNavShell {
+  overflow-x: hidden;
+}
+
 .topNavGateWrap {
   padding: 0;
   position: relative;
-  z-index: 8500; /* topbar au-dessus du scrim */
+  z-index: 900; /* topbar sous les overlays de menu */
+}
+
+.TopNavSurfaceOuter {
+  --gate-glass-radius: var(--radius-card, 16px);
+  --gate-glass-shadow: 0 14px 28px rgba(0, 0, 0, 0.3);
+}
+
+.TopNavSurfaceClip {
+  position: relative;
+}
+
+.TopNavSurfaceClip.TopNavBackdrop {
+  --gate-glass-backdrop-bg: color-mix(in srgb, #0a0f18 48%, transparent);
+}
+
+.TopNavBackdrop::before {
+  background: var(--gate-glass-backdrop-bg);
 }
 
 .topNavGateBar {
@@ -9,13 +30,17 @@
   --gate-surface-2: color-mix(in srgb, var(--surface-2, #151b24) 90%, #070b11);
   --gate-border: color-mix(in srgb, var(--border-subtle, var(--border)) 92%, rgba(255, 255, 255, 0.18));
   border: 1px solid var(--gate-border);
-  border-radius: var(--radius-card, 16px);
-  background: linear-gradient(180deg, var(--gate-surface-1), var(--gate-surface-2));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 14px 28px rgba(0, 0, 0, 0.3);
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--gate-surface-1) 78%, transparent),
+    color-mix(in srgb, var(--gate-surface-2) 84%, transparent)
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
   padding: 8px;
   gap: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .topNavGateBar .navBtn {
@@ -38,6 +63,14 @@
 .topNavGateBar .navMenuTrigger {
   border-color: color-mix(in srgb, var(--gate-border) 90%, rgba(255, 255, 255, 0.14));
   background: color-mix(in srgb, var(--gate-surface-2) 88%, rgba(255, 255, 255, 0.04));
+  color: var(--text);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-12);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .topNavGateBar .navMenuTrigger:hover {
@@ -49,26 +82,58 @@
   border-color: color-mix(in srgb, var(--accent) 44%, var(--gate-border));
 }
 
+.topNavGateBar .navMenuBars {
+  width: 16px;
+  height: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.topNavGateBar .navMenuBars span {
+  display: block;
+  width: 100%;
+  height: 1.5px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.9;
+}
+
 .topMenuGatePopover {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: min(336px, calc(100vw - 40px));
-  z-index: var(--z-dropdown);
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .topMenuScrim {
   position: fixed;
   inset: 0;
-  z-index: 8000; /* scrim au-dessus du contenu */
+  z-index: 1200; /* scrim derrière le popover */
   background: color-mix(in srgb, #05070c 56%, transparent);
   backdrop-filter: blur(10px) saturate(1.08);
   -webkit-backdrop-filter: blur(10px) saturate(1.08);
 }
 
 .topMenuPopoverLayer {
-  position: relative;
-  z-index: 9000; /* popover au-dessus du scrim */
+  --safeTop: env(safe-area-inset-top, 0px);
+  --safeBottom: env(safe-area-inset-bottom, 0px);
+  --topMenuMaxH: calc(100dvh - 120px - (16px + var(--safeBottom)));
+  position: fixed;
+  z-index: 1210; /* popover au-dessus du scrim */
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+  pointer-events: auto;
+  opacity: 1;
+  visibility: visible;
+}
+
+.topMenuPopoverLayer > * {
+  max-height: var(--topMenuMaxH);
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .topMenuGate {
@@ -76,25 +141,45 @@
   --gate-surface-2: color-mix(in srgb, var(--surface-2, #151b24) 92%, #05080f);
   --gate-border: color-mix(in srgb, var(--border-subtle, var(--border)) 90%, rgba(255, 255, 255, 0.18));
   --gate-text-muted: color-mix(in srgb, var(--text-3, rgba(255, 255, 255, 0.56)) 90%, rgba(255, 255, 255, 0.76));
-  border: 1px solid var(--gate-border);
   border-radius: 14px;
-  background: linear-gradient(180deg, var(--gate-surface-1), var(--gate-surface-2));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.11),
-    0 18px 34px rgba(0, 0, 0, 0.38);
   padding: 10px;
   gap: 10px;
+  min-height: 0;
 }
 
 .topMenuGateHeader {
   padding: 0 2px;
 }
 
+.topMenuHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.topMenuHeaderIconButton {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--gate-border) 88%, rgba(255, 255, 255, 0.16));
+  background: color-mix(in srgb, var(--gate-surface-2) 86%, rgba(255, 255, 255, 0.05));
+  color: var(--gate-text);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  line-height: 1;
+  font-size: 16px;
+}
+
+.topMenuHeaderIconButton:hover {
+  background: color-mix(in srgb, var(--gate-surface-1) 88%, rgba(255, 255, 255, 0.08));
+}
+
 .topMenuGateList {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 4px 0;
+  padding: 0;
 }
 
 .topMenuGateItem {
@@ -102,9 +187,11 @@
 }
 
 .topMenuGateSectionFlat {
-  background: transparent;
   border: 0;
+  background: transparent;
   box-shadow: none;
+  padding: 4px 0;
+  gap: 0;
 }
 
 .topMenuGateRowFlat {
@@ -170,8 +257,39 @@
   padding: 0 2px;
 }
 
+.topMenuSubviewSection {
+  padding-top: 8px;
+}
+
+.topMenuSubview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 6px 2px 2px;
+}
+
+.topMenuSubviewKicker {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent) 72%, var(--gate-text));
+}
+
+.topMenuSubviewBody {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.42;
+  color: var(--gate-text-muted);
+}
+
+.topMenuSubviewActions {
+  margin-top: 2px;
+}
+
 @media (max-width: 520px) {
-  .topMenuGatePopover {
-    width: min(336px, calc(100vw - 24px));
+  .topMenuPopoverLayer {
+    max-width: calc(100vw - 32px);
   }
 }

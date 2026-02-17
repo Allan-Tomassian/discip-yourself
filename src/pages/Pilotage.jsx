@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, Input } from "../components/UI";
-import Select from "../ui/select/Select";
-import AccentItem from "../components/AccentItem";
+import { GateBadge, GateButton, GateRow, GateSection } from "../shared/ui/gate/Gate";
+import SelectControl from "../ui/select/Select";
 import { getCategoryPilotageCounts, getCategoryStatus } from "../logic/pilotage";
 import {
   computeDailyStats,
@@ -86,6 +85,59 @@ const normalizeRadarSelection = (selection, availableIds, fallbackIds) => {
 };
 
 const PILOTAGE_RADAR_STORAGE_KEY = "pilotageRadarSelection";
+
+function Button({ variant = "primary", className = "", ...props }) {
+  const gateVariant = variant === "ghost" ? "ghost" : "primary";
+  const mergedClassName = [className, "GatePressable"].filter(Boolean).join(" ");
+  return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;
+}
+
+function Card({ className = "", children, ...props }) {
+  const mergedClassName = ["GateSurfacePremium", "GateCardPremium", className].filter(Boolean).join(" ");
+  return (
+    <GateSection className={mergedClassName} collapsible={false} {...props}>
+      {children}
+    </GateSection>
+  );
+}
+
+function Input({ className = "", ...props }) {
+  const mergedClassName = ["GateInputPremium", className].filter(Boolean).join(" ");
+  return <input className={mergedClassName} {...props} />;
+}
+
+function Select({ className = "", children, ...props }) {
+  const mergedClassName = ["GateSelectPremium", className].filter(Boolean).join(" ");
+  return <SelectControl className={mergedClassName} {...props}>{children}</SelectControl>;
+}
+
+function PilotageCategoryRow({
+  color,
+  selected,
+  onClick,
+  summary,
+  statusLabel,
+  statusStyle,
+  children,
+  ...props
+}) {
+  return (
+    <GateRow
+      className="pilotageCategoryRow GateRowPremium GatePressable"
+      selected={selected}
+      onClick={onClick}
+      right={
+        <GateBadge className="pilotageStatusBadge" style={{ ...statusStyle, borderWidth: 1, borderStyle: "solid" }}>
+          {statusLabel}
+        </GateBadge>
+      }
+      style={{ "--pilotageCategoryColor": color || "#6EE7FF" }}
+      label={children}
+      meta={summary}
+      {...props}
+    />
+  );
+}
 
 const loadRadarSelectionFromStorage = () => {
   if (typeof window === "undefined") return [];
@@ -640,27 +692,18 @@ export default function Pilotage({
                       const statusStyle = STATUS_STYLES[label] || STATUS_STYLES.ACTIVE;
 
                       return (
-                        <AccentItem
+                        <PilotageCategoryRow
                           key={c.id}
                           color={catColor}
                           selected={isSelected}
                           onClick={() => setPilotageSelectedCategory(c.id)}
                           aria-label={`Catégorie ${c.name || "Catégorie"} (${STATUS_LABELS[label] || "Active"})`}
-                          rightSlot={
-                            <span
-                              className="badge"
-                              aria-label={`Statut: ${STATUS_LABELS[label] || "Active"}`}
-                              style={{ ...statusStyle, borderWidth: 1, borderStyle: "solid" }}
-                            >
-                              {STATUS_LABELS[label] || "Active"}
-                            </span>
-                          }
+                          summary={summary}
+                          statusLabel={STATUS_LABELS[label] || "Active"}
+                          statusStyle={statusStyle}
                         >
-                          <div>
-                            <div className="itemTitle">{c.name || "Catégorie"}</div>
-                            <div className="itemSub">{summary}</div>
-                          </div>
-                        </AccentItem>
+                          {c.name || "Catégorie"}
+                        </PilotageCategoryRow>
                       );
                     })}
                   </div>
@@ -673,8 +716,8 @@ export default function Pilotage({
                           <div className="small2 textMuted">Catégorie sélectionnée</div>
                         </div>
                         {selectedStatus ? (
-                          <span
-                            className="badge"
+                          <GateBadge
+                            className="pilotageStatusBadge"
                             style={{
                               ...(STATUS_STYLES[selectedStatus] || STATUS_STYLES.ACTIVE),
                               borderWidth: 1,
@@ -682,7 +725,7 @@ export default function Pilotage({
                             }}
                           >
                             {STATUS_LABELS[selectedStatus] || "Active"}
-                          </span>
+                          </GateBadge>
                         ) : null}
                       </div>
 
@@ -700,12 +743,12 @@ export default function Pilotage({
                           value={selectedWeek ? `${selectedWeek.expected || 0} / ${selectedWeek.done || 0}` : "—"}
                           right={
                             selectedWeek && (selectedWeek.missed || 0) > 0 ? (
-                              <span
-                                className="badge"
+                              <GateBadge
+                                className="pilotageStatusBadge"
                                 style={{ ...STATUS_STYLES.EMPTY, borderWidth: 1, borderStyle: "solid" }}
                               >
                                 {selectedWeek.missed} manquée{selectedWeek.missed > 1 ? "s" : ""}
-                              </span>
+                              </GateBadge>
                             ) : null
                           }
                         />

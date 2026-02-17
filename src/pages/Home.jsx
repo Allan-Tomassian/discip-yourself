@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SortableBlocks from "../components/SortableBlocks";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, IconButton, SelectMenu, Textarea } from "../components/UI";
-import AccentItem from "../components/AccentItem";
+import { GateButton, GateRow, GateSection } from "../shared/ui/gate/Gate";
 import {
   addDays,
   addMonths,
@@ -105,6 +104,55 @@ function loadLegacyBlockOrder() {
    void err;
     return null;
   }
+}
+
+function Button({ variant = "primary", className = "", ...props }) {
+  const gateVariant = variant === "ghost" || variant === "danger" ? "ghost" : "primary";
+  const dangerClass = variant === "danger" ? "todayDangerButton" : "";
+  const mergedClassName = [className, dangerClass, "GatePressable"].filter(Boolean).join(" ");
+  return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;
+}
+
+function HomeCard({ className = "", children, ...props }) {
+  const mergedClassName = ["GateSurfacePremium", "GateCardPremium", className].filter(Boolean).join(" ");
+  return (
+    <GateSection className={mergedClassName} collapsible={false} {...props}>
+      {children}
+    </GateSection>
+  );
+}
+
+function IconButton({ className = "", children, ...props }) {
+  const mergedClassName = ["GateIconButtonPremium", "GatePressable", className].filter(Boolean).join(" ");
+  return (
+    <button type="button" className={mergedClassName} {...props}>
+      {children}
+    </button>
+  );
+}
+
+function SelectMenu({ value, onChange, options = [], placeholder = "", className = "", style }) {
+  const mergedClassName = ["GateSelectPremium", className].filter(Boolean).join(" ");
+  return (
+    <select
+      value={value}
+      className={mergedClassName}
+      style={style}
+      onChange={(event) => onChange?.(event.target.value)}
+    >
+      {placeholder ? <option value="">{placeholder}</option> : null}
+      {(Array.isArray(options) ? options : []).map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function Textarea({ className = "", ...props }) {
+  const mergedClassName = ["GateTextareaPremium", className].filter(Boolean).join(" ");
+  return <textarea className={mergedClassName} {...props} />;
 }
 
 
@@ -1526,7 +1574,7 @@ export default function Home({
 
           if (blockId === "notes") {
             return (
-              <Card data-tour-id="today-notes-card">
+              <HomeCard data-tour-id="today-notes-card">
                 <div className="p18">
                   <div className="row">
                     <div className="cardSectionTitleRow">
@@ -1565,8 +1613,7 @@ export default function Home({
                       onChange={(e) => {
                         setDailyNote(e.target.value);
                       }}
-                      className="accentSurface"
-                      style={accentVars}
+                      className=""
                       placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
                       data-tour-id="today-notes-text"
                     />
@@ -1579,8 +1626,8 @@ export default function Home({
                         <SelectMenu
                           value={noteMeta.forme || ""}
                           onChange={(next) => updateNoteMeta({ forme: next })}
-                          style={accentVars}
-                          className="accentSurface"
+                          style={undefined}
+                          className=""
                           placeholder="Choisir"
                           options={[
                             { value: "Excellente", label: "Excellente" },
@@ -1595,8 +1642,8 @@ export default function Home({
                         <SelectMenu
                           value={noteMeta.humeur || ""}
                           onChange={(next) => updateNoteMeta({ humeur: next })}
-                          style={accentVars}
-                          className="accentSurface"
+                          style={undefined}
+                          className=""
                           placeholder="Choisir"
                           options={[
                             { value: "Positif", label: "Positif" },
@@ -1608,7 +1655,7 @@ export default function Home({
                       <div>
                         <div className="small2">Énergie</div>
                         <input
-                          className="input accentSurface"
+                          className="GateInputPremium"
                           type="number"
                           min="0"
                           max="10"
@@ -1616,7 +1663,7 @@ export default function Home({
                           value={noteMeta.motivation || ""}
                           onChange={(e) => updateNoteMeta({ motivation: e.target.value })}
                           placeholder="0-10"
-                          style={accentVars}
+                          style={undefined}
                         />
                       </div>
                     </div>
@@ -1627,7 +1674,7 @@ export default function Home({
                     </Button>
                   </div>
                 </div>
-              </Card>
+              </HomeCard>
             );
           }
           if (blockId === "calendar") {
@@ -1668,7 +1715,7 @@ export default function Home({
       </div>
       {showDayStats ? (
         <div className="modalBackdrop disciplineOverlay" onClick={() => setShowDayStats(false)}>
-          <Card className="disciplineCard" onClick={(e) => e.stopPropagation()}>
+          <HomeCard className="disciplineCard" onClick={(e) => e.stopPropagation()}>
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div className="titleSm">Progression du jour</div>
               <button className="linkBtn" type="button" onClick={() => setShowDayStats(false)}>
@@ -1695,13 +1742,13 @@ export default function Home({
                 <div className="titleSm">{coreProgress.done}/{coreProgress.total || 0}</div>
               </div>
             </div>
-          </Card>
+          </HomeCard>
         </div>
       ) : null}
 
       {showDisciplineStats ? (
         <div className="modalBackdrop disciplineOverlay" onClick={() => setShowDisciplineStats(false)}>
-          <Card className="disciplineCard" onClick={(e) => e.stopPropagation()}>
+          <HomeCard className="disciplineCard" onClick={(e) => e.stopPropagation()}>
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div className="titleSm">Discipline</div>
               <button className="linkBtn" type="button" onClick={() => setShowDisciplineStats(false)}>
@@ -1726,7 +1773,7 @@ export default function Home({
                 <div className="titleSm">{disciplineBreakdown.score}%</div>
               </div>
             </div>
-          </Card>
+          </HomeCard>
         </div>
       ) : null}
       {showNotesHistory ? (
@@ -1738,7 +1785,7 @@ export default function Home({
             setNoteDeleteTargetId(null);
           }}
         >
-          <Card className="noteHistorySheet" onClick={(e) => e.stopPropagation()}>
+          <HomeCard className="noteHistorySheet" onClick={(e) => e.stopPropagation()}>
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div className="titleSm">Historique des notes</div>
               <div className="row" style={{ gap: 8 }}>
@@ -1790,10 +1837,9 @@ export default function Home({
                   const isSelected = noteDeleteMode && noteDeleteTargetId === item.id;
                   if (isSelected) {
                     return (
-                      <AccentItem
+                      <GateRow
                         key={item.id || item.dateKey}
-                        className="listItem"
-                        style={accentVars}
+                        className="listItem GateRowPremium GatePressable"
                         selected
                         onClick={
                           noteDeleteMode
@@ -1804,43 +1850,27 @@ export default function Home({
                         <div className="small2">{item.dateKey}</div>
                         {metaParts.length ? <div className="small2 mt8">{metaParts.join(" · ")}</div> : null}
                         {item.note ? <div className="small2 mt8">{item.note}</div> : null}
-                      </AccentItem>
+                      </GateRow>
                     );
                   }
 
                   return (
-                    <div
+                    <GateRow
                       key={item.id || item.dateKey}
-                      className="listItem"
-                      role={noteDeleteMode ? "button" : undefined}
-                      tabIndex={noteDeleteMode ? 0 : undefined}
-                      onClick={
-                        noteDeleteMode
-                          ? () => setNoteDeleteTargetId((prev) => (prev === item.id ? null : item.id))
-                          : undefined
-                      }
-                      onKeyDown={
-                        noteDeleteMode
-                          ? (e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                setNoteDeleteTargetId((prev) => (prev === item.id ? null : item.id));
-                              }
-                            }
-                          : undefined
-                      }
+                      className={`listItem GateRowPremium${noteDeleteMode ? " GatePressable" : ""}`}
+                      onClick={noteDeleteMode ? () => setNoteDeleteTargetId((prev) => (prev === item.id ? null : item.id)) : undefined}
                     >
                       <div className="small2">{item.dateKey}</div>
                       {metaParts.length ? <div className="small2 mt8">{metaParts.join(" · ")}</div> : null}
                       {item.note ? <div className="small2 mt8">{item.note}</div> : null}
-                    </div>
+                    </GateRow>
                   );
                 })
               ) : (
                 <div className="small2">Aucune note enregistrée.</div>
               )}
             </div>
-          </Card>
+          </HomeCard>
         </div>
       ) : null}
     </ScreenShell>

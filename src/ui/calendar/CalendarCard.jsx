@@ -1,5 +1,5 @@
 import React, { useMemo, useRef } from "react";
-import { Button, Card } from "../../components/UI";
+import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
 import DayRail from "./DayRail";
 import { getMonthLabelFR, WEEKDAY_LABELS_FR } from "../../utils/dates";
 import { toLocalDateKey } from "../../utils/dateKey";
@@ -60,7 +60,7 @@ export default function CalendarCard({
   }, [monthCursor]);
 
   return (
-    <Card className="calendarCard" data-tour-id="today-calendar-card">
+    <GateSection className="calendarCard GateSurfacePremium GateCardPremium" collapsible={false} data-tour-id="today-calendar-card">
       <div className="calendarCardBody">
         <div className="calendarHeader">
           <div className="calendarTitleRow">
@@ -142,24 +142,25 @@ export default function CalendarCard({
             />
           ) : (
             <div className="calendarMonthWrap">
-              <div className="calendarMonthHeader">
-                <Button variant="ghost" onClick={onPrevMonth} aria-label="Mois précédent">
+            <div className="calendarMonthHeader">
+                <GateButton variant="ghost" className="calendarMonthNavBtn" onClick={onPrevMonth} aria-label="Mois précédent">
                   ←
-                </Button>
+                </GateButton>
                 <div className="calendarMonthTitle">{monthLabel}</div>
-                <Button variant="ghost" onClick={onNextMonth} aria-label="Mois suivant">
+                <GateButton variant="ghost" className="calendarMonthNavBtn" onClick={onNextMonth} aria-label="Mois suivant">
                   →
-                </Button>
+                </GateButton>
               </div>
               {typeof onAddOccurrence === "function" ? (
                 <div className="calendarMonthActions">
-                  <Button
+                  <GateButton
                     variant="ghost"
+                    className="calendarMonthAddBtn"
                     onClick={() => onAddOccurrence(selectedDateKey, selectedGoalId || null)}
                     data-tour-id="today-calendar-add-occurrence"
                   >
                     Ajouter
-                  </Button>
+                  </GateButton>
                 </div>
               ) : null}
               <div className="calendarMonthGrid" data-tour-id="today-calendar-month-grid">
@@ -221,6 +222,6 @@ export default function CalendarCard({
           )}
         </div>
       </div>
-    </Card>
+    </GateSection>
   );
 }

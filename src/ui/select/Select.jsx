@@ -350,7 +350,7 @@ export default function Select({
             />
             <div
               ref={menuRef}
-              className={`selectMenu${menuClassName ? ` ${menuClassName}` : ""}`}
+              className="selectMenuOuter GateGlassOuter"
               style={{
                 ...(isPositioned ? {} : { position: "fixed", left: 0, top: 0 }),
                 ...(menuStyle || {}),
@@ -359,28 +359,31 @@ export default function Select({
                 pointerEvents: isPositioned ? "auto" : "none",
                 visibility: isPositioned ? "visible" : "hidden",
               }}
-              role="listbox"
             >
-              {optionsList.length ? (
-                optionsList.map((opt) => {
-                  const isSelected = opt.value === value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      role="option"
-                      aria-selected={isSelected}
-                      disabled={opt.disabled}
-                      className={`selectOption${isSelected ? " isSelected" : ""}${opt.disabled ? " isDisabled" : ""}`}
-                      onClick={() => handleSelect(opt)}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="selectEmpty">Aucune option</div>
-              )}
+              <div className="selectMenuClip GateGlassClip GateGlassBackdrop">
+                <div className={`selectMenu GateGlassContent${menuClassName ? ` ${menuClassName}` : ""}`} role="listbox">
+                  {optionsList.length ? (
+                    optionsList.map((opt) => {
+                      const isSelected = opt.value === value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          role="option"
+                          aria-selected={isSelected}
+                          disabled={opt.disabled}
+                          className={`selectOption${isSelected ? " isSelected" : ""}${opt.disabled ? " isDisabled" : ""}`}
+                          onClick={() => handleSelect(opt)}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="selectEmpty">Aucune option</div>
+                  )}
+                </div>
+              </div>
             </div>
           </>
         </Portal>

@@ -8,8 +8,25 @@
   --lg-overlay: 0.16;
   --lg-highlight: 0.16;
   position: relative;
+  --gate-glass-radius: var(--lg-radius);
+  --gate-glass-blur: var(--lg-blur);
+  --gate-glass-saturation: var(--lg-saturation);
+  --gate-glass-backdrop-bg: color-mix(in srgb, rgba(10, 14, 20, 0.62) 86%, transparent);
   border-radius: var(--lg-radius);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04),
+    0 16px 34px rgba(0, 0, 0, 0.36);
+}
+
+.liquidGlassSurfaceClip {
+  position: relative;
+  border-radius: var(--lg-radius);
+}
+
+.liquidGlassSurfaceContent {
   border: 1px solid var(--lg-border);
+  border-radius: inherit;
   background:
     linear-gradient(
       180deg,
@@ -18,17 +35,9 @@
       rgba(255, 255, 255, 0) 54%
     ),
     linear-gradient(180deg, var(--lg-top), var(--lg-bottom));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.04),
-    0 16px 34px rgba(0, 0, 0, 0.36);
-  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturation));
-  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturation));
-  overflow: hidden;
-  isolation: isolate;
 }
 
-.liquidGlassSurface::after {
+.liquidGlassSurfaceContent::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -36,7 +45,7 @@
   pointer-events: none;
 }
 
-.liquidGlassSurface.isNoisy::before {
+.liquidGlassSurface.isNoisy .liquidGlassSurfaceContent::before {
   content: "";
   position: absolute;
   inset: 0;

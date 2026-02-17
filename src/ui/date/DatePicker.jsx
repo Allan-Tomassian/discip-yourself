@@ -264,7 +264,7 @@ export default function DatePicker({
             />
             <div
               ref={menuRef}
-              className={`selectMenu datePickerMenu${menuClassName ? ` ${menuClassName}` : ""}`}
+              className="selectMenuOuter GateGlassOuter"
               style={{
                 ...(isPositioned ? {} : { position: "fixed", left: 0, top: 0 }),
                 ...(menuStyle || {}),
@@ -273,84 +273,87 @@ export default function DatePicker({
                 pointerEvents: isPositioned ? "auto" : "none",
                 visibility: isPositioned ? "visible" : "hidden",
               }}
-              role="dialog"
             >
-              <div className="datePickerHeader">
-                <button
-                  type="button"
-                  className="datePickerNavBtn"
-                  aria-label="Mois précédent"
-                  onClick={() => setCurrentMonth((prev) => addMonths(prev, -1))}
-                >
-                  ←
-                </button>
-                <div className="datePickerMonth">{monthLabel}</div>
-                <button
-                  type="button"
-                  className="datePickerNavBtn"
-                  aria-label="Mois suivant"
-                  onClick={() => setCurrentMonth((prev) => addMonths(prev, 1))}
-                >
-                  →
-                </button>
-              </div>
-
-              <div className="datePickerWeekdays">
-                {WEEKDAY_LABELS_FR.map((label, idx) => (
-                  <div key={`${label}-${idx}`} className="datePickerWeekday">
-                    {label}
-                  </div>
-                ))}
-              </div>
-
-              <div className="datePickerGrid" role="grid">
-                {gridCells.map((cell) => {
-                  const isSelected = normalizedValue && cell.key === normalizedValue;
-                  const isToday = cell.key === todayKey;
-                  const dayClass = [
-                    "datePickerDay",
-                    cell.inMonth ? "" : "isOutside",
-                    isSelected ? "isSelected" : "",
-                    isToday ? "isToday" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ");
-                  return (
+              <div className="selectMenuClip GateGlassClip GateGlassBackdrop">
+                <div className={`selectMenu datePickerMenu GateGlassContent${menuClassName ? ` ${menuClassName}` : ""}`} role="dialog">
+                  <div className="datePickerHeader">
                     <button
-                      key={cell.key}
                       type="button"
-                      className={dayClass}
-                      onClick={() => handleSelectDate(cell.key)}
-                      aria-pressed={isSelected}
+                      className="datePickerNavBtn"
+                      aria-label="Mois précédent"
+                      onClick={() => setCurrentMonth((prev) => addMonths(prev, -1))}
                     >
-                      {cell.dayNumber}
+                      ←
                     </button>
-                  );
-                })}
-              </div>
+                    <div className="datePickerMonth">{monthLabel}</div>
+                    <button
+                      type="button"
+                      className="datePickerNavBtn"
+                      aria-label="Mois suivant"
+                      onClick={() => setCurrentMonth((prev) => addMonths(prev, 1))}
+                    >
+                      →
+                    </button>
+                  </div>
 
-              <div className="datePickerFooter">
-                {showToday ? (
-                  <button
-                    type="button"
-                    className="datePickerAction"
-                    onClick={() => handleSelectDate(todayKey)}
-                  >
-                    Aujourd&apos;hui
-                  </button>
-                ) : null}
-                {allowClear && normalizedValue ? (
-                  <button
-                    type="button"
-                    className="datePickerAction"
-                    onClick={() => {
-                      emitChange("");
-                      setOpen(false);
-                    }}
-                  >
-                    Effacer
-                  </button>
-                ) : null}
+                  <div className="datePickerWeekdays">
+                    {WEEKDAY_LABELS_FR.map((label, idx) => (
+                      <div key={`${label}-${idx}`} className="datePickerWeekday">
+                        {label}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="datePickerGrid" role="grid">
+                    {gridCells.map((cell) => {
+                      const isSelected = normalizedValue && cell.key === normalizedValue;
+                      const isToday = cell.key === todayKey;
+                      const dayClass = [
+                        "datePickerDay",
+                        cell.inMonth ? "" : "isOutside",
+                        isSelected ? "isSelected" : "",
+                        isToday ? "isToday" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ");
+                      return (
+                        <button
+                          key={cell.key}
+                          type="button"
+                          className={dayClass}
+                          onClick={() => handleSelectDate(cell.key)}
+                          aria-pressed={isSelected}
+                        >
+                          {cell.dayNumber}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="datePickerFooter">
+                    {showToday ? (
+                      <button
+                        type="button"
+                        className="datePickerAction"
+                        onClick={() => handleSelectDate(todayKey)}
+                      >
+                        Aujourd&apos;hui
+                      </button>
+                    ) : null}
+                    {allowClear && normalizedValue ? (
+                      <button
+                        type="button"
+                        className="datePickerAction"
+                        onClick={() => {
+                          emitChange("");
+                          setOpen(false);
+                        }}
+                      >
+                        Effacer
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
               </div>
             </div>
           </>

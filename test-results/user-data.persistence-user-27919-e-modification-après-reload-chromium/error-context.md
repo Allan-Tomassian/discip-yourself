@@ -1,0 +1,250 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - button "Aujourd’hui" [ref=e10] [cursor=pointer]
+        - button "Bibliothèque" [ref=e11] [cursor=pointer]
+        - button "Pilotage" [ref=e12] [cursor=pointer]
+      - button "Menu" [expanded] [ref=e14] [cursor=pointer]
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - button "Business" [pressed] [ref=e23]:
+          - generic [ref=e24]: Business
+        - button "Vide" [ref=e25]:
+          - generic [ref=e26]: Vide
+        - button "Général" [ref=e27]:
+          - generic [ref=e28]: Général
+      - button "Créer" [ref=e29] [cursor=pointer]: +
+    - generic [ref=e32]:
+      - generic [ref=e33]:
+        - generic [ref=e34]:
+          - generic [ref=e35]: Aujourd’hui
+          - generic [ref=e36]: Exécution
+        - generic [ref=e38]:
+          - button "Progression du jour 0/0" [ref=e39] [cursor=pointer]:
+            - generic [ref=e40]: Progression du jour
+            - generic [ref=e43]: 0/0
+          - button "Discipline 100%" [ref=e44] [cursor=pointer]:
+            - generic [ref=e45]: Discipline
+            - generic [ref=e49]: 100%
+      - generic [ref=e51]:
+        - generic [ref=e52]:
+          - generic [ref=e53]: Pourquoi distant initial
+          - button "Afficher ou masquer le pourquoi" [ref=e54] [cursor=pointer]: Masquer 👁
+        - generic [ref=e55]:
+          - generic [ref=e59]:
+            - generic [ref=e62]:
+              - button "Réorganiser" [ref=e63]: ⋮⋮
+              - generic [ref=e64]: Focus du jour
+            - generic [ref=e65]:
+              - generic [ref=e67]: Catégorie · Sans catégorie
+              - generic [ref=e68]:
+                - generic [ref=e69]: Prévu maintenant
+                - generic [ref=e70]: Rien de prévu, choisis une action prioritaire.
+              - button "Démarrer" [disabled] [ref=e72] [cursor=pointer]
+          - generic [ref=e76]:
+            - generic [ref=e77]:
+              - generic [ref=e78]:
+                - button "Réorganiser" [ref=e79]: ⋮⋮
+                - generic [ref=e80]:
+                  - generic [ref=e81]: Calendrier
+                  - generic [ref=e82]: mardi 17 février 2026 · Aujourd’hui
+              - generic [ref=e83]:
+                - button "Revenir à aujourd’hui" [disabled] [ref=e84]:
+                  - generic [ref=e85]: ⟳
+                  - text: Aujourd’hui
+                - tablist "Affichage du calendrier" [ref=e86]:
+                  - button "Jour" [pressed] [ref=e87] [cursor=pointer]
+                  - button "Mois" [ref=e88] [cursor=pointer]
+            - listbox "Sélecteur de jour" [ref=e91]:
+              - option "2026-02-02 · 0 planifié · 0 fait" [ref=e92] [cursor=pointer]:
+                - generic [ref=e93]: MON
+                - generic [ref=e94]: "02"
+                - generic [ref=e95]: /02
+              - option "2026-02-03 · 0 planifié · 0 fait" [ref=e96] [cursor=pointer]:
+                - generic [ref=e97]: TUE
+                - generic [ref=e98]: "03"
+                - generic [ref=e99]: /02
+              - option "2026-02-04 · 0 planifié · 0 fait" [ref=e100] [cursor=pointer]:
+                - generic [ref=e101]: WED
+                - generic [ref=e102]: "04"
+                - generic [ref=e103]: /02
+              - option "2026-02-05 · 0 planifié · 0 fait" [ref=e104] [cursor=pointer]:
+                - generic [ref=e105]: THU
+                - generic [ref=e106]: "05"
+                - generic [ref=e107]: /02
+              - option "2026-02-06 · 0 planifié · 0 fait" [ref=e108] [cursor=pointer]:
+                - generic [ref=e109]: FRI
+                - generic [ref=e110]: "06"
+                - generic [ref=e111]: /02
+              - option "2026-02-07 · 0 planifié · 0 fait" [ref=e112] [cursor=pointer]:
+                - generic [ref=e113]: SAT
+                - generic [ref=e114]: "07"
+                - generic [ref=e115]: /02
+              - option "2026-02-08 · 0 planifié · 0 fait" [ref=e116] [cursor=pointer]:
+                - generic [ref=e117]: SUN
+                - generic [ref=e118]: "08"
+                - generic [ref=e119]: /02
+              - option "2026-02-09 · 0 planifié · 0 fait" [ref=e120] [cursor=pointer]:
+                - generic [ref=e121]: MON
+                - generic [ref=e122]: "09"
+                - generic [ref=e123]: /02
+              - option "2026-02-10 · 0 planifié · 0 fait" [ref=e124] [cursor=pointer]:
+                - generic [ref=e125]: TUE
+                - generic [ref=e126]: "10"
+                - generic [ref=e127]: /02
+              - option "2026-02-11 · 0 planifié · 0 fait" [ref=e128] [cursor=pointer]:
+                - generic [ref=e129]: WED
+                - generic [ref=e130]: "11"
+                - generic [ref=e131]: /02
+              - option "2026-02-12 · 0 planifié · 0 fait" [ref=e132] [cursor=pointer]:
+                - generic [ref=e133]: THU
+                - generic [ref=e134]: "12"
+                - generic [ref=e135]: /02
+              - option "2026-02-13 · 0 planifié · 0 fait" [ref=e136] [cursor=pointer]:
+                - generic [ref=e137]: FRI
+                - generic [ref=e138]: "13"
+                - generic [ref=e139]: /02
+              - option "2026-02-14 · 0 planifié · 0 fait" [ref=e140] [cursor=pointer]:
+                - generic [ref=e141]: SAT
+                - generic [ref=e142]: "14"
+                - generic [ref=e143]: /02
+              - option "2026-02-15 · 0 planifié · 0 fait" [ref=e144] [cursor=pointer]:
+                - generic [ref=e145]: SUN
+                - generic [ref=e146]: "15"
+                - generic [ref=e147]: /02
+              - option "2026-02-16 · 0 planifié · 0 fait" [ref=e148] [cursor=pointer]:
+                - generic [ref=e149]: MON
+                - generic [ref=e150]: "16"
+                - generic [ref=e151]: /02
+              - option "2026-02-17 · 0 planifié · 0 fait · Aujourd’hui" [ref=e152] [cursor=pointer]:
+                - generic [ref=e153]: TUE
+                - generic [ref=e154]: "17"
+                - generic [ref=e155]: /02
+                - generic [ref=e156]: Aujourd’hui
+              - option "2026-02-18 · 0 planifié · 0 fait" [ref=e157] [cursor=pointer]:
+                - generic [ref=e158]: WED
+                - generic [ref=e159]: "18"
+                - generic [ref=e160]: /02
+              - option "2026-02-19 · 0 planifié · 0 fait" [ref=e161] [cursor=pointer]:
+                - generic [ref=e162]: THU
+                - generic [ref=e163]: "19"
+                - generic [ref=e164]: /02
+              - option "2026-02-20 · 0 planifié · 0 fait" [ref=e165] [cursor=pointer]:
+                - generic [ref=e166]: FRI
+                - generic [ref=e167]: "20"
+                - generic [ref=e168]: /02
+              - option "2026-02-21 · 0 planifié · 0 fait" [ref=e169] [cursor=pointer]:
+                - generic [ref=e170]: SAT
+                - generic [ref=e171]: "21"
+                - generic [ref=e172]: /02
+              - option "2026-02-22 · 0 planifié · 0 fait" [ref=e173] [cursor=pointer]:
+                - generic [ref=e174]: SUN
+                - generic [ref=e175]: "22"
+                - generic [ref=e176]: /02
+              - option "2026-02-23 · 0 planifié · 0 fait" [ref=e177] [cursor=pointer]:
+                - generic [ref=e178]: MON
+                - generic [ref=e179]: "23"
+                - generic [ref=e180]: /02
+              - option "2026-02-24 · 0 planifié · 0 fait" [ref=e181] [cursor=pointer]:
+                - generic [ref=e182]: TUE
+                - generic [ref=e183]: "24"
+                - generic [ref=e184]: /02
+              - option "2026-02-25 · 0 planifié · 0 fait" [ref=e185] [cursor=pointer]:
+                - generic [ref=e186]: WED
+                - generic [ref=e187]: "25"
+                - generic [ref=e188]: /02
+              - option "2026-02-26 · 0 planifié · 0 fait" [ref=e189] [cursor=pointer]:
+                - generic [ref=e190]: THU
+                - generic [ref=e191]: "26"
+                - generic [ref=e192]: /02
+              - option "2026-02-27 · 0 planifié · 0 fait" [ref=e193] [cursor=pointer]:
+                - generic [ref=e194]: FRI
+                - generic [ref=e195]: "27"
+                - generic [ref=e196]: /02
+              - option "2026-02-28 · 0 planifié · 0 fait" [ref=e197] [cursor=pointer]:
+                - generic [ref=e198]: SAT
+                - generic [ref=e199]: "28"
+                - generic [ref=e200]: /02
+              - option "2026-03-01 · 0 planifié · 0 fait" [ref=e201] [cursor=pointer]:
+                - generic [ref=e202]: SUN
+                - generic [ref=e203]: "01"
+                - generic [ref=e204]: /03
+              - option "2026-03-02 · 0 planifié · 0 fait" [ref=e205] [cursor=pointer]:
+                - generic [ref=e206]: MON
+                - generic [ref=e207]: "02"
+                - generic [ref=e208]: /03
+              - option "2026-03-03 · 0 planifié · 0 fait" [ref=e209] [cursor=pointer]:
+                - generic [ref=e210]: TUE
+                - generic [ref=e211]: "03"
+                - generic [ref=e212]: /03
+              - option "2026-03-04 · 0 planifié · 0 fait" [ref=e213] [cursor=pointer]:
+                - generic [ref=e214]: WED
+                - generic [ref=e215]: "04"
+                - generic [ref=e216]: /03
+          - generic [ref=e220]:
+            - generic [ref=e221]:
+              - generic [ref=e222]:
+                - button "Réorganiser" [ref=e223]: ⋮⋮
+                - generic [ref=e224]: Micro-actions
+              - button "Changer" [ref=e225] [cursor=pointer]: ↻
+            - generic [ref=e226]: Pour ta catégorie • Business
+            - generic [ref=e227]:
+              - generic [ref=e228]:
+                - generic [ref=e230]: Clarifie le KPI du jour
+                - generic [ref=e231]: 3 min
+                - button "Faire" [ref=e232] [cursor=pointer]
+              - generic [ref=e233]:
+                - generic [ref=e235]: Liste 3 objections possibles
+                - generic [ref=e236]: 4 min
+                - button "Faire" [ref=e237] [cursor=pointer]
+              - generic [ref=e238]:
+                - generic [ref=e240]: Prépare 3 points clés
+                - generic [ref=e241]: 3 min
+                - button "Faire" [ref=e242] [cursor=pointer]
+          - generic [ref=e246]:
+            - generic [ref=e247]:
+              - generic [ref=e248]:
+                - button "Réorganiser" [ref=e249]: ⋮⋮
+                - generic [ref=e250]: Note du jour
+              - button "Historique des notes" [ref=e252] [cursor=pointer]: +
+            - textbox "Écris une remarque, une idée ou un ressenti pour aujourd’hui…" [ref=e254]
+            - generic [ref=e255]:
+              - generic [ref=e256]: Check-in rapide
+              - generic [ref=e257]:
+                - generic [ref=e258]:
+                  - generic [ref=e259]: Forme
+                  - combobox [ref=e260]:
+                    - option "Choisir" [selected]
+                    - option "Excellente"
+                    - option "Bonne"
+                    - option "Moyenne"
+                    - option "Faible"
+                - generic [ref=e261]:
+                  - generic [ref=e262]: Humeur
+                  - combobox [ref=e263]:
+                    - option "Choisir" [selected]
+                    - option "Positif"
+                    - option "Neutre"
+                    - option "Basse"
+                - generic [ref=e264]:
+                  - generic [ref=e265]: Énergie
+                  - spinbutton [ref=e266]
+            - button "Enregistrer" [ref=e268] [cursor=pointer]
+        - status [ref=e269]
+  - dialog "Sous-vue menu" [ref=e273]:
+    - banner [ref=e274]:
+      - generic [ref=e275]:
+        - generic [ref=e276]: Réglages
+        - generic [ref=e277]: Vue intégrée au panneau
+      - generic [ref=e279]:
+        - button "Retour" [ref=e280] [cursor=pointer]: ‹
+        - button "Fermer le menu" [ref=e281] [cursor=pointer]: ×
+    - generic [ref=e284]:
+      - paragraph [ref=e285]: Bientôt
+      - paragraph [ref=e286]: Réglages rapides en préparation dans cette sous-vue.
+      - button "Retour au menu" [ref=e288] [cursor=pointer]
+```

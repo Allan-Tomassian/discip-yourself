@@ -1,6 +1,12 @@
 import React, { useState } from "react";
-import { Button, Card } from "../../components/UI";
+import { GateBadge, GateButton, GateRow, GateSection } from "../../shared/ui/gate/Gate";
 import "../../features/today/today.css";
+
+function FocusButton({ variant = "primary", className = "", ...props }) {
+  const gateVariant = variant === "ghost" ? "ghost" : "primary";
+  const mergedClassName = [className, "GatePressable"].filter(Boolean).join(" ");
+  return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;
+}
 
 export default function FocusCard({
   drag = false,
@@ -51,7 +57,7 @@ export default function FocusCard({
   const [showAlternatives, setShowAlternatives] = useState(false);
 
   return (
-    <Card className="focusCard" data-tour-id="today-focus-card">
+    <GateSection className="focusCard GateSurfacePremium GateCardPremium" collapsible={false} data-tour-id="today-focus-card">
       <div className="focusCardBody">
         <div className="focusHeader">
           <div className="focusHeaderLeft">
@@ -72,15 +78,15 @@ export default function FocusCard({
           </div>
           <div className="focusHeaderActions">
             {isOverride ? (
-              <Button variant="ghost" className="focusManageBtn" onClick={onResetOverride}>
+              <FocusButton variant="ghost" className="focusManageBtn" onClick={onResetOverride}>
                 Revenir au plan
-              </Button>
+              </FocusButton>
             ) : null}
           </div>
         </div>
         <div className="focusBody">
           <div className="focusLine">
-            <span className="badge focusCategoryBadge">Catégorie · {displayCategoryName}</span>
+            <GateBadge className="focusCategoryBadge">Catégorie · {displayCategoryName}</GateBadge>
           </div>
           <div className="focusNextRow">
             <span className="focusNextLabel">Prévu maintenant</span>
@@ -91,35 +97,41 @@ export default function FocusCard({
             </span>
           </div>
           <div className="focusCtaRow">
-            <Button variant="primary" className="focusCtaBtn" onClick={() => onStartSession?.(displayOccurrence)} disabled={!canStart}>
+            <FocusButton
+              variant="primary"
+              className="focusCtaBtn"
+              onClick={() => onStartSession?.(displayOccurrence)}
+              disabled={!canStart}
+            >
               Démarrer
-            </Button>
+            </FocusButton>
             {hasAlternatives ? (
-              <Button variant="ghost" className="focusAltBtn" onClick={() => setShowAlternatives((v) => !v)}>
+              <FocusButton variant="ghost" className="focusAltBtn" onClick={() => setShowAlternatives((v) => !v)}>
                 Changer
-              </Button>
+              </FocusButton>
             ) : null}
           </div>
           {hasAlternatives && showAlternatives && typeof onSelectAlternative === "function" ? (
             <div className="focusAltList">
               {alternativeCandidates.map((item) => (
-                <button
+                <GateRow
                   key={item.occ.id}
-                  type="button"
-                  className="focusAltItem"
+                  className="focusAltItem GateRowPremium GatePressable"
                   onClick={() => {
                     onSelectAlternative(item);
                     setShowAlternatives(false);
                   }}
+                  right={
+                    <span className="focusAltMeta">
+                      {item.occ.start && item.occ.start !== "00:00" ? item.occ.start : "Journée"}
+                      {item.warning ? " · déviation" : ""}
+                    </span>
+                  }
                 >
                   <span className="focusAltTitle">
                     {goalsById.get(item.occ.goalId)?.title || "Action"}
                   </span>
-                  <span className="focusAltMeta">
-                    {item.occ.start && item.occ.start !== "00:00" ? item.occ.start : "Journée"}
-                    {item.warning ? " · déviation" : ""}
-                  </span>
-                </button>
+                </GateRow>
               ))}
               {baseOccurrence && isOverride ? (
                 <div className="focusAltNote">Plan initial: {goalsById.get(baseOccurrence.goalId)?.title || "Action"}</div>
@@ -128,6 +140,6 @@ export default function FocusCard({
           ) : null}
         </div>
       </div>
-    </Card>
+    </GateSection>
   );
 }

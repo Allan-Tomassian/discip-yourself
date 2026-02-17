@@ -1,0 +1,117 @@
+.bottomCategoryBar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(8px + env(safe-area-inset-bottom));
+  z-index: 46;
+  width: min(720px, calc(100vw - 24px));
+  max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 24px);
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.BottomBarSurfaceOuter {
+  --gate-glass-radius: 18px;
+  --gate-glass-shadow: 0 14px 30px rgba(0, 0, 0, 0.32);
+}
+
+.BottomBarSurfaceClip {
+  position: relative;
+}
+
+.BottomBarBackdrop::before {
+  background: color-mix(in srgb, #0a0f18 46%, transparent);
+}
+
+.bottomCategoryBarPanel {
+  pointer-events: auto;
+  padding: 8px;
+  border-radius: inherit;
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--gate-surface-1) 78%, transparent),
+    color-mix(in srgb, var(--gate-surface-2) 84%, transparent)
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.bottomCategoryBarRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bottomCategoryRailScroll {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bottomCategoryChip {
+  flex: 0 0 auto;
+  min-width: max-content;
+  white-space: nowrap;
+  border: 1px solid var(--gate-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
+  color: var(--gate-text-muted);
+  padding: 9px 12px;
+  font-size: 12px;
+  line-height: 1;
+  scroll-snap-align: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.bottomCategoryChip:hover {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--gate-border));
+  color: var(--gate-text);
+  background: color-mix(in srgb, var(--gate-surface-1) 84%, #0a1220);
+}
+
+.bottomCategoryChipActive,
+.bottomCategoryBar .navBtnActive {
+  border-color: color-mix(in srgb, var(--accent) 62%, var(--gate-border));
+  color: var(--gate-text);
+  background: color-mix(in srgb, var(--accent) 18%, var(--gate-surface-1));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 34%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.bottomCategoryPlus {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+}
+
+@media (max-width: 560px) {
+  .bottomCategoryBar {
+    width: min(720px, calc(100vw - 24px));
+    max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 24px);
+    bottom: calc(6px + env(safe-area-inset-bottom));
+  }
+
+  .bottomCategoryBarPanel {
+    padding: 7px;
+  }
+
+  .bottomCategoryChip {
+    padding: 8px 10px;
+  }
+}

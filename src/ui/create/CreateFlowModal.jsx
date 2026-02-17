@@ -128,16 +128,16 @@ export default function CreateFlowModal({
     <Modal
       open={open}
       onClose={(info) => handleClose(info?.reason)}
-      className="createFlowModal card gateModal gateModal--flow"
-      backdropClassName="createFlowBackdrop"
+      className="createFlowModal gateModal gateModal--flow"
+      backdropClassName="createFlowBackdrop GateOverlayBackdrop"
     >
-      <GatePanel className="createFlowShell gateModal gateModal--flow createFlowScope" data-testid="create-flow-modal">
+      <GatePanel className="createFlowShell gateModal gateModal--flow createFlowScope GateSurfacePremium GateCardPremium" data-testid="create-flow-modal">
         <GateHeader title="Créer" subtitle="Choisis ce que tu veux créer" />
 
         <GateRow
-          className="createFlowCategoryRow"
+          className="createFlowCategoryRow GateRowPremium"
           right={
-            <GateButton variant="ghost" onClick={onChangeCategory} data-testid="create-change-category">
+            <GateButton variant="ghost" className="GatePressable" withSound onClick={onChangeCategory} data-testid="create-change-category">
               Modifier
             </GateButton>
           }
@@ -150,8 +150,9 @@ export default function CreateFlowModal({
           {step === "choice" ? (
             <div className="createFlowChoiceGrid">
               <GateCard
-                className={`createFlowChoiceCard${!canProceed ? " isDisabled" : ""}`}
+                className={`createFlowChoiceCard GateRowPremium GatePressable${!canProceed ? " isDisabled" : ""}`}
                 data-testid="create-choice-guided"
+                withSound
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -164,8 +165,9 @@ export default function CreateFlowModal({
                 </div>
               </GateCard>
               <GateCard
-                className={`createFlowChoiceCard${!canProceed ? " isDisabled" : ""}`}
+                className={`createFlowChoiceCard GateRowPremium GatePressable${!canProceed ? " isDisabled" : ""}`}
                 data-testid="create-choice-project"
+                withSound
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -178,8 +180,9 @@ export default function CreateFlowModal({
                 </div>
               </GateCard>
               <GateCard
-                className={`createFlowChoiceCard${!canProceed ? " isDisabled" : ""}`}
+                className={`createFlowChoiceCard GateRowPremium GatePressable${!canProceed ? " isDisabled" : ""}`}
                 data-testid="create-choice-action"
+                withSound
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -307,8 +310,8 @@ export default function CreateFlowModal({
         </div>
 
         {step === "choice" ? (
-          <GateFooter>
-            <GateButton variant="ghost" onClick={() => handleClose("cancel")}>Annuler</GateButton>
+          <GateFooter className="GatePrimaryCtaRow">
+            <GateButton variant="ghost" className="GatePressable" withSound onClick={() => handleClose("cancel")}>Annuler</GateButton>
           </GateFooter>
         ) : null}
       </GatePanel>

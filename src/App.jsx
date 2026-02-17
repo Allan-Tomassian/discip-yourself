@@ -7,10 +7,11 @@ import {
   normalizeCategory,
 } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
-import { Button, Card } from "./components/UI";
 import PlusExpander from "./components/PlusExpander";
 import CategoryGateModal from "./components/CategoryGateModal";
 import { markIOSRootClass } from "./utils/dialogs";
+import { GateButton, GatePanel } from "./shared/ui/gate/Gate";
+import "./features/navigation/bottomCategoryBar.css";
 
 import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
@@ -152,6 +153,26 @@ export default function App() {
     });
     markIOSRootClass();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return undefined;
+    const root = document.documentElement;
+    const updateKeyboardClass = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      const viewportHeight = window.innerHeight || vv.height;
+      const keyboardOpen = viewportHeight - vv.height > 140;
+      root.classList.toggle("keyboardOpen", keyboardOpen);
+    };
+    updateKeyboardClass();
+    window.visualViewport.addEventListener("resize", updateKeyboardClass);
+    window.visualViewport.addEventListener("scroll", updateKeyboardClass);
+    return () => {
+      window.visualViewport?.removeEventListener("resize", updateKeyboardClass);
+      window.visualViewport?.removeEventListener("scroll", updateKeyboardClass);
+      root.classList.remove("keyboardOpen");
+    };
   }, []);
 
   useEffect(() => {
@@ -529,28 +550,35 @@ export default function App() {
       {headerStack}
       {headerSpacer}
       {showBottomRail ? (
-        <div className="navWrap bottomBar" data-tour-id="topnav-rail">
-          <div className="navRow">
-            <CategoryRail
-              categories={railCategories}
-              selectedCategoryId={railSelectedId}
-              onSelect={handleSelectCategory}
-            />
-            <button
-              type="button"
-              className="navBtn navGear"
-              aria-label="Créer"
-              title="Créer"
-              data-create-anchor="bottomrail"
-              data-testid="create-plus-button"
-              onClick={(event) => {
-                const el = event?.currentTarget || null;
-                const rect = el?.getBoundingClientRect ? el.getBoundingClientRect() : null;
-                openCategoryGate({ source: "bottomrail", anchorEl: el, anchorRect: rect, next: "flow" });
-              }}
-            >
-              +
-            </button>
+        <div className="bottomCategoryBar" data-tour-id="topnav-rail">
+          <div className="BottomBarSurfaceOuter GateGlassOuter">
+            <div className="BottomBarSurfaceClip BottomBarBackdrop GateGlassClip GateGlassBackdrop">
+              <GatePanel className="bottomCategoryBarPanel GateSurfacePremium GateCardPremium GateGlassContent">
+                <div className="bottomCategoryBarRow">
+                  <CategoryRail
+                    categories={railCategories}
+                    selectedCategoryId={railSelectedId}
+                    onSelect={handleSelectCategory}
+                  />
+                  <GateButton
+                    type="button"
+                    variant="ghost"
+                    className="bottomCategoryPlus GateIconButtonPremium GatePressable"
+                    aria-label="Créer"
+                    title="Créer"
+                    data-create-anchor="bottomrail"
+                    data-testid="create-plus-button"
+                    onClick={(event) => {
+                      const el = event?.currentTarget || null;
+                      const rect = el?.getBoundingClientRect ? el.getBoundingClientRect() : null;
+                      openCategoryGate({ source: "bottomrail", anchorEl: el, anchorRect: rect, next: "flow" });
+                    }}
+                  >
+                    +
+                  </GateButton>
+                </div>
+              </GatePanel>
+            </div>
           </div>
         </div>
       ) : null}
@@ -867,9 +895,8 @@ export default function App() {
 
       {activeReminder ? (
         <div className="modalBackdrop reminderOverlay" onClick={() => setActiveReminder(null)}>
-          <Card
-            accentBorder
-            className="reminderCard reminderPulse"
+          <GatePanel
+            className="reminderCard reminderPulse GateSurfacePremium GateCardPremium"
             style={{ maxWidth: 420, width: "100%" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -887,10 +914,11 @@ export default function App() {
                 })()}
               </div>
               <div className="row" style={{ marginTop: 12, justifyContent: "flex-end" }}>
-                <Button variant="ghost" onClick={() => setActiveReminder(null)}>
+                <GateButton variant="ghost" className="GatePressable" onClick={() => setActiveReminder(null)}>
                   Plus tard
-                </Button>
-                <Button
+                </GateButton>
+                <GateButton
+                  className="GatePressable"
                   onClick={() => {
                     const target = activeReminder.goal || activeReminder.habit;
                     const isProcess =
@@ -964,10 +992,10 @@ export default function App() {
                   }}
                 >
                   Commencer
-                </Button>
+                </GateButton>
               </div>
             </div>
-          </Card>
+          </GatePanel>
         </div>
       ) : null}
       {showTourOverlay ? (

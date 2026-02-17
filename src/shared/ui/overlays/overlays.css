@@ -6,13 +6,34 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: calc(16px + var(--safe-top)) 16px calc(16px + var(--safe-bottom));
+  padding:
+    calc(16px + var(--safe-top))
+    calc(var(--page-pad) + var(--safe-right))
+    calc(16px + var(--safe-bottom))
+    calc(var(--page-pad) + var(--safe-left));
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .modalPanel {
-  width: min(520px, 100%);
+  width: min(520px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
   max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
   overflow: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+}
+
+.modalPanelOuter {
+  --gate-glass-radius: var(--radius-card, 16px);
+  --gate-glass-shadow: 0 16px 32px rgba(0, 0, 0, 0.34);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.modalPanelClip {
+  border-radius: inherit;
 }
 
 .ios .modalBackdrop {

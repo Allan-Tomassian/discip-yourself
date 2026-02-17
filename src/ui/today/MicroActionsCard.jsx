@@ -1,8 +1,14 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
-import { Button, Card } from "../../components/UI";
+import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
 import { getMicroActionsForToday } from "../../core/microActions/microActionsEngine";
 import { MICRO_ACTIONS_LIBRARY } from "../../core/microActions/microActionsLibrary";
 import "../../features/today/today.css";
+
+function MicroButton({ variant = "primary", className = "", ...props }) {
+  const gateVariant = variant === "ghost" ? "ghost" : "primary";
+  const mergedClassName = [className, "GatePressable"].filter(Boolean).join(" ");
+  return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;
+}
 
 const SEEN_KEY = "microActionsSeen";
 const DONE_KEY = "microActionsDone";
@@ -157,7 +163,7 @@ export default function MicroActionsCard({
   }, []);
 
   return (
-    <Card className="microCard" data-tour-id="today-micro-card">
+    <GateSection className="microCard GateSurfacePremium GateCardPremium" collapsible={false} data-tour-id="today-micro-card">
       <div className="microCardBody">
         <div className="microHeader">
           <div className="cardSectionTitleRow">
@@ -176,7 +182,7 @@ export default function MicroActionsCard({
           </div>
           <button
             type="button"
-            className="microRotateBtn"
+            className="microRotateBtn GateIconButtonPremium GatePressable"
             onClick={handleRotate}
             aria-label="Changer"
             title="Changer"
@@ -197,7 +203,7 @@ export default function MicroActionsCard({
                   {item.subtitle ? <div className="microItemSub">{item.subtitle}</div> : null}
                 </div>
                 <span className="microBadge">{item.durationMin} min</span>
-                <Button
+                <MicroButton
                   variant="ghost"
                   className="microActionBtn"
                   onClick={() => handleActionClick(item, canAdd)}
@@ -208,12 +214,12 @@ export default function MicroActionsCard({
                   }
                 >
                   {isDone || isFlashing ? "Fait" : "Faire"}
-                </Button>
+                </MicroButton>
               </div>
             );
           })}
         </div>
       </div>
-    </Card>
+    </GateSection>
   );
 }

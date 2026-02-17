@@ -1,0 +1,4712 @@
+{
+  "generatedAt": "2026-02-17T16:16:40.419Z",
+  "sourceOfTruth": {
+    "gatePrimitives": [
+      "src/shared/ui/gate/Gate.jsx",
+      "src/shared/ui/gate/gate.css",
+      "src/shared/ui/gate/gate-premium.css"
+    ],
+    "allowedPatterns": [
+      "GatePanel/GateSection/GateSurfacePremium/GateCardPremium",
+      "GateGlassOuter + GateGlassClip + GateGlassBackdrop + GateGlassContent"
+    ],
+    "forbiddenPatterns": [
+      "imports from components/UI legacy primitives",
+      "LiquidGlassSurface",
+      "classes glass*/liquid*",
+      "inline card recreation with backdropFilter + card styling"
+    ]
+  },
+  "files": [
+    {
+      "file": "src/App.jsx",
+      "gatePremiumCount": 17,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 554,
+          "snippet": "<div className=\"BottomBarSurfaceOuter GateGlassOuter\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 555,
+          "snippet": "<div className=\"BottomBarSurfaceClip BottomBarBackdrop GateGlassClip GateGlassBackdrop\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 556,
+          "snippet": "<GatePanel className=\"bottomCategoryBarPanel GateSurfacePremium GateCardPremium GateGlassContent\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 556,
+          "snippet": "<GatePanel className=\"bottomCategoryBarPanel GateSurfacePremium GateCardPremium GateGlassContent\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 563,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 566,
+          "snippet": "className=\"bottomCategoryPlus GateIconButtonPremium GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 898,
+          "snippet": "<GatePanel"
+        },
+        {
+          "type": "gate-class",
+          "line": 899,
+          "snippet": "className=\"reminderCard reminderPulse GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 917,
+          "snippet": "<GateButton variant=\"ghost\" className=\"GatePressable\" onClick={() => setActiveReminder(null)}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 917,
+          "snippet": "<GateButton variant=\"ghost\" className=\"GatePressable\" onClick={() => setActiveReminder(null)}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 920,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 921,
+          "snippet": "className=\"GatePressable\""
+        }
+      ]
+    },
+    {
+      "file": "src/app/inbox.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/auth/AuthContext.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/auth/AuthGate.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/auth/AuthProvider.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/auth/LoginScreen.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 6,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 2,
+          "snippet": "import { Button, Card, Input } from \"../components/UI\";"
+        },
+        {
+          "type": "legacy-component",
+          "line": 90,
+          "snippet": "<Card style={{ width: \"100%\", maxWidth: 420, padding: 20 }}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 95,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 105,
+          "snippet": "<Button data-testid=\"auth-submit-button\" type=\"submit\" disabled={!canRequestCode}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 112,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 122,
+          "snippet": "<Button data-testid=\"auth-verify-button\" type=\"submit\" disabled={!canVerifyCode}>"
+        }
+      ]
+    },
+    {
+      "file": "src/auth/authDiagnostics.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/auth/authDiagnostics.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/auth/constants.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/auth/loginAvailability.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/auth/loginAvailability.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/auth/useAuth.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/components/AccentContext.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/components/AccentItem.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/components/AdvancedDrawer.jsx",
+      "gatePremiumCount": 4,
+      "legacyCount": 2,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 2,
+          "snippet": "import { Button } from \"./UI\";"
+        },
+        {
+          "type": "gate-class",
+          "line": 9,
+          "snippet": "<div className=\"drawerPanelOuter GateGlassOuter\" onClick={(e) => e.stopPropagation()}>"
+        },
+        {
+          "type": "gate-class",
+          "line": 10,
+          "snippet": "<div className=\"drawerPanelClip GateGlassClip GateGlassBackdrop\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 11,
+          "snippet": "<div className=\"drawerPanel GateGlassContent\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 14,
+          "snippet": "<Button variant=\"ghost\" onClick={onClose}>"
+        }
+      ]
+    },
+    {
+      "file": "src/components/Block.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 6,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 3,
+          "snippet": "import { AccentItem, Badge, Button, Card, ProgressRing } from \"./UI\";"
+        },
+        {
+          "type": "legacy-component",
+          "line": 43,
+          "snippet": "<Card accentBorder style={blockCardStyle}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 78,
+          "snippet": "<Card accentBorder style={blockCardStyle}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 112,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 119,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 145,
+          "snippet": "<Card accentBorder style={blockCardStyle}>"
+        }
+      ]
+    },
+    {
+      "file": "src/components/CategoryGateModal.jsx",
+      "gatePremiumCount": 33,
+      "legacyCount": 3,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 2,
+          "snippet": "import { Modal } from \"./UI\";"
+        },
+        {
+          "type": "legacy-component",
+          "line": 150,
+          "snippet": "<Modal"
+        },
+        {
+          "type": "gate-class",
+          "line": 156,
+          "snippet": "<GatePanel className=\"categoryGateShell GateSurfacePremium GateCardPremium\" data-testid=\"category-gate-modal\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 156,
+          "snippet": "<GatePanel className=\"categoryGateShell GateSurfacePremium GateCardPremium\" data-testid=\"category-gate-modal\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 158,
+          "snippet": "<GateHeader className=\"categoryGateHeader\" title=\"Catégorie\" subtitle=\"Active une catégorie pour continuer\" />"
+        },
+        {
+          "type": "gate-component",
+          "line": 160,
+          "snippet": "<GateSection className=\"categoryGateSectionFlat\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 176,
+          "snippet": "<GateRow"
+        },
+        {
+          "type": "gate-class",
+          "line": 178,
+          "snippet": "className={`categoryGateItem GateRowPremium GatePressable${isSelected ? \" isSelected\" : \"\"}`}"
+        },
+        {
+          "type": "gate-class",
+          "line": 251,
+          "snippet": "<GateButton variant=\"ghost\" className=\"GatePressable\" withSound onClick={() => setExpanded((prev) => !prev)}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 251,
+          "snippet": "<GateButton variant=\"ghost\" className=\"GatePressable\" withSound onClick={() => setExpanded((prev) => !prev)}>"
+        },
+        {
+          "type": "gate-class",
+          "line": 257,
+          "snippet": "<div className=\"categoryGateCreate GateRowPremium\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 260,
+          "snippet": "<div className=\"GateFormField categoryGateCreateName\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 261,
+          "snippet": "<label className=\"GateFormLabel\" htmlFor=\"categoryGateNewName\">Nom</label>"
+        },
+        {
+          "type": "gate-class",
+          "line": 264,
+          "snippet": "className=\"GateInputPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 273,
+          "snippet": "className=\"categoryGateColor GateInputPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 278,
+          "snippet": "<GateButton variant=\"ghost\" className=\"GatePressable\" withSound onClick={handleCreate}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 278,
+          "snippet": "<GateButton variant=\"ghost\" className=\"GatePressable\" withSound onClick={handleCreate}>"
+        },
+        {
+          "type": "gate-class",
+          "line": 285,
+          "snippet": "<div className=\"categoryGateFooter GatePrimaryCtaRow\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 286,
+          "snippet": "<GateButton variant=\"ghost\" className=\"GatePressable\" withSound onClick={onClose}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 286,
+          "snippet": "<GateButton variant=\"ghost\" className=\"GatePressable\" withSound onClick={onClose}>"
+        },
+        {
+          "type": "gate-class",
+          "line": 289,
+          "snippet": "<GateButton className=\"GatePressable\" withSound disabled={!canContinue} onClick={() => onConfirm(selectedId)} data-testid=\"category-gate-continue\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 289,
+          "snippet": "<GateButton className=\"GatePressable\" withSound disabled={!canContinue} onClick={() => onConfirm(selectedId)} data-testid=\"category-gate-continue\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 295,
+          "snippet": "<Modal"
+        },
+        {
+          "type": "gate-class",
+          "line": 301,
+          "snippet": "<GatePanel className=\"categoryGateShell GateSurfacePremium GateCardPremium\" data-testid=\"category-gate-confirm\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 301,
+          "snippet": "<GatePanel className=\"categoryGateShell GateSurfacePremium GateCardPremium\" data-testid=\"category-gate-confirm\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 303,
+          "snippet": "<GateHeader"
+        },
+        {
+          "type": "gate-class",
+          "line": 312,
+          "snippet": "<div className=\"categoryGateFooter GatePrimaryCtaRow\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 313,
+          "snippet": "<GateButton variant=\"ghost\" className=\"GatePressable\" withSound onClick={closeConfirm}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 313,
+          "snippet": "<GateButton variant=\"ghost\" className=\"GatePressable\" withSound onClick={closeConfirm}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 316,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 318,
+          "snippet": "className=\"GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 336,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 337,
+          "snippet": "className=\"GatePressable\""
+        }
+      ]
+    },
+    {
+      "file": "src/components/CategoryRail.jsx",
+      "gatePremiumCount": 1,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 43,
+          "snippet": "className={`categoryRailItem bottomCategoryChip GatePressable${isSelected ? \" navBtnActive bottomCategoryChipActive\" : \"\"}`}"
+        }
+      ]
+    },
+    {
+      "file": "src/components/DiagnosticOverlay.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/components/EditItemPanel.jsx",
+      "gatePremiumCount": 6,
+      "legacyCount": 16,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "gate-component",
+          "line": 144,
+          "snippet": "return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;"
+        },
+        {
+          "type": "gate-class",
+          "line": 365,
+          "snippet": "className=\"drawerPanelOuter editPanelOuter GateGlassOuter\""
+        },
+        {
+          "type": "gate-class",
+          "line": 378,
+          "snippet": "<div className=\"drawerPanelClip GateGlassClip GateGlassBackdrop\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 379,
+          "snippet": "<div className=\"drawerPanel editPanel GateSurfacePremium GateGlassContent\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 382,
+          "snippet": "<Button variant=\"ghost\" onClick={onClose}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 391,
+          "snippet": "<Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder=\"Titre\" />"
+        },
+        {
+          "type": "legacy-component",
+          "line": 428,
+          "snippet": "<Input type=\"time\" value={oneOffTime} onChange={(e) => setOneOffTime(e.target.value)} />"
+        },
+        {
+          "type": "legacy-component",
+          "line": 439,
+          "snippet": "<Input type=\"time\" value={startTime} onChange={(e) => setStartTime(e.target.value)} />"
+        },
+        {
+          "type": "legacy-component",
+          "line": 448,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 487,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 502,
+          "snippet": "<Input type=\"time\" value={windowStart} onChange={(e) => setWindowStart(e.target.value)} />"
+        },
+        {
+          "type": "legacy-component",
+          "line": 503,
+          "snippet": "<Input type=\"time\" value={windowEnd} onChange={(e) => setWindowEnd(e.target.value)} />"
+        },
+        {
+          "type": "legacy-component",
+          "line": 525,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 562,
+          "snippet": "<Input type=\"time\" value={t} onChange={(e) => updateReminderTime(index, e.target.value)} />"
+        },
+        {
+          "type": "legacy-component",
+          "line": 564,
+          "snippet": "<Button variant=\"ghost\" onClick={() => removeReminderTime(index)}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 571,
+          "snippet": "<Button variant=\"ghost\" onClick={addReminderTime}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 590,
+          "snippet": "<Textarea"
+        },
+        {
+          "type": "legacy-component",
+          "line": 601,
+          "snippet": "<Button variant=\"danger\" onClick={onDelete}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 611,
+          "snippet": "<Button variant=\"ghost\" onClick={onClose}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 614,
+          "snippet": "<Button onClick={handleSave}>Enregistrer</Button>"
+        }
+      ]
+    },
+    {
+      "file": "src/components/ErrorBoundary.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 4,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 2,
+          "snippet": "import { Button, Card } from \"./UI\";"
+        },
+        {
+          "type": "legacy-component",
+          "line": 77,
+          "snippet": "<Card accentBorder style={{ maxWidth: 680, width: \"100%\" }}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 84,
+          "snippet": "<Button onClick={() => window.location.reload()}>Recharger</Button>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 85,
+          "snippet": "<Button variant=\"ghost\" onClick={() => copyText(diagnosticText)}>"
+        }
+      ]
+    },
+    {
+      "file": "src/components/FocusCategoryPicker.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 2,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 2,
+          "snippet": "import { Button, Select } from \"./UI\";"
+        },
+        {
+          "type": "legacy-component",
+          "line": 26,
+          "snippet": "<Button variant=\"ghost\" onClick={() => setOpen((v) => !v)} disabled={!list.length}>"
+        }
+      ]
+    },
+    {
+      "file": "src/components/Gauge.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/components/PaywallModal.jsx",
+      "gatePremiumCount": 12,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 60,
+          "snippet": "className=\"modalBackdrop paywallBackdrop GateOverlayBackdrop\""
+        },
+        {
+          "type": "gate-class",
+          "line": 67,
+          "snippet": "className=\"paywallPanelOuter GateGlassOuter\""
+        },
+        {
+          "type": "gate-class",
+          "line": 72,
+          "snippet": "<div className=\"paywallPanelClip GateGlassClip GateGlassBackdrop\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 73,
+          "snippet": "<GatePanel"
+        },
+        {
+          "type": "gate-class",
+          "line": 74,
+          "snippet": "className=\"card paywallPanel GateGlassContent\""
+        },
+        {
+          "type": "gate-component",
+          "line": 80,
+          "snippet": "<GateHeader"
+        },
+        {
+          "type": "gate-component",
+          "line": 85,
+          "snippet": "<GateSection title=\"Inclus\" collapsible={false}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 99,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-component",
+          "line": 106,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-component",
+          "line": 134,
+          "snippet": "<GateButton variant=\"ghost\" onClick={onRestore}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 137,
+          "snippet": "<GateButton variant=\"ghost\" onClick={onClose}>"
+        }
+      ]
+    },
+    {
+      "file": "src/components/PlusExpander.jsx",
+      "gatePremiumCount": 4,
+      "legacyCount": 4,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 2,
+          "snippet": "import { Button } from \"./UI\";"
+        },
+        {
+          "type": "gate-class",
+          "line": 97,
+          "snippet": "<div className=\"plusExpanderPanel GateGlassOuter\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 98,
+          "snippet": "<div className=\"plusExpanderPanelClip GateGlassClip GateGlassBackdrop\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 99,
+          "snippet": "<div className=\"plusExpanderPanelContent GateGlassContent\" ref={panelRef} role=\"menu\" aria-label=\"Créer\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 101,
+          "snippet": "<Button onClick={onChooseAction}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 104,
+          "snippet": "<Button variant=\"ghost\" onClick={onChooseObjective}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 108,
+          "snippet": "<Button variant=\"ghost\" onClick={onResumeDraft}>"
+        }
+      ]
+    },
+    {
+      "file": "src/components/SortableBlocks.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 1,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "legacy-component",
+          "line": 100,
+          "snippet": "*     <Card>"
+        }
+      ]
+    },
+    {
+      "file": "src/components/ThemePicker.jsx",
+      "gatePremiumCount": 10,
+      "legacyCount": 2,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 3,
+          "snippet": "import { SelectMenu } from \"./UI\";"
+        },
+        {
+          "type": "gate-class",
+          "line": 61,
+          "snippet": "<GatePanel className=\"GateSurfacePremium GateCardPremium\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 61,
+          "snippet": "<GatePanel className=\"GateSurfacePremium GateCardPremium\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 62,
+          "snippet": "<GateHeader title=\"Apparence\" subtitle=\"Choisis un style. Aperçu instantané, puis valide.\" />"
+        },
+        {
+          "type": "legacy-component",
+          "line": 63,
+          "snippet": "<SelectMenu value={pendingTheme} onChange={setPendingTheme} options={themeOptions} />"
+        },
+        {
+          "type": "gate-class",
+          "line": 65,
+          "snippet": "<div className=\"GatePageSubtitle\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 68,
+          "snippet": "<div className=\"GatePrimaryCtaRow\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 69,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 71,
+          "snippet": "className=\"GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 78,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 79,
+          "snippet": "className=\"GatePressable\""
+        }
+      ]
+    },
+    {
+      "file": "src/components/TopMenuPopover.jsx",
+      "gatePremiumCount": 12,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 46,
+          "snippet": "<GatePanel className=\"topMenuGate GateSurfacePremium\" role=\"menu\" aria-label=\"Menu principal\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 46,
+          "snippet": "<GatePanel className=\"topMenuGate GateSurfacePremium\" role=\"menu\" aria-label=\"Menu principal\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 47,
+          "snippet": "<GateHeader title=\"Menu\" subtitle=\"Navigation rapide\" className=\"topMenuGateHeader\" />"
+        },
+        {
+          "type": "gate-component",
+          "line": 49,
+          "snippet": "<GateSection className=\"topMenuGateSectionFlat\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 52,
+          "snippet": "<GateRow"
+        },
+        {
+          "type": "gate-class",
+          "line": 57,
+          "snippet": "className=\"topMenuGateItem topMenuGateRowFlat GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 68,
+          "snippet": "<GateSection className=\"topMenuGateSectionFlat\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 71,
+          "snippet": "<GateRow"
+        },
+        {
+          "type": "gate-class",
+          "line": 76,
+          "snippet": "className=\"topMenuGateItem topMenuGateRowFlat GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 85,
+          "snippet": "<GateFooter className=\"topMenuGateFooter\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 86,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 89,
+          "snippet": "className=\"topMenuGateLogout GatePressable\""
+        }
+      ]
+    },
+    {
+      "file": "src/components/TopNav.jsx",
+      "gatePremiumCount": 6,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 142,
+          "snippet": "className=\"topMenuScrim GateOverlayBackdrop\""
+        },
+        {
+          "type": "gate-class",
+          "line": 155,
+          "snippet": "<div className=\"TopNavSurfaceOuter GateGlassOuter\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 156,
+          "snippet": "<div className=\"TopNavSurfaceClip TopNavBackdrop GateGlassClip GateGlassBackdrop\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 157,
+          "snippet": "<GatePanel className=\"topNavGateBar GateGlassContent\" data-tour-id=\"topnav-row\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 157,
+          "snippet": "<GatePanel className=\"topNavGateBar GateGlassContent\" data-tour-id=\"topnav-row\">"
+        }
+      ]
+    },
+    {
+      "file": "src/components/UI.jsx",
+      "gatePremiumCount": 3,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 236,
+          "snippet": "className=\"modalPanelOuter GateGlassOuter\""
+        },
+        {
+          "type": "gate-class",
+          "line": 241,
+          "snippet": "<div className=\"modalPanelClip GateGlassClip GateGlassBackdrop\">"
+        }
+      ]
+    },
+    {
+      "file": "src/core/focus/focusSelector.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/core/focus/focusSelector.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/core/microActions/microActionsEngine.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/core/microActions/microActionsEngine.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/core/microActions/microActionsLibrary.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/core/scheduling/intervals.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/core/scheduling/intervals.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/creation/collision.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/creation/creationDraft.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/creation/creationSchema.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/creation/suggestions.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/data/useUserData.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/data/useUserData.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/data/userDataApi.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/domain/goalType.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/features/account/accountGate.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/features/calendar/calendar.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/features/create-flow/createFlow.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/features/library/CategoryManageInline.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 22,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 2,
+          "snippet": "import { AccentItem, Button, Card, IconButton, Input } from \"../../components/UI\";"
+        },
+        {
+          "type": "legacy-component",
+          "line": 355,
+          "snippet": "<Card accentBorder>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 369,
+          "snippet": "<Card accentBorder data-tour-id={getTourId(inlineEdit, \"manage-category-card\")}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 376,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 404,
+          "snippet": "<IconButton"
+        },
+        {
+          "type": "legacy-component",
+          "line": 412,
+          "snippet": "<IconButton"
+        },
+        {
+          "type": "legacy-component",
+          "line": 424,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 435,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 444,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 460,
+          "snippet": "<Card accentBorder data-tour-id={getTourId(inlineEdit, \"manage-mini-why\")}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 499,
+          "snippet": "<Button variant=\"ghost\" onClick={commitWhy}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 503,
+          "snippet": "<Button variant=\"ghost\" onClick={editMiniWhy}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 511,
+          "snippet": "<Card accentBorder data-tour-id={getTourId(inlineEdit, \"manage-objectives-section\")}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 528,
+          "snippet": "<IconButton"
+        },
+        {
+          "type": "legacy-component",
+          "line": 533,
+          "snippet": "<IconButton"
+        },
+        {
+          "type": "legacy-component",
+          "line": 550,
+          "snippet": "<Card accentBorder data-tour-id={getTourId(inlineEdit, \"manage-actions-section\")}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 572,
+          "snippet": "<IconButton"
+        },
+        {
+          "type": "legacy-component",
+          "line": 579,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 587,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 596,
+          "snippet": "<IconButton"
+        },
+        {
+          "type": "legacy-component",
+          "line": 639,
+          "snippet": "<Card accentBorder data-tour-id={getTourId(inlineEdit, \"manage-pilotage-section\")}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 643,
+          "snippet": "<Button variant=\"ghost\" onClick={openPilotage} data-tour-id={getTourId(inlineEdit, \"manage-open-pilotage\")}>"
+        }
+      ]
+    },
+    {
+      "file": "src/features/library/editItemPanelGate.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/features/library/library.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/features/navigation/bottomCategoryBar.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/features/paywall/paywall.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/features/pilotage/pilotage.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/features/pilotage/radarModel.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/features/preferences/preferencesGate.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/features/session/session.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/features/today/today.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/hooks/useAppNavigation.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/hooks/useCategorySelectionSync.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/hooks/useCreateFlowOrchestration.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/hooks/useEntitlementsPaywall.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/hooks/useRemindersLoop.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/index.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 2,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "legacy-css-selector",
+          "line": 165,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 170,
+          "snippet": "}"
+        }
+      ]
+    },
+    {
+      "file": "src/infra/supabaseClient.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/infra/supabaseClient.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/blocks/ensureBlocksConfig.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/blocks/registry.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/blocks/validateBlocksState.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/calendar.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/categoryGate.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/categoryGate.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/compat.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/entitlements.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/goalGuards.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/goals.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/habits.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/internalP2Tests.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/linking.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/metrics.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/metrics.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/occurrencePlanner.flexPlacement.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/occurrencePlanner.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/occurrencePlanner.scheduleRules.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/occurrences.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/occurrences.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/pilotage.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/priority.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/purchases.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/reminders.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/reporting.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/reporting.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/rewards.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/scheduleRules.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/sessionResolver.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/sessionResolver.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/sessions.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/sessionsV2.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/sessionsV2.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/state/_shared.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/state/inbox.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/state/index.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/state/invariants.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/state/migrations.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/state/normalizers.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/state/persistence.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/state/selectors.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/state.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/state.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/templates.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/timeFields.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/xp.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/main.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/native/purchases.ios.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/native/purchases.web.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/pages/Account.jsx",
+      "gatePremiumCount": 30,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 143,
+          "snippet": "title={<span className=\"GatePageTitle\">Compte / Profil</span>}"
+        },
+        {
+          "type": "gate-class",
+          "line": 144,
+          "snippet": "subtitle={<span className=\"GatePageSubtitle\">Identité et accès</span>}"
+        },
+        {
+          "type": "gate-component",
+          "line": 146,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 149,
+          "snippet": "className=\"accountGateCard GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 154,
+          "snippet": "<label className=\"accountGateField GateFormField\" htmlFor=\"account-email\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 155,
+          "snippet": "<span className=\"accountGateFieldLabel GateFormLabel\">Email</span>"
+        },
+        {
+          "type": "gate-class",
+          "line": 156,
+          "snippet": "<input id=\"account-email\" className=\"accountGateInput GateInputPremium isReadonly\" value={String(user?.email || profile?.email || \"\")} readOnly disabled />"
+        },
+        {
+          "type": "gate-class",
+          "line": 159,
+          "snippet": "<label className=\"accountGateField GateFormField\" htmlFor=\"account-username\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 160,
+          "snippet": "<span className=\"accountGateFieldLabel GateFormLabel\">Username</span>"
+        },
+        {
+          "type": "gate-class",
+          "line": 163,
+          "snippet": "className=\"accountGateInput GateInputPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 173,
+          "snippet": "<label className=\"accountGateField GateFormField\" htmlFor=\"account-full-name\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 174,
+          "snippet": "<span className=\"accountGateFieldLabel GateFormLabel\">Nom complet</span>"
+        },
+        {
+          "type": "gate-class",
+          "line": 177,
+          "snippet": "className=\"accountGateInput GateInputPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 186,
+          "snippet": "<label className=\"accountGateField GateFormField\" htmlFor=\"account-avatar-url\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 187,
+          "snippet": "<span className=\"accountGateFieldLabel GateFormLabel\">Avatar URL</span>"
+        },
+        {
+          "type": "gate-class",
+          "line": 190,
+          "snippet": "className=\"accountGateInput GateInputPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 218,
+          "snippet": "<div className=\"accountGateActions GatePrimaryCtaRow\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 219,
+          "snippet": "<GateButton type=\"submit\" className=\"GatePressable\" withSound disabled={!canSave} data-testid=\"account-save-button\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 219,
+          "snippet": "<GateButton type=\"submit\" className=\"GatePressable\" withSound disabled={!canSave} data-testid=\"account-save-button\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 222,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 225,
+          "snippet": "className=\"GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 237,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 240,
+          "snippet": "className=\"accountGateCard GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 243,
+          "snippet": "<div className=\"accountGateActions GatePrimaryCtaRow\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 244,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 247,
+          "snippet": "className=\"accountGateDangerButton GatePressable\""
+        },
+        {
+          "type": "gate-class",
+          "line": 255,
+          "snippet": "<GateButton type=\"button\" variant=\"ghost\" className=\"GatePressable\" disabled>"
+        },
+        {
+          "type": "gate-component",
+          "line": 255,
+          "snippet": "<GateButton type=\"button\" variant=\"ghost\" className=\"GatePressable\" disabled>"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/Categories.jsx",
+      "gatePremiumCount": 4,
+      "legacyCount": 13,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "gate-component",
+          "line": 46,
+          "snippet": "return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;"
+        },
+        {
+          "type": "gate-component",
+          "line": 52,
+          "snippet": "<GateSection className={mergedClassName} collapsible={false} {...props}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 89,
+          "snippet": "<GateRow"
+        },
+        {
+          "type": "legacy-component",
+          "line": 802,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 832,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 853,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 869,
+          "snippet": "<Textarea"
+        },
+        {
+          "type": "legacy-component",
+          "line": 909,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 951,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 964,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1001,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1045,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1057,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1070,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1077,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1125,
+          "snippet": "<Card>"
+        },
+        {
+          "type": "gate-class",
+          "line": 1178,
+          "snippet": "<div key={cat.id} className=\"categoryGateItem GateRowPremium\">"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/CategoryDetailView.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 6,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 3,
+          "snippet": "import { AccentItem, Button, Card } from \"../components/UI\";"
+        },
+        {
+          "type": "legacy-component",
+          "line": 46,
+          "snippet": "<Card accentBorder>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 69,
+          "snippet": "<Button variant=\"ghost\" onClick={onOpenManage}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 75,
+          "snippet": "<Card accentBorder className=\"mt12\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 82,
+          "snippet": "<Card accentBorder className=\"mt12\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 128,
+          "snippet": "<Card accentBorder className=\"mt12\">"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/CategoryProgress.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 5,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 3,
+          "snippet": "import { Button, Card } from \"../components/UI\";"
+        },
+        {
+          "type": "legacy-component",
+          "line": 42,
+          "snippet": "<Card accentBorder>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 47,
+          "snippet": "<Button variant=\"ghost\" className=\"btnBackCompact backBtn\" onClick={onBack}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 66,
+          "snippet": "<Button variant=\"ghost\" className=\"btnBackCompact backBtn\" onClick={onBack}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 70,
+          "snippet": "<Card accentBorder style={{ marginTop: 12, borderColor: accent }}>"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/CategoryView.jsx",
+      "gatePremiumCount": 12,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 95,
+          "snippet": "<GateSection className=\"GateSurfacePremium GateCardPremium\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 95,
+          "snippet": "<GateSection className=\"GateSurfacePremium GateCardPremium\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 102,
+          "snippet": "<GateButton variant=\"ghost\" className=\"btnBackCompact backBtn GatePressable\" onClick={onBack} data-tour-id=\"manage-back\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 102,
+          "snippet": "<GateButton variant=\"ghost\" className=\"btnBackCompact backBtn GatePressable\" onClick={onBack} data-tour-id=\"manage-back\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 119,
+          "snippet": "<GateSection className=\"GateSurfacePremium GateCardPremium\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 119,
+          "snippet": "<GateSection className=\"GateSurfacePremium GateCardPremium\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 126,
+          "snippet": "<GateButton variant=\"ghost\" className=\"btnBackCompact backBtn GatePressable\" onClick={onBack} data-tour-id=\"manage-back\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 126,
+          "snippet": "<GateButton variant=\"ghost\" className=\"btnBackCompact backBtn GatePressable\" onClick={onBack} data-tour-id=\"manage-back\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 176,
+          "snippet": "<GateButton variant=\"ghost\" className=\"btnBackCompact backBtn GatePressable\" onClick={onBack} data-tour-id=\"manage-back\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 176,
+          "snippet": "<GateButton variant=\"ghost\" className=\"btnBackCompact backBtn GatePressable\" onClick={onBack} data-tour-id=\"manage-back\">"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/CreateV2HabitAnytime.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/pages/CreateV2HabitOneOff.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/pages/CreateV2HabitRecurring.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/pages/CreateV2HabitType.jsx",
+      "gatePremiumCount": 1,
+      "legacyCount": 5,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 3,
+          "snippet": "import { Button } from \"../components/UI\";"
+        },
+        {
+          "type": "gate-component",
+          "line": 49,
+          "snippet": "<GateSection title=\"Type d’action\" description=\"Choisis le planning\" collapsible={false}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 54,
+          "snippet": "<Button onClick={() => setType(\"ONE_OFF\")} data-testid=\"create-type-oneoff\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 57,
+          "snippet": "<Button onClick={() => setType(\"RECURRING\")} data-testid=\"create-type-recurring\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 60,
+          "snippet": "<Button onClick={() => setType(\"ANYTIME\")} data-testid=\"create-type-anytime\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 86,
+          "snippet": "<Button variant=\"ghost\" className=\"btnBackCompact backBtn\" onClick={onBack}>"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/CreateV2Habits.jsx",
+      "gatePremiumCount": 6,
+      "legacyCount": 26,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 3,
+          "snippet": "import {"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1058,
+          "snippet": "<Button variant=\"ghost\" className=\"btnBackCompact backBtn\" onClick={onBack}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 1065,
+          "snippet": "<GateSection title=\"Action\" description=\"Titre + contexte\" collapsible={false}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1067,
+          "snippet": "<Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder=\"Nouvelle action\" />"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1068,
+          "snippet": "<Button onClick={addHabit} disabled={!canAddHabit} data-testid=\"action-add\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1075,
+          "snippet": "<Input"
+        },
+        {
+          "type": "gate-component",
+          "line": 1083,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1112,
+          "snippet": "<Input type=\"time\" value={startTime} onChange={(e) => setStartTime(e.target.value)} />"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1119,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1171,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1226,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1231,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1239,
+          "snippet": "<Button variant=\"ghost\" onClick={() => setStartTime(\"14:00\")}>Après‑midi</Button>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1240,
+          "snippet": "<Button variant=\"ghost\" onClick={() => setStartTime(\"19:00\")}>Soir</Button>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1261,
+          "snippet": "<Button variant=\"ghost\" onClick={() => addWeeklySlot(dayId)}>+</Button>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1267,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1272,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1277,
+          "snippet": "<Button variant=\"ghost\" onClick={() => removeWeeklySlot(dayId, idx)}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1293,
+          "snippet": "<Input"
+        },
+        {
+          "type": "gate-component",
+          "line": 1307,
+          "snippet": "<GateSection title=\"Quantification\" description=\"Optionnel\" defaultOpen={false} collapsible>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1309,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1316,
+          "snippet": "<Input value={quantityUnit} onChange={(e) => setQuantityUnit(e.target.value)} placeholder=\"Unité\" />"
+        },
+        {
+          "type": "gate-component",
+          "line": 1326,
+          "snippet": "<GateSection title=\"Rappel\" description=\"Optionnel\" defaultOpen={false} collapsible>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1328,
+          "snippet": "<Input type=\"time\" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} />"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1331,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1336,
+          "snippet": "<Input"
+        },
+        {
+          "type": "gate-component",
+          "line": 1348,
+          "snippet": "<GateSection title=\"Mémo\" description=\"Optionnel\" defaultOpen={false} collapsible>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1349,
+          "snippet": "<Textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder=\"Note personnelle\" />"
+        },
+        {
+          "type": "gate-component",
+          "line": 1352,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1380,
+          "snippet": "<Button variant=\"ghost\" onClick={() => removeHabit(habit.id)}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1393,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1402,
+          "snippet": "<Button onClick={handleDone} disabled={!habits.length || hasInvalidHabits} data-testid=\"action-save\">"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/CreateV2LinkOutcome.jsx",
+      "gatePremiumCount": 3,
+      "legacyCount": 4,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 3,
+          "snippet": "import { Button, Input } from \"../components/UI\";"
+        },
+        {
+          "type": "gate-component",
+          "line": 178,
+          "snippet": "<GateSection title={LABELS.goal} description=\"Lier ou créer\" collapsible={false}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 189,
+          "snippet": "<GateSection title={`${LABELS.goal} existant`} collapsible={false}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 203,
+          "snippet": "<GateSection title={`Nouveau ${LABELS.goalLower}`} collapsible={false}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 204,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 224,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 234,
+          "snippet": "<Button onClick={handleContinue}>Continuer</Button>"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/CreateV2Outcome.jsx",
+      "gatePremiumCount": 3,
+      "legacyCount": 7,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 3,
+          "snippet": "import { Button, Input } from \"../components/UI\";"
+        },
+        {
+          "type": "gate-component",
+          "line": 204,
+          "snippet": "<GateSection title=\"Catégorie\" collapsible={false}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 216,
+          "snippet": "<Button variant=\"ghost\" onClick={() => activateSuggestedCategory(selectedSuggestion)}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 223,
+          "snippet": "<GateSection title={LABELS.goal} description=\"Nom + priorité\" collapsible={false}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 224,
+          "snippet": "<Input"
+        },
+        {
+          "type": "gate-component",
+          "line": 239,
+          "snippet": "<GateSection title=\"Dates\" description=\"Début + fin\" collapsible={false}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 271,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 285,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 297,
+          "snippet": "<Button onClick={handleNext} disabled={!canContinue}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 319,
+          "snippet": "<Button variant=\"ghost\" className=\"btnBackCompact backBtn\" onClick={onBack}>"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/CreateV2OutcomeNextAction.jsx",
+      "gatePremiumCount": 1,
+      "legacyCount": 3,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 3,
+          "snippet": "import { Button } from \"../components/UI\";"
+        },
+        {
+          "type": "gate-component",
+          "line": 53,
+          "snippet": "<GateSection title=\"Première action\" description=\"Optionnel\" collapsible={false}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 59,
+          "snippet": "<Button variant=\"ghost\" onClick={clearDraftAndExit}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 62,
+          "snippet": "<Button"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/CreateV2PickCategory.jsx",
+      "gatePremiumCount": 1,
+      "legacyCount": 3,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 3,
+          "snippet": "import { Button } from \"../components/UI\";"
+        },
+        {
+          "type": "gate-component",
+          "line": 101,
+          "snippet": "<GateSection title=\"Catégorie\" description=\"Dernière étape\" collapsible={false}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 112,
+          "snippet": "<Button variant=\"ghost\" onClick={finalize}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 115,
+          "snippet": "<Button onClick={applyCategory}>Terminer</Button>"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/Data.jsx",
+      "gatePremiumCount": 10,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 55,
+          "snippet": "title={<span className=\"GatePageTitle\">Données</span>}"
+        },
+        {
+          "type": "gate-class",
+          "line": 56,
+          "snippet": "subtitle={<span className=\"GatePageSubtitle\">Export / import JSON</span>}"
+        },
+        {
+          "type": "gate-component",
+          "line": 58,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 62,
+          "snippet": "className=\"GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 64,
+          "snippet": "<div className=\"GatePrimaryCtaRow\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 65,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 66,
+          "snippet": "className=\"GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 90,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 92,
+          "snippet": "className=\"GatePressable\""
+        }
+      ]
+    },
+    {
+      "file": "src/pages/EditItem.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 20,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 3,
+          "snippet": "import { Button, Card, Input, Textarea } from \"../components/UI\";"
+        },
+        {
+          "type": "legacy-component",
+          "line": 516,
+          "snippet": "<Button variant=\"ghost\" className=\"btnBackCompact backBtn\" onClick={onBack}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 524,
+          "snippet": "<Card>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 924,
+          "snippet": "<Button variant=\"ghost\" className=\"btnBackCompact backBtn\" onClick={onBack}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 933,
+          "snippet": "<Card>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 955,
+          "snippet": "<Button variant=\"ghost\" onClick={() => activateSuggestedCategory(selectedSuggestion)}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 961,
+          "snippet": "<Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder=\"Titre\" />"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1040,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1075,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1105,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1180,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1192,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1202,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1220,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1226,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1246,
+          "snippet": "<Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder=\"Notes\" />"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1253,
+          "snippet": "<Button variant=\"danger\" onClick={handleDelete}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1263,
+          "snippet": "<Button variant=\"ghost\" onClick={onBack}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1272,
+          "snippet": "<Button variant=\"ghost\" onClick={onBack}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1275,
+          "snippet": "<Button onClick={handleSave}>Enregistrer</Button>"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/Home.jsx",
+      "gatePremiumCount": 8,
+      "legacyCount": 8,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "gate-component",
+          "line": 113,
+          "snippet": "return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;"
+        },
+        {
+          "type": "gate-component",
+          "line": 119,
+          "snippet": "<GateSection className={mergedClassName} collapsible={false} {...props}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1595,
+          "snippet": "<IconButton"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1610,
+          "snippet": "<Textarea"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1626,
+          "snippet": "<SelectMenu"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1642,
+          "snippet": "<SelectMenu"
+        },
+        {
+          "type": "gate-class",
+          "line": 1658,
+          "snippet": "className=\"GateInputPremium\""
+        },
+        {
+          "type": "legacy-component",
+          "line": 1672,
+          "snippet": "<Button onClick={addNoteToHistory} data-tour-id=\"today-notes-add\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1792,
+          "snippet": "<IconButton"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1804,
+          "snippet": "<Button variant=\"danger\" onClick={deleteSelectedNote} disabled={!noteDeleteTargetId}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1809,
+          "snippet": "<Button"
+        },
+        {
+          "type": "gate-component",
+          "line": 1840,
+          "snippet": "<GateRow"
+        },
+        {
+          "type": "gate-class",
+          "line": 1842,
+          "snippet": "className=\"listItem GateRowPremium GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 1858,
+          "snippet": "<GateRow"
+        },
+        {
+          "type": "gate-class",
+          "line": 1860,
+          "snippet": "className={`listItem GateRowPremium${noteDeleteMode ? \" GatePressable\" : \"\"}`}"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/Onboarding.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 15,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 2,
+          "snippet": "import { Badge, Button, Card, Input, Textarea } from \"../components/UI\";"
+        },
+        {
+          "type": "legacy-component",
+          "line": 155,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 161,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 167,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 188,
+          "snippet": "<Input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder=\"Ton prénom\" />"
+        },
+        {
+          "type": "legacy-component",
+          "line": 192,
+          "snippet": "<Textarea"
+        },
+        {
+          "type": "legacy-component",
+          "line": 248,
+          "snippet": "<Card accentBorder>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 259,
+          "snippet": "<Card accentBorder style={{ borderColor: planChoice === \"free\" ? ACCENT : BORDER_DEFAULT }}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 263,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 272,
+          "snippet": "<Card"
+        },
+        {
+          "type": "legacy-component",
+          "line": 279,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 290,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 325,
+          "snippet": "<Card accentBorder>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 334,
+          "snippet": "<Button variant=\"ghost\" onClick={finishOnboarding}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 337,
+          "snippet": "<Button"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/Pilotage.jsx",
+      "gatePremiumCount": 5,
+      "legacyCount": 8,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "gate-component",
+          "line": 92,
+          "snippet": "return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;"
+        },
+        {
+          "type": "gate-component",
+          "line": 98,
+          "snippet": "<GateSection className={mergedClassName} collapsible={false} {...props}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 125,
+          "snippet": "<GateRow"
+        },
+        {
+          "type": "gate-class",
+          "line": 126,
+          "snippet": "className=\"pilotageCategoryRow GateRowPremium GatePressable\""
+        },
+        {
+          "type": "legacy-component",
+          "line": 662,
+          "snippet": "<Card data-tour-id=\"pilotage-category-status\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 769,
+          "snippet": "<Card>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 798,
+          "snippet": "<Card>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 821,
+          "snippet": "<Card data-tour-id=\"pilotage-discipline\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 951,
+          "snippet": "<Card data-tour-id=\"pilotage-reporting\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 983,
+          "snippet": "<Input type=\"date\" value={reportFrom} onChange={(e) => setReportFrom(e.target.value)} />"
+        },
+        {
+          "type": "legacy-component",
+          "line": 987,
+          "snippet": "<Input type=\"date\" value={reportTo} onChange={(e) => setReportTo(e.target.value)} />"
+        },
+        {
+          "type": "legacy-component",
+          "line": 1029,
+          "snippet": "<Button onClick={handleExportReport} disabled={!reportPreview}>"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/Preferences.jsx",
+      "gatePremiumCount": 53,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 101,
+          "snippet": "title={<span className=\"GatePageTitle\" data-tour-id=\"settings-title\">Réglages</span>}"
+        },
+        {
+          "type": "gate-class",
+          "line": 102,
+          "snippet": "subtitle={<span className=\"GatePageSubtitle\">App, apparence et préférences</span>}"
+        },
+        {
+          "type": "gate-component",
+          "line": 104,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 108,
+          "snippet": "className=\"preferencesGateCard GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 112,
+          "snippet": "<label className=\"preferencesGateField GateFormField\" htmlFor=\"preferences-theme-select\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 113,
+          "snippet": "<span className=\"preferencesGateFieldLabel GateFormLabel\">Thème</span>"
+        },
+        {
+          "type": "gate-class",
+          "line": 116,
+          "snippet": "className=\"preferencesGateSelect GateSelectPremium\""
+        },
+        {
+          "type": "gate-component",
+          "line": 131,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 134,
+          "snippet": "className=\"GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 141,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 143,
+          "snippet": "className=\"GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 167,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 171,
+          "snippet": "className=\"preferencesGateCard GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 175,
+          "snippet": "<label className=\"preferencesGateField GateFormField\" htmlFor=\"preferences-why\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 176,
+          "snippet": "<span className=\"preferencesGateFieldLabel GateFormLabel\">Texte motivation</span>"
+        },
+        {
+          "type": "gate-class",
+          "line": 179,
+          "snippet": "className=\"preferencesGateTextarea GateTextareaPremium\""
+        },
+        {
+          "type": "gate-component",
+          "line": 190,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 192,
+          "snippet": "className=\"GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 212,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 216,
+          "snippet": "className=\"preferencesGateCard GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-component",
+          "line": 219,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 221,
+          "snippet": "className=\"GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 237,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 240,
+          "snippet": "className=\"GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 261,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 265,
+          "snippet": "className=\"preferencesGateCard GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-component",
+          "line": 267,
+          "snippet": "<GateRow"
+        },
+        {
+          "type": "gate-class",
+          "line": 268,
+          "snippet": "className=\"preferencesGateRowControl GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 274,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 277,
+          "snippet": "className=\"preferencesGateToggleButton GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 290,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 294,
+          "snippet": "className=\"preferencesGateCard GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 304,
+          "snippet": "<GateButton type=\"button\" variant=\"ghost\" className=\"GatePressable\" withSound onClick={() => navigateTo(\"/subscription\")}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 304,
+          "snippet": "<GateButton type=\"button\" variant=\"ghost\" className=\"GatePressable\" withSound onClick={() => navigateTo(\"/subscription\")}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 311,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 315,
+          "snippet": "className=\"preferencesGateCard GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 318,
+          "snippet": "<GateButton type=\"button\" variant=\"ghost\" className=\"GatePressable\" withSound onClick={() => navigateTo(\"/data\")}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 318,
+          "snippet": "<GateButton type=\"button\" variant=\"ghost\" className=\"GatePressable\" withSound onClick={() => navigateTo(\"/data\")}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 324,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 328,
+          "snippet": "className=\"preferencesGateCard GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 331,
+          "snippet": "<GateButton type=\"button\" variant=\"ghost\" className=\"GatePressable\" withSound onClick={() => navigateTo(\"/privacy\")}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 331,
+          "snippet": "<GateButton type=\"button\" variant=\"ghost\" className=\"GatePressable\" withSound onClick={() => navigateTo(\"/privacy\")}>"
+        },
+        {
+          "type": "gate-class",
+          "line": 334,
+          "snippet": "<GateButton type=\"button\" variant=\"ghost\" className=\"GatePressable\" withSound onClick={() => navigateTo(\"/terms\")}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 334,
+          "snippet": "<GateButton type=\"button\" variant=\"ghost\" className=\"GatePressable\" withSound onClick={() => navigateTo(\"/terms\")}>"
+        },
+        {
+          "type": "gate-class",
+          "line": 337,
+          "snippet": "<GateButton type=\"button\" variant=\"ghost\" className=\"GatePressable\" withSound onClick={() => navigateTo(\"/support\")}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 337,
+          "snippet": "<GateButton type=\"button\" variant=\"ghost\" className=\"GatePressable\" withSound onClick={() => navigateTo(\"/support\")}>"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/Privacy.jsx",
+      "gatePremiumCount": 11,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 13,
+          "snippet": "title={<span className=\"GatePageTitle\">Confidentialité</span>}"
+        },
+        {
+          "type": "gate-class",
+          "line": 14,
+          "snippet": "subtitle={<span className=\"GatePageSubtitle\">Politique de confidentialité</span>}"
+        },
+        {
+          "type": "gate-component",
+          "line": 16,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 20,
+          "snippet": "className=\"GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-component",
+          "line": 26,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 30,
+          "snippet": "className=\"GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 33,
+          "snippet": "<div className=\"GatePrimaryCtaRow\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 34,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 36,
+          "snippet": "className=\"GatePressable\""
+        }
+      ]
+    },
+    {
+      "file": "src/pages/Session.jsx",
+      "gatePremiumCount": 6,
+      "legacyCount": 16,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 3,
+          "snippet": "import { AccentItem, Button } from \"../components/UI\";"
+        },
+        {
+          "type": "legacy-component",
+          "line": 550,
+          "snippet": "<Button variant=\"ghost\" className=\"btnBackCompact backBtn\" onClick={onBack}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 557,
+          "snippet": "<GateSection title=\"Aucune session en cours\" collapsible={false}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 561,
+          "snippet": "<Button variant=\"ghost\" onClick={onOpenLibrary}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 601,
+          "snippet": "<Button variant=\"ghost\" className=\"btnBackCompact backBtn\" onClick={onBack}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 608,
+          "snippet": "<GateSection title={statusLabel} collapsible={false}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 612,
+          "snippet": "<GateSection title=\"Débrief\" className=\"mt12\" collapsible={false}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 651,
+          "snippet": "<Button variant=\"ghost\" className=\"btnBackCompact backBtn\" onClick={onBack}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 659,
+          "snippet": "<GateSection title=\"Timer\" className=\"mt12\" collapsible={false}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 678,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 692,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 699,
+          "snippet": "<Button"
+        },
+        {
+          "type": "gate-component",
+          "line": 708,
+          "snippet": "<GateSection title=\"Actions\" className=\"mt12\" collapsible={false}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 726,
+          "snippet": "<Button"
+        },
+        {
+          "type": "legacy-component",
+          "line": 738,
+          "snippet": "<Button variant=\"ghost\" onClick={cancelSession} disabled={!hasHabits || !isEditable || !occurrenceId}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 741,
+          "snippet": "<Button variant=\"ghost\" onClick={confirmEndSession} disabled={!canRunTimer || !isEditable || !occurrenceId}>"
+        },
+        {
+          "type": "gate-component",
+          "line": 746,
+          "snippet": "<GateSection title=\"Terminer ?\" className=\"mt12\" collapsible={false}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 748,
+          "snippet": "<Button onClick={() => applyExtension(5)}>+5</Button>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 749,
+          "snippet": "<Button onClick={() => applyExtension(10)}>+10</Button>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 750,
+          "snippet": "<Button onClick={() => applyExtension(15)}>+15</Button>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 751,
+          "snippet": "<Button variant=\"ghost\" onClick={endSession}>Terminer</Button>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 752,
+          "snippet": "<Button variant=\"ghost\" onClick={closeEndConfirm}>Annuler</Button>"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/SessionMVP.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 5,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 3,
+          "snippet": "import { Button, Card } from \"../components/UI\";"
+        },
+        {
+          "type": "legacy-component",
+          "line": 137,
+          "snippet": "<Card className=\"sessionCard\" style={accentVars}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 152,
+          "snippet": "<Button variant=\"ghost\" onClick={() => updateOccurrenceStatus(\"skipped\")}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 155,
+          "snippet": "<Button variant=\"ghost\" onClick={() => updateOccurrenceStatus(\"canceled\")}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 158,
+          "snippet": "<Button onClick={() => updateOccurrenceStatus(\"done\")}>Terminer</Button>"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/Subscription.jsx",
+      "gatePremiumCount": 10,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 24,
+          "snippet": "title={<span className=\"GatePageTitle\">Abonnement</span>}"
+        },
+        {
+          "type": "gate-class",
+          "line": 25,
+          "snippet": "subtitle={<span className=\"GatePageSubtitle\">Plan et accès Premium</span>}"
+        },
+        {
+          "type": "gate-component",
+          "line": 27,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 31,
+          "snippet": "className=\"GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 38,
+          "snippet": "<div className=\"GatePrimaryCtaRow\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 39,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 40,
+          "snippet": "className=\"GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 49,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 51,
+          "snippet": "className=\"GatePressable\""
+        }
+      ]
+    },
+    {
+      "file": "src/pages/Support.jsx",
+      "gatePremiumCount": 11,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 15,
+          "snippet": "title={<span className=\"GatePageTitle\">Support</span>}"
+        },
+        {
+          "type": "gate-class",
+          "line": 16,
+          "snippet": "subtitle={<span className=\"GatePageSubtitle\">Aide & contact</span>}"
+        },
+        {
+          "type": "gate-component",
+          "line": 18,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 22,
+          "snippet": "className=\"GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-component",
+          "line": 27,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 31,
+          "snippet": "className=\"GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-component",
+          "line": 39,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 43,
+          "snippet": "className=\"GateSurfacePremium GateCardPremium\""
+        }
+      ]
+    },
+    {
+      "file": "src/pages/Terms.jsx",
+      "gatePremiumCount": 11,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 13,
+          "snippet": "title={<span className=\"GatePageTitle\">Conditions</span>}"
+        },
+        {
+          "type": "gate-class",
+          "line": 14,
+          "snippet": "subtitle={<span className=\"GatePageSubtitle\">Conditions d’utilisation</span>}"
+        },
+        {
+          "type": "gate-component",
+          "line": 16,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 20,
+          "snippet": "className=\"GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-component",
+          "line": 26,
+          "snippet": "<GateSection"
+        },
+        {
+          "type": "gate-class",
+          "line": 30,
+          "snippet": "className=\"GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 32,
+          "snippet": "<div className=\"GatePrimaryCtaRow\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 33,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 35,
+          "snippet": "className=\"GatePressable\""
+        }
+      ]
+    },
+    {
+      "file": "src/pages/_ScreenShell.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/profile/ProfileContext.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/profile/ProfileGate.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/profile/ProfileProvider.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/profile/ProfileSetupScreen.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 7,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 2,
+          "snippet": "import { Button, Card, Input } from \"../components/UI\";"
+        },
+        {
+          "type": "legacy-component",
+          "line": 137,
+          "snippet": "<Card style={{ width: \"100%\", maxWidth: 460, padding: 20 }}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 144,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 153,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 161,
+          "snippet": "<Input"
+        },
+        {
+          "type": "legacy-component",
+          "line": 169,
+          "snippet": "<Button data-testid=\"profile-submit-button\" type=\"submit\" disabled={!canSubmit}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 199,
+          "snippet": "<Button"
+        }
+      ]
+    },
+    {
+      "file": "src/profile/profileApi.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/profile/useProfile.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/profile/username.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/profile/username.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/shared/draft/draftGuards.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/shared/draft/draftStore.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/shared/draft/draftStore.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/shared/draft/useDraft.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/shared/ui/gate/Gate.jsx",
+      "gatePremiumCount": 21,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 21,
+          "snippet": "<div className=\"gateHeaderText\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 22,
+          "snippet": "{title ? <div className=\"gateHeaderTitle\">{title}</div> : null}"
+        },
+        {
+          "type": "gate-class",
+          "line": 23,
+          "snippet": "{subtitle ? <div className=\"gateHeaderSubtitle\">{subtitle}</div> : null}"
+        },
+        {
+          "type": "gate-class",
+          "line": 25,
+          "snippet": "{actions ? <div className=\"gateHeaderActions\">{actions}</div> : null}"
+        },
+        {
+          "type": "gate-class",
+          "line": 42,
+          "snippet": "<div id={contentId} className=\"gateSectionBody\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 49,
+          "snippet": "<div className=\"gateSectionHeader\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 53,
+          "snippet": "className=\"gateSectionToggle\""
+        },
+        {
+          "type": "gate-class",
+          "line": 58,
+          "snippet": "<div className=\"gateSectionHeaderText\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 59,
+          "snippet": "{title ? <div className=\"gateSectionTitle\">{title}</div> : null}"
+        },
+        {
+          "type": "gate-class",
+          "line": 60,
+          "snippet": "{description ? <div className=\"gateSectionDescription\">{description}</div> : null}"
+        },
+        {
+          "type": "gate-class",
+          "line": 62,
+          "snippet": "<span className=\"gateSectionChevron\" aria-hidden=\"true\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 67,
+          "snippet": "<div className=\"gateSectionHeaderText\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 68,
+          "snippet": "{title ? <div className=\"gateSectionTitle\">{title}</div> : null}"
+        },
+        {
+          "type": "gate-class",
+          "line": 69,
+          "snippet": "{description ? <div className=\"gateSectionDescription\">{description}</div> : null}"
+        },
+        {
+          "type": "gate-class",
+          "line": 114,
+          "snippet": "<div className=\"gateRowBody\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 115,
+          "snippet": "{icon ? <div className=\"gateRowIcon\">{icon}</div> : null}"
+        },
+        {
+          "type": "gate-class",
+          "line": 117,
+          "snippet": "<div className=\"gateRowText\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 118,
+          "snippet": "{label ? <div className=\"gateRowLabel\">{label}</div> : null}"
+        },
+        {
+          "type": "gate-class",
+          "line": 119,
+          "snippet": "{meta ? <div className=\"gateRowMeta\">{meta}</div> : null}"
+        },
+        {
+          "type": "gate-class",
+          "line": 124,
+          "snippet": "{right ? <div className=\"gateRowRight\">{right}</div> : null}"
+        },
+        {
+          "type": "gate-component",
+          "line": 131,
+          "snippet": "<GateRow"
+        }
+      ]
+    },
+    {
+      "file": "src/shared/ui/gate/GatePage.jsx",
+      "gatePremiumCount": 5,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 8,
+          "snippet": "<GatePanel className=\"gatePagePanel\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 8,
+          "snippet": "<GatePanel className=\"gatePagePanel\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 9,
+          "snippet": "<GateHeader title={title} subtitle={subtitle} actions={actions} className=\"gatePageHeader\" />"
+        },
+        {
+          "type": "gate-component",
+          "line": 9,
+          "snippet": "<GateHeader title={title} subtitle={subtitle} actions={actions} className=\"gatePageHeader\" />"
+        },
+        {
+          "type": "gate-class",
+          "line": 10,
+          "snippet": "<div className=\"gatePageContent\">{children}</div>"
+        }
+      ]
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "gatePremiumCount": 8,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-css-selector",
+          "line": 1,
+          "snippet": ".GateGlassOuter {"
+        },
+        {
+          "type": "gate-css-selector",
+          "line": 7,
+          "snippet": "}"
+        },
+        {
+          "type": "css-backdrop",
+          "line": 17,
+          "snippet": "}"
+        },
+        {
+          "type": "gate-css-selector",
+          "line": 17,
+          "snippet": "}"
+        },
+        {
+          "type": "gate-css-selector",
+          "line": 28,
+          "snippet": "}"
+        },
+        {
+          "type": "css-backdrop",
+          "line": 33,
+          "snippet": "}"
+        },
+        {
+          "type": "gate-css-selector",
+          "line": 38,
+          "snippet": "}"
+        },
+        {
+          "type": "gate-css-selector",
+          "line": 51,
+          "snippet": "}"
+        },
+        {
+          "type": "gate-css-selector",
+          "line": 58,
+          "snippet": "}"
+        },
+        {
+          "type": "gate-css-selector",
+          "line": 157,
+          "snippet": "}"
+        }
+      ]
+    },
+    {
+      "file": "src/shared/ui/gate/gate.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/shared/ui/gate/gatePage.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/shared/ui/overlays/overlays.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/shared/ui/sound/useClickSound.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/styles/tokens.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/theme/themeTokens.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/tour/TourOverlay.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 5,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 4,
+          "snippet": "import { Button, Card } from \"../components/UI\";"
+        },
+        {
+          "type": "legacy-component",
+          "line": 149,
+          "snippet": "<Card accentBorder>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 164,
+          "snippet": "<Button variant=\"ghost\" onClick={onSkip}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 169,
+          "snippet": "<Button variant=\"ghost\" onClick={onPrev}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 173,
+          "snippet": "<Button onClick={onNext}>"
+        }
+      ]
+    },
+    {
+      "file": "src/tour/tourSpec.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/tour/useTour.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/LiquidGlassSurface.jsx",
+      "gatePremiumCount": 3,
+      "legacyCount": 2,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 32,
+          "snippet": "<div className=\"liquidGlassSurfaceClip GateGlassClip GateGlassBackdrop\">"
+        },
+        {
+          "type": "legacy-class",
+          "line": 32,
+          "snippet": "<div className=\"liquidGlassSurfaceClip GateGlassClip GateGlassBackdrop\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 33,
+          "snippet": "<div className=\"liquidGlassSurfaceContent GateGlassContent\">{children}</div>"
+        },
+        {
+          "type": "legacy-class",
+          "line": 33,
+          "snippet": "<div className=\"liquidGlassSurfaceContent GateGlassContent\">{children}</div>"
+        }
+      ]
+    },
+    {
+      "file": "src/ui/calendar/CalendarCard.jsx",
+      "gatePremiumCount": 6,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 63,
+          "snippet": "<GateSection className=\"calendarCard GateSurfacePremium GateCardPremium\" collapsible={false} data-tour-id=\"today-calendar-card\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 63,
+          "snippet": "<GateSection className=\"calendarCard GateSurfacePremium GateCardPremium\" collapsible={false} data-tour-id=\"today-calendar-card\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 146,
+          "snippet": "<GateButton variant=\"ghost\" className=\"calendarMonthNavBtn\" onClick={onPrevMonth} aria-label=\"Mois précédent\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 150,
+          "snippet": "<GateButton variant=\"ghost\" className=\"calendarMonthNavBtn\" onClick={onNextMonth} aria-label=\"Mois suivant\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 156,
+          "snippet": "<GateButton"
+        }
+      ]
+    },
+    {
+      "file": "src/ui/calendar/DayRail.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/calendar/railMath.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/calendar/railMath.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/create/CreateFlowModal.jsx",
+      "gatePremiumCount": 25,
+      "legacyCount": 2,
+      "mixed": true,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 2,
+          "snippet": "import { Modal } from \"../../components/UI\";"
+        },
+        {
+          "type": "legacy-component",
+          "line": 128,
+          "snippet": "<Modal"
+        },
+        {
+          "type": "gate-class",
+          "line": 131,
+          "snippet": "className=\"createFlowModal gateModal gateModal--flow\""
+        },
+        {
+          "type": "gate-class",
+          "line": 134,
+          "snippet": "<GatePanel className=\"createFlowShell gateModal gateModal--flow createFlowScope GateSurfacePremium GateCardPremium\" data-testid=\"create-flow-modal\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 134,
+          "snippet": "<GatePanel className=\"createFlowShell gateModal gateModal--flow createFlowScope GateSurfacePremium GateCardPremium\" data-testid=\"create-flow-modal\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 135,
+          "snippet": "<GateHeader title=\"Créer\" subtitle=\"Choisis ce que tu veux créer\" />"
+        },
+        {
+          "type": "gate-component",
+          "line": 137,
+          "snippet": "<GateRow"
+        },
+        {
+          "type": "gate-class",
+          "line": 138,
+          "snippet": "className=\"createFlowCategoryRow GateRowPremium\""
+        },
+        {
+          "type": "gate-class",
+          "line": 140,
+          "snippet": "<GateButton variant=\"ghost\" className=\"GatePressable\" withSound onClick={onChangeCategory} data-testid=\"create-change-category\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 140,
+          "snippet": "<GateButton variant=\"ghost\" className=\"GatePressable\" withSound onClick={onChangeCategory} data-testid=\"create-change-category\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 152,
+          "snippet": "<GateCard"
+        },
+        {
+          "type": "gate-class",
+          "line": 153,
+          "snippet": "className={`createFlowChoiceCard GateRowPremium GatePressable${!canProceed ? \" isDisabled\" : \"\"}`}"
+        },
+        {
+          "type": "gate-component",
+          "line": 167,
+          "snippet": "<GateCard"
+        },
+        {
+          "type": "gate-class",
+          "line": 168,
+          "snippet": "className={`createFlowChoiceCard GateRowPremium GatePressable${!canProceed ? \" isDisabled\" : \"\"}`}"
+        },
+        {
+          "type": "gate-component",
+          "line": 182,
+          "snippet": "<GateCard"
+        },
+        {
+          "type": "gate-class",
+          "line": 183,
+          "snippet": "className={`createFlowChoiceCard GateRowPremium GatePressable${!canProceed ? \" isDisabled\" : \"\"}`}"
+        },
+        {
+          "type": "gate-class",
+          "line": 313,
+          "snippet": "<GateFooter className=\"GatePrimaryCtaRow\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 313,
+          "snippet": "<GateFooter className=\"GatePrimaryCtaRow\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 314,
+          "snippet": "<GateButton variant=\"ghost\" className=\"GatePressable\" withSound onClick={() => handleClose(\"cancel\")}>Annuler</GateButton>"
+        },
+        {
+          "type": "gate-component",
+          "line": 314,
+          "snippet": "<GateButton variant=\"ghost\" className=\"GatePressable\" withSound onClick={() => handleClose(\"cancel\")}>Annuler</GateButton>"
+        }
+      ]
+    },
+    {
+      "file": "src/ui/create/CreateSection.jsx",
+      "gatePremiumCount": 1,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-component",
+          "line": 13,
+          "snippet": "<GateSection"
+        }
+      ]
+    },
+    {
+      "file": "src/ui/create/FlowShell.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/create/_GatePanel.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/date/DatePicker.jsx",
+      "gatePremiumCount": 3,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 267,
+          "snippet": "className=\"selectMenuOuter GateGlassOuter\""
+        },
+        {
+          "type": "gate-class",
+          "line": 277,
+          "snippet": "<div className=\"selectMenuClip GateGlassClip GateGlassBackdrop\">"
+        }
+      ]
+    },
+    {
+      "file": "src/ui/date/DatePicker.test.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/focus/FocusCard.jsx",
+      "gatePremiumCount": 7,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-component",
+          "line": 8,
+          "snippet": "return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;"
+        },
+        {
+          "type": "gate-class",
+          "line": 60,
+          "snippet": "<GateSection className=\"focusCard GateSurfacePremium GateCardPremium\" collapsible={false} data-tour-id=\"today-focus-card\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 60,
+          "snippet": "<GateSection className=\"focusCard GateSurfacePremium GateCardPremium\" collapsible={false} data-tour-id=\"today-focus-card\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 117,
+          "snippet": "<GateRow"
+        },
+        {
+          "type": "gate-class",
+          "line": 119,
+          "snippet": "className=\"focusAltItem GateRowPremium GatePressable\""
+        }
+      ]
+    },
+    {
+      "file": "src/ui/focus/FocusCard.test.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/labels.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/layer/zIndex.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/liquidGlassSurface.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 31,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "legacy-css-selector",
+          "line": 1,
+          "snippet": ".liquidGlassSurface {"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 20,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 25,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 38,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 46,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 57,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 63,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 69,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 75,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 82,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 89,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 96,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 105,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 112,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 119,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 124,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 133,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 139,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 144,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 150,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 156,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 161,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 165,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 169,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 184,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 190,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 195,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 201,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 207,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 212,
+          "snippet": "}"
+        },
+        {
+          "type": "legacy-css-selector",
+          "line": 216,
+          "snippet": "}"
+        }
+      ]
+    },
+    {
+      "file": "src/ui/portal/Portal.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/scheduling/ConflictResolver.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 6,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "legacy-import",
+          "line": 2,
+          "snippet": "import { Button, Modal } from \"../../components/UI\";"
+        },
+        {
+          "type": "legacy-component",
+          "line": 23,
+          "snippet": "<Modal open={open} onClose={onClose} className=\"conflictModal\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 48,
+          "snippet": "<Button key={slot} variant=\"ghost\" onClick={() => onShift(slot)}>"
+        },
+        {
+          "type": "legacy-component",
+          "line": 57,
+          "snippet": "<Button variant=\"primary\" onClick={onReplace} data-testid=\"conflict-resolver-replace\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 60,
+          "snippet": "<Button variant=\"ghost\" onClick={onUnset} data-testid=\"conflict-resolver-unset\">"
+        },
+        {
+          "type": "legacy-component",
+          "line": 63,
+          "snippet": "<Button variant=\"ghost\" onClick={onClose} data-testid=\"conflict-resolver-cancel\">"
+        }
+      ]
+    },
+    {
+      "file": "src/ui/scheduling/conflictResolver.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/select/Select.jsx",
+      "gatePremiumCount": 3,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 353,
+          "snippet": "className=\"selectMenuOuter GateGlassOuter\""
+        },
+        {
+          "type": "gate-class",
+          "line": 363,
+          "snippet": "<div className=\"selectMenuClip GateGlassClip GateGlassBackdrop\">"
+        }
+      ]
+    },
+    {
+      "file": "src/ui/select/Select.test.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/session/sessionPlanner.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/today/MicroActionsCard.jsx",
+      "gatePremiumCount": 6,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-component",
+          "line": 10,
+          "snippet": "return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;"
+        },
+        {
+          "type": "gate-class",
+          "line": 166,
+          "snippet": "<GateSection className=\"microCard GateSurfacePremium GateCardPremium\" collapsible={false} data-tour-id=\"today-micro-card\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 166,
+          "snippet": "<GateSection className=\"microCard GateSurfacePremium GateCardPremium\" collapsible={false} data-tour-id=\"today-micro-card\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 185,
+          "snippet": "className=\"microRotateBtn GateIconButtonPremium GatePressable\""
+        }
+      ]
+    },
+    {
+      "file": "src/utils/_theme.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/utils/categoriesSuggested.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/utils/categoryAccent.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/utils/dateKey.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/utils/dateKey.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/utils/dates.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/utils/dates.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/utils/datetime.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/utils/datetime.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/utils/dialogs.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/utils/emptyState.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/utils/helpers.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/utils/librarySections.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/utils/storage.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    }
+  ],
+  "overlayRisks": [
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 17,
+      "selector": ".GateGlassBackdrop::before",
+      "reason": "backdrop-filter without clear clip pattern (overflow hidden + radius) in same block",
+      "snippet": "}"
+    },
+    {
+      "file": "src/shared/ui/gate/gate-premium.css",
+      "line": 33,
+      "selector": ".GateOverlayBackdrop",
+      "reason": "backdrop-filter without clear clip pattern (overflow hidden + radius) in same block",
+      "snippet": "}"
+    }
+  ],
+  "totals": {
+    "totalFiles": 204,
+    "cardRelevantFiles": 56,
+    "gateOnlyFiles": 23,
+    "mixedFiles": 17,
+    "legacyOnlyFiles": 16,
+    "conformityPercent": 41.07,
+    "occurrenceTypeCounts": {
+      "gate-class": 184,
+      "gate-component": 137,
+      "legacy-import": 25,
+      "legacy-component": 207,
+      "legacy-css-selector": 33,
+      "gate-css-selector": 8,
+      "css-backdrop": 2,
+      "legacy-class": 2
+    },
+    "hotspots": [
+      {
+        "file": "src/ui/liquidGlassSurface.css",
+        "legacyCount": 31,
+        "gatePremiumCount": 0,
+        "mixed": false
+      },
+      {
+        "file": "src/pages/CreateV2Habits.jsx",
+        "legacyCount": 26,
+        "gatePremiumCount": 6,
+        "mixed": true
+      },
+      {
+        "file": "src/features/library/CategoryManageInline.jsx",
+        "legacyCount": 22,
+        "gatePremiumCount": 0,
+        "mixed": false
+      },
+      {
+        "file": "src/pages/EditItem.jsx",
+        "legacyCount": 20,
+        "gatePremiumCount": 0,
+        "mixed": false
+      },
+      {
+        "file": "src/pages/Session.jsx",
+        "legacyCount": 16,
+        "gatePremiumCount": 6,
+        "mixed": true
+      },
+      {
+        "file": "src/components/EditItemPanel.jsx",
+        "legacyCount": 16,
+        "gatePremiumCount": 6,
+        "mixed": true
+      },
+      {
+        "file": "src/pages/Onboarding.jsx",
+        "legacyCount": 15,
+        "gatePremiumCount": 0,
+        "mixed": false
+      },
+      {
+        "file": "src/pages/Categories.jsx",
+        "legacyCount": 13,
+        "gatePremiumCount": 4,
+        "mixed": true
+      },
+      {
+        "file": "src/pages/Home.jsx",
+        "legacyCount": 8,
+        "gatePremiumCount": 8,
+        "mixed": true
+      },
+      {
+        "file": "src/pages/Pilotage.jsx",
+        "legacyCount": 8,
+        "gatePremiumCount": 5,
+        "mixed": true
+      },
+      {
+        "file": "src/pages/CreateV2Outcome.jsx",
+        "legacyCount": 7,
+        "gatePremiumCount": 3,
+        "mixed": true
+      },
+      {
+        "file": "src/profile/ProfileSetupScreen.jsx",
+        "legacyCount": 7,
+        "gatePremiumCount": 0,
+        "mixed": false
+      },
+      {
+        "file": "src/auth/LoginScreen.jsx",
+        "legacyCount": 6,
+        "gatePremiumCount": 0,
+        "mixed": false
+      },
+      {
+        "file": "src/components/Block.jsx",
+        "legacyCount": 6,
+        "gatePremiumCount": 0,
+        "mixed": false
+      },
+      {
+        "file": "src/pages/CategoryDetailView.jsx",
+        "legacyCount": 6,
+        "gatePremiumCount": 0,
+        "mixed": false
+      },
+      {
+        "file": "src/ui/scheduling/ConflictResolver.jsx",
+        "legacyCount": 6,
+        "gatePremiumCount": 0,
+        "mixed": false
+      },
+      {
+        "file": "src/pages/CreateV2HabitType.jsx",
+        "legacyCount": 5,
+        "gatePremiumCount": 1,
+        "mixed": true
+      },
+      {
+        "file": "src/pages/CategoryProgress.jsx",
+        "legacyCount": 5,
+        "gatePremiumCount": 0,
+        "mixed": false
+      },
+      {
+        "file": "src/pages/SessionMVP.jsx",
+        "legacyCount": 5,
+        "gatePremiumCount": 0,
+        "mixed": false
+      },
+      {
+        "file": "src/tour/TourOverlay.jsx",
+        "legacyCount": 5,
+        "gatePremiumCount": 0,
+        "mixed": false
+      },
+      {
+        "file": "src/components/PlusExpander.jsx",
+        "legacyCount": 4,
+        "gatePremiumCount": 4,
+        "mixed": true
+      },
+      {
+        "file": "src/pages/CreateV2LinkOutcome.jsx",
+        "legacyCount": 4,
+        "gatePremiumCount": 3,
+        "mixed": true
+      },
+      {
+        "file": "src/components/ErrorBoundary.jsx",
+        "legacyCount": 4,
+        "gatePremiumCount": 0,
+        "mixed": false
+      },
+      {
+        "file": "src/components/CategoryGateModal.jsx",
+        "legacyCount": 3,
+        "gatePremiumCount": 33,
+        "mixed": true
+      },
+      {
+        "file": "src/pages/CreateV2OutcomeNextAction.jsx",
+        "legacyCount": 3,
+        "gatePremiumCount": 1,
+        "mixed": true
+      },
+      {
+        "file": "src/pages/CreateV2PickCategory.jsx",
+        "legacyCount": 3,
+        "gatePremiumCount": 1,
+        "mixed": true
+      },
+      {
+        "file": "src/ui/create/CreateFlowModal.jsx",
+        "legacyCount": 2,
+        "gatePremiumCount": 25,
+        "mixed": true
+      },
+      {
+        "file": "src/components/ThemePicker.jsx",
+        "legacyCount": 2,
+        "gatePremiumCount": 10,
+        "mixed": true
+      },
+      {
+        "file": "src/components/AdvancedDrawer.jsx",
+        "legacyCount": 2,
+        "gatePremiumCount": 4,
+        "mixed": true
+      },
+      {
+        "file": "src/ui/LiquidGlassSurface.jsx",
+        "legacyCount": 2,
+        "gatePremiumCount": 3,
+        "mixed": true
+      }
+    ]
+  }
+}

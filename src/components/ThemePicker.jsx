@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { applyThemeTokens, BRAND_ACCENT, getThemeName, listThemes } from "../theme/themeTokens";
-import { Button, SelectMenu } from "./UI";
-import LiquidGlassSurface from "../ui/LiquidGlassSurface";
+import { SelectMenu } from "./UI";
+import { GateButton, GateHeader, GatePanel } from "../shared/ui/gate/Gate";
 
 function toLabel(name) {
   if (!name) return "";
@@ -58,49 +58,45 @@ export default function ThemePicker({ data, setData }) {
   const isDirty = pendingTheme !== (savedTheme || "aurora");
 
   return (
-    <LiquidGlassSurface variant="card" density="solid">
-      <div className="liquidSurfaceHeader">
-        <div className="liquidSurfaceHeaderText">
-          <div className="liquidSurfaceTitle">Apparence</div>
-          <div className="liquidSurfaceSubtitle">Choisis un style. Aperçu instantané, puis valide.</div>
+    <GatePanel className="GateSurfacePremium GateCardPremium">
+      <GateHeader title="Apparence" subtitle="Choisis un style. Aperçu instantané, puis valide." />
+      <SelectMenu value={pendingTheme} onChange={setPendingTheme} options={themeOptions} />
+      <div className="row rowBetween rowWrap gap8">
+        <div className="GatePageSubtitle">
+          Thème actuel : <span style={{ color: "var(--text)" }}>{toLabel(savedTheme || "aurora")}</span>
+        </div>
+        <div className="GatePrimaryCtaRow">
+          <GateButton
+            variant="ghost"
+            className="GatePressable"
+            disabled={!isDirty}
+            onClick={() => setPendingTheme(savedTheme || "aurora")}
+          >
+            Réinitialiser
+          </GateButton>
+
+          <GateButton
+            className="GatePressable"
+            disabled={!isDirty}
+            onClick={() => {
+              setData((prev) => {
+                const nextUi = {
+                  ...(prev.ui || {}),
+                  theme: pendingTheme,
+                  pageThemes: {
+                    ...(prev.ui?.pageThemes || {}),
+                    home: pendingTheme,
+                    __default: pendingTheme,
+                  },
+                };
+                return { ...prev, ui: nextUi };
+              });
+            }}
+          >
+            Appliquer
+          </GateButton>
         </div>
       </div>
-
-      <div className="liquidSurfaceBody">
-        <SelectMenu value={pendingTheme} onChange={setPendingTheme} options={themeOptions} />
-
-        <div className="liquidActionsRow" style={{ justifyContent: "space-between" }}>
-          <div className="liquidNote" style={{ margin: 0 }}>
-            Thème actuel : <span style={{ color: "var(--text)" }}>{toLabel(savedTheme || "aurora")}</span>
-          </div>
-
-          <div className="liquidActionsRow">
-            <Button className="btnSecondary" disabled={!isDirty} onClick={() => setPendingTheme(savedTheme || "aurora")}> 
-              Réinitialiser
-            </Button>
-
-            <Button
-              disabled={!isDirty}
-              onClick={() => {
-                setData((prev) => {
-                  const nextUi = {
-                    ...(prev.ui || {}),
-                    theme: pendingTheme,
-                    pageThemes: {
-                      ...(prev.ui?.pageThemes || {}),
-                      home: pendingTheme,
-                      __default: pendingTheme,
-                    },
-                  };
-                  return { ...prev, ui: nextUi };
-                });
-              }}
-            >
-              Appliquer
-            </Button>
-          </div>
-        </div>
-      </div>
-    </LiquidGlassSurface>
+    </GatePanel>
   );
 }

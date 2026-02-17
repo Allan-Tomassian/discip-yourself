@@ -1,52 +1,7 @@
-.preferencesGateCard {
-  border-radius: 16px;
-  padding: 14px;
-}
-
 .preferencesGateForm {
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-
-.preferencesGateField {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.preferencesGateFieldLabel {
-  font-size: var(--font-xs);
-  color: var(--text-3, var(--muted2));
-}
-
-.preferencesGateSelect,
-.preferencesGateTextarea {
-  width: 100%;
-  border: 1px solid var(--gate-border);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--gate-surface-1) 88%, #05080f);
-  color: var(--gate-text);
-  font-size: var(--font-sm);
-  outline: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-.preferencesGateSelect {
-  min-height: 40px;
-  padding: 0 12px;
-}
-
-.preferencesGateTextarea {
-  min-height: 120px;
-  resize: vertical;
-  padding: 10px 12px;
-}
-
-.preferencesGateSelect:focus,
-.preferencesGateTextarea:focus {
-  border-color: color-mix(in srgb, var(--accent) 48%, var(--gate-border));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 36%, transparent);
 }
 
 .preferencesGateNote {
@@ -57,12 +12,6 @@
 
 .preferencesGateNoteStrong {
   color: var(--gate-text);
-}
-
-.preferencesGateActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
 }
 
 .preferencesGateActionsColumn {

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card } from "../components/UI";
+import { GateButton, GateSection } from "../shared/ui/gate/Gate";
 import Gauge from "../components/Gauge";
 import { getAccentForPage } from "../utils/_theme";
 import { resolveGoalType } from "../domain/goalType";
@@ -92,19 +92,19 @@ export default function CategoryView({
         headerSubtitle="Aucune catégorie"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
-        <Card accentBorder>
+        <GateSection className="GateSurfacePremium GateCardPremium">
           <div className="p18">
             <div className="titleSm">Aucune catégorie</div>
             <div className="small mt6">
               Crée un {LABELS.goalLower} ou une {LABELS.actionLower} depuis la bibliothèque pour commencer.
             </div>
             <div className="mt12">
-              <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack} data-tour-id="manage-back">
+              <GateButton variant="ghost" className="btnBackCompact backBtn GatePressable" onClick={onBack} data-tour-id="manage-back">
                 ← Retour
-              </Button>
+              </GateButton>
             </div>
           </div>
-        </Card>
+        </GateSection>
       </ScreenShell>
     );
   }
@@ -116,19 +116,19 @@ export default function CategoryView({
         headerSubtitle="Catégorie introuvable"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
-        <Card accentBorder>
+        <GateSection className="GateSurfacePremium GateCardPremium">
           <div className="p18">
             <div className="titleSm">Catégorie introuvable</div>
             <div className="small mt6">
               Cette catégorie n’existe plus.
             </div>
             <div className="mt12">
-              <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack} data-tour-id="manage-back">
+              <GateButton variant="ghost" className="btnBackCompact backBtn GatePressable" onClick={onBack} data-tour-id="manage-back">
                 ← Retour
-              </Button>
+              </GateButton>
             </div>
           </div>
-        </Card>
+        </GateSection>
       </ScreenShell>
     );
   }
@@ -173,9 +173,9 @@ export default function CategoryView({
       headerSubtitle={
         <div className="stack stackGap12">
           <div data-tour-id="manage-category-name">{category.name || "Catégorie"}</div>
-          <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack} data-tour-id="manage-back">
+          <GateButton variant="ghost" className="btnBackCompact backBtn GatePressable" onClick={onBack} data-tour-id="manage-back">
             ← Retour
-          </Button>
+          </GateButton>
         </div>
       }
       headerRight={headerRight}

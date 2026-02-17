@@ -1,5 +1,6 @@
 .conflictModal{
-  width:min(560px, 100%);
+  width:min(560px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
+  box-sizing: border-box;
 }
 
 .conflictList{

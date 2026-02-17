@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button } from "../components/UI";
-import LiquidGlassSurface from "../ui/LiquidGlassSurface";
+import { GateButton, GateSection } from "../shared/ui/gate/Gate";
+import GatePage from "../shared/ui/gate/GatePage";
 import { isPremium } from "../logic/entitlements";
 
 function downloadJsonFile(filename, payload) {
@@ -50,62 +50,57 @@ export default function Data({ data, setData, onOpenPaywall }) {
   }
 
   return (
-    <ScreenShell
-      data={safeData}
-      pageId="settings"
-      headerTitle="Données"
-      headerSubtitle="Export / import JSON"
-      backgroundImage={backgroundImage}
-    >
-      <div className="liquidPageStack">
-        <LiquidGlassSurface variant="card" density="solid">
-          <div className="liquidSurfaceHeader">
-            <div className="liquidSurfaceHeaderText">
-              <div className="liquidSurfaceTitle">Sauvegarde</div>
-              <div className="liquidSurfaceSubtitle">Exporte ou importe l’état complet de l’app.</div>
-            </div>
+    <ScreenShell data={safeData} pageId="settings" backgroundImage={backgroundImage}>
+      <GatePage
+        title={<span className="GatePageTitle">Données</span>}
+        subtitle={<span className="GatePageSubtitle">Export / import JSON</span>}
+      >
+        <GateSection
+          title="Sauvegarde"
+          description="Exporte ou importe l’état complet de l’app."
+          collapsible={false}
+          className="GateSurfacePremium GateCardPremium"
+        >
+          <div className="GatePrimaryCtaRow">
+            <GateButton
+              className="GatePressable"
+              onClick={() => {
+                if (!premium) {
+                  if (typeof onOpenPaywall === "function") onOpenPaywall("Export des données");
+                  return;
+                }
+                downloadJsonFile("discip-yourself-data.json", safeData);
+              }}
+            >
+              Exporter mes données (JSON)
+            </GateButton>
+
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json"
+              style={{ display: "none" }}
+              onChange={(event) => {
+                const file = event.target.files && event.target.files[0] ? event.target.files[0] : null;
+                handleImportFile(file);
+                event.target.value = "";
+              }}
+            />
+
+            <GateButton
+              variant="ghost"
+              className="GatePressable"
+              onClick={() => {
+                importInputRef.current?.click();
+              }}
+            >
+              Importer un JSON
+            </GateButton>
           </div>
 
-          <div className="liquidSurfaceBody">
-            <div className="liquidActionsCol">
-              <Button
-                onClick={() => {
-                  if (!premium) {
-                    if (typeof onOpenPaywall === "function") onOpenPaywall("Export des données");
-                    return;
-                  }
-                  downloadJsonFile("discip-yourself-data.json", safeData);
-                }}
-              >
-                Exporter mes données (JSON)
-              </Button>
-
-              <input
-                ref={importInputRef}
-                type="file"
-                accept="application/json"
-                style={{ display: "none" }}
-                onChange={(event) => {
-                  const file = event.target.files && event.target.files[0] ? event.target.files[0] : null;
-                  handleImportFile(file);
-                  event.target.value = "";
-                }}
-              />
-
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  importInputRef.current?.click();
-                }}
-              >
-                Importer un JSON
-              </Button>
-
-              {importStatus ? <div className="liquidNote">{importStatus}</div> : null}
-            </div>
-          </div>
-        </LiquidGlassSurface>
-      </div>
+          {importStatus ? <div className="small2">{importStatus}</div> : null}
+        </GateSection>
+      </GatePage>
     </ScreenShell>
   );
 }

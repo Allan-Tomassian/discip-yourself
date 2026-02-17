@@ -57,19 +57,26 @@ export default function PaywallModal({
 
   const content = (
     <div
-      className="modalBackdrop paywallBackdrop"
+      className="modalBackdrop paywallBackdrop GateOverlayBackdrop"
       onClick={(e) => {
         if (e.target !== e.currentTarget) return;
         if (typeof onClose === "function") onClose();
       }}
     >
-      <GatePanel
-        className="card paywallPanel"
+      <div
+        className="paywallPanelOuter GateGlassOuter"
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <div className="paywallBody">
+        <div className="paywallPanelClip GateGlassClip GateGlassBackdrop">
+          <GatePanel
+            className="card paywallPanel GateGlassContent"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <div className="paywallBody">
           <GateHeader
             title="Passer Premium"
             subtitle={reason || "Débloque toutes les fonctionnalités et enlève les limites."}
@@ -132,8 +139,10 @@ export default function PaywallModal({
               </GateButton>
             </div>
           </div>
+            </div>
+          </GatePanel>
         </div>
-      </GatePanel>
+      </div>
     </div>
   );
   if (typeof document === "undefined") return content;

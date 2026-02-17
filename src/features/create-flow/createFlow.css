@@ -1,20 +1,18 @@
 .createFlowBackdrop {
   background: var(--overlayBackdrop, rgba(0, 0, 0, 0.6));
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
 }
 
 .createFlowModal {
-  width: 100%;
-  max-width: clamp(360px, 92vw, var(--app-modal-max, 720px));
+  width: min(var(--app-modal-max, 720px), calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
+  max-width: min(var(--app-modal-max, 720px), calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
   max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
   padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 14px;
   overflow: hidden;
-  background: linear-gradient(180deg, var(--surface-3, var(--surface-2)), var(--surface-2, var(--surface)));
   align-self: center;
+  box-sizing: border-box;
 }
 
 .createFlowShell {
@@ -24,6 +22,7 @@
   height: 100%;
   gap: 12px;
   min-width: 0;
+  box-sizing: border-box;
 }
 
 .createFlowCategoryRow {
@@ -33,9 +32,10 @@
   align-items: center;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid var(--border-subtle, var(--border));
-  background: var(--surface-2, var(--surface));
+  border: 1px solid var(--gate-border, var(--border-subtle, var(--border)));
+  background: color-mix(in srgb, var(--gate-surface-1, var(--surface-2)) 92%, #05080f);
   cursor: default;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .createFlowCategoryName {
@@ -160,11 +160,15 @@
   padding: 0;
 }
 
+.createFlowScope .gateFooter {
+  border-top-color: color-mix(in srgb, var(--gate-border, var(--border-subtle, var(--border))) 88%, transparent);
+}
+
 @media (max-width: 720px) {
   .createFlowModal {
-    width: calc(100vw - 16px);
-    max-width: calc(100vw - 16px);
-    max-height: calc(100dvh - 16px);
+    width: min(var(--app-modal-max, 720px), calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
+    max-width: min(var(--app-modal-max, 720px), calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
+    max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 16px);
     padding: 16px;
   }
 }

@@ -21,7 +21,7 @@ const LiquidGlassSurface = React.forwardRef(function LiquidGlassSurface(
     <Component
       ref={ref}
       className={cx(
-        "liquidGlassSurface",
+        "liquidGlassSurface GateGlassOuter",
         `liquidGlass--${variant}`,
         `liquidGlass--${density}`,
         noisy && "isNoisy",
@@ -29,7 +29,9 @@ const LiquidGlassSurface = React.forwardRef(function LiquidGlassSurface(
       )}
       {...props}
     >
-      {children}
+      <div className="liquidGlassSurfaceClip GateGlassClip GateGlassBackdrop">
+        <div className="liquidGlassSurfaceContent GateGlassContent">{children}</div>
+      </div>
     </Component>
   );
 });
