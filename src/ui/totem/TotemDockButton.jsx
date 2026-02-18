@@ -1,15 +1,21 @@
 import React from "react";
+import { TOTEM_PERCH_IDLE_V1 } from "./totemAssets";
 
 export default function TotemDockButton({
   hidden = false,
+  variant = "B",
   bodyColor = "#F59E0B",
   accessory = "",
+  birdHidden = false,
   isHiding = false,
   dockRef = null,
   nubRef = null,
   onPressDock,
   onPressNub,
 }) {
+  void variant;
+  void bodyColor;
+
   if (hidden) {
     return (
       <button
@@ -35,9 +41,10 @@ export default function TotemDockButton({
       onClick={onPressDock}
       disabled={isHiding}
     >
-      <span className="totemDockBranch" aria-hidden="true" />
-      <span className="totemDockBird" style={{ "--totem-dock-body": bodyColor }}>
-        <span className="totemDockBirdGlyph" aria-hidden="true">🦅</span>
+      <span className={`totemDockVisual${birdHidden ? " isBirdHidden" : ""}`} aria-hidden="true">
+        <span className="totemDockEagleWrap">
+          <img src={TOTEM_PERCH_IDLE_V1} alt="" className="totemDockEagleAsset" />
+        </span>
         {accessory ? <span className="totemDockBirdAccessory" aria-hidden="true">{accessory}</span> : null}
       </span>
     </button>

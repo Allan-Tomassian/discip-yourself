@@ -47,3 +47,31 @@ test("totem dock: open, close, hide, nub reveal, persistence", async ({ page }) 
   await expect(page.getByTestId("totem-panel")).toBeVisible();
   await expect(page.getByTestId("totem-dock")).toBeVisible();
 });
+
+test("totem dock: micro-action done triggers ghost flight animation", async ({ page }) => {
+  const state = buildBaseState({ withContent: true });
+  state.ui = {
+    ...(state.ui || {}),
+    totemV1: {
+      ...(state.ui?.totemV1 || {}),
+      animationEnabled: true,
+    },
+  };
+  await seedState(page, state);
+  await page.goto("/");
+
+  await expect(page.getByTestId("totem-dock")).toBeVisible();
+  const microCard = page.locator('[data-tour-id="today-micro-card"]');
+  await expect(microCard).toBeVisible();
+  const doneAction = microCard.locator('[data-tour-id="today-micro-done"]:not(:disabled)').first();
+  await expect(doneAction).toBeVisible();
+  await doneAction.click();
+
+  const ghost = page.getByTestId("totem-ghost");
+  await expect(ghost).toBeVisible();
+  await expect
+    .poll(async () => (await ghost.getAttribute("class")) || "", { timeout: 5000 })
+    .toMatch(/totemGhost--(thumb|back)/);
+  await expect(ghost).toHaveCount(0, { timeout: 6000 });
+  await expect(page.getByTestId("totem-dock")).toBeVisible();
+});

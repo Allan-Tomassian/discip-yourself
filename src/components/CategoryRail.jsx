@@ -28,6 +28,7 @@ export default function CategoryRail({
   return (
     <div
       className="categoryRailScroll bottomCategoryRailScroll scrollNoBar"
+      data-totem-target="categoryRail"
     >
       {categories.map((c) => {
         const isSelected = c.id === selectedCategoryId;
@@ -40,7 +41,7 @@ export default function CategoryRail({
               if (node) itemRefs.current[c.id] = node;
             }}
             type="button"
-            className={`categoryRailItem bottomCategoryChip GatePressable${isSelected ? " navBtnActive bottomCategoryChipActive" : ""}`}
+            className={`categoryRailItem bottomCategoryChip NavPillUnified GatePressable${isSelected ? " navBtnActive bottomCategoryChipActive" : ""}`}
             aria-pressed={isSelected}
             style={isSelected ? accentVars : undefined}
             onClick={() => {

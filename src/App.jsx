@@ -12,6 +12,7 @@ import CategoryGateModal from "./components/CategoryGateModal";
 import { markIOSRootClass } from "./utils/dialogs";
 import { GateButton, GatePanel } from "./shared/ui/gate/Gate";
 import "./features/navigation/bottomCategoryBar.css";
+import "./features/navigation/navPillUnified.css";
 
 import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";

@@ -38,13 +38,13 @@ import {
   canWatchAd,
   ensureWallet,
 } from "../logic/walletV1";
-import { ensureTotemV1, getTotemAccessoryEmoji } from "../logic/totemV1";
+import { ensureTotemV1 } from "../logic/totemV1";
 import { uid } from "../utils/helpers";
 import CalendarCard from "../ui/calendar/CalendarCard";
 import FocusCard from "../ui/focus/FocusCard";
 import MicroActionsCard from "../ui/today/MicroActionsCard";
 import RewardedAdModal from "../ui/today/RewardedAdModal";
-import TotemAnimationOverlay from "../ui/today/TotemAnimationOverlay";
+import { emitTotemEvent } from "../ui/totem/totemEvents";
 import { LABELS } from "../ui/labels";
 
 // TOUR MAP:
@@ -361,7 +361,6 @@ export default function Home({
   const microRewardFeedbackTimeoutRef = useRef(null);
   const [microWatchAdLoading, setMicroWatchAdLoading] = useState(false);
   const [microRewardFeedback, setMicroRewardFeedback] = useState("");
-  const [totemAnimationCue, setTotemAnimationCue] = useState({ key: 0, amount: 0, variant: "micro" });
   const [rewardedAdRequest, setRewardedAdRequest] = useState({ open: false, placement: "micro-reroll" });
 
   // Data slices
@@ -461,10 +460,6 @@ export default function Home({
   const microCanWatchAd = useMemo(
     () => (!isPremiumPlan ? canWatchAd(microWallet, { dateKey: microDateKey }) : false),
     [isPremiumPlan, microDateKey, microWallet]
-  );
-  const microTotemAccessory = useMemo(
-    () => getTotemAccessoryEmoji(totemV1?.equipped?.accessoryIds),
-    [totemV1?.equipped?.accessoryIds]
   );
   const microRerollLimit = isPremiumPlan ? Number.POSITIVE_INFINITY : BASIC_MICRO_REROLL_LIMIT;
   const plannedByDate = useMemo(() => {
@@ -1586,19 +1581,6 @@ export default function Home({
     setNoteHistoryVersion((v) => v + 1);
   }
 
-  function triggerMicroCoinDelta(amount, options = {}) {
-    const safeAmount = Math.max(0, Number(amount) || 0);
-    if (!safeAmount) return;
-    const variant = options.variant === "rich" ? "rich" : "micro";
-    if (totemV1.animationEnabled) {
-      setTotemAnimationCue({
-        amount: safeAmount,
-        variant,
-        key: Date.now() + Math.random(),
-      });
-    }
-  }
-
   function handleMicroCategoryChange(nextCategoryId) {
     if (!canUseMicroActions) return;
     if (typeof setData !== "function") return;
@@ -1684,7 +1666,12 @@ export default function Home({
         microChecks: nextMicroChecks,
       };
     });
-    if (coinGranted) triggerMicroCoinDelta(MICRO_ACTION_COINS_REWARD);
+    if (totemV1.animationEnabled) {
+      emitTotemEvent({
+        type: "MICRO_DONE",
+        payload: { target: "categoryRail" },
+      });
+    }
   }
 
   function handleMicroReroll(indices = [], options = {}) {
@@ -1813,7 +1800,6 @@ export default function Home({
       });
       if (rewardApplied) {
         setMicroRewardFeedback("");
-        triggerMicroCoinDelta(REWARDED_AD_COINS_REWARD, { variant: "rich" });
       }
     } finally {
       setMicroWatchAdLoading(false);
@@ -2304,16 +2290,6 @@ export default function Home({
           </HomeCard>
         </div>
       ) : null}
-      <TotemAnimationOverlay
-        open={Boolean(totemAnimationCue.key)}
-        variant={totemAnimationCue.variant}
-        amount={totemAnimationCue.amount}
-        bodyColor={totemV1?.equipped?.bodyColor || "#F59E0B"}
-        accessory={microTotemAccessory}
-        onDone={() => {
-          setTotemAnimationCue({ key: 0, amount: 0, variant: "micro" });
-        }}
-      />
       <RewardedAdModal
         open={rewardedAdRequest.open}
         placement={rewardedAdRequest.placement}

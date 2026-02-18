@@ -1,0 +1,71 @@
+:root {
+  --nav-pill-radius: 12px;
+  --nav-pill-height: 34px;
+  --nav-pill-px: 12px;
+  --nav-pill-py: 8px;
+  --nav-pill-border: var(--gate-border);
+  --nav-pill-bg: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
+  --nav-pill-text: var(--gate-text-muted);
+  --nav-pill-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --nav-pill-hover-border: color-mix(in srgb, var(--accent) 34%, var(--gate-border));
+  --nav-pill-hover-bg: color-mix(in srgb, var(--gate-surface-1) 84%, #0a1220);
+  --nav-pill-hover-text: var(--gate-text);
+  --nav-pill-active-border: color-mix(in srgb, var(--accent) 62%, var(--gate-border));
+  --nav-pill-active-bg: color-mix(in srgb, var(--accent) 18%, var(--gate-surface-1));
+  --nav-pill-active-text: var(--gate-text);
+  --nav-pill-active-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 34%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.NavPillUnified {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--nav-pill-height);
+  padding: var(--nav-pill-py) var(--nav-pill-px);
+  border: 1px solid var(--nav-pill-border);
+  border-radius: var(--nav-pill-radius);
+  background: var(--nav-pill-bg);
+  color: var(--nav-pill-text);
+  font-size: 12px;
+  line-height: 1;
+  box-shadow: var(--nav-pill-shadow);
+}
+
+.NavPillUnified:hover {
+  border-color: var(--nav-pill-hover-border);
+  background: var(--nav-pill-hover-bg);
+  color: var(--nav-pill-hover-text);
+}
+
+.NavPillUnified.navBtnActive,
+.NavPillUnified.bottomCategoryChipActive {
+  border-color: var(--nav-pill-active-border);
+  background: var(--nav-pill-active-bg);
+  color: var(--nav-pill-active-text);
+  box-shadow: var(--nav-pill-active-shadow);
+}
+
+.topNavWalletBadge .WalletBadgeCard {
+  min-height: var(--nav-pill-height);
+  padding: var(--nav-pill-py) var(--nav-pill-px);
+  border-radius: var(--nav-pill-radius);
+  border-color: var(--nav-pill-border);
+  background: var(--nav-pill-bg);
+  color: var(--nav-pill-text);
+  box-shadow: var(--nav-pill-shadow);
+}
+
+.topNavWalletBadge .WalletBadgeCard.WalletBadgeInteractive:hover {
+  border-color: var(--nav-pill-hover-border);
+  background: var(--nav-pill-hover-bg);
+  color: var(--nav-pill-hover-text);
+}
+
+.topNavWalletBadge .WalletBadgeEmoji,
+.topNavWalletBadge .WalletBadgeValue {
+  color: inherit;
+}
+

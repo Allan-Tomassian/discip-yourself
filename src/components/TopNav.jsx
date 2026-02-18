@@ -29,6 +29,7 @@ export default function TopNav({
 }) {
   const navTopRef = useRef(null);
   const navBarRef = useRef(null);
+  const topbarSurfaceRef = useRef(null);
   const topbarRef = useRef(null);
   const menuRef = useRef(null);
   const menuButtonRef = useRef(null);
@@ -126,6 +127,59 @@ export default function TopNav({
     return () => {
       if (ro) ro.disconnect();
       else window.removeEventListener("resize", updateOffset);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return undefined;
+
+    const rootStyle = document.documentElement.style;
+    const fallbackTopbarBottom = "calc(env(safe-area-inset-top) + 74px)";
+
+    const setFallback = () => {
+      rootStyle.setProperty("--topbar-bottom", fallbackTopbarBottom);
+    };
+
+    const updateTopbarBottom = () => {
+      const measureNode = topbarSurfaceRef.current || navBarRef.current || topbarRef.current;
+      if (!measureNode || typeof measureNode.getBoundingClientRect !== "function") {
+        setFallback();
+        return;
+      }
+      const rect = measureNode.getBoundingClientRect();
+      if (!Number.isFinite(rect.bottom)) {
+        setFallback();
+        return;
+      }
+      rootStyle.setProperty("--topbar-bottom", `${Math.max(0, Math.round(rect.bottom))}px`);
+    };
+
+    setFallback();
+    updateTopbarBottom();
+    const raf = window.requestAnimationFrame(updateTopbarBottom);
+
+    let ro;
+    if (window.ResizeObserver) {
+      ro = new ResizeObserver(updateTopbarBottom);
+      if (topbarSurfaceRef.current) ro.observe(topbarSurfaceRef.current);
+      if (navBarRef.current && navBarRef.current !== topbarSurfaceRef.current) {
+        ro.observe(navBarRef.current);
+      }
+    }
+
+    window.addEventListener("resize", updateTopbarBottom);
+    window.addEventListener("orientationchange", updateTopbarBottom);
+    window.visualViewport?.addEventListener("resize", updateTopbarBottom);
+    window.visualViewport?.addEventListener("scroll", updateTopbarBottom);
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      if (ro) ro.disconnect();
+      window.removeEventListener("resize", updateTopbarBottom);
+      window.removeEventListener("orientationchange", updateTopbarBottom);
+      window.visualViewport?.removeEventListener("resize", updateTopbarBottom);
+      window.visualViewport?.removeEventListener("scroll", updateTopbarBottom);
+      setFallback();
     };
   }, []);
 
@@ -236,7 +290,7 @@ export default function TopNav({
         ref={navBarRef}
         style={{ zIndex: Z_INDEX.topbar }}
       >
-        <div className="TopNavSurfaceOuter">
+        <div className="TopNavSurfaceOuter" ref={topbarSurfaceRef}>
           <div className="TopNavSurfaceClip TopNavBackdrop GateGlassClip GateGlassBackdrop">
             <GatePanel className="topNavGateBar GateGlassContent GateSurfacePremium GateCardPremium" data-tour-id="topnav-row">
               <div ref={topbarRef} className="navRow">
@@ -246,7 +300,7 @@ export default function TopNav({
                       key={it.id}
                       type="button"
                       onClick={() => setActive(it.id)}
-                      className={`navBtn ${active === it.id ? "navBtnActive" : ""}`}
+                      className={`navBtn NavPillUnified ${active === it.id ? "navBtnActive" : ""}`}
                       aria-current={active === it.id ? "page" : undefined}
                       data-tour-id={`topnav-tab-${it.id}`}
                     >

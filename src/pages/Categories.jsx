@@ -1,9 +1,10 @@
 // src/pages/Categories.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { GateButton, GateRow, GateSection } from "../shared/ui/gate/Gate";
+import { GateButton, GateSection } from "../shared/ui/gate/Gate";
 import SortableBlocks from "../components/SortableBlocks";
 import EditItemPanel from "../components/EditItemPanel";
+import AccentCategoryRow from "../components/AccentCategoryRow";
 import { getCategoryCounts } from "../logic/pilotage";
 import { ensureSystemInboxCategory, normalizeCategory, SYSTEM_INBOX_ID } from "../logic/state";
 import { updateGoal } from "../logic/goals";
@@ -63,41 +64,6 @@ function Input({ className = "", ...props }) {
 function Textarea({ className = "", ...props }) {
   const mergedClassName = ["GateTextareaPremium", className].filter(Boolean).join(" ");
   return <textarea className={mergedClassName} {...props} />;
-}
-
-function AccentItem({
-  color = "#6EE7FF",
-  selected = false,
-  onClick,
-  children,
-  rightSlot = null,
-  style = {},
-  className = "",
-  onKeyDown,
-  ...props
-}) {
-  const mergedClassName = [
-    "accentItem",
-    "libraryAccentItem",
-    "GateRowPremium",
-    onClick ? "GatePressable" : "",
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
-  return (
-    <GateRow
-      className={mergedClassName}
-      selected={selected}
-      onClick={onClick}
-      onKeyDown={onKeyDown}
-      right={rightSlot}
-      style={{ "--libraryAccent": color || "#6EE7FF", ...style }}
-      {...props}
-    >
-      <div className="libraryAccentItemBody">{children}</div>
-    </GateRow>
-  );
 }
 
 function buildOccurrencesByGoal(list) {
@@ -766,7 +732,7 @@ export default function Categories({
 
     return (
       <div key={category.id} className="col gap8">
-        <AccentItem
+        <AccentCategoryRow
           color={category.color}
           selected={isSelected}
           rightSlot={
@@ -821,7 +787,7 @@ export default function Categories({
             )}
             <div className="itemSub">{summary}</div>
           </div>
-        </AccentItem>
+        </AccentCategoryRow>
         {isExpanded ? (
           <div className="col gap8 pl10" style={detailAccentVars}>
             <div className="row rowBetween alignCenter">
@@ -860,7 +826,7 @@ export default function Categories({
                 ) : null}
               </div>
             </div>
-            <AccentItem className="listItem" style={detailAccentVars}>
+            <AccentCategoryRow className="listItem" style={detailAccentVars}>
               <div className="small2 textMuted">
                 Mini-why
               </div>
@@ -889,7 +855,7 @@ export default function Categories({
                   {detailWhy}
                 </div>
               )}
-            </AccentItem>
+            </AccentCategoryRow>
             <div className="col gap8">
               <div className="small2 textMuted">
                 {LABELS.goals}
@@ -902,7 +868,7 @@ export default function Categories({
                     const goalDraft = isEditingGoalTitle ? draftStore.getDraft(getGoalScopeKey(g.id)) : null;
                     const draftTitle = goalDraft?.working?.title ?? g.title ?? "";
                     return (
-                      <AccentItem key={g.id} className="listItem" style={detailAccentVars}>
+                      <AccentCategoryRow key={g.id} className="listItem" style={detailAccentVars}>
                         <div className="row rowBetween gap8">
                           <div className="col gap6 minW0">
                             {isEditingGoalTitle ? (
@@ -972,7 +938,7 @@ export default function Categories({
                             ) : null}
                           </div>
                         </div>
-                      </AccentItem>
+                      </AccentCategoryRow>
                     );
                   })}
                 </div>
@@ -994,7 +960,7 @@ export default function Categories({
                           const goalDraft = isEditingGoalTitle ? draftStore.getDraft(getGoalScopeKey(goal.id)) : null;
                           const draftTitle = goalDraft?.working?.title ?? goal.title ?? "";
                           return (
-                            <AccentItem key={goal.id} className="listItem" style={detailAccentVars}>
+                            <AccentCategoryRow key={goal.id} className="listItem" style={detailAccentVars}>
                               <div className="row rowBetween gap8">
                                 <div className="col gap6 minW0">
                                   {isEditingGoalTitle ? (
@@ -1084,7 +1050,7 @@ export default function Categories({
                                   </>
                                 ) : null}
                               </div>
-                            </AccentItem>
+                            </AccentCategoryRow>
                           );
                         })}
                       </div>

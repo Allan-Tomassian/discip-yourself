@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { GateBadge, GateButton, GateRow, GateSection } from "../shared/ui/gate/Gate";
+import { GateBadge, GateButton, GateSection } from "../shared/ui/gate/Gate";
 import SelectControl from "../ui/select/Select";
 import { getCategoryPilotageCounts, getCategoryStatus } from "../logic/pilotage";
 import { getWindowBounds } from "../logic/metrics";
 import { computeWindowStats } from "../logic/progressionModel";
 import { buildReport, exportReportToCSV } from "../logic/reporting";
 import SortableBlocks from "../components/SortableBlocks";
+import AccentCategoryRow from "../components/AccentCategoryRow";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
 import { LABELS } from "../ui/labels";
 import { computeCategoryRadarRows, computePilotageInsights } from "../features/pilotage/radarModel";
@@ -118,20 +119,21 @@ function PilotageCategoryRow({
   ...props
 }) {
   return (
-    <GateRow
-      className="pilotageCategoryRow GateRowPremium GatePressable"
+    <AccentCategoryRow
+      className="pilotageCategoryRow"
+      color={color}
       selected={selected}
       onClick={onClick}
-      right={
+      rightSlot={
         <GateBadge className="pilotageStatusBadge" style={{ ...statusStyle, borderWidth: 1, borderStyle: "solid" }}>
           {statusLabel}
         </GateBadge>
       }
-      style={{ "--pilotageCategoryColor": color || "#6EE7FF" }}
-      label={children}
-      meta={summary}
       {...props}
-    />
+    >
+      <div className="itemTitle">{children}</div>
+      <div className="itemSub">{summary}</div>
+    </AccentCategoryRow>
   );
 }
 
