@@ -1,7 +1,5 @@
-import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
-import { getMicroActionsForToday } from "../../core/microActions/microActionsEngine";
-import { MICRO_ACTIONS_LIBRARY } from "../../core/microActions/microActionsLibrary";
 import "../../features/today/today.css";
 
 function MicroButton({ variant = "primary", className = "", ...props }) {
@@ -10,51 +8,30 @@ function MicroButton({ variant = "primary", className = "", ...props }) {
   return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;
 }
 
-const SEEN_KEY = "microActionsSeen";
-const DONE_KEY = "microActionsDone";
-const SEEN_WINDOW_MS = 24 * 60 * 60 * 1000;
-const BUCKET_MS = 30 * 60 * 1000;
-
-function readStorageList(key) {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(key);
-    const data = raw ? JSON.parse(raw) : [];
-    return Array.isArray(data) ? data : [];
-  } catch (err) {
-    return [];
-  }
+function normalizeItems(items) {
+  const list = Array.isArray(items) ? items : [];
+  return list.filter((item) => item && typeof item === "object");
 }
 
-function writeStorageList(key, list) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(list));
-  } catch (err) {
-    // ignore write errors
-  }
+function normalizeOptions(options) {
+  const list = Array.isArray(options) ? options : [];
+  return list
+    .map((option) => {
+      const value = typeof option?.value === "string" ? option.value : "";
+      if (!value) return null;
+      return {
+        value,
+        label: typeof option?.label === "string" && option.label.trim() ? option.label.trim() : value,
+      };
+    })
+    .filter(Boolean);
 }
 
-function pruneByWindow(list, nowMs, windowMs) {
-  const cutoff = nowMs - windowMs;
-  return list.filter((item) => item && typeof item.ts === "number" && item.ts >= cutoff);
-}
-
-function loadSeenSnapshot(nowMs) {
-  const raw = readStorageList(SEEN_KEY);
-  const pruned = pruneByWindow(raw, nowMs, SEEN_WINDOW_MS);
-  if (pruned.length !== raw.length) writeStorageList(SEEN_KEY, pruned);
-  const ids = new Set(pruned.map((item) => item.id).filter(Boolean));
-  return { list: pruned, ids };
-}
-
-function storeSeenItems(existing, ids, nowMs) {
-  const map = new Map(existing.map((item) => [item.id, item]));
-  ids.forEach((id) => {
-    if (!id) return;
-    map.set(id, { id, ts: nowMs });
-  });
-  return Array.from(map.values());
+function formatRerollCounter({ isPremiumPlan, rerollsUsed, rerollLimit }) {
+  if (isPremiumPlan) return "Premium: rerolls illimités";
+  const used = Math.max(0, Number(rerollsUsed) || 0);
+  const limit = Math.max(0, Number(rerollLimit) || 0);
+  return `Basique: ${Math.min(used, limit)}/${limit} aujourd’hui`;
 }
 
 export default function MicroActionsCard({
@@ -63,107 +40,76 @@ export default function MicroActionsCard({
   listeners,
   attributes,
   categoryId = "",
-  categoryName = "",
-  goalId = "",
-  goalTitle = "",
-  nextOccurrence = null,
-  plannedToday = [],
-  dayMicro = {},
+  categoryOptions = [],
+  items = [],
   microDoneToday = 0,
+  rerollsUsed = 0,
+  rerollCredits = 0,
+  rerollLimit = 3,
+  canWatchAd = false,
+  adLoading = false,
+  adFeedback = "",
+  isPremiumPlan = false,
   canValidate = false,
-  onAddMicroCheck,
-  library = MICRO_ACTIONS_LIBRARY,
+  isMicroToday = true,
+  onCategoryChange,
+  onDone,
+  onReroll,
+  onWatchAd,
+  onUseRerollCredit,
+  onGoToToday,
 }) {
-  const effectiveCategoryId = categoryId || "general";
-  const effectiveCategoryName = categoryName || "Général";
-  const contextLabel = useMemo(() => {
-    if (effectiveCategoryName) return `Pour ta catégorie • ${effectiveCategoryName}`;
-    return "Pour aujourd’hui";
-  }, [effectiveCategoryName]);
-
-  const nowTs = Date.now();
-  const bucket = Math.floor(nowTs / BUCKET_MS);
-  const seedNowMs = bucket * BUCKET_MS;
-  const hourNow = new Date(nowTs).getHours();
-  const [rotationOffset, setRotationOffset] = useState(0);
-  const [seenSnapshot, setSeenSnapshot] = useState(() => loadSeenSnapshot(nowTs));
-  const [flashDoneId, setFlashDoneId] = useState("");
-  const flashTimerRef = useRef(null);
+  const [selectedIndices, setSelectedIndices] = useState([]);
+  const isReadOnlyDate = !isMicroToday;
+  const safeItems = useMemo(() => normalizeItems(items), [items]);
+  const safeOptions = useMemo(() => normalizeOptions(categoryOptions), [categoryOptions]);
+  const usedRerolls = Math.max(0, Number(rerollsUsed) || 0);
+  const safeCredits = Math.max(0, Number(rerollCredits) || 0);
+  const safeLimit = Math.max(0, Number(rerollLimit) || 0);
+  const rerollBlocked = !isPremiumPlan && usedRerolls >= safeLimit;
+  const canReroll = canValidate && !rerollBlocked;
+  const canUseCreditReroll = canValidate && !isPremiumPlan && rerollBlocked && safeCredits > 0;
+  const canWatchRewardedAd = canValidate && !isPremiumPlan && rerollBlocked && safeCredits <= 0 && canWatchAd;
 
   useEffect(() => {
-    setRotationOffset(0);
-    setSeenSnapshot(loadSeenSnapshot(Date.now()));
-  }, [effectiveCategoryId, effectiveCategoryName]);
+    setSelectedIndices((previous) => previous.filter((index) => index >= 0 && index < safeItems.length));
+  }, [safeItems.length]);
 
-  useEffect(() => {
-    setSeenSnapshot(loadSeenSnapshot(Date.now()));
-  }, [bucket]);
+  const selectedCategoryName = useMemo(() => {
+    const hit = safeOptions.find((option) => option.value === categoryId);
+    return hit?.label || "Général";
+  }, [categoryId, safeOptions]);
 
-  const engineContext = useMemo(
-    () => ({
-      categoryId: effectiveCategoryId,
-      categoryName: effectiveCategoryName,
-      hourNow,
-      nowMs: seedNowMs,
-      seedOffset: rotationOffset,
-      seenIds: Array.from(seenSnapshot.ids),
-      library,
-    }),
-    [effectiveCategoryId, effectiveCategoryName, hourNow, seedNowMs, rotationOffset, seenSnapshot.ids, library]
+  const rerollCounterLabel = useMemo(
+    () => formatRerollCounter({ isPremiumPlan, rerollsUsed: usedRerolls, rerollLimit: safeLimit }),
+    [isPremiumPlan, safeLimit, usedRerolls]
   );
 
-  const displayItems = useMemo(() => getMicroActionsForToday(engineContext, 3), [engineContext]);
-
-  useEffect(() => {
-    if (!displayItems.length) return;
-    const now = Date.now();
-    const existing = readStorageList(SEEN_KEY);
-    const updated = storeSeenItems(existing, displayItems.map((item) => item.id), now);
-    const pruned = pruneByWindow(updated, now, SEEN_WINDOW_MS);
-    writeStorageList(SEEN_KEY, pruned);
-  }, [displayItems]);
-
-  const handleRotate = useCallback(() => {
-    setSeenSnapshot(loadSeenSnapshot(Date.now()));
-    setRotationOffset((value) => value + 1);
+  const toggleSlot = useCallback((index) => {
+    setSelectedIndices((previous) => {
+      if (previous.includes(index)) return previous.filter((item) => item !== index);
+      return [...previous, index].sort((a, b) => a - b);
+    });
   }, []);
 
-  const logDone = useCallback(
-    (item) => {
-      const now = Date.now();
-      const list = readStorageList(DONE_KEY);
-      const entry = {
-        id: item.id,
-        ts: now,
-        categoryId: effectiveCategoryId,
-        goalId,
-        actionTitle: goalTitle || "",
-      };
-      writeStorageList(DONE_KEY, [...list, entry].slice(-200));
-    },
-    [categoryId, goalId, goalTitle, nextOccurrence?.actionTitle]
-  );
+  const handleReroll = useCallback(() => {
+    if (!canReroll) return;
+    onReroll?.(selectedIndices);
+    setSelectedIndices([]);
+  }, [canReroll, onReroll, selectedIndices]);
 
-  const handleActionClick = useCallback(
-    (item, canAdd) => {
-      if (!canAdd) return;
-      onAddMicroCheck?.(item.id);
-      logDone(item);
-      setFlashDoneId(item.id);
-      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
-      flashTimerRef.current = window.setTimeout(() => {
-        setFlashDoneId((prev) => (prev === item.id ? "" : prev));
-      }, 1500);
-    },
-    [logDone, onAddMicroCheck]
-  );
-
-  useEffect(() => () => {
-    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
-  }, []);
+  const handleUseRerollCredit = useCallback(() => {
+    if (!canUseCreditReroll) return;
+    onUseRerollCredit?.(selectedIndices);
+    setSelectedIndices([]);
+  }, [canUseCreditReroll, onUseRerollCredit, selectedIndices]);
 
   return (
-    <GateSection className="microCard GateSurfacePremium GateCardPremium" collapsible={false} data-tour-id="today-micro-card">
+    <GateSection
+      className={`microCard GateSurfacePremium GateCardPremium${isReadOnlyDate ? " isReadOnlyDate" : ""}`}
+      collapsible={false}
+      data-tour-id="today-micro-card"
+    >
       <div className="microCardBody">
         <div className="microHeader">
           <div className="cardSectionTitleRow">
@@ -180,45 +126,126 @@ export default function MicroActionsCard({
             ) : null}
             <div className="cardSectionTitle">Micro-actions</div>
           </div>
-          <button
-            type="button"
-            className="microRotateBtn GateIconButtonPremium GatePressable"
-            onClick={handleRotate}
-            aria-label="Changer"
-            title="Changer"
-          >
-            ↻
-          </button>
+          <div className="microHeaderStats">
+            <span className="microDoneStat" aria-label="Micro-actions validées aujourd’hui">
+              {microDoneToday}/3
+            </span>
+          </div>
         </div>
-        <div className="microContext">{contextLabel}</div>
+
+        <div className="microToolbar">
+          <div className="microContext">Pour ta catégorie • {selectedCategoryName}</div>
+          <div className="GateSelectWrap microCategorySelectWrap">
+            <select
+              value={categoryId}
+              className="GateSelectPremium microCategorySelect"
+              onChange={(event) => onCategoryChange?.(event.target.value)}
+              aria-label="Catégorie des micro-actions"
+              disabled={isReadOnlyDate}
+            >
+              {safeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        {isReadOnlyDate ? (
+          <div className="microTodayHintRow" data-testid="micro-actions-today-hint">
+            <span className="microTodayHintText">Micro-actions disponibles uniquement aujourd’hui.</span>
+            <MicroButton
+              variant="ghost"
+              className="microGoTodayBtn"
+              onClick={() => onGoToToday?.()}
+              data-testid="micro-actions-go-today"
+              aria-label="Revenir à aujourd’hui"
+            >
+              Revenir à aujourd’hui
+            </MicroButton>
+          </div>
+        ) : null}
+
         <div className="microList">
-          {displayItems.map((item) => {
-            const isDone = Boolean(dayMicro?.[item.id]);
-            const isFlashing = flashDoneId === item.id;
-            const canAdd = canValidate && microDoneToday < 3 && !isDone;
+          {safeItems.map((item, index) => {
+            const isSelected = selectedIndices.includes(index);
+            const isDone = item.status === "done";
             return (
-              <div key={item.id} className="microItem">
+              <div key={item.id || `${item.title}-${index}`} className="microItem" data-tour-id="today-micro-item">
+                <label className="microPick" aria-label={`Sélectionner ${item.title} pour reroll`}>
+                  <input
+                    type="checkbox"
+                    className="microPickInput"
+                    checked={isSelected}
+                    onChange={() => toggleSlot(index)}
+                    disabled={!(canReroll || canUseCreditReroll)}
+                    data-tour-id="today-micro-select"
+                  />
+                  <span className="microPickMark" aria-hidden="true">✓</span>
+                </label>
                 <div className="microItemMain">
                   <div className="microItemTitle">{item.title}</div>
                   {item.subtitle ? <div className="microItemSub">{item.subtitle}</div> : null}
                 </div>
-                <span className="microBadge">{item.durationMin} min</span>
+                <span className="microBadge">{item.durationMin || 2} min</span>
                 <MicroButton
                   variant="ghost"
                   className="microActionBtn"
-                  onClick={() => handleActionClick(item, canAdd)}
-                  disabled={!canAdd}
-                  aria-label={isDone || isFlashing ? "Déjà fait" : "Faire"}
-                  title={
-                    isDone || isFlashing ? "Déjà fait" : microDoneToday >= 3 ? "Limite atteinte (3/jour)" : "Faire"
-                  }
+                  onClick={() => onDone?.(index)}
+                  disabled={!canValidate || isDone}
+                  aria-label={isDone ? "Déjà fait" : `Valider: ${item.title}`}
+                  data-tour-id="today-micro-done"
                 >
-                  {isDone || isFlashing ? "Fait" : "Faire"}
+                  {isDone ? "Fait" : "Fait"}
                 </MicroButton>
               </div>
             );
           })}
         </div>
+
+        <div className="microRerollRow">
+          <MicroButton
+            variant="ghost"
+            className="microRerollBtn"
+            onClick={handleReroll}
+            disabled={!canReroll}
+            aria-label="Reroll des micro-actions"
+            data-tour-id="today-micro-toggle"
+          >
+            Reroll
+          </MicroButton>
+          {canUseCreditReroll ? (
+            <MicroButton
+              variant="ghost"
+              className="microUseCreditBtn"
+              onClick={handleUseRerollCredit}
+              aria-label="Utiliser un crédit reroll"
+              data-testid="micro-use-reroll-credit"
+            >
+              Utiliser 1 reroll
+            </MicroButton>
+          ) : null}
+          {!isPremiumPlan && rerollBlocked && safeCredits <= 0 ? (
+            <MicroButton
+              variant="ghost"
+              className="microWatchAdBtn"
+              onClick={() => onWatchAd?.()}
+              disabled={!canWatchRewardedAd || adLoading}
+              aria-label="Regarder une vidéo pour débloquer un reroll"
+              data-testid="micro-watch-ad"
+            >
+              {adLoading ? "Vidéo..." : "Regarder une vidéo"}
+            </MicroButton>
+          ) : null}
+          <span className="microRerollMeta">{rerollCounterLabel}</span>
+        </div>
+
+        {rerollBlocked ? <div className="microRerollLimit">Limite atteinte aujourd’hui.</div> : null}
+        {adFeedback ? (
+          <div className="microRewardStatus" role="status">
+            {adFeedback}
+          </div>
+        ) : null}
       </div>
     </GateSection>
   );

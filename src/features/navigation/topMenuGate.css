@@ -5,16 +5,18 @@
 .topNavGateWrap {
   padding: 0;
   position: relative;
-  z-index: 900; /* topbar sous les overlays de menu */
+  z-index: var(--z-topbar, 900); /* topbar sous les overlays de menu */
 }
 
 .TopNavSurfaceOuter {
-  --gate-glass-radius: var(--radius-card, 16px);
-  --gate-glass-shadow: 0 14px 28px rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-card, 16px);
+  position: relative;
 }
 
 .TopNavSurfaceClip {
   position: relative;
+  border-radius: inherit;
+  overflow: hidden;
 }
 
 .TopNavSurfaceClip.TopNavBackdrop {
@@ -26,19 +28,9 @@
 }
 
 .topNavGateBar {
-  --gate-surface-1: color-mix(in srgb, var(--surface-3, #1b202b) 92%, #090d14);
-  --gate-surface-2: color-mix(in srgb, var(--surface-2, #151b24) 90%, #070b11);
-  --gate-border: color-mix(in srgb, var(--border-subtle, var(--border)) 92%, rgba(255, 255, 255, 0.18));
-  border: 1px solid var(--gate-border);
   border-radius: inherit;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--gate-surface-1) 78%, transparent),
-    color-mix(in srgb, var(--gate-surface-2) 84%, transparent)
-  );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  padding: 8px;
   gap: 0;
+  min-height: 0;
   position: relative;
   z-index: 1;
 }
@@ -99,6 +91,17 @@
   opacity: 0.9;
 }
 
+.topNavWalletBadge {
+  flex: 0 0 auto;
+  min-width: 84px;
+}
+
+.topNavWalletTrigger {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+}
+
 .topMenuGatePopover {
   position: relative;
   width: 100%;
@@ -109,10 +112,8 @@
 .topMenuScrim {
   position: fixed;
   inset: 0;
-  z-index: 1200; /* scrim derrière le popover */
-  background: color-mix(in srgb, #05070c 56%, transparent);
-  backdrop-filter: blur(10px) saturate(1.08);
-  -webkit-backdrop-filter: blur(10px) saturate(1.08);
+  z-index: var(--z-scrim, 1200); /* scrim derrière le popover */
+  background: rgba(0, 0, 0, 0.28);
 }
 
 .topMenuPopoverLayer {
@@ -120,8 +121,7 @@
   --safeBottom: env(safe-area-inset-bottom, 0px);
   --topMenuMaxH: calc(100dvh - 120px - (16px + var(--safeBottom)));
   position: fixed;
-  z-index: 1210; /* popover au-dessus du scrim */
-  transform: translateX(-50%);
+  z-index: var(--z-popover, 1210); /* popover au-dessus du scrim */
   max-width: calc(100vw - 32px);
   box-sizing: border-box;
   pointer-events: auto;
@@ -131,19 +131,34 @@
 
 .topMenuPopoverLayer > * {
   max-height: var(--topMenuMaxH);
+  overflow: visible;
+}
+
+.topMenuCardOuter {
+  border-radius: 16px;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.36);
+}
+
+.topMenuCardClip {
+  position: relative;
+  border-radius: inherit;
+  overflow: hidden;
+  background: transparent;
+  backdrop-filter: blur(12px) saturate(1.08);
+  -webkit-backdrop-filter: blur(12px) saturate(1.08);
+}
+
+.topMenuCardContent {
+  position: relative;
+  z-index: 1;
+  max-height: var(--topMenuMaxH);
   overflow: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
 
 .topMenuGate {
-  --gate-surface-1: color-mix(in srgb, var(--surface-3, #1b202b) 94%, #070b12);
-  --gate-surface-2: color-mix(in srgb, var(--surface-2, #151b24) 92%, #05080f);
-  --gate-border: color-mix(in srgb, var(--border-subtle, var(--border)) 90%, rgba(255, 255, 255, 0.18));
-  --gate-text-muted: color-mix(in srgb, var(--text-3, rgba(255, 255, 255, 0.56)) 90%, rgba(255, 255, 255, 0.76));
-  border-radius: 14px;
-  padding: 10px;
-  gap: 10px;
+  border-radius: inherit;
   min-height: 0;
 }
 
@@ -286,6 +301,261 @@
 
 .topMenuSubviewActions {
   margin-top: 2px;
+}
+
+.topMenuWalletBalance {
+  width: fit-content;
+}
+
+.topMenuWalletBalance .WalletBadgeCard {
+  min-height: 32px;
+  padding-inline: 12px;
+}
+
+.topMenuWalletStats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.topMenuWalletTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.topMenuWalletTopBtn {
+  min-width: 96px;
+  justify-content: center;
+}
+
+.topMenuWalletStat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid color-mix(in srgb, var(--gate-border) 90%, rgba(255, 255, 255, 0.11));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--gate-surface-2) 88%, #050a12);
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--gate-text-muted);
+}
+
+.topMenuWalletStat strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gate-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.topMenuWalletEvents {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.topMenuWalletEventsTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gate-text);
+}
+
+.topMenuWalletEvent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--gate-border) 90%, rgba(255, 255, 255, 0.09));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--gate-surface-2) 90%, #050910);
+  padding: 8px 10px;
+}
+
+.topMenuWalletEventText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.topMenuWalletEventLabel {
+  font-size: 12px;
+  color: var(--gate-text);
+}
+
+.topMenuWalletEventMeta {
+  font-size: 11px;
+  color: var(--gate-text-muted);
+}
+
+.topMenuWalletEventAmount {
+  font-size: 12px;
+  font-weight: 700;
+  color: color-mix(in srgb, #f5d59f 82%, var(--gate-text));
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.topMenuWalletEventsEmpty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--gate-text-muted);
+}
+
+.topMenuTotemPreview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topMenuTotemAvatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--gate-border) 86%, rgba(255, 255, 255, 0.18));
+  background: color-mix(in srgb, var(--totem-body-color) 24%, var(--gate-surface-1));
+  display: inline-grid;
+  place-items: center;
+  position: relative;
+}
+
+.topMenuTotemGlyph {
+  font-size: 24px;
+  line-height: 1;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.3));
+}
+
+.topMenuTotemAccessory {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  font-size: 14px;
+}
+
+.topMenuTotemSummary {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.topMenuTotemBalance {
+  font-size: 14px;
+  font-weight: 700;
+  color: color-mix(in srgb, #f5d59f 82%, var(--gate-text));
+  font-variant-numeric: tabular-nums;
+}
+
+.topMenuTotemMeta {
+  font-size: 12px;
+  color: var(--gate-text-muted);
+}
+
+.topMenuTotemToggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--gate-text-muted);
+}
+
+.topMenuTotemToggleBtn {
+  min-width: 110px;
+  justify-content: center;
+}
+
+.topMenuTotemSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.topMenuTotemSectionTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gate-text);
+}
+
+.topMenuTotemGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.topMenuTotemCard {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid color-mix(in srgb, var(--gate-border) 90%, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+  padding: 8px 9px;
+  background: color-mix(in srgb, var(--gate-surface-2) 89%, #050a12);
+}
+
+.topMenuTotemSwatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  flex: 0 0 auto;
+}
+
+.topMenuTotemAccessoryBadge {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: inline-grid;
+  place-items: center;
+  font-size: 12px;
+  flex: 0 0 auto;
+}
+
+.topMenuTotemCardText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+}
+
+.topMenuTotemCardText strong {
+  font-size: 12px;
+  color: var(--gate-text);
+}
+
+.topMenuTotemCardText span {
+  font-size: 11px;
+  color: var(--gate-text-muted);
+}
+
+.topMenuTotemActionBtn {
+  min-width: 84px;
+  justify-content: center;
+}
+
+.topMenuSettingsField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.topMenuSettingsLabel {
+  font-size: 12px;
+  color: var(--gate-text-muted);
+}
+
+.topMenuSettingsTextarea {
+  min-height: 110px;
+}
+
+.topMenuSettingsStatus {
+  margin: 0;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--accent) 70%, var(--gate-text));
 }
 
 @media (max-width: 520px) {

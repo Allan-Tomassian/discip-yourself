@@ -1,0 +1,2325 @@
+{
+  "generatedAt": "2026-02-17T23:41:07.090Z",
+  "scope": "src/**",
+  "filesScanned": 204,
+  "metrics": [
+    {
+      "id": "metrics.computeStats",
+      "name": "computeStats",
+      "area": "core-metrics",
+      "token": "computeStats",
+      "inputs": [
+        "occurrences[].status",
+        "occurrences[].pointsAwarded"
+      ],
+      "updateCadence": "recompute in useMemo / report generation",
+      "definitions": [
+        {
+          "file": "src/logic/metrics.js",
+          "line": 135,
+          "snippet": "export function computeStats(occurrences, { goals } = {}) {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 4,
+          "snippet": "computeStats,"
+        },
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 49,
+          "snippet": "const stats = computeStats(list);"
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 135,
+          "snippet": "export function computeStats(occurrences, { goals } = {}) {"
+        },
+        {
+          "file": "src/logic/metrics.test.js",
+          "line": 2,
+          "snippet": "import { computeDailyStats, computeStats, getWindowBounds, selectOccurrencesInRange } from \"./metrics\";"
+        },
+        {
+          "file": "src/logic/metrics.test.js",
+          "line": 22,
+          "snippet": "const stats = computeStats(occurrences);"
+        },
+        {
+          "file": "src/logic/metrics.test.js",
+          "line": 32,
+          "snippet": "const stats = computeStats([]);"
+        },
+        {
+          "file": "src/logic/metrics.test.js",
+          "line": 47,
+          "snippet": "const stats = computeStats(list);"
+        },
+        {
+          "file": "src/logic/metrics.test.js",
+          "line": 66,
+          "snippet": "const stats = computeStats(list);"
+        },
+        {
+          "file": "src/logic/reporting.js",
+          "line": 2,
+          "snippet": "import { computeDailyStats, computeGoalStats, computeStats, selectOccurrencesInRange } from \"./metrics\";"
+        },
+        {
+          "file": "src/logic/reporting.js",
+          "line": 81,
+          "snippet": "const totals = toPlainStats(computeStats(occurrences));"
+        },
+        {
+          "file": "src/logic/reporting.test.js",
+          "line": 2,
+          "snippet": "import { computeStats, selectOccurrencesInRange } from \"./metrics\";"
+        },
+        {
+          "file": "src/logic/reporting.test.js",
+          "line": 28,
+          "snippet": "const stats = computeStats(list);"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 8,
+          "snippet": "computeStats,"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 253,
+          "snippet": "return computeStats(list);"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 310,
+          "snippet": "return computeStats(list);"
+        }
+      ],
+      "usageFiles": [
+        "src/features/pilotage/radarModel.js",
+        "src/logic/metrics.js",
+        "src/logic/metrics.test.js",
+        "src/logic/reporting.js",
+        "src/logic/reporting.test.js",
+        "src/pages/Pilotage.jsx"
+      ],
+      "displayedIn": [],
+      "usageCount": 15
+    },
+    {
+      "id": "metrics.computeDailyStats",
+      "name": "computeDailyStats",
+      "area": "core-metrics",
+      "token": "computeDailyStats",
+      "inputs": [
+        "occurrences[] in [from,to]",
+        "filters.categoryId",
+        "filters.goalIds"
+      ],
+      "updateCadence": "recompute when window/filter changes",
+      "definitions": [
+        {
+          "file": "src/logic/metrics.js",
+          "line": 143,
+          "snippet": "export function computeDailyStats(state, fromKey, toKey, filters = {}) {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 2,
+          "snippet": "computeDailyStats,"
+        },
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 50,
+          "snippet": "const daily = computeDailyStats(safeState, fromKey, toKey, { categoryId: category.id });"
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 143,
+          "snippet": "export function computeDailyStats(state, fromKey, toKey, filters = {}) {"
+        },
+        {
+          "file": "src/logic/metrics.test.js",
+          "line": 2,
+          "snippet": "import { computeDailyStats, computeStats, getWindowBounds, selectOccurrencesInRange } from \"./metrics\";"
+        },
+        {
+          "file": "src/logic/metrics.test.js",
+          "line": 98,
+          "snippet": "it(\"computeDailyStats includes both ends of the window\", () => {"
+        },
+        {
+          "file": "src/logic/metrics.test.js",
+          "line": 105,
+          "snippet": "const daily = computeDailyStats(state, \"2026-02-01\", \"2026-02-02\");"
+        },
+        {
+          "file": "src/logic/metrics.test.js",
+          "line": 110,
+          "snippet": "it(\"computeDailyStats is idempotent and does not mutate input\", () => {"
+        },
+        {
+          "file": "src/logic/metrics.test.js",
+          "line": 119,
+          "snippet": "const first = computeDailyStats(state, \"2026-02-01\", \"2026-02-02\");"
+        },
+        {
+          "file": "src/logic/metrics.test.js",
+          "line": 120,
+          "snippet": "const second = computeDailyStats(state, \"2026-02-01\", \"2026-02-02\");"
+        },
+        {
+          "file": "src/logic/reporting.js",
+          "line": 2,
+          "snippet": "import { computeDailyStats, computeGoalStats, computeStats, selectOccurrencesInRange } from \"./metrics\";"
+        },
+        {
+          "file": "src/logic/reporting.js",
+          "line": 83,
+          "snippet": "const daily = computeDailyStats(state, from, to, filters);"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 7,
+          "snippet": "computeDailyStats,"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 247,
+          "snippet": "() => computeDailyStats(safeData, weekBounds.fromKey, weekBounds.toKey),"
+        }
+      ],
+      "usageFiles": [
+        "src/features/pilotage/radarModel.js",
+        "src/logic/metrics.js",
+        "src/logic/metrics.test.js",
+        "src/logic/reporting.js",
+        "src/pages/Pilotage.jsx"
+      ],
+      "displayedIn": [
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 50,
+          "snippet": "const daily = computeDailyStats(safeState, fromKey, toKey, { categoryId: category.id });"
+        }
+      ],
+      "usageCount": 13
+    },
+    {
+      "id": "metrics.computeGoalStats",
+      "name": "computeGoalStats",
+      "area": "core-metrics",
+      "token": "computeGoalStats",
+      "inputs": [
+        "occurrences[]",
+        "window",
+        "filters"
+      ],
+      "updateCadence": "report/radar computation",
+      "definitions": [
+        {
+          "file": "src/logic/metrics.js",
+          "line": 172,
+          "snippet": "export function computeGoalStats(state, fromKey, toKey, filters = {}) {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 3,
+          "snippet": "computeGoalStats,"
+        },
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 66,
+          "snippet": "const byGoal = computeGoalStats(safeState, fromKey, toKey, { categoryId: category.id });"
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 172,
+          "snippet": "export function computeGoalStats(state, fromKey, toKey, filters = {}) {"
+        },
+        {
+          "file": "src/logic/reporting.js",
+          "line": 2,
+          "snippet": "import { computeDailyStats, computeGoalStats, computeStats, selectOccurrencesInRange } from \"./metrics\";"
+        },
+        {
+          "file": "src/logic/reporting.js",
+          "line": 88,
+          "snippet": "const goalsMap = computeGoalStats(state, from, to, filters);"
+        }
+      ],
+      "usageFiles": [
+        "src/features/pilotage/radarModel.js",
+        "src/logic/metrics.js",
+        "src/logic/reporting.js"
+      ],
+      "displayedIn": [
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 66,
+          "snippet": "const byGoal = computeGoalStats(safeState, fromKey, toKey, { categoryId: category.id });"
+        }
+      ],
+      "usageCount": 5
+    },
+    {
+      "id": "metrics.computeDisciplineScore",
+      "name": "computeDisciplineScore",
+      "area": "discipline",
+      "token": "computeDisciplineScore",
+      "inputs": [
+        "occurrences[].status",
+        "occurrences[].date",
+        "todayKey"
+      ],
+      "updateCadence": "Home disciplineBreakdown useMemo",
+      "definitions": [
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 51,
+          "snippet": "export function computeDisciplineScore(occurrences, todayKeyValue) {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 51,
+          "snippet": "export function computeDisciplineScore(occurrences, todayKeyValue) {"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 108,
+          "snippet": "const empty = computeDisciplineScore([], today);"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 110,
+          "snippet": "const doneToday = computeDisciplineScore([{ date: today, status: \"done\" }], today);"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 112,
+          "snippet": "const missedYesterday = computeDisciplineScore([{ date: \"2026-01-26\", status: \"planned\" }], today);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 23,
+          "snippet": "import { computeDisciplineScore } from \"../logic/pilotage\";"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 851,
+          "snippet": "const disciplineBase = computeDisciplineScore(occurrences, localTodayKey);"
+        }
+      ],
+      "usageFiles": [
+        "src/logic/pilotage.js",
+        "src/pages/Home.jsx"
+      ],
+      "displayedIn": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 23,
+          "snippet": "import { computeDisciplineScore } from \"../logic/pilotage\";"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 851,
+          "snippet": "const disciplineBase = computeDisciplineScore(occurrences, localTodayKey);"
+        }
+      ],
+      "usageCount": 6
+    },
+    {
+      "id": "metrics.computeDisciplineScoreWindow",
+      "name": "computeDisciplineScoreWindow",
+      "area": "discipline",
+      "token": "computeDisciplineScoreWindow",
+      "inputs": [
+        "occurrences[].status",
+        "windowKeys",
+        "todayKey"
+      ],
+      "updateCadence": "pilotage summary windows",
+      "definitions": [
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 77,
+          "snippet": "export function computeDisciplineScoreWindow(occurrences, windowKeys, todayKeyValue) {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 77,
+          "snippet": "export function computeDisciplineScoreWindow(occurrences, windowKeys, todayKeyValue) {"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 392,
+          "snippet": "const score7 = computeDisciplineScoreWindow(occurrences, last7Keys, todayStr);"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 393,
+          "snippet": "const score30 = computeDisciplineScoreWindow(occurrences, last30Keys, todayStr);"
+        }
+      ],
+      "usageFiles": [
+        "src/logic/pilotage.js"
+      ],
+      "displayedIn": [],
+      "usageCount": 3
+    },
+    {
+      "id": "pilotage.getCategoryStatus",
+      "name": "getCategoryStatus",
+      "area": "pilotage",
+      "token": "getCategoryStatus",
+      "inputs": [
+        "goals by category",
+        "occurrences status/date"
+      ],
+      "updateCadence": "Pilotage category list",
+      "definitions": [
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 163,
+          "snippet": "export function getCategoryStatus(data, categoryId, nowDate = new Date()) {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 163,
+          "snippet": "export function getCategoryStatus(data, categoryId, nowDate = new Date()) {"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 5,
+          "snippet": "import { getCategoryPilotageCounts, getCategoryStatus } from \"../logic/pilotage\";"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 238,
+          "snippet": "map.set(c.id, getCategoryStatus(safeData, c.id, now));"
+        }
+      ],
+      "usageFiles": [
+        "src/logic/pilotage.js",
+        "src/pages/Pilotage.jsx"
+      ],
+      "displayedIn": [
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 5,
+          "snippet": "import { getCategoryPilotageCounts, getCategoryStatus } from \"../logic/pilotage\";"
+        }
+      ],
+      "usageCount": 3
+    },
+    {
+      "id": "pilotage.getLoadSummary",
+      "name": "getLoadSummary",
+      "area": "pilotage",
+      "token": "getLoadSummary",
+      "inputs": [
+        "process goals",
+        "occurrences statuses"
+      ],
+      "updateCadence": "utility (currently not wired in page)",
+      "definitions": [
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 233,
+          "snippet": "export function getLoadSummary(data, nowDate = new Date()) {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 233,
+          "snippet": "export function getLoadSummary(data, nowDate = new Date()) {"
+        }
+      ],
+      "usageFiles": [
+        "src/logic/pilotage.js"
+      ],
+      "displayedIn": [],
+      "usageCount": 1
+    },
+    {
+      "id": "pilotage.getDisciplineSummary",
+      "name": "getDisciplineSummary",
+      "area": "pilotage",
+      "token": "getDisciplineSummary",
+      "inputs": [
+        "process goals",
+        "occurrences statuses"
+      ],
+      "updateCadence": "utility (currently not wired in page)",
+      "definitions": [
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 284,
+          "snippet": "export function getDisciplineSummary(data, nowDate = new Date()) {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 284,
+          "snippet": "export function getDisciplineSummary(data, nowDate = new Date()) {"
+        }
+      ],
+      "usageFiles": [
+        "src/logic/pilotage.js"
+      ],
+      "displayedIn": [],
+      "usageCount": 1
+    },
+    {
+      "id": "pilotage.getDisciplineStreak7d",
+      "name": "getDisciplineStreak7d",
+      "area": "pilotage",
+      "token": "getDisciplineStreak7d",
+      "inputs": [
+        "process goals",
+        "past week occurrences"
+      ],
+      "updateCadence": "utility (currently not wired in page)",
+      "definitions": [
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 453,
+          "snippet": "export function getDisciplineStreak7d(data, nowDate = new Date()) {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 453,
+          "snippet": "export function getDisciplineStreak7d(data, nowDate = new Date()) {"
+        }
+      ],
+      "usageFiles": [
+        "src/logic/pilotage.js"
+      ],
+      "displayedIn": [],
+      "usageCount": 1
+    },
+    {
+      "id": "radar.computeCategoryRadarRows",
+      "name": "computeCategoryRadarRows",
+      "area": "pilotage-radar",
+      "token": "computeCategoryRadarRows",
+      "inputs": [
+        "computeStats by category",
+        "computeDailyStats by category",
+        "computeGoalStats by category"
+      ],
+      "updateCadence": "Pilotage radar selection/window changes",
+      "definitions": [
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 41,
+          "snippet": "export function computeCategoryRadarRows(state, fromKey, toKey) {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 41,
+          "snippet": "export function computeCategoryRadarRows(state, fromKey, toKey) {"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 16,
+          "snippet": "import { computeCategoryRadarRows, computePilotageInsights } from \"../features/pilotage/radarModel\";"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 316,
+          "snippet": "return computeCategoryRadarRows(safeData, radarWindow.fromKey, radarWindow.toKey);"
+        }
+      ],
+      "usageFiles": [
+        "src/features/pilotage/radarModel.js",
+        "src/pages/Pilotage.jsx"
+      ],
+      "displayedIn": [
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 41,
+          "snippet": "export function computeCategoryRadarRows(state, fromKey, toKey) {"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 16,
+          "snippet": "import { computeCategoryRadarRows, computePilotageInsights } from \"../features/pilotage/radarModel\";"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 316,
+          "snippet": "return computeCategoryRadarRows(safeData, radarWindow.fromKey, radarWindow.toKey);"
+        }
+      ],
+      "usageCount": 3
+    },
+    {
+      "id": "radar.computePilotageInsights",
+      "name": "computePilotageInsights",
+      "area": "pilotage-radar",
+      "token": "computePilotageInsights",
+      "inputs": [
+        "occurrences + goal/category mapping + time buckets"
+      ],
+      "updateCadence": "Pilotage radar window changes",
+      "definitions": [
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 92,
+          "snippet": "export function computePilotageInsights(state, fromKey, toKey) {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 92,
+          "snippet": "export function computePilotageInsights(state, fromKey, toKey) {"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 16,
+          "snippet": "import { computeCategoryRadarRows, computePilotageInsights } from \"../features/pilotage/radarModel\";"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 437,
+          "snippet": "return computePilotageInsights(safeData, radarWindow.fromKey, radarWindow.toKey);"
+        }
+      ],
+      "usageFiles": [
+        "src/features/pilotage/radarModel.js",
+        "src/pages/Pilotage.jsx"
+      ],
+      "displayedIn": [
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 92,
+          "snippet": "export function computePilotageInsights(state, fromKey, toKey) {"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 16,
+          "snippet": "import { computeCategoryRadarRows, computePilotageInsights } from \"../features/pilotage/radarModel\";"
+        }
+      ],
+      "usageCount": 3
+    },
+    {
+      "id": "home.coreProgress",
+      "name": "coreProgress",
+      "area": "today",
+      "token": "coreProgress",
+      "inputs": [
+        "activeHabits",
+        "doneHabitIds",
+        "selectedGoal.status"
+      ],
+      "updateCadence": "Home render/memo on selected date",
+      "definitions": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 833,
+          "snippet": "const coreProgress = useMemo(() => {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 833,
+          "snippet": "const coreProgress = useMemo(() => {"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 847,
+          "snippet": "const habitsDoneCount = Math.max(0, coreProgress.done - (goalDone ? 1 : 0));"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1439,
+          "snippet": "width: `${Math.round(coreProgress.ratio * 100)}%`,"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1447,
+          "snippet": "{coreProgress.done}/{coreProgress.total || 0}"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1742,
+          "snippet": "<div className=\"titleSm\">{coreProgress.done}/{coreProgress.total || 0}</div>"
+        }
+      ],
+      "usageFiles": [
+        "src/pages/Home.jsx"
+      ],
+      "displayedIn": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 833,
+          "snippet": "const coreProgress = useMemo(() => {"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1439,
+          "snippet": "width: `${Math.round(coreProgress.ratio * 100)}%`,"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1447,
+          "snippet": "{coreProgress.done}/{coreProgress.total || 0}"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1742,
+          "snippet": "<div className=\"titleSm\">{coreProgress.done}/{coreProgress.total || 0}</div>"
+        }
+      ],
+      "usageCount": 5
+    },
+    {
+      "id": "home.disciplineBreakdown",
+      "name": "disciplineBreakdown",
+      "area": "today",
+      "token": "disciplineBreakdown",
+      "inputs": [
+        "computeDisciplineScore",
+        "microChecks 14j",
+        "outcomes done 90j"
+      ],
+      "updateCadence": "Home render/memo",
+      "definitions": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 849,
+          "snippet": "const disciplineBreakdown = useMemo(() => {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 849,
+          "snippet": "const disciplineBreakdown = useMemo(() => {"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1474,
+          "snippet": "width: `${Math.round(disciplineBreakdown.ratio * 100)}%`,"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1482,
+          "snippet": "{disciplineBreakdown.score}%"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1761,
+          "snippet": "<div className=\"titleSm\">{disciplineBreakdown.habitDaysKept14} jours tenus</div>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1765,
+          "snippet": "<div className=\"titleSm\">{disciplineBreakdown.microDone14}/{disciplineBreakdown.microMax14}</div>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1769,
+          "snippet": "<div className=\"titleSm\">{Math.round(disciplineBreakdown.reliabilityRatio * 100)}%</div>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1773,
+          "snippet": "<div className=\"titleSm\">{disciplineBreakdown.score}%</div>"
+        }
+      ],
+      "usageFiles": [
+        "src/pages/Home.jsx"
+      ],
+      "displayedIn": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 849,
+          "snippet": "const disciplineBreakdown = useMemo(() => {"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1474,
+          "snippet": "width: `${Math.round(disciplineBreakdown.ratio * 100)}%`,"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1482,
+          "snippet": "{disciplineBreakdown.score}%"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1761,
+          "snippet": "<div className=\"titleSm\">{disciplineBreakdown.habitDaysKept14} jours tenus</div>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1765,
+          "snippet": "<div className=\"titleSm\">{disciplineBreakdown.microDone14}/{disciplineBreakdown.microMax14}</div>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1769,
+          "snippet": "<div className=\"titleSm\">{Math.round(disciplineBreakdown.reliabilityRatio * 100)}%</div>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1773,
+          "snippet": "<div className=\"titleSm\">{disciplineBreakdown.score}%</div>"
+        }
+      ],
+      "usageCount": 7
+    },
+    {
+      "id": "home.microDoneToday",
+      "name": "microDoneToday",
+      "area": "today-micro-actions",
+      "token": "microDoneToday",
+      "inputs": [
+        "microChecks[selectedDate]"
+      ],
+      "updateCadence": "Home render/memo",
+      "definitions": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 827,
+          "snippet": "const microDoneToday = useMemo(() => {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 827,
+          "snippet": "const microDoneToday = useMemo(() => {"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1389,
+          "snippet": "if (microDoneToday >= 3) return;"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1568,
+          "snippet": "microDoneToday={microDoneToday}"
+        },
+        {
+          "file": "src/ui/today/MicroActionsCard.jsx",
+          "line": 72,
+          "snippet": "microDoneToday = 0,"
+        },
+        {
+          "file": "src/ui/today/MicroActionsCard.jsx",
+          "line": 198,
+          "snippet": "const canAdd = canValidate && microDoneToday < 3 && !isDone;"
+        },
+        {
+          "file": "src/ui/today/MicroActionsCard.jsx",
+          "line": 213,
+          "snippet": "isDone || isFlashing ? \"Déjà fait\" : microDoneToday >= 3 ? \"Limite atteinte (3/jour)\" : \"Faire\""
+        }
+      ],
+      "usageFiles": [
+        "src/pages/Home.jsx",
+        "src/ui/today/MicroActionsCard.jsx"
+      ],
+      "displayedIn": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 827,
+          "snippet": "const microDoneToday = useMemo(() => {"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1568,
+          "snippet": "microDoneToday={microDoneToday}"
+        },
+        {
+          "file": "src/ui/today/MicroActionsCard.jsx",
+          "line": 198,
+          "snippet": "const canAdd = canValidate && microDoneToday < 3 && !isDone;"
+        },
+        {
+          "file": "src/ui/today/MicroActionsCard.jsx",
+          "line": 213,
+          "snippet": "isDone || isFlashing ? \"Déjà fait\" : microDoneToday >= 3 ? \"Limite atteinte (3/jour)\" : \"Faire\""
+        }
+      ],
+      "usageCount": 6
+    },
+    {
+      "id": "library.habitWeekStats",
+      "name": "habitWeekStats",
+      "area": "library",
+      "token": "habitWeekStats",
+      "inputs": [
+        "process goals in category",
+        "occurrences this week"
+      ],
+      "updateCadence": "CategoryManageInline render/memo",
+      "definitions": [
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 90,
+          "snippet": "const habitWeekStats = useMemo(() => {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 90,
+          "snippet": "const habitWeekStats = useMemo(() => {"
+        },
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 559,
+          "snippet": "const stat = habitWeekStats.get(goal.id) || { planned: 0, done: 0, ratio: 0 };"
+        }
+      ],
+      "usageFiles": [
+        "src/features/library/CategoryManageInline.jsx"
+      ],
+      "displayedIn": [
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 90,
+          "snippet": "const habitWeekStats = useMemo(() => {"
+        },
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 559,
+          "snippet": "const stat = habitWeekStats.get(goal.id) || { planned: 0, done: 0, ratio: 0 };"
+        }
+      ],
+      "usageCount": 2
+    },
+    {
+      "id": "micro.getMicroActionsForToday",
+      "name": "getMicroActionsForToday",
+      "area": "micro-actions-engine",
+      "token": "getMicroActionsForToday",
+      "inputs": [
+        "categoryId/name",
+        "hourNow",
+        "time bucket",
+        "seenIds",
+        "library templates"
+      ],
+      "updateCadence": "MicroActionsCard per category/30min bucket/refresh",
+      "definitions": [
+        {
+          "file": "src/core/microActions/microActionsEngine.js",
+          "line": 118,
+          "snippet": "export function getMicroActionsForToday(context = {}, limit = 3) {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/core/microActions/microActionsEngine.js",
+          "line": 118,
+          "snippet": "export function getMicroActionsForToday(context = {}, limit = 3) {"
+        },
+        {
+          "file": "src/core/microActions/microActionsEngine.test.js",
+          "line": 2,
+          "snippet": "import { getMicroActionsForToday } from \"./microActionsEngine\";"
+        },
+        {
+          "file": "src/core/microActions/microActionsEngine.test.js",
+          "line": 12,
+          "snippet": "describe(\"getMicroActionsForToday\", () => {"
+        },
+        {
+          "file": "src/core/microActions/microActionsEngine.test.js",
+          "line": 20,
+          "snippet": "const listA = getMicroActionsForToday(ctx, 3).map((item) => item.id);"
+        },
+        {
+          "file": "src/core/microActions/microActionsEngine.test.js",
+          "line": 21,
+          "snippet": "const listB = getMicroActionsForToday({ ...ctx, nowMs: 10 * 60 * 1000 }, 3).map((item) => item.id);"
+        },
+        {
+          "file": "src/core/microActions/microActionsEngine.test.js",
+          "line": 26,
+          "snippet": "const list = getMicroActionsForToday("
+        },
+        {
+          "file": "src/core/microActions/microActionsEngine.test.js",
+          "line": 42,
+          "snippet": "const list = getMicroActionsForToday("
+        },
+        {
+          "file": "src/core/microActions/microActionsEngine.test.js",
+          "line": 55,
+          "snippet": "const list = getMicroActionsForToday("
+        },
+        {
+          "file": "src/ui/today/MicroActionsCard.jsx",
+          "line": 3,
+          "snippet": "import { getMicroActionsForToday } from \"../../core/microActions/microActionsEngine\";"
+        },
+        {
+          "file": "src/ui/today/MicroActionsCard.jsx",
+          "line": 115,
+          "snippet": "const displayItems = useMemo(() => getMicroActionsForToday(engineContext, 3), [engineContext]);"
+        }
+      ],
+      "usageFiles": [
+        "src/core/microActions/microActionsEngine.js",
+        "src/core/microActions/microActionsEngine.test.js",
+        "src/ui/today/MicroActionsCard.jsx"
+      ],
+      "displayedIn": [
+        {
+          "file": "src/ui/today/MicroActionsCard.jsx",
+          "line": 3,
+          "snippet": "import { getMicroActionsForToday } from \"../../core/microActions/microActionsEngine\";"
+        }
+      ],
+      "usageCount": 10
+    },
+    {
+      "id": "habits.computeStreakDays",
+      "name": "computeStreakDays",
+      "area": "legacy-rewards",
+      "token": "computeStreakDays",
+      "inputs": [
+        "computeGlobalAvgForDay"
+      ],
+      "updateCadence": "reward check invocation",
+      "definitions": [
+        {
+          "file": "src/logic/habits.js",
+          "line": 78,
+          "snippet": "export function computeStreakDays(data, now = new Date()) {"
+        }
+      ],
+      "usages": [
+        {
+          "file": "src/logic/habits.js",
+          "line": 78,
+          "snippet": "export function computeStreakDays(data, now = new Date()) {"
+        },
+        {
+          "file": "src/logic/rewards.js",
+          "line": 1,
+          "snippet": "import { computeGlobalAvgForDay, computeGlobalAvgForWeek, computeStreakDays } from \"./habits\";"
+        },
+        {
+          "file": "src/logic/rewards.js",
+          "line": 15,
+          "snippet": "if (reward.type === \"STREAK_DAYS\") return computeStreakDays(data, new Date()) >= reward.threshold;"
+        }
+      ],
+      "usageFiles": [
+        "src/logic/habits.js",
+        "src/logic/rewards.js"
+      ],
+      "displayedIn": [],
+      "usageCount": 3
+    }
+  ],
+  "microActions": {
+    "flows": [
+      {
+        "token": "microChecks",
+        "occurrences": [
+          {
+            "file": "src/logic/state/migrations.js",
+            "line": 210,
+            "snippet": "const microChecks = nextState.microChecks && typeof nextState.microChecks === \"object\""
+          },
+          {
+            "file": "src/logic/state/migrations.js",
+            "line": 211,
+            "snippet": "? { ...nextState.microChecks }"
+          },
+          {
+            "file": "src/logic/state/migrations.js",
+            "line": 284,
+            "snippet": "microChecks[dateKey] = { ...(microChecks[dateKey] || {}), ...micro };"
+          },
+          {
+            "file": "src/logic/state/migrations.js",
+            "line": 304,
+            "snippet": "state: { ...nextState, occurrences, microChecks },"
+          },
+          {
+            "file": "src/logic/state/migrations.js",
+            "line": 647,
+            "snippet": "if (!next.microChecks || typeof next.microChecks !== \"object\") next.microChecks = {};"
+          },
+          {
+            "file": "src/logic/state/normalizers.js",
+            "line": 599,
+            "snippet": "microChecks: {},"
+          },
+          {
+            "file": "src/logic/state/normalizers.js",
+            "line": 710,
+            "snippet": "microChecks: {},"
+          },
+          {
+            "file": "src/pages/Home.jsx",
+            "line": 306,
+            "snippet": "const microChecks = useMemo("
+          },
+          {
+            "file": "src/pages/Home.jsx",
+            "line": 307,
+            "snippet": "() => (safeData.microChecks && typeof safeData.microChecks === \"object\" ? safeData.microChecks : {}),"
+          },
+          {
+            "file": "src/pages/Home.jsx",
+            "line": 308,
+            "snippet": "[safeData.microChecks]"
+          },
+          {
+            "file": "src/pages/Home.jsx",
+            "line": 311,
+            "snippet": "return microChecks?.[selectedDateKey] && typeof microChecks[selectedDateKey] === \"object\""
+          },
+          {
+            "file": "src/pages/Home.jsx",
+            "line": 312,
+            "snippet": "? microChecks[selectedDateKey]"
+          },
+          {
+            "file": "src/pages/Home.jsx",
+            "line": 314,
+            "snippet": "}, [microChecks, selectedDateKey]);"
+          },
+          {
+            "file": "src/pages/Home.jsx",
+            "line": 855,
+            "snippet": "const hasAnyMicro = Object.keys(microChecks).length > 0;"
+          },
+          {
+            "file": "src/pages/Home.jsx",
+            "line": 917,
+            "snippet": "const micro = microChecks?.[key] && typeof microChecks[key] === \"object\" ? microChecks[key] : {};"
+          },
+          {
+            "file": "src/pages/Home.jsx",
+            "line": 952,
+            "snippet": "}, [goals, microChecks, occurrences, localTodayKey]);"
+          },
+          {
+            "file": "src/pages/Home.jsx",
+            "line": 1391,
+            "snippet": "const prevMicro = prev?.microChecks && typeof prev.microChecks === \"object\" ? prev.microChecks : {};"
+          },
+          {
+            "file": "src/pages/Home.jsx",
+            "line": 1397,
+            "snippet": "microChecks: {"
+          }
+        ]
+      },
+      {
+        "token": "microDoneToday",
+        "occurrences": [
+          {
+            "file": "src/pages/Home.jsx",
+            "line": 827,
+            "snippet": "const microDoneToday = useMemo(() => {"
+          },
+          {
+            "file": "src/pages/Home.jsx",
+            "line": 1389,
+            "snippet": "if (microDoneToday >= 3) return;"
+          },
+          {
+            "file": "src/pages/Home.jsx",
+            "line": 1568,
+            "snippet": "microDoneToday={microDoneToday}"
+          },
+          {
+            "file": "src/ui/today/MicroActionsCard.jsx",
+            "line": 72,
+            "snippet": "microDoneToday = 0,"
+          },
+          {
+            "file": "src/ui/today/MicroActionsCard.jsx",
+            "line": 198,
+            "snippet": "const canAdd = canValidate && microDoneToday < 3 && !isDone;"
+          },
+          {
+            "file": "src/ui/today/MicroActionsCard.jsx",
+            "line": 213,
+            "snippet": "isDone || isFlashing ? \"Déjà fait\" : microDoneToday >= 3 ? \"Limite atteinte (3/jour)\" : \"Faire\""
+          }
+        ]
+      },
+      {
+        "token": "onAddMicroCheck",
+        "occurrences": [
+          {
+            "file": "src/pages/Home.jsx",
+            "line": 1570,
+            "snippet": "onAddMicroCheck={addMicroCheck}"
+          },
+          {
+            "file": "src/ui/today/MicroActionsCard.jsx",
+            "line": 74,
+            "snippet": "onAddMicroCheck,"
+          },
+          {
+            "file": "src/ui/today/MicroActionsCard.jsx",
+            "line": 150,
+            "snippet": "onAddMicroCheck?.(item.id);"
+          },
+          {
+            "file": "src/ui/today/MicroActionsCard.jsx",
+            "line": 158,
+            "snippet": "[logDone, onAddMicroCheck]"
+          }
+        ]
+      },
+      {
+        "token": "microActionsSeen",
+        "occurrences": [
+          {
+            "file": "src/ui/today/MicroActionsCard.jsx",
+            "line": 13,
+            "snippet": "const SEEN_KEY = \"microActionsSeen\";"
+          }
+        ]
+      },
+      {
+        "token": "microActionsDone",
+        "occurrences": [
+          {
+            "file": "src/ui/today/MicroActionsCard.jsx",
+            "line": 14,
+            "snippet": "const DONE_KEY = \"microActionsDone\";"
+          }
+        ]
+      },
+      {
+        "token": "getMicroActionsForToday",
+        "occurrences": [
+          {
+            "file": "src/core/microActions/microActionsEngine.js",
+            "line": 118,
+            "snippet": "export function getMicroActionsForToday(context = {}, limit = 3) {"
+          },
+          {
+            "file": "src/core/microActions/microActionsEngine.test.js",
+            "line": 2,
+            "snippet": "import { getMicroActionsForToday } from \"./microActionsEngine\";"
+          },
+          {
+            "file": "src/core/microActions/microActionsEngine.test.js",
+            "line": 12,
+            "snippet": "describe(\"getMicroActionsForToday\", () => {"
+          },
+          {
+            "file": "src/core/microActions/microActionsEngine.test.js",
+            "line": 20,
+            "snippet": "const listA = getMicroActionsForToday(ctx, 3).map((item) => item.id);"
+          },
+          {
+            "file": "src/core/microActions/microActionsEngine.test.js",
+            "line": 21,
+            "snippet": "const listB = getMicroActionsForToday({ ...ctx, nowMs: 10 * 60 * 1000 }, 3).map((item) => item.id);"
+          },
+          {
+            "file": "src/core/microActions/microActionsEngine.test.js",
+            "line": 26,
+            "snippet": "const list = getMicroActionsForToday("
+          },
+          {
+            "file": "src/core/microActions/microActionsEngine.test.js",
+            "line": 42,
+            "snippet": "const list = getMicroActionsForToday("
+          },
+          {
+            "file": "src/core/microActions/microActionsEngine.test.js",
+            "line": 55,
+            "snippet": "const list = getMicroActionsForToday("
+          },
+          {
+            "file": "src/ui/today/MicroActionsCard.jsx",
+            "line": 3,
+            "snippet": "import { getMicroActionsForToday } from \"../../core/microActions/microActionsEngine\";"
+          },
+          {
+            "file": "src/ui/today/MicroActionsCard.jsx",
+            "line": 115,
+            "snippet": "const displayItems = useMemo(() => getMicroActionsForToday(engineContext, 3), [engineContext]);"
+          }
+        ]
+      },
+      {
+        "token": "handleRotate",
+        "occurrences": [
+          {
+            "file": "src/ui/today/MicroActionsCard.jsx",
+            "line": 126,
+            "snippet": "const handleRotate = useCallback(() => {"
+          },
+          {
+            "file": "src/ui/today/MicroActionsCard.jsx",
+            "line": 186,
+            "snippet": "onClick={handleRotate}"
+          }
+        ]
+      },
+      {
+        "token": "seedOffset",
+        "occurrences": [
+          {
+            "file": "src/core/microActions/microActionsEngine.js",
+            "line": 123,
+            "snippet": "const seedOffset = safeNumber(context.seedOffset, 0);"
+          },
+          {
+            "file": "src/core/microActions/microActionsEngine.js",
+            "line": 131,
+            "snippet": "const seed = (hashString(contextKey) ^ (bucket + seedOffset)) >>> 0;"
+          },
+          {
+            "file": "src/ui/today/MicroActionsCard.jsx",
+            "line": 108,
+            "snippet": "seedOffset: rotationOffset,"
+          }
+        ]
+      }
+    ],
+    "storageKeys": [
+      {
+        "key": "microChecks",
+        "location": "src/pages/Home.jsx:306"
+      },
+      {
+        "key": "microActionsSeen",
+        "location": "src/ui/today/MicroActionsCard.jsx:13"
+      },
+      {
+        "key": "microActionsDone",
+        "location": "src/ui/today/MicroActionsCard.jsx:14"
+      }
+    ],
+    "generation": [
+      {
+        "file": "src/core/microActions/microActionsEngine.js",
+        "line": 118,
+        "note": "selection engine with seed/time/category"
+      },
+      {
+        "file": "src/ui/today/MicroActionsCard.jsx",
+        "line": 115,
+        "note": "displayItems derived from engine context"
+      }
+    ],
+    "execution": [
+      {
+        "file": "src/ui/today/MicroActionsCard.jsx",
+        "line": 147,
+        "note": "click -> onAddMicroCheck + DONE_KEY log"
+      },
+      {
+        "file": "src/pages/Home.jsx",
+        "line": 1383,
+        "note": "onAddMicroCheck writes data.microChecks[date][id]=true"
+      }
+    ]
+  },
+  "uiComponents": [
+    {
+      "token": "Gauge",
+      "occurrences": [
+        {
+          "file": "src/components/Gauge.jsx",
+          "line": 3,
+          "snippet": "export default function Gauge({"
+        },
+        {
+          "file": "src/pages/CategoryProgress.jsx",
+          "line": 4,
+          "snippet": "import Gauge from \"../components/Gauge\";"
+        },
+        {
+          "file": "src/pages/CategoryProgress.jsx",
+          "line": 76,
+          "snippet": "<Gauge"
+        },
+        {
+          "file": "src/pages/CategoryView.jsx",
+          "line": 4,
+          "snippet": "import Gauge from \"../components/Gauge\";"
+        },
+        {
+          "file": "src/pages/CategoryView.jsx",
+          "line": 144,
+          "snippet": "<Gauge"
+        }
+      ]
+    },
+    {
+      "token": "ProgressRing",
+      "occurrences": [
+        {
+          "file": "src/components/Block.jsx",
+          "line": 3,
+          "snippet": "import { AccentItem, Badge, Button, Card, ProgressRing } from \"./UI\";"
+        },
+        {
+          "file": "src/components/Block.jsx",
+          "line": 106,
+          "snippet": "<ProgressRing value={ratio} />"
+        },
+        {
+          "file": "src/components/UI.jsx",
+          "line": 259,
+          "snippet": "export function ProgressRing({ value, size = 44 }) {"
+        }
+      ]
+    },
+    {
+      "token": "Meter",
+      "occurrences": [
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 154,
+          "snippet": "function Meter({ value01 = 0, label = \"\", tone = \"accent\" }) {"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 791,
+          "snippet": "<Meter"
+        }
+      ]
+    },
+    {
+      "token": "progressTrack",
+      "occurrences": [
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 613,
+          "snippet": "<div className=\"progressTrack\">"
+        },
+        {
+          "file": "src/index.css",
+          "line": 781,
+          "snippet": ".progressTrack{"
+        }
+      ]
+    },
+    {
+      "token": "progressFill",
+      "occurrences": [
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 615,
+          "snippet": "className=\"progressFill\""
+        },
+        {
+          "file": "src/index.css",
+          "line": 788,
+          "snippet": ".progressFill{"
+        }
+      ]
+    },
+    {
+      "token": "pilotageInsights",
+      "occurrences": [
+        {
+          "file": "src/features/pilotage/pilotage.css",
+          "line": 117,
+          "snippet": ".pilotageInsights {"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 924,
+          "snippet": "<div className=\"pilotageInsights\">"
+        }
+      ]
+    },
+    {
+      "token": "disciplineOverlay",
+      "occurrences": [
+        {
+          "file": "src/index.css",
+          "line": 1238,
+          "snippet": ".disciplineOverlay{"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1717,
+          "snippet": "<div className=\"modalBackdrop disciplineOverlay\" onClick={() => setShowDayStats(false)}>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1750,
+          "snippet": "<div className=\"modalBackdrop disciplineOverlay\" onClick={() => setShowDisciplineStats(false)}>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1781,
+          "snippet": "className=\"modalBackdrop disciplineOverlay noteHistoryBackdrop\""
+        }
+      ]
+    },
+    {
+      "token": "disciplineCard",
+      "occurrences": [
+        {
+          "file": "src/index.css",
+          "line": 1240,
+          "snippet": ".disciplineCard{"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1718,
+          "snippet": "<HomeCard className=\"disciplineCard\" onClick={(e) => e.stopPropagation()}>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1751,
+          "snippet": "<HomeCard className=\"disciplineCard\" onClick={(e) => e.stopPropagation()}>"
+        }
+      ]
+    }
+  ],
+  "wording": [
+    {
+      "term": "Progression du jour",
+      "occurrences": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1425,
+          "snippet": "Progression du jour"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1720,
+          "snippet": "<div className=\"titleSm\">Progression du jour</div>"
+        }
+      ]
+    },
+    {
+      "term": "Discipline",
+      "occurrences": [
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 642,
+          "snippet": "<div className=\"small2\">Etat, charge et discipline (lecture seule).</div>"
+        },
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 61,
+          "snippet": "const discipline = expected > 0 ? done / expected : 0;"
+        },
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 79,
+          "snippet": "{ axis: \"Discipline\", value: discipline },"
+        },
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 84,
+          "snippet": "raw: { discipline, regularity, load, focus, expected, done },"
+        },
+        {
+          "file": "src/index.css",
+          "line": 1238,
+          "snippet": ".disciplineOverlay{"
+        },
+        {
+          "file": "src/index.css",
+          "line": 1240,
+          "snippet": ".disciplineCard{"
+        },
+        {
+          "file": "src/logic/blocks/ensureBlocksConfig.js",
+          "line": 12,
+          "snippet": "discipline: \"pilotage.discipline\","
+        },
+        {
+          "file": "src/logic/blocks/registry.js",
+          "line": 5,
+          "snippet": "pilotage: [\"pilotage.categories\", \"pilotage.charge\", \"pilotage.discipline\", \"pilotage.reporting\"],"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 51,
+          "snippet": "export function computeDisciplineScore(occurrences, todayKeyValue) {"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 77,
+          "snippet": "export function computeDisciplineScoreWindow(occurrences, windowKeys, todayKeyValue) {"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 90,
+          "snippet": "// Discipline window should ignore today+future (only penalize once the day has passed)."
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 105,
+          "snippet": "function runDisciplineSanityChecks() {"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 108,
+          "snippet": "const empty = computeDisciplineScore([], today);"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 109,
+          "snippet": "console.assert(empty.score === 100, \"[discipline] empty -> 100\");"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 110,
+          "snippet": "const doneToday = computeDisciplineScore([{ date: today, status: \"done\" }], today);"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 111,
+          "snippet": "console.assert(doneToday.score === 100, \"[discipline] today done only -> 100\");"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 112,
+          "snippet": "const missedYesterday = computeDisciplineScore([{ date: \"2026-01-26\", status: \"planned\" }], today);"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 113,
+          "snippet": "console.assert(missedYesterday.score < 100, \"[discipline] missed yesterday -> <100\");"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 284,
+          "snippet": "export function getDisciplineSummary(data, nowDate = new Date()) {"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 297,
+          "snippet": "disciplineScore: 100,"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 298,
+          "snippet": "disciplineRatio: 1,"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 383,
+          "snippet": "disciplineScore: 100,"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 384,
+          "snippet": "disciplineRatio: 1,"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 390,
+          "snippet": "runDisciplineSanityChecks();"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 392,
+          "snippet": "const score7 = computeDisciplineScoreWindow(occurrences, last7Keys, todayStr);"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 393,
+          "snippet": "const score30 = computeDisciplineScoreWindow(occurrences, last30Keys, todayStr);"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 395,
+          "snippet": "// Primary score shown in UI = 7-day discipline."
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 396,
+          "snippet": "const disciplineScore = score7.score;"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 403,
+          "snippet": "disciplineScore,"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 404,
+          "snippet": "disciplineRatio: disciplineScore / 100,"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 407,
+          "snippet": "disciplineScore7d: score7.score,"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 408,
+          "snippet": "disciplineRatio7d: score7.ratio,"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 409,
+          "snippet": "disciplineExpected7d: score7.expected,"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 410,
+          "snippet": "disciplineMissed7d: score7.missed,"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 411,
+          "snippet": "disciplineDone7d: score7.done,"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 412,
+          "snippet": "disciplineScore30d: score30.score,"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 413,
+          "snippet": "disciplineRatio30d: score30.ratio,"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 414,
+          "snippet": "disciplineExpected30d: score30.expected,"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 415,
+          "snippet": "disciplineMissed30d: score30.missed,"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 416,
+          "snippet": "disciplineDone30d: score30.done,"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 453,
+          "snippet": "export function getDisciplineStreak7d(data, nowDate = new Date()) {"
+        },
+        {
+          "file": "src/logic/rewards.js",
+          "line": 5,
+          "snippet": "{ id: \"rw_lvl_5\", title: \"Niveau 5\", type: \"LEVEL\", threshold: 5, shareText: \"Niveau 5 atteint. Discipline en place.\" },"
+        },
+        {
+          "file": "src/logic/rewards.js",
+          "line": 8,
+          "snippet": "{ id: \"rw_streak_7\", title: \"Streak 7 jours\", type: \"STREAK_DAYS\", threshold: 7, shareText: \"7 jours de suite. Discipline validée.\" },"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 23,
+          "snippet": "import { computeDisciplineScore } from \"../logic/pilotage\";"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 33,
+          "snippet": "// - optional_elements: day stats/discipline stats modals"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 188,
+          "snippet": "const [showDisciplineStats, setShowDisciplineStats] = useState(false);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 849,
+          "snippet": "const disciplineBreakdown = useMemo(() => {"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 851,
+          "snippet": "const disciplineBase = computeDisciplineScore(occurrences, localTodayKey);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 853,
+          "snippet": "// UX: start discipline at 100% for brand-new users (no history yet)."
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 862,
+          "snippet": "score: disciplineBase.score,"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 863,
+          "snippet": "ratio: disciplineBase.ratio,"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 936,
+          "snippet": "const score = disciplineBase.score;"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 937,
+          "snippet": "const ratio = disciplineBase.ratio;"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1456,
+          "snippet": "onClick={() => setShowDisciplineStats(true)}"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1457,
+          "snippet": "data-tour-id=\"today-stats-discipline\""
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1460,
+          "snippet": "Discipline"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1474,
+          "snippet": "width: `${Math.round(disciplineBreakdown.ratio * 100)}%`,"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1482,
+          "snippet": "{disciplineBreakdown.score}%"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1717,
+          "snippet": "<div className=\"modalBackdrop disciplineOverlay\" onClick={() => setShowDayStats(false)}>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1718,
+          "snippet": "<HomeCard className=\"disciplineCard\" onClick={(e) => e.stopPropagation()}>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1749,
+          "snippet": "{showDisciplineStats ? ("
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1750,
+          "snippet": "<div className=\"modalBackdrop disciplineOverlay\" onClick={() => setShowDisciplineStats(false)}>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1751,
+          "snippet": "<HomeCard className=\"disciplineCard\" onClick={(e) => e.stopPropagation()}>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1753,
+          "snippet": "<div className=\"titleSm\">Discipline</div>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1754,
+          "snippet": "<button className=\"linkBtn\" type=\"button\" onClick={() => setShowDisciplineStats(false)}>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1761,
+          "snippet": "<div className=\"titleSm\">{disciplineBreakdown.habitDaysKept14} jours tenus</div>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1765,
+          "snippet": "<div className=\"titleSm\">{disciplineBreakdown.microDone14}/{disciplineBreakdown.microMax14}</div>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1769,
+          "snippet": "<div className=\"titleSm\">{Math.round(disciplineBreakdown.reliabilityRatio * 100)}%</div>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1773,
+          "snippet": "<div className=\"titleSm\">{disciplineBreakdown.score}%</div>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1781,
+          "snippet": "className=\"modalBackdrop disciplineOverlay noteHistoryBackdrop\""
+        },
+        {
+          "file": "src/pages/Onboarding.jsx",
+          "line": 42,
+          "snippet": "subtitle: \"Clarté · Discipline · Exécution\","
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 22,
+          "snippet": "// - key_elements: category status list, load summary, discipline summary"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 53,
+          "snippet": "\"pilotage.discipline\": { id: \"pilotage.discipline\" },"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 783,
+          "snippet": "<div className=\"sectionTitle\">Discipline</div>"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 819,
+          "snippet": "if (blockId === \"pilotage.discipline\") {"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 821,
+          "snippet": "<Card data-tour-id=\"pilotage-discipline\">"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 842,
+          "snippet": "<svg viewBox=\"0 0 240 240\" role=\"img\" aria-label=\"Radar discipline\">"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 846,
+          "snippet": "{[\"Discipline\", \"Régularité\", \"Charge\", \"Focus\"].map((label, idx) => {"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 918,
+          "snippet": "Règles: Discipline=fait/attendu (14j), Régularité=jours actifs/14,"
+        },
+        {
+          "file": "src/tour/tourSpec.js",
+          "line": 164,
+          "snippet": "id: \"today-stats-discipline\","
+        },
+        {
+          "file": "src/tour/tourSpec.js",
+          "line": 166,
+          "snippet": "anchor: \"today-stats-discipline\","
+        },
+        {
+          "file": "src/tour/tourSpec.js",
+          "line": 167,
+          "snippet": "title: \"Discipline\","
+        },
+        {
+          "file": "src/tour/tourSpec.js",
+          "line": 572,
+          "snippet": "id: \"pilotage-discipline\","
+        },
+        {
+          "file": "src/tour/tourSpec.js",
+          "line": 574,
+          "snippet": "anchor: \"pilotage-discipline\","
+        },
+        {
+          "file": "src/tour/tourSpec.js",
+          "line": 575,
+          "snippet": "title: \"Discipline\","
+        }
+      ]
+    },
+    {
+      "term": "fait / attendu",
+      "occurrences": [
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 789,
+          "snippet": "<div className=\"small2 textMuted\">fait / attendu (7j)</div>"
+        }
+      ]
+    },
+    {
+      "term": "attendu / fait",
+      "occurrences": [
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 742,
+          "snippet": "label=\"Semaine (attendu / fait)\""
+        }
+      ]
+    },
+    {
+      "term": "Occurrences attendues",
+      "occurrences": [
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 1018,
+          "snippet": "<StatRow label=\"Occurrences attendues\" value={String(totals?.expected || 0)} />"
+        }
+      ]
+    },
+    {
+      "term": "Occurrences faites",
+      "occurrences": [
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 1019,
+          "snippet": "<StatRow label=\"Occurrences faites\" value={String(totals?.done || 0)} />"
+        }
+      ]
+    },
+    {
+      "term": "Occurrences manquées",
+      "occurrences": [
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 1020,
+          "snippet": "<StatRow label=\"Occurrences manquées\" value={String(totals?.missed || 0)} />"
+        }
+      ]
+    },
+    {
+      "term": "Occurrences annulées",
+      "occurrences": [
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 1021,
+          "snippet": "<StatRow label=\"Occurrences annulées\" value={String(totals?.canceled || 0)} />"
+        }
+      ]
+    },
+    {
+      "term": "Occurrences planifiées",
+      "occurrences": [
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 1022,
+          "snippet": "<StatRow label=\"Occurrences planifiées\" value={String(totals?.planned || 0)} />"
+        }
+      ]
+    },
+    {
+      "term": "Radar & insights",
+      "occurrences": [
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 835,
+          "snippet": "<div className=\"sectionTitle\">Radar & insights</div>"
+        }
+      ]
+    },
+    {
+      "term": "Top catégorie",
+      "occurrences": [
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 171,
+          "snippet": "? `Top catégorie : ${topCategory.name || \"Catégorie\"}`"
+        },
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 172,
+          "snippet": ": \"Top catégorie : —\","
+        }
+      ]
+    },
+    {
+      "term": "1 action clé manquée",
+      "occurrences": [
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 175,
+          "snippet": "? `1 action clé manquée : ${missedGoal.title || \"Action\"}`"
+        },
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 176,
+          "snippet": ": \"1 action clé manquée : aucune\","
+        }
+      ]
+    },
+    {
+      "term": "Meilleur créneau",
+      "occurrences": [
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 177,
+          "snippet": "bestSlot: bestBucket ? `Meilleur créneau : ${bestBucket.label}` : \"Meilleur créneau : —\","
+        }
+      ]
+    }
+  ],
+  "inconsistencyCandidates": [
+    {
+      "id": "expected-status-semantics",
+      "title": "Semantics mismatch: expected workload includes canceled/skipped in metrics.js",
+      "evidence": [
+        {
+          "file": "src/logic/metrics.js",
+          "line": 5,
+          "snippet": "export const STATUS_VALUES = new Set([\"planned\", \"done\", \"skipped\", \"canceled\"]);"
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 6,
+          "snippet": "export const EXTRA_STATUS_VALUES = new Set([\"missed\", \"rescheduled\", \"in_progress\"]);"
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 8,
+          "snippet": "export const FINAL_STATUSES = new Set([\"done\", \"skipped\", \"canceled\", \"missed\", \"rescheduled\"]);"
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 11,
+          "snippet": "export const CANCELED_STATUSES = new Set([\"skipped\", \"canceled\"]);"
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 13,
+          "snippet": "const EXPECTED_STATUSES = new Set(["
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 17,
+          "snippet": "\"canceled\","
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 18,
+          "snippet": "\"skipped\","
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 20,
+          "snippet": "\"in_progress\","
+        }
+      ]
+    },
+    {
+      "id": "pilotage-expected-excludes-canceled-skipped",
+      "title": "Pilotage excludes canceled/skipped from expected workload",
+      "evidence": [
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 37,
+          "snippet": "function isOccIgnoredForExpected(status) {"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 39,
+          "snippet": "return status === \"canceled\" || status === \"skipped\";"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 42,
+          "snippet": "function isOccExpected(status) {"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 44,
+          "snippet": "return !isOccIgnoredForExpected(status);"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 60,
+          "snippet": "return isOccExpected(st);"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 94,
+          "snippet": "if (!isOccExpected(st)) continue;"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 257,
+          "snippet": "const countsForExpected = isOccExpected(st);"
+        },
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 316,
+          "snippet": "if (status === \"skipped\" || status === \"canceled\" || status === \"done\") continue;"
+        }
+      ]
+    },
+    {
+      "id": "library-week-stats-semantics",
+      "title": "Library weekly stat counts planned when status !== skipped (canceled still counted)",
+      "evidence": [
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 90,
+          "snippet": "const habitWeekStats = useMemo(() => {"
+        },
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 105,
+          "snippet": "if (status !== \"skipped\") entry.planned += 1;"
+        },
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 559,
+          "snippet": "const stat = habitWeekStats.get(goal.id) || { planned: 0, done: 0, ratio: 0 };"
+        }
+      ]
+    },
+    {
+      "id": "radar-expected-semantics",
+      "title": "Radar expected semantics differs from core metrics semantics",
+      "evidence": [
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 41,
+          "snippet": "export function computeCategoryRadarRows(state, fromKey, toKey) {"
+        },
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 112,
+          "snippet": "if (occ.status !== \"canceled\" && occ.status !== \"skipped\") bucket.expected += 1;"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 16,
+          "snippet": "import { computeCategoryRadarRows, computePilotageInsights } from \"../features/pilotage/radarModel\";"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 316,
+          "snippet": "return computeCategoryRadarRows(safeData, radarWindow.fromKey, radarWindow.toKey);"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 919,
+          "snippet": "Charge=attendu/jour (cap 3), Focus=part de l’action n°1."
+        }
+      ]
+    },
+    {
+      "id": "micro-actions-influence-gap",
+      "title": "Micro-actions displayed in discipline details but not integrated in primary discipline score",
+      "evidence": [
+        {
+          "file": "src/logic/pilotage.js",
+          "line": 284,
+          "snippet": "export function getDisciplineSummary(data, nowDate = new Date()) {"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 849,
+          "snippet": "const disciplineBreakdown = useMemo(() => {"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 866,
+          "snippet": "microDone14: 0,"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 868,
+          "snippet": "microRatio14: 1,"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 914,
+          "snippet": "let microDone14 = 0;"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 919,
+          "snippet": "microDone14 += Math.min(3, count);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 922,
+          "snippet": "const microRatio14 = microMax14 ? microDone14 / microMax14 : 0;"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 936,
+          "snippet": "const score = disciplineBase.score;"
+        }
+      ]
+    }
+  ],
+  "hotspots": [
+    {
+      "file": "src/pages/Home.jsx",
+      "count": 17
+    },
+    {
+      "file": "src/logic/metrics.test.js",
+      "count": 11
+    },
+    {
+      "file": "src/pages/Pilotage.jsx",
+      "count": 11
+    },
+    {
+      "file": "src/logic/pilotage.js",
+      "count": 11
+    },
+    {
+      "file": "src/features/pilotage/radarModel.js",
+      "count": 8
+    },
+    {
+      "file": "src/core/microActions/microActionsEngine.test.js",
+      "count": 7
+    },
+    {
+      "file": "src/logic/reporting.js",
+      "count": 6
+    },
+    {
+      "file": "src/ui/today/MicroActionsCard.jsx",
+      "count": 5
+    },
+    {
+      "file": "src/logic/metrics.js",
+      "count": 3
+    },
+    {
+      "file": "src/logic/reporting.test.js",
+      "count": 2
+    },
+    {
+      "file": "src/features/library/CategoryManageInline.jsx",
+      "count": 2
+    },
+    {
+      "file": "src/logic/rewards.js",
+      "count": 2
+    },
+    {
+      "file": "src/core/microActions/microActionsEngine.js",
+      "count": 1
+    },
+    {
+      "file": "src/logic/habits.js",
+      "count": 1
+    }
+  ]
+}

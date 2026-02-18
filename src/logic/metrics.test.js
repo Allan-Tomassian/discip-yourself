@@ -20,7 +20,7 @@ describe("metrics", () => {
     ];
 
     const stats = computeStats(occurrences);
-    expect(stats.expected).toBe(6);
+    expect(stats.expected).toBe(4);
     expect(stats.done).toBe(1);
     expect(stats.missed).toBe(1);
     expect(stats.canceled).toBe(2);

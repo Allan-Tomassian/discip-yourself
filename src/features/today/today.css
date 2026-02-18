@@ -145,12 +145,28 @@
   gap: 10px;
 }
 
-.microRotateBtn {
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  font-size: 13px;
-  line-height: 1;
+.microHeaderStats {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.microDoneStat {
+  font-size: 12px;
+  color: var(--text-3, var(--muted2));
+  border: 1px solid var(--gate-border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.microToolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 220px);
+  gap: 10px;
+  align-items: center;
 }
 
 .microContext {
@@ -161,6 +177,45 @@
   text-overflow: ellipsis;
 }
 
+.microCategorySelectWrap {
+  width: 100%;
+}
+
+.microCategorySelect {
+  width: 100%;
+}
+
+.microTodayHintRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  border: 1px solid color-mix(in srgb, var(--gate-border) 90%, rgba(255, 255, 255, 0.1));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--gate-surface-2) 90%, #050910);
+  padding: 8px 10px;
+}
+
+.microTodayHintText {
+  font-size: 12px;
+  color: var(--text-3, var(--muted2));
+}
+
+.microGoTodayBtn {
+  min-width: 150px;
+  justify-content: center;
+}
+
+.microCard.isReadOnlyDate .microList,
+.microCard.isReadOnlyDate .microRerollRow {
+  opacity: 0.9;
+}
+
+.microCard.isReadOnlyDate .microPick {
+  cursor: not-allowed;
+}
+
 .microList {
   display: flex;
   flex-direction: column;
@@ -169,13 +224,48 @@
 
 .microItem {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 10px 12px;
   border: 1px solid var(--gate-border);
   border-radius: 12px;
   background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
+}
+
+.microPick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--gate-border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--gate-surface-2) 92%, #05080f);
+  position: relative;
+  cursor: pointer;
+}
+
+.microPickInput {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.microPickMark {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--accent) 75%, #ffffff);
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 120ms ease, transform 120ms ease;
+  pointer-events: none;
+}
+
+.microPickInput:checked + .microPickMark {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .microItemMain {
@@ -219,6 +309,217 @@
   justify-content: center;
 }
 
+.microRerollRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.microRerollBtn {
+  min-width: 92px;
+  justify-content: center;
+}
+
+.microWatchAdBtn,
+.microUseCreditBtn {
+  min-width: 150px;
+  justify-content: center;
+}
+
+.microRerollMeta {
+  font-size: 12px;
+  color: var(--text-3, var(--muted2));
+}
+
+.microRerollLimit {
+  font-size: 12px;
+  color: color-mix(in srgb, #ffd2d2 72%, var(--text-3, var(--muted2)));
+}
+
+.microRewardStatus {
+  font-size: 12px;
+  color: color-mix(in srgb, #d6f7d6 80%, var(--text));
+}
+
+.microAdBackdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(16px + var(--safe-top)) var(--page-pad) calc(16px + var(--safe-bottom));
+  background: rgba(0, 0, 0, 0.4);
+  z-index: var(--z-modal, 2000);
+  box-sizing: border-box;
+}
+
+.microAdPanelOuter {
+  width: min(420px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
+  border-radius: 18px;
+  --gate-glass-radius: 18px;
+}
+
+.microAdPanelClip {
+  border-radius: inherit;
+}
+
+.microAdPanel {
+  border-radius: inherit;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.microAdHeader {
+  margin: 0;
+}
+
+.microAdText {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-2, var(--text));
+}
+
+.microAdActions {
+  justify-content: flex-end;
+}
+
+.totemAnimOverlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: calc(var(--z-toast, 3000) - 20);
+  display: grid;
+  place-items: center;
+  padding: calc(20px + var(--safe-top)) var(--page-pad) calc(20px + var(--safe-bottom));
+}
+
+.totemAnimScene {
+  width: min(360px, calc(100vw - 56px));
+  min-height: 120px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--gate-border) 88%, rgba(255, 255, 255, 0.15));
+  background:
+    radial-gradient(circle at 18% 22%, rgba(152, 214, 255, 0.18), transparent 46%),
+    linear-gradient(180deg, color-mix(in srgb, var(--gate-surface-1) 88%, #0b1420), color-mix(in srgb, var(--gate-surface-2) 92%, #05070d));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 18px 28px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  position: relative;
+}
+
+.totemAnimCloud {
+  position: absolute;
+  width: 62px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(235, 247, 255, 0.24);
+  filter: blur(0.5px);
+}
+
+.totemAnimCloud--a {
+  top: 16px;
+  left: 28px;
+  animation: totemCloudDrift 2500ms linear infinite;
+}
+
+.totemAnimCloud--b {
+  top: 30px;
+  right: 34px;
+  opacity: 0.7;
+  animation: totemCloudDrift 2600ms linear infinite reverse;
+}
+
+.totemAnimBranch {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 34px;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #6b4b2a 76%, #2d1f12);
+}
+
+.totemAnimEagle {
+  position: absolute;
+  left: 50%;
+  bottom: 36px;
+  transform: translateX(-50%) scale(0.8);
+  animation: totemEagleLand 900ms ease-out forwards;
+}
+
+.totemAnimEagleGlyph {
+  display: inline-block;
+  font-size: 32px;
+  line-height: 1;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.32)) drop-shadow(0 0 8px color-mix(in srgb, var(--totem-body-color) 55%, transparent));
+}
+
+.totemAnimAccessory {
+  position: absolute;
+  right: -10px;
+  top: -2px;
+  font-size: 17px;
+}
+
+.totemAnimGain {
+  position: absolute;
+  right: 14px;
+  top: 12px;
+  font-size: 20px;
+  font-weight: 700;
+  color: color-mix(in srgb, #d9f8b4 80%, #fff);
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  animation: totemGainPulse 800ms ease-out forwards;
+}
+
+.totemAnimOverlay--rich .totemAnimScene {
+  min-height: 150px;
+}
+
+.totemAnimOverlay--rich .totemAnimEagle {
+  animation: totemEagleLandRich 2800ms ease-out forwards;
+}
+
+.totemAnimOverlay--rich .totemAnimGain {
+  animation: totemGainPulseRich 1800ms ease-out forwards;
+}
+
+@keyframes totemCloudDrift {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(6px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes totemEagleLand {
+  0% { transform: translate(-50%, -16px) scale(0.78); opacity: 0.2; }
+  35% { opacity: 1; }
+  100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+}
+
+@keyframes totemEagleLandRich {
+  0% { transform: translate(-50%, -26px) scale(0.72); opacity: 0.15; }
+  30% { opacity: 1; }
+  65% { transform: translate(-50%, 2px) scale(1.06); }
+  100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+}
+
+@keyframes totemGainPulse {
+  0% { opacity: 0; transform: translateY(5px) scale(0.94); }
+  20% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-8px) scale(1.04); }
+}
+
+@keyframes totemGainPulseRich {
+  0% { opacity: 0; transform: translateY(8px) scale(0.9); }
+  18% { opacity: 1; transform: translateY(0) scale(1); }
+  70% { opacity: 1; transform: translateY(-2px) scale(1.03); }
+  100% { opacity: 0; transform: translateY(-10px) scale(1.06); }
+}
+
 .todayDangerButton {
   border-color: color-mix(in srgb, #f7a3a3 36%, var(--gate-border));
   color: color-mix(in srgb, #ffd9d9 74%, var(--gate-text));
@@ -244,17 +545,39 @@
     justify-content: flex-start;
   }
 
+  .microToolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .microHeaderStats {
+    justify-content: flex-start;
+  }
+
   .microItem {
     grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto;
+    grid-template-rows: auto auto auto;
     align-items: start;
   }
 
+  .microPick {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .microItemMain {
+    grid-column: 1 / span 2;
+    grid-row: 2;
+  }
+
   .microBadge {
+    grid-row: 1;
     grid-column: 2;
+    justify-self: end;
   }
 
   .microActionBtn {
+    grid-row: 3;
     grid-column: 2;
+    justify-self: end;
   }
 }

@@ -1,0 +1,436 @@
+.totemDockLayer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1100;
+}
+
+.totemDockAnchor {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top));
+  right: calc(10px + env(safe-area-inset-right));
+  pointer-events: none;
+}
+
+.totemDockButton,
+.totemDockNub {
+  pointer-events: auto;
+}
+
+.totemDockButton {
+  min-width: 92px;
+  height: 52px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--gate-border) 88%, rgba(255, 255, 255, 0.16));
+  background:
+    radial-gradient(circle at 18% 20%, rgba(246, 207, 138, 0.24), transparent 46%),
+    color-mix(in srgb, var(--gate-surface-1) 92%, #05080f);
+  color: var(--gate-text);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 12px 24px rgba(0, 0, 0, 0.32);
+  position: relative;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 8px 10px;
+}
+
+.totemDockButton.isHiding {
+  animation: totemDockHideDrop 780ms ease forwards;
+}
+
+.totemDockBranch {
+  position: absolute;
+  left: 11px;
+  right: 11px;
+  bottom: 11px;
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #6b4b2a 78%, #2d1f12);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.totemDockBird {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--totem-dock-body) 20%, rgba(255, 255, 255, 0.08));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.totemDockBirdGlyph {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.totemDockBirdAccessory {
+  position: absolute;
+  right: -8px;
+  top: -8px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.totemDockNub {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--gate-border) 88%, rgba(255, 255, 255, 0.18));
+  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
+  color: color-mix(in srgb, #f8d8aa 78%, var(--gate-text));
+  display: inline-grid;
+  place-items: center;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 10px 20px rgba(0, 0, 0, 0.28);
+}
+
+.totemDockNubGlyph {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.totemDockScrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.24);
+  pointer-events: auto;
+}
+
+.totemDockPanelLayer {
+  position: fixed;
+  pointer-events: auto;
+  max-width: calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right));
+}
+
+.totemDockPanelOuter {
+  --gate-glass-radius: var(--radius-card, 16px);
+  --gate-glass-shadow: 0 18px 32px rgba(0, 0, 0, 0.36);
+  border-radius: var(--gate-glass-radius);
+}
+
+.totemDockPanelClip {
+  border-radius: inherit;
+}
+
+.totemDockPanel {
+  border-radius: inherit;
+  max-height: var(--totemDockPanelMaxH, 420px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.totemDockPanelActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.totemDockIconBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--gate-border) 88%, rgba(255, 255, 255, 0.16));
+  background: color-mix(in srgb, var(--gate-surface-2) 86%, rgba(255, 255, 255, 0.05));
+  color: var(--gate-text);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  line-height: 1;
+  font-size: 16px;
+}
+
+.totemDockTabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.totemDockTab {
+  border: 1px solid color-mix(in srgb, var(--gate-border) 90%, rgba(255, 255, 255, 0.12));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gate-surface-2) 84%, rgba(255, 255, 255, 0.05));
+  color: var(--gate-text-muted);
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.totemDockTab.isActive {
+  color: var(--gate-text);
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--gate-border));
+  background: color-mix(in srgb, var(--accent) 16%, var(--gate-surface-1));
+}
+
+.totemDockSection {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.totemDockWallet,
+.totemDockTotemView,
+.totemDockShopView,
+.totemDockSettingsView {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.totemDockWalletBadge {
+  align-self: flex-start;
+}
+
+.totemDockWalletStats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.totemDockWalletStat {
+  border: 1px solid var(--gate-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.totemDockWalletStat strong {
+  font-size: 14px;
+  color: var(--gate-text);
+}
+
+.totemDockWalletEvents {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.totemDockWalletEventsTitle {
+  font-size: 12px;
+  color: var(--gate-text-muted);
+}
+
+.totemDockWalletEvent {
+  border: 1px solid var(--gate-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.totemDockWalletEventText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.totemDockWalletEventLabel {
+  font-size: 12px;
+  color: var(--gate-text);
+  font-weight: 600;
+}
+
+.totemDockWalletEventMeta {
+  font-size: 11px;
+  color: var(--gate-text-muted);
+}
+
+.totemDockWalletEventAmount {
+  font-size: 12px;
+  font-weight: 700;
+  color: color-mix(in srgb, #d6f6b2 78%, var(--gate-text));
+}
+
+.totemDockTotemPreview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.totemDockTotemAvatar {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--gate-border) 90%, rgba(255, 255, 255, 0.2));
+  background: color-mix(in srgb, var(--totem-dock-body) 24%, var(--gate-surface-1));
+}
+
+.totemDockTotemGlyph {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.totemDockTotemAccessory {
+  position: absolute;
+  right: -8px;
+  top: -8px;
+  font-size: 14px;
+}
+
+.totemDockTotemMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.totemDockTotemBalance {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.totemDockTotemText {
+  font-size: 12px;
+  color: var(--gate-text-muted);
+}
+
+.totemDockOwned {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.totemDockOwnedRow,
+.totemDockSettingsRow {
+  border: 1px solid var(--gate-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.totemDockShopGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.totemDockShopTitle {
+  font-size: 12px;
+  color: var(--gate-text-muted);
+}
+
+.totemDockShopGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.totemDockShopCard {
+  border: 1px solid var(--gate-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--gate-surface-1) 92%, #05080f);
+  padding: 8px 10px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.totemDockSwatch,
+.totemDockAccessory {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  line-height: 1;
+  font-size: 12px;
+}
+
+.totemDockSwatch {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.26);
+}
+
+.totemDockAccessory {
+  border: 1px solid color-mix(in srgb, var(--gate-border) 88%, rgba(255, 255, 255, 0.16));
+}
+
+.totemDockShopText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.totemDockShopText strong {
+  font-size: 12px;
+}
+
+.totemDockShopText span {
+  font-size: 11px;
+  color: var(--gate-text-muted);
+}
+
+.totemDockShopAction {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.totemDockHint,
+.totemDockEmpty,
+.totemDockStatus {
+  margin: 0;
+  font-size: 12px;
+  color: var(--gate-text-muted);
+}
+
+.totemDockStatus {
+  color: color-mix(in srgb, #d6f7d6 82%, var(--gate-text));
+}
+
+.totemDockStatus.isError {
+  color: color-mix(in srgb, #ffd2d2 74%, var(--gate-text));
+}
+
+@keyframes totemDockHideDrop {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(8px) scale(0.98);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.86);
+  }
+}
+
+@media (max-width: 640px) {
+  .totemDockButton {
+    min-width: 84px;
+    height: 48px;
+  }
+
+  .totemDockPanelLayer {
+    max-width: calc(100vw - 20px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  }
+
+  .totemDockWalletStats {
+    grid-template-columns: 1fr;
+  }
+}

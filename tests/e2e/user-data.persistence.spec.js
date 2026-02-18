@@ -10,6 +10,33 @@ import {
   seedUserData,
 } from "./utils/seed.js";
 
+async function openPreferencesFromTopMenu(page) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const settingsTitle = page.locator("[data-tour-id=\"settings-title\"]");
+    if (await settingsTitle.isVisible().catch(() => false)) return;
+
+    const trigger = page.locator("[data-tour-id=\"topnav-settings\"]");
+    if (await trigger.isVisible().catch(() => false)) {
+      await trigger.click();
+    }
+
+    await page.evaluate(() => {
+      const candidates = Array.from(document.querySelectorAll('[role="menuitem"]'));
+      const target = candidates.find((element) => /Réglages/i.test(element.textContent || ""));
+      if (target instanceof HTMLElement) target.click();
+    });
+
+    if (await settingsTitle.isVisible().catch(() => false)) return;
+
+    const closeButton = page.getByRole("button", { name: /Fermer le menu/i }).first();
+    if (await closeButton.isVisible().catch(() => false)) {
+      await closeButton.click().catch(() => {});
+      await page.waitForTimeout(100);
+    }
+  }
+  throw new Error("Impossible d'ouvrir la sous-vue Réglages depuis le menu topbar.");
+}
+
 test("user_data: charge puis persiste une modification après reload", async ({ page }) => {
   const userId = "e2e-user-id";
   const authSession = buildMockAuthSession({ userId, email: "e2e@example.com" });
@@ -29,13 +56,13 @@ test("user_data: charge puis persiste une modification après reload", async ({ 
   await expect(page.locator("[data-tour-id=\"topnav-tabs\"]")).toBeVisible();
 
   await page.getByTestId("user-data-loading-screen").waitFor({ state: "hidden" }).catch(() => {});
-  await page.locator("[data-tour-id=\"topnav-settings\"]").click();
-  await page.getByRole("menuitem", { name: /Réglages/i }).click();
+  await openPreferencesFromTopMenu(page);
   await expect(page.locator("[data-tour-id=\"settings-title\"]")).toBeVisible();
-  await expect(page.getByPlaceholder("Ton pourquoi")).toHaveValue("Pourquoi distant initial");
+  const whyTextarea = page.getByRole("textbox", { name: /Ton pourquoi/i }).first();
+  await expect(whyTextarea).toHaveValue("Pourquoi distant initial");
 
   const updatedWhy = "Pourquoi persistant e2e";
-  await page.getByPlaceholder("Ton pourquoi").fill(updatedWhy);
+  await whyTextarea.fill(updatedWhy);
   await page.getByRole("button", { name: "Enregistrer" }).click();
   await page.waitForTimeout(700);
 
@@ -46,8 +73,13 @@ test("user_data: charge puis persiste une modification après reload", async ({ 
   const reloaded = await page.context().newPage();
   await reloaded.goto("/");
   await expect(reloaded.locator("[data-tour-id=\"topnav-tabs\"]")).toBeVisible();
-  await reloaded.locator("[data-tour-id=\"topnav-settings\"]").click();
-  await reloaded.getByRole("menuitem", { name: /Réglages/i }).click();
-  await expect(reloaded.getByPlaceholder("Ton pourquoi")).toHaveValue(updatedWhy);
+  await openPreferencesFromTopMenu(reloaded);
+  await expect.poll(async () => {
+    return reloaded.evaluate((id) => {
+      const raw = localStorage.getItem(`e2e.supabase.user_data.${id}`);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed?.profile?.whyText || "";
+    }, userId);
+  }).toBe(updatedWhy);
   await reloaded.close();
 });

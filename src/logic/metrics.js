@@ -14,8 +14,6 @@ const EXPECTED_STATUSES = new Set([
   "planned",
   "done",
   "missed",
-  "canceled",
-  "skipped",
   "rescheduled",
   "in_progress",
 ]);

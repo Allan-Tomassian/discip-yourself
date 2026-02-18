@@ -3,12 +3,8 @@ import ScreenShell from "./_ScreenShell";
 import { GateBadge, GateButton, GateRow, GateSection } from "../shared/ui/gate/Gate";
 import SelectControl from "../ui/select/Select";
 import { getCategoryPilotageCounts, getCategoryStatus } from "../logic/pilotage";
-import {
-  computeDailyStats,
-  computeStats,
-  getWindowBounds,
-  selectOccurrencesInRange,
-} from "../logic/metrics";
+import { getWindowBounds } from "../logic/metrics";
+import { computeWindowStats } from "../logic/progressionModel";
 import { buildReport, exportReportToCSV } from "../logic/reporting";
 import SortableBlocks from "../components/SortableBlocks";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
@@ -243,15 +239,15 @@ export default function Pilotage({
   const weekBounds = useMemo(() => getWindowBounds("7d", now), [now]);
   const twoWeekBounds = useMemo(() => getWindowBounds("14d", now), [now]);
 
-  const weekDailyStats = useMemo(
-    () => computeDailyStats(safeData, weekBounds.fromKey, weekBounds.toKey),
+  const weekWindowStats = useMemo(
+    () => computeWindowStats(safeData, weekBounds.fromKey, weekBounds.toKey, { includeMicroContribution: true }),
     [safeData, weekBounds.fromKey, weekBounds.toKey]
   );
 
-  const stats14d = useMemo(() => {
-    const list = selectOccurrencesInRange(safeData, twoWeekBounds.fromKey, twoWeekBounds.toKey);
-    return computeStats(list);
-  }, [safeData, twoWeekBounds.fromKey, twoWeekBounds.toKey]);
+  const twoWeekWindowStats = useMemo(
+    () => computeWindowStats(safeData, twoWeekBounds.fromKey, twoWeekBounds.toKey, { includeMicroContribution: true }),
+    [safeData, twoWeekBounds.fromKey, twoWeekBounds.toKey]
+  );
 
 
   const selectedCategoryId =
@@ -271,16 +267,16 @@ export default function Pilotage({
   }, [reportWindow, now]);
 
   const weekPct = useMemo(
-    () => pct(weekDailyStats.totals?.done, weekDailyStats.totals?.expected),
-    [weekDailyStats.totals]
+    () => pct(weekWindowStats.discipline?.done, weekWindowStats.discipline?.expected),
+    [weekWindowStats.discipline]
   );
   const twoWeekPct = useMemo(
-    () => pct(stats14d?.done, stats14d?.expected),
-    [stats14d]
+    () => pct(twoWeekWindowStats.discipline?.done, twoWeekWindowStats.discipline?.expected),
+    [twoWeekWindowStats.discipline]
   );
 
-  const weekExpected = Number(weekDailyStats.totals?.expected) || 0;
-  const weekDone = Number(weekDailyStats.totals?.done) || 0;
+  const weekExpected = Number(weekWindowStats.occurrences?.expected) || 0;
+  const weekDone = Number(weekWindowStats.occurrences?.done) || 0;
 
   const trendDelta = useMemo(() => {
     if (weekPct == null || twoWeekPct == null) return null;
@@ -304,10 +300,10 @@ export default function Pilotage({
 
   const selectedWeek = useMemo(() => {
     if (!selectedCategoryId) return null;
-    const list = selectOccurrencesInRange(safeData, weekBounds.fromKey, weekBounds.toKey, {
-      categoryId: selectedCategoryId,
-    });
-    return computeStats(list);
+    return computeWindowStats(safeData, weekBounds.fromKey, weekBounds.toKey, {
+      filters: { categoryId: selectedCategoryId },
+      includeMicroContribution: false,
+    }).occurrences;
   }, [safeData, selectedCategoryId, weekBounds.fromKey, weekBounds.toKey]);
 
   const radarWindow = twoWeekBounds;
@@ -739,7 +735,7 @@ export default function Pilotage({
                           }
                         />
                         <StatRow
-                          label="Semaine (attendu / fait)"
+                          label="Semaine (fait / attendu)"
                           value={selectedWeek ? `${selectedWeek.expected || 0} / ${selectedWeek.done || 0}` : "—"}
                           right={
                             selectedWeek && (selectedWeek.missed || 0) > 0 ? (
@@ -931,13 +927,13 @@ export default function Pilotage({
                   <details className="pilotageDetails">
                     <summary>Détails</summary>
                     <div className="pilotageDetailsBody">
-                      <StatRow label="7j · attendues" value={String(weekDailyStats.totals?.expected || 0)} />
-                      <StatRow label="7j · faites" value={String(weekDailyStats.totals?.done || 0)} />
-                      <StatRow label="7j · manquées" value={String(weekDailyStats.totals?.missed || 0)} />
-                      <StatRow label="14j · attendues" value={String(stats14d?.expected || 0)} />
-                      <StatRow label="14j · faites" value={String(stats14d?.done || 0)} />
-                      <StatRow label="14j · manquées" value={String(stats14d?.missed || 0)} />
-                      <StatRow label="14j · annulées" value={String(stats14d?.canceled || 0)} />
+                      <StatRow label="7j · attendues" value={String(weekWindowStats.occurrences?.expected || 0)} />
+                      <StatRow label="7j · faites" value={String(weekWindowStats.occurrences?.done || 0)} />
+                      <StatRow label="7j · manquées" value={String(weekWindowStats.occurrences?.missed || 0)} />
+                      <StatRow label="14j · attendues" value={String(twoWeekWindowStats.occurrences?.expected || 0)} />
+                      <StatRow label="14j · faites" value={String(twoWeekWindowStats.occurrences?.done || 0)} />
+                      <StatRow label="14j · manquées" value={String(twoWeekWindowStats.occurrences?.missed || 0)} />
+                      <StatRow label="14j · annulées" value={String(twoWeekWindowStats.occurrences?.canceled || 0)} />
                     </div>
                   </details>
                 </div>

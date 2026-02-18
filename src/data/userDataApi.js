@@ -1,4 +1,5 @@
 import { supabase } from "../infra/supabaseClient";
+import { E2E_AUTH_SESSION_KEY } from "../auth/constants";
 
 const LOCAL_USER_DATA_PREFIX = "e2e.supabase.user_data.";
 
@@ -9,6 +10,23 @@ function safeParse(raw) {
     return parsed && typeof parsed === "object" ? parsed : {};
   } catch {
     return {};
+  }
+}
+
+function hasObjectKeys(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length > 0;
+}
+
+function isUsingE2EMockedSession(userId) {
+  if (!userId || typeof window === "undefined") return false;
+  if (!import.meta.env.DEV) return false;
+  try {
+    const raw = window.localStorage.getItem(E2E_AUTH_SESSION_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return parsed?.user?.id === userId;
+  } catch {
+    return false;
   }
 }
 
@@ -32,6 +50,10 @@ export async function loadUserData(userId) {
   const normalizedUserId = String(userId || "").trim();
   if (!normalizedUserId) return {};
 
+  if (isUsingE2EMockedSession(normalizedUserId)) {
+    return loadLocalUserData(normalizedUserId);
+  }
+
   if (!supabase) {
     return loadLocalUserData(normalizedUserId);
   }
@@ -47,6 +69,12 @@ export async function loadUserData(userId) {
   }
   const payload = data?.data;
   const safePayload = payload && typeof payload === "object" ? payload : {};
+  if (!hasObjectKeys(safePayload)) {
+    const localFallback = loadLocalUserData(normalizedUserId);
+    if (hasObjectKeys(localFallback)) {
+      return localFallback;
+    }
+  }
   saveLocalUserData(normalizedUserId, safePayload);
   return safePayload;
 }

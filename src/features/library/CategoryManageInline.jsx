@@ -102,7 +102,7 @@ export default function CategoryManageInline({
       if (!weekSet.has(occ.date)) continue;
       const entry = occurrenceStats.get(occ.goalId) || { planned: 0, done: 0 };
       const status = occ.status || "planned";
-      if (status !== "skipped") entry.planned += 1;
+      if (status !== "skipped" && status !== "canceled") entry.planned += 1;
       if (status === "done") entry.done += 1;
       occurrenceStats.set(occ.goalId, entry);
     }

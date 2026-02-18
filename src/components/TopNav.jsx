@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import TopMenuPopover from "./TopMenuPopover";
+import WalletBadge from "./WalletBadge";
 import { GatePanel } from "../shared/ui/gate/Gate";
 import "../features/navigation/topMenuGate.css";
 // TOUR MAP:
@@ -22,6 +23,9 @@ export default function TopNav({
   active,
   setActive,
   onMenuNavigate,
+  coinsBalance = 0,
+  coinDeltaAmount = 0,
+  coinDeltaKey = "",
 }) {
   const navTopRef = useRef(null);
   const navBarRef = useRef(null);
@@ -29,6 +33,7 @@ export default function TopNav({
   const menuRef = useRef(null);
   const menuButtonRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuInitialView, setMenuInitialView] = useState("root");
   const [menuLayout, setMenuLayout] = useState({ top: 72, left: 180, width: 336, maxHeight: 420 });
 
   const computeMenuLayout = useCallback(() => {
@@ -48,16 +53,21 @@ export default function TopNav({
 
     const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-    const viewportPadding = 16;
+    const viewportPadding = 12;
     const gap = 10;
+    const maxAvailableWidth = Math.max(220, vw - (viewportPadding * 2) - safeLeft - safeRight);
+    const desktopIdealWidth = Math.max(320, Math.min(420, maxAvailableWidth));
+    const mobileIdealWidth = Math.min(420, maxAvailableWidth);
+    const width = vw <= 640 ? mobileIdealWidth : desktopIdealWidth;
+
     const desiredTop = rect.bottom + gap;
-    const desiredLeft = rect.left + rect.width / 2;
-    const width = Math.min(520, Math.max(280, vw - (viewportPadding * 2) - safeLeft - safeRight));
-    const minLeft = viewportPadding + safeLeft + width / 2;
-    const maxLeft = vw - viewportPadding - safeRight - width / 2;
-    const left = minLeft <= maxLeft ? clamp(desiredLeft, minLeft, maxLeft) : vw / 2;
+    const desiredLeft = rect.right - width;
+    const minLeft = viewportPadding + safeLeft;
+    const maxLeft = vw - viewportPadding - safeRight - width;
+    const left = minLeft <= maxLeft ? clamp(desiredLeft, minLeft, maxLeft) : minLeft;
+
     const top = Math.max(desiredTop, viewportPadding + safeTop);
-    const maxHeight = Math.max(180, vh - top - (16 + safeBottom));
+    const maxHeight = Math.max(180, vh - top - (12 + safeBottom));
 
     setMenuLayout((prev) => {
       if (
@@ -71,6 +81,25 @@ export default function TopNav({
       return { top, left, width, maxHeight };
     });
   }, []);
+
+  const handleCloseMenu = useCallback(() => {
+    setMenuOpen(false);
+    setMenuInitialView("root");
+  }, []);
+
+  const openMenuTo = useCallback((viewId) => {
+    const safeView = typeof viewId === "string" && viewId.trim() ? viewId.trim() : "root";
+    setMenuInitialView(safeView);
+    setMenuOpen(true);
+  }, []);
+
+  const handleMenuTriggerClick = useCallback(() => {
+    if (menuOpen) {
+      handleCloseMenu();
+      return;
+    }
+    openMenuTo("root");
+  }, [menuOpen, handleCloseMenu, openMenuTo]);
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
@@ -107,12 +136,12 @@ export default function TopNav({
       const target = event.target;
       if (menuRef.current && menuRef.current.contains(target)) return;
       if (menuButtonRef.current && menuButtonRef.current.contains(target)) return;
-      setMenuOpen(false);
+      handleCloseMenu();
     };
 
     const onKeyDown = (event) => {
       if (event.key === "Escape") {
-        setMenuOpen(false);
+        handleCloseMenu();
       }
     };
 
@@ -123,6 +152,25 @@ export default function TopNav({
       window.removeEventListener("mousedown", onPointerDown, true);
       window.removeEventListener("touchstart", onPointerDown, true);
       window.removeEventListener("keydown", onKeyDown, true);
+    };
+  }, [menuOpen, handleCloseMenu]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const root = document.getElementById("root");
+    if (!root) return undefined;
+
+    if (menuOpen) {
+      root.setAttribute("aria-hidden", "true");
+      root.setAttribute("data-menu-modal-open", "true");
+    } else {
+      root.removeAttribute("aria-hidden");
+      root.removeAttribute("data-menu-modal-open");
+    }
+
+    return () => {
+      root.removeAttribute("aria-hidden");
+      root.removeAttribute("data-menu-modal-open");
     };
   }, [menuOpen]);
 
@@ -150,12 +198,10 @@ export default function TopNav({
     ? createPortal(
       <>
         <div
-          className="topMenuScrim GateOverlayBackdrop"
+          className="topMenuScrim"
           style={{ position: "fixed", inset: 0, zIndex: Z_INDEX.scrim }}
           aria-hidden="true"
-          onClick={() => {
-            setMenuOpen(false);
-          }}
+          onClick={handleCloseMenu}
         />
         <div
           ref={menuRef}
@@ -166,7 +212,6 @@ export default function TopNav({
             top: `${menuLayout.top}px`,
             left: `${menuLayout.left}px`,
             width: `${menuLayout.width}px`,
-            transform: "translateX(-50%)",
             opacity: 1,
             visibility: "visible",
             pointerEvents: "auto",
@@ -175,9 +220,8 @@ export default function TopNav({
         >
           <TopMenuPopover
             onNavigate={onMenuNavigate}
-            onClose={() => {
-              setMenuOpen(false);
-            }}
+            initialView={menuInitialView}
+            onClose={handleCloseMenu}
           />
         </div>
       </>,
@@ -192,9 +236,9 @@ export default function TopNav({
         ref={navBarRef}
         style={{ zIndex: Z_INDEX.topbar }}
       >
-        <div className="TopNavSurfaceOuter GateGlassOuter">
+        <div className="TopNavSurfaceOuter">
           <div className="TopNavSurfaceClip TopNavBackdrop GateGlassClip GateGlassBackdrop">
-            <GatePanel className="topNavGateBar GateGlassContent" data-tour-id="topnav-row">
+            <GatePanel className="topNavGateBar GateGlassContent GateSurfacePremium GateCardPremium" data-tour-id="topnav-row">
               <div ref={topbarRef} className="navRow">
                 <div className="navGrid" data-tour-id="topnav-tabs">
                   {NAV_ITEMS.map((it) => (
@@ -211,24 +255,17 @@ export default function TopNav({
                   ))}
                 </div>
                 <div className="navActions">
-                  <button
-                    ref={menuButtonRef}
-                    className={`navMenuTrigger${menuOpen ? " navMenuTriggerOpen" : ""}`}
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen((prev) => !prev);
-                    }}
-                    aria-label="Menu"
-                    title="Menu"
-                    aria-expanded={menuOpen}
-                    data-tour-id="topnav-settings"
-                    >
-                      <span className="navMenuBars" aria-hidden="true">
-                        <span />
-                        <span />
-                        <span />
-                      </span>
-                    </button>
+                  <div ref={menuButtonRef} className="topNavWalletTrigger">
+                    <WalletBadge
+                      className="topNavWalletBadge"
+                      balance={coinsBalance}
+                      deltaAmount={coinDeltaAmount}
+                      deltaKey={coinDeltaKey}
+                      dataTestId="topnav-coins-balance"
+                      dataTourId="topnav-settings"
+                      onOpenWallet={handleMenuTriggerClick}
+                    />
+                  </div>
                 </div>
               </div>
             </GatePanel>

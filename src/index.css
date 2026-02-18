@@ -28,8 +28,11 @@
   --z-base: 0;
   --z-sticky: 40;
   --z-dropdown: 60;
-  --z-modal: 80;
-  --z-toast: 1200;
+  --z-topbar: 900;
+  --z-scrim: 1200;
+  --z-popover: 1210;
+  --z-modal: 2000;
+  --z-toast: 3000;
   --bottomCategoryBarSpace: 112px;
 }
 

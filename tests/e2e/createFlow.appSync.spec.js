@@ -65,7 +65,11 @@ async function completePickCategoryToBusiness(page) {
     .first();
   await expect(picker).toBeVisible();
   await picker.locator("button.selectTrigger").first().click();
-  await page.getByRole("option", { name: "Business", exact: true }).click();
+  const businessOption = page
+    .locator(".selectMenu button.selectOption", { hasText: "Business" })
+    .first();
+  await expect(businessOption).toBeVisible();
+  await businessOption.click();
   await page.getByRole("button", { name: "Terminer" }).click();
   await expect(page.getByTestId("create-flow-modal")).toBeHidden();
 }

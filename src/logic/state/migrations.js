@@ -487,6 +487,97 @@ export function migrate(prev) {
     const normalized = parsed && !Number.isNaN(parsed.getTime()) ? toLocalDateKey(parsed) : toLocalDateKey();
     next.ui.selectedDate = normalized;
   }
+  if (!next.ui.microActionsV1 || typeof next.ui.microActionsV1 !== "object") {
+    next.ui.microActionsV1 = {};
+  }
+  {
+    const micro = next.ui.microActionsV1;
+    const normalizedDate = normalizeLocalDateKey(typeof micro.dateKey === "string" ? micro.dateKey : "");
+    micro.dateKey = normalizedDate || toLocalDateKey();
+    micro.categoryId = typeof micro.categoryId === "string" && micro.categoryId.trim() ? micro.categoryId.trim() : null;
+    micro.items = Array.isArray(micro.items) ? micro.items : [];
+    micro.rerollsUsed = Number.isFinite(micro.rerollsUsed) ? Math.max(0, Math.floor(micro.rerollsUsed)) : 0;
+    micro.rerollCredits = Number.isFinite(micro.rerollCredits) ? Math.max(0, Math.floor(micro.rerollCredits)) : 0;
+    micro.sequence = Number.isFinite(micro.sequence) ? Math.max(0, Math.floor(micro.sequence)) : 0;
+  }
+  if (!next.ui.walletV1 || typeof next.ui.walletV1 !== "object") {
+    next.ui.walletV1 = {};
+  }
+  {
+    const wallet = next.ui.walletV1;
+    const normalizedDate = normalizeLocalDateKey(typeof wallet.dateKey === "string" ? wallet.dateKey : "");
+    wallet.version = 1;
+    wallet.dateKey = normalizedDate || toLocalDateKey();
+    wallet.balance = Number.isFinite(wallet.balance) ? Math.max(0, Math.floor(wallet.balance)) : 0;
+    wallet.earnedToday = Number.isFinite(wallet.earnedToday) ? Math.max(0, Math.floor(wallet.earnedToday)) : 0;
+    wallet.adsToday = Number.isFinite(wallet.adsToday) ? Math.max(0, Math.floor(wallet.adsToday)) : 0;
+    wallet.lastEvents = Array.isArray(wallet.lastEvents)
+      ? wallet.lastEvents
+          .filter((event) => event && typeof event === "object")
+          .map((event) => ({
+            ts: Number.isFinite(event.ts) ? event.ts : Date.now(),
+            type: typeof event.type === "string" && event.type.trim() ? event.type.trim() : "micro_done",
+            amount: Number.isFinite(event.amount) ? Math.max(0, Math.floor(event.amount)) : 0,
+            ...(event.meta && typeof event.meta === "object" ? { meta: event.meta } : {}),
+          }))
+          .slice(-50)
+      : [];
+  }
+  if (!next.ui.totemV1 || typeof next.ui.totemV1 !== "object") {
+    next.ui.totemV1 = {};
+  }
+  {
+    const totem = next.ui.totemV1;
+    const equipped = totem.equipped && typeof totem.equipped === "object" ? totem.equipped : {};
+    const owned = totem.owned && typeof totem.owned === "object" ? totem.owned : {};
+
+    totem.version = 1;
+    const bodyColor = typeof equipped.bodyColor === "string" && equipped.bodyColor.trim() ? equipped.bodyColor.trim() : "#F59E0B";
+    totem.equipped = {
+      bodyColor,
+      accessoryIds: Array.isArray(equipped.accessoryIds)
+        ? equipped.accessoryIds
+            .filter((id) => typeof id === "string" && id.trim())
+            .map((id) => id.trim())
+        : [],
+    };
+    const ownedColors = Array.isArray(owned.colors)
+      ? owned.colors
+          .filter((id) => typeof id === "string" && id.trim())
+          .map((id) => id.trim())
+      : [];
+    if (!ownedColors.includes("eagle-amber")) ownedColors.unshift("eagle-amber");
+    totem.owned = {
+      colors: Array.from(new Set(ownedColors)),
+      accessories: Array.isArray(owned.accessories)
+        ? Array.from(
+            new Set(
+              owned.accessories
+                .filter((id) => typeof id === "string" && id.trim())
+                .map((id) => id.trim())
+            )
+          )
+        : [],
+    };
+    totem.lastAnimationAt = Number.isFinite(totem.lastAnimationAt) ? Math.max(0, Math.floor(totem.lastAnimationAt)) : 0;
+    totem.animationEnabled = totem.animationEnabled !== false;
+  }
+  if (!next.ui.totemDockV1 || typeof next.ui.totemDockV1 !== "object") {
+    next.ui.totemDockV1 = {};
+  }
+  {
+    const dock = next.ui.totemDockV1;
+    const rawView = typeof dock.lastOpenView === "string" ? dock.lastOpenView.trim() : "";
+    const view = rawView === "shop" || rawView === "totem" || rawView === "settings" || rawView === "wallet"
+      ? rawView
+      : "wallet";
+    dock.version = 1;
+    dock.hidden = dock.hidden === true;
+    dock.panelOpen = dock.hidden ? false : dock.panelOpen === true;
+    dock.lastOpenView = view;
+    dock.variant = "B";
+    dock.lastInteractionAt = Number.isFinite(dock.lastInteractionAt) ? Math.max(0, Math.floor(dock.lastInteractionAt)) : null;
+  }
 
   // categories
   if (!Array.isArray(next.categories)) next.categories = [];

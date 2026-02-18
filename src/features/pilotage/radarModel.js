@@ -1,9 +1,8 @@
 import {
   computeDailyStats,
-  computeGoalStats,
-  computeStats,
   selectOccurrencesInRange,
 } from "../../logic/metrics";
+import { computeExpectedDoneMissed } from "../../logic/progressionModel";
 
 const TIME_BUCKETS = [
   { id: "06-09", label: "06h–09h", from: 6 * 60, to: 9 * 60 },
@@ -46,7 +45,7 @@ export function computeCategoryRadarRows(state, fromKey, toKey) {
   const out = [];
   for (const category of categories) {
     const list = selectOccurrencesInRange(safeState, fromKey, toKey, { categoryId: category.id });
-    const stats = computeStats(list);
+    const stats = computeExpectedDoneMissed(list);
     const daily = computeDailyStats(safeState, fromKey, toKey, { categoryId: category.id });
     const totalDays = Math.max(1, daily.byDate.size);
 
@@ -63,10 +62,15 @@ export function computeCategoryRadarRows(state, fromKey, toKey) {
     const expectedPerDay = expected / totalDays;
     const load = clamp01(expectedPerDay / 3);
 
-    const byGoal = computeGoalStats(safeState, fromKey, toKey, { categoryId: category.id });
+    const byGoalExpected = new Map();
+    for (const occ of list) {
+      if (!occ || typeof occ.goalId !== "string") continue;
+      const status = typeof occ.status === "string" ? occ.status.trim().toLowerCase() : "planned";
+      if (status === "canceled" || status === "skipped") continue;
+      byGoalExpected.set(occ.goalId, (byGoalExpected.get(occ.goalId) || 0) + 1);
+    }
     let topExpected = 0;
-    for (const bucket of byGoal.values()) {
-      const value = Number(bucket?.expected) || 0;
+    for (const value of byGoalExpected.values()) {
       if (value > topExpected) topExpected = value;
     }
     const focus = expected > 0 ? topExpected / expected : 0;

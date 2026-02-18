@@ -1,0 +1,827 @@
+{
+  "generatedAt": "2026-02-18T02:53:04.019Z",
+  "root": "/Users/allan/Desktop/discip-yourself code",
+  "scan": {
+    "dirs": [
+      "src",
+      "tests",
+      "docs"
+    ],
+    "files": [
+      "package.json",
+      "package-lock.json",
+      "README.md",
+      "index.html"
+    ],
+    "ignored": [
+      "node_modules",
+      ".git",
+      "dist",
+      "coverage",
+      "test-results"
+    ],
+    "ignoredFiles": [
+      "/^docs\\/ads-map\\.json$/i",
+      "/^docs\\/ads-audit\\.md$/i",
+      "/^docs\\/ads-ready-checklist\\.md$/i",
+      "/^docs\\/ads-risk-appstore\\.md$/i"
+    ],
+    "totalFiles": 260
+  },
+  "keywordIndex": [
+    "ads",
+    "admob",
+    "unity",
+    "rewarded",
+    "interstitial",
+    "banner",
+    "iap",
+    "restore",
+    "tracking",
+    "idfa",
+    "att",
+    "consent",
+    "gdpr"
+  ],
+  "keywordHits": [
+    {
+      "file": "src/hooks/useEntitlementsPaywall.js",
+      "line": 10,
+      "keywords": [
+        "restore"
+      ],
+      "snippet": "import { getPremiumEntitlement, purchase, restore } from \"../logic/purchases\";"
+    },
+    {
+      "file": "src/hooks/useEntitlementsPaywall.js",
+      "line": 77,
+      "keywords": [
+        "restore"
+      ],
+      "snippet": "const result = await restore();"
+    },
+    {
+      "file": "src/logic/purchases.js",
+      "line": 65,
+      "keywords": [
+        "restore"
+      ],
+      "snippet": "export async function restore() {"
+    },
+    {
+      "file": "src/logic/purchases.js",
+      "line": 68,
+      "keywords": [
+        "restore"
+      ],
+      "snippet": "if (mod?.restore) return mod.restore();"
+    },
+    {
+      "file": "src/logic/rewards.js",
+      "line": 3,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "export const REWARDS = ["
+    },
+    {
+      "file": "src/logic/rewards.js",
+      "line": 11,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "export function isRewardUnlocked(reward, data) {"
+    },
+    {
+      "file": "src/logic/rewards.js",
+      "line": 12,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "if (reward.type === \"LEVEL\") return data.profile.level >= reward.threshold;"
+    },
+    {
+      "file": "src/logic/rewards.js",
+      "line": 13,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "if (reward.type === \"DAILY_AVG\") return computeGlobalAvgForDay(data, new Date()) >= reward.threshold;"
+    },
+    {
+      "file": "src/logic/rewards.js",
+      "line": 14,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "if (reward.type === \"WEEKLY_AVG\") return computeGlobalAvgForWeek(data, new Date()) >= reward.threshold;"
+    },
+    {
+      "file": "src/logic/rewards.js",
+      "line": 15,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "if (reward.type === \"STREAK_DAYS\") return computeStreakDays(data, new Date()) >= reward.threshold;"
+    },
+    {
+      "file": "src/logic/walletV1.js",
+      "line": 162,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "const rewarded = addCoins("
+    },
+    {
+      "file": "src/logic/walletV1.js",
+      "line": 174,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "...rewarded,"
+    },
+    {
+      "file": "src/logic/walletV1.js",
+      "line": 175,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "adsToday: rewarded.adsToday + 1,"
+    },
+    {
+      "file": "src/logic/walletV1.test.js",
+      "line": 58,
+      "keywords": [
+        "ads"
+      ],
+      "snippet": "it(\"canWatchAd returns false when daily ad cap is reached\", () => {"
+    },
+    {
+      "file": "src/logic/walletV1.test.js",
+      "line": 74,
+      "keywords": [
+        "ads"
+      ],
+      "snippet": "it(\"applyAdReward grants coins and increments ad usage\", () => {"
+    },
+    {
+      "file": "src/logic/walletV1.test.js",
+      "line": 76,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "const rewarded = applyAdReward(base, {"
+    },
+    {
+      "file": "src/logic/walletV1.test.js",
+      "line": 82,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "expect(rewarded.granted).toBe(true);"
+    },
+    {
+      "file": "src/logic/walletV1.test.js",
+      "line": 83,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "expect(rewarded.wallet.balance).toBe(REWARDED_AD_COINS_REWARD);"
+    },
+    {
+      "file": "src/logic/walletV1.test.js",
+      "line": 84,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "expect(rewarded.wallet.earnedToday).toBe(REWARDED_AD_COINS_REWARD);"
+    },
+    {
+      "file": "src/logic/walletV1.test.js",
+      "line": 85,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "expect(rewarded.wallet.adsToday).toBe(1);"
+    },
+    {
+      "file": "src/logic/walletV1.test.js",
+      "line": 86,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "expect(rewarded.wallet.lastEvents.at(-1)?.type).toBe(\"ad_reward\");"
+    },
+    {
+      "file": "src/logic/xp.js",
+      "line": 36,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "// Utility helpers (used later by rewards / objectives)"
+    },
+    {
+      "file": "src/native/purchases.ios.js",
+      "line": 189,
+      "keywords": [
+        "restore"
+      ],
+      "snippet": "export async function restore() {"
+    },
+    {
+      "file": "src/native/purchases.web.js",
+      "line": 14,
+      "keywords": [
+        "restore"
+      ],
+      "snippet": "export async function restore() {"
+    },
+    {
+      "file": "src/pages/Home.jsx",
+      "line": 1783,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "const rewarded = applyAdReward(currentWallet, {"
+    },
+    {
+      "file": "src/pages/Home.jsx",
+      "line": 1788,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "if (!rewarded.granted) return prev;"
+    },
+    {
+      "file": "src/pages/Home.jsx",
+      "line": 1800,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "isSameWalletV1(prevUi.walletV1, rewarded.wallet) &&"
+    },
+    {
+      "file": "src/pages/Home.jsx",
+      "line": 1810,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "walletV1: rewarded.wallet,"
+    },
+    {
+      "file": "src/ui/today/MicroActionsCard.jsx",
+      "line": 261,
+      "keywords": [
+        "ads"
+      ],
+      "snippet": "data-testid=\"micro-watch-ad\""
+    },
+    {
+      "file": "src/ui/today/RewardedAdModal.jsx",
+      "line": 76,
+      "keywords": [
+        "ads",
+        "rewarded"
+      ],
+      "snippet": "data-testid=\"rewarded-ad-modal\""
+    },
+    {
+      "file": "src/ui/today/RewardedAdModal.jsx",
+      "line": 93,
+      "keywords": [
+        "ads",
+        "rewarded"
+      ],
+      "snippet": "data-testid=\"rewarded-ad-complete\""
+    },
+    {
+      "file": "src/ui/today/RewardedAdModal.jsx",
+      "line": 104,
+      "keywords": [
+        "ads",
+        "rewarded"
+      ],
+      "snippet": "data-testid=\"rewarded-ad-close\""
+    },
+    {
+      "file": "src/utils/storage.js",
+      "line": 63,
+      "keywords": [
+        "restore"
+      ],
+      "snippet": "// Attempt to restore primary for next launch."
+    },
+    {
+      "file": "tests/e2e/micro-actions.coins-and-ads.spec.js",
+      "line": 9,
+      "keywords": [
+        "ads",
+        "rewarded"
+      ],
+      "snippet": "test(\"micro-actions: coins + rewarded ad reroll credit flow\", async ({ page }) => {"
+    },
+    {
+      "file": "tests/e2e/micro-actions.coins-and-ads.spec.js",
+      "line": 35,
+      "keywords": [
+        "ads"
+      ],
+      "snippet": "const watchAdButton = card.getByTestId(\"micro-watch-ad\");"
+    },
+    {
+      "file": "tests/e2e/micro-actions.coins-and-ads.spec.js",
+      "line": 41,
+      "keywords": [
+        "ads",
+        "rewarded"
+      ],
+      "snippet": "const adModal = page.getByTestId(\"rewarded-ad-modal\");"
+    },
+    {
+      "file": "tests/e2e/micro-actions.coins-and-ads.spec.js",
+      "line": 43,
+      "keywords": [
+        "ads",
+        "rewarded"
+      ],
+      "snippet": "await adModal.getByTestId(\"rewarded-ad-complete\").click();"
+    },
+    {
+      "file": "tests/e2e/micro-actions.coins-and-ads.spec.js",
+      "line": 53,
+      "keywords": [
+        "ads"
+      ],
+      "snippet": "await expect(card.getByTestId(\"micro-watch-ad\")).toBeVisible();"
+    },
+    {
+      "file": "tests/e2e/micro-actions.coins-and-ads.spec.js",
+      "line": 56,
+      "keywords": [
+        "ads",
+        "rewarded"
+      ],
+      "snippet": "test(\"micro-actions: premium hides rewarded ad CTA\", async ({ page }) => {"
+    },
+    {
+      "file": "tests/e2e/micro-actions.coins-and-ads.spec.js",
+      "line": 64,
+      "keywords": [
+        "ads"
+      ],
+      "snippet": "await expect(card.getByTestId(\"micro-watch-ad\")).toHaveCount(0);"
+    },
+    {
+      "file": "docs/progression-audit.md",
+      "line": 19,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "| computeStreakDays | `src/logic/habits.js:78` | computeGlobalAvgForDay | — | reward check invocation |"
+    },
+    {
+      "file": "docs/progression-audit.md",
+      "line": 62,
+      "keywords": [
+        "ads"
+      ],
+      "snippet": "3. **Vues dérivées uniquement**: Home/Pilotage/Bibliothèque affichent les valeurs du modèle sans recalcul local ad hoc."
+    },
+    {
+      "file": "docs/progression-map.json",
+      "line": 1006,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"area\": \"legacy-rewards\","
+    },
+    {
+      "file": "docs/progression-map.json",
+      "line": 1011,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"updateCadence\": \"reward check invocation\","
+    },
+    {
+      "file": "docs/progression-map.json",
+      "line": 1026,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/progression-map.json",
+      "line": 1031,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/progression-map.json",
+      "line": 1033,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"snippet\": \"if (reward.type === \\\"STREAK_DAYS\\\") return computeStreakDays(data, new Date()) >= reward.threshold;\""
+    },
+    {
+      "file": "docs/progression-map.json",
+      "line": 1038,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"src/logic/rewards.js\""
+    },
+    {
+      "file": "docs/progression-map.json",
+      "line": 1733,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/progression-map.json",
+      "line": 1738,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/progression-map.json",
+      "line": 2313,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22807,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22815,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22823,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22831,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22839,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22847,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22855,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22863,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22871,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22879,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22887,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22895,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22903,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22911,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22919,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22927,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22935,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22943,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22951,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22959,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22967,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22971,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"snippet\": \"if (reward.type === \\\"LEVEL\\\") return data.profile.level >= reward.threshold;\""
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22975,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22979,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"snippet\": \"if (reward.type === \\\"DAILY_AVG\\\") return computeGlobalAvgForDay(data, new Date()) >= reward.threshold;\""
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22983,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22987,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"snippet\": \"if (reward.type === \\\"WEEKLY_AVG\\\") return computeGlobalAvgForWeek(data, new Date()) >= reward.threshold;\""
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22991,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/text-map.json",
+      "line": 22995,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"snippet\": \"if (reward.type === \\\"STREAK_DAYS\\\") return computeStreakDays(data, new Date()) >= reward.threshold;\""
+    },
+    {
+      "file": "docs/ui-style-map.json",
+      "line": 5009,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"path\": \"src/logic/rewards.js\","
+    },
+    {
+      "file": "docs/ui-uniformity-map.json",
+      "line": 1501,
+      "keywords": [
+        "rewarded"
+      ],
+      "snippet": "\"file\": \"src/logic/rewards.js\","
+    }
+  ],
+  "envHits": [],
+  "importHits": [],
+  "packageJsonSdkDeps": [],
+  "packageLockSdkDeps": [],
+  "aggregates": {
+    "keywordCounts": {
+      "restore": 7,
+      "rewarded": 67,
+      "ads": 14
+    },
+    "envVarCount": 0,
+    "importHitCount": 0,
+    "filesWithAnyHit": 18
+  },
+  "fileSummaries": [
+    {
+      "file": "docs/text-map.json",
+      "keywordHitCount": 28,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "docs/progression-map.json",
+      "keywordHitCount": 9,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "src/logic/walletV1.test.js",
+      "keywordHitCount": 8,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "tests/e2e/micro-actions.coins-and-ads.spec.js",
+      "keywordHitCount": 7,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "src/logic/rewards.js",
+      "keywordHitCount": 6,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "src/pages/Home.jsx",
+      "keywordHitCount": 4,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "src/logic/walletV1.js",
+      "keywordHitCount": 3,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "src/ui/today/RewardedAdModal.jsx",
+      "keywordHitCount": 3,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "src/hooks/useEntitlementsPaywall.js",
+      "keywordHitCount": 2,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "src/logic/purchases.js",
+      "keywordHitCount": 2,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "docs/progression-audit.md",
+      "keywordHitCount": 2,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "src/logic/xp.js",
+      "keywordHitCount": 1,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "src/native/purchases.ios.js",
+      "keywordHitCount": 1,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "src/native/purchases.web.js",
+      "keywordHitCount": 1,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "src/ui/today/MicroActionsCard.jsx",
+      "keywordHitCount": 1,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "src/utils/storage.js",
+      "keywordHitCount": 1,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "docs/ui-style-map.json",
+      "keywordHitCount": 1,
+      "envHitCount": 0,
+      "importHitCount": 0
+    },
+    {
+      "file": "docs/ui-uniformity-map.json",
+      "keywordHitCount": 1,
+      "envHitCount": 0,
+      "importHitCount": 0
+    }
+  ]
+}

@@ -57,7 +57,7 @@ describe("reporting", () => {
       toKey: "2026-02-02",
       goalIds: ["g3"],
     });
-    expect(goalReport.totals.expected).toBe(2);
+    expect(goalReport.totals.expected).toBe(1);
     expect(goalReport.totals.canceled).toBe(1);
   });
 });

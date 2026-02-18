@@ -25,6 +25,7 @@ import CreateV2LinkOutcome from "./pages/CreateV2LinkOutcome";
 import CreateV2PickCategory from "./pages/CreateV2PickCategory";
 import CreateV2OutcomeNextAction from "./pages/CreateV2OutcomeNextAction";
 import CreateFlowModal from "./ui/create/CreateFlowModal";
+import TotemDockLayer from "./ui/totem/TotemDockLayer";
 import Preferences from "./pages/Preferences";
 import Account from "./pages/Account";
 import Subscription from "./pages/Subscription";
@@ -83,6 +84,20 @@ function isSameOrder(a, b) {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i += 1) if (a[i] !== b[i]) return false;
   return true;
+}
+
+function normalizeWalletPreview(wallet) {
+  const source = wallet && typeof wallet === "object" ? wallet : {};
+  const balance = Number.isFinite(source.balance) ? Math.max(0, Math.floor(source.balance)) : 0;
+  const lastEvents = Array.isArray(source.lastEvents)
+    ? source.lastEvents.filter((event) => event && typeof event === "object")
+    : [];
+  const lastReward = [...lastEvents]
+    .reverse()
+    .find((event) => (event.type === "micro_done" || event.type === "ad_reward") && Number(event.amount) > 0);
+  const deltaAmount = Number.isFinite(lastReward?.amount) ? Math.max(0, Math.floor(lastReward.amount)) : 0;
+  const deltaKey = lastReward ? `${lastReward.ts || 0}:${lastReward.type || ""}:${deltaAmount}` : "";
+  return { balance, deltaAmount, deltaKey };
 }
 
 export default function App() {
@@ -144,6 +159,10 @@ export default function App() {
     canCreateOutcomeNow,
     canCreateActionNow,
   } = useEntitlementsPaywall({ safeData, setData });
+  const topWalletPreview = useMemo(
+    () => normalizeWalletPreview(safeData?.ui?.walletV1),
+    [safeData?.ui?.walletV1]
+  );
 
   useEffect(() => {
     setData((prev) => {
@@ -250,6 +269,9 @@ export default function App() {
       onMenuNavigate={(action) => {
         setTab(action);
       }}
+      coinsBalance={topWalletPreview.balance}
+      coinDeltaAmount={topWalletPreview.deltaAmount}
+      coinDeltaKey={topWalletPreview.deltaKey}
     />
   );
 
@@ -493,6 +515,7 @@ export default function App() {
   };
 
   const showBottomRail = tab === "today" || tab === "library" || tab === "pilotage";
+  const totemDockLayer = <TotemDockLayer data={safeData} setData={setData} />;
 
   if (dataLoading) {
     return (
@@ -512,6 +535,7 @@ export default function App() {
         {headerSpacer}
         <Onboarding data={data} setData={setData} onDone={() => setTab("preferences")} planOnly />
         <DiagnosticOverlay data={safeData} tab={tab} />
+        {totemDockLayer}
         <PlusExpander
           open={plusOpen}
           anchorRect={plusAnchorRect}
@@ -530,6 +554,7 @@ export default function App() {
       <>
         <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />
         <DiagnosticOverlay data={safeData} tab={tab} />
+        {totemDockLayer}
       </>
     );
   }
@@ -541,6 +566,7 @@ export default function App() {
         {headerSpacer}
         <Account data={data} />
         <DiagnosticOverlay data={safeData} tab={tab} />
+        {totemDockLayer}
       </>
     );
   }
@@ -1064,6 +1090,7 @@ export default function App() {
         onOpenTerms={() => setTab("terms")}
         onOpenPrivacy={() => setTab("privacy")}
       />
+      {totemDockLayer}
     </>
   );
 }

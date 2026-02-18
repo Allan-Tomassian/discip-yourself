@@ -20,11 +20,31 @@ import { resolveCurrentPlannedOccurrence, resolveNextPlannedOccurrence } from ".
 import { getAlternativeCandidates, getNextPlannedOccurrence } from "../core/focus/focusSelector";
 import { resolveGoalType } from "../domain/goalType";
 import { linkProcessToOutcome, splitProcessByLink } from "../logic/linking";
-import { computeDisciplineScore } from "../logic/pilotage";
+import { computeWindowStats } from "../logic/progressionModel";
+import {
+  BASIC_MICRO_REROLL_LIMIT,
+  completeMicroAction,
+  ensureMicroActionsV1,
+  getDefaultMicroCategoryId,
+  rerollMicroActions,
+} from "../logic/microActionsV1";
+import { showRewardedAd, setRewardedAdPresenter } from "../logic/rewardedAds";
+import {
+  MICRO_ACTION_COINS_REWARD,
+  REWARDED_AD_COINS_REWARD,
+  addCoins,
+  appendWalletEvent,
+  applyAdReward,
+  canWatchAd,
+  ensureWallet,
+} from "../logic/walletV1";
+import { ensureTotemV1, getTotemAccessoryEmoji } from "../logic/totemV1";
 import { uid } from "../utils/helpers";
 import CalendarCard from "../ui/calendar/CalendarCard";
 import FocusCard from "../ui/focus/FocusCard";
 import MicroActionsCard from "../ui/today/MicroActionsCard";
+import RewardedAdModal from "../ui/today/RewardedAdModal";
+import TotemAnimationOverlay from "../ui/today/TotemAnimationOverlay";
 import { LABELS } from "../ui/labels";
 
 // TOUR MAP:
@@ -94,6 +114,92 @@ const arrayEqual = (a, b) =>
   Array.isArray(b) &&
   a.length === b.length &&
   a.every((id, idx) => id === b[idx]);
+
+function normalizeMicroItemForCompare(item) {
+  if (!item || typeof item !== "object") return null;
+  return {
+    id: typeof item.id === "string" ? item.id : "",
+    title: typeof item.title === "string" ? item.title : "",
+    subtitle: typeof item.subtitle === "string" ? item.subtitle : "",
+    categoryId: typeof item.categoryId === "string" ? item.categoryId : "",
+    status: typeof item.status === "string" ? item.status : "",
+    createdAt: typeof item.createdAt === "string" ? item.createdAt : "",
+    doneAt: typeof item.doneAt === "string" ? item.doneAt : "",
+    templateId: typeof item.templateId === "string" ? item.templateId : "",
+    durationMin: Number.isFinite(item.durationMin) ? item.durationMin : 0,
+  };
+}
+
+function isSameMicroActionsV1(a, b) {
+  const left = a && typeof a === "object" ? a : {};
+  const right = b && typeof b === "object" ? b : {};
+  if ((left.dateKey || "") !== (right.dateKey || "")) return false;
+  if ((left.categoryId || "") !== (right.categoryId || "")) return false;
+  const leftRerolls = Number.isFinite(left.rerollsUsed) ? left.rerollsUsed : 0;
+  const rightRerolls = Number.isFinite(right.rerollsUsed) ? right.rerollsUsed : 0;
+  if (leftRerolls !== rightRerolls) return false;
+  const leftCredits = Number.isFinite(left.rerollCredits) ? left.rerollCredits : 0;
+  const rightCredits = Number.isFinite(right.rerollCredits) ? right.rerollCredits : 0;
+  if (leftCredits !== rightCredits) return false;
+  const leftSequence = Number.isFinite(left.sequence) ? left.sequence : 0;
+  const rightSequence = Number.isFinite(right.sequence) ? right.sequence : 0;
+  if (leftSequence !== rightSequence) return false;
+  const leftItems = Array.isArray(left.items) ? left.items.map(normalizeMicroItemForCompare) : [];
+  const rightItems = Array.isArray(right.items) ? right.items.map(normalizeMicroItemForCompare) : [];
+  if (leftItems.length !== rightItems.length) return false;
+  for (let i = 0; i < leftItems.length; i += 1) {
+    if (JSON.stringify(leftItems[i]) !== JSON.stringify(rightItems[i])) return false;
+  }
+  return true;
+}
+
+function normalizeWalletEventForCompare(event) {
+  const safe = event && typeof event === "object" ? event : {};
+  return {
+    ts: Number.isFinite(safe.ts) ? safe.ts : 0,
+    type: typeof safe.type === "string" ? safe.type : "",
+    amount: Number.isFinite(safe.amount) ? safe.amount : 0,
+    meta: safe.meta && typeof safe.meta === "object" ? safe.meta : null,
+  };
+}
+
+function isSameWalletV1(a, b) {
+  const left = a && typeof a === "object" ? a : {};
+  const right = b && typeof b === "object" ? b : {};
+  if (Number(left.version || 0) !== Number(right.version || 0)) return false;
+  if (Number(left.balance || 0) !== Number(right.balance || 0)) return false;
+  if (Number(left.earnedToday || 0) !== Number(right.earnedToday || 0)) return false;
+  if (Number(left.adsToday || 0) !== Number(right.adsToday || 0)) return false;
+  if ((left.dateKey || "") !== (right.dateKey || "")) return false;
+  const leftEvents = Array.isArray(left.lastEvents) ? left.lastEvents.map(normalizeWalletEventForCompare) : [];
+  const rightEvents = Array.isArray(right.lastEvents) ? right.lastEvents.map(normalizeWalletEventForCompare) : [];
+  if (leftEvents.length !== rightEvents.length) return false;
+  for (let i = 0; i < leftEvents.length; i += 1) {
+    if (JSON.stringify(leftEvents[i]) !== JSON.stringify(rightEvents[i])) return false;
+  }
+  return true;
+}
+
+function normalizeTotemForCompare(totem) {
+  const safe = ensureTotemV1(totem);
+  return {
+    version: Number(safe.version || 0),
+    equipped: {
+      bodyColor: safe.equipped.bodyColor,
+      accessoryIds: [...safe.equipped.accessoryIds],
+    },
+    owned: {
+      colors: [...safe.owned.colors],
+      accessories: [...safe.owned.accessories],
+    },
+    lastAnimationAt: Number(safe.lastAnimationAt || 0),
+    animationEnabled: Boolean(safe.animationEnabled),
+  };
+}
+
+function isSameTotemV1(a, b) {
+  return JSON.stringify(normalizeTotemForCompare(a)) === JSON.stringify(normalizeTotemForCompare(b));
+}
 
 function loadLegacyBlockOrder() {
   if (typeof window === "undefined") return null;
@@ -177,6 +283,7 @@ export default function Home({
   const selectedStatus =
     selectedDateKey === localTodayKey ? "today" : selectedDateKey < localTodayKey ? "past" : "future";
   const canValidate = selectedStatus === "today";
+  const canInteractWithMicroActions = typeof setData === "function";
   const canEdit = selectedStatus !== "past";
   const lockMessage = selectedStatus === "past" ? "Lecture seule" : "Disponible le jour J";
   const historyLimitDays = !isPremiumPlan ? Number(planLimits?.historyDays) || 0 : 0;
@@ -250,6 +357,12 @@ export default function Home({
   const didHydrateLegacyRef = useRef(false);
   const legacyOrderSigRef = useRef("");
   const calendarDateInvariantLogRef = useRef(new Set());
+  const rewardedAdResolverRef = useRef(null);
+  const microRewardFeedbackTimeoutRef = useRef(null);
+  const [microWatchAdLoading, setMicroWatchAdLoading] = useState(false);
+  const [microRewardFeedback, setMicroRewardFeedback] = useState("");
+  const [totemAnimationCue, setTotemAnimationCue] = useState({ key: 0, amount: 0, variant: "micro" });
+  const [rewardedAdRequest, setRewardedAdRequest] = useState({ open: false, placement: "micro-reroll" });
 
   // Data slices
   const profile = safeData.profile || {};
@@ -261,11 +374,8 @@ export default function Home({
     () => (Array.isArray(safeData.categories) ? safeData.categories : []),
     [safeData.categories]
   );
-  const selectedCategory = useMemo(
-    () => categories.find((c) => c && c.id === homeSelectedCategoryId) || null,
-    [categories, homeSelectedCategoryId]
-  );
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
+  const totemV1 = useMemo(() => ensureTotemV1(safeData?.ui?.totemV1), [safeData?.ui?.totemV1]);
   const noteCategoryId = homeSelectedCategoryId;
   const noteKeyPrefix = noteCategoryId ? `dailyNote:${noteCategoryId}:` : "dailyNote:";
   const noteMetaKeyPrefix = noteCategoryId ? `dailyNoteMeta:${noteCategoryId}:` : "dailyNoteMeta:";
@@ -307,11 +417,56 @@ export default function Home({
     () => (safeData.microChecks && typeof safeData.microChecks === "object" ? safeData.microChecks : {}),
     [safeData.microChecks]
   );
-  const dayMicro = useMemo(() => {
-    return microChecks?.[selectedDateKey] && typeof microChecks[selectedDateKey] === "object"
-      ? microChecks[selectedDateKey]
-      : {};
-  }, [microChecks, selectedDateKey]);
+  const microDateKey = localTodayKey;
+  const isMicroToday = selectedDateKey === microDateKey;
+  const canUseMicroActions = canInteractWithMicroActions && isMicroToday;
+  const microDefaultCategoryId = useMemo(() => getDefaultMicroCategoryId(safeData), [safeData]);
+  const microCategoryOptions = useMemo(() => {
+    const list = [];
+    const seen = new Set();
+    for (const category of categories) {
+      const id = typeof category?.id === "string" ? category.id : "";
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      const name = typeof category?.name === "string" && category.name.trim() ? category.name.trim() : id;
+      list.push({ value: id, label: name });
+    }
+    if (!seen.has("general")) list.unshift({ value: "general", label: "Général" });
+    return list;
+  }, [categories]);
+  const microSelectedCategoryId = useMemo(() => {
+    const fromUi = typeof safeData?.ui?.microActionsV1?.categoryId === "string" ? safeData.ui.microActionsV1.categoryId : "";
+    const fallback = fromUi || microDefaultCategoryId || "general";
+    const exists = microCategoryOptions.some((opt) => opt.value === fallback);
+    return exists ? fallback : microDefaultCategoryId || "general";
+  }, [microCategoryOptions, microDefaultCategoryId, safeData?.ui?.microActionsV1?.categoryId]);
+  const microActionsV1 = useMemo(
+    () => ensureMicroActionsV1(safeData, microDateKey, microSelectedCategoryId),
+    [microDateKey, microSelectedCategoryId, safeData]
+  );
+  const microTodayBucket = useMemo(() => {
+    const bucket = microChecks?.[microDateKey];
+    return bucket && typeof bucket === "object" ? bucket : {};
+  }, [microChecks, microDateKey]);
+  const microDoneToday = useMemo(() => Math.min(3, Object.keys(microTodayBucket).length), [microTodayBucket]);
+  const microRerollsUsed = useMemo(
+    () => Math.max(0, Number(microActionsV1?.rerollsUsed) || 0),
+    [microActionsV1?.rerollsUsed]
+  );
+  const microRerollCredits = useMemo(
+    () => Math.max(0, Number(microActionsV1?.rerollCredits) || 0),
+    [microActionsV1?.rerollCredits]
+  );
+  const microWallet = useMemo(() => ensureWallet(safeData, { dateKey: microDateKey }), [microDateKey, safeData]);
+  const microCanWatchAd = useMemo(
+    () => (!isPremiumPlan ? canWatchAd(microWallet, { dateKey: microDateKey }) : false),
+    [isPremiumPlan, microDateKey, microWallet]
+  );
+  const microTotemAccessory = useMemo(
+    () => getTotemAccessoryEmoji(totemV1?.equipped?.accessoryIds),
+    [totemV1?.equipped?.accessoryIds]
+  );
+  const microRerollLimit = isPremiumPlan ? Number.POSITIVE_INFINITY : BASIC_MICRO_REROLL_LIMIT;
   const plannedByDate = useMemo(() => {
     const map = new Map();
     for (const entry of plannedCalendarOccurrences.list) {
@@ -411,6 +566,62 @@ export default function Home({
       console.warn("[blocks] duplicate ids in home block order");
     }
   }, [blockOrder]);
+
+  useEffect(() => {
+    if (typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+      const current = prevUi.microActionsV1;
+      const fallbackCategory = (current && typeof current.categoryId === "string" && current.categoryId) ||
+        getDefaultMicroCategoryId(prev);
+      const ensured = ensureMicroActionsV1(prev, microDateKey, fallbackCategory);
+      const ensuredWallet = ensureWallet(prev, { dateKey: microDateKey });
+      const ensuredTotem = ensureTotemV1(prevUi.totemV1);
+      if (
+        isSameMicroActionsV1(current, ensured) &&
+        isSameWalletV1(prevUi.walletV1, ensuredWallet) &&
+        isSameTotemV1(prevUi.totemV1, ensuredTotem)
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          microActionsV1: ensured,
+          walletV1: ensuredWallet,
+          totemV1: ensuredTotem,
+        },
+      };
+    });
+  }, [microDateKey, setData]);
+
+  useEffect(() => {
+    const unregister = setRewardedAdPresenter(({ placement }) => {
+      if (rewardedAdResolverRef.current) {
+        return Promise.resolve({ ok: false, reason: "unavailable" });
+      }
+      return new Promise((resolve) => {
+        rewardedAdResolverRef.current = resolve;
+        setRewardedAdRequest({
+          open: true,
+          placement: typeof placement === "string" && placement ? placement : "micro-reroll",
+        });
+      });
+    });
+
+    return () => {
+      unregister?.();
+      if (rewardedAdResolverRef.current) {
+        rewardedAdResolverRef.current({ ok: false, reason: "dismissed" });
+        rewardedAdResolverRef.current = null;
+      }
+      if (microRewardFeedbackTimeoutRef.current) {
+        window.clearTimeout(microRewardFeedbackTimeoutRef.current);
+        microRewardFeedbackTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let next = "";
@@ -643,30 +854,6 @@ export default function Home({
     },
     [focusBaseOccurrence?.id, logFocusDeviation, selectedDateKey]
   );
-  const plannedToday = useMemo(() => {
-    return plannedCalendarOccurrences.list
-      .filter((entry) => entry.dateKey === localTodayKey)
-      .map((entry) =>
-        entry.occ?.date === entry.dateKey ? entry.occ : { ...entry.occ, date: entry.dateKey }
-      );
-  }, [plannedCalendarOccurrences, localTodayKey]);
-  const plannedTodayWithMeta = useMemo(() => {
-    return plannedToday.map((occ) => {
-      const goal = goalsById.get(occ.goalId) || null;
-      const actionTitle = goal?.title || "";
-      return {
-        ...occ,
-        categoryId: goal?.categoryId || null,
-        actionTitle,
-        goalTitle: actionTitle,
-      };
-    });
-  }, [plannedToday, goalsById]);
-  const nextPlannedOccurrenceToday = useMemo(
-    () => resolveNextPlannedOccurrence(plannedTodayWithMeta, new Date()),
-    [plannedTodayWithMeta]
-  );
-
   const occurrenceSort = useCallback(
     (a, b) => {
       const ga = goalsById.get(a?.goalId) || null;
@@ -822,14 +1009,6 @@ export default function Home({
     }
     return map;
   }, [dominantOutcomeIdByDate, goalsById, categories]);
-
-
-  const microDoneToday = useMemo(() => {
-    const count = Object.keys(dayMicro || {}).length;
-    return Math.min(3, count);
-  }, [dayMicro]);
-
-
   const coreProgress = useMemo(() => {
     const activeIds = new Set(activeHabits.map((h) => h.id));
     const doneHabitsCount = Array.from(activeIds).reduce(
@@ -848,7 +1027,34 @@ export default function Home({
 
   const disciplineBreakdown = useMemo(() => {
     const now = new Date();
-    const disciplineBase = computeDisciplineScore(occurrences, localTodayKey);
+    const yesterdayKey = toLocalDateKey(addDays(now, -1));
+
+    const historyKeys = [];
+    for (const occ of occurrences) {
+      if (!occ || typeof occ.date !== "string") continue;
+      if (occ.date >= localTodayKey) continue;
+      historyKeys.push(occ.date);
+    }
+    for (const [dateKey] of Object.entries(microChecks || {})) {
+      const key = normalizeLocalDateKey(dateKey);
+      if (!key || key >= localTodayKey) continue;
+      historyKeys.push(key);
+    }
+    for (const g of goals) {
+      if (resolveGoalType(g) !== "OUTCOME") continue;
+      if (g?.status !== "done") continue;
+      const key = normalizeLocalDateKey(g?.completedAt);
+      if (!key || key >= localTodayKey) continue;
+      historyKeys.push(key);
+    }
+
+    const oldestHistoryKey = historyKeys.length ? historyKeys.sort()[0] : null;
+    const disciplineWindow =
+      oldestHistoryKey && oldestHistoryKey <= yesterdayKey
+        ? computeWindowStats(safeData, oldestHistoryKey, yesterdayKey, { includeMicroContribution: true })
+        : null;
+    const disciplineScore = disciplineWindow?.discipline?.score ?? 0;
+    const disciplineRatio = disciplineWindow?.discipline?.rate ?? 0;
 
     // UX: start discipline at 100% for brand-new users (no history yet).
     const hasAnyOccurrences = occurrences.some((o) => o && typeof o.status === "string");
@@ -859,8 +1065,8 @@ export default function Home({
     if (!hasAnyHistory) {
       const outcomesTotal = goals.filter((g) => resolveGoalType(g) === "OUTCOME").length;
       return {
-        score: disciplineBase.score,
-        ratio: disciplineBase.ratio,
+        score: 100,
+        ratio: 1,
         habit14: { done: 0, planned: 0, ratio: 1, keptDays: 0 },
         habit90: { done: 0, planned: 0, ratio: 1, keptDays: 0 },
         microDone14: 0,
@@ -933,8 +1139,8 @@ export default function Home({
     const outcomeRatio90 = outcomes.length ? outcomesDone90 / outcomes.length : 0;
     const reliabilityRatio = outcomes.length ? (habit90.ratio + outcomeRatio90) / 2 : habit90.ratio;
 
-    const score = disciplineBase.score;
-    const ratio = disciplineBase.ratio;
+    const score = disciplineScore;
+    const ratio = disciplineRatio;
 
     return {
       score,
@@ -949,7 +1155,7 @@ export default function Home({
       reliabilityRatio,
       habitDaysKept14: habit14.keptDays,
     };
-  }, [goals, microChecks, occurrences, localTodayKey]);
+  }, [goals, localTodayKey, microChecks, occurrences, safeData]);
 
   const sessionBadgeLabel = useMemo(() => {
     if (!sessionForDay || sessionForDay?.status !== "partial") return "";
@@ -1380,27 +1586,243 @@ export default function Home({
     setNoteHistoryVersion((v) => v + 1);
   }
 
-  function addMicroCheck(microId) {
-    if (!microId || typeof setData !== "function") return;
-    if (!canValidate) return;
-    // Max 3 micro-actions/day and avoid duplicates
-    const already = Boolean(dayMicro?.[microId]);
-    if (already) return;
-    if (microDoneToday >= 3) return;
+  function triggerMicroCoinDelta(amount, options = {}) {
+    const safeAmount = Math.max(0, Number(amount) || 0);
+    if (!safeAmount) return;
+    const variant = options.variant === "rich" ? "rich" : "micro";
+    if (totemV1.animationEnabled) {
+      setTotemAnimationCue({
+        amount: safeAmount,
+        variant,
+        key: Date.now() + Math.random(),
+      });
+    }
+  }
+
+  function handleMicroCategoryChange(nextCategoryId) {
+    if (!canUseMicroActions) return;
+    if (typeof setData !== "function") return;
     setData((prev) => {
-      const prevMicro = prev?.microChecks && typeof prev.microChecks === "object" ? prev.microChecks : {};
-      const prevDay = prevMicro?.[selectedDateKey] && typeof prevMicro[selectedDateKey] === "object"
-        ? prevMicro[selectedDateKey]
-        : {};
+      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+      const targetCategory = (typeof nextCategoryId === "string" && nextCategoryId) || getDefaultMicroCategoryId(prev);
+      const nextMicro = ensureMicroActionsV1(prev, microDateKey, targetCategory, {
+        resetItemsOnCategoryChange: true,
+      });
+      if (isSameMicroActionsV1(prevUi.microActionsV1, nextMicro)) return prev;
       return {
         ...prev,
-        microChecks: {
-          ...prevMicro,
-          [selectedDateKey]: { ...prevDay, [microId]: true },
+        ui: {
+          ...prevUi,
+          microActionsV1: nextMicro,
         },
       };
     });
   }
+
+  function handleMicroActionDone(slotIndex) {
+    if (!canUseMicroActions) return;
+    if (typeof setData !== "function") return;
+    let coinGranted = false;
+    const eventTs = Date.now();
+    setData((prev) => {
+      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+      const selectedCategory = (typeof prevUi?.microActionsV1?.categoryId === "string" && prevUi.microActionsV1.categoryId)
+        || getDefaultMicroCategoryId(prev);
+      const result = completeMicroAction(prev, slotIndex, {
+        dateKey: microDateKey,
+        categoryId: selectedCategory,
+      });
+      if (!result.doneItem?.id) return prev;
+
+      const prevMicroChecks = prev?.microChecks && typeof prev.microChecks === "object" ? prev.microChecks : {};
+      const prevDay = prevMicroChecks?.[microDateKey] && typeof prevMicroChecks[microDateKey] === "object"
+        ? prevMicroChecks[microDateKey]
+        : {};
+      const alreadyDone = Boolean(prevDay[result.doneItem.id]);
+      const nextMicroChecks = prevDay[result.doneItem.id]
+        ? prevMicroChecks
+        : {
+            ...prevMicroChecks,
+            [microDateKey]: {
+              ...prevDay,
+              [result.doneItem.id]: true,
+            },
+          };
+      const currentWallet = ensureWallet(prev, { dateKey: microDateKey });
+      const nextWallet = alreadyDone
+        ? currentWallet
+        : addCoins(
+            currentWallet,
+            MICRO_ACTION_COINS_REWARD,
+            {
+              type: "micro_done",
+              meta: {
+                microItemId: result.doneItem.id,
+                categoryId: selectedCategory,
+              },
+            },
+            { dateKey: microDateKey }
+          );
+      coinGranted = !alreadyDone;
+      const nextTotem = (() => {
+        const currentTotem = ensureTotemV1(prevUi.totemV1);
+        if (!coinGranted || !currentTotem.animationEnabled) return currentTotem;
+        return {
+          ...currentTotem,
+          lastAnimationAt: eventTs,
+        };
+      })();
+
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          microActionsV1: result.microActions,
+          walletV1: nextWallet,
+          totemV1: nextTotem,
+        },
+        microChecks: nextMicroChecks,
+      };
+    });
+    if (coinGranted) triggerMicroCoinDelta(MICRO_ACTION_COINS_REWARD);
+  }
+
+  function handleMicroReroll(indices = [], options = {}) {
+    if (!canUseMicroActions) return;
+    if (typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+      const selectedCategory = (typeof prevUi?.microActionsV1?.categoryId === "string" && prevUi.microActionsV1.categoryId)
+        || getDefaultMicroCategoryId(prev);
+      const current = ensureMicroActionsV1(prev, microDateKey, selectedCategory);
+      const rerollCredits = Math.max(0, Number(current.rerollCredits) || 0);
+      const wantsCredit = options?.useCredit === true;
+      const limitReached = !isPremiumPlan && Number(current.rerollsUsed || 0) >= BASIC_MICRO_REROLL_LIMIT;
+      const canUseCredit = !isPremiumPlan && limitReached && rerollCredits > 0;
+      if (wantsCredit && !canUseCredit) return prev;
+      if (!wantsCredit && limitReached) return prev;
+      const result = rerollMicroActions(prev, indices, {
+        dateKey: microDateKey,
+        categoryId: selectedCategory,
+        incrementUsage: !wantsCredit,
+      });
+      if (!result.replacedCount) return prev;
+      let nextMicro = result.microActions;
+      let nextWallet = ensureWallet(prev, { dateKey: microDateKey });
+      if (wantsCredit && canUseCredit) {
+        nextMicro = {
+          ...nextMicro,
+          rerollCredits: Math.max(0, rerollCredits - 1),
+        };
+        nextWallet = appendWalletEvent(
+          nextWallet,
+          {
+            type: "spend_reroll",
+            amount: 1,
+            meta: { replacedCount: result.replacedCount },
+          },
+          { dateKey: microDateKey }
+        );
+      }
+      if (isSameMicroActionsV1(prevUi.microActionsV1, nextMicro) && isSameWalletV1(prevUi.walletV1, nextWallet)) return prev;
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          microActionsV1: nextMicro,
+          walletV1: nextWallet,
+        },
+      };
+    });
+  }
+
+  function resolveRewardedAd(result) {
+    const resolver = rewardedAdResolverRef.current;
+    rewardedAdResolverRef.current = null;
+    setRewardedAdRequest({ open: false, placement: "micro-reroll" });
+    resolver?.(result);
+  }
+
+  function handleRewardedAdDismiss() {
+    resolveRewardedAd({ ok: false, reason: "dismissed" });
+  }
+
+  function handleRewardedAdComplete() {
+    resolveRewardedAd({ ok: true });
+  }
+
+  async function handleMicroWatchAd() {
+    if (isPremiumPlan) return;
+    if (!canUseMicroActions) return;
+    if (typeof setData !== "function") return;
+    if (!microCanWatchAd) return;
+    if (microWatchAdLoading) return;
+
+    setMicroWatchAdLoading(true);
+    setMicroRewardFeedback("");
+    try {
+      const result = await showRewardedAd({ placement: "micro-reroll" });
+      if (!result?.ok) {
+        if (result?.reason === "unavailable") {
+          setMicroRewardFeedback("Vidéo indisponible pour le moment.");
+        } else if (result?.reason === "dismissed") {
+          setMicroRewardFeedback("Vidéo fermée.");
+        }
+        return;
+      }
+
+      let rewardApplied = false;
+      const eventTs = Date.now();
+      setData((prev) => {
+        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+        const selectedCategory = (typeof prevUi?.microActionsV1?.categoryId === "string" && prevUi.microActionsV1.categoryId)
+          || getDefaultMicroCategoryId(prev);
+        const currentMicro = ensureMicroActionsV1(prev, microDateKey, selectedCategory);
+        const currentWallet = ensureWallet(prev, { dateKey: microDateKey });
+        const rewarded = applyAdReward(currentWallet, {
+          dateKey: microDateKey,
+          coins: REWARDED_AD_COINS_REWARD,
+          meta: { placement: "micro-reroll" },
+        });
+        if (!rewarded.granted) return prev;
+        rewardApplied = true;
+        const nextMicro = {
+          ...currentMicro,
+          rerollCredits: Math.max(0, Number(currentMicro.rerollCredits) || 0) + 1,
+        };
+        const currentTotem = ensureTotemV1(prevUi.totemV1);
+        const nextTotem = currentTotem.animationEnabled
+          ? { ...currentTotem, lastAnimationAt: eventTs }
+          : currentTotem;
+        if (
+          isSameMicroActionsV1(prevUi.microActionsV1, nextMicro) &&
+          isSameWalletV1(prevUi.walletV1, rewarded.wallet) &&
+          isSameTotemV1(prevUi.totemV1, nextTotem)
+        ) {
+          return prev;
+        }
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            microActionsV1: nextMicro,
+            walletV1: rewarded.wallet,
+            totemV1: nextTotem,
+          },
+        };
+      });
+      if (rewardApplied) {
+        setMicroRewardFeedback("");
+        triggerMicroCoinDelta(REWARDED_AD_COINS_REWARD, { variant: "rich" });
+      }
+    } finally {
+      setMicroWatchAdLoading(false);
+    }
+  }
+
+  const handleMicroGoToToday = useCallback(() => {
+    handleDayOpen(localTodayKey);
+  }, [handleDayOpen, localTodayKey]);
 
 
   // Render
@@ -1558,16 +1980,25 @@ export default function Home({
                 setActivatorNodeRef={setActivatorNodeRef}
                 listeners={listeners}
                 attributes={attributes}
-                categoryId={homeSelectedCategoryId || ""}
-                categoryName={selectedCategory?.name || ""}
-                goalId={selectedGoal?.id || ""}
-                goalTitle={selectedGoal?.title || ""}
-                nextOccurrence={nextPlannedOccurrenceToday}
-                plannedToday={plannedTodayWithMeta}
-                dayMicro={dayMicro}
+                categoryId={microSelectedCategoryId}
+                categoryOptions={microCategoryOptions}
+                items={microActionsV1.items}
                 microDoneToday={microDoneToday}
-                canValidate={canValidate}
-                onAddMicroCheck={addMicroCheck}
+                rerollsUsed={microRerollsUsed}
+                rerollCredits={microRerollCredits}
+                rerollLimit={microRerollLimit}
+                canWatchAd={microCanWatchAd}
+                adLoading={microWatchAdLoading}
+                adFeedback={microRewardFeedback}
+                isPremiumPlan={isPremiumPlan}
+                canValidate={canUseMicroActions}
+                isMicroToday={isMicroToday}
+                onCategoryChange={handleMicroCategoryChange}
+                onDone={handleMicroActionDone}
+                onReroll={(indices) => handleMicroReroll(indices, { useCredit: false })}
+                onUseRerollCredit={(indices) => handleMicroReroll(indices, { useCredit: true })}
+                onWatchAd={handleMicroWatchAd}
+                onGoToToday={handleMicroGoToToday}
               />
             );
           }
@@ -1873,6 +2304,22 @@ export default function Home({
           </HomeCard>
         </div>
       ) : null}
+      <TotemAnimationOverlay
+        open={Boolean(totemAnimationCue.key)}
+        variant={totemAnimationCue.variant}
+        amount={totemAnimationCue.amount}
+        bodyColor={totemV1?.equipped?.bodyColor || "#F59E0B"}
+        accessory={microTotemAccessory}
+        onDone={() => {
+          setTotemAnimationCue({ key: 0, amount: 0, variant: "micro" });
+        }}
+      />
+      <RewardedAdModal
+        open={rewardedAdRequest.open}
+        placement={rewardedAdRequest.placement}
+        onDismiss={handleRewardedAdDismiss}
+        onComplete={handleRewardedAdComplete}
+      />
     </ScreenShell>
   );
 }

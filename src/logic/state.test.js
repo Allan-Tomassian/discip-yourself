@@ -77,3 +77,27 @@ describe("ensureCategoryId", () => {
     expect(ensured.categoryId).toBe("cat_1");
   });
 });
+
+describe("totemV1 defaults", () => {
+  it("initialData seeds totemV1 defaults", () => {
+    const state = initialData();
+    expect(state.ui.totemV1).toBeTruthy();
+    expect(state.ui.totemV1.equipped.bodyColor).toBe("#F59E0B");
+    expect(state.ui.totemV1.owned.colors).toContain("eagle-amber");
+    expect(state.ui.totemV1.animationEnabled).toBe(true);
+  });
+
+  it("migrate normalizes missing totemV1 fields", () => {
+    const base = buildBaseState();
+    base.ui.totemV1 = {
+      equipped: { bodyColor: "", accessoryIds: ["cap", "", null] },
+      owned: { colors: [], accessories: ["cape", "cape"] },
+      animationEnabled: false,
+    };
+    const migrated = migrate(base);
+    expect(migrated.ui.totemV1.equipped.bodyColor).toBe("#F59E0B");
+    expect(migrated.ui.totemV1.owned.colors).toContain("eagle-amber");
+    expect(migrated.ui.totemV1.owned.accessories).toEqual(["cape"]);
+    expect(migrated.ui.totemV1.animationEnabled).toBe(false);
+  });
+});
