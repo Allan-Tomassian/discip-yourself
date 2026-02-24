@@ -6,6 +6,7 @@ import { isPrimaryCategory, isPrimaryGoal, setPrimaryCategory } from "../../logi
 import { resolveGoalType } from "../../domain/goalType";
 import { linkProcessToOutcome, splitProcessByLink } from "../../logic/linking";
 import { ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../../logic/state";
+import { removeScheduleRulesForAction } from "../../logic/occurrencePlanner";
 import { buildPlanningSections } from "../../utils/librarySections";
 import { LABELS } from "../../ui/labels";
 
@@ -320,7 +321,7 @@ export default function CategoryManageInline({
         nextUi.activeSession = kept.length ? { ...nextUi.activeSession, habitIds: kept } : null;
       }
       if (nextUi.sessionDraft?.objectiveId === goalId) nextUi.sessionDraft = null;
-      return {
+      const nextState = {
         ...prev,
         goals: nextGoals,
         occurrences: nextOccurrences,
@@ -329,6 +330,7 @@ export default function CategoryManageInline({
         checks: nextChecks,
         ui: nextUi,
       };
+      return removeScheduleRulesForAction(nextState, goalId);
     });
   }
 

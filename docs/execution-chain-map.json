@@ -1,0 +1,2551 @@
+{
+  "generatedAt": "2026-02-24T11:55:43.095Z",
+  "scope": {
+    "src": "src/**",
+    "tests": "tests/**"
+  },
+  "filesScanned": {
+    "src": 201,
+    "tests": 12,
+    "coreMapped": 32
+  },
+  "modules": [
+    {
+      "file": "src/App.jsx",
+      "imports": [
+        "react",
+        "./components/TopNav",
+        "./components/CategoryRail",
+        "./logic/goals",
+        "./components/PlusExpander",
+        "./components/CategoryGateModal",
+        "./utils/dialogs",
+        "./shared/ui/gate/Gate",
+        "./pages/Onboarding",
+        "./pages/Home",
+        "./pages/Categories",
+        "./pages/CreateV2Outcome",
+        "./pages/CreateV2HabitType",
+        "./pages/CreateV2HabitOneOff",
+        "./pages/CreateV2HabitRecurring",
+        "./pages/CreateV2HabitAnytime",
+        "./pages/CreateV2LinkOutcome",
+        "./pages/CreateV2PickCategory",
+        "./pages/CreateV2OutcomeNextAction",
+        "./ui/create/CreateFlowModal",
+        "./ui/totem/TotemDockLayer",
+        "./pages/Preferences",
+        "./pages/Account",
+        "./pages/Subscription",
+        "./pages/Data",
+        "./pages/CategoryView",
+        "./pages/EditItem",
+        "./pages/CategoryDetailView",
+        "./pages/CategoryProgress",
+        "./pages/SessionMVP",
+        "./pages/Pilotage",
+        "./pages/Privacy",
+        "./pages/Terms",
+        "./pages/Support",
+        "./theme/themeTokens",
+        "./utils/dateKey",
+        "./logic/priority",
+        "./tour/tourSpec",
+        "./tour/useTour",
+        "./tour/TourOverlay",
+        "./components/DiagnosticOverlay",
+        "./logic/occurrencePlanner",
+        "./logic/sessionResolver",
+        "./utils/helpers",
+        "./components/PaywallModal",
+        "./hooks/useAppNavigation",
+        "./hooks/useEntitlementsPaywall",
+        "./hooks/useRemindersLoop",
+        "./hooks/useCreateFlowOrchestration",
+        "./hooks/useCategorySelectionSync",
+        "./app/inbox",
+        "./data/useUserData",
+        "./profile/useProfile",
+        "./profile/profileApi"
+      ],
+      "exports": []
+    },
+    {
+      "file": "src/pages/Home.jsx",
+      "imports": [
+        "react",
+        "../components/SortableBlocks",
+        "./_ScreenShell",
+        "../shared/ui/gate/Gate",
+        "../utils/dateKey",
+        "../logic/goals",
+        "../logic/occurrencePlanner",
+        "../logic/compat",
+        "../utils/_theme",
+        "../utils/categoryAccent",
+        "../logic/priority",
+        "../logic/blocks/registry",
+        "../ui/session/sessionPlanner",
+        "../core/focus/focusSelector",
+        "../domain/goalType",
+        "../logic/linking",
+        "../logic/progressionModel",
+        "../logic/rewardedAds",
+        "../logic/totemV1",
+        "../utils/helpers",
+        "../ui/calendar/CalendarCard",
+        "../ui/focus/FocusCard",
+        "../ui/today/MicroActionsCard",
+        "../ui/today/RewardedAdModal",
+        "../ui/totem/totemEvents",
+        "../ui/labels"
+      ],
+      "exports": []
+    },
+    {
+      "file": "src/pages/SessionMVP.jsx",
+      "imports": [
+        "react",
+        "./_ScreenShell",
+        "../components/UI",
+        "../logic/occurrences",
+        "../logic/compat",
+        "../utils/_theme",
+        "../utils/categoryAccent",
+        "../utils/dateKey"
+      ],
+      "exports": []
+    },
+    {
+      "file": "src/pages/Session.jsx",
+      "imports": [
+        "react",
+        "./_ScreenShell",
+        "../components/UI",
+        "../utils/datetime",
+        "../logic/occurrences",
+        "../logic/sessionResolver",
+        "../logic/sessionsV2",
+        "../utils/_theme",
+        "../utils/categoryAccent",
+        "../logic/occurrencePlanner",
+        "../logic/compat",
+        "../ui/labels",
+        "../shared/ui/gate/Gate"
+      ],
+      "exports": []
+    },
+    {
+      "file": "src/pages/Pilotage.jsx",
+      "imports": [
+        "react",
+        "./_ScreenShell",
+        "../shared/ui/gate/Gate",
+        "../ui/select/Select",
+        "../logic/pilotage",
+        "../logic/metrics",
+        "../logic/progressionModel",
+        "../logic/reporting",
+        "../components/SortableBlocks",
+        "../components/AccentCategoryRow",
+        "../logic/blocks/registry",
+        "../ui/labels",
+        "../features/pilotage/radarModel",
+        "../logic/state/normalizers"
+      ],
+      "exports": []
+    },
+    {
+      "file": "src/pages/Categories.jsx",
+      "imports": [
+        "react",
+        "./_ScreenShell",
+        "../shared/ui/gate/Gate",
+        "../components/SortableBlocks",
+        "../components/EditItemPanel",
+        "../components/AccentCategoryRow",
+        "../logic/pilotage",
+        "../logic/state",
+        "../logic/goals",
+        "../logic/occurrencePlanner",
+        "../utils/categoriesSuggested",
+        "../logic/entitlements",
+        "../ui/labels",
+        "../utils/categoryAccent",
+        "../domain/goalType",
+        "../logic/linking",
+        "../utils/librarySections",
+        "../utils/dialogs",
+        "../utils/helpers",
+        "../utils/dates",
+        "../utils/dateKey",
+        "../shared/draft/useDraft",
+        "../shared/draft/draftGuards"
+      ],
+      "exports": []
+    },
+    {
+      "file": "src/pages/EditItem.jsx",
+      "imports": [
+        "react",
+        "./_ScreenShell",
+        "../components/UI",
+        "../ui/select/Select",
+        "../ui/date/DatePicker",
+        "../ui/scheduling/ConflictResolver",
+        "../utils/dialogs",
+        "../utils/dates",
+        "../utils/helpers",
+        "../logic/state",
+        "../logic/goals",
+        "../logic/priority",
+        "../domain/goalType",
+        "../logic/occurrencePlanner",
+        "../utils/categoriesSuggested",
+        "../logic/entitlements",
+        "../logic/timeFields",
+        "../logic/occurrences",
+        "../core/scheduling/intervals",
+        "../ui/labels"
+      ],
+      "exports": []
+    },
+    {
+      "file": "src/pages/CreateV2Habits.jsx",
+      "imports": [
+        "react",
+        "./_ScreenShell",
+        "../ui/create/FlowShell",
+        "../ui/select/Select",
+        "../ui/date/DatePicker",
+        "../ui/scheduling/ConflictResolver",
+        "../shared/ui/gate/Gate",
+        "../creation/creationDraft",
+        "../creation/creationSchema",
+        "../utils/helpers",
+        "../logic/goals",
+        "../logic/occurrencePlanner",
+        "../logic/state",
+        "../logic/reminders",
+        "../logic/timeFields",
+        "../domain/goalType",
+        "../logic/occurrences",
+        "../core/scheduling/intervals"
+      ],
+      "exports": []
+    },
+    {
+      "file": "src/ui/create/CreateFlowModal.jsx",
+      "imports": [
+        "react",
+        "react-dom",
+        "../../logic/state",
+        "../labels",
+        "../../shared/ui/gate/Gate",
+        "../../pages/CreateV2Outcome",
+        "../../pages/CreateV2HabitType",
+        "../../pages/CreateV2HabitOneOff",
+        "../../pages/CreateV2HabitRecurring",
+        "../../pages/CreateV2HabitAnytime",
+        "../../pages/CreateV2LinkOutcome",
+        "../../pages/CreateV2PickCategory",
+        "../../creation/creationSchema"
+      ],
+      "exports": []
+    },
+    {
+      "file": "src/creation/creationSchema.js",
+      "imports": [],
+      "exports": [
+        "isValidCreationStep",
+        "getNextCreationStep",
+        "getPrevCreationStep"
+      ]
+    },
+    {
+      "file": "src/creation/creationDraft.js",
+      "imports": [
+        "../utils/datetime",
+        "../logic/timeFields"
+      ],
+      "exports": [
+        "createEmptyDraft",
+        "normalizeCreationDraft",
+        "ensureDraftStep"
+      ]
+    },
+    {
+      "file": "src/hooks/useCreateFlowOrchestration.js",
+      "imports": [
+        "react",
+        "../creation/creationDraft",
+        "../creation/creationSchema",
+        "../logic/entitlements",
+        "../logic/state",
+        "../utils/categoriesSuggested",
+        "../utils/helpers",
+        "../app/inbox"
+      ],
+      "exports": [
+        "useCreateFlowOrchestration"
+      ]
+    },
+    {
+      "file": "src/ui/calendar/CalendarCard.jsx",
+      "imports": [
+        "react",
+        "../../shared/ui/gate/Gate",
+        "./DayRail",
+        "../../utils/dates",
+        "../../utils/dateKey"
+      ],
+      "exports": []
+    },
+    {
+      "file": "src/ui/calendar/DayRail.jsx",
+      "imports": [
+        "../../utils/dates",
+        "../../utils/dateKey",
+        "./railMath"
+      ],
+      "exports": []
+    },
+    {
+      "file": "src/ui/session/sessionPlanner.js",
+      "imports": [
+        "../../utils/dateKey"
+      ],
+      "exports": [
+        "resolveOccurrenceStartMs",
+        "resolveCurrentPlannedOccurrence",
+        "resolveNextPlannedOccurrence",
+        "listUpcomingPlannedOccurrences"
+      ]
+    },
+    {
+      "file": "src/ui/focus/FocusCard.jsx",
+      "imports": [
+        "react",
+        "../../shared/ui/gate/Gate"
+      ],
+      "exports": []
+    },
+    {
+      "file": "src/logic/goals.js",
+      "imports": [
+        "../utils/dates",
+        "../utils/dateKey",
+        "./occurrencePlanner",
+        "./entitlements",
+        "./state",
+        "../domain/goalType"
+      ],
+      "exports": [
+        "sanitizeOutcome",
+        "sanitizeProcess",
+        "normalizeGoalsState",
+        "getGoalProgress",
+        "computeAggregateProgress",
+        "computePrimaryAggregate",
+        "createGoal",
+        "updateGoal",
+        "preventOverlap",
+        "setMainGoal",
+        "linkChild",
+        "scheduleStart",
+        "activateGoal",
+        "finishGoal",
+        "abandonGoal",
+        "deleteGoal",
+        "autoActivateScheduledGoals"
+      ]
+    },
+    {
+      "file": "src/logic/scheduleRules.js",
+      "imports": [
+        "../utils/helpers",
+        "../utils/datetime"
+      ],
+      "exports": [
+        "buildScheduleRuleSourceKey",
+        "normalizeScheduleRule",
+        "buildScheduleRulesFromAction",
+        "syncScheduleRulesForActions",
+        "listActiveScheduleRules",
+        "ensureScheduleRules",
+        "ensureScheduleRulesForActions",
+        "getDefaultOccurrenceWindowBounds"
+      ]
+    },
+    {
+      "file": "src/logic/occurrencePlanner.js",
+      "imports": [
+        "../utils/helpers",
+        "../domain/goalType",
+        "./scheduleRules"
+      ],
+      "exports": [
+        "resolveWindowConflictsForDay",
+        "dedupeOccurrences",
+        "ensureWindowForGoal",
+        "ensureWindowForGoals",
+        "ensureWindowFromScheduleRules",
+        "regenerateWindowFromScheduleRules",
+        "regenerateWindowForGoal",
+        "validateOccurrences"
+      ]
+    },
+    {
+      "file": "src/logic/occurrences.js",
+      "imports": [
+        "../utils/helpers",
+        "../utils/dateKey"
+      ],
+      "exports": [
+        "findOccurrenceForGoalDateDeterministic",
+        "resolveOccurrenceForSession",
+        "setOccurrenceStatusById",
+        "listOccurrencesByDate",
+        "listOccurrencesForGoal",
+        "addOccurrence",
+        "updateOccurrence",
+        "deleteOccurrence",
+        "listOccurrencesByMonth",
+        "upsertOccurrence",
+        "setOccurrencesStatusForGoalDate",
+        "setOccurrenceStatus"
+      ]
+    },
+    {
+      "file": "src/logic/sessionResolver.js",
+      "imports": [
+        "../utils/dateKey",
+        "./metrics"
+      ],
+      "exports": [
+        "getOccurrenceEffectiveTime",
+        "resolveExecutableOccurrence"
+      ]
+    },
+    {
+      "file": "src/logic/sessions.js",
+      "imports": [
+        "../utils/helpers",
+        "./metrics"
+      ],
+      "exports": [
+        "isActiveSessionState",
+        "isEndedSessionState",
+        "findSessionByOccurrenceId",
+        "findActiveSession",
+        "canStartSessionForOccurrence",
+        "startSessionForOccurrence",
+        "endSession"
+      ]
+    },
+    {
+      "file": "src/logic/sessionsV2.js",
+      "imports": [
+        "../utils/helpers"
+      ],
+      "exports": [
+        "upsertSessionV2"
+      ]
+    },
+    {
+      "file": "src/logic/metrics.js",
+      "imports": [
+        "../utils/dates",
+        "../utils/dateKey"
+      ],
+      "exports": [
+        "isFinalOccurrenceStatus",
+        "getWindowBounds",
+        "selectOccurrencesInRange",
+        "computeStats",
+        "computeDailyStats",
+        "computeGoalStats"
+      ]
+    },
+    {
+      "file": "src/logic/progressionModel.js",
+      "imports": [
+        "../utils/dateKey",
+        "./metrics"
+      ],
+      "exports": [
+        "selectOccurrencesWindow",
+        "computeExpectedDoneMissed",
+        "computeDisciplineRate",
+        "computeMicroActionContribution",
+        "computeWindowStats"
+      ]
+    },
+    {
+      "file": "src/logic/pilotage.js",
+      "imports": [
+        "../utils/dates",
+        "../domain/goalType"
+      ],
+      "exports": [
+        "getCategoryCounts",
+        "getCategoryPilotageCounts",
+        "getCategoryStatus"
+      ]
+    },
+    {
+      "file": "src/logic/reporting.js",
+      "imports": [
+        "../utils/dateKey",
+        "./metrics"
+      ],
+      "exports": [
+        "buildReport",
+        "exportReportToCSV"
+      ]
+    },
+    {
+      "file": "src/features/pilotage/radarModel.js",
+      "imports": [
+        "../../logic/progressionModel"
+      ],
+      "exports": [
+        "computeCategoryRadarRows",
+        "computePilotageInsights"
+      ]
+    },
+    {
+      "file": "src/logic/state/normalizers.js",
+      "imports": [
+        "../../utils/helpers",
+        "../../utils/dateKey",
+        "../../domain/goalType",
+        "../timeFields",
+        "../blocks/registry",
+        "../../theme/themeTokens",
+        "./inbox"
+      ],
+      "exports": [
+        "createDefaultGoalSchedule",
+        "normalizeResetPolicy",
+        "normalizeCategory",
+        "ensureCategoryId",
+        "sanitizePilotageRadarSelection",
+        "normalizeGoal",
+        "initialData",
+        "demoData"
+      ]
+    },
+    {
+      "file": "src/logic/state/migrations.js",
+      "imports": [
+        "../../utils/helpers",
+        "../goals",
+        "../reminders",
+        "../../utils/dateKey",
+        "../../domain/goalType",
+        "../occurrences",
+        "../blocks/registry",
+        "../blocks/ensureBlocksConfig",
+        "../blocks/validateBlocksState",
+        "../scheduleRules",
+        "../../theme/themeTokens",
+        "./inbox"
+      ],
+      "exports": [
+        "migrate"
+      ]
+    },
+    {
+      "file": "src/data/useUserData.js",
+      "imports": [
+        "react",
+        "../auth/useAuth",
+        "../auth/constants",
+        "../logic/state",
+        "../utils/storage",
+        "./userDataApi"
+      ],
+      "exports": [
+        "createDebouncedSave",
+        "useUserData"
+      ]
+    },
+    {
+      "file": "src/data/userDataApi.js",
+      "imports": [
+        "../infra/supabaseClient",
+        "../auth/constants"
+      ],
+      "exports": [
+        "buildLocalUserDataKey",
+        "loadUserData",
+        "upsertUserData"
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "id": "planning",
+      "title": "Création / Planification",
+      "patterns": [
+        [
+          "src/ui/create/CreateFlowModal.jsx",
+          {}
+        ],
+        [
+          "src/pages/CreateV2Habits.jsx",
+          {}
+        ],
+        [
+          "src/creation/creationDraft.js",
+          {}
+        ],
+        [
+          "src/creation/creationSchema.js",
+          {}
+        ]
+      ],
+      "files": [
+        "src/ui/create/CreateFlowModal.jsx",
+        "src/pages/CreateV2Habits.jsx",
+        "src/creation/creationDraft.js",
+        "src/creation/creationSchema.js"
+      ],
+      "evidence": [
+        {
+          "file": "src/ui/create/CreateFlowModal.jsx",
+          "line": 6,
+          "snippet": "import CreateV2Outcome from \"../../pages/CreateV2Outcome\";"
+        },
+        {
+          "file": "src/ui/create/CreateFlowModal.jsx",
+          "line": 7,
+          "snippet": "import CreateV2HabitType from \"../../pages/CreateV2HabitType\";"
+        },
+        {
+          "file": "src/ui/create/CreateFlowModal.jsx",
+          "line": 8,
+          "snippet": "import CreateV2HabitOneOff from \"../../pages/CreateV2HabitOneOff\";"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 152,
+          "snippet": "function validateWeeklySlotsByDay(daysOfWeek, weeklySlotsByDay) {"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 153,
+          "snippet": "const days = normalizeDaysOfWeek(daysOfWeek);"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 187,
+          "snippet": "const days = Array.isArray(habit.daysOfWeek) ? habit.daysOfWeek : [];"
+        },
+        {
+          "file": "src/creation/creationDraft.js",
+          "line": 17,
+          "snippet": "const HABIT_TYPES = new Set([\"ONE_OFF\", \"RECURRING\", \"ANYTIME\"]);"
+        },
+        {
+          "file": "src/creation/creationDraft.js",
+          "line": 56,
+          "snippet": "function deriveLegacyRepeatFromExpectedDays(expectedDays) {"
+        },
+        {
+          "file": "src/creation/creationDraft.js",
+          "line": 57,
+          "snippet": "const days = Array.isArray(expectedDays) ? expectedDays : [];"
+        },
+        {
+          "file": "src/creation/creationSchema.js",
+          "line": 18,
+          "snippet": "export const CREATION_FLOW_HABIT_LEGACY = ["
+        },
+        {
+          "file": "src/creation/creationSchema.js",
+          "line": 27,
+          "snippet": "export const CREATION_FLOW_HABIT_UX_V2 = ["
+        },
+        {
+          "file": "src/creation/creationSchema.js",
+          "line": 38,
+          "snippet": "export const CREATION_FLOW_HABIT = CREATION_FLOW_HABIT_LEGACY;"
+        }
+      ]
+    },
+    {
+      "id": "persistence",
+      "title": "Persistance / normalisation",
+      "patterns": [
+        [
+          "src/data/useUserData.js",
+          {}
+        ],
+        [
+          "src/logic/state/migrations.js",
+          {}
+        ],
+        [
+          "src/logic/state/normalizers.js",
+          {}
+        ]
+      ],
+      "files": [
+        "src/data/useUserData.js",
+        "src/logic/state/migrations.js",
+        "src/logic/state/normalizers.js"
+      ],
+      "evidence": [
+        {
+          "file": "src/data/useUserData.js",
+          "line": 5,
+          "snippet": "import { loadState, saveState } from \"../utils/storage\";"
+        },
+        {
+          "file": "src/data/useUserData.js",
+          "line": 6,
+          "snippet": "import { isRemoteUserDataEnabled, loadUserData, upsertUserData } from \"./userDataApi\";"
+        },
+        {
+          "file": "src/data/useUserData.js",
+          "line": 48,
+          "snippet": "if (!isPlainObject(value)) return migrate(initialData());"
+        },
+        {
+          "file": "src/logic/state/migrations.js",
+          "line": 10,
+          "snippet": "import { buildScheduleRuleSourceKey, buildScheduleRulesFromAction, normalizeScheduleRule } from \"../scheduleRules\";"
+        },
+        {
+          "file": "src/logic/state/migrations.js",
+          "line": 203,
+          "snippet": "function migrateLegacyActivity(nextState) {"
+        },
+        {
+          "file": "src/logic/state/migrations.js",
+          "line": 483,
+          "snippet": "if (typeof next.ui.activeSession === \"undefined\") next.ui.activeSession = null;"
+        },
+        {
+          "file": "src/logic/state/normalizers.js",
+          "line": 69,
+          "snippet": "export function normalizeCategory(rawCat, index = 0) {"
+        },
+        {
+          "file": "src/logic/state/normalizers.js",
+          "line": 93,
+          "snippet": "export function sanitizePilotageRadarSelection(state, options = {}) {"
+        },
+        {
+          "file": "src/logic/state/normalizers.js",
+          "line": 138,
+          "snippet": "export function normalizeGoal(rawGoal, index = 0) {"
+        }
+      ]
+    },
+    {
+      "id": "calendar",
+      "title": "Calendrier / occurrences",
+      "patterns": [
+        [
+          "src/logic/occurrencePlanner.js",
+          {}
+        ],
+        [
+          "src/logic/scheduleRules.js",
+          {}
+        ],
+        [
+          "src/ui/calendar/CalendarCard.jsx",
+          {}
+        ],
+        [
+          "src/pages/Home.jsx",
+          {}
+        ]
+      ],
+      "files": [
+        "src/logic/occurrencePlanner.js",
+        "src/logic/scheduleRules.js",
+        "src/ui/calendar/CalendarCard.jsx",
+        "src/pages/Home.jsx"
+      ],
+      "evidence": [
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 683,
+          "snippet": "function ruleAppliesOnDate(rule, dateKey) {"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 700,
+          "snippet": "function buildOccurrenceFromRule(rule, dateKey) {"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 913,
+          "snippet": "export function ensureWindowFromScheduleRules(data, fromKey, toKey, actionIds = null, now = new Date()) {"
+        },
+        {
+          "file": "src/logic/scheduleRules.js",
+          "line": 192,
+          "snippet": "export function buildScheduleRulesFromAction(action) {"
+        },
+        {
+          "file": "src/logic/scheduleRules.js",
+          "line": 312,
+          "snippet": "export function syncScheduleRulesForActions(state, actionIds = null, now = new Date()) {"
+        },
+        {
+          "file": "src/logic/scheduleRules.js",
+          "line": 332,
+          "snippet": "const desiredRules = buildScheduleRulesFromAction(action);"
+        },
+        {
+          "file": "src/ui/calendar/CalendarCard.jsx",
+          "line": 20,
+          "snippet": "plannedByDate,"
+        },
+        {
+          "file": "src/ui/calendar/CalendarCard.jsx",
+          "line": 21,
+          "snippet": "doneByDate,"
+        },
+        {
+          "file": "src/ui/calendar/CalendarCard.jsx",
+          "line": 26,
+          "snippet": "onDayOpen,"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 389,
+          "snippet": "const plannedCalendarOccurrences = useMemo(() => {"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 408,
+          "snippet": "plannedCalendarOccurrences.list"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 413,
+          "snippet": "[plannedCalendarOccurrences, selectedDateKey]"
+        }
+      ]
+    },
+    {
+      "id": "today",
+      "title": "Aujourd’hui / sélection du jour",
+      "patterns": [
+        [
+          "src/pages/Home.jsx",
+          {}
+        ],
+        [
+          "src/pages/Home.jsx",
+          {}
+        ],
+        [
+          "src/ui/focus/FocusCard.jsx",
+          {}
+        ]
+      ],
+      "files": [
+        "src/pages/Home.jsx",
+        "src/ui/focus/FocusCard.jsx"
+      ],
+      "evidence": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 278,
+          "snippet": "const selectedDateKey ="
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 279,
+          "snippet": "normalizeLocalDateKey(safeData.ui?.selectedDateKey || safeData.ui?.selectedDate || legacyPendingDateKey) ||"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 281,
+          "snippet": "const selectedDate = useMemo(() => fromLocalDateKey(selectedDateKey), [selectedDateKey]);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 807,
+          "snippet": "const focusOccurrence = focusOverrideOccurrence || focusBaseOccurrence;"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 817,
+          "snippet": "excludeId: focusOccurrence?.id || null,"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 819,
+          "snippet": "[focusOccurrence?.id, plannedOccurrencesForDay, selectedDateKey]"
+        },
+        {
+          "file": "src/ui/focus/FocusCard.jsx",
+          "line": 106,
+          "snippet": "<div className=\"focusHeroHint\">Utilise “Démarrer” dans “À faire maintenant”.</div>"
+        }
+      ]
+    },
+    {
+      "id": "execution",
+      "title": "Exécution / Session",
+      "patterns": [
+        [
+          "src/App.jsx",
+          {}
+        ],
+        [
+          "src/pages/SessionMVP.jsx",
+          {}
+        ],
+        [
+          "src/pages/Session.jsx",
+          {}
+        ],
+        [
+          "src/logic/sessionResolver.js",
+          {}
+        ]
+      ],
+      "files": [
+        "src/App.jsx",
+        "src/pages/SessionMVP.jsx",
+        "src/pages/Session.jsx",
+        "src/logic/sessionResolver.js"
+      ],
+      "evidence": [
+        {
+          "file": "src/App.jsx",
+          "line": 38,
+          "snippet": "import SessionMVP from \"./pages/SessionMVP\";"
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 895,
+          "snippet": ") : tab === \"session\" ? ("
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 896,
+          "snippet": "<SessionMVP"
+        },
+        {
+          "file": "src/pages/SessionMVP.jsx",
+          "line": 4,
+          "snippet": "import { setOccurrenceStatusById } from \"../logic/occurrences\";"
+        },
+        {
+          "file": "src/pages/SessionMVP.jsx",
+          "line": 108,
+          "snippet": "const nextOccurrences = setOccurrenceStatusById(selectedOccurrence.id, status, prev);"
+        },
+        {
+          "file": "src/pages/SessionMVP.jsx",
+          "line": 153,
+          "snippet": "Reporter"
+        },
+        {
+          "file": "src/pages/Session.jsx",
+          "line": 5,
+          "snippet": "import { setOccurrenceStatusById } from \"../logic/occurrences\";"
+        },
+        {
+          "file": "src/pages/Session.jsx",
+          "line": 7,
+          "snippet": "import { upsertSessionV2 } from \"../logic/sessionsV2\";"
+        },
+        {
+          "file": "src/pages/Session.jsx",
+          "line": 80,
+          "snippet": "const isRunning = Boolean(session && session.status === \"partial\" && session.timerRunning);"
+        },
+        {
+          "file": "src/logic/sessionResolver.js",
+          "line": 2,
+          "snippet": "import { isFinalOccurrenceStatus as isFinalOccurrenceStatusFromMetrics } from \"./metrics\";"
+        },
+        {
+          "file": "src/logic/sessionResolver.js",
+          "line": 4,
+          "snippet": "export const isFinalOccurrenceStatus = isFinalOccurrenceStatusFromMetrics;"
+        },
+        {
+          "file": "src/logic/sessionResolver.js",
+          "line": 40,
+          "snippet": "export function resolveExecutableOccurrence(state, { dateKey, goalIds } = {}) {"
+        }
+      ]
+    },
+    {
+      "id": "validation",
+      "title": "Validation / statuts",
+      "patterns": [
+        [
+          "src/logic/occurrences.js",
+          {}
+        ],
+        [
+          "src/pages/EditItem.jsx",
+          {}
+        ],
+        [
+          "src/pages/Categories.jsx",
+          {}
+        ]
+      ],
+      "files": [
+        "src/logic/occurrences.js",
+        "src/pages/EditItem.jsx"
+      ],
+      "evidence": [
+        {
+          "file": "src/logic/occurrences.js",
+          "line": 4,
+          "snippet": "const STATUS_VALUES = new Set([\"planned\", \"done\", \"skipped\", \"canceled\"]);"
+        },
+        {
+          "file": "src/logic/occurrences.js",
+          "line": 46,
+          "snippet": "return STATUS_VALUES.has(raw) ? raw : \"planned\";"
+        },
+        {
+          "file": "src/logic/occurrences.js",
+          "line": 143,
+          "snippet": "export function setOccurrenceStatusById(occurrenceId, status, source) {"
+        },
+        {
+          "file": "src/pages/EditItem.jsx",
+          "line": 756,
+          "snippet": "updatedOccurrences = setOccurrenceStatusById(occId, \"canceled\", { occurrences: updatedOccurrences });"
+        }
+      ]
+    },
+    {
+      "id": "pilotage",
+      "title": "Pilotage / progression",
+      "patterns": [
+        [
+          "src/logic/metrics.js",
+          {}
+        ],
+        [
+          "src/logic/progressionModel.js",
+          {}
+        ],
+        [
+          "src/pages/Pilotage.jsx",
+          {}
+        ],
+        [
+          "src/features/pilotage/radarModel.js",
+          {}
+        ]
+      ],
+      "files": [
+        "src/logic/metrics.js",
+        "src/logic/progressionModel.js",
+        "src/pages/Pilotage.jsx",
+        "src/features/pilotage/radarModel.js"
+      ],
+      "evidence": [
+        {
+          "file": "src/logic/metrics.js",
+          "line": 13,
+          "snippet": "const EXPECTED_STATUSES = new Set(["
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 58,
+          "snippet": "if (EXPECTED_STATUSES.has(status)) stats.expected += 1;"
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 141,
+          "snippet": "export function computeDailyStats(state, fromKey, toKey, filters = {}) {"
+        },
+        {
+          "file": "src/logic/progressionModel.js",
+          "line": 4,
+          "snippet": "export const MICRO_ACTION_WEIGHT = 0.25;"
+        },
+        {
+          "file": "src/logic/progressionModel.js",
+          "line": 41,
+          "snippet": "export function computeExpectedDoneMissed(occurrences) {"
+        },
+        {
+          "file": "src/logic/progressionModel.js",
+          "line": 81,
+          "snippet": "export function computeMicroActionContribution(state, fromKey, toKey, { weight = MICRO_ACTION_WEIGHT } = {}) {"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 7,
+          "snippet": "import { computeWindowStats } from \"../logic/progressionModel\";"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 8,
+          "snippet": "import { buildReport, exportReportToCSV } from \"../logic/reporting\";"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 13,
+          "snippet": "import { computeCategoryRadarRows, computePilotageInsights } from \"../features/pilotage/radarModel\";"
+        },
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 54,
+          "snippet": "const done = Number(bucket?.done) || 0;"
+        },
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 55,
+          "snippet": "if (done > 0) activeDays += 1;"
+        },
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 58,
+          "snippet": "const expected = Number(stats.expected) || 0;"
+        }
+      ]
+    }
+  ],
+  "statusSemantics": {
+    "occurrenceStatuses": [
+      "planned",
+      "done",
+      "skipped",
+      "canceled"
+    ],
+    "metricsExtraStatuses": [
+      "missed",
+      "rescheduled",
+      "in_progress"
+    ],
+    "expectedDefinition": "expected = occurrences non canceled/skipped (+ micro pondéré selon progressionModel)",
+    "evidence": [
+      {
+        "file": "src/logic/occurrences.js",
+        "line": 4,
+        "snippet": "const STATUS_VALUES = new Set([\"planned\", \"done\", \"skipped\", \"canceled\"]);"
+      },
+      {
+        "file": "src/logic/metrics.js",
+        "line": 13,
+        "snippet": "const EXPECTED_STATUSES = new Set(["
+      },
+      {
+        "file": "src/logic/progressionModel.js",
+        "line": 8,
+        "snippet": "const CANCELED_STATUSES = new Set([\"canceled\", \"skipped\"]);"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.js",
+        "line": 1112,
+        "snippet": "const patch = { status: \"missed\", updatedAt: nowIso };"
+      }
+    ]
+  },
+  "checks": [
+    {
+      "id": "delete-action-schedule-rules-cleanup",
+      "severity": "P0",
+      "area": "planning->calendar",
+      "status": "risk",
+      "summary": "Suppression d’action sans cleanup explicite des scheduleRules",
+      "impact": "Risque d’occurrences orphelines régénérées après suppression",
+      "evidence": [
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 384,
+          "snippet": "function deleteAction(goal) {"
+        },
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 391,
+          "snippet": "const nextOccurrences = (prev.occurrences || []).filter((o) => o && o.goalId !== goalId);"
+        },
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 283,
+          "snippet": "function deleteAction(goal) {"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 922,
+          "snippet": "const rulesRaw = Array.isArray(working.scheduleRules) ? working.scheduleRules : [];"
+        }
+      ],
+      "repro": [
+        "Créer action récurrente.",
+        "Supprimer action depuis Bibliothèque.",
+        "Revenir sur Today (ensureWindow).",
+        "Vérifier réapparition/compteurs incohérents."
+      ]
+    },
+    {
+      "id": "missed-backfill-window",
+      "severity": "P0",
+      "area": "today->validation",
+      "status": "risk",
+      "summary": "Backfill des missed contraint à la fenêtre selectedDate ±1",
+      "impact": "Occurences anciennes potentiellement laissées en planned après longue absence",
+      "evidence": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1326,
+          "snippet": "const next = ensureWindowFromScheduleRules(prev, fromKey, toKey, sortedIds);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1324,
+          "snippet": "const fromKey = baseDate ? toLocalDateKey(addDays(baseDate, -1)) : selectedDateKey;"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1325,
+          "snippet": "const toKey = baseDate ? toLocalDateKey(addDays(baseDate, 1)) : selectedDateKey;"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 1112,
+          "snippet": "const patch = { status: \"missed\", updatedAt: nowIso };"
+        }
+      ],
+      "repro": [
+        "Planifier sur plusieurs jours.",
+        "Ne pas ouvrir l’app plusieurs jours.",
+        "Revenir Today sans parcourir les jours passés.",
+        "Comparer planned/missed attendu vs affiché."
+      ]
+    },
+    {
+      "id": "session-page-bifurcation",
+      "severity": "P1",
+      "area": "today->execution",
+      "status": "risk",
+      "summary": "Le tab session monte SessionMVP; Session.jsx riche existe mais n’est pas branché",
+      "impact": "Risque de logique/exigences d’exécution fragmentées (deux implémentations)",
+      "evidence": [
+        {
+          "file": "src/App.jsx",
+          "line": 38,
+          "snippet": "import SessionMVP from \"./pages/SessionMVP\";"
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 895,
+          "snippet": ") : tab === \"session\" ? ("
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 896,
+          "snippet": "<SessionMVP"
+        },
+        {
+          "file": "src/pages/Session.jsx",
+          "line": 50,
+          "snippet": "export default function Session({ data, setData, onBack, onOpenLibrary, dateKey }) {"
+        }
+      ],
+      "repro": [
+        "Démarrer une session depuis Today.",
+        "Observer que l’écran session correspond au MVP.",
+        "Comparer fonctionnalités attendues vs Session.jsx."
+      ]
+    },
+    {
+      "id": "session-model-duality",
+      "severity": "P1",
+      "area": "execution->validation",
+      "status": "risk",
+      "summary": "API sessions.js présente mais flux actif basé sur ui.activeSession + sessionsV2",
+      "impact": "Dette de maintenance et confusion sur la source de vérité de session",
+      "evidence": [
+        {
+          "file": "src/logic/sessions.js",
+          "line": 65,
+          "snippet": "export function startSessionForOccurrence(state, occurrenceId, now = new Date()) {"
+        },
+        {
+          "file": "src/logic/sessionsV2.js",
+          "line": 56,
+          "snippet": "export function upsertSessionV2(list, record) {"
+        },
+        {
+          "file": "src/pages/SessionMVP.jsx",
+          "line": 37,
+          "snippet": "safeData.ui && typeof safeData.ui.activeSession === \"object\" ? safeData.ui.activeSession : null;"
+        },
+        {
+          "file": "src/pages/SessionMVP.jsx",
+          "line": 38,
+          "snippet": "const activeSession = useMemo(() => normalizeActiveSessionForUI(rawActiveSession), [rawActiveSession]);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 706,
+          "snippet": "safeData.ui && typeof safeData.ui.activeSession === \"object\" ? safeData.ui.activeSession : null;"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 707,
+          "snippet": "const activeSession = useMemo("
+        }
+      ],
+      "repro": [
+        "Comparer état écrit dans ui.activeSession et sessionHistory.",
+        "Vérifier si sessions[] est encore utilisé par le runtime."
+      ]
+    },
+    {
+      "id": "status-vocabulary-divergence",
+      "severity": "P1",
+      "area": "validation->pilotage",
+      "status": "risk",
+      "summary": "Vocabulaire de statuts différent selon modules",
+      "impact": "Interprétation divergente des statuts finaux et expected",
+      "evidence": [
+        {
+          "file": "src/logic/occurrences.js",
+          "line": 4,
+          "snippet": "const STATUS_VALUES = new Set([\"planned\", \"done\", \"skipped\", \"canceled\"]);"
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 13,
+          "snippet": "const EXPECTED_STATUSES = new Set(["
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 1112,
+          "snippet": "const patch = { status: \"missed\", updatedAt: nowIso };"
+        },
+        {
+          "file": "src/logic/sessionResolver.js",
+          "line": 2,
+          "snippet": "import { isFinalOccurrenceStatus as isFinalOccurrenceStatusFromMetrics } from \"./metrics\";"
+        }
+      ],
+      "repro": [
+        "Injecter une occurrence status=missed.",
+        "Comparer rendu/calcul Home, Session resolver et Pilotage."
+      ]
+    },
+    {
+      "id": "create-flow-cognitive-load",
+      "severity": "P1",
+      "area": "planning",
+      "status": "risk",
+      "summary": "Flow création dense pour débutant; mode Essentiel non explicite",
+      "impact": "Abandon en création et confusion entre Quick/Focus planning",
+      "evidence": [
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 278,
+          "snippet": "const [title, setTitle] = useState(\"\");"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 279,
+          "snippet": "const [oneOffDate, setOneOffDate] = useState(() => todayLocalKey());"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 280,
+          "snippet": "const [location, setLocation] = useState(\"\");"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 283,
+          "snippet": "const [lifecycleMode] = useState(\"FIXED\");"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 284,
+          "snippet": "const [activeFrom, setActiveFrom] = useState(() => todayLocalKey());"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 285,
+          "snippet": "const [activeTo, setActiveTo] = useState(() => addDaysLocal(todayLocalKey(), 29));"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 294,
+          "snippet": "const [repeat, setRepeat] = useState(() => (isTypeOneOff ? \"none\" : \"weekly\"));"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 296,
+          "snippet": "const [scheduleMode, setScheduleMode] = useState(\"STANDARD\"); // STANDARD | WEEKLY_SLOTS"
+        },
+        {
+          "file": "src/creation/creationSchema.js",
+          "line": 38,
+          "snippet": "export const CREATION_FLOW_HABIT = CREATION_FLOW_HABIT_LEGACY;"
+        },
+        {
+          "file": "src/ui/create/CreateFlowModal.jsx",
+          "line": 211,
+          "snippet": "{step === \"choice\" ? ("
+        }
+      ],
+      "repro": [
+        "Créer action récurrente avec options avancées.",
+        "Mesurer nombre de champs obligatoires/perçus.",
+        "Comparer avec flow simple attendu (titre+jour+heure)."
+      ]
+    },
+    {
+      "id": "calendar-add-occurrence-unwired",
+      "severity": "P2",
+      "area": "calendar->today",
+      "status": "risk",
+      "summary": "CTA Ajouter occurrence dans calendrier potentiellement non câblé au parent",
+      "impact": "Action UI visible mais sans effet selon contexte",
+      "evidence": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 271,
+          "snippet": "onAddOccurrence,"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 2129,
+          "snippet": "onAddOccurrence={typeof onAddOccurrence === \"function\" ? handleAddOccurrence : null}"
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 614,
+          "snippet": "<Home"
+        }
+      ],
+      "repro": [
+        "Ouvrir calendrier mois Today.",
+        "Cliquer Ajouter sur un jour.",
+        "Vérifier création effective d’occurrence."
+      ]
+    }
+  ],
+  "ratings": [
+    {
+      "criterion": "Chaîne planification → calendrier cohérente",
+      "rating": "Partiel",
+      "rationale": "Génération OK, mais suppression d’action peut laisser des règles réinjectables.",
+      "evidence": [
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 384,
+          "snippet": "function deleteAction(goal) {"
+        },
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 391,
+          "snippet": "const nextOccurrences = (prev.occurrences || []).filter((o) => o && o.goalId !== goalId);"
+        },
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 283,
+          "snippet": "function deleteAction(goal) {"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 922,
+          "snippet": "const rulesRaw = Array.isArray(working.scheduleRules) ? working.scheduleRules : [];"
+        }
+      ]
+    },
+    {
+      "criterion": "Chaîne planification → Today cohérente",
+      "rating": "Partiel",
+      "rationale": "Today assure la fenêtre locale mais peut sous-traiter l’historique missed.",
+      "evidence": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1326,
+          "snippet": "const next = ensureWindowFromScheduleRules(prev, fromKey, toKey, sortedIds);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1324,
+          "snippet": "const fromKey = baseDate ? toLocalDateKey(addDays(baseDate, -1)) : selectedDateKey;"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1325,
+          "snippet": "const toKey = baseDate ? toLocalDateKey(addDays(baseDate, 1)) : selectedDateKey;"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 1112,
+          "snippet": "const patch = { status: \"missed\", updatedAt: nowIso };"
+        }
+      ]
+    },
+    {
+      "criterion": "Chaîne Today → exécution/session cohérente",
+      "rating": "Partiel",
+      "rationale": "Today ouvre bien une session, mais deux implémentations coexistent (MVP vs page riche).",
+      "evidence": [
+        {
+          "file": "src/App.jsx",
+          "line": 38,
+          "snippet": "import SessionMVP from \"./pages/SessionMVP\";"
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 895,
+          "snippet": ") : tab === \"session\" ? ("
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 896,
+          "snippet": "<SessionMVP"
+        },
+        {
+          "file": "src/pages/Session.jsx",
+          "line": 50,
+          "snippet": "export default function Session({ data, setData, onBack, onOpenLibrary, dateKey }) {"
+        }
+      ]
+    },
+    {
+      "criterion": "Chaîne exécution/session → validation cohérente",
+      "rating": "Partiel",
+      "rationale": "Validation fonctionne, mais source de vérité session dispersée.",
+      "evidence": [
+        {
+          "file": "src/logic/sessions.js",
+          "line": 65,
+          "snippet": "export function startSessionForOccurrence(state, occurrenceId, now = new Date()) {"
+        },
+        {
+          "file": "src/logic/sessionsV2.js",
+          "line": 56,
+          "snippet": "export function upsertSessionV2(list, record) {"
+        },
+        {
+          "file": "src/pages/SessionMVP.jsx",
+          "line": 37,
+          "snippet": "safeData.ui && typeof safeData.ui.activeSession === \"object\" ? safeData.ui.activeSession : null;"
+        },
+        {
+          "file": "src/pages/SessionMVP.jsx",
+          "line": 38,
+          "snippet": "const activeSession = useMemo(() => normalizeActiveSessionForUI(rawActiveSession), [rawActiveSession]);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 706,
+          "snippet": "safeData.ui && typeof safeData.ui.activeSession === \"object\" ? safeData.ui.activeSession : null;"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 707,
+          "snippet": "const activeSession = useMemo("
+        }
+      ]
+    },
+    {
+      "criterion": "Chaîne validation → pilotage/progression cohérente",
+      "rating": "Partiel",
+      "rationale": "Calculs robustes globalement, mais sémantique statuts non homogène.",
+      "evidence": [
+        {
+          "file": "src/logic/occurrences.js",
+          "line": 4,
+          "snippet": "const STATUS_VALUES = new Set([\"planned\", \"done\", \"skipped\", \"canceled\"]);"
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 13,
+          "snippet": "const EXPECTED_STATUSES = new Set(["
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 1112,
+          "snippet": "const patch = { status: \"missed\", updatedAt: nowIso };"
+        },
+        {
+          "file": "src/logic/sessionResolver.js",
+          "line": 2,
+          "snippet": "import { isFinalOccurrenceStatus as isFinalOccurrenceStatusFromMetrics } from \"./metrics\";"
+        }
+      ]
+    },
+    {
+      "criterion": "Compréhensibilité utilisateur (débutant)",
+      "rating": "KO",
+      "rationale": "Flow création trop dense; mode Essentiel implicite.",
+      "evidence": [
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 278,
+          "snippet": "const [title, setTitle] = useState(\"\");"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 279,
+          "snippet": "const [oneOffDate, setOneOffDate] = useState(() => todayLocalKey());"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 280,
+          "snippet": "const [location, setLocation] = useState(\"\");"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 283,
+          "snippet": "const [lifecycleMode] = useState(\"FIXED\");"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 284,
+          "snippet": "const [activeFrom, setActiveFrom] = useState(() => todayLocalKey());"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 285,
+          "snippet": "const [activeTo, setActiveTo] = useState(() => addDaysLocal(todayLocalKey(), 29));"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 294,
+          "snippet": "const [repeat, setRepeat] = useState(() => (isTypeOneOff ? \"none\" : \"weekly\"));"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 296,
+          "snippet": "const [scheduleMode, setScheduleMode] = useState(\"STANDARD\"); // STANDARD | WEEKLY_SLOTS"
+        },
+        {
+          "file": "src/creation/creationSchema.js",
+          "line": 38,
+          "snippet": "export const CREATION_FLOW_HABIT = CREATION_FLOW_HABIT_LEGACY;"
+        },
+        {
+          "file": "src/ui/create/CreateFlowModal.jsx",
+          "line": 211,
+          "snippet": "{step === \"choice\" ? ("
+        }
+      ]
+    },
+    {
+      "criterion": "Applicabilité dans la vraie vie (usage réel)",
+      "rating": "Partiel",
+      "rationale": "Boucle existe (planifier->exécuter->valider->analyser), mais friction création et ambiguïtés session freinent l’usage régulier.",
+      "evidence": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1848,
+          "snippet": "<div className=\"todayHeroKicker\">À faire maintenant</div>"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1864,
+          "snippet": "{focusOccurrence ? \"Commencer maintenant\" : \"Aucune action active\"}"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 7,
+          "snippet": "import { computeWindowStats } from \"../logic/progressionModel\";"
+        },
+        {
+          "file": "src/pages/Pilotage.jsx",
+          "line": 245,
+          "snippet": "() => computeWindowStats(safeData, weekBounds.fromKey, weekBounds.toKey, { includeMicroContribution: true }),"
+        }
+      ]
+    },
+    {
+      "criterion": "Prêt pour itération “Flow Rapide / Affiner”",
+      "rating": "Partiel",
+      "rationale": "La logique supporte déjà les types ONE_OFF/RECURRING/ANYTIME; segmentation UX Essentiel/Avancé faisable sans changer le moteur.",
+      "evidence": [
+        {
+          "file": "src/creation/creationDraft.js",
+          "line": 17,
+          "snippet": "const HABIT_TYPES = new Set([\"ONE_OFF\", \"RECURRING\", \"ANYTIME\"]);"
+        },
+        {
+          "file": "src/creation/creationDraft.js",
+          "line": 254,
+          "snippet": "// ONE_OFF: due on a single date, no expectedDays, no per-day slots."
+        },
+        {
+          "file": "src/creation/creationSchema.js",
+          "line": 27,
+          "snippet": "export const CREATION_FLOW_HABIT_UX_V2 = ["
+        }
+      ]
+    }
+  ],
+  "productQuestions": {
+    "sessionRole": {
+      "current": "Page dédiée (tab session) ouvrant SessionMVP; Session.jsx avancée non branchée.",
+      "recommendation": "Transformer Session en mode d’exécution unifié (single implementation), pas deux écrans concurrents.",
+      "evidence": [
+        {
+          "file": "src/App.jsx",
+          "line": 895,
+          "snippet": ") : tab === \"session\" ? ("
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 896,
+          "snippet": "<SessionMVP"
+        },
+        {
+          "file": "src/pages/Session.jsx",
+          "line": 50,
+          "snippet": "export default function Session({ data, setData, onBack, onOpenLibrary, dateKey }) {"
+        }
+      ]
+    },
+    "quickActionVsFocusBlock": {
+      "current": "ANYTIME/RECURRING/ONE_OFF existent côté modèle; Focus Today met en avant une occurrence planifiée.",
+      "recommendation": "V1: Quick Action = ANYTIME sans durée obligatoire; Focus Block = occurrence planifiée avec heure/durée et retour validation.",
+      "evidence": [
+        {
+          "file": "src/creation/creationDraft.js",
+          "line": 17,
+          "snippet": "const HABIT_TYPES = new Set([\"ONE_OFF\", \"RECURRING\", \"ANYTIME\"]);"
+        },
+        {
+          "file": "src/creation/creationDraft.js",
+          "line": 254,
+          "snippet": "// ONE_OFF: due on a single date, no expectedDays, no per-day slots."
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 807,
+          "snippet": "const focusOccurrence = focusOverrideOccurrence || focusBaseOccurrence;"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 817,
+          "snippet": "excludeId: focusOccurrence?.id || null,"
+        }
+      ]
+    },
+    "rewardMoment": {
+      "current": "Occurrences gagnent points au status done; micro-actions créditent wallet au done (hors occurrence standard).",
+      "recommendation": "Récompenser au moment de validation (done), pas au démarrage, pour préserver l’intégrité discipline.",
+      "evidence": [
+        {
+          "file": "src/logic/occurrences.js",
+          "line": 5,
+          "snippet": "const POINTS_BASE = 10;"
+        },
+        {
+          "file": "src/logic/occurrences.js",
+          "line": 31,
+          "snippet": "function applyDoneFields(occurrence, status, source) {"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 35,
+          "snippet": "addCoins,"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1636,
+          "snippet": ": addCoins("
+        }
+      ]
+    },
+    "antiCheatFriction": {
+      "current": "Faible friction: validation done/skipped/canceled en 1 clic, sans preuve d’exécution.",
+      "recommendation": "V1: friction minimale contrôlée (confirmation légère pour done, historique session), pas de preuve lourde.",
+      "evidence": [
+        {
+          "file": "src/pages/SessionMVP.jsx",
+          "line": 153,
+          "snippet": "Reporter"
+        },
+        {
+          "file": "src/pages/SessionMVP.jsx",
+          "line": 156,
+          "snippet": "Annuler"
+        },
+        {
+          "file": "src/pages/SessionMVP.jsx",
+          "line": 158,
+          "snippet": "<Button onClick={() => updateOccurrenceStatus(\"done\")}>Terminer</Button>"
+        },
+        {
+          "file": "src/pages/Session.jsx",
+          "line": 459,
+          "snippet": "function confirmEndSession() {"
+        },
+        {
+          "file": "src/pages/Session.jsx",
+          "line": 480,
+          "snippet": "function cancelSession() {"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "unitFiles": [
+      "src/logic/categoryGate.test.js",
+      "src/logic/metrics.test.js",
+      "src/logic/microActionsV1.test.js",
+      "src/logic/occurrencePlanner.flexPlacement.test.js",
+      "src/logic/occurrencePlanner.scheduleRules.test.js",
+      "src/logic/occurrences.test.js",
+      "src/logic/progressionModel.test.js",
+      "src/logic/reporting.test.js",
+      "src/logic/rewardedAds.test.js",
+      "src/logic/sessionResolver.test.js",
+      "src/logic/sessionsV2.test.js",
+      "src/logic/state.test.js",
+      "src/logic/walletV1.test.js"
+    ],
+    "e2eFiles": [
+      "tests/e2e/auth-diagnostics.spec.js",
+      "tests/e2e/auth-gate.spec.js",
+      "tests/e2e/categories.spec.js",
+      "tests/e2e/createFlow.appSync.spec.js",
+      "tests/e2e/createFlow.spec.js",
+      "tests/e2e/micro-actions.coins-and-ads.spec.js",
+      "tests/e2e/micro-actions.spec.js",
+      "tests/e2e/pilotage.radar.spec.js",
+      "tests/e2e/profile-setup.spec.js",
+      "tests/e2e/totem-dock.spec.js",
+      "tests/e2e/user-data.persistence.spec.js"
+    ],
+    "titles": [
+      {
+        "file": "src/logic/categoryGate.test.js",
+        "title": "returns false when no active category"
+      },
+      {
+        "file": "src/logic/categoryGate.test.js",
+        "title": "allows System Inbox only when it is the only category"
+      },
+      {
+        "file": "src/logic/categoryGate.test.js",
+        "title": "allows non-system active category"
+      },
+      {
+        "file": "src/logic/metrics.test.js",
+        "title": "computes expected/done/missed/canceled on mixed statuses"
+      },
+      {
+        "file": "src/logic/metrics.test.js",
+        "title": "returns completionRate=0 when expected=0"
+      },
+      {
+        "file": "src/logic/metrics.test.js",
+        "title": "filters by goalIds"
+      },
+      {
+        "file": "src/logic/metrics.test.js",
+        "title": "filters by categoryId via goals mapping"
+      },
+      {
+        "file": "src/logic/metrics.test.js",
+        "title": "builds inclusive bounds for today/7d/14d/90d"
+      },
+      {
+        "file": "src/logic/metrics.test.js",
+        "title": "computeDailyStats includes both ends of the window"
+      },
+      {
+        "file": "src/logic/metrics.test.js",
+        "title": "computeDailyStats is idempotent and does not mutate input"
+      },
+      {
+        "file": "src/logic/microActionsV1.test.js",
+        "title": "ensure creates exactly 3 unique items"
+      },
+      {
+        "file": "src/logic/microActionsV1.test.js",
+        "title": "complete replaces a done item immediately"
+      },
+      {
+        "file": "src/logic/microActionsV1.test.js",
+        "title": "reroll replaces selected indices and increments usage once"
+      },
+      {
+        "file": "src/logic/microActionsV1.test.js",
+        "title": "resets rerollsUsed on date change"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.flexPlacement.test.js",
+        "title": "places a window occurrence in the first available gap after fixed ones"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.flexPlacement.test.js",
+        "title": "marks conflict when a window occurrence cannot fit"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.flexPlacement.test.js",
+        "title": "is idempotent on consecutive calls"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.scheduleRules.test.js",
+        "title": "generates recurring occurrences and is idempotent"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.scheduleRules.test.js",
+        "title": "returns the same object when there are no changes to apply"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.scheduleRules.test.js",
+        "title": "generates one_time occurrence once"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.scheduleRules.test.js",
+        "title": "attaches a legacy occurrence without duplicating"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.scheduleRules.test.js",
+        "title": "marks planned occurrences as missed only once"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.scheduleRules.test.js",
+        "title": "updates an existing planned occurrence when rule changes without duplication"
+      },
+      {
+        "file": "src/logic/occurrences.test.js",
+        "title": "returns not_found when no occurrence exists"
+      },
+      {
+        "file": "src/logic/occurrences.test.js",
+        "title": "returns final when occurrence is already final"
+      },
+      {
+        "file": "src/logic/occurrences.test.js",
+        "title": "does not change occurrences when already final"
+      },
+      {
+        "file": "src/logic/occurrences.test.js",
+        "title": "is idempotent on consecutive calls"
+      },
+      {
+        "file": "src/logic/progressionModel.test.js",
+        "title": "computeExpectedDoneMissed excludes canceled and skipped from expected"
+      },
+      {
+        "file": "src/logic/progressionModel.test.js",
+        "title": "computeDisciplineRate returns done/expected and 0 when expected is 0"
+      },
+      {
+        "file": "src/logic/progressionModel.test.js",
+        "title": "applies micro-actions weighted contribution (0.25): 4 done => +1 weighted done"
+      },
+      {
+        "file": "src/logic/reporting.test.js",
+        "title": "report totals match metrics"
+      },
+      {
+        "file": "src/logic/reporting.test.js",
+        "title": "exports CSV with headers and data"
+      },
+      {
+        "file": "src/logic/reporting.test.js",
+        "title": "filters by categoryId and goalIds"
+      },
+      {
+        "file": "src/logic/rewardedAds.test.js",
+        "title": "returns unavailable when no presenter is registered"
+      },
+      {
+        "file": "src/logic/rewardedAds.test.js",
+        "title": "resolves with presenter result"
+      },
+      {
+        "file": "src/logic/sessionResolver.test.js",
+        "title": "prefers fixed over window even if window has earlier resolvedStart"
+      },
+      {
+        "file": "src/logic/sessionResolver.test.js",
+        "title": "puts window without resolvedStart after fixed"
+      },
+      {
+        "file": "src/logic/sessionResolver.test.js",
+        "title": "returns not_found when there is no planned candidate"
+      },
+      {
+        "file": "src/logic/sessionResolver.test.js",
+        "title": "is deterministic for identical inputs"
+      },
+      {
+        "file": "src/logic/sessionResolver.test.js",
+        "title": "tie-breaks by goalId then id"
+      },
+      {
+        "file": "src/logic/sessionsV2.test.js",
+        "title": "keeps a single record per occurrenceId"
+      },
+      {
+        "file": "src/logic/state.test.js",
+        "title": "is idempotent across repeated migrations"
+      },
+      {
+        "file": "src/logic/state.test.js",
+        "title": "does not duplicate rules when sourceKey already exists"
+      },
+      {
+        "file": "src/logic/state.test.js",
+        "title": "keeps unique sourceKey per actionId after 3 migrations"
+      },
+      {
+        "file": "src/logic/state.test.js",
+        "title": "falls back to DEFAULT_CATEGORY_ID when missing"
+      },
+      {
+        "file": "src/logic/state.test.js",
+        "title": "trims and preserves a provided categoryId"
+      },
+      {
+        "file": "src/logic/state.test.js",
+        "title": "initialData seeds totemV1 defaults"
+      },
+      {
+        "file": "src/logic/state.test.js",
+        "title": "migrate normalizes missing totemV1 fields"
+      },
+      {
+        "file": "src/logic/walletV1.test.js",
+        "title": "resets daily counters when date changes"
+      },
+      {
+        "file": "src/logic/walletV1.test.js",
+        "title": "addCoins increments balance and logs event"
+      },
+      {
+        "file": "src/logic/walletV1.test.js",
+        "title": "canWatchAd returns false when daily ad cap is reached"
+      },
+      {
+        "file": "src/logic/walletV1.test.js",
+        "title": "applyAdReward grants coins and increments ad usage"
+      },
+      {
+        "file": "src/logic/walletV1.test.js",
+        "title": "trims wallet event history to 50 entries"
+      },
+      {
+        "file": "src/logic/walletV1.test.js",
+        "title": "spendCoins decrements balance when enough coins exist"
+      },
+      {
+        "file": "src/logic/walletV1.test.js",
+        "title": "spendCoins is rejected when balance is insufficient"
+      },
+      {
+        "file": "tests/e2e/auth-diagnostics.spec.js",
+        "title": "login: pas de bloc diagnostics réseau legacy"
+      },
+      {
+        "file": "tests/e2e/auth-gate.spec.js",
+        "title": "sans session: affiche LoginScreen et bloque l"
+      },
+      {
+        "file": "tests/e2e/auth-gate.spec.js",
+        "title": "session mockée: accès à l"
+      },
+      {
+        "file": "tests/e2e/categories.spec.js",
+        "title": "activer puis désactiver une suggestion vide"
+      },
+      {
+        "file": "tests/e2e/categories.spec.js",
+        "title": "désactiver une catégorie vide"
+      },
+      {
+        "file": "tests/e2e/categories.spec.js",
+        "title": "désactiver une catégorie non vide -> migrer"
+      },
+      {
+        "file": "tests/e2e/categories.spec.js",
+        "title": "désactiver une catégorie non vide -> delete"
+      },
+      {
+        "file": "tests/e2e/categories.spec.js",
+        "title": "inbox/system non désactivable"
+      },
+      {
+        "file": "tests/e2e/categories.spec.js",
+        "title": "Bibliothèque: gérer active l"
+      },
+      {
+        "file": "tests/e2e/categories.spec.js",
+        "title": "Bibliothèque: gérer permet d"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CreateFlow: projet + action met à jour Bibliothèque/Aujourd’hui/Calendrier/Pilotage"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CreateFlow: action ponctuelle met à jour toute l’app"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CreateFlow: action récurrente valide planning/durée + conflit bloquant"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CreateFlow: action anytime sans horaire + présence dans les vues attendues"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "Calendrier mois: anti-décalage fin de mois vers mois suivant"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CategoryGate: désactivation non vide avec migration vers Général"
+      },
+      {
+        "file": "tests/e2e/createFlow.spec.js",
+        "title": "Projet + Action (guidé) -> ouvre l’étape projet"
+      },
+      {
+        "file": "tests/e2e/createFlow.spec.js",
+        "title": "Action ponctuelle -> occurrence au bon jour"
+      },
+      {
+        "file": "tests/e2e/createFlow.spec.js",
+        "title": "Action récurrente planifiée -> planning + durée persistés"
+      },
+      {
+        "file": "tests/e2e/createFlow.spec.js",
+        "title": "Action récurrente -> conflit horaire bloquant avant résolution"
+      },
+      {
+        "file": "tests/e2e/createFlow.spec.js",
+        "title": "Action anytime -> sans date fixe"
+      },
+      {
+        "file": "tests/e2e/createFlow.spec.js",
+        "title": "Ordre catégories = railOrder, modifier conserve ordre"
+      },
+      {
+        "file": "tests/e2e/micro-actions.coins-and-ads.spec.js",
+        "title": "micro-actions: coins + rewarded ad reroll credit flow"
+      },
+      {
+        "file": "tests/e2e/micro-actions.coins-and-ads.spec.js",
+        "title": "micro-actions: premium hides rewarded ad CTA"
+      },
+      {
+        "file": "tests/e2e/micro-actions.spec.js",
+        "title": "micro-actions V1: 3 items + done replace + reroll selected"
+      },
+      {
+        "file": "tests/e2e/micro-actions.spec.js",
+        "title": "micro-actions V1: basic reroll limit = 3/day"
+      },
+      {
+        "file": "tests/e2e/micro-actions.spec.js",
+        "title": "micro-actions V1: premium reroll is unlimited"
+      },
+      {
+        "file": "tests/e2e/pilotage.radar.spec.js",
+        "title": "Pilotage: Catégories visibles persistent après reload"
+      },
+      {
+        "file": "tests/e2e/pilotage.radar.spec.js",
+        "title": "Pilotage: sélection radar reste valide après suppression d"
+      },
+      {
+        "file": "tests/e2e/profile-setup.spec.js",
+        "title": "première connexion: redirection /account puis sauvegarde profil"
+      },
+      {
+        "file": "tests/e2e/profile-setup.spec.js",
+        "title": "username déjà pris: erreur visible"
+      },
+      {
+        "file": "tests/e2e/totem-dock.spec.js",
+        "title": "totem dock: open, close, hide, nub reveal, persistence"
+      },
+      {
+        "file": "tests/e2e/totem-dock.spec.js",
+        "title": "totem dock: micro-action done triggers ghost flight animation"
+      },
+      {
+        "file": "tests/e2e/user-data.persistence.spec.js",
+        "title": "user_data: charge puis persiste une modification après reload"
+      }
+    ]
+  },
+  "coverage": {
+    "planToCalendar": [
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CreateFlow: projet + action met à jour Bibliothèque/Aujourd’hui/Calendrier/Pilotage"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CreateFlow: action ponctuelle met à jour toute l’app"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CreateFlow: action récurrente valide planning/durée + conflit bloquant"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "Calendrier mois: anti-décalage fin de mois vers mois suivant"
+      },
+      {
+        "file": "tests/e2e/createFlow.spec.js",
+        "title": "Action ponctuelle -> occurrence au bon jour"
+      }
+    ],
+    "planToToday": [
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CreateFlow: action ponctuelle met à jour toute l’app"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CreateFlow: action anytime sans horaire + présence dans les vues attendues"
+      },
+      {
+        "file": "tests/e2e/createFlow.spec.js",
+        "title": "Action ponctuelle -> occurrence au bon jour"
+      },
+      {
+        "file": "tests/e2e/createFlow.spec.js",
+        "title": "Action anytime -> sans date fixe"
+      }
+    ],
+    "todayToSession": [
+      {
+        "file": "tests/e2e/auth-gate.spec.js",
+        "title": "sans session: affiche LoginScreen et bloque l"
+      },
+      {
+        "file": "tests/e2e/auth-gate.spec.js",
+        "title": "session mockée: accès à l"
+      }
+    ],
+    "validationToPilotage": [
+      {
+        "file": "src/logic/reporting.test.js",
+        "title": "report totals match metrics"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CreateFlow: projet + action met à jour Bibliothèque/Aujourd’hui/Calendrier/Pilotage"
+      },
+      {
+        "file": "tests/e2e/pilotage.radar.spec.js",
+        "title": "Pilotage: Catégories visibles persistent après reload"
+      },
+      {
+        "file": "tests/e2e/pilotage.radar.spec.js",
+        "title": "Pilotage: sélection radar reste valide après suppression d"
+      }
+    ],
+    "categoryDeleteAndMigration": [
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CategoryGate: désactivation non vide avec migration vers Général"
+      }
+    ],
+    "timezoneEdge": [
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "Calendrier mois: anti-décalage fin de mois vers mois suivant"
+      }
+    ]
+  },
+  "topRisks": [
+    {
+      "id": "delete-action-schedule-rules-cleanup",
+      "severity": "P0",
+      "area": "planning->calendar",
+      "status": "risk",
+      "summary": "Suppression d’action sans cleanup explicite des scheduleRules",
+      "impact": "Risque d’occurrences orphelines régénérées après suppression",
+      "evidence": [
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 384,
+          "snippet": "function deleteAction(goal) {"
+        },
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 391,
+          "snippet": "const nextOccurrences = (prev.occurrences || []).filter((o) => o && o.goalId !== goalId);"
+        },
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 283,
+          "snippet": "function deleteAction(goal) {"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 922,
+          "snippet": "const rulesRaw = Array.isArray(working.scheduleRules) ? working.scheduleRules : [];"
+        }
+      ],
+      "repro": [
+        "Créer action récurrente.",
+        "Supprimer action depuis Bibliothèque.",
+        "Revenir sur Today (ensureWindow).",
+        "Vérifier réapparition/compteurs incohérents."
+      ]
+    },
+    {
+      "id": "missed-backfill-window",
+      "severity": "P0",
+      "area": "today->validation",
+      "status": "risk",
+      "summary": "Backfill des missed contraint à la fenêtre selectedDate ±1",
+      "impact": "Occurences anciennes potentiellement laissées en planned après longue absence",
+      "evidence": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1326,
+          "snippet": "const next = ensureWindowFromScheduleRules(prev, fromKey, toKey, sortedIds);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1324,
+          "snippet": "const fromKey = baseDate ? toLocalDateKey(addDays(baseDate, -1)) : selectedDateKey;"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1325,
+          "snippet": "const toKey = baseDate ? toLocalDateKey(addDays(baseDate, 1)) : selectedDateKey;"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 1112,
+          "snippet": "const patch = { status: \"missed\", updatedAt: nowIso };"
+        }
+      ],
+      "repro": [
+        "Planifier sur plusieurs jours.",
+        "Ne pas ouvrir l’app plusieurs jours.",
+        "Revenir Today sans parcourir les jours passés.",
+        "Comparer planned/missed attendu vs affiché."
+      ]
+    },
+    {
+      "id": "session-page-bifurcation",
+      "severity": "P1",
+      "area": "today->execution",
+      "status": "risk",
+      "summary": "Le tab session monte SessionMVP; Session.jsx riche existe mais n’est pas branché",
+      "impact": "Risque de logique/exigences d’exécution fragmentées (deux implémentations)",
+      "evidence": [
+        {
+          "file": "src/App.jsx",
+          "line": 38,
+          "snippet": "import SessionMVP from \"./pages/SessionMVP\";"
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 895,
+          "snippet": ") : tab === \"session\" ? ("
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 896,
+          "snippet": "<SessionMVP"
+        },
+        {
+          "file": "src/pages/Session.jsx",
+          "line": 50,
+          "snippet": "export default function Session({ data, setData, onBack, onOpenLibrary, dateKey }) {"
+        }
+      ],
+      "repro": [
+        "Démarrer une session depuis Today.",
+        "Observer que l’écran session correspond au MVP.",
+        "Comparer fonctionnalités attendues vs Session.jsx."
+      ]
+    },
+    {
+      "id": "session-model-duality",
+      "severity": "P1",
+      "area": "execution->validation",
+      "status": "risk",
+      "summary": "API sessions.js présente mais flux actif basé sur ui.activeSession + sessionsV2",
+      "impact": "Dette de maintenance et confusion sur la source de vérité de session",
+      "evidence": [
+        {
+          "file": "src/logic/sessions.js",
+          "line": 65,
+          "snippet": "export function startSessionForOccurrence(state, occurrenceId, now = new Date()) {"
+        },
+        {
+          "file": "src/logic/sessionsV2.js",
+          "line": 56,
+          "snippet": "export function upsertSessionV2(list, record) {"
+        },
+        {
+          "file": "src/pages/SessionMVP.jsx",
+          "line": 37,
+          "snippet": "safeData.ui && typeof safeData.ui.activeSession === \"object\" ? safeData.ui.activeSession : null;"
+        },
+        {
+          "file": "src/pages/SessionMVP.jsx",
+          "line": 38,
+          "snippet": "const activeSession = useMemo(() => normalizeActiveSessionForUI(rawActiveSession), [rawActiveSession]);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 706,
+          "snippet": "safeData.ui && typeof safeData.ui.activeSession === \"object\" ? safeData.ui.activeSession : null;"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 707,
+          "snippet": "const activeSession = useMemo("
+        }
+      ],
+      "repro": [
+        "Comparer état écrit dans ui.activeSession et sessionHistory.",
+        "Vérifier si sessions[] est encore utilisé par le runtime."
+      ]
+    },
+    {
+      "id": "status-vocabulary-divergence",
+      "severity": "P1",
+      "area": "validation->pilotage",
+      "status": "risk",
+      "summary": "Vocabulaire de statuts différent selon modules",
+      "impact": "Interprétation divergente des statuts finaux et expected",
+      "evidence": [
+        {
+          "file": "src/logic/occurrences.js",
+          "line": 4,
+          "snippet": "const STATUS_VALUES = new Set([\"planned\", \"done\", \"skipped\", \"canceled\"]);"
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 13,
+          "snippet": "const EXPECTED_STATUSES = new Set(["
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 1112,
+          "snippet": "const patch = { status: \"missed\", updatedAt: nowIso };"
+        },
+        {
+          "file": "src/logic/sessionResolver.js",
+          "line": 2,
+          "snippet": "import { isFinalOccurrenceStatus as isFinalOccurrenceStatusFromMetrics } from \"./metrics\";"
+        }
+      ],
+      "repro": [
+        "Injecter une occurrence status=missed.",
+        "Comparer rendu/calcul Home, Session resolver et Pilotage."
+      ]
+    },
+    {
+      "id": "create-flow-cognitive-load",
+      "severity": "P1",
+      "area": "planning",
+      "status": "risk",
+      "summary": "Flow création dense pour débutant; mode Essentiel non explicite",
+      "impact": "Abandon en création et confusion entre Quick/Focus planning",
+      "evidence": [
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 278,
+          "snippet": "const [title, setTitle] = useState(\"\");"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 279,
+          "snippet": "const [oneOffDate, setOneOffDate] = useState(() => todayLocalKey());"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 280,
+          "snippet": "const [location, setLocation] = useState(\"\");"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 283,
+          "snippet": "const [lifecycleMode] = useState(\"FIXED\");"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 284,
+          "snippet": "const [activeFrom, setActiveFrom] = useState(() => todayLocalKey());"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 285,
+          "snippet": "const [activeTo, setActiveTo] = useState(() => addDaysLocal(todayLocalKey(), 29));"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 294,
+          "snippet": "const [repeat, setRepeat] = useState(() => (isTypeOneOff ? \"none\" : \"weekly\"));"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 296,
+          "snippet": "const [scheduleMode, setScheduleMode] = useState(\"STANDARD\"); // STANDARD | WEEKLY_SLOTS"
+        },
+        {
+          "file": "src/creation/creationSchema.js",
+          "line": 38,
+          "snippet": "export const CREATION_FLOW_HABIT = CREATION_FLOW_HABIT_LEGACY;"
+        },
+        {
+          "file": "src/ui/create/CreateFlowModal.jsx",
+          "line": 211,
+          "snippet": "{step === \"choice\" ? ("
+        }
+      ],
+      "repro": [
+        "Créer action récurrente avec options avancées.",
+        "Mesurer nombre de champs obligatoires/perçus.",
+        "Comparer avec flow simple attendu (titre+jour+heure)."
+      ]
+    },
+    {
+      "id": "calendar-add-occurrence-unwired",
+      "severity": "P2",
+      "area": "calendar->today",
+      "status": "risk",
+      "summary": "CTA Ajouter occurrence dans calendrier potentiellement non câblé au parent",
+      "impact": "Action UI visible mais sans effet selon contexte",
+      "evidence": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 271,
+          "snippet": "onAddOccurrence,"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 2129,
+          "snippet": "onAddOccurrence={typeof onAddOccurrence === \"function\" ? handleAddOccurrence : null}"
+        },
+        {
+          "file": "src/App.jsx",
+          "line": 614,
+          "snippet": "<Home"
+        }
+      ],
+      "repro": [
+        "Ouvrir calendrier mois Today.",
+        "Cliquer Ajouter sur un jour.",
+        "Vérifier création effective d’occurrence."
+      ]
+    }
+  ]
+}

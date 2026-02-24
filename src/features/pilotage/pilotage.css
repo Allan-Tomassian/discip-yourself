@@ -49,6 +49,10 @@
 .pilotageStatusBadge {
   min-width: 72px;
   justify-content: center;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  line-height: 1.1;
 }
 
 .pilotageMetricMain {
@@ -122,6 +126,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.pilotageLegendRow .small2 {
+  line-height: 1.34;
 }
 
 .pilotageLegendDot {

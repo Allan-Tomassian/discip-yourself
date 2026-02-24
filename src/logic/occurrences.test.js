@@ -29,6 +29,25 @@ describe("resolveOccurrenceForSession", () => {
     expect(result.reason).toBe("final");
     expect(result.occurrence?.id).toBe("o1");
   });
+
+  it("treats missed occurrence as final", () => {
+    const occurrences = [
+      {
+        id: "o_missed",
+        goalId: "g1",
+        date: "2026-02-02",
+        start: "10:00",
+        slotKey: "10:00",
+        status: "missed",
+      },
+    ];
+    const result = resolveOccurrenceForSession(
+      { occurrences, goals: [] },
+      { dateKey: "2026-02-02", goalIds: ["g1"], preferredStart: "" }
+    );
+    expect(result.reason).toBe("final");
+    expect(result.occurrence?.id).toBe("o_missed");
+  });
 });
 
 describe("setOccurrenceStatusById", () => {
@@ -62,5 +81,20 @@ describe("setOccurrenceStatusById", () => {
     expect(first).not.toBe(occurrences);
     const second = setOccurrenceStatusById("o2", "done", { occurrences: first, goals: [] });
     expect(second).toBe(first);
+  });
+
+  it("accepts canonical missed status update", () => {
+    const occurrences = [
+      {
+        id: "o3",
+        goalId: "g2",
+        date: "2026-02-02",
+        start: "09:00",
+        slotKey: "09:00",
+        status: "planned",
+      },
+    ];
+    const next = setOccurrenceStatusById("o3", "missed", { occurrences, goals: [] });
+    expect(next[0].status).toBe("missed");
   });
 });

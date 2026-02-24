@@ -1,5 +1,10 @@
 import { addDays, startOfWeekKey, todayKey } from "../utils/dates";
 import { resolveGoalType } from "../domain/goalType";
+import {
+  isCompletedOccurrenceStatus,
+  isExcludedFromExpectedOccurrenceStatus,
+  normalizeOccurrenceStatus,
+} from "./occurrenceStatus";
 
 function buildWeekKeys(nowDate) {
   const weekStartKey = startOfWeekKey(nowDate);
@@ -78,13 +83,13 @@ export function getCategoryStatus(data, categoryId, nowDate = new Date()) {
     for (const occ of occurrences) {
       if (!occ || typeof occ.goalId !== "string" || !processIds.has(occ.goalId)) continue;
       const dateKey = typeof occ.date === "string" ? occ.date : "";
-      const status = occ.status || "planned";
-      if (dateKey && dateKey > today && status !== "skipped" && status !== "canceled") hasFutureOccurrences = true;
+      const status = normalizeOccurrenceStatus(occ.status);
+      if (dateKey && dateKey > today && !isExcludedFromExpectedOccurrenceStatus(status)) hasFutureOccurrences = true;
       if (dateKey && weekSet.has(dateKey)) {
         occCountByGoal.set(occ.goalId, (occCountByGoal.get(occ.goalId) || 0) + 1);
-        if (status === "done") {
+        if (isCompletedOccurrenceStatus(status)) {
           occDoneByGoal.set(occ.goalId, (occDoneByGoal.get(occ.goalId) || 0) + 1);
-        } else if (status !== "skipped" && status !== "canceled") {
+        } else if (!isExcludedFromExpectedOccurrenceStatus(status)) {
           occPlannedByGoal.set(occ.goalId, (occPlannedByGoal.get(occ.goalId) || 0) + 1);
         }
       }

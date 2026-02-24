@@ -1,6 +1,9 @@
 import { uid } from "../utils/helpers";
 import { isFinalOccurrenceStatus } from "./metrics";
 
+// Legacy helper module kept for historical compatibility only.
+// Runtime session SSoT uses ui.activeSession (+ sessionHistory via sessionsV2).
+
 export function isActiveSessionState(value) {
   return value === "in_progress";
 }

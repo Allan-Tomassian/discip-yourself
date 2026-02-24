@@ -10,8 +10,10 @@ import {
 } from "../utils/dates";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { setMainGoal } from "../logic/goals";
-import { ensureWindowFromScheduleRules } from "../logic/occurrencePlanner";
+import { backfillMissedOccurrences, ensureWindowFromScheduleRules } from "../logic/occurrencePlanner";
 import { normalizeActiveSessionForUI, normalizeOccurrenceForUI } from "../logic/compat";
+import { applySessionRuntimeTransition, isRuntimeSessionOpen } from "../logic/sessionRuntime";
+import { emitSessionRuntimeNotificationHook } from "../logic/sessionRuntimeNotifications";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { isPrimaryCategory, isPrimaryGoal } from "../logic/priority";
@@ -39,7 +41,6 @@ import {
   ensureWallet,
 } from "../logic/walletV1";
 import { ensureTotemV1 } from "../logic/totemV1";
-import { uid } from "../utils/helpers";
 import CalendarCard from "../ui/calendar/CalendarCard";
 import FocusCard from "../ui/focus/FocusCard";
 import MicroActionsCard from "../ui/today/MicroActionsCard";
@@ -1153,7 +1154,7 @@ export default function Home({
   }, [goals, localTodayKey, microChecks, occurrences, safeData]);
 
   const sessionBadgeLabel = useMemo(() => {
-    if (!sessionForDay || sessionForDay?.status !== "partial") return "";
+    if (!sessionForDay || !isRuntimeSessionOpen(sessionForDay)) return "";
     const sessionMinutes = Number.isFinite(sessionHabit?.sessionMinutes)
       ? sessionHabit.sessionMinutes
       : null;
@@ -1264,39 +1265,19 @@ export default function Home({
       const objective = occurrence.goalId ? getOutcomeForGoalId(occurrence.goalId) : null;
       const categoryId = goal?.categoryId || null;
       setData((prev) => {
-        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-        const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
-        const nextSession = {
-          id: current?.occurrenceId === occurrence.id && current?.id ? current.id : uid(),
+        return applySessionRuntimeTransition(prev, {
+          type: "start",
           occurrenceId: occurrence.id,
           dateKey: occurrence.date || selectedDateKey,
           objectiveId: objective?.id || null,
           habitIds: occurrence.goalId ? [occurrence.goalId] : [],
-          status: "partial",
-          timerStartedAt: "",
-          timerAccumulatedSec: 0,
-          timerRunning: false,
-          doneHabitIds: [],
-        };
-        if (
-          current &&
-          current.occurrenceId === nextSession.occurrenceId &&
-          current.dateKey === nextSession.dateKey &&
-          current.objectiveId === nextSession.objectiveId &&
-          Array.isArray(current.habitIds) &&
-          current.habitIds.length === nextSession.habitIds.length &&
-          current.habitIds.every((id, idx) => id === nextSession.habitIds[idx]) &&
-          current.status === nextSession.status
-        ) {
-          return prev;
-        }
-        return {
-          ...prev,
-          ui: {
-            ...prevUi,
-            activeSession: nextSession,
-          },
-        };
+        });
+      });
+      emitSessionRuntimeNotificationHook("start", {
+        occurrenceId: occurrence.id,
+        dateKey: occurrence.date || selectedDateKey,
+        runtimePhase: "in_progress",
+        source: "home_start",
       });
       if (typeof onOpenSession === "function") {
         onOpenSession({ categoryId, dateKey: occurrence.date || selectedDateKey });
@@ -1313,17 +1294,19 @@ export default function Home({
     const sortedIds = Array.isArray(ensureProcessIds)
       ? ensureProcessIds.filter(Boolean).slice().sort()
       : [];
-    if (!sortedIds.length) return;
-
     const sig = `${selectedDateKey}:${sortedIds.join(",")}`;
     if (lastEnsureSigRef.current === sig) return;
     lastEnsureSigRef.current = sig;
 
     setData((prev) => {
-      const baseDate = fromLocalDateKey(selectedDateKey);
-      const fromKey = baseDate ? toLocalDateKey(addDays(baseDate, -1)) : selectedDateKey;
-      const toKey = baseDate ? toLocalDateKey(addDays(baseDate, 1)) : selectedDateKey;
-      const next = ensureWindowFromScheduleRules(prev, fromKey, toKey, sortedIds);
+      let next = prev;
+      if (sortedIds.length) {
+        const baseDate = fromLocalDateKey(selectedDateKey);
+        const fromKey = baseDate ? toLocalDateKey(addDays(baseDate, -1)) : selectedDateKey;
+        const toKey = baseDate ? toLocalDateKey(addDays(baseDate, 1)) : selectedDateKey;
+        next = ensureWindowFromScheduleRules(next, fromKey, toKey, sortedIds);
+      }
+      next = backfillMissedOccurrences(next);
       if (import.meta.env?.DEV && next !== prev) {
         ensureDebugCountRef.current += 1;
         // eslint-disable-next-line no-console
@@ -1998,7 +1981,7 @@ export default function Home({
             return (
               <HomeCard className="todaySecondaryCard" data-tour-id="today-notes-card">
                 <div className="p18">
-                  <div className="row">
+                  <div className="row todayNotesHeader">
                     <div className="cardSectionTitleRow">
                       {drag ? (
                         <button
@@ -2013,7 +1996,7 @@ export default function Home({
                       ) : null}
                       <div className="cardSectionTitle">Note du jour</div>
                     </div>
-                    <div className="row" style={{ gap: 8 }}>
+                    <div className="row todayNotesHeaderActions" style={{ gap: 8 }}>
                       <IconButton
                         aria-label="Historique des notes"
                         onClick={() => {
@@ -2041,10 +2024,10 @@ export default function Home({
                     />
                   </div>
                   <div className="mt12">
-                    <div className="small2">Check-in rapide</div>
+                    <div className="small2 todayNotesKicker">Check-in rapide</div>
                     <div className="noteMetaGrid mt8" data-tour-id="today-notes-meta">
                       <div>
-                        <div className="small2">Forme</div>
+                        <div className="small2 todayNotesLabel">Forme</div>
                         <SelectMenu
                           value={noteMeta.forme || ""}
                           onChange={(next) => updateNoteMeta({ forme: next })}
@@ -2060,7 +2043,7 @@ export default function Home({
                         />
                       </div>
                       <div>
-                        <div className="small2">Humeur</div>
+                        <div className="small2 todayNotesLabel">Humeur</div>
                         <SelectMenu
                           value={noteMeta.humeur || ""}
                           onChange={(next) => updateNoteMeta({ humeur: next })}
@@ -2075,7 +2058,7 @@ export default function Home({
                         />
                       </div>
                       <div>
-                        <div className="small2">Énergie</div>
+                        <div className="small2 todayNotesLabel">Énergie</div>
                         <input
                           className="GateInputPremium"
                           type="number"
@@ -2090,7 +2073,7 @@ export default function Home({
                       </div>
                     </div>
                   </div>
-                  <div className="noteActions mt12">
+                  <div className="noteActions mt12 todayNotesFooter">
                     <Button onClick={addNoteToHistory} data-tour-id="today-notes-add">
                       {UI_COPY.save}
                     </Button>

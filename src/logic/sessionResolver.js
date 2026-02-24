@@ -1,5 +1,6 @@
 import { normalizeLocalDateKey } from "../utils/dateKey";
 import { isFinalOccurrenceStatus as isFinalOccurrenceStatusFromMetrics } from "./metrics";
+import { OCCURRENCE_STATUS, normalizeOccurrenceStatus } from "./occurrenceStatus";
 
 export const isFinalOccurrenceStatus = isFinalOccurrenceStatusFromMetrics;
 
@@ -47,12 +48,24 @@ export function resolveExecutableOccurrence(state, { dateKey, goalIds } = {}) {
 
   const occurrences = Array.isArray(state?.occurrences) ? state.occurrences : [];
   const candidates = occurrences.filter(
-    (o) => o && o.date === date && ids.includes(o.goalId) && o.status === "planned"
+    (o) =>
+      o &&
+      o.date === date &&
+      ids.includes(o.goalId) &&
+      (normalizeOccurrenceStatus(o.status) === OCCURRENCE_STATUS.PLANNED ||
+        normalizeOccurrenceStatus(o.status) === OCCURRENCE_STATUS.IN_PROGRESS)
   );
 
   if (!candidates.length) return { occurrenceId: null, kind: "not_found" };
 
   const sorted = candidates.slice().sort((a, b) => {
+    const statusA = normalizeOccurrenceStatus(a?.status);
+    const statusB = normalizeOccurrenceStatus(b?.status);
+    if (statusA !== statusB) {
+      if (statusA === OCCURRENCE_STATUS.IN_PROGRESS) return -1;
+      if (statusB === OCCURRENCE_STATUS.IN_PROGRESS) return 1;
+    }
+
     const kindA = classifyOccurrence(a);
     const kindB = classifyOccurrence(b);
     const rankA = kindA === "fixed" ? 0 : kindA === "window" ? 1 : 2;

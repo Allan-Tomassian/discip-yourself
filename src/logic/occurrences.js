@@ -1,7 +1,12 @@
 import { uid } from "../utils/helpers";
 import { normalizeLocalDateKey } from "../utils/dateKey";
+import {
+  CANONICAL_OCCURRENCE_STATUSES,
+  OCCURRENCE_STATUS,
+  isTerminalOccurrenceStatus,
+  normalizeOccurrenceStatus,
+} from "./occurrenceStatus";
 
-const STATUS_VALUES = new Set(["planned", "done", "skipped", "canceled"]);
 const POINTS_BASE = 10;
 const POINTS_BONUS_LINKED = 2;
 
@@ -29,7 +34,7 @@ function resolveOutcomeIdForGoal(goalId, source) {
 }
 
 function applyDoneFields(occurrence, status, source) {
-  if (status !== "done") {
+  if (status !== OCCURRENCE_STATUS.DONE) {
     return { ...occurrence, doneAt: null, pointsAwarded: null };
   }
   const outcomeId = resolveOutcomeIdForGoal(occurrence.goalId, source);
@@ -42,8 +47,7 @@ function applyDoneFields(occurrence, status, source) {
 }
 
 function normalizeStatus(status) {
-  const raw = typeof status === "string" ? status : "";
-  return STATUS_VALUES.has(raw) ? raw : "planned";
+  return normalizeOccurrenceStatus(status);
 }
 
 function normalizeDurationMinutes(value) {
@@ -134,7 +138,7 @@ export function resolveOccurrenceForSession(data, { dateKey, goalIds, preferredS
   const occurrence = sorted[0] || null;
   if (!occurrence) return { occurrence: null, reason: "not_found" };
   const st = normalizeStatus(occurrence.status);
-  if (st === "done" || st === "skipped" || st === "canceled") {
+  if (isTerminalOccurrenceStatus(st)) {
     return { occurrence, reason: "final" };
   }
   return { occurrence, reason: "ok" };
@@ -187,7 +191,7 @@ export function addOccurrence(goalId, date, start, durationMinutes, source) {
     start: cleanStart,
     slotKey: cleanStart,
     durationMinutes: normalizeDurationMinutes(durationMinutes),
-    status: "planned",
+    status: OCCURRENCE_STATUS.PLANNED,
   };
 
   return [...occurrences, occurrence];
@@ -270,7 +274,7 @@ export function upsertOccurrence(goalId, date, start, durationMinutes, patch, so
     start: s,
     slotKey,
     durationMinutes: normalizeDurationMinutes(durationMinutes),
-    status: "planned",
+    status: OCCURRENCE_STATUS.PLANNED,
     ...nextPatch,
   };
   // ensure normalized fields win
@@ -306,9 +310,8 @@ export function setOccurrenceStatus(goalId, date, start, status, source) {
   const s = normalizeTimeHM(start);
   if (!g || !d || !s) return occurrences.slice();
 
-  const raw = typeof status === "string" ? status : "";
-  if (!STATUS_VALUES.has(raw)) return occurrences.slice();
-  const st = normalizeStatus(raw);
+  const st = normalizeOccurrenceStatus(status, "");
+  if (!st || !CANONICAL_OCCURRENCE_STATUSES.has(st)) return occurrences.slice();
 
   // Deterministic targeting: match by slot key (start or slotKey) to support SLOTS mode.
   const targetSlot = normalizeSlotKey(s);

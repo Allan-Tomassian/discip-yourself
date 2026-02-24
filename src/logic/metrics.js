@@ -1,32 +1,37 @@
 import { addDays } from "../utils/dates";
 import { normalizeLocalDateKey, toLocalDateKey } from "../utils/dateKey";
+import {
+  CANCELED_OCCURRENCE_STATUSES,
+  EXPECTED_OCCURRENCE_STATUSES,
+  FINAL_OCCURRENCE_STATUSES,
+  OCCURRENCE_STATUS,
+  isCompletedOccurrenceStatus,
+  isExcludedFromExpectedOccurrenceStatus,
+  isMissedOccurrenceStatus,
+  isTerminalOccurrenceStatus,
+  normalizeOccurrenceStatus,
+} from "./occurrenceStatus";
 
-// Source of truth (based on src/logic/occurrences.js + additional statuses used in repo)
-export const STATUS_VALUES = new Set(["planned", "done", "skipped", "canceled"]);
-export const EXTRA_STATUS_VALUES = new Set(["missed", "rescheduled", "in_progress"]);
-
-export const FINAL_STATUSES = new Set(["done", "skipped", "canceled", "missed", "rescheduled"]);
-export const DONE_STATUSES = new Set(["done"]);
-export const MISSED_STATUSES = new Set(["missed"]);
-export const CANCELED_STATUSES = new Set(["skipped", "canceled"]);
-
-const EXPECTED_STATUSES = new Set([
-  "planned",
-  "done",
-  "missed",
-  "rescheduled",
-  "in_progress",
+// Backward-compatible exports (legacy callers/tests).
+export const STATUS_VALUES = new Set([
+  OCCURRENCE_STATUS.PLANNED,
+  OCCURRENCE_STATUS.DONE,
+  OCCURRENCE_STATUS.SKIPPED,
+  OCCURRENCE_STATUS.CANCELED,
 ]);
-
-function normalizeStatus(raw) {
-  const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
-  if (STATUS_VALUES.has(value) || EXTRA_STATUS_VALUES.has(value)) return value;
-  return "planned";
-}
+export const EXTRA_STATUS_VALUES = new Set([
+  OCCURRENCE_STATUS.MISSED,
+  OCCURRENCE_STATUS.RESCHEDULED,
+  OCCURRENCE_STATUS.IN_PROGRESS,
+]);
+export const FINAL_STATUSES = FINAL_OCCURRENCE_STATUSES;
+export const DONE_STATUSES = new Set([OCCURRENCE_STATUS.DONE]);
+export const MISSED_STATUSES = new Set([OCCURRENCE_STATUS.MISSED]);
+export const CANCELED_STATUSES = CANCELED_OCCURRENCE_STATUSES;
+const EXPECTED_STATUSES = EXPECTED_OCCURRENCE_STATUSES;
 
 export function isFinalOccurrenceStatus(status) {
-  const normalized = normalizeStatus(status);
-  return FINAL_STATUSES.has(normalized);
+  return isTerminalOccurrenceStatus(status);
 }
 
 function isAnytimeLegacyOccurrence(occ) {
@@ -53,16 +58,16 @@ function createEmptyStats() {
 function addOccurrenceToStats(stats, occ) {
   if (!occ || typeof occ !== "object") return;
   if (isAnytimeLegacyOccurrence(occ)) return;
-  const status = normalizeStatus(occ.status);
+  const status = normalizeOccurrenceStatus(occ.status);
 
   if (EXPECTED_STATUSES.has(status)) stats.expected += 1;
-  if (DONE_STATUSES.has(status)) stats.done += 1;
-  if (MISSED_STATUSES.has(status)) stats.missed += 1;
-  if (CANCELED_STATUSES.has(status)) stats.canceled += 1;
-  if (status === "planned") stats.planned += 1;
-  if (!DONE_STATUSES.has(status) && !CANCELED_STATUSES.has(status)) stats.remaining += 1;
+  if (isCompletedOccurrenceStatus(status)) stats.done += 1;
+  if (isMissedOccurrenceStatus(status)) stats.missed += 1;
+  if (isExcludedFromExpectedOccurrenceStatus(status)) stats.canceled += 1;
+  if (status === OCCURRENCE_STATUS.PLANNED) stats.planned += 1;
+  if (!isCompletedOccurrenceStatus(status) && !isExcludedFromExpectedOccurrenceStatus(status)) stats.remaining += 1;
 
-  if (DONE_STATUSES.has(status)) {
+  if (isCompletedOccurrenceStatus(status)) {
     const points = Number.isFinite(occ.pointsAwarded) ? occ.pointsAwarded : null;
     if (points != null) stats.netScore += points;
   }

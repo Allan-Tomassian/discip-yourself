@@ -1,5 +1,7 @@
 import { uid } from "../utils/helpers";
 
+// Canonical session history upsert for runtime session mutations.
+
 function normalizeString(value) {
   return typeof value === "string" ? value : "";
 }

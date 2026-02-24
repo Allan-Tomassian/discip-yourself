@@ -1,15 +1,17 @@
 import { normalizeLocalDateKey } from "../utils/dateKey";
 import { selectOccurrencesInRange } from "./metrics";
+import {
+  OCCURRENCE_STATUS,
+  isCompletedOccurrenceStatus,
+  isExcludedFromExpectedOccurrenceStatus,
+  isMissedOccurrenceStatus,
+  normalizeOccurrenceStatus,
+} from "./occurrenceStatus";
 
 export const MICRO_ACTION_WEIGHT = 0.25;
 
-const DONE_STATUS = "done";
-const MISSED_STATUS = "missed";
-const CANCELED_STATUSES = new Set(["canceled", "skipped"]);
-
 function normalizeStatus(raw) {
-  const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
-  return value || "planned";
+  return normalizeOccurrenceStatus(raw);
 }
 
 function isAnytimeLegacyOccurrence(occ) {
@@ -55,16 +57,16 @@ export function computeExpectedDoneMissed(occurrences) {
     if (isAnytimeLegacyOccurrence(occ)) continue;
 
     const status = normalizeStatus(occ.status);
-    const isCanceled = CANCELED_STATUSES.has(status);
-    const isDone = status === DONE_STATUS;
-    const isMissed = status === MISSED_STATUS;
+    const isCanceled = isExcludedFromExpectedOccurrenceStatus(status);
+    const isDone = isCompletedOccurrenceStatus(status);
+    const isMissed = isMissedOccurrenceStatus(status);
     const isExpected = !isCanceled;
 
     if (isExpected) stats.expected += 1;
     if (isDone) stats.done += 1;
     if (isMissed) stats.missed += 1;
     if (isCanceled) stats.canceled += 1;
-    if (status === "planned") stats.planned += 1;
+    if (status === OCCURRENCE_STATUS.PLANNED) stats.planned += 1;
     if (isExpected && !isDone) stats.remaining += 1;
   }
 

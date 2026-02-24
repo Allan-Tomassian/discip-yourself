@@ -8,7 +8,7 @@ import AccentCategoryRow from "../components/AccentCategoryRow";
 import { getCategoryCounts } from "../logic/pilotage";
 import { ensureSystemInboxCategory, normalizeCategory, SYSTEM_INBOX_ID } from "../logic/state";
 import { updateGoal } from "../logic/goals";
-import { regenerateWindowFromScheduleRules } from "../logic/occurrencePlanner";
+import { regenerateWindowFromScheduleRules, removeScheduleRulesForAction } from "../logic/occurrencePlanner";
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
 import { canCreateCategory, getGenerationWindowDays } from "../logic/entitlements";
 import { LABELS } from "../ui/labels";
@@ -421,7 +421,7 @@ export default function Categories({
         nextUi.activeSession = kept.length ? { ...nextUi.activeSession, habitIds: kept } : null;
       }
       if (nextUi.sessionDraft?.objectiveId === goalId) nextUi.sessionDraft = null;
-      return {
+      const nextState = {
         ...prev,
         goals: nextGoals,
         occurrences: nextOccurrences,
@@ -430,6 +430,7 @@ export default function Categories({
         checks: nextChecks,
         ui: nextUi,
       };
+      return removeScheduleRulesForAction(nextState, goalId);
     });
     if (editPanelGoalId === goalId) setEditPanelGoalId(null);
   }
@@ -1119,7 +1120,7 @@ export default function Categories({
               {remainingSuggestions.length ? (
                 <div className="col gap8">
                   <div
-                    className="row rowBetween alignCenter"
+                    className="row rowBetween alignCenter librarySuggestionsHeader"
                     role="button"
                     tabIndex={0}
                     onClick={toggleSuggestionsOpen}
@@ -1139,7 +1140,7 @@ export default function Categories({
                     </span>
                   </div>
                   {suggestionsOpen ? (
-                    <div className="categoryGateList isCollapsed">
+                    <div className="categoryGateList isCollapsed librarySuggestionsList">
                       {remainingSuggestions.map((cat) => (
                         <div key={cat.id} className="categoryGateItem GateRowPremium">
                           <span className="categoryGateSwatch" style={{ background: cat.color || "#F97316" }} />

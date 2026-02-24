@@ -70,6 +70,17 @@ describe("resolveExecutableOccurrence", () => {
     expect(resolved.occurrenceId).toBe(null);
   });
 
+  it("reuses in_progress occurrence before planned one", () => {
+    const date = "2026-02-02";
+    const state = baseState([
+      { id: "o1", goalId: "g1", date, start: "09:00", status: "planned", timeType: "fixed" },
+      { id: "o2", goalId: "g1", date, start: "10:00", status: "in_progress", timeType: "fixed" },
+    ]);
+    const resolved = resolveExecutableOccurrence(state, { dateKey: date, goalIds: ["g1"] });
+    expect(resolved.kind).toBe("ok");
+    expect(resolved.occurrenceId).toBe("o2");
+  });
+
   it("is deterministic for identical inputs", () => {
     const date = "2026-02-02";
     const state = baseState([

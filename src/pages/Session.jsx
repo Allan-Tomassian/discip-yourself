@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { AccentItem, Button } from "../components/UI";
 import { normalizeLocalDateKey, parseTimeToMinutes, todayLocalKey } from "../utils/datetime";
-import { setOccurrenceStatusById } from "../logic/occurrences";
 import { isFinalOccurrenceStatus, resolveExecutableOccurrence } from "../logic/sessionResolver";
 import { upsertSessionV2 } from "../logic/sessionsV2";
+import { applySessionRuntimeTransition, isRuntimeSessionOpen } from "../logic/sessionRuntime";
+import { emitSessionRuntimeNotificationHook } from "../logic/sessionRuntimeNotifications";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { resolveConflictNearest } from "../logic/occurrencePlanner";
@@ -77,7 +78,8 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
     return activeSession;
   }, [activeSession, effectiveDateKey]);
   const occurrenceId = typeof session?.occurrenceId === "string" ? session.occurrenceId : null;
-  const isRunning = Boolean(session && session.status === "partial" && session.timerRunning);
+  const runtimeOpen = isRuntimeSessionOpen(session);
+  const isRunning = Boolean(runtimeOpen && session?.timerRunning);
   useEffect(() => {
     if (!isRunning) return;
     const t = setInterval(() => setTick(Date.now()), 1000);
@@ -180,13 +182,13 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
   const isOccurrenceFinal = Boolean(selectedOccurrence && isFinalOccurrenceStatus(selectedOccurrence.status));
   const resolutionBlocked = resolution.reason !== "ok";
   const finalStatus =
-    session && session.status && session.status !== "partial"
+    session && session.status && !runtimeOpen
       ? session.status
       : isOccurrenceFinal || resolution.reason === "final"
         ? selectedOccurrence?.status || "canceled"
         : null;
   const isFinal = Boolean(finalStatus || resolutionBlocked);
-  const isEditable = Boolean(session && session.status === "partial" && !isOccurrenceFinal && !resolutionBlocked);
+  const isEditable = Boolean(session && runtimeOpen && !isOccurrenceFinal && !resolutionBlocked);
   useEffect(() => {
     setExtraMinutes(0);
     setOverrideStart("");
@@ -214,7 +216,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
 
   const ensureSessionHistorySigRef = useRef("");
   useEffect(() => {
-    if (!session || session.status !== "partial" || !occurrenceId) return;
+    if (!session || !runtimeOpen || !occurrenceId) return;
     if (typeof setData !== "function") return;
     const sig = `${session.id || ""}:${occurrenceId}:in_progress`;
     if (ensureSessionHistorySigRef.current === sig) return;
@@ -222,7 +224,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
     setData((prev) => {
       const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
       const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
-      if (!current || current.status !== "partial") return prev;
+      if (!current || !isRuntimeSessionOpen(current)) return prev;
       if (current.occurrenceId && current.occurrenceId !== occurrenceId) return prev;
       const prevHistory = Array.isArray(prev?.sessionHistory) ? prev.sessionHistory : [];
       const prevOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
@@ -250,7 +252,7 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
       if (nextHistory === prevHistory) return prev;
       return { ...prev, sessionHistory: nextHistory };
     });
-  }, [session?.id, session?.status, occurrenceId, resolvedDateKey, setData]);
+  }, [session?.id, occurrenceId, resolvedDateKey, runtimeOpen, setData]);
 
   useEffect(() => {
     if (!session || !isEditable) return;
@@ -264,60 +266,22 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
 
     const durationSec = Math.max(0, Math.floor(elapsedSec));
     if (typeof setData === "function") {
-      setData((prev) => {
-        const goals = Array.isArray(prev?.goals) ? prev.goals : [];
-        if (!occurrenceId) return prev;
-        const prevOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
-        const nextOccurrences = setOccurrenceStatusById(occurrenceId, "done", {
-          occurrences: prevOccurrences,
-          goals,
-        });
-        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-        const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
-        const nowIso = new Date().toISOString();
-        const nextSession = current
-          ? {
-              ...current,
-              status: "done",
-              doneHabitIds: resolvedDoneHabitIds,
-              durationSec,
-              timerRunning: false,
-              timerStartedAt: "",
-              timerAccumulatedSec: durationSec,
-              finishedAt: nowIso,
-            }
-          : current;
-        const prevHistory = Array.isArray(prev?.sessionHistory) ? prev.sessionHistory : [];
-        const occurrence = prevOccurrences.find((occ) => occ && occ.id === occurrenceId) || null;
-        const actionId =
-          typeof occurrence?.goalId === "string"
-            ? occurrence.goalId
-            : typeof occurrence?.actionId === "string"
-              ? occurrence.actionId
-              : "";
-        const dateKey = occurrence?.date || current?.dateKey || current?.date || resolvedDateKey;
-        const record = {
-          id: current?.id || occurrenceId,
+      setData((prev) =>
+        applySessionRuntimeTransition(prev, {
+          type: "finish",
           occurrenceId,
-          actionId,
-          dateKey,
-          startAt: current?.startedAt || current?.timerStartedAt || nowIso,
-          endAt: nowIso,
-          state: "ended",
-          endedReason: "done",
-          timerSeconds: durationSec,
-          notes: typeof current?.notes === "string" ? current.notes : "",
-        };
-        const nextHistory = upsertSessionV2(prevHistory, record);
-        if (nextOccurrences === prevOccurrences && nextSession === current && nextHistory === prevHistory) return prev;
-        return {
-          ...prev,
-          occurrences: nextOccurrences,
-          sessionHistory: nextHistory,
-          ui: { ...prevUi, activeSession: nextSession },
-        };
-      });
+          dateKey: resolvedDateKey,
+          doneHabitIds: resolvedDoneHabitIds,
+          durationSec,
+        })
+      );
     }
+    emitSessionRuntimeNotificationHook("finish", {
+      occurrenceId,
+      dateKey: resolvedDateKey,
+      runtimePhase: "done",
+      source: "session_auto_finish",
+    });
 
     if (typeof onBack === "function") onBack();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -325,47 +289,37 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
 
   function startTimer() {
     if (!session || typeof setData !== "function" || !canRunTimer || !isEditable || !occurrenceId) return;
-    const nowIso = new Date().toISOString();
-    setData((prev) => {
-      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-      const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
-      if (!current) return prev;
-      if (current.timerRunning) return prev;
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          activeSession: {
-            ...current,
-            timerStartedAt: nowIso,
-            timerAccumulatedSec,
-            timerRunning: true,
-            startedAt: current.startedAt || nowIso,
-          },
-        },
-      };
+    setData((prev) =>
+      applySessionRuntimeTransition(prev, {
+        type: "resume",
+        occurrenceId,
+        dateKey: resolvedDateKey,
+        durationSec: elapsedSec,
+      })
+    );
+    emitSessionRuntimeNotificationHook("resume", {
+      occurrenceId,
+      dateKey: resolvedDateKey,
+      runtimePhase: "in_progress",
+      source: "session_start_timer",
     });
   }
 
   function pauseTimer() {
-    if (!session || typeof setData !== "function" || !occurrenceId) return;
-    setData((prev) => {
-      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-      const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
-      if (!current) return prev;
-      if (!current.timerRunning && !current.timerStartedAt && current.timerAccumulatedSec === elapsedSec) return prev;
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          activeSession: {
-            ...current,
-            timerStartedAt: "",
-            timerAccumulatedSec: elapsedSec,
-            timerRunning: false,
-          },
-        },
-      };
+    if (!session || typeof setData !== "function" || !occurrenceId || !isEditable) return;
+    setData((prev) =>
+      applySessionRuntimeTransition(prev, {
+        type: "pause",
+        occurrenceId,
+        dateKey: resolvedDateKey,
+        durationSec: elapsedSec,
+      })
+    );
+    emitSessionRuntimeNotificationHook("pause", {
+      occurrenceId,
+      dateKey: resolvedDateKey,
+      runtimePhase: "paused",
+      source: "session_pause_timer",
     });
   }
 
@@ -375,82 +329,39 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
 
   function resumeTimer() {
     if (!session || typeof setData !== "function" || !canRunTimer || !isEditable || !occurrenceId) return;
-    const nowIso = new Date().toISOString();
-    setData((prev) => {
-      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-      const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
-      if (!current) return prev;
-      if (current.timerRunning) return prev;
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          activeSession: {
-            ...current,
-            timerStartedAt: nowIso,
-            timerAccumulatedSec,
-            timerRunning: true,
-          },
-        },
-      };
+    setData((prev) =>
+      applySessionRuntimeTransition(prev, {
+        type: "resume",
+        occurrenceId,
+        dateKey: resolvedDateKey,
+        durationSec: elapsedSec,
+      })
+    );
+    emitSessionRuntimeNotificationHook("resume", {
+      occurrenceId,
+      dateKey: resolvedDateKey,
+      runtimePhase: "in_progress",
+      source: "session_resume_timer",
     });
   }
 
   function endSession() {
     if (!session || typeof setData !== "function" || !canRunTimer || !isEditable || !occurrenceId) return;
     const durationSec = Math.max(0, Math.floor(elapsedSec));
-    setData((prev) => {
-      const goals = Array.isArray(prev?.goals) ? prev.goals : [];
-      if (!occurrenceId) return prev;
-      const prevOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
-      const nextOccurrences = setOccurrenceStatusById(occurrenceId, "done", {
-        occurrences: prevOccurrences,
-        goals,
-      });
-      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-      const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
-      const nowIso = new Date().toISOString();
-      const nextSession = current
-        ? {
-            ...current,
-            status: "done",
-            doneHabitIds: resolvedDoneHabitIds,
-            durationSec,
-            timerRunning: false,
-            timerStartedAt: "",
-            timerAccumulatedSec: durationSec,
-            finishedAt: nowIso,
-          }
-        : current;
-      const prevHistory = Array.isArray(prev?.sessionHistory) ? prev.sessionHistory : [];
-      const occurrence = prevOccurrences.find((occ) => occ && occ.id === occurrenceId) || null;
-      const actionId =
-        typeof occurrence?.goalId === "string"
-          ? occurrence.goalId
-          : typeof occurrence?.actionId === "string"
-            ? occurrence.actionId
-            : "";
-      const dateKey = occurrence?.date || current?.dateKey || current?.date || resolvedDateKey;
-      const record = {
-        id: current?.id || occurrenceId,
+    setData((prev) =>
+      applySessionRuntimeTransition(prev, {
+        type: "finish",
         occurrenceId,
-        actionId,
-        dateKey,
-        startAt: current?.startedAt || current?.timerStartedAt || nowIso,
-        endAt: nowIso,
-        state: "ended",
-        endedReason: "done",
-        timerSeconds: durationSec,
-        notes: typeof current?.notes === "string" ? current.notes : "",
-      };
-      const nextHistory = upsertSessionV2(prevHistory, record);
-      if (nextOccurrences === prevOccurrences && nextSession === current && nextHistory === prevHistory) return prev;
-      return {
-        ...prev,
-        occurrences: nextOccurrences,
-        sessionHistory: nextHistory,
-        ui: { ...prevUi, activeSession: nextSession },
-      };
+        dateKey: resolvedDateKey,
+        doneHabitIds: resolvedDoneHabitIds,
+        durationSec,
+      })
+    );
+    emitSessionRuntimeNotificationHook("finish", {
+      occurrenceId,
+      dateKey: resolvedDateKey,
+      runtimePhase: "done",
+      source: "session_manual_finish",
     });
 
     if (typeof onBack === "function") onBack();
@@ -479,61 +390,19 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
 
   function cancelSession() {
     if (typeof setData !== "function" || !isEditable || !occurrenceId) return;
-    const targetHabitIds = habitIds.length ? habitIds : session?.habitId ? [session.habitId] : [];
-    if (!targetHabitIds.length && !occurrenceId) {
-      if (typeof onBack === "function") onBack();
-      return;
-    }
-    setData((prev) => {
-      const goals = Array.isArray(prev?.goals) ? prev.goals : [];
-      if (!occurrenceId) return prev;
-      const prevOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
-      const nextOccurrences = setOccurrenceStatusById(occurrenceId, "skipped", {
-        occurrences: prevOccurrences,
-        goals,
-      });
-      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-      const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
-      const nowIso = new Date().toISOString();
-      const nextSession = current
-        ? {
-            ...current,
-            status: "skipped",
-            doneHabitIds: [],
-            timerRunning: false,
-            timerStartedAt: "",
-            finishedAt: nowIso,
-          }
-        : current;
-      const prevHistory = Array.isArray(prev?.sessionHistory) ? prev.sessionHistory : [];
-      const occurrence = prevOccurrences.find((occ) => occ && occ.id === occurrenceId) || null;
-      const actionId =
-        typeof occurrence?.goalId === "string"
-          ? occurrence.goalId
-          : typeof occurrence?.actionId === "string"
-            ? occurrence.actionId
-            : "";
-      const dateKey = occurrence?.date || current?.dateKey || current?.date || resolvedDateKey;
-      const record = {
-        id: current?.id || occurrenceId,
+    setData((prev) =>
+      applySessionRuntimeTransition(prev, {
+        type: "cancel",
         occurrenceId,
-        actionId,
-        dateKey,
-        startAt: current?.startedAt || current?.timerStartedAt || nowIso,
-        endAt: nowIso,
-        state: "ended",
-        endedReason: "canceled",
-        timerSeconds: Number.isFinite(current?.timerAccumulatedSec) ? current.timerAccumulatedSec : 0,
-        notes: typeof current?.notes === "string" ? current.notes : "",
-      };
-      const nextHistory = upsertSessionV2(prevHistory, record);
-      if (nextOccurrences === prevOccurrences && nextSession === current && nextHistory === prevHistory) return prev;
-      return {
-        ...prev,
-        occurrences: nextOccurrences,
-        sessionHistory: nextHistory,
-        ui: { ...prevUi, activeSession: nextSession },
-      };
+        dateKey: resolvedDateKey,
+        durationSec: Math.max(0, Math.floor(elapsedSec)),
+      })
+    );
+    emitSessionRuntimeNotificationHook("cancel", {
+      occurrenceId,
+      dateKey: resolvedDateKey,
+      runtimePhase: "canceled",
+      source: "session_cancel",
     });
     if (typeof onBack === "function") onBack();
   }

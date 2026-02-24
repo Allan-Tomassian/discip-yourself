@@ -22,7 +22,7 @@ import { createDefaultGoalSchedule, ensureSystemInboxCategory, normalizeCategory
 import { updateGoal } from "../logic/goals";
 import { setPrimaryGoalForCategory } from "../logic/priority";
 import { resolveGoalType } from "../domain/goalType";
-import { regenerateWindowFromScheduleRules } from "../logic/occurrencePlanner";
+import { regenerateWindowFromScheduleRules, removeScheduleRulesForAction } from "../logic/occurrencePlanner";
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
 import { canCreateCategory } from "../logic/entitlements";
 import { normalizeTimeFields } from "../logic/timeFields";
@@ -899,7 +899,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
           }
           nextChecks = cleaned;
         }
-        return {
+        const nextState = {
           ...prev,
           goals: nextGoals,
           categories: nextCategories,
@@ -909,6 +909,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
           checks: nextChecks,
           ui: nextUi,
         };
+        return removeScheduleRulesForAction(nextState, goalId);
       }
       return { ...prev, goals: nextGoals, categories: nextCategories, ui: nextUi };
     });

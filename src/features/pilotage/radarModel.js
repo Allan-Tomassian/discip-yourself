@@ -3,6 +3,12 @@ import {
   selectOccurrencesInRange,
 } from "../../logic/metrics";
 import { computeExpectedDoneMissed } from "../../logic/progressionModel";
+import {
+  isCompletedOccurrenceStatus,
+  isExcludedFromExpectedOccurrenceStatus,
+  isMissedOccurrenceStatus,
+  normalizeOccurrenceStatus,
+} from "../../logic/occurrenceStatus";
 
 const TIME_BUCKETS = [
   { id: "06-09", label: "06h–09h", from: 6 * 60, to: 9 * 60 },
@@ -65,8 +71,8 @@ export function computeCategoryRadarRows(state, fromKey, toKey) {
     const byGoalExpected = new Map();
     for (const occ of list) {
       if (!occ || typeof occ.goalId !== "string") continue;
-      const status = typeof occ.status === "string" ? occ.status.trim().toLowerCase() : "planned";
-      if (status === "canceled" || status === "skipped") continue;
+      const status = normalizeOccurrenceStatus(occ.status);
+      if (isExcludedFromExpectedOccurrenceStatus(status)) continue;
       byGoalExpected.set(occ.goalId, (byGoalExpected.get(occ.goalId) || 0) + 1);
     }
     let topExpected = 0;
@@ -113,12 +119,13 @@ export function computePilotageInsights(state, fromKey, toKey) {
     const categoryId = goal?.categoryId;
     if (categoryId) {
       const bucket = byCategory.get(categoryId) || { done: 0, expected: 0 };
-      if (occ.status !== "canceled" && occ.status !== "skipped") bucket.expected += 1;
-      if (occ.status === "done") bucket.done += 1;
+      const status = normalizeOccurrenceStatus(occ.status);
+      if (!isExcludedFromExpectedOccurrenceStatus(status)) bucket.expected += 1;
+      if (isCompletedOccurrenceStatus(status)) bucket.done += 1;
       byCategory.set(categoryId, bucket);
     }
 
-    if (occ.status === "missed") {
+    if (isMissedOccurrenceStatus(occ.status)) {
       missedByGoal.set(occ.goalId, (missedByGoal.get(occ.goalId) || 0) + 1);
     }
 
@@ -130,7 +137,7 @@ export function computePilotageInsights(state, fromKey, toKey) {
     const entry = timeBuckets.get(bucket.id);
     if (!entry) continue;
     entry.expected += 1;
-    if (occ.status === "done") entry.done += 1;
+    if (isCompletedOccurrenceStatus(occ.status)) entry.done += 1;
   }
 
   let topCategoryId = null;

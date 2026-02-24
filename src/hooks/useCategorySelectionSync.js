@@ -33,6 +33,7 @@ export function useCategorySelectionSync({
   setSessionCategoryId,
 }) {
   const prevTabRef = useRef(tab);
+  const didInitTodaySyncRef = useRef(false);
 
   const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
   const homeActiveCategoryId =
@@ -102,13 +103,25 @@ export function useCategorySelectionSync({
 
   useEffect(() => {
     const prevTab = prevTabRef.current;
-    if (prevTab !== "today" && tab === "today") {
+    const isEnteringToday = prevTab !== "today" && tab === "today";
+    const isColdStartToday = tab === "today" && !didInitTodaySyncRef.current;
+    if (isEnteringToday || isColdStartToday) {
       const today = todayLocalKey();
       setData((prev) => {
         const prevUi = prev.ui || {};
-        if (prevUi.selectedDate === today) return prev;
-        return { ...prev, ui: { ...prevUi, selectedDate: today } };
+        if (prevUi.selectedDate === today && prevUi.selectedDateKey === today) return prev;
+        return {
+          ...prev,
+          ui: {
+            ...prevUi,
+            selectedDate: today,
+            selectedDateKey: today,
+          },
+        };
       });
+      didInitTodaySyncRef.current = true;
+    } else if (tab === "today") {
+      didInitTodaySyncRef.current = true;
     }
     if (prevTab !== "library" && tab === "library") {
       let touched = false;

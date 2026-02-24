@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { ensureWindowFromScheduleRules } from "./occurrencePlanner";
+import {
+  backfillMissedOccurrences,
+  ensureWindowFromScheduleRules,
+  removeScheduleRulesForAction,
+} from "./occurrencePlanner";
 
 function baseState(overrides = {}) {
   return {
@@ -167,5 +171,119 @@ describe("ensureWindowFromScheduleRules", () => {
     expect(next.occurrences[0].start).toBe("09:00");
     expect(next.occurrences[0].durationMinutes).toBe(20);
     expect(next.occurrences[0].scheduleRuleId).toBe("rule_update");
+  });
+});
+
+describe("removeScheduleRulesForAction", () => {
+  it("removes only rules linked to the deleted action", () => {
+    const state = baseState({
+      scheduleRules: [
+        { id: "rule_a1", actionId: "a1", kind: "recurring", isActive: true },
+        { id: "rule_a2", actionId: "a2", kind: "recurring", isActive: true },
+      ],
+    });
+    const next = removeScheduleRulesForAction(state, "a1");
+    expect(next).not.toBe(state);
+    expect(next.scheduleRules).toEqual([{ id: "rule_a2", actionId: "a2", kind: "recurring", isActive: true }]);
+  });
+
+  it("returns the same object when nothing matches", () => {
+    const state = baseState({
+      scheduleRules: [{ id: "rule_a2", actionId: "a2", kind: "recurring", isActive: true }],
+    });
+    const next = removeScheduleRulesForAction(state, "a1");
+    expect(next).toBe(state);
+  });
+});
+
+describe("backfillMissedOccurrences", () => {
+  it("marks overdue planned occurrences as missed globally", () => {
+    const state = baseState({
+      occurrences: [
+        {
+          id: "occ_old",
+          goalId: "g1",
+          date: "2026-02-02",
+          status: "planned",
+          timeType: "fixed",
+          start: "08:00",
+          startAt: "2026-02-02T08:00",
+          endAt: "2026-02-02T08:30",
+        },
+      ],
+    });
+    const next = backfillMissedOccurrences(state, new Date("2026-02-06T10:00"));
+    expect(next.occurrences[0].status).toBe("missed");
+  });
+
+  it("does not overwrite done occurrences and keeps future planned untouched", () => {
+    const state = baseState({
+      occurrences: [
+        {
+          id: "occ_done",
+          goalId: "g1",
+          date: "2026-02-02",
+          status: "done",
+          timeType: "fixed",
+          startAt: "2026-02-02T08:00",
+          endAt: "2026-02-02T08:30",
+        },
+        {
+          id: "occ_future",
+          goalId: "g1",
+          date: "2026-02-10",
+          status: "planned",
+          timeType: "fixed",
+          startAt: "2026-02-10T08:00",
+          endAt: "2026-02-10T08:30",
+        },
+      ],
+    });
+    const next = backfillMissedOccurrences(state, new Date("2026-02-06T10:00"));
+    expect(next.occurrences[0].status).toBe("done");
+    expect(next.occurrences[1].status).toBe("planned");
+  });
+
+  it("returns same object when there are no overdue planned occurrences", () => {
+    const state = baseState({
+      occurrences: [
+        {
+          id: "occ_none",
+          goalId: "g1",
+          date: "2026-02-10",
+          status: "planned",
+          timeType: "fixed",
+          startAt: "2026-02-10T08:00",
+          endAt: "2026-02-10T08:30",
+        },
+      ],
+    });
+    const next = backfillMissedOccurrences(state, new Date("2026-02-06T10:00"));
+    expect(next).toBe(state);
+  });
+
+  it("is independent from a local selected-date window when called globally", () => {
+    const state = baseState({
+      occurrences: [
+        {
+          id: "occ_window",
+          goalId: "g1",
+          date: "2026-02-01",
+          status: "planned",
+          timeType: "fixed",
+          startAt: "2026-02-01T08:00",
+          endAt: "2026-02-01T08:30",
+        },
+      ],
+    });
+    const now = new Date("2026-02-06T10:00");
+    const localWindowOnly = backfillMissedOccurrences(state, now, {
+      fromKey: "2026-02-05",
+      toKey: "2026-02-07",
+    });
+    expect(localWindowOnly).toBe(state);
+
+    const global = backfillMissedOccurrences(state, now);
+    expect(global.occurrences[0].status).toBe("missed");
   });
 });

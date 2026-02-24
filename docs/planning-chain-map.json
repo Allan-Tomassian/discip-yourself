@@ -1,0 +1,2880 @@
+{
+  "generatedAt": "2026-02-24T11:22:41.411Z",
+  "scope": {
+    "src": "src/**",
+    "tests": "tests/**"
+  },
+  "filesScanned": {
+    "src": 201,
+    "tests": 12,
+    "coreMapped": 29
+  },
+  "modules": [
+    {
+      "file": "src/logic/goals.js",
+      "domain": "core-planning-state",
+      "roles": [
+        "create/update/delete goals",
+        "trigger occurrence window generation"
+      ],
+      "imports": [
+        "../utils/dates",
+        "../utils/dateKey",
+        "./occurrencePlanner",
+        "./entitlements",
+        "./state",
+        "../domain/goalType"
+      ],
+      "exports": [
+        "sanitizeOutcome",
+        "sanitizeProcess",
+        "normalizeGoalsState",
+        "getGoalProgress",
+        "computeAggregateProgress",
+        "computePrimaryAggregate",
+        "createGoal",
+        "updateGoal",
+        "preventOverlap",
+        "setMainGoal",
+        "linkChild",
+        "scheduleStart",
+        "activateGoal",
+        "finishGoal",
+        "abandonGoal",
+        "deleteGoal",
+        "autoActivateScheduledGoals"
+      ],
+      "evidence": [
+        {
+          "file": "src/logic/goals.js",
+          "line": 646,
+          "snippet": "export function createGoal(state, goalInput = {}) {"
+        },
+        {
+          "file": "src/logic/goals.js",
+          "line": 680,
+          "snippet": "export function updateGoal(state, goalId, updates = {}) {"
+        },
+        {
+          "file": "src/logic/goals.js",
+          "line": 4,
+          "snippet": "import { ensureWindowFromScheduleRules, validateOccurrences } from \"./occurrencePlanner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/logic/occurrencePlanner.js",
+      "domain": "occurrence-generation",
+      "roles": [
+        "generate occurrences from rules",
+        "mark planned as missed",
+        "window conflict resolution"
+      ],
+      "imports": [
+        "../utils/helpers",
+        "../domain/goalType",
+        "./scheduleRules"
+      ],
+      "exports": [
+        "resolveWindowConflictsForDay",
+        "dedupeOccurrences",
+        "ensureWindowForGoal",
+        "ensureWindowForGoals",
+        "ensureWindowFromScheduleRules",
+        "regenerateWindowFromScheduleRules",
+        "regenerateWindowForGoal",
+        "validateOccurrences"
+      ],
+      "evidence": [
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 913,
+          "snippet": "export function ensureWindowFromScheduleRules(data, fromKey, toKey, actionIds = null, now = new Date()) {"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 1134,
+          "snippet": "export function regenerateWindowFromScheduleRules(data, actionId, fromKey, toKey, now = new Date()) {"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 15,
+          "snippet": "import { ensureScheduleRulesForActions } from \"./scheduleRules\";"
+        }
+      ]
+    },
+    {
+      "file": "src/logic/scheduleRules.js",
+      "domain": "occurrence-generation",
+      "roles": [
+        "build/normalize/sync schedule rules"
+      ],
+      "imports": [
+        "../utils/helpers",
+        "../utils/datetime"
+      ],
+      "exports": [
+        "buildScheduleRuleSourceKey",
+        "normalizeScheduleRule",
+        "buildScheduleRulesFromAction",
+        "syncScheduleRulesForActions",
+        "listActiveScheduleRules",
+        "ensureScheduleRules",
+        "ensureScheduleRulesForActions",
+        "getDefaultOccurrenceWindowBounds"
+      ],
+      "evidence": [
+        {
+          "file": "src/logic/scheduleRules.js",
+          "line": 317,
+          "snippet": "const existingRulesRaw = Array.isArray(state.scheduleRules) ? state.scheduleRules : [];"
+        }
+      ]
+    },
+    {
+      "file": "src/logic/occurrences.js",
+      "domain": "core-planning-state",
+      "roles": [
+        "occurrence persistence mutations",
+        "status transitions"
+      ],
+      "imports": [
+        "../utils/helpers",
+        "../utils/dateKey"
+      ],
+      "exports": [
+        "findOccurrenceForGoalDateDeterministic",
+        "resolveOccurrenceForSession",
+        "setOccurrenceStatusById",
+        "listOccurrencesByDate",
+        "listOccurrencesForGoal",
+        "addOccurrence",
+        "updateOccurrence",
+        "deleteOccurrence",
+        "listOccurrencesByMonth",
+        "upsertOccurrence",
+        "setOccurrencesStatusForGoalDate",
+        "setOccurrenceStatus"
+      ],
+      "evidence": []
+    },
+    {
+      "file": "src/logic/calendar.js",
+      "domain": "calendar",
+      "roles": [
+        "calendar day grouping/color/count helpers"
+      ],
+      "imports": [
+        "../utils/dateKey"
+      ],
+      "exports": [
+        "listOccurrencesInRange",
+        "groupOccurrencesByDate",
+        "getPrimaryGoalIdForDate",
+        "getPrimaryGoalIdForDateForCalendar",
+        "getCategoryColorForGoalId",
+        "getDayColorForDate",
+        "getDayCountsForDate",
+        "getDayCategorySummaryForDate"
+      ],
+      "evidence": []
+    },
+    {
+      "file": "src/logic/metrics.js",
+      "domain": "pilotage-stats",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "../utils/dates",
+        "../utils/dateKey"
+      ],
+      "exports": [
+        "isFinalOccurrenceStatus",
+        "getWindowBounds",
+        "selectOccurrencesInRange",
+        "computeStats",
+        "computeDailyStats",
+        "computeGoalStats"
+      ],
+      "evidence": [
+        {
+          "file": "src/logic/metrics.js",
+          "line": 141,
+          "snippet": "export function computeDailyStats(state, fromKey, toKey, filters = {}) {"
+        }
+      ]
+    },
+    {
+      "file": "src/logic/progressionModel.js",
+      "domain": "pilotage-stats",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "../utils/dateKey",
+        "./metrics"
+      ],
+      "exports": [
+        "selectOccurrencesWindow",
+        "computeExpectedDoneMissed",
+        "computeDisciplineRate",
+        "computeMicroActionContribution",
+        "computeWindowStats"
+      ],
+      "evidence": [
+        {
+          "file": "src/logic/progressionModel.js",
+          "line": 113,
+          "snippet": "export function computeWindowStats(state, fromKey, toKey, options = {}) {"
+        },
+        {
+          "file": "src/logic/progressionModel.js",
+          "line": 41,
+          "snippet": "export function computeExpectedDoneMissed(occurrences) {"
+        }
+      ]
+    },
+    {
+      "file": "src/logic/pilotage.js",
+      "domain": "pilotage-stats",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "../utils/dates",
+        "../domain/goalType"
+      ],
+      "exports": [
+        "getCategoryCounts",
+        "getCategoryPilotageCounts",
+        "getCategoryStatus"
+      ],
+      "evidence": []
+    },
+    {
+      "file": "src/logic/reporting.js",
+      "domain": "pilotage-stats",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "../utils/dateKey",
+        "./metrics"
+      ],
+      "exports": [
+        "buildReport",
+        "exportReportToCSV"
+      ],
+      "evidence": [
+        {
+          "file": "src/logic/reporting.js",
+          "line": 2,
+          "snippet": "import { computeDailyStats, computeGoalStats, computeStats, selectOccurrencesInRange } from \"./metrics\";"
+        }
+      ]
+    },
+    {
+      "file": "src/features/pilotage/radarModel.js",
+      "domain": "pilotage-stats",
+      "roles": [
+        "radar analytics"
+      ],
+      "imports": [
+        "../../logic/progressionModel"
+      ],
+      "exports": [
+        "computeCategoryRadarRows",
+        "computePilotageInsights"
+      ],
+      "evidence": [
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 2,
+          "snippet": "computeDailyStats,"
+        },
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 5,
+          "snippet": "import { computeExpectedDoneMissed } from \"../../logic/progressionModel\";"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/Home.jsx",
+      "domain": "app-orchestration",
+      "roles": [
+        "today/session selection",
+        "calendar counters",
+        "local window ensuring"
+      ],
+      "imports": [
+        "react",
+        "../components/SortableBlocks",
+        "./_ScreenShell",
+        "../shared/ui/gate/Gate",
+        "../utils/dateKey",
+        "../logic/goals",
+        "../logic/occurrencePlanner",
+        "../logic/compat",
+        "../utils/_theme",
+        "../utils/categoryAccent",
+        "../logic/priority",
+        "../logic/blocks/registry",
+        "../ui/session/sessionPlanner",
+        "../core/focus/focusSelector",
+        "../domain/goalType",
+        "../logic/linking",
+        "../logic/progressionModel",
+        "../logic/rewardedAds",
+        "../logic/totemV1",
+        "../utils/helpers",
+        "../ui/calendar/CalendarCard",
+        "../ui/focus/FocusCard",
+        "../ui/today/MicroActionsCard",
+        "../ui/today/RewardedAdModal",
+        "../ui/totem/totemEvents",
+        "../ui/labels"
+      ],
+      "exports": [],
+      "evidence": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 13,
+          "snippet": "import { ensureWindowFromScheduleRules } from \"../logic/occurrencePlanner\";"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 23,
+          "snippet": "import { computeWindowStats } from \"../logic/progressionModel\";"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 278,
+          "snippet": "const selectedDateKey ="
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 282,
+          "snippet": "const localTodayKey = toLocalDateKey(new Date());"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/SessionMVP.jsx",
+      "domain": "session",
+      "roles": [
+        "session execution UI",
+        "occurrence status actions"
+      ],
+      "imports": [
+        "react",
+        "./_ScreenShell",
+        "../components/UI",
+        "../logic/occurrences",
+        "../logic/compat",
+        "../utils/_theme",
+        "../utils/categoryAccent",
+        "../utils/dateKey"
+      ],
+      "exports": [],
+      "evidence": []
+    },
+    {
+      "file": "src/ui/calendar/CalendarCard.jsx",
+      "domain": "calendar",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "react",
+        "../../shared/ui/gate/Gate",
+        "./DayRail",
+        "../../utils/dates",
+        "../../utils/dateKey"
+      ],
+      "exports": [],
+      "evidence": [
+        {
+          "file": "src/ui/calendar/CalendarCard.jsx",
+          "line": 13,
+          "snippet": "selectedDateKey,"
+        },
+        {
+          "file": "src/ui/calendar/CalendarCard.jsx",
+          "line": 15,
+          "snippet": "localTodayKey,"
+        }
+      ]
+    },
+    {
+      "file": "src/ui/calendar/DayRail.jsx",
+      "domain": "calendar",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "../../utils/dates",
+        "../../utils/dateKey",
+        "./railMath"
+      ],
+      "exports": [],
+      "evidence": [
+        {
+          "file": "src/ui/calendar/DayRail.jsx",
+          "line": 45,
+          "snippet": "selectedDateKey,"
+        },
+        {
+          "file": "src/ui/calendar/DayRail.jsx",
+          "line": 46,
+          "snippet": "localTodayKey,"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/CreateV2Habits.jsx",
+      "domain": "create-flow",
+      "roles": [
+        "main action creation form",
+        "conflict resolution during save"
+      ],
+      "imports": [
+        "react",
+        "./_ScreenShell",
+        "../ui/create/FlowShell",
+        "../ui/select/Select",
+        "../ui/date/DatePicker",
+        "../ui/scheduling/ConflictResolver",
+        "../shared/ui/gate/Gate",
+        "../creation/creationDraft",
+        "../creation/creationSchema",
+        "../utils/helpers",
+        "../logic/goals",
+        "../logic/occurrencePlanner",
+        "../logic/state",
+        "../logic/reminders",
+        "../logic/timeFields",
+        "../domain/goalType",
+        "../logic/occurrences",
+        "../core/scheduling/intervals"
+      ],
+      "exports": [],
+      "evidence": [
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 22,
+          "snippet": "import { createGoal } from \"../logic/goals\";"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 23,
+          "snippet": "import { ensureWindowFromScheduleRules } from \"../logic/occurrencePlanner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/CreateV2HabitOneOff.jsx",
+      "domain": "create-flow",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "react",
+        "./CreateV2Habits",
+        "../creation/creationDraft",
+        "../creation/creationSchema",
+        "../utils/datetime",
+        "../utils/helpers"
+      ],
+      "exports": [],
+      "evidence": []
+    },
+    {
+      "file": "src/pages/CreateV2HabitRecurring.jsx",
+      "domain": "create-flow",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "react",
+        "./CreateV2Habits",
+        "../creation/creationDraft",
+        "../creation/creationSchema",
+        "../utils/datetime",
+        "../utils/helpers"
+      ],
+      "exports": [],
+      "evidence": []
+    },
+    {
+      "file": "src/pages/CreateV2HabitAnytime.jsx",
+      "domain": "create-flow",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "react",
+        "./CreateV2Habits",
+        "../creation/creationDraft",
+        "../creation/creationSchema",
+        "../utils/datetime",
+        "../utils/helpers"
+      ],
+      "exports": [],
+      "evidence": []
+    },
+    {
+      "file": "src/pages/CreateV2Outcome.jsx",
+      "domain": "create-flow",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "react",
+        "./_ScreenShell",
+        "../components/UI",
+        "../ui/create/FlowShell",
+        "../ui/select/Select",
+        "../ui/date/DatePicker",
+        "../shared/ui/gate/Gate",
+        "../creation/creationDraft",
+        "../creation/creationSchema",
+        "../domain/goalType",
+        "../ui/labels",
+        "../utils/helpers",
+        "../utils/dateKey",
+        "../logic/goals",
+        "../logic/state",
+        "../utils/categoriesSuggested",
+        "../logic/entitlements"
+      ],
+      "exports": [],
+      "evidence": [
+        {
+          "file": "src/pages/CreateV2Outcome.jsx",
+          "line": 14,
+          "snippet": "import { createGoal } from \"../logic/goals\";"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/CreateV2LinkOutcome.jsx",
+      "domain": "create-flow",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "react",
+        "./_ScreenShell",
+        "../components/UI",
+        "../ui/create/FlowShell",
+        "../ui/select/Select",
+        "../ui/date/DatePicker",
+        "../shared/ui/gate/Gate",
+        "../creation/creationDraft",
+        "../creation/creationSchema",
+        "../logic/goals",
+        "../logic/goalGuards",
+        "../logic/state",
+        "../domain/goalType",
+        "../utils/dateKey",
+        "../utils/helpers",
+        "../ui/labels"
+      ],
+      "exports": [],
+      "evidence": [
+        {
+          "file": "src/pages/CreateV2LinkOutcome.jsx",
+          "line": 10,
+          "snippet": "import { createGoal } from \"../logic/goals\";"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/CreateV2PickCategory.jsx",
+      "domain": "create-flow",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "react",
+        "./_ScreenShell",
+        "../components/UI",
+        "../ui/create/FlowShell",
+        "../ui/select/Select",
+        "../shared/ui/gate/Gate",
+        "../creation/creationDraft",
+        "../logic/goalGuards",
+        "../logic/state"
+      ],
+      "exports": [],
+      "evidence": []
+    },
+    {
+      "file": "src/creation/creationSchema.js",
+      "domain": "create-flow",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [],
+      "exports": [
+        "isValidCreationStep",
+        "getNextCreationStep",
+        "getPrevCreationStep"
+      ],
+      "evidence": []
+    },
+    {
+      "file": "src/creation/creationDraft.js",
+      "domain": "create-flow",
+      "roles": [
+        "create flow draft normalization"
+      ],
+      "imports": [
+        "../utils/datetime",
+        "../logic/timeFields"
+      ],
+      "exports": [
+        "createEmptyDraft",
+        "normalizeCreationDraft",
+        "ensureDraftStep"
+      ],
+      "evidence": []
+    },
+    {
+      "file": "src/logic/state/normalizers.js",
+      "domain": "state-normalization",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "../../utils/helpers",
+        "../../utils/dateKey",
+        "../../domain/goalType",
+        "../timeFields",
+        "../blocks/registry",
+        "../../theme/themeTokens",
+        "./inbox"
+      ],
+      "exports": [
+        "createDefaultGoalSchedule",
+        "normalizeResetPolicy",
+        "normalizeCategory",
+        "ensureCategoryId",
+        "sanitizePilotageRadarSelection",
+        "normalizeGoal",
+        "initialData",
+        "demoData"
+      ],
+      "evidence": [
+        {
+          "file": "src/logic/state/normalizers.js",
+          "line": 631,
+          "snippet": "scheduleRules: [],"
+        }
+      ]
+    },
+    {
+      "file": "src/logic/state/migrations.js",
+      "domain": "state-normalization",
+      "roles": [
+        "schema migration",
+        "schedule rule seeding"
+      ],
+      "imports": [
+        "../../utils/helpers",
+        "../goals",
+        "../reminders",
+        "../../utils/dateKey",
+        "../../domain/goalType",
+        "../occurrences",
+        "../blocks/registry",
+        "../blocks/ensureBlocksConfig",
+        "../blocks/validateBlocksState",
+        "../scheduleRules",
+        "../../theme/themeTokens",
+        "./inbox"
+      ],
+      "exports": [
+        "migrate"
+      ],
+      "evidence": [
+        {
+          "file": "src/logic/state/migrations.js",
+          "line": 10,
+          "snippet": "import { buildScheduleRuleSourceKey, buildScheduleRulesFromAction, normalizeScheduleRule } from \"../scheduleRules\";"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/Categories.jsx",
+      "domain": "other",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "react",
+        "./_ScreenShell",
+        "../shared/ui/gate/Gate",
+        "../components/SortableBlocks",
+        "../components/EditItemPanel",
+        "../components/AccentCategoryRow",
+        "../logic/pilotage",
+        "../logic/state",
+        "../logic/goals",
+        "../logic/occurrencePlanner",
+        "../utils/categoriesSuggested",
+        "../logic/entitlements",
+        "../ui/labels",
+        "../utils/categoryAccent",
+        "../domain/goalType",
+        "../logic/linking",
+        "../utils/librarySections",
+        "../utils/dialogs",
+        "../utils/helpers",
+        "../utils/dates",
+        "../utils/dateKey",
+        "../shared/draft/useDraft",
+        "../shared/draft/draftGuards"
+      ],
+      "exports": [],
+      "evidence": [
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 10,
+          "snippet": "import { updateGoal } from \"../logic/goals\";"
+        },
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 384,
+          "snippet": "function deleteAction(goal) {"
+        },
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 366,
+          "snippet": "function deleteOutcome(goal) {"
+        },
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 11,
+          "snippet": "import { regenerateWindowFromScheduleRules } from \"../logic/occurrencePlanner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/features/library/CategoryManageInline.jsx",
+      "domain": "other",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "react",
+        "../../components/UI",
+        "../../utils/dialogs",
+        "../../utils/dates",
+        "../../logic/priority",
+        "../../domain/goalType",
+        "../../logic/linking",
+        "../../logic/state",
+        "../../utils/librarySections",
+        "../../ui/labels"
+      ],
+      "exports": [],
+      "evidence": [
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 283,
+          "snippet": "function deleteAction(goal) {"
+        },
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 266,
+          "snippet": "function deleteOutcome(goal) {"
+        }
+      ]
+    },
+    {
+      "file": "src/pages/EditItem.jsx",
+      "domain": "other",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "react",
+        "./_ScreenShell",
+        "../components/UI",
+        "../ui/select/Select",
+        "../ui/date/DatePicker",
+        "../ui/scheduling/ConflictResolver",
+        "../utils/dialogs",
+        "../utils/dates",
+        "../utils/helpers",
+        "../logic/state",
+        "../logic/goals",
+        "../logic/priority",
+        "../domain/goalType",
+        "../logic/occurrencePlanner",
+        "../utils/categoriesSuggested",
+        "../logic/entitlements",
+        "../logic/timeFields",
+        "../logic/occurrences",
+        "../core/scheduling/intervals",
+        "../ui/labels"
+      ],
+      "exports": [],
+      "evidence": [
+        {
+          "file": "src/pages/EditItem.jsx",
+          "line": 22,
+          "snippet": "import { updateGoal } from \"../logic/goals\";"
+        },
+        {
+          "file": "src/pages/EditItem.jsx",
+          "line": 25,
+          "snippet": "import { regenerateWindowFromScheduleRules } from \"../logic/occurrencePlanner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/App.jsx",
+      "domain": "app-orchestration",
+      "roles": [
+        "supporting module"
+      ],
+      "imports": [
+        "react",
+        "./components/TopNav",
+        "./components/CategoryRail",
+        "./logic/goals",
+        "./components/PlusExpander",
+        "./components/CategoryGateModal",
+        "./utils/dialogs",
+        "./shared/ui/gate/Gate",
+        "./pages/Onboarding",
+        "./pages/Home",
+        "./pages/Categories",
+        "./pages/CreateV2Outcome",
+        "./pages/CreateV2HabitType",
+        "./pages/CreateV2HabitOneOff",
+        "./pages/CreateV2HabitRecurring",
+        "./pages/CreateV2HabitAnytime",
+        "./pages/CreateV2LinkOutcome",
+        "./pages/CreateV2PickCategory",
+        "./pages/CreateV2OutcomeNextAction",
+        "./ui/create/CreateFlowModal",
+        "./ui/totem/TotemDockLayer",
+        "./pages/Preferences",
+        "./pages/Account",
+        "./pages/Subscription",
+        "./pages/Data",
+        "./pages/CategoryView",
+        "./pages/EditItem",
+        "./pages/CategoryDetailView",
+        "./pages/CategoryProgress",
+        "./pages/SessionMVP",
+        "./pages/Pilotage",
+        "./pages/Privacy",
+        "./pages/Terms",
+        "./pages/Support",
+        "./theme/themeTokens",
+        "./utils/dateKey",
+        "./logic/priority",
+        "./tour/tourSpec",
+        "./tour/useTour",
+        "./tour/TourOverlay",
+        "./components/DiagnosticOverlay",
+        "./logic/occurrencePlanner",
+        "./logic/sessionResolver",
+        "./utils/helpers",
+        "./components/PaywallModal",
+        "./hooks/useAppNavigation",
+        "./hooks/useEntitlementsPaywall",
+        "./hooks/useRemindersLoop",
+        "./hooks/useCreateFlowOrchestration",
+        "./hooks/useCategorySelectionSync",
+        "./app/inbox",
+        "./data/useUserData",
+        "./profile/useProfile",
+        "./profile/profileApi"
+      ],
+      "exports": [],
+      "evidence": [
+        {
+          "file": "src/App.jsx",
+          "line": 54,
+          "snippet": "import { ensureWindowFromScheduleRules, validateOccurrences } from \"./logic/occurrencePlanner\";"
+        }
+      ]
+    }
+  ],
+  "sourceOfTruth": {
+    "createFlow": [
+      "src/pages/CreateV2Habits.jsx",
+      "src/pages/CreateV2HabitOneOff.jsx",
+      "src/pages/CreateV2HabitRecurring.jsx",
+      "src/pages/CreateV2HabitAnytime.jsx",
+      "src/pages/CreateV2Outcome.jsx",
+      "src/pages/CreateV2LinkOutcome.jsx",
+      "src/pages/CreateV2PickCategory.jsx",
+      "src/creation/creationSchema.js",
+      "src/creation/creationDraft.js"
+    ],
+    "occurrenceGeneration": [
+      "src/logic/occurrencePlanner.js",
+      "src/logic/scheduleRules.js"
+    ],
+    "corePlanningState": [
+      "src/logic/goals.js",
+      "src/logic/occurrences.js"
+    ],
+    "todaySession": [
+      "src/pages/SessionMVP.jsx",
+      "src/pages/Home.jsx"
+    ],
+    "calendar": [
+      "src/logic/calendar.js",
+      "src/ui/calendar/CalendarCard.jsx",
+      "src/ui/calendar/DayRail.jsx"
+    ],
+    "pilotageStats": [
+      "src/logic/metrics.js",
+      "src/logic/progressionModel.js",
+      "src/logic/pilotage.js",
+      "src/logic/reporting.js",
+      "src/features/pilotage/radarModel.js"
+    ],
+    "normalizationMigration": [
+      "src/logic/state/normalizers.js",
+      "src/logic/state/migrations.js"
+    ]
+  },
+  "dependencyEdges": [
+    {
+      "from": "src/logic/goals.js",
+      "to": "src/logic/occurrencePlanner.js"
+    },
+    {
+      "from": "src/logic/occurrencePlanner.js",
+      "to": "src/logic/scheduleRules.js"
+    },
+    {
+      "from": "src/logic/progressionModel.js",
+      "to": "src/logic/metrics.js"
+    },
+    {
+      "from": "src/logic/reporting.js",
+      "to": "src/logic/metrics.js"
+    },
+    {
+      "from": "src/features/pilotage/radarModel.js",
+      "to": "src/logic/progressionModel.js"
+    },
+    {
+      "from": "src/pages/Home.jsx",
+      "to": "src/logic/goals.js"
+    },
+    {
+      "from": "src/pages/Home.jsx",
+      "to": "src/logic/occurrencePlanner.js"
+    },
+    {
+      "from": "src/pages/Home.jsx",
+      "to": "src/logic/progressionModel.js"
+    },
+    {
+      "from": "src/pages/Home.jsx",
+      "to": "src/ui/calendar/CalendarCard.jsx"
+    },
+    {
+      "from": "src/pages/SessionMVP.jsx",
+      "to": "src/logic/occurrences.js"
+    },
+    {
+      "from": "src/ui/calendar/CalendarCard.jsx",
+      "to": "src/ui/calendar/DayRail.jsx"
+    },
+    {
+      "from": "src/pages/CreateV2Habits.jsx",
+      "to": "src/creation/creationDraft.js"
+    },
+    {
+      "from": "src/pages/CreateV2Habits.jsx",
+      "to": "src/creation/creationSchema.js"
+    },
+    {
+      "from": "src/pages/CreateV2Habits.jsx",
+      "to": "src/logic/goals.js"
+    },
+    {
+      "from": "src/pages/CreateV2Habits.jsx",
+      "to": "src/logic/occurrencePlanner.js"
+    },
+    {
+      "from": "src/pages/CreateV2Habits.jsx",
+      "to": "src/logic/occurrences.js"
+    },
+    {
+      "from": "src/pages/CreateV2HabitOneOff.jsx",
+      "to": "src/pages/CreateV2Habits.jsx"
+    },
+    {
+      "from": "src/pages/CreateV2HabitOneOff.jsx",
+      "to": "src/creation/creationDraft.js"
+    },
+    {
+      "from": "src/pages/CreateV2HabitOneOff.jsx",
+      "to": "src/creation/creationSchema.js"
+    },
+    {
+      "from": "src/pages/CreateV2HabitRecurring.jsx",
+      "to": "src/pages/CreateV2Habits.jsx"
+    },
+    {
+      "from": "src/pages/CreateV2HabitRecurring.jsx",
+      "to": "src/creation/creationDraft.js"
+    },
+    {
+      "from": "src/pages/CreateV2HabitRecurring.jsx",
+      "to": "src/creation/creationSchema.js"
+    },
+    {
+      "from": "src/pages/CreateV2HabitAnytime.jsx",
+      "to": "src/pages/CreateV2Habits.jsx"
+    },
+    {
+      "from": "src/pages/CreateV2HabitAnytime.jsx",
+      "to": "src/creation/creationDraft.js"
+    },
+    {
+      "from": "src/pages/CreateV2HabitAnytime.jsx",
+      "to": "src/creation/creationSchema.js"
+    },
+    {
+      "from": "src/pages/CreateV2Outcome.jsx",
+      "to": "src/creation/creationDraft.js"
+    },
+    {
+      "from": "src/pages/CreateV2Outcome.jsx",
+      "to": "src/creation/creationSchema.js"
+    },
+    {
+      "from": "src/pages/CreateV2Outcome.jsx",
+      "to": "src/logic/goals.js"
+    },
+    {
+      "from": "src/pages/CreateV2LinkOutcome.jsx",
+      "to": "src/creation/creationDraft.js"
+    },
+    {
+      "from": "src/pages/CreateV2LinkOutcome.jsx",
+      "to": "src/creation/creationSchema.js"
+    },
+    {
+      "from": "src/pages/CreateV2LinkOutcome.jsx",
+      "to": "src/logic/goals.js"
+    },
+    {
+      "from": "src/pages/CreateV2PickCategory.jsx",
+      "to": "src/creation/creationDraft.js"
+    },
+    {
+      "from": "src/logic/state/migrations.js",
+      "to": "src/logic/goals.js"
+    },
+    {
+      "from": "src/logic/state/migrations.js",
+      "to": "src/logic/occurrences.js"
+    },
+    {
+      "from": "src/logic/state/migrations.js",
+      "to": "src/logic/scheduleRules.js"
+    },
+    {
+      "from": "src/pages/Categories.jsx",
+      "to": "src/logic/pilotage.js"
+    },
+    {
+      "from": "src/pages/Categories.jsx",
+      "to": "src/logic/goals.js"
+    },
+    {
+      "from": "src/pages/Categories.jsx",
+      "to": "src/logic/occurrencePlanner.js"
+    },
+    {
+      "from": "src/pages/EditItem.jsx",
+      "to": "src/logic/goals.js"
+    },
+    {
+      "from": "src/pages/EditItem.jsx",
+      "to": "src/logic/occurrencePlanner.js"
+    },
+    {
+      "from": "src/pages/EditItem.jsx",
+      "to": "src/logic/occurrences.js"
+    },
+    {
+      "from": "src/App.jsx",
+      "to": "src/logic/goals.js"
+    },
+    {
+      "from": "src/App.jsx",
+      "to": "src/pages/Home.jsx"
+    },
+    {
+      "from": "src/App.jsx",
+      "to": "src/pages/Categories.jsx"
+    },
+    {
+      "from": "src/App.jsx",
+      "to": "src/pages/CreateV2Outcome.jsx"
+    },
+    {
+      "from": "src/App.jsx",
+      "to": "src/pages/CreateV2HabitOneOff.jsx"
+    },
+    {
+      "from": "src/App.jsx",
+      "to": "src/pages/CreateV2HabitRecurring.jsx"
+    },
+    {
+      "from": "src/App.jsx",
+      "to": "src/pages/CreateV2HabitAnytime.jsx"
+    },
+    {
+      "from": "src/App.jsx",
+      "to": "src/pages/CreateV2LinkOutcome.jsx"
+    },
+    {
+      "from": "src/App.jsx",
+      "to": "src/pages/CreateV2PickCategory.jsx"
+    },
+    {
+      "from": "src/App.jsx",
+      "to": "src/pages/EditItem.jsx"
+    },
+    {
+      "from": "src/App.jsx",
+      "to": "src/pages/SessionMVP.jsx"
+    },
+    {
+      "from": "src/App.jsx",
+      "to": "src/logic/occurrencePlanner.js"
+    }
+  ],
+  "checks": [
+    {
+      "id": "delete-action-schedule-rules-cleanup",
+      "severity": "P0",
+      "status": "risk",
+      "summary": "delete action cleanup should handle scheduleRules linked to removed goals",
+      "evidence": [
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 384,
+          "snippet": "function deleteAction(goal) {"
+        },
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 391,
+          "snippet": "const nextOccurrences = (prev.occurrences || []).filter((o) => o && o.goalId !== goalId);"
+        },
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 283,
+          "snippet": "function deleteAction(goal) {"
+        },
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 290,
+          "snippet": "const nextOccurrences = (prev.occurrences || []).filter((o) => o && o.goalId !== goalId);"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 922,
+          "snippet": "const rulesRaw = Array.isArray(working.scheduleRules) ? working.scheduleRules : [];"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 1079,
+          "snippet": "const created = buildOccurrenceFromRule(rule, dateKey);"
+        }
+      ],
+      "rationale": "deletes remove goals/occurrences/reminders but not scheduleRules; generator consumes active scheduleRules and can recreate orphan occurrences if rules remain active"
+    },
+    {
+      "id": "status-vocabulary-divergence",
+      "severity": "P1",
+      "status": "risk",
+      "summary": "status values differ across modules (occurrence mutation vs planner/metrics/session)",
+      "evidence": [
+        {
+          "file": "src/logic/occurrences.js",
+          "line": 4,
+          "snippet": "const STATUS_VALUES = new Set([\"planned\", \"done\", \"skipped\", \"canceled\"]);"
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 13,
+          "snippet": "const EXPECTED_STATUSES = new Set(["
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 1112,
+          "snippet": "const patch = { status: \"missed\", updatedAt: nowIso };"
+        },
+        {
+          "file": "src/logic/occurrences.js",
+          "line": 137,
+          "snippet": "if (st === \"done\" || st === \"skipped\" || st === \"canceled\") {"
+        }
+      ],
+      "rationale": "planner writes missed; metrics track missed/rescheduled/in_progress; session final-state check in occurrences.js only treats done/skipped/canceled as final"
+    },
+    {
+      "id": "missed-backfill-window",
+      "severity": "P0",
+      "status": "risk",
+      "summary": "planned->missed backfill appears constrained to selected date ±1 in Home",
+      "evidence": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1326,
+          "snippet": "const next = ensureWindowFromScheduleRules(prev, fromKey, toKey, sortedIds);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1324,
+          "snippet": "const fromKey = baseDate ? toLocalDateKey(addDays(baseDate, -1)) : selectedDateKey;"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1325,
+          "snippet": "const toKey = baseDate ? toLocalDateKey(addDays(baseDate, 1)) : selectedDateKey;"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 1111,
+          "snippet": "if (endMs == null || nowMs <= endMs) continue;"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 1112,
+          "snippet": "const patch = { status: \"missed\", updatedAt: nowIso };"
+        }
+      ],
+      "rationale": "missed conversion occurs only for occurrences in provided window; Home ensures only a 3-day range around selected date, so old planned occurrences may remain planned after long inactivity"
+    },
+    {
+      "id": "discipline-calculation-duplication-home-vs-model",
+      "severity": "P1",
+      "status": "risk",
+      "summary": "Home computes discipline through model and local loops in parallel",
+      "evidence": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1049,
+          "snippet": "? computeWindowStats(safeData, oldestHistoryKey, yesterdayKey, { includeMicroContribution: true })"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1090,
+          "snippet": "function countDoneForWindow(days) {"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1112,
+          "snippet": "const habit14 = countDoneForWindow(14);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1113,
+          "snippet": "const habit90 = countDoneForWindow(90);"
+        },
+        {
+          "file": "src/logic/progressionModel.js",
+          "line": 113,
+          "snippet": "export function computeWindowStats(state, fromKey, toKey, options = {}) {"
+        }
+      ],
+      "rationale": "score/ratio comes from progressionModel, but Home still derives additional habit/micro/outcome windows locally, increasing semantic drift risk with Pilotage/reporting"
+    },
+    {
+      "id": "schedule-rules-sync-dual-implementations",
+      "severity": "P2",
+      "status": "risk",
+      "summary": "two schedule rule sync implementations coexist",
+      "evidence": [
+        {
+          "file": "src/logic/scheduleRules.js",
+          "line": 312,
+          "snippet": "export function syncScheduleRulesForActions(state, actionIds = null, now = new Date()) {"
+        },
+        {
+          "file": "src/logic/scheduleRules.js",
+          "line": 444,
+          "snippet": "export function ensureScheduleRulesForActions(state, actionIds = null, now = new Date()) {"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 918,
+          "snippet": "const synced = ensureScheduleRulesForActions(working, ids, now);"
+        }
+      ],
+      "rationale": "duplicate sync pathways increase maintenance cost and can diverge behavior over time"
+    },
+    {
+      "id": "create-flow-cognitive-load",
+      "severity": "P1",
+      "status": "risk",
+      "summary": "CreateV2Habits carries high field density and mixed concerns",
+      "evidence": [
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 13,
+          "snippet": "} from \"../components/UI\";"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 278,
+          "snippet": "const [title, setTitle] = useState(\"\");"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 279,
+          "snippet": "const [oneOffDate, setOneOffDate] = useState(() => todayLocalKey());"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 280,
+          "snippet": "const [location, setLocation] = useState(\"\");"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 283,
+          "snippet": "const [lifecycleMode] = useState(\"FIXED\");"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 284,
+          "snippet": "const [activeFrom, setActiveFrom] = useState(() => todayLocalKey());"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 285,
+          "snippet": "const [activeTo, setActiveTo] = useState(() => addDaysLocal(todayLocalKey(), 29));"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 294,
+          "snippet": "const [repeat, setRepeat] = useState(() => (isTypeOneOff ? \"none\" : \"weekly\"));"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 296,
+          "snippet": "const [scheduleMode, setScheduleMode] = useState(\"STANDARD\"); // STANDARD | WEEKLY_SLOTS"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 297,
+          "snippet": "const [weeklySlotsByDay, setWeeklySlotsByDay] = useState(() => {"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 303,
+          "snippet": "const [daysOfWeek, setDaysOfWeek] = useState(() => [appDowFromDate(new Date())]);"
+        },
+        {
+          "file": "src/creation/creationSchema.js",
+          "line": 38,
+          "snippet": "export const CREATION_FLOW_HABIT = CREATION_FLOW_HABIT_LEGACY;"
+        }
+      ],
+      "rationale": "single screen combines scheduling/time/period/reminder/quantity/conflict logic; uxV2 path exists but default flow remains legacy",
+      "meta": {
+        "stateHookCount": 23
+      }
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "one-off-no-time",
+      "title": "Action ponctuelle sans heure",
+      "checks": "création + occurrence day-level + affichage today/calendar/pilotage",
+      "evidence": [
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 174,
+          "snippet": "const isOneOff = repeat === \"none\";"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 177,
+          "snippet": "if (isOneOff) {"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 178,
+          "snippet": "const dateLabel = habit.oneOffDate ? ` · ${habit.oneOffDate}` : \"\";"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 279,
+          "snippet": "const [oneOffDate, setOneOffDate] = useState(() => todayLocalKey());"
+        },
+        {
+          "file": "src/logic/scheduleRules.js",
+          "line": 175,
+          "snippet": "rule.kind = rule.kind === \"one_time\" ? \"one_time\" : \"recurring\";"
+        }
+      ],
+      "coverage": "covered",
+      "coverageEvidence": [
+        {
+          "file": "tests/e2e/createFlow.appSync.spec.js",
+          "title": "CreateFlow: action ponctuelle met à jour toute l’app"
+        },
+        {
+          "file": "tests/e2e/createFlow.spec.js",
+          "title": "Action ponctuelle -> occurrence au bon jour"
+        }
+      ]
+    },
+    {
+      "id": "one-off-with-time",
+      "title": "Action ponctuelle avec heure",
+      "checks": "startTime fixé et occurrence fixe",
+      "evidence": [
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 384,
+          "snippet": "(isTypeOneOff && timeMode === \"FIXED\") ||"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 876,
+          "snippet": "const startAt = isOneOff && occurrenceStart ? `${oneOffDate}T${occurrenceStart}` : null;"
+        }
+      ],
+      "coverage": "covered",
+      "coverageEvidence": [
+        {
+          "file": "tests/e2e/createFlow.appSync.spec.js",
+          "title": "CreateFlow: projet + action met à jour Bibliothèque/Aujourd’hui/Calendrier/Pilotage"
+        },
+        {
+          "file": "tests/e2e/createFlow.appSync.spec.js",
+          "title": "CreateFlow: action ponctuelle met à jour toute l’app"
+        },
+        {
+          "file": "tests/e2e/createFlow.spec.js",
+          "title": "Projet + Action (guidé) -> ouvre l’étape projet"
+        },
+        {
+          "file": "tests/e2e/createFlow.spec.js",
+          "title": "Action ponctuelle -> occurrence au bon jour"
+        }
+      ]
+    },
+    {
+      "id": "recurring-simple",
+      "title": "Action récurrente simple",
+      "checks": "daysOfWeek + fixed time + génération multi-jours",
+      "evidence": [
+        {
+          "file": "src/pages/CreateV2HabitRecurring.jsx",
+          "line": 14,
+          "snippet": "* - at least 1 day selected (daysOfWeek)"
+        },
+        {
+          "file": "src/pages/CreateV2HabitRecurring.jsx",
+          "line": 31,
+          "snippet": "const currentDays = Array.isArray(current.daysOfWeek) ? current.daysOfWeek : [];"
+        },
+        {
+          "file": "src/pages/CreateV2HabitRecurring.jsx",
+          "line": 63,
+          "snippet": "repeat: \"weekly\","
+        },
+        {
+          "file": "src/logic/scheduleRules.js",
+          "line": 192,
+          "snippet": "export function buildScheduleRulesFromAction(action) {"
+        }
+      ],
+      "coverage": "covered",
+      "coverageEvidence": [
+        {
+          "file": "tests/e2e/createFlow.appSync.spec.js",
+          "title": "CreateFlow: action récurrente valide planning/durée + conflit bloquant"
+        },
+        {
+          "file": "tests/e2e/createFlow.spec.js",
+          "title": "Action récurrente planifiée -> planning + durée persistés"
+        },
+        {
+          "file": "tests/e2e/createFlow.spec.js",
+          "title": "Action récurrente -> conflit horaire bloquant avant résolution"
+        }
+      ]
+    },
+    {
+      "id": "recurring-specific-days",
+      "title": "Récurrence jours spécifiques (lun/mer/ven)",
+      "checks": "daysOfWeek filtrés dans ruleAppliesOnDate",
+      "evidence": [
+        {
+          "file": "src/logic/scheduleRules.js",
+          "line": 63,
+          "snippet": "function resolveDaysOfWeek(action, schedule) {"
+        },
+        {
+          "file": "src/logic/scheduleRules.js",
+          "line": 64,
+          "snippet": "const raw = Array.isArray(action?.daysOfWeek)"
+        },
+        {
+          "file": "src/logic/scheduleRules.js",
+          "line": 65,
+          "snippet": "? action.daysOfWeek"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 694,
+          "snippet": "const days = Array.isArray(rule.daysOfWeek) ? rule.daysOfWeek : [];"
+        }
+      ],
+      "coverage": "covered",
+      "coverageEvidence": [
+        {
+          "file": "tests/e2e/createFlow.appSync.spec.js",
+          "title": "CreateFlow: action récurrente valide planning/durée + conflit bloquant"
+        },
+        {
+          "file": "tests/e2e/createFlow.spec.js",
+          "title": "Action récurrente planifiée -> planning + durée persistés"
+        },
+        {
+          "file": "tests/e2e/createFlow.spec.js",
+          "title": "Action récurrente -> conflit horaire bloquant avant résolution"
+        }
+      ]
+    },
+    {
+      "id": "period-bounds",
+      "title": "Période activeFrom/activeTo",
+      "checks": "occurrences hors période supprimées ou non générées",
+      "evidence": [
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 105,
+          "snippet": "function isDateWithinPeriod(dateKey, period) {"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 386,
+          "snippet": "if (!isDateWithinPeriod(dateKey, period)) return false;"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 799,
+          "snippet": "const dates = buildWindowDates(fromDateKey, days).filter((k) => isDateWithinPeriod(k, period));"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 803,
+          "snippet": "// Period enforcement: remove occurrences for this goal that fall outside its active period."
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 284,
+          "snippet": "const [activeFrom, setActiveFrom] = useState(() => todayLocalKey());"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 285,
+          "snippet": "const [activeTo, setActiveTo] = useState(() => addDaysLocal(todayLocalKey(), 29));"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 359,
+          "snippet": "const normalizedActiveFrom = normalizeLocalDateKey(activeFrom) || \"\";"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 360,
+          "snippet": "const normalizedActiveTo = normalizeLocalDateKey(activeTo) || \"\";"
+        }
+      ],
+      "coverage": "covered",
+      "coverageEvidence": [
+        {
+          "file": "tests/e2e/createFlow.appSync.spec.js",
+          "title": "CreateFlow: action ponctuelle met à jour toute l’app"
+        },
+        {
+          "file": "tests/e2e/createFlow.appSync.spec.js",
+          "title": "CreateFlow: action récurrente valide planning/durée + conflit bloquant"
+        },
+        {
+          "file": "tests/e2e/createFlow.spec.js",
+          "title": "Action ponctuelle -> occurrence au bon jour"
+        },
+        {
+          "file": "tests/e2e/createFlow.spec.js",
+          "title": "Action récurrente planifiée -> planning + durée persistés"
+        }
+      ]
+    },
+    {
+      "id": "edited-after-planning",
+      "title": "Modification après planification",
+      "checks": "rebuild occurrences via regenerateWindowFromScheduleRules",
+      "evidence": [
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 678,
+          "snippet": "const planChanged = prevPlanSig !== nextPlanSig;"
+        },
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 703,
+          "snippet": "next = regenerateWindowFromScheduleRules(next, goalId, fromKey, toKey);"
+        },
+        {
+          "file": "src/pages/EditItem.jsx",
+          "line": 787,
+          "snippet": "const planChanged = prevPlanSig !== nextPlanSig;"
+        },
+        {
+          "file": "src/pages/EditItem.jsx",
+          "line": 814,
+          "snippet": "next = regenerateWindowFromScheduleRules(next, goalId, fromKey, toKey);"
+        }
+      ],
+      "coverage": "covered",
+      "coverageEvidence": [
+        {
+          "file": "tests/e2e/createFlow.appSync.spec.js",
+          "title": "CreateFlow: projet + action met à jour Bibliothèque/Aujourd’hui/Calendrier/Pilotage"
+        },
+        {
+          "file": "tests/e2e/createFlow.appSync.spec.js",
+          "title": "CreateFlow: action ponctuelle met à jour toute l’app"
+        },
+        {
+          "file": "tests/e2e/createFlow.appSync.spec.js",
+          "title": "CreateFlow: action récurrente valide planning/durée + conflit bloquant"
+        },
+        {
+          "file": "tests/e2e/createFlow.appSync.spec.js",
+          "title": "CreateFlow: action anytime sans horaire + présence dans les vues attendues"
+        }
+      ]
+    },
+    {
+      "id": "delete-cancel-skipped",
+      "title": "Suppression / canceled / skipped",
+      "checks": "cleanup coherence goals/occurrences/reminders/sessions/checks",
+      "evidence": [
+        {
+          "file": "src/logic/occurrences.js",
+          "line": 143,
+          "snippet": "export function setOccurrenceStatusById(occurrenceId, status, source) {"
+        },
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 384,
+          "snippet": "function deleteAction(goal) {"
+        }
+      ],
+      "coverage": "covered",
+      "coverageEvidence": [
+        {
+          "file": "tests/e2e/createFlow.appSync.spec.js",
+          "title": "CreateFlow: action récurrente valide planning/durée + conflit bloquant"
+        },
+        {
+          "file": "tests/e2e/createFlow.appSync.spec.js",
+          "title": "CategoryGate: désactivation non vide avec migration vers Général"
+        },
+        {
+          "file": "tests/e2e/createFlow.spec.js",
+          "title": "Action récurrente -> conflit horaire bloquant avant résolution"
+        }
+      ]
+    },
+    {
+      "id": "selected-date-not-today",
+      "title": "Date sélectionnée différente de today",
+      "checks": "today/session et micro-actions restent cohérents",
+      "evidence": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 278,
+          "snippet": "const selectedDateKey ="
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 279,
+          "snippet": "normalizeLocalDateKey(safeData.ui?.selectedDateKey || safeData.ui?.selectedDate || legacyPendingDateKey) ||"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 281,
+          "snippet": "const selectedDate = useMemo(() => fromLocalDateKey(selectedDateKey), [selectedDateKey]);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 283,
+          "snippet": "const selectedStatus ="
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 284,
+          "snippet": "selectedDateKey === localTodayKey ? \"today\" : selectedDateKey < localTodayKey ? \"past\" : \"future\";"
+        },
+        {
+          "file": "src/ui/calendar/DayRail.jsx",
+          "line": 45,
+          "snippet": "selectedDateKey,"
+        },
+        {
+          "file": "src/ui/calendar/DayRail.jsx",
+          "line": 46,
+          "snippet": "localTodayKey,"
+        },
+        {
+          "file": "src/ui/calendar/DayRail.jsx",
+          "line": 80,
+          "snippet": "const [liveDateKey, setLiveDateKey] = useState(selectedDateKey);"
+        },
+        {
+          "file": "src/ui/calendar/DayRail.jsx",
+          "line": 91,
+          "snippet": "const anchor = fromLocalDateKey(selectedDateKey);"
+        }
+      ],
+      "coverage": "partial",
+      "coverageEvidence": [
+        {
+          "file": "tests/e2e/createFlow.appSync.spec.js",
+          "title": "Calendrier mois: anti-décalage fin de mois vers mois suivant"
+        }
+      ]
+    },
+    {
+      "id": "timezone-datekey-consistency",
+      "title": "Fuseau / dateKey cohérence",
+      "checks": "normalizeLocalDateKey across planning + calendar invariants",
+      "evidence": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 11,
+          "snippet": "import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from \"../utils/dateKey\";"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 279,
+          "snippet": "normalizeLocalDateKey(safeData.ui?.selectedDateKey || safeData.ui?.selectedDate || legacyPendingDateKey) ||"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 397,
+          "snippet": "const dateKey = normalizeLocalDateKey(rawDate);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 476,
+          "snippet": "const key = normalizeLocalDateKey(occ.date);"
+        },
+        {
+          "file": "src/logic/calendar.js",
+          "line": 8,
+          "snippet": "import { normalizeLocalDateKey } from \"../utils/dateKey\";"
+        },
+        {
+          "file": "src/logic/calendar.js",
+          "line": 20,
+          "snippet": "return Boolean(normalizeLocalDateKey(value));"
+        },
+        {
+          "file": "src/logic/calendar.js",
+          "line": 44,
+          "snippet": "const dayKey = normalizeLocalDateKey(date);"
+        }
+      ],
+      "coverage": "partial",
+      "coverageEvidence": [
+        {
+          "file": "tests/e2e/createFlow.appSync.spec.js",
+          "title": "Calendrier mois: anti-décalage fin de mois vers mois suivant"
+        }
+      ]
+    },
+    {
+      "id": "expected-done-missed-cross-screen",
+      "title": "Consistance expected/done/missed Home/Calendar/Pilotage",
+      "checks": "same semantics in metrics/progression/radar/reporting",
+      "evidence": [
+        {
+          "file": "src/logic/metrics.js",
+          "line": 13,
+          "snippet": "const EXPECTED_STATUSES = new Set(["
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 58,
+          "snippet": "if (EXPECTED_STATUSES.has(status)) stats.expected += 1;"
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 72,
+          "snippet": "const expected = Number(stats.expected) || 0;"
+        },
+        {
+          "file": "src/logic/progressionModel.js",
+          "line": 41,
+          "snippet": "export function computeExpectedDoneMissed(occurrences) {"
+        },
+        {
+          "file": "src/logic/progressionModel.js",
+          "line": 61,
+          "snippet": "const isExpected = !isCanceled;"
+        },
+        {
+          "file": "src/logic/progressionModel.js",
+          "line": 63,
+          "snippet": "if (isExpected) stats.expected += 1;"
+        },
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 54,
+          "snippet": "const done = Number(bucket?.done) || 0;"
+        },
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 55,
+          "snippet": "if (done > 0) activeDays += 1;"
+        },
+        {
+          "file": "src/features/pilotage/radarModel.js",
+          "line": 58,
+          "snippet": "const expected = Number(stats.expected) || 0;"
+        }
+      ],
+      "coverage": "covered",
+      "coverageEvidence": [
+        {
+          "file": "src/logic/reporting.test.js",
+          "title": "report totals match metrics"
+        },
+        {
+          "file": "tests/e2e/createFlow.appSync.spec.js",
+          "title": "CreateFlow: projet + action met à jour Bibliothèque/Aujourd’hui/Calendrier/Pilotage"
+        },
+        {
+          "file": "tests/e2e/pilotage.radar.spec.js",
+          "title": "Pilotage: Catégories visibles persistent après reload"
+        },
+        {
+          "file": "tests/e2e/pilotage.radar.spec.js",
+          "title": "Pilotage: sélection radar reste valide après suppression d"
+        }
+      ]
+    }
+  ],
+  "tests": {
+    "unitFiles": [
+      "src/logic/categoryGate.test.js",
+      "src/logic/metrics.test.js",
+      "src/logic/microActionsV1.test.js",
+      "src/logic/occurrencePlanner.flexPlacement.test.js",
+      "src/logic/occurrencePlanner.scheduleRules.test.js",
+      "src/logic/occurrences.test.js",
+      "src/logic/progressionModel.test.js",
+      "src/logic/reporting.test.js",
+      "src/logic/rewardedAds.test.js",
+      "src/logic/sessionResolver.test.js",
+      "src/logic/sessionsV2.test.js",
+      "src/logic/state.test.js",
+      "src/logic/walletV1.test.js"
+    ],
+    "e2eFiles": [
+      "tests/e2e/auth-diagnostics.spec.js",
+      "tests/e2e/auth-gate.spec.js",
+      "tests/e2e/categories.spec.js",
+      "tests/e2e/createFlow.appSync.spec.js",
+      "tests/e2e/createFlow.spec.js",
+      "tests/e2e/micro-actions.coins-and-ads.spec.js",
+      "tests/e2e/micro-actions.spec.js",
+      "tests/e2e/pilotage.radar.spec.js",
+      "tests/e2e/profile-setup.spec.js",
+      "tests/e2e/totem-dock.spec.js",
+      "tests/e2e/user-data.persistence.spec.js"
+    ],
+    "titles": [
+      {
+        "file": "src/logic/categoryGate.test.js",
+        "title": "returns false when no active category"
+      },
+      {
+        "file": "src/logic/categoryGate.test.js",
+        "title": "allows System Inbox only when it is the only category"
+      },
+      {
+        "file": "src/logic/categoryGate.test.js",
+        "title": "allows non-system active category"
+      },
+      {
+        "file": "src/logic/metrics.test.js",
+        "title": "computes expected/done/missed/canceled on mixed statuses"
+      },
+      {
+        "file": "src/logic/metrics.test.js",
+        "title": "returns completionRate=0 when expected=0"
+      },
+      {
+        "file": "src/logic/metrics.test.js",
+        "title": "filters by goalIds"
+      },
+      {
+        "file": "src/logic/metrics.test.js",
+        "title": "filters by categoryId via goals mapping"
+      },
+      {
+        "file": "src/logic/metrics.test.js",
+        "title": "builds inclusive bounds for today/7d/14d/90d"
+      },
+      {
+        "file": "src/logic/metrics.test.js",
+        "title": "computeDailyStats includes both ends of the window"
+      },
+      {
+        "file": "src/logic/metrics.test.js",
+        "title": "computeDailyStats is idempotent and does not mutate input"
+      },
+      {
+        "file": "src/logic/microActionsV1.test.js",
+        "title": "ensure creates exactly 3 unique items"
+      },
+      {
+        "file": "src/logic/microActionsV1.test.js",
+        "title": "complete replaces a done item immediately"
+      },
+      {
+        "file": "src/logic/microActionsV1.test.js",
+        "title": "reroll replaces selected indices and increments usage once"
+      },
+      {
+        "file": "src/logic/microActionsV1.test.js",
+        "title": "resets rerollsUsed on date change"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.flexPlacement.test.js",
+        "title": "places a window occurrence in the first available gap after fixed ones"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.flexPlacement.test.js",
+        "title": "marks conflict when a window occurrence cannot fit"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.flexPlacement.test.js",
+        "title": "is idempotent on consecutive calls"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.scheduleRules.test.js",
+        "title": "generates recurring occurrences and is idempotent"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.scheduleRules.test.js",
+        "title": "returns the same object when there are no changes to apply"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.scheduleRules.test.js",
+        "title": "generates one_time occurrence once"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.scheduleRules.test.js",
+        "title": "attaches a legacy occurrence without duplicating"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.scheduleRules.test.js",
+        "title": "marks planned occurrences as missed only once"
+      },
+      {
+        "file": "src/logic/occurrencePlanner.scheduleRules.test.js",
+        "title": "updates an existing planned occurrence when rule changes without duplication"
+      },
+      {
+        "file": "src/logic/occurrences.test.js",
+        "title": "returns not_found when no occurrence exists"
+      },
+      {
+        "file": "src/logic/occurrences.test.js",
+        "title": "returns final when occurrence is already final"
+      },
+      {
+        "file": "src/logic/occurrences.test.js",
+        "title": "does not change occurrences when already final"
+      },
+      {
+        "file": "src/logic/occurrences.test.js",
+        "title": "is idempotent on consecutive calls"
+      },
+      {
+        "file": "src/logic/progressionModel.test.js",
+        "title": "computeExpectedDoneMissed excludes canceled and skipped from expected"
+      },
+      {
+        "file": "src/logic/progressionModel.test.js",
+        "title": "computeDisciplineRate returns done/expected and 0 when expected is 0"
+      },
+      {
+        "file": "src/logic/progressionModel.test.js",
+        "title": "applies micro-actions weighted contribution (0.25): 4 done => +1 weighted done"
+      },
+      {
+        "file": "src/logic/reporting.test.js",
+        "title": "report totals match metrics"
+      },
+      {
+        "file": "src/logic/reporting.test.js",
+        "title": "exports CSV with headers and data"
+      },
+      {
+        "file": "src/logic/reporting.test.js",
+        "title": "filters by categoryId and goalIds"
+      },
+      {
+        "file": "src/logic/rewardedAds.test.js",
+        "title": "returns unavailable when no presenter is registered"
+      },
+      {
+        "file": "src/logic/rewardedAds.test.js",
+        "title": "resolves with presenter result"
+      },
+      {
+        "file": "src/logic/sessionResolver.test.js",
+        "title": "prefers fixed over window even if window has earlier resolvedStart"
+      },
+      {
+        "file": "src/logic/sessionResolver.test.js",
+        "title": "puts window without resolvedStart after fixed"
+      },
+      {
+        "file": "src/logic/sessionResolver.test.js",
+        "title": "returns not_found when there is no planned candidate"
+      },
+      {
+        "file": "src/logic/sessionResolver.test.js",
+        "title": "is deterministic for identical inputs"
+      },
+      {
+        "file": "src/logic/sessionResolver.test.js",
+        "title": "tie-breaks by goalId then id"
+      },
+      {
+        "file": "src/logic/sessionsV2.test.js",
+        "title": "keeps a single record per occurrenceId"
+      },
+      {
+        "file": "src/logic/state.test.js",
+        "title": "is idempotent across repeated migrations"
+      },
+      {
+        "file": "src/logic/state.test.js",
+        "title": "does not duplicate rules when sourceKey already exists"
+      },
+      {
+        "file": "src/logic/state.test.js",
+        "title": "keeps unique sourceKey per actionId after 3 migrations"
+      },
+      {
+        "file": "src/logic/state.test.js",
+        "title": "falls back to DEFAULT_CATEGORY_ID when missing"
+      },
+      {
+        "file": "src/logic/state.test.js",
+        "title": "trims and preserves a provided categoryId"
+      },
+      {
+        "file": "src/logic/state.test.js",
+        "title": "initialData seeds totemV1 defaults"
+      },
+      {
+        "file": "src/logic/state.test.js",
+        "title": "migrate normalizes missing totemV1 fields"
+      },
+      {
+        "file": "src/logic/walletV1.test.js",
+        "title": "resets daily counters when date changes"
+      },
+      {
+        "file": "src/logic/walletV1.test.js",
+        "title": "addCoins increments balance and logs event"
+      },
+      {
+        "file": "src/logic/walletV1.test.js",
+        "title": "canWatchAd returns false when daily ad cap is reached"
+      },
+      {
+        "file": "src/logic/walletV1.test.js",
+        "title": "applyAdReward grants coins and increments ad usage"
+      },
+      {
+        "file": "src/logic/walletV1.test.js",
+        "title": "trims wallet event history to 50 entries"
+      },
+      {
+        "file": "src/logic/walletV1.test.js",
+        "title": "spendCoins decrements balance when enough coins exist"
+      },
+      {
+        "file": "src/logic/walletV1.test.js",
+        "title": "spendCoins is rejected when balance is insufficient"
+      },
+      {
+        "file": "tests/e2e/auth-diagnostics.spec.js",
+        "title": "login: pas de bloc diagnostics réseau legacy"
+      },
+      {
+        "file": "tests/e2e/auth-gate.spec.js",
+        "title": "sans session: affiche LoginScreen et bloque l"
+      },
+      {
+        "file": "tests/e2e/auth-gate.spec.js",
+        "title": "session mockée: accès à l"
+      },
+      {
+        "file": "tests/e2e/categories.spec.js",
+        "title": "activer puis désactiver une suggestion vide"
+      },
+      {
+        "file": "tests/e2e/categories.spec.js",
+        "title": "désactiver une catégorie vide"
+      },
+      {
+        "file": "tests/e2e/categories.spec.js",
+        "title": "désactiver une catégorie non vide -> migrer"
+      },
+      {
+        "file": "tests/e2e/categories.spec.js",
+        "title": "désactiver une catégorie non vide -> delete"
+      },
+      {
+        "file": "tests/e2e/categories.spec.js",
+        "title": "inbox/system non désactivable"
+      },
+      {
+        "file": "tests/e2e/categories.spec.js",
+        "title": "Bibliothèque: gérer active l"
+      },
+      {
+        "file": "tests/e2e/categories.spec.js",
+        "title": "Bibliothèque: gérer permet d"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CreateFlow: projet + action met à jour Bibliothèque/Aujourd’hui/Calendrier/Pilotage"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CreateFlow: action ponctuelle met à jour toute l’app"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CreateFlow: action récurrente valide planning/durée + conflit bloquant"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CreateFlow: action anytime sans horaire + présence dans les vues attendues"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "Calendrier mois: anti-décalage fin de mois vers mois suivant"
+      },
+      {
+        "file": "tests/e2e/createFlow.appSync.spec.js",
+        "title": "CategoryGate: désactivation non vide avec migration vers Général"
+      },
+      {
+        "file": "tests/e2e/createFlow.spec.js",
+        "title": "Projet + Action (guidé) -> ouvre l’étape projet"
+      },
+      {
+        "file": "tests/e2e/createFlow.spec.js",
+        "title": "Action ponctuelle -> occurrence au bon jour"
+      },
+      {
+        "file": "tests/e2e/createFlow.spec.js",
+        "title": "Action récurrente planifiée -> planning + durée persistés"
+      },
+      {
+        "file": "tests/e2e/createFlow.spec.js",
+        "title": "Action récurrente -> conflit horaire bloquant avant résolution"
+      },
+      {
+        "file": "tests/e2e/createFlow.spec.js",
+        "title": "Action anytime -> sans date fixe"
+      },
+      {
+        "file": "tests/e2e/createFlow.spec.js",
+        "title": "Ordre catégories = railOrder, modifier conserve ordre"
+      },
+      {
+        "file": "tests/e2e/micro-actions.coins-and-ads.spec.js",
+        "title": "micro-actions: coins + rewarded ad reroll credit flow"
+      },
+      {
+        "file": "tests/e2e/micro-actions.coins-and-ads.spec.js",
+        "title": "micro-actions: premium hides rewarded ad CTA"
+      },
+      {
+        "file": "tests/e2e/micro-actions.spec.js",
+        "title": "micro-actions V1: 3 items + done replace + reroll selected"
+      },
+      {
+        "file": "tests/e2e/micro-actions.spec.js",
+        "title": "micro-actions V1: basic reroll limit = 3/day"
+      },
+      {
+        "file": "tests/e2e/micro-actions.spec.js",
+        "title": "micro-actions V1: premium reroll is unlimited"
+      },
+      {
+        "file": "tests/e2e/pilotage.radar.spec.js",
+        "title": "Pilotage: Catégories visibles persistent après reload"
+      },
+      {
+        "file": "tests/e2e/pilotage.radar.spec.js",
+        "title": "Pilotage: sélection radar reste valide après suppression d"
+      },
+      {
+        "file": "tests/e2e/profile-setup.spec.js",
+        "title": "première connexion: redirection /account puis sauvegarde profil"
+      },
+      {
+        "file": "tests/e2e/profile-setup.spec.js",
+        "title": "username déjà pris: erreur visible"
+      },
+      {
+        "file": "tests/e2e/totem-dock.spec.js",
+        "title": "totem dock: open, close, hide, nub reveal, persistence"
+      },
+      {
+        "file": "tests/e2e/totem-dock.spec.js",
+        "title": "totem dock: micro-action done triggers ghost flight animation"
+      },
+      {
+        "file": "tests/e2e/user-data.persistence.spec.js",
+        "title": "user_data: charge puis persiste une modification après reload"
+      }
+    ]
+  },
+  "createFlowAudit": {
+    "essentialFields": [
+      {
+        "field": "Type d’action (ponctuelle / récurrente / anytime)",
+        "reason": "choix indispensable pour définir le modèle d’occurrence",
+        "evidence": [
+          {
+            "file": "src/pages/CreateV2HabitType.jsx",
+            "line": 9,
+            "snippet": "export default function CreateV2HabitType({"
+          },
+          {
+            "file": "src/pages/CreateV2HabitType.jsx",
+            "line": 39,
+            "snippet": "habitType: type, // \"ONE_OFF\" | \"RECURRING\" | \"ANYTIME\""
+          },
+          {
+            "file": "src/pages/CreateV2HabitType.jsx",
+            "line": 54,
+            "snippet": "<Button onClick={() => setType(\"ONE_OFF\")} data-testid=\"create-type-oneoff\">"
+          },
+          {
+            "file": "src/pages/CreateV2HabitType.jsx",
+            "line": 57,
+            "snippet": "<Button onClick={() => setType(\"RECURRING\")} data-testid=\"create-type-recurring\">"
+          }
+        ]
+      },
+      {
+        "field": "Titre action",
+        "reason": "minimum pour persistance/actionnable",
+        "evidence": [
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 278,
+            "snippet": "const [title, setTitle] = useState(\"\");"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 408,
+            "snippet": "Boolean(title.trim()) &&"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 587,
+            "snippet": "const cleanTitle = title.trim();"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 679,
+            "snippet": "title: \"\" + cleanTitle,"
+          }
+        ]
+      },
+      {
+        "field": "Date unique ou jours attendus",
+        "reason": "définit la cadence attendue",
+        "evidence": [
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 152,
+            "snippet": "function validateWeeklySlotsByDay(daysOfWeek, weeklySlotsByDay) {"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 153,
+            "snippet": "const days = normalizeDaysOfWeek(daysOfWeek);"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 178,
+            "snippet": "const dateLabel = habit.oneOffDate ? ` · ${habit.oneOffDate}` : \"\";"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 187,
+            "snippet": "const days = Array.isArray(habit.daysOfWeek) ? habit.daysOfWeek : [];"
+          },
+          {
+            "file": "src/creation/creationDraft.js",
+            "line": 56,
+            "snippet": "function deriveLegacyRepeatFromExpectedDays(expectedDays) {"
+          },
+          {
+            "file": "src/creation/creationDraft.js",
+            "line": 57,
+            "snippet": "const days = Array.isArray(expectedDays) ? expectedDays : [];"
+          }
+        ]
+      },
+      {
+        "field": "Heure (optionnelle one-off, requise récurrent standard)",
+        "reason": "nécessaire pour Session/Aujourd’hui",
+        "evidence": [
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 383,
+            "snippet": "const requiresStartTime ="
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 387,
+            "snippet": "const startTimeValid = !requiresStartTime || Boolean(normalizedStartForCheck);"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 394,
+            "snippet": "if (!startTimeValid) return \"Choisis une heure.\";"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 405,
+            "snippet": "const reminderError = !reminderValid ? \"Choisis une heure de rappel.\" : \"\";"
+          }
+        ]
+      },
+      {
+        "field": "Catégorie finale",
+        "reason": "détermine affichage Home/Bibliothèque/Pilotage",
+        "evidence": [
+          {
+            "file": "src/pages/CreateV2PickCategory.jsx",
+            "line": 8,
+            "snippet": "import { safeUpdateGoal } from \"../logic/goalGuards\";"
+          },
+          {
+            "file": "src/pages/CreateV2PickCategory.jsx",
+            "line": 14,
+            "snippet": "onDone,"
+          },
+          {
+            "file": "src/pages/CreateV2PickCategory.jsx",
+            "line": 36,
+            "snippet": "(actions[0]?.categoryId && options.some((c) => c.id === actions[0].categoryId)"
+          },
+          {
+            "file": "src/pages/CreateV2PickCategory.jsx",
+            "line": 37,
+            "snippet": "? actions[0].categoryId"
+          },
+          {
+            "file": "src/pages/CreateV2PickCategory.jsx",
+            "line": 57,
+            "snippet": "if (typeof onDone === \"function\") onDone();"
+          }
+        ]
+      }
+    ],
+    "advancedFields": [
+      {
+        "field": "Période activeFrom/activeTo",
+        "reason": "utile pour power users, surcharge débutant",
+        "evidence": [
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 284,
+            "snippet": "const [activeFrom, setActiveFrom] = useState(() => todayLocalKey());"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 285,
+            "snippet": "const [activeTo, setActiveTo] = useState(() => addDaysLocal(todayLocalKey(), 29));"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 359,
+            "snippet": "const normalizedActiveFrom = normalizeLocalDateKey(activeFrom) || \"\";"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 360,
+            "snippet": "const normalizedActiveTo = normalizeLocalDateKey(activeTo) || \"\";"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 362,
+            "snippet": "Boolean(normalizedActiveFrom && normalizedActiveTo) && normalizedActiveTo >= normalizedActiveFrom;"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 391,
+            "snippet": "if (!isTypeOneOff && !periodValid) return \"Définis une période valide (échéance ≥ début).\";"
+          }
+        ]
+      },
+      {
+        "field": "Schedule mode WEEKLY_SLOTS + slots par jour",
+        "reason": "configuration fine; candidat mode avancé",
+        "evidence": [
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 152,
+            "snippet": "function validateWeeklySlotsByDay(daysOfWeek, weeklySlotsByDay) {"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 154,
+            "snippet": "const map = normalizeWeeklySlotsByDay(weeklySlotsByDay);"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 199,
+            "snippet": "if (!habit || habit.scheduleMode !== \"WEEKLY_SLOTS\") return \"\";"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 200,
+            "snippet": "const map = normalizeWeeklySlotsByDay(habit.weeklySlotsByDay);"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 296,
+            "snippet": "const [scheduleMode, setScheduleMode] = useState(\"STANDARD\"); // STANDARD | WEEKLY_SLOTS"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 297,
+            "snippet": "const [weeklySlotsByDay, setWeeklySlotsByDay] = useState(() => {"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 331,
+            "snippet": "const isWeeklySlotsMode = isTypeRecurring && isWeekly && scheduleMode === \"WEEKLY_SLOTS\";"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 332,
+            "snippet": "const weeklySlotsOk = !isWeeklySlotsMode || validateWeeklySlotsByDay(daysOfWeek, weeklySlotsByDay);"
+          }
+        ]
+      },
+      {
+        "field": "Rappels + fenêtre reminder",
+        "reason": "non essentiel pour premier succès utilisateur",
+        "evidence": [
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 314,
+            "snippet": "const [reminderTime, setReminderTime] = useState(\"\");"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 315,
+            "snippet": "const [reminderWindowStart, setReminderWindowStart] = useState(\"\");"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 316,
+            "snippet": "const [reminderWindowEnd, setReminderWindowEnd] = useState(\"\");"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 370,
+            "snippet": "const normalizedReminderTime = normalizeStartTime(reminderTime);"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 371,
+            "snippet": "const normalizedReminderWindowStart = normalizeStartTime(reminderWindowStart);"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 372,
+            "snippet": "const normalizedReminderWindowEnd = normalizeStartTime(reminderWindowEnd);"
+          }
+        ]
+      },
+      {
+        "field": "Quantity value/unit/period",
+        "reason": "mesure avancée; augmente charge cognitive",
+        "evidence": [
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 93,
+            "snippet": "if (!habit || !Number.isFinite(habit.quantityValue)) return \"\";"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 94,
+            "snippet": "const unit = habit.quantityUnit || \"\";"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 95,
+            "snippet": "const period = QUANTITY_PERIODS.find((p) => p.id === habit.quantityPeriod)?.label || \"\";"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 97,
+            "snippet": "return `${habit.quantityValue} ${unit} ${period}`;"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 310,
+            "snippet": "const [quantityValue, setQuantityValue] = useState(\"\");"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 311,
+            "snippet": "const [quantityUnit, setQuantityUnit] = useState(\"\");"
+          }
+        ]
+      },
+      {
+        "field": "Miss policy / grace / completionMode",
+        "reason": "contrats comportementaux avancés",
+        "evidence": [
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 702,
+            "snippet": "completionMode: \"ONCE\","
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 703,
+            "snippet": "completionTarget: null,"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 704,
+            "snippet": "missPolicy: \"LENIENT\","
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 705,
+            "snippet": "graceMinutes: 0,"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 919,
+            "snippet": "completionMode: habit.completionMode || \"ONCE\","
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 920,
+            "snippet": "completionTarget: habit.completionTarget ?? null,"
+          }
+        ]
+      },
+      {
+        "field": "Résolution de conflit proactive",
+        "reason": "utile mais doit rester option avancée",
+        "evidence": [
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 17,
+            "snippet": "import ConflictResolver from \"../ui/scheduling/ConflictResolver\";"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 547,
+            "snippet": "function findFirstConflict(habitsToCheck, ignoreOccurrenceIds) {"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 786,
+            "snippet": "const conflict = findFirstConflict(validHabits, ignoreIds);"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 1011,
+            "snippet": "function applyConflictShift(nextStart) {"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 1022,
+            "snippet": "function applyConflictNoTime() {"
+          },
+          {
+            "file": "src/pages/CreateV2Habits.jsx",
+            "line": 1033,
+            "snippet": "function applyConflictReplace() {"
+          }
+        ]
+      }
+    ],
+    "complexity": {
+      "createV2HabitsUseStateCount": 23,
+      "createV2HabitsImportsLegacyUI": true,
+      "uxV2FlowAvailable": true,
+      "defaultFlowStillLegacy": true
+    }
+  },
+  "bugCandidates": [
+    {
+      "id": "delete-action-schedule-rules-cleanup",
+      "severity": "P0",
+      "title": "delete action cleanup should handle scheduleRules linked to removed goals",
+      "rationale": "deletes remove goals/occurrences/reminders but not scheduleRules; generator consumes active scheduleRules and can recreate orphan occurrences if rules remain active",
+      "evidence": [
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 384,
+          "snippet": "function deleteAction(goal) {"
+        },
+        {
+          "file": "src/pages/Categories.jsx",
+          "line": 391,
+          "snippet": "const nextOccurrences = (prev.occurrences || []).filter((o) => o && o.goalId !== goalId);"
+        },
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 283,
+          "snippet": "function deleteAction(goal) {"
+        },
+        {
+          "file": "src/features/library/CategoryManageInline.jsx",
+          "line": 290,
+          "snippet": "const nextOccurrences = (prev.occurrences || []).filter((o) => o && o.goalId !== goalId);"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 922,
+          "snippet": "const rulesRaw = Array.isArray(working.scheduleRules) ? working.scheduleRules : [];"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 1079,
+          "snippet": "const created = buildOccurrenceFromRule(rule, dateKey);"
+        }
+      ],
+      "reproSteps": [
+        "Créer une action récurrente avec occurrences.",
+        "Supprimer l’action depuis Bibliothèque.",
+        "Déclencher ensureWindowFromScheduleRules (ouvrir Aujourd’hui / changer date).",
+        "Observer réapparition d’occurrences orphelines ou stats incohérentes."
+      ]
+    },
+    {
+      "id": "status-vocabulary-divergence",
+      "severity": "P1",
+      "title": "status values differ across modules (occurrence mutation vs planner/metrics/session)",
+      "rationale": "planner writes missed; metrics track missed/rescheduled/in_progress; session final-state check in occurrences.js only treats done/skipped/canceled as final",
+      "evidence": [
+        {
+          "file": "src/logic/occurrences.js",
+          "line": 4,
+          "snippet": "const STATUS_VALUES = new Set([\"planned\", \"done\", \"skipped\", \"canceled\"]);"
+        },
+        {
+          "file": "src/logic/metrics.js",
+          "line": 13,
+          "snippet": "const EXPECTED_STATUSES = new Set(["
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 1112,
+          "snippet": "const patch = { status: \"missed\", updatedAt: nowIso };"
+        },
+        {
+          "file": "src/logic/occurrences.js",
+          "line": 137,
+          "snippet": "if (st === \"done\" || st === \"skipped\" || st === \"canceled\") {"
+        }
+      ],
+      "reproSteps": [
+        "Forcer une occurrence avec status=missed via planner.",
+        "Vérifier les modules qui considèrent les statuts finaux (session/local helpers).",
+        "Observer divergence de traitement entre modules."
+      ]
+    },
+    {
+      "id": "missed-backfill-window",
+      "severity": "P0",
+      "title": "planned->missed backfill appears constrained to selected date ±1 in Home",
+      "rationale": "missed conversion occurs only for occurrences in provided window; Home ensures only a 3-day range around selected date, so old planned occurrences may remain planned after long inactivity",
+      "evidence": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1326,
+          "snippet": "const next = ensureWindowFromScheduleRules(prev, fromKey, toKey, sortedIds);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1324,
+          "snippet": "const fromKey = baseDate ? toLocalDateKey(addDays(baseDate, -1)) : selectedDateKey;"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1325,
+          "snippet": "const toKey = baseDate ? toLocalDateKey(addDays(baseDate, 1)) : selectedDateKey;"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 1111,
+          "snippet": "if (endMs == null || nowMs <= endMs) continue;"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 1112,
+          "snippet": "const patch = { status: \"missed\", updatedAt: nowIso };"
+        }
+      ],
+      "reproSteps": [
+        "Créer des occurrences planifiées sur plusieurs jours futurs.",
+        "Ne pas ouvrir l’app pendant plusieurs jours.",
+        "Revenir sur Aujourd’hui: fenêtre ensure limitée à ±1 jour.",
+        "Observer anciennes occurrences toujours planned au lieu de missed."
+      ]
+    },
+    {
+      "id": "discipline-calculation-duplication-home-vs-model",
+      "severity": "P1",
+      "title": "Home computes discipline through model and local loops in parallel",
+      "rationale": "score/ratio comes from progressionModel, but Home still derives additional habit/micro/outcome windows locally, increasing semantic drift risk with Pilotage/reporting",
+      "evidence": [
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1049,
+          "snippet": "? computeWindowStats(safeData, oldestHistoryKey, yesterdayKey, { includeMicroContribution: true })"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1090,
+          "snippet": "function countDoneForWindow(days) {"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1112,
+          "snippet": "const habit14 = countDoneForWindow(14);"
+        },
+        {
+          "file": "src/pages/Home.jsx",
+          "line": 1113,
+          "snippet": "const habit90 = countDoneForWindow(90);"
+        },
+        {
+          "file": "src/logic/progressionModel.js",
+          "line": 113,
+          "snippet": "export function computeWindowStats(state, fromKey, toKey, options = {}) {"
+        }
+      ],
+      "reproSteps": [
+        "Comparer score discipline Home vs Pilotage sur un jeu de données mixte.",
+        "Modifier une sémantique locale (ex. 14j) et observer écart UI."
+      ]
+    },
+    {
+      "id": "schedule-rules-sync-dual-implementations",
+      "severity": "P2",
+      "title": "two schedule rule sync implementations coexist",
+      "rationale": "duplicate sync pathways increase maintenance cost and can diverge behavior over time",
+      "evidence": [
+        {
+          "file": "src/logic/scheduleRules.js",
+          "line": 312,
+          "snippet": "export function syncScheduleRulesForActions(state, actionIds = null, now = new Date()) {"
+        },
+        {
+          "file": "src/logic/scheduleRules.js",
+          "line": 444,
+          "snippet": "export function ensureScheduleRulesForActions(state, actionIds = null, now = new Date()) {"
+        },
+        {
+          "file": "src/logic/occurrencePlanner.js",
+          "line": 918,
+          "snippet": "const synced = ensureScheduleRulesForActions(working, ids, now);"
+        }
+      ],
+      "reproSteps": []
+    },
+    {
+      "id": "create-flow-cognitive-load",
+      "severity": "P1",
+      "title": "CreateV2Habits carries high field density and mixed concerns",
+      "rationale": "single screen combines scheduling/time/period/reminder/quantity/conflict logic; uxV2 path exists but default flow remains legacy",
+      "evidence": [
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 13,
+          "snippet": "} from \"../components/UI\";"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 278,
+          "snippet": "const [title, setTitle] = useState(\"\");"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 279,
+          "snippet": "const [oneOffDate, setOneOffDate] = useState(() => todayLocalKey());"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 280,
+          "snippet": "const [location, setLocation] = useState(\"\");"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 283,
+          "snippet": "const [lifecycleMode] = useState(\"FIXED\");"
+        },
+        {
+          "file": "src/pages/CreateV2Habits.jsx",
+          "line": 284,
+          "snippet": "const [activeFrom, setActiveFrom] = useState(() => todayLocalKey());"
+        }
+      ],
+      "reproSteps": [
+        "Mesurer completion rate du flow débutant (type -> action -> catégorie).",
+        "Observer abandon lorsque champs avancés apparaissent tôt."
+      ]
+    }
+  ]
+}

@@ -121,4 +121,14 @@ describe("metrics", () => {
     expect(JSON.stringify(state)).toBe(snapshot);
     expect(first.totals).toEqual(second.totals);
   });
+
+  it("normalizes legacy canceled alias and includes in_progress in expected", () => {
+    const stats = computeStats([
+      { id: "o1", date: "2026-02-01", goalId: "g1", status: "in_progress" },
+      { id: "o2", date: "2026-02-01", goalId: "g2", status: "cancelled" },
+    ]);
+    expect(stats.expected).toBe(1);
+    expect(stats.canceled).toBe(1);
+    expect(stats.remaining).toBe(1);
+  });
 });

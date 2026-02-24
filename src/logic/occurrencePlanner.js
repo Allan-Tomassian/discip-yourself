@@ -13,12 +13,17 @@ import {
 } from "../utils/datetime";
 import { resolveGoalType } from "../domain/goalType";
 import { ensureScheduleRulesForActions } from "./scheduleRules";
+import {
+  getOccurrenceStatusRank,
+  isPlannedOccurrenceStatus,
+  normalizeOccurrenceStatus,
+  OCCURRENCE_STATUS,
+} from "./occurrenceStatus";
 
 // P0.4 single source of truth: planned occurrences generation only here.
 // Example: const next = ensureWindowForGoal(state, goalId, todayLocalKey(), 14);
 // Example: const next = regenerateWindowForGoal(state, goalId, todayLocalKey(), 14);
 
-const STATUS_RANK = { done: 3, planned: 2, skipped: 1 };
 const DOW_VALUES = new Set([1, 2, 3, 4, 5, 6, 7]); // 1=Mon .. 7=Sun (app convention)
 
 function normalizeDateKeyLoose(value) {
@@ -572,8 +577,8 @@ export function resolveWindowConflictsForDay(occurrences, dateKey) {
     if (!occ || typeof occ !== "object") continue;
     const date = normalizeLocalDateKey(occ.date);
     if (date !== targetDate) continue;
-    const status = typeof occ.status === "string" ? occ.status : "planned";
-    if (status !== "planned") continue;
+    const status = normalizeOccurrenceStatus(occ.status);
+    if (!isPlannedOccurrenceStatus(status)) continue;
     planned.push({ occ, index: i });
   }
 
@@ -714,7 +719,7 @@ function buildOccurrenceFromRule(rule, dateKey) {
     start: timeType === "fixed" ? startTime : "00:00",
     slotKey: timeType === "fixed" ? startTime : "00:00",
     durationMinutes,
-    status: "planned",
+    status: OCCURRENCE_STATUS.PLANNED,
     scheduleRuleId: rule.id,
     timeType,
   };
@@ -756,8 +761,8 @@ export function dedupeOccurrences(occurrences) {
     }
     const idx = seen.get(key);
     const existing = next[idx];
-    const rankExisting = STATUS_RANK[existing?.status] || 0;
-    const rankNext = STATUS_RANK[occ?.status] || 0;
+    const rankExisting = getOccurrenceStatusRank(existing?.status);
+    const rankNext = getOccurrenceStatusRank(occ?.status);
     if (rankNext > rankExisting) next[idx] = occ;
   }
 
@@ -881,7 +886,7 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
         start: finalStart,
         slotKey: finalStart,
         durationMinutes,
-        status: "planned",
+        status: OCCURRENCE_STATUS.PLANNED,
       };
 
       if (isNoTime) {
@@ -908,6 +913,71 @@ export function ensureWindowForGoals(data, goalIds, fromDateKey, days = 14) {
     next = ensureWindowForGoal(next, goalId, fromDateKey, days);
   }
   return next;
+}
+
+export function removeScheduleRulesForAction(data, actionId) {
+  if (!data || typeof data !== "object") return data;
+  const targetId = typeof actionId === "string" ? actionId.trim() : "";
+  if (!targetId) return data;
+  const rules = Array.isArray(data.scheduleRules) ? data.scheduleRules : [];
+  if (!rules.length) return data;
+  let changed = false;
+  const filtered = rules.filter((rule) => {
+    if (!rule || typeof rule !== "object") return true;
+    if (rule.actionId !== targetId) return true;
+    changed = true;
+    return false;
+  });
+  if (!changed) return data;
+  return { ...data, scheduleRules: filtered };
+}
+
+export function backfillMissedOccurrences(data, now = new Date(), options = {}) {
+  if (!data || typeof data !== "object") return data;
+  const occurrences = Array.isArray(data.occurrences) ? data.occurrences : [];
+  if (!occurrences.length) return data;
+  const nowMs = now.getTime();
+  if (!Number.isFinite(nowMs)) return data;
+
+  const fromKey = normalizeDateKeyLoose(options?.fromKey);
+  const toKey = normalizeDateKeyLoose(options?.toKey);
+  const nowIso = now.toISOString();
+  let nextOccurrences = occurrences;
+  let changed = false;
+
+  for (let i = 0; i < occurrences.length; i += 1) {
+    const occ = occurrences[i];
+    if (!occ || typeof occ !== "object") continue;
+    const status = normalizeOccurrenceStatus(occ.status);
+    if (!isPlannedOccurrenceStatus(status)) continue;
+    const date = normalizeLocalDateKey(occ.date);
+    if (!date) continue;
+    if (fromKey && date < fromKey) continue;
+    if (toKey && date > toKey) continue;
+
+    const timeType =
+      occ.timeType === "window" || occ.noTime === true || typeof occ.windowEndAt === "string"
+        ? "window"
+        : "fixed";
+    let endMs = null;
+    if (timeType === "fixed") {
+      const endAt = occ.endAt || occ.startAt || (occ.start ? `${date}T${occ.start}` : "");
+      const endAtMs = parseLocalDateTime(endAt);
+      if (endAtMs != null) endMs = endAtMs;
+    } else {
+      const windowEndAt = occ.windowEndAt || `${date}T23:59`;
+      const windowEndMs = parseLocalDateTime(windowEndAt);
+      if (windowEndMs != null) endMs = windowEndMs;
+    }
+    if (endMs == null || nowMs <= endMs) continue;
+
+    if (nextOccurrences === occurrences) nextOccurrences = occurrences.slice();
+    nextOccurrences[i] = { ...occ, status: OCCURRENCE_STATUS.MISSED, updatedAt: nowIso };
+    changed = true;
+  }
+
+  if (!changed) return data;
+  return { ...data, occurrences: nextOccurrences };
 }
 
 export function ensureWindowFromScheduleRules(data, fromKey, toKey, actionIds = null, now = new Date()) {
@@ -983,8 +1053,8 @@ export function ensureWindowFromScheduleRules(data, fromKey, toKey, actionIds = 
       if (byRuleDate.has(ruleKey)) {
         const idx = byRuleDate.get(ruleKey);
         const current = nextOccurrences[idx];
-        const status = typeof current?.status === "string" ? current.status : "planned";
-        if (status !== "planned") continue;
+        const status = normalizeOccurrenceStatus(current?.status);
+        if (!isPlannedOccurrenceStatus(status)) continue;
         const patch = {};
         patch.scheduleRuleId = rule.id;
         patch.timeType = rule.timeType === "window" ? "window" : "fixed";
@@ -1035,8 +1105,8 @@ export function ensureWindowFromScheduleRules(data, fromKey, toKey, actionIds = 
         const legacyIdx = legacyByKey.get(legacyKey);
         if (typeof legacyIdx === "number") {
           const current = nextOccurrences[legacyIdx];
-          const status = typeof current?.status === "string" ? current.status : "planned";
-          if (status !== "planned") {
+          const status = normalizeOccurrenceStatus(current?.status);
+          if (!isPlannedOccurrenceStatus(status)) {
             byRuleDate.set(ruleKey, legacyIdx);
             continue;
           }
@@ -1085,32 +1155,14 @@ export function ensureWindowFromScheduleRules(data, fromKey, toKey, actionIds = 
     }
   }
 
-  const nowMs = now.getTime();
-  const nowIso = now.toISOString();
-  for (let i = 0; i < nextOccurrences.length; i += 1) {
-    const occ = nextOccurrences[i];
-    if (!occ || typeof occ !== "object") continue;
-    const date = normalizeLocalDateKey(occ.date);
-    if (!date || !windowSet.has(date)) continue;
-    const status = typeof occ.status === "string" ? occ.status : "planned";
-    if (status !== "planned") continue;
-    const timeType =
-      occ.timeType === "window" || occ.noTime === true || typeof occ.windowEndAt === "string"
-        ? "window"
-        : "fixed";
-    let endMs = null;
-    if (timeType === "fixed") {
-      const endAt = occ.endAt || occ.startAt || (occ.start ? `${date}T${occ.start}` : "");
-      const endAtMs = parseLocalDateTime(endAt);
-      if (endAtMs != null) endMs = endAtMs;
-    } else {
-      const windowEndAt = occ.windowEndAt || `${date}T23:59`;
-      const windowEndMs = parseLocalDateTime(windowEndAt);
-      if (windowEndMs != null) endMs = windowEndMs;
-    }
-    if (endMs == null || nowMs <= endMs) continue;
-    const patch = { status: "missed", updatedAt: nowIso };
-    applyPatch(i, patch);
+  const missedBackfill = backfillMissedOccurrences(
+    { ...working, occurrences: nextOccurrences },
+    now,
+    { fromKey: from, toKey: to }
+  );
+  if (missedBackfill.occurrences !== nextOccurrences) {
+    nextOccurrences = missedBackfill.occurrences;
+    changed = true;
   }
 
   let resolved = nextOccurrences;
@@ -1143,7 +1195,7 @@ export function regenerateWindowFromScheduleRules(data, actionId, fromKey, toKey
     if (!occ || occ.goalId !== actionId) return true;
     const date = normalizeLocalDateKey(occ.date);
     if (!date || !windowSet.has(date)) return true;
-    return occ.status && occ.status !== "planned";
+    return Boolean(occ.status) && !isPlannedOccurrenceStatus(occ.status);
   });
 
   if (filtered.length === occurrences.length) {

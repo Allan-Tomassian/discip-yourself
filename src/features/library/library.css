@@ -75,6 +75,15 @@
   min-height: 22px;
 }
 
+.librarySuggestionsHeader {
+  padding-inline: 2px;
+  min-height: 22px;
+}
+
+.librarySuggestionsList {
+  padding-inline: 2px;
+}
+
 .libraryAccentItem {
   position: relative;
   align-items: flex-start;
@@ -165,6 +174,8 @@
   opacity: 0.64;
   font-weight: 500;
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
 }
 
 .categoryGateSwitch {
@@ -180,6 +191,7 @@
   align-items: center;
   gap: 6px;
   flex: 0 0 auto;
+  min-height: 26px;
   transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 

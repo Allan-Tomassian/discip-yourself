@@ -1,4 +1,5 @@
 import { normalizeLocalDateKey } from "../utils/dateKey";
+import { normalizeRuntimeSession } from "./sessionRuntime";
 
 export function normalizeOccurrenceForUI(occ) {
   if (!occ || typeof occ !== "object") return occ;
@@ -22,11 +23,13 @@ export function normalizeOccurrenceForUI(occ) {
 
 export function normalizeActiveSessionForUI(session) {
   if (!session || typeof session !== "object") return session;
-  const rawDateKey = typeof session.dateKey === "string" ? session.dateKey : "";
-  const rawDate = typeof session.date === "string" ? session.date : "";
+  const normalizedRuntime = normalizeRuntimeSession(session);
+  const source = normalizedRuntime && typeof normalizedRuntime === "object" ? normalizedRuntime : session;
+  const rawDateKey = typeof source.dateKey === "string" ? source.dateKey : "";
+  const rawDate = typeof source.date === "string" ? source.date : "";
   const resolvedDateKey = rawDateKey || normalizeLocalDateKey(rawDate) || rawDateKey;
-  const rawHabitIds = Array.isArray(session.habitIds) ? session.habitIds.filter(Boolean) : null;
-  const rawStatus = typeof session.status === "string" ? session.status : "";
+  const rawHabitIds = Array.isArray(source.habitIds) ? source.habitIds.filter(Boolean) : null;
+  const rawStatus = typeof source.status === "string" ? source.status : "";
   const nextStatus = rawStatus || "partial";
 
   let changed = false;
@@ -34,9 +37,9 @@ export function normalizeActiveSessionForUI(session) {
   if (!rawHabitIds) changed = true;
   if (nextStatus !== rawStatus) changed = true;
 
-  if (!changed) return session;
+  if (!changed && normalizedRuntime === session) return session;
   return {
-    ...session,
+    ...source,
     dateKey: resolvedDateKey || rawDateKey,
     habitIds: rawHabitIds || [],
     status: nextStatus,

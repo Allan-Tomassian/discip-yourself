@@ -35,7 +35,7 @@ import CategoryView from "./pages/CategoryView";
 import EditItem from "./pages/EditItem";
 import CategoryDetailView from "./pages/CategoryDetailView";
 import CategoryProgress from "./pages/CategoryProgress";
-import SessionMVP from "./pages/SessionMVP";
+import Session from "./pages/Session";
 import Pilotage from "./pages/Pilotage";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -53,17 +53,19 @@ import {
 import DiagnosticOverlay from "./components/DiagnosticOverlay";
 import { ensureWindowFromScheduleRules, validateOccurrences } from "./logic/occurrencePlanner";
 import { resolveExecutableOccurrence } from "./logic/sessionResolver";
-import { uid } from "./utils/helpers";
 import PaywallModal from "./components/PaywallModal";
 import { useAppNavigation } from "./hooks/useAppNavigation";
 import { useEntitlementsPaywall } from "./hooks/useEntitlementsPaywall";
 import { useRemindersLoop } from "./hooks/useRemindersLoop";
+import { useSessionRuntimeLoop } from "./hooks/useSessionRuntimeLoop";
 import { useCreateFlowOrchestration } from "./hooks/useCreateFlowOrchestration";
 import { useCategorySelectionSync } from "./hooks/useCategorySelectionSync";
 import { getInboxId } from "./app/inbox";
 import { useUserData } from "./data/useUserData";
 import { useProfile } from "./profile/useProfile";
 import { isProfileComplete } from "./profile/profileApi";
+import { applySessionRuntimeTransition, isRuntimeSessionOpen } from "./logic/sessionRuntime";
+import { emitSessionRuntimeNotificationHook } from "./logic/sessionRuntimeNotifications";
 
 function runSelfTests(data) {
   const isProd = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
@@ -117,6 +119,7 @@ export default function App() {
     setLibraryCategoryId,
     sessionCategoryId,
     setSessionCategoryId,
+    sessionDateKey,
   } = useAppNavigation({ safeData, setData });
   const [editItem, setEditItem] = useState(null);
   const dataRef = useRef(data);
@@ -127,6 +130,7 @@ export default function App() {
     dataRef.current = data;
   }, [data]);
   const { activeReminder, setActiveReminder } = useRemindersLoop({ data, dataRef });
+  useSessionRuntimeLoop({ setData, dataRef });
 
   useEffect(() => {
     const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
@@ -212,6 +216,11 @@ export default function App() {
     tab === "create-link-outcome" ||
     tab === "create-pick-category";
   const currentTab = profileNeedsCompletion ? "account" : tab;
+  const resolvedSessionDateKey =
+    (typeof sessionDateKey === "string" && sessionDateKey) ||
+    (typeof safeData?.ui?.selectedDateKey === "string" && safeData.ui.selectedDateKey) ||
+    (typeof safeData?.ui?.selectedDate === "string" && safeData.ui.selectedDate) ||
+    todayLocalKey();
   // Single source of truth for theme:
   // - ui.theme is authoritative
   // - legacy fallbacks are read ONCE and immediately promoted into ui.theme
@@ -893,10 +902,12 @@ export default function App() {
           onOpenPaywall={openPaywall}
         />
       ) : tab === "session" ? (
-        <SessionMVP
+        <Session
           data={data}
           setData={setData}
           categoryId={sessionCategoryId}
+          dateKey={resolvedSessionDateKey}
+          onOpenLibrary={() => setTab("library")}
           onBack={() => {
             setLibraryCategoryId(null);
             setTab("today");
@@ -967,7 +978,7 @@ export default function App() {
                         const prevUi = ensured.ui || {};
                         const existing =
                           prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
-                        if (existing && existing.status === "partial") return ensured;
+                        if (existing && isRuntimeSessionOpen(existing)) return ensured;
 
                         const resolvedNow = resolveExecutableOccurrence(ensured, {
                           dateKey: todayKey,
@@ -978,34 +989,19 @@ export default function App() {
                           (ensured.occurrences || []).find((o) => o && o.id === resolvedNow.occurrenceId) || null;
                         if (!occ) return ensured;
 
-                        const nextSession = {
-                          id: existing?.occurrenceId === occ.id && existing?.id ? existing.id : uid(),
+                        return applySessionRuntimeTransition(ensured, {
+                          type: "start",
                           occurrenceId: occ.id,
                           dateKey: todayLocalKey(),
                           objectiveId: typeof target.parentId === "string" ? target.parentId : null,
                           habitIds: [occ.goalId || target.id],
-                          status: "partial",
-                          timerStartedAt: "",
-                          timerAccumulatedSec: 0,
-                          timerRunning: false,
-                          doneHabitIds: [],
-                        };
-                        if (
-                          existing &&
-                          existing.occurrenceId === nextSession.occurrenceId &&
-                          existing.dateKey === nextSession.dateKey &&
-                          existing.objectiveId === nextSession.objectiveId &&
-                          Array.isArray(existing.habitIds) &&
-                          existing.habitIds.length === nextSession.habitIds.length &&
-                          existing.habitIds.every((id, idx) => id === nextSession.habitIds[idx]) &&
-                          existing.status === nextSession.status
-                        ) {
-                          return ensured;
-                        }
-                        return {
-                          ...ensured,
-                          ui: { ...prevUi, activeSession: nextSession },
-                        };
+                        });
+                      });
+                      emitSessionRuntimeNotificationHook("start", {
+                        occurrenceId: resolved.occurrenceId,
+                        dateKey: todayKey,
+                        runtimePhase: "in_progress",
+                        source: "reminder_start",
                       });
                     }
                     if (target?.categoryId) {
