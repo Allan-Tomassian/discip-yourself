@@ -19,7 +19,6 @@ export default function FocusCard({
   onSelectAlternative,
   onResetOverride,
   isOverride = false,
-  onStartSession,
   normalizeOccurrenceForUI = (occ) => occ,
   goalsById = new Map(),
   categoriesById = new Map(),
@@ -50,14 +49,17 @@ export default function FocusCard({
           : displayOccurrence.status === "canceled"
             ? "Annulée"
             : "Planifiée"
-    : "Rien de prévu, choisis une action prioritaire.";
-  const canStart = Boolean(displayOccurrence && typeof onStartSession === "function");
+    : "Rien de prévu";
   const hasAlternatives = Array.isArray(alternativeCandidates) && alternativeCandidates.length > 0;
 
   const [showAlternatives, setShowAlternatives] = useState(false);
 
   return (
-    <GateSection className="focusCard GateSurfacePremium GateCardPremium" collapsible={false} data-tour-id="today-focus-card">
+    <GateSection
+      className="focusCard focusCardCompact GateSurfacePremium GateCardPremium"
+      collapsible={false}
+      data-tour-id="today-focus-card"
+    >
       <div className="focusCardBody">
         <div className="focusHeader">
           <div className="focusHeaderLeft">
@@ -77,6 +79,11 @@ export default function FocusCard({
             </div>
           </div>
           <div className="focusHeaderActions">
+            {hasAlternatives ? (
+              <FocusButton variant="ghost" className="focusManageBtn" onClick={() => setShowAlternatives((v) => !v)}>
+                {showAlternatives ? "Fermer" : "Changer"}
+              </FocusButton>
+            ) : null}
             {isOverride ? (
               <FocusButton variant="ghost" className="focusManageBtn" onClick={onResetOverride}>
                 Revenir au plan
@@ -87,30 +94,16 @@ export default function FocusCard({
         <div className="focusBody">
           <div className="focusLine">
             <GateBadge className="focusCategoryBadge">Catégorie · {displayCategoryName}</GateBadge>
+            <span className="focusStatusBadge">{statusText}</span>
           </div>
           <div className="focusNextRow">
-            <span className="focusNextLabel">Prévu maintenant</span>
             <span className="focusNextValue">
               {displayOccurrence
-                ? `${displayTitle} • ${displayTime}${displayDuration ? ` • ${displayDuration} min` : ""} • ${statusText}`
+                ? `${displayTitle} • ${displayTime}${displayDuration ? ` • ${displayDuration} min` : ""}`
                 : statusText}
             </span>
           </div>
-          <div className="focusCtaRow">
-            <FocusButton
-              variant="primary"
-              className="focusCtaBtn"
-              onClick={() => onStartSession?.(displayOccurrence)}
-              disabled={!canStart}
-            >
-              Démarrer
-            </FocusButton>
-            {hasAlternatives ? (
-              <FocusButton variant="ghost" className="focusAltBtn" onClick={() => setShowAlternatives((v) => !v)}>
-                Changer
-              </FocusButton>
-            ) : null}
-          </div>
+          <div className="focusHeroHint">Utilise “Démarrer” dans “À faire maintenant”.</div>
           {hasAlternatives && showAlternatives && typeof onSelectAlternative === "function" ? (
             <div className="focusAltList">
               {alternativeCandidates.map((item) => (

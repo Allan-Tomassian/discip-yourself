@@ -441,7 +441,7 @@ export default function TopMenuPopover({ onNavigate, onClose, initialView = "roo
                   {inSubview ? (
                     <button
                       type="button"
-                      className="topMenuHeaderIconButton GatePressable"
+                      className="topMenuHeaderIconButton GateIconButtonPremium GatePressable"
                       onClick={handleBack}
                       aria-label="Retour"
                       title="Retour"
@@ -451,7 +451,7 @@ export default function TopMenuPopover({ onNavigate, onClose, initialView = "roo
                   ) : null}
                   <button
                     type="button"
-                    className="topMenuHeaderIconButton GatePressable"
+                    className="topMenuHeaderIconButton GateIconButtonPremium GatePressable"
                     onClick={onClose}
                     aria-label="Fermer le menu"
                     title="Fermer"
@@ -603,11 +603,11 @@ export default function TopMenuPopover({ onNavigate, onClose, initialView = "roo
                         dataTestId="menu-wallet-balance"
                       />
                       <div className="topMenuWalletStats">
-                        <div className="topMenuWalletStat">
+                        <div className="topMenuWalletStat GateRowPremium">
                           <span>Gagné aujourd’hui</span>
                           <strong>{formatCoins(walletData.earnedToday)}</strong>
                         </div>
-                        <div className="topMenuWalletStat">
+                        <div className="topMenuWalletStat GateRowPremium">
                           <span>Vidéos aujourd’hui</span>
                           <strong>{walletData.adsToday}/{BASIC_REWARDED_ADS_DAILY_LIMIT}</strong>
                         </div>
@@ -618,7 +618,7 @@ export default function TopMenuPopover({ onNavigate, onClose, initialView = "roo
                           <p className="topMenuWalletEventsEmpty">Chargement...</p>
                         ) : walletRecentEvents.length ? (
                           walletRecentEvents.map((event, index) => (
-                            <div className="topMenuWalletEvent" key={`${event.ts || "ev"}-${index}`}>
+                            <div className="topMenuWalletEvent GateRowPremium" key={`${event.ts || "ev"}-${index}`}>
                               <div className="topMenuWalletEventText">
                                 <span className="topMenuWalletEventLabel">{formatWalletEventLabel(event.type)}</span>
                                 <span className="topMenuWalletEventMeta">{formatWalletEventTime(event)}</span>
@@ -669,7 +669,10 @@ export default function TopMenuPopover({ onNavigate, onClose, initialView = "roo
                             const owned = totemData.owned.colors.includes(colorOption.id);
                             const equipped = String(totemData.equipped.bodyColor).toLowerCase() === String(colorOption.color).toLowerCase();
                             return (
-                              <div className="topMenuTotemCard" key={colorOption.id}>
+                              <div
+                                className={`topMenuTotemCard GateRowPremium${equipped ? " isEquipped" : ""}`}
+                                key={colorOption.id}
+                              >
                                 <span className="topMenuTotemSwatch" style={{ background: colorOption.color }} aria-hidden="true" />
                                 <div className="topMenuTotemCardText">
                                   <strong>{colorOption.label}</strong>
@@ -697,7 +700,10 @@ export default function TopMenuPopover({ onNavigate, onClose, initialView = "roo
                             const owned = totemData.owned.accessories.includes(accessoryOption.id);
                             const equipped = totemData.equipped.accessoryIds.includes(accessoryOption.id);
                             return (
-                              <div className="topMenuTotemCard" key={accessoryOption.id}>
+                              <div
+                                className={`topMenuTotemCard GateRowPremium${equipped ? " isEquipped" : ""}`}
+                                key={accessoryOption.id}
+                              >
                                 <span className="topMenuTotemAccessoryBadge" aria-hidden="true">{accessoryOption.emoji}</span>
                                 <div className="topMenuTotemCardText">
                                   <strong>{accessoryOption.label}</strong>

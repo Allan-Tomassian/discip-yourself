@@ -15,7 +15,7 @@ import "./totemDock.css";
 
 const PANEL_VIEWS = new Set(["wallet", "shop", "totem", "settings"]);
 const DOCK_Z = {
-  dock: 1100,
+  dock: 880,
   ghost: 1140,
   scrim: 1190,
   panel: 1200,
@@ -146,6 +146,7 @@ export default function TotemDockLayer({ data, setData }) {
 
   const dockRef = useRef(null);
   const nubRef = useRef(null);
+  const panelLayerRef = useRef(null);
   const hideTimeoutRef = useRef(0);
   const flightTimersRef = useRef([]);
   const flightFrameTimerRef = useRef(0);
@@ -519,6 +520,23 @@ export default function TotemDockLayer({ data, setData }) {
     persistDockState(nextDock);
   }, [dockState, persistDockState]);
 
+  useEffect(() => {
+    if (!dockState.panelOpen) return undefined;
+    const onPointerDown = (event) => {
+      const target = event.target;
+      if (panelLayerRef.current && panelLayerRef.current.contains(target)) return;
+      if (dockRef.current && dockRef.current.contains(target)) return;
+      if (nubRef.current && nubRef.current.contains(target)) return;
+      closePanel();
+    };
+    window.addEventListener("mousedown", onPointerDown, true);
+    window.addEventListener("touchstart", onPointerDown, true);
+    return () => {
+      window.removeEventListener("mousedown", onPointerDown, true);
+      window.removeEventListener("touchstart", onPointerDown, true);
+    };
+  }, [dockState.panelOpen, closePanel]);
+
   const handleDockPress = useCallback(() => {
     if (flightState.phase !== "idle") {
       stopFlight();
@@ -693,7 +711,10 @@ export default function TotemDockLayer({ data, setData }) {
   if (typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="totemDockLayer" aria-hidden={dockState.panelOpen ? "false" : "true"}>
+    <div
+      className={`totemDockLayer${dockState.panelOpen ? " isPanelOpen" : ""}`}
+      aria-hidden={dockState.panelOpen ? "false" : "true"}
+    >
       <div className="totemDockAnchor" style={{ zIndex: DOCK_Z.dock }}>
         <TotemDockButton
           hidden={dockState.hidden}
@@ -739,6 +760,7 @@ export default function TotemDockLayer({ data, setData }) {
             onClick={closePanel}
           />
           <div
+            ref={panelLayerRef}
             className="totemDockPanelLayer"
             style={{
               zIndex: DOCK_Z.panel,

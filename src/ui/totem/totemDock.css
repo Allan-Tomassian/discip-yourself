@@ -3,13 +3,34 @@
   inset: 0;
   overflow: visible;
   pointer-events: none;
-  z-index: 1100;
   --totem-anchor-top: calc(var(--topbar-bottom, calc(env(safe-area-inset-top) + 74px)) - 6px);
-  --totem-dock-anchor-x: calc(env(safe-area-inset-right) + 14px);
-  --totem-dock-shift-x: clamp(34px, 7vw, 64px);
+  --totem-dock-anchor-x: calc(env(safe-area-inset-right) + 20px);
+  --totem-dock-shift-x: clamp(46px, 7vw, 72px);
   --totem-bleed: 0px;
-  --totem-scale: 0.78;
-  --totem-scale-small: 0.72;
+  --totem-scale: 0.56;
+  --totem-scale-small: 0.53;
+}
+
+.totemDockLayer::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--topbar-bottom, calc(env(safe-area-inset-top) + 74px)) + 10px);
+  pointer-events: none;
+  z-index: 896;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--gate-surface-2, #131924) 97%, #03060c) 0%,
+    color-mix(in srgb, var(--gate-surface-2, #131924) 92%, #04070d) 44%,
+    color-mix(in srgb, var(--gate-surface-2, #131924) 52%, transparent) 76%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+.totemDockLayer.isPanelOpen {
+  pointer-events: auto;
 }
 
 .totemDockAnchor {
@@ -18,6 +39,7 @@
   right: var(--totem-dock-anchor-x);
   transform: translateX(calc(-1 * var(--totem-dock-shift-x)));
   pointer-events: none;
+  will-change: transform, top;
 }
 
 .totemDockButton,
@@ -26,8 +48,8 @@
 }
 
 .totemDockButton {
-  width: 112px;
-  height: 112px;
+  width: 92px;
+  height: 92px;
   border: 0;
   background: transparent;
   padding: 0;
@@ -40,20 +62,42 @@
   transform-origin: top right;
 }
 
+.totemDockButton:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--accent) 52%, rgba(255, 255, 255, 0.2));
+  outline-offset: 2px;
+}
+
 .totemDockButton.isHiding {
   animation: totemDockHideDrop 860ms ease forwards;
 }
 
 .totemDockVisual {
   position: absolute;
-  top: -26px;
-  right: -66px;
-  width: 194px;
-  height: 178px;
+  top: -14px;
+  right: -50px;
+  width: 156px;
+  height: 142px;
   display: block;
   pointer-events: none;
   transform: translateZ(0);
   will-change: transform;
+}
+
+.totemDockVisual::before {
+  content: "";
+  position: absolute;
+  top: -32px;
+  left: 0;
+  right: 0;
+  height: 56px;
+  pointer-events: none;
+  z-index: 3;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--gate-surface-2, #131924) 94%, #04070d) 0%,
+    color-mix(in srgb, var(--gate-surface-2, #131924) 72%, transparent) 48%,
+    rgba(0, 0, 0, 0) 100%
+  );
 }
 
 .totemDockVisual.isBirdHidden .totemDockEagleWrap,
@@ -65,9 +109,10 @@
   position: absolute;
   right: 0;
   top: 0;
-  width: 176px;
-  height: 176px;
+  width: 146px;
+  height: 146px;
   animation: totemDockIdleFloat 4.8s ease-in-out infinite;
+  opacity: 0.88;
 }
 
 .totemDockEagleAsset {
@@ -75,7 +120,7 @@
   height: 100%;
   object-fit: contain;
   display: block;
-  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.34));
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
   transform-origin: 50% 55%;
   animation: totemDockIdleBlink 6.8s linear infinite;
   pointer-events: none;
@@ -83,10 +128,10 @@
 
 .totemDockBirdAccessory {
   position: absolute;
-  right: 24px;
-  top: 22px;
-  width: 22px;
-  height: 22px;
+  right: 22px;
+  top: 20px;
+  width: 20px;
+  height: 20px;
   border-radius: 999px;
   display: grid;
   place-items: center;
@@ -108,7 +153,7 @@
   place-items: center;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 10px 20px rgba(0, 0, 0, 0.28);
+    0 8px 14px rgba(0, 0, 0, 0.24);
 }
 
 .totemDockNubGlyph {
@@ -161,7 +206,7 @@
 .totemDockScrim {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.24);
+  background: rgba(1, 3, 8, 0.22);
   pointer-events: auto;
 }
 
@@ -173,7 +218,7 @@
 
 .totemDockPanelOuter {
   --gate-glass-radius: var(--radius-card, 16px);
-  --gate-glass-shadow: 0 18px 32px rgba(0, 0, 0, 0.36);
+  --gate-glass-shadow: 0 20px 38px rgba(0, 0, 0, 0.46);
   border-radius: var(--gate-glass-radius);
 }
 
@@ -216,13 +261,14 @@
 }
 
 .totemDockTab {
-  border: 1px solid color-mix(in srgb, var(--gate-border) 90%, rgba(255, 255, 255, 0.12));
+  border: 1px solid color-mix(in srgb, var(--gate-border) 86%, rgba(255, 255, 255, 0.16));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--gate-surface-2) 84%, rgba(255, 255, 255, 0.05));
+  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
   color: var(--gate-text-muted);
   padding: 6px 10px;
   font-size: 12px;
   cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
 .totemDockTab.isActive {
@@ -258,14 +304,15 @@
 }
 
 .totemDockWalletStat {
-  border: 1px solid var(--gate-border);
+  border: 1px solid color-mix(in srgb, var(--gate-border) 86%, rgba(255, 255, 255, 0.16));
   border-radius: 12px;
-  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
+  background: color-mix(in srgb, var(--gate-surface-1) 92%, #05080f);
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
   gap: 2px;
   font-size: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .totemDockWalletStat strong {
@@ -285,14 +332,15 @@
 }
 
 .totemDockWalletEvent {
-  border: 1px solid var(--gate-border);
+  border: 1px solid color-mix(in srgb, var(--gate-border) 86%, rgba(255, 255, 255, 0.14));
   border-radius: 12px;
-  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
+  background: color-mix(in srgb, var(--gate-surface-1) 92%, #05080f);
   padding: 8px 10px;
   display: flex;
   justify-content: space-between;
   gap: 8px;
   align-items: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .totemDockWalletEventText {
@@ -372,15 +420,16 @@
 
 .totemDockOwnedRow,
 .totemDockSettingsRow {
-  border: 1px solid var(--gate-border);
+  border: 1px solid color-mix(in srgb, var(--gate-border) 86%, rgba(255, 255, 255, 0.16));
   border-radius: 12px;
-  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
+  background: color-mix(in srgb, var(--gate-surface-1) 92%, #05080f);
   padding: 8px 10px;
   display: flex;
   justify-content: space-between;
   gap: 10px;
   align-items: center;
   font-size: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .totemDockShopGroup {
@@ -401,14 +450,15 @@
 }
 
 .totemDockShopCard {
-  border: 1px solid var(--gate-border);
+  border: 1px solid color-mix(in srgb, var(--gate-border) 86%, rgba(255, 255, 255, 0.16));
   border-radius: 12px;
-  background: color-mix(in srgb, var(--gate-surface-1) 92%, #05080f);
+  background: color-mix(in srgb, var(--gate-surface-1) 93%, #05080f);
   padding: 8px 10px;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .totemDockSwatch,
@@ -567,25 +617,27 @@
 
 @media (max-width: 640px) {
   .totemDockLayer {
-    --totem-dock-shift-x: 48px;
+    --totem-dock-anchor-x: calc(env(safe-area-inset-right) + 14px);
+    --totem-dock-shift-x: 44px;
+    --totem-anchor-top: calc(var(--topbar-bottom, calc(env(safe-area-inset-top) + 74px)) - 4px);
   }
 
   .totemDockButton {
-    width: 102px;
-    height: 102px;
+    width: 84px;
+    height: 84px;
   }
 
   .totemDockVisual {
-    top: -20px;
-    right: -56px;
-    width: 176px;
-    height: 160px;
+    top: -12px;
+    right: -40px;
+    width: 140px;
+    height: 126px;
   }
 
   .totemDockEagleWrap {
     right: 0;
-    width: 158px;
-    height: 158px;
+    width: 130px;
+    height: 130px;
   }
 
   .totemDockPanelLayer {
@@ -599,18 +651,24 @@
 
 @media (min-width: 901px) {
   .totemDockLayer {
-    --totem-dock-shift-x: 24px;
+    --totem-scale: 0.5;
+    --totem-dock-anchor-x: calc(env(safe-area-inset-right) + 24px);
+    --totem-dock-shift-x: 52px;
+    --totem-anchor-top: calc(var(--topbar-bottom, calc(env(safe-area-inset-top) + 74px)) - 4px);
+  }
+}
+
+@media (min-width: 1200px) {
+  .totemDockLayer {
+    --totem-scale: 0.46;
+    --totem-dock-anchor-x: calc(env(safe-area-inset-right) + 30px);
+    --totem-dock-shift-x: 56px;
+    --totem-anchor-top: calc(var(--topbar-bottom, calc(env(safe-area-inset-top) + 74px)) - 4px);
   }
 }
 
 @media (max-height: 740px) {
   .totemDockLayer {
     --totem-scale: var(--totem-scale-small);
-  }
-}
-
-@supports (height: 100dvh) {
-  .totemDockLayer {
-    --totem-anchor-top: calc(var(--topbar-bottom, calc(env(safe-area-inset-top) + 74px)) - 6px);
   }
 }

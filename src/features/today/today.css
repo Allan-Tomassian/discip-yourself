@@ -1,3 +1,214 @@
+.todayPageShell {
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+  gap: 14px;
+}
+
+.todayHeroCard {
+  width: 100%;
+  box-sizing: border-box;
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--gate-border));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 18px 32px rgba(0, 0, 0, 0.34),
+    0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.todayHeroCard .gateSectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.todayHeroHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-inline: 2px;
+}
+
+.todayHeroKicker {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.26;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent) 82%, var(--text-3, var(--muted2)));
+}
+
+.todayHeroDate {
+  font-size: 12px;
+  line-height: 1.26;
+  color: var(--text-3, var(--muted2));
+  font-variant-numeric: tabular-nums;
+}
+
+.todayHeroBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-inline: 2px;
+}
+
+.todayHeroTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--text) 94%, #ffffff);
+  line-height: 1.3;
+}
+
+.todayHeroMeta {
+  font-size: 12px;
+  line-height: 1.38;
+  color: color-mix(in srgb, var(--text-3, var(--muted2)) 88%, rgba(255, 255, 255, 0.2));
+}
+
+.todayHeroActions {
+  margin-top: 4px;
+  padding-inline: 2px;
+}
+
+.todayHeaderSessionBadge {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 180px;
+}
+
+.todayHeroPrimaryBtn {
+  min-width: 170px;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.todayHeroSecondaryBtn {
+  min-width: 132px;
+  justify-content: center;
+}
+
+.todayProgressCard {
+  width: 100%;
+  box-sizing: border-box;
+  border-color: color-mix(in srgb, var(--gate-border) 92%, rgba(255, 255, 255, 0.14));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    0 14px 26px rgba(0, 0, 0, 0.28);
+}
+
+.todayProgressCard .gateSectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.todayProgressHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-inline: 2px;
+}
+
+.todayProgressTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--text) 94%, #fff);
+}
+
+.todayProgressCaption {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text-3, var(--muted2)) 84%, rgba(255, 255, 255, 0.14));
+}
+
+.todayProgressMetrics {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-inline: 2px;
+}
+
+.todayProgressMetric {
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--gate-border) 88%, rgba(255, 255, 255, 0.14));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
+  padding: 10px 12px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  cursor: pointer;
+}
+
+.todayProgressMetricHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.todayProgressMetricLabel {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--text-3, var(--muted2)) 84%, rgba(255, 255, 255, 0.2));
+}
+
+.todayProgressMetricValue {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--text) 92%, #fff);
+}
+
+.todayProgressBarTrack {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.11);
+  overflow: hidden;
+}
+
+.todayProgressBarFill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 180ms ease-out;
+}
+
+.todayWhyRow {
+  align-items: center;
+  gap: 10px;
+  padding: 2px 2px 0;
+}
+
+.todayWhyText {
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+  color: color-mix(in srgb, var(--text-3, var(--muted2)) 82%, transparent);
+}
+
+.focusCard,
+.microCard,
+.calendarCard {
+  border-color: color-mix(in srgb, var(--gate-border) 84%, rgba(255, 255, 255, 0.2));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 14px 28px rgba(0, 0, 0, 0.3);
+}
+
+.todaySecondaryCard {
+  border-color: color-mix(in srgb, var(--gate-border) 92%, rgba(255, 255, 255, 0.08));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--gate-surface-1) 90%, #050910),
+    color-mix(in srgb, var(--gate-surface-2) 94%, #04070e)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 12px 24px rgba(0, 0, 0, 0.26);
+}
+
 .focusCard {
   width: 100%;
   box-sizing: border-box;
@@ -5,10 +216,10 @@
 }
 
 .focusCardBody {
-  padding: 18px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .focusHeader {
@@ -16,6 +227,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
+  padding-inline: 2px;
 }
 
 .focusHeaderLeft {
@@ -33,11 +245,12 @@
 .focusHeaderActions {
   display: flex;
   justify-content: flex-end;
-  min-width: 92px;
+  min-width: 72px;
+  gap: 8px;
 }
 
 .focusManageBtn {
-  min-width: 88px;
+  min-width: 78px;
   justify-content: center;
 }
 
@@ -45,6 +258,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding-inline: 2px;
 }
 
 .focusLine {
@@ -58,11 +272,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-radius: 12px;
-  border: 1px solid var(--gate-border);
-  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
-  min-height: 40px;
+  border: 1px solid color-mix(in srgb, var(--gate-border) 90%, rgba(255, 255, 255, 0.12));
+  background: color-mix(in srgb, var(--gate-surface-1) 88%, #05080f);
+  min-height: 34px;
 }
 
 .focusNextLabel {
@@ -73,7 +287,7 @@
 }
 
 .focusNextValue {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text);
   min-width: 0;
   flex: 1;
@@ -82,18 +296,20 @@
   text-overflow: ellipsis;
 }
 
-.focusCtaRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.focusStatusBadge {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--text-3, var(--muted2)) 84%, rgba(255, 255, 255, 0.18));
+  border: 1px solid color-mix(in srgb, var(--gate-border) 86%, rgba(255, 255, 255, 0.14));
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--gate-surface-2) 90%, #050910);
 }
 
-.focusCtaBtn {
-  min-width: 140px;
-}
-
-.focusAltBtn {
-  min-width: 110px;
+.focusHeroHint {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--text-3, var(--muted2)) 78%, rgba(255, 255, 255, 0.12));
+  line-height: 1.35;
 }
 
 .focusAltList {
@@ -132,10 +348,10 @@
 }
 
 .microCardBody {
-  padding: 18px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .microHeader {
@@ -143,6 +359,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  padding-inline: 2px;
 }
 
 .microHeaderStats {
@@ -155,11 +372,12 @@
 
 .microDoneStat {
   font-size: 12px;
-  color: var(--text-3, var(--muted2));
-  border: 1px solid var(--gate-border);
+  color: color-mix(in srgb, var(--text-3, var(--muted2)) 86%, rgba(255, 255, 255, 0.2));
+  border: 1px solid color-mix(in srgb, var(--gate-border) 86%, rgba(255, 255, 255, 0.16));
   border-radius: 999px;
   padding: 2px 8px;
   white-space: nowrap;
+  background: color-mix(in srgb, var(--gate-surface-1) 86%, #05080f);
 }
 
 .microToolbar {
@@ -167,6 +385,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(140px, 220px);
   gap: 10px;
   align-items: center;
+  padding-inline: 2px;
 }
 
 .microContext {
@@ -195,10 +414,12 @@
   border-radius: 10px;
   background: color-mix(in srgb, var(--gate-surface-2) 90%, #050910);
   padding: 8px 10px;
+  margin-inline: 2px;
 }
 
 .microTodayHintText {
   font-size: 12px;
+  line-height: 1.36;
   color: var(--text-3, var(--muted2));
 }
 
@@ -220,6 +441,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding-inline: 2px;
 }
 
 .microItem {
@@ -228,9 +450,10 @@
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid var(--gate-border);
+  border: 1px solid color-mix(in srgb, var(--gate-border) 88%, rgba(255, 255, 255, 0.14));
   border-radius: 12px;
-  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
+  background: color-mix(in srgb, var(--gate-surface-1) 92%, #05080f);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .microPick {
@@ -239,7 +462,7 @@
   justify-content: center;
   width: 20px;
   height: 20px;
-  border: 1px solid var(--gate-border);
+  border: 1px solid color-mix(in srgb, var(--gate-border) 84%, rgba(255, 255, 255, 0.18));
   border-radius: 6px;
   background: color-mix(in srgb, var(--gate-surface-2) 92%, #05080f);
   position: relative;
@@ -315,6 +538,7 @@
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
+  padding-inline: 2px;
 }
 
 .microRerollBtn {
@@ -330,17 +554,30 @@
 
 .microRerollMeta {
   font-size: 12px;
-  color: var(--text-3, var(--muted2));
+  line-height: 1.32;
+  color: color-mix(in srgb, var(--text-3, var(--muted2)) 84%, rgba(255, 255, 255, 0.2));
 }
 
 .microRerollLimit {
   font-size: 12px;
+  line-height: 1.32;
   color: color-mix(in srgb, #ffd2d2 72%, var(--text-3, var(--muted2)));
+  padding-inline: 2px;
 }
 
 .microRewardStatus {
   font-size: 12px;
+  line-height: 1.34;
   color: color-mix(in srgb, #d6f7d6 80%, var(--text));
+  padding-inline: 2px;
+}
+
+.todaySecondaryCard .p18 {
+  padding: 16px;
+}
+
+.todaySecondaryCard .cardSectionTitleRow {
+  padding-inline: 2px;
 }
 
 .microAdBackdrop {
@@ -398,6 +635,26 @@
 }
 
 @media (max-width: 600px) {
+  .todayHeroHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .todayHeroActions {
+    width: 100%;
+  }
+
+  .todayHeroPrimaryBtn,
+  .todayHeroSecondaryBtn {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .todayHeaderSessionBadge {
+    min-width: 0;
+  }
+
   .focusCardBody,
   .microCardBody {
     padding: 16px;
@@ -445,5 +702,21 @@
     grid-row: 3;
     grid-column: 2;
     justify-self: end;
+  }
+}
+
+@media (min-width: 900px) {
+  .todayPageShell {
+    max-width: 1040px;
+  }
+
+  .todayHeroCard .gateSectionBody {
+    gap: 12px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .todayPageShell {
+    max-width: 1180px;
   }
 }

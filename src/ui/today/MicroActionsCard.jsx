@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
+import { UI_COPY } from "../labels";
 import "../../features/today/today.css";
 
 function MicroButton({ variant = "primary", className = "", ...props }) {
@@ -193,10 +194,11 @@ export default function MicroActionsCard({
                   className="microActionBtn"
                   onClick={() => onDone?.(index)}
                   disabled={!canValidate || isDone}
-                  aria-label={isDone ? "Déjà fait" : `Valider: ${item.title}`}
+                  aria-label={isDone ? "Déjà fait" : `${UI_COPY.done}: ${item.title}`}
                   data-tour-id="today-micro-done"
+                  aria-disabled={!canValidate || isDone}
                 >
-                  {isDone ? "Fait" : "Fait"}
+                  {UI_COPY.done}
                 </MicroButton>
               </div>
             );
@@ -233,8 +235,9 @@ export default function MicroActionsCard({
               disabled={!canWatchRewardedAd || adLoading}
               aria-label="Regarder une vidéo pour débloquer un reroll"
               data-testid="micro-watch-ad"
+              aria-disabled={!canWatchRewardedAd || adLoading}
             >
-              {adLoading ? "Vidéo..." : "Regarder une vidéo"}
+              {adLoading ? "Vidéo..." : UI_COPY.watchAd}
             </MicroButton>
           ) : null}
           <span className="microRerollMeta">{rerollCounterLabel}</span>

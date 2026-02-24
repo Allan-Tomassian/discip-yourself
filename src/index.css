@@ -46,9 +46,17 @@
 
 @media (min-width: 901px) {
   :root {
-    --page-pad: 24px;
-    --layout-max: 1040px;
-    --floating-max: 860px;
+    --page-pad: 30px;
+    --layout-max: 1220px;
+    --floating-max: 1040px;
+  }
+}
+
+@media (min-width: 1200px) {
+  :root {
+    --page-pad: 40px;
+    --layout-max: 1360px;
+    --floating-max: 1180px;
   }
 }
 
@@ -553,6 +561,18 @@ a{ color:inherit; }
 .pageNarrow{
   max-width:720px;
   margin:0 auto;
+}
+
+@media (min-width: 900px) {
+  .pageNarrow {
+    max-width: 980px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .pageNarrow {
+    max-width: 1120px;
+  }
 }
 .panelNarrow{
   min-width:0;

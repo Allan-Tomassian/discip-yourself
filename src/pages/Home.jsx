@@ -45,7 +45,7 @@ import FocusCard from "../ui/focus/FocusCard";
 import MicroActionsCard from "../ui/today/MicroActionsCard";
 import RewardedAdModal from "../ui/today/RewardedAdModal";
 import { emitTotemEvent } from "../ui/totem/totemEvents";
-import { LABELS } from "../ui/labels";
+import { LABELS, UI_COPY } from "../ui/labels";
 
 // TOUR MAP:
 // - primary_action: start session (GO) for today
@@ -1820,85 +1820,16 @@ export default function Home({
 
   const whyText = (profile.whyText || "").trim();
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
+  const nowActionTitle = focusOccurrence?.title || "Aucune action planifiée pour cette date.";
+  const nowActionMeta = focusOccurrence
+    ? [focusOccurrence?.timeLabel, focusOccurrence?.categoryName].filter(Boolean).join(" • ")
+    : "Crée ou planifie une action depuis Bibliothèque.";
 
-  const headerRight = categories.length ? (
-    <div style={{ minWidth: 180 }}>
-      <button
-        className="statButton"
-        type="button"
-        onClick={() => setShowDayStats(true)}
-        data-tour-id="today-stats-day"
-      >
-        <div className="small2" style={{ textAlign: "right" }}>
-          Progression du jour
-        </div>
-        <div className="row" style={{ alignItems: "center", gap: 8, marginTop: 4 }}>
-          <div
-            style={{
-              flex: 1,
-              height: 6,
-              background: "rgba(255,255,255,.12)",
-              borderRadius: 999,
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                width: `${Math.round(coreProgress.ratio * 100)}%`,
-                height: "100%",
-                background: goalAccent,
-                borderRadius: 999,
-              }}
-            />
-          </div>
-          <div className="small2" style={{ minWidth: 36, textAlign: "right" }}>
-            {coreProgress.done}/{coreProgress.total || 0}
-          </div>
-        </div>
-      </button>
-
-      <button
-        className="statButton mt10"
-        type="button"
-        style={accentVars}
-        onClick={() => setShowDisciplineStats(true)}
-        data-tour-id="today-stats-discipline"
-      >
-        <div className="small2 textRight">
-          Discipline
-        </div>
-        <div className="row alignCenter gap8 mt4">
-          <div
-            style={{
-              flex: 1,
-              height: 6,
-              background: "rgba(255,255,255,.12)",
-              borderRadius: 999,
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                width: `${Math.round(disciplineBreakdown.ratio * 100)}%`,
-                height: "100%",
-                background: accent,
-                borderRadius: 999,
-              }}
-            />
-          </div>
-          <div className="small2 textRight minW36">
-            {disciplineBreakdown.score}%
-          </div>
-        </div>
-      </button>
-
-      {sessionBadgeLabel ? (
-        <div className="mt10 row rowEnd" style={accentVars}>
-          <span className="badge badgeAccent">
-            {sessionBadgeLabel}
-          </span>
-        </div>
-      ) : null}
+  const headerRight = sessionBadgeLabel ? (
+    <div className="todayHeaderSessionBadge" style={accentVars}>
+      <span className="badge badgeAccent">
+        {sessionBadgeLabel}
+      </span>
     </div>
   ) : null;
 
@@ -1911,11 +1842,85 @@ export default function Home({
       headerRight={headerRight}
       headerRowAlign="start"
     >
-      <div className="stack stackGap12" style={{ maxWidth: 720, margin: "0 auto" }}>
-        <div className="row">
+      <div className="stack stackGap12 todayPageShell">
+        <GateSection className="todayHeroCard GateSurfacePremium GateCardPremium" collapsible={false}>
+          <div className="todayHeroHeader">
+            <div className="todayHeroKicker">À faire maintenant</div>
+            <div className="todayHeroDate">{selectedDateLabel}</div>
+          </div>
+          <div className="todayHeroBody">
+            <div className="todayHeroTitle">{nowActionTitle}</div>
+            {nowActionMeta ? <div className="todayHeroMeta">{nowActionMeta}</div> : null}
+          </div>
+          <div className="todayHeroActions GatePrimaryCtaRow">
+            <GateButton
+              className="GatePressable todayHeroPrimaryBtn"
+              disabled={!focusOccurrence}
+              onClick={() => {
+                if (!focusOccurrence) return;
+                handleStartSession(focusOccurrence);
+              }}
+            >
+              {focusOccurrence ? "Commencer maintenant" : "Aucune action active"}
+            </GateButton>
+            <GateButton
+              variant="ghost"
+              className="GatePressable todayHeroSecondaryBtn"
+              onClick={() => setShowDayStats(true)}
+            >
+              Voir progression
+            </GateButton>
+          </div>
+        </GateSection>
+
+        <GateSection className="todayProgressCard GateSurfacePremium GateCardPremium" collapsible={false}>
+          <div className="todayProgressHeader">
+            <div className="todayProgressTitle">Progression du jour</div>
+            <div className="todayProgressCaption">Suivi quotidien</div>
+          </div>
+          <div className="todayProgressMetrics">
+            <button
+              className="todayProgressMetric GatePressable"
+              type="button"
+              onClick={() => setShowDayStats(true)}
+              data-tour-id="today-stats-day"
+            >
+              <div className="todayProgressMetricHead">
+                <span className="todayProgressMetricLabel">Progression du jour</span>
+                <span className="todayProgressMetricValue">{coreProgress.done}/{coreProgress.total || 0}</span>
+              </div>
+              <div className="todayProgressBarTrack">
+                <div
+                  className="todayProgressBarFill"
+                  style={{ width: `${Math.round(coreProgress.ratio * 100)}%`, background: goalAccent }}
+                />
+              </div>
+            </button>
+
+            <button
+              className="todayProgressMetric GatePressable"
+              type="button"
+              style={accentVars}
+              onClick={() => setShowDisciplineStats(true)}
+              data-tour-id="today-stats-discipline"
+            >
+              <div className="todayProgressMetricHead">
+                <span className="todayProgressMetricLabel">Discipline</span>
+                <span className="todayProgressMetricValue">{disciplineBreakdown.score}%</span>
+              </div>
+              <div className="todayProgressBarTrack">
+                <div
+                  className="todayProgressBarFill"
+                  style={{ width: `${Math.round(disciplineBreakdown.ratio * 100)}%`, background: accent }}
+                />
+              </div>
+            </button>
+          </div>
+        </GateSection>
+
+        <div className="row todayWhyRow">
           <div
-            className="small2"
-            style={{ flex: 1, minWidth: 0, whiteSpace: "normal" }}
+            className="small2 todayWhyText"
             data-tour-id="today-why-text"
           >
             {showWhy ? whyDisplay : "Pourquoi masqué"}
@@ -1991,7 +1996,7 @@ export default function Home({
 
           if (blockId === "notes") {
             return (
-              <HomeCard data-tour-id="today-notes-card">
+              <HomeCard className="todaySecondaryCard" data-tour-id="today-notes-card">
                 <div className="p18">
                   <div className="row">
                     <div className="cardSectionTitleRow">
@@ -2087,7 +2092,7 @@ export default function Home({
                   </div>
                   <div className="noteActions mt12">
                     <Button onClick={addNoteToHistory} data-tour-id="today-notes-add">
-                      Enregistrer
+                      {UI_COPY.save}
                     </Button>
                   </div>
                 </div>
@@ -2136,7 +2141,7 @@ export default function Home({
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div className="titleSm">Progression du jour</div>
               <button className="linkBtn" type="button" onClick={() => setShowDayStats(false)}>
-                Fermer
+                {UI_COPY.close}
               </button>
             </div>
             <div className="mt12 col" style={{ gap: 10 }}>
@@ -2169,7 +2174,7 @@ export default function Home({
             <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
               <div className="titleSm">Discipline</div>
               <button className="linkBtn" type="button" onClick={() => setShowDisciplineStats(false)}>
-                Fermer
+                {UI_COPY.close}
               </button>
             </div>
             <div className="mt12 col" style={{ gap: 10 }}>
@@ -2239,7 +2244,7 @@ export default function Home({
                     setNoteDeleteTargetId(null);
                   }}
                 >
-                  Fermer
+                  {UI_COPY.close}
                 </button>
               </div>
             </div>

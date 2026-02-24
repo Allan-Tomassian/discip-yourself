@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Modal } from "../../components/UI";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { SYSTEM_INBOX_ID } from "../../logic/state";
-import { LABELS } from "../labels";
+import { LABELS, UI_COPY } from "../labels";
 import { GateButton, GateCard, GateFooter, GateHeader, GatePanel, GateRow } from "../../shared/ui/gate/Gate";
 import CreateV2Outcome from "../../pages/CreateV2Outcome";
 import CreateV2HabitType from "../../pages/CreateV2HabitType";
@@ -12,6 +12,7 @@ import CreateV2LinkOutcome from "../../pages/CreateV2LinkOutcome";
 import CreateV2PickCategory from "../../pages/CreateV2PickCategory";
 import { STEP_HABIT_TYPE, STEP_LINK_OUTCOME, STEP_PICK_CATEGORY, STEP_OUTCOME } from "../../creation/creationSchema";
 import "../../features/create-flow/createFlow.css";
+import "../../shared/ui/overlays/overlays.css";
 
 function resolveCategory(categories, categoryId) {
   const list = Array.isArray(categories) ? categories : [];
@@ -42,6 +43,8 @@ export default function CreateFlowModal({
   const [step, setStep] = useState("choice");
   const [choice, setChoice] = useState(null);
   const [categoryId, setCategoryId] = useState(null);
+  const panelRef = useRef(null);
+  const previousBodyOverflowRef = useRef("");
 
   const resolvedSelected = useMemo(
     () => resolveCategory(categories, selectedCategoryId),
@@ -65,10 +68,48 @@ export default function CreateFlowModal({
 
   const canProceed = Boolean(categoryId);
 
-  const handleClose = (reason = "unknown") => {
+  const handleClose = useCallback((reason = "unknown") => {
     if (typeof resetCreateDraft === "function") resetCreateDraft();
     onClose?.();
-  };
+  }, [onClose, resetCreateDraft]);
+
+  useEffect(() => {
+    if (!open || typeof window === "undefined") return undefined;
+    const onKeyDown = (event) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      handleClose("escape");
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+    };
+  }, [open, handleClose]);
+
+  useEffect(() => {
+    if (!open || typeof document === "undefined") return undefined;
+    const body = document.body;
+    previousBodyOverflowRef.current = body.style.overflow || "";
+    body.style.overflow = "hidden";
+    return () => {
+      body.style.overflow = previousBodyOverflowRef.current;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || typeof window === "undefined") return undefined;
+    const timeoutId = window.setTimeout(() => {
+      const root = panelRef.current;
+      if (!root) return;
+      const focusable = root.querySelector(
+        "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])"
+      );
+      if (focusable && typeof focusable.focus === "function") focusable.focus();
+    }, 0);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [open]);
 
   const startChoice = (nextChoice) => {
     if (!canProceed) return;
@@ -124,14 +165,34 @@ export default function CreateFlowModal({
     handleHabitDone();
   };
 
-  return (
-    <Modal
-      open={open}
-      onClose={(info) => handleClose(info?.reason)}
-      className="createFlowModal gateModal gateModal--flow"
-      backdropClassName="createFlowBackdrop GateOverlayBackdrop"
+  if (!open) return null;
+
+  const modalBody = (
+    <div
+      className="modalBackdrop createFlowBackdrop GateOverlayBackdrop"
+      onClick={(event) => {
+        if (event.target !== event.currentTarget) return;
+        handleClose("backdrop");
+      }}
+      role="presentation"
     >
-      <GatePanel className="createFlowShell gateModal gateModal--flow createFlowScope GateSurfacePremium GateCardPremium" data-testid="create-flow-modal">
+      <div
+        className="modalPanelOuter GateGlassOuter"
+        onClick={(event) => event.stopPropagation()}
+        onMouseDown={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <div className="modalPanelClip GateGlassClip GateGlassBackdrop">
+          <div
+            ref={panelRef}
+            className="modalPanel createFlowModal gateModal gateModal--flow GateGlassContent"
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+            onMouseDown={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <GatePanel className="createFlowShell gateModal gateModal--flow createFlowScope GateSurfacePremium GateCardPremium" data-testid="create-flow-modal">
         <GateHeader title="Créer" subtitle="Choisis ce que tu veux créer" />
 
         <GateRow
@@ -311,10 +372,15 @@ export default function CreateFlowModal({
 
         {step === "choice" ? (
           <GateFooter className="GatePrimaryCtaRow">
-            <GateButton variant="ghost" className="GatePressable" withSound onClick={() => handleClose("cancel")}>Annuler</GateButton>
+            <GateButton variant="ghost" className="GatePressable" withSound onClick={() => handleClose("cancel")}>{UI_COPY.cancel}</GateButton>
           </GateFooter>
         ) : null}
-      </GatePanel>
-    </Modal>
+            </GatePanel>
+          </div>
+        </div>
+      </div>
+    </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(modalBody, document.body) : modalBody;
 }

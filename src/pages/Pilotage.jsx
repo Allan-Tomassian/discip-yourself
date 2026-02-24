@@ -659,8 +659,8 @@ export default function Pilotage({
             return (
               <Card data-tour-id="pilotage-category-status">
                 <div className="p18">
-                  <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                    <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                  <div className="row pilotageCardHeader" style={{ alignItems: "center", justifyContent: "space-between" }}>
+                    <div className="row pilotageCardHeaderLeft" style={{ alignItems: "center", gap: 8 }}>
                       {drag ? (
                         <button
                           ref={setActivatorNodeRef}
@@ -708,7 +708,7 @@ export default function Pilotage({
 
                   {selectedCategory ? (
                     <div className="mt14" style={{ paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                      <div className="row" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                      <div className="row pilotageCardHeader" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                         <div>
                           <div className="sectionTitle">Focus</div>
                           <div className="small2 textMuted">Catégorie sélectionnée</div>
@@ -766,7 +766,7 @@ export default function Pilotage({
               <div className="pilotageTopGrid" data-tour-id="pilotage-load">
                 <Card>
                   <div className="p18">
-                    <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                    <div className="row pilotageCardHeaderLeft" style={{ alignItems: "center", gap: 8 }}>
                       {drag ? (
                         <button
                           ref={setActivatorNodeRef}
@@ -818,7 +818,7 @@ export default function Pilotage({
             return (
               <Card data-tour-id="pilotage-discipline">
                 <div className="p18">
-                  <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                  <div className="row pilotageCardHeaderLeft" style={{ alignItems: "center", gap: 8 }}>
                     {drag ? (
                       <button
                         ref={setActivatorNodeRef}
@@ -948,7 +948,7 @@ export default function Pilotage({
             return (
               <Card data-tour-id="pilotage-reporting">
                 <div className="p18">
-                  <div className="row" style={{ alignItems: "center", gap: 8 }}>
+                  <div className="row pilotageCardHeaderLeft" style={{ alignItems: "center", gap: 8 }}>
                     {drag ? (
                       <button
                         ref={setActivatorNodeRef}

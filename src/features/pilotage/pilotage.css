@@ -1,7 +1,49 @@
 .pilotageTopGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
+}
+
+[data-tour-id^="pilotage-"] .p18,
+.pilotageTopGrid .p18 {
+  padding: 16px;
+}
+
+[data-tour-id^="pilotage-"] .sectionTitle,
+.pilotageTopGrid .sectionTitle {
+  font-size: 12px;
+  line-height: 1.34;
+  font-weight: 650;
+}
+
+[data-tour-id^="pilotage-"] .itemTitle,
+.pilotageTopGrid .itemTitle {
+  font-size: 13px;
+  line-height: 1.34;
+  font-weight: 650;
+}
+
+[data-tour-id^="pilotage-"] .itemSub,
+[data-tour-id^="pilotage-"] .small2,
+.pilotageTopGrid .itemSub,
+.pilotageTopGrid .small2 {
+  line-height: 1.34;
+}
+
+.pilotageCategoryRow {
+  padding: 11px 12px;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.pilotageCardHeader {
+  padding-inline: 2px;
+  min-height: 22px;
+}
+
+.pilotageCardHeaderLeft {
+  padding-inline: 2px;
+  min-height: 22px;
 }
 
 .pilotageStatusBadge {
@@ -13,7 +55,7 @@
   margin-top: 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .pilotageMetricValue {
@@ -38,13 +80,13 @@
   margin-top: 12px;
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: 14px;
+  gap: 12px;
 }
 
 .pilotageRadarPanel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 9px;
 }
 
 .pilotageRadarSvg {
@@ -73,7 +115,7 @@
 .pilotageRadarLegend {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
 }
 
 .pilotageLegendRow {
@@ -91,22 +133,23 @@
 .pilotageRadarSelects {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 9px;
 }
 
 .pilotageInsights {
   margin-top: 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 9px;
 }
 
 .pilotageInsightItem {
-  padding: 8px 10px;
-  border-radius: 10px;
+  padding: 9px 11px;
+  border-radius: 12px;
   border: 1px solid var(--gate-border);
-  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
+  background: color-mix(in srgb, var(--gate-surface-1) 92%, #05080f);
   font-size: 12px;
+  line-height: 1.35;
 }
 
 .pilotageDetails {

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-02-17T16:16:40.419Z",
+  "generatedAt": "2026-02-23T13:29:22.216Z",
   "sourceOfTruth": {
     "gatePrimitives": [
       "src/shared/ui/gate/Gate.jsx",
@@ -26,62 +26,62 @@
       "occurrences": [
         {
           "type": "gate-class",
-          "line": 554,
+          "line": 581,
           "snippet": "<div className=\"BottomBarSurfaceOuter GateGlassOuter\">"
         },
         {
           "type": "gate-class",
-          "line": 555,
+          "line": 582,
           "snippet": "<div className=\"BottomBarSurfaceClip BottomBarBackdrop GateGlassClip GateGlassBackdrop\">"
         },
         {
           "type": "gate-class",
-          "line": 556,
+          "line": 583,
           "snippet": "<GatePanel className=\"bottomCategoryBarPanel GateSurfacePremium GateCardPremium GateGlassContent\">"
         },
         {
           "type": "gate-component",
-          "line": 556,
+          "line": 583,
           "snippet": "<GatePanel className=\"bottomCategoryBarPanel GateSurfacePremium GateCardPremium GateGlassContent\">"
         },
         {
           "type": "gate-component",
-          "line": 563,
+          "line": 590,
           "snippet": "<GateButton"
         },
         {
           "type": "gate-class",
-          "line": 566,
+          "line": 593,
           "snippet": "className=\"bottomCategoryPlus GateIconButtonPremium GatePressable\""
         },
         {
           "type": "gate-component",
-          "line": 898,
+          "line": 925,
           "snippet": "<GatePanel"
         },
         {
           "type": "gate-class",
-          "line": 899,
+          "line": 926,
           "snippet": "className=\"reminderCard reminderPulse GateSurfacePremium GateCardPremium\""
         },
         {
           "type": "gate-class",
-          "line": 917,
+          "line": 944,
           "snippet": "<GateButton variant=\"ghost\" className=\"GatePressable\" onClick={() => setActiveReminder(null)}>"
         },
         {
           "type": "gate-component",
-          "line": 917,
+          "line": 944,
           "snippet": "<GateButton variant=\"ghost\" className=\"GatePressable\" onClick={() => setActiveReminder(null)}>"
         },
         {
           "type": "gate-component",
-          "line": 920,
+          "line": 947,
           "snippet": "<GateButton"
         },
         {
           "type": "gate-class",
-          "line": 921,
+          "line": 948,
           "snippet": "className=\"GatePressable\""
         }
       ]
@@ -193,6 +193,19 @@
       "legacyCount": 0,
       "mixed": false,
       "occurrences": []
+    },
+    {
+      "file": "src/components/AccentCategoryRow.jsx",
+      "gatePremiumCount": 1,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-component",
+          "line": 26,
+          "snippet": "<GateRow"
+        }
+      ]
     },
     {
       "file": "src/components/AccentContext.js",
@@ -460,8 +473,8 @@
       "occurrences": [
         {
           "type": "gate-class",
-          "line": 43,
-          "snippet": "className={`categoryRailItem bottomCategoryChip GatePressable${isSelected ? \" navBtnActive bottomCategoryChipActive\" : \"\"}`}"
+          "line": 44,
+          "snippet": "className={`categoryRailItem bottomCategoryChip NavPillUnified GatePressable${isSelected ? \" navBtnActive bottomCategoryChipActive\" : \"\"}`}"
         }
       ]
     },
@@ -817,69 +830,199 @@
     },
     {
       "file": "src/components/TopMenuPopover.jsx",
-      "gatePremiumCount": 12,
+      "gatePremiumCount": 39,
       "legacyCount": 0,
       "mixed": false,
       "occurrences": [
         {
+          "type": "gate-component",
+          "line": 430,
+          "snippet": "<GatePanel"
+        },
+        {
           "type": "gate-class",
-          "line": 46,
-          "snippet": "<GatePanel className=\"topMenuGate GateSurfacePremium\" role=\"menu\" aria-label=\"Menu principal\">"
+          "line": 431,
+          "snippet": "className=\"topMenuGate topMenuCardContent GateSurfacePremium GateCardPremium\""
         },
         {
           "type": "gate-component",
-          "line": 46,
-          "snippet": "<GatePanel className=\"topMenuGate GateSurfacePremium\" role=\"menu\" aria-label=\"Menu principal\">"
+          "line": 435,
+          "snippet": "<GateHeader"
+        },
+        {
+          "type": "gate-class",
+          "line": 444,
+          "snippet": "className=\"topMenuHeaderIconButton GatePressable\""
+        },
+        {
+          "type": "gate-class",
+          "line": 454,
+          "snippet": "className=\"topMenuHeaderIconButton GatePressable\""
         },
         {
           "type": "gate-component",
-          "line": 47,
-          "snippet": "<GateHeader title=\"Menu\" subtitle=\"Navigation rapide\" className=\"topMenuGateHeader\" />"
-        },
-        {
-          "type": "gate-component",
-          "line": 49,
+          "line": 467,
           "snippet": "<GateSection className=\"topMenuGateSectionFlat\">"
         },
         {
           "type": "gate-component",
-          "line": 52,
+          "line": 470,
           "snippet": "<GateRow"
         },
         {
           "type": "gate-class",
-          "line": 57,
+          "line": 475,
           "snippet": "className=\"topMenuGateItem topMenuGateRowFlat GatePressable\""
         },
         {
           "type": "gate-component",
-          "line": 68,
+          "line": 486,
           "snippet": "<GateSection className=\"topMenuGateSectionFlat\">"
         },
         {
           "type": "gate-component",
-          "line": 71,
+          "line": 489,
           "snippet": "<GateRow"
         },
         {
           "type": "gate-class",
-          "line": 76,
+          "line": 494,
           "snippet": "className=\"topMenuGateItem topMenuGateRowFlat GatePressable\""
         },
         {
           "type": "gate-component",
-          "line": 85,
+          "line": 503,
           "snippet": "<GateFooter className=\"topMenuGateFooter\">"
         },
         {
           "type": "gate-component",
-          "line": 86,
+          "line": 504,
           "snippet": "<GateButton"
         },
         {
           "type": "gate-class",
-          "line": 89,
+          "line": 507,
           "snippet": "className=\"topMenuGateLogout GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 518,
+          "snippet": "<GateSection className=\"topMenuGateSectionFlat topMenuSubviewSection\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 529,
+          "snippet": "className=\"GateTextareaPremium topMenuSettingsTextarea\""
+        },
+        {
+          "type": "gate-class",
+          "line": 539,
+          "snippet": "<div className=\"topMenuSubviewActions GatePrimaryCtaRow\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 540,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 542,
+          "snippet": "className=\"GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 549,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 552,
+          "snippet": "className=\"GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 559,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 561,
+          "snippet": "className=\"GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 579,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 582,
+          "snippet": "className=\"GatePressable topMenuWalletTopBtn\""
+        },
+        {
+          "type": "gate-component",
+          "line": 588,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 591,
+          "snippet": "className=\"GatePressable topMenuWalletTopBtn\""
+        },
+        {
+          "type": "gate-component",
+          "line": 654,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 657,
+          "snippet": "className=\"GatePressable topMenuTotemToggleBtn\""
+        },
+        {
+          "type": "gate-component",
+          "line": 678,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 681,
+          "snippet": "className=\"GatePressable topMenuTotemActionBtn\""
+        },
+        {
+          "type": "gate-component",
+          "line": 706,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 709,
+          "snippet": "className=\"GatePressable topMenuTotemActionBtn\""
+        },
+        {
+          "type": "gate-class",
+          "line": 734,
+          "snippet": "<div className=\"topMenuSubviewActions GatePrimaryCtaRow\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 735,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 738,
+          "snippet": "className=\"GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 745,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 747,
+          "snippet": "className=\"GatePressable\""
         }
       ]
     },
@@ -891,28 +1034,18 @@
       "occurrences": [
         {
           "type": "gate-class",
-          "line": 142,
-          "snippet": "className=\"topMenuScrim GateOverlayBackdrop\""
-        },
-        {
-          "type": "gate-class",
-          "line": 155,
-          "snippet": "<div className=\"TopNavSurfaceOuter GateGlassOuter\">"
-        },
-        {
-          "type": "gate-class",
-          "line": 156,
+          "line": 294,
           "snippet": "<div className=\"TopNavSurfaceClip TopNavBackdrop GateGlassClip GateGlassBackdrop\">"
         },
         {
           "type": "gate-class",
-          "line": 157,
-          "snippet": "<GatePanel className=\"topNavGateBar GateGlassContent\" data-tour-id=\"topnav-row\">"
+          "line": 295,
+          "snippet": "<GatePanel className=\"topNavGateBar GateGlassContent GateSurfacePremium GateCardPremium\" data-tour-id=\"topnav-row\">"
         },
         {
           "type": "gate-component",
-          "line": 157,
-          "snippet": "<GatePanel className=\"topNavGateBar GateGlassContent\" data-tour-id=\"topnav-row\">"
+          "line": 295,
+          "snippet": "<GatePanel className=\"topNavGateBar GateGlassContent GateSurfacePremium GateCardPremium\" data-tour-id=\"topnav-row\">"
         }
       ]
     },
@@ -933,6 +1066,13 @@
           "snippet": "<div className=\"modalPanelClip GateGlassClip GateGlassBackdrop\">"
         }
       ]
+    },
+    {
+      "file": "src/components/WalletBadge.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
     },
     {
       "file": "src/core/focus/focusSelector.js",
@@ -1200,11 +1340,24 @@
       "occurrences": []
     },
     {
-      "file": "src/features/navigation/topMenuGate.css",
+      "file": "src/features/navigation/navPillUnified.css",
       "gatePremiumCount": 0,
       "legacyCount": 0,
       "mixed": false,
       "occurrences": []
+    },
+    {
+      "file": "src/features/navigation/topMenuGate.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "css-backdrop",
+          "line": 99,
+          "snippet": "}"
+        }
+      ]
     },
     {
       "file": "src/features/paywall/paywall.css",
@@ -1291,12 +1444,12 @@
       "occurrences": [
         {
           "type": "legacy-css-selector",
-          "line": 165,
+          "line": 176,
           "snippet": "}"
         },
         {
           "type": "legacy-css-selector",
-          "line": 170,
+          "line": 181,
           "snippet": "}"
         }
       ]
@@ -1421,6 +1574,20 @@
       "occurrences": []
     },
     {
+      "file": "src/logic/microActionsV1.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/microActionsV1.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
       "file": "src/logic/occurrencePlanner.flexPlacement.test.js",
       "gatePremiumCount": 0,
       "legacyCount": 0,
@@ -1470,6 +1637,20 @@
       "occurrences": []
     },
     {
+      "file": "src/logic/progressionModel.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/progressionModel.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
       "file": "src/logic/purchases.js",
       "gatePremiumCount": 0,
       "legacyCount": 0,
@@ -1492,6 +1673,20 @@
     },
     {
       "file": "src/logic/reporting.test.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/rewardedAds.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/rewardedAds.test.js",
       "gatePremiumCount": 0,
       "legacyCount": 0,
       "mixed": false,
@@ -1625,6 +1820,27 @@
     },
     {
       "file": "src/logic/timeFields.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/totemV1.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/walletV1.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/logic/walletV1.test.js",
       "gatePremiumCount": 0,
       "legacyCount": 0,
       "mixed": false,
@@ -1808,93 +2024,88 @@
     },
     {
       "file": "src/pages/Categories.jsx",
-      "gatePremiumCount": 4,
+      "gatePremiumCount": 3,
       "legacyCount": 13,
       "mixed": true,
       "occurrences": [
         {
           "type": "gate-component",
-          "line": 46,
+          "line": 47,
           "snippet": "return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;"
         },
         {
           "type": "gate-component",
-          "line": 52,
+          "line": 53,
           "snippet": "<GateSection className={mergedClassName} collapsible={false} {...props}>"
         },
         {
-          "type": "gate-component",
-          "line": 89,
-          "snippet": "<GateRow"
-        },
-        {
           "type": "legacy-component",
-          "line": 802,
+          "line": 768,
           "snippet": "<Input"
         },
         {
           "type": "legacy-component",
-          "line": 832,
+          "line": 798,
           "snippet": "<Button"
         },
         {
           "type": "legacy-component",
-          "line": 853,
+          "line": 819,
           "snippet": "<Button"
         },
         {
           "type": "legacy-component",
-          "line": 869,
+          "line": 835,
           "snippet": "<Textarea"
         },
         {
           "type": "legacy-component",
-          "line": 909,
+          "line": 875,
           "snippet": "<Input"
         },
         {
           "type": "legacy-component",
-          "line": 951,
+          "line": 917,
           "snippet": "<Button"
         },
         {
           "type": "legacy-component",
-          "line": 964,
+          "line": 930,
           "snippet": "<Button"
         },
         {
           "type": "legacy-component",
-          "line": 1001,
+          "line": 967,
           "snippet": "<Input"
         },
         {
           "type": "legacy-component",
-          "line": 1045,
+          "line": 1011,
           "snippet": "<Button"
         },
         {
           "type": "legacy-component",
-          "line": 1057,
+          "line": 1023,
           "snippet": "<Button"
         },
         {
           "type": "legacy-component",
-          "line": 1070,
+          "line": 1036,
           "snippet": "<Button"
         },
         {
           "type": "legacy-component",
-          "line": 1077,
+          "line": 1043,
           "snippet": "<Button"
         },
         {
           "type": "legacy-component",
-          "line": 1125,
+          "line": 1091,
           "snippet": "<Card>"
         },
         {
           "type": "gate-class",
-          "line": 1178,
+          "line": 1144,
           "snippet": "<div key={cat.id} className=\"categoryGateItem GateRowPremium\">"
         }
       ]
@@ -2581,77 +2792,77 @@
       "occurrences": [
         {
           "type": "gate-component",
-          "line": 113,
+          "line": 219,
           "snippet": "return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;"
         },
         {
           "type": "gate-component",
-          "line": 119,
+          "line": 225,
           "snippet": "<GateSection className={mergedClassName} collapsible={false} {...props}>"
         },
         {
           "type": "legacy-component",
-          "line": 1595,
+          "line": 2012,
           "snippet": "<IconButton"
         },
         {
           "type": "legacy-component",
-          "line": 1610,
+          "line": 2027,
           "snippet": "<Textarea"
         },
         {
           "type": "legacy-component",
-          "line": 1626,
+          "line": 2043,
           "snippet": "<SelectMenu"
         },
         {
           "type": "legacy-component",
-          "line": 1642,
+          "line": 2059,
           "snippet": "<SelectMenu"
         },
         {
           "type": "gate-class",
-          "line": 1658,
+          "line": 2075,
           "snippet": "className=\"GateInputPremium\""
         },
         {
           "type": "legacy-component",
-          "line": 1672,
+          "line": 2089,
           "snippet": "<Button onClick={addNoteToHistory} data-tour-id=\"today-notes-add\">"
         },
         {
           "type": "legacy-component",
-          "line": 1792,
+          "line": 2209,
           "snippet": "<IconButton"
         },
         {
           "type": "legacy-component",
-          "line": 1804,
+          "line": 2221,
           "snippet": "<Button variant=\"danger\" onClick={deleteSelectedNote} disabled={!noteDeleteTargetId}>"
         },
         {
           "type": "legacy-component",
-          "line": 1809,
+          "line": 2226,
           "snippet": "<Button"
         },
         {
           "type": "gate-component",
-          "line": 1840,
+          "line": 2257,
           "snippet": "<GateRow"
         },
         {
           "type": "gate-class",
-          "line": 1842,
+          "line": 2259,
           "snippet": "className=\"listItem GateRowPremium GatePressable\""
         },
         {
           "type": "gate-component",
-          "line": 1858,
+          "line": 2275,
           "snippet": "<GateRow"
         },
         {
           "type": "gate-class",
-          "line": 1860,
+          "line": 2277,
           "snippet": "className={`listItem GateRowPremium${noteDeleteMode ? \" GatePressable\" : \"\"}`}"
         }
       ]
@@ -2741,68 +2952,58 @@
     },
     {
       "file": "src/pages/Pilotage.jsx",
-      "gatePremiumCount": 5,
+      "gatePremiumCount": 2,
       "legacyCount": 8,
       "mixed": true,
       "occurrences": [
         {
           "type": "gate-component",
-          "line": 92,
+          "line": 89,
           "snippet": "return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;"
         },
         {
           "type": "gate-component",
-          "line": 98,
+          "line": 95,
           "snippet": "<GateSection className={mergedClassName} collapsible={false} {...props}>"
         },
         {
-          "type": "gate-component",
-          "line": 125,
-          "snippet": "<GateRow"
-        },
-        {
-          "type": "gate-class",
-          "line": 126,
-          "snippet": "className=\"pilotageCategoryRow GateRowPremium GatePressable\""
-        },
-        {
           "type": "legacy-component",
-          "line": 662,
+          "line": 660,
           "snippet": "<Card data-tour-id=\"pilotage-category-status\">"
         },
         {
           "type": "legacy-component",
-          "line": 769,
+          "line": 767,
           "snippet": "<Card>"
         },
         {
           "type": "legacy-component",
-          "line": 798,
+          "line": 796,
           "snippet": "<Card>"
         },
         {
           "type": "legacy-component",
-          "line": 821,
+          "line": 819,
           "snippet": "<Card data-tour-id=\"pilotage-discipline\">"
         },
         {
           "type": "legacy-component",
-          "line": 951,
+          "line": 949,
           "snippet": "<Card data-tour-id=\"pilotage-reporting\">"
         },
         {
           "type": "legacy-component",
-          "line": 983,
+          "line": 981,
           "snippet": "<Input type=\"date\" value={reportFrom} onChange={(e) => setReportFrom(e.target.value)} />"
         },
         {
           "type": "legacy-component",
-          "line": 987,
+          "line": 985,
           "snippet": "<Input type=\"date\" value={reportTo} onChange={(e) => setReportTo(e.target.value)} />"
         },
         {
           "type": "legacy-component",
-          "line": 1029,
+          "line": 1027,
           "snippet": "<Button onClick={handleExportReport} disabled={!reportPreview}>"
         }
       ]
@@ -3719,17 +3920,17 @@
         },
         {
           "type": "gate-css-selector",
-          "line": 51,
+          "line": 53,
           "snippet": "}"
         },
         {
           "type": "gate-css-selector",
-          "line": 58,
+          "line": 63,
           "snippet": "}"
         },
         {
           "type": "gate-css-selector",
-          "line": 157,
+          "line": 163,
           "snippet": "}"
         }
       ]
@@ -4374,25 +4575,217 @@
       "occurrences": [
         {
           "type": "gate-component",
-          "line": 10,
+          "line": 8,
           "snippet": "return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;"
         },
         {
+          "type": "gate-component",
+          "line": 108,
+          "snippet": "<GateSection"
+        },
+        {
           "type": "gate-class",
-          "line": 166,
-          "snippet": "<GateSection className=\"microCard GateSurfacePremium GateCardPremium\" collapsible={false} data-tour-id=\"today-micro-card\">"
+          "line": 109,
+          "snippet": "className={`microCard GateSurfacePremium GateCardPremium${isReadOnlyDate ? \" isReadOnlyDate\" : \"\"}`}"
+        },
+        {
+          "type": "gate-class",
+          "line": 138,
+          "snippet": "<div className=\"GateSelectWrap microCategorySelectWrap\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 141,
+          "snippet": "className=\"GateSelectPremium microCategorySelect\""
+        }
+      ]
+    },
+    {
+      "file": "src/ui/today/RewardedAdModal.jsx",
+      "gatePremiumCount": 13,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 65,
+          "snippet": "className=\"microAdPanelOuter GateGlassOuter\""
+        },
+        {
+          "type": "gate-class",
+          "line": 70,
+          "snippet": "<div className=\"microAdPanelClip GateGlassClip GateGlassBackdrop\">"
         },
         {
           "type": "gate-component",
-          "line": 166,
-          "snippet": "<GateSection className=\"microCard GateSurfacePremium GateCardPremium\" collapsible={false} data-tour-id=\"today-micro-card\">"
+          "line": 71,
+          "snippet": "<GatePanel"
         },
         {
           "type": "gate-class",
-          "line": 185,
-          "snippet": "className=\"microRotateBtn GateIconButtonPremium GatePressable\""
+          "line": 72,
+          "snippet": "className=\"microAdPanel GateGlassContent GateSurfacePremium GateCardPremium\""
+        },
+        {
+          "type": "gate-component",
+          "line": 78,
+          "snippet": "<GateHeader"
+        },
+        {
+          "type": "gate-class",
+          "line": 86,
+          "snippet": "<div className=\"microAdActions GatePrimaryCtaRow\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 87,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 89,
+          "snippet": "className=\"GatePressable\""
+        },
+        {
+          "type": "gate-component",
+          "line": 97,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 100,
+          "snippet": "className=\"GatePressable\""
         }
       ]
+    },
+    {
+      "file": "src/ui/totem/TotemDockButton.jsx",
+      "gatePremiumCount": 2,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 24,
+          "snippet": "className=\"totemDockNub GatePressable\""
+        },
+        {
+          "type": "gate-class",
+          "line": 38,
+          "snippet": "className={`totemDockButton GatePressable${isHiding ? \" isHiding\" : \"\"}`}"
+        }
+      ]
+    },
+    {
+      "file": "src/ui/totem/TotemDockLayer.jsx",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/totem/TotemDockPanel.jsx",
+      "gatePremiumCount": 18,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": [
+        {
+          "type": "gate-class",
+          "line": 60,
+          "snippet": "className=\"totemDockPanelOuter GateGlassOuter\""
+        },
+        {
+          "type": "gate-class",
+          "line": 66,
+          "snippet": "<div className=\"totemDockPanelClip GateGlassClip GateGlassBackdrop\">"
+        },
+        {
+          "type": "gate-class",
+          "line": 67,
+          "snippet": "<GatePanel className=\"totemDockPanel GateGlassContent GateSurfacePremium GateCardPremium\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 67,
+          "snippet": "<GatePanel className=\"totemDockPanel GateGlassContent GateSurfacePremium GateCardPremium\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 68,
+          "snippet": "<GateHeader"
+        },
+        {
+          "type": "gate-class",
+          "line": 75,
+          "snippet": "className=\"totemDockIconBtn GatePressable\""
+        },
+        {
+          "type": "gate-class",
+          "line": 85,
+          "snippet": "className=\"totemDockIconBtn GatePressable\""
+        },
+        {
+          "type": "gate-class",
+          "line": 104,
+          "snippet": "className={`totemDockTab GatePressable${view === tab.id ? \" isActive\" : \"\"}`}"
+        },
+        {
+          "type": "gate-component",
+          "line": 112,
+          "snippet": "<GateSection className=\"totemDockSection\">"
+        },
+        {
+          "type": "gate-component",
+          "line": 192,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 195,
+          "snippet": "className=\"GatePressable totemDockShopAction\""
+        },
+        {
+          "type": "gate-component",
+          "line": 221,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 224,
+          "snippet": "className=\"GatePressable totemDockShopAction\""
+        },
+        {
+          "type": "gate-component",
+          "line": 242,
+          "snippet": "<GateButton"
+        },
+        {
+          "type": "gate-class",
+          "line": 245,
+          "snippet": "className=\"GatePressable\""
+        }
+      ]
+    },
+    {
+      "file": "src/ui/totem/totemAssets.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/totem/totemDock.css",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
+    },
+    {
+      "file": "src/ui/totem/totemEvents.js",
+      "gatePremiumCount": 0,
+      "legacyCount": 0,
+      "mixed": false,
+      "occurrences": []
     },
     {
       "file": "src/utils/_theme.js",
@@ -4510,20 +4903,20 @@
     }
   ],
   "totals": {
-    "totalFiles": 204,
-    "cardRelevantFiles": 56,
-    "gateOnlyFiles": 23,
+    "totalFiles": 223,
+    "cardRelevantFiles": 60,
+    "gateOnlyFiles": 27,
     "mixedFiles": 17,
     "legacyOnlyFiles": 16,
-    "conformityPercent": 41.07,
+    "conformityPercent": 45,
     "occurrenceTypeCounts": {
-      "gate-class": 184,
-      "gate-component": 137,
+      "gate-class": 214,
+      "gate-component": 157,
       "legacy-import": 25,
       "legacy-component": 207,
+      "css-backdrop": 3,
       "legacy-css-selector": 33,
       "gate-css-selector": 8,
-      "css-backdrop": 2,
       "legacy-class": 2
     },
     "hotspots": [
@@ -4572,7 +4965,7 @@
       {
         "file": "src/pages/Categories.jsx",
         "legacyCount": 13,
-        "gatePremiumCount": 4,
+        "gatePremiumCount": 3,
         "mixed": true
       },
       {
@@ -4584,7 +4977,7 @@
       {
         "file": "src/pages/Pilotage.jsx",
         "legacyCount": 8,
-        "gatePremiumCount": 5,
+        "gatePremiumCount": 2,
         "mixed": true
       },
       {

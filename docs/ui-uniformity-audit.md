@@ -1,15 +1,15 @@
 # UI Uniformity Audit (LOT 10)
 
-- Generated: 2026-02-17T16:16:40.419Z
+- Generated: 2026-02-23T13:29:22.216Z
 - Source of truth: `src/shared/ui/gate/Gate.jsx`, `src/shared/ui/gate/gate.css`, `src/shared/ui/gate/gate-premium.css`
 - Scope: `src/pages/**`, `src/components/**`, `src/ui/**`, `src/features/**`, overlays, popovers, modals, bars.
 
 ## Score global
 
-- Conformité Card Premium: **41.07%** (Faible)
-- Fichiers scannés: 204
-- Fichiers "card-relevant": 56
-- Gate-only: 23
+- Conformité Card Premium: **45%** (Faible)
+- Fichiers scannés: 223
+- Fichiers "card-relevant": 60
+- Gate-only: 27
 - Mixed (Gate + legacy): 17
 - Legacy-only: 16
 
@@ -29,9 +29,9 @@
 5. `src/pages/Session.jsx` — legacy=16, gate=6, mixed=yes
 6. `src/components/EditItemPanel.jsx` — legacy=16, gate=6, mixed=yes
 7. `src/pages/Onboarding.jsx` — legacy=15, gate=0, mixed=no
-8. `src/pages/Categories.jsx` — legacy=13, gate=4, mixed=yes
+8. `src/pages/Categories.jsx` — legacy=13, gate=3, mixed=yes
 9. `src/pages/Home.jsx` — legacy=8, gate=8, mixed=yes
-10. `src/pages/Pilotage.jsx` — legacy=8, gate=5, mixed=yes
+10. `src/pages/Pilotage.jsx` — legacy=8, gate=2, mixed=yes
 11. `src/pages/CreateV2Outcome.jsx` — legacy=7, gate=3, mixed=yes
 12. `src/profile/ProfileSetupScreen.jsx` — legacy=7, gate=0, mixed=no
 13. `src/auth/LoginScreen.jsx` — legacy=6, gate=0, mixed=no
@@ -43,9 +43,9 @@
 - `src/pages/CreateV2Habits.jsx` (legacy=26, gate=6)
 - `src/components/EditItemPanel.jsx` (legacy=16, gate=6)
 - `src/pages/Session.jsx` (legacy=16, gate=6)
-- `src/pages/Categories.jsx` (legacy=13, gate=4)
+- `src/pages/Categories.jsx` (legacy=13, gate=3)
 - `src/pages/Home.jsx` (legacy=8, gate=8)
-- `src/pages/Pilotage.jsx` (legacy=8, gate=5)
+- `src/pages/Pilotage.jsx` (legacy=8, gate=2)
 - `src/pages/CreateV2Outcome.jsx` (legacy=7, gate=3)
 - `src/pages/CreateV2HabitType.jsx` (legacy=5, gate=1)
 - `src/components/PlusExpander.jsx` (legacy=4, gate=4)
@@ -65,13 +65,13 @@
 
 ## Occurrences les plus fréquentes
 
+- gate-class: 214
 - legacy-component: 207
-- gate-class: 184
-- gate-component: 137
+- gate-component: 157
 - legacy-css-selector: 33
 - legacy-import: 25
 - gate-css-selector: 8
-- css-backdrop: 2
+- css-backdrop: 3
 - legacy-class: 2
 
 ## Plan de correction (non appliqué)

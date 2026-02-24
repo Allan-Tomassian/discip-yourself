@@ -1090,7 +1090,7 @@ export default function Categories({
       <div className="stack stackGap12 pageNarrow">
         <Card>
           <div className="p18">
-            <div className="row rowBetween alignCenter">
+            <div className="row rowBetween alignCenter libraryCardHeader">
               <div className="sectionTitle">Catégories</div>
             </div>
 
