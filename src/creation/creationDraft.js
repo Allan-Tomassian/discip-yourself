@@ -2,6 +2,7 @@ import { normalizeLocalDateKey, normalizeStartTime } from "../utils/datetime";
 import { normalizeTimeFields } from "../logic/timeFields";
 import {
   CREATION_STEPS,
+  STEP_HABIT_TYPE,
   STEP_HABITS,
   STEP_OUTCOME,
   STEP_LINK_OUTCOME,
@@ -136,7 +137,7 @@ function normalizeQuantityPeriod(value) {
 export function createEmptyDraft() {
   return {
     version: CREATION_DRAFT_VERSION,
-    step: STEP_OUTCOME,
+    step: STEP_HABIT_TYPE,
     habitType: null,
     category: null,
     outcome: null,
@@ -155,7 +156,7 @@ export function normalizeCreationDraft(raw) {
   const draft = raw && typeof raw === "object" ? { ...raw } : createEmptyDraft();
   if (draft.version !== CREATION_DRAFT_VERSION) draft.version = CREATION_DRAFT_VERSION;
   draft.uxV2 = normalizeBoolean(draft.uxV2);
-  if (!CREATION_STEPS.includes(draft.step)) draft.step = STEP_OUTCOME;
+  if (!CREATION_STEPS.includes(draft.step)) draft.step = STEP_HABIT_TYPE;
   draft.habitType = normalizeHabitType(draft.habitType);
   if (!draft.category || typeof draft.category !== "object") draft.category = null;
   if (!draft.outcome || typeof draft.outcome !== "object") draft.outcome = null;

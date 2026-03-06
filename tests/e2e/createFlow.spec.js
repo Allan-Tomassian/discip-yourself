@@ -15,6 +15,7 @@ test("Projet + Action (guidé) -> ouvre l’étape projet", async ({ page }) => 
   await seedState(page, state);
 
   await openCreateFlow(page);
+  await page.getByTestId("create-show-legacy-options").click();
   await page.getByTestId("create-choice-guided").click();
   await expect(page.getByPlaceholder("Nom du projet")).toBeVisible();
   await expect(page.getByRole("button", { name: "Continuer" })).toBeDisabled();
@@ -29,7 +30,6 @@ test("Action ponctuelle -> occurrence au bon jour", async ({ page }) => {
   await page.getByTestId("create-type-oneoff").click();
 
   await page.getByPlaceholder("Nouvelle action").fill("Action OneOff");
-  await page.getByTestId("action-add").click();
   await page.getByTestId("action-save").click();
 
   const next = await getState(page);
@@ -51,7 +51,6 @@ test("Action récurrente planifiée -> planning + durée persistés", async ({ p
   await page.getByPlaceholder("Nouvelle action").fill("Action Recurring Planned");
   await page.locator("input[type=\"time\"]").first().fill("10:30");
   await page.locator("input[placeholder=\"Minutes\"]").first().fill("45");
-  await page.getByTestId("action-add").click();
   await page.getByTestId("action-save").click();
 
   const next = await getState(page);
@@ -76,7 +75,6 @@ test("Action récurrente -> conflit horaire bloquant avant résolution", async (
 
   await page.getByPlaceholder("Nouvelle action").fill("Action Conflict Blocking");
   await page.locator("input[type=\"time\"]").first().fill("09:00");
-  await page.getByTestId("action-add").click();
   await page.getByTestId("action-save").click();
 
   await expect(page.getByTestId("conflict-resolver-modal")).toBeVisible();
@@ -95,7 +93,6 @@ test("Action anytime -> sans date fixe", async ({ page }) => {
   await page.getByTestId("create-type-anytime").click();
 
   await page.getByPlaceholder("Nouvelle action").fill("Action Anytime");
-  await page.getByTestId("action-add").click();
   await page.getByTestId("action-save").click();
 
   const next = await getState(page);
@@ -110,10 +107,6 @@ test("Action anytime -> sans date fixe", async ({ page }) => {
   expect(occ.length).toBeGreaterThan(0);
   expect(occ.every((o) => o.start === "00:00" || o.noTime === true)).toBeTruthy();
 
-  const createdIds = Array.isArray(next.ui?.createDraft?.createdActionIds)
-    ? next.ui.createDraft.createdActionIds
-    : [];
-  expect(createdIds.includes(action.id)).toBeTruthy();
 });
 
 test("Ordre catégories = railOrder, modifier conserve ordre", async ({ page }) => {

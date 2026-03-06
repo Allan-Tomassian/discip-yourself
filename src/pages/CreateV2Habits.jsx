@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import {
-  AccentItem,
   Button,
   Chip,
   ChipRow,
@@ -17,7 +16,7 @@ import DatePicker from "../ui/date/DatePicker";
 import ConflictResolver from "../ui/scheduling/ConflictResolver";
 import { GateSection } from "../shared/ui/gate/Gate";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
-import { STEP_HABITS, STEP_LINK_OUTCOME, STEP_PICK_CATEGORY } from "../creation/creationSchema";
+import { STEP_HABITS } from "../creation/creationSchema";
 import { uid } from "../utils/helpers";
 import { createGoal } from "../logic/goals";
 import { ensureWindowFromScheduleRules } from "../logic/occurrencePlanner";
@@ -267,6 +266,7 @@ export default function CreateV2Habits({
   const isGate = skin === "gate";
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
+  const categories = useMemo(() => (Array.isArray(safeData.categories) ? safeData.categories : []), [safeData.categories]);
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
   const goalsById = useMemo(() => new Map(goals.map((g) => [g.id, g])), [goals]);
   const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
@@ -316,10 +316,19 @@ export default function CreateV2Habits({
   const [reminderWindowEnd, setReminderWindowEnd] = useState("");
 
   const [memo, setMemo] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState("");
   const [conflictState, setConflictState] = useState(null);
 
   const habits = Array.isArray(draft.habits) ? draft.habits : [];
+  const lockedCategoryId = draft?.category?.id || draft?.pendingCategoryId || SYSTEM_INBOX_ID;
+  const lockedCategory = useMemo(() => {
+    return (
+      categories.find((cat) => cat?.id === lockedCategoryId) ||
+      categories.find((cat) => cat?.id === SYSTEM_INBOX_ID) ||
+      { id: SYSTEM_INBOX_ID, name: "Général", color: "#F97316" }
+    );
+  }, [categories, lockedCategoryId]);
 
   const existingActionCount = useMemo(
     () => goals.filter((g) => resolveGoalType(g) === "PROCESS").length,
@@ -328,7 +337,7 @@ export default function CreateV2Habits({
 
   const isWeekly = repeat === "weekly";
   const missingWeeklyDays = isTypeRecurring && isWeekly && daysOfWeek.length === 0;
-  const isWeeklySlotsMode = isTypeRecurring && isWeekly && scheduleMode === "WEEKLY_SLOTS";
+  const isWeeklySlotsMode = showAdvanced && isTypeRecurring && isWeekly && scheduleMode === "WEEKLY_SLOTS";
   const weeklySlotsOk = !isWeeklySlotsMode || validateWeeklySlotsByDay(daysOfWeek, weeklySlotsByDay);
 
   const fixedOccurrencesByDate = useMemo(() => {
@@ -380,9 +389,7 @@ export default function CreateV2Habits({
   // - RECURRING (STANDARD): time required
   // - RECURRING (WEEKLY_SLOTS): time handled per day slots
   // - ANYTIME: no time
-  const requiresStartTime =
-    (isTypeOneOff && timeMode === "FIXED") ||
-    (isTypeRecurring && scheduleMode !== "WEEKLY_SLOTS");
+  const requiresStartTime = isTypeOneOff && timeMode === "FIXED";
 
   const startTimeValid = !requiresStartTime || Boolean(normalizedStartForCheck);
 
@@ -413,27 +420,6 @@ export default function CreateV2Habits({
     reminderValid &&
     startTimeValid &&
     weeklySlotsOk;
-
-  const hasInvalidHabits = habits.some((habit) => {
-    if (!habit) return false;
-    if (
-      habit.repeat === "weekly" &&
-      (!habit.daysOfWeek || habit.daysOfWeek.length === 0) &&
-      !(habit.habitType === "ANYTIME" && habit.anytimeFlexible)
-    )
-      return true;
-    if (habit.repeat === "none" && !normalizeLocalDateKey(habit.oneOffDate)) return true;
-    if (habit.quantityValue && !habit.quantityUnit) return true;
-    if (habit.repeat === "weekly" && habit.scheduleMode === "WEEKLY_SLOTS") {
-      return !validateWeeklySlotsByDay(habit.daysOfWeek, habit.weeklySlotsByDay);
-    }
-    if (habit.repeat !== "none") {
-      const af = normalizeLocalDateKey(habit.activeFrom) || "";
-      const at = normalizeLocalDateKey(habit.activeTo) || "";
-      if (!af || !at || at < af) return true;
-    }
-    return false;
-  });
 
   useEffect(() => {
     if (repeat !== "none") return;
@@ -479,6 +465,13 @@ export default function CreateV2Habits({
     setActiveFrom((prev) => normalizeLocalDateKey(prev) || todayLocalKey());
     setActiveTo((prev) => normalizeLocalDateKey(prev) || addDaysLocal(todayLocalKey(), 29));
   }, [isTypeAnytime, isTypeOneOff]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (showAdvanced) return;
+    if (scheduleMode !== "STANDARD") setScheduleMode("STANDARD");
+    if (reminderWindowStart) setReminderWindowStart("");
+    if (reminderWindowEnd) setReminderWindowEnd("");
+  }, [showAdvanced, scheduleMode, reminderWindowEnd, reminderWindowStart]);
 
   function normalizeDraftHabits(list) {
     const input = Array.isArray(list) ? list : [];
@@ -776,11 +769,139 @@ export default function CreateV2Habits({
 
   function handleDone(options = {}) {
     const { overrideHabits, conflictResolution } = options || {};
-    const habitsToSave = Array.isArray(overrideHabits) ? overrideHabits : habits;
+
+    const fromForm = () => {
+      const cleanTitle = title.trim();
+      if (!cleanTitle) {
+        setError("Titre requis.");
+        return null;
+      }
+      if (missingWeeklyDays) {
+        setError("Choisis au moins un jour.");
+        return null;
+      }
+      if (isWeeklySlotsMode && !weeklySlotsOk) {
+        setError("Ajoute au moins un créneau valide (début/fin) pour chaque jour sélectionné.");
+        return null;
+      }
+      if (!oneOffDateValid) {
+        setError("Sélectionne une date pour l’action ponctuelle.");
+        return null;
+      }
+      if (!isTypeOneOff) {
+        const fromKey = normalizeLocalDateKey(activeFrom) || "";
+        const toKey = normalizeLocalDateKey(activeTo) || "";
+        if (!fromKey || !toKey) {
+          setError("Définis une période (début + échéance).");
+          return null;
+        }
+        if (toKey < fromKey) {
+          setError("L’échéance doit être après la date de début.");
+          return null;
+        }
+      }
+
+      const normalizedQuantityValue = normalizeQuantityValue(quantityValue);
+      const normalizedQuantityUnit = normalizeQuantityUnit(quantityUnit);
+      if (String(quantityValue || "").trim() && !normalizedQuantityValue) {
+        setError("Quantité invalide.");
+        return null;
+      }
+      if (normalizedQuantityValue && !normalizedQuantityUnit) {
+        setError("Unité requise pour la quantité.");
+        return null;
+      }
+      const normalizedQuantityPeriod = normalizeQuantityPeriod(quantityPeriod);
+
+      const normalizedReminderTime2 = normalizeStartTime(reminderTime);
+      const normalizedWindowStart = showAdvanced ? normalizeStartTime(reminderWindowStart) : "";
+      const normalizedWindowEnd = showAdvanced ? normalizeStartTime(reminderWindowEnd) : "";
+      if ((normalizedWindowStart || normalizedWindowEnd) && !normalizedReminderTime2) {
+        setError("Choisis une heure de rappel.");
+        return null;
+      }
+
+      const outcomeId = draft?.activeOutcomeId ? String(draft.activeOutcomeId) : null;
+      const normalizedDays = isTypeOneOff ? [] : normalizeDaysOfWeek(daysOfWeek);
+      const effectiveDays = isTypeAnytime && anytimeFlexible ? [] : normalizedDays;
+      const normalizedStart = normalizeStartTime(startTime);
+      const normalizedDuration = normalizeDurationMinutes(durationMinutes);
+      const normalizedOneOff = normalizeLocalDateKey(oneOffDate) || todayLocalKey();
+
+      const normalizedFrom = isTypeOneOff ? normalizedOneOff : normalizeLocalDateKey(activeFrom) || todayLocalKey();
+      const normalizedTo = isTypeOneOff
+        ? normalizedOneOff
+        : normalizeLocalDateKey(activeTo) || addDaysLocal(normalizedFrom, 29);
+
+      const normalizedMemo = typeof memo === "string" ? memo.trim() : "";
+      const normalizedLocation = typeof location === "string" ? location.trim() : "";
+
+      const effectiveScheduleMode = isWeeklySlotsMode ? "WEEKLY_SLOTS" : "STANDARD";
+      const normalizedWeeklySlots =
+        effectiveScheduleMode === "WEEKLY_SLOTS" ? normalizeWeeklySlotsByDay(weeklySlotsByDay) : null;
+
+      const timeFields = normalizeTimeFields({
+        timeMode: effectiveScheduleMode === "WEEKLY_SLOTS" ? "NONE" : isTypeRecurring ? "FIXED" : timeMode,
+        timeSlots:
+          effectiveScheduleMode === "WEEKLY_SLOTS"
+            ? []
+            : (isTypeRecurring || timeMode === "FIXED") && normalizedStart
+            ? [normalizedStart]
+            : [],
+        startTime: effectiveScheduleMode === "WEEKLY_SLOTS" ? "" : normalizedStart,
+        reminderTime: normalizedReminderTime2,
+      });
+
+      return {
+        id: uid(),
+        title: cleanTitle,
+        habitType,
+        anytimeFlexible: isTypeAnytime ? Boolean(anytimeFlexible) : false,
+        outcomeId,
+        repeat: isTypeOneOff ? "none" : "weekly",
+        daysOfWeek: effectiveDays,
+        scheduleMode: effectiveScheduleMode,
+        weeklySlotsByDay: normalizedWeeklySlots,
+        timeMode: timeFields.timeMode,
+        timeSlots: timeFields.timeSlots,
+        startTime: timeFields.startTime,
+        durationMinutes: normalizedDuration,
+        oneOffDate: isTypeOneOff ? normalizedOneOff : "",
+        lifecycleMode,
+        activeFrom: normalizedFrom,
+        activeTo: normalizedTo,
+        completionMode: "ONCE",
+        completionTarget: null,
+        missPolicy: "LENIENT",
+        graceMinutes: 0,
+        quantityValue: normalizedQuantityValue,
+        quantityUnit: normalizedQuantityValue ? normalizedQuantityUnit : "",
+        quantityPeriod: normalizedQuantityValue ? normalizedQuantityPeriod : "",
+        reminderTime: normalizedReminderTime2,
+        reminderWindowStart: normalizedWindowStart,
+        reminderWindowEnd: normalizedWindowEnd,
+        location: normalizedLocation,
+        memo: normalizedMemo,
+      };
+    };
+
+    const sourceHabits = Array.isArray(overrideHabits) && overrideHabits.length ? overrideHabits : [];
+    const candidateFromForm = sourceHabits.length ? null : fromForm();
+    const habitsToSave = sourceHabits.length ? sourceHabits : candidateFromForm ? [candidateFromForm] : [];
     if (!habitsToSave.length) return;
+
+    const limit = Number(planLimits?.actions) || 0;
+    if (!isPremiumPlan && limit > 0 && existingActionCount >= limit) {
+      if (typeof onOpenPaywall === "function") onOpenPaywall("Limite d’actions atteinte.");
+      return;
+    }
+    if (!canCreateAction) {
+      if (typeof onOpenPaywall === "function") onOpenPaywall("Limite d’actions atteinte.");
+      return;
+    }
     if (typeof setData !== "function") return;
 
-    const validHabits = habitsToSave.filter((habit) => habit && habit.title);
+    const validHabits = habitsToSave.filter((habit) => habit && habit.title).slice(0, 1);
 
     const ignoreIds = new Set(conflictResolution?.cancelOccurrenceIds || []);
     const conflict = findFirstConflict(validHabits, ignoreIds);
@@ -829,6 +950,10 @@ export default function CreateV2Habits({
 
       const baseSchedule = createDefaultGoalSchedule();
       let finalState = next;
+      const categoryPool = Array.isArray(finalState.categories) ? finalState.categories : [];
+      const seededCategoryId = categoryPool.some((cat) => cat?.id === lockedCategoryId)
+        ? lockedCategoryId
+        : SYSTEM_INBOX_ID;
 
       for (let index = 0; index < validHabits.length; index += 1) {
         const habit = validHabits[index];
@@ -890,7 +1015,7 @@ export default function CreateV2Habits({
 
         finalState = createGoal(finalState, {
           id: habitId,
-          categoryId: SYSTEM_INBOX_ID,
+          categoryId: seededCategoryId,
           title: habit.title,
 
           type: "PROCESS",
@@ -982,34 +1107,30 @@ export default function CreateV2Habits({
         finalState = ensureWindowFromScheduleRules(finalState, fromKey, toKey, createdProcessIds);
       }
 
-      const seededOutcomeId = draft?.activeOutcomeId ? String(draft.activeOutcomeId) : null;
-      const nextStep = seededOutcomeId ? STEP_PICK_CATEGORY : STEP_LINK_OUTCOME;
-
-      const nextDraft = {
-        ...createEmptyDraft(),
-        step: nextStep,
-        activeOutcomeId: seededOutcomeId,
-        createdActionIds: createdProcessIds,
-        category: { mode: "existing", id: SYSTEM_INBOX_ID },
-        pendingCategoryId: SYSTEM_INBOX_ID,
-      };
-
       return {
         ...finalState,
-        ui: { ...(finalState.ui || {}), createDraft: nextDraft, createDraftWasCompleted: false },
+        ui: {
+          ...(finalState.ui || {}),
+          createDraft: createEmptyDraft(),
+          createDraftWasCompleted: true,
+          createDraftWasCanceled: false,
+        },
       };
     });
 
-    if (typeof onNext === "function") {
-      const seededOutcomeId = draft?.activeOutcomeId ? String(draft.activeOutcomeId) : null;
-      onNext(seededOutcomeId ? STEP_PICK_CATEGORY : STEP_LINK_OUTCOME);
-      return;
-    }
+    setError("");
     if (typeof onDone === "function") onDone();
   }
 
   function applyConflictShift(nextStart) {
     if (!conflictState?.habitId) return;
+    if (!habits.length) {
+      setTimeMode("FIXED");
+      setStartTime(nextStart || "");
+      setConflictState(null);
+      handleDone();
+      return;
+    }
     const nextHabits = habits.map((habit) => {
       if (!habit || habit.id !== conflictState.habitId) return habit;
       return { ...habit, timeMode: "FIXED", startTime: nextStart, timeSlots: nextStart ? [nextStart] : [] };
@@ -1021,6 +1142,13 @@ export default function CreateV2Habits({
 
   function applyConflictNoTime() {
     if (!conflictState?.habitId) return;
+    if (!habits.length) {
+      setTimeMode("NONE");
+      setStartTime("");
+      setConflictState(null);
+      handleDone();
+      return;
+    }
     const nextHabits = habits.map((habit) => {
       if (!habit || habit.id !== conflictState.habitId) return habit;
       return { ...habit, timeMode: "NONE", startTime: "", timeSlots: [] };
@@ -1065,9 +1193,11 @@ export default function CreateV2Habits({
             <GateSection title="Action" description="Titre + contexte" collapsible={false}>
               <div className="createFieldRow">
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nouvelle action" />
-                <Button onClick={addHabit} disabled={!canAddHabit} data-testid="action-add">
-                  Ajouter
-                </Button>
+              </div>
+
+              <div className="createLockedCategory" data-testid="create-locked-category">
+                <span className="createFlowSwatch" style={{ background: lockedCategory?.color || "#F97316" }} />
+                <span className="small2">Catégorie verrouillée: {lockedCategory?.name || "Général"}</span>
               </div>
 
               <div className="stack stackGap6">
@@ -1130,13 +1260,15 @@ export default function CreateV2Habits({
               {/* ANYTIME */}
               {isTypeAnytime ? (
                 <div className="stack stackGap12">
-                  <div className="stack stackGap6">
-                    <div className="small2 textMuted">Période</div>
-                    <div className="createFieldGrid">
-                      <DatePicker value={activeFrom} onChange={(e) => setActiveFrom(e.target.value)} />
-                      <DatePicker value={activeTo} onChange={(e) => setActiveTo(e.target.value)} />
+                  {showAdvanced ? (
+                    <div className="stack stackGap6">
+                      <div className="small2 textMuted">Période</div>
+                      <div className="createFieldGrid">
+                        <DatePicker value={activeFrom} onChange={(e) => setActiveFrom(e.target.value)} />
+                        <DatePicker value={activeTo} onChange={(e) => setActiveTo(e.target.value)} />
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
 
                   <CheckboxRow
                     checked={anytimeFlexible}
@@ -1182,13 +1314,15 @@ export default function CreateV2Habits({
               {/* RECURRING */}
               {isTypeRecurring ? (
                 <div className="stack stackGap12">
-                  <div className="stack stackGap6">
-                    <div className="small2 textMuted">Période</div>
-                    <div className="createFieldGrid">
-                      <DatePicker value={activeFrom} onChange={(e) => setActiveFrom(e.target.value)} />
-                      <DatePicker value={activeTo} onChange={(e) => setActiveTo(e.target.value)} />
+                  {showAdvanced ? (
+                    <div className="stack stackGap6">
+                      <div className="small2 textMuted">Période</div>
+                      <div className="createFieldGrid">
+                        <DatePicker value={activeFrom} onChange={(e) => setActiveFrom(e.target.value)} />
+                        <DatePicker value={activeTo} onChange={(e) => setActiveTo(e.target.value)} />
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
 
                   <div className="stack stackGap6">
                     <div className="row rowBetween alignCenter">
@@ -1205,20 +1339,22 @@ export default function CreateV2Habits({
 
                   <div className="stack stackGap6">
                     <div className="small2 textMuted">Moment</div>
-                    <Select
-                      value={scheduleMode}
-                      onChange={(e) => {
-                        const next = e.target.value;
-                        setScheduleMode(next);
-                        if (next === "WEEKLY_SLOTS") {
-                          // per-day slots take over
-                          setStartTime("");
-                        }
-                      }}
-                    >
-                      <option value="STANDARD">Dans la journée / Heure fixe</option>
-                      <option value="WEEKLY_SLOTS">Créneaux par jour</option>
-                    </Select>
+                    {showAdvanced ? (
+                      <Select
+                        value={scheduleMode}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setScheduleMode(next);
+                          if (next === "WEEKLY_SLOTS") {
+                            // per-day slots take over
+                            setStartTime("");
+                          }
+                        }}
+                      >
+                        <option value="STANDARD">Dans la journée / Heure fixe</option>
+                        <option value="WEEKLY_SLOTS">Créneaux par jour</option>
+                      </Select>
+                    ) : null}
 
                     {scheduleMode === "STANDARD" ? (
                       <div className="stack stackGap8">
@@ -1304,29 +1440,10 @@ export default function CreateV2Habits({
               {planningError ? <Hint tone="danger">{planningError}</Hint> : null}
             </GateSection>
 
-            <GateSection title="Quantification" description="Optionnel" defaultOpen={false} collapsible>
-              <div className="createFieldRow">
-                <Input
-                  type="number"
-                  min="1"
-                  value={quantityValue}
-                  onChange={(e) => setQuantityValue(e.target.value)}
-                  placeholder="Quantité"
-                />
-                <Input value={quantityUnit} onChange={(e) => setQuantityUnit(e.target.value)} placeholder="Unité" />
-                <Select value={quantityPeriod} onChange={(e) => setQuantityPeriod(e.target.value)}>
-                  {QUANTITY_PERIODS.map((period) => (
-                    <option key={period.id} value={period.id}>{period.label}</option>
-                  ))}
-                </Select>
-              </div>
-              {quantityError ? <Hint tone="danger">{quantityError}</Hint> : null}
-            </GateSection>
-
             <GateSection title="Rappel" description="Optionnel" defaultOpen={false} collapsible>
               <div className="createFieldRow">
                 <Input type="time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} />
-                {!isTypeAnytime ? (
+                {showAdvanced && !isTypeAnytime ? (
                   <>
                     <Input
                       type="time"
@@ -1341,53 +1458,50 @@ export default function CreateV2Habits({
                   </>
                 ) : null}
               </div>
-              <div className="createHelper">Fenêtre optionnelle (début / fin).</div>
+              {showAdvanced && !isTypeAnytime ? (
+                <div className="createHelper">Fenêtre optionnelle (début / fin).</div>
+              ) : null}
               {reminderError ? <Hint tone="danger">{reminderError}</Hint> : null}
             </GateSection>
 
-            <GateSection title="Mémo" description="Optionnel" defaultOpen={false} collapsible>
-              <Textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="Note personnelle" />
-            </GateSection>
+            <div className="createAdvancedToggleRow">
+              <Button
+                variant="ghost"
+                onClick={() => setShowAdvanced((prev) => !prev)}
+                data-testid="create-toggle-advanced"
+              >
+                {showAdvanced ? "Masquer les options avancées" : "Afficher les options avancées"}
+              </Button>
+            </div>
 
-            <GateSection
-              title="Récapitulatif"
-              description={`${habits.length} action${habits.length > 1 ? "s" : ""}`}
-              collapsible={false}
-            >
-              <div className="stack stackGap8">
-                {habits.map((habit) => (
-                  <AccentItem key={habit.id} tone="neutral">
-                    <div className="row rowBetween gap10 wFull">
-                      <div className="small2 flex1">
-                        {habit.title}
-                        <div className="textMuted2">
-                          {formatRepeatLabel(habit)}
-                          {habit.activeFrom && habit.activeTo && habit.repeat !== "none"
-                            ? ` · ${habit.activeFrom} → ${habit.activeTo}`
-                            : ""}
-                          {habit.location ? ` · ${habit.location}` : ""}
-                          {habit.scheduleMode === "WEEKLY_SLOTS"
-                            ? ` · ${formatWeeklySlotsSummary(habit)}`
-                            : habit.startTime
-                              ? ` · ${habit.startTime}`
-                              : ""}
-                          {Number.isFinite(habit.durationMinutes) ? ` · ${habit.durationMinutes} min` : ""}
-                          {formatQuantityLabel(habit) ? ` · ${formatQuantityLabel(habit)}` : ""}
-                          {habit.reminderTime ? ` · Rappel ${habit.reminderTime}` : ""}
-                          {habit.memo ? " · Mémo" : ""}
-                        </div>
-                      </div>
-                      <Button variant="ghost" onClick={() => removeHabit(habit.id)}>
-                        Retirer
-                      </Button>
-                    </div>
-                  </AccentItem>
-                ))}
-                {!habits.length ? <Hint>Ajoute au moins une action.</Hint> : null}
-                {hasInvalidHabits ? <Hint tone="danger">Corrige les actions invalides.</Hint> : null}
-                {error ? <Hint tone="danger">{error}</Hint> : null}
-              </div>
-            </GateSection>
+            {showAdvanced ? (
+              <>
+                <GateSection title="Quantification" description="Optionnel" defaultOpen={false} collapsible>
+                  <div className="createFieldRow">
+                    <Input
+                      type="number"
+                      min="1"
+                      value={quantityValue}
+                      onChange={(e) => setQuantityValue(e.target.value)}
+                      placeholder="Quantité"
+                    />
+                    <Input value={quantityUnit} onChange={(e) => setQuantityUnit(e.target.value)} placeholder="Unité" />
+                    <Select value={quantityPeriod} onChange={(e) => setQuantityPeriod(e.target.value)}>
+                      {QUANTITY_PERIODS.map((period) => (
+                        <option key={period.id} value={period.id}>{period.label}</option>
+                      ))}
+                    </Select>
+                  </div>
+                  {quantityError ? <Hint tone="danger">{quantityError}</Hint> : null}
+                </GateSection>
+
+                <GateSection title="Mémo" description="Optionnel" defaultOpen={false} collapsible>
+                  <Textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="Note personnelle" />
+                </GateSection>
+              </>
+            ) : null}
+
+            {error ? <Hint tone="danger">{error}</Hint> : null}
 
             <div className="row rowEnd gap10">
               <Button
@@ -1399,8 +1513,8 @@ export default function CreateV2Habits({
               >
                 Annuler
               </Button>
-              <Button onClick={handleDone} disabled={!habits.length || hasInvalidHabits} data-testid="action-save">
-                Terminer
+              <Button onClick={handleDone} disabled={!canAddHabit} data-testid="action-save">
+                Créer l’action
               </Button>
             </div>
           </div>

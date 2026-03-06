@@ -58,28 +58,6 @@ async function openCreateFlowForBusiness(page) {
   await expect(page.getByTestId("create-flow-modal")).toBeVisible();
 }
 
-async function completePickCategoryToBusiness(page) {
-  const picker = page
-    .locator(".flowShellBody")
-    .filter({ hasText: "Dans quelle catégorie veux-tu agir ?" })
-    .first();
-  await expect(picker).toBeVisible();
-  await picker.locator("button.selectTrigger").first().click();
-  const businessOption = page
-    .locator(".selectMenu button.selectOption", { hasText: "Business" })
-    .first();
-  await expect(businessOption).toBeVisible();
-  await businessOption.click();
-  await page.getByRole("button", { name: "Terminer" }).click();
-  await expect(page.getByTestId("create-flow-modal")).toBeHidden();
-}
-
-async function completeLinkOutcomeThenPickBusiness(page) {
-  await expect(page.getByText(/Quel est le .* de cette action/i)).toBeVisible();
-  await page.getByRole("button", { name: "Continuer" }).click();
-  await completePickCategoryToBusiness(page);
-}
-
 async function assertCalendarIndicatorsForDate(page, dateKey) {
   const neighborDateKey = addDaysKey(dateKey, 1);
   const monthNeighborDateKey =
@@ -145,6 +123,7 @@ async function assertCreatedContentAcrossApp(
 
 async function createGuidedProjectAndAction(page, { projectTitle, actionTitle }) {
   await openCreateFlowForBusiness(page);
+  await page.getByTestId("create-show-legacy-options").click();
   await page.getByTestId("create-choice-guided").click();
 
   await page.getByPlaceholder("Nom du projet").fill(projectTitle);
@@ -154,10 +133,8 @@ async function createGuidedProjectAndAction(page, { projectTitle, actionTitle })
 
   await page.getByTestId("create-type-oneoff").click();
   await page.getByPlaceholder("Nouvelle action").fill(actionTitle);
-  await page.getByTestId("action-add").click();
   await page.getByTestId("action-save").click();
-
-  await completePickCategoryToBusiness(page);
+  await expect(page.getByTestId("create-flow-modal")).toBeHidden();
 }
 
 async function createOneOffAction(page, { title }) {
@@ -165,9 +142,8 @@ async function createOneOffAction(page, { title }) {
   await page.getByTestId("create-choice-action").click();
   await page.getByTestId("create-type-oneoff").click();
   await page.getByPlaceholder("Nouvelle action").fill(title);
-  await page.getByTestId("action-add").click();
   await page.getByTestId("action-save").click();
-  await completeLinkOutcomeThenPickBusiness(page);
+  await expect(page.getByTestId("create-flow-modal")).toBeHidden();
 }
 
 async function createRecurringAction(page, { title, startTime, durationMinutes }) {
@@ -178,10 +154,8 @@ async function createRecurringAction(page, { title, startTime, durationMinutes }
   await page.getByPlaceholder("Nouvelle action").fill(title);
   await page.locator("input[type=\"time\"]").first().fill(startTime);
   await page.locator("input[placeholder=\"Minutes\"]").first().fill(String(durationMinutes));
-  await page.getByTestId("action-add").click();
   await page.getByTestId("action-save").click();
-
-  await completeLinkOutcomeThenPickBusiness(page);
+  await expect(page.getByTestId("create-flow-modal")).toBeHidden();
 }
 
 async function createAnytimeAction(page, { title }) {
@@ -190,10 +164,8 @@ async function createAnytimeAction(page, { title }) {
   await page.getByTestId("create-type-anytime").click();
 
   await page.getByPlaceholder("Nouvelle action").fill(title);
-  await page.getByTestId("action-add").click();
   await page.getByTestId("action-save").click();
-
-  await completeLinkOutcomeThenPickBusiness(page);
+  await expect(page.getByTestId("create-flow-modal")).toBeHidden();
 }
 
 test("CreateFlow: projet + action met à jour Bibliothèque/Aujourd’hui/Calendrier/Pilotage", async ({ page }) => {
@@ -281,7 +253,6 @@ test("CreateFlow: action récurrente valide planning/durée + conflit bloquant",
   await page.getByTestId("create-type-recurring").click();
   await page.getByPlaceholder("Nouvelle action").fill(blockedTitle);
   await page.locator("input[type=\"time\"]").first().fill("10:30");
-  await page.getByTestId("action-add").click();
   await page.getByTestId("action-save").click();
 
   await expect(page.getByTestId("conflict-resolver-modal")).toBeVisible();

@@ -1,0 +1,182 @@
+function buildAction({ label, intent, categoryId = null, actionId = null, occurrenceId = null, dateKey = null }) {
+  return { label, intent, categoryId, actionId, occurrenceId, dateKey };
+}
+
+export function buildNowFallback(context) {
+  if (context.activeSession?.isOpen) {
+    return {
+      kind: "now",
+      decisionSource: "rules",
+      headline: "Reprends la session en cours",
+      reason: "La session active est le prochain levier utile.",
+      primaryAction: buildAction({
+        label: "Reprendre",
+        intent: "resume_session",
+        categoryId: context.activeCategoryId,
+        occurrenceId: context.activeSession.occurrenceId,
+        dateKey: context.selectedDateKey,
+      }),
+      secondaryAction: context.topOccurrence
+        ? buildAction({
+            label: "Voir le plan",
+            intent: "open_today",
+            categoryId: context.activeCategoryId,
+            occurrenceId: context.topOccurrence.id || null,
+            actionId: context.topOccurrence.goalId || null,
+            dateKey: context.selectedDateKey,
+          })
+        : null,
+      suggestedDurationMin: 10,
+      confidence: 0.94,
+      urgency: "high",
+      uiTone: "direct",
+      toolIntent: "suggest_resume_session",
+      rewardSuggestion: { kind: "none", label: null },
+    };
+  }
+
+  if (context.topOccurrence) {
+    const title = String(context.goalsById.get(context.topOccurrence.goalId)?.title || "Action");
+    const duration = Number.isFinite(context.topOccurrence.durationMinutes)
+      ? context.topOccurrence.durationMinutes
+      : null;
+    return {
+      kind: "now",
+      decisionSource: "rules",
+      headline: title.slice(0, 72),
+      reason: "C’est l’action la plus exécutable dans le plan courant.",
+      primaryAction: buildAction({
+        label: "Démarrer",
+        intent: "start_occurrence",
+        categoryId: context.activeCategoryId,
+        occurrenceId: context.topOccurrence.id || null,
+        actionId: context.topOccurrence.goalId || null,
+        dateKey: context.selectedDateKey,
+      }),
+      secondaryAction: buildAction({
+        label: "Voir aujourd’hui",
+        intent: "open_today",
+        categoryId: context.activeCategoryId,
+        occurrenceId: context.topOccurrence.id || null,
+        actionId: context.topOccurrence.goalId || null,
+        dateKey: context.selectedDateKey,
+      }),
+      suggestedDurationMin: duration,
+      confidence: 0.88,
+      urgency: "medium",
+      uiTone: "steady",
+      toolIntent: "suggest_start_occurrence",
+      rewardSuggestion: { kind: "none", label: null },
+    };
+  }
+
+  return {
+    kind: "now",
+    decisionSource: "rules",
+    headline: "Aucune action prête",
+    reason: "Le plan du jour est vide ou déjà clos.",
+    primaryAction: buildAction({
+      label: "Ouvrir bibliothèque",
+      intent: "open_library",
+      categoryId: context.activeCategoryId,
+      dateKey: context.selectedDateKey,
+    }),
+    secondaryAction: buildAction({
+      label: "Voir pilotage",
+      intent: "open_pilotage",
+      categoryId: context.activeCategoryId,
+      dateKey: context.selectedDateKey,
+    }),
+    suggestedDurationMin: null,
+    confidence: 0.8,
+    urgency: "low",
+    uiTone: "steady",
+    toolIntent: "suggest_open_library",
+    rewardSuggestion: { kind: "none", label: null },
+  };
+}
+
+export function buildRecoveryFallback(context) {
+  if (context.activeSession?.isOpen) {
+    return {
+      kind: "recovery",
+      decisionSource: "rules",
+      headline: "Repars avec la session active",
+      reason: "Le plus court chemin est de reprendre ce qui est déjà lancé.",
+      primaryAction: buildAction({
+        label: "Reprendre",
+        intent: "resume_session",
+        categoryId: context.activeCategoryId,
+        occurrenceId: context.activeSession.occurrenceId,
+        dateKey: context.selectedDateKey,
+      }),
+      secondaryAction: null,
+      suggestedDurationMin: 10,
+      confidence: 0.93,
+      urgency: "high",
+      uiTone: "reset",
+      toolIntent: "suggest_resume_session",
+      rewardSuggestion: { kind: "light_reset", label: "Repars sur 10 min." },
+    };
+  }
+
+  const smallestRemaining = context.sortedOccurrences.find((occurrence) => occurrence?.status === "planned") || null;
+  if (smallestRemaining) {
+    const title = String(context.goalsById.get(smallestRemaining.goalId)?.title || "Action");
+    const duration = Number.isFinite(smallestRemaining.durationMinutes) ? smallestRemaining.durationMinutes : 10;
+    const boundedDuration = Math.max(5, Math.min(duration, 20));
+    return {
+      kind: "recovery",
+      decisionSource: "rules",
+      headline: title.slice(0, 72),
+      reason: "Repars avec l’action la plus légère encore ouverte.",
+      primaryAction: buildAction({
+        label: "Relancer",
+        intent: "start_occurrence",
+        categoryId: context.activeCategoryId,
+        occurrenceId: smallestRemaining.id || null,
+        actionId: smallestRemaining.goalId || null,
+        dateKey: context.selectedDateKey,
+      }),
+      secondaryAction: buildAction({
+        label: "Voir le plan",
+        intent: "open_today",
+        categoryId: context.activeCategoryId,
+        occurrenceId: smallestRemaining.id || null,
+        actionId: smallestRemaining.goalId || null,
+        dateKey: context.selectedDateKey,
+      }),
+      suggestedDurationMin: boundedDuration,
+      confidence: 0.86,
+      urgency: context.missedToday > 0 ? "high" : "medium",
+      uiTone: "reset",
+      toolIntent: "suggest_recovery_action",
+      rewardSuggestion: { kind: "light_reset", label: "Un reset court suffit." },
+    };
+  }
+
+  return {
+    kind: "recovery",
+    decisionSource: "rules",
+    headline: "Recrée un point d’appui",
+    reason: "Pas d’action récupérable aujourd’hui, il faut rouvrir le système.",
+    primaryAction: buildAction({
+      label: "Ouvrir bibliothèque",
+      intent: "open_library",
+      categoryId: context.activeCategoryId,
+      dateKey: context.selectedDateKey,
+    }),
+    secondaryAction: buildAction({
+      label: "Voir pilotage",
+      intent: "open_pilotage",
+      categoryId: context.activeCategoryId,
+      dateKey: context.selectedDateKey,
+    }),
+    suggestedDurationMin: 5,
+    confidence: 0.74,
+    urgency: "medium",
+    uiTone: "reset",
+    toolIntent: "suggest_open_library",
+    rewardSuggestion: { kind: "micro_action", label: "Refais un point d’appui simple." },
+  };
+}

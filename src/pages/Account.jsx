@@ -9,6 +9,20 @@ import "../features/account/accountGate.css";
 
 const AVAILABILITY_DEBOUNCE_MS = 450;
 
+function getOptionalAvatarUpdate(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return { include: true, value: "" };
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return { include: true, value: parsed.toString() };
+    }
+  } catch {
+    // Invalid avatar URL should not block profile save.
+  }
+  return { include: false, value: "" };
+}
+
 function getErrorMessage(error) {
   if (error?.code === "USERNAME_TAKEN") return "Nom d'utilisateur déjà pris.";
   if (error?.code === "PROFILE_RLS") return "Accès refusé (RLS). Reconnecte-toi puis réessaie.";
@@ -123,11 +137,13 @@ export default function Account({ data }) {
 
     setSaving(true);
     try {
-      await saveProfile({
+      const avatarUpdate = getOptionalAvatarUpdate(avatarUrl);
+      const payload = {
         username: normalizeUsername(username),
         full_name: fullName,
-        avatar_url: avatarUrl,
-      });
+      };
+      if (avatarUpdate.include) payload.avatar_url = avatarUpdate.value;
+      await saveProfile(payload);
       setStatus({ type: "success", message: "Profil enregistré." });
     } catch (error) {
       setStatus({ type: "error", message: getErrorMessage(error) });
@@ -184,7 +200,7 @@ export default function Account({ data }) {
             </label>
 
             <label className="accountGateField GateFormField" htmlFor="account-avatar-url">
-              <span className="accountGateFieldLabel GateFormLabel">Avatar URL</span>
+              <span className="accountGateFieldLabel GateFormLabel">Avatar URL (optionnel)</span>
               <input
                 id="account-avatar-url"
                 className="accountGateInput GateInputPremium"

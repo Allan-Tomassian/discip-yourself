@@ -6,6 +6,20 @@ import { normalizeUsername, validateUsername } from "./username";
 
 const AVAILABILITY_DEBOUNCE_MS = 450;
 
+function getOptionalAvatarUpdate(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return { include: true, value: "" };
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return { include: true, value: parsed.toString() };
+    }
+  } catch {
+    // Invalid avatar URL should not block profile creation.
+  }
+  return { include: false, value: "" };
+}
+
 export default function ProfileSetupScreen() {
   const { user } = useAuth();
   const { profile, createProfile, checkUsernameAvailability } = useProfile();
@@ -96,12 +110,14 @@ export default function ProfileSetupScreen() {
 
     setSubmitting(true);
     try {
-      await createProfile({
+      const avatarUpdate = getOptionalAvatarUpdate(avatarUrl);
+      const payload = {
         email: user?.email || "",
         username: normalizeUsername(username),
         full_name: fullName,
-        avatar_url: avatarUrl,
-      });
+      };
+      if (avatarUpdate.include) payload.avatar_url = avatarUpdate.value;
+      await createProfile(payload);
       setStatus({ type: "success", message: "Profil créé." });
     } catch (error) {
       if (error?.code === "USERNAME_TAKEN") {

@@ -41,7 +41,8 @@ export default function CreateFlowModal({
   generationWindowDays,
 }) {
   const [step, setStep] = useState("choice");
-  const [choice, setChoice] = useState(null);
+  const [choice, setChoice] = useState("action");
+  const [showLegacyChoices, setShowLegacyChoices] = useState(false);
   const [categoryId, setCategoryId] = useState(null);
   const panelRef = useRef(null);
   const previousBodyOverflowRef = useRef("");
@@ -59,9 +60,10 @@ export default function CreateFlowModal({
     const nextCategoryId = selectedCategoryId || resolvedSelected?.id || SYSTEM_INBOX_ID;
     setCategoryId(nextCategoryId);
     setStep("choice");
-    setChoice(null);
+    setChoice("action");
+    setShowLegacyChoices(false);
     if (typeof seedCreateDraft === "function") {
-      seedCreateDraft({ source: "create-modal", categoryId: nextCategoryId });
+      seedCreateDraft({ source: "create-modal", categoryId: nextCategoryId, step: STEP_HABIT_TYPE });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -114,16 +116,16 @@ export default function CreateFlowModal({
   const startChoice = (nextChoice) => {
     if (!canProceed) return;
     setChoice(nextChoice);
-    if (nextChoice === "project" || nextChoice === "guided") {
-      if (typeof seedCreateDraft === "function") {
-        seedCreateDraft({ source: "create-modal", categoryId, step: STEP_OUTCOME });
-      }
-      setStep("outcome");
-    } else if (nextChoice === "action") {
+    if (nextChoice === "action") {
       if (typeof seedCreateDraft === "function") {
         seedCreateDraft({ source: "create-modal", categoryId, step: STEP_HABIT_TYPE });
       }
       setStep("habit-type");
+    } else if (nextChoice === "project" || nextChoice === "guided") {
+      if (typeof seedCreateDraft === "function") {
+        seedCreateDraft({ source: "create-modal", categoryId, step: STEP_OUTCOME });
+      }
+      setStep("outcome");
     }
   };
 
@@ -198,9 +200,13 @@ export default function CreateFlowModal({
         <GateRow
           className="createFlowCategoryRow GateRowPremium"
           right={
-            <GateButton variant="ghost" className="GatePressable" withSound onClick={onChangeCategory} data-testid="create-change-category">
-              Modifier
-            </GateButton>
+            step === "choice" ? (
+              <GateButton variant="ghost" className="GatePressable" withSound onClick={onChangeCategory} data-testid="create-change-category">
+                Modifier
+              </GateButton>
+            ) : (
+              <span className="small2 textMuted2">Verrouillée</span>
+            )
           }
         >
           <span className="createFlowSwatch" style={{ background: categoryColor }} />
@@ -210,36 +216,6 @@ export default function CreateFlowModal({
         <div className="createFlowBody">
           {step === "choice" ? (
             <div className="createFlowChoiceGrid">
-              <GateCard
-                className={`createFlowChoiceCard GateRowPremium GatePressable${!canProceed ? " isDisabled" : ""}`}
-                data-testid="create-choice-guided"
-                withSound
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (canProceed) startChoice("guided");
-                }}
-              >
-                <div className="createFlowChoiceText">
-                  <div className="titleSm">{LABELS.goal} + {LABELS.action}</div>
-                  <div className="small2">Guidé, pour structurer ton plan.</div>
-                </div>
-              </GateCard>
-              <GateCard
-                className={`createFlowChoiceCard GateRowPremium GatePressable${!canProceed ? " isDisabled" : ""}`}
-                data-testid="create-choice-project"
-                withSound
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (canProceed) startChoice("project");
-                }}
-              >
-                <div className="createFlowChoiceText">
-                  <div className="titleSm">{LABELS.goal}</div>
-                  <div className="small2">Définis un {LABELS.goalLower} clair.</div>
-                </div>
-              </GateCard>
               <GateCard
                 className={`createFlowChoiceCard GateRowPremium GatePressable${!canProceed ? " isDisabled" : ""}`}
                 data-testid="create-choice-action"
@@ -255,6 +231,49 @@ export default function CreateFlowModal({
                   <div className="small2">Planifie une action concrète.</div>
                 </div>
               </GateCard>
+              {showLegacyChoices ? (
+                <>
+                  <GateCard
+                    className={`createFlowChoiceCard GateRowPremium GatePressable${!canProceed ? " isDisabled" : ""}`}
+                    data-testid="create-choice-guided"
+                    withSound
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (canProceed) startChoice("guided");
+                    }}
+                  >
+                    <div className="createFlowChoiceText">
+                      <div className="titleSm">{LABELS.goal} + {LABELS.action}</div>
+                      <div className="small2">Parcours compatibilité (legacy).</div>
+                    </div>
+                  </GateCard>
+                  <GateCard
+                    className={`createFlowChoiceCard GateRowPremium GatePressable${!canProceed ? " isDisabled" : ""}`}
+                    data-testid="create-choice-project"
+                    withSound
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (canProceed) startChoice("project");
+                    }}
+                  >
+                    <div className="createFlowChoiceText">
+                      <div className="titleSm">{LABELS.goal}</div>
+                      <div className="small2">Créer un {LABELS.goalLower} (legacy).</div>
+                    </div>
+                  </GateCard>
+                </>
+              ) : null}
+              <GateButton
+                variant="ghost"
+                className="GatePressable"
+                withSound
+                data-testid="create-show-legacy-options"
+                onClick={() => setShowLegacyChoices((prev) => !prev)}
+              >
+                {showLegacyChoices ? "Masquer options legacy" : "Afficher options legacy"}
+              </GateButton>
             </div>
           ) : (
             <div className="createFlowStep">

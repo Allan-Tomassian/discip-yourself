@@ -164,6 +164,22 @@
   border-top-color: color-mix(in srgb, var(--gate-border, var(--border-subtle, var(--border))) 88%, transparent);
 }
 
+.createLockedCategory {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--gate-border, var(--border-subtle, var(--border))) 84%, transparent);
+  background: color-mix(in srgb, var(--surface-2, #0f172a) 90%, #05080f);
+}
+
+.createAdvancedToggleRow {
+  display: flex;
+  justify-content: flex-start;
+}
+
 @media (max-width: 720px) {
   .createFlowModal {
     width: min(var(--app-modal-max, 720px), calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
