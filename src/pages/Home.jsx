@@ -40,9 +40,12 @@ import MicroActionsCard from "../ui/today/MicroActionsCard";
 import RewardedAdModal from "../ui/today/RewardedAdModal";
 import { emitTotemEvent } from "../ui/totem/totemEvents";
 import { LABELS, UI_COPY } from "../ui/labels";
+import { useAuth } from "../auth/useAuth";
 import { deriveTodayNowModel } from "../features/today/nowModel";
 import { deriveTodayCalendarModel } from "../features/today/todayCalendarModel";
 import { deriveTodayProgressModel } from "../features/today/todayProgressModel";
+import { deriveTodayHeroModel } from "../features/today/aiNowHeroAdapter";
+import { useAiNow } from "../hooks/useAiNow";
 
 // TOUR MAP:
 // - primary_action: start session (GO) for today
@@ -241,6 +244,8 @@ function Textarea({ className = "", ...props }) {
 export default function Home({
   data,
   setData,
+  onOpenLibrary,
+  onOpenPilotage,
   onOpenManageCategory,
   onOpenSession,
   onDayOpen,
@@ -279,6 +284,7 @@ export default function Home({
   const [noteDeleteMode, setNoteDeleteMode] = useState(false);
   const [noteDeleteTargetId, setNoteDeleteTargetId] = useState(null);
   const [noteHistoryVersion, setNoteHistoryVersion] = useState(0);
+  const { session } = useAuth();
   const legacyOrder = useMemo(() => loadLegacyBlockOrder(), []);
   const blockOrder = useMemo(() => {
     const raw = safeData?.ui?.blocksByPage?.home;
@@ -658,6 +664,13 @@ export default function Home({
     canStart,
     startPayload,
   } = todayNowModel;
+  const aiNow = useAiNow({
+    selectedDateKey,
+    activeCategoryId: executionCategoryId,
+    activeSessionId: activeSession?.id || activeSession?.occurrenceId || null,
+    isAuthenticated: Boolean(session),
+    enabled: true,
+  });
   const doneHabitIds = useMemo(() => {
     const ids = new Set();
     for (const occ of occurrences) {
@@ -1437,6 +1450,77 @@ export default function Home({
       </span>
     </div>
   ) : null;
+  const localHeroModel = useMemo(
+    () => ({
+      title: nowActionTitle,
+      meta: nowActionMeta,
+      primaryLabel: canStart ? "Commencer maintenant" : "Aucune action active",
+      primaryAction:
+        canStart && focusOccurrence
+          ? {
+              kind: "start_occurrence",
+              occurrence: focusOccurrence,
+            }
+          : null,
+      secondaryLabel: "Voir progression",
+    }),
+    [canStart, focusOccurrence, nowActionMeta, nowActionTitle]
+  );
+  const heroViewModel = useMemo(
+    () =>
+      deriveTodayHeroModel({
+        localHero: localHeroModel,
+        coach: aiNow.state === "success" ? aiNow.coach : null,
+        occurrencesForSelectedDay,
+        hasOpenSession: isRuntimeSessionOpen(activeSession),
+        handlersAvailable: {
+          openLibrary: typeof onOpenLibrary === "function",
+          openPilotage: typeof onOpenPilotage === "function",
+        },
+      }),
+    [
+      activeSession,
+      aiNow.coach,
+      aiNow.state,
+      localHeroModel,
+      occurrencesForSelectedDay,
+      onOpenLibrary,
+      onOpenPilotage,
+    ]
+  );
+  const handleHeroPrimaryAction = useCallback(() => {
+    const action = heroViewModel.primaryAction;
+    if (!action) return;
+    if (action.kind === "start_occurrence") {
+      if (!action.occurrence) return;
+      handleStartSession(action.occurrence);
+      return;
+    }
+    if (action.kind === "resume_session") {
+      if (typeof onOpenSession !== "function") return;
+      onOpenSession({
+        categoryId: action.categoryId || executionCategoryId || focusCategory?.id || null,
+        dateKey: selectedDateKey,
+      });
+      return;
+    }
+    if (action.kind === "open_library") {
+      if (typeof onOpenLibrary === "function") onOpenLibrary();
+      return;
+    }
+    if (action.kind === "open_pilotage") {
+      if (typeof onOpenPilotage === "function") onOpenPilotage();
+    }
+  }, [
+    executionCategoryId,
+    focusCategory?.id,
+    handleStartSession,
+    heroViewModel.primaryAction,
+    onOpenLibrary,
+    onOpenPilotage,
+    onOpenSession,
+    selectedDateKey,
+  ]);
 
   return (
     <ScreenShell
@@ -1454,26 +1538,23 @@ export default function Home({
             <div className="todayHeroDate">{selectedDateLabel}</div>
           </div>
           <div className="todayHeroBody">
-            <div className="todayHeroTitle">{nowActionTitle}</div>
-            {nowActionMeta ? <div className="todayHeroMeta">{nowActionMeta}</div> : null}
+            <div className="todayHeroTitle">{heroViewModel.title}</div>
+            {heroViewModel.meta ? <div className="todayHeroMeta">{heroViewModel.meta}</div> : null}
           </div>
           <div className="todayHeroActions GatePrimaryCtaRow">
             <GateButton
               className="GatePressable todayHeroPrimaryBtn"
-              disabled={!canStart}
-              onClick={() => {
-                if (!startPayload?.occurrenceId || !focusOccurrence) return;
-                handleStartSession(focusOccurrence);
-              }}
+              disabled={!heroViewModel.primaryAction}
+              onClick={handleHeroPrimaryAction}
             >
-              {canStart ? "Commencer maintenant" : "Aucune action active"}
+              {heroViewModel.primaryLabel}
             </GateButton>
             <GateButton
               variant="ghost"
               className="GatePressable todayHeroSecondaryBtn"
               onClick={() => setShowDayStats(true)}
             >
-              Voir progression
+              {heroViewModel.secondaryLabel}
             </GateButton>
           </div>
         </GateSection>
