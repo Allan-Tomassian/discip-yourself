@@ -61,6 +61,7 @@ import { useSessionRuntimeLoop } from "./hooks/useSessionRuntimeLoop";
 import { useCreateFlowOrchestration } from "./hooks/useCreateFlowOrchestration";
 import { useCategorySelectionSync } from "./hooks/useCategorySelectionSync";
 import { getInboxId } from "./app/inbox";
+import { createHomeNavigationHandlers } from "./app/homeNavigation";
 import { useUserData } from "./data/useUserData";
 import { useProfile } from "./profile/useProfile";
 import { isProfileComplete } from "./profile/profileApi";
@@ -329,6 +330,14 @@ export default function App() {
     setCategoryProgressId,
     setSessionCategoryId,
   });
+  const homeNavigationHandlers = useMemo(
+    () =>
+      createHomeNavigationHandlers({
+        openLibraryDetail,
+        setTab,
+      }),
+    [openLibraryDetail, setTab]
+  );
   const {
     draft,
     hasDraft,
@@ -623,9 +632,8 @@ export default function App() {
         <Home
           data={data}
           setData={setData}
-          onOpenLibrary={() => {
-            openLibraryDetail();
-          }}
+          onOpenLibrary={homeNavigationHandlers.onOpenLibrary}
+          onOpenPilotage={homeNavigationHandlers.onOpenPilotage}
           onOpenManageCategory={(categoryId) => {
             if (!categoryId) return;
             setLibraryCategoryId(categoryId);
