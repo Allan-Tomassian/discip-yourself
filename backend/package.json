@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "node src/server.js",
     "start": "node src/server.js",
+    "check:schema": "node src/scripts/checkSchema.js",
     "test": "node --test"
   },
   "dependencies": {

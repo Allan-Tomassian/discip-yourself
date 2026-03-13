@@ -220,7 +220,8 @@ export default function CreateV2Outcome({
         ) : null}
       </GateSection>
 
-      <GateSection title={LABELS.goal} description="Nom + priorité" collapsible={false}>
+      <GateSection title={`${LABELS.goal} avancé`} description="Optionnel" collapsible={false}>
+        <div className="small2">Tu peux agir sans {LABELS.goalLower}. Utilise-le seulement pour structurer un sujet plus large.</div>
         <Input
           value={title}
           onChange={(e) => {
@@ -308,7 +309,7 @@ export default function CreateV2Outcome({
       headerTitle="Créer"
       headerSubtitle={
         <>
-          <span className="textMuted2">1.</span> {LABELS.goal}
+          <span className="textMuted2">1.</span> {LABELS.goal} avancé
         </>
       }
       backgroundImage={backgroundImage}

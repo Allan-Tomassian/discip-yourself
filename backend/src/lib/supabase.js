@@ -1,5 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
+export const REQUIRED_AI_TABLES = [
+  "profiles",
+  "user_data",
+  "billing_entitlements",
+  "ai_request_logs",
+];
+
 export function createSupabaseAdminClient(config) {
   return createClient(config.SUPABASE_URL, config.SUPABASE_SERVICE_ROLE_KEY, {
     auth: {
@@ -50,5 +57,19 @@ export async function loadUserSnapshot(supabase, userId) {
         ? userDataResult.data.data
         : {},
     entitlement: entitlementResult.data || null,
+  };
+}
+
+export async function assertRequiredAiTables(supabase) {
+  const missing = [];
+
+  for (const table of REQUIRED_AI_TABLES) {
+    const { error } = await supabase.from(table).select("*", { head: true, count: "exact" }).limit(1);
+    if (error) missing.push({ table, error });
+  }
+
+  return {
+    ok: missing.length === 0,
+    missing,
   };
 }

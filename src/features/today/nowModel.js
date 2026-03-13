@@ -1,8 +1,7 @@
 import { getAlternativeCandidates, getNextPlannedOccurrence } from "../../core/focus/focusSelector";
 import { resolveGoalType } from "../../domain/goalType";
 import { normalizeActiveSessionForUI } from "../../logic/compat";
-import { splitProcessByLink } from "../../logic/linking";
-import { isPrimaryCategory, isPrimaryGoal } from "../../logic/priority";
+import { isPrimaryCategory } from "../../logic/priority";
 
 function safeArray(value) {
   return Array.isArray(value) ? value : [];
@@ -37,10 +36,7 @@ export function resolveTodayFocusCategory({ categories, goals, selectedCategoryI
   );
   if (withAction) return withAction;
 
-  const withOutcome = categoryList.find((category) =>
-    goalList.some((goal) => goal?.categoryId === category.id && resolveGoalType(goal) === "OUTCOME")
-  );
-  return withOutcome || categoryList[0] || null;
+  return categoryList[0] || null;
 }
 
 export function deriveTodayNowModel({
@@ -63,34 +59,13 @@ export function deriveTodayNowModel({
     selectedCategoryId,
   });
 
-  const outcomeGoals = !focusCategory?.id
-    ? []
-    : goalList.filter((goal) => goal?.categoryId === focusCategory.id && resolveGoalType(goal) === "OUTCOME");
-
-  const mainGoalId = typeof focusCategory?.mainGoalId === "string" ? focusCategory.mainGoalId : null;
-  const selectedGoal = (() => {
-    if (!focusCategory?.id || !outcomeGoals.length) return null;
-    if (mainGoalId) {
-      const main = outcomeGoals.find((goal) => goal.id === mainGoalId) || null;
-      if (main) return main;
-    }
-    const primaryGoal = outcomeGoals.find((goal) => isPrimaryGoal(goal)) || null;
-    return primaryGoal || outcomeGoals[0] || null;
-  })();
-
-  const processGoals = sortProcessGoals(
+  const executableActions = sortProcessGoals(
     !focusCategory?.id
       ? []
       : goalList.filter((goal) => goal?.categoryId === focusCategory.id && resolveGoalType(goal) === "PROCESS")
   );
-
-  const { linked: linkedHabits, unlinked: unlinkedHabits } = selectedGoal?.id
-    ? splitProcessByLink(processGoals, selectedGoal.id)
-    : { linked: processGoals, unlinked: [] };
-
-  const scopedHabits = linkedHabits.length ? linkedHabits : processGoals;
-  const activeHabits = scopedHabits.filter((goal) => safeString(goal?.status) === "active");
-  const ensureProcessIds = scopedHabits.map((goal) => goal?.id).filter(Boolean);
+  const activeHabits = executableActions.filter((goal) => safeString(goal?.status) === "active");
+  const ensureProcessIds = executableActions.map((goal) => goal?.id).filter(Boolean);
 
   const activeSession = normalizeActiveSessionForUI(rawActiveSession);
   const sessionForDay = (() => {
@@ -124,14 +99,25 @@ export function deriveTodayNowModel({
     limit: 4,
     excludeId: focusOccurrence?.id || null,
   });
+  const canStart = Boolean(focusOccurrence);
+  const fallbackReason = (() => {
+    if (focusOccurrence) return "planned_occurrence";
+    if (sessionForDay?.occurrenceId) return "session_active";
+    if (ensureProcessIds.length) return "no_planned_occurrence";
+    if (focusCategory?.id) return "no_executable_action";
+    return "no_category";
+  })();
+  const startPayload = focusOccurrence
+    ? {
+        occurrenceId: focusOccurrence.id || null,
+        dateKey: focusOccurrence.date || selectedDateKey,
+        habitIds: focusOccurrence.goalId ? [focusOccurrence.goalId] : [],
+      }
+    : null;
 
   return {
     focusCategory,
-    selectedGoal,
-    processGoals,
-    linkedHabits,
-    unlinkedHabits,
-    selectableHabits: scopedHabits,
+    selectedCategoryId: focusCategory?.id || null,
     activeHabits,
     ensureProcessIds,
     activeSession,
@@ -142,5 +128,8 @@ export function deriveTodayNowModel({
     focusOccurrence,
     isFocusOverride,
     alternativeCandidates,
+    canStart,
+    fallbackReason,
+    startPayload,
   };
 }

@@ -65,3 +65,11 @@ Notes:
   - Configure products in App Store Connect (monthly/yearly IDs).
   - Run `npm run cap:sync` after installing native dependencies.
   - Test with a sandbox Apple ID on device/simulator.
+
+## Supabase + AI readiness
+
+Avant d'activer le backend IA, applique les migrations Supabase du repo sur le projet distant.
+
+- commande de référence: `supabase db push`
+- tables minimales requises: `profiles`, `user_data`, `billing_entitlements`, `ai_request_logs`
+- doc d'exploitation: [docs/supabase-ai-readiness.md](/Users/allan/Desktop/discip-yourself code/docs/supabase-ai-readiness.md)

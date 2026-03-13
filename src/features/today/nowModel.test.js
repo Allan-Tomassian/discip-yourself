@@ -43,7 +43,7 @@ describe("deriveTodayNowModel", () => {
     expect(result.sessionHabit?.id).toBe("a1");
   });
 
-  it("falls back to category actions when no linked outcome actions exist", () => {
+  it("exposes a pure execution contract without selectedGoal or linked habits", () => {
     const categories = [{ id: "c1", name: "Fitness", mainGoalId: "o1" }];
     const goals = [
       { id: "o1", categoryId: "c1", type: "OUTCOME", title: "Run a race" },
@@ -61,9 +61,14 @@ describe("deriveTodayNowModel", () => {
       now: new Date(2026, 2, 13, 9, 0),
     });
 
-    expect(result.linkedHabits).toHaveLength(0);
-    expect(result.selectableHabits.map((goal) => goal.id)).toEqual(["a1"]);
     expect(result.activeHabits.map((goal) => goal.id)).toEqual(["a1"]);
     expect(result.ensureProcessIds).toEqual(["a1"]);
+    expect(result.selectedCategoryId).toBe("c1");
+    expect(result.canStart).toBe(false);
+    expect(result.fallbackReason).toBe("no_planned_occurrence");
+    expect("selectedGoal" in result).toBe(false);
+    expect("linkedHabits" in result).toBe(false);
+    expect("unlinkedHabits" in result).toBe(false);
+    expect("processGoals" in result).toBe(false);
   });
 });

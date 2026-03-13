@@ -100,6 +100,7 @@ export function useUserData() {
 
   const [data, setDataState] = useState(() => toSafeState(loadState() || initialData()));
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const skipNextRemoteSaveRef = useRef(true);
   const saverRef = useRef(null);
@@ -116,6 +117,7 @@ export function useUserData() {
     if (!userId) {
       setDataState(toSafeState(loadState() || initialData()));
       setLoading(false);
+      setLoadError("");
       return undefined;
     }
 
@@ -154,6 +156,7 @@ export function useUserData() {
         skipNextRemoteSaveRef.current = true;
         setDataState(next);
         saveState(next);
+        setLoadError("");
       } catch (error) {
         if (!active) return;
         // eslint-disable-next-line no-console
@@ -161,6 +164,7 @@ export function useUserData() {
         const fallback = toSafeState(loadState() || initialData());
         skipNextRemoteSaveRef.current = true;
         setDataState(fallback);
+        setLoadError(String(error?.message || "").trim() || "Impossible de charger user_data.");
       } finally {
         if (!active) return;
         setLoading(false);
@@ -197,7 +201,8 @@ export function useUserData() {
       data,
       setData,
       loading,
+      loadError,
     }),
-    [data, loading, setData]
+    [data, loadError, loading, setData]
   );
 }

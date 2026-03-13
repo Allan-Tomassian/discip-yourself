@@ -1,8 +1,8 @@
 export const LABELS = {
-  goal: "Projet",
-  goals: "Projets",
-  goalLower: "projet",
-  goalsLower: "projets",
+  goal: "Objectif",
+  goals: "Objectifs",
+  goalLower: "objectif",
+  goalsLower: "objectifs",
   action: "Action",
   actions: "Actions",
   actionLower: "action",

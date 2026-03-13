@@ -9,7 +9,6 @@ import {
   startOfMonth,
 } from "../utils/dates";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
-import { setMainGoal } from "../logic/goals";
 import { backfillMissedOccurrences, ensureWindowFromScheduleRules } from "../logic/occurrencePlanner";
 import { normalizeOccurrenceForUI } from "../logic/compat";
 import { applySessionRuntimeTransition, isRuntimeSessionOpen } from "../logic/sessionRuntime";
@@ -17,9 +16,6 @@ import { emitSessionRuntimeNotificationHook } from "../logic/sessionRuntimeNotif
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
-import { resolveGoalType } from "../domain/goalType";
-import { linkProcessToOutcome } from "../logic/linking";
-import { computeWindowStats } from "../logic/progressionModel";
 import {
   BASIC_MICRO_REROLL_LIMIT,
   completeMicroAction,
@@ -45,28 +41,13 @@ import RewardedAdModal from "../ui/today/RewardedAdModal";
 import { emitTotemEvent } from "../ui/totem/totemEvents";
 import { LABELS, UI_COPY } from "../ui/labels";
 import { deriveTodayNowModel } from "../features/today/nowModel";
+import { deriveTodayCalendarModel } from "../features/today/todayCalendarModel";
+import { deriveTodayProgressModel } from "../features/today/todayProgressModel";
 
 // TOUR MAP:
 // - primary_action: start session (GO) for today
 // - key_elements: focus section, calendar, micro-actions, daily note
 // - optional_elements: day stats/discipline stats modals
-// ---- Priority helpers
-function normalizePriorityValue(v) {
-  const raw = typeof v === "string" ? v.toLowerCase() : "";
-  if (raw === "prioritaire" || raw === "primary") return "prioritaire";
-  if (raw === "secondaire" || raw === "secondary") return "secondaire";
-  if (raw === "bonus") return "bonus";
-  return "";
-}
-
-function priorityRank(v) {
-  const p = normalizePriorityValue(v);
-  if (p === "prioritaire") return 0;
-  if (p === "secondaire") return 1;
-  if (p === "bonus") return 2;
-  return 3;
-}
-
 const DEFAULT_BLOCK_ORDER = getDefaultBlockIds("home");
 
 function diffDays(anchor, target) {
@@ -457,28 +438,6 @@ export default function Home({
     [isPremiumPlan, microDateKey, microWallet]
   );
   const microRerollLimit = isPremiumPlan ? Number.POSITIVE_INFINITY : BASIC_MICRO_REROLL_LIMIT;
-  const plannedByDate = useMemo(() => {
-    const map = new Map();
-    for (const entry of plannedCalendarOccurrences.list) {
-      map.set(entry.dateKey, (map.get(entry.dateKey) || 0) + 1);
-    }
-    return map;
-  }, [plannedCalendarOccurrences]);
-  const doneByDate = useMemo(() => {
-    const map = new Map();
-    for (const occ of occurrences) {
-      if (!occ || occ.status !== "done") continue;
-      const key = normalizeLocalDateKey(occ.date);
-      const id = typeof occ.goalId === "string" ? occ.goalId : "";
-      if (!key || !id || !goalIdSet.has(id)) continue;
-      const set = map.get(key) || new Set();
-      set.add(id);
-      map.set(key, set);
-    }
-    const counts = new Map();
-    for (const [key, set] of map.entries()) counts.set(key, set.size);
-    return counts;
-  }, [goalIdSet, occurrences]);
   useEffect(() => {
     const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
     if (!isDev || typeof console === "undefined") return;
@@ -685,8 +644,7 @@ export default function Home({
   );
   const {
     focusCategory,
-    selectedGoal,
-    selectableHabits,
+    selectedCategoryId: executionCategoryId,
     activeHabits,
     ensureProcessIds,
     activeSession,
@@ -697,6 +655,8 @@ export default function Home({
     focusOccurrence,
     isFocusOverride,
     alternativeCandidates,
+    canStart,
+    startPayload,
   } = todayNowModel;
   const doneHabitIds = useMemo(() => {
     const ids = new Set();
@@ -710,9 +670,7 @@ export default function Home({
     }
     return ids;
   }, [occurrences, selectedDateKey, sessionForDay?.doneHabitIds]);
-  const canManageCategory = Boolean(typeof onOpenManageCategory === "function" && focusCategory?.id);
 
-  // ---- Outcome goal lookup helpers and dominant outcome by date
   const goalsById = useMemo(() => {
     const map = new Map();
     for (const g of goals) if (g && g.id) map.set(g.id, g);
@@ -790,47 +748,42 @@ export default function Home({
       console.log("[orphan occurrence skipped]", occ);
     }
   }, [goalsById, occurrencesForSelectedDay]);
-
-  const occurrencesCountByDateKey = useMemo(() => {
-    const map = new Map();
-    for (const occ of occurrences) {
-      if (!occ) continue;
-      const dateKey = normalizeLocalDateKey(occ.date);
-      if (!goalsById.has(occ.goalId)) continue;
-      if (!dateKey) continue;
-      map.set(dateKey, (map.get(dateKey) || 0) + 1);
-    }
-    return map;
-  }, [goalsById, occurrences]);
-
-
-  // Calendar dots (multi-catégories) — used in day rail + month grid
-  const categoryDotsByDate = useMemo(() => {
-    const map = new Map(); // dateKey -> Map(categoryId -> { categoryId, color })
-
-    for (const entry of plannedCalendarOccurrences.list) {
-      const g = goalsById.get(entry.goalId);
-      if (!g) continue;
-
-      const catId = typeof g.categoryId === "string" ? g.categoryId : "";
-      if (!catId) continue;
-
-      const c = categoriesById.get(catId);
-      const color = (c && c.color) || (g && g.color) || "";
-      if (!color) continue;
-
-      const dayMap = map.get(entry.dateKey) || new Map();
-      if (!dayMap.has(catId)) dayMap.set(catId, { categoryId: catId, color });
-      map.set(entry.dateKey, dayMap);
-    }
-
-    const out = new Map();
-    for (const [dateKey, dayMap] of map.entries()) {
-      out.set(dateKey, Array.from(dayMap.values()));
-    }
-    return out;
-  }, [plannedCalendarOccurrences, goalsById, categoriesById]);
-
+  const todayCalendarModel = useMemo(
+    () =>
+      deriveTodayCalendarModel({
+        plannedCalendarOccurrences,
+        occurrences,
+        goalsById,
+        categoriesById,
+        goalIdSet,
+        selectedDateKey,
+        selectedCategoryId: executionCategoryId,
+        fallbackAccent: focusCategory?.color || getAccentForPage(safeData, "home"),
+        defaultActionId: focusOccurrence?.goalId || sessionHabit?.id || ensureProcessIds[0] || null,
+      }),
+    [
+      categoriesById,
+      ensureProcessIds,
+      executionCategoryId,
+      focusCategory?.color,
+      focusOccurrence?.goalId,
+      goalIdSet,
+      goalsById,
+      occurrences,
+      plannedCalendarOccurrences,
+      safeData,
+      selectedDateKey,
+      sessionHabit?.id,
+    ]
+  );
+  const {
+    plannedByDate,
+    doneByDate,
+    categoryDotsByDate,
+    accentByDate,
+    selectedDateAccent,
+    addActionContext,
+  } = todayCalendarModel;
   const getDayDots = useCallback(
     (dateKey, max = 3) => {
       const list = categoryDotsByDate.get(dateKey) || [];
@@ -841,219 +794,24 @@ export default function Home({
     [categoryDotsByDate]
   );
 
-
-  const outcomeById = useMemo(() => {
-    const map = new Map();
-    for (const g of goals) {
-      if (!g || !g.id) continue;
-      if (resolveGoalType(g) === "OUTCOME") map.set(g.id, g);
-    }
-    return map;
-  }, [goals]);
-
-  const getOutcomeForGoalId = useCallback(
-    (goalId) => {
-      const g = goalId ? goalsById.get(goalId) : null;
-      if (!g) return null;
-      const t = resolveGoalType(g);
-      if (t === "OUTCOME") return g;
-      const parentId = typeof g.parentId === "string" ? g.parentId : null;
-      const primaryId = typeof g.primaryGoalId === "string" ? g.primaryGoalId : null;
-      const linkId = parentId || primaryId;
-      return linkId ? outcomeById.get(linkId) || null : null;
-    },
-    [goalsById, outcomeById]
+  const todayProgressModel = useMemo(
+    () =>
+      deriveTodayProgressModel({
+        activeHabits,
+        doneHabitIds,
+        goals,
+        occurrences,
+        microChecks,
+        localTodayKey,
+        safeData,
+      }),
+    [activeHabits, doneHabitIds, goals, localTodayKey, microChecks, occurrences, safeData]
   );
-
-  const dominantOutcomeIdByDate = useMemo(() => {
-    const map = new Map();
-
-    // Helper: pick best outcome id from candidates
-    const pickBest = (ids) => {
-      const unique = Array.from(new Set(ids.filter(Boolean)));
-      unique.sort((a, b) => {
-        const ga = goalsById.get(a);
-        const gb = goalsById.get(b);
-        const ra = priorityRank(ga?.priority);
-        const rb = priorityRank(gb?.priority);
-        if (ra !== rb) return ra - rb;
-        // fallback: stable by title
-        return String(ga?.title || "").localeCompare(String(gb?.title || ""));
-      });
-      return unique[0] || null;
-    };
-
-    // Occurrences planned: map PROCESS -> parent OUTCOME
-    for (const entry of plannedCalendarOccurrences.list) {
-      const out = getOutcomeForGoalId(entry.goalId);
-      if (!out?.id) continue;
-      const key = entry.dateKey;
-      const prev = map.get(key);
-      if (!prev) {
-        map.set(key, out.id);
-      } else if (prev !== out.id) {
-        map.set(key, pickBest([prev, out.id]));
-      }
-    }
-
-    return map;
-  }, [plannedCalendarOccurrences, goalsById, getOutcomeForGoalId]);
-
-  const goalAccentByDate = useMemo(() => {
-    const map = new Map();
-    for (const [key, outId] of dominantOutcomeIdByDate.entries()) {
-      const g = outId ? goalsById.get(outId) : null;
-      const c = g?.categoryId ? categories.find((x) => x.id === g.categoryId) : null;
-      const color = (g && g.color) || (c && c.color) || "";
-      if (color) map.set(key, color);
-    }
-    return map;
-  }, [dominantOutcomeIdByDate, goalsById, categories]);
-  const coreProgress = useMemo(() => {
-    const activeIds = new Set(activeHabits.map((h) => h.id));
-    const doneHabitsCount = Array.from(activeIds).reduce(
-      (sum, id) => sum + (doneHabitIds.has(id) ? 1 : 0),
-      0
-    );
-    const total = activeHabits.length;
-    const done = doneHabitsCount;
-    const ratio = total ? done / total : 0;
-    return { total, done, ratio };
-  }, [activeHabits, doneHabitIds]);
-  const goalDone = Boolean(selectedGoal && selectedGoal.status === "done");
-  const habitsDoneCount = coreProgress.done;
-
-  const disciplineBreakdown = useMemo(() => {
-    const now = new Date();
-    const yesterdayKey = toLocalDateKey(addDays(now, -1));
-
-    const historyKeys = [];
-    for (const occ of occurrences) {
-      if (!occ || typeof occ.date !== "string") continue;
-      if (occ.date >= localTodayKey) continue;
-      historyKeys.push(occ.date);
-    }
-    for (const [dateKey] of Object.entries(microChecks || {})) {
-      const key = normalizeLocalDateKey(dateKey);
-      if (!key || key >= localTodayKey) continue;
-      historyKeys.push(key);
-    }
-    for (const g of goals) {
-      if (resolveGoalType(g) !== "OUTCOME") continue;
-      if (g?.status !== "done") continue;
-      const key = normalizeLocalDateKey(g?.completedAt);
-      if (!key || key >= localTodayKey) continue;
-      historyKeys.push(key);
-    }
-
-    const oldestHistoryKey = historyKeys.length ? historyKeys.sort()[0] : null;
-    const disciplineWindow =
-      oldestHistoryKey && oldestHistoryKey <= yesterdayKey
-        ? computeWindowStats(safeData, oldestHistoryKey, yesterdayKey, { includeMicroContribution: true })
-        : null;
-    const disciplineScore = disciplineWindow?.discipline?.score ?? 0;
-    const disciplineRatio = disciplineWindow?.discipline?.rate ?? 0;
-
-    // UX: start discipline at 100% for brand-new users (no history yet).
-    const hasAnyOccurrences = occurrences.some((o) => o && typeof o.status === "string");
-    const hasAnyMicro = Object.keys(microChecks).length > 0;
-    const hasAnyDoneOutcome = goals.some((g) => resolveGoalType(g) === "OUTCOME" && g.status === "done");
-    const hasAnyHistory = hasAnyOccurrences || hasAnyMicro || hasAnyDoneOutcome;
-
-    if (!hasAnyHistory) {
-      const outcomesTotal = goals.filter((g) => resolveGoalType(g) === "OUTCOME").length;
-      return {
-        score: 100,
-        ratio: 1,
-        habit14: { done: 0, planned: 0, ratio: 1, keptDays: 0 },
-        habit90: { done: 0, planned: 0, ratio: 1, keptDays: 0 },
-        microDone14: 0,
-        microMax14: 0,
-        microRatio14: 1,
-        outcomesDone90: 0,
-        outcomesTotal,
-        reliabilityRatio: 1,
-        habitDaysKept14: 0,
-      };
-    }
-    const processAll = goals.filter((g) => resolveGoalType(g) === "PROCESS" && g.status === "active");
-    const processIds = processAll.map((g) => g.id);
-    const plannedPerDay = processIds.length;
-
-    function getDoneIdsForDate(key) {
-      const ids = new Set();
-      for (const occ of occurrences) {
-        if (!occ || occ.status !== "done") continue;
-        if (occ.date !== key) continue;
-        if (processIds.includes(occ.goalId)) ids.add(occ.goalId);
-      }
-      return ids;
-    }
-
-    function countDoneForWindow(days) {
-      let done = 0;
-      let keptDays = 0;
-      for (let i = 0; i < days; i += 1) {
-        const key = toLocalDateKey(addDays(now, -i));
-        const doneIds = getDoneIdsForDate(key);
-        let kept = true;
-        for (const id of processIds) if (doneIds.has(id)) done += 1;
-        if (processIds.length) {
-          for (const id of processIds) {
-            if (!doneIds.has(id)) {
-              kept = false;
-              break;
-            }
-          }
-          if (kept) keptDays += 1;
-        }
-      }
-      const planned = plannedPerDay * days;
-      return { done, planned, ratio: planned ? done / planned : 0, keptDays };
-    }
-
-    const habit14 = countDoneForWindow(14);
-    const habit90 = countDoneForWindow(90);
-
-    let microDone14 = 0;
-    for (let i = 0; i < 14; i += 1) {
-      const key = toLocalDateKey(addDays(now, -i));
-      const micro = microChecks?.[key] && typeof microChecks[key] === "object" ? microChecks[key] : {};
-      const count = Object.keys(micro || {}).length;
-      microDone14 += Math.min(3, count);
-    }
-    const microMax14 = 14 * 3;
-    const microRatio14 = microMax14 ? microDone14 / microMax14 : 0;
-
-    const outcomes = goals.filter((g) => resolveGoalType(g) === "OUTCOME");
-    const cutoff = addDays(now, -89).getTime();
-    const outcomesDone90 = outcomes.filter((g) => {
-      if (g.status !== "done") return false;
-      const key = typeof g.completedAt === "string" ? g.completedAt : "";
-      if (!key) return false;
-      const ts = new Date(`${key}T12:00:00`).getTime();
-      return Number.isFinite(ts) && ts >= cutoff;
-    }).length;
-    const outcomeRatio90 = outcomes.length ? outcomesDone90 / outcomes.length : 0;
-    const reliabilityRatio = outcomes.length ? (habit90.ratio + outcomeRatio90) / 2 : habit90.ratio;
-
-    const score = disciplineScore;
-    const ratio = disciplineRatio;
-
-    return {
-      score,
-      ratio,
-      habit14,
-      habit90,
-      microDone14,
-      microMax14,
-      microRatio14,
-      outcomesDone90,
-      outcomesTotal: outcomes.length,
-      reliabilityRatio,
-      habitDaysKept14: habit14.keptDays,
-    };
-  }, [goals, localTodayKey, microChecks, occurrences, safeData]);
+  const {
+    coreProgress,
+    habitsDoneCount,
+    disciplineSummary: disciplineBreakdown,
+  } = todayProgressModel;
 
   const sessionBadgeLabel = useMemo(() => {
     if (!sessionForDay || !isRuntimeSessionOpen(sessionForDay)) return "";
@@ -1152,10 +910,10 @@ export default function Home({
     [commitDateKey, onDayOpen]
   );
   const handleAddOccurrence = useCallback(
-    (nextKey, goalId) => {
+    (nextKey, actionId) => {
       if (!nextKey) return;
       if (typeof onAddOccurrence === "function") {
-        onAddOccurrence(nextKey, goalId || null);
+        onAddOccurrence(nextKey, actionId || null);
       }
     },
     [onAddOccurrence]
@@ -1164,14 +922,13 @@ export default function Home({
     (occurrence) => {
       if (!occurrence || typeof setData !== "function") return;
       const goal = occurrence.goalId ? goalsById.get(occurrence.goalId) || null : null;
-      const objective = occurrence.goalId ? getOutcomeForGoalId(occurrence.goalId) : null;
       const categoryId = goal?.categoryId || null;
       setData((prev) => {
         return applySessionRuntimeTransition(prev, {
           type: "start",
           occurrenceId: occurrence.id,
           dateKey: occurrence.date || selectedDateKey,
-          objectiveId: objective?.id || null,
+          objectiveId: null,
           habitIds: occurrence.goalId ? [occurrence.goalId] : [],
         });
       });
@@ -1185,7 +942,7 @@ export default function Home({
         onOpenSession({ categoryId, dateKey: occurrence.date || selectedDateKey });
       }
     },
-    [getOutcomeForGoalId, goalsById, onOpenSession, selectedDateKey, setData]
+    [goalsById, onOpenSession, selectedDateKey, setData]
   );
   const lastEnsureSigRef = useRef("");
   const ensureDebugCountRef = useRef(0);
@@ -1217,41 +974,6 @@ export default function Home({
       return next;
     });
   }, [ensureProcessIds, selectedDateKey, setData]);
-
-  const toggleActionSelection = useCallback(
-    (habitId) => {
-      if (!selectedGoal?.id || typeof setData !== "function" || !canEdit) return;
-      setData((prev) => {
-        const prevUi = prev.ui || {};
-        const prevSelected = prevUi.selectedHabits || {};
-        const current = Array.isArray(prevSelected[selectedGoal.id])
-          ? prevSelected[selectedGoal.id]
-          : selectableHabits.map((h) => h.id);
-        const next = current.includes(habitId)
-          ? current.filter((id) => id !== habitId)
-          : [...current, habitId];
-        return {
-          ...prev,
-          ui: {
-            ...prevUi,
-            selectedHabits: {
-              ...prevSelected,
-              [selectedGoal.id]: next,
-            },
-          },
-        };
-      });
-    },
-    [selectedGoal?.id, setData, selectableHabits, canEdit]
-  );
-
-  function setCategoryMainGoal(nextGoalId) {
-    if (!nextGoalId || typeof setData !== "function") return;
-    const g = goals.find((x) => x.id === nextGoalId) || null;
-    if (!g || !focusCategory?.id || g.categoryId !== focusCategory.id) return;
-    setData((prev) => setMainGoal(prev, nextGoalId));
-  }
-
 
   const { items: noteHistoryItems, hasHistoryBeyondLimit } = useMemo(() => {
     void noteHistoryVersion;
@@ -1698,8 +1420,6 @@ export default function Home({
 
   // Render
   const accent = focusCategory && focusCategory.color ? focusCategory.color : getAccentForPage(safeData, "home");
-  const goalAccent = selectedGoal?.color || accent;
-  const selectedDayAccent = goalAccentByDate.get(selectedDateKey) || goalAccent || accent;
   const backgroundImage = profile.whyImage || "";
   const accentVars = getCategoryAccentVars(accent);
 
@@ -1740,13 +1460,13 @@ export default function Home({
           <div className="todayHeroActions GatePrimaryCtaRow">
             <GateButton
               className="GatePressable todayHeroPrimaryBtn"
-              disabled={!focusOccurrence}
+              disabled={!canStart}
               onClick={() => {
-                if (!focusOccurrence) return;
+                if (!startPayload?.occurrenceId || !focusOccurrence) return;
                 handleStartSession(focusOccurrence);
               }}
             >
-              {focusOccurrence ? "Commencer maintenant" : "Aucune action active"}
+              {canStart ? "Commencer maintenant" : "Aucune action active"}
             </GateButton>
             <GateButton
               variant="ghost"
@@ -1777,7 +1497,7 @@ export default function Home({
               <div className="todayProgressBarTrack">
                 <div
                   className="todayProgressBarFill"
-                  style={{ width: `${Math.round(coreProgress.ratio * 100)}%`, background: goalAccent }}
+                  style={{ width: `${Math.round(coreProgress.ratio * 100)}%`, background: accent }}
                 />
               </div>
             </button>
@@ -2000,8 +1720,8 @@ export default function Home({
                 calendarPanePhase={calendarPanePhase}
                 plannedByDate={plannedByDate}
                 doneByDate={doneByDate}
-                goalAccentByDate={goalAccentByDate}
-                goalAccent={goalAccent}
+                accentByDate={accentByDate}
+                selectedAccent={selectedDateAccent}
                 accent={accent}
                 getDayDots={getDayDots}
                 onDayOpen={handleDayOpen}
@@ -2010,9 +1730,9 @@ export default function Home({
                 onPrevMonth={() => setMonthCursor((d) => addMonths(d, -1))}
                 onNextMonth={() => setMonthCursor((d) => addMonths(d, 1))}
                 monthGrid={monthGrid}
-                selectedDayAccent={selectedDayAccent}
+                selectedDayAccent={selectedDateAccent}
                 onAddOccurrence={typeof onAddOccurrence === "function" ? handleAddOccurrence : null}
-                selectedGoalId={selectedGoal?.id || null}
+                addActionContext={addActionContext}
               />
             );
           }
@@ -2033,12 +1753,6 @@ export default function Home({
               <div className="row" style={{ justifyContent: "space-between" }}>
                 <div className="small2">Date</div>
                 <div className="titleSm">{selectedDateKey}</div>
-              </div>
-              <div className="row" style={{ justifyContent: "space-between" }}>
-                <div className="small2">{LABELS.goal} principal</div>
-                <div className="titleSm">
-                  {selectedGoal ? (goalDone ? "Terminé" : "En cours") : "—"}
-                </div>
               </div>
               <div className="row" style={{ justifyContent: "space-between" }}>
                 <div className="small2">Actions du jour</div>

@@ -8,8 +8,8 @@ import { LABELS } from "../ui/labels";
 import CategoryManageInline from "../features/library/CategoryManageInline";
 
 // TOUR MAP:
-// - primary_action: manage goals/actions in a category
-// - key_elements: back button, category settings, objectives/actions sections
+// - primary_action: manage actions and advanced objectives in a category
+// - key_elements: back button, category settings, action/objective sections
 // - optional_elements: pilotage link, mini-why toggle
 const MEASURE_UNITS = {
   money: "€",
@@ -96,7 +96,7 @@ export default function CategoryView({
           <div className="p18">
             <div className="titleSm">Aucune catégorie</div>
             <div className="small mt6">
-              Crée d’abord une {LABELS.actionLower} depuis la bibliothèque. Les {LABELS.goalsLower} restent optionnels.
+              Crée d’abord une {LABELS.actionLower} dans une catégorie. Les {LABELS.goalsLower} avancés restent optionnels.
             </div>
             <div className="mt12">
               <GateButton variant="ghost" className="btnBackCompact backBtn GatePressable" onClick={onBack} data-tour-id="manage-back">

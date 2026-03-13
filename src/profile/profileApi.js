@@ -1,4 +1,9 @@
 import { supabase } from "../infra/supabaseClient";
+import {
+  isSupabaseNetworkError,
+  isSupabaseRlsError,
+  mapProfilePersistenceError,
+} from "../infra/supabasePersistenceErrors";
 import { normalizeUsername, validateUsername } from "./username";
 
 const LOCAL_PROFILE_PREFIX = "e2e.supabase.profile.user.";
@@ -90,34 +95,17 @@ function isUniqueViolation(error) {
   return code === "23505" || message.includes("duplicate key") || message.includes("already exists");
 }
 
-function isRlsViolation(error) {
-  const code = String(error?.code || "").trim();
-  const message = String(error?.message || "").toLowerCase();
-  return code === "42501" || message.includes("row level security") || message.includes("permission denied");
-}
-
-function isNetworkFailure(error) {
-  const message = String(error?.message || "").toLowerCase();
-  return message.includes("failed to fetch") || message.includes("network");
-}
-
 function mapProfileError(error) {
   if (isUniqueViolation(error)) {
     const err = new Error("Nom d'utilisateur déjà pris.");
     err.code = "USERNAME_TAKEN";
     return err;
   }
-  if (isRlsViolation(error)) {
-    const err = new Error("Accès refusé (RLS). Reconnecte-toi puis réessaie.");
-    err.code = "PROFILE_RLS";
-    return err;
+  if (isSupabaseRlsError(error) || isSupabaseNetworkError(error)) {
+    return mapProfilePersistenceError(error);
   }
-  if (isNetworkFailure(error)) {
-    const err = new Error("Réseau indisponible. Vérifie ta connexion puis réessaie.");
-    err.code = "PROFILE_NETWORK";
-    return err;
-  }
-  return error;
+  const mapped = mapProfilePersistenceError(error);
+  return mapped === error ? error : mapped;
 }
 
 function normalizeProfilePayload(userId, data = {}) {

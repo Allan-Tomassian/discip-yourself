@@ -1,5 +1,6 @@
 import { supabase } from "../infra/supabaseClient";
 import { E2E_AUTH_SESSION_KEY } from "../auth/constants";
+import { canUseLocalPersistenceFallback, mapUserDataPersistenceError } from "../infra/supabasePersistenceErrors";
 
 const LOCAL_USER_DATA_PREFIX = "e2e.supabase.user_data.";
 
@@ -65,7 +66,11 @@ export async function loadUserData(userId) {
     .maybeSingle();
 
   if (error) {
-    return loadLocalUserData(normalizedUserId);
+    const mappedError = mapUserDataPersistenceError(error);
+    if (canUseLocalPersistenceFallback(mappedError)) {
+      return loadLocalUserData(normalizedUserId);
+    }
+    throw mappedError;
   }
   const payload = data?.data;
   const safePayload = payload && typeof payload === "object" ? payload : {};
@@ -100,7 +105,13 @@ export async function upsertUserData(userId, data) {
       { onConflict: "user_id" }
     );
 
+  if (error) {
+    const mappedError = mapUserDataPersistenceError(error);
+    if (canUseLocalPersistenceFallback(mappedError)) {
+      saveLocalUserData(normalizedUserId, payload);
+    }
+    throw mappedError;
+  }
   saveLocalUserData(normalizedUserId, payload);
-  if (error) throw error;
   return payload;
 }

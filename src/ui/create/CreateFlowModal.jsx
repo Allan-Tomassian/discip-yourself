@@ -228,7 +228,7 @@ export default function CreateFlowModal({
               >
                 <div className="createFlowChoiceText">
                   <div className="titleSm">{LABELS.action}</div>
-                  <div className="small2">Point d’entrée recommandé. Tu pourras la lier plus tard si besoin.</div>
+                  <div className="small2">Voie recommandée. Tu pourras ajouter un objectif avancé plus tard si utile.</div>
                 </div>
               </GateCard>
               {showLegacyChoices ? (
@@ -244,8 +244,8 @@ export default function CreateFlowModal({
                     }}
                   >
                     <div className="createFlowChoiceText">
-                      <div className="titleSm">{LABELS.goal} + {LABELS.action}</div>
-                      <div className="small2">Parcours de compatibilité legacy.</div>
+                      <div className="titleSm">{LABELS.goal} avancé + {LABELS.action}</div>
+                      <div className="small2">Mode avancé pour structurer une action autour d’un objectif.</div>
                     </div>
                   </GateCard>
                   <GateCard
@@ -259,8 +259,8 @@ export default function CreateFlowModal({
                     }}
                   >
                     <div className="createFlowChoiceText">
-                      <div className="titleSm">{LABELS.goal}</div>
-                      <div className="small2">Créer un {LABELS.goalLower} avancé (legacy).</div>
+                      <div className="titleSm">{LABELS.goal} avancé</div>
+                      <div className="small2">Créer un {LABELS.goalLower} sans action pour l’instant.</div>
                     </div>
                   </GateCard>
                 </>
@@ -272,7 +272,7 @@ export default function CreateFlowModal({
                 data-testid="create-show-legacy-options"
                 onClick={() => setShowLegacyChoices((prev) => !prev)}
               >
-                {showLegacyChoices ? "Masquer options legacy" : "Afficher options avancées / legacy"}
+                {showLegacyChoices ? "Masquer options avancées" : "Afficher options avancées"}
               </GateButton>
             </div>
           ) : (

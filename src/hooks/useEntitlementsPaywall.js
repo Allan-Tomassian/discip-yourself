@@ -27,6 +27,8 @@ export function useEntitlementsPaywall({ safeData, setData }) {
       if (cancelledRef?.current) return result;
       if (typeof setData !== "function") return result;
       setData((prev) => {
+        // App-local premium state remains useful for UX/paywall, but AI backend trust
+        // must come only from billing_entitlements on the server.
         const profile = prev.profile && typeof prev.profile === "object" ? prev.profile : {};
         const prevEntitlements =
           profile.entitlements && typeof profile.entitlements === "object" ? profile.entitlements : {};

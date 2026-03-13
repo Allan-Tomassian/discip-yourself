@@ -25,6 +25,7 @@ function getOptionalAvatarUpdate(value) {
 
 function getErrorMessage(error) {
   if (error?.code === "USERNAME_TAKEN") return "Nom d'utilisateur déjà pris.";
+  if (error?.code === "PROFILE_SCHEMA") return "Base Supabase incomplète. Applique les migrations requises.";
   if (error?.code === "PROFILE_RLS") return "Accès refusé (RLS). Reconnecte-toi puis réessaie.";
   if (error?.code === "PROFILE_NETWORK") return "Réseau indisponible. Vérifie ta connexion puis réessaie.";
   return String(error?.message || "").trim() || "Impossible d'enregistrer le profil.";

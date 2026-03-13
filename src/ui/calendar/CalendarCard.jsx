@@ -19,8 +19,8 @@ export default function CalendarCard({
   calendarPanePhase,
   plannedByDate,
   doneByDate,
-  goalAccentByDate,
-  goalAccent,
+  accentByDate,
+  selectedAccent,
   accent,
   getDayDots,
   onDayOpen,
@@ -30,7 +30,7 @@ export default function CalendarCard({
   onNextMonth,
   selectedDayAccent,
   onAddOccurrence,
-  selectedGoalId,
+  addActionContext,
 }) {
   const dayRailRef = useRef(null);
   const isOnToday = selectedDateKey === localTodayKey;
@@ -132,8 +132,8 @@ export default function CalendarCard({
               localTodayKey={localTodayKey}
               plannedByDate={plannedByDate}
               doneByDate={doneByDate}
-              goalAccentByDate={goalAccentByDate}
-              goalAccent={goalAccent}
+              accentByDate={accentByDate}
+              selectedAccent={selectedAccent}
               accent={accent}
               getDayDots={getDayDots}
               onDayOpen={onDayOpen}
@@ -156,7 +156,7 @@ export default function CalendarCard({
                   <GateButton
                     variant="ghost"
                     className="calendarMonthAddBtn"
-                    onClick={() => onAddOccurrence(selectedDateKey, selectedGoalId || null)}
+                    onClick={() => onAddOccurrence(selectedDateKey, addActionContext?.actionId || null)}
                     data-tour-id="today-calendar-add-occurrence"
                   >
                     Ajouter
@@ -204,7 +204,7 @@ export default function CalendarCard({
                       style={{
                         borderColor: isSelected
                           ? selectedDayAccent
-                          : goalAccentByDate.get(dayKey) || "rgba(255,255,255,.14)",
+                          : accentByDate.get(dayKey) || "rgba(255,255,255,.14)",
                         boxShadow: isSelected ? `0 0 0 2px ${selectedDayAccent}33` : undefined,
                       }}
                     >

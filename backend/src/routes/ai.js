@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { loadUserSnapshot } from "../lib/supabase.js";
+import { buildSchemaErrorReply, isSupabaseSchemaError } from "../lib/supabaseErrors.js";
 import { coachResponseSchema, nowRequestSchema, recoveryRequestSchema } from "../schemas/coach.js";
 import { insertAiRequestLog, hashValue } from "../services/logging.js";
 import { resolveQuotaState, enforceMemoryRateLimit } from "../services/quotas.js";
@@ -77,6 +78,9 @@ async function handleCoachRoute({ app, request, reply, coachKind, bodySchema, co
     snapshot = await loadUserSnapshot(app.supabase, request.user.id);
   } catch (error) {
     request.log.error({ err: error, requestId: request.requestId }, "snapshot load failed");
+    if (isSupabaseSchemaError(error)) {
+      return reply.code(503).send(buildSchemaErrorReply(request.requestId));
+    }
     return reply.code(503).send({
       error: "BACKEND_ERROR",
       message: "Unable to load user context.",
@@ -85,10 +89,23 @@ async function handleCoachRoute({ app, request, reply, coachKind, bodySchema, co
   }
 
   const requestHash = hashValue(JSON.stringify({ route: coachKind, body: parsedBody.data }));
-  const quotaState = await resolveQuotaState(app.supabase, {
-    userId: request.user.id,
-    entitlement: snapshot.entitlement,
-  });
+  let quotaState;
+  try {
+    quotaState = await resolveQuotaState(app.supabase, {
+      userId: request.user.id,
+      entitlement: snapshot.entitlement,
+    });
+  } catch (error) {
+    request.log.error({ err: error, requestId: request.requestId }, "quota load failed");
+    if (isSupabaseSchemaError(error)) {
+      return reply.code(503).send(buildSchemaErrorReply(request.requestId));
+    }
+    return reply.code(503).send({
+      error: "BACKEND_ERROR",
+      message: "Unable to resolve AI quota.",
+      requestId: request.requestId,
+    });
+  }
   if (quotaState.exceeded) {
     await insertAiRequestLog(app.supabase, {
       requestId: request.requestId,

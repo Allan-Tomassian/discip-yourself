@@ -122,6 +122,8 @@ export default function ProfileSetupScreen() {
     } catch (error) {
       if (error?.code === "USERNAME_TAKEN") {
         setStatus({ type: "error", message: "Nom d'utilisateur déjà pris." });
+      } else if (error?.code === "PROFILE_SCHEMA") {
+        setStatus({ type: "error", message: "Base Supabase incomplète. Applique les migrations requises." });
       } else if (error?.code === "PROFILE_RLS") {
         setStatus({ type: "error", message: "Accès refusé (RLS). Reconnecte-toi puis réessaie." });
       } else if (error?.code === "PROFILE_NETWORK") {

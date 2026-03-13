@@ -510,48 +510,10 @@ export default function CategoryManageInline({
         </div>
       </Card>
 
-      <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-objectives-section")}>
-        <div className="p18 stack stackGap12">
-          <div className="titleSm">{LABELS.goals} avancés</div>
-          {outcomeGoals.length ? (
-            <div className="stack stackGap12">
-              {outcomeGoals.map((g) => (
-                <AccentItem key={g.id} color={category.color || "#7C3AED"}>
-                  <div className="minW0">
-                    <div className="itemTitle">
-                      {g.title || LABELS.goal}
-                      {isPrimaryGoal(g) ? (
-                        <span className="badge badgeAccent ml8">Prioritaire</span>
-                      ) : null}
-                    </div>
-                    <div className="itemSub">{g.id === category.mainGoalId ? "Principal" : "Secondaire"}</div>
-                  </div>
-                  <div className="row gap8">
-                    <IconButton
-                      icon="gear"
-                      aria-label={`Paramètres ${LABELS.goalLower}`}
-                      onClick={() => openEditItem(g)}
-                    />
-                    <IconButton
-                      icon="close"
-                      aria-label={`Supprimer le ${LABELS.goalLower}`}
-                      onClick={() => deleteOutcome(g)}
-                    />
-                  </div>
-                </AccentItem>
-              ))}
-            </div>
-          ) : (
-            <div className="stack stackGap12">
-              <div className="small2">Aucun {LABELS.goalLower} avancé dans cette catégorie.</div>
-            </div>
-          )}
-        </div>
-      </Card>
-
       <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-actions-section")}>
         <div className="p18 stack stackGap12">
           <div className="titleSm">Actions</div>
+          <div className="small2 textMuted">Les actions vivent d’abord ici. Tu peux les relier à un {LABELS.goalLower} avancé seulement si cela aide.</div>
           {actionSections.length ? (
             <div className="stack stackGap12">
               {actionSections.map((section) => (
@@ -626,13 +588,50 @@ export default function CategoryManageInline({
                   })}
                 </div>
               ))}
-              {!selectedOutcome?.id ? (
-                <div className="small2 textMuted">Tu peux laisser ces actions autonomes ou les lier à un {LABELS.goalLower} avancé.</div>
-              ) : null}
             </div>
           ) : (
             <div className="stack stackGap12">
               <div className="small2">Aucune action dans cette catégorie.</div>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-objectives-section")}>
+        <div className="p18 stack stackGap12">
+          <div className="titleSm">{LABELS.goals} avancés (optionnel)</div>
+          <div className="small2 textMuted">Utile pour structurer certaines actions, pas pour agir au quotidien.</div>
+          {outcomeGoals.length ? (
+            <div className="stack stackGap12">
+              {outcomeGoals.map((g) => (
+                <AccentItem key={g.id} color={category.color || "#7C3AED"}>
+                  <div className="minW0">
+                    <div className="itemTitle">
+                      {g.title || LABELS.goal}
+                      {isPrimaryGoal(g) ? (
+                        <span className="badge badgeAccent ml8">Prioritaire</span>
+                      ) : null}
+                    </div>
+                    <div className="itemSub">{g.id === category.mainGoalId ? "Objectif principal" : "Objectif secondaire"}</div>
+                  </div>
+                  <div className="row gap8">
+                    <IconButton
+                      icon="gear"
+                      aria-label={`Paramètres ${LABELS.goalLower}`}
+                      onClick={() => openEditItem(g)}
+                    />
+                    <IconButton
+                      icon="close"
+                      aria-label={`Supprimer le ${LABELS.goalLower}`}
+                      onClick={() => deleteOutcome(g)}
+                    />
+                  </div>
+                </AccentItem>
+              ))}
+            </div>
+          ) : (
+            <div className="stack stackGap12">
+              <div className="small2">Aucun {LABELS.goalLower} avancé dans cette catégorie.</div>
             </div>
           )}
         </div>

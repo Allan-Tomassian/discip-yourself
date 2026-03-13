@@ -2,6 +2,9 @@
 
 Minimal backend for Discip-Yourself AI V1.
 
+`billing_entitlements` is the only server-trusted premium source for AI routes.
+Do not derive AI quota or access from frontend `profile.plan` / `profile.entitlements`.
+
 ## Env
 
 Required:
@@ -39,4 +42,14 @@ npm run dev
 ```bash
 cd backend
 npm test
+```
+
+## Check required Supabase tables
+
+```bash
+cd backend
+PORT=3001 \
+SUPABASE_URL=https://your-project.supabase.co \
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key \
+npm run check:schema
 ```

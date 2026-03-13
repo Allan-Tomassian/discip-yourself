@@ -50,8 +50,8 @@ export default function CreateV2OutcomeNextAction({
 
   const content = (
     <div className="flowShellBody col gap12">
-      <GateSection title="Première action" description="Optionnel" collapsible={false}>
-        <div className="small2">Créer une première action pour ce {LABELS.goalLower} ?</div>
+      <GateSection title="Ajouter une action maintenant ?" description="Optionnel" collapsible={false}>
+        <div className="small2">Tu peux créer une action liée maintenant, ou garder cet {LABELS.goalLower} seul pour l’instant.</div>
         <div className="small textMuted">
           {outcome?.title || LABELS.goal} · {categoryId === SYSTEM_INBOX_ID ? "Général" : "Catégorie choisie"}
         </div>
@@ -66,11 +66,11 @@ export default function CreateV2OutcomeNextAction({
               }
             }}
           >
-            Créer 1ère action
+            Créer une action
           </Button>
         </div>
         <div className="small2 textMuted2">
-          Le {LABELS.goalLower} sera en brouillon tant qu’aucune action n’est liée.
+          Tu pourras ajouter ou lier une action plus tard.
         </div>
       </GateSection>
     </div>
@@ -83,7 +83,7 @@ export default function CreateV2OutcomeNextAction({
       headerTitle="Créer"
       headerSubtitle={
         <>
-          <span className="textMuted2">2.</span> 1ère action
+          <span className="textMuted2">2.</span> Ajouter une action
         </>
       }
       backgroundImage={safeData?.profile?.whyImage || ""}

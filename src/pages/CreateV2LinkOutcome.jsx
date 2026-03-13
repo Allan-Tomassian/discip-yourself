@@ -175,18 +175,18 @@ export default function CreateV2LinkOutcome({
 
   const content = (
     <div className="flowShellBody col gap12">
-      <GateSection title={`${LABELS.goal} avancé (optionnel)`} description="Lier ou créer" collapsible={false}>
-        <div className="small2">Cette action peut rester autonome. Ajoute un {LABELS.goalLower} seulement si utile.</div>
+      <GateSection title={`${LABELS.goal} avancé (optionnel)`} description="Structurer l’action" collapsible={false}>
+        <div className="small2">Cette action peut rester autonome. Ajoute un {LABELS.goalLower} seulement si cela t’aide à structurer ce sujet.</div>
         {error ? <div className="small2 textAccent">{error}</div> : null}
         <Select value={choice} onChange={(e) => setChoice(e.target.value)}>
           <option value="none">Aucun</option>
-          <option value="existing">Lier à un {LABELS.goalLower} existant</option>
+          <option value="existing">Lier à un {LABELS.goalLower} avancé existant</option>
           <option value="new">Créer un {LABELS.goalLower} avancé</option>
         </Select>
       </GateSection>
 
       {choice === "existing" ? (
-        <GateSection title={`${LABELS.goal} existant`} collapsible={false}>
+        <GateSection title={`${LABELS.goal} avancé existant`} collapsible={false}>
           <div className="small textMuted">{LABELS.goals} disponibles</div>
           <Select value={selectedOutcomeId} onChange={(e) => setSelectedOutcomeId(e.target.value)}>
             <option value="">{`Choisir un ${LABELS.goalLower}`}</option>
@@ -200,7 +200,7 @@ export default function CreateV2LinkOutcome({
       ) : null}
 
       {choice === "new" ? (
-        <GateSection title={`Nouveau ${LABELS.goalLower}`} collapsible={false}>
+        <GateSection title={`Nouvel ${LABELS.goalLower} avancé`} collapsible={false}>
           <Input
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
@@ -244,7 +244,7 @@ export default function CreateV2LinkOutcome({
       headerTitle="Créer"
       headerSubtitle={
         <>
-          <span className="textMuted2">2.</span> {LABELS.goal}
+          <span className="textMuted2">2.</span> {LABELS.goal} avancé
         </>
       }
       backgroundImage={safeData?.profile?.whyImage || ""}

@@ -46,8 +46,8 @@ function DayRail(
     localTodayKey,
     plannedByDate,
     doneByDate,
-    goalAccentByDate,
-    goalAccent,
+    accentByDate,
+    selectedAccent,
     accent,
     getDayDots,
     onDayOpen,
@@ -406,7 +406,7 @@ function DayRail(
           const doneLabel = doneCount ? `${doneCount} fait${doneCount > 1 ? "s" : ""}` : "0 fait";
           const ariaLabel = `${item.key} · ${plannedLabel} · ${doneLabel}${isToday ? " · Aujourd’hui" : ""}`;
           const isSelected = item.key === selectedKeyForVisual;
-          const accentForItem = goalAccentByDate.get(item.key) || goalAccent || accent;
+          const accentForItem = accentByDate.get(item.key) || selectedAccent || accent;
           return (
             <button
               key={item.key}
@@ -434,7 +434,7 @@ function DayRail(
               type="button"
               style={{
                 borderColor:
-                  isSelected ? accentForItem : goalAccentByDate.get(item.key) || "rgba(255,255,255,.14)",
+                  isSelected ? accentForItem : accentByDate.get(item.key) || "rgba(255,255,255,.14)",
                 boxShadow: isSelected ? `0 0 0 2px ${accentForItem}33` : undefined,
               }}
             >
