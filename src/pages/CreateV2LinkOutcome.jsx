@@ -175,13 +175,13 @@ export default function CreateV2LinkOutcome({
 
   const content = (
     <div className="flowShellBody col gap12">
-      <GateSection title={LABELS.goal} description="Lier ou créer" collapsible={false}>
-        <div className="small2">Quel est le {LABELS.goalLower} de cette action ?</div>
+      <GateSection title={`${LABELS.goal} avancé (optionnel)`} description="Lier ou créer" collapsible={false}>
+        <div className="small2">Cette action peut rester autonome. Ajoute un {LABELS.goalLower} seulement si utile.</div>
         {error ? <div className="small2 textAccent">{error}</div> : null}
         <Select value={choice} onChange={(e) => setChoice(e.target.value)}>
           <option value="none">Aucun</option>
           <option value="existing">Lier à un {LABELS.goalLower} existant</option>
-          <option value="new">Créer un nouveau {LABELS.goalLower}</option>
+          <option value="new">Créer un {LABELS.goalLower} avancé</option>
         </Select>
       </GateSection>
 

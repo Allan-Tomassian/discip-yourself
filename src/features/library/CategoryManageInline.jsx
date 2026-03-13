@@ -512,7 +512,7 @@ export default function CategoryManageInline({
 
       <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-objectives-section")}>
         <div className="p18 stack stackGap12">
-          <div className="titleSm">{LABELS.goals}</div>
+          <div className="titleSm">{LABELS.goals} avancés</div>
           {outcomeGoals.length ? (
             <div className="stack stackGap12">
               {outcomeGoals.map((g) => (
@@ -543,7 +543,7 @@ export default function CategoryManageInline({
             </div>
           ) : (
             <div className="stack stackGap12">
-              <div className="small2">Aucun {LABELS.goalLower} dans cette catégorie.</div>
+              <div className="small2">Aucun {LABELS.goalLower} avancé dans cette catégorie.</div>
             </div>
           )}
         </div>
@@ -627,7 +627,7 @@ export default function CategoryManageInline({
                 </div>
               ))}
               {!selectedOutcome?.id ? (
-                <div className="small2 textMuted">Sélectionne un {LABELS.goalLower} pour lier ces actions.</div>
+                <div className="small2 textMuted">Tu peux laisser ces actions autonomes ou les lier à un {LABELS.goalLower} avancé.</div>
               ) : null}
             </div>
           ) : (

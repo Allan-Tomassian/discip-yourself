@@ -11,17 +11,14 @@ import {
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { setMainGoal } from "../logic/goals";
 import { backfillMissedOccurrences, ensureWindowFromScheduleRules } from "../logic/occurrencePlanner";
-import { normalizeActiveSessionForUI, normalizeOccurrenceForUI } from "../logic/compat";
+import { normalizeOccurrenceForUI } from "../logic/compat";
 import { applySessionRuntimeTransition, isRuntimeSessionOpen } from "../logic/sessionRuntime";
 import { emitSessionRuntimeNotificationHook } from "../logic/sessionRuntimeNotifications";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
-import { isPrimaryCategory, isPrimaryGoal } from "../logic/priority";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
-import { resolveCurrentPlannedOccurrence, resolveNextPlannedOccurrence } from "../ui/session/sessionPlanner";
-import { getAlternativeCandidates, getNextPlannedOccurrence } from "../core/focus/focusSelector";
 import { resolveGoalType } from "../domain/goalType";
-import { linkProcessToOutcome, splitProcessByLink } from "../logic/linking";
+import { linkProcessToOutcome } from "../logic/linking";
 import { computeWindowStats } from "../logic/progressionModel";
 import {
   BASIC_MICRO_REROLL_LIMIT,
@@ -47,6 +44,7 @@ import MicroActionsCard from "../ui/today/MicroActionsCard";
 import RewardedAdModal from "../ui/today/RewardedAdModal";
 import { emitTotemEvent } from "../ui/totem/totemEvents";
 import { LABELS, UI_COPY } from "../ui/labels";
+import { deriveTodayNowModel } from "../features/today/nowModel";
 
 // TOUR MAP:
 // - primary_action: start session (GO) for today
@@ -67,10 +65,6 @@ function priorityRank(v) {
   if (p === "secondaire") return 1;
   if (p === "bonus") return 2;
   return 3;
-}
-
-function safeString(v) {
-  return typeof v === "string" ? v : "";
 }
 
 const DEFAULT_BLOCK_ORDER = getDefaultBlockIds("home");
@@ -674,55 +668,36 @@ export default function Home({
   }, [focusOverride?.dateKey, selectedDateKey]);
 
   // Derived data
-  const focusCategory = useMemo(() => {
-    if (!categories.length) return null;
-    const selected = categories.find((c) => c.id === homeSelectedCategoryId) || null;
-    if (selected) return selected;
-    const primary = categories.find((c) => isPrimaryCategory(c)) || null;
-    if (primary) return primary;
-    const withGoal = categories.find((c) =>
-      goals.some((g) => g.categoryId === c.id && resolveGoalType(g) === "OUTCOME")
-    );
-    return withGoal || categories[0] || null;
-  }, [categories, goals, homeSelectedCategoryId]);
-
-  const mainGoalId = typeof focusCategory?.mainGoalId === "string" ? focusCategory.mainGoalId : null;
-
-  const outcomeGoals = useMemo(() => {
-    if (!focusCategory?.id) return [];
-    return goals.filter((g) => g.categoryId === focusCategory.id && resolveGoalType(g) === "OUTCOME");
-  }, [goals, focusCategory?.id]);
-
-  const selectedGoal = useMemo(() => {
-    if (!focusCategory?.id || !outcomeGoals.length) return null;
-    if (mainGoalId) {
-      const main = outcomeGoals.find((g) => g.id === mainGoalId) || null;
-      if (main) return main;
-    }
-    const primary = outcomeGoals.find((g) => isPrimaryGoal(g)) || null;
-    return primary || outcomeGoals[0] || null;
-  }, [focusCategory?.id, mainGoalId, outcomeGoals]);
-
   const rawActiveSession =
     safeData.ui && typeof safeData.ui.activeSession === "object" ? safeData.ui.activeSession : null;
-  const activeSession = useMemo(
-    () => normalizeActiveSessionForUI(rawActiveSession),
-    [rawActiveSession]
+  const todayNowModel = useMemo(
+    () =>
+      deriveTodayNowModel({
+        categories,
+        goals,
+        selectedCategoryId: homeSelectedCategoryId,
+        rawActiveSession,
+        selectedDateKey,
+        focusOverride,
+        plannedOccurrencesForDay,
+      }),
+    [categories, focusOverride, goals, homeSelectedCategoryId, plannedOccurrencesForDay, rawActiveSession, selectedDateKey]
   );
-  const sessionForDay = useMemo(() => {
-    if (!activeSession) return null;
-    const key = activeSession.dateKey || activeSession.date;
-    if (key !== selectedDateKey) return null;
-    if (selectedGoal?.id && activeSession.objectiveId && activeSession.objectiveId !== selectedGoal.id) {
-      return null;
-    }
-    return activeSession;
-  }, [activeSession, selectedDateKey, selectedGoal?.id]);
-  const sessionHabit = useMemo(() => {
-    if (!sessionForDay?.habitIds?.length) return null;
-    const firstId = sessionForDay.habitIds[0];
-    return firstId ? goals.find((g) => g.id === firstId) || null : null;
-  }, [sessionForDay?.habitIds, goals]);
+  const {
+    focusCategory,
+    selectedGoal,
+    selectableHabits,
+    activeHabits,
+    ensureProcessIds,
+    activeSession,
+    sessionForDay,
+    sessionHabit,
+    focusBaseOccurrence,
+    focusOverrideOccurrence,
+    focusOccurrence,
+    isFocusOverride,
+    alternativeCandidates,
+  } = todayNowModel;
   const doneHabitIds = useMemo(() => {
     const ids = new Set();
     for (const occ of occurrences) {
@@ -735,55 +710,6 @@ export default function Home({
     }
     return ids;
   }, [occurrences, selectedDateKey, sessionForDay?.doneHabitIds]);
-
-  const processGoals = useMemo(() => {
-    if (!focusCategory?.id) return [];
-    const list = goals.filter((g) => g && g.categoryId === focusCategory.id && resolveGoalType(g) === "PROCESS");
-    // Stable order: keep explicit order if present, otherwise title.
-    return list.slice().sort((a, b) => {
-      const ao = Number.isFinite(a?.order) ? a.order : 0;
-      const bo = Number.isFinite(b?.order) ? b.order : 0;
-      if (ao !== bo) return ao - bo;
-      return String(a?.title || "").localeCompare(String(b?.title || ""));
-    });
-  }, [goals, focusCategory?.id]);
-
-  // Actions liées à l’objectif sélectionné (robuste)
-  const { linked: linkedHabits, unlinked: unlinkedHabits } = useMemo(() => {
-    if (!selectedGoal?.id) return { linked: [], unlinked: [] };
-    return splitProcessByLink(processGoals, selectedGoal.id);
-  }, [processGoals, selectedGoal?.id]);
-
-  // Actions liées à l’objectif (toutes)
-  const selectableHabits = linkedHabits;
-  const hasSelectableHabits = selectableHabits.length > 0;
-  const focusPlannedGoalIds = useMemo(() => {
-    const source = linkedHabits.length ? linkedHabits : processGoals;
-    const ids = new Set();
-    for (const g of source) {
-      if (g && g.id) ids.add(g.id);
-    }
-    return ids;
-  }, [linkedHabits, processGoals]);
-  const plannedFocusOccurrences = useMemo(() => {
-    if (!focusPlannedGoalIds.size) return [];
-    return occurrences.filter((occ) => occ && occ.status === "planned" && focusPlannedGoalIds.has(occ.goalId));
-  }, [occurrences, focusPlannedGoalIds]);
-  const currentPlannedOccurrence = useMemo(
-    () => resolveCurrentPlannedOccurrence(plannedFocusOccurrences),
-    [plannedFocusOccurrences]
-  );
-  const nextPlannedOccurrence = useMemo(
-    () => resolveNextPlannedOccurrence(plannedFocusOccurrences),
-    [plannedFocusOccurrences]
-  );
-  const ensureProcessIds = useMemo(() => {
-    const base = selectedGoal?.id ? linkedHabits : processGoals;
-    return base.map((g) => g.id).filter(Boolean);
-  }, [linkedHabits, processGoals, selectedGoal?.id]);
-
-  // Actions actives uniquement (progression)
-  const activeHabits = useMemo(() => linkedHabits.filter((g) => safeString(g.status) === "active"), [linkedHabits]);
   const canManageCategory = Boolean(typeof onOpenManageCategory === "function" && focusCategory?.id);
 
   // ---- Outcome goal lookup helpers and dominant outcome by date
@@ -797,28 +723,6 @@ export default function Home({
     for (const c of categories) if (c && c.id) map.set(c.id, c);
     return map;
   }, [categories]);
-  const focusBaseOccurrence = useMemo(
-    () => getNextPlannedOccurrence({ dateKey: selectedDateKey, now: new Date(), occurrences: plannedOccurrencesForDay }),
-    [plannedOccurrencesForDay, selectedDateKey]
-  );
-  const focusOverrideOccurrence = useMemo(() => {
-    if (!focusOverride?.dateKey || focusOverride.dateKey !== selectedDateKey) return null;
-    return plannedOccurrencesForDay.find((occ) => occ && occ.id === focusOverride.occurrenceId) || null;
-  }, [focusOverride?.dateKey, focusOverride?.occurrenceId, plannedOccurrencesForDay, selectedDateKey]);
-  const focusOccurrence = focusOverrideOccurrence || focusBaseOccurrence;
-  const isFocusOverride =
-    Boolean(focusOverrideOccurrence && focusBaseOccurrence && focusOverrideOccurrence.id !== focusBaseOccurrence.id);
-  const alternativeCandidates = useMemo(
-    () =>
-      getAlternativeCandidates({
-        dateKey: selectedDateKey,
-        now: new Date(),
-        occurrences: plannedOccurrencesForDay,
-        limit: 4,
-        excludeId: focusOccurrence?.id || null,
-      }),
-    [focusOccurrence?.id, plannedOccurrencesForDay, selectedDateKey]
-  );
   useEffect(() => {
     if (!focusOverride?.dateKey || focusOverride.dateKey !== selectedDateKey) return;
     if (!focusOverrideOccurrence) setFocusOverride(null);
@@ -1011,15 +915,13 @@ export default function Home({
       (sum, id) => sum + (doneHabitIds.has(id) ? 1 : 0),
       0
     );
-    const hasMainGoal = Boolean(selectedGoal);
-    const goalDone = Boolean(selectedGoal && selectedGoal.status === "done");
-    const total = activeHabits.length + (hasMainGoal ? 1 : 0);
-    const done = doneHabitsCount + (goalDone ? 1 : 0);
+    const total = activeHabits.length;
+    const done = doneHabitsCount;
     const ratio = total ? done / total : 0;
     return { total, done, ratio };
-  }, [activeHabits, doneHabitIds, selectedGoal]);
+  }, [activeHabits, doneHabitIds]);
   const goalDone = Boolean(selectedGoal && selectedGoal.status === "done");
-  const habitsDoneCount = Math.max(0, coreProgress.done - (goalDone ? 1 : 0));
+  const habitsDoneCount = coreProgress.done;
 
   const disciplineBreakdown = useMemo(() => {
     const now = new Date();

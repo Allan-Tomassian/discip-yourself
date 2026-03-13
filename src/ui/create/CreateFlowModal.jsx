@@ -228,7 +228,7 @@ export default function CreateFlowModal({
               >
                 <div className="createFlowChoiceText">
                   <div className="titleSm">{LABELS.action}</div>
-                  <div className="small2">Planifie une action concrète.</div>
+                  <div className="small2">Point d’entrée recommandé. Tu pourras la lier plus tard si besoin.</div>
                 </div>
               </GateCard>
               {showLegacyChoices ? (
@@ -245,7 +245,7 @@ export default function CreateFlowModal({
                   >
                     <div className="createFlowChoiceText">
                       <div className="titleSm">{LABELS.goal} + {LABELS.action}</div>
-                      <div className="small2">Parcours compatibilité (legacy).</div>
+                      <div className="small2">Parcours de compatibilité legacy.</div>
                     </div>
                   </GateCard>
                   <GateCard
@@ -260,7 +260,7 @@ export default function CreateFlowModal({
                   >
                     <div className="createFlowChoiceText">
                       <div className="titleSm">{LABELS.goal}</div>
-                      <div className="small2">Créer un {LABELS.goalLower} (legacy).</div>
+                      <div className="small2">Créer un {LABELS.goalLower} avancé (legacy).</div>
                     </div>
                   </GateCard>
                 </>
@@ -272,7 +272,7 @@ export default function CreateFlowModal({
                 data-testid="create-show-legacy-options"
                 onClick={() => setShowLegacyChoices((prev) => !prev)}
               >
-                {showLegacyChoices ? "Masquer options legacy" : "Afficher options legacy"}
+                {showLegacyChoices ? "Masquer options legacy" : "Afficher options avancées / legacy"}
               </GateButton>
             </div>
           ) : (
