@@ -20,6 +20,36 @@ function buildFallback(localHero) {
   };
 }
 
+export function deriveTodayHeroChrome({ heroSource, aiNowState }) {
+  if (heroSource === "ai") {
+    return {
+      mode: "coach",
+      showBadge: true,
+      badgeLabel: "Coach IA",
+      showHint: false,
+      hintText: "",
+    };
+  }
+
+  if (aiNowState === "loading") {
+    return {
+      mode: "loading",
+      showBadge: true,
+      badgeLabel: "Coach IA",
+      showHint: true,
+      hintText: "Prepare la suggestion du moment",
+    };
+  }
+
+  return {
+    mode: "local",
+    showBadge: false,
+    badgeLabel: "",
+    showHint: false,
+    hintText: "",
+  };
+}
+
 export function deriveTodayHeroModel({
   localHero,
   coach,

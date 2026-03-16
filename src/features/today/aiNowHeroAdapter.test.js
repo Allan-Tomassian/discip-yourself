@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveTodayHeroModel } from "./aiNowHeroAdapter";
+import { deriveTodayHeroChrome, deriveTodayHeroModel } from "./aiNowHeroAdapter";
 
 function buildLocalHero(overrides = {}) {
   return {
@@ -127,5 +127,57 @@ describe("deriveTodayHeroModel", () => {
 
     expect(result.source).toBe("local");
     expect(result.title).toBe("Action locale");
+  });
+});
+
+describe("deriveTodayHeroChrome", () => {
+  it("retourne un chrome local sans badge quand le hero reste local", () => {
+    const result = deriveTodayHeroChrome({
+      heroSource: "local",
+      aiNowState: "idle",
+    });
+
+    expect(result).toEqual({
+      mode: "local",
+      showBadge: false,
+      badgeLabel: "",
+      showHint: false,
+      hintText: "",
+    });
+  });
+
+  it("affiche le badge et le hint pendant le loading IA", () => {
+    const result = deriveTodayHeroChrome({
+      heroSource: "local",
+      aiNowState: "loading",
+    });
+
+    expect(result.mode).toBe("loading");
+    expect(result.showBadge).toBe(true);
+    expect(result.badgeLabel).toBe("Coach IA");
+    expect(result.showHint).toBe(true);
+    expect(result.hintText).toBe("Prepare la suggestion du moment");
+  });
+
+  it("affiche le badge coach quand la suggestion IA est visible", () => {
+    const result = deriveTodayHeroChrome({
+      heroSource: "ai",
+      aiNowState: "success",
+    });
+
+    expect(result.mode).toBe("coach");
+    expect(result.showBadge).toBe(true);
+    expect(result.badgeLabel).toBe("Coach IA");
+    expect(result.showHint).toBe(false);
+  });
+
+  it("garde le badge coach visible meme si la decision backend vient des rules", () => {
+    const result = deriveTodayHeroChrome({
+      heroSource: "ai",
+      aiNowState: "success",
+    });
+
+    expect(result.mode).toBe("coach");
+    expect(result.showBadge).toBe(true);
   });
 });

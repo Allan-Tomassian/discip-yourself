@@ -44,7 +44,7 @@ import { useAuth } from "../auth/useAuth";
 import { deriveTodayNowModel } from "../features/today/nowModel";
 import { deriveTodayCalendarModel } from "../features/today/todayCalendarModel";
 import { deriveTodayProgressModel } from "../features/today/todayProgressModel";
-import { deriveTodayHeroModel } from "../features/today/aiNowHeroAdapter";
+import { deriveTodayHeroChrome, deriveTodayHeroModel } from "../features/today/aiNowHeroAdapter";
 import { useAiNow } from "../hooks/useAiNow";
 
 // TOUR MAP:
@@ -1488,6 +1488,14 @@ export default function Home({
       onOpenPilotage,
     ]
   );
+  const heroChrome = useMemo(
+    () =>
+      deriveTodayHeroChrome({
+        heroSource: heroViewModel.source,
+        aiNowState: aiNow.state,
+      }),
+    [aiNow.state, heroViewModel.source]
+  );
   const handleHeroPrimaryAction = useCallback(() => {
     const action = heroViewModel.primaryAction;
     if (!action) return;
@@ -1534,10 +1542,25 @@ export default function Home({
       <div className="stack stackGap12 todayPageShell">
         <GateSection className="todayHeroCard GateSurfacePremium GateCardPremium" collapsible={false}>
           <div className="todayHeroHeader">
-            <div className="todayHeroKicker">À faire maintenant</div>
+            <div className="todayHeroHeaderCluster">
+              <div className="todayHeroKicker">À faire maintenant</div>
+              {heroChrome.showBadge ? (
+                <span
+                  className={[
+                    "todayHeroCoachBadge",
+                    heroChrome.mode === "loading" ? "isLoading" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  {heroChrome.badgeLabel}
+                </span>
+              ) : null}
+            </div>
             <div className="todayHeroDate">{selectedDateLabel}</div>
           </div>
           <div className="todayHeroBody">
+            {heroChrome.showHint ? <div className="todayHeroCoachHint">{heroChrome.hintText}</div> : null}
             <div className="todayHeroTitle">{heroViewModel.title}</div>
             {heroViewModel.meta ? <div className="todayHeroMeta">{heroViewModel.meta}</div> : null}
           </div>
