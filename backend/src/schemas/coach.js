@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { TODAY_INTERVENTION_TYPE } from "../../../src/domain/todayIntervention.js";
+import {
+  TODAY_BACKEND_RESOLUTION_STATUS,
+  TODAY_DIAGNOSTIC_REJECTION_REASON,
+  TODAY_INTERVENTION_TYPE,
+} from "../../../src/domain/todayIntervention.js";
 
 const isoDateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const interventionTypeSchema = z.enum([
@@ -11,6 +15,39 @@ const interventionTypeSchema = z.enum([
   TODAY_INTERVENTION_TYPE.MOTIVATION_NUDGE,
   TODAY_INTERVENTION_TYPE.REVIEW_FEEDBACK,
 ]);
+
+const diagnosticsSchema = z
+  .object({
+    resolutionStatus: z.enum([
+      TODAY_BACKEND_RESOLUTION_STATUS.ACCEPTED_AI,
+      TODAY_BACKEND_RESOLUTION_STATUS.REJECTED_TO_RULES,
+      TODAY_BACKEND_RESOLUTION_STATUS.RULES_FALLBACK,
+    ]),
+    rejectionReason: z.enum([
+      TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
+      TODAY_DIAGNOSTIC_REJECTION_REASON.INVALID_MODEL_OUTPUT,
+      TODAY_DIAGNOSTIC_REJECTION_REASON.INVALID_INTERVENTION_TYPE,
+      TODAY_DIAGNOSTIC_REJECTION_REASON.GOVERNANCE_REJECTED,
+      TODAY_DIAGNOSTIC_REJECTION_REASON.CANONICAL_FALLBACK_PREFERRED,
+      TODAY_DIAGNOSTIC_REJECTION_REASON.NO_MATERIAL_GAIN_OVER_LOCAL,
+      TODAY_DIAGNOSTIC_REJECTION_REASON.NO_ACTIVE_SESSION_FOR_DATE,
+      TODAY_DIAGNOSTIC_REJECTION_REASON.NO_DETERMINISTIC_SIGNAL,
+      TODAY_DIAGNOSTIC_REJECTION_REASON.AMBIGUOUS_CONTEXT,
+      TODAY_DIAGNOSTIC_REJECTION_REASON.WARNING_SIGNAL_TOO_WEAK,
+    ]),
+    canonicalContextSummary: z
+      .object({
+        activeDate: isoDateKey,
+        isToday: z.boolean(),
+        hasActiveSessionForActiveDate: z.boolean(),
+        hasOpenSessionOutsideActiveDate: z.boolean(),
+        futureSessionsCount: z.number().int().min(0),
+        hasPlannedActionsForActiveDate: z.boolean(),
+        hasFocusOccurrenceForActiveDate: z.boolean(),
+      })
+      .strict(),
+  })
+  .strict();
 
 const actionSchema = z
   .object({
@@ -110,6 +147,7 @@ export const coachResponseSchema = z
         quotaRemaining: z.number().int().nullable(),
         fallbackReason: z.enum(["none", "quota", "timeout", "invalid_model_output", "backend_error"]),
         trigger: z.enum(["manual", "screen_open", "resume", "auto_slip", "resume_after_gap"]),
+        diagnostics: diagnosticsSchema,
       })
       .strict(),
   })

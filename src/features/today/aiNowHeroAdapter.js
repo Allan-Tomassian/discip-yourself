@@ -1,4 +1,16 @@
-import { TODAY_INTERVENTION_TYPE, resolveTodayInterventionType } from "../../domain/todayIntervention";
+import {
+  TODAY_DIAGNOSTIC_REJECTION_REASON,
+  TODAY_INTERVENTION_TYPE,
+  resolveTodayInterventionType,
+} from "../../domain/todayIntervention";
+
+const FRONTEND_TODAY_RESOLUTION_STATUS = Object.freeze({
+  LOCAL_ONLY: "local_only",
+  LOADING_AI: "loading_ai",
+  BACKEND_ACCEPTED: "backend_accepted",
+  BACKEND_RULES: "backend_rules",
+  FRONTEND_LOCAL_FALLBACK: "frontend_local_fallback",
+});
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -13,12 +25,29 @@ function findOccurrenceById(occurrences, occurrenceId) {
   return occurrences.find((occurrence) => occurrence && occurrence.id === occurrenceId) || null;
 }
 
-function buildFallback(localHero) {
+function buildFallback(localHero, diagnostics = {}) {
+  const hasBackendDecision = Boolean(diagnostics.backendDecisionSource);
   return {
     ...localHero,
     source: "local",
     decisionSource: "local",
     requestId: null,
+    diagnostics: {
+      resolutionStatus: hasBackendDecision
+        ? FRONTEND_TODAY_RESOLUTION_STATUS.FRONTEND_LOCAL_FALLBACK
+        : FRONTEND_TODAY_RESOLUTION_STATUS.LOCAL_ONLY,
+      rejectionReason:
+        diagnostics.rejectionReason ||
+        diagnostics.backendRejectionReason ||
+        TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
+      decisionSource: "local",
+      interventionType: localHero?.interventionType || null,
+      canonicalContextSummary: diagnostics.canonicalContextSummary || null,
+      backendDecisionSource: diagnostics.backendDecisionSource || null,
+      backendResolutionStatus: diagnostics.backendResolutionStatus || null,
+      backendRejectionReason: diagnostics.backendRejectionReason || TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
+      badgeState: "hidden",
+    },
   };
 }
 
@@ -109,14 +138,94 @@ export function deriveTodayHeroChrome({ heroSource, aiNowState }) {
   };
 }
 
+function resolveFrontendFallbackReason({ coach, fallback, handlersAvailable, hasOpenSession }) {
+  const intent = normalizeText(coach?.primaryAction?.intent);
+  if (!intent) return TODAY_DIAGNOSTIC_REJECTION_REASON.INVALID_INTERVENTION_TYPE;
+  if (intent === "resume_session" && !hasOpenSession) {
+    return TODAY_DIAGNOSTIC_REJECTION_REASON.NO_ACTIVE_SESSION_FOR_DATE;
+  }
+  if (intent === "open_library" && !handlersAvailable.openLibrary) {
+    return TODAY_DIAGNOSTIC_REJECTION_REASON.CANONICAL_FALLBACK_PREFERRED;
+  }
+  if (intent === "open_pilotage" && !handlersAvailable.openPilotage) {
+    return TODAY_DIAGNOSTIC_REJECTION_REASON.CANONICAL_FALLBACK_PREFERRED;
+  }
+  if (intent === "start_occurrence" && !coach?.primaryAction?.occurrenceId) {
+    return TODAY_DIAGNOSTIC_REJECTION_REASON.INVALID_INTERVENTION_TYPE;
+  }
+  if (intent === "open_today") {
+    return TODAY_DIAGNOSTIC_REJECTION_REASON.INVALID_INTERVENTION_TYPE;
+  }
+  if (fallback?.interventionType && coach?.interventionType && fallback.interventionType !== coach.interventionType) {
+    return TODAY_DIAGNOSTIC_REJECTION_REASON.CANONICAL_FALLBACK_PREFERRED;
+  }
+  return TODAY_DIAGNOSTIC_REJECTION_REASON.CANONICAL_FALLBACK_PREFERRED;
+}
+
+export function deriveTodayDecisionDiagnostics({
+  aiNowState,
+  heroViewModel,
+  coach = null,
+  canonicalContextSummary = null,
+}) {
+  const backendDiagnostics = coach?.meta?.diagnostics || null;
+  if (heroViewModel?.source === "ai") {
+    return {
+      resolutionStatus:
+        coach?.decisionSource === "rules"
+          ? FRONTEND_TODAY_RESOLUTION_STATUS.BACKEND_RULES
+          : FRONTEND_TODAY_RESOLUTION_STATUS.BACKEND_ACCEPTED,
+      rejectionReason: backendDiagnostics?.rejectionReason || TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
+      decisionSource: coach?.decisionSource || "rules",
+      interventionType: coach?.interventionType || heroViewModel?.interventionType || null,
+      canonicalContextSummary: canonicalContextSummary || backendDiagnostics?.canonicalContextSummary || null,
+      badgeState: "coach_visible",
+    };
+  }
+
+  if (aiNowState === "loading") {
+    return {
+      resolutionStatus: FRONTEND_TODAY_RESOLUTION_STATUS.LOADING_AI,
+      rejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
+      decisionSource: "local",
+      interventionType: heroViewModel?.interventionType || null,
+      canonicalContextSummary: canonicalContextSummary || null,
+      badgeState: "loading",
+    };
+  }
+
+  if (aiNowState === "success" && coach) {
+    return {
+      resolutionStatus: FRONTEND_TODAY_RESOLUTION_STATUS.FRONTEND_LOCAL_FALLBACK,
+      rejectionReason:
+        heroViewModel?.diagnostics?.rejectionReason ||
+        TODAY_DIAGNOSTIC_REJECTION_REASON.CANONICAL_FALLBACK_PREFERRED,
+      decisionSource: "local",
+      interventionType: heroViewModel?.interventionType || null,
+      canonicalContextSummary: canonicalContextSummary || backendDiagnostics?.canonicalContextSummary || null,
+      badgeState: "hidden",
+    };
+  }
+
+  return {
+    resolutionStatus: FRONTEND_TODAY_RESOLUTION_STATUS.LOCAL_ONLY,
+    rejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
+    decisionSource: "local",
+    interventionType: heroViewModel?.interventionType || null,
+    canonicalContextSummary: canonicalContextSummary || null,
+    badgeState: "hidden",
+  };
+}
+
 export function deriveTodayHeroModel({
   localHero,
   coach,
   occurrencesForSelectedDay,
   hasOpenSession = false,
   handlersAvailable = {},
+  canonicalContextSummary = null,
 }) {
-  const fallback = buildFallback(localHero);
+  const fallback = buildFallback(localHero, { canonicalContextSummary });
   if (!isPlainObject(coach) || coach.kind !== "now") return fallback;
 
   const headline = normalizeText(coach.headline);
@@ -124,11 +233,30 @@ export function deriveTodayHeroModel({
   const primaryAction = isPlainObject(coach.primaryAction) ? coach.primaryAction : null;
   const primaryLabel = normalizeText(primaryAction?.label);
   const intent = normalizeText(primaryAction?.intent);
-  if (!headline || !reason || !primaryAction || !primaryLabel || !intent) return fallback;
+  if (!headline || !reason || !primaryAction || !primaryLabel || !intent) {
+    return buildFallback(localHero, {
+      canonicalContextSummary,
+      backendDecisionSource: coach?.decisionSource || null,
+      backendResolutionStatus: coach?.meta?.diagnostics?.resolutionStatus || null,
+      backendRejectionReason: coach?.meta?.diagnostics?.rejectionReason || TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
+    });
+  }
 
   if (intent === "start_occurrence") {
     const occurrence = findOccurrenceById(occurrencesForSelectedDay, primaryAction.occurrenceId);
-    if (!occurrence) return fallback;
+    if (!occurrence) {
+      return buildFallback(localHero, {
+        canonicalContextSummary,
+        backendDecisionSource: coach?.decisionSource || null,
+        backendResolutionStatus: coach?.meta?.diagnostics?.resolutionStatus || null,
+        backendRejectionReason: resolveFrontendFallbackReason({
+          coach,
+          fallback,
+          handlersAvailable,
+          hasOpenSession,
+        }),
+      });
+    }
     return {
       ...fallback,
       source: "ai",
@@ -142,11 +270,33 @@ export function deriveTodayHeroModel({
         kind: "start_occurrence",
         occurrence,
       },
+      diagnostics: {
+        resolutionStatus:
+          coach?.decisionSource === "rules"
+            ? FRONTEND_TODAY_RESOLUTION_STATUS.BACKEND_RULES
+            : FRONTEND_TODAY_RESOLUTION_STATUS.BACKEND_ACCEPTED,
+        rejectionReason: coach?.meta?.diagnostics?.rejectionReason || TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
+        decisionSource: coach?.decisionSource || "rules",
+        interventionType: coach?.interventionType || fallback.interventionType || null,
+        canonicalContextSummary:
+          canonicalContextSummary || coach?.meta?.diagnostics?.canonicalContextSummary || null,
+        backendDecisionSource: coach?.decisionSource || "rules",
+        backendResolutionStatus: coach?.meta?.diagnostics?.resolutionStatus || null,
+        backendRejectionReason: coach?.meta?.diagnostics?.rejectionReason || TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
+        badgeState: "coach_visible",
+      },
     };
   }
 
   if (intent === "resume_session") {
-    if (!hasOpenSession) return fallback;
+    if (!hasOpenSession) {
+      return buildFallback(localHero, {
+        canonicalContextSummary,
+        backendDecisionSource: coach?.decisionSource || null,
+        backendResolutionStatus: coach?.meta?.diagnostics?.resolutionStatus || null,
+        backendRejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.NO_ACTIVE_SESSION_FOR_DATE,
+      });
+    }
     return {
       ...fallback,
       source: "ai",
@@ -160,11 +310,33 @@ export function deriveTodayHeroModel({
         kind: "resume_session",
         categoryId: primaryAction.categoryId || null,
       },
+      diagnostics: {
+        resolutionStatus:
+          coach?.decisionSource === "rules"
+            ? FRONTEND_TODAY_RESOLUTION_STATUS.BACKEND_RULES
+            : FRONTEND_TODAY_RESOLUTION_STATUS.BACKEND_ACCEPTED,
+        rejectionReason: coach?.meta?.diagnostics?.rejectionReason || TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
+        decisionSource: coach?.decisionSource || "rules",
+        interventionType: coach?.interventionType || fallback.interventionType || null,
+        canonicalContextSummary:
+          canonicalContextSummary || coach?.meta?.diagnostics?.canonicalContextSummary || null,
+        backendDecisionSource: coach?.decisionSource || "rules",
+        backendResolutionStatus: coach?.meta?.diagnostics?.resolutionStatus || null,
+        backendRejectionReason: coach?.meta?.diagnostics?.rejectionReason || TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
+        badgeState: "coach_visible",
+      },
     };
   }
 
   if (intent === "open_library") {
-    if (!handlersAvailable.openLibrary) return fallback;
+    if (!handlersAvailable.openLibrary) {
+      return buildFallback(localHero, {
+        canonicalContextSummary,
+        backendDecisionSource: coach?.decisionSource || null,
+        backendResolutionStatus: coach?.meta?.diagnostics?.resolutionStatus || null,
+        backendRejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.CANONICAL_FALLBACK_PREFERRED,
+      });
+    }
     return {
       ...fallback,
       source: "ai",
@@ -177,11 +349,33 @@ export function deriveTodayHeroModel({
       primaryAction: {
         kind: "open_library",
       },
+      diagnostics: {
+        resolutionStatus:
+          coach?.decisionSource === "rules"
+            ? FRONTEND_TODAY_RESOLUTION_STATUS.BACKEND_RULES
+            : FRONTEND_TODAY_RESOLUTION_STATUS.BACKEND_ACCEPTED,
+        rejectionReason: coach?.meta?.diagnostics?.rejectionReason || TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
+        decisionSource: coach?.decisionSource || "rules",
+        interventionType: coach?.interventionType || fallback.interventionType || null,
+        canonicalContextSummary:
+          canonicalContextSummary || coach?.meta?.diagnostics?.canonicalContextSummary || null,
+        backendDecisionSource: coach?.decisionSource || "rules",
+        backendResolutionStatus: coach?.meta?.diagnostics?.resolutionStatus || null,
+        backendRejectionReason: coach?.meta?.diagnostics?.rejectionReason || TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
+        badgeState: "coach_visible",
+      },
     };
   }
 
   if (intent === "open_pilotage") {
-    if (!handlersAvailable.openPilotage) return fallback;
+    if (!handlersAvailable.openPilotage) {
+      return buildFallback(localHero, {
+        canonicalContextSummary,
+        backendDecisionSource: coach?.decisionSource || null,
+        backendResolutionStatus: coach?.meta?.diagnostics?.resolutionStatus || null,
+        backendRejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.CANONICAL_FALLBACK_PREFERRED,
+      });
+    }
     return {
       ...fallback,
       source: "ai",
@@ -194,8 +388,33 @@ export function deriveTodayHeroModel({
       primaryAction: {
         kind: "open_pilotage",
       },
+      diagnostics: {
+        resolutionStatus:
+          coach?.decisionSource === "rules"
+            ? FRONTEND_TODAY_RESOLUTION_STATUS.BACKEND_RULES
+            : FRONTEND_TODAY_RESOLUTION_STATUS.BACKEND_ACCEPTED,
+        rejectionReason: coach?.meta?.diagnostics?.rejectionReason || TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
+        decisionSource: coach?.decisionSource || "rules",
+        interventionType: coach?.interventionType || fallback.interventionType || null,
+        canonicalContextSummary:
+          canonicalContextSummary || coach?.meta?.diagnostics?.canonicalContextSummary || null,
+        backendDecisionSource: coach?.decisionSource || "rules",
+        backendResolutionStatus: coach?.meta?.diagnostics?.resolutionStatus || null,
+        backendRejectionReason: coach?.meta?.diagnostics?.rejectionReason || TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
+        badgeState: "coach_visible",
+      },
     };
   }
 
-  return fallback;
+  return buildFallback(localHero, {
+    canonicalContextSummary,
+    backendDecisionSource: coach?.decisionSource || null,
+    backendResolutionStatus: coach?.meta?.diagnostics?.resolutionStatus || null,
+    backendRejectionReason: resolveFrontendFallbackReason({
+      coach,
+      fallback,
+      handlersAvailable,
+      hasOpenSession,
+    }),
+  });
 }

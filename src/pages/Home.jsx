@@ -41,10 +41,16 @@ import RewardedAdModal from "../ui/today/RewardedAdModal";
 import { emitTotemEvent } from "../ui/totem/totemEvents";
 import { LABELS, UI_COPY } from "../ui/labels";
 import { useAuth } from "../auth/useAuth";
+import { buildTodayCanonicalContextSummary } from "../domain/todayIntervention";
 import { deriveTodayNowModel } from "../features/today/nowModel";
 import { deriveTodayCalendarModel } from "../features/today/todayCalendarModel";
 import { deriveTodayProgressModel } from "../features/today/todayProgressModel";
-import { buildLocalTodayHeroModel, deriveTodayHeroChrome, deriveTodayHeroModel } from "../features/today/aiNowHeroAdapter";
+import {
+  buildLocalTodayHeroModel,
+  deriveTodayDecisionDiagnostics,
+  deriveTodayHeroChrome,
+  deriveTodayHeroModel,
+} from "../features/today/aiNowHeroAdapter";
 import { useAiNow } from "../hooks/useAiNow";
 
 // TOUR MAP:
@@ -650,6 +656,8 @@ export default function Home({
   );
   const {
     activeSessionForActiveDate,
+    openSessionOutsideActiveDate,
+    futureSessions,
     focusCategory,
     selectedCategoryId: executionCategoryId,
     activeHabits,
@@ -1474,6 +1482,27 @@ export default function Home({
       openSessionOutsideActiveDate,
     ]
   );
+  const canonicalContextSummary = useMemo(
+    () =>
+      buildTodayCanonicalContextSummary({
+        activeDate: selectedDateKey,
+        isToday: selectedDateKey === todayLocalKey(),
+        activeSessionForActiveDate,
+        openSessionOutsideActiveDate,
+        futureSessions,
+        plannedActionsForActiveDate: occurrencesForSelectedDay,
+        focusOccurrenceForActiveDate: canStart ? focusOccurrence : null,
+      }),
+    [
+      activeSessionForActiveDate,
+      canStart,
+      focusOccurrence,
+      futureSessions,
+      occurrencesForSelectedDay,
+      openSessionOutsideActiveDate,
+      selectedDateKey,
+    ]
+  );
   const heroViewModel = useMemo(
     () =>
       deriveTodayHeroModel({
@@ -1485,11 +1514,13 @@ export default function Home({
           openLibrary: typeof onOpenLibrary === "function",
           openPilotage: typeof onOpenPilotage === "function",
         },
+        canonicalContextSummary,
       }),
     [
       activeSessionForActiveDate,
       aiNow.coach,
       aiNow.state,
+      canonicalContextSummary,
       localHeroModel,
       occurrencesForSelectedDay,
       onOpenLibrary,
@@ -1504,6 +1535,22 @@ export default function Home({
       }),
     [aiNow.state, heroViewModel.source]
   );
+  const todayDecisionDiagnostics = useMemo(
+    () =>
+      deriveTodayDecisionDiagnostics({
+        aiNowState: aiNow.state,
+        heroViewModel,
+        coach: aiNow.coach,
+        canonicalContextSummary,
+      }),
+    [aiNow.coach, aiNow.state, canonicalContextSummary, heroViewModel]
+  );
+  useEffect(() => {
+    const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
+    if (!isDev) return;
+    // eslint-disable-next-line no-console
+    console.debug("[today-coach]", todayDecisionDiagnostics);
+  }, [todayDecisionDiagnostics]);
   const handleHeroPrimaryAction = useCallback(() => {
     const action = heroViewModel.primaryAction;
     if (!action) return;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createAiNowRequestKey,
+  deriveAiNowRequestDiagnostics,
   getAiNowEligibility,
   resolveAiNowTrigger,
 } from "./useAiNow";
@@ -107,5 +108,28 @@ describe("useAiNow helpers", () => {
         trigger: "resume",
       })
     ).toBe("2026-03-13|c1|s1|resume");
+  });
+
+  it("expose le diagnostic backend quand la reponse coach est disponible", () => {
+    const diagnostics = deriveAiNowRequestDiagnostics({
+      state: "success",
+      coach: {
+        meta: {
+          diagnostics: {
+            resolutionStatus: "accepted_ai",
+            rejectionReason: "none",
+          },
+        },
+      },
+    });
+
+    expect(diagnostics).toEqual({
+      requestState: "success",
+      errorCode: null,
+      backendDiagnostics: {
+        resolutionStatus: "accepted_ai",
+        rejectionReason: "none",
+      },
+    });
   });
 });

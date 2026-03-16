@@ -73,6 +73,42 @@ export function createAiNowRequestKey({
   return [selectedDateKey || "", activeCategoryId || "", activeSessionId || "", trigger || ""].join("|");
 }
 
+export function deriveAiNowRequestDiagnostics({ state, errorCode = null, coach = null }) {
+  if (state === "loading") {
+    return {
+      requestState: "loading",
+      errorCode: null,
+      backendDiagnostics: null,
+    };
+  }
+  if (state === "success") {
+    return {
+      requestState: "success",
+      errorCode: null,
+      backendDiagnostics: coach?.meta?.diagnostics || null,
+    };
+  }
+  if (state === "error") {
+    return {
+      requestState: "error",
+      errorCode: errorCode || null,
+      backendDiagnostics: null,
+    };
+  }
+  if (state === "disabled") {
+    return {
+      requestState: "disabled",
+      errorCode: errorCode || "DISABLED",
+      backendDiagnostics: null,
+    };
+  }
+  return {
+    requestState: "idle",
+    errorCode: errorCode || null,
+    backendDiagnostics: null,
+  };
+}
+
 export function useAiNow({
   selectedDateKey,
   activeCategoryId = null,
@@ -174,5 +210,10 @@ export function useAiNow({
     coach,
     errorCode,
     isConfigured: backendConfigured,
+    requestDiagnostics: deriveAiNowRequestDiagnostics({
+      state,
+      errorCode,
+      coach,
+    }),
   };
 }

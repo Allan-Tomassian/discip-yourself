@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildTodayCanonicalContextSummary,
+  diagnoseTodayIntervention,
+  TODAY_DIAGNOSTIC_REJECTION_REASON,
   TODAY_INTERVENTION_REGISTRY,
   TODAY_INTERVENTION_TYPE,
   hasDeterministicScheduleWarning,
@@ -72,5 +75,42 @@ describe("todayIntervention registry", () => {
     expect(TODAY_INTERVENTION_REGISTRY[TODAY_INTERVENTION_TYPE.PLANNING_ASSIST]?.enabled).toBe(false);
     expect(TODAY_INTERVENTION_REGISTRY[TODAY_INTERVENTION_TYPE.MOTIVATION_NUDGE]?.enabled).toBe(false);
     expect(TODAY_INTERVENTION_REGISTRY[TODAY_INTERVENTION_TYPE.REVIEW_FEEDBACK]?.enabled).toBe(false);
+  });
+
+  it("builds a minimal canonical context summary", () => {
+    expect(
+      buildTodayCanonicalContextSummary({
+        activeDate: "2026-03-16",
+        isToday: true,
+        activeSessionForActiveDate: null,
+        openSessionOutsideActiveDate: { id: "sess-future" },
+        futureSessions: [{ id: "sess-future" }],
+        plannedActionsForActiveDate: [{ id: "occ-1" }],
+        focusOccurrenceForActiveDate: { id: "occ-1" },
+      })
+    ).toEqual({
+      activeDate: "2026-03-16",
+      isToday: true,
+      hasActiveSessionForActiveDate: false,
+      hasOpenSessionOutsideActiveDate: true,
+      futureSessionsCount: 1,
+      hasPlannedActionsForActiveDate: true,
+      hasFocusOccurrenceForActiveDate: true,
+    });
+  });
+
+  it("diagnoses a governance rejection for resume without same-day session", () => {
+    expect(
+      diagnoseTodayIntervention({
+        primaryActionIntent: "resume_session",
+        activeSessionForActiveDate: null,
+        openSessionOutsideActiveDate: { id: "sess-future" },
+        futureSessions: [{ id: "sess-future" }],
+      })
+    ).toEqual({
+      ok: false,
+      resolvedInterventionType: null,
+      rejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.NO_ACTIVE_SESSION_FOR_DATE,
+    });
   });
 });

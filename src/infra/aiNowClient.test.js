@@ -42,6 +42,19 @@ function buildCoachResponse(overrides = {}) {
       quotaRemaining: 3,
       fallbackReason: "none",
       trigger: "resume",
+      diagnostics: {
+        resolutionStatus: "rules_fallback",
+        rejectionReason: "none",
+        canonicalContextSummary: {
+          activeDate: "2026-03-13",
+          isToday: true,
+          hasActiveSessionForActiveDate: true,
+          hasOpenSessionOutsideActiveDate: false,
+          futureSessionsCount: 0,
+          hasPlannedActionsForActiveDate: true,
+          hasFocusOccurrenceForActiveDate: true,
+        },
+      },
     },
     ...overrides,
   };

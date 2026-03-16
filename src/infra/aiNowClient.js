@@ -40,6 +40,19 @@ const INTERVENTION_TYPES = new Set([
 ]);
 const META_FALLBACK_REASONS = new Set(["none", "quota", "timeout", "invalid_model_output", "backend_error"]);
 const META_TRIGGERS = new Set(["manual", "screen_open", "resume", "auto_slip", "resume_after_gap"]);
+const DIAGNOSTIC_RESOLUTION_STATUSES = new Set(["accepted_ai", "rejected_to_rules", "rules_fallback"]);
+const DIAGNOSTIC_REJECTION_REASONS = new Set([
+  "none",
+  "invalid_model_output",
+  "invalid_intervention_type",
+  "governance_rejected",
+  "canonical_fallback_preferred",
+  "no_material_gain_over_local",
+  "no_active_session_for_date",
+  "no_deterministic_signal",
+  "ambiguous_context",
+  "warning_signal_too_weak",
+]);
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -142,7 +155,18 @@ function isCoachMeta(value) {
     isNullableString(value.sessionId) &&
     (value.quotaRemaining === null || Number.isInteger(value.quotaRemaining)) &&
     hasEnumValue(META_FALLBACK_REASONS, value.fallbackReason) &&
-    hasEnumValue(META_TRIGGERS, value.trigger)
+    hasEnumValue(META_TRIGGERS, value.trigger) &&
+    isPlainObject(value.diagnostics) &&
+    hasEnumValue(DIAGNOSTIC_RESOLUTION_STATUSES, value.diagnostics.resolutionStatus) &&
+    hasEnumValue(DIAGNOSTIC_REJECTION_REASONS, value.diagnostics.rejectionReason) &&
+    isDateKey(value.diagnostics.canonicalContextSummary?.activeDate) &&
+    typeof value.diagnostics.canonicalContextSummary?.isToday === "boolean" &&
+    typeof value.diagnostics.canonicalContextSummary?.hasActiveSessionForActiveDate === "boolean" &&
+    typeof value.diagnostics.canonicalContextSummary?.hasOpenSessionOutsideActiveDate === "boolean" &&
+    Number.isInteger(value.diagnostics.canonicalContextSummary?.futureSessionsCount) &&
+    value.diagnostics.canonicalContextSummary.futureSessionsCount >= 0 &&
+    typeof value.diagnostics.canonicalContextSummary?.hasPlannedActionsForActiveDate === "boolean" &&
+    typeof value.diagnostics.canonicalContextSummary?.hasFocusOccurrenceForActiveDate === "boolean"
   );
 }
 

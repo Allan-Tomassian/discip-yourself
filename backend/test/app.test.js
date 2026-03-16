@@ -344,6 +344,8 @@ test("POST /ai/now returns rules fallback when OpenAI is disabled", async () => 
   assert.equal(response.json().interventionType, "today_recommendation");
   assert.equal(response.json().primaryAction.intent, "start_occurrence");
   assert.equal(response.json().meta.fallbackReason, "none");
+  assert.equal(response.json().meta.diagnostics.resolutionStatus, "rules_fallback");
+  assert.equal(response.json().meta.diagnostics.rejectionReason, "none");
   assert.equal(response.headers["access-control-allow-origin"], "http://localhost:5173");
   await app.close();
 });
@@ -383,6 +385,8 @@ test("POST /ai/now maps a future open session to a schedule warning", async () =
   assert.equal(payload.interventionType, "schedule_warning");
   assert.equal(payload.primaryAction.intent, "open_pilotage");
   assert.equal(payload.meta.sessionId, null);
+  assert.equal(payload.meta.diagnostics.resolutionStatus, "rules_fallback");
+  assert.equal(payload.meta.diagnostics.rejectionReason, "none");
 });
 
 test("POST /ai/now resumes the session only when it belongs to the active date", async () => {
@@ -420,6 +424,8 @@ test("POST /ai/now resumes the session only when it belongs to the active date",
   assert.equal(payload.interventionType, "session_resume");
   assert.equal(payload.primaryAction.intent, "resume_session");
   assert.equal(payload.meta.sessionId, "sess-today");
+  assert.equal(payload.meta.diagnostics.resolutionStatus, "rules_fallback");
+  assert.equal(payload.meta.diagnostics.rejectionReason, "none");
 });
 
 test("POST /ai/now returns ai decision when OpenAI returns valid structured output", async () => {
@@ -467,6 +473,8 @@ test("POST /ai/now returns ai decision when OpenAI returns valid structured outp
   assert.equal(payload.decisionSource, "ai");
   assert.equal(payload.interventionType, "today_recommendation");
   assert.equal(payload.meta.fallbackReason, "none");
+  assert.equal(payload.meta.diagnostics.resolutionStatus, "accepted_ai");
+  assert.equal(payload.meta.diagnostics.rejectionReason, "none");
   assert.equal(payload.kind, "now");
   assert.equal(payload.headline, "Lance ta session de concentration maintenant");
   assert.equal(payload.reason, "C'est ton meilleur créneau disponible aujourd'hui.");
@@ -520,6 +528,65 @@ test("POST /ai/now falls back to rules when OpenAI structured output is invalid"
   assert.equal(payload.decisionSource, "rules");
   assert.equal(payload.interventionType, "today_recommendation");
   assert.equal(payload.meta.fallbackReason, "invalid_model_output");
+  assert.equal(payload.meta.diagnostics.resolutionStatus, "rejected_to_rules");
+  assert.equal(payload.meta.diagnostics.rejectionReason, "invalid_model_output");
+  assert.equal(payload.primaryAction.intent, "start_occurrence");
+  await app.close();
+});
+
+test("POST /ai/now rejects an AI resume without active session for the selected date", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-3" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: {
+                  ...createValidCoachPayload(),
+                  primaryAction: {
+                    label: "Reprendre",
+                    intent: "resume_session",
+                    categoryId: "cat-1",
+                    actionId: "goal-1",
+                    occurrenceId: "occ-1",
+                    dateKey: "2026-03-06",
+                  },
+                  toolIntent: "suggest_resume_session",
+                },
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: "2026-03-06",
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "manual",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachResponseSchema.parse(response.json());
+  assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.interventionType, "today_recommendation");
+  assert.equal(payload.meta.diagnostics.resolutionStatus, "rejected_to_rules");
+  assert.equal(payload.meta.diagnostics.rejectionReason, "no_active_session_for_date");
   assert.equal(payload.primaryAction.intent, "start_occurrence");
   await app.close();
 });

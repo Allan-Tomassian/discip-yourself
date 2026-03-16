@@ -2,32 +2,26 @@ import { coachResponseSchema } from "../../schemas/coach.js";
 import { buildNowFallback } from "../fallback/rules.js";
 import { runOpenAiCoach } from "./openaiRunner.js";
 import {
-  isTodayInterventionAllowed,
-  resolveTodayInterventionType,
+  buildTodayCanonicalContextSummary,
+  diagnoseTodayIntervention,
+  TODAY_BACKEND_RESOLUTION_STATUS,
+  TODAY_DIAGNOSTIC_REJECTION_REASON,
 } from "../../../../src/domain/todayIntervention.js";
 
 function withGovernedTodayIntervention({ context, payload }) {
-  const interventionType = resolveTodayInterventionType({
+  const diagnosis = diagnoseTodayIntervention({
+    requestedInterventionType: payload?.interventionType || null,
     activeSessionForActiveDate: context.activeSessionForActiveDate,
     openSessionOutsideActiveDate: context.openSessionOutsideActiveDate,
     futureSessions: context.futureSessions,
     primaryActionIntent: payload?.primaryAction?.intent || "",
   });
-  if (
-    !interventionType ||
-    !isTodayInterventionAllowed({
-      interventionType,
-      primaryActionIntent: payload?.primaryAction?.intent || "",
-      activeSessionForActiveDate: context.activeSessionForActiveDate,
-      openSessionOutsideActiveDate: context.openSessionOutsideActiveDate,
-      futureSessions: context.futureSessions,
-    })
-  ) {
+  if (!diagnosis.ok || !diagnosis.resolvedInterventionType) {
     throw new Error("invalid_today_intervention");
   }
   return {
     ...payload,
-    interventionType,
+    interventionType: diagnosis.resolvedInterventionType,
   };
 }
 
@@ -35,19 +29,42 @@ export async function runNowCoach({ app, context }) {
   let result = null;
   let decisionSource = "rules";
   let fallbackReason = "none";
+  let resolutionStatus = TODAY_BACKEND_RESOLUTION_STATUS.RULES_FALLBACK;
+  let rejectionReason = TODAY_DIAGNOSTIC_REJECTION_REASON.NONE;
   try {
     result = await runOpenAiCoach({ app, kind: "now", context });
     if (result) {
       result = withGovernedTodayIntervention({ context, payload: result });
       decisionSource = "ai";
+      resolutionStatus = TODAY_BACKEND_RESOLUTION_STATUS.ACCEPTED_AI;
     }
-  } catch {
-    fallbackReason = "invalid_model_output";
+  } catch (error) {
+    if (error?.message === "invalid_today_intervention") {
+      const governanceDiagnosis = diagnoseTodayIntervention({
+        requestedInterventionType: result?.interventionType || null,
+        activeSessionForActiveDate: context.activeSessionForActiveDate,
+        openSessionOutsideActiveDate: context.openSessionOutsideActiveDate,
+        futureSessions: context.futureSessions,
+        primaryActionIntent: result?.primaryAction?.intent || "",
+      });
+      rejectionReason =
+        governanceDiagnosis.rejectionReason || TODAY_DIAGNOSTIC_REJECTION_REASON.GOVERNANCE_REJECTED;
+      resolutionStatus = TODAY_BACKEND_RESOLUTION_STATUS.REJECTED_TO_RULES;
+    } else {
+      fallbackReason = "invalid_model_output";
+      rejectionReason = TODAY_DIAGNOSTIC_REJECTION_REASON.INVALID_MODEL_OUTPUT;
+      resolutionStatus = TODAY_BACKEND_RESOLUTION_STATUS.REJECTED_TO_RULES;
+    }
+    result = null;
   }
   if (!result) {
     result = buildNowFallback(context);
     result = withGovernedTodayIntervention({ context, payload: result });
     decisionSource = "rules";
+    if (resolutionStatus !== TODAY_BACKEND_RESOLUTION_STATUS.REJECTED_TO_RULES) {
+      resolutionStatus = TODAY_BACKEND_RESOLUTION_STATUS.RULES_FALLBACK;
+      rejectionReason = TODAY_DIAGNOSTIC_REJECTION_REASON.NONE;
+    }
   }
   return coachResponseSchema.parse({
     ...result,
@@ -62,6 +79,19 @@ export async function runNowCoach({ app, context }) {
       quotaRemaining: context.quotaRemaining,
       fallbackReason: decisionSource === "ai" ? "none" : fallbackReason,
       trigger: context.trigger,
+      diagnostics: {
+        resolutionStatus,
+        rejectionReason,
+        canonicalContextSummary: buildTodayCanonicalContextSummary({
+          activeDate: context.activeDate,
+          isToday: context.isToday,
+          activeSessionForActiveDate: context.activeSessionForActiveDate,
+          openSessionOutsideActiveDate: context.openSessionOutsideActiveDate,
+          futureSessions: context.futureSessions,
+          plannedActionsForActiveDate: context.plannedActionsForActiveDate,
+          focusOccurrenceForActiveDate: context.focusOccurrenceForActiveDate,
+        }),
+      },
     },
   });
 }

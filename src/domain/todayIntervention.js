@@ -8,6 +8,25 @@ export const TODAY_INTERVENTION_TYPE = Object.freeze({
   REVIEW_FEEDBACK: "review_feedback",
 });
 
+export const TODAY_BACKEND_RESOLUTION_STATUS = Object.freeze({
+  ACCEPTED_AI: "accepted_ai",
+  REJECTED_TO_RULES: "rejected_to_rules",
+  RULES_FALLBACK: "rules_fallback",
+});
+
+export const TODAY_DIAGNOSTIC_REJECTION_REASON = Object.freeze({
+  NONE: "none",
+  INVALID_MODEL_OUTPUT: "invalid_model_output",
+  INVALID_INTERVENTION_TYPE: "invalid_intervention_type",
+  GOVERNANCE_REJECTED: "governance_rejected",
+  CANONICAL_FALLBACK_PREFERRED: "canonical_fallback_preferred",
+  NO_MATERIAL_GAIN_OVER_LOCAL: "no_material_gain_over_local",
+  NO_ACTIVE_SESSION_FOR_DATE: "no_active_session_for_date",
+  NO_DETERMINISTIC_SIGNAL: "no_deterministic_signal",
+  AMBIGUOUS_CONTEXT: "ambiguous_context",
+  WARNING_SIGNAL_TOO_WEAK: "warning_signal_too_weak",
+});
+
 export const TODAY_INTERVENTION_REGISTRY = Object.freeze({
   [TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION]: {
     enabled: true,
@@ -78,6 +97,26 @@ function normalizeIntent(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+export function buildTodayCanonicalContextSummary({
+  activeDate = "",
+  isToday = false,
+  activeSessionForActiveDate = null,
+  openSessionOutsideActiveDate = null,
+  futureSessions = [],
+  plannedActionsForActiveDate = [],
+  focusOccurrenceForActiveDate = null,
+}) {
+  return {
+    activeDate: typeof activeDate === "string" ? activeDate : "",
+    isToday: Boolean(isToday),
+    hasActiveSessionForActiveDate: Boolean(activeSessionForActiveDate),
+    hasOpenSessionOutsideActiveDate: Boolean(openSessionOutsideActiveDate),
+    futureSessionsCount: Array.isArray(futureSessions) ? futureSessions.length : 0,
+    hasPlannedActionsForActiveDate: Array.isArray(plannedActionsForActiveDate) && plannedActionsForActiveDate.length > 0,
+    hasFocusOccurrenceForActiveDate: Boolean(focusOccurrenceForActiveDate),
+  };
+}
+
 export function hasDeterministicScheduleWarning({ openSessionOutsideActiveDate, futureSessions }) {
   if (openSessionOutsideActiveDate) return true;
   return Array.isArray(futureSessions) && futureSessions.length > 0;
@@ -115,6 +154,87 @@ export function resolveTodayInterventionType({
   }
 
   return null;
+}
+
+export function diagnoseTodayIntervention({
+  requestedInterventionType = null,
+  primaryActionIntent = "",
+  activeSessionForActiveDate = null,
+  openSessionOutsideActiveDate = null,
+  futureSessions = [],
+}) {
+  const intent = normalizeIntent(primaryActionIntent);
+  const hasActiveSessionForActiveDate = Boolean(activeSessionForActiveDate);
+  const hasWarningSignal = hasDeterministicScheduleWarning({
+    openSessionOutsideActiveDate,
+    futureSessions,
+  });
+
+  if (intent === "resume_session" && !hasActiveSessionForActiveDate) {
+    return {
+      ok: false,
+      resolvedInterventionType: null,
+      rejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.NO_ACTIVE_SESSION_FOR_DATE,
+    };
+  }
+
+  if (intent === "open_pilotage" && !hasWarningSignal) {
+    return {
+      ok: false,
+      resolvedInterventionType: null,
+      rejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.NO_DETERMINISTIC_SIGNAL,
+    };
+  }
+
+  const resolvedInterventionType = resolveTodayInterventionType({
+    activeSessionForActiveDate,
+    openSessionOutsideActiveDate,
+    futureSessions,
+    primaryActionIntent: intent,
+  });
+
+  if (!resolvedInterventionType) {
+    return {
+      ok: false,
+      resolvedInterventionType: null,
+      rejectionReason: intent
+        ? TODAY_DIAGNOSTIC_REJECTION_REASON.INVALID_INTERVENTION_TYPE
+        : TODAY_DIAGNOSTIC_REJECTION_REASON.AMBIGUOUS_CONTEXT,
+    };
+  }
+
+  if (
+    requestedInterventionType &&
+    requestedInterventionType !== resolvedInterventionType
+  ) {
+    return {
+      ok: false,
+      resolvedInterventionType,
+      rejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.INVALID_INTERVENTION_TYPE,
+    };
+  }
+
+  if (
+    !isTodayInterventionAllowed({
+      interventionType: resolvedInterventionType,
+      primaryActionIntent: intent,
+      activeSessionForActiveDate,
+      openSessionOutsideActiveDate,
+      futureSessions,
+    })
+  ) {
+    return {
+      ok: false,
+      resolvedInterventionType,
+      rejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.GOVERNANCE_REJECTED,
+    };
+  }
+
+  return {
+    ok: true,
+    resolvedInterventionType,
+    rejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
+  };
 }
 
 export function isTodayInterventionAllowed({
