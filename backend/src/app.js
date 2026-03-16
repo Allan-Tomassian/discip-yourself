@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import cors from "@fastify/cors";
 import { createSupabaseAdminClient } from "./lib/supabase.js";
 import { createOpenAIClient } from "./lib/openai.js";
 import { requestIdPlugin } from "./plugins/requestId.js";
@@ -17,6 +18,20 @@ export async function buildApp({ config, logger = false, verifyAccessToken } = {
   app.decorate("config", config || null);
   app.decorate("supabase", supabase);
   app.decorate("openai", openai);
+
+  const allowedOrigins = Array.isArray(config?.CORS_ALLOWED_ORIGINS) ? config.CORS_ALLOWED_ORIGINS : [];
+  await app.register(cors, {
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      callback(null, allowedOrigins.includes(origin));
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Authorization", "Content-Type"],
+    credentials: false,
+  });
 
   await requestIdPlugin(app);
   await authPlugin(app, { config, supabase, verifyAccessToken });

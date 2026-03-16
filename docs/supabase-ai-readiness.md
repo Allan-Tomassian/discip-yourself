@@ -17,7 +17,19 @@ Ordre recommandé d'application des migrations :
 Commande unique de référence :
 
 ```bash
+cd "/Users/allan/Desktop/discip-yourself code"
+supabase link --project-ref <SUPABASE_PROJECT_REF>
 supabase db push
+```
+
+Fallback SQL exact :
+
+```bash
+cd "/Users/allan/Desktop/discip-yourself code"
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20260216130000_create_user_data.sql
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20260216162000_create_profiles.sql
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20260306120000_create_billing_entitlements.sql
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20260306120100_create_ai_request_logs.sql
 ```
 
 Règles d'exploitation :
@@ -31,6 +43,8 @@ Règles d'exploitation :
 Checklist avant IA :
 
 - migrations appliquées sur le projet Supabase distant
+- si l'app affiche encore `user_data` manquant, les deux premières migrations ne sont pas appliquées sur le projet distant
+- si `/ai/now` retourne `BACKEND_SCHEMA_MISSING`, les 4 migrations ne sont pas encore présentes côté Supabase
 - login OK
 - création/chargement `profiles` OK
 - lecture/écriture `user_data` OK
