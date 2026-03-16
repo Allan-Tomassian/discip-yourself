@@ -1,3 +1,5 @@
+import { TODAY_INTERVENTION_TYPE, resolveTodayInterventionType } from "../../domain/todayIntervention";
+
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -17,6 +19,63 @@ function buildFallback(localHero) {
     source: "local",
     decisionSource: "local",
     requestId: null,
+  };
+}
+
+export function buildLocalTodayHeroModel({
+  activeCategoryId = null,
+  activeSessionForActiveDate = null,
+  openSessionOutsideActiveDate = null,
+  futureSessions = [],
+  focusOccurrenceForActiveDate = null,
+  focusTitle = "",
+  focusMeta = "",
+}) {
+  const interventionType = resolveTodayInterventionType({
+    activeSessionForActiveDate,
+    openSessionOutsideActiveDate,
+    futureSessions,
+  });
+
+  if (interventionType === TODAY_INTERVENTION_TYPE.SESSION_RESUME) {
+    return {
+      interventionType,
+      title: "Reprendre la session en cours",
+      meta: "La session active reste le prochain levier utile.",
+      primaryLabel: "Reprendre",
+      primaryAction: {
+        kind: "resume_session",
+        categoryId: activeCategoryId,
+      },
+      secondaryLabel: "Voir progression",
+    };
+  }
+
+  if (interventionType === TODAY_INTERVENTION_TYPE.SCHEDULE_WARNING) {
+    return {
+      interventionType,
+      title: "Une session ouverte est planifiée sur une autre date.",
+      meta: "Vérifie le planning avant de reprendre.",
+      primaryLabel: "Voir pilotage",
+      primaryAction: {
+        kind: "open_pilotage",
+      },
+      secondaryLabel: "Voir progression",
+    };
+  }
+
+  return {
+    interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
+    title: focusTitle || "Aucune action planifiée pour cette date.",
+    meta: focusMeta || "Crée ou planifie une action depuis Bibliothèque.",
+    primaryLabel: focusOccurrenceForActiveDate ? "Commencer maintenant" : "Aucune action active",
+    primaryAction: focusOccurrenceForActiveDate
+      ? {
+          kind: "start_occurrence",
+          occurrence: focusOccurrenceForActiveDate,
+        }
+      : null,
+    secondaryLabel: "Voir progression",
   };
 }
 
@@ -74,6 +133,7 @@ export function deriveTodayHeroModel({
       ...fallback,
       source: "ai",
       decisionSource: coach.decisionSource || "rules",
+      interventionType: coach.interventionType || fallback.interventionType || null,
       requestId: coach?.meta?.requestId || null,
       title: headline,
       meta: reason,
@@ -91,6 +151,7 @@ export function deriveTodayHeroModel({
       ...fallback,
       source: "ai",
       decisionSource: coach.decisionSource || "rules",
+      interventionType: coach.interventionType || fallback.interventionType || null,
       requestId: coach?.meta?.requestId || null,
       title: headline,
       meta: reason,
@@ -108,6 +169,7 @@ export function deriveTodayHeroModel({
       ...fallback,
       source: "ai",
       decisionSource: coach.decisionSource || "rules",
+      interventionType: coach.interventionType || fallback.interventionType || null,
       requestId: coach?.meta?.requestId || null,
       title: headline,
       meta: reason,
@@ -124,6 +186,7 @@ export function deriveTodayHeroModel({
       ...fallback,
       source: "ai",
       decisionSource: coach.decisionSource || "rules",
+      interventionType: coach.interventionType || fallback.interventionType || null,
       requestId: coach?.meta?.requestId || null,
       title: headline,
       meta: reason,

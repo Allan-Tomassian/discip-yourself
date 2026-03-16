@@ -11,6 +11,7 @@ function buildCoachResponse(overrides = {}) {
   return {
     kind: "now",
     decisionSource: "rules",
+    interventionType: "session_resume",
     headline: "Relance ta session",
     reason: "Ta session est deja en cours.",
     primaryAction: {

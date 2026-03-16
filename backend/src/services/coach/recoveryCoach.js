@@ -19,6 +19,7 @@ export async function runRecoveryCoach({ app, context }) {
   return coachResponseSchema.parse({
     ...result,
     decisionSource,
+    interventionType: result?.interventionType ?? null,
     meta: {
       coachVersion: "v1",
       requestId: context.requestId,

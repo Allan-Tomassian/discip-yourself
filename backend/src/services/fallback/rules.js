@@ -1,11 +1,23 @@
+import {
+  TODAY_INTERVENTION_TYPE,
+  resolveTodayInterventionType,
+} from "../../../../src/domain/todayIntervention.js";
+
 function buildAction({ label, intent, categoryId = null, actionId = null, occurrenceId = null, dateKey = null }) {
   return { label, intent, categoryId, actionId, occurrenceId, dateKey };
 }
 
 export function buildNowFallback(context) {
-  if (context.activeSessionForActiveDate?.isOpen) {
+  const interventionType = resolveTodayInterventionType({
+    activeSessionForActiveDate: context.activeSessionForActiveDate,
+    openSessionOutsideActiveDate: context.openSessionOutsideActiveDate,
+    futureSessions: context.futureSessions,
+  });
+
+  if (interventionType === TODAY_INTERVENTION_TYPE.SESSION_RESUME && context.activeSessionForActiveDate?.isOpen) {
     return {
       kind: "now",
+      interventionType,
       decisionSource: "rules",
       headline: "Reprends la session en cours",
       reason: "La session active est le prochain levier utile.",
@@ -35,6 +47,29 @@ export function buildNowFallback(context) {
     };
   }
 
+  if (interventionType === TODAY_INTERVENTION_TYPE.SCHEDULE_WARNING) {
+    return {
+      kind: "now",
+      interventionType,
+      decisionSource: "rules",
+      headline: "Une session ouverte est planifiée sur une autre date",
+      reason: "Vérifie le planning avant de reprendre ou de relancer une action.",
+      primaryAction: buildAction({
+        label: "Voir pilotage",
+        intent: "open_pilotage",
+        categoryId: context.activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      secondaryAction: null,
+      suggestedDurationMin: null,
+      confidence: 0.89,
+      urgency: "medium",
+      uiTone: "steady",
+      toolIntent: "suggest_reschedule_option",
+      rewardSuggestion: { kind: "none", label: null },
+    };
+  }
+
   if (context.focusOccurrenceForActiveDate) {
     const title = String(context.goalsById.get(context.focusOccurrenceForActiveDate.goalId)?.title || "Action");
     const duration = Number.isFinite(context.focusOccurrenceForActiveDate.durationMinutes)
@@ -42,6 +77,7 @@ export function buildNowFallback(context) {
       : null;
     return {
       kind: "now",
+      interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
       decisionSource: "rules",
       headline: title.slice(0, 72),
       reason: "C’est l’action la plus exécutable dans le plan courant.",
@@ -72,6 +108,7 @@ export function buildNowFallback(context) {
 
   return {
     kind: "now",
+    interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
     decisionSource: "rules",
     headline: "Aucune action prête",
     reason: "Le plan du jour est vide ou déjà clos.",
@@ -100,6 +137,7 @@ export function buildRecoveryFallback(context) {
   if (context.activeSession?.isOpen) {
     return {
       kind: "recovery",
+      interventionType: null,
       decisionSource: "rules",
       headline: "Repars avec la session active",
       reason: "Le plus court chemin est de reprendre ce qui est déjà lancé.",
@@ -127,6 +165,7 @@ export function buildRecoveryFallback(context) {
     const boundedDuration = Math.max(5, Math.min(duration, 20));
     return {
       kind: "recovery",
+      interventionType: null,
       decisionSource: "rules",
       headline: title.slice(0, 72),
       reason: "Repars avec l’action la plus légère encore ouverte.",
@@ -157,6 +196,7 @@ export function buildRecoveryFallback(context) {
 
   return {
     kind: "recovery",
+    interventionType: null,
     decisionSource: "rules",
     headline: "Recrée un point d’appui",
     reason: "Pas d’action récupérable aujourd’hui, il faut rouvrir le système.",

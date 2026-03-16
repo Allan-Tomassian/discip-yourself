@@ -29,6 +29,15 @@ const TOOL_INTENTS = new Set([
 const REWARD_KINDS = new Set(["none", "micro_action", "coins_preview", "light_reset"]);
 const DECISION_SOURCES = new Set(["ai", "rules"]);
 const COACH_KINDS = new Set(["now", "recovery"]);
+const INTERVENTION_TYPES = new Set([
+  "today_recommendation",
+  "session_resume",
+  "schedule_warning",
+  "overload_adjustment",
+  "planning_assist",
+  "motivation_nudge",
+  "review_feedback",
+]);
 const META_FALLBACK_REASONS = new Set(["none", "quota", "timeout", "invalid_model_output", "backend_error"]);
 const META_TRIGGERS = new Set(["manual", "screen_open", "resume", "auto_slip", "resume_after_gap"]);
 
@@ -142,6 +151,7 @@ export function isAiCoachResponse(value) {
     isPlainObject(value) &&
     hasEnumValue(COACH_KINDS, value.kind) &&
     hasEnumValue(DECISION_SOURCES, value.decisionSource) &&
+    (value.interventionType === null || hasEnumValue(INTERVENTION_TYPES, value.interventionType)) &&
     typeof value.headline === "string" &&
     value.headline.length <= 72 &&
     typeof value.reason === "string" &&

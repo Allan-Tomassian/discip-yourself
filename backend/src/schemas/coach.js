@@ -1,6 +1,16 @@
 import { z } from "zod";
+import { TODAY_INTERVENTION_TYPE } from "../../../src/domain/todayIntervention.js";
 
 const isoDateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const interventionTypeSchema = z.enum([
+  TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
+  TODAY_INTERVENTION_TYPE.SESSION_RESUME,
+  TODAY_INTERVENTION_TYPE.SCHEDULE_WARNING,
+  TODAY_INTERVENTION_TYPE.OVERLOAD_ADJUSTMENT,
+  TODAY_INTERVENTION_TYPE.PLANNING_ASSIST,
+  TODAY_INTERVENTION_TYPE.MOTIVATION_NUDGE,
+  TODAY_INTERVENTION_TYPE.REVIEW_FEEDBACK,
+]);
 
 const actionSchema = z
   .object({
@@ -67,6 +77,7 @@ export const coachResponseSchema = z
   .object({
     kind: z.enum(["now", "recovery"]),
     decisionSource: z.enum(["ai", "rules"]),
+    interventionType: interventionTypeSchema.nullable(),
     headline: z.string().max(72),
     reason: z.string().max(160),
     primaryAction: actionSchema,

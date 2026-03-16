@@ -44,7 +44,7 @@ import { useAuth } from "../auth/useAuth";
 import { deriveTodayNowModel } from "../features/today/nowModel";
 import { deriveTodayCalendarModel } from "../features/today/todayCalendarModel";
 import { deriveTodayProgressModel } from "../features/today/todayProgressModel";
-import { deriveTodayHeroChrome, deriveTodayHeroModel } from "../features/today/aiNowHeroAdapter";
+import { buildLocalTodayHeroModel, deriveTodayHeroChrome, deriveTodayHeroModel } from "../features/today/aiNowHeroAdapter";
 import { useAiNow } from "../hooks/useAiNow";
 
 // TOUR MAP:
@@ -1452,20 +1452,27 @@ export default function Home({
     </div>
   ) : null;
   const localHeroModel = useMemo(
-    () => ({
-      title: nowActionTitle,
-      meta: nowActionMeta,
-      primaryLabel: canStart ? "Commencer maintenant" : "Aucune action active",
-      primaryAction:
-        canStart && focusOccurrence
-          ? {
-              kind: "start_occurrence",
-              occurrence: focusOccurrence,
-            }
-          : null,
-      secondaryLabel: "Voir progression",
-    }),
-    [canStart, focusOccurrence, nowActionMeta, nowActionTitle]
+    () =>
+      buildLocalTodayHeroModel({
+        activeCategoryId: executionCategoryId || focusCategory?.id || null,
+        activeSessionForActiveDate,
+        openSessionOutsideActiveDate,
+        futureSessions,
+        focusOccurrenceForActiveDate: canStart ? focusOccurrence : null,
+        focusTitle: nowActionTitle,
+        focusMeta: nowActionMeta,
+      }),
+    [
+      activeSessionForActiveDate,
+      canStart,
+      executionCategoryId,
+      focusCategory?.id,
+      focusOccurrence,
+      futureSessions,
+      nowActionMeta,
+      nowActionTitle,
+      openSessionOutsideActiveDate,
+    ]
   );
   const heroViewModel = useMemo(
     () =>

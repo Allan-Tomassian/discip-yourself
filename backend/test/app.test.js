@@ -341,13 +341,14 @@ test("POST /ai/now returns rules fallback when OpenAI is disabled", async () => 
 
   assert.equal(response.statusCode, 200);
   assert.equal(response.json().decisionSource, "rules");
+  assert.equal(response.json().interventionType, "today_recommendation");
   assert.equal(response.json().primaryAction.intent, "start_occurrence");
   assert.equal(response.json().meta.fallbackReason, "none");
   assert.equal(response.headers["access-control-allow-origin"], "http://localhost:5173");
   await app.close();
 });
 
-test("POST /ai/now does not resume a future session when today's context has a planned action", async () => {
+test("POST /ai/now maps a future open session to a schedule warning", async () => {
   const app = await buildApp({
     config: TEST_CONFIG,
     verifyAccessToken: async () => ({ id: "user-future-session" }),
@@ -379,7 +380,8 @@ test("POST /ai/now does not resume a future session when today's context has a p
   assert.equal(response.statusCode, 200);
   const payload = coachResponseSchema.parse(response.json());
   assert.equal(payload.decisionSource, "rules");
-  assert.equal(payload.primaryAction.intent, "start_occurrence");
+  assert.equal(payload.interventionType, "schedule_warning");
+  assert.equal(payload.primaryAction.intent, "open_pilotage");
   assert.equal(payload.meta.sessionId, null);
 });
 
@@ -415,6 +417,7 @@ test("POST /ai/now resumes the session only when it belongs to the active date",
   assert.equal(response.statusCode, 200);
   const payload = coachResponseSchema.parse(response.json());
   assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.interventionType, "session_resume");
   assert.equal(payload.primaryAction.intent, "resume_session");
   assert.equal(payload.meta.sessionId, "sess-today");
 });
@@ -462,6 +465,7 @@ test("POST /ai/now returns ai decision when OpenAI returns valid structured outp
   assert.equal(response.statusCode, 200);
   const payload = coachResponseSchema.parse(response.json());
   assert.equal(payload.decisionSource, "ai");
+  assert.equal(payload.interventionType, "today_recommendation");
   assert.equal(payload.meta.fallbackReason, "none");
   assert.equal(payload.kind, "now");
   assert.equal(payload.headline, "Lance ta session de concentration maintenant");
@@ -514,6 +518,7 @@ test("POST /ai/now falls back to rules when OpenAI structured output is invalid"
   assert.equal(response.statusCode, 200);
   const payload = coachResponseSchema.parse(response.json());
   assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.interventionType, "today_recommendation");
   assert.equal(payload.meta.fallbackReason, "invalid_model_output");
   assert.equal(payload.primaryAction.intent, "start_occurrence");
   await app.close();

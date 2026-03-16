@@ -19,6 +19,8 @@ function buildNowPrompt(context) {
     "Return one short actionable recommendation for what the user should do now.",
     "No chat. No markdown. No prose outside JSON.",
     "Never invent actions or occurrences that are not in the context.",
+    "Use resume_session only when activeSessionForActiveDate is present.",
+    "Use open_pilotage only for a deterministic schedule warning.",
     "Prefer resume_session, then start_occurrence, then open_library.",
     `Context: ${JSON.stringify({
       kind: "now",
@@ -26,6 +28,8 @@ function buildNowPrompt(context) {
       isToday: context.isToday,
       activeCategoryId: context.activeCategoryId,
       activeSessionForActiveDate: context.activeSessionForActiveDate,
+      openSessionOutsideActiveDate: context.openSessionOutsideActiveDate,
+      futureSessionsCount: Array.isArray(context.futureSessions) ? context.futureSessions.length : 0,
       focusOccurrenceForActiveDate: context.focusOccurrenceForActiveDate,
       doneToday: context.doneToday,
       missedToday: context.missedToday,

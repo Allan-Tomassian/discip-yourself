@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { deriveTodayHeroChrome, deriveTodayHeroModel } from "./aiNowHeroAdapter";
+import { buildLocalTodayHeroModel, deriveTodayHeroChrome, deriveTodayHeroModel } from "./aiNowHeroAdapter";
+import { TODAY_INTERVENTION_TYPE } from "../../domain/todayIntervention";
 
 function buildLocalHero(overrides = {}) {
   return {
+    interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
     title: "Action locale",
     meta: "Meta locale",
     primaryLabel: "Commencer maintenant",
@@ -16,9 +18,16 @@ function buildLocalHero(overrides = {}) {
 }
 
 function buildCoach(intent, overrides = {}) {
+  const interventionType =
+    intent === "resume_session"
+      ? TODAY_INTERVENTION_TYPE.SESSION_RESUME
+      : intent === "open_pilotage"
+        ? TODAY_INTERVENTION_TYPE.SCHEDULE_WARNING
+        : TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION;
   return {
     kind: "now",
     decisionSource: "ai",
+    interventionType,
     headline: "Titre IA",
     reason: "Raison IA",
     primaryAction: {
@@ -48,6 +57,7 @@ describe("deriveTodayHeroModel", () => {
 
     expect(result.source).toBe("ai");
     expect(result.title).toBe("Titre IA");
+    expect(result.interventionType).toBe(TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION);
     expect(result.primaryAction).toMatchObject({ kind: "start_occurrence" });
   });
 
@@ -61,6 +71,7 @@ describe("deriveTodayHeroModel", () => {
     });
 
     expect(result.source).toBe("ai");
+    expect(result.interventionType).toBe(TODAY_INTERVENTION_TYPE.SESSION_RESUME);
     expect(result.primaryAction).toMatchObject({ kind: "resume_session" });
   });
 
@@ -74,19 +85,21 @@ describe("deriveTodayHeroModel", () => {
     });
 
     expect(result.source).toBe("ai");
+    expect(result.interventionType).toBe(TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION);
     expect(result.primaryAction).toMatchObject({ kind: "open_library" });
   });
 
   it("accepte open_pilotage si le handler existe", () => {
     const result = deriveTodayHeroModel({
       localHero: buildLocalHero(),
-      coach: buildCoach("open_pilotage"),
+      coach: buildCoach("open_pilotage", { interventionType: TODAY_INTERVENTION_TYPE.SCHEDULE_WARNING }),
       occurrencesForSelectedDay: [],
       hasOpenSession: false,
       handlersAvailable: { openLibrary: false, openPilotage: true },
     });
 
     expect(result.source).toBe("ai");
+    expect(result.interventionType).toBe(TODAY_INTERVENTION_TYPE.SCHEDULE_WARNING);
     expect(result.primaryAction).toMatchObject({ kind: "open_pilotage" });
   });
 
@@ -127,6 +140,57 @@ describe("deriveTodayHeroModel", () => {
 
     expect(result.source).toBe("local");
     expect(result.title).toBe("Action locale");
+  });
+});
+
+describe("buildLocalTodayHeroModel", () => {
+  it("mappe une recommandation Today standard", () => {
+    const result = buildLocalTodayHeroModel({
+      activeCategoryId: "c1",
+      focusOccurrenceForActiveDate: { id: "occ-1" },
+      focusTitle: "Action locale",
+      focusMeta: "Meta locale",
+    });
+
+    expect(result.interventionType).toBe(TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION);
+    expect(result.primaryAction).toMatchObject({ kind: "start_occurrence" });
+  });
+
+  it("mappe une reprise de session legitime", () => {
+    const result = buildLocalTodayHeroModel({
+      activeCategoryId: "c1",
+      activeSessionForActiveDate: { id: "sess-1", occurrenceId: "occ-1" },
+      focusTitle: "Action locale",
+      focusMeta: "Meta locale",
+    });
+
+    expect(result.interventionType).toBe(TODAY_INTERVENTION_TYPE.SESSION_RESUME);
+    expect(result.primaryAction).toMatchObject({ kind: "resume_session", categoryId: "c1" });
+  });
+
+  it("mappe un warning deterministe", () => {
+    const result = buildLocalTodayHeroModel({
+      activeCategoryId: "c1",
+      openSessionOutsideActiveDate: { id: "sess-future" },
+      futureSessions: [{ id: "sess-future" }],
+      focusTitle: "Action locale",
+      focusMeta: "Meta locale",
+    });
+
+    expect(result.interventionType).toBe(TODAY_INTERVENTION_TYPE.SCHEDULE_WARNING);
+    expect(result.primaryAction).toMatchObject({ kind: "open_pilotage" });
+  });
+
+  it("ne peut pas produire session_resume sans session sur la date active", () => {
+    const result = buildLocalTodayHeroModel({
+      activeCategoryId: "c1",
+      openSessionOutsideActiveDate: { id: "sess-future" },
+      futureSessions: [{ id: "sess-future" }],
+      focusTitle: "Action locale",
+      focusMeta: "Meta locale",
+    });
+
+    expect(result.interventionType).not.toBe(TODAY_INTERVENTION_TYPE.SESSION_RESUME);
   });
 });
 
