@@ -133,10 +133,10 @@ function createCoachContextUserData() {
 function createValidCoachPayload() {
   return {
     kind: "now",
-    headline: "Lance Deep work maintenant",
-    reason: "C’est ton créneau disponible le plus clair aujourd’hui.",
+    headline: "Lance ta session de concentration maintenant",
+    reason: "C'est ton meilleur créneau disponible aujourd'hui.",
     primaryAction: {
-      label: "Démarrer",
+      label: "Commencer maintenant",
       intent: "start_occurrence",
       categoryId: "cat-1",
       actionId: "goal-1",
@@ -347,6 +347,7 @@ test("POST /ai/now returns rules fallback when OpenAI is disabled", async () => 
 });
 
 test("POST /ai/now returns ai decision when OpenAI returns valid structured output", async () => {
+  let capturedSystemPrompt = "";
   const app = await buildApp({
     config: TEST_CONFIG_WITH_OPENAI,
     verifyAccessToken: async () => ({ id: "user-1" }),
@@ -357,7 +358,9 @@ test("POST /ai/now returns ai decision when OpenAI returns valid structured outp
   app.openai = {
     chat: {
       completions: {
-        parse: async () => ({
+        parse: async (input) => {
+          capturedSystemPrompt = input?.messages?.[0]?.content || "";
+          return {
           choices: [
             {
               message: {
@@ -365,7 +368,8 @@ test("POST /ai/now returns ai decision when OpenAI returns valid structured outp
               },
             },
           ],
-        }),
+        };
+        },
       },
     },
   };
@@ -387,11 +391,14 @@ test("POST /ai/now returns ai decision when OpenAI returns valid structured outp
   assert.equal(payload.decisionSource, "ai");
   assert.equal(payload.meta.fallbackReason, "none");
   assert.equal(payload.kind, "now");
-  assert.equal(payload.headline, "Lance Deep work maintenant");
-  assert.equal(payload.reason, "C’est ton créneau disponible le plus clair aujourd’hui.");
+  assert.equal(payload.headline, "Lance ta session de concentration maintenant");
+  assert.equal(payload.reason, "C'est ton meilleur créneau disponible aujourd'hui.");
+  assert.equal(payload.primaryAction.label, "Commencer maintenant");
   assert.equal(payload.primaryAction.intent, "start_occurrence");
   assert.equal(payload.toolIntent, "suggest_start_occurrence");
   assert.equal(payload.rewardSuggestion.kind, "none");
+  assert.match(capturedSystemPrompt, /written in French/i);
+  assert.match(capturedSystemPrompt, /headline, reason, primaryAction\.label/i);
   await app.close();
 });
 

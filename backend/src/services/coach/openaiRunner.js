@@ -1,6 +1,18 @@
 import { zodResponseFormat } from "openai/helpers/zod";
 import { coachPayloadSchema } from "../../schemas/coach.js";
 
+const DEFAULT_OUTPUT_LOCALE = "fr-FR";
+
+function buildSystemPrompt(locale = DEFAULT_OUTPUT_LOCALE) {
+  return [
+    "You are a precise execution coach.",
+    "Output valid JSON only.",
+    "Keep text compact and actionable.",
+    `All user-visible strings must be written in French (${locale}).`,
+    "This includes headline, reason, primaryAction.label, secondaryAction.label, and rewardSuggestion.label.",
+  ].join(" ");
+}
+
 function buildNowPrompt(context) {
   return [
     "You are the execution coach for Discip-Yourself.",
@@ -59,8 +71,7 @@ export async function runOpenAiCoach({ app, kind, context }) {
     messages: [
       {
         role: "system",
-        content:
-          "You are a precise execution coach. Output valid JSON only. Keep text compact and actionable.",
+        content: buildSystemPrompt(),
       },
       {
         role: "user",
