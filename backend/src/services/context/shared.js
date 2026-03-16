@@ -40,6 +40,10 @@ export function resolveOccurrencesForDate(data, dateKey, categoryId = null) {
   });
 }
 
+export function resolvePlannedActionsForDate(data, dateKey, categoryId = null) {
+  return resolveOccurrencesForDate(data, dateKey, categoryId).filter((occurrence) => occurrence?.status === "planned");
+}
+
 export function normalizeSession(session) {
   const safe = safeObject(session);
   if (!safe || !safe.id) return null;
@@ -68,6 +72,110 @@ export function resolveActiveSessionForDate(data, dateKey) {
   if (!session?.isOpen) return null;
   if (session.dateKey && session.dateKey !== dateKey) return null;
   return session;
+}
+
+export function resolveSessionSplitForDate(data, dateKey) {
+  const session = normalizeSession(data?.ui?.activeSession);
+  if (!session?.isOpen) {
+    return {
+      activeSessionForActiveDate: null,
+      openSessionOutsideActiveDate: null,
+      futureSessions: [],
+    };
+  }
+
+  if (session.dateKey === dateKey) {
+    return {
+      activeSessionForActiveDate: session,
+      openSessionOutsideActiveDate: null,
+      futureSessions: [],
+    };
+  }
+
+  const openSessionOutsideActiveDate = session;
+  return {
+    activeSessionForActiveDate: null,
+    openSessionOutsideActiveDate,
+    futureSessions: session.dateKey && session.dateKey > dateKey ? [session] : [],
+  };
+}
+
+function resolveStartMinutes(occurrence) {
+  const raw =
+    typeof occurrence?.start === "string" && occurrence.start
+      ? occurrence.start
+      : typeof occurrence?.slotKey === "string"
+        ? occurrence.slotKey
+        : "";
+  const match = raw.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function isFixedOccurrence(occurrence) {
+  if (!occurrence || typeof occurrence !== "object") return false;
+  if (occurrence.noTime === true) return false;
+  if (occurrence.timeType === "window") return false;
+  return Number.isFinite(resolveStartMinutes(occurrence));
+}
+
+function resolvePriorityRank(occurrence) {
+  const raw =
+    typeof occurrence?.priority === "string"
+      ? occurrence.priority
+      : typeof occurrence?.priorityLevel === "string"
+        ? occurrence.priorityLevel
+        : "";
+  const key = raw.toLowerCase();
+  if (key === "prioritaire" || key === "primary") return 3;
+  if (key === "secondaire" || key === "secondary") return 2;
+  if (key === "bonus") return 1;
+  return 0;
+}
+
+function stableKey(occurrence) {
+  const goalId = typeof occurrence?.goalId === "string" ? occurrence.goalId : "";
+  const id = typeof occurrence?.id === "string" ? occurrence.id : "";
+  return `${goalId}:${id}`;
+}
+
+function sortByPriorityThenStable(left, right) {
+  const leftRank = resolvePriorityRank(left);
+  const rightRank = resolvePriorityRank(right);
+  if (leftRank !== rightRank) return rightRank - leftRank;
+  return stableKey(left).localeCompare(stableKey(right));
+}
+
+export function resolveFocusOccurrenceForDate({ dateKey, now = new Date(), occurrences = [] }) {
+  const normalizedDateKey = normalizeDateKey(dateKey);
+  if (!normalizedDateKey) return null;
+  const list = safeArray(occurrences).filter(
+    (occurrence) => occurrence && occurrence.status === "planned" && normalizeDateKey(occurrence.date) === normalizedDateKey
+  );
+  if (!list.length) return null;
+
+  const todayKey = normalizeDateKey(now);
+  const nowMinutes =
+    normalizedDateKey === todayKey && now instanceof Date ? now.getHours() * 60 + now.getMinutes() : -1;
+
+  const fixedFuture = list
+    .filter((occurrence) => isFixedOccurrence(occurrence))
+    .map((occurrence) => ({ occurrence, startMinutes: resolveStartMinutes(occurrence) }))
+    .filter((item) => Number.isFinite(item.startMinutes) && item.startMinutes >= nowMinutes)
+    .sort((left, right) => left.startMinutes - right.startMinutes || sortByPriorityThenStable(left.occurrence, right.occurrence));
+
+  if (fixedFuture.length) return fixedFuture[0].occurrence;
+
+  const fixedAll = list
+    .filter((occurrence) => isFixedOccurrence(occurrence))
+    .map((occurrence) => ({ occurrence, startMinutes: resolveStartMinutes(occurrence) }))
+    .filter((item) => Number.isFinite(item.startMinutes))
+    .sort((left, right) => left.startMinutes - right.startMinutes || sortByPriorityThenStable(left.occurrence, right.occurrence));
+
+  if (fixedAll.length) return fixedAll[0].occurrence;
+
+  const nonFixed = list.filter((occurrence) => !isFixedOccurrence(occurrence)).slice().sort(sortByPriorityThenStable);
+  return nonFixed[0] || null;
 }
 
 export function buildWindowStats(data, dateKey, days) {

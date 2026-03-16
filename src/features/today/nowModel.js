@@ -1,7 +1,7 @@
-import { getAlternativeCandidates, getNextPlannedOccurrence } from "../../core/focus/focusSelector";
+import { getAlternativeCandidates } from "../../core/focus/focusSelector";
 import { resolveGoalType } from "../../domain/goalType";
-import { normalizeActiveSessionForUI } from "../../logic/compat";
 import { isPrimaryCategory } from "../../logic/priority";
+import { deriveTodayContextModel } from "./todayContextModel";
 
 function safeArray(value) {
   return Array.isArray(value) ? value : [];
@@ -51,7 +51,13 @@ export function deriveTodayNowModel({
 }) {
   const categoryList = safeArray(categories);
   const goalList = safeArray(goals);
-  const plannedList = safeArray(plannedOccurrencesForDay);
+  const todayContext = deriveTodayContextModel({
+    selectedDateKey,
+    rawActiveSession,
+    plannedOccurrencesForDay,
+    now,
+  });
+  const plannedList = todayContext.plannedActionsForActiveDate;
 
   const focusCategory = resolveTodayFocusCategory({
     categories: categoryList,
@@ -67,23 +73,15 @@ export function deriveTodayNowModel({
   const activeHabits = executableActions.filter((goal) => safeString(goal?.status) === "active");
   const ensureProcessIds = executableActions.map((goal) => goal?.id).filter(Boolean);
 
-  const activeSession = normalizeActiveSessionForUI(rawActiveSession);
-  const sessionForDay = (() => {
-    if (!activeSession) return null;
-    const sessionDateKey = activeSession.dateKey || activeSession.date;
-    return sessionDateKey === selectedDateKey ? activeSession : null;
-  })();
+  const activeSession = todayContext.activeSessionForActiveDate;
+  const sessionForDay = todayContext.activeSessionForActiveDate;
   const sessionHabit = (() => {
     if (!sessionForDay?.habitIds?.length) return null;
     const firstId = sessionForDay.habitIds[0];
     return firstId ? goalList.find((goal) => goal.id === firstId) || null : null;
   })();
 
-  const focusBaseOccurrence = getNextPlannedOccurrence({
-    dateKey: selectedDateKey,
-    now,
-    occurrences: plannedList,
-  });
+  const focusBaseOccurrence = todayContext.focusOccurrenceForActiveDate;
   const focusOverrideOccurrence =
     focusOverride?.dateKey === selectedDateKey
       ? plannedList.find((occurrence) => occurrence?.id === focusOverride?.occurrenceId) || null
@@ -116,10 +114,17 @@ export function deriveTodayNowModel({
     : null;
 
   return {
+    activeDate: todayContext.activeDate,
+    isToday: todayContext.isToday,
     focusCategory,
     selectedCategoryId: focusCategory?.id || null,
     activeHabits,
     ensureProcessIds,
+    activeSessionForActiveDate: todayContext.activeSessionForActiveDate,
+    openSessionOutsideActiveDate: todayContext.openSessionOutsideActiveDate,
+    futureSessions: todayContext.futureSessions,
+    plannedActionsForActiveDate: todayContext.plannedActionsForActiveDate,
+    focusOccurrenceForActiveDate: todayContext.focusOccurrenceForActiveDate,
     activeSession,
     sessionForDay,
     sessionHabit,

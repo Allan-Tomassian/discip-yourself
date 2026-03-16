@@ -649,6 +649,7 @@ export default function Home({
     [categories, focusOverride, goals, homeSelectedCategoryId, plannedOccurrencesForDay, rawActiveSession, selectedDateKey]
   );
   const {
+    activeSessionForActiveDate,
     focusCategory,
     selectedCategoryId: executionCategoryId,
     activeHabits,
@@ -667,7 +668,7 @@ export default function Home({
   const aiNow = useAiNow({
     selectedDateKey,
     activeCategoryId: executionCategoryId,
-    activeSessionId: activeSession?.id || activeSession?.occurrenceId || null,
+    activeSessionId: activeSessionForActiveDate?.id || activeSessionForActiveDate?.occurrenceId || null,
     isAuthenticated: Boolean(session),
     enabled: true,
   });
@@ -1472,14 +1473,14 @@ export default function Home({
         localHero: localHeroModel,
         coach: aiNow.state === "success" ? aiNow.coach : null,
         occurrencesForSelectedDay,
-        hasOpenSession: isRuntimeSessionOpen(activeSession),
+        hasOpenSession: isRuntimeSessionOpen(activeSessionForActiveDate),
         handlersAvailable: {
           openLibrary: typeof onOpenLibrary === "function",
           openPilotage: typeof onOpenPilotage === "function",
         },
       }),
     [
-      activeSession,
+      activeSessionForActiveDate,
       aiNow.coach,
       aiNow.state,
       localHeroModel,
@@ -1668,7 +1669,7 @@ export default function Home({
                 normalizeOccurrenceForUI={normalizeOccurrenceForUI}
                 goalsById={goalsById}
                 categoriesById={categoriesById}
-                activeOccurrenceId={activeSession?.occurrenceId || null}
+                activeOccurrenceId={activeSessionForActiveDate?.occurrenceId || null}
               />
             );
           }

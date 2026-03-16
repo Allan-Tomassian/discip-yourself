@@ -22,10 +22,10 @@ export async function runNowCoach({ app, context }) {
     meta: {
       coachVersion: "v1",
       requestId: context.requestId,
-      selectedDateKey: context.selectedDateKey,
+      selectedDateKey: context.activeDate,
       activeCategoryId: context.activeCategoryId,
-      occurrenceId: context.topOccurrence?.id || context.activeSession?.occurrenceId || null,
-      sessionId: context.activeSession?.id || null,
+      occurrenceId: context.focusOccurrenceForActiveDate?.id || context.activeSessionForActiveDate?.occurrenceId || null,
+      sessionId: context.activeSessionForActiveDate?.id || null,
       quotaRemaining: context.quotaRemaining,
       fallbackReason: decisionSource === "ai" ? "none" : fallbackReason,
       trigger: context.trigger,

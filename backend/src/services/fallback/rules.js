@@ -3,7 +3,7 @@ function buildAction({ label, intent, categoryId = null, actionId = null, occurr
 }
 
 export function buildNowFallback(context) {
-  if (context.activeSession?.isOpen) {
+  if (context.activeSessionForActiveDate?.isOpen) {
     return {
       kind: "now",
       decisionSource: "rules",
@@ -13,17 +13,17 @@ export function buildNowFallback(context) {
         label: "Reprendre",
         intent: "resume_session",
         categoryId: context.activeCategoryId,
-        occurrenceId: context.activeSession.occurrenceId,
-        dateKey: context.selectedDateKey,
+        occurrenceId: context.activeSessionForActiveDate.occurrenceId,
+        dateKey: context.activeDate,
       }),
-      secondaryAction: context.topOccurrence
+      secondaryAction: context.focusOccurrenceForActiveDate
         ? buildAction({
             label: "Voir le plan",
             intent: "open_today",
             categoryId: context.activeCategoryId,
-            occurrenceId: context.topOccurrence.id || null,
-            actionId: context.topOccurrence.goalId || null,
-            dateKey: context.selectedDateKey,
+            occurrenceId: context.focusOccurrenceForActiveDate.id || null,
+            actionId: context.focusOccurrenceForActiveDate.goalId || null,
+            dateKey: context.activeDate,
           })
         : null,
       suggestedDurationMin: 10,
@@ -35,10 +35,10 @@ export function buildNowFallback(context) {
     };
   }
 
-  if (context.topOccurrence) {
-    const title = String(context.goalsById.get(context.topOccurrence.goalId)?.title || "Action");
-    const duration = Number.isFinite(context.topOccurrence.durationMinutes)
-      ? context.topOccurrence.durationMinutes
+  if (context.focusOccurrenceForActiveDate) {
+    const title = String(context.goalsById.get(context.focusOccurrenceForActiveDate.goalId)?.title || "Action");
+    const duration = Number.isFinite(context.focusOccurrenceForActiveDate.durationMinutes)
+      ? context.focusOccurrenceForActiveDate.durationMinutes
       : null;
     return {
       kind: "now",
@@ -49,17 +49,17 @@ export function buildNowFallback(context) {
         label: "Démarrer",
         intent: "start_occurrence",
         categoryId: context.activeCategoryId,
-        occurrenceId: context.topOccurrence.id || null,
-        actionId: context.topOccurrence.goalId || null,
-        dateKey: context.selectedDateKey,
+        occurrenceId: context.focusOccurrenceForActiveDate.id || null,
+        actionId: context.focusOccurrenceForActiveDate.goalId || null,
+        dateKey: context.activeDate,
       }),
       secondaryAction: buildAction({
         label: "Voir aujourd’hui",
         intent: "open_today",
         categoryId: context.activeCategoryId,
-        occurrenceId: context.topOccurrence.id || null,
-        actionId: context.topOccurrence.goalId || null,
-        dateKey: context.selectedDateKey,
+        occurrenceId: context.focusOccurrenceForActiveDate.id || null,
+        actionId: context.focusOccurrenceForActiveDate.goalId || null,
+        dateKey: context.activeDate,
       }),
       suggestedDurationMin: duration,
       confidence: 0.88,
@@ -79,13 +79,13 @@ export function buildNowFallback(context) {
       label: "Ouvrir bibliothèque",
       intent: "open_library",
       categoryId: context.activeCategoryId,
-      dateKey: context.selectedDateKey,
+      dateKey: context.activeDate,
     }),
     secondaryAction: buildAction({
       label: "Voir pilotage",
       intent: "open_pilotage",
       categoryId: context.activeCategoryId,
-      dateKey: context.selectedDateKey,
+      dateKey: context.activeDate,
     }),
     suggestedDurationMin: null,
     confidence: 0.8,

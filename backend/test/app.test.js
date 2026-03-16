@@ -120,12 +120,13 @@ function createFakeSupabase({
   };
 }
 
-function createCoachContextUserData() {
+function createCoachContextUserData({ activeSession = null, occurrences = null } = {}) {
   return {
     categories: [{ id: "cat-1", name: "Focus" }],
     goals: [{ id: "goal-1", title: "Deep work", type: "PROCESS", categoryId: "cat-1" }],
-    occurrences: [{ id: "occ-1", goalId: "goal-1", date: "2026-03-06", status: "planned", start: "09:00" }],
-    ui: { activeSession: null },
+    occurrences:
+      occurrences || [{ id: "occ-1", goalId: "goal-1", date: "2026-03-06", status: "planned", start: "09:00" }],
+    ui: { activeSession },
     sessionHistory: [],
   };
 }
@@ -344,6 +345,78 @@ test("POST /ai/now returns rules fallback when OpenAI is disabled", async () => 
   assert.equal(response.json().meta.fallbackReason, "none");
   assert.equal(response.headers["access-control-allow-origin"], "http://localhost:5173");
   await app.close();
+});
+
+test("POST /ai/now does not resume a future session when today's context has a planned action", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-future-session" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData({
+      activeSession: {
+        id: "sess-future",
+        dateKey: "2026-03-07",
+        occurrenceId: "occ-future",
+        habitIds: ["goal-1"],
+        runtimePhase: "in_progress",
+      },
+    }),
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: "2026-03-06",
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "screen_open",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachResponseSchema.parse(response.json());
+  assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.primaryAction.intent, "start_occurrence");
+  assert.equal(payload.meta.sessionId, null);
+});
+
+test("POST /ai/now resumes the session only when it belongs to the active date", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-same-day-session" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData({
+      activeSession: {
+        id: "sess-today",
+        dateKey: "2026-03-06",
+        occurrenceId: "occ-1",
+        habitIds: ["goal-1"],
+        runtimePhase: "in_progress",
+      },
+    }),
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: "2026-03-06",
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "resume",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachResponseSchema.parse(response.json());
+  assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.primaryAction.intent, "resume_session");
+  assert.equal(payload.meta.sessionId, "sess-today");
 });
 
 test("POST /ai/now returns ai decision when OpenAI returns valid structured output", async () => {

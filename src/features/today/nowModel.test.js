@@ -41,6 +41,37 @@ describe("deriveTodayNowModel", () => {
 
     expect(result.sessionForDay?.objectiveId).toBe("legacy-outcome");
     expect(result.sessionHabit?.id).toBe("a1");
+    expect(result.activeSession?.dateKey).toBe("2026-03-13");
+    expect(result.activeSessionForActiveDate?.dateKey).toBe("2026-03-13");
+  });
+
+  it("does not expose a future active session as today's active session", () => {
+    const categories = [{ id: "c1", name: "Deep Work" }];
+    const goals = [{ id: "a1", categoryId: "c1", type: "PROCESS", status: "active", title: "Write" }];
+
+    const result = deriveTodayNowModel({
+      categories,
+      goals,
+      selectedCategoryId: "c1",
+      rawActiveSession: {
+        id: "sess-future",
+        dateKey: "2026-03-14",
+        objectiveId: "legacy-outcome",
+        habitIds: ["a1"],
+        runtimePhase: "in_progress",
+      },
+      selectedDateKey: "2026-03-13",
+      focusOverride: null,
+      plannedOccurrencesForDay: [{ id: "occ-1", goalId: "a1", date: "2026-03-13", status: "planned", start: "16:00" }],
+      now: new Date(2026, 2, 13, 9, 0),
+    });
+
+    expect(result.activeSession).toBeNull();
+    expect(result.sessionForDay).toBeNull();
+    expect(result.openSessionOutsideActiveDate?.id).toBe("sess-future");
+    expect(result.futureSessions).toHaveLength(1);
+    expect(result.focusOccurrenceForActiveDate?.id).toBe("occ-1");
+    expect(result.focusOccurrence?.id).toBe("occ-1");
   });
 
   it("exposes a pure execution contract without selectedGoal or linked habits", () => {
