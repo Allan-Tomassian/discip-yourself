@@ -94,6 +94,7 @@ async function handleCoachRoute({ app, request, reply, coachKind, bodySchema, co
     quotaState = await resolveQuotaState(app.supabase, {
       userId: request.user.id,
       entitlement: snapshot.entitlement,
+      quotaMode: app.config.AI_QUOTA_MODE,
     });
   } catch (error) {
     request.log.error({ err: error, requestId: request.requestId }, "quota load failed");

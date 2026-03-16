@@ -15,6 +15,7 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   OPENAI_API_KEY: z.string().optional().default(""),
   OPENAI_MODEL: z.string().optional().default("gpt-4.1-mini"),
+  AI_QUOTA_MODE: z.enum(["normal", "dev_relaxed"]).default("normal"),
   CORS_ALLOWED_ORIGINS: z
     .string()
     .optional()

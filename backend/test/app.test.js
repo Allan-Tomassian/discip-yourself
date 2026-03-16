@@ -9,6 +9,7 @@ const TEST_CONFIG = {
   SUPABASE_SERVICE_ROLE_KEY: "service-role-test",
   OPENAI_API_KEY: "",
   OPENAI_MODEL: "gpt-4.1-mini",
+  AI_QUOTA_MODE: "normal",
   CORS_ALLOWED_ORIGINS: ["http://localhost:5173", "http://127.0.0.1:5173"],
   LOG_LEVEL: "silent",
 };
@@ -250,6 +251,40 @@ test("POST /ai/now returns 429 from server-trusted free quota even if profile.pl
   await app.close();
 });
 
+test("POST /ai/now allows higher dev quota without changing the real plan tier", async () => {
+  const app = await buildApp({
+    config: {
+      ...TEST_CONFIG,
+      AI_QUOTA_MODE: "dev_relaxed",
+    },
+    verifyAccessToken: async () => ({ id: "user-1" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 10,
+    monthlyCount: 120,
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: "2026-03-06",
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "manual",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachResponseSchema.parse(response.json());
+  assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.meta.quotaRemaining > 0, true);
+  await app.close();
+});
+
 test("POST /ai/now returns 503 when required snapshot tables are missing", async () => {
   const app = await buildApp({
     config: TEST_CONFIG,
@@ -363,7 +398,7 @@ test("POST /ai/now returns ai decision when OpenAI returns valid structured outp
 test("POST /ai/now falls back to rules when OpenAI structured output is invalid", async () => {
   const app = await buildApp({
     config: TEST_CONFIG_WITH_OPENAI,
-    verifyAccessToken: async () => ({ id: "user-1" }),
+    verifyAccessToken: async () => ({ id: "user-2" }),
   });
   app.supabase = createFakeSupabase({
     userData: createCoachContextUserData(),

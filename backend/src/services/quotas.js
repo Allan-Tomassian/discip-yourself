@@ -1,6 +1,12 @@
-const QUOTA_LIMITS = {
-  free: { daily: 4, monthly: 60 },
-  premium: { daily: 30, monthly: 600 },
+const QUOTA_LIMITS_BY_MODE = {
+  normal: {
+    free: { daily: 4, monthly: 60 },
+    premium: { daily: 30, monthly: 600 },
+  },
+  dev_relaxed: {
+    free: { daily: 1000, monthly: 10000 },
+    premium: { daily: 1000, monthly: 10000 },
+  },
 };
 
 const memoryWindowStore = new Map();
@@ -26,9 +32,14 @@ export function enforceMemoryRateLimit({ key, limit, windowMs, now = Date.now() 
   return false;
 }
 
-export async function resolveQuotaState(supabase, { userId, entitlement, now = new Date() }) {
+function getQuotaLimits(quotaMode, planTier) {
+  const mode = quotaMode === "dev_relaxed" ? "dev_relaxed" : "normal";
+  return QUOTA_LIMITS_BY_MODE[mode][planTier];
+}
+
+export async function resolveQuotaState(supabase, { userId, entitlement, quotaMode = "normal", now = new Date() }) {
   const planTier = getPlanTier(entitlement);
-  const limits = QUOTA_LIMITS[planTier];
+  const limits = getQuotaLimits(quotaMode, planTier);
   const dailyStart = new Date(now);
   dailyStart.setHours(0, 0, 0, 0);
   const monthlyStart = new Date(now.getFullYear(), now.getMonth(), 1);

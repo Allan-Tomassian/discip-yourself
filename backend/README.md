@@ -17,6 +17,7 @@ Optional for AI calls:
 
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
+- `AI_QUOTA_MODE`
 - `CORS_ALLOWED_ORIGINS`
 - `LOG_LEVEL`
 
@@ -35,6 +36,7 @@ PORT=3001 \
 SUPABASE_URL=https://your-project.supabase.co \
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key \
 OPENAI_API_KEY= \
+AI_QUOTA_MODE=dev_relaxed \
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173 \
 LOG_LEVEL=info \
 npm run dev
@@ -45,6 +47,13 @@ Example Render value:
 ```bash
 CORS_ALLOWED_ORIGINS=http://localhost:5173,https://your-frontend-domain.example
 ```
+
+Quota mode:
+
+- `AI_QUOTA_MODE=normal`: quotas produit normaux, valeur par défaut
+- `AI_QUOTA_MODE=dev_relaxed`: plafonds très élevés pour tests IA en local ou sur un backend de test
+
+N'active pas `dev_relaxed` en production.
 
 ## Test
 
