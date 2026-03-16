@@ -1,3 +1,4 @@
+import { zodResponseFormat } from "openai/helpers/zod";
 import { coachPayloadSchema } from "../../schemas/coach.js";
 
 function buildNowPrompt(context) {
@@ -51,10 +52,10 @@ function buildRecoveryPrompt(context) {
 export async function runOpenAiCoach({ app, kind, context }) {
   if (!app.openai || !app.config?.OPENAI_API_KEY) return null;
   const prompt = kind === "recovery" ? buildRecoveryPrompt(context) : buildNowPrompt(context);
-  const completion = await app.openai.chat.completions.create({
+  const completion = await app.openai.chat.completions.parse({
     model: app.config.OPENAI_MODEL,
     temperature: 0.2,
-    response_format: { type: "json_object" },
+    response_format: zodResponseFormat(coachPayloadSchema, "coach_payload"),
     messages: [
       {
         role: "system",
@@ -67,8 +68,9 @@ export async function runOpenAiCoach({ app, kind, context }) {
       },
     ],
   });
-  const content = completion.choices?.[0]?.message?.content || "";
-  if (!content) return null;
-  const parsed = JSON.parse(content);
-  return coachPayloadSchema.parse(parsed);
+  const message = completion.choices?.[0]?.message || null;
+  if (!message || message.refusal || !message.parsed) {
+    throw new Error("invalid_model_output");
+  }
+  return coachPayloadSchema.parse(message.parsed);
 }

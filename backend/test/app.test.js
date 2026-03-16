@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildApp } from "../src/app.js";
+import { coachResponseSchema } from "../src/schemas/coach.js";
 
 const TEST_CONFIG = {
   PORT: 3001,
@@ -10,6 +11,11 @@ const TEST_CONFIG = {
   OPENAI_MODEL: "gpt-4.1-mini",
   CORS_ALLOWED_ORIGINS: ["http://localhost:5173", "http://127.0.0.1:5173"],
   LOG_LEVEL: "silent",
+};
+
+const TEST_CONFIG_WITH_OPENAI = {
+  ...TEST_CONFIG,
+  OPENAI_API_KEY: "test-openai-key",
 };
 
 function createFakeSupabase({
@@ -109,6 +115,42 @@ function createFakeSupabase({
       }
 
       throw new Error(`Unexpected table ${table}`);
+    },
+  };
+}
+
+function createCoachContextUserData() {
+  return {
+    categories: [{ id: "cat-1", name: "Focus" }],
+    goals: [{ id: "goal-1", title: "Deep work", type: "PROCESS", categoryId: "cat-1" }],
+    occurrences: [{ id: "occ-1", goalId: "goal-1", date: "2026-03-06", status: "planned", start: "09:00" }],
+    ui: { activeSession: null },
+    sessionHistory: [],
+  };
+}
+
+function createValidCoachPayload() {
+  return {
+    kind: "now",
+    headline: "Lance Deep work maintenant",
+    reason: "C’est ton créneau disponible le plus clair aujourd’hui.",
+    primaryAction: {
+      label: "Démarrer",
+      intent: "start_occurrence",
+      categoryId: "cat-1",
+      actionId: "goal-1",
+      occurrenceId: "occ-1",
+      dateKey: "2026-03-06",
+    },
+    secondaryAction: null,
+    suggestedDurationMin: 25,
+    confidence: 0.91,
+    urgency: "high",
+    uiTone: "direct",
+    toolIntent: "suggest_start_occurrence",
+    rewardSuggestion: {
+      kind: "none",
+      label: null,
     },
   };
 }
@@ -243,13 +285,7 @@ test("POST /ai/now returns rules fallback when OpenAI is disabled", async () => 
     verifyAccessToken: async () => ({ id: "user-1" }),
   });
   app.supabase = createFakeSupabase({
-    userData: {
-      categories: [{ id: "cat-1", name: "Focus" }],
-      goals: [{ id: "goal-1", title: "Deep work", type: "PROCESS", categoryId: "cat-1" }],
-      occurrences: [{ id: "occ-1", goalId: "goal-1", date: "2026-03-06", status: "planned", start: "09:00" }],
-      ui: { activeSession: null },
-      sessionHistory: [],
-    },
+    userData: createCoachContextUserData(),
   });
 
   const response = await app.inject({
@@ -272,5 +308,98 @@ test("POST /ai/now returns rules fallback when OpenAI is disabled", async () => 
   assert.equal(response.json().primaryAction.intent, "start_occurrence");
   assert.equal(response.json().meta.fallbackReason, "none");
   assert.equal(response.headers["access-control-allow-origin"], "http://localhost:5173");
+  await app.close();
+});
+
+test("POST /ai/now returns ai decision when OpenAI returns valid structured output", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-1" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: createValidCoachPayload(),
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: "2026-03-06",
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "manual",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachResponseSchema.parse(response.json());
+  assert.equal(payload.decisionSource, "ai");
+  assert.equal(payload.meta.fallbackReason, "none");
+  assert.equal(payload.kind, "now");
+  assert.equal(payload.headline, "Lance Deep work maintenant");
+  assert.equal(payload.reason, "C’est ton créneau disponible le plus clair aujourd’hui.");
+  assert.equal(payload.primaryAction.intent, "start_occurrence");
+  assert.equal(payload.toolIntent, "suggest_start_occurrence");
+  assert.equal(payload.rewardSuggestion.kind, "none");
+  await app.close();
+});
+
+test("POST /ai/now falls back to rules when OpenAI structured output is invalid", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-1" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: null,
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: "2026-03-06",
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "manual",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachResponseSchema.parse(response.json());
+  assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.meta.fallbackReason, "invalid_model_output");
+  assert.equal(payload.primaryAction.intent, "start_occurrence");
   await app.close();
 });
