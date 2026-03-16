@@ -473,7 +473,7 @@ export function migrate(prev) {
   if (typeof next.ui.permissions.calendar !== "string") next.ui.permissions.calendar = "unknown";
   if (typeof next.ui.permissions.health !== "string") next.ui.permissions.health = "unknown";
   if (next.ui.creationFlowVersion !== "legacy" && next.ui.creationFlowVersion !== "v2") {
-    next.ui.creationFlowVersion = "legacy";
+    next.ui.creationFlowVersion = "v2";
   }
   if (typeof next.ui.createDraft === "undefined") next.ui.createDraft = null;
   if (next.ui.createDraft && typeof next.ui.createDraft !== "object") next.ui.createDraft = null;

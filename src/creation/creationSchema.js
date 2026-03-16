@@ -34,8 +34,8 @@ export const CREATION_FLOW_HABIT_UX_V2 = [
 ];
 
 // Default HABIT flow used when callers do not specify options.
-// Keep legacy as default to avoid breaking existing navigation until UI pages are ready.
-export const CREATION_FLOW_HABIT = CREATION_FLOW_HABIT_LEGACY;
+// UX v2 is now the default action-first flow.
+export const CREATION_FLOW_HABIT = CREATION_FLOW_HABIT_UX_V2;
 
 export const CREATION_FLOW_OUTCOME = [STEP_OUTCOME, STEP_OUTCOME_NEXT_ACTION];
 

@@ -44,7 +44,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
           <div className="col">
             <div className="titleSm">Un cadre simple. Une exécution quotidienne.</div>
             <div className="small" style={{ marginTop: 8 }}>
-              Tu définis ce qui compte. L’app transforme le reste en actions concrètes, au bon moment.
+              Tu organises ce qui compte par catégorie. L’app transforme le reste en actions concrètes, au bon moment.
             </div>
             <div className="small2" style={{ marginTop: 10, opacity: 0.9 }}>
               60 secondes pour configurer. Ensuite : tu exécutes.
@@ -63,7 +63,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
               Pas de surcharge. Pas de listes interminables. Tu clarifies ton intention et tu suis un plan lisible.
             </div>
             <div className="card" style={{ marginTop: 12, padding: 12, background: SURFACE_SOFT, border: `1px solid ${BORDER_DEFAULT}`, borderRadius: 14 }}>
-              <div className="small">{LABELS.goal} : te faire gagner du temps mental et verrouiller l’exécution.</div>
+              <div className="small">But : te faire gagner du temps mental et verrouiller l’exécution.</div>
             </div>
           </div>
         ),
@@ -71,14 +71,14 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
       {
         key: "how",
         title: "Le système",
-        subtitle: `Catégorie → ${LABELS.goal} → ${LABELS.action} → Aujourd’hui`,
+        subtitle: `Catégorie → ${LABELS.action} → Exécution → Progression`,
         content: (
           <div className="col">
             {[
               { n: "1", t: "Catégorie", d: "Le domaine de ta vie (ex : Finance, Santé)." },
-              { n: "2", t: LABELS.goal, d: "Le résultat à atteindre, sur une période." },
-              { n: "3", t: "Action", d: "Le comportement concret à exécuter." },
-              { n: "4", t: "Aujourd’hui", d: "La liste exacte de ce qui est attendu maintenant." },
+              { n: "2", t: LABELS.action, d: "Le comportement concret à exécuter." },
+              { n: "3", t: "Exécution", d: "Le moment où tu lances, reprends et termines ce qui compte maintenant." },
+              { n: "4", t: "Progression", d: "La lecture claire de ce qui avance aujourd’hui et dans le temps." },
             ].map((x) => (
               <div key={x.n} className="row" style={{ gap: 10, alignItems: "flex-start", padding: "10px 0" }}>
                 <div
@@ -103,6 +103,9 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
                 </div>
               </div>
             ))}
+            <div className="small2" style={{ marginTop: 12, opacity: 0.9 }}>
+              Les {LABELS.goalsLower} avancés restent optionnels. Ils servent seulement à structurer certains sujets plus larges.
+            </div>
           </div>
         ),
       },
@@ -251,6 +254,9 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
               <div>
                 <div className="titleSm">Choisis ton plan</div>
                 <div className="small">Aucune facturation ici. Tu pourras changer plus tard.</div>
+                <div className="small2" style={{ marginTop: 6, opacity: 0.9 }}>
+                  L’accès IA Premium sera toujours vérifié côté serveur au moment de l’utilisation.
+                </div>
               </div>
               <Badge>Plan</Badge>
             </div>

@@ -195,7 +195,7 @@ export default function CreateFlowModal({
             onPointerDown={(event) => event.stopPropagation()}
           >
             <GatePanel className="createFlowShell gateModal gateModal--flow createFlowScope GateSurfacePremium GateCardPremium" data-testid="create-flow-modal">
-        <GateHeader title="Créer" subtitle="Choisis ce que tu veux créer" />
+        <GateHeader title="Créer" subtitle="Commence par une action. Les objectifs restent avancés et optionnels." />
 
         <GateRow
           className="createFlowCategoryRow GateRowPremium"
@@ -244,8 +244,8 @@ export default function CreateFlowModal({
                     }}
                   >
                     <div className="createFlowChoiceText">
-                      <div className="titleSm">{LABELS.goal} avancé + {LABELS.action}</div>
-                      <div className="small2">Mode avancé pour structurer une action autour d’un objectif.</div>
+                      <div className="titleSm">Structurer avec un {LABELS.goalLower} avancé</div>
+                      <div className="small2">Mode avancé pour créer un objectif puis enchaîner sur une action liée.</div>
                     </div>
                   </GateCard>
                   <GateCard
@@ -259,7 +259,7 @@ export default function CreateFlowModal({
                     }}
                   >
                     <div className="createFlowChoiceText">
-                      <div className="titleSm">{LABELS.goal} avancé</div>
+                      <div className="titleSm">Créer un {LABELS.goalLower} avancé</div>
                       <div className="small2">Créer un {LABELS.goalLower} sans action pour l’instant.</div>
                     </div>
                   </GateCard>

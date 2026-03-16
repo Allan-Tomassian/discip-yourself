@@ -13,6 +13,7 @@ import {
 import "../features/navigation/topMenuGate.css";
 
 const ENABLE_MENU_NAV_DEBUG = false;
+const INLINE_MENU_VIEWS = new Set(["preferences", "wallet", "totem"]);
 const MENU_ITEMS = [
   { id: "account", label: "Compte / Profil", subtitle: "Username, nom, avatar", group: "main" },
   { id: "preferences", label: "Réglages", subtitle: "App / apparence", group: "main" },
@@ -35,6 +36,10 @@ const MENU_SUBVIEW_COPY = {
   terms: "Les conditions seront consultables ici sans changer d'écran.",
   support: "Le support et la FAQ seront accessibles dans ce panneau.",
 };
+
+export function opensInlineMenuView(viewId) {
+  return INLINE_MENU_VIEWS.has(viewId);
+}
 
 function resolveMenuView(nextView) {
   if (nextView === "root") return "root";
@@ -86,7 +91,7 @@ export default function TopMenuPopover({ onNavigate, onClose, initialView = "roo
     setSettingsStatus("");
     setWalletStatus("");
     setTotemStatus("");
-    if (ENABLE_MENU_NAV_DEBUG && typeof onNavigate === "function") {
+    if (!opensInlineMenuView(itemId) && typeof onNavigate === "function") {
       onNavigate(itemId);
       if (typeof onClose === "function") onClose();
       return;

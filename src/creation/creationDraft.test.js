@@ -6,6 +6,7 @@ describe("creationDraft action-first defaults", () => {
   it("starts with habit type step for new drafts", () => {
     const draft = createEmptyDraft();
     expect(draft.step).toBe(STEP_HABIT_TYPE);
+    expect(draft.uxV2).toBe(true);
   });
 
   it("falls back to habit type when step is invalid", () => {

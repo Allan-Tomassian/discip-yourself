@@ -147,8 +147,8 @@ export function createEmptyDraft() {
     habits: [],
     createdActionIds: [],
     pendingCategoryId: null,
-    // UX v2 flags (default off until App enables uxV2)
-    uxV2: false,
+    // UX v2 is now the default create flow.
+    uxV2: true,
   };
 }
 

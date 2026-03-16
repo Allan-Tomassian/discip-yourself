@@ -22,7 +22,7 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
     <ScreenShell data={safeData} pageId="settings" backgroundImage={backgroundImage}>
       <GatePage
         title={<span className="GatePageTitle">Abonnement</span>}
-        subtitle={<span className="GatePageSubtitle">Plan et accès Premium</span>}
+        subtitle={<span className="GatePageSubtitle">Plan, achats et accès Premium</span>}
       >
         <GateSection
           title={premium ? "Premium actif" : "Version gratuite"}
@@ -33,6 +33,9 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
           <div className="small2">
             Limites gratuites : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} · {limits.actions}{" "}
             {LABELS.actionsLower}
+          </div>
+          <div className="small2">
+            Les accès IA Premium sont vérifiés côté serveur au moment de l’utilisation.
           </div>
           {premium && expiryLabel ? <div className="small2">Expire le {expiryLabel}</div> : null}
           <div className="GatePrimaryCtaRow">

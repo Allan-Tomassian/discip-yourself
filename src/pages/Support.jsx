@@ -26,7 +26,7 @@ export default function Support({ data }) {
 
         <GateSection
           title="FAQ"
-          description="Placeholder"
+          description="Questions fréquentes"
           collapsible={false}
           className="GateSurfacePremium GateCardPremium"
         >
