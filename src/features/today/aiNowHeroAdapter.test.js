@@ -6,6 +6,7 @@ import {
   deriveTodayHeroModel,
 } from "./aiNowHeroAdapter";
 import {
+  getTodaySupportedPrimaryIntents,
   TODAY_BACKEND_RESOLUTION_STATUS,
   TODAY_DIAGNOSTIC_REJECTION_REASON,
   TODAY_INTERVENTION_TYPE,
@@ -71,6 +72,12 @@ function buildCoach(intent, overrides = {}) {
 }
 
 describe("deriveTodayHeroModel", () => {
+  it("stays aligned with the shared Today supported primary intents", () => {
+    expect(getTodaySupportedPrimaryIntents().sort()).toEqual(
+      ["start_occurrence", "open_library", "resume_session", "open_pilotage"].sort()
+    );
+  });
+
   it("accepte un start_occurrence coherent", () => {
     const result = deriveTodayHeroModel({
       localHero: buildLocalHero(),
@@ -144,6 +151,7 @@ describe("deriveTodayHeroModel", () => {
 
     expect(result.source).toBe("local");
     expect(result.title).toBe("Action locale");
+    expect(result.diagnostics.rejectionReason).toBe(TODAY_DIAGNOSTIC_REJECTION_REASON.INVALID_INTERVENTION_TYPE);
   });
 
   it("retombe sur le hero local si l'occurrence est introuvable", () => {

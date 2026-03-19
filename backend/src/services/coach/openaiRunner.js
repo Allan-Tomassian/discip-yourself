@@ -1,7 +1,159 @@
 import { zodResponseFormat } from "openai/helpers/zod";
+import { ZodError } from "zod";
 import { coachPayloadSchema } from "../../schemas/coach.js";
 
 const DEFAULT_OUTPUT_LOCALE = "fr-FR";
+const TEXT_LIMITS = Object.freeze({
+  headline: 72,
+  reason: 160,
+  actionLabel: 32,
+});
+
+export const MODEL_OUTPUT_ISSUE_CODE = Object.freeze({
+  EMPTY_MESSAGE: "empty_message",
+  MODEL_REFUSAL: "model_refusal",
+  MISSING_PARSED_PAYLOAD: "missing_parsed_payload",
+  MISSING_REQUIRED_FIELD: "missing_required_field",
+  INVALID_PRIMARY_ACTION: "invalid_primary_action",
+  INVALID_ENUM_VALUE: "invalid_enum_value",
+  TEXT_LIMIT_EXCEEDED: "text_limit_exceeded",
+  INVALID_REWARD_SUGGESTION: "invalid_reward_suggestion",
+  SCHEMA_VALIDATION_FAILED: "schema_validation_failed",
+});
+
+class OpenAiModelOutputError extends Error {
+  constructor(issueCode, options = {}) {
+    super("invalid_model_output");
+    this.name = "OpenAiModelOutputError";
+    this.issueCode = issueCode;
+    if (options.cause) this.cause = options.cause;
+  }
+}
+
+export function isOpenAiModelOutputError(error) {
+  return error?.message === "invalid_model_output" && typeof error?.issueCode === "string";
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function truncateText(value, maxLength) {
+  return typeof value === "string" ? value.slice(0, maxLength) : value;
+}
+
+function normalizeNullableField(object, key) {
+  if (!isPlainObject(object)) return object;
+  if (!(key in object) || object[key] === undefined) {
+    object[key] = null;
+  }
+  return object;
+}
+
+function normalizeActionCandidate(action) {
+  if (!isPlainObject(action)) return action;
+  const normalized = { ...action };
+  normalized.label = truncateText(normalized.label, TEXT_LIMITS.actionLabel);
+  normalizeNullableField(normalized, "categoryId");
+  normalizeNullableField(normalized, "actionId");
+  normalizeNullableField(normalized, "occurrenceId");
+  normalizeNullableField(normalized, "dateKey");
+  return normalized;
+}
+
+export function normalizeCoachPayloadCandidate(candidate) {
+  if (!isPlainObject(candidate)) return candidate;
+  const normalized = { ...candidate };
+  normalized.headline = truncateText(normalized.headline, TEXT_LIMITS.headline);
+  normalized.reason = truncateText(normalized.reason, TEXT_LIMITS.reason);
+
+  if ("primaryAction" in normalized) {
+    normalized.primaryAction = normalizeActionCandidate(normalized.primaryAction);
+  }
+
+  if (!("secondaryAction" in normalized) || normalized.secondaryAction === undefined) {
+    normalized.secondaryAction = null;
+  } else if (normalized.secondaryAction !== null) {
+    normalized.secondaryAction = normalizeActionCandidate(normalized.secondaryAction);
+  }
+
+  if (!("suggestedDurationMin" in normalized) || normalized.suggestedDurationMin === undefined) {
+    normalized.suggestedDurationMin = null;
+  }
+
+  if (!("rewardSuggestion" in normalized) || normalized.rewardSuggestion == null) {
+    normalized.rewardSuggestion = { kind: "none", label: null };
+  } else if (isPlainObject(normalized.rewardSuggestion)) {
+    normalized.rewardSuggestion = { ...normalized.rewardSuggestion };
+    normalizeNullableField(normalized.rewardSuggestion, "label");
+    normalized.rewardSuggestion.label = truncateText(
+      normalized.rewardSuggestion.label,
+      TEXT_LIMITS.actionLabel,
+    );
+  }
+
+  return normalized;
+}
+
+function extractTextContent(content) {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return null;
+  const text = content
+    .map((part) => {
+      if (typeof part === "string") return part;
+      if (isPlainObject(part) && typeof part.text === "string") return part.text;
+      return "";
+    })
+    .join("")
+    .trim();
+  return text || null;
+}
+
+function extractPayloadCandidate(message) {
+  if (isPlainObject(message?.parsed)) {
+    return message.parsed;
+  }
+  const rawText = extractTextContent(message?.content);
+  if (!rawText) return null;
+  try {
+    const parsed = JSON.parse(rawText);
+    return isPlainObject(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function classifyCoachPayloadIssue(error) {
+  if (!(error instanceof ZodError)) {
+    return MODEL_OUTPUT_ISSUE_CODE.SCHEMA_VALIDATION_FAILED;
+  }
+
+  for (const issue of error.issues || []) {
+    const [rootKey, nestedKey] = issue.path || [];
+
+    if (rootKey === "primaryAction" && nestedKey === "intent") {
+      return MODEL_OUTPUT_ISSUE_CODE.INVALID_PRIMARY_ACTION;
+    }
+
+    if (rootKey === "rewardSuggestion") {
+      return MODEL_OUTPUT_ISSUE_CODE.INVALID_REWARD_SUGGESTION;
+    }
+
+    if (issue.code === "too_big" && issue.type === "string") {
+      return MODEL_OUTPUT_ISSUE_CODE.TEXT_LIMIT_EXCEEDED;
+    }
+
+    if (issue.code === "invalid_type" && issue.received === "undefined") {
+      return MODEL_OUTPUT_ISSUE_CODE.MISSING_REQUIRED_FIELD;
+    }
+
+    if (issue.code === "invalid_enum_value") {
+      return MODEL_OUTPUT_ISSUE_CODE.INVALID_ENUM_VALUE;
+    }
+  }
+
+  return MODEL_OUTPUT_ISSUE_CODE.SCHEMA_VALIDATION_FAILED;
+}
 
 function buildSystemPrompt(locale = DEFAULT_OUTPUT_LOCALE) {
   return [
@@ -14,14 +166,48 @@ function buildSystemPrompt(locale = DEFAULT_OUTPUT_LOCALE) {
 }
 
 function buildNowPrompt(context) {
+  const validExample = {
+    kind: "now",
+    headline: "Lance ta session prioritaire",
+    reason: "C'est l'action la plus utile et la plus exécutable maintenant.",
+    primaryAction: {
+      label: "Demarrer",
+      intent: "start_occurrence",
+      categoryId: "cat-1",
+      actionId: "goal-1",
+      occurrenceId: "occ-1",
+      dateKey: context.activeDate,
+    },
+    secondaryAction: null,
+    suggestedDurationMin: 25,
+    confidence: 0.88,
+    urgency: "medium",
+    uiTone: "steady",
+    toolIntent: "suggest_start_occurrence",
+    rewardSuggestion: {
+      kind: "none",
+      label: null,
+    },
+  };
+
   return [
     "You are the execution coach for Discip-Yourself.",
     "Return one short actionable recommendation for what the user should do now.",
     "No chat. No markdown. No prose outside JSON.",
     "Never invent actions or occurrences that are not in the context.",
+    "Return all keys exactly once.",
+    "Use null for nullable fields instead of omitting them.",
     "Use resume_session only when activeSessionForActiveDate is present.",
     "Use open_pilotage only for a deterministic schedule warning.",
+    "Use only start_occurrence, resume_session, open_library, or open_pilotage as primaryAction.intent for now recommendations.",
+    "Do not use open_today as primaryAction.intent.",
+    "Allowed urgency values: low, medium, high.",
+    "Allowed uiTone values: steady, direct, reset.",
+    "Allowed toolIntent values: suggest_start_occurrence, suggest_resume_session, suggest_recovery_action, suggest_reschedule_option, suggest_open_library.",
+    "Allowed rewardSuggestion.kind values: none, micro_action, coins_preview, light_reset.",
+    "Max lengths: headline <= 72 chars, reason <= 160 chars, action labels <= 32 chars.",
     "Prefer resume_session, then start_occurrence, then open_library.",
+    `Valid JSON example: ${JSON.stringify(validExample)}`,
     `Context: ${JSON.stringify({
       kind: "now",
       activeDate: context.activeDate,
@@ -85,8 +271,22 @@ export async function runOpenAiCoach({ app, kind, context }) {
     ],
   });
   const message = completion.choices?.[0]?.message || null;
-  if (!message || message.refusal || !message.parsed) {
-    throw new Error("invalid_model_output");
+  if (!message) {
+    throw new OpenAiModelOutputError(MODEL_OUTPUT_ISSUE_CODE.EMPTY_MESSAGE);
   }
-  return coachPayloadSchema.parse(message.parsed);
+  if (message.refusal) {
+    throw new OpenAiModelOutputError(MODEL_OUTPUT_ISSUE_CODE.MODEL_REFUSAL);
+  }
+
+  const candidate = extractPayloadCandidate(message);
+  if (!candidate) {
+    throw new OpenAiModelOutputError(MODEL_OUTPUT_ISSUE_CODE.MISSING_PARSED_PAYLOAD);
+  }
+
+  const normalizedCandidate = normalizeCoachPayloadCandidate(candidate);
+  try {
+    return coachPayloadSchema.parse(normalizedCandidate);
+  } catch (error) {
+    throw new OpenAiModelOutputError(classifyCoachPayloadIssue(error), { cause: error });
+  }
 }

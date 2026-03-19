@@ -1,3 +1,9 @@
+import {
+  TODAY_DIAGNOSTIC_REJECTION_REASON,
+  TODAY_INTERVENTION_TYPE,
+  TODAY_BACKEND_RESOLUTION_STATUS,
+} from "../domain/todayIntervention";
+
 const ENV =
   typeof import.meta !== "undefined" && import.meta.env && typeof import.meta.env === "object"
     ? import.meta.env
@@ -29,30 +35,11 @@ const TOOL_INTENTS = new Set([
 const REWARD_KINDS = new Set(["none", "micro_action", "coins_preview", "light_reset"]);
 const DECISION_SOURCES = new Set(["ai", "rules"]);
 const COACH_KINDS = new Set(["now", "recovery"]);
-const INTERVENTION_TYPES = new Set([
-  "today_recommendation",
-  "session_resume",
-  "schedule_warning",
-  "overload_adjustment",
-  "planning_assist",
-  "motivation_nudge",
-  "review_feedback",
-]);
+const INTERVENTION_TYPES = new Set(Object.values(TODAY_INTERVENTION_TYPE));
 const META_FALLBACK_REASONS = new Set(["none", "quota", "timeout", "invalid_model_output", "backend_error"]);
 const META_TRIGGERS = new Set(["manual", "screen_open", "resume", "auto_slip", "resume_after_gap"]);
-const DIAGNOSTIC_RESOLUTION_STATUSES = new Set(["accepted_ai", "rejected_to_rules", "rules_fallback"]);
-const DIAGNOSTIC_REJECTION_REASONS = new Set([
-  "none",
-  "invalid_model_output",
-  "invalid_intervention_type",
-  "governance_rejected",
-  "canonical_fallback_preferred",
-  "no_material_gain_over_local",
-  "no_active_session_for_date",
-  "no_deterministic_signal",
-  "ambiguous_context",
-  "warning_signal_too_weak",
-]);
+const DIAGNOSTIC_RESOLUTION_STATUSES = new Set(Object.values(TODAY_BACKEND_RESOLUTION_STATUS));
+const DIAGNOSTIC_REJECTION_REASONS = new Set(Object.values(TODAY_DIAGNOSTIC_REJECTION_REASON));
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);

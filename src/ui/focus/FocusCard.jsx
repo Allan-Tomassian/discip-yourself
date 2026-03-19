@@ -53,6 +53,14 @@ export default function FocusCard({
   const hasAlternatives = Array.isArray(alternativeCandidates) && alternativeCandidates.length > 0;
 
   const [showAlternatives, setShowAlternatives] = useState(false);
+  const focusSummary = displayOccurrence
+    ? `${displayTitle}${displayTime || displayDuration ? " · " : ""}${[
+        displayTime || null,
+        displayDuration ? `${displayDuration} min` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")}`
+    : "Aucun focus secondaire sélectionné";
 
   return (
     <GateSection
@@ -75,7 +83,7 @@ export default function FocusCard({
                   ⋮⋮
                 </button>
               ) : null}
-              <div className="cardSectionTitle">Focus du jour</div>
+              <div className="cardSectionTitle">Ajuster le focus</div>
             </div>
           </div>
           <div className="focusHeaderActions">
@@ -93,17 +101,13 @@ export default function FocusCard({
         </div>
         <div className="focusBody">
           <div className="focusLine">
-            <GateBadge className="focusCategoryBadge">Catégorie · {displayCategoryName}</GateBadge>
+            <GateBadge className="focusCategoryBadge">Focus actuel · {displayCategoryName}</GateBadge>
             <span className="focusStatusBadge">{statusText}</span>
           </div>
           <div className="focusNextRow">
-            <span className="focusNextValue">
-              {displayOccurrence
-                ? `${displayTitle} • ${displayTime}${displayDuration ? ` • ${displayDuration} min` : ""}`
-                : statusText}
-            </span>
+            <span className="focusNextValue">{focusSummary}</span>
           </div>
-          <div className="focusHeroHint">Utilise “Démarrer” dans “À faire maintenant”.</div>
+          <div className="focusHeroHint">Change le focus seulement si tu veux dévier du plan du jour.</div>
           {hasAlternatives && showAlternatives && typeof onSelectAlternative === "function" ? (
             <div className="focusAltList">
               {alternativeCandidates.map((item) => (

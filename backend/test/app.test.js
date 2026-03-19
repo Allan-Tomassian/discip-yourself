@@ -429,7 +429,7 @@ test("POST /ai/now resumes the session only when it belongs to the active date",
 });
 
 test("POST /ai/now returns ai decision when OpenAI returns valid structured output", async () => {
-  let capturedSystemPrompt = "";
+  let capturedPrompt = "";
   const app = await buildApp({
     config: TEST_CONFIG_WITH_OPENAI,
     verifyAccessToken: async () => ({ id: "user-1" }),
@@ -441,7 +441,7 @@ test("POST /ai/now returns ai decision when OpenAI returns valid structured outp
     chat: {
       completions: {
         parse: async (input) => {
-          capturedSystemPrompt = input?.messages?.[0]?.content || "";
+          capturedPrompt = input?.messages?.map((message) => message?.content || "").join("\n");
           return {
           choices: [
             {
@@ -482,8 +482,74 @@ test("POST /ai/now returns ai decision when OpenAI returns valid structured outp
   assert.equal(payload.primaryAction.intent, "start_occurrence");
   assert.equal(payload.toolIntent, "suggest_start_occurrence");
   assert.equal(payload.rewardSuggestion.kind, "none");
-  assert.match(capturedSystemPrompt, /written in French/i);
-  assert.match(capturedSystemPrompt, /headline, reason, primaryAction\.label/i);
+  assert.match(capturedPrompt, /written in French/i);
+  assert.match(capturedPrompt, /headline, reason, primaryAction\.label/i);
+  assert.match(capturedPrompt, /Return all keys exactly once/i);
+  assert.match(capturedPrompt, /Use null for nullable fields/i);
+  assert.match(capturedPrompt, /Valid JSON example/i);
+  await app.close();
+});
+
+test("POST /ai/now repairs minor model output omissions and still returns an ai decision", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-2b" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+  });
+  const repairedCandidate = {
+    ...createValidCoachPayload(),
+    headline: "H".repeat(90),
+    primaryAction: {
+      label: "L".repeat(40),
+      intent: "start_occurrence",
+      occurrenceId: "occ-1",
+      dateKey: "2026-03-06",
+    },
+  };
+  delete repairedCandidate.secondaryAction;
+  delete repairedCandidate.rewardSuggestion;
+
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: null,
+                content: JSON.stringify(repairedCandidate),
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: "2026-03-06",
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "manual",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachResponseSchema.parse(response.json());
+  assert.equal(payload.decisionSource, "ai");
+  assert.equal(payload.meta.fallbackReason, "none");
+  assert.equal(payload.meta.diagnostics.resolutionStatus, "accepted_ai");
+  assert.equal(payload.headline.length, 72);
+  assert.equal(payload.primaryAction.label.length, 32);
+  assert.equal(payload.primaryAction.categoryId, null);
+  assert.equal(payload.secondaryAction, null);
+  assert.deepEqual(payload.rewardSuggestion, { kind: "none", label: null });
   await app.close();
 });
 
@@ -530,6 +596,62 @@ test("POST /ai/now falls back to rules when OpenAI structured output is invalid"
   assert.equal(payload.meta.fallbackReason, "invalid_model_output");
   assert.equal(payload.meta.diagnostics.resolutionStatus, "rejected_to_rules");
   assert.equal(payload.meta.diagnostics.rejectionReason, "invalid_model_output");
+  assert.equal(payload.primaryAction.intent, "start_occurrence");
+  await app.close();
+});
+
+test("POST /ai/now rejects an AI warning without a deterministic warning signal", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-3b" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: {
+                  ...createValidCoachPayload(),
+                  primaryAction: {
+                    label: "Voir pilotage",
+                    intent: "open_pilotage",
+                    categoryId: "cat-1",
+                    actionId: null,
+                    occurrenceId: null,
+                    dateKey: "2026-03-06",
+                  },
+                  toolIntent: "suggest_reschedule_option",
+                },
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: "2026-03-06",
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "manual",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachResponseSchema.parse(response.json());
+  assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.meta.diagnostics.resolutionStatus, "rejected_to_rules");
+  assert.equal(payload.meta.diagnostics.rejectionReason, "no_deterministic_signal");
   assert.equal(payload.primaryAction.intent, "start_occurrence");
   await app.close();
 });
@@ -587,6 +709,62 @@ test("POST /ai/now rejects an AI resume without active session for the selected 
   assert.equal(payload.interventionType, "today_recommendation");
   assert.equal(payload.meta.diagnostics.resolutionStatus, "rejected_to_rules");
   assert.equal(payload.meta.diagnostics.rejectionReason, "no_active_session_for_date");
+  assert.equal(payload.primaryAction.intent, "start_occurrence");
+  await app.close();
+});
+
+test("POST /ai/now rejects open_today as an invalid primary intent for Today and falls back to rules", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-4" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: {
+                  ...createValidCoachPayload(),
+                  primaryAction: {
+                    label: "Voir aujourd'hui",
+                    intent: "open_today",
+                    categoryId: "cat-1",
+                    actionId: "goal-1",
+                    occurrenceId: "occ-1",
+                    dateKey: "2026-03-06",
+                  },
+                },
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: "2026-03-06",
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "manual",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachResponseSchema.parse(response.json());
+  assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.interventionType, "today_recommendation");
+  assert.equal(payload.meta.diagnostics.resolutionStatus, "rejected_to_rules");
+  assert.equal(payload.meta.diagnostics.rejectionReason, "invalid_intervention_type");
   assert.equal(payload.primaryAction.intent, "start_occurrence");
   await app.close();
 });

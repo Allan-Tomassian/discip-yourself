@@ -339,7 +339,6 @@ export default function Home({
     },
     [setData]
   );
-
   // Refs
   const noteSaveRef = useRef(null);
   const didHydrateLegacyRef = useRef(false);
@@ -680,6 +679,29 @@ export default function Home({
     isAuthenticated: Boolean(session),
     enabled: true,
   });
+  const shouldShowFocusCard = isFocusOverride || alternativeCandidates.length > 0;
+  const visibleBlockOrder = useMemo(
+    () => blockOrder.filter((id) => id !== "focus" || shouldShowFocusCard),
+    [blockOrder, shouldShowFocusCard]
+  );
+  const handleVisibleReorder = useCallback(
+    (nextVisibleOrder) => {
+      if (shouldShowFocusCard) {
+        handleReorder(nextVisibleOrder);
+        return;
+      }
+      const safeNextVisible = Array.isArray(nextVisibleOrder) ? nextVisibleOrder.filter(Boolean) : [];
+      let visibleIndex = 0;
+      const nextOrder = blockOrder.map((id) => {
+        if (id === "focus") return id;
+        const nextId = safeNextVisible[visibleIndex];
+        visibleIndex += 1;
+        return nextId || id;
+      });
+      handleReorder(nextOrder);
+    },
+    [blockOrder, handleReorder, shouldShowFocusCard]
+  );
   const doneHabitIds = useMemo(() => {
     const ids = new Set();
     for (const occ of occurrences) {
@@ -1547,9 +1569,12 @@ export default function Home({
   );
   useEffect(() => {
     const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
-    if (!isDev) return;
+    const isLocalHost =
+      typeof window !== "undefined" &&
+      (window.location?.hostname === "localhost" || window.location?.hostname === "127.0.0.1");
+    if (!isDev && !isLocalHost) return;
     // eslint-disable-next-line no-console
-    console.debug("[today-coach]", todayDecisionDiagnostics);
+    console.log("[today-coach]", todayDecisionDiagnostics);
   }, [todayDecisionDiagnostics]);
   const handleHeroPrimaryAction = useCallback(() => {
     const action = heroViewModel.primaryAction;
@@ -1700,9 +1725,9 @@ export default function Home({
         </div>
 
         <SortableBlocks
-          items={blockOrder}
+          items={visibleBlockOrder}
           getId={(id) => id}
-          onReorder={handleReorder}
+          onReorder={handleVisibleReorder}
           className="stack stackGap12"
           renderItem={(blockId, drag) => {
             const { attributes, listeners, setActivatorNodeRef } = drag || {};

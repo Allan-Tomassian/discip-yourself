@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildTodayCanonicalContextSummary,
   diagnoseTodayIntervention,
+  getTodaySupportedPrimaryIntents,
+  isTodayPrimaryIntentSupportedByHero,
   TODAY_DIAGNOSTIC_REJECTION_REASON,
   TODAY_INTERVENTION_REGISTRY,
   TODAY_INTERVENTION_TYPE,
@@ -20,6 +22,18 @@ describe("todayIntervention registry", () => {
         primaryActionIntent: "start_occurrence",
       })
     ).toBe(TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION);
+  });
+
+  it("does not resolve open_today as a valid primary intent for Today", () => {
+    expect(
+      resolveTodayInterventionType({
+        activeSessionForActiveDate: null,
+        openSessionOutsideActiveDate: null,
+        futureSessions: [],
+        primaryActionIntent: "open_today",
+      })
+    ).toBeNull();
+    expect(isTodayPrimaryIntentSupportedByHero("open_today")).toBe(false);
   });
 
   it("resolves a legitimate session resume", () => {
@@ -77,6 +91,12 @@ describe("todayIntervention registry", () => {
     expect(TODAY_INTERVENTION_REGISTRY[TODAY_INTERVENTION_TYPE.REVIEW_FEEDBACK]?.enabled).toBe(false);
   });
 
+  it("exposes the supported primary intents for Today from a single shared source", () => {
+    expect(getTodaySupportedPrimaryIntents().sort()).toEqual(
+      ["start_occurrence", "open_library", "resume_session", "open_pilotage"].sort()
+    );
+  });
+
   it("builds a minimal canonical context summary", () => {
     expect(
       buildTodayCanonicalContextSummary({
@@ -111,6 +131,21 @@ describe("todayIntervention registry", () => {
       ok: false,
       resolvedInterventionType: null,
       rejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.NO_ACTIVE_SESSION_FOR_DATE,
+    });
+  });
+
+  it("diagnoses open_today as an invalid intervention type for Today primary action", () => {
+    expect(
+      diagnoseTodayIntervention({
+        primaryActionIntent: "open_today",
+        activeSessionForActiveDate: null,
+        openSessionOutsideActiveDate: null,
+        futureSessions: [],
+      })
+    ).toEqual({
+      ok: false,
+      resolvedInterventionType: null,
+      rejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.INVALID_INTERVENTION_TYPE,
     });
   });
 });

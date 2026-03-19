@@ -18,4 +18,24 @@ describe("home today canonical contract", () => {
     expect(home).toContain("futureSessions");
     expect(home).toContain("activeSessionId: activeSessionForActiveDate?.id || activeSessionForActiveDate?.occurrenceId || null");
   });
+
+  it("shows the focus block only when it has adjustment value", () => {
+    const home = readSrc("pages/Home.jsx");
+
+    expect(home).toContain("const shouldShowFocusCard = isFocusOverride || alternativeCandidates.length > 0;");
+    expect(home).toContain("const visibleBlockOrder = useMemo(");
+    expect(home).toContain('blockOrder.filter((id) => id !== "focus" || shouldShowFocusCard)');
+    expect(home).toContain("onReorder={handleVisibleReorder}");
+  });
+
+  it("logs today coach diagnostics in local dev with a visible console log", () => {
+    const home = readSrc("pages/Home.jsx");
+
+    expect(home).toContain("const todayDecisionDiagnostics = useMemo(");
+    expect(home).toContain("const isLocalHost =");
+    expect(home).toContain('window.location?.hostname === "localhost"');
+    expect(home).toContain('window.location?.hostname === "127.0.0.1"');
+    expect(home).toContain("if (!isDev && !isLocalHost) return;");
+    expect(home).toContain('console.log("[today-coach]", todayDecisionDiagnostics);');
+  });
 });

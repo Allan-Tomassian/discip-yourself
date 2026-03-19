@@ -1,6 +1,6 @@
 import { coachResponseSchema } from "../../schemas/coach.js";
 import { buildRecoveryFallback } from "../fallback/rules.js";
-import { runOpenAiCoach } from "./openaiRunner.js";
+import { isOpenAiModelOutputError, runOpenAiCoach } from "./openaiRunner.js";
 import {
   buildTodayCanonicalContextSummary,
   TODAY_BACKEND_RESOLUTION_STATUS,
@@ -19,7 +19,17 @@ export async function runRecoveryCoach({ app, context }) {
       decisionSource = "ai";
       resolutionStatus = TODAY_BACKEND_RESOLUTION_STATUS.ACCEPTED_AI;
     }
-  } catch {
+  } catch (error) {
+    if (isOpenAiModelOutputError(error)) {
+      app.log?.warn?.(
+        {
+          requestId: context.requestId,
+          kind: "recovery",
+          issueCode: error.issueCode,
+        },
+        "OpenAI coach output rejected before governance",
+      );
+    }
     fallbackReason = "invalid_model_output";
     rejectionReason = TODAY_DIAGNOSTIC_REJECTION_REASON.INVALID_MODEL_OUTPUT;
     resolutionStatus = TODAY_BACKEND_RESOLUTION_STATUS.REJECTED_TO_RULES;

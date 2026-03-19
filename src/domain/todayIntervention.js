@@ -93,6 +93,22 @@ export const TODAY_INTERVENTION_REGISTRY = Object.freeze({
   },
 });
 
+export const TODAY_ALLOWED_PRIMARY_INTENTS_BY_TYPE = Object.freeze({
+  [TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION]: ["start_occurrence", "open_library"],
+  [TODAY_INTERVENTION_TYPE.SESSION_RESUME]: ["resume_session"],
+  [TODAY_INTERVENTION_TYPE.SCHEDULE_WARNING]: ["open_pilotage"],
+});
+
+export function getTodaySupportedPrimaryIntents() {
+  return Object.values(TODAY_ALLOWED_PRIMARY_INTENTS_BY_TYPE)
+    .flatMap((value) => value)
+    .filter(Boolean);
+}
+
+export function isTodayPrimaryIntentSupportedByHero(intent) {
+  return getTodaySupportedPrimaryIntents().includes(normalizeIntent(intent));
+}
+
 function normalizeIntent(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -149,7 +165,7 @@ export function resolveTodayInterventionType({
     return TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION;
   }
 
-  if (intent === "start_occurrence" || intent === "open_library" || intent === "open_today") {
+  if (intent === "start_occurrence" || intent === "open_library") {
     return TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION;
   }
 
@@ -246,7 +262,10 @@ export function isTodayInterventionAllowed({
 }) {
   const spec = TODAY_INTERVENTION_REGISTRY[interventionType];
   const intent = normalizeIntent(primaryActionIntent);
-  if (!spec?.enabled || !intent || !spec.allowedCtas.includes(intent)) return false;
+  const allowedPrimaryIntents = TODAY_ALLOWED_PRIMARY_INTENTS_BY_TYPE[interventionType] || [];
+  if (!spec?.enabled || !intent || !spec.allowedCtas.includes(intent) || !allowedPrimaryIntents.includes(intent)) {
+    return false;
+  }
   if (
     interventionType === TODAY_INTERVENTION_TYPE.SESSION_RESUME &&
     !activeSessionForActiveDate
