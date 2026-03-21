@@ -4,10 +4,13 @@ import {
   diagnoseTodayIntervention,
   getTodaySupportedPrimaryIntents,
   isTodayPrimaryIntentSupportedByHero,
+  resolveTodayGapDecision,
   resolveTodayDatePhase,
   resolveTodayOccurrenceStartPolicy,
   TODAY_DIAGNOSTIC_REJECTION_REASON,
   TODAY_DATE_PHASE,
+  TODAY_GAP_REASON,
+  TODAY_INTERNAL_INTERVENTION_TYPE,
   TODAY_INTERVENTION_REGISTRY,
   TODAY_INTERVENTION_TYPE,
   hasDeterministicScheduleWarning,
@@ -98,6 +101,30 @@ describe("todayIntervention registry", () => {
     ).toBe(true);
   });
 
+  it("prefers a direct start over a schedule warning when a same-day occurrence is executable", () => {
+    expect(
+      resolveTodayInterventionType({
+        activeSessionForActiveDate: null,
+        openSessionOutsideActiveDate: { id: "sess-future" },
+        futureSessions: [{ id: "sess-future" }],
+        activeDate: "2026-03-19",
+        systemToday: "2026-03-19",
+        focusOccurrenceForActiveDate: { id: "occ-1", date: "2026-03-19" },
+      })
+    ).toBe(TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION);
+    expect(
+      resolveTodayInterventionType({
+        activeSessionForActiveDate: null,
+        openSessionOutsideActiveDate: { id: "sess-future" },
+        futureSessions: [{ id: "sess-future" }],
+        activeDate: "2026-03-19",
+        systemToday: "2026-03-19",
+        focusOccurrenceForActiveDate: { id: "occ-1", date: "2026-03-19" },
+        primaryActionIntent: "open_pilotage",
+      })
+    ).toBeNull();
+  });
+
   it("resolves open_pilotage as today_recommendation when a planned occurrence must be replanified", () => {
     expect(
       resolveTodayInterventionType({
@@ -111,6 +138,43 @@ describe("todayIntervention registry", () => {
         primaryActionIntent: "open_pilotage",
       })
     ).toBe(TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION);
+  });
+
+  it("resolves open_pilotage as today_recommendation when a gap-fill opportunity exists", () => {
+    expect(
+      resolveTodayInterventionType({
+        activeSessionForActiveDate: null,
+        openSessionOutsideActiveDate: null,
+        futureSessions: [],
+        activeDate: "2026-03-19",
+        systemToday: "2026-03-19",
+        gapSummary: {
+          hasGapToday: true,
+          gapReason: TODAY_GAP_REASON.EMPTY_DAY,
+          candidateActionSummaries: [{ actionId: "goal-1", title: "Deep work" }],
+        },
+        primaryActionIntent: "open_pilotage",
+      })
+    ).toBe(TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION);
+    expect(
+      resolveTodayGapDecision({
+        activeSessionForActiveDate: null,
+        openSessionOutsideActiveDate: null,
+        futureSessions: [],
+        activeDate: "2026-03-19",
+        systemToday: "2026-03-19",
+        focusOccurrenceForActiveDate: null,
+        gapSummary: {
+          hasGapToday: true,
+          gapReason: TODAY_GAP_REASON.EMPTY_DAY,
+          candidateActionSummaries: [{ actionId: "goal-1", title: "Deep work" }],
+        },
+      })
+    ).toEqual({
+      interventionType: TODAY_INTERNAL_INTERVENTION_TYPE.GAP_FILL_RECOMMENDATION,
+      gapReason: TODAY_GAP_REASON.EMPTY_DAY,
+      candidateActionSummaries: [{ actionId: "goal-1", title: "Deep work" }],
+    });
   });
 
   it("forbids session_resume when the active session is not on the active date", () => {
@@ -203,6 +267,29 @@ describe("todayIntervention registry", () => {
       ok: false,
       resolvedInterventionType: null,
       rejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.INVALID_INTERVENTION_TYPE,
+    });
+  });
+
+  it("diagnoses gap-fill open_pilotage as valid when a gap summary is present", () => {
+    expect(
+      diagnoseTodayIntervention({
+        requestedInterventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
+        primaryActionIntent: "open_pilotage",
+        activeSessionForActiveDate: null,
+        openSessionOutsideActiveDate: null,
+        futureSessions: [],
+        activeDate: "2026-03-19",
+        systemToday: "2026-03-19",
+        gapSummary: {
+          hasGapToday: true,
+          gapReason: TODAY_GAP_REASON.EMPTY_DAY,
+          candidateActionSummaries: [{ actionId: "goal-1", title: "Deep work" }],
+        },
+      })
+    ).toEqual({
+      ok: true,
+      resolvedInterventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
+      rejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
     });
   });
 

@@ -88,6 +88,116 @@ function buildDayLoadSummary(plannedActionsForActiveDate) {
   };
 }
 
+function isExecutableGoal(goal) {
+  if (!goal || typeof goal !== "object" || !goal.id || !goal.categoryId) return false;
+  const status = typeof goal.status === "string" ? goal.status.toLowerCase() : "";
+  if (status === "archived" || status === "deleted" || status === "removed" || status === "done") return false;
+  return goal?.type === "PROCESS" || goal?.planType === "ACTION" || goal?.planType === "ONE_OFF";
+}
+
+function buildGoalActivityIndex(data) {
+  const index = new Map();
+  for (const occurrence of safeArray(data?.occurrences)) {
+    const goalId = typeof occurrence?.goalId === "string" ? occurrence.goalId : "";
+    const dateKey = normalizeDateKey(occurrence?.date);
+    if (!goalId || !dateKey) continue;
+    const current = index.get(goalId) || {
+      lastPlannedDateKey: null,
+      durationMin: null,
+    };
+    if (!current.lastPlannedDateKey || dateKey > current.lastPlannedDateKey) {
+      current.lastPlannedDateKey = dateKey;
+    }
+    if (Number.isFinite(occurrence?.durationMinutes)) {
+      current.durationMin = occurrence.durationMinutes;
+    }
+    index.set(goalId, current);
+  }
+  return index;
+}
+
+function compareCandidateActions(left, right, activeCategoryId) {
+  const leftCategoryRank = left?.categoryId && left.categoryId === activeCategoryId ? 0 : 1;
+  const rightCategoryRank = right?.categoryId && right.categoryId === activeCategoryId ? 0 : 1;
+  if (leftCategoryRank !== rightCategoryRank) return leftCategoryRank - rightCategoryRank;
+
+  const leftHasHistory = left?.lastPlannedDateKey ? 0 : 1;
+  const rightHasHistory = right?.lastPlannedDateKey ? 0 : 1;
+  if (leftHasHistory !== rightHasHistory) return leftHasHistory - rightHasHistory;
+
+  const leftDate = left?.lastPlannedDateKey || "";
+  const rightDate = right?.lastPlannedDateKey || "";
+  if (leftDate !== rightDate) return rightDate.localeCompare(leftDate);
+
+  return String(left?.title || "").localeCompare(String(right?.title || ""));
+}
+
+function buildGapSummary({
+  data,
+  activeDate,
+  systemToday,
+  activeCategoryId,
+  categoriesById,
+  plannedActionsForActiveDate,
+  plannedActionsForActiveCategory,
+  focusOccurrenceForActiveDate,
+  dayLoadSummary,
+}) {
+  const isToday = Boolean(activeDate && systemToday && activeDate === systemToday);
+  if (!isToday) {
+    return {
+      hasGapToday: false,
+      emptyActiveCategory: false,
+      lowLoadToday: false,
+      gapReason: "none",
+      candidateActionSummaries: [],
+    };
+  }
+  const emptyDay = plannedActionsForActiveDate.length === 0 && !focusOccurrenceForActiveDate;
+  const emptyActiveCategory =
+    Boolean(activeCategoryId) &&
+    plannedActionsForActiveDate.length > 0 &&
+    plannedActionsForActiveCategory.length === 0;
+  const lowLoadToday =
+    plannedActionsForActiveDate.length > 0 && Number(dayLoadSummary?.totalPlannedMinutes || 0) < 30;
+  const gapReason = emptyDay
+    ? "empty_day"
+    : emptyActiveCategory
+      ? "empty_active_category"
+      : lowLoadToday
+        ? "low_load_day"
+        : "none";
+  const hasGapToday = gapReason !== "none";
+  const plannedGoalIdsForActiveDate = new Set(plannedActionsForActiveDate.map((occurrence) => occurrence?.goalId).filter(Boolean));
+  const goalActivityIndex = buildGoalActivityIndex(data);
+  const candidateActionSummaries = safeArray(data?.goals)
+    .filter(isExecutableGoal)
+    .filter((goal) => !plannedGoalIdsForActiveDate.has(goal.id))
+    .map((goal) => {
+      const category = categoriesById.get(goal.categoryId) || null;
+      const activity = goalActivityIndex.get(goal.id) || null;
+      return {
+        actionId: goal.id,
+        categoryId: goal.categoryId,
+        title: goal.title || "Action",
+        categoryName: category?.name || null,
+        durationMin: Number.isFinite(goal.sessionMinutes) ? goal.sessionMinutes : activity?.durationMin || null,
+        lastPlannedDateKey: activity?.lastPlannedDateKey || null,
+      };
+    })
+    .sort((left, right) => compareCandidateActions(left, right, activeCategoryId))
+    .slice(0, 2)
+    .map(({ categoryId, ...summary }) => summary);
+
+  return {
+    hasGapToday,
+    emptyActiveCategory,
+    lowLoadToday,
+    gapReason,
+    candidateActionSummaries,
+  };
+}
+
 function buildScheduleSignalSummary({
   activeDate,
   systemToday,
@@ -149,8 +259,9 @@ export function buildNowContext({
   const goalsById = resolveGoalMap(data);
   const categoriesById = resolveCategoryMap(data);
   const occurrenceById = buildOccurrenceById(data);
-  const dayOccurrences = resolveOccurrencesForDate(data, dateKey, categoryId);
-  const plannedActionsForActiveDate = resolvePlannedActionsForDate(data, dateKey, categoryId);
+  const dayOccurrences = resolveOccurrencesForDate(data, dateKey, null);
+  const plannedActionsForActiveDate = resolvePlannedActionsForDate(data, dateKey, null);
+  const plannedActionsForActiveCategory = categoryId ? resolvePlannedActionsForDate(data, dateKey, categoryId) : plannedActionsForActiveDate;
   const { activeSessionForActiveDate, openSessionOutsideActiveDate, futureSessions } = resolveSessionSplitForDate(
     data,
     dateKey
@@ -207,6 +318,17 @@ export function buildNowContext({
     focusOccurrenceForActiveDate,
     focusOccurrenceSummary,
   });
+  const gapSummary = buildGapSummary({
+    data,
+    activeDate: dateKey,
+    systemToday,
+    activeCategoryId: categoryId,
+    categoriesById,
+    plannedActionsForActiveDate,
+    plannedActionsForActiveCategory,
+    focusOccurrenceForActiveDate,
+    dayLoadSummary,
+  });
 
   return {
     requestId,
@@ -233,6 +355,7 @@ export function buildNowContext({
     focusSelectionReason: focusSelection.reason || null,
     dayLoadSummary,
     scheduleSignalSummary,
+    gapSummary,
     doneToday,
     missedToday,
     remainingToday,

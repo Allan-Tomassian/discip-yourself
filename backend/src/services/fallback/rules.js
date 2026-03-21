@@ -1,4 +1,5 @@
 import {
+  TODAY_GAP_REASON,
   TODAY_INTERVENTION_TYPE,
   resolveTodayOccurrenceStartPolicy,
   resolveTodayInterventionType,
@@ -25,6 +26,10 @@ function formatDateTimeLabel({ dateKey, timeLabel }) {
   return timeLabel || "";
 }
 
+function formatDurationLabel(durationMin) {
+  return Number.isFinite(durationMin) ? `${durationMin} min` : "";
+}
+
 export function buildNowFallback(context) {
   const focusStartPolicy = resolveTodayOccurrenceStartPolicy({
     activeDate: context.activeDate,
@@ -38,6 +43,7 @@ export function buildNowFallback(context) {
     activeDate: context.activeDate,
     systemToday: context.systemToday,
     focusOccurrenceForActiveDate: context.focusOccurrenceForActiveDate,
+    gapSummary: context.gapSummary,
   });
 
   if (interventionType === TODAY_INTERVENTION_TYPE.SESSION_RESUME && context.activeSessionForActiveDate?.isOpen) {
@@ -74,85 +80,13 @@ export function buildNowFallback(context) {
     };
   }
 
-  if (interventionType === TODAY_INTERVENTION_TYPE.SCHEDULE_WARNING) {
-    const scheduleTarget = formatDateTimeLabel({
-      dateKey: context.scheduleSignalSummary?.targetDateKey || context.scheduleSignalSummary?.sessionDateKey || null,
-      timeLabel: context.scheduleSignalSummary?.targetTimeLabel || null,
-    });
-    const scheduleTargetTitle = context.scheduleSignalSummary?.targetActionTitle || "cette action";
-    return {
-      kind: "now",
-      interventionType,
-      decisionSource: "rules",
-      headline: "Une session ouverte est planifiée sur une autre date",
-      reason: scheduleTarget
-        ? `${scheduleTargetTitle} reste planifiée ${scheduleTarget}. Vérifie le planning avant de reprendre.`
-        : "Vérifie le planning avant de reprendre ou de relancer une action.",
-      primaryAction: buildAction({
-        label: "Voir pilotage",
-        intent: "open_pilotage",
-        categoryId: context.activeCategoryId,
-        dateKey: context.activeDate,
-      }),
-      secondaryAction: null,
-      suggestedDurationMin: null,
-      confidence: 0.89,
-      urgency: "medium",
-      uiTone: "steady",
-      toolIntent: "suggest_reschedule_option",
-      rewardSuggestion: { kind: "none", label: null },
-    };
-  }
-
-  if (context.focusOccurrenceForActiveDate) {
+  if (context.focusOccurrenceForActiveDate && focusStartPolicy.canStartDirectly) {
     const title = String(context.focusOccurrenceSummary?.title || "Action");
     const duration = Number.isFinite(context.focusOccurrenceSummary?.durationMin)
       ? context.focusOccurrenceSummary.durationMin
       : Number.isFinite(context.focusOccurrenceForActiveDate.durationMinutes)
         ? context.focusOccurrenceForActiveDate.durationMinutes
         : null;
-    const focusDateTime = formatDateTimeLabel({
-      dateKey: context.focusOccurrenceSummary?.dateKey || context.focusOccurrenceForActiveDate?.date || null,
-      timeLabel: context.focusOccurrenceSummary?.timeLabel || null,
-    });
-    if (focusStartPolicy.requiresReschedule) {
-      return {
-        kind: "now",
-        interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
-        decisionSource: "rules",
-        headline: title.slice(0, 72),
-        reason:
-          focusStartPolicy.datePhase === "future"
-            ? focusDateTime
-              ? `${title} est prévue ${focusDateTime}. Replanifie-la avant de la lancer aujourd'hui.`
-              : `${title} est prévue pour une autre date. Replanifie-la avant de la lancer aujourd'hui.`
-            : focusDateTime
-              ? `${title} appartenait à ${focusDateTime}. Replanifie-la avant de la relancer.`
-              : `${title} appartient à une date passée. Replanifie-la avant de la relancer.`,
-        primaryAction: buildAction({
-          label: focusStartPolicy.datePhase === "future" ? "Replanifier aujourd’hui" : "Replanifier",
-          intent: "open_pilotage",
-          categoryId: context.activeCategoryId,
-          actionId: context.focusOccurrenceForActiveDate.goalId || null,
-          occurrenceId: context.focusOccurrenceForActiveDate.id || null,
-          dateKey: context.activeDate,
-        }),
-        secondaryAction: buildAction({
-          label: "Voir aujourd’hui",
-          intent: "open_today",
-          categoryId: context.activeCategoryId,
-          occurrenceId: context.focusOccurrenceForActiveDate.id || null,
-          actionId: context.focusOccurrenceForActiveDate.goalId || null,
-          dateKey: context.activeDate,
-        }),
-        suggestedDurationMin: null,
-        confidence: 0.87,
-        urgency: "medium",
-        uiTone: "steady",
-        toolIntent: "suggest_reschedule_option",
-        rewardSuggestion: { kind: "none", label: null },
-      };
-    }
     return {
       kind: "now",
       interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
@@ -189,29 +123,146 @@ export function buildNowFallback(context) {
     };
   }
 
+  if (interventionType === TODAY_INTERVENTION_TYPE.SCHEDULE_WARNING) {
+    const scheduleTarget = formatDateTimeLabel({
+      dateKey: context.scheduleSignalSummary?.targetDateKey || context.scheduleSignalSummary?.sessionDateKey || null,
+      timeLabel: context.scheduleSignalSummary?.targetTimeLabel || null,
+    });
+    const scheduleTargetTitle = context.scheduleSignalSummary?.targetActionTitle || "cette action";
+    return {
+      kind: "now",
+      interventionType,
+      decisionSource: "rules",
+      headline: "Une session ouverte est planifiée sur une autre date",
+      reason: scheduleTarget
+        ? `${scheduleTargetTitle} reste planifiée ${scheduleTarget}. Vérifie le planning avant de reprendre.`
+        : "Vérifie le planning avant de reprendre ou de relancer une action.",
+      primaryAction: buildAction({
+        label: "Voir pilotage",
+        intent: "open_pilotage",
+        categoryId: context.activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      secondaryAction: null,
+      suggestedDurationMin: null,
+      confidence: 0.89,
+      urgency: "medium",
+      uiTone: "steady",
+      toolIntent: "suggest_reschedule_option",
+      rewardSuggestion: { kind: "none", label: null },
+    };
+  }
+
+  if (context.focusOccurrenceForActiveDate && focusStartPolicy.requiresReschedule) {
+    const title = String(context.focusOccurrenceSummary?.title || "Action");
+    const focusDateTime = formatDateTimeLabel({
+      dateKey: context.focusOccurrenceSummary?.dateKey || context.focusOccurrenceForActiveDate?.date || null,
+      timeLabel: context.focusOccurrenceSummary?.timeLabel || null,
+    });
+    return {
+      kind: "now",
+      interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
+      decisionSource: "rules",
+      headline: title.slice(0, 72),
+      reason:
+        focusStartPolicy.datePhase === "future"
+          ? focusDateTime
+            ? `${title} est prévue ${focusDateTime}. Replanifie-la avant de la lancer aujourd'hui.`
+            : `${title} est prévue pour une autre date. Replanifie-la avant de la lancer aujourd'hui.`
+          : focusDateTime
+            ? `${title} appartenait à ${focusDateTime}. Replanifie-la avant de la relancer.`
+            : `${title} appartient à une date passée. Replanifie-la avant de la relancer.`,
+      primaryAction: buildAction({
+        label: focusStartPolicy.datePhase === "future" ? "Replanifier aujourd’hui" : "Replanifier",
+        intent: "open_pilotage",
+        categoryId: context.activeCategoryId,
+        actionId: context.focusOccurrenceForActiveDate.goalId || null,
+        occurrenceId: context.focusOccurrenceForActiveDate.id || null,
+        dateKey: context.activeDate,
+      }),
+      secondaryAction: buildAction({
+        label: "Voir aujourd’hui",
+        intent: "open_today",
+        categoryId: context.activeCategoryId,
+        occurrenceId: context.focusOccurrenceForActiveDate.id || null,
+        actionId: context.focusOccurrenceForActiveDate.goalId || null,
+        dateKey: context.activeDate,
+      }),
+      suggestedDurationMin: null,
+      confidence: 0.87,
+      urgency: "medium",
+      uiTone: "steady",
+      toolIntent: "suggest_reschedule_option",
+      rewardSuggestion: { kind: "none", label: null },
+    };
+  }
+
+  if (context.gapSummary?.hasGapToday) {
+    const gapCandidate = Array.isArray(context.gapSummary?.candidateActionSummaries)
+      ? context.gapSummary.candidateActionSummaries[0] || null
+      : null;
+    const categoryName = context.category?.name || null;
+    const durationLabel = formatDurationLabel(gapCandidate?.durationMin);
+    const candidateWithDuration = [gapCandidate?.title || "", durationLabel].filter(Boolean).join(" • ");
+
+    let headline = "Aucune action prévue aujourd’hui";
+    let reason = gapCandidate
+      ? `Tu peux planifier ${candidateWithDuration || gapCandidate.title} aujourd'hui pour maintenir la continuité.`
+      : "Planifie une action simple aujourd'hui pour maintenir la continuité.";
+
+    if (context.gapSummary.gapReason === TODAY_GAP_REASON.EMPTY_ACTIVE_CATEGORY && categoryName) {
+      headline = `Rien de prévu en ${categoryName} aujourd’hui`.slice(0, 72);
+      reason = gapCandidate
+        ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. Une courte action suffit pour maintenir l'élan.`
+        : "Une courte action suffit pour maintenir l'élan aujourd'hui.";
+    } else if (context.gapSummary.gapReason === TODAY_GAP_REASON.LOW_LOAD_DAY) {
+      headline = gapCandidate ? `Ajoute ${gapCandidate.title} aujourd’hui`.slice(0, 72) : "Le plan du jour reste léger";
+      reason = gapCandidate
+        ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. ${durationLabel || "Une courte durée"} suffit pour compléter la journée.`
+        : "Une action simple peut compléter la journée sans surcharge.";
+    }
+
+    return {
+      kind: "now",
+      interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
+      decisionSource: "rules",
+      headline,
+      reason,
+      primaryAction: buildAction({
+        label: "Planifier aujourd’hui",
+        intent: "open_pilotage",
+        categoryId: context.activeCategoryId || null,
+        actionId: gapCandidate?.actionId || null,
+        dateKey: context.activeDate,
+      }),
+      secondaryAction: null,
+      suggestedDurationMin: gapCandidate?.durationMin || null,
+      confidence: 0.84,
+      urgency: "medium",
+      uiTone: "steady",
+      toolIntent: "suggest_reschedule_option",
+      rewardSuggestion: { kind: "none", label: null },
+    };
+  }
+
   return {
     kind: "now",
     interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
     decisionSource: "rules",
-    headline: "Aucune action prête",
-    reason: "Le plan du jour est vide ou déjà clos.",
+    headline: "Aucune action prévue aujourd’hui",
+    reason: "Planifie une action simple aujourd'hui pour maintenir la continuité.",
     primaryAction: buildAction({
-      label: "Ouvrir bibliothèque",
-      intent: "open_library",
-      categoryId: context.activeCategoryId,
-      dateKey: context.activeDate,
-    }),
-    secondaryAction: buildAction({
-      label: "Voir pilotage",
+      label: "Planifier aujourd’hui",
       intent: "open_pilotage",
       categoryId: context.activeCategoryId,
       dateKey: context.activeDate,
     }),
+    secondaryAction: null,
     suggestedDurationMin: null,
     confidence: 0.8,
     urgency: "low",
     uiTone: "steady",
-    toolIntent: "suggest_open_library",
+    toolIntent: "suggest_reschedule_option",
     rewardSuggestion: { kind: "none", label: null },
   };
 }

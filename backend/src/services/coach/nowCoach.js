@@ -19,6 +19,7 @@ function withGovernedTodayIntervention({ context, payload }) {
     activeDate: context.activeDate,
     systemToday: context.systemToday,
     focusOccurrenceForActiveDate: context.focusOccurrenceForActiveDate,
+    gapSummary: context.gapSummary,
   });
   if (!diagnosis.ok || !diagnosis.resolvedInterventionType) {
     throw new Error("invalid_today_intervention");
@@ -54,6 +55,7 @@ export async function runNowCoach({ app, context }) {
         activeDate: context.activeDate,
         systemToday: context.systemToday,
         focusOccurrenceForActiveDate: context.focusOccurrenceForActiveDate,
+        gapSummary: context.gapSummary,
       });
       rejectionReason =
         governanceDiagnosis.rejectionReason || TODAY_DIAGNOSTIC_REJECTION_REASON.GOVERNANCE_REJECTED;

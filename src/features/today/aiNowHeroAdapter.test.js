@@ -9,6 +9,7 @@ import {
   getTodaySupportedPrimaryIntents,
   TODAY_BACKEND_RESOLUTION_STATUS,
   TODAY_DIAGNOSTIC_REJECTION_REASON,
+  TODAY_GAP_REASON,
   TODAY_INTERVENTION_TYPE,
 } from "../../domain/todayIntervention";
 
@@ -146,6 +147,30 @@ describe("deriveTodayHeroModel", () => {
     expect(result.primaryAction).toMatchObject({ kind: "open_pilotage" });
   });
 
+  it("accepte un gap-fill public mappe en today_recommendation + open_pilotage", () => {
+    const result = deriveTodayHeroModel({
+      localHero: buildLocalHero({
+        primaryLabel: "Planifier aujourd’hui",
+        primaryAction: { kind: "open_pilotage" },
+      }),
+      coach: buildCoach("open_pilotage", {
+        interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
+        headline: "Aucune action prévue aujourd’hui",
+        reason: "Tu peux planifier Deep work aujourd'hui pour maintenir la continuité.",
+      }),
+      occurrencesForSelectedDay: [],
+      hasOpenSession: false,
+      handlersAvailable: { openPilotage: true },
+      canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
+      systemTodayKey: SYSTEM_TODAY,
+    });
+
+    expect(result.source).toBe("ai");
+    expect(result.interventionType).toBe(TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION);
+    expect(result.primaryAction).toMatchObject({ kind: "open_pilotage" });
+    expect(result.title).toMatch(/Aucune action prévue aujourd’hui/);
+  });
+
   it("rejette open_today comme CTA principal", () => {
     const result = deriveTodayHeroModel({
       localHero: buildLocalHero(),
@@ -265,6 +290,23 @@ describe("buildLocalTodayHeroModel", () => {
     expect(result.primaryAction).toMatchObject({ kind: "open_pilotage" });
   });
 
+  it("priorise un demarrage direct avant le warning si une occurrence du jour est executable", () => {
+    const result = buildLocalTodayHeroModel({
+      activeDate: ACTIVE_DATE,
+      systemTodayKey: SYSTEM_TODAY,
+      activeCategoryId: "c1",
+      openSessionOutsideActiveDate: { id: "sess-future" },
+      futureSessions: [{ id: "sess-future" }],
+      focusOccurrenceForActiveDate: { id: "occ-1", date: ACTIVE_DATE },
+      focusTitle: "Action locale",
+      focusMeta: "Meta locale",
+    });
+
+    expect(result.interventionType).toBe(TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION);
+    expect(result.primaryAction).toMatchObject({ kind: "start_occurrence" });
+    expect(result.primaryLabel).toBe("Démarrer");
+  });
+
   it("ne peut pas produire session_resume sans session sur la date active", () => {
     const result = buildLocalTodayHeroModel({
       activeDate: ACTIVE_DATE,
@@ -292,6 +334,32 @@ describe("buildLocalTodayHeroModel", () => {
     expect(result.interventionType).toBe(TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION);
     expect(result.primaryAction).toMatchObject({ kind: "open_pilotage" });
     expect(result.primaryLabel).toBe("Replanifier aujourd’hui");
+  });
+
+  it("mappe un gap local vers un CTA planifier aujourd'hui avec une action candidate nommee", () => {
+    const result = buildLocalTodayHeroModel({
+      activeDate: ACTIVE_DATE,
+      systemTodayKey: SYSTEM_TODAY,
+      activeCategoryId: "c1",
+      activeCategoryName: "Focus",
+      focusOccurrenceForActiveDate: null,
+      gapSummary: {
+        hasGapToday: true,
+        gapReason: TODAY_GAP_REASON.EMPTY_DAY,
+        candidateActionSummaries: [
+          {
+            actionId: "a1",
+            title: "Deep work",
+            durationMin: 25,
+          },
+        ],
+      },
+    });
+
+    expect(result.interventionType).toBe(TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION);
+    expect(result.primaryAction).toMatchObject({ kind: "open_pilotage" });
+    expect(result.primaryLabel).toBe("Planifier aujourd’hui");
+    expect(result.meta).toMatch(/Deep work/);
   });
 });
 

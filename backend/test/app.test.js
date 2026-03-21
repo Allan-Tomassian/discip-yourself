@@ -382,6 +382,7 @@ test("POST /ai/now maps a future open session to a schedule warning", async () =
         habitIds: ["goal-1"],
         runtimePhase: "in_progress",
       },
+      occurrences: [],
     }),
   });
 
@@ -405,6 +406,43 @@ test("POST /ai/now maps a future open session to a schedule warning", async () =
   assert.equal(payload.meta.sessionId, null);
   assert.equal(payload.meta.diagnostics.resolutionStatus, "rules_fallback");
   assert.equal(payload.meta.diagnostics.rejectionReason, "none");
+});
+
+test("POST /ai/now prefers a direct start over a warning when a same-day occurrence is executable", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-start-before-warning" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData({
+      activeSession: {
+        id: "sess-future",
+        dateKey: FUTURE_KEY,
+        occurrenceId: "occ-future",
+        habitIds: ["goal-1"],
+        runtimePhase: "in_progress",
+      },
+      occurrences: [{ id: "occ-1", goalId: "goal-1", date: TODAY_KEY, status: "planned", start: "09:00" }],
+    }),
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "screen_open",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachResponseSchema.parse(response.json());
+  assert.equal(payload.interventionType, "today_recommendation");
+  assert.equal(payload.primaryAction.intent, "start_occurrence");
+  await app.close();
 });
 
 test("POST /ai/now resumes the session only when it belongs to the active date", async () => {
@@ -516,6 +554,44 @@ test("POST /ai/now routes a past planned occurrence to pilotage instead of direc
   await app.close();
 });
 
+test("POST /ai/now proposes planning an existing action when today is empty", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-gap-empty-day" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: {
+      categories: [{ id: "cat-1", name: "Focus" }],
+      goals: [{ id: "goal-1", title: "Deep work", type: "PROCESS", categoryId: "cat-1", status: "active", sessionMinutes: 25 }],
+      occurrences: [{ id: "occ-old", goalId: "goal-1", date: PAST_KEY, status: "done", start: "09:00", durationMinutes: 25 }],
+      ui: { activeSession: null },
+      sessionHistory: [],
+    },
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "screen_open",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachResponseSchema.parse(response.json());
+  assert.equal(payload.interventionType, "today_recommendation");
+  assert.equal(payload.primaryAction.intent, "open_pilotage");
+  assert.equal(payload.primaryAction.label, "Planifier aujourd’hui");
+  assert.equal(payload.toolIntent, "suggest_reschedule_option");
+  assert.match(payload.headline, /Aucune action prévue aujourd’hui/i);
+  assert.match(payload.reason, /Deep work/i);
+  await app.close();
+});
+
 test("POST /ai/now returns ai decision when OpenAI returns valid structured output", async () => {
   let capturedPrompt = "";
   const app = await buildApp({
@@ -577,9 +653,73 @@ test("POST /ai/now returns ai decision when OpenAI returns valid structured outp
   assert.match(capturedPrompt, /focusOccurrenceSummary/i);
   assert.match(capturedPrompt, /alternativeOccurrenceSummaries/i);
   assert.match(capturedPrompt, /focusSelectionReason/i);
+  assert.match(capturedPrompt, /gapSummary/i);
   assert.match(capturedPrompt, /When using start_occurrence, headline and reason must mention the exact action title/i);
   assert.match(capturedPrompt, /When using open_pilotage for replanification, headline or reason must mention the exact action title/i);
   assert.match(capturedPrompt, /Valid JSON example/i);
+  await app.close();
+});
+
+test("POST /ai/now includes gap-fill prompt rules when today has no planned action", async () => {
+  let capturedPrompt = "";
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-gap-prompt" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: {
+      categories: [{ id: "cat-1", name: "Focus" }],
+      goals: [{ id: "goal-1", title: "Deep work", type: "PROCESS", categoryId: "cat-1", status: "active", sessionMinutes: 25 }],
+      occurrences: [],
+      ui: { activeSession: null },
+      sessionHistory: [],
+    },
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async (input) => {
+          capturedPrompt = input?.messages?.map((message) => message?.content || "").join("\n");
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: {
+                    ...createValidCoachPayload(),
+                    headline: "Planifie Deep work",
+                    reason: "Deep work n'est pas encore planifiée aujourd'hui. Programme-la maintenant.",
+                    primaryAction: {
+                      ...createValidCoachPayload().primaryAction,
+                      label: "Planifier aujourd’hui",
+                      intent: "open_pilotage",
+                      occurrenceId: null,
+                    },
+                    toolIntent: "suggest_reschedule_option",
+                  },
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "screen_open",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.match(capturedPrompt, /not yet planned today/i);
+  assert.match(capturedPrompt, /gapSummary\.candidateActionSummaries/i);
   await app.close();
 });
 

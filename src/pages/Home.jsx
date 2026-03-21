@@ -42,6 +42,7 @@ import { emitTotemEvent } from "../ui/totem/totemEvents";
 import { LABELS, UI_COPY } from "../ui/labels";
 import { useAuth } from "../auth/useAuth";
 import { buildTodayCanonicalContextSummary, resolveTodayOccurrenceStartPolicy } from "../domain/todayIntervention";
+import { resolveGoalType } from "../domain/goalType";
 import { deriveTodayNowModel } from "../features/today/nowModel";
 import { deriveTodayCalendarModel } from "../features/today/todayCalendarModel";
 import { deriveTodayProgressModel } from "../features/today/todayProgressModel";
@@ -113,6 +114,110 @@ function normalizeMicroItemForCompare(item) {
     doneAt: typeof item.doneAt === "string" ? item.doneAt : "",
     templateId: typeof item.templateId === "string" ? item.templateId : "",
     durationMin: Number.isFinite(item.durationMin) ? item.durationMin : 0,
+  };
+}
+
+function isGoalEligibleForGapFill(goal) {
+  if (!goal || typeof goal !== "object" || !goal.id || !goal.categoryId) return false;
+  const status = typeof goal.status === "string" ? goal.status.toLowerCase() : "";
+  if (status === "archived" || status === "deleted" || status === "removed" || status === "done") return false;
+  return resolveGoalType(goal) === "PROCESS";
+}
+
+function buildLocalGapSummary({
+  activeDate,
+  systemToday,
+  activeCategoryId,
+  categoriesById,
+  goals,
+  occurrences,
+  plannedActionsForActiveDate,
+  focusOccurrenceForActiveDate,
+}) {
+  if (!activeDate || !systemToday || activeDate !== systemToday) {
+    return {
+      hasGapToday: false,
+      emptyActiveCategory: false,
+      lowLoadToday: false,
+      gapReason: "none",
+      candidateActionSummaries: [],
+      activeDate,
+    };
+  }
+  const plannedList = Array.isArray(plannedActionsForActiveDate) ? plannedActionsForActiveDate : [];
+  const emptyDay = plannedList.length === 0 && !focusOccurrenceForActiveDate;
+  const emptyActiveCategory =
+    Boolean(activeCategoryId) &&
+    plannedList.length > 0 &&
+    plannedList.every((occurrence) => {
+      const goalCategoryId = typeof occurrence?.categoryId === "string" ? occurrence.categoryId : "";
+      return goalCategoryId !== activeCategoryId;
+    });
+  const totalPlannedMinutes = plannedList.reduce(
+    (total, occurrence) =>
+      total + (Number.isFinite(occurrence?.durationMinutes) ? occurrence.durationMinutes : 0),
+    0
+  );
+  const lowLoadToday = plannedList.length > 0 && totalPlannedMinutes < 30;
+  const gapReason = emptyDay
+    ? "empty_day"
+    : emptyActiveCategory
+      ? "empty_active_category"
+      : lowLoadToday
+        ? "low_load_day"
+        : "none";
+  const hasGapToday = gapReason !== "none";
+  const plannedGoalIdsForDate = new Set(plannedList.map((occurrence) => occurrence?.goalId).filter(Boolean));
+  const latestOccurrenceByGoal = new Map();
+  for (const occurrence of Array.isArray(occurrences) ? occurrences : []) {
+    const goalId = typeof occurrence?.goalId === "string" ? occurrence.goalId : "";
+    const dateKey = normalizeLocalDateKey(occurrence?.date);
+    if (!goalId || !dateKey) continue;
+    const previous = latestOccurrenceByGoal.get(goalId) || null;
+    if (!previous || dateKey > previous.dateKey) {
+      latestOccurrenceByGoal.set(goalId, { occurrence, dateKey });
+    }
+  }
+  const candidateActionSummaries = (Array.isArray(goals) ? goals : [])
+    .filter(isGoalEligibleForGapFill)
+    .filter((goal) => !plannedGoalIdsForDate.has(goal.id))
+    .map((goal) => {
+      const category = categoriesById instanceof Map ? categoriesById.get(goal.categoryId) || null : null;
+      const latestEntry = latestOccurrenceByGoal.get(goal.id) || null;
+      return {
+        actionId: goal.id,
+        title: goal.title || "Action",
+        categoryName: category?.name || null,
+        durationMin: Number.isFinite(goal.sessionMinutes)
+          ? goal.sessionMinutes
+          : Number.isFinite(latestEntry?.occurrence?.durationMinutes)
+            ? latestEntry.occurrence.durationMinutes
+            : null,
+        lastPlannedDateKey: latestEntry?.dateKey || null,
+        categoryId: goal.categoryId || null,
+      };
+    })
+    .sort((left, right) => {
+      const leftCategoryRank = left?.categoryId === activeCategoryId ? 0 : 1;
+      const rightCategoryRank = right?.categoryId === activeCategoryId ? 0 : 1;
+      if (leftCategoryRank !== rightCategoryRank) return leftCategoryRank - rightCategoryRank;
+      const leftHistoryRank = left?.lastPlannedDateKey ? 0 : 1;
+      const rightHistoryRank = right?.lastPlannedDateKey ? 0 : 1;
+      if (leftHistoryRank !== rightHistoryRank) return leftHistoryRank - rightHistoryRank;
+      const leftDate = left?.lastPlannedDateKey || "";
+      const rightDate = right?.lastPlannedDateKey || "";
+      if (leftDate !== rightDate) return rightDate.localeCompare(leftDate);
+      return String(left?.title || "").localeCompare(String(right?.title || ""));
+    })
+    .slice(0, 2);
+
+  return {
+    hasGapToday,
+    emptyActiveCategory,
+    lowLoadToday,
+    gapReason,
+    candidateActionSummaries,
+    activeDate,
   };
 }
 
@@ -1512,6 +1617,30 @@ export default function Home({
       </span>
     </div>
   ) : null;
+  const localGapSummary = useMemo(
+    () =>
+      buildLocalGapSummary({
+        activeDate,
+        systemToday,
+        activeCategoryId: executionCategoryId || focusCategory?.id || null,
+        categoriesById,
+        goals,
+        occurrences,
+        plannedActionsForActiveDate,
+        focusOccurrenceForActiveDate,
+      }),
+    [
+      activeDate,
+      categoriesById,
+      executionCategoryId,
+      focusCategory?.id,
+      focusOccurrenceForActiveDate,
+      goals,
+      occurrences,
+      plannedActionsForActiveDate,
+      systemToday,
+    ]
+  );
   const localHeroModel = useMemo(
     () =>
       buildLocalTodayHeroModel({
@@ -1524,14 +1653,18 @@ export default function Home({
         focusOccurrenceForActiveDate: focusOccurrence,
         focusTitle: nowActionTitle,
         focusMeta: nowActionMeta,
+        gapSummary: localGapSummary,
+        activeCategoryName: focusCategory?.name || null,
       }),
     [
       activeDate,
       activeSessionForActiveDate,
       executionCategoryId,
       focusCategory?.id,
+      focusCategory?.name,
       focusOccurrence,
       futureSessions,
+      localGapSummary,
       nowActionMeta,
       nowActionTitle,
       openSessionOutsideActiveDate,

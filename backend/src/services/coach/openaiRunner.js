@@ -167,36 +167,63 @@ function buildSystemPrompt(locale = DEFAULT_OUTPUT_LOCALE) {
 
 function buildNowPrompt(context) {
   const focusTitle = context.focusOccurrenceSummary?.title || "Action";
-  const examplePrimaryAction = context.isToday
+  const gapCandidate = Array.isArray(context.gapSummary?.candidateActionSummaries)
+    ? context.gapSummary.candidateActionSummaries[0] || null
+    : null;
+  const shouldUseGapExample = Boolean(context.gapSummary?.hasGapToday && gapCandidate);
+  const examplePrimaryAction = shouldUseGapExample
     ? {
-        label: "Démarrer",
-        intent: "start_occurrence",
-        categoryId: "cat-1",
-        actionId: "goal-1",
-        occurrenceId: "occ-1",
-        dateKey: context.activeDate,
-      }
-    : {
-        label: "Replanifier",
+        label: "Planifier aujourd’hui",
         intent: "open_pilotage",
         categoryId: "cat-1",
-        actionId: "goal-1",
-        occurrenceId: "occ-1",
+        actionId: gapCandidate?.actionId || "goal-1",
+        occurrenceId: null,
         dateKey: context.activeDate,
-      };
+      }
+    : context.isToday
+      ? {
+          label: "Démarrer",
+          intent: "start_occurrence",
+          categoryId: "cat-1",
+          actionId: "goal-1",
+          occurrenceId: "occ-1",
+          dateKey: context.activeDate,
+        }
+      : {
+          label: "Replanifier",
+          intent: "open_pilotage",
+          categoryId: "cat-1",
+          actionId: "goal-1",
+          occurrenceId: "occ-1",
+          dateKey: context.activeDate,
+        };
   const validExample = {
     kind: "now",
-    headline: context.isToday ? `Lance ${focusTitle}` : `Replanifie ${focusTitle}`,
-    reason: context.isToday
-      ? `${focusTitle} est l'action la plus exécutable maintenant dans le plan du jour.`
-      : `${focusTitle} est prévue pour une autre date et doit être replanifiée avant exécution.`,
+    headline: shouldUseGapExample
+      ? `Planifie ${gapCandidate?.title || "une action"}`
+      : context.isToday
+        ? `Lance ${focusTitle}`
+        : `Replanifie ${focusTitle}`,
+    reason: shouldUseGapExample
+      ? `${gapCandidate?.title || "Cette action"} n'est pas encore planifiée aujourd'hui. Programme-la maintenant pour garder la continuité.`
+      : context.isToday
+        ? `${focusTitle} est l'action la plus exécutable maintenant dans le plan du jour.`
+        : `${focusTitle} est prévue pour une autre date et doit être replanifiée avant exécution.`,
     primaryAction: examplePrimaryAction,
     secondaryAction: null,
-    suggestedDurationMin: context.isToday ? 25 : null,
+    suggestedDurationMin: shouldUseGapExample
+      ? gapCandidate?.durationMin || null
+      : context.isToday
+        ? 25
+        : null,
     confidence: 0.88,
     urgency: "medium",
     uiTone: "steady",
-    toolIntent: context.isToday ? "suggest_start_occurrence" : "suggest_reschedule_option",
+    toolIntent: shouldUseGapExample
+      ? "suggest_reschedule_option"
+      : context.isToday
+        ? "suggest_start_occurrence"
+        : "suggest_reschedule_option",
     rewardSuggestion: {
       kind: "none",
       label: null,
@@ -211,7 +238,7 @@ function buildNowPrompt(context) {
     "Return all keys exactly once.",
     "Use null for nullable fields instead of omitting them.",
     "Use resume_session only when activeSessionForActiveDate is present.",
-    "Use open_pilotage only for a deterministic schedule warning.",
+    "Use open_pilotage only for a deterministic schedule warning, a required replanification, or when gapSummary.hasGapToday is true.",
     "Use start_occurrence only when isToday is true and primaryAction.dateKey equals activeDate.",
     "If isToday is false, prefer open_pilotage instead of start_occurrence.",
     "Use only start_occurrence, resume_session, open_library, or open_pilotage as primaryAction.intent for now recommendations.",
@@ -219,6 +246,10 @@ function buildNowPrompt(context) {
     "When using start_occurrence, headline and reason must mention the exact action title from focusOccurrenceSummary.title.",
     "When using start_occurrence, reason must mention why this action is the best now using focusSelectionReason, start time, or current executability.",
     "When using open_pilotage for replanification, headline or reason must mention the exact action title and its planned date/time from focusOccurrenceSummary.",
+    "When gapSummary.hasGapToday is true, use open_pilotage with toolIntent suggest_reschedule_option and recommend planning one existing action from gapSummary.candidateActionSummaries.",
+    "When gapSummary.hasGapToday is true, mention the exact action title, say it is not yet planned today, and include a simple duration if available.",
+    "Never invent a new task, an abstract task, or an action title that is not in gapSummary or focusOccurrenceSummary.",
+    "Never mention the AI, the system, or internal diagnostics.",
     "When using resume_session, mention that a session for today is already open and name the related action if activeSessionSummary.title is available.",
     "Avoid generic advice like 'avance maintenant' without naming the action or the deterministic reason.",
     "Allowed urgency values: low, medium, high.",
@@ -226,7 +257,7 @@ function buildNowPrompt(context) {
     "Allowed toolIntent values: suggest_start_occurrence, suggest_resume_session, suggest_recovery_action, suggest_reschedule_option, suggest_open_library.",
     "Allowed rewardSuggestion.kind values: none, micro_action, coins_preview, light_reset.",
     "Max lengths: headline <= 72 chars, reason <= 160 chars, action labels <= 32 chars.",
-    "Prefer resume_session, then start_occurrence, then open_library.",
+    "Prefer resume_session, then start_occurrence, then open_pilotage for deterministic warning or gap-fill, then open_library.",
     `Valid JSON example: ${JSON.stringify(validExample)}`,
     `Context: ${JSON.stringify({
       kind: "now",
@@ -253,6 +284,7 @@ function buildNowPrompt(context) {
       focusSelectionReason: context.focusSelectionReason || null,
       dayLoadSummary: context.dayLoadSummary || null,
       scheduleSignalSummary: context.scheduleSignalSummary || null,
+      gapSummary: context.gapSummary || null,
       doneToday: context.doneToday,
       missedToday: context.missedToday,
       remainingToday: context.remainingToday,

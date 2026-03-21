@@ -8,6 +8,17 @@ export const TODAY_INTERVENTION_TYPE = Object.freeze({
   REVIEW_FEEDBACK: "review_feedback",
 });
 
+export const TODAY_INTERNAL_INTERVENTION_TYPE = Object.freeze({
+  GAP_FILL_RECOMMENDATION: "gap_fill_recommendation",
+});
+
+export const TODAY_GAP_REASON = Object.freeze({
+  NONE: "none",
+  EMPTY_DAY: "empty_day",
+  EMPTY_ACTIVE_CATEGORY: "empty_active_category",
+  LOW_LOAD_DAY: "low_load_day",
+});
+
 export const TODAY_DATE_PHASE = Object.freeze({
   TODAY: "today",
   FUTURE: "future",
@@ -117,6 +128,23 @@ function normalizeIntent(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeGapSummary(gapSummary) {
+  const candidateActionSummaries = Array.isArray(gapSummary?.candidateActionSummaries)
+    ? gapSummary.candidateActionSummaries.filter(Boolean)
+    : [];
+  const gapReason =
+    typeof gapSummary?.gapReason === "string" && gapSummary.gapReason.trim()
+      ? gapSummary.gapReason.trim()
+      : TODAY_GAP_REASON.NONE;
+  return {
+    hasGapToday: Boolean(gapSummary?.hasGapToday),
+    emptyActiveCategory: Boolean(gapSummary?.emptyActiveCategory),
+    lowLoadToday: Boolean(gapSummary?.lowLoadToday),
+    gapReason: Object.values(TODAY_GAP_REASON).includes(gapReason) ? gapReason : TODAY_GAP_REASON.NONE,
+    candidateActionSummaries,
+  };
+}
+
 function normalizeDateKey(value) {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.trim()) ? value.trim() : "";
 }
@@ -175,6 +203,33 @@ export function hasDeterministicScheduleWarning({ openSessionOutsideActiveDate, 
   return Array.isArray(futureSessions) && futureSessions.length > 0;
 }
 
+export function resolveTodayGapDecision({
+  activeSessionForActiveDate = null,
+  openSessionOutsideActiveDate = null,
+  futureSessions = [],
+  activeDate = "",
+  systemToday = "",
+  focusOccurrenceForActiveDate = null,
+  gapSummary = null,
+}) {
+  if (activeSessionForActiveDate) return null;
+  const startPolicy = resolveTodayOccurrenceStartPolicy({
+    activeDate,
+    systemToday,
+    occurrenceDate: focusOccurrenceForActiveDate?.date || "",
+  });
+  if (focusOccurrenceForActiveDate && startPolicy.canStartDirectly) return null;
+  if (hasDeterministicScheduleWarning({ openSessionOutsideActiveDate, futureSessions })) return null;
+  if (focusOccurrenceForActiveDate && startPolicy.requiresReschedule) return null;
+  const normalizedGapSummary = normalizeGapSummary(gapSummary);
+  if (!normalizedGapSummary.hasGapToday) return null;
+  return {
+    interventionType: TODAY_INTERNAL_INTERVENTION_TYPE.GAP_FILL_RECOMMENDATION,
+    gapReason: normalizedGapSummary.gapReason,
+    candidateActionSummaries: normalizedGapSummary.candidateActionSummaries,
+  };
+}
+
 export function resolveTodayInterventionType({
   activeSessionForActiveDate = null,
   openSessionOutsideActiveDate = null,
@@ -184,6 +239,7 @@ export function resolveTodayInterventionType({
   focusOccurrenceForActiveDate = null,
   primaryActionDateKey = "",
   primaryActionIntent = "",
+  gapSummary = null,
 }) {
   const intent = normalizeIntent(primaryActionIntent);
   const hasActiveSessionForActiveDate = Boolean(activeSessionForActiveDate);
@@ -196,10 +252,26 @@ export function resolveTodayInterventionType({
     systemToday,
     occurrenceDate: primaryActionDateKey || focusOccurrenceForActiveDate?.date || "",
   });
+  const gapDecision = resolveTodayGapDecision({
+    activeSessionForActiveDate,
+    openSessionOutsideActiveDate,
+    futureSessions,
+    activeDate,
+    systemToday,
+    focusOccurrenceForActiveDate,
+    gapSummary,
+  });
 
   if (hasActiveSessionForActiveDate) {
     if (!intent) return TODAY_INTERVENTION_TYPE.SESSION_RESUME;
     return intent === "resume_session" ? TODAY_INTERVENTION_TYPE.SESSION_RESUME : null;
+  }
+
+  if (focusOccurrenceForActiveDate && startPolicy.canStartDirectly) {
+    if (!intent) return TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION;
+    return intent === "start_occurrence" || intent === "open_library"
+      ? TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION
+      : null;
   }
 
   if (hasWarningSignal) {
@@ -207,11 +279,15 @@ export function resolveTodayInterventionType({
     return intent === "open_pilotage" ? TODAY_INTERVENTION_TYPE.SCHEDULE_WARNING : null;
   }
 
-  if (!intent) {
+  if (intent === "open_pilotage" && focusOccurrenceForActiveDate && startPolicy.requiresReschedule) {
     return TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION;
   }
 
-  if (intent === "open_pilotage" && focusOccurrenceForActiveDate && startPolicy.requiresReschedule) {
+  if (intent === "open_pilotage" && gapDecision) {
+    return TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION;
+  }
+
+  if (!intent) {
     return TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION;
   }
 
@@ -232,6 +308,7 @@ export function diagnoseTodayIntervention({
   activeDate = "",
   systemToday = "",
   focusOccurrenceForActiveDate = null,
+  gapSummary = null,
 }) {
   const intent = normalizeIntent(primaryActionIntent);
   const hasActiveSessionForActiveDate = Boolean(activeSessionForActiveDate);
@@ -243,6 +320,15 @@ export function diagnoseTodayIntervention({
     activeDate,
     systemToday,
     occurrenceDate: primaryActionDateKey || focusOccurrenceForActiveDate?.date || "",
+  });
+  const gapDecision = resolveTodayGapDecision({
+    activeSessionForActiveDate,
+    openSessionOutsideActiveDate,
+    futureSessions,
+    activeDate,
+    systemToday,
+    focusOccurrenceForActiveDate,
+    gapSummary,
   });
 
   if (intent === "resume_session" && !hasActiveSessionForActiveDate) {
@@ -262,7 +348,7 @@ export function diagnoseTodayIntervention({
   }
 
   if (intent === "open_pilotage" && !hasWarningSignal) {
-    if (focusOccurrenceForActiveDate && startPolicy.requiresReschedule) {
+    if ((focusOccurrenceForActiveDate && startPolicy.requiresReschedule) || gapDecision) {
       const resolvedInterventionType = resolveTodayInterventionType({
         activeSessionForActiveDate,
         openSessionOutsideActiveDate,
@@ -272,6 +358,7 @@ export function diagnoseTodayIntervention({
         focusOccurrenceForActiveDate,
         primaryActionDateKey,
         primaryActionIntent: intent,
+        gapSummary,
       });
       return {
         ok: requestedInterventionType ? requestedInterventionType === resolvedInterventionType : true,
@@ -298,6 +385,7 @@ export function diagnoseTodayIntervention({
     focusOccurrenceForActiveDate,
     primaryActionDateKey,
     primaryActionIntent: intent,
+    gapSummary,
   });
 
   if (!resolvedInterventionType) {
@@ -358,6 +446,7 @@ export function isTodayInterventionAllowed({
   activeDate = "",
   systemToday = "",
   focusOccurrenceForActiveDate = null,
+  gapSummary = null,
 }) {
   const spec = TODAY_INTERVENTION_REGISTRY[interventionType];
   const intent = normalizeIntent(primaryActionIntent);
@@ -367,6 +456,15 @@ export function isTodayInterventionAllowed({
     systemToday,
     occurrenceDate: primaryActionDateKey || focusOccurrenceForActiveDate?.date || "",
   });
+  const gapDecision = resolveTodayGapDecision({
+    activeSessionForActiveDate,
+    openSessionOutsideActiveDate,
+    futureSessions,
+    activeDate,
+    systemToday,
+    focusOccurrenceForActiveDate,
+    gapSummary,
+  });
   if (!spec?.enabled || !intent || !spec.allowedCtas.includes(intent) || !allowedPrimaryIntents.includes(intent)) {
     return false;
   }
@@ -374,7 +472,11 @@ export function isTodayInterventionAllowed({
     if (intent === "start_occurrence" && !startPolicy.canStartDirectly) {
       return false;
     }
-    if (intent === "open_pilotage" && (!focusOccurrenceForActiveDate || !startPolicy.requiresReschedule)) {
+    if (
+      intent === "open_pilotage" &&
+      !(focusOccurrenceForActiveDate && startPolicy.requiresReschedule) &&
+      !gapDecision
+    ) {
       return false;
     }
   }
@@ -399,6 +501,7 @@ export function isTodayInterventionAllowed({
     focusOccurrenceForActiveDate,
     primaryActionDateKey,
     primaryActionIntent: intent,
+    gapSummary,
   });
   return resolvedType === interventionType;
 }

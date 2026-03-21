@@ -1,4 +1,5 @@
 import {
+  TODAY_GAP_REASON,
   TODAY_DIAGNOSTIC_REJECTION_REASON,
   TODAY_INTERVENTION_TYPE,
   resolveTodayOccurrenceStartPolicy,
@@ -24,6 +25,10 @@ function normalizeText(value) {
 function findOccurrenceById(occurrences, occurrenceId) {
   if (!Array.isArray(occurrences) || !occurrenceId) return null;
   return occurrences.find((occurrence) => occurrence && occurrence.id === occurrenceId) || null;
+}
+
+function formatDurationLabel(durationMin) {
+  return Number.isFinite(durationMin) ? `${durationMin} min` : "";
 }
 
 function buildFallback(localHero, diagnostics = {}) {
@@ -56,12 +61,14 @@ export function buildLocalTodayHeroModel({
   activeDate = "",
   systemTodayKey = "",
   activeCategoryId = null,
+  activeCategoryName = null,
   activeSessionForActiveDate = null,
   openSessionOutsideActiveDate = null,
   futureSessions = [],
   focusOccurrenceForActiveDate = null,
   focusTitle = "",
   focusMeta = "",
+  gapSummary = null,
 }) {
   const interventionType = resolveTodayInterventionType({
     activeSessionForActiveDate,
@@ -70,12 +77,18 @@ export function buildLocalTodayHeroModel({
     activeDate,
     systemToday: systemTodayKey,
     focusOccurrenceForActiveDate,
+    gapSummary,
   });
   const startPolicy = resolveTodayOccurrenceStartPolicy({
     activeDate,
     systemToday: systemTodayKey,
     occurrenceDate: focusOccurrenceForActiveDate?.date || "",
   });
+  const gapCandidate = Array.isArray(gapSummary?.candidateActionSummaries)
+    ? gapSummary.candidateActionSummaries[0] || null
+    : null;
+  const durationLabel = formatDurationLabel(gapCandidate?.durationMin);
+  const candidateWithDuration = [gapCandidate?.title || "", durationLabel].filter(Boolean).join(" • ");
 
   if (interventionType === TODAY_INTERVENTION_TYPE.SESSION_RESUME) {
     return {
@@ -86,6 +99,20 @@ export function buildLocalTodayHeroModel({
       primaryAction: {
         kind: "resume_session",
         categoryId: activeCategoryId,
+      },
+      secondaryLabel: "Voir progression",
+    };
+  }
+
+  if (focusOccurrenceForActiveDate && startPolicy.canStartDirectly) {
+    return {
+      interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
+      title: focusTitle || "Action du moment",
+      meta: focusMeta || "C'est l'action la plus exécutable maintenant.",
+      primaryLabel: "Démarrer",
+      primaryAction: {
+        kind: "start_occurrence",
+        occurrence: focusOccurrenceForActiveDate,
       },
       secondaryLabel: "Voir progression",
     };
@@ -126,17 +153,50 @@ export function buildLocalTodayHeroModel({
     };
   }
 
+  if (gapSummary?.hasGapToday) {
+    let title = "Aucune action prévue aujourd’hui";
+    let meta = gapCandidate
+      ? `Tu peux planifier ${candidateWithDuration || gapCandidate.title} aujourd'hui pour maintenir la continuité.`
+      : "Planifie une action simple aujourd'hui pour maintenir la continuité.";
+
+    if (gapSummary.gapReason === TODAY_GAP_REASON.EMPTY_ACTIVE_CATEGORY && activeCategoryName) {
+      title = `Rien de prévu en ${activeCategoryName} aujourd’hui`;
+      meta = gapCandidate
+        ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. Une courte action suffit pour maintenir l'élan.`
+        : "Une courte action suffit pour maintenir l'élan aujourd'hui.";
+    } else if (gapSummary.gapReason === TODAY_GAP_REASON.LOW_LOAD_DAY) {
+      title = gapCandidate ? `Ajoute ${gapCandidate.title} aujourd’hui` : "Le plan du jour reste léger";
+      meta = gapCandidate
+        ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. ${durationLabel || "Une courte durée"} suffit pour compléter la journée.`
+        : "Une action simple peut compléter la journée sans surcharge.";
+    }
+
+    return {
+      interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
+      title,
+      meta,
+      primaryLabel: "Planifier aujourd’hui",
+      primaryAction: {
+        kind: "open_pilotage",
+      },
+      secondaryLabel: "Voir progression",
+    };
+  }
+
   return {
     interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
     title: focusTitle || "Aucune action planifiée pour cette date.",
-    meta: focusMeta || "Crée ou planifie une action depuis Bibliothèque.",
-    primaryLabel: focusOccurrenceForActiveDate ? "Démarrer" : "Aucune action active",
-    primaryAction: focusOccurrenceForActiveDate
-      ? {
-          kind: "start_occurrence",
-          occurrence: focusOccurrenceForActiveDate,
-        }
-      : null,
+    meta:
+      activeDate === systemTodayKey
+        ? focusMeta || "Planifie une action simple pour garder le rythme."
+        : focusMeta || "Crée ou planifie une action depuis Bibliothèque.",
+    primaryLabel: activeDate === systemTodayKey ? "Planifier aujourd’hui" : "Aucune action active",
+    primaryAction:
+      activeDate === systemTodayKey
+        ? {
+            kind: "open_pilotage",
+          }
+        : null,
     secondaryLabel: "Voir progression",
   };
 }

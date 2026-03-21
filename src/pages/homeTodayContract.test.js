@@ -22,6 +22,9 @@ describe("home today canonical contract", () => {
     expect(home).toContain("createAiNowContextSignature({");
     expect(home).toContain("activeSessionId: activeSessionForActiveDate?.id || activeSessionForActiveDate?.occurrenceId || null");
     expect(home).toContain("contextSignature: aiNowContextSignature");
+    expect(home).toContain("const localGapSummary = useMemo(");
+    expect(home).toContain("buildLocalGapSummary({");
+    expect(home).toContain("gapSummary: localGapSummary");
   });
 
   it("shows the focus block only when it has adjustment value", () => {
@@ -56,5 +59,14 @@ describe("home today canonical contract", () => {
     expect(home).toContain("deriveTodayHeroChrome({");
     expect(home).toContain("todayDecisionDiagnostics");
     expect(home).not.toContain("const typedHeroHint = useTypingReveal(");
+  });
+
+  it("keeps a concrete planifier aujourd'hui fallback for passive Today states", () => {
+    const adapter = readSrc("features/today/aiNowHeroAdapter.js");
+
+    expect(adapter).toContain('primaryLabel: "Planifier aujourd’hui"');
+    expect(adapter).toContain("gapSummary?.hasGapToday");
+    expect(adapter).toContain("gapCandidate.title");
+    expect(adapter).not.toContain('primaryLabel: "Aucune action active"');
   });
 });
