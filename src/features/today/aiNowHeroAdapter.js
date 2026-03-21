@@ -95,7 +95,9 @@ export function buildLocalTodayHeroModel({
     return {
       interventionType,
       title: "Une session ouverte est planifiée sur une autre date.",
-      meta: "Vérifie le planning avant de reprendre.",
+      meta: openSessionOutsideActiveDate?.dateKey
+        ? `La session ouverte reste liée au ${openSessionOutsideActiveDate.dateKey}. Vérifie le planning avant de reprendre.`
+        : "Vérifie le planning avant de reprendre.",
       primaryLabel: "Voir pilotage",
       primaryAction: {
         kind: "open_pilotage",
@@ -110,8 +112,12 @@ export function buildLocalTodayHeroModel({
       title: focusTitle || "Cette action n'est pas exécutable directement aujourd'hui.",
       meta:
         startPolicy.datePhase === "future"
-          ? "Elle est planifiée pour une autre date. Replanifie-la pour l'exécuter aujourd'hui."
-          : "Cette occurrence appartient à une date passée. Replanifie-la avant de la relancer.",
+          ? [focusMeta, "Planifiée pour une autre date. Replanifie-la pour l'exécuter aujourd'hui."]
+              .filter(Boolean)
+              .join(" • ")
+          : [focusMeta, "Cette occurrence appartient à une date passée. Replanifie-la avant de la relancer."]
+              .filter(Boolean)
+              .join(" • "),
       primaryLabel: startPolicy.datePhase === "future" ? "Replanifier aujourd’hui" : "Replanifier",
       primaryAction: {
         kind: "open_pilotage",
@@ -143,8 +149,11 @@ export function deriveTodayHeroChrome({ todayDecisionDiagnostics }) {
       mode: "loading",
       showBadge: true,
       badgeLabel: "Coach IA",
+      badgeTone: "ai",
+      showLiveDot: true,
       showHint: true,
-      hintText: "Analyse en cours",
+      hintText: "Analyse du plan du jour",
+      hintTone: "loading",
     };
   }
 
@@ -153,8 +162,11 @@ export function deriveTodayHeroChrome({ todayDecisionDiagnostics }) {
       mode: "coach",
       showBadge: true,
       badgeLabel: "Coach IA",
+      badgeTone: "ai",
+      showLiveDot: false,
       showHint: false,
       hintText: "",
+      hintTone: "",
     };
   }
 
@@ -166,8 +178,11 @@ export function deriveTodayHeroChrome({ todayDecisionDiagnostics }) {
       mode: "guarded",
       showBadge: true,
       badgeLabel: "Coach",
+      badgeTone: "guarded",
+      showLiveDot: false,
       showHint: true,
       hintText: "Suggestion sécurisée",
+      hintTone: "guarded",
     };
   }
 
@@ -175,8 +190,11 @@ export function deriveTodayHeroChrome({ todayDecisionDiagnostics }) {
     mode: "local",
     showBadge: false,
     badgeLabel: "",
+    badgeTone: "",
+    showLiveDot: false,
     showHint: false,
     hintText: "",
+    hintTone: "",
   };
 }
 

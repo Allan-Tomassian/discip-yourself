@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  AI_NOW_CACHE_TTL_MS,
+  createAiNowContextSignature,
   createAiNowRequestKey,
   deriveAiNowRequestDiagnostics,
   getAiNowEligibility,
+  isAiNowCacheFresh,
   resolveAiNowTrigger,
 } from "./useAiNow";
 import { todayLocalKey } from "../utils/dateKey";
@@ -67,6 +70,26 @@ describe("useAiNow helpers", () => {
     ).toBe("screen_open");
   });
 
+  it("utilise screen_open quand Today devient eligible apres hydratation auth", () => {
+    expect(
+      resolveAiNowTrigger({
+        previous: {
+          initialized: true,
+          shouldFetch: false,
+          selectedDateKey: todayLocalKey(),
+          activeCategoryId: "c1",
+          activeSessionId: null,
+          contextSignature: "ctx_1",
+        },
+        eligibilityDidBecomeReady: true,
+        selectedDateKey: todayLocalKey(),
+        activeCategoryId: "c1",
+        activeSessionId: null,
+        contextSignature: "ctx_1",
+      })
+    ).toBe("screen_open");
+  });
+
   it("utilise resume si une session active apparait", () => {
     expect(
       resolveAiNowTrigger({
@@ -99,6 +122,25 @@ describe("useAiNow helpers", () => {
     ).toBe("screen_open");
   });
 
+  it("utilise screen_open si la signature canonique Today change", () => {
+    expect(
+      resolveAiNowTrigger({
+        previous: {
+          initialized: true,
+          shouldFetch: true,
+          selectedDateKey: todayLocalKey(),
+          activeCategoryId: "c1",
+          activeSessionId: null,
+          contextSignature: "ctx_1",
+        },
+        selectedDateKey: todayLocalKey(),
+        activeCategoryId: "c1",
+        activeSessionId: null,
+        contextSignature: "ctx_2",
+      })
+    ).toBe("screen_open");
+  });
+
   it("construit une cle de cache stable", () => {
     expect(
       createAiNowRequestKey({
@@ -106,13 +148,63 @@ describe("useAiNow helpers", () => {
         activeCategoryId: "c1",
         activeSessionId: "s1",
         trigger: "resume",
+        contextSignature: "ctx_1",
       })
-    ).toBe("2026-03-13|c1|s1|resume");
+    ).toBe("2026-03-13|c1|s1|resume|ctx_1");
+  });
+
+  it("construit une signature canonique Today stable", () => {
+    expect(
+      createAiNowContextSignature({
+        activeDate: "2026-03-13",
+        activeCategoryId: "cat-1",
+        activeSessionForActiveDate: {
+          id: "sess-1",
+          occurrenceId: "occ-1",
+          dateKey: "2026-03-13",
+          runtimePhase: "in_progress",
+        },
+        openSessionOutsideActiveDate: {
+          id: "sess-2",
+          dateKey: "2026-03-14",
+        },
+        futureSessions: [{ id: "sess-2", dateKey: "2026-03-14" }],
+        focusOccurrenceForActiveDate: {
+          id: "occ-1",
+          date: "2026-03-13",
+          status: "planned",
+          start: "09:00",
+        },
+        plannedActionsForActiveDate: [
+          { id: "occ-2", date: "2026-03-13", status: "planned", start: "11:00" },
+          { id: "occ-1", date: "2026-03-13", status: "planned", start: "09:00" },
+        ],
+      })
+    ).toBe(
+      [
+        "2026-03-13",
+        "cat-1",
+        "sess-1:occ-1:2026-03-13:in_progress",
+        "sess-2::2026-03-14",
+        "sess-2::2026-03-14",
+        "occ-1:2026-03-13:planned:09:00",
+        "occ-1:2026-03-13:planned:09:00,occ-2:2026-03-13:planned:11:00",
+      ].join("|")
+    );
+  });
+
+  it("reconnait une entree de cache fraiche ou stale", () => {
+    const nowMs = 1_000_000;
+    expect(isAiNowCacheFresh({ fetchedAt: nowMs - 500 }, nowMs)).toBe(true);
+    expect(isAiNowCacheFresh({ fetchedAt: nowMs - AI_NOW_CACHE_TTL_MS - 1 }, nowMs)).toBe(false);
   });
 
   it("expose le diagnostic backend quand la reponse coach est disponible", () => {
     const diagnostics = deriveAiNowRequestDiagnostics({
       state: "success",
+      deliverySource: "network",
+      hadVisibleLoading: true,
+      fetchedAt: 1234,
       coach: {
         meta: {
           diagnostics: {
@@ -130,6 +222,10 @@ describe("useAiNow helpers", () => {
         resolutionStatus: "accepted_ai",
         rejectionReason: "none",
       },
+      deliverySource: "network",
+      isRefreshing: false,
+      hadVisibleLoading: true,
+      fetchedAt: 1234,
     });
   });
 });

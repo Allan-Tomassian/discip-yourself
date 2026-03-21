@@ -166,9 +166,10 @@ function buildSystemPrompt(locale = DEFAULT_OUTPUT_LOCALE) {
 }
 
 function buildNowPrompt(context) {
+  const focusTitle = context.focusOccurrenceSummary?.title || "Action";
   const examplePrimaryAction = context.isToday
     ? {
-        label: "Demarrer",
+        label: "Démarrer",
         intent: "start_occurrence",
         categoryId: "cat-1",
         actionId: "goal-1",
@@ -185,10 +186,10 @@ function buildNowPrompt(context) {
       };
   const validExample = {
     kind: "now",
-    headline: context.isToday ? "Lance ta session prioritaire" : "Replanifie l'action prioritaire",
+    headline: context.isToday ? `Lance ${focusTitle}` : `Replanifie ${focusTitle}`,
     reason: context.isToday
-      ? "C'est l'action la plus utile et la plus exécutable maintenant."
-      : "Cette action doit etre replanifiee avant execution.",
+      ? `${focusTitle} est l'action la plus exécutable maintenant dans le plan du jour.`
+      : `${focusTitle} est prévue pour une autre date et doit être replanifiée avant exécution.`,
     primaryAction: examplePrimaryAction,
     secondaryAction: null,
     suggestedDurationMin: context.isToday ? 25 : null,
@@ -215,6 +216,11 @@ function buildNowPrompt(context) {
     "If isToday is false, prefer open_pilotage instead of start_occurrence.",
     "Use only start_occurrence, resume_session, open_library, or open_pilotage as primaryAction.intent for now recommendations.",
     "Do not use open_today as primaryAction.intent.",
+    "When using start_occurrence, headline and reason must mention the exact action title from focusOccurrenceSummary.title.",
+    "When using start_occurrence, reason must mention why this action is the best now using focusSelectionReason, start time, or current executability.",
+    "When using open_pilotage for replanification, headline or reason must mention the exact action title and its planned date/time from focusOccurrenceSummary.",
+    "When using resume_session, mention that a session for today is already open and name the related action if activeSessionSummary.title is available.",
+    "Avoid generic advice like 'avance maintenant' without naming the action or the deterministic reason.",
     "Allowed urgency values: low, medium, high.",
     "Allowed uiTone values: steady, direct, reset.",
     "Allowed toolIntent values: suggest_start_occurrence, suggest_resume_session, suggest_recovery_action, suggest_reschedule_option, suggest_open_library.",
@@ -226,17 +232,32 @@ function buildNowPrompt(context) {
       kind: "now",
       activeDate: context.activeDate,
       isToday: context.isToday,
-      activeCategoryId: context.activeCategoryId,
-      activeSessionForActiveDate: context.activeSessionForActiveDate,
-      openSessionOutsideActiveDate: context.openSessionOutsideActiveDate,
+      activeCategory: context.category
+        ? {
+            id: context.category.id || null,
+            name: context.category.name || null,
+          }
+        : null,
+      activeSessionSummary: context.activeSessionSummary || null,
+      openSessionOutsideActiveDate: context.openSessionOutsideActiveDate
+        ? {
+            id: context.openSessionOutsideActiveDate.id || null,
+            dateKey: context.openSessionOutsideActiveDate.dateKey || null,
+          }
+        : null,
       futureSessionsCount: Array.isArray(context.futureSessions) ? context.futureSessions.length : 0,
-      focusOccurrenceForActiveDate: context.focusOccurrenceForActiveDate,
+      focusOccurrenceSummary: context.focusOccurrenceSummary || null,
+      alternativeOccurrenceSummaries: Array.isArray(context.alternativeOccurrenceSummaries)
+        ? context.alternativeOccurrenceSummaries
+        : [],
+      focusSelectionReason: context.focusSelectionReason || null,
+      dayLoadSummary: context.dayLoadSummary || null,
+      scheduleSignalSummary: context.scheduleSignalSummary || null,
       doneToday: context.doneToday,
       missedToday: context.missedToday,
       remainingToday: context.remainingToday,
       categoryStatus: context.categoryStatus,
       quotaRemaining: context.quotaRemaining,
-      recentHistory: context.recentHistory,
     })}`,
   ].join("\n");
 }

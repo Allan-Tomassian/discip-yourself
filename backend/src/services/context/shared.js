@@ -30,6 +30,10 @@ export function resolveGoalMap(data) {
   return new Map(safeArray(data?.goals).filter((goal) => goal?.id).map((goal) => [goal.id, goal]));
 }
 
+export function resolveCategoryMap(data) {
+  return new Map(safeArray(data?.categories).filter((category) => category?.id).map((category) => [category.id, category]));
+}
+
 export function resolveOccurrencesForDate(data, dateKey, categoryId = null) {
   const goalsById = resolveGoalMap(data);
   return safeArray(data?.occurrences).filter((occurrence) => {
@@ -146,13 +150,23 @@ function sortByPriorityThenStable(left, right) {
   return stableKey(left).localeCompare(stableKey(right));
 }
 
-export function resolveFocusOccurrenceForDate({ dateKey, now = new Date(), occurrences = [] }) {
+export function resolveFocusOccurrenceSelectionForDate({ dateKey, now = new Date(), occurrences = [] }) {
   const normalizedDateKey = normalizeDateKey(dateKey);
-  if (!normalizedDateKey) return null;
+  if (!normalizedDateKey) {
+    return {
+      occurrence: null,
+      reason: null,
+    };
+  }
   const list = safeArray(occurrences).filter(
     (occurrence) => occurrence && occurrence.status === "planned" && normalizeDateKey(occurrence.date) === normalizedDateKey
   );
-  if (!list.length) return null;
+  if (!list.length) {
+    return {
+      occurrence: null,
+      reason: null,
+    };
+  }
 
   const todayKey = normalizeDateKey(now);
   const nowMinutes =
@@ -164,7 +178,12 @@ export function resolveFocusOccurrenceForDate({ dateKey, now = new Date(), occur
     .filter((item) => Number.isFinite(item.startMinutes) && item.startMinutes >= nowMinutes)
     .sort((left, right) => left.startMinutes - right.startMinutes || sortByPriorityThenStable(left.occurrence, right.occurrence));
 
-  if (fixedFuture.length) return fixedFuture[0].occurrence;
+  if (fixedFuture.length) {
+    return {
+      occurrence: fixedFuture[0].occurrence,
+      reason: "upcoming_fixed",
+    };
+  }
 
   const fixedAll = list
     .filter((occurrence) => isFixedOccurrence(occurrence))
@@ -172,10 +191,22 @@ export function resolveFocusOccurrenceForDate({ dateKey, now = new Date(), occur
     .filter((item) => Number.isFinite(item.startMinutes))
     .sort((left, right) => left.startMinutes - right.startMinutes || sortByPriorityThenStable(left.occurrence, right.occurrence));
 
-  if (fixedAll.length) return fixedAll[0].occurrence;
+  if (fixedAll.length) {
+    return {
+      occurrence: fixedAll[0].occurrence,
+      reason: "earliest_fixed",
+    };
+  }
 
   const nonFixed = list.filter((occurrence) => !isFixedOccurrence(occurrence)).slice().sort(sortByPriorityThenStable);
-  return nonFixed[0] || null;
+  return {
+    occurrence: nonFixed[0] || null,
+    reason: nonFixed.length ? "highest_priority_flexible" : null,
+  };
+}
+
+export function resolveFocusOccurrenceForDate({ dateKey, now = new Date(), occurrences = [] }) {
+  return resolveFocusOccurrenceSelectionForDate({ dateKey, now, occurrences }).occurrence;
 }
 
 export function buildWindowStats(data, dateKey, days) {

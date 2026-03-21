@@ -475,6 +475,8 @@ test("POST /ai/now routes a future planned occurrence to pilotage instead of dir
   assert.equal(payload.interventionType, "today_recommendation");
   assert.equal(payload.primaryAction.intent, "open_pilotage");
   assert.equal(payload.primaryAction.label, "Replanifier aujourd’hui");
+  assert.match(payload.reason, /Deep work/i);
+  assert.match(payload.reason, /09:00/);
   assert.equal(payload.toolIntent, "suggest_reschedule_option");
   await app.close();
 });
@@ -508,6 +510,8 @@ test("POST /ai/now routes a past planned occurrence to pilotage instead of direc
   assert.equal(payload.interventionType, "today_recommendation");
   assert.equal(payload.primaryAction.intent, "open_pilotage");
   assert.equal(payload.primaryAction.label, "Replanifier");
+  assert.match(payload.reason, /Deep work/i);
+  assert.match(payload.reason, /09:00/);
   assert.equal(payload.toolIntent, "suggest_reschedule_option");
   await app.close();
 });
@@ -570,6 +574,11 @@ test("POST /ai/now returns ai decision when OpenAI returns valid structured outp
   assert.match(capturedPrompt, /headline, reason, primaryAction\.label/i);
   assert.match(capturedPrompt, /Return all keys exactly once/i);
   assert.match(capturedPrompt, /Use null for nullable fields/i);
+  assert.match(capturedPrompt, /focusOccurrenceSummary/i);
+  assert.match(capturedPrompt, /alternativeOccurrenceSummaries/i);
+  assert.match(capturedPrompt, /focusSelectionReason/i);
+  assert.match(capturedPrompt, /When using start_occurrence, headline and reason must mention the exact action title/i);
+  assert.match(capturedPrompt, /When using open_pilotage for replanification, headline or reason must mention the exact action title/i);
   assert.match(capturedPrompt, /Valid JSON example/i);
   await app.close();
 });

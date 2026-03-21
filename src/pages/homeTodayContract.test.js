@@ -16,7 +16,12 @@ describe("home today canonical contract", () => {
     expect(home).toContain("activeSessionForActiveDate");
     expect(home).toContain("openSessionOutsideActiveDate");
     expect(home).toContain("futureSessions");
+    expect(home).toContain("plannedActionsForActiveDate");
+    expect(home).toContain("focusOccurrenceForActiveDate");
+    expect(home).toContain("const aiNowContextSignature = useMemo(");
+    expect(home).toContain("createAiNowContextSignature({");
     expect(home).toContain("activeSessionId: activeSessionForActiveDate?.id || activeSessionForActiveDate?.occurrenceId || null");
+    expect(home).toContain("contextSignature: aiNowContextSignature");
   });
 
   it("shows the focus block only when it has adjustment value", () => {
@@ -45,8 +50,11 @@ describe("home today canonical contract", () => {
     expect(home).toContain("resolveTodayOccurrenceStartPolicy");
     expect(home).toContain("if (!startPolicy.canStartDirectly) return;");
     expect(home).toContain("const typedHeroTitle = useTypingReveal(");
-    expect(home).toContain("const typedHeroHint = useTypingReveal(");
+    expect(home).toContain("const shouldAnimateCoachResponse =");
+    expect(home).toContain('aiNow.requestDiagnostics.deliverySource === "network"');
+    expect(home).toContain("aiNow.requestDiagnostics.hadVisibleLoading");
     expect(home).toContain("deriveTodayHeroChrome({");
     expect(home).toContain("todayDecisionDiagnostics");
+    expect(home).not.toContain("const typedHeroHint = useTypingReveal(");
   });
 });

@@ -40,6 +40,10 @@ test("buildNowContext keeps only the active session that belongs to the active d
   assert.equal(context.openSessionOutsideActiveDate, null);
   assert.deepEqual(context.futureSessions, []);
   assert.equal(context.focusOccurrenceForActiveDate?.id, "occ-1");
+  assert.equal(context.focusOccurrenceSummary?.title, "Deep work");
+  assert.equal(context.focusOccurrenceSummary?.timeLabel, "à 17:00");
+  assert.equal(context.focusSelectionReason, "upcoming_fixed");
+  assert.equal(context.dayLoadSummary?.plannedCount, 1);
   assert.equal(context.activeSession?.id, "sess-today");
   assert.equal(context.topOccurrence?.id, "occ-1");
 });
@@ -67,6 +71,7 @@ test("buildNowContext distinguishes a future open session without polluting toda
   assert.equal(context.openSessionOutsideActiveDate?.id, "sess-future");
   assert.equal(context.futureSessions.length, 1);
   assert.equal(context.focusOccurrenceForActiveDate?.id, "occ-1");
+  assert.equal(context.scheduleSignalSummary?.type, "future_open_session");
   assert.equal(context.activeSession, null);
   assert.equal(context.topOccurrence?.id, "occ-1");
 });
@@ -85,4 +90,5 @@ test("buildNowContext marks a future selected date as not today", () => {
   assert.equal(context.activeDate, "2026-03-08");
   assert.equal(context.isToday, false);
   assert.equal(context.focusOccurrenceForActiveDate?.id, "occ-2");
+  assert.equal(context.focusOccurrenceSummary?.title, "Deep work");
 });

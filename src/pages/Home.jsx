@@ -52,7 +52,7 @@ import {
   deriveTodayHeroModel,
 } from "../features/today/aiNowHeroAdapter";
 import { useTypingReveal } from "../features/today/useTypingReveal";
-import { useAiNow } from "../hooks/useAiNow";
+import { createAiNowContextSignature, useAiNow } from "../hooks/useAiNow";
 
 // TOUR MAP:
 // - primary_action: start session (GO) for today
@@ -660,6 +660,8 @@ export default function Home({
     activeSessionForActiveDate,
     openSessionOutsideActiveDate,
     futureSessions,
+    plannedActionsForActiveDate,
+    focusOccurrenceForActiveDate,
     focusCategory,
     selectedCategoryId: executionCategoryId,
     activeHabits,
@@ -673,10 +675,32 @@ export default function Home({
     isFocusOverride,
     alternativeCandidates,
   } = todayNowModel;
+  const aiNowContextSignature = useMemo(
+    () =>
+      createAiNowContextSignature({
+        activeDate,
+        activeCategoryId: executionCategoryId,
+        activeSessionForActiveDate,
+        openSessionOutsideActiveDate,
+        futureSessions,
+        focusOccurrenceForActiveDate,
+        plannedActionsForActiveDate,
+      }),
+    [
+      activeDate,
+      activeSessionForActiveDate,
+      executionCategoryId,
+      focusOccurrenceForActiveDate,
+      futureSessions,
+      openSessionOutsideActiveDate,
+      plannedActionsForActiveDate,
+    ]
+  );
   const aiNow = useAiNow({
     selectedDateKey,
     activeCategoryId: executionCategoryId,
     activeSessionId: activeSessionForActiveDate?.id || activeSessionForActiveDate?.occurrenceId || null,
+    contextSignature: aiNowContextSignature,
     isAuthenticated: Boolean(session),
     enabled: true,
   });
@@ -1522,16 +1546,16 @@ export default function Home({
         activeSessionForActiveDate,
         openSessionOutsideActiveDate,
         futureSessions,
-        plannedActionsForActiveDate: occurrencesForSelectedDay,
-        focusOccurrenceForActiveDate: focusOccurrence,
+        plannedActionsForActiveDate,
+        focusOccurrenceForActiveDate,
       }),
     [
       activeSessionForActiveDate,
       activeDate,
-      focusOccurrence,
+      focusOccurrenceForActiveDate,
       futureSessions,
-      occurrencesForSelectedDay,
       openSessionOutsideActiveDate,
+      plannedActionsForActiveDate,
       systemToday,
     ]
   );
@@ -1578,21 +1602,15 @@ export default function Home({
       }),
     [todayDecisionDiagnostics]
   );
-  const heroTypingEnabled = todayDecisionDiagnostics.resolutionStatus !== "local_only";
-  const typedHeroHint = useTypingReveal(heroChrome.hintText, {
-    enabled: heroTypingEnabled && heroChrome.showHint,
-    charsPerTick: 2,
-    intervalMs: 20,
-  });
+  const shouldAnimateCoachResponse =
+    aiNow.requestDiagnostics.deliverySource === "network" &&
+    aiNow.requestDiagnostics.hadVisibleLoading &&
+    (todayDecisionDiagnostics.resolutionStatus === "backend_accepted" ||
+      todayDecisionDiagnostics.resolutionStatus === "backend_rules");
   const typedHeroTitle = useTypingReveal(heroViewModel.title, {
-    enabled: heroTypingEnabled,
-    charsPerTick: 2,
-    intervalMs: 18,
-  });
-  const typedHeroMeta = useTypingReveal(heroViewModel.meta || "", {
-    enabled: heroTypingEnabled && Boolean(heroViewModel.meta),
-    charsPerTick: 3,
-    intervalMs: 16,
+    enabled: shouldAnimateCoachResponse,
+    charsPerTick: 1,
+    intervalMs: 34,
   });
   useEffect(() => {
     const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
@@ -1656,10 +1674,12 @@ export default function Home({
                   className={[
                     "todayHeroCoachBadge",
                     heroChrome.mode === "loading" ? "isLoading" : "",
+                    heroChrome.badgeTone ? `is-${heroChrome.badgeTone}` : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
                 >
+                  {heroChrome.showLiveDot ? <span className="todayHeroCoachBadgeDot" aria-hidden="true" /> : null}
                   {heroChrome.badgeLabel}
                 </span>
               ) : null}
@@ -1667,9 +1687,28 @@ export default function Home({
             <div className="todayHeroDate">{selectedDateLabel}</div>
           </div>
           <div className="todayHeroBody">
-            {heroChrome.showHint ? <div className="todayHeroCoachHint">{typedHeroHint}</div> : null}
+            {heroChrome.showHint ? (
+              <div
+                className={[
+                  "todayHeroCoachHint",
+                  heroChrome.mode === "loading" ? "isLoading" : "",
+                  heroChrome.hintTone ? `is-${heroChrome.hintTone}` : "",
+                ].filter(Boolean).join(" ")}
+              >
+                {heroChrome.hintText}
+              </div>
+            ) : null}
             <div className="todayHeroTitle">{typedHeroTitle}</div>
-            {heroViewModel.meta ? <div className="todayHeroMeta">{typedHeroMeta}</div> : null}
+            {heroViewModel.meta ? (
+              <div
+                className={[
+                  "todayHeroMeta",
+                  shouldAnimateCoachResponse ? "isRevealed" : "",
+                ].filter(Boolean).join(" ")}
+              >
+                {heroViewModel.meta}
+              </div>
+            ) : null}
           </div>
           <div className="todayHeroActions GatePrimaryCtaRow">
             <GateButton

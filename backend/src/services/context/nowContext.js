@@ -1,8 +1,11 @@
 import {
   buildCategoryStatus,
+  resolveCategoryMap,
   resolveFocusOccurrenceForDate,
+  resolveFocusOccurrenceSelectionForDate,
   resolvePlannedActionsForDate,
   resolveSessionSplitForDate,
+  sortOccurrencesForExecution,
   buildWindowStats,
   normalizeDateKey,
   resolveCategory,
@@ -10,6 +13,125 @@ import {
   resolveOccurrencesForDate,
   safeArray,
 } from "./shared.js";
+import { resolveTodayOccurrenceStartPolicy } from "../../../../src/domain/todayIntervention.js";
+
+function buildOccurrenceById(data) {
+  return new Map(safeArray(data?.occurrences).filter((occurrence) => occurrence?.id).map((occurrence) => [occurrence.id, occurrence]));
+}
+
+function resolveOccurrenceStartTime(occurrence) {
+  const startTime =
+    typeof occurrence?.start === "string" && occurrence.start
+      ? occurrence.start
+      : typeof occurrence?.slotKey === "string" && occurrence.slotKey
+        ? occurrence.slotKey
+        : "";
+  return startTime || null;
+}
+
+function buildOccurrenceSummary({ occurrence, goalsById, categoriesById }) {
+  if (!occurrence) return null;
+  const goal = occurrence.goalId ? goalsById.get(occurrence.goalId) || null : null;
+  const category = goal?.categoryId ? categoriesById.get(goal.categoryId) || null : null;
+  const startTime = resolveOccurrenceStartTime(occurrence);
+  return {
+    occurrenceId: occurrence.id || null,
+    goalId: occurrence.goalId || null,
+    title: goal?.title || occurrence.title || "Action",
+    categoryName: category?.name || null,
+    dateKey: occurrence.date || null,
+    startTime,
+    timeLabel: startTime ? `à ${startTime}` : null,
+    durationMin: Number.isFinite(occurrence.durationMinutes) ? occurrence.durationMinutes : null,
+    priority:
+      typeof occurrence?.priority === "string"
+        ? occurrence.priority
+        : typeof occurrence?.priorityLevel === "string"
+          ? occurrence.priorityLevel
+          : null,
+  };
+}
+
+function buildSessionSummary({ session, occurrenceById, goalsById, categoriesById }) {
+  if (!session) return null;
+  const occurrence =
+    session.occurrenceId && occurrenceById.has(session.occurrenceId) ? occurrenceById.get(session.occurrenceId) : null;
+  const goalId =
+    occurrence?.goalId || (Array.isArray(session.habitIds) && session.habitIds.length ? session.habitIds[0] : null) || null;
+  const goal = goalId ? goalsById.get(goalId) || null : null;
+  const category = goal?.categoryId ? categoriesById.get(goal.categoryId) || null : null;
+  const startTime = resolveOccurrenceStartTime(occurrence);
+  return {
+    sessionId: session.id || null,
+    occurrenceId: session.occurrenceId || null,
+    title: goal?.title || "Session active",
+    categoryName: category?.name || null,
+    dateKey: session.dateKey || occurrence?.date || null,
+    timeLabel: startTime ? `à ${startTime}` : null,
+    runtimePhase: session.runtimePhase || null,
+  };
+}
+
+function buildDayLoadSummary(plannedActionsForActiveDate) {
+  const plannedList = safeArray(plannedActionsForActiveDate);
+  return {
+    plannedCount: plannedList.length,
+    remainingCount: plannedList.length,
+    totalPlannedMinutes: plannedList.reduce(
+      (total, occurrence) => total + (Number.isFinite(occurrence?.durationMinutes) ? occurrence.durationMinutes : 0),
+      0
+    ),
+    fixedCount: plannedList.filter((occurrence) => {
+      const startTime = resolveOccurrenceStartTime(occurrence);
+      return Boolean(startTime && occurrence?.noTime !== true && occurrence?.timeType !== "window");
+    }).length,
+  };
+}
+
+function buildScheduleSignalSummary({
+  activeDate,
+  systemToday,
+  openSessionOutsideActiveDate,
+  openSessionOutsideSummary,
+  focusOccurrenceForActiveDate,
+  focusOccurrenceSummary,
+}) {
+  if (openSessionOutsideActiveDate) {
+    return {
+      type:
+        openSessionOutsideActiveDate.dateKey && openSessionOutsideActiveDate.dateKey > activeDate
+          ? "future_open_session"
+          : "off_date_occurrence",
+      sessionDateKey: openSessionOutsideActiveDate.dateKey || null,
+      targetActionTitle: openSessionOutsideSummary?.title || focusOccurrenceSummary?.title || null,
+      targetDateKey: openSessionOutsideActiveDate.dateKey || null,
+      targetTimeLabel: openSessionOutsideSummary?.timeLabel || null,
+    };
+  }
+
+  const focusStartPolicy = resolveTodayOccurrenceStartPolicy({
+    activeDate,
+    systemToday,
+    occurrenceDate: focusOccurrenceForActiveDate?.date || "",
+  });
+  if (focusOccurrenceForActiveDate && focusStartPolicy.requiresReschedule) {
+    return {
+      type: "off_date_occurrence",
+      sessionDateKey: null,
+      targetActionTitle: focusOccurrenceSummary?.title || null,
+      targetDateKey: focusOccurrenceSummary?.dateKey || null,
+      targetTimeLabel: focusOccurrenceSummary?.timeLabel || null,
+    };
+  }
+
+  return {
+    type: "none",
+    sessionDateKey: null,
+    targetActionTitle: null,
+    targetDateKey: null,
+    targetTimeLabel: null,
+  };
+}
 
 export function buildNowContext({
   data,
@@ -25,13 +147,20 @@ export function buildNowContext({
   const category = resolveCategory(data, activeCategoryId);
   const categoryId = category?.id || null;
   const goalsById = resolveGoalMap(data);
+  const categoriesById = resolveCategoryMap(data);
+  const occurrenceById = buildOccurrenceById(data);
   const dayOccurrences = resolveOccurrencesForDate(data, dateKey, categoryId);
   const plannedActionsForActiveDate = resolvePlannedActionsForDate(data, dateKey, categoryId);
   const { activeSessionForActiveDate, openSessionOutsideActiveDate, futureSessions } = resolveSessionSplitForDate(
     data,
     dateKey
   );
-  const focusOccurrenceForActiveDate = resolveFocusOccurrenceForDate({
+  const focusSelection = resolveFocusOccurrenceSelectionForDate({
+    dateKey,
+    now,
+    occurrences: plannedActionsForActiveDate,
+  });
+  const focusOccurrenceForActiveDate = focusSelection.occurrence || resolveFocusOccurrenceForDate({
     dateKey,
     now,
     occurrences: plannedActionsForActiveDate,
@@ -41,6 +170,43 @@ export function buildNowContext({
   const remainingToday = plannedActionsForActiveDate.length;
   const recentHistory = safeArray(data?.sessionHistory).slice(-5);
   const discipline7d = buildWindowStats(data, dateKey, 7);
+  const focusOccurrenceSummary = buildOccurrenceSummary({
+    occurrence: focusOccurrenceForActiveDate,
+    goalsById,
+    categoriesById,
+  });
+  const alternativeOccurrenceSummaries = sortOccurrencesForExecution(plannedActionsForActiveDate)
+    .filter((occurrence) => occurrence?.id !== focusOccurrenceForActiveDate?.id)
+    .slice(0, 2)
+    .map((occurrence) =>
+      buildOccurrenceSummary({
+        occurrence,
+        goalsById,
+        categoriesById,
+      })
+    )
+    .filter(Boolean);
+  const activeSessionSummary = buildSessionSummary({
+    session: activeSessionForActiveDate,
+    occurrenceById,
+    goalsById,
+    categoriesById,
+  });
+  const openSessionOutsideSummary = buildSessionSummary({
+    session: openSessionOutsideActiveDate,
+    occurrenceById,
+    goalsById,
+    categoriesById,
+  });
+  const dayLoadSummary = buildDayLoadSummary(plannedActionsForActiveDate);
+  const scheduleSignalSummary = buildScheduleSignalSummary({
+    activeDate: dateKey,
+    systemToday,
+    openSessionOutsideActiveDate,
+    openSessionOutsideSummary,
+    focusOccurrenceForActiveDate,
+    focusOccurrenceSummary,
+  });
 
   return {
     requestId,
@@ -61,6 +227,12 @@ export function buildNowContext({
     topOccurrence: focusOccurrenceForActiveDate,
     dayOccurrences,
     recentHistory,
+    activeSessionSummary,
+    focusOccurrenceSummary,
+    alternativeOccurrenceSummaries,
+    focusSelectionReason: focusSelection.reason || null,
+    dayLoadSummary,
+    scheduleSignalSummary,
     doneToday,
     missedToday,
     remainingToday,

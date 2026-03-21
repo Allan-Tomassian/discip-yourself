@@ -8,6 +8,23 @@ function buildAction({ label, intent, categoryId = null, actionId = null, occurr
   return { label, intent, categoryId, actionId, occurrenceId, dateKey };
 }
 
+function formatDateLabel(dateKey) {
+  if (!dateKey) return "";
+  const parsed = new Date(`${dateKey}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return dateKey;
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+  }).format(parsed);
+}
+
+function formatDateTimeLabel({ dateKey, timeLabel }) {
+  const dateLabel = formatDateLabel(dateKey);
+  if (dateLabel && timeLabel) return `le ${dateLabel} ${timeLabel}`;
+  if (dateLabel) return `le ${dateLabel}`;
+  return timeLabel || "";
+}
+
 export function buildNowFallback(context) {
   const focusStartPolicy = resolveTodayOccurrenceStartPolicy({
     activeDate: context.activeDate,
@@ -24,12 +41,13 @@ export function buildNowFallback(context) {
   });
 
   if (interventionType === TODAY_INTERVENTION_TYPE.SESSION_RESUME && context.activeSessionForActiveDate?.isOpen) {
+    const activeSessionTitle = context.activeSessionSummary?.title || "la session du jour";
     return {
       kind: "now",
       interventionType,
       decisionSource: "rules",
-      headline: "Reprends la session en cours",
-      reason: "La session active est le prochain levier utile.",
+      headline: `Reprends ${activeSessionTitle}`.slice(0, 72),
+      reason: "Une session du jour est déjà ouverte, c'est donc le point d'appui le plus direct.",
       primaryAction: buildAction({
         label: "Reprendre",
         intent: "resume_session",
@@ -57,12 +75,19 @@ export function buildNowFallback(context) {
   }
 
   if (interventionType === TODAY_INTERVENTION_TYPE.SCHEDULE_WARNING) {
+    const scheduleTarget = formatDateTimeLabel({
+      dateKey: context.scheduleSignalSummary?.targetDateKey || context.scheduleSignalSummary?.sessionDateKey || null,
+      timeLabel: context.scheduleSignalSummary?.targetTimeLabel || null,
+    });
+    const scheduleTargetTitle = context.scheduleSignalSummary?.targetActionTitle || "cette action";
     return {
       kind: "now",
       interventionType,
       decisionSource: "rules",
       headline: "Une session ouverte est planifiée sur une autre date",
-      reason: "Vérifie le planning avant de reprendre ou de relancer une action.",
+      reason: scheduleTarget
+        ? `${scheduleTargetTitle} reste planifiée ${scheduleTarget}. Vérifie le planning avant de reprendre.`
+        : "Vérifie le planning avant de reprendre ou de relancer une action.",
       primaryAction: buildAction({
         label: "Voir pilotage",
         intent: "open_pilotage",
@@ -80,10 +105,16 @@ export function buildNowFallback(context) {
   }
 
   if (context.focusOccurrenceForActiveDate) {
-    const title = String(context.goalsById.get(context.focusOccurrenceForActiveDate.goalId)?.title || "Action");
-    const duration = Number.isFinite(context.focusOccurrenceForActiveDate.durationMinutes)
-      ? context.focusOccurrenceForActiveDate.durationMinutes
-      : null;
+    const title = String(context.focusOccurrenceSummary?.title || "Action");
+    const duration = Number.isFinite(context.focusOccurrenceSummary?.durationMin)
+      ? context.focusOccurrenceSummary.durationMin
+      : Number.isFinite(context.focusOccurrenceForActiveDate.durationMinutes)
+        ? context.focusOccurrenceForActiveDate.durationMinutes
+        : null;
+    const focusDateTime = formatDateTimeLabel({
+      dateKey: context.focusOccurrenceSummary?.dateKey || context.focusOccurrenceForActiveDate?.date || null,
+      timeLabel: context.focusOccurrenceSummary?.timeLabel || null,
+    });
     if (focusStartPolicy.requiresReschedule) {
       return {
         kind: "now",
@@ -92,8 +123,12 @@ export function buildNowFallback(context) {
         headline: title.slice(0, 72),
         reason:
           focusStartPolicy.datePhase === "future"
-            ? "Cette action est prévue pour une autre date. Replanifie-la avant de la lancer."
-            : "Cette action appartient à une date passée. Replanifie-la avant de la relancer.",
+            ? focusDateTime
+              ? `${title} est prévue ${focusDateTime}. Replanifie-la avant de la lancer aujourd'hui.`
+              : `${title} est prévue pour une autre date. Replanifie-la avant de la lancer aujourd'hui.`
+            : focusDateTime
+              ? `${title} appartenait à ${focusDateTime}. Replanifie-la avant de la relancer.`
+              : `${title} appartient à une date passée. Replanifie-la avant de la relancer.`,
         primaryAction: buildAction({
           label: focusStartPolicy.datePhase === "future" ? "Replanifier aujourd’hui" : "Replanifier",
           intent: "open_pilotage",
@@ -123,7 +158,12 @@ export function buildNowFallback(context) {
       interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
       decisionSource: "rules",
       headline: title.slice(0, 72),
-      reason: "C’est l’action la plus exécutable dans le plan courant.",
+      reason:
+        context.focusSelectionReason === "upcoming_fixed" && context.focusOccurrenceSummary?.timeLabel
+          ? `${title} est le prochain créneau fixe ${context.focusOccurrenceSummary.timeLabel} et reste le meilleur levier maintenant.`
+          : context.focusSelectionReason === "earliest_fixed" && context.focusOccurrenceSummary?.timeLabel
+            ? `${title} est le premier créneau fixe du plan ${context.focusOccurrenceSummary.timeLabel}.`
+            : `${title} est l'action la plus exécutable dans le plan courant.`,
       primaryAction: buildAction({
         label: "Démarrer",
         intent: "start_occurrence",
