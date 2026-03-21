@@ -117,10 +117,6 @@ function buildGoalActivityIndex(data) {
 }
 
 function compareCandidateActions(left, right, activeCategoryId) {
-  const leftCategoryRank = left?.categoryId && left.categoryId === activeCategoryId ? 0 : 1;
-  const rightCategoryRank = right?.categoryId && right.categoryId === activeCategoryId ? 0 : 1;
-  if (leftCategoryRank !== rightCategoryRank) return leftCategoryRank - rightCategoryRank;
-
   const leftHasHistory = left?.lastPlannedDateKey ? 0 : 1;
   const rightHasHistory = right?.lastPlannedDateKey ? 0 : 1;
   if (leftHasHistory !== rightHasHistory) return leftHasHistory - rightHasHistory;
@@ -150,6 +146,9 @@ function buildGapSummary({
       emptyActiveCategory: false,
       lowLoadToday: false,
       gapReason: "none",
+      selectionScope: "none",
+      activeCategoryCandidateCount: 0,
+      crossCategoryCandidateCount: 0,
       candidateActionSummaries: [],
     };
   }
@@ -170,7 +169,7 @@ function buildGapSummary({
   const hasGapToday = gapReason !== "none";
   const plannedGoalIdsForActiveDate = new Set(plannedActionsForActiveDate.map((occurrence) => occurrence?.goalId).filter(Boolean));
   const goalActivityIndex = buildGoalActivityIndex(data);
-  const candidateActionSummaries = safeArray(data?.goals)
+  const allCandidateSummaries = safeArray(data?.goals)
     .filter(isExecutableGoal)
     .filter((goal) => !plannedGoalIdsForActiveDate.has(goal.id))
     .map((goal) => {
@@ -185,15 +184,31 @@ function buildGapSummary({
         lastPlannedDateKey: activity?.lastPlannedDateKey || null,
       };
     })
-    .sort((left, right) => compareCandidateActions(left, right, activeCategoryId))
+    .sort((left, right) => compareCandidateActions(left, right, activeCategoryId));
+  const activeCategoryCandidates = allCandidateSummaries.filter(
+    (candidate) => candidate?.categoryId && candidate.categoryId === activeCategoryId
+  );
+  const crossCategoryCandidates = allCandidateSummaries.filter(
+    (candidate) => !candidate?.categoryId || candidate.categoryId !== activeCategoryId
+  );
+  const selectedPool = activeCategoryCandidates.length > 0 ? activeCategoryCandidates : crossCategoryCandidates;
+  const selectionScope = selectedPool === activeCategoryCandidates && activeCategoryCandidates.length > 0
+    ? "active_category"
+    : selectedPool.length > 0
+      ? "cross_category_fallback"
+      : "none";
+  const candidateActionSummaries = selectedPool
     .slice(0, 2)
     .map(({ categoryId, ...summary }) => summary);
 
   return {
     hasGapToday,
-    emptyActiveCategory,
+    emptyActiveCategory: Boolean(activeCategoryId) && activeCategoryCandidates.length === 0,
     lowLoadToday,
     gapReason,
+    selectionScope,
+    activeCategoryCandidateCount: activeCategoryCandidates.length,
+    crossCategoryCandidateCount: crossCategoryCandidates.length,
     candidateActionSummaries,
   };
 }

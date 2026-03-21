@@ -346,6 +346,9 @@ describe("buildLocalTodayHeroModel", () => {
       gapSummary: {
         hasGapToday: true,
         gapReason: TODAY_GAP_REASON.EMPTY_DAY,
+        selectionScope: "active_category",
+        activeCategoryCandidateCount: 1,
+        crossCategoryCandidateCount: 0,
         candidateActionSummaries: [
           {
             actionId: "a1",
@@ -360,6 +363,36 @@ describe("buildLocalTodayHeroModel", () => {
     expect(result.primaryAction).toMatchObject({ kind: "open_pilotage" });
     expect(result.primaryLabel).toBe("Planifier aujourd’hui");
     expect(result.meta).toMatch(/Deep work/);
+  });
+
+  it("explique explicitement le fallback hors categorie quand aucun candidat actif n'existe", () => {
+    const result = buildLocalTodayHeroModel({
+      activeDate: ACTIVE_DATE,
+      systemTodayKey: SYSTEM_TODAY,
+      activeCategoryId: "c1",
+      activeCategoryName: "Focus",
+      focusOccurrenceForActiveDate: null,
+      gapSummary: {
+        hasGapToday: true,
+        gapReason: TODAY_GAP_REASON.EMPTY_ACTIVE_CATEGORY,
+        selectionScope: "cross_category_fallback",
+        activeCategoryCandidateCount: 0,
+        crossCategoryCandidateCount: 1,
+        candidateActionSummaries: [
+          {
+            actionId: "a2",
+            title: "Run 20 min",
+            categoryName: "Sport",
+            durationMin: 20,
+          },
+        ],
+      },
+    });
+
+    expect(result.primaryAction).toMatchObject({ kind: "open_pilotage" });
+    expect(result.meta).toMatch(/Rien de crédible n'est prévu en Focus/);
+    expect(result.meta).toMatch(/Run 20 min/);
+    expect(result.meta).toMatch(/Sport/);
   });
 });
 

@@ -116,10 +116,13 @@ test("buildNowContext exposes gapSummary when there is no action planned today",
   assert.equal(context.gapSummary.hasGapToday, true);
   assert.equal(context.gapSummary.gapReason, "empty_day");
   assert.equal(context.gapSummary.candidateActionSummaries.length, 2);
+  assert.equal(context.gapSummary.selectionScope, "active_category");
+  assert.equal(context.gapSummary.activeCategoryCandidateCount, 2);
+  assert.equal(context.gapSummary.crossCategoryCandidateCount, 0);
   assert.equal(context.gapSummary.candidateActionSummaries[0].title, "Run 20 min");
 });
 
-test("buildNowContext exposes category gap and low load summary when the active category has nothing planned", () => {
+test("buildNowContext prioritizes active-category candidates when the active category has nothing planned today", () => {
   const context = buildNowContext({
     data: {
       categories: [
@@ -143,8 +146,43 @@ test("buildNowContext exposes category gap and low load summary when the active 
   });
 
   assert.equal(context.gapSummary.hasGapToday, true);
-  assert.equal(context.gapSummary.emptyActiveCategory, true);
+  assert.equal(context.gapSummary.emptyActiveCategory, false);
   assert.equal(context.gapSummary.lowLoadToday, true);
   assert.equal(context.gapSummary.gapReason, "empty_active_category");
+  assert.equal(context.gapSummary.selectionScope, "active_category");
+  assert.equal(context.gapSummary.activeCategoryCandidateCount, 1);
+  assert.equal(context.gapSummary.crossCategoryCandidateCount, 0);
+  assert.equal(context.gapSummary.candidateActionSummaries[0].title, "Deep work");
   assert.equal(context.focusOccurrenceForActiveDate?.id, "occ-2");
+});
+
+test("buildNowContext falls back outside the active category only when there is no credible local candidate", () => {
+  const context = buildNowContext({
+    data: {
+      categories: [
+        { id: "cat-1", name: "Focus" },
+        { id: "cat-2", name: "Sport" },
+      ],
+      goals: [
+        { id: "goal-1", title: "Deep work", type: "OUTCOME", categoryId: "cat-1", status: "active" },
+        { id: "goal-2", title: "Run 20 min", type: "PROCESS", categoryId: "cat-2", status: "active", sessionMinutes: 20 },
+        { id: "goal-3", title: "Swim 30 min", type: "PROCESS", categoryId: "cat-2", status: "active", sessionMinutes: 30 },
+      ],
+      occurrences: [{ id: "occ-2", goalId: "goal-2", date: "2026-03-06", status: "planned", start: "08:00", durationMinutes: 20 }],
+      ui: { activeSession: null },
+      sessionHistory: [],
+    },
+    selectedDateKey: "2026-03-06",
+    activeCategoryId: "cat-1",
+    quotaState: { remaining: 3 },
+    requestId: "req-gap-cross-category",
+    trigger: "screen_open",
+    now: new Date(2026, 2, 6, 12, 0, 0),
+  });
+
+  assert.equal(context.gapSummary.hasGapToday, true);
+  assert.equal(context.gapSummary.selectionScope, "cross_category_fallback");
+  assert.equal(context.gapSummary.activeCategoryCandidateCount, 0);
+  assert.equal(context.gapSummary.crossCategoryCandidateCount, 1);
+  assert.equal(context.gapSummary.candidateActionSummaries[0].title, "Swim 30 min");
 });

@@ -23,6 +23,9 @@ function createGapContext(overrides = {}) {
       emptyActiveCategory: false,
       lowLoadToday: false,
       gapReason: "empty_day",
+      selectionScope: "active_category",
+      activeCategoryCandidateCount: 1,
+      crossCategoryCandidateCount: 0,
       candidateActionSummaries: [
         {
           actionId: "goal-1",
@@ -57,6 +60,9 @@ test("buildNowFallback names the active category when it is empty", () => {
         emptyActiveCategory: true,
         lowLoadToday: true,
         gapReason: "empty_active_category",
+        selectionScope: "active_category",
+        activeCategoryCandidateCount: 1,
+        crossCategoryCandidateCount: 1,
         candidateActionSummaries: [
           {
             actionId: "goal-1",
@@ -74,6 +80,35 @@ test("buildNowFallback names the active category when it is empty", () => {
   assert.match(payload.reason, /Deep work/i);
 });
 
+test("buildNowFallback explicitly explains cross-category fallback when no active-category candidate exists", () => {
+  const payload = buildNowFallback(
+    createGapContext({
+      gapSummary: {
+        hasGapToday: true,
+        emptyActiveCategory: true,
+        lowLoadToday: false,
+        gapReason: "empty_active_category",
+        selectionScope: "cross_category_fallback",
+        activeCategoryCandidateCount: 0,
+        crossCategoryCandidateCount: 1,
+        candidateActionSummaries: [
+          {
+            actionId: "goal-2",
+            title: "Run 20 min",
+            categoryName: "Sport",
+            durationMin: 20,
+            lastPlannedDateKey: "2026-03-05",
+          },
+        ],
+      },
+    })
+  );
+
+  assert.match(payload.reason, /Rien de crédible n'est prévu en Focus/i);
+  assert.match(payload.reason, /Run 20 min/i);
+  assert.match(payload.reason, /Sport/i);
+});
+
 test("buildNowFallback keeps a concrete fallback even without candidate", () => {
   const payload = buildNowFallback(
     createGapContext({
@@ -82,6 +117,9 @@ test("buildNowFallback keeps a concrete fallback even without candidate", () => 
         emptyActiveCategory: false,
         lowLoadToday: false,
         gapReason: "empty_day",
+        selectionScope: "none",
+        activeCategoryCandidateCount: 0,
+        crossCategoryCandidateCount: 0,
         candidateActionSummaries: [],
       },
     })

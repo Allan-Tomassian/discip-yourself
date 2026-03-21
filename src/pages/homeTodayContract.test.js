@@ -63,10 +63,15 @@ describe("home today canonical contract", () => {
 
   it("keeps a concrete planifier aujourd'hui fallback for passive Today states", () => {
     const adapter = readSrc("features/today/aiNowHeroAdapter.js");
+    const home = readSrc("pages/Home.jsx");
 
     expect(adapter).toContain('primaryLabel: "Planifier aujourd’hui"');
     expect(adapter).toContain("gapSummary?.hasGapToday");
     expect(adapter).toContain("gapCandidate.title");
+    expect(adapter).toContain("gapSummary.selectionScope === \"cross_category_fallback\"");
+    expect(home).toContain("const activeCategoryCandidates = allCandidateActionSummaries.filter(");
+    expect(home).toContain("const crossCategoryCandidates = allCandidateActionSummaries.filter(");
+    expect(home).toContain("selectionScope");
     expect(adapter).not.toContain('primaryLabel: "Aucune action active"');
   });
 });

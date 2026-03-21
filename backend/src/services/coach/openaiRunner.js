@@ -247,6 +247,8 @@ function buildNowPrompt(context) {
     "When using start_occurrence, reason must mention why this action is the best now using focusSelectionReason, start time, or current executability.",
     "When using open_pilotage for replanification, headline or reason must mention the exact action title and its planned date/time from focusOccurrenceSummary.",
     "When gapSummary.hasGapToday is true, use open_pilotage with toolIntent suggest_reschedule_option and recommend planning one existing action from gapSummary.candidateActionSummaries.",
+    "When gapSummary.selectionScope is active_category, choose an action from the active category first if one exists.",
+    "When gapSummary.selectionScope is cross_category_fallback, clearly say that nothing credible is available in the active category today before proposing the fallback action.",
     "When gapSummary.hasGapToday is true, mention the exact action title, say it is not yet planned today, and include a simple duration if available.",
     "Never invent a new task, an abstract task, or an action title that is not in gapSummary or focusOccurrenceSummary.",
     "Never mention the AI, the system, or internal diagnostics.",

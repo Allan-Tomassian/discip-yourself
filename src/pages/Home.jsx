@@ -140,6 +140,9 @@ function buildLocalGapSummary({
       emptyActiveCategory: false,
       lowLoadToday: false,
       gapReason: "none",
+      selectionScope: "none",
+      activeCategoryCandidateCount: 0,
+      crossCategoryCandidateCount: 0,
       candidateActionSummaries: [],
       activeDate,
     };
@@ -178,7 +181,7 @@ function buildLocalGapSummary({
       latestOccurrenceByGoal.set(goalId, { occurrence, dateKey });
     }
   }
-  const candidateActionSummaries = (Array.isArray(goals) ? goals : [])
+  const allCandidateActionSummaries = (Array.isArray(goals) ? goals : [])
     .filter(isGoalEligibleForGapFill)
     .filter((goal) => !plannedGoalIdsForDate.has(goal.id))
     .map((goal) => {
@@ -198,9 +201,6 @@ function buildLocalGapSummary({
       };
     })
     .sort((left, right) => {
-      const leftCategoryRank = left?.categoryId === activeCategoryId ? 0 : 1;
-      const rightCategoryRank = right?.categoryId === activeCategoryId ? 0 : 1;
-      if (leftCategoryRank !== rightCategoryRank) return leftCategoryRank - rightCategoryRank;
       const leftHistoryRank = left?.lastPlannedDateKey ? 0 : 1;
       const rightHistoryRank = right?.lastPlannedDateKey ? 0 : 1;
       if (leftHistoryRank !== rightHistoryRank) return leftHistoryRank - rightHistoryRank;
@@ -208,14 +208,30 @@ function buildLocalGapSummary({
       const rightDate = right?.lastPlannedDateKey || "";
       if (leftDate !== rightDate) return rightDate.localeCompare(leftDate);
       return String(left?.title || "").localeCompare(String(right?.title || ""));
-    })
-    .slice(0, 2);
+    });
+  const activeCategoryCandidates = allCandidateActionSummaries.filter(
+    (candidate) => candidate?.categoryId && candidate.categoryId === activeCategoryId
+  );
+  const crossCategoryCandidates = allCandidateActionSummaries.filter(
+    (candidate) => !candidate?.categoryId || candidate.categoryId !== activeCategoryId
+  );
+  const selectedPool = activeCategoryCandidates.length > 0 ? activeCategoryCandidates : crossCategoryCandidates;
+  const selectionScope =
+    selectedPool === activeCategoryCandidates && activeCategoryCandidates.length > 0
+      ? "active_category"
+      : selectedPool.length > 0
+        ? "cross_category_fallback"
+        : "none";
+  const candidateActionSummaries = selectedPool.slice(0, 2);
 
   return {
     hasGapToday,
-    emptyActiveCategory,
+    emptyActiveCategory: Boolean(activeCategoryId) && activeCategoryCandidates.length === 0,
     lowLoadToday,
     gapReason,
+    selectionScope,
+    activeCategoryCandidateCount: activeCategoryCandidates.length,
+    crossCategoryCandidateCount: crossCategoryCandidates.length,
     candidateActionSummaries,
     activeDate,
   };

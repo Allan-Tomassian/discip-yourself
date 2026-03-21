@@ -155,20 +155,29 @@ export function buildLocalTodayHeroModel({
 
   if (gapSummary?.hasGapToday) {
     let title = "Aucune action prévue aujourd’hui";
+    const candidateCategoryName = gapCandidate?.categoryName || null;
     let meta = gapCandidate
       ? `Tu peux planifier ${candidateWithDuration || gapCandidate.title} aujourd'hui pour maintenir la continuité.`
       : "Planifie une action simple aujourd'hui pour maintenir la continuité.";
 
     if (gapSummary.gapReason === TODAY_GAP_REASON.EMPTY_ACTIVE_CATEGORY && activeCategoryName) {
       title = `Rien de prévu en ${activeCategoryName} aujourd’hui`;
-      meta = gapCandidate
-        ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. Une courte action suffit pour maintenir l'élan.`
-        : "Une courte action suffit pour maintenir l'élan aujourd'hui.";
+      meta =
+        gapSummary.selectionScope === "cross_category_fallback" && gapCandidate
+          ? `Rien de crédible n'est prévu en ${activeCategoryName} aujourd'hui. Tu peux avancer sur ${gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""}.`
+          : gapCandidate
+            ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. Une courte action suffit pour maintenir l'élan.`
+            : "Une courte action suffit pour maintenir l'élan aujourd'hui.";
     } else if (gapSummary.gapReason === TODAY_GAP_REASON.LOW_LOAD_DAY) {
       title = gapCandidate ? `Ajoute ${gapCandidate.title} aujourd’hui` : "Le plan du jour reste léger";
-      meta = gapCandidate
-        ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. ${durationLabel || "Une courte durée"} suffit pour compléter la journée.`
-        : "Une action simple peut compléter la journée sans surcharge.";
+      meta =
+        gapSummary.selectionScope === "cross_category_fallback" && gapCandidate && activeCategoryName
+          ? `Rien de plus pertinent n'est disponible en ${activeCategoryName} aujourd'hui. ${gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""} peut compléter la journée${durationLabel ? ` en ${durationLabel}` : ""}.`
+          : gapCandidate
+            ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. ${durationLabel || "Une courte durée"} suffit pour compléter la journée.`
+            : "Une action simple peut compléter la journée sans surcharge.";
+    } else if (gapSummary.selectionScope === "cross_category_fallback" && gapCandidate && activeCategoryName) {
+      meta = `Rien de crédible n'est prévu en ${activeCategoryName} aujourd'hui. Tu peux planifier ${candidateWithDuration || gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""}.`;
     }
 
     return {

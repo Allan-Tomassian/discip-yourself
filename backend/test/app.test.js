@@ -592,6 +592,49 @@ test("POST /ai/now proposes planning an existing action when today is empty", as
   await app.close();
 });
 
+test("POST /ai/now explains cross-category fallback when the active category has no credible candidate", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-gap-cross-category" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: {
+      categories: [
+        { id: "cat-1", name: "Focus" },
+        { id: "cat-2", name: "Sport" },
+      ],
+      goals: [
+        { id: "goal-1", title: "Deep work", type: "OUTCOME", categoryId: "cat-1", status: "active" },
+        { id: "goal-2", title: "Run 20 min", type: "PROCESS", categoryId: "cat-2", status: "active", sessionMinutes: 20 },
+      ],
+      occurrences: [{ id: "occ-sport", goalId: "goal-2", date: PAST_KEY, status: "done", start: "08:00", durationMinutes: 20 }],
+      ui: { activeSession: null },
+      sessionHistory: [],
+    },
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "screen_open",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachResponseSchema.parse(response.json());
+  assert.equal(payload.interventionType, "today_recommendation");
+  assert.equal(payload.primaryAction.intent, "open_pilotage");
+  assert.match(payload.reason, /Rien de crédible n'est prévu en Focus/i);
+  assert.match(payload.reason, /Run 20 min/i);
+  assert.match(payload.reason, /Sport/i);
+  await app.close();
+});
+
 test("POST /ai/now returns ai decision when OpenAI returns valid structured output", async () => {
   let capturedPrompt = "";
   const app = await buildApp({
@@ -720,6 +763,8 @@ test("POST /ai/now includes gap-fill prompt rules when today has no planned acti
   assert.equal(response.statusCode, 200);
   assert.match(capturedPrompt, /not yet planned today/i);
   assert.match(capturedPrompt, /gapSummary\.candidateActionSummaries/i);
+  assert.match(capturedPrompt, /selectionScope is active_category/i);
+  assert.match(capturedPrompt, /selectionScope is cross_category_fallback/i);
   await app.close();
 });
 
