@@ -12,6 +12,9 @@ import {
   TODAY_INTERVENTION_TYPE,
 } from "../../domain/todayIntervention";
 
+const ACTIVE_DATE = "2026-03-13";
+const SYSTEM_TODAY = "2026-03-13";
+
 function buildLocalHero(overrides = {}) {
   return {
     interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
@@ -46,7 +49,7 @@ function buildCoach(intent, overrides = {}) {
       categoryId: "c1",
       actionId: "a1",
       occurrenceId: "occ_1",
-      dateKey: "2026-03-13",
+      dateKey: ACTIVE_DATE,
     },
     meta: {
       requestId: "req_1",
@@ -57,7 +60,7 @@ function buildCoach(intent, overrides = {}) {
             : TODAY_BACKEND_RESOLUTION_STATUS.ACCEPTED_AI,
         rejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
         canonicalContextSummary: {
-          activeDate: "2026-03-13",
+          activeDate: ACTIVE_DATE,
           isToday: true,
           hasActiveSessionForActiveDate: intent === "resume_session",
           hasOpenSessionOutsideActiveDate: intent === "open_pilotage",
@@ -82,10 +85,11 @@ describe("deriveTodayHeroModel", () => {
     const result = deriveTodayHeroModel({
       localHero: buildLocalHero(),
       coach: buildCoach("start_occurrence"),
-      occurrencesForSelectedDay: [{ id: "occ_1", goalId: "a1" }],
+      occurrencesForSelectedDay: [{ id: "occ_1", goalId: "a1", date: ACTIVE_DATE }],
       hasOpenSession: false,
       handlersAvailable: {},
-      canonicalContextSummary: { activeDate: "2026-03-13" },
+      canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
+      systemTodayKey: SYSTEM_TODAY,
     });
 
     expect(result.source).toBe("ai");
@@ -101,7 +105,8 @@ describe("deriveTodayHeroModel", () => {
       occurrencesForSelectedDay: [],
       hasOpenSession: true,
       handlersAvailable: {},
-      canonicalContextSummary: { activeDate: "2026-03-13" },
+      canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
+      systemTodayKey: SYSTEM_TODAY,
     });
 
     expect(result.source).toBe("ai");
@@ -116,7 +121,8 @@ describe("deriveTodayHeroModel", () => {
       occurrencesForSelectedDay: [],
       hasOpenSession: false,
       handlersAvailable: { openLibrary: true, openPilotage: false },
-      canonicalContextSummary: { activeDate: "2026-03-13" },
+      canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
+      systemTodayKey: SYSTEM_TODAY,
     });
 
     expect(result.source).toBe("ai");
@@ -131,7 +137,8 @@ describe("deriveTodayHeroModel", () => {
       occurrencesForSelectedDay: [],
       hasOpenSession: false,
       handlersAvailable: { openLibrary: false, openPilotage: true },
-      canonicalContextSummary: { activeDate: "2026-03-13" },
+      canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
+      systemTodayKey: SYSTEM_TODAY,
     });
 
     expect(result.source).toBe("ai");
@@ -146,7 +153,8 @@ describe("deriveTodayHeroModel", () => {
       occurrencesForSelectedDay: [],
       hasOpenSession: false,
       handlersAvailable: { openLibrary: true, openPilotage: true },
-      canonicalContextSummary: { activeDate: "2026-03-13" },
+      canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
+      systemTodayKey: SYSTEM_TODAY,
     });
 
     expect(result.source).toBe("local");
@@ -161,11 +169,39 @@ describe("deriveTodayHeroModel", () => {
       occurrencesForSelectedDay: [],
       hasOpenSession: false,
       handlersAvailable: {},
-      canonicalContextSummary: { activeDate: "2026-03-13" },
+      canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
+      systemTodayKey: SYSTEM_TODAY,
     });
 
     expect(result.source).toBe("local");
     expect(result.title).toBe("Action locale");
+  });
+
+  it("retombe sur le hero local si start_occurrence vise une date non demarrable", () => {
+    const result = deriveTodayHeroModel({
+      localHero: buildLocalHero({
+        primaryLabel: "Replanifier aujourd’hui",
+        primaryAction: { kind: "open_pilotage" },
+      }),
+      coach: buildCoach("start_occurrence", {
+        primaryAction: {
+          label: "Demarrer",
+          intent: "start_occurrence",
+          categoryId: "c1",
+          actionId: "a1",
+          occurrenceId: "occ_1",
+          dateKey: "2026-03-14",
+        },
+      }),
+      occurrencesForSelectedDay: [{ id: "occ_1", goalId: "a1", date: "2026-03-14" }],
+      hasOpenSession: false,
+      handlersAvailable: {},
+      canonicalContextSummary: { activeDate: "2026-03-14", isToday: false },
+      systemTodayKey: SYSTEM_TODAY,
+    });
+
+    expect(result.source).toBe("local");
+    expect(result.diagnostics.rejectionReason).toBe(TODAY_DIAGNOSTIC_REJECTION_REASON.INVALID_INTERVENTION_TYPE);
   });
 
   it("retombe sur le hero local si aucune session n'est ouverte", () => {
@@ -175,7 +211,8 @@ describe("deriveTodayHeroModel", () => {
       occurrencesForSelectedDay: [],
       hasOpenSession: false,
       handlersAvailable: {},
-      canonicalContextSummary: { activeDate: "2026-03-13" },
+      canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
+      systemTodayKey: SYSTEM_TODAY,
     });
 
     expect(result.source).toBe("local");
@@ -187,8 +224,10 @@ describe("deriveTodayHeroModel", () => {
 describe("buildLocalTodayHeroModel", () => {
   it("mappe une recommandation Today standard", () => {
     const result = buildLocalTodayHeroModel({
+      activeDate: ACTIVE_DATE,
+      systemTodayKey: SYSTEM_TODAY,
       activeCategoryId: "c1",
-      focusOccurrenceForActiveDate: { id: "occ-1" },
+      focusOccurrenceForActiveDate: { id: "occ-1", date: ACTIVE_DATE },
       focusTitle: "Action locale",
       focusMeta: "Meta locale",
     });
@@ -199,6 +238,8 @@ describe("buildLocalTodayHeroModel", () => {
 
   it("mappe une reprise de session legitime", () => {
     const result = buildLocalTodayHeroModel({
+      activeDate: ACTIVE_DATE,
+      systemTodayKey: SYSTEM_TODAY,
       activeCategoryId: "c1",
       activeSessionForActiveDate: { id: "sess-1", occurrenceId: "occ-1" },
       focusTitle: "Action locale",
@@ -211,6 +252,8 @@ describe("buildLocalTodayHeroModel", () => {
 
   it("mappe un warning deterministe", () => {
     const result = buildLocalTodayHeroModel({
+      activeDate: ACTIVE_DATE,
+      systemTodayKey: SYSTEM_TODAY,
       activeCategoryId: "c1",
       openSessionOutsideActiveDate: { id: "sess-future" },
       futureSessions: [{ id: "sess-future" }],
@@ -224,6 +267,8 @@ describe("buildLocalTodayHeroModel", () => {
 
   it("ne peut pas produire session_resume sans session sur la date active", () => {
     const result = buildLocalTodayHeroModel({
+      activeDate: ACTIVE_DATE,
+      systemTodayKey: SYSTEM_TODAY,
       activeCategoryId: "c1",
       openSessionOutsideActiveDate: { id: "sess-future" },
       futureSessions: [{ id: "sess-future" }],
@@ -233,13 +278,29 @@ describe("buildLocalTodayHeroModel", () => {
 
     expect(result.interventionType).not.toBe(TODAY_INTERVENTION_TYPE.SESSION_RESUME);
   });
+
+  it("mappe une occurrence future sur un CTA de replanification", () => {
+    const result = buildLocalTodayHeroModel({
+      activeDate: "2026-03-14",
+      systemTodayKey: SYSTEM_TODAY,
+      activeCategoryId: "c1",
+      focusOccurrenceForActiveDate: { id: "occ-future", date: "2026-03-14" },
+      focusTitle: "Action future",
+      focusMeta: "Meta future",
+    });
+
+    expect(result.interventionType).toBe(TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION);
+    expect(result.primaryAction).toMatchObject({ kind: "open_pilotage" });
+    expect(result.primaryLabel).toBe("Replanifier aujourd’hui");
+  });
 });
 
 describe("deriveTodayHeroChrome", () => {
   it("retourne un chrome local sans badge quand le hero reste local", () => {
     const result = deriveTodayHeroChrome({
-      heroSource: "local",
-      aiNowState: "idle",
+      todayDecisionDiagnostics: {
+        resolutionStatus: "local_only",
+      },
     });
 
     expect(result).toEqual({
@@ -253,21 +314,23 @@ describe("deriveTodayHeroChrome", () => {
 
   it("affiche le badge et le hint pendant le loading IA", () => {
     const result = deriveTodayHeroChrome({
-      heroSource: "local",
-      aiNowState: "loading",
+      todayDecisionDiagnostics: {
+        resolutionStatus: "loading_ai",
+      },
     });
 
     expect(result.mode).toBe("loading");
     expect(result.showBadge).toBe(true);
     expect(result.badgeLabel).toBe("Coach IA");
     expect(result.showHint).toBe(true);
-    expect(result.hintText).toBe("Prepare la suggestion du moment");
+    expect(result.hintText).toBe("Analyse en cours");
   });
 
   it("affiche le badge coach quand la suggestion IA est visible", () => {
     const result = deriveTodayHeroChrome({
-      heroSource: "ai",
-      aiNowState: "success",
+      todayDecisionDiagnostics: {
+        resolutionStatus: "backend_accepted",
+      },
     });
 
     expect(result.mode).toBe("coach");
@@ -278,12 +341,14 @@ describe("deriveTodayHeroChrome", () => {
 
   it("garde le badge coach visible meme si la decision backend vient des rules", () => {
     const result = deriveTodayHeroChrome({
-      heroSource: "ai",
-      aiNowState: "success",
+      todayDecisionDiagnostics: {
+        resolutionStatus: "backend_rules",
+      },
     });
 
-    expect(result.mode).toBe("coach");
+    expect(result.mode).toBe("guarded");
     expect(result.showBadge).toBe(true);
+    expect(result.badgeLabel).toBe("Coach");
   });
 });
 
@@ -292,7 +357,7 @@ describe("deriveTodayDecisionDiagnostics", () => {
     const result = deriveTodayDecisionDiagnostics({
       aiNowState: "loading",
       heroViewModel: buildLocalHero(),
-      canonicalContextSummary: { activeDate: "2026-03-13" },
+      canonicalContextSummary: { activeDate: ACTIVE_DATE },
     });
 
     expect(result.resolutionStatus).toBe("loading_ai");
@@ -303,17 +368,18 @@ describe("deriveTodayDecisionDiagnostics", () => {
     const heroViewModel = deriveTodayHeroModel({
       localHero: buildLocalHero(),
       coach: buildCoach("start_occurrence"),
-      occurrencesForSelectedDay: [{ id: "occ_1", goalId: "a1" }],
+      occurrencesForSelectedDay: [{ id: "occ_1", goalId: "a1", date: ACTIVE_DATE }],
       hasOpenSession: false,
       handlersAvailable: {},
-      canonicalContextSummary: { activeDate: "2026-03-13" },
+      canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
+      systemTodayKey: SYSTEM_TODAY,
     });
 
     const result = deriveTodayDecisionDiagnostics({
       aiNowState: "success",
       heroViewModel,
       coach: buildCoach("start_occurrence"),
-      canonicalContextSummary: { activeDate: "2026-03-13" },
+      canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
     });
 
     expect(result.resolutionStatus).toBe("backend_accepted");
@@ -330,7 +396,7 @@ describe("deriveTodayDecisionDiagnostics", () => {
           resolutionStatus: TODAY_BACKEND_RESOLUTION_STATUS.RULES_FALLBACK,
           rejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
           canonicalContextSummary: {
-            activeDate: "2026-03-13",
+            activeDate: ACTIVE_DATE,
             isToday: true,
             hasActiveSessionForActiveDate: false,
             hasOpenSessionOutsideActiveDate: true,
@@ -347,14 +413,15 @@ describe("deriveTodayDecisionDiagnostics", () => {
       occurrencesForSelectedDay: [],
       hasOpenSession: false,
       handlersAvailable: { openPilotage: true },
-      canonicalContextSummary: { activeDate: "2026-03-13" },
+      canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
+      systemTodayKey: SYSTEM_TODAY,
     });
 
     const result = deriveTodayDecisionDiagnostics({
       aiNowState: "success",
       heroViewModel,
       coach,
-      canonicalContextSummary: { activeDate: "2026-03-13" },
+      canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
     });
 
     expect(result.resolutionStatus).toBe("backend_rules");
@@ -369,18 +436,19 @@ describe("deriveTodayDecisionDiagnostics", () => {
       occurrencesForSelectedDay: [],
       hasOpenSession: false,
       handlersAvailable: {},
-      canonicalContextSummary: { activeDate: "2026-03-13" },
+      canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
+      systemTodayKey: SYSTEM_TODAY,
     });
 
     const result = deriveTodayDecisionDiagnostics({
       aiNowState: "success",
       heroViewModel,
       coach,
-      canonicalContextSummary: { activeDate: "2026-03-13" },
+      canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
     });
 
     expect(result.resolutionStatus).toBe("frontend_local_fallback");
     expect(result.rejectionReason).toBe(TODAY_DIAGNOSTIC_REJECTION_REASON.NO_ACTIVE_SESSION_FOR_DATE);
-    expect(result.badgeState).toBe("hidden");
+    expect(result.badgeState).toBe("coach_visible");
   });
 });

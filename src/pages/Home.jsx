@@ -41,7 +41,7 @@ import RewardedAdModal from "../ui/today/RewardedAdModal";
 import { emitTotemEvent } from "../ui/totem/totemEvents";
 import { LABELS, UI_COPY } from "../ui/labels";
 import { useAuth } from "../auth/useAuth";
-import { buildTodayCanonicalContextSummary } from "../domain/todayIntervention";
+import { buildTodayCanonicalContextSummary, resolveTodayOccurrenceStartPolicy } from "../domain/todayIntervention";
 import { deriveTodayNowModel } from "../features/today/nowModel";
 import { deriveTodayCalendarModel } from "../features/today/todayCalendarModel";
 import { deriveTodayProgressModel } from "../features/today/todayProgressModel";
@@ -51,6 +51,7 @@ import {
   deriveTodayHeroChrome,
   deriveTodayHeroModel,
 } from "../features/today/aiNowHeroAdapter";
+import { useTypingReveal } from "../features/today/useTypingReveal";
 import { useAiNow } from "../hooks/useAiNow";
 
 // TOUR MAP:
@@ -654,6 +655,8 @@ export default function Home({
     [categories, focusOverride, goals, homeSelectedCategoryId, plannedOccurrencesForDay, rawActiveSession, selectedDateKey]
   );
   const {
+    activeDate,
+    systemToday,
     activeSessionForActiveDate,
     openSessionOutsideActiveDate,
     futureSessions,
@@ -669,8 +672,6 @@ export default function Home({
     focusOccurrence,
     isFocusOverride,
     alternativeCandidates,
-    canStart,
-    startPayload,
   } = todayNowModel;
   const aiNow = useAiNow({
     selectedDateKey,
@@ -965,6 +966,12 @@ export default function Home({
   const handleStartSession = useCallback(
     (occurrence) => {
       if (!occurrence || typeof setData !== "function") return;
+      const startPolicy = resolveTodayOccurrenceStartPolicy({
+        activeDate: selectedDateKey,
+        systemToday: localTodayKey,
+        occurrenceDate: occurrence.date || "",
+      });
+      if (!startPolicy.canStartDirectly) return;
       const goal = occurrence.goalId ? goalsById.get(occurrence.goalId) || null : null;
       const categoryId = goal?.categoryId || null;
       setData((prev) => {
@@ -986,7 +993,7 @@ export default function Home({
         onOpenSession({ categoryId, dateKey: occurrence.date || selectedDateKey });
       }
     },
-    [goalsById, onOpenSession, selectedDateKey, setData]
+    [goalsById, localTodayKey, onOpenSession, selectedDateKey, setData]
   );
   const lastEnsureSigRef = useRef("");
   const ensureDebugCountRef = useRef(0);
@@ -1484,17 +1491,19 @@ export default function Home({
   const localHeroModel = useMemo(
     () =>
       buildLocalTodayHeroModel({
+        activeDate,
+        systemTodayKey: systemToday,
         activeCategoryId: executionCategoryId || focusCategory?.id || null,
         activeSessionForActiveDate,
         openSessionOutsideActiveDate,
         futureSessions,
-        focusOccurrenceForActiveDate: canStart ? focusOccurrence : null,
+        focusOccurrenceForActiveDate: focusOccurrence,
         focusTitle: nowActionTitle,
         focusMeta: nowActionMeta,
       }),
     [
+      activeDate,
       activeSessionForActiveDate,
-      canStart,
       executionCategoryId,
       focusCategory?.id,
       focusOccurrence,
@@ -1502,27 +1511,28 @@ export default function Home({
       nowActionMeta,
       nowActionTitle,
       openSessionOutsideActiveDate,
+      systemToday,
     ]
   );
   const canonicalContextSummary = useMemo(
     () =>
       buildTodayCanonicalContextSummary({
-        activeDate: selectedDateKey,
-        isToday: selectedDateKey === todayLocalKey(),
+        activeDate,
+        isToday: activeDate === systemToday,
         activeSessionForActiveDate,
         openSessionOutsideActiveDate,
         futureSessions,
         plannedActionsForActiveDate: occurrencesForSelectedDay,
-        focusOccurrenceForActiveDate: canStart ? focusOccurrence : null,
+        focusOccurrenceForActiveDate: focusOccurrence,
       }),
     [
       activeSessionForActiveDate,
-      canStart,
+      activeDate,
       focusOccurrence,
       futureSessions,
       occurrencesForSelectedDay,
       openSessionOutsideActiveDate,
-      selectedDateKey,
+      systemToday,
     ]
   );
   const heroViewModel = useMemo(
@@ -1537,6 +1547,7 @@ export default function Home({
           openPilotage: typeof onOpenPilotage === "function",
         },
         canonicalContextSummary,
+        systemTodayKey: systemToday,
       }),
     [
       activeSessionForActiveDate,
@@ -1547,15 +1558,8 @@ export default function Home({
       occurrencesForSelectedDay,
       onOpenLibrary,
       onOpenPilotage,
+      systemToday,
     ]
-  );
-  const heroChrome = useMemo(
-    () =>
-      deriveTodayHeroChrome({
-        heroSource: heroViewModel.source,
-        aiNowState: aiNow.state,
-      }),
-    [aiNow.state, heroViewModel.source]
   );
   const todayDecisionDiagnostics = useMemo(
     () =>
@@ -1567,6 +1571,29 @@ export default function Home({
       }),
     [aiNow.coach, aiNow.state, canonicalContextSummary, heroViewModel]
   );
+  const heroChrome = useMemo(
+    () =>
+      deriveTodayHeroChrome({
+        todayDecisionDiagnostics,
+      }),
+    [todayDecisionDiagnostics]
+  );
+  const heroTypingEnabled = todayDecisionDiagnostics.resolutionStatus !== "local_only";
+  const typedHeroHint = useTypingReveal(heroChrome.hintText, {
+    enabled: heroTypingEnabled && heroChrome.showHint,
+    charsPerTick: 2,
+    intervalMs: 20,
+  });
+  const typedHeroTitle = useTypingReveal(heroViewModel.title, {
+    enabled: heroTypingEnabled,
+    charsPerTick: 2,
+    intervalMs: 18,
+  });
+  const typedHeroMeta = useTypingReveal(heroViewModel.meta || "", {
+    enabled: heroTypingEnabled && Boolean(heroViewModel.meta),
+    charsPerTick: 3,
+    intervalMs: 16,
+  });
   useEffect(() => {
     const isDev = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
     const isLocalHost =
@@ -1640,9 +1667,9 @@ export default function Home({
             <div className="todayHeroDate">{selectedDateLabel}</div>
           </div>
           <div className="todayHeroBody">
-            {heroChrome.showHint ? <div className="todayHeroCoachHint">{heroChrome.hintText}</div> : null}
-            <div className="todayHeroTitle">{heroViewModel.title}</div>
-            {heroViewModel.meta ? <div className="todayHeroMeta">{heroViewModel.meta}</div> : null}
+            {heroChrome.showHint ? <div className="todayHeroCoachHint">{typedHeroHint}</div> : null}
+            <div className="todayHeroTitle">{typedHeroTitle}</div>
+            {heroViewModel.meta ? <div className="todayHeroMeta">{typedHeroMeta}</div> : null}
           </div>
           <div className="todayHeroActions GatePrimaryCtaRow">
             <GateButton

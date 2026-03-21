@@ -1,6 +1,7 @@
 import {
   TODAY_DIAGNOSTIC_REJECTION_REASON,
   TODAY_INTERVENTION_TYPE,
+  resolveTodayOccurrenceStartPolicy,
   resolveTodayInterventionType,
 } from "../../domain/todayIntervention";
 
@@ -46,12 +47,14 @@ function buildFallback(localHero, diagnostics = {}) {
       backendDecisionSource: diagnostics.backendDecisionSource || null,
       backendResolutionStatus: diagnostics.backendResolutionStatus || null,
       backendRejectionReason: diagnostics.backendRejectionReason || TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
-      badgeState: "hidden",
+      badgeState: hasBackendDecision ? "coach_visible" : "hidden",
     },
   };
 }
 
 export function buildLocalTodayHeroModel({
+  activeDate = "",
+  systemTodayKey = "",
   activeCategoryId = null,
   activeSessionForActiveDate = null,
   openSessionOutsideActiveDate = null,
@@ -64,6 +67,14 @@ export function buildLocalTodayHeroModel({
     activeSessionForActiveDate,
     openSessionOutsideActiveDate,
     futureSessions,
+    activeDate,
+    systemToday: systemTodayKey,
+    focusOccurrenceForActiveDate,
+  });
+  const startPolicy = resolveTodayOccurrenceStartPolicy({
+    activeDate,
+    systemToday: systemTodayKey,
+    occurrenceDate: focusOccurrenceForActiveDate?.date || "",
   });
 
   if (interventionType === TODAY_INTERVENTION_TYPE.SESSION_RESUME) {
@@ -93,11 +104,27 @@ export function buildLocalTodayHeroModel({
     };
   }
 
+  if (focusOccurrenceForActiveDate && startPolicy.requiresReschedule) {
+    return {
+      interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
+      title: focusTitle || "Cette action n'est pas exécutable directement aujourd'hui.",
+      meta:
+        startPolicy.datePhase === "future"
+          ? "Elle est planifiée pour une autre date. Replanifie-la pour l'exécuter aujourd'hui."
+          : "Cette occurrence appartient à une date passée. Replanifie-la avant de la relancer.",
+      primaryLabel: startPolicy.datePhase === "future" ? "Replanifier aujourd’hui" : "Replanifier",
+      primaryAction: {
+        kind: "open_pilotage",
+      },
+      secondaryLabel: "Voir progression",
+    };
+  }
+
   return {
     interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
     title: focusTitle || "Aucune action planifiée pour cette date.",
     meta: focusMeta || "Crée ou planifie une action depuis Bibliothèque.",
-    primaryLabel: focusOccurrenceForActiveDate ? "Commencer maintenant" : "Aucune action active",
+    primaryLabel: focusOccurrenceForActiveDate ? "Démarrer" : "Aucune action active",
     primaryAction: focusOccurrenceForActiveDate
       ? {
           kind: "start_occurrence",
@@ -108,8 +135,20 @@ export function buildLocalTodayHeroModel({
   };
 }
 
-export function deriveTodayHeroChrome({ heroSource, aiNowState }) {
-  if (heroSource === "ai") {
+export function deriveTodayHeroChrome({ todayDecisionDiagnostics }) {
+  const resolutionStatus = todayDecisionDiagnostics?.resolutionStatus || FRONTEND_TODAY_RESOLUTION_STATUS.LOCAL_ONLY;
+
+  if (resolutionStatus === FRONTEND_TODAY_RESOLUTION_STATUS.LOADING_AI) {
+    return {
+      mode: "loading",
+      showBadge: true,
+      badgeLabel: "Coach IA",
+      showHint: true,
+      hintText: "Analyse en cours",
+    };
+  }
+
+  if (resolutionStatus === FRONTEND_TODAY_RESOLUTION_STATUS.BACKEND_ACCEPTED) {
     return {
       mode: "coach",
       showBadge: true,
@@ -119,13 +158,16 @@ export function deriveTodayHeroChrome({ heroSource, aiNowState }) {
     };
   }
 
-  if (aiNowState === "loading") {
+  if (
+    resolutionStatus === FRONTEND_TODAY_RESOLUTION_STATUS.BACKEND_RULES ||
+    resolutionStatus === FRONTEND_TODAY_RESOLUTION_STATUS.FRONTEND_LOCAL_FALLBACK
+  ) {
     return {
-      mode: "loading",
+      mode: "guarded",
       showBadge: true,
-      badgeLabel: "Coach IA",
+      badgeLabel: "Coach",
       showHint: true,
-      hintText: "Prepare la suggestion du moment",
+      hintText: "Suggestion sécurisée",
     };
   }
 
@@ -203,16 +245,16 @@ export function deriveTodayDecisionDiagnostics({
       decisionSource: "local",
       interventionType: heroViewModel?.interventionType || null,
       canonicalContextSummary: canonicalContextSummary || backendDiagnostics?.canonicalContextSummary || null,
-      badgeState: "hidden",
+      badgeState: "coach_visible",
     };
   }
 
   return {
     resolutionStatus: FRONTEND_TODAY_RESOLUTION_STATUS.LOCAL_ONLY,
     rejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.NONE,
-    decisionSource: "local",
-    interventionType: heroViewModel?.interventionType || null,
-    canonicalContextSummary: canonicalContextSummary || null,
+      decisionSource: "local",
+      interventionType: heroViewModel?.interventionType || null,
+      canonicalContextSummary: canonicalContextSummary || null,
     badgeState: "hidden",
   };
 }
@@ -224,6 +266,7 @@ export function deriveTodayHeroModel({
   hasOpenSession = false,
   handlersAvailable = {},
   canonicalContextSummary = null,
+  systemTodayKey = "",
 }) {
   const fallback = buildFallback(localHero, { canonicalContextSummary });
   if (!isPlainObject(coach) || coach.kind !== "now") return fallback;
@@ -255,6 +298,19 @@ export function deriveTodayHeroModel({
           handlersAvailable,
           hasOpenSession,
         }),
+      });
+    }
+    const startPolicy = resolveTodayOccurrenceStartPolicy({
+      activeDate: canonicalContextSummary?.activeDate || primaryAction.dateKey || "",
+      systemToday: systemTodayKey,
+      occurrenceDate: occurrence?.date || primaryAction.dateKey || "",
+    });
+    if (!startPolicy.canStartDirectly) {
+      return buildFallback(localHero, {
+        canonicalContextSummary,
+        backendDecisionSource: coach?.decisionSource || null,
+        backendResolutionStatus: coach?.meta?.diagnostics?.resolutionStatus || null,
+        backendRejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.INVALID_INTERVENTION_TYPE,
       });
     }
     return {

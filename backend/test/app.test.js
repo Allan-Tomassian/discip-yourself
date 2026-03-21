@@ -19,6 +19,24 @@ const TEST_CONFIG_WITH_OPENAI = {
   OPENAI_API_KEY: "test-openai-key",
 };
 
+function toDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function dateKeyFromOffset(days = 0) {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + days);
+  return toDateKey(date);
+}
+
+const TODAY_KEY = dateKeyFromOffset(0);
+const FUTURE_KEY = dateKeyFromOffset(1);
+const PAST_KEY = dateKeyFromOffset(-1);
+
 function createFakeSupabase({
   profile = { id: "user-1" },
   userData = {},
@@ -125,13 +143,13 @@ function createCoachContextUserData({ activeSession = null, occurrences = null }
     categories: [{ id: "cat-1", name: "Focus" }],
     goals: [{ id: "goal-1", title: "Deep work", type: "PROCESS", categoryId: "cat-1" }],
     occurrences:
-      occurrences || [{ id: "occ-1", goalId: "goal-1", date: "2026-03-06", status: "planned", start: "09:00" }],
+      occurrences || [{ id: "occ-1", goalId: "goal-1", date: TODAY_KEY, status: "planned", start: "09:00" }],
     ui: { activeSession },
     sessionHistory: [],
   };
 }
 
-function createValidCoachPayload() {
+function createValidCoachPayload({ dateKey = TODAY_KEY } = {}) {
   return {
     kind: "now",
     headline: "Lance ta session de concentration maintenant",
@@ -142,7 +160,7 @@ function createValidCoachPayload() {
       categoryId: "cat-1",
       actionId: "goal-1",
       occurrenceId: "occ-1",
-      dateKey: "2026-03-06",
+      dateKey,
     },
     secondaryAction: null,
     suggestedDurationMin: 25,
@@ -208,7 +226,7 @@ test("POST /ai/now without bearer returns 401", async () => {
     method: "POST",
     url: "/ai/now",
     payload: {
-      selectedDateKey: "2026-03-06",
+      selectedDateKey: TODAY_KEY,
       activeCategoryId: null,
       surface: "today",
       trigger: "manual",
@@ -239,7 +257,7 @@ test("POST /ai/now returns 429 from server-trusted free quota even if profile.pl
     url: "/ai/now",
     headers: { authorization: "Bearer token" },
     payload: {
-      selectedDateKey: "2026-03-06",
+      selectedDateKey: TODAY_KEY,
       activeCategoryId: null,
       surface: "today",
       trigger: "manual",
@@ -272,7 +290,7 @@ test("POST /ai/now allows higher dev quota without changing the real plan tier",
     url: "/ai/now",
     headers: { authorization: "Bearer token" },
     payload: {
-      selectedDateKey: "2026-03-06",
+      selectedDateKey: TODAY_KEY,
       activeCategoryId: "cat-1",
       surface: "today",
       trigger: "manual",
@@ -303,7 +321,7 @@ test("POST /ai/now returns 503 when required snapshot tables are missing", async
     url: "/ai/now",
     headers: { authorization: "Bearer token" },
     payload: {
-      selectedDateKey: "2026-03-06",
+      selectedDateKey: TODAY_KEY,
       activeCategoryId: null,
       surface: "today",
       trigger: "manual",
@@ -332,7 +350,7 @@ test("POST /ai/now returns rules fallback when OpenAI is disabled", async () => 
       origin: "http://localhost:5173",
     },
     payload: {
-      selectedDateKey: "2026-03-06",
+      selectedDateKey: TODAY_KEY,
       activeCategoryId: "cat-1",
       surface: "today",
       trigger: "manual",
@@ -359,7 +377,7 @@ test("POST /ai/now maps a future open session to a schedule warning", async () =
     userData: createCoachContextUserData({
       activeSession: {
         id: "sess-future",
-        dateKey: "2026-03-07",
+        dateKey: FUTURE_KEY,
         occurrenceId: "occ-future",
         habitIds: ["goal-1"],
         runtimePhase: "in_progress",
@@ -372,7 +390,7 @@ test("POST /ai/now maps a future open session to a schedule warning", async () =
     url: "/ai/now",
     headers: { authorization: "Bearer token" },
     payload: {
-      selectedDateKey: "2026-03-06",
+      selectedDateKey: TODAY_KEY,
       activeCategoryId: "cat-1",
       surface: "today",
       trigger: "screen_open",
@@ -398,7 +416,7 @@ test("POST /ai/now resumes the session only when it belongs to the active date",
     userData: createCoachContextUserData({
       activeSession: {
         id: "sess-today",
-        dateKey: "2026-03-06",
+        dateKey: TODAY_KEY,
         occurrenceId: "occ-1",
         habitIds: ["goal-1"],
         runtimePhase: "in_progress",
@@ -411,7 +429,7 @@ test("POST /ai/now resumes the session only when it belongs to the active date",
     url: "/ai/now",
     headers: { authorization: "Bearer token" },
     payload: {
-      selectedDateKey: "2026-03-06",
+      selectedDateKey: TODAY_KEY,
       activeCategoryId: "cat-1",
       surface: "today",
       trigger: "resume",
@@ -426,6 +444,72 @@ test("POST /ai/now resumes the session only when it belongs to the active date",
   assert.equal(payload.meta.sessionId, "sess-today");
   assert.equal(payload.meta.diagnostics.resolutionStatus, "rules_fallback");
   assert.equal(payload.meta.diagnostics.rejectionReason, "none");
+});
+
+test("POST /ai/now routes a future planned occurrence to pilotage instead of direct start", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-future-plan" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData({
+      occurrences: [{ id: "occ-1", goalId: "goal-1", date: FUTURE_KEY, status: "planned", start: "09:00" }],
+    }),
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: FUTURE_KEY,
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "manual",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachResponseSchema.parse(response.json());
+  assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.interventionType, "today_recommendation");
+  assert.equal(payload.primaryAction.intent, "open_pilotage");
+  assert.equal(payload.primaryAction.label, "Replanifier aujourd’hui");
+  assert.equal(payload.toolIntent, "suggest_reschedule_option");
+  await app.close();
+});
+
+test("POST /ai/now routes a past planned occurrence to pilotage instead of direct start", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-past-plan" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData({
+      occurrences: [{ id: "occ-1", goalId: "goal-1", date: PAST_KEY, status: "planned", start: "09:00" }],
+    }),
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: PAST_KEY,
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "manual",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachResponseSchema.parse(response.json());
+  assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.interventionType, "today_recommendation");
+  assert.equal(payload.primaryAction.intent, "open_pilotage");
+  assert.equal(payload.primaryAction.label, "Replanifier");
+  assert.equal(payload.toolIntent, "suggest_reschedule_option");
+  await app.close();
 });
 
 test("POST /ai/now returns ai decision when OpenAI returns valid structured output", async () => {
@@ -461,7 +545,7 @@ test("POST /ai/now returns ai decision when OpenAI returns valid structured outp
     url: "/ai/now",
     headers: { authorization: "Bearer token" },
     payload: {
-      selectedDateKey: "2026-03-06",
+      selectedDateKey: TODAY_KEY,
       activeCategoryId: "cat-1",
       surface: "today",
       trigger: "manual",
@@ -505,7 +589,7 @@ test("POST /ai/now repairs minor model output omissions and still returns an ai 
       label: "L".repeat(40),
       intent: "start_occurrence",
       occurrenceId: "occ-1",
-      dateKey: "2026-03-06",
+      dateKey: TODAY_KEY,
     },
   };
   delete repairedCandidate.secondaryAction;
@@ -533,7 +617,7 @@ test("POST /ai/now repairs minor model output omissions and still returns an ai 
     url: "/ai/now",
     headers: { authorization: "Bearer token" },
     payload: {
-      selectedDateKey: "2026-03-06",
+      selectedDateKey: TODAY_KEY,
       activeCategoryId: "cat-1",
       surface: "today",
       trigger: "manual",
@@ -582,7 +666,7 @@ test("POST /ai/now falls back to rules when OpenAI structured output is invalid"
     url: "/ai/now",
     headers: { authorization: "Bearer token" },
     payload: {
-      selectedDateKey: "2026-03-06",
+      selectedDateKey: TODAY_KEY,
       activeCategoryId: "cat-1",
       surface: "today",
       trigger: "manual",
@@ -597,6 +681,54 @@ test("POST /ai/now falls back to rules when OpenAI structured output is invalid"
   assert.equal(payload.meta.diagnostics.resolutionStatus, "rejected_to_rules");
   assert.equal(payload.meta.diagnostics.rejectionReason, "invalid_model_output");
   assert.equal(payload.primaryAction.intent, "start_occurrence");
+  await app.close();
+});
+
+test("POST /ai/now rejects an AI direct start when the selected date is not today", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-future-ai-start" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData({
+      occurrences: [{ id: "occ-1", goalId: "goal-1", date: FUTURE_KEY, status: "planned", start: "09:00" }],
+    }),
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: createValidCoachPayload({ dateKey: FUTURE_KEY }),
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: FUTURE_KEY,
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "manual",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachResponseSchema.parse(response.json());
+  assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.meta.fallbackReason, "none");
+  assert.equal(payload.meta.diagnostics.resolutionStatus, "rejected_to_rules");
+  assert.equal(payload.meta.diagnostics.rejectionReason, "invalid_intervention_type");
+  assert.equal(payload.primaryAction.intent, "open_pilotage");
   await app.close();
 });
 
@@ -623,7 +755,7 @@ test("POST /ai/now rejects an AI warning without a deterministic warning signal"
                     categoryId: "cat-1",
                     actionId: null,
                     occurrenceId: null,
-                    dateKey: "2026-03-06",
+                    dateKey: TODAY_KEY,
                   },
                   toolIntent: "suggest_reschedule_option",
                 },
@@ -640,7 +772,7 @@ test("POST /ai/now rejects an AI warning without a deterministic warning signal"
     url: "/ai/now",
     headers: { authorization: "Bearer token" },
     payload: {
-      selectedDateKey: "2026-03-06",
+      selectedDateKey: TODAY_KEY,
       activeCategoryId: "cat-1",
       surface: "today",
       trigger: "manual",
@@ -679,7 +811,7 @@ test("POST /ai/now rejects an AI resume without active session for the selected 
                     categoryId: "cat-1",
                     actionId: "goal-1",
                     occurrenceId: "occ-1",
-                    dateKey: "2026-03-06",
+                    dateKey: TODAY_KEY,
                   },
                   toolIntent: "suggest_resume_session",
                 },
@@ -696,7 +828,7 @@ test("POST /ai/now rejects an AI resume without active session for the selected 
     url: "/ai/now",
     headers: { authorization: "Bearer token" },
     payload: {
-      selectedDateKey: "2026-03-06",
+      selectedDateKey: TODAY_KEY,
       activeCategoryId: "cat-1",
       surface: "today",
       trigger: "manual",
@@ -736,7 +868,7 @@ test("POST /ai/now rejects open_today as an invalid primary intent for Today and
                     categoryId: "cat-1",
                     actionId: "goal-1",
                     occurrenceId: "occ-1",
-                    dateKey: "2026-03-06",
+                    dateKey: TODAY_KEY,
                   },
                 },
               },
@@ -752,7 +884,7 @@ test("POST /ai/now rejects open_today as an invalid primary intent for Today and
     url: "/ai/now",
     headers: { authorization: "Bearer token" },
     payload: {
-      selectedDateKey: "2026-03-06",
+      selectedDateKey: TODAY_KEY,
       activeCategoryId: "cat-1",
       surface: "today",
       trigger: "manual",

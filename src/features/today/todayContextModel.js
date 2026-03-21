@@ -1,4 +1,5 @@
 import { getNextPlannedOccurrence } from "../../core/focus/focusSelector";
+import { resolveTodayDatePhase } from "../../domain/todayIntervention";
 import { normalizeActiveSessionForUI } from "../../logic/compat";
 import { isRuntimeSessionOpen } from "../../logic/sessionRuntime";
 import { normalizeLocalDateKey, todayLocalKey } from "../../utils/dateKey";
@@ -18,7 +19,9 @@ export function deriveTodayContextModel({
   now = new Date(),
 }) {
   const activeDate = resolveActiveDate(selectedDateKey);
-  const isToday = activeDate === todayLocalKey();
+  const systemToday = normalizeLocalDateKey(now) || todayLocalKey();
+  const isToday = activeDate === systemToday;
+  const datePhase = resolveTodayDatePhase({ activeDate, systemToday });
   const normalizedSession = normalizeActiveSessionForUI(rawActiveSession);
   const openSession = isRuntimeSessionOpen(normalizedSession) ? normalizedSession : null;
   const sessionDateKey = normalizeLocalDateKey(openSession?.dateKey || openSession?.date || "");
@@ -37,7 +40,9 @@ export function deriveTodayContextModel({
 
   return {
     activeDate,
+    systemToday,
     isToday,
+    datePhase,
     activeSessionForActiveDate,
     openSessionOutsideActiveDate,
     futureSessions,

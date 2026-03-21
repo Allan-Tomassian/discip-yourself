@@ -38,4 +38,15 @@ describe("home today canonical contract", () => {
     expect(home).toContain("if (!isDev && !isLocalHost) return;");
     expect(home).toContain('console.log("[today-coach]", todayDecisionDiagnostics);');
   });
+
+  it("guards session start with the shared temporal policy and wires the typing reveal", () => {
+    const home = readSrc("pages/Home.jsx");
+
+    expect(home).toContain("resolveTodayOccurrenceStartPolicy");
+    expect(home).toContain("if (!startPolicy.canStartDirectly) return;");
+    expect(home).toContain("const typedHeroTitle = useTypingReveal(");
+    expect(home).toContain("const typedHeroHint = useTypingReveal(");
+    expect(home).toContain("deriveTodayHeroChrome({");
+    expect(home).toContain("todayDecisionDiagnostics");
+  });
 });

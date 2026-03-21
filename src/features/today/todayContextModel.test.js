@@ -23,6 +23,8 @@ describe("deriveTodayContextModel", () => {
     expect(result.futureSessions).toEqual([]);
     expect(result.focusOccurrenceForActiveDate?.id).toBe("occ-1");
     expect(result.isToday).toBe(true);
+    expect(result.systemToday).toBe("2026-03-06");
+    expect(result.datePhase).toBe("today");
   });
 
   it("distinguishes a future open session without polluting today's context", () => {
@@ -46,6 +48,7 @@ describe("deriveTodayContextModel", () => {
     expect(result.futureSessions).toHaveLength(1);
     expect(result.focusOccurrenceForActiveDate?.id).toBe("occ-1");
     expect(result.isToday).toBe(true);
+    expect(result.datePhase).toBe("today");
   });
 
   it("marks a future selected date as not today", () => {
@@ -60,6 +63,8 @@ describe("deriveTodayContextModel", () => {
 
     expect(result.activeDate).toBe("2026-03-08");
     expect(result.isToday).toBe(false);
+    expect(result.systemToday).toBe("2026-03-06");
+    expect(result.datePhase).toBe("future");
     expect(result.focusOccurrenceForActiveDate?.id).toBe("occ-2");
   });
 });

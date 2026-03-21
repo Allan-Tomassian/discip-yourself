@@ -166,24 +166,36 @@ function buildSystemPrompt(locale = DEFAULT_OUTPUT_LOCALE) {
 }
 
 function buildNowPrompt(context) {
+  const examplePrimaryAction = context.isToday
+    ? {
+        label: "Demarrer",
+        intent: "start_occurrence",
+        categoryId: "cat-1",
+        actionId: "goal-1",
+        occurrenceId: "occ-1",
+        dateKey: context.activeDate,
+      }
+    : {
+        label: "Replanifier",
+        intent: "open_pilotage",
+        categoryId: "cat-1",
+        actionId: "goal-1",
+        occurrenceId: "occ-1",
+        dateKey: context.activeDate,
+      };
   const validExample = {
     kind: "now",
-    headline: "Lance ta session prioritaire",
-    reason: "C'est l'action la plus utile et la plus exécutable maintenant.",
-    primaryAction: {
-      label: "Demarrer",
-      intent: "start_occurrence",
-      categoryId: "cat-1",
-      actionId: "goal-1",
-      occurrenceId: "occ-1",
-      dateKey: context.activeDate,
-    },
+    headline: context.isToday ? "Lance ta session prioritaire" : "Replanifie l'action prioritaire",
+    reason: context.isToday
+      ? "C'est l'action la plus utile et la plus exécutable maintenant."
+      : "Cette action doit etre replanifiee avant execution.",
+    primaryAction: examplePrimaryAction,
     secondaryAction: null,
-    suggestedDurationMin: 25,
+    suggestedDurationMin: context.isToday ? 25 : null,
     confidence: 0.88,
     urgency: "medium",
     uiTone: "steady",
-    toolIntent: "suggest_start_occurrence",
+    toolIntent: context.isToday ? "suggest_start_occurrence" : "suggest_reschedule_option",
     rewardSuggestion: {
       kind: "none",
       label: null,
@@ -199,6 +211,8 @@ function buildNowPrompt(context) {
     "Use null for nullable fields instead of omitting them.",
     "Use resume_session only when activeSessionForActiveDate is present.",
     "Use open_pilotage only for a deterministic schedule warning.",
+    "Use start_occurrence only when isToday is true and primaryAction.dateKey equals activeDate.",
+    "If isToday is false, prefer open_pilotage instead of start_occurrence.",
     "Use only start_occurrence, resume_session, open_library, or open_pilotage as primaryAction.intent for now recommendations.",
     "Do not use open_today as primaryAction.intent.",
     "Allowed urgency values: low, medium, high.",

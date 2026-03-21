@@ -1,4 +1,5 @@
 import { getAlternativeCandidates } from "../../core/focus/focusSelector";
+import { resolveTodayOccurrenceStartPolicy } from "../../domain/todayIntervention";
 import { resolveGoalType } from "../../domain/goalType";
 import { isPrimaryCategory } from "../../logic/priority";
 import { deriveTodayContextModel } from "./todayContextModel";
@@ -87,6 +88,11 @@ export function deriveTodayNowModel({
       ? plannedList.find((occurrence) => occurrence?.id === focusOverride?.occurrenceId) || null
       : null;
   const focusOccurrence = focusOverrideOccurrence || focusBaseOccurrence;
+  const focusStartPolicy = resolveTodayOccurrenceStartPolicy({
+    activeDate: todayContext.activeDate,
+    systemToday: todayContext.systemToday,
+    occurrenceDate: focusOccurrence?.date || "",
+  });
   const isFocusOverride = Boolean(
     focusOverrideOccurrence && focusBaseOccurrence && focusOverrideOccurrence.id !== focusBaseOccurrence.id
   );
@@ -97,7 +103,7 @@ export function deriveTodayNowModel({
     limit: 4,
     excludeId: focusOccurrence?.id || null,
   });
-  const canStart = Boolean(focusOccurrence);
+  const canStartDirectly = Boolean(focusOccurrence) && focusStartPolicy.canStartDirectly;
   const fallbackReason = (() => {
     if (focusOccurrence) return "planned_occurrence";
     if (sessionForDay?.occurrenceId) return "session_active";
@@ -105,7 +111,7 @@ export function deriveTodayNowModel({
     if (focusCategory?.id) return "no_executable_action";
     return "no_category";
   })();
-  const startPayload = focusOccurrence
+  const startPayload = canStartDirectly
     ? {
         occurrenceId: focusOccurrence.id || null,
         dateKey: focusOccurrence.date || selectedDateKey,
@@ -115,7 +121,9 @@ export function deriveTodayNowModel({
 
   return {
     activeDate: todayContext.activeDate,
+    systemToday: todayContext.systemToday,
     isToday: todayContext.isToday,
+    datePhase: todayContext.datePhase,
     focusCategory,
     selectedCategoryId: focusCategory?.id || null,
     activeHabits,
@@ -133,7 +141,9 @@ export function deriveTodayNowModel({
     focusOccurrence,
     isFocusOverride,
     alternativeCandidates,
-    canStart,
+    canStartDirectly,
+    canStart: canStartDirectly,
+    requiresReschedule: Boolean(focusOccurrence) && focusStartPolicy.requiresReschedule,
     fallbackReason,
     startPayload,
   };

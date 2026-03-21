@@ -15,6 +15,10 @@ function withGovernedTodayIntervention({ context, payload }) {
     openSessionOutsideActiveDate: context.openSessionOutsideActiveDate,
     futureSessions: context.futureSessions,
     primaryActionIntent: payload?.primaryAction?.intent || "",
+    primaryActionDateKey: payload?.primaryAction?.dateKey || "",
+    activeDate: context.activeDate,
+    systemToday: context.systemToday,
+    focusOccurrenceForActiveDate: context.focusOccurrenceForActiveDate,
   });
   if (!diagnosis.ok || !diagnosis.resolvedInterventionType) {
     throw new Error("invalid_today_intervention");
@@ -46,6 +50,10 @@ export async function runNowCoach({ app, context }) {
         openSessionOutsideActiveDate: context.openSessionOutsideActiveDate,
         futureSessions: context.futureSessions,
         primaryActionIntent: result?.primaryAction?.intent || "",
+        primaryActionDateKey: result?.primaryAction?.dateKey || "",
+        activeDate: context.activeDate,
+        systemToday: context.systemToday,
+        focusOccurrenceForActiveDate: context.focusOccurrenceForActiveDate,
       });
       rejectionReason =
         governanceDiagnosis.rejectionReason || TODAY_DIAGNOSTIC_REJECTION_REASON.GOVERNANCE_REJECTED;

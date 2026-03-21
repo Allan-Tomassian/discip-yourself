@@ -4,7 +4,10 @@ import {
   diagnoseTodayIntervention,
   getTodaySupportedPrimaryIntents,
   isTodayPrimaryIntentSupportedByHero,
+  resolveTodayDatePhase,
+  resolveTodayOccurrenceStartPolicy,
   TODAY_DIAGNOSTIC_REJECTION_REASON,
+  TODAY_DATE_PHASE,
   TODAY_INTERVENTION_REGISTRY,
   TODAY_INTERVENTION_TYPE,
   hasDeterministicScheduleWarning,
@@ -19,9 +22,36 @@ describe("todayIntervention registry", () => {
         activeSessionForActiveDate: null,
         openSessionOutsideActiveDate: null,
         futureSessions: [],
+        activeDate: "2026-03-19",
+        systemToday: "2026-03-19",
+        focusOccurrenceForActiveDate: { id: "occ-1", date: "2026-03-19" },
+        primaryActionDateKey: "2026-03-19",
         primaryActionIntent: "start_occurrence",
       })
     ).toBe(TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION);
+  });
+
+  it("computes the date phase and temporal start policy", () => {
+    expect(resolveTodayDatePhase({ activeDate: "2026-03-19", systemToday: "2026-03-19" })).toBe(
+      TODAY_DATE_PHASE.TODAY
+    );
+    expect(resolveTodayDatePhase({ activeDate: "2026-03-20", systemToday: "2026-03-19" })).toBe(
+      TODAY_DATE_PHASE.FUTURE
+    );
+    expect(resolveTodayDatePhase({ activeDate: "2026-03-18", systemToday: "2026-03-19" })).toBe(
+      TODAY_DATE_PHASE.PAST
+    );
+    expect(
+      resolveTodayOccurrenceStartPolicy({
+        activeDate: "2026-03-20",
+        systemToday: "2026-03-19",
+        occurrenceDate: "2026-03-20",
+      })
+    ).toMatchObject({
+      datePhase: TODAY_DATE_PHASE.FUTURE,
+      canStartDirectly: false,
+      requiresReschedule: true,
+    });
   });
 
   it("does not resolve open_today as a valid primary intent for Today", () => {
@@ -42,6 +72,8 @@ describe("todayIntervention registry", () => {
         activeSessionForActiveDate: { id: "sess-1" },
         openSessionOutsideActiveDate: null,
         futureSessions: [],
+        activeDate: "2026-03-19",
+        systemToday: "2026-03-19",
         primaryActionIntent: "resume_session",
       })
     ).toBe(TODAY_INTERVENTION_TYPE.SESSION_RESUME);
@@ -53,6 +85,8 @@ describe("todayIntervention registry", () => {
         activeSessionForActiveDate: null,
         openSessionOutsideActiveDate: { id: "sess-future" },
         futureSessions: [{ id: "sess-future" }],
+        activeDate: "2026-03-19",
+        systemToday: "2026-03-19",
         primaryActionIntent: "open_pilotage",
       })
     ).toBe(TODAY_INTERVENTION_TYPE.SCHEDULE_WARNING);
@@ -64,12 +98,29 @@ describe("todayIntervention registry", () => {
     ).toBe(true);
   });
 
+  it("resolves open_pilotage as today_recommendation when a planned occurrence must be replanified", () => {
+    expect(
+      resolveTodayInterventionType({
+        activeSessionForActiveDate: null,
+        openSessionOutsideActiveDate: null,
+        futureSessions: [],
+        activeDate: "2026-03-20",
+        systemToday: "2026-03-19",
+        focusOccurrenceForActiveDate: { id: "occ-future", date: "2026-03-20" },
+        primaryActionDateKey: "2026-03-20",
+        primaryActionIntent: "open_pilotage",
+      })
+    ).toBe(TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION);
+  });
+
   it("forbids session_resume when the active session is not on the active date", () => {
     expect(
       resolveTodayInterventionType({
         activeSessionForActiveDate: null,
         openSessionOutsideActiveDate: { id: "sess-future" },
         futureSessions: [{ id: "sess-future" }],
+        activeDate: "2026-03-19",
+        systemToday: "2026-03-19",
         primaryActionIntent: "resume_session",
       })
     ).toBeNull();
@@ -80,6 +131,8 @@ describe("todayIntervention registry", () => {
         activeSessionForActiveDate: null,
         openSessionOutsideActiveDate: { id: "sess-future" },
         futureSessions: [{ id: "sess-future" }],
+        activeDate: "2026-03-19",
+        systemToday: "2026-03-19",
       })
     ).toBe(false);
   });
@@ -126,6 +179,8 @@ describe("todayIntervention registry", () => {
         activeSessionForActiveDate: null,
         openSessionOutsideActiveDate: { id: "sess-future" },
         futureSessions: [{ id: "sess-future" }],
+        activeDate: "2026-03-19",
+        systemToday: "2026-03-19",
       })
     ).toEqual({
       ok: false,
@@ -141,6 +196,27 @@ describe("todayIntervention registry", () => {
         activeSessionForActiveDate: null,
         openSessionOutsideActiveDate: null,
         futureSessions: [],
+        activeDate: "2026-03-19",
+        systemToday: "2026-03-19",
+      })
+    ).toEqual({
+      ok: false,
+      resolvedInterventionType: null,
+      rejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.INVALID_INTERVENTION_TYPE,
+    });
+  });
+
+  it("diagnoses start_occurrence as invalid when the occurrence is not on today's active date", () => {
+    expect(
+      diagnoseTodayIntervention({
+        primaryActionIntent: "start_occurrence",
+        primaryActionDateKey: "2026-03-20",
+        activeSessionForActiveDate: null,
+        openSessionOutsideActiveDate: null,
+        futureSessions: [],
+        activeDate: "2026-03-20",
+        systemToday: "2026-03-19",
+        focusOccurrenceForActiveDate: { id: "occ-future", date: "2026-03-20" },
       })
     ).toEqual({
       ok: false,

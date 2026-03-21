@@ -46,6 +46,7 @@ export function buildNowContext({
     requestId,
     trigger,
     activeDate: dateKey,
+    systemToday,
     isToday: Boolean(dateKey && systemToday && dateKey === systemToday),
     selectedDateKey: dateKey,
     activeCategoryId: categoryId,

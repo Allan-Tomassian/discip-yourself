@@ -1,5 +1,6 @@
 import {
   TODAY_INTERVENTION_TYPE,
+  resolveTodayOccurrenceStartPolicy,
   resolveTodayInterventionType,
 } from "../../../../src/domain/todayIntervention.js";
 
@@ -8,10 +9,18 @@ function buildAction({ label, intent, categoryId = null, actionId = null, occurr
 }
 
 export function buildNowFallback(context) {
+  const focusStartPolicy = resolveTodayOccurrenceStartPolicy({
+    activeDate: context.activeDate,
+    systemToday: context.systemToday,
+    occurrenceDate: context.focusOccurrenceForActiveDate?.date || "",
+  });
   const interventionType = resolveTodayInterventionType({
     activeSessionForActiveDate: context.activeSessionForActiveDate,
     openSessionOutsideActiveDate: context.openSessionOutsideActiveDate,
     futureSessions: context.futureSessions,
+    activeDate: context.activeDate,
+    systemToday: context.systemToday,
+    focusOccurrenceForActiveDate: context.focusOccurrenceForActiveDate,
   });
 
   if (interventionType === TODAY_INTERVENTION_TYPE.SESSION_RESUME && context.activeSessionForActiveDate?.isOpen) {
@@ -75,6 +84,40 @@ export function buildNowFallback(context) {
     const duration = Number.isFinite(context.focusOccurrenceForActiveDate.durationMinutes)
       ? context.focusOccurrenceForActiveDate.durationMinutes
       : null;
+    if (focusStartPolicy.requiresReschedule) {
+      return {
+        kind: "now",
+        interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
+        decisionSource: "rules",
+        headline: title.slice(0, 72),
+        reason:
+          focusStartPolicy.datePhase === "future"
+            ? "Cette action est prévue pour une autre date. Replanifie-la avant de la lancer."
+            : "Cette action appartient à une date passée. Replanifie-la avant de la relancer.",
+        primaryAction: buildAction({
+          label: focusStartPolicy.datePhase === "future" ? "Replanifier aujourd’hui" : "Replanifier",
+          intent: "open_pilotage",
+          categoryId: context.activeCategoryId,
+          actionId: context.focusOccurrenceForActiveDate.goalId || null,
+          occurrenceId: context.focusOccurrenceForActiveDate.id || null,
+          dateKey: context.activeDate,
+        }),
+        secondaryAction: buildAction({
+          label: "Voir aujourd’hui",
+          intent: "open_today",
+          categoryId: context.activeCategoryId,
+          occurrenceId: context.focusOccurrenceForActiveDate.id || null,
+          actionId: context.focusOccurrenceForActiveDate.goalId || null,
+          dateKey: context.activeDate,
+        }),
+        suggestedDurationMin: null,
+        confidence: 0.87,
+        urgency: "medium",
+        uiTone: "steady",
+        toolIntent: "suggest_reschedule_option",
+        rewardSuggestion: { kind: "none", label: null },
+      };
+    }
     return {
       kind: "now",
       interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,

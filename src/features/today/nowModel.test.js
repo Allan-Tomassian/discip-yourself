@@ -43,6 +43,7 @@ describe("deriveTodayNowModel", () => {
     expect(result.sessionHabit?.id).toBe("a1");
     expect(result.activeSession?.dateKey).toBe("2026-03-13");
     expect(result.activeSessionForActiveDate?.dateKey).toBe("2026-03-13");
+    expect(result.canStartDirectly).toBe(false);
   });
 
   it("does not expose a future active session as today's active session", () => {
@@ -72,6 +73,7 @@ describe("deriveTodayNowModel", () => {
     expect(result.futureSessions).toHaveLength(1);
     expect(result.focusOccurrenceForActiveDate?.id).toBe("occ-1");
     expect(result.focusOccurrence?.id).toBe("occ-1");
+    expect(result.canStartDirectly).toBe(true);
   });
 
   it("exposes a pure execution contract without selectedGoal or linked habits", () => {
@@ -96,10 +98,33 @@ describe("deriveTodayNowModel", () => {
     expect(result.ensureProcessIds).toEqual(["a1"]);
     expect(result.selectedCategoryId).toBe("c1");
     expect(result.canStart).toBe(false);
+    expect(result.canStartDirectly).toBe(false);
     expect(result.fallbackReason).toBe("no_planned_occurrence");
     expect("selectedGoal" in result).toBe(false);
     expect("linkedHabits" in result).toBe(false);
     expect("unlinkedHabits" in result).toBe(false);
     expect("processGoals" in result).toBe(false);
+  });
+
+  it("requires replanification instead of direct start for a future selected date", () => {
+    const categories = [{ id: "c1", name: "Fitness" }];
+    const goals = [{ id: "a1", categoryId: "c1", type: "PROCESS", status: "active", title: "Run 20 min" }];
+
+    const result = deriveTodayNowModel({
+      categories,
+      goals,
+      selectedCategoryId: "c1",
+      rawActiveSession: null,
+      selectedDateKey: "2026-03-14",
+      focusOverride: null,
+      plannedOccurrencesForDay: [{ id: "occ-future", goalId: "a1", date: "2026-03-14", status: "planned", start: "09:00" }],
+      now: new Date(2026, 2, 13, 9, 0),
+    });
+
+    expect(result.focusOccurrence?.id).toBe("occ-future");
+    expect(result.canStartDirectly).toBe(false);
+    expect(result.requiresReschedule).toBe(true);
+    expect(result.startPayload).toBeNull();
+    expect(result.datePhase).toBe("future");
   });
 });
