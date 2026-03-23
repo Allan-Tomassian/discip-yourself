@@ -46,6 +46,7 @@ import { resolveGoalType } from "../domain/goalType";
 import { deriveTodayNowModel } from "../features/today/nowModel";
 import { deriveTodayCalendarModel } from "../features/today/todayCalendarModel";
 import { deriveTodayProgressModel } from "../features/today/todayProgressModel";
+import { isAiFoundationPlanningGoal } from "../logic/aiFoundation";
 import {
   buildLocalTodayHeroModel,
   deriveTodayDecisionDiagnostics,
@@ -121,6 +122,7 @@ function isGoalEligibleForGapFill(goal) {
   if (!goal || typeof goal !== "object" || !goal.id || !goal.categoryId) return false;
   const status = typeof goal.status === "string" ? goal.status.toLowerCase() : "";
   if (status === "archived" || status === "deleted" || status === "removed" || status === "done") return false;
+  if (isAiFoundationPlanningGoal(goal)) return false;
   return resolveGoalType(goal) === "PROCESS";
 }
 
@@ -374,7 +376,6 @@ export default function Home({
   setData,
   onOpenLibrary,
   onOpenPilotage,
-  onOpenManageCategory,
   onOpenSession,
   onDayOpen,
   onAddOccurrence,
@@ -391,10 +392,7 @@ export default function Home({
   const localTodayKey = toLocalDateKey(new Date());
   const selectedStatus =
     selectedDateKey === localTodayKey ? "today" : selectedDateKey < localTodayKey ? "past" : "future";
-  const canValidate = selectedStatus === "today";
   const canInteractWithMicroActions = typeof setData === "function";
-  const canEdit = selectedStatus !== "past";
-  const lockMessage = selectedStatus === "past" ? "Lecture seule" : "Disponible le jour J";
   const historyLimitDays = !isPremiumPlan ? Number(planLimits?.historyDays) || 0 : 0;
   const historyMaxAge = historyLimitDays > 0 ? historyLimitDays - 1 : null;
 
@@ -787,7 +785,6 @@ export default function Home({
     selectedCategoryId: executionCategoryId,
     activeHabits,
     ensureProcessIds,
-    activeSession,
     sessionForDay,
     sessionHabit,
     focusBaseOccurrence,

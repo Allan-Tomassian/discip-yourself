@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../auth/useAuth";
 import { loadUserData, upsertUserData } from "../data/userDataApi";
 import WalletBadge from "./WalletBadge";
+import { opensInlineMenuView } from "./topMenuViews";
 import { GateButton, GateFooter, GateHeader, GatePanel, GateRow, GateSection } from "../shared/ui/gate/Gate";
 import { BASIC_REWARDED_ADS_DAILY_LIMIT, spendCoins } from "../logic/walletV1";
 import {
@@ -13,8 +14,8 @@ import {
 import "../features/navigation/topMenuGate.css";
 
 const ENABLE_MENU_NAV_DEBUG = false;
-const INLINE_MENU_VIEWS = new Set(["preferences", "wallet", "totem"]);
 const MENU_ITEMS = [
+  { id: "coach-chat", label: "Coach", subtitle: "Réponse courte orientée action", group: "main" },
   { id: "account", label: "Compte / Profil", subtitle: "Username, nom, avatar", group: "main" },
   { id: "preferences", label: "Réglages", subtitle: "App / apparence", group: "main" },
   { id: "totem", label: "Totem / Personnalisation", subtitle: "Aigle, couleurs, accessoires", group: "main" },
@@ -36,10 +37,6 @@ const MENU_SUBVIEW_COPY = {
   terms: "Les conditions seront consultables ici sans changer d'écran.",
   support: "Le support et la FAQ seront accessibles dans ce panneau.",
 };
-
-export function opensInlineMenuView(viewId) {
-  return INLINE_MENU_VIEWS.has(viewId);
-}
 
 function resolveMenuView(nextView) {
   if (nextView === "root") return "root";
@@ -282,7 +279,7 @@ export default function TopMenuPopover({ onNavigate, onClose, initialView = "roo
     if (!Number.isFinite(ts)) return "";
     try {
       return new Date(ts).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-    } catch (_error) {
+    } catch {
       return "";
     }
   }

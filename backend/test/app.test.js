@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildApp } from "../src/app.js";
-import { coachResponseSchema } from "../src/schemas/coach.js";
+import { coachChatResponseSchema, coachResponseSchema } from "../src/schemas/coach.js";
 
 const TEST_CONFIG = {
   PORT: 3001,
@@ -234,6 +234,63 @@ test("POST /ai/now without bearer returns 401", async () => {
   });
   assert.equal(response.statusCode, 401);
   assert.equal(response.json().error, "UNAUTHORIZED");
+  await app.close();
+});
+
+test("POST /ai/chat rejects an empty message with 400", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-chat-invalid" }),
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/chat",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.21" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      message: "   ",
+      recentMessages: [],
+    },
+  });
+
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.json().error, "INVALID_BODY");
+  await app.close();
+});
+
+test("POST /ai/chat returns a structured rules fallback", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-chat-1" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/chat",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.22" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      message: "Je suis en retard, quel est le meilleur prochain bloc ?",
+      recentMessages: [{ role: "user", content: "Je suis en retard." }],
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachChatResponseSchema.parse(response.json());
+  assert.equal(payload.kind, "chat");
+  assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.meta.selectedDateKey, TODAY_KEY);
+  assert.equal(payload.meta.messagePreview, "Je suis en retard, quel est le meilleur prochain bloc ?");
+  assert.match(payload.primaryAction.intent, /start_occurrence|open_today|open_pilotage|resume_session|open_library/);
   await app.close();
 });
 

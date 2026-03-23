@@ -186,3 +186,101 @@ test("buildNowContext falls back outside the active category only when there is 
   assert.equal(context.gapSummary.crossCategoryCandidateCount, 1);
   assert.equal(context.gapSummary.candidateActionSummaries[0].title, "Swim 30 min");
 });
+
+test("buildNowContext uses preferred time blocks to select the most aligned flexible occurrence", () => {
+  const context = buildNowContext({
+    data: {
+      categories: [{ id: "cat-1", name: "Focus" }],
+      goals: [
+        { id: "goal-1", title: "Deep work", type: "PROCESS", categoryId: "cat-1", status: "active" },
+        { id: "goal-2", title: "Review", type: "PROCESS", categoryId: "cat-1", status: "active" },
+      ],
+      occurrences: [
+        {
+          id: "occ-morning",
+          goalId: "goal-1",
+          date: "2026-03-06",
+          status: "planned",
+          start: "00:00",
+          slotKey: "00:00",
+          noTime: true,
+          timeType: "window",
+          windowStartAt: "2026-03-06T07:00",
+          windowEndAt: "2026-03-06T12:00",
+          durationMinutes: 20,
+        },
+        {
+          id: "occ-evening",
+          goalId: "goal-2",
+          date: "2026-03-06",
+          status: "planned",
+          start: "00:00",
+          slotKey: "00:00",
+          noTime: true,
+          timeType: "window",
+          windowStartAt: "2026-03-06T18:00",
+          windowEndAt: "2026-03-06T22:00",
+          durationMinutes: 25,
+        },
+      ],
+      user_ai_profile: {
+        goals: ["learning"],
+        time_budget_daily_min: 60,
+        intensity_preference: "balanced",
+        preferred_time_blocks: ["evening"],
+        structure_preference: "simple",
+      },
+      ui: { activeSession: null },
+      sessionHistory: [],
+    },
+    selectedDateKey: "2026-03-06",
+    activeCategoryId: "cat-1",
+    quotaState: { remaining: 3 },
+    requestId: "req-preferred-block",
+    trigger: "screen_open",
+    now: new Date(2026, 2, 6, 12, 0, 0),
+  });
+
+  assert.equal(context.focusSelectionReason, "highest_priority_flexible");
+  assert.equal(context.focusOccurrenceForActiveDate?.id, "occ-evening");
+  assert.equal(context.dayLoadSummary.targetBudgetMinutes, 60);
+  assert.equal(context.dayLoadSummary.preferredBlockAlignment, "partial_match");
+});
+
+test("buildNowContext excludes the onboarding planning goal from gap-fill candidates", () => {
+  const context = buildNowContext({
+    data: {
+      categories: [{ id: "cat-1", name: "Focus" }],
+      goals: [
+        {
+          id: "goal-planning",
+          title: "Planifier journée",
+          type: "PROCESS",
+          categoryId: "cat-1",
+          status: "active",
+          templateId: "ai_onboarding_planning",
+        },
+        {
+          id: "goal-1",
+          title: "Deep work",
+          type: "PROCESS",
+          categoryId: "cat-1",
+          status: "active",
+          sessionMinutes: 25,
+        },
+      ],
+      occurrences: [],
+      ui: { activeSession: null },
+      sessionHistory: [],
+    },
+    selectedDateKey: "2026-03-06",
+    activeCategoryId: "cat-1",
+    quotaState: { remaining: 3 },
+    requestId: "req-gap-skip-planning",
+    trigger: "screen_open",
+    now: new Date(2026, 2, 6, 12, 0, 0),
+  });
+
+  assert.equal(context.gapSummary.candidateActionSummaries.length, 1);
+  assert.equal(context.gapSummary.candidateActionSummaries[0].title, "Deep work");
+});

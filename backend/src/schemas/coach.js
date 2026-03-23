@@ -6,6 +6,8 @@ import {
 } from "../../../src/domain/todayIntervention.js";
 
 const isoDateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const fallbackReasonSchema = z.enum(["none", "quota", "timeout", "invalid_model_output", "backend_error"]);
+const decisionSourceSchema = z.enum(["ai", "rules"]);
 const interventionTypeSchema = z.enum([
   TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
   TODAY_INTERVENTION_TYPE.SESSION_RESUME,
@@ -66,6 +68,13 @@ const actionSchema = z
   })
   .strict();
 
+const chatMessageSchema = z
+  .object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string().trim().min(1).max(500),
+  })
+  .strict();
+
 export const coachPayloadSchema = z
   .object({
     kind: z.enum(["now", "recovery"]),
@@ -93,6 +102,17 @@ export const coachPayloadSchema = z
   })
   .strict();
 
+export const coachChatPayloadSchema = z
+  .object({
+    kind: z.literal("chat"),
+    headline: z.string().max(72),
+    reason: z.string().max(160),
+    primaryAction: actionSchema,
+    secondaryAction: actionSchema.nullable(),
+    suggestedDurationMin: z.number().int().min(1).max(240).nullable(),
+  })
+  .strict();
+
 export const nowRequestSchema = z
   .object({
     selectedDateKey: isoDateKey,
@@ -110,10 +130,19 @@ export const recoveryRequestSchema = z
   })
   .strict();
 
+export const chatRequestSchema = z
+  .object({
+    selectedDateKey: isoDateKey,
+    activeCategoryId: z.string().nullable().optional().default(null),
+    message: z.string().trim().min(1).max(500),
+    recentMessages: z.array(chatMessageSchema).max(6).optional().default([]),
+  })
+  .strict();
+
 export const coachResponseSchema = z
   .object({
     kind: z.enum(["now", "recovery"]),
-    decisionSource: z.enum(["ai", "rules"]),
+    decisionSource: decisionSourceSchema,
     interventionType: interventionTypeSchema.nullable(),
     headline: z.string().max(72),
     reason: z.string().max(160),
@@ -145,9 +174,32 @@ export const coachResponseSchema = z
         occurrenceId: z.string().nullable(),
         sessionId: z.string().nullable(),
         quotaRemaining: z.number().int().nullable(),
-        fallbackReason: z.enum(["none", "quota", "timeout", "invalid_model_output", "backend_error"]),
+        fallbackReason: fallbackReasonSchema,
         trigger: z.enum(["manual", "screen_open", "resume", "auto_slip", "resume_after_gap"]),
         diagnostics: diagnosticsSchema,
+      })
+      .strict(),
+  })
+  .strict();
+
+export const coachChatResponseSchema = z
+  .object({
+    kind: z.literal("chat"),
+    decisionSource: decisionSourceSchema,
+    headline: z.string().max(72),
+    reason: z.string().max(160),
+    primaryAction: actionSchema,
+    secondaryAction: actionSchema.nullable(),
+    suggestedDurationMin: z.number().int().min(1).max(240).nullable(),
+    meta: z
+      .object({
+        coachVersion: z.literal("v1"),
+        requestId: z.string(),
+        selectedDateKey: isoDateKey,
+        activeCategoryId: z.string().nullable(),
+        quotaRemaining: z.number().int().nullable(),
+        fallbackReason: fallbackReasonSchema,
+        messagePreview: z.string().max(120).nullable(),
       })
       .strict(),
   })

@@ -1,15 +1,8 @@
 import React from "react";
 import { useProfile } from "./useProfile";
-import { isProfileComplete } from "./profileApi";
-
-function redirectToAccount() {
-  if (typeof window === "undefined") return;
-  if (window.location.pathname === "/account") return;
-  window.history.replaceState({}, "", "/account");
-}
 
 export default function ProfileGate({ children }) {
-  const { loading, profile } = useProfile();
+  const { loading } = useProfile();
 
   if (loading) {
     return (
@@ -20,10 +13,6 @@ export default function ProfileGate({ children }) {
         <p>Chargement...</p>
       </div>
     );
-  }
-
-  if (!profile || !isProfileComplete(profile)) {
-    redirectToAccount();
   }
 
   return children;

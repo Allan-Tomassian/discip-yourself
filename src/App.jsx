@@ -4,7 +4,6 @@ import CategoryRail from "./components/CategoryRail";
 import {
   ensureSystemInboxCategory,
   migrate,
-  normalizeCategory,
 } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
 import PlusExpander from "./components/PlusExpander";
@@ -40,6 +39,7 @@ import Pilotage from "./pages/Pilotage";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Support from "./pages/Support";
+import CoachChat from "./pages/CoachChat";
 import { applyThemeTokens } from "./theme/themeTokens";
 import { todayLocalKey } from "./utils/dateKey";
 import { normalizePriorities } from "./logic/priority";
@@ -67,6 +67,7 @@ import { useProfile } from "./profile/useProfile";
 import { isProfileComplete } from "./profile/profileApi";
 import { applySessionRuntimeTransition, isRuntimeSessionOpen } from "./logic/sessionRuntime";
 import { emitSessionRuntimeNotificationHook } from "./logic/sessionRuntimeNotifications";
+import { buildUserAiProfileSignature, updateUserAiProfileAdaptation } from "./domain/userAiProfile";
 
 function runSelfTests(data) {
   const isProd = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
@@ -216,7 +217,7 @@ export default function App() {
     tab === "create-habit-anytime" ||
     tab === "create-link-outcome" ||
     tab === "create-pick-category";
-  const currentTab = profileNeedsCompletion ? "account" : tab;
+  const currentTab = tab;
   const resolvedSessionDateKey =
     (typeof sessionDateKey === "string" && sessionDateKey) ||
     (typeof safeData?.ui?.selectedDateKey === "string" && safeData.ui.selectedDateKey) ||
@@ -258,6 +259,8 @@ export default function App() {
       active={
         currentTab === "session"
           ? "today"
+          : currentTab === "coach-chat" || currentTab === "onboarding"
+            ? "today"
           : currentTab === "pilotage"
             ? "pilotage"
             : currentTab === "preferences"
@@ -296,6 +299,22 @@ export default function App() {
     () => (Array.isArray(safeData.categories) ? safeData.categories : []),
     [safeData.categories]
   );
+  const userAiProfileSignature = useMemo(
+    () => buildUserAiProfileSignature(safeData.user_ai_profile),
+    [safeData.user_ai_profile]
+  );
+  const occurrenceBehaviorSignature = useMemo(
+    () =>
+      JSON.stringify(
+        (Array.isArray(safeData.occurrences) ? safeData.occurrences : []).map((occurrence) => [
+          occurrence?.id || "",
+          occurrence?.date || "",
+          occurrence?.status || "",
+          occurrence?.updatedAt || "",
+        ])
+      ),
+    [safeData.occurrences]
+  );
   const categoryIdsKey = useMemo(() => categories.map((c) => c.id).join("|"), [categories]);
   const categoryRailOrder = useMemo(
     () => ensureOrder(safeData?.ui?.categoryRailOrder, categories),
@@ -308,7 +327,6 @@ export default function App() {
   }, [categories, categoryRailOrder]);
   const railCategories = orderedCategories;
   const {
-    librarySelectedCategoryId,
     homeActiveCategoryId,
     selectedCategoryId,
     openLibraryDetail,
@@ -440,6 +458,33 @@ export default function App() {
   }, [categoryIdsKey, categoryRailOrder, safeData?.ui?.categoryRailOrder, setData]);
 
   useEffect(() => {
+    if (dataLoading) return;
+    if (!Array.isArray(safeData?.user_ai_profile?.goals) || safeData.user_ai_profile.goals.length === 0) return;
+    const nextProfile = updateUserAiProfileAdaptation({
+      profile: safeData.user_ai_profile,
+      occurrences: safeData.occurrences,
+      now: new Date(),
+    });
+    if (buildUserAiProfileSignature(nextProfile) === userAiProfileSignature) return;
+    setData((previous) => {
+      const safePrevious = previous && typeof previous === "object" ? previous : {};
+      const previousProfile = previous?.user_ai_profile;
+      const updatedProfile = updateUserAiProfileAdaptation({
+        profile: previousProfile,
+        occurrences: safePrevious.occurrences,
+        now: new Date(),
+      });
+      if (buildUserAiProfileSignature(updatedProfile) === buildUserAiProfileSignature(previousProfile)) {
+        return previous;
+      }
+      return {
+        ...safePrevious,
+        user_ai_profile: updatedProfile,
+      };
+    });
+  }, [dataLoading, occurrenceBehaviorSignature, safeData?.occurrences, safeData?.user_ai_profile, setData, userAiProfileSignature]);
+
+  useEffect(() => {
     if (!isDevEnv || typeof setData !== "function") return;
     try {
       const data = safeData && typeof safeData === "object" ? safeData : null;
@@ -536,6 +581,42 @@ export default function App() {
   const showBottomRail = tab === "today" || tab === "library" || tab === "pilotage";
   const totemDockLayer = <TotemDockLayer data={safeData} setData={setData} />;
 
+  useEffect(() => {
+    if (typeof window === "undefined" || dataLoading) return;
+    if (!onboardingCompleted && window.location.pathname !== "/onboarding") {
+      window.history.replaceState({}, "", "/onboarding");
+    }
+  }, [dataLoading, onboardingCompleted]);
+
+  const profileReminder = profileNeedsCompletion && onboardingCompleted && tab !== "account" ? (
+    <div style={{ padding: "0 16px 12px" }}>
+      <GatePanel className="GateSurfacePremium GateCardPremium">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            padding: 14,
+          }}
+        >
+          <div>
+            <div className="titleSm">Complète ton compte</div>
+            <div className="small">Ajoute ton username pour finaliser ton profil public.</div>
+          </div>
+          <GateButton
+            type="button"
+            className="GatePressable"
+            withSound
+            onClick={() => setTab("account")}
+          >
+            Ouvrir
+          </GateButton>
+        </div>
+      </GatePanel>
+    </div>
+  ) : null;
+
   if (dataLoading) {
     return (
       <div
@@ -578,22 +659,11 @@ export default function App() {
     );
   }
 
-  if (profileNeedsCompletion) {
-    return (
-      <>
-        {headerStack}
-        {headerSpacer}
-        <Account data={data} />
-        <DiagnosticOverlay data={safeData} tab={tab} />
-        {totemDockLayer}
-      </>
-    );
-  }
-
   return (
     <>
       {headerStack}
       {headerSpacer}
+      {profileReminder}
       {showBottomRail ? (
         <div className="bottomCategoryBar" data-tour-id="topnav-rail">
           <div className="BottomBarSurfaceOuter GateGlassOuter">
@@ -628,7 +698,9 @@ export default function App() {
         </div>
       ) : null}
 
-      {tab === "today" ? (
+      {tab === "onboarding" ? (
+        <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />
+      ) : tab === "today" ? (
         <Home
           data={data}
           setData={setData}
@@ -920,6 +992,12 @@ export default function App() {
             setLibraryCategoryId(null);
             setTab("today");
           }}
+        />
+      ) : tab === "coach-chat" ? (
+        <CoachChat
+          data={data}
+          setData={setData}
+          setTab={setTab}
         />
       ) : tab === "account" ? (
         <Account data={data} />

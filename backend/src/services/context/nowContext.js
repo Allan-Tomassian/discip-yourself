@@ -14,6 +14,9 @@ import {
   safeArray,
 } from "./shared.js";
 import { resolveTodayOccurrenceStartPolicy } from "../../../../src/domain/todayIntervention.js";
+import { derivePreferredBlockAlignment, normalizeUserAiProfile } from "../../../../src/domain/userAiProfile.js";
+
+const AI_FOUNDATION_PLANNING_TEMPLATE_ID = "ai_onboarding_planning";
 
 function buildOccurrenceById(data) {
   return new Map(safeArray(data?.occurrences).filter((occurrence) => occurrence?.id).map((occurrence) => [occurrence.id, occurrence]));
@@ -72,19 +75,27 @@ function buildSessionSummary({ session, occurrenceById, goalsById, categoriesByI
   };
 }
 
-function buildDayLoadSummary(plannedActionsForActiveDate) {
+function buildDayLoadSummary(plannedActionsForActiveDate, userAiProfile) {
   const plannedList = safeArray(plannedActionsForActiveDate);
+  const targetBudgetMinutes = Number(userAiProfile?.time_budget_daily_min) || 0;
+  const totalPlannedMinutes = plannedList.reduce(
+    (total, occurrence) => total + (Number.isFinite(occurrence?.durationMinutes) ? occurrence.durationMinutes : 0),
+    0
+  );
   return {
     plannedCount: plannedList.length,
     remainingCount: plannedList.length,
-    totalPlannedMinutes: plannedList.reduce(
-      (total, occurrence) => total + (Number.isFinite(occurrence?.durationMinutes) ? occurrence.durationMinutes : 0),
-      0
-    ),
+    totalPlannedMinutes,
     fixedCount: plannedList.filter((occurrence) => {
       const startTime = resolveOccurrenceStartTime(occurrence);
       return Boolean(startTime && occurrence?.noTime !== true && occurrence?.timeType !== "window");
     }).length,
+    targetBudgetMinutes,
+    loadRatio: targetBudgetMinutes > 0 ? Number((totalPlannedMinutes / targetBudgetMinutes).toFixed(2)) : null,
+    preferredBlockAlignment: derivePreferredBlockAlignment({
+      preferredTimeBlocks: userAiProfile?.preferred_time_blocks || [],
+      occurrences: plannedList,
+    }),
   };
 }
 
@@ -92,6 +103,7 @@ function isExecutableGoal(goal) {
   if (!goal || typeof goal !== "object" || !goal.id || !goal.categoryId) return false;
   const status = typeof goal.status === "string" ? goal.status.toLowerCase() : "";
   if (status === "archived" || status === "deleted" || status === "removed" || status === "done") return false;
+  if (goal.templateId === AI_FOUNDATION_PLANNING_TEMPLATE_ID) return false;
   return goal?.type === "PROCESS" || goal?.planType === "ACTION" || goal?.planType === "ONE_OFF";
 }
 
@@ -269,6 +281,7 @@ export function buildNowContext({
 }) {
   const dateKey = normalizeDateKey(selectedDateKey);
   const systemToday = normalizeDateKey(now);
+  const userAiProfile = normalizeUserAiProfile(data?.user_ai_profile);
   const category = resolveCategory(data, activeCategoryId);
   const categoryId = category?.id || null;
   const goalsById = resolveGoalMap(data);
@@ -285,11 +298,13 @@ export function buildNowContext({
     dateKey,
     now,
     occurrences: plannedActionsForActiveDate,
+    preferredTimeBlocks: userAiProfile.preferred_time_blocks,
   });
   const focusOccurrenceForActiveDate = focusSelection.occurrence || resolveFocusOccurrenceForDate({
     dateKey,
     now,
     occurrences: plannedActionsForActiveDate,
+    preferredTimeBlocks: userAiProfile.preferred_time_blocks,
   });
   const doneToday = dayOccurrences.filter((occurrence) => occurrence?.status === "done").length;
   const missedToday = dayOccurrences.filter((occurrence) => occurrence?.status === "missed").length;
@@ -324,7 +339,7 @@ export function buildNowContext({
     goalsById,
     categoriesById,
   });
-  const dayLoadSummary = buildDayLoadSummary(plannedActionsForActiveDate);
+  const dayLoadSummary = buildDayLoadSummary(plannedActionsForActiveDate, userAiProfile);
   const scheduleSignalSummary = buildScheduleSignalSummary({
     activeDate: dateKey,
     systemToday,
@@ -354,6 +369,7 @@ export function buildNowContext({
     selectedDateKey: dateKey,
     activeCategoryId: categoryId,
     category,
+    userAiProfile,
     goalsById,
     activeSessionForActiveDate,
     openSessionOutsideActiveDate,

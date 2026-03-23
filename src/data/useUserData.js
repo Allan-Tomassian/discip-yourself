@@ -27,6 +27,7 @@ function hasMeaningfulLocalData(value) {
   const categories = Array.isArray(value.categories) ? value.categories : [];
   const profile = isPlainObject(value.profile) ? value.profile : {};
   const ui = isPlainObject(value.ui) ? value.ui : {};
+  const userAiProfile = isPlainObject(value.user_ai_profile) ? value.user_ai_profile : {};
 
   if (goals.length || habits.length || occurrences.length || reminders.length || sessions.length || sessionHistory.length) {
     return true;
@@ -39,6 +40,7 @@ function hasMeaningfulLocalData(value) {
   if ((profile.lastName || "").trim()) return true;
   if ((profile.whyText || "").trim()) return true;
   if ((profile.whyImage || "").trim()) return true;
+  if (Array.isArray(userAiProfile.goals) && userAiProfile.goals.length > 0) return true;
   if (Boolean(ui.onboardingCompleted)) return true;
 
   return false;

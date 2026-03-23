@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { opensInlineMenuView } from "./TopMenuPopover";
+import { opensInlineMenuView } from "./topMenuViews";
 
 describe("TopMenuPopover navigation", () => {
   it("keeps only true inline tools inside the popover", () => {

@@ -1,6 +1,6 @@
 import { zodResponseFormat } from "openai/helpers/zod";
 import { ZodError } from "zod";
-import { coachPayloadSchema } from "../../schemas/coach.js";
+import { coachChatPayloadSchema, coachPayloadSchema } from "../../schemas/coach.js";
 
 const DEFAULT_OUTPUT_LOCALE = "fr-FR";
 const TEXT_LIMITS = Object.freeze({
@@ -90,6 +90,26 @@ export function normalizeCoachPayloadCandidate(candidate) {
       normalized.rewardSuggestion.label,
       TEXT_LIMITS.actionLabel,
     );
+  }
+
+  return normalized;
+}
+
+function normalizeChatPayloadCandidate(candidate) {
+  if (!isPlainObject(candidate)) return candidate;
+  const normalized = { ...candidate };
+  normalized.headline = truncateText(normalized.headline, TEXT_LIMITS.headline);
+  normalized.reason = truncateText(normalized.reason, TEXT_LIMITS.reason);
+  normalized.primaryAction = normalizeActionCandidate(normalized.primaryAction);
+
+  if (!("secondaryAction" in normalized) || normalized.secondaryAction === undefined) {
+    normalized.secondaryAction = null;
+  } else if (normalized.secondaryAction !== null) {
+    normalized.secondaryAction = normalizeActionCandidate(normalized.secondaryAction);
+  }
+
+  if (!("suggestedDurationMin" in normalized) || normalized.suggestedDurationMin === undefined) {
+    normalized.suggestedDurationMin = null;
   }
 
   return normalized;
@@ -321,13 +341,110 @@ function buildRecoveryPrompt(context) {
   ].join("\n");
 }
 
+function buildChatPrompt(context) {
+  const gapCandidate = Array.isArray(context.gapSummary?.candidateActionSummaries)
+    ? context.gapSummary.candidateActionSummaries[0] || null
+    : null;
+  const validExample = {
+    kind: "chat",
+    headline: gapCandidate ? `Ajoute ${gapCandidate.title}` : "Clarifie le prochain bloc",
+    reason: gapCandidate
+      ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. Programme-la en bloc court.`
+      : "Choisis l'action la plus exécutable maintenant et garde la réponse très courte.",
+    primaryAction: gapCandidate
+      ? {
+          label: "Planifier aujourd’hui",
+          intent: "open_pilotage",
+          categoryId: "cat-1",
+          actionId: gapCandidate.actionId || "goal-1",
+          occurrenceId: null,
+          dateKey: context.activeDate,
+        }
+      : {
+          label: "Voir aujourd’hui",
+          intent: "open_today",
+          categoryId: "cat-1",
+          actionId: null,
+          occurrenceId: null,
+          dateKey: context.activeDate,
+        },
+    secondaryAction: null,
+    suggestedDurationMin: gapCandidate?.durationMin || 10,
+  };
+
+  return [
+    "You are the structured coach chat for Discip-Yourself.",
+    "Answer the user's latest message with one very short action-oriented recommendation.",
+    "No markdown. No prose outside JSON.",
+    "Never invent actions or occurrences that are not in the context.",
+    "Use only start_occurrence, resume_session, open_library, open_pilotage, or open_today intents.",
+    "Prefer resume_session when a session is already open today.",
+    "Prefer start_occurrence when a credible occurrence can start now.",
+    "Use open_pilotage when the best next step is to plan or replan.",
+    "Keep headline <= 72 chars and reason <= 160 chars.",
+    "Use null instead of omitting nullable fields.",
+    `Valid JSON example: ${JSON.stringify(validExample)}`,
+    `Context: ${JSON.stringify({
+      kind: "chat",
+      activeDate: context.activeDate,
+      isToday: context.isToday,
+      activeCategory: context.category
+        ? {
+            id: context.category.id || null,
+            name: context.category.name || null,
+          }
+        : null,
+      userAiProfile: context.userAiProfile
+        ? {
+            goals: context.userAiProfile.goals || [],
+            time_budget_daily_min: context.userAiProfile.time_budget_daily_min || null,
+            intensity_preference: context.userAiProfile.adaptation?.implicit_intensity || context.userAiProfile.intensity_preference || null,
+            preferred_time_blocks: context.userAiProfile.preferred_time_blocks || [],
+            structure_preference: context.userAiProfile.structure_preference || null,
+            suggestion_stability: context.userAiProfile.adaptation?.suggestion_stability || null,
+          }
+        : null,
+      focusOccurrenceSummary: context.focusOccurrenceSummary || null,
+      activeSessionSummary: context.activeSessionSummary || null,
+      alternativeOccurrenceSummaries: Array.isArray(context.alternativeOccurrenceSummaries)
+        ? context.alternativeOccurrenceSummaries
+        : [],
+      gapSummary: context.gapSummary || null,
+      dayLoadSummary: context.dayLoadSummary || null,
+      focusSelectionReason: context.focusSelectionReason || null,
+      recentMessages: Array.isArray(context.recentMessages) ? context.recentMessages : [],
+      latestUserMessage: context.message || "",
+      quotaRemaining: context.quotaRemaining,
+    })}`,
+  ].join("\n");
+}
+
+function resolvePrompt(kind, context) {
+  if (kind === "recovery") return buildRecoveryPrompt(context);
+  if (kind === "chat") return buildChatPrompt(context);
+  return buildNowPrompt(context);
+}
+
+function resolveSchema(kind) {
+  return kind === "chat" ? coachChatPayloadSchema : coachPayloadSchema;
+}
+
+function resolveSchemaName(kind) {
+  return kind === "chat" ? "coach_chat_payload" : "coach_payload";
+}
+
+function normalizePayloadCandidateForKind(kind, candidate) {
+  return kind === "chat" ? normalizeChatPayloadCandidate(candidate) : normalizeCoachPayloadCandidate(candidate);
+}
+
 export async function runOpenAiCoach({ app, kind, context }) {
   if (!app.openai || !app.config?.OPENAI_API_KEY) return null;
-  const prompt = kind === "recovery" ? buildRecoveryPrompt(context) : buildNowPrompt(context);
+  const prompt = resolvePrompt(kind, context);
+  const responseSchema = resolveSchema(kind);
   const completion = await app.openai.chat.completions.parse({
     model: app.config.OPENAI_MODEL,
     temperature: 0.2,
-    response_format: zodResponseFormat(coachPayloadSchema, "coach_payload"),
+    response_format: zodResponseFormat(responseSchema, resolveSchemaName(kind)),
     messages: [
       {
         role: "system",
@@ -352,9 +469,9 @@ export async function runOpenAiCoach({ app, kind, context }) {
     throw new OpenAiModelOutputError(MODEL_OUTPUT_ISSUE_CODE.MISSING_PARSED_PAYLOAD);
   }
 
-  const normalizedCandidate = normalizeCoachPayloadCandidate(candidate);
+  const normalizedCandidate = normalizePayloadCandidateForKind(kind, candidate);
   try {
-    return coachPayloadSchema.parse(normalizedCandidate);
+    return responseSchema.parse(normalizedCandidate);
   } catch (error) {
     throw new OpenAiModelOutputError(classifyCoachPayloadIssue(error), { cause: error });
   }

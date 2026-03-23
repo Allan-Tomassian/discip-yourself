@@ -3,6 +3,7 @@ import { normalizeGoalsState } from "../goals";
 import { normalizeReminder } from "../reminders";
 import { normalizeLocalDateKey, toLocalDateKey } from "../../utils/dateKey";
 import { resolveGoalType, isOutcome, isProcess } from "../../domain/goalType";
+import { normalizeUserAiProfile } from "../../domain/userAiProfile";
 import { findOccurrenceForGoalDateDeterministic, setOccurrenceStatus, upsertOccurrence } from "../occurrences";
 import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "../blocks/registry";
 import { ensureBlocksConfig } from "../blocks/ensureBlocksConfig";
@@ -378,6 +379,7 @@ export function migrate(prev) {
   if (!next.profile.rewardClaims || typeof next.profile.rewardClaims !== "object") next.profile.rewardClaims = {};
   if (typeof next.profile.whyUpdatedAt !== "string") next.profile.whyUpdatedAt = "";
   if (typeof next.profile.plan !== "string") next.profile.plan = "free";
+  next.user_ai_profile = normalizeUserAiProfile(next.user_ai_profile);
 
   // ui
   if (!next.ui) next.ui = {};
@@ -725,8 +727,9 @@ export function migrate(prev) {
     const whyOk = Boolean((next.profile?.whyText || "").trim());
     const hasOutcome = next.goals.some((g) => isOutcome(g));
     const hasProcess = next.goals.some((g) => isProcess(g));
+    const hasUserAiProfile = Array.isArray(next.user_ai_profile?.goals) && next.user_ai_profile.goals.length > 0;
 
-    if (step >= 3 && nameOk && whyOk && (hasOutcome || hasProcess)) {
+    if ((step >= 3 && nameOk && whyOk && (hasOutcome || hasProcess)) || hasUserAiProfile) {
       next.ui.onboardingCompleted = true;
     }
   }

@@ -4,6 +4,7 @@ import { resolveGoalType, isOutcome, isProcess } from "../../domain/goalType";
 import { normalizeTimeFields } from "../timeFields";
 import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "../blocks/registry";
 import { BRAND_ACCENT } from "../../theme/themeTokens";
+import { createDefaultUserAiProfile } from "../../domain/userAiProfile";
 import { DEFAULT_CATEGORY_ID, SYSTEM_INBOX_ID } from "./inbox";
 import {
   SCHEMA_VERSION,
@@ -634,6 +635,7 @@ export function initialData() {
     occurrences: [],
     checks: {},
     microChecks: {},
+    user_ai_profile: createDefaultUserAiProfile(),
   };
   data.ui.pilotageRadarSelection = sanitizePilotageRadarSelection(data, {
     selection: data.ui.pilotageRadarSelection,
@@ -780,8 +782,10 @@ export function demoData() {
     scheduleRules: [],
     sessionHistory: [],
     sessions: [],
+    occurrences: [],
     checks: {},
     microChecks: {},
+    user_ai_profile: createDefaultUserAiProfile(),
   };
   data.ui.pilotageRadarSelection = sanitizePilotageRadarSelection(data, {
     selection: data.ui.pilotageRadarSelection,

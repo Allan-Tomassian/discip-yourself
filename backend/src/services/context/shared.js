@@ -1,3 +1,5 @@
+import { compareOccurrencesByUserAiPreference } from "../../../../src/domain/userAiProfile.js";
+
 export function safeArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -143,14 +145,23 @@ function stableKey(occurrence) {
   return `${goalId}:${id}`;
 }
 
-function sortByPriorityThenStable(left, right) {
+function sortByPriorityThenStable(left, right, preferredTimeBlocks = []) {
   const leftRank = resolvePriorityRank(left);
   const rightRank = resolvePriorityRank(right);
   if (leftRank !== rightRank) return rightRank - leftRank;
+  if (Array.isArray(preferredTimeBlocks) && preferredTimeBlocks.length > 0) {
+    const preferredComparison = compareOccurrencesByUserAiPreference(left, right, preferredTimeBlocks);
+    if (preferredComparison !== 0) return preferredComparison;
+  }
   return stableKey(left).localeCompare(stableKey(right));
 }
 
-export function resolveFocusOccurrenceSelectionForDate({ dateKey, now = new Date(), occurrences = [] }) {
+export function resolveFocusOccurrenceSelectionForDate({
+  dateKey,
+  now = new Date(),
+  occurrences = [],
+  preferredTimeBlocks = [],
+}) {
   const normalizedDateKey = normalizeDateKey(dateKey);
   if (!normalizedDateKey) {
     return {
@@ -176,7 +187,11 @@ export function resolveFocusOccurrenceSelectionForDate({ dateKey, now = new Date
     .filter((occurrence) => isFixedOccurrence(occurrence))
     .map((occurrence) => ({ occurrence, startMinutes: resolveStartMinutes(occurrence) }))
     .filter((item) => Number.isFinite(item.startMinutes) && item.startMinutes >= nowMinutes)
-    .sort((left, right) => left.startMinutes - right.startMinutes || sortByPriorityThenStable(left.occurrence, right.occurrence));
+    .sort(
+      (left, right) =>
+        left.startMinutes - right.startMinutes ||
+        sortByPriorityThenStable(left.occurrence, right.occurrence, preferredTimeBlocks)
+    );
 
   if (fixedFuture.length) {
     return {
@@ -189,7 +204,11 @@ export function resolveFocusOccurrenceSelectionForDate({ dateKey, now = new Date
     .filter((occurrence) => isFixedOccurrence(occurrence))
     .map((occurrence) => ({ occurrence, startMinutes: resolveStartMinutes(occurrence) }))
     .filter((item) => Number.isFinite(item.startMinutes))
-    .sort((left, right) => left.startMinutes - right.startMinutes || sortByPriorityThenStable(left.occurrence, right.occurrence));
+    .sort(
+      (left, right) =>
+        left.startMinutes - right.startMinutes ||
+        sortByPriorityThenStable(left.occurrence, right.occurrence, preferredTimeBlocks)
+    );
 
   if (fixedAll.length) {
     return {
@@ -198,15 +217,23 @@ export function resolveFocusOccurrenceSelectionForDate({ dateKey, now = new Date
     };
   }
 
-  const nonFixed = list.filter((occurrence) => !isFixedOccurrence(occurrence)).slice().sort(sortByPriorityThenStable);
+  const nonFixed = list
+    .filter((occurrence) => !isFixedOccurrence(occurrence))
+    .slice()
+    .sort((left, right) => sortByPriorityThenStable(left, right, preferredTimeBlocks));
   return {
     occurrence: nonFixed[0] || null,
     reason: nonFixed.length ? "highest_priority_flexible" : null,
   };
 }
 
-export function resolveFocusOccurrenceForDate({ dateKey, now = new Date(), occurrences = [] }) {
-  return resolveFocusOccurrenceSelectionForDate({ dateKey, now, occurrences }).occurrence;
+export function resolveFocusOccurrenceForDate({
+  dateKey,
+  now = new Date(),
+  occurrences = [],
+  preferredTimeBlocks = [],
+}) {
+  return resolveFocusOccurrenceSelectionForDate({ dateKey, now, occurrences, preferredTimeBlocks }).occurrence;
 }
 
 export function buildWindowStats(data, dateKey, days) {

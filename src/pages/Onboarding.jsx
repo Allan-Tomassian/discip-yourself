@@ -1,246 +1,266 @@
 import React, { useMemo, useState } from "react";
-import { Badge, Button, Card, Input, Textarea } from "../components/UI";
+import { Badge, Button, Card } from "../components/UI";
 import ScreenShell from "./_ScreenShell";
 import { BRAND_ACCENT } from "../theme/themeTokens";
-import { LABELS } from "../ui/labels";
+import { buildInitialAiFoundationState } from "../logic/aiFoundation";
+import { migrate } from "../logic/state";
+import {
+  USER_AI_CATEGORY_META,
+  USER_AI_INTENSITIES,
+  USER_AI_STRUCTURES,
+  USER_AI_TIME_BUDGETS,
+  USER_AI_TIME_BLOCK_WINDOWS,
+  normalizeUserAiProfile,
+} from "../domain/userAiProfile";
 
 const ACCENT = `var(--accent, ${BRAND_ACCENT})`;
 const BORDER_DEFAULT = "var(--border)";
 const SURFACE_SOFT = "var(--surface)";
 
-function normalizePermission(value) {
-  if (value === "granted" || value === "denied") return value;
-  return "unknown";
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function permissionLabel(value) {
-  if (value === "granted") return "Autorisé";
-  if (value === "denied") return "Refusé";
-  return "En attente";
+function hasExistingPlanningData(state) {
+  const categories = Array.isArray(state?.categories) ? state.categories : [];
+  const goals = Array.isArray(state?.goals) ? state.goals : [];
+  const occurrences = Array.isArray(state?.occurrences) ? state.occurrences : [];
+  const nonSystemCategories = categories.filter((category) => category?.id && category.id !== "sys_inbox");
+  return nonSystemCategories.length > 0 || goals.length > 0 || occurrences.length > 0;
+}
+
+function OptionCard({ title, description, selected, disabled = false, onClick, badge = "" }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        display: "block",
+        width: "100%",
+        textAlign: "left",
+        borderRadius: 16,
+        border: `1px solid ${selected ? ACCENT : BORDER_DEFAULT}`,
+        background: selected ? "rgba(255,255,255,0.08)" : SURFACE_SOFT,
+        padding: 14,
+        opacity: disabled ? 0.5 : 1,
+        cursor: disabled ? "not-allowed" : "pointer",
+      }}
+    >
+      <div className="row" style={{ justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+        <div className="titleSm">{title}</div>
+        {badge ? <Badge>{badge}</Badge> : null}
+      </div>
+      {description ? (
+        <div className="small" style={{ marginTop: 6 }}>
+          {description}
+        </div>
+      ) : null}
+    </button>
+  );
+}
+
+function toggleOrderedSelection(currentValues, nextValue, max = 3) {
+  const safeValues = Array.isArray(currentValues) ? currentValues.filter(Boolean) : [];
+  if (safeValues.includes(nextValue)) {
+    return safeValues.filter((value) => value !== nextValue);
+  }
+  if (safeValues.length >= max) return safeValues;
+  return [...safeValues, nextValue];
 }
 
 export default function Onboarding({ data, setData, onDone, planOnly = false }) {
-  const safeData = data && typeof data === "object" ? data : {};
-  const profile = safeData.profile || {};
-  const ui = safeData.ui || {};
+  const safeData = isPlainObject(data) ? data : {};
+  const normalizedAiProfile = normalizeUserAiProfile(safeData.user_ai_profile);
 
   const [step, setStep] = useState(0);
-  const [firstName, setFirstName] = useState(profile.name || "");
-  const [why, setWhy] = useState(profile.whyText || "");
-  const [planChoice, setPlanChoice] = useState(profile.plan === "premium" ? "premium" : "free");
-  const [permissions, setPermissions] = useState(() => ({
-    notifications: normalizePermission(ui.permissions?.notifications),
-    calendar: normalizePermission(ui.permissions?.calendar),
-    health: normalizePermission(ui.permissions?.health),
-  }));
+  const [planChoice, setPlanChoice] = useState(safeData?.profile?.plan === "premium" ? "premium" : "free");
+  const [selectedGoals, setSelectedGoals] = useState(normalizedAiProfile.goals);
+  const [budgetMinutes, setBudgetMinutes] = useState(normalizedAiProfile.time_budget_daily_min || 60);
+  const [intensityPreference, setIntensityPreference] = useState(
+    normalizedAiProfile.intensity_preference || USER_AI_INTENSITIES[1]
+  );
+  const [preferredTimeBlocks, setPreferredTimeBlocks] = useState(
+    normalizedAiProfile.preferred_time_blocks.length ? normalizedAiProfile.preferred_time_blocks : ["morning"]
+  );
+  const [structurePreference, setStructurePreference] = useState(
+    normalizedAiProfile.structure_preference || USER_AI_STRUCTURES[1]
+  );
 
-  const slides = useMemo(
+  const questionScreens = useMemo(
     () => [
       {
-        key: "welcome",
-        title: "Discip-Yourself",
-        subtitle: "Clarté · Discipline · Exécution",
+        key: "goals",
+        title: "Choisis tes priorites",
+        subtitle: "Maximum 3 domaines. L'ordre de selection devient ton ordre de priorite.",
+        valid: selectedGoals.length > 0,
         content: (
-          <div className="col">
-            <div className="titleSm">Un cadre simple. Une exécution quotidienne.</div>
-            <div className="small" style={{ marginTop: 8 }}>
-              Tu organises ce qui compte par catégorie. L’app transforme le reste en actions concrètes, au bon moment.
-            </div>
-            <div className="small2" style={{ marginTop: 10, opacity: 0.9 }}>
-              60 secondes pour configurer. Ensuite : tu exécutes.
-            </div>
-          </div>
-        ),
-      },
-      {
-        key: "why",
-        title: "Le principe",
-        subtitle: "Moins de décisions. Plus d’action.",
-        content: (
-          <div className="col">
-            <div className="titleSm">Tu supprimes le flou.</div>
-            <div className="small" style={{ marginTop: 8 }}>
-              Pas de surcharge. Pas de listes interminables. Tu clarifies ton intention et tu suis un plan lisible.
-            </div>
-            <div className="card" style={{ marginTop: 12, padding: 12, background: SURFACE_SOFT, border: `1px solid ${BORDER_DEFAULT}`, borderRadius: 14 }}>
-              <div className="small">But : te faire gagner du temps mental et verrouiller l’exécution.</div>
-            </div>
-          </div>
-        ),
-      },
-      {
-        key: "how",
-        title: "Le système",
-        subtitle: `Catégorie → ${LABELS.action} → Exécution → Progression`,
-        content: (
-          <div className="col">
-            {[
-              { n: "1", t: "Catégorie", d: "Le domaine de ta vie (ex : Finance, Santé)." },
-              { n: "2", t: LABELS.action, d: "Le comportement concret à exécuter." },
-              { n: "3", t: "Exécution", d: "Le moment où tu lances, reprends et termines ce qui compte maintenant." },
-              { n: "4", t: "Progression", d: "La lecture claire de ce qui avance aujourd’hui et dans le temps." },
-            ].map((x) => (
-              <div key={x.n} className="row" style={{ gap: 10, alignItems: "flex-start", padding: "10px 0" }}>
-                <div
-                  style={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: 9,
-                    display: "grid",
-                    placeItems: "center",
-                    border: `1px solid ${BORDER_DEFAULT}`,
-                    color: "rgba(255,255,255,.92)",
-                    background: SURFACE_SOFT,
-                    flex: "0 0 auto",
-                    fontWeight: 700,
-                  }}
-                >
-                  {x.n}
-                </div>
-                <div>
-                  <div className="titleSm" style={{ lineHeight: 1.1 }}>{x.t}</div>
-                  <div className="small" style={{ marginTop: 4 }}>{x.d}</div>
-                </div>
-              </div>
-            ))}
-            <div className="small2" style={{ marginTop: 12, opacity: 0.9 }}>
-              Les {LABELS.goalsLower} avancés restent optionnels. Ils servent seulement à structurer certains sujets plus larges.
-            </div>
-          </div>
-        ),
-      },
-      {
-        key: "permissions",
-        title: "Autorisations",
-        subtitle: "Tu gardes le contrôle",
-        content: (
-          <div className="col">
-            <div className="small" style={{ marginBottom: 10 }}>
-              Tu peux tout activer plus tard. Rien n’est obligatoire.
-            </div>
-            {[
-              {
-                key: "notifications",
-                title: "Notifications",
-                description: "Rappels utiles quand tu as prévu un créneau.",
-              },
-              {
-                key: "calendar",
-                title: "Calendrier",
-                description: "Synchronisation des séances (optionnel).",
-              },
-              {
-                key: "health",
-                title: "Santé",
-                description: "Données d’activité (optionnel).",
-              },
-            ].map((item) => {
-              const status = permissions[item.key];
+          <div className="col" style={{ gap: 10 }}>
+            {Object.values(USER_AI_CATEGORY_META).map((goalMeta) => {
+              const selected = selectedGoals.includes(goalMeta.id);
+              const selectionIndex = selectedGoals.indexOf(goalMeta.id);
               return (
-                <div
-                  key={item.key}
-                  className="listItem"
-                  style={{
-                    border: `1px solid ${BORDER_DEFAULT}`,
-                    borderRadius: 16,
-                    padding: 14,
-                    background: SURFACE_SOFT,
+                <OptionCard
+                  key={goalMeta.id}
+                  title={goalMeta.label}
+                  description="Sera utilise pour creer tes premieres categories et actions."
+                  selected={selected}
+                  badge={selected ? `#${selectionIndex + 1}` : ""}
+                  disabled={!selected && selectedGoals.length >= 3}
+                  onClick={() => {
+                    setSelectedGoals((previous) => toggleOrderedSelection(previous, goalMeta.id, 3));
                   }}
-                >
-                  <div>
-                    <div className="titleSm">{item.title}</div>
-                    <div className="small">{item.description}</div>
-                    <div className="small2" style={{ marginTop: 4, opacity: 0.9 }}>
-                      Statut : {permissionLabel(status)}
-                    </div>
-                  </div>
-                  <div className="row" style={{ gap: 8, alignItems: "center" }}>
-                    <Button
-                      variant={status === "granted" ? "primary" : "ghost"}
-                      onClick={() => setPermissions((prev) => ({ ...prev, [item.key]: "granted" }))}
-                    >
-                      Autoriser
-                    </Button>
-                    <Button
-                      variant={status === "unknown" ? "primary" : "ghost"}
-                      onClick={() => setPermissions((prev) => ({ ...prev, [item.key]: "unknown" }))}
-                    >
-                      Plus tard
-                    </Button>
-                    <Button
-                      variant={status === "denied" ? "primary" : "ghost"}
-                      onClick={() => setPermissions((prev) => ({ ...prev, [item.key]: "denied" }))}
-                    >
-                      Refuser
-                    </Button>
-                  </div>
-                </div>
+                />
               );
             })}
           </div>
         ),
       },
       {
-        key: "engagement",
-        title: "Engagement",
-        subtitle: "Un cap. Une phrase.",
+        key: "budget",
+        title: "Temps quotidien",
+        subtitle: "Choisis un budget credible pour aujourd'hui.",
+        valid: USER_AI_TIME_BUDGETS.includes(Number(budgetMinutes)),
         content: (
-          <div className="col">
-            <div>
-              <div className="small" style={{ marginBottom: 6 }}>Prénom</div>
-              <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Ton prénom" />
-            </div>
-            <div>
-              <div className="small" style={{ marginBottom: 6 }}>Ton “Pourquoi”</div>
-              <Textarea
-                value={why}
-                onChange={(e) => setWhy(e.target.value)}
-                placeholder="Ex : Je veux reprendre le contrôle et exécuter sans négocier."
+          <div className="col" style={{ gap: 10 }}>
+            {USER_AI_TIME_BUDGETS.map((value) => (
+              <OptionCard
+                key={value}
+                title={`${value} min / jour`}
+                description={value <= 60 ? "Lean et tenable." : "Plus ambitieux, mais encore lisible."}
+                selected={budgetMinutes === value}
+                onClick={() => setBudgetMinutes(value)}
               />
-              <div className="small2" style={{ marginTop: 8, opacity: 0.9 }}>
-                Cette phrase s’affichera quand tu auras besoin de te recentrer.
-              </div>
-            </div>
+            ))}
+          </div>
+        ),
+      },
+      {
+        key: "intensity",
+        title: "Intensite souhaitee",
+        subtitle: "On regle la charge initiale, pas un engagement definitif.",
+        valid: USER_AI_INTENSITIES.includes(intensityPreference),
+        content: (
+          <div className="col" style={{ gap: 10 }}>
+            <OptionCard
+              title="Light"
+              description="Actions plus courtes, slots plus souples."
+              selected={intensityPreference === "light"}
+              onClick={() => setIntensityPreference("light")}
+            />
+            <OptionCard
+              title="Balanced"
+              description="Le mode par defaut: credible et progressif."
+              selected={intensityPreference === "balanced"}
+              onClick={() => setIntensityPreference("balanced")}
+            />
+            <OptionCard
+              title="Intense"
+              description="Priorite aux blocs principaux quand c'est credible."
+              selected={intensityPreference === "intense"}
+              onClick={() => setIntensityPreference("intense")}
+            />
+          </div>
+        ),
+      },
+      {
+        key: "time-blocks",
+        title: "Moments preferes",
+        subtitle: "Choisis un ou plusieurs moments. L'ordre sert de priorite de placement.",
+        valid: preferredTimeBlocks.length > 0,
+        content: (
+          <div className="col" style={{ gap: 10 }}>
+            {Object.values(USER_AI_TIME_BLOCK_WINDOWS).map((timeBlock) => {
+              const selected = preferredTimeBlocks.includes(timeBlock.id);
+              const selectionIndex = preferredTimeBlocks.indexOf(timeBlock.id);
+              return (
+                <OptionCard
+                  key={timeBlock.id}
+                  title={timeBlock.label}
+                  description={`${timeBlock.windowStart} - ${timeBlock.windowEnd}`}
+                  selected={selected}
+                  badge={selected ? `#${selectionIndex + 1}` : ""}
+                  onClick={() => {
+                    setPreferredTimeBlocks((previous) => toggleOrderedSelection(previous, timeBlock.id, 3));
+                  }}
+                />
+              );
+            })}
+          </div>
+        ),
+      },
+      {
+        key: "structure",
+        title: "Niveau de structure",
+        subtitle: "Plus tu structures, plus Today sera precise des l'ouverture.",
+        valid: USER_AI_STRUCTURES.includes(structurePreference),
+        content: (
+          <div className="col" style={{ gap: 10 }}>
+            <OptionCard
+              title="Simple"
+              description="Blocs souples, sans rigidite horaire."
+              selected={structurePreference === "simple"}
+              onClick={() => setStructurePreference("simple")}
+            />
+            <OptionCard
+              title="Structured"
+              description="Un premier bloc fixe, le reste reste flexible."
+              selected={structurePreference === "structured"}
+              onClick={() => setStructurePreference("structured")}
+            />
+            <OptionCard
+              title="Optimized"
+              description="Des slots les plus precis possibles, sans refonte lourde."
+              selected={structurePreference === "optimized"}
+              onClick={() => setStructurePreference("optimized")}
+            />
           </div>
         ),
       },
     ],
-    [firstName, why, permissions]
+    [budgetMinutes, intensityPreference, preferredTimeBlocks, selectedGoals, structurePreference]
   );
 
-  const totalSteps = slides.length;
-  const current = slides[step];
-  const cleanFirstName = (firstName || "").trim();
-  const cleanWhy = (why || "").trim();
-  const canFinish = Boolean(cleanFirstName && cleanWhy);
+  const currentScreen = questionScreens[step];
+  const canContinue = Boolean(currentScreen?.valid);
 
   const finishOnboarding = () => {
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      const nextProfile = { ...(prev.profile || {}) };
-      if (cleanFirstName) nextProfile.name = cleanFirstName;
-      if (cleanWhy) {
-        nextProfile.whyText = cleanWhy;
-        nextProfile.whyUpdatedAt = new Date().toISOString();
-      }
-      return {
-        ...prev,
-        profile: nextProfile,
-        ui: {
-          ...prevUi,
-          onboardingCompleted: true,
-          onboardingSeenVersion: 2,
-          tutorialEnabled: true,
-          tutorialStep: 0,
-          permissions: {
-            notifications: permissions.notifications,
-            calendar: permissions.calendar,
-            health: permissions.health,
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const nextProfile = {
+      goals: selectedGoals,
+      time_budget_daily_min: budgetMinutes,
+      intensity_preference: intensityPreference,
+      preferred_time_blocks: preferredTimeBlocks,
+      structure_preference: structurePreference,
+      created_at: normalizedAiProfile.created_at || nowIso,
+      updated_at: nowIso,
+      adaptation: {
+        ...(normalizedAiProfile.adaptation || {}),
+        implicit_intensity: intensityPreference,
+        suggestion_stability: normalizedAiProfile.adaptation?.suggestion_stability || "medium",
+        behavior_window_days: 7,
+        last_behavior_update_at: normalizedAiProfile.adaptation?.last_behavior_update_at || "",
+      },
+    };
+
+    setData((previous) => {
+      const safePrevious = isPlainObject(previous) ? previous : {};
+      if (hasExistingPlanningData(safePrevious)) {
+        return migrate({
+          ...safePrevious,
+          user_ai_profile: nextProfile,
+          ui: {
+            ...(safePrevious.ui || {}),
+            onboardingCompleted: true,
+            onboardingSeenVersion: 3,
+            onboardingStep: 5,
+            showPlanStep: false,
           },
-          onboardingStep: 0,
-          showPlanStep: false,
-        },
-      };
+        });
+      }
+
+      return buildInitialAiFoundationState(safePrevious, nextProfile, now);
     });
     if (typeof onDone === "function") onDone();
   };
@@ -255,7 +275,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
                 <div className="titleSm">Choisis ton plan</div>
                 <div className="small">Aucune facturation ici. Tu pourras changer plus tard.</div>
                 <div className="small2" style={{ marginTop: 6, opacity: 0.9 }}>
-                  L’accès IA Premium sera toujours vérifié côté serveur au moment de l’utilisation.
+                  L’acces IA Premium sera toujours verifie cote serveur au moment de l’utilisation.
                 </div>
               </div>
               <Badge>Plan</Badge>
@@ -265,28 +285,25 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
               <Card accentBorder style={{ borderColor: planChoice === "free" ? ACCENT : BORDER_DEFAULT }}>
                 <div className="p18 col">
                   <div className="titleSm">Gratuit</div>
-                  <div className="small2">L’essentiel pour démarrer.</div>
+                  <div className="small2">L’essentiel pour demarrer.</div>
                   <Button
                     variant={planChoice === "free" ? "primary" : "ghost"}
                     onClick={() => setPlanChoice("free")}
                   >
-                    {planChoice === "free" ? "Sélectionné" : "Choisir Gratuit"}
+                    {planChoice === "free" ? "Selectionne" : "Choisir Gratuit"}
                   </Button>
                 </div>
               </Card>
 
-              <Card
-                accentBorder
-                style={{ borderColor: planChoice === "premium" ? ACCENT : BORDER_DEFAULT }}
-              >
+              <Card accentBorder style={{ borderColor: planChoice === "premium" ? ACCENT : BORDER_DEFAULT }}>
                 <div className="p18 col">
                   <div className="titleSm">Premium</div>
-                  <div className="small2">Liberté totale et réglages avancés.</div>
+                  <div className="small2">Liberte totale et reglages avances.</div>
                   <Button
                     variant={planChoice === "premium" ? "primary" : "ghost"}
                     onClick={() => setPlanChoice("premium")}
                   >
-                    {planChoice === "premium" ? "Sélectionné" : "Choisir Premium"}
+                    {planChoice === "premium" ? "Selectionne" : "Choisir Premium"}
                   </Button>
                 </div>
               </Card>
@@ -295,24 +312,25 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
             <div className="mt12">
               <Button
                 onClick={() => {
-                  setData((prev) => {
-                    const prevUi = prev.ui || {};
-                    const nextProfile = { ...(prev.profile || {}), plan: planChoice };
-                    return {
-                      ...prev,
-                      profile: nextProfile,
+                  setData((previous) =>
+                    migrate({
+                      ...previous,
+                      profile: {
+                        ...(previous?.profile || {}),
+                        plan: planChoice,
+                      },
                       ui: {
-                        ...prevUi,
-                        onboardingCompleted: prevUi.onboardingCompleted,
-                        onboardingStep: 3,
+                        ...(previous?.ui || {}),
+                        onboardingCompleted: true,
+                        onboardingStep: 5,
                         showPlanStep: false,
                       },
-                    };
-                  });
+                    })
+                  );
                   if (typeof onDone === "function") onDone();
                 }}
               >
-                Accéder à l’app
+                Acceder a l’app
               </Button>
             </div>
           </div>
@@ -325,33 +343,34 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
     <ScreenShell
       data={safeData}
       pageId="onboarding"
-      headerTitle={current.title || "Discip-Yourself"}
-      headerSubtitle={`${current.subtitle} · ${step + 1}/${totalSteps}`}
+      headerTitle={currentScreen?.title || "Onboarding"}
+      headerSubtitle={`${currentScreen?.subtitle || ""} · ${step + 1}/${questionScreens.length}`}
     >
       <Card accentBorder>
-        <div className="p18 col">
-          {current.content}
-          {step === totalSteps - 1 && !canFinish ? (
-            <div className="small2" style={{ marginTop: 10 }}>
-              Remplis ton prénom et une phrase pour terminer.
-            </div>
-          ) : null}
-          <div className="row" style={{ marginTop: 14, justifyContent: "space-between", alignItems: "center" }}>
-            <Button variant="ghost" onClick={finishOnboarding}>
-              Ignorer
+        <div className="p18 col" style={{ gap: 14 }}>
+          {currentScreen?.content}
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (step === 0) return;
+                setStep((previous) => Math.max(0, previous - 1));
+              }}
+            >
+              Retour
             </Button>
             <Button
-              disabled={step === totalSteps - 1 && !canFinish}
+              disabled={!canContinue}
               onClick={() => {
-                if (step < totalSteps - 1) {
-                  setStep(step + 1);
+                if (!canContinue) return;
+                if (step < questionScreens.length - 1) {
+                  setStep((previous) => previous + 1);
                   return;
                 }
-                if (!canFinish) return;
                 finishOnboarding();
               }}
             >
-              Continuer
+              {step === questionScreens.length - 1 ? "Creer mon plan" : "Continuer"}
             </Button>
           </div>
         </div>

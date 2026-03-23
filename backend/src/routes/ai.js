@@ -1,15 +1,20 @@
-import { z } from "zod";
 import { loadUserSnapshot } from "../lib/supabase.js";
 import { buildSchemaErrorReply, isSupabaseSchemaError } from "../lib/supabaseErrors.js";
-import { coachResponseSchema, nowRequestSchema, recoveryRequestSchema } from "../schemas/coach.js";
+import {
+  chatRequestSchema,
+  coachChatResponseSchema,
+  coachResponseSchema,
+  nowRequestSchema,
+  recoveryRequestSchema,
+} from "../schemas/coach.js";
 import { insertAiRequestLog, hashValue } from "../services/logging.js";
 import { resolveQuotaState, enforceMemoryRateLimit } from "../services/quotas.js";
 import { buildNowContext } from "../services/context/nowContext.js";
+import { buildChatContext } from "../services/context/chatContext.js";
 import { buildRecoveryContext } from "../services/context/recoveryContext.js";
 import { runNowCoach } from "../services/coach/nowCoach.js";
+import { runChatCoach } from "../services/coach/chatCoach.js";
 import { runRecoveryCoach } from "../services/coach/recoveryCoach.js";
-
-const requestSchema = z.union([nowRequestSchema, recoveryRequestSchema]);
 
 function getClientIp(request) {
   const forwarded = String(request.headers["x-forwarded-for"] || "").split(",")[0]?.trim();
@@ -24,6 +29,7 @@ export async function aiRoutes(app) {
       reply,
       coachKind: "now",
       bodySchema: nowRequestSchema,
+      responseSchema: coachResponseSchema,
       contextBuilder: buildNowContext,
       runner: runNowCoach,
     });
@@ -36,13 +42,36 @@ export async function aiRoutes(app) {
       reply,
       coachKind: "recovery",
       bodySchema: recoveryRequestSchema,
+      responseSchema: coachResponseSchema,
       contextBuilder: buildRecoveryContext,
       runner: runRecoveryCoach,
     });
   });
+
+  app.post("/chat", { preHandler: [app.authenticate] }, async (request, reply) => {
+    return handleCoachRoute({
+      app,
+      request,
+      reply,
+      coachKind: "chat",
+      bodySchema: chatRequestSchema,
+      responseSchema: coachChatResponseSchema,
+      contextBuilder: buildChatContext,
+      runner: runChatCoach,
+    });
+  });
 }
 
-async function handleCoachRoute({ app, request, reply, coachKind, bodySchema, contextBuilder, runner }) {
+async function handleCoachRoute({
+  app,
+  request,
+  reply,
+  coachKind,
+  bodySchema,
+  responseSchema,
+  contextBuilder,
+  runner,
+}) {
   const startedAt = Date.now();
   const parsedBody = bodySchema.safeParse(request.body);
   if (!parsedBody.success) {
@@ -137,9 +166,10 @@ async function handleCoachRoute({ app, request, reply, coachKind, bodySchema, co
     quotaState,
     requestId: request.requestId,
     trigger: parsedBody.data.trigger,
+    body: parsedBody.data,
   });
 
-  const response = coachResponseSchema.parse(await runner({ app, context, snapshot, quotaState }));
+  const response = responseSchema.parse(await runner({ app, context, snapshot, quotaState }));
   await insertAiRequestLog(app.supabase, {
     requestId: request.requestId,
     userId: request.user.id,

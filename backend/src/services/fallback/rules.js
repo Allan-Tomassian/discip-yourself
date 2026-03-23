@@ -363,3 +363,134 @@ export function buildRecoveryFallback(context) {
     rewardSuggestion: { kind: "micro_action", label: "Refais un point d’appui simple." },
   };
 }
+
+export function buildChatFallback(context) {
+  const focusStartPolicy = resolveTodayOccurrenceStartPolicy({
+    activeDate: context.activeDate,
+    systemToday: context.systemToday,
+    occurrenceDate: context.focusOccurrenceForActiveDate?.date || "",
+  });
+
+  if (context.activeSessionForActiveDate?.isOpen) {
+    return {
+      kind: "chat",
+      headline: "Reprends la session en cours",
+      reason: "Le prochain pas le plus crédible reste la session déjà ouverte aujourd'hui.",
+      primaryAction: buildAction({
+        label: "Reprendre",
+        intent: "resume_session",
+        categoryId: context.activeCategoryId,
+        occurrenceId: context.activeSessionForActiveDate.occurrenceId || null,
+        dateKey: context.activeDate,
+      }),
+      secondaryAction: buildAction({
+        label: "Voir aujourd’hui",
+        intent: "open_today",
+        categoryId: context.activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      suggestedDurationMin: 10,
+    };
+  }
+
+  if (context.focusOccurrenceForActiveDate && focusStartPolicy.canStartDirectly) {
+    const title = String(context.focusOccurrenceSummary?.title || "Action");
+    const duration = Number.isFinite(context.focusOccurrenceSummary?.durationMin)
+      ? context.focusOccurrenceSummary.durationMin
+      : Number.isFinite(context.focusOccurrenceForActiveDate?.durationMinutes)
+        ? context.focusOccurrenceForActiveDate.durationMinutes
+        : null;
+    return {
+      kind: "chat",
+      headline: `Priorité: ${title}`.slice(0, 72),
+      reason: `${title} est le bloc le plus exécutable maintenant dans Today.`,
+      primaryAction: buildAction({
+        label: "Démarrer",
+        intent: "start_occurrence",
+        categoryId: context.activeCategoryId,
+        actionId: context.focusOccurrenceForActiveDate.goalId || null,
+        occurrenceId: context.focusOccurrenceForActiveDate.id || null,
+        dateKey: context.activeDate,
+      }),
+      secondaryAction: buildAction({
+        label: "Voir aujourd’hui",
+        intent: "open_today",
+        categoryId: context.activeCategoryId,
+        actionId: context.focusOccurrenceForActiveDate.goalId || null,
+        occurrenceId: context.focusOccurrenceForActiveDate.id || null,
+        dateKey: context.activeDate,
+      }),
+      suggestedDurationMin: duration,
+    };
+  }
+
+  if (context.focusOccurrenceForActiveDate && focusStartPolicy.requiresReschedule) {
+    const title = String(context.focusOccurrenceSummary?.title || "Action");
+    return {
+      kind: "chat",
+      headline: `Replanifie ${title}`.slice(0, 72),
+      reason: `${title} est sur un autre créneau ou une autre date. Recale-la avant exécution.`,
+      primaryAction: buildAction({
+        label: "Voir pilotage",
+        intent: "open_pilotage",
+        categoryId: context.activeCategoryId,
+        actionId: context.focusOccurrenceForActiveDate.goalId || null,
+        occurrenceId: context.focusOccurrenceForActiveDate.id || null,
+        dateKey: context.activeDate,
+      }),
+      secondaryAction: buildAction({
+        label: "Voir aujourd’hui",
+        intent: "open_today",
+        categoryId: context.activeCategoryId,
+        actionId: context.focusOccurrenceForActiveDate.goalId || null,
+        occurrenceId: context.focusOccurrenceForActiveDate.id || null,
+        dateKey: context.activeDate,
+      }),
+      suggestedDurationMin: null,
+    };
+  }
+
+  const gapCandidate = Array.isArray(context.gapSummary?.candidateActionSummaries)
+    ? context.gapSummary.candidateActionSummaries[0] || null
+    : null;
+  if (context.gapSummary?.hasGapToday && gapCandidate) {
+    return {
+      kind: "chat",
+      headline: `Ajoute ${gapCandidate.title}`.slice(0, 72),
+      reason: `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. Pose un bloc court crédible.`,
+      primaryAction: buildAction({
+        label: "Planifier aujourd’hui",
+        intent: "open_pilotage",
+        categoryId: context.activeCategoryId,
+        actionId: gapCandidate.actionId || null,
+        dateKey: context.activeDate,
+      }),
+      secondaryAction: buildAction({
+        label: "Ouvrir bibliothèque",
+        intent: "open_library",
+        categoryId: context.activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      suggestedDurationMin: gapCandidate.durationMin || null,
+    };
+  }
+
+  return {
+    kind: "chat",
+    headline: "Recadre le prochain bloc",
+    reason: "Ouvre le pilotage et pose une seule action courte et tenable aujourd'hui.",
+    primaryAction: buildAction({
+      label: "Voir pilotage",
+      intent: "open_pilotage",
+      categoryId: context.activeCategoryId,
+      dateKey: context.activeDate,
+    }),
+    secondaryAction: buildAction({
+      label: "Ouvrir bibliothèque",
+      intent: "open_library",
+      categoryId: context.activeCategoryId,
+      dateKey: context.activeDate,
+    }),
+    suggestedDurationMin: 10,
+  };
+}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 const TABS = new Set([
+  "onboarding",
   "today",
   "library",
   "pilotage",
@@ -24,6 +25,7 @@ const TABS = new Set([
   "privacy",
   "terms",
   "support",
+  "coach-chat",
 ]);
 
 export function normalizeTab(t) {
@@ -46,7 +48,9 @@ function getInitialNavigationState() {
     pathParts[0] === "category" && pathParts.length === 2 ? decodeURIComponent(pathParts[1] || "") : null;
   const isPilotagePath = initialPath.startsWith("/pilotage") || initialPath.startsWith("/tools");
   let initialTab = "today";
-  if (isPilotagePath) initialTab = "pilotage";
+  if (initialPath.startsWith("/onboarding")) initialTab = "onboarding";
+  else if (initialPath.startsWith("/coach/chat")) initialTab = "coach-chat";
+  else if (isPilotagePath) initialTab = "pilotage";
   else if (initialPath.startsWith("/session")) initialTab = "session";
   else if (initialPath.startsWith("/account")) initialTab = "account";
   else if (initialPath.startsWith("/preferences") || initialPath.startsWith("/settings")) {
@@ -130,6 +134,7 @@ export function useAppNavigation({ safeData, setData }) {
         } else if (t === "category-detail") {
           nextPath = nextCategoryDetailId ? `/category/${nextCategoryDetailId}` : "/category";
         } else if (t === "pilotage") nextPath = "/pilotage";
+        else if (t === "onboarding") nextPath = "/onboarding";
         else if (t === "account") nextPath = "/account";
         else if (t === "preferences") nextPath = "/preferences";
         else if (t === "subscription") nextPath = "/subscription";
@@ -137,6 +142,7 @@ export function useAppNavigation({ safeData, setData }) {
         else if (t === "privacy") nextPath = "/privacy";
         else if (t === "terms") nextPath = "/terms";
         else if (t === "support") nextPath = "/support";
+        else if (t === "coach-chat") nextPath = "/coach/chat";
 
         if (window.location.pathname !== nextPath) {
           const state =
