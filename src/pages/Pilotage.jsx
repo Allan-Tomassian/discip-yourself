@@ -3,6 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { GateBadge, GateButton, GateSection } from "../shared/ui/gate/Gate";
 import SelectControl from "../ui/select/Select";
 import { useAuth } from "../auth/useAuth";
+import { getCategoryProfileSummary } from "../domain/categoryProfile";
 import { requestAiCoachChat } from "../infra/aiCoachChatClient";
 import {
   buildPilotageManualAiContextKey,
@@ -297,7 +298,19 @@ function buildConstanceSummary({ occurrences, sessionHistoryByOccurrenceId }) {
   };
 }
 
-function buildPilotageCoachFallback({ selectedCategory, selectedCounts, selectedWeek, constanceSummary, disciplineTrend }) {
+function buildPilotageCoachFallback({
+  selectedCategory,
+  selectedCategoryProfileSummary,
+  selectedCounts,
+  selectedWeek,
+  constanceSummary,
+  disciplineTrend,
+}) {
+  const priorityTarget =
+    selectedCategoryProfileSummary?.currentPriority ||
+    selectedCategoryProfileSummary?.mainGoal ||
+    null;
+
   if (!selectedCategory) {
     return {
       summary: "Choisis une catégorie pour lire le système plus clairement.",
@@ -310,7 +323,9 @@ function buildPilotageCoachFallback({ selectedCategory, selectedCounts, selected
     return {
       summary: `${selectedCategory.name || "Cette catégorie"} reste vide.`,
       problem: "Aucune action exécutable n’alimente encore cette catégorie.",
-      recommendation: "Ajoute 1 action simple et planifiable cette semaine.",
+      recommendation: priorityTarget
+        ? `Ajoute 1 action simple et planifiable liée à ${priorityTarget}.`
+        : "Ajoute 1 action simple et planifiable cette semaine.",
     };
   }
 
@@ -318,7 +333,9 @@ function buildPilotageCoachFallback({ selectedCategory, selectedCounts, selected
     return {
       summary: `Aucun rythme visible en ${selectedCategory.name || "catégorie"}.`,
       problem: "La semaine n’a aucun créneau crédible pour cette catégorie.",
-      recommendation: "Planifie 1 bloc court récurrent pour relancer la continuité.",
+      recommendation: priorityTarget
+        ? `Planifie 1 bloc court récurrent pour ${priorityTarget}.`
+        : "Planifie 1 bloc court récurrent pour relancer la continuité.",
     };
   }
 
@@ -471,6 +488,10 @@ export default function Pilotage({
     () => buildConstanceSummary({ occurrences: selectedWeekOccurrences, sessionHistoryByOccurrenceId }),
     [selectedWeekOccurrences, sessionHistoryByOccurrenceId]
   );
+  const selectedCategoryProfileSummary = useMemo(
+    () => getCategoryProfileSummary(safeData, selectedCategory?.id || null),
+    [safeData, selectedCategory?.id]
+  );
 
   const reportGoals = useMemo(() => {
     const list = goals.filter((goal) => goal && typeof goal.id === "string");
@@ -562,12 +583,13 @@ export default function Pilotage({
     () =>
       buildPilotageCoachFallback({
         selectedCategory,
+        selectedCategoryProfileSummary,
         selectedCounts,
         selectedWeek,
         constanceSummary,
         disciplineTrend,
       }),
-    [constanceSummary, disciplineTrend, selectedCategory, selectedCounts, selectedWeek]
+    [constanceSummary, disciplineTrend, selectedCategory, selectedCategoryProfileSummary, selectedCounts, selectedWeek]
   );
   const pilotageAnalysisContextKey = useMemo(
     () =>
@@ -740,6 +762,15 @@ export default function Pilotage({
                 </div>
 
                 <div className="mt10 col" style={{ gap: 10 }}>
+                  {selectedCategoryProfileSummary?.subject ? (
+                    <StatRow label="Sujet principal" value={selectedCategoryProfileSummary.subject} />
+                  ) : null}
+                  {selectedCategoryProfileSummary?.mainGoal ? (
+                    <StatRow label="Objectif principal" value={selectedCategoryProfileSummary.mainGoal} />
+                  ) : null}
+                  {selectedCategoryProfileSummary?.currentPriority ? (
+                    <StatRow label="Priorité actuelle" value={selectedCategoryProfileSummary.currentPriority} />
+                  ) : null}
                   <StatRow
                     label="Structure"
                     value={

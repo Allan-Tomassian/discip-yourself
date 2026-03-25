@@ -4,6 +4,7 @@ import { normalizeReminder } from "../reminders";
 import { normalizeLocalDateKey, toLocalDateKey } from "../../utils/dateKey";
 import { resolveGoalType, isOutcome, isProcess } from "../../domain/goalType";
 import { normalizeUserAiProfile } from "../../domain/userAiProfile";
+import { normalizeCategoryProfilesV1 } from "../../domain/categoryProfile";
 import { findOccurrenceForGoalDateDeterministic, setOccurrenceStatus, upsertOccurrence } from "../occurrences";
 import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "../blocks/registry";
 import { ensureBlocksConfig } from "../blocks/ensureBlocksConfig";
@@ -923,9 +924,11 @@ export function migrate(prev) {
   const rawOpenGoalEditId = safeUi?.openGoalEditId || null;
   const safeOpenGoalEditId = rawOpenGoalEditId && goalList.some((g) => g.id === rawOpenGoalEditId) ? rawOpenGoalEditId : null;
   const { pilotageRadarSelection: _legacyPilotageRadarSelection, ...safeUiWithoutRadar } = safeUi;
+  const safeCategoryProfiles = normalizeCategoryProfilesV1(normalized.category_profiles_v1, normalized.categories);
 
   return {
     ...normalized,
+    category_profiles_v1: safeCategoryProfiles,
     ui: {
       ...safeUiWithoutRadar,
       mainGoalId: normalized.ui?.mainGoalId || null,

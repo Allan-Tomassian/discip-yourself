@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/useAuth";
+import { getCategoryProfileSummary } from "../../domain/categoryProfile";
 import { requestAiCoachChat } from "../../infra/aiCoachChatClient";
 import { applyChatDraftChanges } from "../../logic/chatDraftChanges";
 import { buildPlanningCoachFallback } from "../../features/planning/planningCoachModel";
@@ -47,16 +48,21 @@ export default function PlanningCoachCard({
   const { session } = useAuth();
   const accessToken = session?.access_token || "";
   const userId = session?.user?.id || "";
+  const activeCategoryProfileSummary = useMemo(
+    () => getCategoryProfileSummary(data, activeCategoryId),
+    [activeCategoryId, data]
+  );
   const fallbackReply = useMemo(
     () =>
       buildPlanningCoachFallback({
         selectedDateKey,
         activeCategoryId,
+        activeCategoryProfileSummary,
         occurrences,
         goalsById,
         categoriesById,
       }),
-    [activeCategoryId, categoriesById, goalsById, occurrences, selectedDateKey]
+    [activeCategoryId, activeCategoryProfileSummary, categoriesById, goalsById, occurrences, selectedDateKey]
   );
   const planningAnalysisContextKey = useMemo(
     () =>

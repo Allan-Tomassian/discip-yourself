@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../auth/useAuth";
 import { E2E_AUTH_SESSION_KEY } from "../auth/constants";
+import { hasMeaningfulCategoryProfile } from "../domain/categoryProfile";
 import { migrate, initialData } from "../logic/state";
 import { loadState, saveState } from "../utils/storage";
 import {
@@ -33,6 +34,7 @@ function hasMeaningfulLocalData(value) {
   const profile = isPlainObject(value.profile) ? value.profile : {};
   const ui = isPlainObject(value.ui) ? value.ui : {};
   const userAiProfile = isPlainObject(value.user_ai_profile) ? value.user_ai_profile : {};
+  const categoryProfiles = isPlainObject(value.category_profiles_v1?.byCategoryId) ? value.category_profiles_v1.byCategoryId : {};
 
   if (goals.length || habits.length || occurrences.length || reminders.length || sessions.length || sessionHistory.length) {
     return true;
@@ -46,6 +48,7 @@ function hasMeaningfulLocalData(value) {
   if ((profile.whyText || "").trim()) return true;
   if ((profile.whyImage || "").trim()) return true;
   if (Array.isArray(userAiProfile.goals) && userAiProfile.goals.length > 0) return true;
+  if (Object.values(categoryProfiles).some((profile) => hasMeaningfulCategoryProfile(profile))) return true;
   if (Boolean(ui.onboardingCompleted)) return true;
 
   return false;

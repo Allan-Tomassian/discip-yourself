@@ -101,3 +101,50 @@ describe("totemV1 defaults", () => {
     expect(migrated.ui.totemV1.animationEnabled).toBe(false);
   });
 });
+
+describe("category_profiles_v1", () => {
+  it("initialData seeds an empty compatible state", () => {
+    const state = initialData();
+    expect(state.category_profiles_v1).toEqual({
+      version: 1,
+      byCategoryId: {},
+    });
+  });
+
+  it("migrate normalizes and prunes orphan category profiles", () => {
+    const base = buildBaseState();
+    base.category_profiles_v1 = {
+      byCategoryId: {
+        cat_1: {
+          categoryId: " cat_1 ",
+          subject: "  Reprendre le cap  ",
+          watchpoints: [" Sommeil ", "sommeil"],
+          currentLevel: 9,
+        },
+        orphan: {
+          categoryId: "orphan",
+          subject: "Ne doit pas rester",
+        },
+      },
+    };
+
+    const migrated = migrate(base);
+
+    expect(migrated.category_profiles_v1).toEqual({
+      version: 1,
+      byCategoryId: {
+        cat_1: {
+          categoryId: "cat_1",
+          subject: "Reprendre le cap",
+          mainGoal: null,
+          currentPriority: null,
+          watchpoints: ["Sommeil"],
+          constraints: [],
+          currentLevel: null,
+          notes: null,
+          updatedAt: null,
+        },
+      },
+    });
+  });
+});

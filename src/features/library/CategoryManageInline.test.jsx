@@ -22,6 +22,9 @@ describe("CategoryManageInline", () => {
 
     expect(html).toContain("Les actions vivent d’abord ici.");
     expect(html).toContain("Objectifs avancés (optionnel)");
+    expect(html).toContain("Profil de catégorie");
+    expect(html).toContain("Ex: Reprendre ma forme");
     expect(html.indexOf(">Actions<")).toBeLessThan(html.indexOf(">Objectifs avancés (optionnel)<"));
+    expect(html.indexOf(">Profil de catégorie<")).toBeLessThan(html.indexOf(">Actions<"));
   });
 });

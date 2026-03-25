@@ -320,6 +320,10 @@ function buildNowPrompt(context) {
     "When gapSummary.selectionScope is cross_category, clearly say that nothing credible is available in the active category today before proposing the fallback action.",
     "When gapSummary.hasGapToday is true, mention the exact action title, say it is not yet planned today, and include a simple duration if available.",
     "Never invent a new task, an abstract task, or an action title that is not in gapSummary or focusOccurrenceSummary.",
+    "When activeCategoryProfileSummary.hasProfile is true, use it to make the recommendation more specific.",
+    "When activeCategoryProfileSummary.mainGoal or currentPriority is present, explicitly connect the recommendation to it.",
+    "If activeCategoryProfileSummary.subject is present, you may use it as context, but keep the wording concrete and short.",
+    "Never infer any sensitive fact that is not explicitly present in activeCategoryProfileSummary or the provided app data.",
     "Never mention the AI, the system, or internal diagnostics.",
     "When using resume_session, mention that a session for today is already open and name the related action if activeSessionSummary.title is available.",
     "Avoid generic advice like 'avance maintenant' without naming the action or the deterministic reason.",
@@ -342,6 +346,7 @@ function buildNowPrompt(context) {
           }
         : null,
       activeCategoryLabel: context.category?.name || null,
+      activeCategoryProfileSummary: context.activeCategoryProfileSummary || null,
       activeSessionSummary: context.activeSessionSummary || null,
       openSessionOutsideActiveDate: context.openSessionOutsideActiveDate
         ? {
@@ -477,6 +482,9 @@ function buildChatPrompt(context) {
     "The active category governs the recommendation.",
     "When categoryCoherence.selectionScope is cross_category, recommend only the proven cross-category action and explicitly name the contribution to categoryCoherence.contributionTargetLabel.",
     "When categoryCoherence.selectionScope is structure_missing, do not invent an action and tell the user to clarify the goal or create a first action in the active category.",
+    "When activeCategoryProfileSummary.hasProfile is true, use it to avoid generic advice and connect the answer to subject, mainGoal, or currentPriority when relevant.",
+    "If relatedCategoryProfileSummaries is not empty, use them only when the user is asking globally or when the recommendation is explicitly cross-category.",
+    "Never infer any sensitive fact that is not explicitly present in activeCategoryProfileSummary, relatedCategoryProfileSummaries, or the provided app data.",
     "Use a concrete action verb plus object in headline and reason.",
     "When possible, mention a short duration or timing anchor.",
     "Avoid vague formulations such as améliorer, progresser, optimiser, or être plus régulier without naming the action.",
@@ -495,6 +503,10 @@ function buildChatPrompt(context) {
           }
         : null,
       activeCategoryLabel: context.activeCategoryLabel || context.category?.name || null,
+      activeCategoryProfileSummary: context.activeCategoryProfileSummary || null,
+      relatedCategoryProfileSummaries: Array.isArray(context.relatedCategoryProfileSummaries)
+        ? context.relatedCategoryProfileSummaries
+        : [],
       userAiProfile: context.userAiProfile
         ? {
             goals: context.userAiProfile.goals || [],

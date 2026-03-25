@@ -1,6 +1,7 @@
 import { buildNowContext } from "./nowContext.js";
 import { safeArray } from "./shared.js";
 import { buildPilotageDisciplineTrend } from "../../../../src/features/pilotage/disciplineTrendModel.js";
+import { getCategoryProfileSummary } from "../../../../src/domain/categoryProfile.js";
 
 const AI_FOUNDATION_PLANNING_TEMPLATE_ID = "ai_onboarding_planning";
 
@@ -20,6 +21,40 @@ function buildAvailableCategories(data) {
       color: category.color || null,
     }))
     .slice(0, 12);
+}
+
+function normalizeMatchText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function findCategoryIdByName(categories, name) {
+  const target = normalizeMatchText(name);
+  if (!target) return null;
+  for (const category of categories) {
+    if (normalizeMatchText(category?.name) === target) return category?.id || null;
+  }
+  return null;
+}
+
+function resolveMentionedCategoryIds(message, categories) {
+  const normalizedMessage = normalizeMatchText(message);
+  if (!normalizedMessage) return [];
+
+  return categories
+    .filter((category) => category?.id && category?.name)
+    .sort((left, right) => String(right.name || "").length - String(left.name || "").length)
+    .filter((category) => {
+      const categoryName = normalizeMatchText(category.name);
+      return categoryName && normalizedMessage.includes(categoryName);
+    })
+    .map((category) => category.id);
 }
 
 function buildActionSummaries(data, activeCategoryId) {
@@ -55,6 +90,55 @@ function buildActionSummaries(data, activeCategoryId) {
     });
 
   return summaries.slice(0, 12);
+}
+
+function buildRelatedCategoryProfileSummaries({
+  data,
+  activeCategoryId,
+  message,
+  categoryCoherence,
+  actionSummaries,
+  planningSummary,
+}) {
+  const categories = safeArray(data?.categories).filter(
+    (category) => category?.id && category.id !== "sys_inbox" && category.system !== true
+  );
+  const profileSummariesById = new Map(
+    categories
+      .map((category) => [category.id, getCategoryProfileSummary(data, category.id)])
+      .filter(([, summary]) => summary?.hasProfile)
+  );
+  if (!profileSummariesById.size) return [];
+
+  const candidateIds = [];
+  const seen = new Set();
+  const pushCategoryId = (categoryId) => {
+    const normalizedCategoryId = typeof categoryId === "string" ? categoryId.trim() : "";
+    if (!normalizedCategoryId || normalizedCategoryId === activeCategoryId || seen.has(normalizedCategoryId)) return;
+    if (!profileSummariesById.has(normalizedCategoryId)) return;
+    seen.add(normalizedCategoryId);
+    candidateIds.push(normalizedCategoryId);
+  };
+
+  for (const categoryId of resolveMentionedCategoryIds(message, categories)) {
+    pushCategoryId(categoryId);
+  }
+
+  if (categoryCoherence?.selectionScope === "cross_category") {
+    pushCategoryId(categoryCoherence.recommendedCategoryId);
+  }
+
+  if (!activeCategoryId) {
+    for (const action of safeArray(actionSummaries)) {
+      pushCategoryId(action?.categoryId);
+    }
+    pushCategoryId(findCategoryIdByName(categories, planningSummary?.dominantCategoryName));
+  }
+
+  return candidateIds
+    .map((categoryId) => profileSummariesById.get(categoryId))
+    .filter(Boolean)
+    .slice(0, 2);
 }
 
 function normalizeRecentMessages(recentMessages) {
@@ -238,6 +322,9 @@ export function buildChatContext({
     now,
   });
   const message = typeof body?.message === "string" ? body.message.trim().slice(0, 500) : "";
+  const resolvedActiveCategoryId = baseContext.activeCategoryId || null;
+  const actionSummaries = buildActionSummaries(data, resolvedActiveCategoryId);
+  const planningSummary = buildPlanningSummary(data, selectedDateKey);
 
   return {
     ...baseContext,
@@ -246,9 +333,17 @@ export function buildChatContext({
     messagePreview: message ? message.slice(0, 120) : null,
     recentMessages: normalizeRecentMessages(body?.recentMessages),
     availableCategories: buildAvailableCategories(data),
-    actionSummaries: buildActionSummaries(data, activeCategoryId),
-    planningSummary: buildPlanningSummary(data, selectedDateKey),
+    actionSummaries,
+    planningSummary,
     pilotageSummary: buildPilotageSummary(data, activeCategoryId),
     categorySnapshot: baseContext.categoryCoherence?.categorySnapshot || null,
+    relatedCategoryProfileSummaries: buildRelatedCategoryProfileSummaries({
+      data,
+      activeCategoryId: resolvedActiveCategoryId,
+      message,
+      categoryCoherence: baseContext.categoryCoherence,
+      actionSummaries,
+      planningSummary,
+    }),
   };
 }

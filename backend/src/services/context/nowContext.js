@@ -15,6 +15,7 @@ import {
 } from "./shared.js";
 import { computeCategoryScopedRecommendation } from "../../../../src/domain/todayCategoryCoherence.js";
 import { resolveTodayOccurrenceStartPolicy } from "../../../../src/domain/todayIntervention.js";
+import { getCategoryProfileSummary } from "../../../../src/domain/categoryProfile.js";
 import { derivePreferredBlockAlignment, normalizeUserAiProfile } from "../../../../src/domain/userAiProfile.js";
 
 function buildOccurrenceById(data) {
@@ -157,6 +158,7 @@ export function buildNowContext({
   const userAiProfile = normalizeUserAiProfile(data?.user_ai_profile);
   const category = resolveCategory(data, activeCategoryId);
   const categoryId = category?.id || null;
+  const activeCategoryProfileSummary = getCategoryProfileSummary(data, categoryId);
   const goalsById = resolveGoalMap(data);
   const categoriesById = resolveCategoryMap(data);
   const occurrenceById = buildOccurrenceById(data);
@@ -253,6 +255,7 @@ export function buildNowContext({
     selectedDateKey: dateKey,
     activeCategoryId: categoryId,
     category,
+    activeCategoryProfileSummary,
     userAiProfile,
     goalsById,
     activeSessionForActiveDate,

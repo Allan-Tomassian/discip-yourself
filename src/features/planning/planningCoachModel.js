@@ -88,6 +88,7 @@ function findDominantCategory({ weekMinutesByCategory, categoriesById }) {
 export function buildPlanningCoachFallback({
   selectedDateKey,
   activeCategoryId = null,
+  activeCategoryProfileSummary = null,
   occurrences = [],
   goalsById,
   categoriesById,
@@ -105,7 +106,9 @@ export function buildPlanningCoachFallback({
     return {
       kind: "chat",
       headline: "Semaine vide",
-      reason: "Aucun créneau n’est planifié cette semaine. Sans premier bloc visible, le système perd son point d’appui.",
+      reason: activeCategoryProfileSummary?.currentPriority
+        ? `Aucun créneau n’est planifié cette semaine pour ${activeCategoryProfileSummary.currentPriority}. Sans premier bloc visible, le système perd son point d’appui.`
+        : "Aucun créneau n’est planifié cette semaine. Sans premier bloc visible, le système perd son point d’appui.",
       primaryAction: {
         label: "Ajouter un premier bloc",
         intent: "open_pilotage",
@@ -124,7 +127,9 @@ export function buildPlanningCoachFallback({
     return {
       kind: "chat",
       headline: "Journée vide",
-      reason: "Aucune occurrence n’est prévue sur la journée sélectionnée. Pose un bloc court pour garder le rythme.",
+      reason: activeCategoryProfileSummary?.currentPriority
+        ? `Aucune occurrence n’est prévue aujourd’hui pour ${activeCategoryProfileSummary.currentPriority}. Pose un bloc court pour garder le rythme.`
+        : "Aucune occurrence n’est prévue sur la journée sélectionnée. Pose un bloc court pour garder le rythme.",
       primaryAction: {
         label: "Ajouter un bloc court",
         intent: "open_pilotage",

@@ -345,3 +345,44 @@ test("buildNowContext excludes the onboarding planning goal from gap-fill candid
   assert.equal(context.gapSummary.candidateActionSummaries.length, 1);
   assert.equal(context.gapSummary.candidateActionSummaries[0].title, "Deep work");
 });
+
+test("buildNowContext exposes the active category profile summary when available", () => {
+  const context = buildNowContext({
+    data: {
+      categories: [{ id: "cat-1", name: "Santé" }],
+      category_profiles_v1: {
+        version: 1,
+        byCategoryId: {
+          "cat-1": {
+            categoryId: "cat-1",
+            subject: "Reprendre ma forme",
+            mainGoal: "Retrouver de l’énergie",
+            currentPriority: "Dormir plus régulièrement",
+          },
+        },
+      },
+      goals: [{ id: "goal-1", title: "Marcher 20 min", type: "PROCESS", categoryId: "cat-1" }],
+      occurrences: [{ id: "occ-1", goalId: "goal-1", date: "2026-03-06", status: "planned", start: "08:00" }],
+      ui: { activeSession: null },
+      sessionHistory: [],
+    },
+    selectedDateKey: "2026-03-06",
+    activeCategoryId: "cat-1",
+    quotaState: { remaining: 3 },
+    requestId: "req-profile",
+    trigger: "manual",
+    now: new Date(2026, 2, 6, 12, 0, 0),
+  });
+
+  assert.deepEqual(context.activeCategoryProfileSummary, {
+    categoryId: "cat-1",
+    categoryLabel: "Santé",
+    subject: "Reprendre ma forme",
+    mainGoal: "Retrouver de l’énergie",
+    currentPriority: "Dormir plus régulièrement",
+    watchpoints: [],
+    constraints: [],
+    currentLevel: null,
+    hasProfile: true,
+  });
+});

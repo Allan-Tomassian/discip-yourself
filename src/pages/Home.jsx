@@ -17,6 +17,7 @@ import { emitSessionRuntimeNotificationHook } from "../logic/sessionRuntimeNotif
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
+import { getCategoryProfileSummary } from "../domain/categoryProfile";
 import {
   BASIC_MICRO_REROLL_LIMIT,
   completeMicroAction,
@@ -145,6 +146,30 @@ function resolveTodayAnalysisStorageLabel(visibleAnalysis, persistenceScope = "l
   return persistenceScope === "cloud"
     ? "Synchronisée sur tes appareils"
     : "Enregistrée sur cet appareil";
+}
+
+function normalizeProfileCopy(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function appendTodayProfileContext(reason, subject) {
+  const baseReason = String(reason || "").trim();
+  const safeSubject = String(subject || "").trim();
+  if (!safeSubject) return baseReason;
+  if (!baseReason) return `Contexte: ${safeSubject}.`;
+  if (normalizeProfileCopy(baseReason).includes(normalizeProfileCopy(safeSubject))) return baseReason;
+  return `${baseReason} Contexte: ${safeSubject}.`;
+}
+
+function resolveTodayImpactLabel({ profileSummary, fallbackImpact }) {
+  if (profileSummary?.currentPriority) {
+    return `Priorité cohérente avec ${profileSummary.currentPriority}`;
+  }
+  return fallbackImpact;
 }
 
 function buildTodayReasonLinkLabel({
@@ -1904,10 +1929,14 @@ export default function Home({
   }, [activeSessionForActiveDate?.occurrenceId, focusOccurrence, heroViewModel?.primaryAction, occurrencesForSelectedDay, scopedFocusOccurrence]);
   const heroGoal = heroOccurrence?.goalId ? goalsById.get(heroOccurrence.goalId) || null : null;
   const heroCategory = categoriesById.get(heroGoal?.categoryId || focusCategory?.id || "") || focusCategory || null;
+  const activeCategoryProfileSummary = useMemo(
+    () => getCategoryProfileSummary(safeData, executionCategoryId || focusCategory?.id || null),
+    [executionCategoryId, focusCategory?.id, safeData]
+  );
   const heroDurationLabel = Number.isFinite(heroOccurrence?.durationMinutes)
     ? `${heroOccurrence.durationMinutes} min`
     : "";
-  const heroImpactText = useMemo(
+  const baseHeroImpactText = useMemo(
     () =>
       resolveImpactText({
         heroGoal,
@@ -1930,7 +1959,22 @@ export default function Home({
     [heroAnalysisState.label, manualTodayAnalysis.visibleAnalysis]
   );
   const heroDisplayCategoryName = heroViewModel?.recommendedCategoryLabel || heroCategory?.name || "";
-  const heroContributionLabel = heroViewModel?.contributionLabel || heroImpactText;
+  const heroContributionLabel =
+    activeCategoryProfileSummary?.mainGoal ||
+    heroViewModel?.contributionLabel ||
+    baseHeroImpactText;
+  const heroReasonText = useMemo(
+    () => appendTodayProfileContext(heroViewModel?.meta || whyDisplay, activeCategoryProfileSummary?.subject),
+    [activeCategoryProfileSummary?.subject, heroViewModel?.meta, whyDisplay]
+  );
+  const heroImpactText = useMemo(
+    () =>
+      resolveTodayImpactLabel({
+        profileSummary: activeCategoryProfileSummary,
+        fallbackImpact: baseHeroImpactText,
+      }),
+    [activeCategoryProfileSummary, baseHeroImpactText]
+  );
   const heroStorageLabel = useMemo(
     () => resolveTodayAnalysisStorageLabel(manualTodayAnalysis.visibleAnalysis, persistenceScope),
     [manualTodayAnalysis.visibleAnalysis, persistenceScope]
@@ -2083,7 +2127,7 @@ export default function Home({
           title={typedHeroTitle || heroViewModel.title}
           categoryName={heroDisplayCategoryName}
           durationLabel={heroDurationLabel}
-          reason={heroViewModel.meta || whyDisplay}
+          reason={heroReasonText}
           reasonLinkType={heroViewModel.reasonLinkType || ""}
           reasonLinkLabel={heroViewModel.reasonLinkLabel || ""}
           contributionLabel={heroContributionLabel}

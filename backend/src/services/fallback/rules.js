@@ -34,6 +34,15 @@ function resolveCategoryCoherence(context) {
   return context?.categoryCoherence || context?.gapSummary || null;
 }
 
+function resolveProfileContributionLabel(context) {
+  const profile = context?.activeCategoryProfileSummary || null;
+  return profile?.mainGoal || profile?.subject || null;
+}
+
+function resolveProfilePriorityLabel(context) {
+  return context?.activeCategoryProfileSummary?.currentPriority || null;
+}
+
 export function buildNowFallback(context) {
   const categoryCoherence = resolveCategoryCoherence(context);
   const focusStartPolicy = resolveTodayOccurrenceStartPolicy({
@@ -99,12 +108,14 @@ export function buildNowFallback(context) {
       headline: title.slice(0, 72),
       reason:
         categoryCoherence?.reasonLinkType === "cross_category"
-          ? `${title}${categoryCoherence?.recommendedCategoryLabel ? ` en ${categoryCoherence.recommendedCategoryLabel}` : ""} contribue a ${categoryCoherence?.contributionTargetLabel || "ta priorite active"} et reste executable maintenant.`
+          ? `${title}${categoryCoherence?.recommendedCategoryLabel ? ` en ${categoryCoherence.recommendedCategoryLabel}` : ""} contribue a ${resolveProfileContributionLabel(context) || categoryCoherence?.contributionTargetLabel || "ta priorite active"} et reste executable maintenant.`
           : context.focusSelectionReason === "upcoming_fixed" && context.focusOccurrenceSummary?.timeLabel
           ? `${title} est le prochain créneau fixe ${context.focusOccurrenceSummary.timeLabel} et reste le meilleur levier maintenant.`
           : context.focusSelectionReason === "earliest_fixed" && context.focusOccurrenceSummary?.timeLabel
             ? `${title} est le premier créneau fixe du plan ${context.focusOccurrenceSummary.timeLabel}.`
-            : `${title} est l'action la plus exécutable dans le plan courant.`,
+            : resolveProfilePriorityLabel(context)
+              ? `${title} est l'action la plus exécutable maintenant pour ${resolveProfilePriorityLabel(context)}.`
+              : `${title} est l'action la plus exécutable dans le plan courant.`,
       primaryAction: buildAction({
         label: "Démarrer",
         intent: "start_occurrence",
@@ -222,11 +233,11 @@ export function buildNowFallback(context) {
       headline = categoryName ? `Structure ${categoryName}`.slice(0, 72) : "Structure la categorie active";
       reason =
         categoryCoherence?.explanation ||
-        "Clarifie l'objectif de la categorie active ou cree une premiere action exploitable.";
+        `Clarifie ${resolveProfileContributionLabel(context) || "l'objectif de la categorie active"} ou cree une premiere action exploitable.`;
     } else if (context.gapSummary.selectionScope === "cross_category" && gapCandidate) {
       reason =
         categoryCoherence?.explanation ||
-        `Rien de credible n'est disponible dans la categorie active. ${gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""} contribue a ${categoryCoherence?.contributionTargetLabel || "ta priorite active"}.`;
+        `Rien de credible n'est disponible dans la categorie active. ${gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""} contribue a ${resolveProfileContributionLabel(context) || categoryCoherence?.contributionTargetLabel || "ta priorite active"}.`;
     }
 
     if (context.gapSummary.gapReason === TODAY_GAP_REASON.EMPTY_ACTIVE_CATEGORY && categoryName) {
@@ -234,10 +245,10 @@ export function buildNowFallback(context) {
       reason =
         context.gapSummary.selectionScope === "cross_category" && gapCandidate
           ? categoryCoherence?.explanation ||
-            `Rien de credible n'est prevu en ${categoryName} aujourd'hui. ${gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""} contribue a ${categoryCoherence?.contributionTargetLabel || categoryName}.`
+            `Rien de credible n'est prevu en ${categoryName} aujourd'hui. ${gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""} contribue a ${resolveProfileContributionLabel(context) || categoryCoherence?.contributionTargetLabel || categoryName}.`
           : context.gapSummary.selectionScope === "structure_missing"
             ? categoryCoherence?.explanation ||
-              `Tu n'as pas encore defini d'action exploitable pour ${categoryName}. Commence par clarifier l'objectif ou creer une premiere action.`
+              `Tu n'as pas encore defini d'action exploitable pour ${resolveProfileContributionLabel(context) || categoryName}. Commence par clarifier l'objectif ou creer une premiere action.`
           : gapCandidate
             ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. Une courte action suffit pour maintenir l'élan.`
             : "Ajoute un bloc court aujourd'hui pour recréer un point d'appui.";
@@ -246,17 +257,17 @@ export function buildNowFallback(context) {
       reason =
         context.gapSummary.selectionScope === "cross_category" && gapCandidate && categoryName
           ? categoryCoherence?.explanation ||
-            `Rien de plus pertinent n'est disponible en ${categoryName} aujourd'hui. ${gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""} contribue a ${categoryCoherence?.contributionTargetLabel || categoryName}${durationLabel ? ` en ${durationLabel}` : ""}.`
+            `Rien de plus pertinent n'est disponible en ${categoryName} aujourd'hui. ${gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""} contribue a ${resolveProfileContributionLabel(context) || categoryCoherence?.contributionTargetLabel || categoryName}${durationLabel ? ` en ${durationLabel}` : ""}.`
           : context.gapSummary.selectionScope === "structure_missing"
             ? categoryCoherence?.explanation ||
-              `Le plan du jour est leger mais ${categoryName} manque encore d'action exploitable. Clarifie l'objectif ou cree une premiere action.`
+              `Le plan du jour est leger mais ${categoryName} manque encore d'action exploitable. Clarifie ${resolveProfileContributionLabel(context) || "l'objectif"} ou cree une premiere action.`
           : gapCandidate
             ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. ${durationLabel || "Une courte durée"} suffit pour compléter la journée.`
             : "Ajoute un bloc court pour compléter la journée sans surcharge.";
     } else if (context.gapSummary.selectionScope === "cross_category" && gapCandidate && categoryName) {
       reason =
         categoryCoherence?.explanation ||
-        `Rien de credible n'est prevu en ${categoryName} aujourd'hui. ${candidateWithDuration || gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""} contribue a ${categoryCoherence?.contributionTargetLabel || categoryName}.`;
+        `Rien de credible n'est prevu en ${categoryName} aujourd'hui. ${candidateWithDuration || gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""} contribue a ${resolveProfileContributionLabel(context) || categoryCoherence?.contributionTargetLabel || categoryName}.`;
     }
 
     return {
@@ -438,8 +449,10 @@ export function buildChatFallback(context) {
       headline: `Priorité: ${title}`.slice(0, 72),
       reason:
         categoryCoherence?.reasonLinkType === "cross_category"
-          ? `${title}${categoryCoherence?.recommendedCategoryLabel ? ` en ${categoryCoherence.recommendedCategoryLabel}` : ""} contribue a ${categoryCoherence?.contributionTargetLabel || "ta priorite active"}.`
-          : `${title} est le bloc le plus exécutable maintenant dans Today.`,
+          ? `${title}${categoryCoherence?.recommendedCategoryLabel ? ` en ${categoryCoherence.recommendedCategoryLabel}` : ""} contribue a ${resolveProfileContributionLabel(context) || categoryCoherence?.contributionTargetLabel || "ta priorite active"}.`
+          : resolveProfilePriorityLabel(context)
+            ? `${title} est le bloc le plus exécutable maintenant pour ${resolveProfilePriorityLabel(context)}.`
+            : `${title} est le bloc le plus exécutable maintenant dans Today.`,
       primaryAction: buildAction({
         label: "Démarrer",
         intent: "start_occurrence",
@@ -501,10 +514,10 @@ export function buildChatFallback(context) {
       reason:
         context.gapSummary.selectionScope === "structure_missing"
           ? categoryCoherence?.explanation ||
-            "Clarifie l'objectif de la categorie active ou cree une premiere action exploitable."
+            `Clarifie ${resolveProfileContributionLabel(context) || "l'objectif de la categorie active"} ou cree une premiere action exploitable.`
           : context.gapSummary.selectionScope === "cross_category"
             ? categoryCoherence?.explanation ||
-              `${gapCandidate?.title || "Cette action"} contribue a ${categoryCoherence?.contributionTargetLabel || "ta priorite active"}. Programme-la sur un bloc court concret.`
+              `${gapCandidate?.title || "Cette action"} contribue a ${resolveProfileContributionLabel(context) || categoryCoherence?.contributionTargetLabel || "ta priorite active"}. Programme-la sur un bloc court concret.`
             : `${gapCandidate?.title || "Cette action"} n'est pas encore planifiée aujourd'hui. Pose un bloc court crédible.`,
       primaryAction: buildAction({
         label: context.gapSummary.selectionScope === "structure_missing" ? "Structurer" : "Planifier aujourd’hui",

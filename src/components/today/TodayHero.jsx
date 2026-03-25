@@ -32,7 +32,8 @@ export default function TodayHero({
 }) {
   const displayTitle = title || (isPreparing ? "Préparation de la recommandation" : "Aucune action prioritaire");
   const displayReason = reason || (isPreparing ? "Analyse en cours." : "Aucune raison disponible.");
-  const displayContribution = contributionLabel || impactText || "Maintenir l’élan sur ta priorité active.";
+  const displayContribution = contributionLabel || "Maintenir l’élan sur ta priorité active.";
+  const displayImpact = impactText || "";
   const displayCategory = recommendedCategoryLabel || categoryName || "À préciser";
 
   return (
@@ -81,6 +82,12 @@ export default function TodayHero({
             <div className="small2" style={{ opacity: 0.72 }}>Contribue à</div>
             <div className="small2" style={{ opacity: 0.92 }}>{displayContribution}</div>
           </div>
+          {displayImpact ? (
+            <div>
+              <div className="small2" style={{ opacity: 0.72 }}>Impact attendu</div>
+              <div className="small2" style={{ opacity: 0.92 }}>{displayImpact}</div>
+            </div>
+          ) : null}
         </div>
       </div>
       <div className="todayHeroActions GatePrimaryCtaRow">

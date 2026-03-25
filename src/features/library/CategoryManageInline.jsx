@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { AccentItem, Button, Card, IconButton, Input } from "../../components/UI";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AccentItem, Button, Card, Chip, ChipRow, IconButton, Input, Textarea } from "../../components/UI";
 import { safeConfirm, safePrompt } from "../../utils/dialogs";
 import { addDays, startOfWeekKey, todayKey } from "../../utils/dates";
 import { isPrimaryCategory, isPrimaryGoal, setPrimaryCategory } from "../../logic/priority";
@@ -9,9 +9,102 @@ import { ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../../logic/state";
 import { removeScheduleRulesForAction } from "../../logic/occurrencePlanner";
 import { buildPlanningSections } from "../../utils/librarySections";
 import { LABELS } from "../../ui/labels";
+import {
+  getCategoryProfile,
+  hasMeaningfulCategoryProfile,
+  normalizeCategoryProfilesV1,
+} from "../../domain/categoryProfile";
 
 function getTourId(inlineEdit, value) {
   return inlineEdit ? undefined : value;
+}
+
+function normalizeProfileDraft(profile) {
+  const safeProfile = profile && typeof profile === "object" ? profile : {};
+  return {
+    subject: typeof safeProfile.subject === "string" ? safeProfile.subject : "",
+    mainGoal: typeof safeProfile.mainGoal === "string" ? safeProfile.mainGoal : "",
+    currentPriority: typeof safeProfile.currentPriority === "string" ? safeProfile.currentPriority : "",
+    watchpoints: Array.isArray(safeProfile.watchpoints) ? [...safeProfile.watchpoints] : [],
+    constraints: Array.isArray(safeProfile.constraints) ? [...safeProfile.constraints] : [],
+    currentLevel: Number.isInteger(safeProfile.currentLevel) ? safeProfile.currentLevel : null,
+    notes: typeof safeProfile.notes === "string" ? safeProfile.notes : "",
+  };
+}
+
+function comparableProfile(profile) {
+  const safeProfile = profile && typeof profile === "object" ? profile : {};
+  return {
+    categoryId: safeProfile.categoryId || null,
+    subject: safeProfile.subject || null,
+    mainGoal: safeProfile.mainGoal || null,
+    currentPriority: safeProfile.currentPriority || null,
+    watchpoints: Array.isArray(safeProfile.watchpoints) ? safeProfile.watchpoints : [],
+    constraints: Array.isArray(safeProfile.constraints) ? safeProfile.constraints : [],
+    currentLevel: Number.isInteger(safeProfile.currentLevel) ? safeProfile.currentLevel : null,
+    notes: safeProfile.notes || null,
+  };
+}
+
+function buildNextCategoryProfilesState(previous, categoryId, patch) {
+  const categories = Array.isArray(previous?.categories) ? previous.categories : [];
+  const currentState = normalizeCategoryProfilesV1(previous?.category_profiles_v1, categories);
+  const currentProfile = getCategoryProfile(
+    {
+      categories,
+      category_profiles_v1: currentState,
+    },
+    categoryId
+  );
+
+  let nextState = normalizeCategoryProfilesV1(
+    {
+      version: 1,
+      byCategoryId: {
+        ...currentState.byCategoryId,
+        [categoryId]: {
+          ...currentProfile,
+          ...patch,
+          categoryId,
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    },
+    categories
+  );
+
+  let nextProfile = getCategoryProfile(
+    {
+      categories,
+      category_profiles_v1: nextState,
+    },
+    categoryId
+  );
+
+  if (!hasMeaningfulCategoryProfile(nextProfile)) {
+    const nextByCategoryId = { ...nextState.byCategoryId };
+    delete nextByCategoryId[categoryId];
+    nextState = normalizeCategoryProfilesV1(
+      {
+        version: 1,
+        byCategoryId: nextByCategoryId,
+      },
+      categories
+    );
+    nextProfile = getCategoryProfile(
+      {
+        categories,
+        category_profiles_v1: nextState,
+      },
+      categoryId
+    );
+  }
+
+  if (JSON.stringify(comparableProfile(currentProfile)) === JSON.stringify(comparableProfile(nextProfile))) {
+    return null;
+  }
+
+  return nextState;
 }
 
 export default function CategoryManageInline({
@@ -46,12 +139,32 @@ export default function CategoryManageInline({
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [whyDraft, setWhyDraft] = useState("");
+  const categoryProfile = useMemo(
+    () => getCategoryProfile(safeData, category?.id || null),
+    [category?.id, safeData]
+  );
+  const [profileDraft, setProfileDraft] = useState(() => normalizeProfileDraft(categoryProfile));
+  const [watchpointInput, setWatchpointInput] = useState("");
+  const [constraintInput, setConstraintInput] = useState("");
+  const profileDraftRef = useRef(profileDraft);
 
   useEffect(() => {
     setNameDraft(category?.name || "");
     setWhyDraft(category?.whyText || "");
     setCategoryMenuOpen(false);
   }, [category?.id, category?.name, category?.whyText]);
+
+  useEffect(() => {
+    const nextDraft = normalizeProfileDraft(categoryProfile);
+    profileDraftRef.current = nextDraft;
+    setProfileDraft(nextDraft);
+    setWatchpointInput("");
+    setConstraintInput("");
+  }, [categoryProfile]);
+
+  useEffect(() => {
+    profileDraftRef.current = profileDraft;
+  }, [profileDraft]);
 
   const outcomeGoals = useMemo(() => {
     if (!category?.id) return [];
@@ -152,6 +265,37 @@ export default function CategoryManageInline({
     }));
   }, [category?.id, category?.whyText, setData, whyDraft]);
 
+  const commitCategoryProfilePatch = useCallback(
+    (patch) => {
+      if (!category?.id || typeof setData !== "function") return;
+      setData((previous) => {
+        const nextCategoryProfiles = buildNextCategoryProfilesState(previous, category.id, patch);
+        if (!nextCategoryProfiles) return previous;
+        return {
+          ...previous,
+          category_profiles_v1: nextCategoryProfiles,
+        };
+      });
+    },
+    [category?.id, setData]
+  );
+
+  const commitCategoryProfileDraft = useCallback(
+    (draft) => {
+      if (!draft) return;
+      commitCategoryProfilePatch({
+        subject: draft.subject,
+        mainGoal: draft.mainGoal,
+        currentPriority: draft.currentPriority,
+        watchpoints: draft.watchpoints,
+        constraints: draft.constraints,
+        currentLevel: draft.currentLevel,
+        notes: draft.notes,
+      });
+    },
+    [commitCategoryProfilePatch]
+  );
+
   useEffect(() => {
     if (!inlineEdit) return undefined;
     return () => {
@@ -176,6 +320,14 @@ export default function CategoryManageInline({
     };
   }, [inlineEdit, category?.id, category?.name, category?.whyText, nameDraft, setData, whyDraft]);
 
+  useEffect(() => {
+    if (!inlineEdit) return undefined;
+    return () => {
+      if (!category?.id) return;
+      commitCategoryProfileDraft(profileDraftRef.current);
+    };
+  }, [category?.id, commitCategoryProfileDraft, inlineEdit]);
+
   function linkHabitToSelectedOutcome(habitId) {
     if (!selectedOutcome?.id || typeof setData !== "function") return;
     setData((prev) => linkProcessToOutcome(prev, habitId, selectedOutcome.id));
@@ -183,6 +335,32 @@ export default function CategoryManageInline({
 
   function openPilotage() {
     if (typeof onOpenPilotage === "function") onOpenPilotage();
+  }
+
+  function addProfileListItem(kind) {
+    const isWatchpoints = kind === "watchpoints";
+    const inputValue = isWatchpoints ? watchpointInput : constraintInput;
+    const trimmed = String(inputValue || "").trim();
+    if (!trimmed) return;
+    const currentList = isWatchpoints ? profileDraft.watchpoints : profileDraft.constraints;
+    const nextDraft = {
+      ...profileDraft,
+      [kind]: [...currentList, trimmed],
+    };
+    setProfileDraft(nextDraft);
+    commitCategoryProfilePatch({ [kind]: nextDraft[kind] });
+    if (isWatchpoints) setWatchpointInput("");
+    else setConstraintInput("");
+  }
+
+  function removeProfileListItem(kind, value) {
+    const currentList = kind === "watchpoints" ? profileDraft.watchpoints : profileDraft.constraints;
+    const nextDraft = {
+      ...profileDraft,
+      [kind]: currentList.filter((entry) => entry !== value),
+    };
+    setProfileDraft(nextDraft);
+    commitCategoryProfilePatch({ [kind]: nextDraft[kind] });
   }
 
   function renameCategory() {
@@ -506,6 +684,162 @@ export default function CategoryManageInline({
                 Éditer
               </Button>
             )}
+          </div>
+        </div>
+      </Card>
+
+      <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-category-profile")}>
+        <div className="p18 stack stackGap12">
+          <div>
+            <div className="titleSm">Profil de catégorie</div>
+            <div className="small2 textMuted">Contexte stratégique optionnel pour guider les recommandations.</div>
+          </div>
+
+          <div className="stack stackGap12">
+            <div className="col" style={{ gap: 6 }}>
+              <div className="small2 textMuted">Sujet principal</div>
+              <Input
+                value={profileDraft.subject}
+                onChange={(event) =>
+                  setProfileDraft((previous) => ({ ...previous, subject: event.target.value }))
+                }
+                onBlur={() => commitCategoryProfilePatch({ subject: profileDraft.subject })}
+                placeholder="Ex: Reprendre ma forme"
+                aria-label="Sujet principal"
+                data-testid={`library-manage-profile-subject-${category.id}`}
+              />
+            </div>
+
+            <div className="col" style={{ gap: 6 }}>
+              <div className="small2 textMuted">Objectif principal</div>
+              <Input
+                value={profileDraft.mainGoal}
+                onChange={(event) =>
+                  setProfileDraft((previous) => ({ ...previous, mainGoal: event.target.value }))
+                }
+                onBlur={() => commitCategoryProfilePatch({ mainGoal: profileDraft.mainGoal })}
+                placeholder="Ex: Retrouver de l’énergie"
+                aria-label="Objectif principal"
+                data-testid={`library-manage-profile-main-goal-${category.id}`}
+              />
+            </div>
+
+            <div className="col" style={{ gap: 6 }}>
+              <div className="small2 textMuted">Priorité actuelle</div>
+              <Input
+                value={profileDraft.currentPriority}
+                onChange={(event) =>
+                  setProfileDraft((previous) => ({ ...previous, currentPriority: event.target.value }))
+                }
+                onBlur={() => commitCategoryProfilePatch({ currentPriority: profileDraft.currentPriority })}
+                placeholder="Ex: Dormir plus régulièrement"
+                aria-label="Priorité actuelle"
+                data-testid={`library-manage-profile-priority-${category.id}`}
+              />
+            </div>
+
+            <div className="col" style={{ gap: 8 }}>
+              <div className="small2 textMuted">Points à surveiller</div>
+              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                <Input
+                  value={watchpointInput}
+                  onChange={(event) => setWatchpointInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return;
+                    event.preventDefault();
+                    addProfileListItem("watchpoints");
+                  }}
+                  placeholder="Ex: Sommeil"
+                  aria-label="Ajouter un point à surveiller"
+                />
+                <Button variant="ghost" onClick={() => addProfileListItem("watchpoints")}>
+                  Ajouter
+                </Button>
+              </div>
+              {profileDraft.watchpoints.length ? (
+                <ChipRow>
+                  {profileDraft.watchpoints.map((item) => (
+                    <Chip
+                      key={`watchpoint-${item}`}
+                      active
+                      onClick={() => removeProfileListItem("watchpoints", item)}
+                      aria-label={`Retirer ${item}`}
+                    >
+                      {item} ×
+                    </Chip>
+                  ))}
+                </ChipRow>
+              ) : null}
+            </div>
+
+            <div className="col" style={{ gap: 8 }}>
+              <div className="small2 textMuted">Contraintes</div>
+              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                <Input
+                  value={constraintInput}
+                  onChange={(event) => setConstraintInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return;
+                    event.preventDefault();
+                    addProfileListItem("constraints");
+                  }}
+                  placeholder="Ex: Horaires irréguliers"
+                  aria-label="Ajouter une contrainte"
+                />
+                <Button variant="ghost" onClick={() => addProfileListItem("constraints")}>
+                  Ajouter
+                </Button>
+              </div>
+              {profileDraft.constraints.length ? (
+                <ChipRow>
+                  {profileDraft.constraints.map((item) => (
+                    <Chip
+                      key={`constraint-${item}`}
+                      active
+                      onClick={() => removeProfileListItem("constraints", item)}
+                      aria-label={`Retirer ${item}`}
+                    >
+                      {item} ×
+                    </Chip>
+                  ))}
+                </ChipRow>
+              ) : null}
+            </div>
+
+            <div className="col" style={{ gap: 8 }}>
+              <div className="small2 textMuted">Niveau actuel</div>
+              <ChipRow>
+                {[1, 2, 3, 4, 5].map((level) => (
+                  <Chip
+                    key={`level-${level}`}
+                    active={profileDraft.currentLevel === level}
+                    onClick={() => {
+                      const nextLevel = profileDraft.currentLevel === level ? null : level;
+                      setProfileDraft((previous) => ({ ...previous, currentLevel: nextLevel }));
+                      commitCategoryProfilePatch({ currentLevel: nextLevel });
+                    }}
+                    aria-pressed={profileDraft.currentLevel === level}
+                  >
+                    {level}
+                  </Chip>
+                ))}
+              </ChipRow>
+            </div>
+
+            <div className="col" style={{ gap: 6 }}>
+              <div className="small2 textMuted">Notes</div>
+              <Textarea
+                rows={4}
+                value={profileDraft.notes}
+                onChange={(event) =>
+                  setProfileDraft((previous) => ({ ...previous, notes: event.target.value }))
+                }
+                onBlur={() => commitCategoryProfilePatch({ notes: profileDraft.notes })}
+                placeholder="Ajoute un contexte utile si nécessaire."
+                aria-label="Notes du profil catégorie"
+                data-testid={`library-manage-profile-notes-${category.id}`}
+              />
+            </div>
           </div>
         </div>
       </Card>

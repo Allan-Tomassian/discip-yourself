@@ -19,6 +19,7 @@ describe("planningCoachModel", () => {
     const result = buildPlanningCoachFallback({
       selectedDateKey: "2026-03-25",
       activeCategoryId: "c1",
+      activeCategoryProfileSummary: { currentPriority: "Signer une première offre" },
       occurrences: [],
       goalsById,
       categoriesById,
@@ -26,6 +27,7 @@ describe("planningCoachModel", () => {
 
     expect(result.headline).toBe("Semaine vide");
     expect(result.primaryAction?.label).toBe("Ajouter un premier bloc");
+    expect(result.reason).toContain("Signer une première offre");
   });
 
   it("retourne journee vide quand la semaine existe mais pas le jour selectionne", () => {
