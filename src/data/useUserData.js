@@ -35,6 +35,9 @@ function hasMeaningfulLocalData(value) {
   const ui = isPlainObject(value.ui) ? value.ui : {};
   const userAiProfile = isPlainObject(value.user_ai_profile) ? value.user_ai_profile : {};
   const categoryProfiles = isPlainObject(value.category_profiles_v1?.byCategoryId) ? value.category_profiles_v1.byCategoryId : {};
+  const coachConversations = Array.isArray(value.coach_conversations_v1?.conversations)
+    ? value.coach_conversations_v1.conversations
+    : [];
 
   if (goals.length || habits.length || occurrences.length || reminders.length || sessions.length || sessionHistory.length) {
     return true;
@@ -49,6 +52,7 @@ function hasMeaningfulLocalData(value) {
   if ((profile.whyImage || "").trim()) return true;
   if (Array.isArray(userAiProfile.goals) && userAiProfile.goals.length > 0) return true;
   if (Object.values(categoryProfiles).some((profile) => hasMeaningfulCategoryProfile(profile))) return true;
+  if (coachConversations.length > 0) return true;
   if (Boolean(ui.onboardingCompleted)) return true;
 
   return false;

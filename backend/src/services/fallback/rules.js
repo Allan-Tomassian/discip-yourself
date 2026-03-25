@@ -544,7 +544,7 @@ export function buildChatFallback(context) {
   return {
     kind: "chat",
     headline: "Recadre le prochain bloc",
-    reason: "Ouvre le pilotage et pose une seule action courte et tenable aujourd'hui.",
+    reason: "Ouvre le pilotage et pose une seule action de 10 min, claire et tenable aujourd'hui.",
     primaryAction: buildAction({
       label: "Voir pilotage",
       intent: "open_pilotage",

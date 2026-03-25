@@ -46,6 +46,7 @@ import Pilotage from "./pages/Pilotage";
 import Privacy from "./pages/Privacy";
 import Support from "./pages/Support";
 import CoachChat from "./pages/CoachChat";
+import CoachPanel from "./features/coach/CoachPanel";
 import { applyThemeTokens } from "./theme/themeTokens";
 import { todayLocalKey } from "./utils/dateKey";
 import { normalizePriorities } from "./logic/priority";
@@ -184,6 +185,7 @@ export default function App() {
     [safeData?.ui?.walletV1]
   );
   const isDrawerOpen = Boolean(safeData?.ui?.isDrawerOpen);
+  const [coachOpen, setCoachOpen] = useState(false);
 
   const setDrawerOpen = (open) => {
     setData((prev) => {
@@ -603,8 +605,28 @@ export default function App() {
   };
 
   const showBottomRail = tab === "today" || tab === "planning" || tab === "library" || tab === "pilotage";
+  const lastNonCoachTabRef = useRef(tab === "coach-chat" ? "today" : tab);
+  const coachSurfaceTab = tab === "coach-chat" ? lastNonCoachTabRef.current : tab;
+  const coachFabVisibleTabs = useMemo(
+    () => new Set(["today", "planning", "library", "pilotage", "category-detail", "category-progress"]),
+    []
+  );
+  const hasCoachBlockingOverlay =
+    isDrawerOpen ||
+    plusOpen ||
+    createFlowOpen ||
+    categoryGateOpen ||
+    paywallOpen ||
+    Boolean(activeReminder) ||
+    Boolean(showTourOverlay && tour.isActive) ||
+    tab === "coach-chat";
   const totemDockLayer = <TotemDockLayer data={safeData} setData={setData} />;
   const routeCloseSigRef = useRef("");
+
+  useEffect(() => {
+    if (tab === "coach-chat") return;
+    lastNonCoachTabRef.current = tab;
+  }, [tab]);
 
   useEffect(() => {
     const nextSig = [
@@ -630,6 +652,13 @@ export default function App() {
     sessionOccurrenceId,
     tab,
   ]);
+
+  useEffect(() => {
+    if (!coachOpen) return;
+    if (!coachFabVisibleTabs.has(tab) || hasCoachBlockingOverlay) {
+      setCoachOpen(false);
+    }
+  }, [coachFabVisibleTabs, coachOpen, hasCoachBlockingOverlay, tab]);
 
   useEffect(() => {
     if (typeof window === "undefined" || dataLoading) return;
@@ -1069,6 +1098,7 @@ export default function App() {
           data={data}
           setData={setData}
           setTab={setTab}
+          sourceTab={coachSurfaceTab}
         />
       ) : tab === "account" ? (
         <Account data={data} />
@@ -1089,6 +1119,29 @@ export default function App() {
       ) : (
         <Preferences data={data} setData={setData} />
       )}
+      {coachFabVisibleTabs.has(tab) && !hasCoachBlockingOverlay ? (
+        <button
+          type="button"
+          className={`coachFab${showBottomRail ? " has-rail" : ""}${coachOpen ? " is-open" : ""}`}
+          data-testid="coach-fab"
+          onClick={() => {
+            setDrawerOpen(false);
+            setCoachOpen((current) => !current);
+          }}
+          aria-label={coachOpen ? "Fermer le coach" : "Ouvrir le coach"}
+        >
+          <span className="coachFabDot" aria-hidden="true" />
+          <span>{coachOpen ? "Fermer" : "Coach"}</span>
+        </button>
+      ) : null}
+      <CoachPanel
+        open={coachOpen}
+        onClose={() => setCoachOpen(false)}
+        data={data}
+        setData={setData}
+        setTab={setTab}
+        surfaceTab={coachSurfaceTab}
+      />
 
       {activeReminder ? (
         <div className="modalBackdrop reminderOverlay" onClick={() => setActiveReminder(null)}>

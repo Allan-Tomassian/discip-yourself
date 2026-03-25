@@ -1,0 +1,381 @@
+.coachFab {
+  position: fixed;
+  right: calc(var(--page-pad) + var(--safe-right));
+  bottom: calc(var(--safe-bottom) + 18px);
+  z-index: 1350;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, rgba(255, 255, 255, 0.16));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-3, #19202a) 92%, rgba(255, 255, 255, 0.12)), color-mix(in srgb, var(--surface-2, #121821) 94%, rgba(0, 0, 0, 0.22)));
+  color: var(--text-1, var(--text));
+  box-shadow:
+    0 18px 30px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    opacity 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.coachFab.has-rail {
+  bottom: calc(var(--bottomCategoryBarSpace, 112px) + var(--safe-bottom) + 12px);
+}
+
+.coachFab:hover {
+  transform: translateY(-1px);
+}
+
+.coachFab.is-open {
+  top: calc(var(--safe-top) + 14px);
+  bottom: auto;
+  z-index: 1850;
+}
+
+.coachFab:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.coachFabDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 80%, white);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.coachPanelBackdrop {
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding:
+    max(12px, var(--safe-top))
+    calc(var(--page-pad) + var(--safe-right))
+    max(12px, calc(var(--safe-bottom) + 12px))
+    calc(var(--page-pad) + var(--safe-left));
+}
+
+.coachPanelOuter {
+  width: min(430px, calc(100vw - 24px - var(--safe-left) - var(--safe-right)));
+  max-height: min(760px, calc(100dvh - 24px - var(--safe-top) - var(--safe-bottom)));
+}
+
+.coachPanelClip {
+  height: 100%;
+}
+
+.coachPanel {
+  gap: 0;
+  height: 100%;
+  min-height: 560px;
+  overflow: hidden;
+}
+
+.coachPanelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.coachPanelHeaderText {
+  min-width: 0;
+}
+
+.coachPanelTitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-1, var(--text));
+}
+
+.coachPanelSubtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.coachPanelHeaderActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.coachSurface {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.coachSurfaceToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+}
+
+.coachSurfaceStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.coachSurfaceStatusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.coachSurfaceStatusDot.is-loading {
+  background: color-mix(in srgb, var(--accent) 72%, white);
+}
+
+.coachConversationScroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.coachConversationEmpty {
+  display: grid;
+  gap: 6px;
+  padding: 12px 0 2px;
+}
+
+.coachConversationEmptyTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-1, var(--text));
+}
+
+.coachConversationEmptyText {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.coachQuickPrompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.coachQuickPrompt {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-1, var(--text));
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.coachMessage {
+  display: flex;
+}
+
+.coachMessage--user {
+  justify-content: flex-end;
+}
+
+.coachMessage--assistant,
+.coachMessage--assistantTranscript {
+  justify-content: flex-start;
+}
+
+.coachMessageBubble,
+.coachMessageCard {
+  width: min(100%, 100%);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.coachMessage--user .coachMessageBubble {
+  max-width: min(88%, 520px);
+  background: color-mix(in srgb, var(--accent) 18%, rgba(255, 255, 255, 0.04));
+}
+
+.coachMessageCard {
+  max-width: min(100%, 620px);
+}
+
+.coachMessageBubble--loading {
+  border-style: dashed;
+}
+
+.coachMessageEyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.coachMessageTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-1, var(--text));
+}
+
+.coachMessageText {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.coachMessageActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.coachDraftBlock {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.coachDraftTitle {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.64);
+}
+
+.coachDraftList {
+  display: grid;
+  gap: 6px;
+}
+
+.coachDraftItem,
+.coachDraftMessage {
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.coachDraftMessage.is-error,
+.coachComposerError {
+  color: #ffb4b4;
+}
+
+.coachComposer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 14px 16px calc(16px + var(--safe-bottom));
+  display: grid;
+  gap: 10px;
+}
+
+.coachComposerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.coachComposerMeta {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.coachComposerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.coachComposerError {
+  font-size: 12px;
+}
+
+.keyboardOpen .coachFab {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(16px);
+}
+
+@media (min-width: 901px) {
+  .coachFab {
+    bottom: calc(var(--safe-bottom) + 22px);
+  }
+
+  .coachFab.has-rail {
+    bottom: calc(var(--safe-bottom) + 22px);
+  }
+}
+
+@media (max-width: 640px) {
+  .coachFab.is-open {
+    top: calc(var(--safe-top) + 12px);
+    right: calc(var(--safe-right) + 12px);
+  }
+
+  .coachPanelBackdrop {
+    padding: 0;
+  }
+
+  .coachPanelOuter {
+    width: 100vw;
+    max-height: 100dvh;
+    height: 100dvh;
+  }
+
+  .coachPanel {
+    min-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .coachPanelHeader {
+    padding-top: calc(16px + var(--safe-top));
+  }
+
+  .coachConversationScroll {
+    padding: 14px;
+  }
+
+  .coachComposer {
+    padding: 12px 14px calc(14px + var(--safe-bottom));
+  }
+
+  .coachComposerFooter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .coachComposerActions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .coachComposerActions .gateButton {
+    flex: 1 1 0;
+  }
+}

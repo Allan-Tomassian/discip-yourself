@@ -23,6 +23,12 @@ export const MANUAL_AI_LOADING_STAGES = Object.freeze({
     "Recherche du signal principal",
     "Formulation de la recommandation",
   ],
+  coach: [
+    "Analyse du contexte",
+    "Lecture des catégories",
+    "Recherche suggestion utile",
+    "Formulation réponse",
+  ],
 });
 
 export function getManualAiLoadingStages(surface) {
