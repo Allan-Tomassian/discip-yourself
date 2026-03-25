@@ -146,17 +146,17 @@ test("buildNowContext prioritizes active-category candidates when the active cat
   });
 
   assert.equal(context.gapSummary.hasGapToday, true);
-  assert.equal(context.gapSummary.emptyActiveCategory, false);
+  assert.equal(context.gapSummary.emptyActiveCategory, true);
   assert.equal(context.gapSummary.lowLoadToday, true);
   assert.equal(context.gapSummary.gapReason, "empty_active_category");
   assert.equal(context.gapSummary.selectionScope, "active_category");
   assert.equal(context.gapSummary.activeCategoryCandidateCount, 1);
   assert.equal(context.gapSummary.crossCategoryCandidateCount, 0);
   assert.equal(context.gapSummary.candidateActionSummaries[0].title, "Deep work");
-  assert.equal(context.focusOccurrenceForActiveDate?.id, "occ-2");
+  assert.equal(context.focusOccurrenceForActiveDate, null);
 });
 
-test("buildNowContext falls back outside the active category only when there is no credible local candidate", () => {
+test("buildNowContext falls back to structure_missing when no cross-category proof exists", () => {
   const context = buildNowContext({
     data: {
       categories: [
@@ -181,10 +181,71 @@ test("buildNowContext falls back outside the active category only when there is 
   });
 
   assert.equal(context.gapSummary.hasGapToday, true);
-  assert.equal(context.gapSummary.selectionScope, "cross_category_fallback");
+  assert.equal(context.gapSummary.selectionScope, "structure_missing");
   assert.equal(context.gapSummary.activeCategoryCandidateCount, 0);
-  assert.equal(context.gapSummary.crossCategoryCandidateCount, 1);
-  assert.equal(context.gapSummary.candidateActionSummaries[0].title, "Swim 30 min");
+  assert.equal(context.gapSummary.crossCategoryCandidateCount, 0);
+  assert.equal(context.gapSummary.candidateActionSummaries.length, 0);
+  assert.equal(context.focusOccurrenceForActiveDate, null);
+});
+
+test("buildNowContext accepts a proven cross-category occurrence for finance when work advances revenue", () => {
+  const context = buildNowContext({
+    data: {
+      categories: [
+        { id: "cat-1", name: "Finance", mainGoalId: "goal-finance" },
+        { id: "cat-2", name: "Work" },
+      ],
+      goals: [
+        { id: "goal-finance", title: "Augmenter les revenus", type: "OUTCOME", categoryId: "cat-1", status: "active" },
+        { id: "goal-work", title: "Travailler l'offre", type: "PROCESS", categoryId: "cat-2", status: "active", sessionMinutes: 30 },
+      ],
+      occurrences: [{ id: "occ-work", goalId: "goal-work", date: "2026-03-06", status: "planned", start: "08:00", durationMinutes: 30 }],
+      ui: { activeSession: null },
+      sessionHistory: [],
+    },
+    selectedDateKey: "2026-03-06",
+    activeCategoryId: "cat-1",
+    quotaState: { remaining: 3 },
+    requestId: "req-gap-cross-proof",
+    trigger: "screen_open",
+    now: new Date(2026, 2, 6, 12, 0, 0),
+  });
+
+  assert.equal(context.gapSummary.selectionScope, "cross_category");
+  assert.equal(context.categoryCoherence.reasonLinkType, "cross_category");
+  assert.equal(context.categoryCoherence.recommendedCategoryLabel, "Work");
+  assert.equal(context.categoryCoherence.contributionTargetLabel, "Augmenter les revenus");
+  assert.equal(context.focusOccurrenceForActiveDate?.id, "occ-work");
+});
+
+test("buildNowContext prefers an occurrence in the active category over an earlier off-category block", () => {
+  const context = buildNowContext({
+    data: {
+      categories: [
+        { id: "cat-1", name: "Finance" },
+        { id: "cat-2", name: "Work" },
+      ],
+      goals: [
+        { id: "goal-finance", title: "Budget", type: "PROCESS", categoryId: "cat-1", status: "active" },
+        { id: "goal-work", title: "Call client", type: "PROCESS", categoryId: "cat-2", status: "active" },
+      ],
+      occurrences: [
+        { id: "occ-work", goalId: "goal-work", date: "2026-03-06", status: "planned", start: "08:00", durationMinutes: 30 },
+        { id: "occ-finance", goalId: "goal-finance", date: "2026-03-06", status: "planned", start: "15:00", durationMinutes: 20 },
+      ],
+      ui: { activeSession: null },
+      sessionHistory: [],
+    },
+    selectedDateKey: "2026-03-06",
+    activeCategoryId: "cat-1",
+    quotaState: { remaining: 3 },
+    requestId: "req-scoped-occurrence",
+    trigger: "screen_open",
+    now: new Date(2026, 2, 6, 12, 0, 0),
+  });
+
+  assert.equal(context.focusOccurrenceForActiveDate?.id, "occ-finance");
+  assert.equal(context.categoryCoherence.reasonLinkType, "direct_category");
 });
 
 test("buildNowContext uses preferred time blocks to select the most aligned flexible occurrence", () => {

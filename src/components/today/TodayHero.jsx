@@ -13,6 +13,10 @@ export default function TodayHero({
   categoryName = "",
   durationLabel = "",
   reason = "",
+  reasonLinkType = "",
+  reasonLinkLabel = "",
+  contributionLabel = "",
+  recommendedCategoryLabel = "",
   impactText = "",
   aiStatusLabel = "",
   timestampLabel = "",
@@ -26,7 +30,8 @@ export default function TodayHero({
   const badges = buildBadges({ isAiRecommendation, isFresh });
   const displayTitle = title || (isPreparing ? "Préparation de la recommandation" : "Aucune action prioritaire");
   const displayReason = reason || (isPreparing ? "L’IA prépare la priorité du moment." : "Aucune raison disponible.");
-  const displayImpact = impactText || "Maintenir l’élan sur ta priorité active.";
+  const displayContribution = contributionLabel || impactText || "Maintenir l’élan sur ta priorité active.";
+  const displayCategory = recommendedCategoryLabel || categoryName || "À préciser";
 
   return (
     <GateSection className="todayHeroCard GateSurfacePremium GateCardPremium" collapsible={false}>
@@ -51,6 +56,13 @@ export default function TodayHero({
       </div>
       <div className="todayHeroBody">
         <div className="todayHeroTitle">{displayTitle}</div>
+        {reasonLinkLabel ? (
+          <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+            <span className={`todayHeroCoachBadge${reasonLinkType === "cross_category" ? " is-ai" : ""}`}>
+              {reasonLinkLabel}
+            </span>
+          </div>
+        ) : null}
         <div
           style={{
             display: "grid",
@@ -60,7 +72,7 @@ export default function TodayHero({
         >
           <div className="listItem GateRowPremium">
             <div className="small2">Catégorie</div>
-            <div className="titleSm">{categoryName || "À préciser"}</div>
+            <div className="titleSm">{displayCategory}</div>
           </div>
           <div className="listItem GateRowPremium">
             <div className="small2">Durée</div>
@@ -73,8 +85,8 @@ export default function TodayHero({
             <div className="small2" style={{ opacity: 0.92 }}>{displayReason}</div>
           </div>
           <div>
-            <div className="small2" style={{ opacity: 0.72 }}>Impact attendu</div>
-            <div className="small2" style={{ opacity: 0.92 }}>{displayImpact}</div>
+            <div className="small2" style={{ opacity: 0.72 }}>Contribue à</div>
+            <div className="small2" style={{ opacity: 0.92 }}>{displayContribution}</div>
           </div>
         </div>
       </div>

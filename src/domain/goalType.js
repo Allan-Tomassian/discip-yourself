@@ -1,4 +1,4 @@
-import { LABELS } from "../ui/labels";
+import { LABELS } from "../ui/labels.js";
 
 export function resolveGoalType(goal) {
   const raw = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";

@@ -217,8 +217,20 @@ function buildNowPrompt(context) {
   const gapCandidate = Array.isArray(context.gapSummary?.candidateActionSummaries)
     ? context.gapSummary.candidateActionSummaries[0] || null
     : null;
-  const shouldUseGapExample = Boolean(context.gapSummary?.hasGapToday && gapCandidate);
-  const examplePrimaryAction = shouldUseGapExample
+  const shouldUseStructureExample = Boolean(
+    context.gapSummary?.hasGapToday && context.gapSummary?.selectionScope === "structure_missing"
+  );
+  const shouldUseGapExample = Boolean(context.gapSummary?.hasGapToday && gapCandidate && !shouldUseStructureExample);
+  const examplePrimaryAction = shouldUseStructureExample
+    ? {
+        label: "Structurer",
+        intent: "open_pilotage",
+        categoryId: "cat-1",
+        actionId: null,
+        occurrenceId: null,
+        dateKey: context.activeDate,
+      }
+    : shouldUseGapExample
     ? {
         label: "Planifier aujourd’hui",
         intent: "open_pilotage",
@@ -246,12 +258,16 @@ function buildNowPrompt(context) {
         };
   const validExample = {
     kind: "now",
-    headline: shouldUseGapExample
+    headline: shouldUseStructureExample
+      ? "Structure la categorie active"
+      : shouldUseGapExample
       ? `Planifie ${gapCandidate?.title || "une action"}`
       : context.isToday
         ? `Lance ${focusTitle}`
         : `Replanifie ${focusTitle}`,
-    reason: shouldUseGapExample
+    reason: shouldUseStructureExample
+      ? "Clarifie l'objectif de la categorie active ou cree une premiere action exploitable."
+      : shouldUseGapExample
       ? `${gapCandidate?.title || "Cette action"} n'est pas encore planifiée aujourd'hui. Programme-la maintenant pour garder la continuité.`
       : context.isToday
         ? `${focusTitle} est l'action la plus exécutable maintenant dans le plan du jour.`
@@ -266,7 +282,7 @@ function buildNowPrompt(context) {
     confidence: 0.88,
     urgency: "medium",
     uiTone: "steady",
-    toolIntent: shouldUseGapExample
+    toolIntent: shouldUseStructureExample || shouldUseGapExample
       ? "suggest_reschedule_option"
       : context.isToday
         ? "suggest_start_occurrence"
@@ -295,7 +311,10 @@ function buildNowPrompt(context) {
     "When using open_pilotage for replanification, headline or reason must mention the exact action title and its planned date/time from focusOccurrenceSummary.",
     "When gapSummary.hasGapToday is true, use open_pilotage with toolIntent suggest_reschedule_option and recommend planning one existing action from gapSummary.candidateActionSummaries.",
     "When gapSummary.selectionScope is active_category, choose an action from the active category first if one exists.",
-    "When gapSummary.selectionScope is cross_category_fallback, clearly say that nothing credible is available in the active category today before proposing the fallback action.",
+    "The active category governs any today_recommendation.",
+    "When categoryCoherence.selectionScope is cross_category, you may recommend only the proven cross-category action and you must explicitly say it contributes to categoryCoherence.contributionTargetLabel.",
+    "When categoryCoherence.selectionScope is structure_missing, do not invent an action and tell the user to clarify the goal or create a first action in the active category.",
+    "When gapSummary.selectionScope is cross_category, clearly say that nothing credible is available in the active category today before proposing the fallback action.",
     "When gapSummary.hasGapToday is true, mention the exact action title, say it is not yet planned today, and include a simple duration if available.",
     "Never invent a new task, an abstract task, or an action title that is not in gapSummary or focusOccurrenceSummary.",
     "Never mention the AI, the system, or internal diagnostics.",
@@ -318,6 +337,7 @@ function buildNowPrompt(context) {
             name: context.category.name || null,
           }
         : null,
+      activeCategoryLabel: context.category?.name || null,
       activeSessionSummary: context.activeSessionSummary || null,
       openSessionOutsideActiveDate: context.openSessionOutsideActiveDate
         ? {
@@ -332,6 +352,7 @@ function buildNowPrompt(context) {
         : [],
       focusSelectionReason: context.focusSelectionReason || null,
       dayLoadSummary: context.dayLoadSummary || null,
+      categoryCoherence: context.categoryCoherence || null,
       scheduleSignalSummary: context.scheduleSignalSummary || null,
       gapSummary: context.gapSummary || null,
       doneToday: context.doneToday,
@@ -372,13 +393,31 @@ function buildChatPrompt(context) {
   const gapCandidate = Array.isArray(context.gapSummary?.candidateActionSummaries)
     ? context.gapSummary.candidateActionSummaries[0] || null
     : null;
+  const shouldUseStructureExample = Boolean(
+    context.gapSummary?.hasGapToday && context.gapSummary?.selectionScope === "structure_missing"
+  );
   const validExample = {
     kind: "chat",
-    headline: gapCandidate ? `Ajoute ${gapCandidate.title}` : "Clarifie le prochain bloc",
-    reason: gapCandidate
+    headline: shouldUseStructureExample
+      ? "Structure la categorie active"
+      : gapCandidate
+        ? `Ajoute ${gapCandidate.title}`
+        : "Clarifie le prochain bloc",
+    reason: shouldUseStructureExample
+      ? "Clarifie l'objectif de la categorie active ou cree une premiere action exploitable."
+      : gapCandidate
       ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. Programme-la en bloc court.`
       : "Choisis l'action la plus exécutable maintenant et garde la réponse très courte.",
-    primaryAction: gapCandidate
+    primaryAction: shouldUseStructureExample
+      ? {
+          label: "Structurer",
+          intent: "open_pilotage",
+          categoryId: "cat-1",
+          actionId: null,
+          occurrenceId: null,
+          dateKey: context.activeDate,
+        }
+      : gapCandidate
       ? {
           label: "Planifier aujourd’hui",
           intent: "open_pilotage",
@@ -396,7 +435,7 @@ function buildChatPrompt(context) {
           dateKey: context.activeDate,
     },
     secondaryAction: null,
-    suggestedDurationMin: gapCandidate?.durationMin || 10,
+    suggestedDurationMin: shouldUseStructureExample ? null : gapCandidate?.durationMin || 10,
     draftChanges: gapCandidate?.actionId
       ? [
           {
@@ -431,6 +470,9 @@ function buildChatPrompt(context) {
     "Prefer resume_session when a session is already open today.",
     "Prefer start_occurrence when a credible occurrence can start now.",
     "Use open_pilotage when the best next step is to plan or replan.",
+    "The active category governs the recommendation.",
+    "When categoryCoherence.selectionScope is cross_category, recommend only the proven cross-category action and explicitly name the contribution to categoryCoherence.contributionTargetLabel.",
+    "When categoryCoherence.selectionScope is structure_missing, do not invent an action and tell the user to clarify the goal or create a first action in the active category.",
     "Keep headline <= 72 chars and reason <= 160 chars.",
     "Keep draft change titles <= 96 chars.",
     "Use null instead of omitting nullable fields.",
@@ -445,6 +487,7 @@ function buildChatPrompt(context) {
             name: context.category.name || null,
           }
         : null,
+      activeCategoryLabel: context.activeCategoryLabel || context.category?.name || null,
       userAiProfile: context.userAiProfile
         ? {
             goals: context.userAiProfile.goals || [],
@@ -462,6 +505,8 @@ function buildChatPrompt(context) {
         : [],
       availableCategories: Array.isArray(context.availableCategories) ? context.availableCategories : [],
       actionSummaries: Array.isArray(context.actionSummaries) ? context.actionSummaries : [],
+      categoryCoherence: context.categoryCoherence || null,
+      categorySnapshot: context.categorySnapshot || null,
       gapSummary: context.gapSummary || null,
       dayLoadSummary: context.dayLoadSummary || null,
       planningSummary: context.planningSummary || null,

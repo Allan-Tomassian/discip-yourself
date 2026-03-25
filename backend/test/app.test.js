@@ -650,7 +650,7 @@ test("POST /ai/now proposes planning an existing action when today is empty", as
   await app.close();
 });
 
-test("POST /ai/now explains cross-category fallback when the active category has no credible candidate", async () => {
+test("POST /ai/now explains a proven cross-category fallback when work advances finance", async () => {
   const app = await buildApp({
     config: TEST_CONFIG,
     verifyAccessToken: async () => ({ id: "user-gap-cross-category" }),
@@ -658,14 +658,14 @@ test("POST /ai/now explains cross-category fallback when the active category has
   app.supabase = createFakeSupabase({
     userData: {
       categories: [
-        { id: "cat-1", name: "Focus" },
-        { id: "cat-2", name: "Sport" },
+        { id: "cat-1", name: "Finance", mainGoalId: "goal-1" },
+        { id: "cat-2", name: "Work" },
       ],
       goals: [
-        { id: "goal-1", title: "Deep work", type: "OUTCOME", categoryId: "cat-1", status: "active" },
-        { id: "goal-2", title: "Run 20 min", type: "PROCESS", categoryId: "cat-2", status: "active", sessionMinutes: 20 },
+        { id: "goal-1", title: "Augmenter les revenus", type: "OUTCOME", categoryId: "cat-1", status: "active" },
+        { id: "goal-2", title: "Travailler l'offre", type: "PROCESS", categoryId: "cat-2", status: "active", sessionMinutes: 30 },
       ],
-      occurrences: [{ id: "occ-sport", goalId: "goal-2", date: PAST_KEY, status: "done", start: "08:00", durationMinutes: 20 }],
+      occurrences: [],
       ui: { activeSession: null },
       sessionHistory: [],
     },
@@ -687,9 +687,10 @@ test("POST /ai/now explains cross-category fallback when the active category has
   const payload = coachResponseSchema.parse(response.json());
   assert.equal(payload.interventionType, "today_recommendation");
   assert.equal(payload.primaryAction.intent, "open_pilotage");
-  assert.match(payload.reason, /Rien de crédible n'est prévu en Focus/i);
-  assert.match(payload.reason, /Run 20 min/i);
-  assert.match(payload.reason, /Sport/i);
+  assert.equal(payload.primaryAction.label, "Planifier aujourd’hui");
+  assert.match(payload.reason, /Travailler l'offre/i);
+  assert.match(payload.reason, /Work/i);
+  assert.match(payload.reason, /Augmenter les revenus/i);
   await app.close();
 });
 
@@ -822,7 +823,9 @@ test("POST /ai/now includes gap-fill prompt rules when today has no planned acti
   assert.match(capturedPrompt, /not yet planned today/i);
   assert.match(capturedPrompt, /gapSummary\.candidateActionSummaries/i);
   assert.match(capturedPrompt, /selectionScope is active_category/i);
-  assert.match(capturedPrompt, /selectionScope is cross_category_fallback/i);
+  assert.match(capturedPrompt, /selectionScope is cross_category/i);
+  assert.match(capturedPrompt, /selectionScope is structure_missing/i);
+  assert.match(capturedPrompt, /categoryCoherence/i);
   await app.close();
 });
 

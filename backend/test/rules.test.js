@@ -83,12 +83,19 @@ test("buildNowFallback names the active category when it is empty", () => {
 test("buildNowFallback explicitly explains cross-category fallback when no active-category candidate exists", () => {
   const payload = buildNowFallback(
     createGapContext({
+      categoryCoherence: {
+        reasonLinkType: "cross_category",
+        recommendedCategoryId: "cat-2",
+        recommendedCategoryLabel: "Sport",
+        contributionTargetLabel: "objectif Focus",
+        explanation: "Run 20 min en Sport contribue a objectif Focus.",
+      },
       gapSummary: {
         hasGapToday: true,
         emptyActiveCategory: true,
         lowLoadToday: false,
         gapReason: "empty_active_category",
-        selectionScope: "cross_category_fallback",
+        selectionScope: "cross_category",
         activeCategoryCandidateCount: 0,
         crossCategoryCandidateCount: 1,
         candidateActionSummaries: [
@@ -104,20 +111,26 @@ test("buildNowFallback explicitly explains cross-category fallback when no activ
     })
   );
 
-  assert.match(payload.reason, /Rien de crédible n'est prévu en Focus/i);
+  assert.match(payload.reason, /objectif Focus/i);
   assert.match(payload.reason, /Run 20 min/i);
   assert.match(payload.reason, /Sport/i);
 });
 
-test("buildNowFallback keeps a concrete fallback even without candidate", () => {
+test("buildNowFallback asks to structure the active category when no link is provable", () => {
   const payload = buildNowFallback(
     createGapContext({
+      categoryCoherence: {
+        reasonLinkType: "structure_missing",
+        contributionTargetLabel: "objectif Focus",
+        explanation:
+          "Tu n'as pas encore defini d'action exploitable pour objectif Focus. Commence par clarifier l'objectif ou creer une premiere action.",
+      },
       gapSummary: {
         hasGapToday: true,
         emptyActiveCategory: false,
         lowLoadToday: false,
         gapReason: "empty_day",
-        selectionScope: "none",
+        selectionScope: "structure_missing",
         activeCategoryCandidateCount: 0,
         crossCategoryCandidateCount: 0,
         candidateActionSummaries: [],
@@ -126,6 +139,6 @@ test("buildNowFallback keeps a concrete fallback even without candidate", () => 
   );
 
   assert.equal(payload.primaryAction.intent, "open_pilotage");
-  assert.equal(payload.primaryAction.label, "Planifier aujourd’hui");
-  assert.match(payload.reason, /Planifie une action simple/i);
+  assert.equal(payload.primaryAction.label, "Structurer");
+  assert.match(payload.reason, /clarifier l'objectif/i);
 });

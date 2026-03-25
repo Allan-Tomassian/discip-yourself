@@ -46,7 +46,7 @@ import { emitTotemEvent } from "../ui/totem/totemEvents";
 import { LABELS, UI_COPY } from "../ui/labels";
 import { useAuth } from "../auth/useAuth";
 import { buildTodayCanonicalContextSummary, resolveTodayOccurrenceStartPolicy } from "../domain/todayIntervention";
-import { resolveGoalType } from "../domain/goalType";
+import { computeCategoryScopedRecommendation } from "../domain/todayCategoryCoherence";
 import { deriveTodayNowModel } from "../features/today/nowModel";
 import { deriveTodayCalendarModel } from "../features/today/todayCalendarModel";
 import { deriveTodayProgressModel } from "../features/today/todayProgressModel";
@@ -164,6 +164,27 @@ function resolveImpactText({ heroGoal, heroCategory, goalsById }) {
   return "Maintenir l’élan sur la priorité active.";
 }
 
+function resolveOccurrenceHeroCopy({ occurrence, goalsById, categoriesById }) {
+  if (!occurrence) {
+    return {
+      title: "Aucune action planifiée pour cette date.",
+      meta: "Crée ou planifie une action depuis Bibliothèque.",
+    };
+  }
+  const goal = goalsById.get(occurrence.goalId || "") || null;
+  const category = categoriesById.get(goal?.categoryId || "") || null;
+  const title = goal?.title || occurrence?.title || "Action du moment";
+  const timeLabel =
+    (typeof occurrence?.start === "string" && occurrence.start) ||
+    (typeof occurrence?.slotKey === "string" && occurrence.slotKey) ||
+    "";
+  const meta = [timeLabel, category?.name || ""].filter(Boolean).join(" • ");
+  return {
+    title,
+    meta: meta || "C'est l'action la plus exécutable maintenant.",
+  };
+}
+
 function compareTodayOccurrences(left, right) {
   const leftStart = typeof left?.start === "string" ? left.start : "";
   const rightStart = typeof right?.start === "string" ? right.start : "";
@@ -186,123 +207,27 @@ function normalizeMicroItemForCompare(item) {
   };
 }
 
-function isGoalEligibleForGapFill(goal) {
-  if (!goal || typeof goal !== "object" || !goal.id || !goal.categoryId) return false;
-  const status = typeof goal.status === "string" ? goal.status.toLowerCase() : "";
-  if (status === "archived" || status === "deleted" || status === "removed" || status === "done") return false;
-  if (isAiFoundationPlanningGoal(goal)) return false;
-  return resolveGoalType(goal) === "PROCESS";
-}
-
 function buildLocalGapSummary({
   activeDate,
   systemToday,
   activeCategoryId,
-  categoriesById,
+  categories,
   goals,
   occurrences,
   plannedActionsForActiveDate,
-  focusOccurrenceForActiveDate,
+  preferredTimeBlocks = [],
 }) {
-  if (!activeDate || !systemToday || activeDate !== systemToday) {
-    return {
-      hasGapToday: false,
-      emptyActiveCategory: false,
-      lowLoadToday: false,
-      gapReason: "none",
-      selectionScope: "none",
-      activeCategoryCandidateCount: 0,
-      crossCategoryCandidateCount: 0,
-      candidateActionSummaries: [],
-      activeDate,
-    };
-  }
-  const plannedList = Array.isArray(plannedActionsForActiveDate) ? plannedActionsForActiveDate : [];
-  const emptyDay = plannedList.length === 0 && !focusOccurrenceForActiveDate;
-  const emptyActiveCategory =
-    Boolean(activeCategoryId) &&
-    plannedList.length > 0 &&
-    plannedList.every((occurrence) => {
-      const goalCategoryId = typeof occurrence?.categoryId === "string" ? occurrence.categoryId : "";
-      return goalCategoryId !== activeCategoryId;
-    });
-  const totalPlannedMinutes = plannedList.reduce(
-    (total, occurrence) =>
-      total + (Number.isFinite(occurrence?.durationMinutes) ? occurrence.durationMinutes : 0),
-    0
-  );
-  const lowLoadToday = plannedList.length > 0 && totalPlannedMinutes < 30;
-  const gapReason = emptyDay
-    ? "empty_day"
-    : emptyActiveCategory
-      ? "empty_active_category"
-      : lowLoadToday
-        ? "low_load_day"
-        : "none";
-  const hasGapToday = gapReason !== "none";
-  const plannedGoalIdsForDate = new Set(plannedList.map((occurrence) => occurrence?.goalId).filter(Boolean));
-  const latestOccurrenceByGoal = new Map();
-  for (const occurrence of Array.isArray(occurrences) ? occurrences : []) {
-    const goalId = typeof occurrence?.goalId === "string" ? occurrence.goalId : "";
-    const dateKey = normalizeLocalDateKey(occurrence?.date);
-    if (!goalId || !dateKey) continue;
-    const previous = latestOccurrenceByGoal.get(goalId) || null;
-    if (!previous || dateKey > previous.dateKey) {
-      latestOccurrenceByGoal.set(goalId, { occurrence, dateKey });
-    }
-  }
-  const allCandidateActionSummaries = (Array.isArray(goals) ? goals : [])
-    .filter(isGoalEligibleForGapFill)
-    .filter((goal) => !plannedGoalIdsForDate.has(goal.id))
-    .map((goal) => {
-      const category = categoriesById instanceof Map ? categoriesById.get(goal.categoryId) || null : null;
-      const latestEntry = latestOccurrenceByGoal.get(goal.id) || null;
-      return {
-        actionId: goal.id,
-        title: goal.title || "Action",
-        categoryName: category?.name || null,
-        durationMin: Number.isFinite(goal.sessionMinutes)
-          ? goal.sessionMinutes
-          : Number.isFinite(latestEntry?.occurrence?.durationMinutes)
-            ? latestEntry.occurrence.durationMinutes
-            : null,
-        lastPlannedDateKey: latestEntry?.dateKey || null,
-        categoryId: goal.categoryId || null,
-      };
-    })
-    .sort((left, right) => {
-      const leftHistoryRank = left?.lastPlannedDateKey ? 0 : 1;
-      const rightHistoryRank = right?.lastPlannedDateKey ? 0 : 1;
-      if (leftHistoryRank !== rightHistoryRank) return leftHistoryRank - rightHistoryRank;
-      const leftDate = left?.lastPlannedDateKey || "";
-      const rightDate = right?.lastPlannedDateKey || "";
-      if (leftDate !== rightDate) return rightDate.localeCompare(leftDate);
-      return String(left?.title || "").localeCompare(String(right?.title || ""));
-    });
-  const activeCategoryCandidates = allCandidateActionSummaries.filter(
-    (candidate) => candidate?.categoryId && candidate.categoryId === activeCategoryId
-  );
-  const crossCategoryCandidates = allCandidateActionSummaries.filter(
-    (candidate) => !candidate?.categoryId || candidate.categoryId !== activeCategoryId
-  );
-  const selectedPool = activeCategoryCandidates.length > 0 ? activeCategoryCandidates : crossCategoryCandidates;
-  const selectionScope =
-    selectedPool === activeCategoryCandidates && activeCategoryCandidates.length > 0
-      ? "active_category"
-      : selectedPool.length > 0
-        ? "cross_category_fallback"
-        : "none";
-  const candidateActionSummaries = selectedPool.slice(0, 2);
-
   return {
-    hasGapToday,
-    emptyActiveCategory: Boolean(activeCategoryId) && activeCategoryCandidates.length === 0,
-    lowLoadToday,
-    gapReason,
-    selectionScope,
-    activeCategoryCandidateCount: activeCategoryCandidates.length,
-    crossCategoryCandidateCount: crossCategoryCandidates.length,
-    candidateActionSummaries,
+    ...computeCategoryScopedRecommendation({
+      activeDate,
+      systemToday,
+      activeCategoryId,
+      categories,
+      goals: Array.isArray(goals) ? goals.filter((goal) => !isAiFoundationPlanningGoal(goal)) : [],
+      occurrences,
+      plannedActionsForActiveDate,
+      preferredTimeBlocks,
+    }),
     activeDate,
   };
 }
@@ -1699,10 +1624,6 @@ export default function Home({
 
   const whyText = (profile.whyText || "").trim();
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
-  const nowActionTitle = focusOccurrence?.title || "Aucune action planifiée pour cette date.";
-  const nowActionMeta = focusOccurrence
-    ? [focusOccurrence?.timeLabel, focusOccurrence?.categoryName].filter(Boolean).join(" • ")
-    : "Crée ou planifie une action depuis Bibliothèque.";
 
   const headerRight = sessionBadgeLabel ? (
     <div className="todayHeaderSessionBadge" style={accentVars}>
@@ -1717,23 +1638,33 @@ export default function Home({
         activeDate,
         systemToday,
         activeCategoryId: executionCategoryId || focusCategory?.id || null,
-        categoriesById,
+        categories,
         goals,
         occurrences,
         plannedActionsForActiveDate,
-        focusOccurrenceForActiveDate,
+        preferredTimeBlocks: safeData?.user_ai_profile?.preferred_time_blocks || [],
       }),
     [
       activeDate,
-      categoriesById,
+      categories,
       executionCategoryId,
       focusCategory?.id,
-      focusOccurrenceForActiveDate,
       goals,
       occurrences,
       plannedActionsForActiveDate,
+      safeData?.user_ai_profile?.preferred_time_blocks,
       systemToday,
     ]
+  );
+  const scopedFocusOccurrence = localGapSummary?.recommendedOccurrence || null;
+  const scopedFocusCopy = useMemo(
+    () =>
+      resolveOccurrenceHeroCopy({
+        occurrence: scopedFocusOccurrence,
+        goalsById,
+        categoriesById,
+      }),
+    [categoriesById, goalsById, scopedFocusOccurrence]
   );
   const localHeroModel = useMemo(
     () =>
@@ -1744,9 +1675,9 @@ export default function Home({
         activeSessionForActiveDate,
         openSessionOutsideActiveDate,
         futureSessions,
-        focusOccurrenceForActiveDate: focusOccurrence,
-        focusTitle: nowActionTitle,
-        focusMeta: nowActionMeta,
+        focusOccurrenceForActiveDate: scopedFocusOccurrence,
+        focusTitle: scopedFocusCopy.title,
+        focusMeta: scopedFocusCopy.meta,
         gapSummary: localGapSummary,
         activeCategoryName: focusCategory?.name || null,
       }),
@@ -1756,12 +1687,12 @@ export default function Home({
       executionCategoryId,
       focusCategory?.id,
       focusCategory?.name,
-      focusOccurrence,
       futureSessions,
       localGapSummary,
-      nowActionMeta,
-      nowActionTitle,
       openSessionOutsideActiveDate,
+      scopedFocusCopy.meta,
+      scopedFocusCopy.title,
+      scopedFocusOccurrence,
       systemToday,
     ]
   );
@@ -1774,15 +1705,15 @@ export default function Home({
         openSessionOutsideActiveDate,
         futureSessions,
         plannedActionsForActiveDate,
-        focusOccurrenceForActiveDate,
+        focusOccurrenceForActiveDate: scopedFocusOccurrence,
       }),
     [
       activeSessionForActiveDate,
       activeDate,
-      focusOccurrenceForActiveDate,
       futureSessions,
       openSessionOutsideActiveDate,
       plannedActionsForActiveDate,
+      scopedFocusOccurrence,
       systemToday,
     ]
   );
@@ -1792,6 +1723,7 @@ export default function Home({
         localHero: localHeroModel,
         coach: aiNow.state === "success" ? aiNow.coach : null,
         occurrencesForSelectedDay,
+        goalsById,
         hasOpenSession: isRuntimeSessionOpen(activeSessionForActiveDate),
         handlersAvailable: {
           openLibrary: typeof onOpenLibrary === "function",
@@ -1805,6 +1737,7 @@ export default function Home({
       aiNow.coach,
       aiNow.state,
       canonicalContextSummary,
+      goalsById,
       localHeroModel,
       occurrencesForSelectedDay,
       onOpenLibrary,
@@ -1888,10 +1821,15 @@ export default function Home({
       return heroViewModel.primaryAction.occurrence;
     }
     if (activeSessionForActiveDate?.occurrenceId) {
-      return occurrencesForSelectedDay.find((occ) => occ?.id === activeSessionForActiveDate.occurrenceId) || focusOccurrence || null;
+      return (
+        occurrencesForSelectedDay.find((occ) => occ?.id === activeSessionForActiveDate.occurrenceId) ||
+        scopedFocusOccurrence ||
+        focusOccurrence ||
+        null
+      );
     }
-    return focusOccurrence || null;
-  }, [activeSessionForActiveDate?.occurrenceId, focusOccurrence, heroViewModel?.primaryAction, occurrencesForSelectedDay]);
+    return scopedFocusOccurrence || focusOccurrence || null;
+  }, [activeSessionForActiveDate?.occurrenceId, focusOccurrence, heroViewModel?.primaryAction, occurrencesForSelectedDay, scopedFocusOccurrence]);
   const heroGoal = heroOccurrence?.goalId ? goalsById.get(heroOccurrence.goalId) || null : null;
   const heroCategory = categoriesById.get(heroGoal?.categoryId || focusCategory?.id || "") || focusCategory || null;
   const heroDurationLabel = Number.isFinite(heroOccurrence?.durationMinutes)
@@ -1910,6 +1848,8 @@ export default function Home({
     () => resolveTodayAiStatusLabel(aiNow),
     [aiNow.hasEverLoaded, aiNow.isRefreshingInBackground, aiNow.status]
   );
+  const heroDisplayCategoryName = heroViewModel?.recommendedCategoryLabel || heroCategory?.name || "";
+  const heroContributionLabel = heroViewModel?.contributionLabel || heroImpactText;
   const heroTimestampLabel = useMemo(
     () => formatRelativeCoachTimestamp(aiNow.requestDiagnostics?.fetchedAt),
     [aiNow.requestDiagnostics?.fetchedAt]
@@ -2038,9 +1978,13 @@ export default function Home({
       <div className="stack stackGap12 todayPageShell">
         <TodayHero
           title={typedHeroTitle || heroViewModel.title}
-          categoryName={heroCategory?.name || ""}
+          categoryName={heroDisplayCategoryName}
           durationLabel={heroDurationLabel}
           reason={heroViewModel.meta || whyDisplay}
+          reasonLinkType={heroViewModel.reasonLinkType || ""}
+          reasonLinkLabel={heroViewModel.reasonLinkLabel || ""}
+          contributionLabel={heroContributionLabel}
+          recommendedCategoryLabel={heroViewModel.recommendedCategoryLabel || ""}
           impactText={heroImpactText}
           aiStatusLabel={heroAiStatusLabel}
           timestampLabel={heroTimestampLabel}

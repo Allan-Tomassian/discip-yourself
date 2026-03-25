@@ -13,10 +13,9 @@ import {
   resolveOccurrencesForDate,
   safeArray,
 } from "./shared.js";
+import { computeCategoryScopedRecommendation } from "../../../../src/domain/todayCategoryCoherence.js";
 import { resolveTodayOccurrenceStartPolicy } from "../../../../src/domain/todayIntervention.js";
 import { derivePreferredBlockAlignment, normalizeUserAiProfile } from "../../../../src/domain/userAiProfile.js";
-
-const AI_FOUNDATION_PLANNING_TEMPLATE_ID = "ai_onboarding_planning";
 
 function buildOccurrenceById(data) {
   return new Map(safeArray(data?.occurrences).filter((occurrence) => occurrence?.id).map((occurrence) => [occurrence.id, occurrence]));
@@ -99,132 +98,6 @@ function buildDayLoadSummary(plannedActionsForActiveDate, userAiProfile) {
   };
 }
 
-function isExecutableGoal(goal) {
-  if (!goal || typeof goal !== "object" || !goal.id || !goal.categoryId) return false;
-  const status = typeof goal.status === "string" ? goal.status.toLowerCase() : "";
-  if (status === "archived" || status === "deleted" || status === "removed" || status === "done") return false;
-  if (goal.templateId === AI_FOUNDATION_PLANNING_TEMPLATE_ID) return false;
-  return goal?.type === "PROCESS" || goal?.planType === "ACTION" || goal?.planType === "ONE_OFF";
-}
-
-function buildGoalActivityIndex(data) {
-  const index = new Map();
-  for (const occurrence of safeArray(data?.occurrences)) {
-    const goalId = typeof occurrence?.goalId === "string" ? occurrence.goalId : "";
-    const dateKey = normalizeDateKey(occurrence?.date);
-    if (!goalId || !dateKey) continue;
-    const current = index.get(goalId) || {
-      lastPlannedDateKey: null,
-      durationMin: null,
-    };
-    if (!current.lastPlannedDateKey || dateKey > current.lastPlannedDateKey) {
-      current.lastPlannedDateKey = dateKey;
-    }
-    if (Number.isFinite(occurrence?.durationMinutes)) {
-      current.durationMin = occurrence.durationMinutes;
-    }
-    index.set(goalId, current);
-  }
-  return index;
-}
-
-function compareCandidateActions(left, right, activeCategoryId) {
-  const leftHasHistory = left?.lastPlannedDateKey ? 0 : 1;
-  const rightHasHistory = right?.lastPlannedDateKey ? 0 : 1;
-  if (leftHasHistory !== rightHasHistory) return leftHasHistory - rightHasHistory;
-
-  const leftDate = left?.lastPlannedDateKey || "";
-  const rightDate = right?.lastPlannedDateKey || "";
-  if (leftDate !== rightDate) return rightDate.localeCompare(leftDate);
-
-  return String(left?.title || "").localeCompare(String(right?.title || ""));
-}
-
-function buildGapSummary({
-  data,
-  activeDate,
-  systemToday,
-  activeCategoryId,
-  categoriesById,
-  plannedActionsForActiveDate,
-  plannedActionsForActiveCategory,
-  focusOccurrenceForActiveDate,
-  dayLoadSummary,
-}) {
-  const isToday = Boolean(activeDate && systemToday && activeDate === systemToday);
-  if (!isToday) {
-    return {
-      hasGapToday: false,
-      emptyActiveCategory: false,
-      lowLoadToday: false,
-      gapReason: "none",
-      selectionScope: "none",
-      activeCategoryCandidateCount: 0,
-      crossCategoryCandidateCount: 0,
-      candidateActionSummaries: [],
-    };
-  }
-  const emptyDay = plannedActionsForActiveDate.length === 0 && !focusOccurrenceForActiveDate;
-  const emptyActiveCategory =
-    Boolean(activeCategoryId) &&
-    plannedActionsForActiveDate.length > 0 &&
-    plannedActionsForActiveCategory.length === 0;
-  const lowLoadToday =
-    plannedActionsForActiveDate.length > 0 && Number(dayLoadSummary?.totalPlannedMinutes || 0) < 30;
-  const gapReason = emptyDay
-    ? "empty_day"
-    : emptyActiveCategory
-      ? "empty_active_category"
-      : lowLoadToday
-        ? "low_load_day"
-        : "none";
-  const hasGapToday = gapReason !== "none";
-  const plannedGoalIdsForActiveDate = new Set(plannedActionsForActiveDate.map((occurrence) => occurrence?.goalId).filter(Boolean));
-  const goalActivityIndex = buildGoalActivityIndex(data);
-  const allCandidateSummaries = safeArray(data?.goals)
-    .filter(isExecutableGoal)
-    .filter((goal) => !plannedGoalIdsForActiveDate.has(goal.id))
-    .map((goal) => {
-      const category = categoriesById.get(goal.categoryId) || null;
-      const activity = goalActivityIndex.get(goal.id) || null;
-      return {
-        actionId: goal.id,
-        categoryId: goal.categoryId,
-        title: goal.title || "Action",
-        categoryName: category?.name || null,
-        durationMin: Number.isFinite(goal.sessionMinutes) ? goal.sessionMinutes : activity?.durationMin || null,
-        lastPlannedDateKey: activity?.lastPlannedDateKey || null,
-      };
-    })
-    .sort((left, right) => compareCandidateActions(left, right, activeCategoryId));
-  const activeCategoryCandidates = allCandidateSummaries.filter(
-    (candidate) => candidate?.categoryId && candidate.categoryId === activeCategoryId
-  );
-  const crossCategoryCandidates = allCandidateSummaries.filter(
-    (candidate) => !candidate?.categoryId || candidate.categoryId !== activeCategoryId
-  );
-  const selectedPool = activeCategoryCandidates.length > 0 ? activeCategoryCandidates : crossCategoryCandidates;
-  const selectionScope = selectedPool === activeCategoryCandidates && activeCategoryCandidates.length > 0
-    ? "active_category"
-    : selectedPool.length > 0
-      ? "cross_category_fallback"
-      : "none";
-  const candidateActionSummaries = selectedPool
-    .slice(0, 2)
-    .map(({ categoryId, ...summary }) => summary);
-
-  return {
-    hasGapToday,
-    emptyActiveCategory: Boolean(activeCategoryId) && activeCategoryCandidates.length === 0,
-    lowLoadToday,
-    gapReason,
-    selectionScope,
-    activeCategoryCandidateCount: activeCategoryCandidates.length,
-    crossCategoryCandidateCount: crossCategoryCandidates.length,
-    candidateActionSummaries,
-  };
-}
-
 function buildScheduleSignalSummary({
   activeDate,
   systemToday,
@@ -289,23 +162,38 @@ export function buildNowContext({
   const occurrenceById = buildOccurrenceById(data);
   const dayOccurrences = resolveOccurrencesForDate(data, dateKey, null);
   const plannedActionsForActiveDate = resolvePlannedActionsForDate(data, dateKey, null);
-  const plannedActionsForActiveCategory = categoryId ? resolvePlannedActionsForDate(data, dateKey, categoryId) : plannedActionsForActiveDate;
   const { activeSessionForActiveDate, openSessionOutsideActiveDate, futureSessions } = resolveSessionSplitForDate(
     data,
     dateKey
   );
-  const focusSelection = resolveFocusOccurrenceSelectionForDate({
+  const canonicalFocusSelection = resolveFocusOccurrenceSelectionForDate({
     dateKey,
     now,
     occurrences: plannedActionsForActiveDate,
     preferredTimeBlocks: userAiProfile.preferred_time_blocks,
   });
-  const focusOccurrenceForActiveDate = focusSelection.occurrence || resolveFocusOccurrenceForDate({
+  const canonicalFocusOccurrenceForActiveDate = canonicalFocusSelection.occurrence || resolveFocusOccurrenceForDate({
     dateKey,
     now,
     occurrences: plannedActionsForActiveDate,
     preferredTimeBlocks: userAiProfile.preferred_time_blocks,
   });
+  const categoryCoherence = computeCategoryScopedRecommendation({
+    activeDate: dateKey,
+    systemToday,
+    activeCategoryId: categoryId,
+    categories: safeArray(data?.categories),
+    goals: safeArray(data?.goals),
+    occurrences: safeArray(data?.occurrences),
+    plannedActionsForActiveDate,
+    preferredTimeBlocks: userAiProfile.preferred_time_blocks,
+  });
+  const focusOccurrenceForActiveDate = categoryCoherence.recommendedOccurrence || null;
+  const focusSelectionReason = focusOccurrenceForActiveDate
+    ? focusOccurrenceForActiveDate?.id === canonicalFocusOccurrenceForActiveDate?.id
+      ? canonicalFocusSelection.reason || null
+      : "category_scoped"
+    : null;
   const doneToday = dayOccurrences.filter((occurrence) => occurrence?.status === "done").length;
   const missedToday = dayOccurrences.filter((occurrence) => occurrence?.status === "missed").length;
   const remainingToday = plannedActionsForActiveDate.length;
@@ -348,17 +236,13 @@ export function buildNowContext({
     focusOccurrenceForActiveDate,
     focusOccurrenceSummary,
   });
-  const gapSummary = buildGapSummary({
-    data,
+  const gapSummary = {
+    ...categoryCoherence,
+    lowLoadToday:
+      Boolean(categoryCoherence?.hasGapToday) && Number(dayLoadSummary?.totalPlannedMinutes || 0) < 30,
+    emptyActiveCategory: categoryCoherence?.gapReason === "empty_active_category",
     activeDate: dateKey,
-    systemToday,
-    activeCategoryId: categoryId,
-    categoriesById,
-    plannedActionsForActiveDate,
-    plannedActionsForActiveCategory,
-    focusOccurrenceForActiveDate,
-    dayLoadSummary,
-  });
+  };
 
   return {
     requestId,
@@ -383,9 +267,10 @@ export function buildNowContext({
     activeSessionSummary,
     focusOccurrenceSummary,
     alternativeOccurrenceSummaries,
-    focusSelectionReason: focusSelection.reason || null,
+    focusSelectionReason,
     dayLoadSummary,
     scheduleSignalSummary,
+    categoryCoherence,
     gapSummary,
     doneToday,
     missedToday,

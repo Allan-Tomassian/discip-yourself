@@ -44,10 +44,13 @@ describe("home today canonical contract", () => {
     const home = readSrc("pages/Home.jsx");
 
     expect(home).toContain("const heroImpactText = useMemo(");
+    expect(home).toContain("const heroContributionLabel =");
     expect(home).toContain("const heroAiStatusLabel = useMemo(");
     expect(home).toContain("const heroTimestampLabel = useMemo(");
     expect(home).toContain("const isHeroPreparing =");
     expect(home).toContain("impactText={heroImpactText}");
+    expect(home).toContain("contributionLabel={heroContributionLabel}");
+    expect(home).toContain("reasonLinkType={heroViewModel.reasonLinkType || \"\"}");
     expect(home).toContain("aiStatusLabel={heroAiStatusLabel}");
     expect(home).toContain("timestampLabel={heroTimestampLabel}");
     expect(home).toContain("isPreparing={isHeroPreparing}");
@@ -102,13 +105,13 @@ describe("home today canonical contract", () => {
     const adapter = readSrc("features/today/aiNowHeroAdapter.js");
     const home = readSrc("pages/Home.jsx");
 
-    expect(adapter).toContain('primaryLabel: "Planifier aujourd’hui"');
+    expect(adapter).toContain('primaryLabel: activeDate === systemTodayKey ? "Planifier aujourd’hui" : "Aucune action active"');
+    expect(adapter).toContain('primaryLabel: gapSummary.selectionScope === "structure_missing" ? "Structurer" : "Planifier aujourd’hui"');
     expect(adapter).toContain("gapSummary?.hasGapToday");
-    expect(adapter).toContain("gapCandidate.title");
-    expect(adapter).toContain("gapSummary.selectionScope === \"cross_category_fallback\"");
-    expect(home).toContain("const activeCategoryCandidates = allCandidateActionSummaries.filter(");
-    expect(home).toContain("const crossCategoryCandidates = allCandidateActionSummaries.filter(");
-    expect(home).toContain("selectionScope");
+    expect(adapter).toContain('gapSummary.selectionScope === "cross_category"');
+    expect(home).toContain("computeCategoryScopedRecommendation");
+    expect(home).toContain("const scopedFocusOccurrence = localGapSummary?.recommendedOccurrence || null;");
+    expect(home).toContain("reasonLinkLabel={heroViewModel.reasonLinkLabel || \"\"}");
     expect(adapter).not.toContain('primaryLabel: "Aucune action active"');
   });
 });

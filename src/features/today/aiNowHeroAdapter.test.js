@@ -15,6 +15,10 @@ import {
 
 const ACTIVE_DATE = "2026-03-13";
 const SYSTEM_TODAY = "2026-03-13";
+const GOALS_BY_ID = new Map([
+  ["a1", { id: "a1", title: "Action locale", categoryId: "c1" }],
+  ["a2", { id: "a2", title: "Action cross", categoryId: "c2" }],
+]);
 
 function buildLocalHero(overrides = {}) {
   return {
@@ -87,6 +91,7 @@ describe("deriveTodayHeroModel", () => {
       localHero: buildLocalHero(),
       coach: buildCoach("start_occurrence"),
       occurrencesForSelectedDay: [{ id: "occ_1", goalId: "a1", date: ACTIVE_DATE }],
+      goalsById: GOALS_BY_ID,
       hasOpenSession: false,
       handlersAvailable: {},
       canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
@@ -104,6 +109,7 @@ describe("deriveTodayHeroModel", () => {
       localHero: buildLocalHero(),
       coach: buildCoach("resume_session"),
       occurrencesForSelectedDay: [],
+      goalsById: GOALS_BY_ID,
       hasOpenSession: true,
       handlersAvailable: {},
       canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
@@ -120,6 +126,7 @@ describe("deriveTodayHeroModel", () => {
       localHero: buildLocalHero(),
       coach: buildCoach("open_library"),
       occurrencesForSelectedDay: [],
+      goalsById: GOALS_BY_ID,
       hasOpenSession: false,
       handlersAvailable: { openLibrary: true, openPilotage: false },
       canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
@@ -136,6 +143,7 @@ describe("deriveTodayHeroModel", () => {
       localHero: buildLocalHero(),
       coach: buildCoach("open_pilotage", { interventionType: TODAY_INTERVENTION_TYPE.SCHEDULE_WARNING }),
       occurrencesForSelectedDay: [],
+      goalsById: GOALS_BY_ID,
       hasOpenSession: false,
       handlersAvailable: { openLibrary: false, openPilotage: true },
       canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
@@ -159,6 +167,7 @@ describe("deriveTodayHeroModel", () => {
         reason: "Tu peux planifier Deep work aujourd'hui pour maintenir la continuité.",
       }),
       occurrencesForSelectedDay: [],
+      goalsById: GOALS_BY_ID,
       hasOpenSession: false,
       handlersAvailable: { openPilotage: true },
       canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
@@ -176,6 +185,7 @@ describe("deriveTodayHeroModel", () => {
       localHero: buildLocalHero(),
       coach: buildCoach("open_today"),
       occurrencesForSelectedDay: [],
+      goalsById: GOALS_BY_ID,
       hasOpenSession: false,
       handlersAvailable: { openLibrary: true, openPilotage: true },
       canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
@@ -192,6 +202,7 @@ describe("deriveTodayHeroModel", () => {
       localHero: buildLocalHero(),
       coach: buildCoach("start_occurrence"),
       occurrencesForSelectedDay: [],
+      goalsById: GOALS_BY_ID,
       hasOpenSession: false,
       handlersAvailable: {},
       canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
@@ -219,6 +230,7 @@ describe("deriveTodayHeroModel", () => {
         },
       }),
       occurrencesForSelectedDay: [{ id: "occ_1", goalId: "a1", date: "2026-03-14" }],
+      goalsById: GOALS_BY_ID,
       hasOpenSession: false,
       handlersAvailable: {},
       canonicalContextSummary: { activeDate: "2026-03-14", isToday: false },
@@ -234,6 +246,7 @@ describe("deriveTodayHeroModel", () => {
       localHero: buildLocalHero(),
       coach: buildCoach("resume_session"),
       occurrencesForSelectedDay: [],
+      goalsById: GOALS_BY_ID,
       hasOpenSession: false,
       handlersAvailable: {},
       canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
@@ -243,6 +256,35 @@ describe("deriveTodayHeroModel", () => {
     expect(result.source).toBe("local");
     expect(result.title).toBe("Action locale");
     expect(result.diagnostics.rejectionReason).toBe(TODAY_DIAGNOSTIC_REJECTION_REASON.NO_ACTIVE_SESSION_FOR_DATE);
+  });
+
+  it("rejette une reco IA hors categorie si la preuve locale ne l'autorise pas", () => {
+    const result = deriveTodayHeroModel({
+      localHero: buildLocalHero({
+        activeCategoryId: "c1",
+        reasonLinkType: "direct_category",
+        recommendedCategoryId: "c1",
+      }),
+      coach: buildCoach("start_occurrence", {
+        primaryAction: {
+          label: "Action IA",
+          intent: "start_occurrence",
+          categoryId: "c2",
+          actionId: "a2",
+          occurrenceId: "occ_cross",
+          dateKey: ACTIVE_DATE,
+        },
+      }),
+      occurrencesForSelectedDay: [{ id: "occ_cross", goalId: "a2", date: ACTIVE_DATE }],
+      goalsById: GOALS_BY_ID,
+      hasOpenSession: false,
+      handlersAvailable: {},
+      canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
+      systemTodayKey: SYSTEM_TODAY,
+    });
+
+    expect(result.source).toBe("local");
+    expect(result.diagnostics.rejectionReason).toBe(TODAY_DIAGNOSTIC_REJECTION_REASON.CANONICAL_FALLBACK_PREFERRED);
   });
 });
 
@@ -259,6 +301,7 @@ describe("buildLocalTodayHeroModel", () => {
 
     expect(result.interventionType).toBe(TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION);
     expect(result.primaryAction).toMatchObject({ kind: "start_occurrence" });
+    expect(result.reasonLinkType).toBe("direct_category");
   });
 
   it("mappe une reprise de session legitime", () => {
@@ -375,7 +418,10 @@ describe("buildLocalTodayHeroModel", () => {
       gapSummary: {
         hasGapToday: true,
         gapReason: TODAY_GAP_REASON.EMPTY_ACTIVE_CATEGORY,
-        selectionScope: "cross_category_fallback",
+        selectionScope: "cross_category",
+        reasonLinkType: "cross_category",
+        reasonLinkLabel: "Action en Sport utile pour Focus",
+        contributionTargetLabel: "objectif Focus",
         activeCategoryCandidateCount: 0,
         crossCategoryCandidateCount: 1,
         candidateActionSummaries: [
@@ -390,9 +436,39 @@ describe("buildLocalTodayHeroModel", () => {
     });
 
     expect(result.primaryAction).toMatchObject({ kind: "open_pilotage" });
-    expect(result.meta).toMatch(/Rien de crédible n'est prévu en Focus/);
+    expect(result.meta).toMatch(/objectif Focus/);
     expect(result.meta).toMatch(/Run 20 min/);
     expect(result.meta).toMatch(/Sport/);
+    expect(result.reasonLinkLabel).toBe("Action en Sport utile pour Focus");
+  });
+
+  it("propose une structuration explicite quand aucun lien exploitable n'existe", () => {
+    const result = buildLocalTodayHeroModel({
+      activeDate: ACTIVE_DATE,
+      systemTodayKey: SYSTEM_TODAY,
+      activeCategoryId: "c1",
+      activeCategoryName: "Finance",
+      focusOccurrenceForActiveDate: null,
+      gapSummary: {
+        hasGapToday: true,
+        gapReason: TODAY_GAP_REASON.EMPTY_DAY,
+        selectionScope: "structure_missing",
+        reasonLinkType: "structure_missing",
+        reasonLinkLabel: "Structurer Finance",
+        contributionTargetLabel: "objectif financier",
+        activeCategoryCandidateCount: 0,
+        crossCategoryCandidateCount: 0,
+        candidateActionSummaries: [],
+        explanation:
+          "Tu n'as pas encore defini d'action exploitable pour objectif financier. Commence par clarifier l'objectif ou creer une premiere action en Finance.",
+      },
+    });
+
+    expect(result.primaryAction).toMatchObject({ kind: "open_pilotage" });
+    expect(result.primaryLabel).toBe("Structurer");
+    expect(result.reasonLinkType).toBe("structure_missing");
+    expect(result.reasonLinkLabel).toBe("Structurer Finance");
+    expect(result.meta).toMatch(/clarifier l'objectif/i);
   });
 });
 
@@ -477,6 +553,7 @@ describe("deriveTodayDecisionDiagnostics", () => {
       localHero: buildLocalHero(),
       coach: buildCoach("start_occurrence"),
       occurrencesForSelectedDay: [{ id: "occ_1", goalId: "a1", date: ACTIVE_DATE }],
+      goalsById: GOALS_BY_ID,
       hasOpenSession: false,
       handlersAvailable: {},
       canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
@@ -519,6 +596,7 @@ describe("deriveTodayDecisionDiagnostics", () => {
       localHero: buildLocalHero(),
       coach,
       occurrencesForSelectedDay: [],
+      goalsById: GOALS_BY_ID,
       hasOpenSession: false,
       handlersAvailable: { openPilotage: true },
       canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },
@@ -542,6 +620,7 @@ describe("deriveTodayDecisionDiagnostics", () => {
       localHero: buildLocalHero(),
       coach,
       occurrencesForSelectedDay: [],
+      goalsById: GOALS_BY_ID,
       hasOpenSession: false,
       handlersAvailable: {},
       canonicalContextSummary: { activeDate: ACTIVE_DATE, isToday: true },

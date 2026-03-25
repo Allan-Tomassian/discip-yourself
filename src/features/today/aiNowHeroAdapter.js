@@ -57,6 +57,51 @@ function buildFallback(localHero, diagnostics = {}) {
   };
 }
 
+function withCategoryCoherence(model, {
+  activeCategoryId = null,
+  activeCategoryName = null,
+  coherence = null,
+} = {}) {
+  const safeCoherence = coherence && typeof coherence === "object" ? coherence : {};
+  return {
+    ...model,
+    activeCategoryId: activeCategoryId || null,
+    selectionScope: safeCoherence.selectionScope || "none",
+    reasonLinkType: safeCoherence.reasonLinkType || "direct_category",
+    reasonLinkLabel:
+      safeCoherence.reasonLinkLabel ||
+      (activeCategoryName ? `Recommande dans ${activeCategoryName}` : "Recommande dans la categorie active"),
+    contributionLabel: safeCoherence.contributionTargetLabel || activeCategoryName || "ta priorite active",
+    recommendedCategoryLabel: safeCoherence.recommendedCategoryLabel || activeCategoryName || "",
+    recommendedCategoryId: safeCoherence.recommendedCategoryId || activeCategoryId || null,
+    recommendedActionId: safeCoherence.recommendedActionId || null,
+    recommendedOccurrenceId: safeCoherence.recommendedOccurrenceId || null,
+  };
+}
+
+function resolveCoachTargetCategoryId({ primaryAction, occurrence, goalsById }) {
+  if (occurrence?.goalId) {
+    return goalsById instanceof Map ? goalsById.get(occurrence.goalId)?.categoryId || null : null;
+  }
+  if (primaryAction?.actionId) {
+    return goalsById instanceof Map ? goalsById.get(primaryAction.actionId)?.categoryId || primaryAction.categoryId || null : primaryAction.categoryId || null;
+  }
+  return primaryAction?.categoryId || null;
+}
+
+function isCoachCategoryCoherent({ localHero, primaryAction, occurrence = null, goalsById }) {
+  const activeCategoryId = localHero?.activeCategoryId || null;
+  if (!activeCategoryId) return true;
+  const targetCategoryId = resolveCoachTargetCategoryId({ primaryAction, occurrence, goalsById });
+  if (!targetCategoryId || targetCategoryId === activeCategoryId) return true;
+  if (localHero?.reasonLinkType !== "cross_category") return false;
+  if (localHero?.recommendedCategoryId && targetCategoryId !== localHero.recommendedCategoryId) return false;
+  const targetActionId = occurrence?.goalId || primaryAction?.actionId || null;
+  if (localHero?.recommendedActionId && targetActionId && targetActionId !== localHero.recommendedActionId) return false;
+  if (localHero?.recommendedOccurrenceId && occurrence?.id && occurrence.id !== localHero.recommendedOccurrenceId) return false;
+  return true;
+}
+
 export function buildLocalTodayHeroModel({
   activeDate = "",
   systemTodayKey = "",
@@ -70,6 +115,7 @@ export function buildLocalTodayHeroModel({
   focusMeta = "",
   gapSummary = null,
 }) {
+  const coherence = gapSummary && typeof gapSummary === "object" ? gapSummary : {};
   const interventionType = resolveTodayInterventionType({
     activeSessionForActiveDate,
     openSessionOutsideActiveDate,
@@ -91,7 +137,7 @@ export function buildLocalTodayHeroModel({
   const candidateWithDuration = [gapCandidate?.title || "", durationLabel].filter(Boolean).join(" • ");
 
   if (interventionType === TODAY_INTERVENTION_TYPE.SESSION_RESUME) {
-    return {
+    return withCategoryCoherence({
       interventionType,
       title: "Reprendre la session en cours",
       meta: "La session active reste le prochain levier utile.",
@@ -101,25 +147,28 @@ export function buildLocalTodayHeroModel({
         categoryId: activeCategoryId,
       },
       secondaryLabel: "Voir progression",
-    };
+    }, { activeCategoryId, activeCategoryName, coherence });
   }
 
   if (focusOccurrenceForActiveDate && startPolicy.canStartDirectly) {
-    return {
+    return withCategoryCoherence({
       interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
       title: focusTitle || "Action du moment",
-      meta: focusMeta || "C'est l'action la plus exécutable maintenant.",
+      meta:
+        coherence.reasonLinkType === "cross_category"
+          ? coherence.explanation || "Cette action contribue a ta priorite active."
+          : focusMeta || "C'est l'action la plus exécutable maintenant.",
       primaryLabel: "Démarrer",
       primaryAction: {
         kind: "start_occurrence",
         occurrence: focusOccurrenceForActiveDate,
       },
       secondaryLabel: "Voir progression",
-    };
+    }, { activeCategoryId, activeCategoryName, coherence });
   }
 
   if (interventionType === TODAY_INTERVENTION_TYPE.SCHEDULE_WARNING) {
-    return {
+    return withCategoryCoherence({
       interventionType,
       title: "Une session ouverte est planifiée sur une autre date.",
       meta: openSessionOutsideActiveDate?.dateKey
@@ -130,15 +179,17 @@ export function buildLocalTodayHeroModel({
         kind: "open_pilotage",
       },
       secondaryLabel: "Voir progression",
-    };
+    }, { activeCategoryId, activeCategoryName, coherence });
   }
 
   if (focusOccurrenceForActiveDate && startPolicy.requiresReschedule) {
-    return {
+    return withCategoryCoherence({
       interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
       title: focusTitle || "Cette action n'est pas exécutable directement aujourd'hui.",
       meta:
-        startPolicy.datePhase === "future"
+        coherence.reasonLinkType === "cross_category"
+          ? coherence.explanation || "Cette action contribue a ta priorite active."
+          : startPolicy.datePhase === "future"
           ? [focusMeta, "Planifiée pour une autre date. Replanifie-la pour l'exécuter aujourd'hui."]
               .filter(Boolean)
               .join(" • ")
@@ -150,7 +201,7 @@ export function buildLocalTodayHeroModel({
         kind: "open_pilotage",
       },
       secondaryLabel: "Voir progression",
-    };
+    }, { activeCategoryId, activeCategoryName, coherence });
   }
 
   if (gapSummary?.hasGapToday) {
@@ -160,39 +211,48 @@ export function buildLocalTodayHeroModel({
       ? `Tu peux planifier ${candidateWithDuration || gapCandidate.title} aujourd'hui pour maintenir la continuité.`
       : "Planifie une action simple aujourd'hui pour maintenir la continuité.";
 
-    if (gapSummary.gapReason === TODAY_GAP_REASON.EMPTY_ACTIVE_CATEGORY && activeCategoryName) {
+    if (gapSummary.selectionScope === "structure_missing") {
+      title = activeCategoryName ? `Structurer ${activeCategoryName}` : "Structurer la categorie active";
+      meta =
+        coherence.explanation ||
+        "Clarifie l'objectif de la categorie active ou cree une premiere action exploitable.";
+    } else if (gapSummary.gapReason === TODAY_GAP_REASON.EMPTY_ACTIVE_CATEGORY && activeCategoryName) {
       title = `Rien de prévu en ${activeCategoryName} aujourd’hui`;
       meta =
-        gapSummary.selectionScope === "cross_category_fallback" && gapCandidate
-          ? `Rien de crédible n'est prévu en ${activeCategoryName} aujourd'hui. Tu peux avancer sur ${gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""}.`
+        gapSummary.selectionScope === "cross_category" && gapCandidate
+          ? coherence.explanation ||
+            `Rien de credible n'est prevu en ${activeCategoryName} aujourd'hui. ${gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""} contribue a ${coherence.contributionTargetLabel || activeCategoryName}.`
           : gapCandidate
             ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. Une courte action suffit pour maintenir l'élan.`
             : "Une courte action suffit pour maintenir l'élan aujourd'hui.";
     } else if (gapSummary.gapReason === TODAY_GAP_REASON.LOW_LOAD_DAY) {
       title = gapCandidate ? `Ajoute ${gapCandidate.title} aujourd’hui` : "Le plan du jour reste léger";
       meta =
-        gapSummary.selectionScope === "cross_category_fallback" && gapCandidate && activeCategoryName
-          ? `Rien de plus pertinent n'est disponible en ${activeCategoryName} aujourd'hui. ${gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""} peut compléter la journée${durationLabel ? ` en ${durationLabel}` : ""}.`
+        gapSummary.selectionScope === "cross_category" && gapCandidate && activeCategoryName
+          ? coherence.explanation ||
+            `Rien de plus pertinent n'est disponible en ${activeCategoryName} aujourd'hui. ${gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""} contribue a ${coherence.contributionTargetLabel || activeCategoryName}${durationLabel ? ` en ${durationLabel}` : ""}.`
           : gapCandidate
             ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. ${durationLabel || "Une courte durée"} suffit pour compléter la journée.`
             : "Une action simple peut compléter la journée sans surcharge.";
-    } else if (gapSummary.selectionScope === "cross_category_fallback" && gapCandidate && activeCategoryName) {
-      meta = `Rien de crédible n'est prévu en ${activeCategoryName} aujourd'hui. Tu peux planifier ${candidateWithDuration || gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""}.`;
+    } else if (gapSummary.selectionScope === "cross_category" && gapCandidate && activeCategoryName) {
+      meta =
+        coherence.explanation ||
+        `Rien de credible n'est prevu en ${activeCategoryName} aujourd'hui. Tu peux planifier ${candidateWithDuration || gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""} pour contribuer a ${coherence.contributionTargetLabel || activeCategoryName}.`;
     }
 
-    return {
+    return withCategoryCoherence({
       interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
       title,
       meta,
-      primaryLabel: "Planifier aujourd’hui",
+      primaryLabel: gapSummary.selectionScope === "structure_missing" ? "Structurer" : "Planifier aujourd’hui",
       primaryAction: {
         kind: "open_pilotage",
       },
       secondaryLabel: "Voir progression",
-    };
+    }, { activeCategoryId, activeCategoryName, coherence });
   }
 
-  return {
+  return withCategoryCoherence({
     interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
     title: focusTitle || "Aucune action planifiée pour cette date.",
     meta:
@@ -207,7 +267,7 @@ export function buildLocalTodayHeroModel({
           }
         : null,
     secondaryLabel: "Voir progression",
-  };
+  }, { activeCategoryId, activeCategoryName, coherence });
 }
 
 export function deriveTodayHeroChrome({ todayDecisionDiagnostics }) {
@@ -350,6 +410,7 @@ export function deriveTodayHeroModel({
   localHero,
   coach,
   occurrencesForSelectedDay,
+  goalsById,
   hasOpenSession = false,
   handlersAvailable = {},
   canonicalContextSummary = null,
@@ -385,6 +446,14 @@ export function deriveTodayHeroModel({
           handlersAvailable,
           hasOpenSession,
         }),
+      });
+    }
+    if (!isCoachCategoryCoherent({ localHero, primaryAction, occurrence, goalsById })) {
+      return buildFallback(localHero, {
+        canonicalContextSummary,
+        backendDecisionSource: coach?.decisionSource || null,
+        backendResolutionStatus: coach?.meta?.diagnostics?.resolutionStatus || null,
+        backendRejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.CANONICAL_FALLBACK_PREFERRED,
       });
     }
     const startPolicy = resolveTodayOccurrenceStartPolicy({
@@ -512,6 +581,14 @@ export function deriveTodayHeroModel({
 
   if (intent === "open_pilotage") {
     if (!handlersAvailable.openPilotage) {
+      return buildFallback(localHero, {
+        canonicalContextSummary,
+        backendDecisionSource: coach?.decisionSource || null,
+        backendResolutionStatus: coach?.meta?.diagnostics?.resolutionStatus || null,
+        backendRejectionReason: TODAY_DIAGNOSTIC_REJECTION_REASON.CANONICAL_FALLBACK_PREFERRED,
+      });
+    }
+    if (!isCoachCategoryCoherent({ localHero, primaryAction, goalsById })) {
       return buildFallback(localHero, {
         canonicalContextSummary,
         backendDecisionSource: coach?.decisionSource || null,

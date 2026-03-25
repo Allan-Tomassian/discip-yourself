@@ -227,6 +227,7 @@ export function buildChatContext({
 
   return {
     ...baseContext,
+    activeCategoryLabel: baseContext.category?.name || null,
     message,
     messagePreview: message ? message.slice(0, 120) : null,
     recentMessages: normalizeRecentMessages(body?.recentMessages),
@@ -234,5 +235,6 @@ export function buildChatContext({
     actionSummaries: buildActionSummaries(data, activeCategoryId),
     planningSummary: buildPlanningSummary(data, selectedDateKey),
     pilotageSummary: buildPilotageSummary(data, activeCategoryId),
+    categorySnapshot: baseContext.categoryCoherence?.categorySnapshot || null,
   };
 }

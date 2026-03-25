@@ -22,7 +22,8 @@ export const TODAY_GAP_REASON = Object.freeze({
 export const TODAY_GAP_SELECTION_SCOPE = Object.freeze({
   NONE: "none",
   ACTIVE_CATEGORY: "active_category",
-  CROSS_CATEGORY_FALLBACK: "cross_category_fallback",
+  CROSS_CATEGORY: "cross_category",
+  STRUCTURE_MISSING: "structure_missing",
 });
 
 export const TODAY_DATE_PHASE = Object.freeze({
@@ -146,13 +147,15 @@ function normalizeGapSummary(gapSummary) {
     typeof gapSummary?.selectionScope === "string" && gapSummary.selectionScope.trim()
       ? gapSummary.selectionScope.trim()
       : TODAY_GAP_SELECTION_SCOPE.NONE;
+  const normalizedSelectionScope =
+    selectionScope === "cross_category_fallback" ? TODAY_GAP_SELECTION_SCOPE.CROSS_CATEGORY : selectionScope;
   return {
     hasGapToday: Boolean(gapSummary?.hasGapToday),
     emptyActiveCategory: Boolean(gapSummary?.emptyActiveCategory),
     lowLoadToday: Boolean(gapSummary?.lowLoadToday),
     gapReason: Object.values(TODAY_GAP_REASON).includes(gapReason) ? gapReason : TODAY_GAP_REASON.NONE,
-    selectionScope: Object.values(TODAY_GAP_SELECTION_SCOPE).includes(selectionScope)
-      ? selectionScope
+    selectionScope: Object.values(TODAY_GAP_SELECTION_SCOPE).includes(normalizedSelectionScope)
+      ? normalizedSelectionScope
       : TODAY_GAP_SELECTION_SCOPE.NONE,
     activeCategoryCandidateCount: Number.isFinite(gapSummary?.activeCategoryCandidateCount)
       ? gapSummary.activeCategoryCandidateCount
