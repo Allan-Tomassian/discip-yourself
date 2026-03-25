@@ -464,6 +464,8 @@ function buildChatPrompt(context) {
       actionSummaries: Array.isArray(context.actionSummaries) ? context.actionSummaries : [],
       gapSummary: context.gapSummary || null,
       dayLoadSummary: context.dayLoadSummary || null,
+      planningSummary: context.planningSummary || null,
+      pilotageSummary: context.pilotageSummary || null,
       focusSelectionReason: context.focusSelectionReason || null,
       recentMessages: Array.isArray(context.recentMessages) ? context.recentMessages : [],
       latestUserMessage: context.message || "",

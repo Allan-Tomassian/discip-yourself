@@ -149,6 +149,7 @@
   display: flex;
   flex-direction: column;
   gap: 9px;
+  min-width: 0;
 }
 
 .pilotageInsightItem {
@@ -158,6 +159,9 @@
   background: color-mix(in srgb, var(--gate-surface-1) 92%, #05080f);
   font-size: 12px;
   line-height: 1.35;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .pilotageDetails {

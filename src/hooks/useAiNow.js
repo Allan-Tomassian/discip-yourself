@@ -140,6 +140,7 @@ export function createAiNowRequestKey({
 }
 
 export function deriveAiNowRequestDiagnostics({
+  status = null,
   state,
   errorCode = null,
   coach = null,
@@ -148,7 +149,9 @@ export function deriveAiNowRequestDiagnostics({
   hadVisibleLoading = false,
   fetchedAt = null,
 }) {
-  if (state === "loading") {
+  const normalizedState = status || state || "idle";
+
+  if (normalizedState === "loading") {
     return {
       requestState: "loading",
       errorCode: null,
@@ -159,7 +162,7 @@ export function deriveAiNowRequestDiagnostics({
       fetchedAt: null,
     };
   }
-  if (state === "success") {
+  if (normalizedState === "success" || normalizedState === "fresh" || normalizedState === "stale") {
     return {
       requestState: "success",
       errorCode: null,
@@ -170,7 +173,7 @@ export function deriveAiNowRequestDiagnostics({
       fetchedAt: Number.isFinite(fetchedAt) ? fetchedAt : null,
     };
   }
-  if (state === "error") {
+  if (normalizedState === "error") {
     return {
       requestState: "error",
       errorCode: errorCode || null,
@@ -181,7 +184,7 @@ export function deriveAiNowRequestDiagnostics({
       fetchedAt: Number.isFinite(fetchedAt) ? fetchedAt : null,
     };
   }
-  if (state === "disabled") {
+  if (normalizedState === "disabled") {
     return {
       requestState: "disabled",
       errorCode: errorCode || "DISABLED",
@@ -203,6 +206,36 @@ export function deriveAiNowRequestDiagnostics({
   };
 }
 
+function resetPublicRequestMeta() {
+  return {
+    deliverySource: null,
+    isRefreshing: false,
+    hadVisibleLoading: false,
+    fetchedAt: null,
+  };
+}
+
+function buildHardResetState(errorCode = null) {
+  return {
+    status: "idle",
+    coach: null,
+    errorCode,
+    hasEverLoaded: false,
+    lastSuccessfulCoach: null,
+    lastSuccessfulFetchedAt: null,
+    isRefreshingInBackground: false,
+    requestMeta: resetPublicRequestMeta(),
+  };
+}
+
+function toLegacyState({ status, isConfigured }) {
+  if (!isConfigured) return "disabled";
+  if (status === "fresh" || status === "stale") return "success";
+  if (status === "loading") return "loading";
+  if (status === "error") return "error";
+  return "idle";
+}
+
 export function useAiNow({
   selectedDateKey,
   activeCategoryId = null,
@@ -213,9 +246,13 @@ export function useAiNow({
 }) {
   const { session } = useAuth();
   const accessToken = session?.access_token || "";
+  const userId = session?.user?.id || "";
   const backendConfigured = isAiBackendConfigured();
-  const [state, setState] = useState(backendConfigured ? "idle" : "disabled");
+  const [status, setStatus] = useState("idle");
   const [coach, setCoach] = useState(null);
+  const [hasEverLoaded, setHasEverLoaded] = useState(false);
+  const [lastSuccessfulCoach, setLastSuccessfulCoach] = useState(null);
+  const [lastSuccessfulFetchedAt, setLastSuccessfulFetchedAt] = useState(null);
   const [errorCode, setErrorCode] = useState(backendConfigured ? null : "DISABLED");
   const [requestMeta, setRequestMeta] = useState({
     deliverySource: null,
@@ -226,6 +263,8 @@ export function useAiNow({
   const [visibilityTick, setVisibilityTick] = useState(0);
   const previousInputsRef = useRef({ initialized: false });
   const inFlightKeyRef = useRef("");
+  const previousTransitionRef = useRef({ status: "idle", isRefreshing: false });
+  const previousUserIdRef = useRef(userId);
 
   useEffect(() => {
     if (typeof document === "undefined") return undefined;
@@ -240,6 +279,18 @@ export function useAiNow({
   }, []);
 
   useEffect(() => {
+    if (!import.meta.env?.DEV) return;
+    const previous = previousTransitionRef.current;
+    if (previous.status === status && previous.isRefreshing === requestMeta.isRefreshing) return;
+    // eslint-disable-next-line no-console
+    console.debug("[ai-now]", `${previous.status}${previous.isRefreshing ? " -> refreshing" : ""} -> ${status}${requestMeta.isRefreshing ? " -> refreshing" : ""}`);
+    previousTransitionRef.current = {
+      status,
+      isRefreshing: requestMeta.isRefreshing,
+    };
+  }, [requestMeta.isRefreshing, status]);
+
+  useEffect(() => {
     const eligibility = getAiNowEligibility({
       enabled,
       isAuthenticated,
@@ -247,6 +298,10 @@ export function useAiNow({
       backendConfigured,
       accessToken,
     });
+    const userChanged = previousUserIdRef.current !== userId;
+    if (userChanged) {
+      previousUserIdRef.current = userId;
+    }
 
     const currentInputs = {
       initialized: true,
@@ -260,15 +315,24 @@ export function useAiNow({
 
     if (!eligibility.shouldFetch) {
       previousInputsRef.current = currentInputs;
-      setCoach(null);
-      setErrorCode(eligibility.state === "disabled" ? "DISABLED" : null);
-      setState(eligibility.state);
-      setRequestMeta({
-        deliverySource: null,
-        isRefreshing: false,
-        hadVisibleLoading: false,
-        fetchedAt: null,
-      });
+      const shouldHardReset =
+        userChanged ||
+        eligibility.reason === "backend_disabled" ||
+        eligibility.reason === "unauthenticated" ||
+        eligibility.reason === "not_today";
+      if (shouldHardReset) {
+        const next = buildHardResetState(eligibility.state === "disabled" ? "DISABLED" : null);
+        setCoach(next.coach);
+        setStatus(next.status);
+        setErrorCode(next.errorCode);
+        setHasEverLoaded(next.hasEverLoaded);
+        setLastSuccessfulCoach(next.lastSuccessfulCoach);
+        setLastSuccessfulFetchedAt(next.lastSuccessfulFetchedAt);
+        setRequestMeta(next.requestMeta);
+      } else {
+        setStatus("idle");
+        setRequestMeta(resetPublicRequestMeta());
+      }
       return undefined;
     }
 
@@ -308,41 +372,52 @@ export function useAiNow({
 
     const cached = aiNowCache.get(requestKey);
     if (cached && isAiNowCacheFresh(cached)) {
-      setCoach(cached.coach || null);
-      setErrorCode(cached.errorCode || null);
-      setState(cached.state || "idle");
+      const freshCoach = cached.state === "success" && cached.coach ? cached.coach : null;
+      const visibleCoach = freshCoach || lastSuccessfulCoach || null;
+      if (freshCoach) {
+        setCoach(freshCoach);
+        setLastSuccessfulCoach(freshCoach);
+        setLastSuccessfulFetchedAt(cached.fetchedAt || null);
+        setHasEverLoaded(true);
+        setStatus("fresh");
+        setErrorCode(null);
+      } else if (visibleCoach) {
+        setCoach(visibleCoach);
+        setStatus("stale");
+        setErrorCode(cached.errorCode || null);
+      } else {
+        setCoach(null);
+        setStatus(cached.state === "error" ? "error" : "idle");
+        setErrorCode(cached.errorCode || null);
+      }
       setRequestMeta({
         deliverySource: "cache",
         isRefreshing: false,
         hadVisibleLoading: false,
-        fetchedAt: cached.fetchedAt || null,
+        fetchedAt: cached.fetchedAt || lastSuccessfulFetchedAt || null,
       });
       return undefined;
     }
 
     inFlightKeyRef.current = requestKey;
     let cancelled = false;
-    const canReuseStaleSuccess = cached?.state === "success" && cached?.coach;
+    const staleCoach = cached?.state === "success" && cached?.coach ? cached.coach : lastSuccessfulCoach;
+    const canReuseStaleSuccess = Boolean(staleCoach);
     if (canReuseStaleSuccess) {
-      setCoach(cached.coach || null);
+      setCoach(staleCoach || null);
+      setHasEverLoaded(true);
       setErrorCode(null);
-      setState("success");
+      setStatus("stale");
       setRequestMeta({
-        deliverySource: "cache",
+        deliverySource: cached?.state === "success" ? "cache" : requestMeta.deliverySource,
         isRefreshing: true,
         hadVisibleLoading: false,
-        fetchedAt: cached.fetchedAt || null,
+        fetchedAt: cached?.fetchedAt || lastSuccessfulFetchedAt || null,
       });
     } else {
-      setCoach(null);
-      setState("loading");
+      setStatus("loading");
       setErrorCode(null);
-      setRequestMeta({
-        deliverySource: null,
-        isRefreshing: false,
-        hadVisibleLoading: false,
-        fetchedAt: null,
-      });
+      setRequestMeta(resetPublicRequestMeta());
     }
 
     requestAiNow({
@@ -365,8 +440,11 @@ export function useAiNow({
         };
         setCachedValue(requestKey, cachedValue);
         setCoach(result.coach);
+        setLastSuccessfulCoach(result.coach);
+        setLastSuccessfulFetchedAt(fetchedAt);
+        setHasEverLoaded(true);
         setErrorCode(null);
-        setState("success");
+        setStatus("fresh");
         setRequestMeta({
           deliverySource: "network",
           isRefreshing: false,
@@ -377,6 +455,8 @@ export function useAiNow({
       }
 
       if (canReuseStaleSuccess) {
+        setStatus("stale");
+        setErrorCode(result.errorCode || null);
         setRequestMeta((current) => ({
           ...current,
           isRefreshing: false,
@@ -394,7 +474,7 @@ export function useAiNow({
       setCachedValue(requestKey, cachedValue);
       setCoach(null);
       setErrorCode(result.errorCode);
-      setState("error");
+      setStatus("error");
       setRequestMeta({
         deliverySource: null,
         isRefreshing: false,
@@ -414,16 +494,27 @@ export function useAiNow({
     contextSignature,
     enabled,
     isAuthenticated,
+    lastSuccessfulCoach,
+    lastSuccessfulFetchedAt,
     selectedDateKey,
+    userId,
     visibilityTick,
   ]);
 
+  const state = toLegacyState({ status, isConfigured: backendConfigured });
+
   return {
+    status,
     state,
     coach,
     errorCode,
     isConfigured: backendConfigured,
+    hasEverLoaded,
+    isRefreshingInBackground: requestMeta.isRefreshing,
+    lastSuccessfulCoach,
+    lastSuccessfulFetchedAt,
     requestDiagnostics: deriveAiNowRequestDiagnostics({
+      status,
       state,
       errorCode,
       coach,

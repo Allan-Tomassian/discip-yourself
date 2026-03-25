@@ -13,19 +13,31 @@ export default function TodayHero({
   categoryName = "",
   durationLabel = "",
   reason = "",
+  impactText = "",
+  aiStatusLabel = "",
+  timestampLabel = "",
   onStart,
   onOpenPlanning,
   canStart = false,
   isAiRecommendation = false,
   isFresh = false,
+  isPreparing = false,
 }) {
   const badges = buildBadges({ isAiRecommendation, isFresh });
+  const displayTitle = title || (isPreparing ? "Préparation de la recommandation" : "Aucune action prioritaire");
+  const displayReason = reason || (isPreparing ? "L’IA prépare la priorité du moment." : "Aucune raison disponible.");
+  const displayImpact = impactText || "Maintenir l’élan sur ta priorité active.";
 
   return (
     <GateSection className="todayHeroCard GateSurfacePremium GateCardPremium" collapsible={false}>
       <div className="todayHeroHeader">
         <div className="todayHeroHeaderCluster">
-          <div className="todayHeroKicker">Priorité du moment</div>
+          <div className="todayHeroKicker">Action recommandée</div>
+          {aiStatusLabel || timestampLabel ? (
+            <div className="small2" style={{ opacity: 0.82 }}>
+              {[aiStatusLabel, timestampLabel].filter(Boolean).join(" • ")}
+            </div>
+          ) : null}
           {badges.length ? (
             <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
               {badges.map((badge) => (
@@ -38,11 +50,33 @@ export default function TodayHero({
         </div>
       </div>
       <div className="todayHeroBody">
-        <div className="todayHeroTitle">{title}</div>
-        <div className="todayHeroMeta">
-          {[categoryName, durationLabel].filter(Boolean).join(" • ") || "Action à préciser"}
+        <div className="todayHeroTitle">{displayTitle}</div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+            gap: 10,
+          }}
+        >
+          <div className="listItem GateRowPremium">
+            <div className="small2">Catégorie</div>
+            <div className="titleSm">{categoryName || "À préciser"}</div>
+          </div>
+          <div className="listItem GateRowPremium">
+            <div className="small2">Durée</div>
+            <div className="titleSm">{durationLabel || "Libre"}</div>
+          </div>
         </div>
-        {reason ? <div className="small2" style={{ opacity: 0.82 }}>{reason}</div> : null}
+        <div className="col" style={{ gap: 8 }}>
+          <div>
+            <div className="small2" style={{ opacity: 0.72 }}>Pourquoi</div>
+            <div className="small2" style={{ opacity: 0.92 }}>{displayReason}</div>
+          </div>
+          <div>
+            <div className="small2" style={{ opacity: 0.72 }}>Impact attendu</div>
+            <div className="small2" style={{ opacity: 0.92 }}>{displayImpact}</div>
+          </div>
+        </div>
       </div>
       <div className="todayHeroActions GatePrimaryCtaRow">
         <GateButton

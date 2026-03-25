@@ -228,4 +228,41 @@ describe("useAiNow helpers", () => {
       fetchedAt: 1234,
     });
   });
+
+  it("traite les statuts fresh et stale comme des succes visibles", () => {
+    const fresh = deriveAiNowRequestDiagnostics({
+      status: "fresh",
+      deliverySource: "network",
+      fetchedAt: 2345,
+      coach: {
+        meta: {
+          diagnostics: {
+            resolutionStatus: "accepted_ai",
+          },
+        },
+      },
+    });
+    const stale = deriveAiNowRequestDiagnostics({
+      status: "stale",
+      deliverySource: "cache",
+      isRefreshing: true,
+      fetchedAt: 3456,
+      coach: {
+        meta: {
+          diagnostics: {
+            resolutionStatus: "rules_fallback",
+          },
+        },
+      },
+    });
+
+    expect(fresh.requestState).toBe("success");
+    expect(fresh.deliverySource).toBe("network");
+    expect(stale.requestState).toBe("success");
+    expect(stale.deliverySource).toBe("cache");
+    expect(stale.isRefreshing).toBe(true);
+    expect(stale.backendDiagnostics).toEqual({
+      resolutionStatus: "rules_fallback",
+    });
+  });
 });

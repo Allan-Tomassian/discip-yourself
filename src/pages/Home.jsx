@@ -113,6 +113,64 @@ const arrayEqual = (a, b) =>
   a.length === b.length &&
   a.every((id, idx) => id === b[idx]);
 
+function formatRelativeCoachTimestamp(fetchedAt) {
+  if (!Number.isFinite(fetchedAt)) return "";
+  const diffMs = Math.max(0, Date.now() - fetchedAt);
+  if (diffMs < 45 * 1000) return "à l’instant";
+  const diffMinutes = Math.round(diffMs / (60 * 1000));
+  if (diffMinutes < 60) return `il y a ${diffMinutes} min`;
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) return `il y a ${diffHours} h`;
+  try {
+    return new Intl.DateTimeFormat("fr-FR", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(fetchedAt));
+  } catch {
+    return "";
+  }
+}
+
+function resolveTodayAiStatusLabel(aiNow) {
+  if (!aiNow || typeof aiNow !== "object") return "";
+  if (aiNow.status === "loading" || aiNow.isRefreshingInBackground) {
+    return "IA analyse ton planning";
+  }
+  if (aiNow.status === "fresh") return "IA a mis à jour la priorité";
+  if (aiNow.status === "stale" && aiNow.hasEverLoaded) {
+    return "Priorité IA conservée";
+  }
+  if (aiNow.status === "error" && aiNow.hasEverLoaded) {
+    return "Dernière priorité conservée";
+  }
+  return aiNow.hasEverLoaded ? "Priorité disponible" : "Préparation de la recommandation";
+}
+
+function resolveImpactText({ heroGoal, heroCategory, goalsById }) {
+  const linkedOutcomeId =
+    (typeof heroGoal?.outcomeId === "string" && heroGoal.outcomeId.trim()) ||
+    (typeof heroGoal?.parentId === "string" && heroGoal.parentId.trim()) ||
+    "";
+  const linkedOutcome = linkedOutcomeId ? goalsById.get(linkedOutcomeId) || null : null;
+  if (linkedOutcome?.title) return `Faire avancer ${linkedOutcome.title}`;
+
+  const mainGoalId = typeof heroCategory?.mainGoalId === "string" ? heroCategory.mainGoalId.trim() : "";
+  const mainGoal = mainGoalId ? goalsById.get(mainGoalId) || null : null;
+  if (mainGoal?.title) return `Faire avancer ${mainGoal.title}`;
+
+  if (heroCategory?.name) return `Maintenir l’élan en ${heroCategory.name}`;
+  return "Maintenir l’élan sur la priorité active.";
+}
+
+function compareTodayOccurrences(left, right) {
+  const leftStart = typeof left?.start === "string" ? left.start : "";
+  const rightStart = typeof right?.start === "string" ? right.start : "";
+  if (leftStart !== rightStart) return leftStart.localeCompare(rightStart);
+  return String(left?.title || "").localeCompare(String(right?.title || ""));
+}
+
 function normalizeMicroItemForCompare(item) {
   if (!item || typeof item !== "object") return null;
   return {
@@ -1839,6 +1897,24 @@ export default function Home({
   const heroDurationLabel = Number.isFinite(heroOccurrence?.durationMinutes)
     ? `${heroOccurrence.durationMinutes} min`
     : "";
+  const heroImpactText = useMemo(
+    () =>
+      resolveImpactText({
+        heroGoal,
+        heroCategory,
+        goalsById,
+      }),
+    [goalsById, heroCategory, heroGoal]
+  );
+  const heroAiStatusLabel = useMemo(
+    () => resolveTodayAiStatusLabel(aiNow),
+    [aiNow.hasEverLoaded, aiNow.isRefreshingInBackground, aiNow.status]
+  );
+  const heroTimestampLabel = useMemo(
+    () => formatRelativeCoachTimestamp(aiNow.requestDiagnostics?.fetchedAt),
+    [aiNow.requestDiagnostics?.fetchedAt]
+  );
+  const isHeroPreparing = !aiNow.hasEverLoaded && (aiNow.status === "idle" || aiNow.status === "loading");
   const isHeroFresh =
     Number.isFinite(aiNow.requestDiagnostics?.fetchedAt) &&
     Date.now() - aiNow.requestDiagnostics.fetchedAt < AI_NOW_CACHE_TTL_MS;
@@ -1854,26 +1930,50 @@ export default function Home({
     }
     return map;
   }, [safeData.sessionHistory]);
-  const nextActions = useMemo(
-    () =>
-      occurrencesForSelectedDay
-        .filter((occurrence) => occurrence?.id !== heroOccurrence?.id)
-        .filter((occurrence) => {
-          const status = typeof occurrence?.status === "string" ? occurrence.status : "";
-          return status !== "done" && status !== "skipped" && status !== "canceled" && status !== "missed" && status !== "rescheduled";
-        })
-        .slice(0, 3)
-        .map((occurrence) => {
-          const goal = goalsById.get(occurrence?.goalId || "") || null;
-          const category = categoriesById.get(goal?.categoryId || "") || null;
-          return {
-            ...occurrence,
-            title: goal?.title || occurrence?.title || "Action",
-            categoryName: category?.name || "Catégorie",
-          };
-        }),
-    [categoriesById, goalsById, heroOccurrence?.id, occurrencesForSelectedDay]
-  );
+  const nextActions = useMemo(() => {
+    const remainingOccurrences = occurrencesForSelectedDay
+      .filter((occurrence) => {
+        const status = typeof occurrence?.status === "string" ? occurrence.status : "";
+        return (
+          status !== "done" &&
+          status !== "skipped" &&
+          status !== "canceled" &&
+          status !== "missed" &&
+          status !== "rescheduled"
+        );
+      })
+      .map((occurrence) => {
+        const goal = goalsById.get(occurrence?.goalId || "") || null;
+        const category = categoriesById.get(goal?.categoryId || "") || null;
+        return {
+          ...occurrence,
+          title: goal?.title || occurrence?.title || "Action",
+          categoryName: category?.name || "Catégorie",
+        };
+      })
+      .sort(compareTodayOccurrences);
+
+    const heroCanLeadList =
+      heroViewModel?.source === "ai" &&
+      Boolean(heroOccurrence?.id) &&
+      remainingOccurrences.some((occurrence) => occurrence?.id === heroOccurrence.id);
+
+    if (!heroCanLeadList) return remainingOccurrences.slice(0, 3);
+
+    const originalFirstId = remainingOccurrences[0]?.id || null;
+    const heroEntry = remainingOccurrences.find((occurrence) => occurrence?.id === heroOccurrence.id) || null;
+    const remainingWithoutHero = remainingOccurrences.filter((occurrence) => occurrence?.id !== heroOccurrence.id);
+
+    return [
+      {
+        ...heroEntry,
+        isAiPriority: Boolean(heroEntry?.id && heroEntry.id !== originalFirstId),
+      },
+      ...remainingWithoutHero,
+    ]
+      .filter(Boolean)
+      .slice(0, 3);
+  }, [categoriesById, goalsById, heroOccurrence?.id, heroViewModel?.source, occurrencesForSelectedDay]);
   const dailyState = useMemo(() => {
     const plannedMinutes = occurrencesForSelectedDay.reduce((sum, occurrence) => {
       const status = typeof occurrence?.status === "string" ? occurrence.status : "";
@@ -1941,11 +2041,15 @@ export default function Home({
           categoryName={heroCategory?.name || ""}
           durationLabel={heroDurationLabel}
           reason={heroViewModel.meta || whyDisplay}
+          impactText={heroImpactText}
+          aiStatusLabel={heroAiStatusLabel}
+          timestampLabel={heroTimestampLabel}
           onStart={handleHeroSessionOpen}
           onOpenPlanning={openPlanningForToday}
           canStart={canOpenHeroSession}
           isAiRecommendation={heroViewModel.source === "ai"}
           isFresh={isHeroFresh}
+          isPreparing={isHeroPreparing}
         />
         <TodayNextActions actions={nextActions} onOpenOccurrence={handleStartSession} />
         <TodayDailyState

@@ -2,13 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { GateBadge, GateButton, GateSection } from "../shared/ui/gate/Gate";
 import SelectControl from "../ui/select/Select";
+import { useAuth } from "../auth/useAuth";
+import { requestAiCoachChat } from "../infra/aiCoachChatClient";
 import { getCategoryPilotageCounts, getCategoryStatus } from "../logic/pilotage";
 import { getWindowBounds } from "../logic/metrics";
 import { computeWindowStats } from "../logic/progressionModel";
 import { buildReport, exportReportToCSV } from "../logic/reporting";
-import SortableBlocks from "../components/SortableBlocks";
 import AccentCategoryRow from "../components/AccentCategoryRow";
-import { getDefaultBlockIds } from "../logic/blocks/registry";
 import { LABELS } from "../ui/labels";
 import {
   CATEGORY_VIEW,
@@ -22,17 +22,12 @@ import { computeCategoryRadarRows, computePilotageInsights } from "../features/p
 import { sanitizePilotageRadarSelection } from "../logic/state/normalizers";
 import "../features/pilotage/pilotage.css";
 
-// TOUR MAP:
-// - primary_action: planifier depuis l'état des catégories
-// - key_elements: category status list, load summary, discipline summary
-// - optional_elements: empty-today planifier CTA
 const STATUS_LABELS = {
   EMPTY: "Vide",
   DONE: "Terminée",
   ACTIVE: "Active",
 };
 
-// Statuts = couleurs fixes (ne dépendent pas de la catégorie)
 const STATUS_STYLES = {
   ACTIVE: {
     backgroundColor: "rgba(76, 175, 80, 0.14)",
@@ -51,13 +46,7 @@ const STATUS_STYLES = {
   },
 };
 
-const DEFAULT_PILOTAGE_ORDER = getDefaultBlockIds("pilotage");
-const PILOTAGE_BLOCKS = {
-  "pilotage.categories": { id: "pilotage.categories" },
-  "pilotage.charge": { id: "pilotage.charge" },
-  "pilotage.discipline": { id: "pilotage.discipline" },
-  "pilotage.reporting": { id: "pilotage.reporting" },
-};
+const PILOTAGE_RADAR_STORAGE_KEY = "pilotageRadarSelection";
 
 const arrayEqual = (a, b) =>
   Array.isArray(a) &&
@@ -66,14 +55,13 @@ const arrayEqual = (a, b) =>
   a.every((id, idx) => id === b[idx]);
 
 const clamp01 = (n) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
-const pct = (done, expected) => {
-  const d = Number(done) || 0;
-  const e = Number(expected) || 0;
-  if (e <= 0) return null;
-  return Math.round((d / e) * 100);
-};
 
-const normalizeRadarSelection = (selection, availableIds, fallbackIds) => {
+function formatMinutes(value) {
+  if (!Number.isFinite(value)) return "0 min";
+  return `${Math.max(0, Math.round(value))} min`;
+}
+
+function normalizeRadarSelection(selection, availableIds, fallbackIds) {
   const available = Array.isArray(availableIds) ? availableIds.filter(Boolean) : [];
   if (!available.length) return [];
   const allowed = new Set(available);
@@ -87,9 +75,18 @@ const normalizeRadarSelection = (selection, availableIds, fallbackIds) => {
   (Array.isArray(fallbackIds) ? fallbackIds : []).forEach(pushIfValid);
   available.forEach(pushIfValid);
   return out.slice(0, Math.min(3, available.length));
-};
+}
 
-const PILOTAGE_RADAR_STORAGE_KEY = "pilotageRadarSelection";
+function loadRadarSelectionFromStorage() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(PILOTAGE_RADAR_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 function Button({ variant = "primary", className = "", ...props }) {
   const gateVariant = variant === "ghost" ? "ghost" : "primary";
@@ -113,49 +110,28 @@ function Input({ className = "", ...props }) {
 
 function Select({ className = "", children, ...props }) {
   const mergedClassName = ["GateSelectPremium", className].filter(Boolean).join(" ");
-  return <SelectControl className={mergedClassName} {...props}>{children}</SelectControl>;
-}
-
-function PilotageCategoryRow({
-  color,
-  selected,
-  onClick,
-  summary,
-  statusLabel,
-  statusStyle,
-  children,
-  ...props
-}) {
   return (
-    <AccentCategoryRow
-      className="pilotageCategoryRow"
-      color={color}
-      selected={selected}
-      onClick={onClick}
-      rightSlot={
-        <GateBadge className="pilotageStatusBadge" style={{ ...statusStyle, borderWidth: 1, borderStyle: "solid" }}>
-          {statusLabel}
-        </GateBadge>
-      }
-      {...props}
-    >
-      <div className="itemTitle">{children}</div>
-      <div className="itemSub">{summary}</div>
-    </AccentCategoryRow>
+    <SelectControl className={mergedClassName} {...props}>
+      {children}
+    </SelectControl>
   );
 }
 
-const loadRadarSelectionFromStorage = () => {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(PILOTAGE_RADAR_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === "string") : [];
-  } catch (err) {
-    void err;
-    return [];
-  }
-};
+function StatRow({ label, value, right = null }) {
+  return (
+    <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+      <div className="itemTitle" style={{ minWidth: 0 }}>
+        {label}
+      </div>
+      <div className="row" style={{ alignItems: "center", gap: 10, minWidth: 0 }}>
+        {right}
+        <div className="itemSub" style={{ textAlign: "right" }}>
+          {value}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function Meter({ value01 = 0, label = "", tone = "accent" }) {
   const v = clamp01(value01);
@@ -195,21 +171,114 @@ function Meter({ value01 = 0, label = "", tone = "accent" }) {
   );
 }
 
-function StatRow({ label, value, right = null }) {
+function PilotageCategoryRow({
+  color,
+  selected,
+  onClick,
+  summary,
+  statusLabel,
+  statusStyle,
+  children,
+  ...props
+}) {
   return (
-    <div
-      className="row"
-      style={{ justifyContent: "space-between", alignItems: "center", gap: 12 }}
+    <AccentCategoryRow
+      className="pilotageCategoryRow"
+      color={color}
+      selected={selected}
+      onClick={onClick}
+      rightSlot={
+        <GateBadge className="pilotageStatusBadge" style={{ ...statusStyle, borderWidth: 1, borderStyle: "solid" }}>
+          {statusLabel}
+        </GateBadge>
+      }
+      {...props}
     >
-      <div className="itemTitle">{label}</div>
-      <div className="row" style={{ alignItems: "center", gap: 10 }}>
-        {right}
-        <div className="itemSub" style={{ textAlign: "right" }}>
-          {value}
-        </div>
-      </div>
-    </div>
+      <div className="itemTitle">{children}</div>
+      <div className="itemSub">{summary}</div>
+    </AccentCategoryRow>
   );
+}
+
+function buildConstanceSummary({ occurrences, sessionHistoryByOccurrenceId }) {
+  const activeDays = new Set();
+  let realMinutes = 0;
+  let doneCount = 0;
+  let expectedCount = 0;
+  let missedCount = 0;
+
+  for (const occurrence of Array.isArray(occurrences) ? occurrences : []) {
+    const status = typeof occurrence?.status === "string" ? occurrence.status : "";
+    if (status !== "canceled" && status !== "skipped") expectedCount += 1;
+    if (status === "missed") missedCount += 1;
+    if (status !== "done") continue;
+    doneCount += 1;
+    if (typeof occurrence?.date === "string" && occurrence.date) activeDays.add(occurrence.date);
+    const sessionEntry = sessionHistoryByOccurrenceId.get(occurrence.id) || null;
+    if (Number.isFinite(sessionEntry?.timerSeconds)) {
+      realMinutes += Math.round(sessionEntry.timerSeconds / 60);
+    } else if (Number.isFinite(occurrence?.durationMinutes)) {
+      realMinutes += occurrence.durationMinutes;
+    }
+  }
+
+  const regularity = activeDays.size / 7;
+  const constanceLabel =
+    activeDays.size >= 4 && realMinutes >= 60
+      ? "stable"
+      : activeDays.size >= 2 || doneCount > missedCount
+        ? "en progression"
+        : "irrégulier";
+
+  return {
+    activeDays7: activeDays.size,
+    realMinutes7: realMinutes,
+    regularity,
+    constanceLabel,
+    expectedCount,
+    doneCount,
+    missedCount,
+  };
+}
+
+function buildPilotageCoachFallback({ selectedCategory, selectedCounts, selectedWeek, constanceSummary }) {
+  if (!selectedCategory) {
+    return {
+      summary: "Choisis une catégorie pour lire le système plus clairement.",
+      problem: "Aucun focus actif, donc aucun diagnostic utile.",
+      recommendation: "Sélectionne une catégorie puis analyse-la.",
+    };
+  }
+
+  if (!selectedCounts?.processCount) {
+    return {
+      summary: `${selectedCategory.name || "Cette catégorie"} reste vide.`,
+      problem: "Aucune action exécutable n’alimente encore cette catégorie.",
+      recommendation: "Ajoute 1 action simple et planifiable cette semaine.",
+    };
+  }
+
+  if ((selectedWeek?.expected || 0) === 0) {
+    return {
+      summary: `Aucun rythme visible en ${selectedCategory.name || "catégorie"}.`,
+      problem: "La semaine n’a aucun créneau crédible pour cette catégorie.",
+      recommendation: "Planifie 1 bloc court récurrent pour relancer la continuité.",
+    };
+  }
+
+  if ((constanceSummary?.missedCount || 0) > (constanceSummary?.doneCount || 0)) {
+    return {
+      summary: `La continuité reste fragile en ${selectedCategory.name || "catégorie"}.`,
+      problem: "Il y a plus de sessions manquées que de sessions terminées sur la fenêtre récente.",
+      recommendation: "Réduis la charge ou raccourcis le prochain bloc prévu.",
+    };
+  }
+
+  return {
+    summary: `${selectedCategory.name || "Cette catégorie"} progresse mais peut être consolidée.`,
+    problem: `La constance est ${constanceSummary?.constanceLabel || "irrégulière"} sur 7 jours.`,
+    recommendation: "Protège le prochain bloc important et garde une cadence simple.",
+  };
 }
 
 export default function Pilotage({
@@ -218,51 +287,46 @@ export default function Pilotage({
   generationWindowDays = null,
   isPlanningUnlimited = false,
 }) {
+  void generationWindowDays;
+  void isPlanningUnlimited;
+  const { session } = useAuth();
+  const accessToken = session?.access_token || "";
   const safeData = useMemo(() => (data && typeof data === "object" ? data : {}), [data]);
-  const categories = useMemo(
-    () => getVisibleCategories(safeData.categories),
+  const allCategories = useMemo(
+    () => (Array.isArray(safeData.categories) ? safeData.categories : []),
     [safeData.categories]
   );
+  const categories = useMemo(() => getVisibleCategories(safeData.categories), [safeData.categories]);
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
+  const occurrences = useMemo(() => (Array.isArray(safeData.occurrences) ? safeData.occurrences : []), [safeData.occurrences]);
   const legacyBuckets = useMemo(
     () => collectSystemInboxBuckets({ goals: safeData.goals, categories: safeData.categories }),
     [safeData.categories, safeData.goals]
   );
 
-  const now = useMemo(() => {
-    void safeData;
-    return new Date();
-  }, [safeData]);
+  const now = useMemo(() => new Date(), []);
+  const weekBounds = useMemo(() => getWindowBounds("7d", now), [now]);
+  const twoWeekBounds = useMemo(() => getWindowBounds("14d", now), [now]);
+  const selectedDateKey =
+    (typeof safeData?.ui?.selectedDateKey === "string" && safeData.ui.selectedDateKey) ||
+    (typeof safeData?.ui?.selectedDate === "string" && safeData.ui.selectedDate) ||
+    weekBounds.toKey;
 
   const countsByCategory = useMemo(() => {
     const map = new Map();
-    for (const c of categories) {
-      map.set(c.id, getCategoryPilotageCounts(safeData, c.id));
+    for (const category of categories) {
+      map.set(category.id, getCategoryPilotageCounts(safeData, category.id));
     }
     return map;
   }, [categories, safeData]);
 
   const statusByCategory = useMemo(() => {
     const map = new Map();
-    for (const c of categories) {
-      map.set(c.id, getCategoryStatus(safeData, c.id, now));
+    for (const category of categories) {
+      map.set(category.id, getCategoryStatus(safeData, category.id, now));
     }
     return map;
-  }, [categories, safeData, now]);
-
-  const weekBounds = useMemo(() => getWindowBounds("7d", now), [now]);
-  const twoWeekBounds = useMemo(() => getWindowBounds("14d", now), [now]);
-
-  const weekWindowStats = useMemo(
-    () => computeWindowStats(safeData, weekBounds.fromKey, weekBounds.toKey, { includeMicroContribution: true }),
-    [safeData, weekBounds.fromKey, weekBounds.toKey]
-  );
-
-  const twoWeekWindowStats = useMemo(
-    () => computeWindowStats(safeData, twoWeekBounds.fromKey, twoWeekBounds.toKey, { includeMicroContribution: true }),
-    [safeData, twoWeekBounds.fromKey, twoWeekBounds.toKey]
-  );
-
+  }, [categories, now, safeData]);
 
   const selectedCategoryId = resolvePreferredVisibleCategoryId({
     categories,
@@ -271,6 +335,62 @@ export default function Pilotage({
       getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY),
     ],
   });
+
+  const selectedCategory = useMemo(
+    () => categories.find((category) => category.id === selectedCategoryId) || null,
+    [categories, selectedCategoryId]
+  );
+
+  const selectedCounts = useMemo(
+    () => (selectedCategoryId ? countsByCategory.get(selectedCategoryId) || null : null),
+    [countsByCategory, selectedCategoryId]
+  );
+  const selectedStatus = useMemo(
+    () => (selectedCategoryId ? statusByCategory.get(selectedCategoryId) || null : null),
+    [selectedCategoryId, statusByCategory]
+  );
+  const selectedWeek = useMemo(() => {
+    if (!selectedCategoryId) return null;
+    return computeWindowStats(safeData, weekBounds.fromKey, weekBounds.toKey, {
+      filters: { categoryId: selectedCategoryId },
+      includeMicroContribution: false,
+    }).occurrences;
+  }, [safeData, selectedCategoryId, weekBounds.fromKey, weekBounds.toKey]);
+
+  const sessionHistoryByOccurrenceId = useMemo(() => {
+    const map = new Map();
+    for (const entry of Array.isArray(safeData.sessionHistory) ? safeData.sessionHistory : []) {
+      if (!entry?.occurrenceId) continue;
+      const previous = map.get(entry.occurrenceId) || null;
+      const nextTs = Date.parse(entry?.endAt || entry?.startAt || "") || 0;
+      const previousTs = Date.parse(previous?.endAt || previous?.startAt || "") || 0;
+      if (!previous || nextTs >= previousTs) {
+        map.set(entry.occurrenceId, entry);
+      }
+    }
+    return map;
+  }, [safeData.sessionHistory]);
+
+  const selectedWeekOccurrences = useMemo(() => {
+    if (!selectedCategoryId) return [];
+    const goalsById = new Map(goals.filter((goal) => goal?.id).map((goal) => [goal.id, goal]));
+    return occurrences.filter((occurrence) => {
+      const dateKey = typeof occurrence?.date === "string" ? occurrence.date : "";
+      if (!dateKey || dateKey < weekBounds.fromKey || dateKey > weekBounds.toKey) return false;
+      const goal = goalsById.get(occurrence?.goalId || "") || null;
+      return goal?.categoryId === selectedCategoryId;
+    });
+  }, [goals, occurrences, selectedCategoryId, weekBounds.fromKey, weekBounds.toKey]);
+
+  const constanceSummary = useMemo(
+    () => buildConstanceSummary({ occurrences: selectedWeekOccurrences, sessionHistoryByOccurrenceId }),
+    [selectedWeekOccurrences, sessionHistoryByOccurrenceId]
+  );
+
+  const reportGoals = useMemo(() => {
+    const list = goals.filter((goal) => goal && typeof goal.id === "string");
+    return list;
+  }, [goals]);
 
   const [reportWindow, setReportWindow] = useState("7d");
   const [reportFrom, setReportFrom] = useState("");
@@ -283,54 +403,29 @@ export default function Pilotage({
     const bounds = getWindowBounds(reportWindow, now);
     setReportFrom(bounds.fromKey);
     setReportTo(bounds.toKey);
-  }, [reportWindow, now]);
+  }, [now, reportWindow]);
 
-  const weekPct = useMemo(
-    () => pct(weekWindowStats.discipline?.done, weekWindowStats.discipline?.expected),
-    [weekWindowStats.discipline]
-  );
-  const twoWeekPct = useMemo(
-    () => pct(twoWeekWindowStats.discipline?.done, twoWeekWindowStats.discipline?.expected),
-    [twoWeekWindowStats.discipline]
-  );
+  useEffect(() => {
+    if (!reportGoalId) return;
+    const exists = reportGoals.some((goal) => goal.id === reportGoalId);
+    if (!exists) setReportGoalId("");
+  }, [reportGoalId, reportGoals]);
 
-  const weekExpected = Number(weekWindowStats.occurrences?.expected) || 0;
-  const weekDone = Number(weekWindowStats.occurrences?.done) || 0;
-
-  const trendDelta = useMemo(() => {
-    if (weekPct == null || twoWeekPct == null) return null;
-    return Math.round(weekPct - twoWeekPct);
-  }, [weekPct, twoWeekPct]);
-
-  const selectedCategory = useMemo(
-    () => categories.find((c) => c.id === selectedCategoryId) || null,
-    [categories, selectedCategoryId]
-  );
-
-  const selectedCounts = useMemo(() => {
-    if (!selectedCategoryId) return null;
-    return countsByCategory.get(selectedCategoryId) || null;
-  }, [countsByCategory, selectedCategoryId]);
-
-  const selectedStatus = useMemo(() => {
-    if (!selectedCategoryId) return null;
-    return statusByCategory.get(selectedCategoryId) || null;
-  }, [statusByCategory, selectedCategoryId]);
-
-  const selectedWeek = useMemo(() => {
-    if (!selectedCategoryId) return null;
-    return computeWindowStats(safeData, weekBounds.fromKey, weekBounds.toKey, {
-      filters: { categoryId: selectedCategoryId },
-      includeMicroContribution: false,
-    }).occurrences;
-  }, [safeData, selectedCategoryId, weekBounds.fromKey, weekBounds.toKey]);
+  const reportPreview = useMemo(() => {
+    if (!reportFrom || !reportTo) return null;
+    return buildReport(safeData, {
+      fromKey: reportFrom,
+      toKey: reportTo,
+      categoryId: reportCategoryId || null,
+      goalIds: reportGoalId ? [reportGoalId] : null,
+    });
+  }, [reportCategoryId, reportFrom, reportGoalId, reportTo, safeData]);
 
   const radarWindow = twoWeekBounds;
-
-  const categoryRadarRows = useMemo(() => {
-    return computeCategoryRadarRows(safeData, radarWindow.fromKey, radarWindow.toKey);
-  }, [radarWindow.fromKey, radarWindow.toKey, safeData]);
-
+  const categoryRadarRows = useMemo(
+    () => computeCategoryRadarRows(safeData, radarWindow.fromKey, radarWindow.toKey),
+    [radarWindow.fromKey, radarWindow.toKey, safeData]
+  );
   const availableRadarIds = useMemo(
     () => categoryRadarRows.map((row) => row.categoryId).filter(Boolean),
     [categoryRadarRows]
@@ -338,39 +433,37 @@ export default function Pilotage({
   const sanitizeRadarSelection = useCallback(
     (selection) =>
       sanitizePilotageRadarSelection(
-        { categories, ui: { pilotageRadarSelection: selection } },
-        { selection }
+        { categories: allCategories, ui: { pilotageRadarSelection: selection } },
+        { selection, categories: allCategories }
       ),
-    [categories]
+    [allCategories]
   );
   const defaultRadarSelection = useMemo(() => {
     const seed = categoryRadarRows.slice(0, 3).map((row) => row.categoryId);
     return normalizeRadarSelection(seed, availableRadarIds, availableRadarIds);
   }, [availableRadarIds, categoryRadarRows]);
-  const uiRadarSelection = useMemo(() => {
-    return sanitizeRadarSelection(safeData?.ui?.pilotageRadarSelection);
-  }, [safeData?.ui?.pilotageRadarSelection, sanitizeRadarSelection]);
+  const uiRadarSelection = useMemo(
+    () => sanitizeRadarSelection(safeData?.ui?.pilotageRadarSelection),
+    [safeData?.ui?.pilotageRadarSelection, sanitizeRadarSelection]
+  );
   const persistedRadarSelection = useMemo(() => {
     const source = uiRadarSelection.length ? uiRadarSelection : loadRadarSelectionFromStorage();
     return sanitizeRadarSelection(source);
   }, [sanitizeRadarSelection, uiRadarSelection]);
-  const persistedNormalizedRadarSelection = useMemo(
-    () =>
-      normalizeRadarSelection(
-        persistedRadarSelection.length ? persistedRadarSelection : defaultRadarSelection,
-        availableRadarIds,
-        defaultRadarSelection
-      ),
-    [availableRadarIds, defaultRadarSelection, persistedRadarSelection]
+  const [radarSelection, setRadarSelection] = useState(
+    normalizeRadarSelection(
+      persistedRadarSelection.length ? persistedRadarSelection : defaultRadarSelection,
+      availableRadarIds,
+      defaultRadarSelection
+    )
   );
-  const [radarSelection, setRadarSelection] = useState(persistedNormalizedRadarSelection);
 
   useEffect(() => {
-    setRadarSelection((prev) => {
-      const normalizedPrev = sanitizeRadarSelection(
-        normalizeRadarSelection(prev, availableRadarIds, defaultRadarSelection)
+    setRadarSelection((previous) => {
+      const normalized = sanitizeRadarSelection(
+        normalizeRadarSelection(previous, availableRadarIds, defaultRadarSelection)
       );
-      return arrayEqual(prev, normalizedPrev) ? prev : normalizedPrev;
+      return arrayEqual(previous, normalized) ? previous : normalized;
     });
   }, [availableRadarIds, defaultRadarSelection, sanitizeRadarSelection]);
 
@@ -382,26 +475,24 @@ export default function Pilotage({
     if (typeof window !== "undefined") {
       try {
         window.localStorage.setItem(PILOTAGE_RADAR_STORAGE_KEY, JSON.stringify(normalized));
-      } catch (err) {
-        void err;
+      } catch {
+        // noop
       }
     }
-    const normalizedUiRadarSelection = sanitizeRadarSelection(
+    const current = sanitizeRadarSelection(
       normalizeRadarSelection(
         uiRadarSelection.length ? uiRadarSelection : defaultRadarSelection,
         availableRadarIds,
         defaultRadarSelection
       )
     );
-    if (arrayEqual(normalized, normalizedUiRadarSelection)) return;
-    setData((prev) => {
-      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-      const prevSelection = Array.isArray(prevUi.pilotageRadarSelection)
-        ? prevUi.pilotageRadarSelection
-        : [];
-      if (arrayEqual(prevSelection, normalized)) return prev;
+    if (arrayEqual(normalized, current)) return;
+    setData((previous) => {
+      const prevUi = previous?.ui && typeof previous.ui === "object" ? previous.ui : {};
+      const prevSelection = Array.isArray(prevUi.pilotageRadarSelection) ? prevUi.pilotageRadarSelection : [];
+      if (arrayEqual(prevSelection, normalized)) return previous;
       return {
-        ...prev,
+        ...previous,
         ui: {
           ...prevUi,
           pilotageRadarSelection: normalized,
@@ -421,20 +512,24 @@ export default function Pilotage({
     () => sanitizeRadarSelection(radarSelection),
     [radarSelection, sanitizeRadarSelection]
   );
-
-  const radarVisibleRows = useMemo(() => {
-    const selected = safeRadarSelection.filter(Boolean);
-    const rows = selected
-      .map((id) => categoryRadarRows.find((row) => row.categoryId === id))
-      .filter(Boolean);
-    return rows.slice(0, 3);
-  }, [categoryRadarRows, safeRadarSelection]);
+  const radarVisibleRows = useMemo(
+    () =>
+      safeRadarSelection
+        .map((id) => categoryRadarRows.find((row) => row.categoryId === id))
+        .filter(Boolean)
+        .slice(0, 3),
+    [categoryRadarRows, safeRadarSelection]
+  );
+  const insights = useMemo(
+    () => computePilotageInsights(safeData, radarWindow.fromKey, radarWindow.toKey),
+    [radarWindow.fromKey, radarWindow.toKey, safeData]
+  );
 
   const handleRadarSelect = useCallback(
     (slotIndex, nextId) => {
       if (!availableRadarIds.includes(nextId)) return;
-      setRadarSelection((prev) => {
-        const next = Array.isArray(prev) ? [...prev] : [];
+      setRadarSelection((previous) => {
+        const next = Array.isArray(previous) ? [...previous] : [];
         const existingIndex = next.findIndex((id) => id === nextId);
         if (existingIndex >= 0 && existingIndex !== slotIndex) {
           next[existingIndex] = next[slotIndex];
@@ -448,133 +543,14 @@ export default function Pilotage({
     [availableRadarIds, defaultRadarSelection, sanitizeRadarSelection]
   );
 
-  const insights = useMemo(() => {
-    return computePilotageInsights(safeData, radarWindow.fromKey, radarWindow.toKey);
-  }, [radarWindow.fromKey, radarWindow.toKey, safeData]);
-
-  const reportGoals = useMemo(() => {
-    const list = goals.filter((g) => g && typeof g.id === "string");
-    if (!reportCategoryId) return list;
-    return list.filter((g) => g.categoryId === reportCategoryId);
-  }, [goals, reportCategoryId]);
-
-  useEffect(() => {
-    if (!reportGoalId) return;
-    const exists = reportGoals.some((g) => g.id === reportGoalId);
-    if (exists) return;
-    setReportGoalId("");
-  }, [reportGoalId, reportGoals]);
-
-  const reportPreview = useMemo(() => {
-    if (!reportFrom || !reportTo) return null;
-    const goalIds = reportGoalId ? [reportGoalId] : null;
-    const categoryId = reportCategoryId || null;
-    return buildReport(safeData, { fromKey: reportFrom, toKey: reportTo, categoryId, goalIds });
-  }, [safeData, reportFrom, reportTo, reportCategoryId, reportGoalId]);
-
-  const blockOrder = useMemo(() => {
-    const raw = safeData?.ui?.blocksByPage?.pilotage;
-    const ids = Array.isArray(raw)
-      ? raw.map((item) => (typeof item === "string" ? item : item?.id)).filter(Boolean)
-      : [];
-    const cleaned = [];
-    const seen = new Set();
-    let hasInvalid = false;
-    let hasDuplicate = false;
-    let hasMissing = false;
-    for (const id of ids) {
-      if (!DEFAULT_PILOTAGE_ORDER.includes(id)) {
-        hasInvalid = true;
-        continue;
-      }
-      if (seen.has(id)) {
-        hasDuplicate = true;
-        continue;
-      }
-      seen.add(id);
-      cleaned.push(id);
-    }
-    for (const id of DEFAULT_PILOTAGE_ORDER) {
-      if (!seen.has(id)) {
-        if (ids.length) hasMissing = true;
-        cleaned.push(id);
-      }
-    }
-    if (
-      typeof import.meta !== "undefined" &&
-      import.meta.env?.DEV &&
-      (hasInvalid || hasDuplicate || hasMissing)
-    ) {
-      // eslint-disable-next-line no-console
-      console.warn("[pilotage] invalid or duplicate block ids in blocksByPage.pilotage");
-    }
-    return cleaned.length ? cleaned : [...DEFAULT_PILOTAGE_ORDER];
-  }, [safeData?.ui?.blocksByPage?.pilotage]);
-
-  const blockItems = useMemo(
-    () => blockOrder.map((id) => PILOTAGE_BLOCKS[id]).filter(Boolean),
-    [blockOrder]
-  );
-
-
-  const handleReorder = useCallback(
-    (nextItems) => {
-      if (typeof setData !== "function") return;
-      const nextIds = Array.isArray(nextItems)
-        ? nextItems.map((item) => item?.id).filter(Boolean)
-        : [];
-      const deduped = [];
-      const seen = new Set();
-      for (const id of nextIds) {
-        if (!id || seen.has(id)) continue;
-        seen.add(id);
-        deduped.push(id);
-      }
-      setData((prev) => {
-        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-        const prevBlocksByPage =
-          prevUi.blocksByPage && typeof prevUi.blocksByPage === "object" ? prevUi.blocksByPage : {};
-        const prevPilotage = Array.isArray(prevBlocksByPage.pilotage) ? prevBlocksByPage.pilotage : [];
-        const prevIds = prevPilotage.map((b) => (typeof b === "string" ? b : b?.id)).filter(Boolean);
-        if (arrayEqual(prevIds, deduped)) return prev;
-
-        const byId = new Map(
-          prevPilotage
-            .map((b) => (b && typeof b === "object" ? b : null))
-            .filter(Boolean)
-            .map((b) => [b.id, b])
-        );
-        const nextPilotage = deduped.map((id) => {
-          const existing = byId.get(id);
-          return {
-            ...(existing || { id, enabled: true }),
-            id,
-            enabled: existing ? existing.enabled !== false : true,
-          };
-        });
-        return {
-          ...prev,
-          ui: {
-            ...prevUi,
-            blocksByPage: {
-              ...prevBlocksByPage,
-              pilotage: nextPilotage,
-            },
-          },
-        };
-      });
-    },
-    [setData]
-  );
-
   const setPilotageSelectedCategory = useCallback(
     (categoryId) => {
       if (!categoryId || typeof setData !== "function") return;
-      setData((prev) => {
-        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-        if (getSelectedCategoryForView(prevUi, CATEGORY_VIEW.PILOTAGE) === categoryId) return prev;
+      setData((previous) => {
+        const prevUi = previous?.ui && typeof previous.ui === "object" ? previous.ui : {};
+        if (getSelectedCategoryForView(prevUi, CATEGORY_VIEW.PILOTAGE) === categoryId) return previous;
         return {
-          ...prev,
+          ...previous,
           ui: withSelectedCategoryByView(prevUi, {
             pilotage: categoryId,
             selectedCategoryId: categoryId,
@@ -587,13 +563,12 @@ export default function Pilotage({
 
   useEffect(() => {
     if (typeof setData !== "function") return;
-
     if (!categories.length) {
-      setData((prev) => {
-        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-        if (getSelectedCategoryForView(prevUi, CATEGORY_VIEW.PILOTAGE) == null) return prev;
+      setData((previous) => {
+        const prevUi = previous?.ui && typeof previous.ui === "object" ? previous.ui : {};
+        if (getSelectedCategoryForView(prevUi, CATEGORY_VIEW.PILOTAGE) == null) return previous;
         return {
-          ...prev,
+          ...previous,
           ui: withSelectedCategoryByView(prevUi, {
             pilotage: null,
           }),
@@ -601,13 +576,88 @@ export default function Pilotage({
       });
       return;
     }
-
     const current = getSelectedCategoryForView(safeData, CATEGORY_VIEW.PILOTAGE) || null;
-    const exists = current ? categories.some((c) => c.id === current) : false;
+    const exists = current ? categories.some((category) => category.id === current) : false;
     if (!exists) {
       setPilotageSelectedCategory(categories[0].id);
     }
   }, [categories, safeData, setData, setPilotageSelectedCategory]);
+
+  const [analysisState, setAnalysisState] = useState({
+    loading: false,
+    summary: "",
+    problem: "",
+    recommendation: "",
+    source: "fallback",
+  });
+  const coachFallback = useMemo(
+    () =>
+      buildPilotageCoachFallback({
+        selectedCategory,
+        selectedCounts,
+        selectedWeek,
+        constanceSummary,
+      }),
+    [constanceSummary, selectedCategory, selectedCounts, selectedWeek]
+  );
+
+  useEffect(() => {
+    setAnalysisState({
+      loading: false,
+      summary: coachFallback.summary,
+      problem: coachFallback.problem,
+      recommendation: coachFallback.recommendation,
+      source: "fallback",
+    });
+  }, [coachFallback]);
+
+  const handleAnalyzeCategory = useCallback(async () => {
+    if (!selectedCategory) return;
+    setAnalysisState((previous) => ({
+      ...previous,
+      loading: true,
+    }));
+    if (!accessToken) {
+      setAnalysisState({
+        loading: false,
+        summary: coachFallback.summary,
+        problem: coachFallback.problem,
+        recommendation: coachFallback.recommendation,
+        source: "fallback",
+      });
+      return;
+    }
+    const result = await requestAiCoachChat({
+      accessToken,
+      payload: {
+        selectedDateKey,
+        activeCategoryId: selectedCategory.id,
+        message: "Analyse cette catégorie et donne un résumé court, un problème majeur et une recommandation concrète.",
+        recentMessages: [],
+      },
+    });
+    if (result.ok && result.reply) {
+      const recommendationBits = [
+        result.reply.primaryAction?.label || "",
+        Number.isFinite(result.reply.suggestedDurationMin) ? `${result.reply.suggestedDurationMin} min` : "",
+      ].filter(Boolean);
+      setAnalysisState({
+        loading: false,
+        summary: result.reply.headline || coachFallback.summary,
+        problem: result.reply.reason || coachFallback.problem,
+        recommendation: recommendationBits.join(" • ") || coachFallback.recommendation,
+        source: "ai",
+      });
+      return;
+    }
+    setAnalysisState({
+      loading: false,
+      summary: coachFallback.summary,
+      problem: coachFallback.problem,
+      recommendation: coachFallback.recommendation,
+      source: "fallback",
+    });
+  }, [accessToken, coachFallback.problem, coachFallback.recommendation, coachFallback.summary, selectedCategory, selectedDateKey]);
 
   const downloadFile = useCallback((filename, content, type) => {
     try {
@@ -620,8 +670,8 @@ export default function Pilotage({
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-    } catch (err) {
-      void err;
+    } catch {
+      // noop
     }
   }, []);
 
@@ -636,11 +686,12 @@ export default function Pilotage({
     downloadFile(`${base}.json`, payload, "application/json");
     downloadFile(`${base}-daily.csv`, dailyCsv, "text/csv");
     downloadFile(`${base}-goals.csv`, goalsCsv, "text/csv");
-  }, [downloadFile, reportPreview, reportFrom, reportTo]);
+  }, [downloadFile, reportFrom, reportPreview, reportTo]);
 
-  const getCategoryColor = useCallback((c) => {
-    return c?.color || c?.accentColor || c?.hex || c?.themeColor || "#6EE7FF";
-  }, []);
+  const getCategoryColor = useCallback(
+    (category) => category?.color || category?.accentColor || category?.hex || category?.themeColor || "#6EE7FF",
+    []
+  );
 
   return (
     <ScreenShell
@@ -648,414 +699,348 @@ export default function Pilotage({
       headerSubtitle="Vue d'ensemble"
       backgroundImage={safeData?.profile?.whyImage || ""}
     >
-      {legacyBuckets.pilotageRituals.length ? (
-        <Card>
-          <div className="p18 col" style={{ gap: 8 }}>
-            <div className="sectionTitle">Rituels hérités</div>
-            <div className="small">
-              {legacyBuckets.pilotageRituals.length} élément{legacyBuckets.pilotageRituals.length > 1 ? "s" : ""} d’organisation ou de revue a été retiré{legacyBuckets.pilotageRituals.length > 1 ? "s" : ""} du flux d’exécution.
+      <div className="stack stackGap12">
+        {legacyBuckets.pilotageRituals.length ? (
+          <Card>
+            <div className="p18 col" style={{ gap: 8 }}>
+              <div className="sectionTitle">Rituels hérités</div>
+              <div className="small">
+                {legacyBuckets.pilotageRituals.length} élément{legacyBuckets.pilotageRituals.length > 1 ? "s" : ""} d’organisation ou de revue a été retiré{legacyBuckets.pilotageRituals.length > 1 ? "s" : ""} du flux d’exécution.
+              </div>
+              <div className="col" style={{ gap: 6 }}>
+                {legacyBuckets.pilotageRituals.slice(0, 4).map((goal) => (
+                  <div key={goal.id} className="small2 textMuted">
+                    {goal.title || "Rituel"}
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="col" style={{ gap: 6 }}>
-              {legacyBuckets.pilotageRituals.slice(0, 4).map((goal) => (
-                <div key={goal.id} className="small2 textMuted">
-                  {goal.title || "Rituel"}
+          </Card>
+        ) : null}
+
+        <Card>
+          <div className="p18">
+            <div className="sectionTitle">Focus catégorie</div>
+            <div className="mt12 col" role="list" style={{ gap: 10 }}>
+              {categories.map((category) => {
+                const counts = countsByCategory.get(category.id) || { activeOutcomesCount: 0, processCount: 0 };
+                const label = statusByCategory.get(category.id) || "ACTIVE";
+                const summary =
+                  counts.activeOutcomesCount || counts.processCount
+                    ? `${counts.activeOutcomesCount} ${LABELS.goalsLower} · ${counts.processCount} ${LABELS.actionsLower}`
+                    : "Aucun élément";
+                return (
+                  <PilotageCategoryRow
+                    key={category.id}
+                    color={getCategoryColor(category)}
+                    selected={selectedCategoryId === category.id}
+                    onClick={() => setPilotageSelectedCategory(category.id)}
+                    summary={summary}
+                    statusLabel={STATUS_LABELS[label] || "Active"}
+                    statusStyle={STATUS_STYLES[label] || STATUS_STYLES.ACTIVE}
+                  >
+                    {category.name || "Catégorie"}
+                  </PilotageCategoryRow>
+                );
+              })}
+            </div>
+
+            {selectedCategory ? (
+              <div className="mt14" style={{ paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="row pilotageCardHeader" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <div>
+                    <div className="sectionTitle">{selectedCategory.name || "Catégorie"}</div>
+                    <div className="small2 textMuted">Lecture stratégique simplifiée</div>
+                  </div>
+                  {selectedStatus ? (
+                    <GateBadge
+                      className="pilotageStatusBadge"
+                      style={{
+                        ...(STATUS_STYLES[selectedStatus] || STATUS_STYLES.ACTIVE),
+                        borderWidth: 1,
+                        borderStyle: "solid",
+                      }}
+                    >
+                      {STATUS_LABELS[selectedStatus] || "Active"}
+                    </GateBadge>
+                  ) : null}
                 </div>
-              ))}
+
+                <div className="mt10 col" style={{ gap: 10 }}>
+                  <StatRow
+                    label="Structure"
+                    value={
+                      selectedCounts
+                        ? `${selectedCounts.activeOutcomesCount || 0} ${LABELS.goalsLower} · ${selectedCounts.processCount || 0} ${LABELS.actionsLower}`
+                        : "—"
+                    }
+                  />
+                  <StatRow
+                    label="Semaine (fait / attendu)"
+                    value={selectedWeek ? `${selectedWeek.done || 0} / ${selectedWeek.expected || 0}` : "—"}
+                    right={
+                      selectedWeek && (selectedWeek.missed || 0) > 0 ? (
+                        <GateBadge
+                          className="pilotageStatusBadge"
+                          style={{ ...STATUS_STYLES.EMPTY, borderWidth: 1, borderStyle: "solid" }}
+                        >
+                          {selectedWeek.missed} manquée{selectedWeek.missed > 1 ? "s" : ""}
+                        </GateBadge>
+                      ) : null
+                    }
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </Card>
+
+        <Card data-tour-id="pilotage-load">
+          <div className="p18 col" style={{ gap: 12 }}>
+            <div>
+              <div className="sectionTitle">Constance</div>
+              <div className="small2 textMuted">Lecture utile sur 7 jours</div>
+            </div>
+            <div className="pilotageTopGrid">
+              <div className="listItem GateRowPremium">
+                <div className="small2">Jours actifs</div>
+                <div className="titleSm">{constanceSummary.activeDays7}/7</div>
+              </div>
+              <div className="listItem GateRowPremium">
+                <div className="small2">Temps investi réel</div>
+                <div className="titleSm">{formatMinutes(constanceSummary.realMinutes7)}</div>
+              </div>
+              <div className="listItem GateRowPremium">
+                <div className="small2">Régularité</div>
+                <div className="titleSm">{Math.round(constanceSummary.regularity * 100)}%</div>
+              </div>
+              <div className="listItem GateRowPremium">
+                <div className="small2">Qualification</div>
+                <div className="titleSm">{constanceSummary.constanceLabel}</div>
+              </div>
+            </div>
+            <Meter
+              value01={constanceSummary.regularity}
+              tone={
+                constanceSummary.constanceLabel === "stable"
+                  ? "good"
+                  : constanceSummary.constanceLabel === "en progression"
+                    ? "warn"
+                    : "bad"
+              }
+              label="Régularité hebdo"
+            />
+            <div className="col" style={{ gap: 8 }}>
+              <StatRow label="Sessions faites" value={String(constanceSummary.doneCount || 0)} />
+              <StatRow label="Sessions attendues" value={String(constanceSummary.expectedCount || 0)} />
+              <StatRow label="Sessions manquées" value={String(constanceSummary.missedCount || 0)} />
             </div>
           </div>
         </Card>
-      ) : null}
-      <SortableBlocks
-        items={blockItems}
-        getId={(item) => item.id}
-        onReorder={handleReorder}
-        className="stack stackGap12"
-        renderItem={(item, drag) => {
-          const blockId = item?.id;
-          const { attributes, listeners, setActivatorNodeRef } = drag || {};
 
-          if (blockId === "pilotage.categories") {
-            return (
-              <Card data-tour-id="pilotage-category-status">
-                <div className="p18">
-                  <div className="row pilotageCardHeader" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                    <div className="row pilotageCardHeaderLeft" style={{ alignItems: "center", gap: 8 }}>
-                      {drag ? (
-                        <button
-                          ref={setActivatorNodeRef}
-                          {...listeners}
-                          {...attributes}
-                          className="dragHandle"
-                          aria-label="Réorganiser"
-                        >
-                          ⋮⋮
-                        </button>
-                      ) : null}
-                      <div className="sectionTitle">État des catégories</div>
+        <Card>
+          <div className="p18 col" style={{ gap: 12 }}>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div>
+                <div className="sectionTitle">Analyse IA manuelle</div>
+                <div className="small2 textMuted">Une demande explicite, pas d’analyse automatique.</div>
+              </div>
+              <Button onClick={handleAnalyzeCategory} disabled={!selectedCategory || analysisState.loading}>
+                {analysisState.loading ? "Analyse..." : "Analyser cette catégorie"}
+              </Button>
+            </div>
+            <div className="pilotageInsights">
+              <div className="pilotageInsightItem">
+                <div className="small2 textMuted">Résumé</div>
+                <div>{analysisState.summary}</div>
+              </div>
+              <div className="pilotageInsightItem">
+                <div className="small2 textMuted">Problème majeur</div>
+                <div>{analysisState.problem}</div>
+              </div>
+              <div className="pilotageInsightItem">
+                <div className="small2 textMuted">Recommandation</div>
+                <div>{analysisState.recommendation}</div>
+              </div>
+            </div>
+            <div className="small2 textMuted">
+              {analysisState.source === "ai" ? "Réponse IA active." : "Fallback local actif."}
+            </div>
+          </div>
+        </Card>
+
+        <Card data-tour-id="pilotage-discipline">
+          <div className="p18 col" style={{ gap: 12 }}>
+            <div>
+              <div className="sectionTitle">Radar secondaire</div>
+              <div className="small2 textMuted">Comparaison optionnelle pour repérer les écarts.</div>
+            </div>
+
+            <details className="pilotageDetails" open>
+              <summary>Afficher le radar et les comparaisons</summary>
+              <div className="pilotageDetailsBody">
+                <div className="pilotageRadarGrid">
+                  <div className="pilotageRadarPanel">
+                    <div className="pilotageRadarSvg">
+                      {radarVisibleRows.length ? (
+                        <svg viewBox="0 0 240 240" role="img" aria-label="Radar pilotage">
+                          <circle cx="120" cy="120" r="96" className="pilotageRadarGridLine" />
+                          <circle cx="120" cy="120" r="64" className="pilotageRadarGridLine" />
+                          <circle cx="120" cy="120" r="32" className="pilotageRadarGridLine" />
+                          {["Discipline", "Régularité", "Charge", "Focus"].map((label, index) => {
+                            const angle = (Math.PI * 2 * index) / 4 - Math.PI / 2;
+                            const x = 120 + Math.cos(angle) * 110;
+                            const y = 120 + Math.sin(angle) * 110;
+                            return (
+                              <g key={label}>
+                                <line x1="120" y1="120" x2={x} y2={y} className="pilotageRadarAxis" />
+                                <text x={x} y={y} className="pilotageRadarLabel">
+                                  {label}
+                                </text>
+                              </g>
+                            );
+                          })}
+                          {radarVisibleRows.map((row) => {
+                            const points = row.values
+                              .map((axis, index) => {
+                                const angle = (Math.PI * 2 * index) / 4 - Math.PI / 2;
+                                const radius = 96 * clamp01(axis.value || 0);
+                                const x = 120 + Math.cos(angle) * radius;
+                                const y = 120 + Math.sin(angle) * radius;
+                                return `${x},${y}`;
+                              })
+                              .join(" ");
+                            return (
+                              <polygon
+                                key={row.categoryId}
+                                points={points}
+                                fill={row.color}
+                                fillOpacity="0.18"
+                                stroke={row.color}
+                                strokeWidth="2"
+                              />
+                            );
+                          })}
+                        </svg>
+                      ) : (
+                        <div className="small2 textMuted">Aucune donnée récente.</div>
+                      )}
                     </div>
-                  </div>
-
-                  <div className="mt12 col" role="list" style={{ gap: 10 }}>
-                    {categories.map((c) => {
-                      const counts = countsByCategory.get(c.id) || { activeOutcomesCount: 0, processCount: 0 };
-                      const label = statusByCategory.get(c.id) || "ACTIVE";
-                      const summary =
-                        counts.activeOutcomesCount || counts.processCount
-                          ? `${counts.activeOutcomesCount} ${LABELS.goalsLower} · ${counts.processCount} ${LABELS.actionsLower}`
-                          : "Aucun élément";
-
-                      const isSelected = selectedCategoryId === c.id;
-                      const catColor = getCategoryColor(c);
-                      const statusStyle = STATUS_STYLES[label] || STATUS_STYLES.ACTIVE;
-
-                      return (
-                        <PilotageCategoryRow
-                          key={c.id}
-                          color={catColor}
-                          selected={isSelected}
-                          onClick={() => setPilotageSelectedCategory(c.id)}
-                          aria-label={`Catégorie ${c.name || "Catégorie"} (${STATUS_LABELS[label] || "Active"})`}
-                          summary={summary}
-                          statusLabel={STATUS_LABELS[label] || "Active"}
-                          statusStyle={statusStyle}
-                        >
-                          {c.name || "Catégorie"}
-                        </PilotageCategoryRow>
-                      );
-                    })}
-                  </div>
-
-                  {selectedCategory ? (
-                    <div className="mt14" style={{ paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                      <div className="row pilotageCardHeader" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                        <div>
-                          <div className="sectionTitle">Focus</div>
-                          <div className="small2 textMuted">Catégorie sélectionnée</div>
+                    <div className="pilotageRadarLegend">
+                      {radarVisibleRows.map((row) => (
+                        <div key={row.categoryId} className="pilotageLegendRow">
+                          <span className="pilotageLegendDot" style={{ background: row.color }} />
+                          <span className="small2">{row.label}</span>
                         </div>
-                        {selectedStatus ? (
-                          <GateBadge
-                            className="pilotageStatusBadge"
-                            style={{
-                              ...(STATUS_STYLES[selectedStatus] || STATUS_STYLES.ACTIVE),
-                              borderWidth: 1,
-                              borderStyle: "solid",
-                            }}
-                          >
-                            {STATUS_LABELS[selectedStatus] || "Active"}
-                          </GateBadge>
-                        ) : null}
-                      </div>
-
-                      <div className="mt10 col" style={{ gap: 10 }}>
-                        <StatRow
-                          label={selectedCategory?.name || "Catégorie"}
-                          value={
-                            selectedCounts
-                              ? `${selectedCounts.activeOutcomesCount || 0} ${LABELS.goalsLower} · ${selectedCounts.processCount || 0} ${LABELS.actionsLower}`
-                              : "—"
-                          }
-                        />
-                        <StatRow
-                          label="Semaine (fait / attendu)"
-                          value={selectedWeek ? `${selectedWeek.expected || 0} / ${selectedWeek.done || 0}` : "—"}
-                          right={
-                            selectedWeek && (selectedWeek.missed || 0) > 0 ? (
-                              <GateBadge
-                                className="pilotageStatusBadge"
-                                style={{ ...STATUS_STYLES.EMPTY, borderWidth: 1, borderStyle: "solid" }}
-                              >
-                                {selectedWeek.missed} manquée{selectedWeek.missed > 1 ? "s" : ""}
-                              </GateBadge>
-                            ) : null
-                          }
-                        />
-                        <div className="small2 textMuted">
-                          Conseil : vise 1 {LABELS.goalLower} actif + 1 à 3 actions récurrentes. Le reste = bruit.
-                        </div>
-                      </div>
+                      ))}
                     </div>
-                  ) : null}
-                </div>
-              </Card>
-            );
-          }
-
-          if (blockId === "pilotage.charge") {
-            return (
-              <div className="pilotageTopGrid" data-tour-id="pilotage-load">
-                <Card>
-                  <div className="p18">
-                    <div className="row pilotageCardHeaderLeft" style={{ alignItems: "center", gap: 8 }}>
-                      {drag ? (
-                        <button
-                          ref={setActivatorNodeRef}
-                          {...listeners}
-                          {...attributes}
-                          className="dragHandle"
-                          aria-label="Réorganiser"
-                        >
-                          ⋮⋮
-                        </button>
-                      ) : null}
-                      <div className="sectionTitle">Discipline</div>
-                    </div>
-                    <div className="pilotageMetricMain">
-                      <div className="pilotageMetricValue">
-                        {weekDone}/{weekExpected}
-                      </div>
-                      <div className="small2 textMuted">fait / attendu (7j)</div>
-                    </div>
-                    <Meter
-                      value01={weekPct == null ? 0 : weekPct / 100}
-                      tone={weekPct == null ? "accent" : weekPct >= 95 ? "good" : weekPct >= 80 ? "warn" : "bad"}
-                    />
                   </div>
-                </Card>
 
-                <Card>
-                  <div className="p18">
-                    <div className="sectionTitle">Tendance</div>
-                    <div className="pilotageMetricMain">
-                      <div
-                        className={`pilotageTrendValue ${trendDelta != null && trendDelta >= 0 ? "is-up" : "is-down"}`}
-                      >
-                        {trendDelta == null ? "—" : `${trendDelta >= 0 ? "+" : ""}${trendDelta} pts`}
-                      </div>
-                      <div className="small2 textMuted">7j vs 14j</div>
+                  <div className="pilotageRadarPanel">
+                    <div className="sectionTitle">Catégories visibles</div>
+                    <div className="pilotageRadarSelects">
+                      {radarSelection.slice(0, 3).map((id, slotIndex) => (
+                        <Select
+                          key={`radar-slot-${slotIndex}`}
+                          value={id || ""}
+                          onChange={(event) => handleRadarSelect(slotIndex, event.target.value)}
+                        >
+                          {categoryRadarRows.map((row) => (
+                            <option key={row.categoryId} value={row.categoryId}>
+                              {row.label}
+                            </option>
+                          ))}
+                        </Select>
+                      ))}
                     </div>
                     <div className="small2 textMuted">
-                      {weekPct == null ? "7j : —" : `7j : ${weekPct}%`} ·{" "}
-                      {twoWeekPct == null ? "14j : —" : `14j : ${twoWeekPct}%`}
+                      Discipline = fait / attendu, régularité = jours actifs, charge = pression du volume, focus = concentration sur quelques actions.
                     </div>
                   </div>
-                </Card>
+                </div>
+
+                <div className="pilotageInsights">
+                  <div className="pilotageInsightItem">{insights.topCategory}</div>
+                  <div className="pilotageInsightItem">{insights.missedAction}</div>
+                  <div className="pilotageInsightItem">{insights.bestSlot}</div>
+                </div>
               </div>
-            );
-          }
+            </details>
+          </div>
+        </Card>
 
-          if (blockId === "pilotage.discipline") {
-            return (
-              <Card data-tour-id="pilotage-discipline">
-                <div className="p18">
-                  <div className="row pilotageCardHeaderLeft" style={{ alignItems: "center", gap: 8 }}>
-                    {drag ? (
-                      <button
-                        ref={setActivatorNodeRef}
-                        {...listeners}
-                        {...attributes}
-                        className="dragHandle"
-                        aria-label="Réorganiser"
-                      >
-                        ⋮⋮
-                      </button>
-                    ) : null}
-                    <div className="sectionTitle">Radar & insights</div>
+        <Card data-tour-id="pilotage-reporting">
+          <div className="p18">
+            <div className="sectionTitle">Reporting</div>
+            <div className="mt12 col" style={{ gap: 12 }}>
+              <div className="col" style={{ gap: 6 }}>
+                <div className="small2 textMuted">Période</div>
+                <Select value={reportWindow} onChange={(event) => setReportWindow(event.target.value)}>
+                  <option value="7d">7 jours</option>
+                  <option value="14d">14 jours</option>
+                  <option value="90d">90 jours</option>
+                  <option value="custom">Personnalisée</option>
+                </Select>
+              </div>
+
+              {reportWindow === "custom" ? (
+                <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+                  <div className="col" style={{ gap: 6 }}>
+                    <div className="small2 textMuted">Du</div>
+                    <Input type="date" value={reportFrom} onChange={(event) => setReportFrom(event.target.value)} />
                   </div>
-
-                  <div className="pilotageRadarGrid">
-                    <div className="pilotageRadarPanel">
-                      <div className="pilotageRadarSvg">
-                        {radarVisibleRows.length ? (
-                          <svg viewBox="0 0 240 240" role="img" aria-label="Radar discipline">
-                            <circle cx="120" cy="120" r="96" className="pilotageRadarGridLine" />
-                            <circle cx="120" cy="120" r="64" className="pilotageRadarGridLine" />
-                            <circle cx="120" cy="120" r="32" className="pilotageRadarGridLine" />
-                            {["Discipline", "Régularité", "Charge", "Focus"].map((label, idx) => {
-                              const angle = (Math.PI * 2 * idx) / 4 - Math.PI / 2;
-                              const x = 120 + Math.cos(angle) * 110;
-                              const y = 120 + Math.sin(angle) * 110;
-                              return (
-                                <g key={label}>
-                                  <line
-                                    x1="120"
-                                    y1="120"
-                                    x2={x}
-                                    y2={y}
-                                    className="pilotageRadarAxis"
-                                  />
-                                  <text x={x} y={y} className="pilotageRadarLabel">
-                                    {label}
-                                  </text>
-                                </g>
-                              );
-                            })}
-                            {radarVisibleRows.map((row) => {
-                              const points = row.values
-                                .map((axis, idx) => {
-                                  const angle = (Math.PI * 2 * idx) / 4 - Math.PI / 2;
-                                  const r = 96 * clamp01(axis.value || 0);
-                                  const x = 120 + Math.cos(angle) * r;
-                                  const y = 120 + Math.sin(angle) * r;
-                                  return `${x},${y}`;
-                                })
-                                .join(" ");
-                              return (
-                                <polygon
-                                  key={row.categoryId}
-                                  points={points}
-                                  fill={row.color}
-                                  fillOpacity="0.18"
-                                  stroke={row.color}
-                                  strokeWidth="2"
-                                />
-                              );
-                            })}
-                          </svg>
-                        ) : (
-                          <div className="small2 textMuted">Aucune donnée récente.</div>
-                        )}
-                      </div>
-                      <div className="pilotageRadarLegend">
-                        {radarVisibleRows.map((row) => (
-                          <div key={row.categoryId} className="pilotageLegendRow">
-                            <span className="pilotageLegendDot" style={{ background: row.color }} />
-                            <span className="small2">{row.label}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="pilotageRadarPanel">
-                      <div className="sectionTitle">Catégories visibles</div>
-                      <div className="pilotageRadarSelects">
-                        {radarSelection.slice(0, 3).map((id, idx) => (
-                          <Select
-                            key={`radar-slot-${idx}`}
-                            value={id || ""}
-                            onChange={(e) => handleRadarSelect(idx, e.target.value)}
-                          >
-                            {categoryRadarRows.map((row) => (
-                              <option key={row.categoryId} value={row.categoryId}>
-                                {row.label}
-                              </option>
-                            ))}
-                          </Select>
-                        ))}
-                      </div>
-                      <div className="small2 textMuted">
-                        Règles: Discipline=fait/attendu (14j), Régularité=jours actifs/14,
-                        Charge=attendu/jour (cap 3), Focus=part de l’action n°1.
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pilotageInsights">
-                    <div className="sectionTitle">Insights</div>
-                    <div className="pilotageInsightItem">{insights.topCategory}</div>
-                    <div className="pilotageInsightItem">{insights.missedAction}</div>
-                    <div className="pilotageInsightItem">{insights.bestSlot}</div>
-                  </div>
-
-                  <details className="pilotageDetails">
-                    <summary>Détails</summary>
-                    <div className="pilotageDetailsBody">
-                      <StatRow label="7j · attendues" value={String(weekWindowStats.occurrences?.expected || 0)} />
-                      <StatRow label="7j · faites" value={String(weekWindowStats.occurrences?.done || 0)} />
-                      <StatRow label="7j · manquées" value={String(weekWindowStats.occurrences?.missed || 0)} />
-                      <StatRow label="14j · attendues" value={String(twoWeekWindowStats.occurrences?.expected || 0)} />
-                      <StatRow label="14j · faites" value={String(twoWeekWindowStats.occurrences?.done || 0)} />
-                      <StatRow label="14j · manquées" value={String(twoWeekWindowStats.occurrences?.missed || 0)} />
-                      <StatRow label="14j · annulées" value={String(twoWeekWindowStats.occurrences?.canceled || 0)} />
-                    </div>
-                  </details>
-                </div>
-              </Card>
-            );
-          }
-
-          if (blockId === "pilotage.reporting") {
-            const totals = reportPreview?.totals || null;
-            return (
-              <Card data-tour-id="pilotage-reporting">
-                <div className="p18">
-                  <div className="row pilotageCardHeaderLeft" style={{ alignItems: "center", gap: 8 }}>
-                    {drag ? (
-                      <button
-                        ref={setActivatorNodeRef}
-                        {...listeners}
-                        {...attributes}
-                        className="dragHandle"
-                        aria-label="Réorganiser"
-                      >
-                        ⋮⋮
-                      </button>
-                    ) : null}
-                    <div className="sectionTitle">Reporting</div>
-                  </div>
-
-                  <div className="mt12 col" style={{ gap: 12 }}>
-                    <div className="col" style={{ gap: 6 }}>
-                      <div className="small2 textMuted">Période</div>
-                      <Select value={reportWindow} onChange={(e) => setReportWindow(e.target.value)}>
-                        <option value="7d">7 jours</option>
-                        <option value="14d">14 jours</option>
-                        <option value="90d">90 jours</option>
-                        <option value="custom">Personnalisée</option>
-                      </Select>
-                    </div>
-
-                    {reportWindow === "custom" ? (
-                      <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
-                        <div className="col" style={{ gap: 6 }}>
-                          <div className="small2 textMuted">Du</div>
-                          <Input type="date" value={reportFrom} onChange={(e) => setReportFrom(e.target.value)} />
-                        </div>
-                        <div className="col" style={{ gap: 6 }}>
-                          <div className="small2 textMuted">Au</div>
-                          <Input type="date" value={reportTo} onChange={(e) => setReportTo(e.target.value)} />
-                        </div>
-                      </div>
-                    ) : null}
-
-                    <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
-                      <div className="col" style={{ gap: 6, minWidth: 180 }}>
-                        <div className="small2 textMuted">Catégorie</div>
-                        <Select value={reportCategoryId} onChange={(e) => setReportCategoryId(e.target.value)}>
-                          <option value="">Toutes</option>
-                          {categories.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name || "Catégorie"}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
-                      <div className="col" style={{ gap: 6, minWidth: 200 }}>
-                        <div className="small2 textMuted">Action</div>
-                        <Select value={reportGoalId} onChange={(e) => setReportGoalId(e.target.value)}>
-                          <option value="">Toutes</option>
-                          {reportGoals.map((g) => (
-                            <option key={g.id} value={g.id}>
-                              {g.title || "Action"}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="col" style={{ gap: 8 }}>
-                      <StatRow label="Occurrences attendues" value={String(totals?.expected || 0)} />
-                      <StatRow label="Occurrences faites" value={String(totals?.done || 0)} />
-                      <StatRow label="Occurrences manquées" value={String(totals?.missed || 0)} />
-                      <StatRow label="Occurrences annulées" value={String(totals?.canceled || 0)} />
-                      <StatRow label="Occurrences planifiées" value={String(totals?.planned || 0)} />
-                    </div>
-
-                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                      <div className="small2 textMuted">
-                        Exporte JSON + CSV (par jour et par action).
-                      </div>
-                      <Button onClick={handleExportReport} disabled={!reportPreview}>
-                        Exporter
-                      </Button>
-                    </div>
+                  <div className="col" style={{ gap: 6 }}>
+                    <div className="small2 textMuted">Au</div>
+                    <Input type="date" value={reportTo} onChange={(event) => setReportTo(event.target.value)} />
                   </div>
                 </div>
-              </Card>
-            );
-          }
+              ) : null}
 
-          return null;
-        }}
-      />
+              <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+                <div className="col" style={{ gap: 6, minWidth: 180 }}>
+                  <div className="small2 textMuted">Catégorie</div>
+                  <Select value={reportCategoryId} onChange={(event) => setReportCategoryId(event.target.value)}>
+                    <option value="">Toutes</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name || "Catégorie"}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="col" style={{ gap: 6, minWidth: 200 }}>
+                  <div className="small2 textMuted">Action</div>
+                  <Select value={reportGoalId} onChange={(event) => setReportGoalId(event.target.value)}>
+                    <option value="">Toutes</option>
+                    {reportGoals
+                      .filter((goal) => !reportCategoryId || goal.categoryId === reportCategoryId)
+                      .map((goal) => (
+                        <option key={goal.id} value={goal.id}>
+                          {goal.title || "Action"}
+                        </option>
+                      ))}
+                  </Select>
+                </div>
+              </div>
+
+              <div className="col" style={{ gap: 8 }}>
+                <StatRow label="Occurrences attendues" value={String(reportPreview?.totals?.expected || 0)} />
+                <StatRow label="Occurrences faites" value={String(reportPreview?.totals?.done || 0)} />
+                <StatRow label="Occurrences manquées" value={String(reportPreview?.totals?.missed || 0)} />
+                <StatRow label="Occurrences annulées" value={String(reportPreview?.totals?.canceled || 0)} />
+                <StatRow label="Occurrences planifiées" value={String(reportPreview?.totals?.planned || 0)} />
+              </div>
+
+              <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                <div className="small2 textMuted">Exporte JSON + CSV (par jour et par action).</div>
+                <Button onClick={handleExportReport} disabled={!reportPreview}>
+                  Exporter
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
     </ScreenShell>
   );
 }

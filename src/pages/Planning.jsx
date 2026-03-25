@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
+import PlanningCoachCard from "../components/planning/PlanningCoachCard";
 import DayRail from "../ui/calendar/DayRail";
 import { addDays, startOfWeekKey } from "../utils/dates";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
@@ -252,6 +253,17 @@ export default function Planning({ data, setData, setTab }) {
             </div>
           </Card>
         ) : null}
+        <PlanningCoachCard
+          data={safeData}
+          setData={setData}
+          setTab={setTab}
+          selectedDateKey={selectedDateKey}
+          activeCategoryId={activeCategoryId}
+          planningView={planningView}
+          occurrences={occurrences}
+          goalsById={goalsById}
+          categoriesById={categoriesById}
+        />
         {legacyBuckets.reclassifyCandidates.length > 0 ? (
           <Card accentBorder>
             <div className="p18 col" style={{ gap: 8 }}>

@@ -40,6 +40,20 @@ describe("home today canonical contract", () => {
     expect(home).not.toContain('data-tour-id="today-notes-card"');
   });
 
+  it("passes decision-oriented hero props and ai-priority next actions", () => {
+    const home = readSrc("pages/Home.jsx");
+
+    expect(home).toContain("const heroImpactText = useMemo(");
+    expect(home).toContain("const heroAiStatusLabel = useMemo(");
+    expect(home).toContain("const heroTimestampLabel = useMemo(");
+    expect(home).toContain("const isHeroPreparing =");
+    expect(home).toContain("impactText={heroImpactText}");
+    expect(home).toContain("aiStatusLabel={heroAiStatusLabel}");
+    expect(home).toContain("timestampLabel={heroTimestampLabel}");
+    expect(home).toContain("isPreparing={isHeroPreparing}");
+    expect(home).toContain("isAiPriority:");
+  });
+
   it("logs today coach diagnostics in local dev with a visible console log", () => {
     const home = readSrc("pages/Home.jsx");
 
