@@ -19,7 +19,14 @@ function normalizeEndedReason(value, state) {
   if (state !== "ended") return null;
   if (value === "canceled") return "canceled";
   if (value === "done") return "done";
+  if (value === "blocked") return "blocked";
+  if (value === "reported") return "reported";
   return null;
+}
+
+function normalizeFeedbackLevel(value) {
+  if (value === "facile" || value === "normal" || value === "difficile") return value;
+  return "";
 }
 
 function normalizeForCompare(record) {
@@ -35,6 +42,8 @@ function normalizeForCompare(record) {
     endedReason: normalizeEndedReason(record?.endedReason, state) || "",
     timerSeconds: normalizeNumber(record?.timerSeconds),
     notes: normalizeString(record?.notes),
+    feedbackLevel: normalizeFeedbackLevel(record?.feedbackLevel),
+    feedbackText: normalizeString(record?.feedbackText),
   };
 }
 
@@ -51,7 +60,9 @@ function areSessionV2Equal(a, b) {
     left.state === right.state &&
     left.endedReason === right.endedReason &&
     left.timerSeconds === right.timerSeconds &&
-    left.notes === right.notes
+    left.notes === right.notes &&
+    left.feedbackLevel === right.feedbackLevel &&
+    left.feedbackText === right.feedbackText
   );
 }
 
@@ -75,6 +86,8 @@ export function upsertSessionV2(list, record) {
     state,
     endedReason: normalizeEndedReason(record.endedReason, state),
     timerSeconds: normalizeNumber(record.timerSeconds),
+    feedbackLevel: normalizeFeedbackLevel(record.feedbackLevel),
+    feedbackText: normalizeString(record.feedbackText),
   };
 
   if (existing && areSessionV2Equal(existing, merged)) return sessions;

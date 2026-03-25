@@ -1,29 +1,23 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import TopMenuPopover from "./TopMenuPopover";
+import React, { useLayoutEffect, useRef } from "react";
 import WalletBadge from "./WalletBadge";
 import { GatePanel } from "../shared/ui/gate/Gate";
 import "../features/navigation/topMenuGate.css";
-// TOUR MAP:
-// - primary_action: top navigation tabs
-// - key_elements: top navigation tabs, hamburger menu
-// - optional_elements: none
+
 const NAV_ITEMS = [
   { id: "today", label: "Aujourd’hui" },
   { id: "planning", label: "Planning" },
   { id: "library", label: "Bibliothèque" },
   { id: "pilotage", label: "Pilotage" },
 ];
+
 const Z_INDEX = {
   topbar: 900,
-  scrim: 1200,
-  popover: 1210,
 };
 
 export default function TopNav({
   active,
   setActive,
-  onMenuNavigate,
+  onMenuOpen,
   coinsBalance = 0,
   coinDeltaAmount = 0,
   coinDeltaKey = "",
@@ -32,76 +26,6 @@ export default function TopNav({
   const navBarRef = useRef(null);
   const topbarSurfaceRef = useRef(null);
   const topbarRef = useRef(null);
-  const menuRef = useRef(null);
-  const menuButtonRef = useRef(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [menuInitialView, setMenuInitialView] = useState("root");
-  const [menuLayout, setMenuLayout] = useState({ top: 72, left: 180, width: 336, maxHeight: 420 });
-
-  const computeMenuLayout = useCallback(() => {
-    if (typeof window === "undefined") return;
-    const anchor = menuButtonRef.current || topbarRef.current || navBarRef.current;
-    if (!anchor) return;
-
-    const rect = anchor.getBoundingClientRect();
-    const vv = window.visualViewport;
-    const vw = vv?.width || window.innerWidth || 0;
-    const vh = vv?.height || window.innerHeight || 0;
-    const styles = window.getComputedStyle(document.documentElement);
-    const safeTop = Number.parseFloat(styles.getPropertyValue("--safe-top")) || 0;
-    const safeLeft = Number.parseFloat(styles.getPropertyValue("--safe-left")) || 0;
-    const safeRight = Number.parseFloat(styles.getPropertyValue("--safe-right")) || 0;
-    const safeBottom = Number.parseFloat(styles.getPropertyValue("--safe-bottom")) || 0;
-
-    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-
-    const viewportPadding = 12;
-    const gap = 10;
-    const maxAvailableWidth = Math.max(220, vw - (viewportPadding * 2) - safeLeft - safeRight);
-    const desktopIdealWidth = Math.max(320, Math.min(420, maxAvailableWidth));
-    const mobileIdealWidth = Math.min(420, maxAvailableWidth);
-    const width = vw <= 640 ? mobileIdealWidth : desktopIdealWidth;
-
-    const desiredTop = rect.bottom + gap;
-    const desiredLeft = rect.right - width;
-    const minLeft = viewportPadding + safeLeft;
-    const maxLeft = vw - viewportPadding - safeRight - width;
-    const left = minLeft <= maxLeft ? clamp(desiredLeft, minLeft, maxLeft) : minLeft;
-
-    const top = Math.max(desiredTop, viewportPadding + safeTop);
-    const maxHeight = Math.max(180, vh - top - (12 + safeBottom));
-
-    setMenuLayout((prev) => {
-      if (
-        prev.top === top
-        && prev.left === left
-        && prev.width === width
-        && prev.maxHeight === maxHeight
-      ) {
-        return prev;
-      }
-      return { top, left, width, maxHeight };
-    });
-  }, []);
-
-  const handleCloseMenu = useCallback(() => {
-    setMenuOpen(false);
-    setMenuInitialView("root");
-  }, []);
-
-  const openMenuTo = useCallback((viewId) => {
-    const safeView = typeof viewId === "string" && viewId.trim() ? viewId.trim() : "root";
-    setMenuInitialView(safeView);
-    setMenuOpen(true);
-  }, []);
-
-  const handleMenuTriggerClick = useCallback(() => {
-    if (menuOpen) {
-      handleCloseMenu();
-      return;
-    }
-    openMenuTo("root");
-  }, [menuOpen, handleCloseMenu, openMenuTo]);
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
@@ -184,106 +108,6 @@ export default function TopNav({
     };
   }, []);
 
-  useEffect(() => {
-    if (!menuOpen) return undefined;
-
-    const onPointerDown = (event) => {
-      const target = event.target;
-      if (menuRef.current && menuRef.current.contains(target)) return;
-      if (menuButtonRef.current && menuButtonRef.current.contains(target)) return;
-      handleCloseMenu();
-    };
-
-    const onKeyDown = (event) => {
-      if (event.key === "Escape") {
-        handleCloseMenu();
-      }
-    };
-
-    window.addEventListener("mousedown", onPointerDown, true);
-    window.addEventListener("touchstart", onPointerDown, true);
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => {
-      window.removeEventListener("mousedown", onPointerDown, true);
-      window.removeEventListener("touchstart", onPointerDown, true);
-      window.removeEventListener("keydown", onKeyDown, true);
-    };
-  }, [menuOpen, handleCloseMenu]);
-
-  useEffect(() => {
-    if (typeof document === "undefined") return undefined;
-    const root = document.getElementById("root");
-    if (!root) return undefined;
-
-    if (menuOpen) {
-      root.setAttribute("aria-hidden", "true");
-      root.setAttribute("data-menu-modal-open", "true");
-    } else {
-      root.removeAttribute("aria-hidden");
-      root.removeAttribute("data-menu-modal-open");
-    }
-
-    return () => {
-      root.removeAttribute("aria-hidden");
-      root.removeAttribute("data-menu-modal-open");
-    };
-  }, [menuOpen]);
-
-  useEffect(() => {
-    if (!menuOpen) return undefined;
-    const update = () => computeMenuLayout();
-    update();
-    const raf = window.requestAnimationFrame(update);
-    window.addEventListener("resize", update);
-    window.addEventListener("orientationchange", update);
-    window.addEventListener("scroll", update, true);
-    window.visualViewport?.addEventListener("resize", update);
-    window.visualViewport?.addEventListener("scroll", update);
-    return () => {
-      window.cancelAnimationFrame(raf);
-      window.removeEventListener("resize", update);
-      window.removeEventListener("orientationchange", update);
-      window.removeEventListener("scroll", update, true);
-      window.visualViewport?.removeEventListener("resize", update);
-      window.visualViewport?.removeEventListener("scroll", update);
-    };
-  }, [menuOpen, computeMenuLayout]);
-
-  const menuPortal = menuOpen && typeof document !== "undefined"
-    ? createPortal(
-      <>
-        <div
-          className="topMenuScrim"
-          style={{ position: "fixed", inset: 0, zIndex: Z_INDEX.scrim }}
-          aria-hidden="true"
-          onClick={handleCloseMenu}
-        />
-        <div
-          ref={menuRef}
-          className="topMenuPopoverLayer"
-          style={{
-            position: "fixed",
-            zIndex: Z_INDEX.popover,
-            top: `${menuLayout.top}px`,
-            left: `${menuLayout.left}px`,
-            width: `${menuLayout.width}px`,
-            opacity: 1,
-            visibility: "visible",
-            pointerEvents: "auto",
-            "--topMenuMaxH": `${menuLayout.maxHeight}px`,
-          }}
-        >
-          <TopMenuPopover
-            onNavigate={onMenuNavigate}
-            initialView={menuInitialView}
-            onClose={handleCloseMenu}
-          />
-        </div>
-      </>,
-      document.body
-    )
-    : null;
-
   return (
     <div className="navTop stickyStack TopNavShell" ref={navTopRef} data-tour-id="topnav">
       <div
@@ -295,6 +119,18 @@ export default function TopNav({
           <div className="TopNavSurfaceClip TopNavBackdrop GateGlassClip GateGlassBackdrop">
             <GatePanel className="topNavGateBar GateGlassContent GateSurfacePremium GateCardPremium" data-tour-id="topnav-row">
               <div ref={topbarRef} className="navRow">
+                <div className="navActions" style={{ justifyContent: "flex-start" }}>
+                  <button
+                    type="button"
+                    className="navBtn NavPillUnified GatePressable"
+                    aria-label="Ouvrir le menu"
+                    title="Menu"
+                    onClick={() => onMenuOpen?.()}
+                    data-tour-id="topnav-settings"
+                  >
+                    ☰
+                  </button>
+                </div>
                 <div className="navGrid" data-tour-id="topnav-tabs">
                   {NAV_ITEMS.map((it) => (
                     <button
@@ -310,24 +146,20 @@ export default function TopNav({
                   ))}
                 </div>
                 <div className="navActions">
-                  <div ref={menuButtonRef} className="topNavWalletTrigger">
-                    <WalletBadge
-                      className="topNavWalletBadge"
-                      balance={coinsBalance}
-                      deltaAmount={coinDeltaAmount}
-                      deltaKey={coinDeltaKey}
-                      dataTestId="topnav-coins-balance"
-                      dataTourId="topnav-settings"
-                      onOpenWallet={handleMenuTriggerClick}
-                    />
-                  </div>
+                  <WalletBadge
+                    className="topNavWalletBadge"
+                    balance={coinsBalance}
+                    deltaAmount={coinDeltaAmount}
+                    deltaKey={coinDeltaKey}
+                    dataTestId="topnav-coins-balance"
+                    showDelta
+                  />
                 </div>
               </div>
             </GatePanel>
           </div>
         </div>
       </div>
-      {menuPortal}
     </div>
   );
 }

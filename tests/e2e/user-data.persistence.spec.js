@@ -58,16 +58,21 @@ test("user_data: charge puis persiste une modification après reload", async ({ 
   await page.getByTestId("user-data-loading-screen").waitFor({ state: "hidden" }).catch(() => {});
   await openPreferencesFromTopMenu(page);
   await expect(page.locator("[data-tour-id=\"settings-title\"]")).toBeVisible();
-  const whyTextarea = page.getByRole("textbox", { name: /Ton pourquoi/i }).first();
+  const whySection = page.locator("[data-tour-id=\"settings-why\"]");
+  const whyTextarea = whySection.getByRole("textbox", { name: /Texte motivation/i }).first();
+  const whySaveButton = whySection.getByRole("button", { name: "Enregistrer" });
   await expect(whyTextarea).toHaveValue("Pourquoi distant initial");
 
   const updatedWhy = "Pourquoi persistant e2e";
   await whyTextarea.fill(updatedWhy);
-  await page.getByRole("button", { name: "Enregistrer" }).click();
-  await page.waitForTimeout(700);
+  await expect(whyTextarea).toHaveValue(updatedWhy);
+  await expect(whySaveButton).toBeEnabled();
+  await whySaveButton.click();
 
-  const remoteAfterSave = await getUserData(page, userId);
-  expect(remoteAfterSave?.profile?.whyText || "").toBe(updatedWhy);
+  await expect.poll(async () => {
+    const remoteAfterSave = await getUserData(page, userId);
+    return remoteAfterSave?.profile?.whyText || "";
+  }).toBe(updatedWhy);
 
   await page.evaluate((key) => localStorage.removeItem(key), LS_KEY);
   const reloaded = await page.context().newPage();

@@ -89,6 +89,11 @@ export async function upsertUserData(userId, data) {
   if (!normalizedUserId) throw new Error("userId requis");
   const payload = data && typeof data === "object" ? data : {};
 
+  if (isUsingE2EMockedSession(normalizedUserId)) {
+    saveLocalUserData(normalizedUserId, payload);
+    return payload;
+  }
+
   if (!supabase) {
     saveLocalUserData(normalizedUserId, payload);
     return payload;

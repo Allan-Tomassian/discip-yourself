@@ -1,17 +1,17 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { AccentItem, Button } from "../components/UI";
-import { normalizeLocalDateKey, parseTimeToMinutes, todayLocalKey } from "../utils/datetime";
-import { isFinalOccurrenceStatus, resolveExecutableOccurrence } from "../logic/sessionResolver";
-import { upsertSessionV2 } from "../logic/sessionsV2";
+import FocusSessionView from "../components/session/FocusSessionView";
+import { Button } from "../components/UI";
+import { addDaysLocal, minutesToTimeStr, normalizeLocalDateKey, parseTimeToMinutes, todayLocalKey } from "../utils/datetime";
+import { resolveExecutableOccurrence } from "../logic/sessionResolver";
+import { updateOccurrence } from "../logic/occurrences";
 import { applySessionRuntimeTransition, isRuntimeSessionOpen } from "../logic/sessionRuntime";
 import { emitSessionRuntimeNotificationHook } from "../logic/sessionRuntimeNotifications";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { resolveConflictNearest } from "../logic/occurrencePlanner";
 import { normalizeActiveSessionForUI, normalizeOccurrenceForUI } from "../logic/compat";
-import { LABELS } from "../ui/labels";
-import { GateSection } from "../shared/ui/gate/Gate";
+import { withSelectedCategoryByView } from "../domain/categoryVisibility";
 import "../features/session/session.css";
 
 function formatElapsed(ms) {
@@ -22,490 +22,355 @@ function formatElapsed(ms) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-function resolvePreferredMinutes(session) {
-  const raw = session?.timerStartedAt || session?.startedAt || "";
-  const d = raw ? new Date(raw) : new Date();
-  if (Number.isNaN(d.getTime())) return null;
-  return d.getHours() * 60 + d.getMinutes();
+function readOccurrenceIdFromPath() {
+  if (typeof window === "undefined") return null;
+  const match = window.location.pathname.match(/^\/session\/([^/]+)/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
-function pickClosestOccurrence(list, preferredMin) {
-  if (!Array.isArray(list) || !Number.isFinite(preferredMin)) return null;
-  let best = null;
-  let bestDiff = Infinity;
-  let bestMin = null;
-  for (const occ of list) {
-    if (!occ || typeof occ.start !== "string") continue;
-    const occMin = parseTimeToMinutes(occ.start);
-    if (occMin == null) continue;
-    const diff = Math.abs(occMin - preferredMin);
-    if (diff < bestDiff || (diff === bestDiff && (bestMin == null || occMin > bestMin))) {
-      best = occ;
-      bestDiff = diff;
-      bestMin = occMin;
-    }
-  }
-  return best;
+function roundUpToQuarterHour(base = new Date()) {
+  const totalMinutes = base.getHours() * 60 + base.getMinutes();
+  const rounded = Math.ceil((totalMinutes + 1) / 15) * 15;
+  return minutesToTimeStr(Math.min(Math.max(rounded, 5 * 60), 22 * 60));
 }
 
-export default function Session({ data, setData, onBack, onOpenLibrary, dateKey }) {
+function resolveFinalViewState(session) {
+  const phase = session?.runtimePhase || "";
+  if (phase === "done") return "completed";
+  if (phase === "blocked") return "blocked";
+  if (phase === "reported") return "reported";
+  return "completed";
+}
+
+export default function Session({
+  data,
+  setData,
+  onBack,
+  onOpenLibrary,
+  dateKey,
+  occurrenceId,
+  categoryId,
+  setTab,
+}) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+  const occurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
+  const sessionHistory = Array.isArray(safeData.sessionHistory) ? safeData.sessionHistory : [];
+  void sessionHistory;
   const rawActiveSession =
-    safeData.ui && typeof safeData.ui.activeSession === "object" ? safeData.ui.activeSession : null;
-  const activeSession = useMemo(
-    () => normalizeActiveSessionForUI(rawActiveSession),
-    [rawActiveSession]
-  );
+    safeData?.ui && typeof safeData.ui === "object" && safeData.ui.activeSession && typeof safeData.ui.activeSession === "object"
+      ? safeData.ui.activeSession
+      : null;
+  const activeSession = useMemo(() => normalizeActiveSessionForUI(rawActiveSession), [rawActiveSession]);
   const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const urlDateKey = urlParams?.get("date") || null;
+  const urlCategoryId = urlParams?.get("cat") || null;
+  const routeOccurrenceId = occurrenceId || readOccurrenceIdFromPath() || null;
   const effectiveDateKey =
     normalizeLocalDateKey(dateKey) ||
     normalizeLocalDateKey(urlDateKey) ||
-    normalizeLocalDateKey(safeData.ui?.selectedDateKey) ||
-    normalizeLocalDateKey(safeData.ui?.selectedDate) ||
+    normalizeLocalDateKey(safeData?.ui?.selectedDateKey) ||
+    normalizeLocalDateKey(safeData?.ui?.selectedDate) ||
     todayLocalKey();
+  const effectiveCategoryId = categoryId || urlCategoryId || null;
   const [tick, setTick] = useState(Date.now());
-  const [showEndConfirm, setShowEndConfirm] = useState(false);
-  const [extraMinutes, setExtraMinutes] = useState(0);
-  const [overrideStart, setOverrideStart] = useState("");
-  const autoEndSigRef = useRef("");
-  const session = useMemo(() => {
-    if (!activeSession) return null;
-    const key = activeSession.dateKey || activeSession.date;
-    if (key && key !== effectiveDateKey) return null;
-    return activeSession;
-  }, [activeSession, effectiveDateKey]);
-  const occurrenceId = typeof session?.occurrenceId === "string" ? session.occurrenceId : null;
-  const runtimeOpen = isRuntimeSessionOpen(session);
-  const isRunning = Boolean(runtimeOpen && session?.timerRunning);
-  useEffect(() => {
-    if (!isRunning) return;
-    const t = setInterval(() => setTick(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [isRunning]);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackLevel, setFeedbackLevel] = useState("");
+  const [feedbackText, setFeedbackText] = useState("");
+  const [reportMode, setReportMode] = useState(false);
 
-  const resolvedDateKey = session?.dateKey || session?.date || effectiveDateKey;
-  const objectiveId = typeof session?.objectiveId === "string" ? session.objectiveId : null;
-  const objective = objectiveId ? goals.find((g) => g.id === objectiveId) || null : null;
-  const habitIds = useMemo(
-    () => (Array.isArray(session?.habitIds) ? session.habitIds : []),
-    [session?.habitIds]
+  const routeOccurrence = useMemo(
+    () => normalizeOccurrenceForUI(occurrences.find((occurrenceItem) => occurrenceItem?.id === routeOccurrenceId) || null),
+    [occurrences, routeOccurrenceId]
   );
-  const habits = habitIds.map((id) => goals.find((g) => g.id === id)).filter(Boolean);
-  const hasHabits = habits.length > 0;
-  const occurrences = useMemo(
-    () => (Array.isArray(safeData.occurrences) ? safeData.occurrences : []),
-    [safeData.occurrences]
+  const categoryGoalIds = useMemo(
+    () =>
+      goals
+        .filter((goal) => !effectiveCategoryId || goal?.categoryId === effectiveCategoryId)
+        .map((goal) => goal?.id)
+        .filter(Boolean),
+    [effectiveCategoryId, goals]
   );
-  const occurrenceById = useMemo(() => {
-    if (!occurrenceId) return null;
-    return occurrences.find((occ) => occ && occ.id === occurrenceId) || null;
-  }, [occurrences, occurrenceId]);
-  const normalizedOccurrenceById = useMemo(
-    () => normalizeOccurrenceForUI(occurrenceById),
-    [occurrenceById]
-  );
-  const effectiveCategoryId = objective?.categoryId || habits[0]?.categoryId || null;
-  const category = categories.find((c) => c.id === effectiveCategoryId) || null;
+  const fallbackOccurrence = useMemo(() => {
+    if (routeOccurrence) return null;
+    if (!categoryGoalIds.length) return null;
+    const resolved = resolveExecutableOccurrence(
+      { occurrences },
+      { dateKey: effectiveDateKey, goalIds: categoryGoalIds }
+    );
+    if (resolved.kind !== "ok" || !resolved.occurrenceId) return null;
+    return normalizeOccurrenceForUI(occurrences.find((occurrenceItem) => occurrenceItem?.id === resolved.occurrenceId) || null);
+  }, [categoryGoalIds, effectiveDateKey, occurrences, routeOccurrence]);
+  const sessionMatchesRoute =
+    activeSession &&
+    (!routeOccurrenceId || activeSession?.occurrenceId === routeOccurrenceId) &&
+    normalizeLocalDateKey(activeSession?.dateKey || activeSession?.date || effectiveDateKey) === effectiveDateKey;
+  const session = sessionMatchesRoute ? activeSession : null;
+  const selectedOccurrence = useMemo(() => {
+    if (session?.occurrenceId) {
+      return normalizeOccurrenceForUI(occurrences.find((occurrenceItem) => occurrenceItem?.id === session.occurrenceId) || null);
+    }
+    return routeOccurrence || fallbackOccurrence || null;
+  }, [fallbackOccurrence, occurrences, routeOccurrence, session?.occurrenceId]);
+  const goal = useMemo(() => {
+    const selectedGoalId = selectedOccurrence?.goalId || session?.habitIds?.[0] || null;
+    return goals.find((item) => item?.id === selectedGoalId) || null;
+  }, [goals, selectedOccurrence?.goalId, session?.habitIds]);
+  const category = categories.find((item) => item?.id === goal?.categoryId) || null;
   const accent = category?.color || getAccentForPage(safeData, "home");
   const catAccentVars = getCategoryAccentVars(accent);
+
+  useEffect(() => {
+    const isRunning = Boolean(session && isRuntimeSessionOpen(session) && session?.timerRunning);
+    if (!isRunning) return undefined;
+    const timerId = window.setInterval(() => setTick(Date.now()), 1000);
+    return () => window.clearInterval(timerId);
+  }, [session]);
+
+  useEffect(() => {
+    if (!session || isRuntimeSessionOpen(session)) return;
+    setReportMode(false);
+    setShowFeedback(false);
+  }, [session]);
 
   const timerAccumulatedSec = Number.isFinite(session?.timerAccumulatedSec) ? session.timerAccumulatedSec : 0;
   const startedAtMs = session?.timerStartedAt ? new Date(session.timerStartedAt).getTime() : NaN;
   const runningDeltaSec =
-    isRunning && Number.isFinite(startedAtMs) ? Math.max(0, Math.floor((tick - startedAtMs) / 1000)) : 0;
+    session?.timerRunning && Number.isFinite(startedAtMs)
+      ? Math.max(0, Math.floor((tick - startedAtMs) / 1000))
+      : 0;
   const elapsedSec = Math.max(0, timerAccumulatedSec + runningDeltaSec);
-  const elapsedLabel = formatElapsed(elapsedSec * 1000);
-  const preferredMinutes = resolvePreferredMinutes(session);
-  const resolution = useMemo(() => {
-    if (occurrenceId) {
-      if (!occurrenceById) return { occurrence: null, reason: "not_found" };
-      const st = typeof occurrenceById.status === "string" ? occurrenceById.status : "planned";
-      if (isFinalOccurrenceStatus(st)) return { occurrence: occurrenceById, reason: "final" };
-      return { occurrence: occurrenceById, reason: "ok" };
-    }
-
-    const resolved = resolveExecutableOccurrence(
-      { occurrences },
-      { dateKey: resolvedDateKey, goalIds: habitIds }
-    );
-    if (resolved.kind !== "ok" || !resolved.occurrenceId) {
-      return { occurrence: null, reason: resolved.kind === "final" ? "final" : "not_found" };
-    }
-    const occ = occurrences.find((o) => o && o.id === resolved.occurrenceId) || null;
-    if (!occ) return { occurrence: null, reason: "not_found" };
-    if (isFinalOccurrenceStatus(occ.status)) return { occurrence: occ, reason: "final" };
-    return { occurrence: occ, reason: "ok" };
-  }, [occurrenceId, occurrenceById, occurrences, resolvedDateKey, habitIds]);
-  const candidateOccurrences = useMemo(() => {
-    if (!habitIds.length) return [];
-    return occurrences.filter((occ) => occ && habitIds.includes(occ.goalId) && occ.date === resolvedDateKey);
-  }, [occurrences, habitIds, resolvedDateKey]);
-  const selectedOccurrence = useMemo(() => {
-    if (occurrenceId) return occurrenceById;
-    return resolution.occurrence;
-  }, [occurrenceId, occurrenceById, resolution.occurrence]);
-  const normalizedSelectedOccurrence = useMemo(
-    () => normalizeOccurrenceForUI(selectedOccurrence),
-    [selectedOccurrence]
-  );
-
-  const availableStarts = useMemo(() => {
-    const set = new Set();
-    for (const occ of candidateOccurrences) {
-      if (!occ || typeof occ.start !== "string" || !occ.start) continue;
-      set.add(occ.start);
-    }
-    return Array.from(set).sort();
-  }, [candidateOccurrences]);
-  const occurrenceStart =
-    (occurrenceId ? normalizedOccurrenceById?.start : overrideStart || normalizedSelectedOccurrence?.start) || "";
-  const hasOccurrence = Boolean(selectedOccurrence);
-  const resolvedDoneHabitIds = useMemo(() => {
-    if (occurrenceId && selectedOccurrence?.goalId) return [selectedOccurrence.goalId];
-    return habitIds;
-  }, [occurrenceId, selectedOccurrence?.goalId, habitIds]);
-  const occurrenceDuration = Number.isFinite(selectedOccurrence?.durationMinutes)
+  const plannedMinutes = Number.isFinite(selectedOccurrence?.durationMinutes)
     ? selectedOccurrence.durationMinutes
-    : hasOccurrence
-      ? 30
+    : Number.isFinite(goal?.sessionMinutes)
+      ? goal.sessionMinutes
       : null;
-  const targetMinutes = occurrenceDuration != null ? occurrenceDuration + extraMinutes : null;
-  const canRunTimer = hasHabits && hasOccurrence;
   const remainingSec =
-    Number.isFinite(targetMinutes) && targetMinutes != null
-      ? Math.max(0, Math.round(targetMinutes * 60 - elapsedSec))
-      : null;
-  const remainingLabel = remainingSec != null ? formatElapsed(remainingSec * 1000) : "";
-  const isOccurrenceFinal = Boolean(selectedOccurrence && isFinalOccurrenceStatus(selectedOccurrence.status));
-  const resolutionBlocked = resolution.reason !== "ok";
-  const finalStatus =
-    session && session.status && !runtimeOpen
-      ? session.status
-      : isOccurrenceFinal || resolution.reason === "final"
-        ? selectedOccurrence?.status || "canceled"
-        : null;
-  const isFinal = Boolean(finalStatus || resolutionBlocked);
-  const isEditable = Boolean(session && runtimeOpen && !isOccurrenceFinal && !resolutionBlocked);
-  useEffect(() => {
-    setExtraMinutes(0);
-    setOverrideStart("");
-    setShowEndConfirm(false);
-  }, [session?.id]);
+    Number.isFinite(plannedMinutes) ? Math.max(Math.round(plannedMinutes * 60) - elapsedSec, 0) : null;
 
-  const attachOccurrenceSigRef = useRef("");
-  useEffect(() => {
-    if (!session || occurrenceId) return;
-    if (resolution.reason !== "ok" || !resolution.occurrence?.id) return;
-    if (typeof setData !== "function") return;
-    const sig = `${session.id || ""}:${resolution.occurrence.id}`;
-    if (attachOccurrenceSigRef.current === sig) return;
-    attachOccurrenceSigRef.current = sig;
-    setData((prev) => {
-      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-      const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
-      if (!current || current.occurrenceId) return prev;
-      if (session?.id && current.id && current.id !== session.id) return prev;
-      if (current.occurrenceId === resolution.occurrence.id) return prev;
-      const nextSession = { ...current, occurrenceId: resolution.occurrence.id };
-      return { ...prev, ui: { ...prevUi, activeSession: nextSession } };
-    });
-  }, [occurrenceId, resolution.reason, resolution.occurrence?.id, session?.id, setData]);
-
-  const ensureSessionHistorySigRef = useRef("");
-  useEffect(() => {
-    if (!session || !runtimeOpen || !occurrenceId) return;
-    if (typeof setData !== "function") return;
-    const sig = `${session.id || ""}:${occurrenceId}:in_progress`;
-    if (ensureSessionHistorySigRef.current === sig) return;
-    ensureSessionHistorySigRef.current = sig;
-    setData((prev) => {
-      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-      const current = prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
-      if (!current || !isRuntimeSessionOpen(current)) return prev;
-      if (current.occurrenceId && current.occurrenceId !== occurrenceId) return prev;
-      const prevHistory = Array.isArray(prev?.sessionHistory) ? prev.sessionHistory : [];
-      const prevOccurrences = Array.isArray(prev?.occurrences) ? prev.occurrences : [];
-      const occurrence = prevOccurrences.find((occ) => occ && occ.id === occurrenceId) || null;
-      const actionId =
-        typeof occurrence?.goalId === "string"
-          ? occurrence.goalId
-          : typeof occurrence?.actionId === "string"
-            ? occurrence.actionId
-            : "";
-      const dateKey = occurrence?.date || current.dateKey || current.date || resolvedDateKey;
-      const record = {
-        id: current.id || occurrenceId,
-        occurrenceId,
-        actionId,
-        dateKey,
-        startAt: current.startedAt || current.timerStartedAt || "",
-        endAt: null,
-        state: "in_progress",
-        endedReason: null,
-        timerSeconds: Number.isFinite(current.timerAccumulatedSec) ? current.timerAccumulatedSec : 0,
-        notes: typeof current.notes === "string" ? current.notes : "",
-      };
-      const nextHistory = upsertSessionV2(prevHistory, record);
-      if (nextHistory === prevHistory) return prev;
-      return { ...prev, sessionHistory: nextHistory };
-    });
-  }, [session?.id, occurrenceId, resolvedDateKey, runtimeOpen, setData]);
-
-  useEffect(() => {
-    if (!session || !isEditable) return;
-    if (!isRunning) return;
-    if (remainingSec == null) return;
-    if (remainingSec > 0) return;
-    if (!occurrenceId) return;
-    const sig = `${session?.id || ""}:${occurrenceId || ""}:${resolvedDateKey}`;
-    if (autoEndSigRef.current === sig) return;
-    autoEndSigRef.current = sig;
-
-    const durationSec = Math.max(0, Math.floor(elapsedSec));
-    if (typeof setData === "function") {
-      setData((prev) =>
-        applySessionRuntimeTransition(prev, {
-          type: "finish",
-          occurrenceId,
-          dateKey: resolvedDateKey,
-          doneHabitIds: resolvedDoneHabitIds,
-          durationSec,
-        })
-      );
-    }
-    emitSessionRuntimeNotificationHook("finish", {
-      occurrenceId,
-      dateKey: resolvedDateKey,
-      runtimePhase: "done",
-      source: "session_auto_finish",
-    });
-
-    if (typeof onBack === "function") onBack();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRunning, remainingSec, session?.id, occurrenceId, resolvedDateKey, isEditable]);
+  const viewState = (() => {
+    if (session && !isRuntimeSessionOpen(session)) return resolveFinalViewState(session);
+    if (!session) return "idle";
+    if (session?.timerRunning) return "running";
+    if (session?.runtimePhase === "paused") return "paused";
+    return "idle";
+  })();
 
   function startTimer() {
-    if (!session || typeof setData !== "function" || !canRunTimer || !isEditable || !occurrenceId) return;
-    setData((prev) =>
-      applySessionRuntimeTransition(prev, {
+    if (!selectedOccurrence?.id || typeof setData !== "function") return;
+    const selectedOccurrenceId = selectedOccurrence.id;
+    const selectedGoalId = selectedOccurrence.goalId || "";
+    setData((prev) => {
+      const current = prev?.ui?.activeSession;
+      let next = prev;
+      if (!current || !isRuntimeSessionOpen(current) || current.occurrenceId !== selectedOccurrenceId) {
+        next = applySessionRuntimeTransition(next, {
+          type: "start",
+          occurrenceId: selectedOccurrenceId,
+          dateKey: selectedOccurrence.date || effectiveDateKey,
+          objectiveId: null,
+          habitIds: selectedGoalId ? [selectedGoalId] : [],
+        });
+      }
+      return applySessionRuntimeTransition(next, {
         type: "resume",
-        occurrenceId,
-        dateKey: resolvedDateKey,
-        durationSec: elapsedSec,
-      })
-    );
+        occurrenceId: selectedOccurrenceId,
+        dateKey: selectedOccurrence.date || effectiveDateKey,
+        durationSec: 0,
+      });
+    });
     emitSessionRuntimeNotificationHook("resume", {
-      occurrenceId,
-      dateKey: resolvedDateKey,
+      occurrenceId: selectedOccurrenceId,
+      dateKey: selectedOccurrence.date || effectiveDateKey,
       runtimePhase: "in_progress",
       source: "session_start_timer",
     });
   }
 
   function pauseTimer() {
-    if (!session || typeof setData !== "function" || !occurrenceId || !isEditable) return;
+    if (!session?.occurrenceId || typeof setData !== "function") return;
     setData((prev) =>
       applySessionRuntimeTransition(prev, {
         type: "pause",
-        occurrenceId,
-        dateKey: resolvedDateKey,
+        occurrenceId: session.occurrenceId,
+        dateKey: selectedOccurrence?.date || effectiveDateKey,
         durationSec: elapsedSec,
       })
     );
     emitSessionRuntimeNotificationHook("pause", {
-      occurrenceId,
-      dateKey: resolvedDateKey,
+      occurrenceId: session.occurrenceId,
+      dateKey: selectedOccurrence?.date || effectiveDateKey,
       runtimePhase: "paused",
       source: "session_pause_timer",
     });
   }
 
-  function confirmPause() {
-    pauseTimer();
-  }
-
   function resumeTimer() {
-    if (!session || typeof setData !== "function" || !canRunTimer || !isEditable || !occurrenceId) return;
+    if (!session?.occurrenceId || typeof setData !== "function") return;
     setData((prev) =>
       applySessionRuntimeTransition(prev, {
         type: "resume",
-        occurrenceId,
-        dateKey: resolvedDateKey,
+        occurrenceId: session.occurrenceId,
+        dateKey: selectedOccurrence?.date || effectiveDateKey,
         durationSec: elapsedSec,
       })
     );
     emitSessionRuntimeNotificationHook("resume", {
-      occurrenceId,
-      dateKey: resolvedDateKey,
+      occurrenceId: session.occurrenceId,
+      dateKey: selectedOccurrence?.date || effectiveDateKey,
       runtimePhase: "in_progress",
       source: "session_resume_timer",
     });
   }
 
   function endSession() {
-    if (!session || typeof setData !== "function" || !canRunTimer || !isEditable || !occurrenceId) return;
-    const durationSec = Math.max(0, Math.floor(elapsedSec));
+    if (!session?.occurrenceId || typeof setData !== "function" || !feedbackLevel) return;
+    const occurrenceGoalId = selectedOccurrence?.goalId || "";
     setData((prev) =>
       applySessionRuntimeTransition(prev, {
         type: "finish",
-        occurrenceId,
-        dateKey: resolvedDateKey,
-        doneHabitIds: resolvedDoneHabitIds,
-        durationSec,
+        occurrenceId: session.occurrenceId,
+        dateKey: selectedOccurrence?.date || effectiveDateKey,
+        doneHabitIds: occurrenceGoalId ? [occurrenceGoalId] : [],
+        durationSec: elapsedSec,
+        feedbackLevel,
+        feedbackText,
       })
     );
+    setShowFeedback(false);
     emitSessionRuntimeNotificationHook("finish", {
-      occurrenceId,
-      dateKey: resolvedDateKey,
+      occurrenceId: session.occurrenceId,
+      dateKey: selectedOccurrence?.date || effectiveDateKey,
       runtimePhase: "done",
       source: "session_manual_finish",
     });
-
-    if (typeof onBack === "function") onBack();
-  }
-
-  function confirmEndSession() {
-    setShowEndConfirm(true);
-  }
-
-  function applyExtension(addMinutes) {
-    if (!selectedOccurrence || !Number.isFinite(addMinutes)) return;
-    const nextExtra = Math.max(0, extraMinutes + addMinutes);
-    const base = Number.isFinite(selectedOccurrence.durationMinutes) ? selectedOccurrence.durationMinutes : 30;
-    const newDuration = base + nextExtra;
-    const otherOccurrences = candidateOccurrences.filter((o) => o !== selectedOccurrence);
-    const resolved = resolveConflictNearest(otherOccurrences, resolvedDateKey, occurrenceStart, newDuration, []);
-    if (resolved && resolved.start && resolved.start !== occurrenceStart) {
-      setOverrideStart(resolved.start);
-    }
-    setExtraMinutes(nextExtra);
-  }
-
-  function closeEndConfirm() {
-    setShowEndConfirm(false);
   }
 
   function cancelSession() {
-    if (typeof setData !== "function" || !isEditable || !occurrenceId) return;
+    if (!session?.occurrenceId || typeof setData !== "function") return;
     setData((prev) =>
       applySessionRuntimeTransition(prev, {
         type: "cancel",
-        occurrenceId,
-        dateKey: resolvedDateKey,
-        durationSec: Math.max(0, Math.floor(elapsedSec)),
+        occurrenceId: session.occurrenceId,
+        dateKey: selectedOccurrence?.date || effectiveDateKey,
+        durationSec: elapsedSec,
+      })
+    );
+  }
+  void cancelSession;
+
+  const blockSession = () => {
+    if (!session?.occurrenceId || typeof setData !== "function") return;
+    setData((prev) =>
+      applySessionRuntimeTransition(prev, {
+        type: "block",
+        occurrenceId: session.occurrenceId,
+        dateKey: selectedOccurrence?.date || effectiveDateKey,
+        durationSec: elapsedSec,
       })
     );
     emitSessionRuntimeNotificationHook("cancel", {
-      occurrenceId,
-      dateKey: resolvedDateKey,
-      runtimePhase: "canceled",
-      source: "session_cancel",
+      occurrenceId: session.occurrenceId,
+      dateKey: selectedOccurrence?.date || effectiveDateKey,
+      runtimePhase: "blocked",
+      source: "session_blocked",
     });
-    if (typeof onBack === "function") onBack();
-  }
+  };
 
-  if (!session) {
+  const openPlanningForReschedule = () => {
+    if (!selectedOccurrence?.id || typeof setData !== "function") return;
+    const targetDateKey = normalizeLocalDateKey(selectedOccurrence?.date) || todayLocalKey();
+    const targetCategoryId = category?.id || null;
+    setData((prev) => {
+      const reported = session?.occurrenceId
+        ? applySessionRuntimeTransition(prev, {
+            type: "report",
+            occurrenceId: session.occurrenceId,
+            dateKey: selectedOccurrence?.date || effectiveDateKey,
+            durationSec: elapsedSec,
+          })
+        : prev;
+      return {
+        ...reported,
+        ui: withSelectedCategoryByView(
+          {
+            ...(reported?.ui || {}),
+            selectedDateKey: targetDateKey,
+            selectedDate: targetDateKey,
+            planningPendingOccurrenceId: selectedOccurrence.id,
+            planningPendingIntent: "reschedule",
+          },
+          {
+            planning: targetCategoryId,
+          }
+        ),
+      };
+    });
+    setReportMode(false);
+    setTab?.("planning");
+  };
+
+  const applyQuickReport = (target) => {
+    if (!selectedOccurrence?.id || typeof setData !== "function") return;
+    if (target === "planning") {
+      openPlanningForReschedule();
+      return;
+    }
+    const nextDateKey = target === "tomorrow" ? addDaysLocal(todayLocalKey(), 1) : todayLocalKey();
+    const preferredStart =
+      target === "later_today"
+        ? roundUpToQuarterHour(new Date())
+        : selectedOccurrence?.start || minutesToTimeStr(Math.max(parseTimeToMinutes(selectedOccurrence?.start || "09:00") || 540, 540));
+    const resolved = resolveConflictNearest(
+      occurrences.filter((occurrenceItem) => occurrenceItem?.id !== selectedOccurrence.id),
+      nextDateKey,
+      preferredStart,
+      plannedMinutes || 30,
+      []
+    );
+    if (resolved?.conflict) {
+      openPlanningForReschedule();
+      return;
+    }
+    setData((prev) => {
+      const nextOccurrences = updateOccurrence(
+        selectedOccurrence.id,
+        {
+          date: nextDateKey,
+          start: resolved.start,
+          slotKey: resolved.start,
+          status: "planned",
+        },
+        prev
+      );
+      const next = { ...prev, occurrences: nextOccurrences };
+      return session?.occurrenceId
+        ? applySessionRuntimeTransition(next, {
+            type: "report",
+            occurrenceId: session.occurrenceId,
+            dateKey: selectedOccurrence?.date || effectiveDateKey,
+            durationSec: elapsedSec,
+          })
+        : next;
+    });
+    setReportMode(false);
+  };
+
+  if (!selectedOccurrence && !session) {
     return (
       <ScreenShell
         accent={getAccentForPage(safeData, "home")}
         headerTitle={<span>Session</span>}
-        headerSubtitle={
-          <div className="stack stackGap12">
-            <div>Aucune session</div>
-            {typeof onOpenLibrary === "function" ? null : (
-              <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
-                ← Retour
-              </Button>
-            )}
-          </div>
-        }
+        headerSubtitle={<span>Exécution</span>}
       >
-        <GateSection title="Aucune session en cours" collapsible={false}>
-          <div className="small2 mt6">Lance une session depuis Aujourd’hui.</div>
-          {typeof onOpenLibrary === "function" ? (
-            <div className="mt12">
-              <Button variant="ghost" onClick={onOpenLibrary}>
-                Aller à Bibliothèque
-              </Button>
-            </div>
-          ) : null}
-        </GateSection>
-      </ScreenShell>
-    );
-  }
-
-  const sessionTitle = objective?.title || LABELS.goal;
-  const sessionSubtitle = category?.name || "Catégorie";
-
-  if (isFinal) {
-    const statusLabel =
-      finalStatus === "done" ? "Session terminée" : finalStatus ? "Session clôturée" : "Session clôturée";
-
-    const durationSecStored = Number.isFinite(session?.durationSec) ? session.durationSec : null;
-    const durationSec =
-      durationSecStored != null
-        ? Math.max(0, Math.floor(durationSecStored))
-        : Math.max(0, Math.floor(elapsedSec));
-    const durationLabel = formatElapsed(durationSec * 1000);
-
-    const doneHabitIds = Array.isArray(session?.doneHabitIds)
-      ? session.doneHabitIds
-      : finalStatus === "done"
-        ? resolvedDoneHabitIds
-        : [];
-    const doneHabits = doneHabitIds
-      .map((id) => goals.find((g) => g.id === id))
-      .filter(Boolean);
-
-    return (
-      <ScreenShell
-        accent={accent}
-        headerTitle={<span>{sessionTitle}</span>}
-        headerSubtitle={
-          <div className="stack stackGap12">
-            <div>{sessionSubtitle}</div>
-            <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
-              ← Retour
-            </Button>
+        <div className="col" style={{ gap: 12 }}>
+          <div className="small2">Aucune occurrence sélectionnée.</div>
+          <div className="row" style={{ gap: 8 }}>
+            <Button variant="ghost" onClick={onBack}>← Retour</Button>
+            {onOpenLibrary ? <Button variant="ghost" onClick={onOpenLibrary}>Ouvrir Bibliothèque</Button> : null}
           </div>
-        }
-        backgroundImage={category?.wallpaper || safeData.profile?.whyImage || ""}
-      >
-        <GateSection title={statusLabel} collapsible={false}>
-          <div className="small2 mt6">Date : {effectiveDateKey}</div>
-        </GateSection>
-
-        <GateSection title="Débrief" className="mt12" collapsible={false}>
-
-          <div className="mt12">
-            <div className="small2">Durée : {durationLabel}</div>
-          </div>
-
-          {session.status === "done" ? (
-            <div className="mt12">
-              <div className="small2">Actions accomplies</div>
-              {doneHabits.length ? (
-                <div className="mt10 col gap10">
-                  {doneHabits.map((h) => (
-                    <AccentItem key={h.id} className="listItem" style={catAccentVars}>
-                      <div className="row rowBetween alignCenter">
-                        <div className="itemTitle">{h.title || "Action"}</div>
-                        <span className="actionStatus running">Fait</span>
-                      </div>
-                    </AccentItem>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt10 small2">Aucune action enregistrée.</div>
-              )}
-            </div>
-          ) : (
-            <div className="mt12 small2">Aucune action validée (session annulée).</div>
-          )}
-        </GateSection>
+        </div>
       </ScreenShell>
     );
   }
@@ -513,136 +378,43 @@ export default function Session({ data, setData, onBack, onOpenLibrary, dateKey 
   return (
     <ScreenShell
       accent={accent}
-      headerTitle={<span>{sessionTitle}</span>}
+      backgroundImage={category?.wallpaper || safeData?.profile?.whyImage || ""}
+      headerTitle={<span>{goal?.title || "Session"}</span>}
       headerSubtitle={
         <div className="stack stackGap12">
-          <div>{sessionSubtitle}</div>
+          <div>{category?.name || "Catégorie"}</div>
           <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
             ← Retour
           </Button>
         </div>
       }
-      backgroundImage={category?.wallpaper || safeData.profile?.whyImage || ""}
     >
       <div style={catAccentVars}>
-        <GateSection title="Timer" className="mt12" collapsible={false}>
-          <div className="titleSm mt6">{elapsedLabel}</div>
-          {remainingLabel ? (
-            <div className="small2 mt6">Reste : {remainingLabel}</div>
-          ) : null}
-          {!isRunning ? (
-            <div className="small2 mt6">
-              {!hasOccurrence
-                ? "Aucune occurrence planifiée pour cette session."
-                : elapsedSec > 0
-                  ? "Continue quand tu es prêt."
-                  : "Appuie sur Démarrer pour lancer le timer."}
-            </div>
-          ) : null}
-          {availableStarts.length > 1 ? (
-            <div className="mt12">
-              <div className="small2">Créneau</div>
-              <div className="mt8 row gap8 rowWrap">
-                {availableStarts.map((t) => (
-                  <Button
-                    key={t}
-                    variant="ghost"
-                    className={`sessionSlotBtn${t === occurrenceStart ? " isSelected" : ""}`}
-                    onClick={() => setOverrideStart(t)}
-                    disabled={!isEditable}
-                  >
-                    {t}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          <div className="mt12 row gap10">
-            <Button
-              variant="ghost"
-              onClick={confirmPause}
-              disabled={!canRunTimer || !isEditable || !occurrenceId}
-            >
-              Pause
-            </Button>
-            <Button
-              onClick={elapsedSec > 0 ? resumeTimer : startTimer}
-              disabled={!canRunTimer || !isEditable || !occurrenceId}
-            >
-              {elapsedSec > 0 ? "Continuer" : "Démarrer"}
-            </Button>
-          </div>
-        </GateSection>
-
-        <GateSection title="Actions" className="mt12" collapsible={false}>
-          {habits.length ? (
-            <div className="mt12 col gap10">
-              {habits.map((h) => (
-                <AccentItem key={h.id} className="listItem" style={catAccentVars}>
-                  <div className="row rowBetween alignCenter">
-                    <div className="itemTitle">{h.title || "Action"}</div>
-                    <span className={`actionStatus ${isRunning ? "running" : "todo"}`}>
-                      {isRunning ? "En cours" : "À faire"}
-                    </span>
-                  </div>
-                </AccentItem>
-              ))}
-            </div>
-          ) : (
-            <div className="mt12 col">
-              <div className="small2">Aucune action sélectionnée pour cette session.</div>
-              <div className="mt10">
-                <Button
-                  variant="ghost"
-                  onClick={typeof onOpenLibrary === "function" ? onOpenLibrary : onBack}
-                >
-                  Choisir des actions
-                </Button>
-              </div>
-            </div>
-          )}
-        </GateSection>
-
-        <div className="mt12 row gap10">
-          <Button variant="ghost" onClick={cancelSession} disabled={!hasHabits || !isEditable || !occurrenceId}>
-            Annuler
-          </Button>
-          <Button variant="ghost" onClick={confirmEndSession} disabled={!canRunTimer || !isEditable || !occurrenceId}>
-            Terminer
-          </Button>
-        </div>
-        {showEndConfirm ? (
-          <GateSection title="Terminer ?" className="mt12" collapsible={false}>
-            <div className="mt12 row gap8 rowWrap">
-              <Button onClick={() => applyExtension(5)}>+5</Button>
-              <Button onClick={() => applyExtension(10)}>+10</Button>
-              <Button onClick={() => applyExtension(15)}>+15</Button>
-              <Button variant="ghost" onClick={endSession}>Terminer</Button>
-              <Button variant="ghost" onClick={closeEndConfirm}>Annuler</Button>
-            </div>
-          </GateSection>
-        ) : null}
+        <FocusSessionView
+          title={goal?.title || "Session"}
+          categoryName={category?.name || "Catégorie"}
+          plannedDurationLabel={Number.isFinite(plannedMinutes) ? `${plannedMinutes} min` : ""}
+          elapsedLabel={formatElapsed(elapsedSec * 1000)}
+          remainingLabel={remainingSec != null ? formatElapsed(remainingSec * 1000) : ""}
+          viewState={viewState}
+          canStart={Boolean(selectedOccurrence?.id) && (viewState === "idle" || viewState === "paused")}
+          canPause={viewState === "running"}
+          canComplete={Boolean(session?.occurrenceId) && isRuntimeSessionOpen(session)}
+          onStart={viewState === "paused" ? resumeTimer : startTimer}
+          onPause={pauseTimer}
+          onComplete={() => setShowFeedback(true)}
+          onBlock={blockSession}
+          onOpenReport={() => setReportMode((current) => !current)}
+          showFeedback={showFeedback}
+          feedbackLevel={feedbackLevel}
+          feedbackText={feedbackText}
+          onFeedbackLevelChange={setFeedbackLevel}
+          onFeedbackTextChange={setFeedbackText}
+          onFeedbackSubmit={endSession}
+          reportMode={reportMode}
+          onChooseReport={applyQuickReport}
+        />
       </div>
     </ScreenShell>
   );
 }
-
-/* Tests manuels
-1) Démarrer session, voir le timer tourner.
-2) Quand le timer tourne: status actions => "En cours".
-3) Terminer (timer à 0 ou bouton Terminer) => écran final + Débrief.
-4) Annuler => écran final "Session annulée".
-*/
-
-/* CSS à ajouter (ex: index.css)
-.actionStatus {
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  background: rgba(255,255,255,0.10);
-}
-.actionStatus.running {
-  background: rgba(255,165,0,0.20);
-}
-*/

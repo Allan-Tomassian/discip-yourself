@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import TopNav from "./components/TopNav";
 import CategoryRail from "./components/CategoryRail";
+import MainDrawer from "./components/navigation/MainDrawer";
 import {
   ensureSystemInboxCategory,
   migrate,
@@ -31,6 +32,11 @@ import Preferences from "./pages/Preferences";
 import Account from "./pages/Account";
 import Subscription from "./pages/Subscription";
 import DataPage from "./pages/Data";
+import Faq from "./pages/Faq";
+import History from "./pages/History";
+import Journal from "./pages/Journal";
+import Legal from "./pages/Legal";
+import MicroActions from "./pages/MicroActions";
 import CategoryView from "./pages/CategoryView";
 import EditItem from "./pages/EditItem";
 import CategoryDetailView from "./pages/CategoryDetailView";
@@ -38,7 +44,6 @@ import CategoryProgress from "./pages/CategoryProgress";
 import Session from "./pages/Session";
 import Pilotage from "./pages/Pilotage";
 import Privacy from "./pages/Privacy";
-import Terms from "./pages/Terms";
 import Support from "./pages/Support";
 import CoachChat from "./pages/CoachChat";
 import { applyThemeTokens } from "./theme/themeTokens";
@@ -129,6 +134,7 @@ export default function App() {
     sessionCategoryId,
     setSessionCategoryId,
     sessionDateKey,
+    sessionOccurrenceId,
   } = useAppNavigation({ safeData, setData });
   const [editItem, setEditItem] = useState(null);
   const dataRef = useRef(data);
@@ -177,6 +183,21 @@ export default function App() {
     () => normalizeWalletPreview(safeData?.ui?.walletV1),
     [safeData?.ui?.walletV1]
   );
+  const isDrawerOpen = Boolean(safeData?.ui?.isDrawerOpen);
+
+  const setDrawerOpen = (open) => {
+    setData((prev) => {
+      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+      if (Boolean(prevUi.isDrawerOpen) === Boolean(open)) return prev;
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          isDrawerOpen: Boolean(open),
+        },
+      };
+    });
+  };
 
   useEffect(() => {
     setData((prev) => {
@@ -272,8 +293,17 @@ export default function App() {
             ? "planning"
           : currentTab === "pilotage"
             ? "pilotage"
-            : currentTab === "preferences"
-              ? "preferences"
+            : currentTab === "settings" ||
+                currentTab === "billing" ||
+                currentTab === "account" ||
+                currentTab === "support" ||
+                currentTab === "faq" ||
+                currentTab === "legal" ||
+                currentTab === "privacy" ||
+                currentTab === "journal" ||
+                currentTab === "micro-actions" ||
+                currentTab === "history"
+              ? "today"
               : currentTab === "library" ||
                   currentTab === "edit-item" ||
                   currentTab === "category-detail" ||
@@ -292,6 +322,7 @@ export default function App() {
       onMenuNavigate={(action) => {
         setTab(action);
       }}
+      onMenuOpen={() => setDrawerOpen(true)}
       coinsBalance={topWalletPreview.balance}
       coinDeltaAmount={topWalletPreview.deltaAmount}
       coinDeltaKey={topWalletPreview.deltaKey}
@@ -573,6 +604,32 @@ export default function App() {
 
   const showBottomRail = tab === "today" || tab === "planning" || tab === "library" || tab === "pilotage";
   const totemDockLayer = <TotemDockLayer data={safeData} setData={setData} />;
+  const routeCloseSigRef = useRef("");
+
+  useEffect(() => {
+    const nextSig = [
+      tab,
+      categoryDetailId || "",
+      categoryProgressId || "",
+      libraryCategoryId || "",
+      sessionOccurrenceId || "",
+      sessionDateKey || "",
+    ].join("|");
+    if (!routeCloseSigRef.current) {
+      routeCloseSigRef.current = nextSig;
+      return;
+    }
+    if (routeCloseSigRef.current === nextSig) return;
+    routeCloseSigRef.current = nextSig;
+    setDrawerOpen(false);
+  }, [
+    categoryDetailId,
+    categoryProgressId,
+    libraryCategoryId,
+    sessionDateKey,
+    sessionOccurrenceId,
+    tab,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined" || dataLoading) return;
@@ -626,7 +683,8 @@ export default function App() {
       <>
         {headerStack}
         {headerSpacer}
-        <Onboarding data={data} setData={setData} onDone={() => setTab("preferences")} planOnly />
+        <MainDrawer open={isDrawerOpen} active={tab} onClose={() => setDrawerOpen(false)} onNavigate={setTab} />
+        <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />
         <DiagnosticOverlay data={safeData} tab={tab} />
         {totemDockLayer}
         <PlusExpander
@@ -656,6 +714,7 @@ export default function App() {
     <>
       {headerStack}
       {headerSpacer}
+      <MainDrawer open={isDrawerOpen} active={tab} onClose={() => setDrawerOpen(false)} onNavigate={setTab} />
       {profileReminder}
       {showBottomRail ? (
         <div className="bottomCategoryBar" data-tour-id="topnav-rail">
@@ -698,6 +757,7 @@ export default function App() {
           data={data}
           setData={setData}
           onOpenLibrary={homeNavigationHandlers.onOpenLibrary}
+          onOpenPlanning={() => setTab("planning")}
           onOpenPilotage={homeNavigationHandlers.onOpenPilotage}
           onOpenManageCategory={(categoryId) => {
             if (!categoryId) return;
@@ -717,8 +777,12 @@ export default function App() {
           onOpenCreateHabit={() => {
             openCategoryGate({ source: "today", intent: "habit", next: "flow" });
           }}
-          onOpenSession={({ categoryId, dateKey }) =>
-            setTab("session", { sessionCategoryId: categoryId || null, sessionDateKey: dateKey || null })
+          onOpenSession={({ categoryId, dateKey, occurrenceId }) =>
+            setTab("session", {
+              sessionCategoryId: categoryId || null,
+              sessionDateKey: dateKey || null,
+              sessionOccurrenceId: occurrenceId || null,
+            })
           }
           onOpenPaywall={openPaywall}
           isPremiumPlan={isPremiumPlan}
@@ -983,12 +1047,20 @@ export default function App() {
           setData={setData}
           categoryId={sessionCategoryId}
           dateKey={resolvedSessionDateKey}
+          occurrenceId={sessionOccurrenceId}
+          setTab={setTab}
           onOpenLibrary={() => setTab("library")}
           onBack={() => {
             setLibraryCategoryId(null);
             setTab("today");
           }}
         />
+      ) : tab === "journal" ? (
+        <Journal data={data} setData={setData} />
+      ) : tab === "micro-actions" ? (
+        <MicroActions data={data} setData={setData} isPremiumPlan={isPremiumPlan} />
+      ) : tab === "history" ? (
+        <History data={data} />
       ) : tab === "coach-chat" ? (
         <CoachChat
           data={data}
@@ -997,17 +1069,19 @@ export default function App() {
         />
       ) : tab === "account" ? (
         <Account data={data} />
-      ) : tab === "subscription" ? (
+      ) : tab === "billing" ? (
         <Subscription data={data} onOpenPaywall={openPaywall} onRestorePurchases={handleRestorePurchases} />
       ) : tab === "data" ? (
         <DataPage data={data} setData={setData} onOpenPaywall={openPaywall} />
       ) : tab === "privacy" ? (
         <Privacy data={data} onOpenSupport={() => setTab("support")} />
-      ) : tab === "terms" ? (
-        <Terms data={data} onOpenSupport={() => setTab("support")} />
+      ) : tab === "legal" ? (
+        <Legal data={data} onOpenSupport={() => setTab("support")} />
       ) : tab === "support" ? (
         <Support data={data} />
-      ) : tab === "preferences" ? (
+      ) : tab === "faq" ? (
+        <Faq data={data} setTab={setTab} />
+      ) : tab === "settings" ? (
         <Preferences data={data} setData={setData} />
       ) : (
         <Preferences data={data} setData={setData} />
@@ -1169,7 +1243,7 @@ export default function App() {
         onSubscribeMonthly={handlePurchase}
         onSubscribeYearly={handlePurchase}
         onRestore={handleRestorePurchases}
-        onOpenTerms={() => setTab("terms")}
+        onOpenTerms={() => setTab("legal")}
         onOpenPrivacy={() => setTab("privacy")}
       />
       {totemDockLayer}

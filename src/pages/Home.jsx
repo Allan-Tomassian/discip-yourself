@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SortableBlocks from "../components/SortableBlocks";
 import ScreenShell from "./_ScreenShell";
@@ -38,6 +39,9 @@ import CalendarCard from "../ui/calendar/CalendarCard";
 import FocusCard from "../ui/focus/FocusCard";
 import MicroActionsCard from "../ui/today/MicroActionsCard";
 import RewardedAdModal from "../ui/today/RewardedAdModal";
+import TodayDailyState from "../components/today/TodayDailyState";
+import TodayHero from "../components/today/TodayHero";
+import TodayNextActions from "../components/today/TodayNextActions";
 import { emitTotemEvent } from "../ui/totem/totemEvents";
 import { LABELS, UI_COPY } from "../ui/labels";
 import { useAuth } from "../auth/useAuth";
@@ -54,7 +58,7 @@ import {
   deriveTodayHeroModel,
 } from "../features/today/aiNowHeroAdapter";
 import { useTypingReveal } from "../features/today/useTypingReveal";
-import { createAiNowContextSignature, useAiNow } from "../hooks/useAiNow";
+import { AI_NOW_CACHE_TTL_MS, createAiNowContextSignature, useAiNow } from "../hooks/useAiNow";
 import {
   CATEGORY_VIEW,
   getSelectedCategoryForView,
@@ -381,6 +385,7 @@ export default function Home({
   data,
   setData,
   onOpenLibrary,
+  onOpenPlanning,
   onOpenPilotage,
   onOpenSession,
   onDayOpen,
@@ -475,6 +480,18 @@ export default function Home({
   const [microWatchAdLoading, setMicroWatchAdLoading] = useState(false);
   const [microRewardFeedback, setMicroRewardFeedback] = useState("");
   const [rewardedAdRequest, setRewardedAdRequest] = useState({ open: false, placement: "micro-reroll" });
+
+  useEffect(() => {
+    if (selectedDateKey === localTodayKey || typeof setData !== "function") return;
+    setData((prev) => ({
+      ...prev,
+      ui: {
+        ...(prev?.ui || {}),
+        selectedDateKey: localTodayKey,
+        selectedDate: localTodayKey,
+      },
+    }));
+  }, [localTodayKey, selectedDateKey, setData]);
 
   // Data slices
   const profile = safeData.profile || {};
@@ -1124,7 +1141,7 @@ export default function Home({
   );
   const handleStartSession = useCallback(
     (occurrence) => {
-      if (!occurrence || typeof setData !== "function") return;
+      if (!occurrence) return;
       const startPolicy = resolveTodayOccurrenceStartPolicy({
         activeDate: selectedDateKey,
         systemToday: localTodayKey,
@@ -1133,26 +1150,15 @@ export default function Home({
       if (!startPolicy.canStartDirectly) return;
       const goal = occurrence.goalId ? goalsById.get(occurrence.goalId) || null : null;
       const categoryId = goal?.categoryId || null;
-      setData((prev) => {
-        return applySessionRuntimeTransition(prev, {
-          type: "start",
-          occurrenceId: occurrence.id,
-          dateKey: occurrence.date || selectedDateKey,
-          objectiveId: null,
-          habitIds: occurrence.goalId ? [occurrence.goalId] : [],
-        });
-      });
-      emitSessionRuntimeNotificationHook("start", {
-        occurrenceId: occurrence.id,
-        dateKey: occurrence.date || selectedDateKey,
-        runtimePhase: "in_progress",
-        source: "home_start",
-      });
       if (typeof onOpenSession === "function") {
-        onOpenSession({ categoryId, dateKey: occurrence.date || selectedDateKey });
+        onOpenSession({
+          categoryId,
+          dateKey: occurrence.date || selectedDateKey,
+          occurrenceId: occurrence.id || null,
+        });
       }
     },
-    [goalsById, localTodayKey, onOpenSession, selectedDateKey, setData]
+    [goalsById, localTodayKey, onOpenSession, selectedDateKey]
   );
   const lastEnsureSigRef = useRef("");
   const ensureDebugCountRef = useRef(0);
@@ -1797,6 +1803,7 @@ export default function Home({
       onOpenSession({
         categoryId: action.categoryId || executionCategoryId || focusCategory?.id || null,
         dateKey: selectedDateKey,
+        occurrenceId: activeSessionForActiveDate?.occurrenceId || null,
       });
       return;
     }
@@ -1818,6 +1825,107 @@ export default function Home({
     selectedDateKey,
   ]);
 
+  const heroOccurrence = useMemo(() => {
+    if (heroViewModel?.primaryAction?.kind === "start_occurrence" && heroViewModel.primaryAction.occurrence) {
+      return heroViewModel.primaryAction.occurrence;
+    }
+    if (activeSessionForActiveDate?.occurrenceId) {
+      return occurrencesForSelectedDay.find((occ) => occ?.id === activeSessionForActiveDate.occurrenceId) || focusOccurrence || null;
+    }
+    return focusOccurrence || null;
+  }, [activeSessionForActiveDate?.occurrenceId, focusOccurrence, heroViewModel?.primaryAction, occurrencesForSelectedDay]);
+  const heroGoal = heroOccurrence?.goalId ? goalsById.get(heroOccurrence.goalId) || null : null;
+  const heroCategory = categoriesById.get(heroGoal?.categoryId || focusCategory?.id || "") || focusCategory || null;
+  const heroDurationLabel = Number.isFinite(heroOccurrence?.durationMinutes)
+    ? `${heroOccurrence.durationMinutes} min`
+    : "";
+  const isHeroFresh =
+    Number.isFinite(aiNow.requestDiagnostics?.fetchedAt) &&
+    Date.now() - aiNow.requestDiagnostics.fetchedAt < AI_NOW_CACHE_TTL_MS;
+  const sessionHistoryByOccurrenceId = useMemo(() => {
+    const history = Array.isArray(safeData.sessionHistory) ? safeData.sessionHistory : [];
+    const map = new Map();
+    for (const entry of history) {
+      if (!entry?.occurrenceId) continue;
+      const previous = map.get(entry.occurrenceId) || null;
+      const nextTs = Date.parse(entry?.endAt || entry?.startAt || "") || 0;
+      const previousTs = Date.parse(previous?.endAt || previous?.startAt || "") || 0;
+      if (!previous || nextTs >= previousTs) map.set(entry.occurrenceId, entry);
+    }
+    return map;
+  }, [safeData.sessionHistory]);
+  const nextActions = useMemo(
+    () =>
+      occurrencesForSelectedDay
+        .filter((occurrence) => occurrence?.id !== heroOccurrence?.id)
+        .filter((occurrence) => {
+          const status = typeof occurrence?.status === "string" ? occurrence.status : "";
+          return status !== "done" && status !== "skipped" && status !== "canceled" && status !== "missed" && status !== "rescheduled";
+        })
+        .slice(0, 3)
+        .map((occurrence) => {
+          const goal = goalsById.get(occurrence?.goalId || "") || null;
+          const category = categoriesById.get(goal?.categoryId || "") || null;
+          return {
+            ...occurrence,
+            title: goal?.title || occurrence?.title || "Action",
+            categoryName: category?.name || "Catégorie",
+          };
+        }),
+    [categoriesById, goalsById, heroOccurrence?.id, occurrencesForSelectedDay]
+  );
+  const dailyState = useMemo(() => {
+    const plannedMinutes = occurrencesForSelectedDay.reduce((sum, occurrence) => {
+      const status = typeof occurrence?.status === "string" ? occurrence.status : "";
+      if (status === "canceled" || status === "skipped") return sum;
+      return sum + (Number.isFinite(occurrence?.durationMinutes) ? occurrence.durationMinutes : 0);
+    }, 0);
+    const doneMinutes = occurrencesForSelectedDay.reduce((sum, occurrence) => {
+      if (occurrence?.status !== "done") return sum;
+      const runtimeEntry = sessionHistoryByOccurrenceId.get(occurrence.id) || null;
+      if (Number.isFinite(runtimeEntry?.timerSeconds)) {
+        return sum + Math.round(runtimeEntry.timerSeconds / 60);
+      }
+      return sum + (Number.isFinite(occurrence?.durationMinutes) ? occurrence.durationMinutes : 0);
+    }, 0);
+    return {
+      plannedMinutes,
+      doneMinutes,
+      remainingMinutes: Math.max(plannedMinutes - doneMinutes, 0),
+    };
+  }, [occurrencesForSelectedDay, sessionHistoryByOccurrenceId]);
+  const openPlanningForToday = useCallback(() => {
+    if (typeof setData === "function") {
+      setData((prev) => ({
+        ...prev,
+        ui: withSelectedCategoryByView(
+          {
+            ...(prev?.ui || {}),
+            selectedDateKey: localTodayKey,
+            selectedDate: localTodayKey,
+          },
+          {
+            planning: executionCategoryId || focusCategory?.id || getSelectedCategoryForView(prev, CATEGORY_VIEW.TODAY) || null,
+          }
+        ),
+      }));
+    }
+    onOpenPlanning?.();
+  }, [executionCategoryId, focusCategory?.id, localTodayKey, onOpenPlanning, setData]);
+  const canOpenHeroSession = Boolean(
+    (heroViewModel?.primaryAction?.kind === "resume_session") ||
+    heroOccurrence
+  );
+  const handleHeroSessionOpen = useCallback(() => {
+    if (heroViewModel?.primaryAction?.kind === "resume_session") {
+      handleHeroPrimaryAction();
+      return;
+    }
+    if (heroOccurrence) {
+      handleStartSession(heroOccurrence);
+    }
+  }, [handleHeroPrimaryAction, handleStartSession, heroOccurrence, heroViewModel?.primaryAction?.kind]);
+
   return (
     <ScreenShell
       accent={accent}
@@ -1828,491 +1936,24 @@ export default function Home({
       headerRowAlign="start"
     >
       <div className="stack stackGap12 todayPageShell">
-        <GateSection className="todayHeroCard GateSurfacePremium GateCardPremium" collapsible={false}>
-          <div className="todayHeroHeader">
-            <div className="todayHeroHeaderCluster">
-              <div className="todayHeroKicker">À faire maintenant</div>
-              {heroChrome.showBadge ? (
-                <span
-                  className={[
-                    "todayHeroCoachBadge",
-                    heroChrome.mode === "loading" ? "isLoading" : "",
-                    heroChrome.badgeTone ? `is-${heroChrome.badgeTone}` : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
-                  {heroChrome.showLiveDot ? <span className="todayHeroCoachBadgeDot" aria-hidden="true" /> : null}
-                  {heroChrome.badgeLabel}
-                </span>
-              ) : null}
-            </div>
-            <div className="todayHeroDate">{selectedDateLabel}</div>
-          </div>
-          <div className="todayHeroBody">
-            {heroChrome.showHint ? (
-              <div
-                className={[
-                  "todayHeroCoachHint",
-                  heroChrome.mode === "loading" ? "isLoading" : "",
-                  heroChrome.hintTone ? `is-${heroChrome.hintTone}` : "",
-                ].filter(Boolean).join(" ")}
-              >
-                {heroChrome.hintText}
-              </div>
-            ) : null}
-            <div className="todayHeroTitle">{typedHeroTitle}</div>
-            {heroViewModel.meta ? (
-              <div
-                className={[
-                  "todayHeroMeta",
-                  shouldAnimateCoachResponse ? "isRevealed" : "",
-                ].filter(Boolean).join(" ")}
-              >
-                {heroViewModel.meta}
-              </div>
-            ) : null}
-          </div>
-          <div className="todayHeroActions GatePrimaryCtaRow">
-            <GateButton
-              className="GatePressable todayHeroPrimaryBtn"
-              disabled={!heroViewModel.primaryAction}
-              onClick={handleHeroPrimaryAction}
-            >
-              {heroViewModel.primaryLabel}
-            </GateButton>
-            <GateButton
-              variant="ghost"
-              className="GatePressable todayHeroSecondaryBtn"
-              onClick={() => setShowDayStats(true)}
-            >
-              {heroViewModel.secondaryLabel}
-            </GateButton>
-          </div>
-        </GateSection>
-
-        <GateSection className="todayProgressCard GateSurfacePremium GateCardPremium" collapsible={false}>
-          <div className="todayProgressHeader">
-            <div className="todayProgressTitle">Progression du jour</div>
-            <div className="todayProgressCaption">Suivi quotidien</div>
-          </div>
-          <div className="todayProgressMetrics">
-            <button
-              className="todayProgressMetric GatePressable"
-              type="button"
-              onClick={() => setShowDayStats(true)}
-              data-tour-id="today-stats-day"
-            >
-              <div className="todayProgressMetricHead">
-                <span className="todayProgressMetricLabel">Progression du jour</span>
-                <span className="todayProgressMetricValue">{coreProgress.done}/{coreProgress.total || 0}</span>
-              </div>
-              <div className="todayProgressBarTrack">
-                <div
-                  className="todayProgressBarFill"
-                  style={{ width: `${Math.round(coreProgress.ratio * 100)}%`, background: accent }}
-                />
-              </div>
-            </button>
-
-            <button
-              className="todayProgressMetric GatePressable"
-              type="button"
-              style={accentVars}
-              onClick={() => setShowDisciplineStats(true)}
-              data-tour-id="today-stats-discipline"
-            >
-              <div className="todayProgressMetricHead">
-                <span className="todayProgressMetricLabel">Discipline</span>
-                <span className="todayProgressMetricValue">{disciplineBreakdown.score}%</span>
-              </div>
-              <div className="todayProgressBarTrack">
-                <div
-                  className="todayProgressBarFill"
-                  style={{ width: `${Math.round(disciplineBreakdown.ratio * 100)}%`, background: accent }}
-                />
-              </div>
-            </button>
-          </div>
-        </GateSection>
-
-        <div className="row todayWhyRow">
-          <div
-            className="small2 todayWhyText"
-            data-tour-id="today-why-text"
-          >
-            {showWhy ? whyDisplay : "Pourquoi masqué"}
-          </div>
-          <button
-            className="linkBtn"
-            onClick={() => setShowWhy((v) => !v)}
-            aria-label="Afficher ou masquer le pourquoi"
-            data-tour-id="today-why-toggle"
-          >
-            {showWhy ? "Masquer 👁" : "Afficher 👁"}
-          </button>
-        </div>
-
-        <SortableBlocks
-          items={visibleBlockOrder}
-          getId={(id) => id}
-          onReorder={handleVisibleReorder}
-          className="stack stackGap12"
-          renderItem={(blockId, drag) => {
-            const { attributes, listeners, setActivatorNodeRef } = drag || {};
-          if (blockId === "focus") {
-            return (
-              <FocusCard
-                drag={drag}
-                setActivatorNodeRef={setActivatorNodeRef}
-                listeners={listeners}
-                attributes={attributes}
-                focusOccurrence={focusOccurrence}
-                baseOccurrence={focusBaseOccurrence}
-                alternativeCandidates={alternativeCandidates}
-                onSelectAlternative={handleSelectFocusAlternative}
-                onResetOverride={() => setFocusOverride(null)}
-                isOverride={isFocusOverride}
-                onStartSession={handleStartSession}
-                normalizeOccurrenceForUI={normalizeOccurrenceForUI}
-                goalsById={goalsById}
-                categoriesById={categoriesById}
-                activeOccurrenceId={activeSessionForActiveDate?.occurrenceId || null}
-              />
-            );
-          }
-
-          if (blockId === "micro") {
-            return (
-              <MicroActionsCard
-                drag={drag}
-                setActivatorNodeRef={setActivatorNodeRef}
-                listeners={listeners}
-                attributes={attributes}
-                categoryId={microSelectedCategoryId}
-                categoryOptions={microCategoryOptions}
-                items={microActionsV1.items}
-                microDoneToday={microDoneToday}
-                rerollsUsed={microRerollsUsed}
-                rerollCredits={microRerollCredits}
-                rerollLimit={microRerollLimit}
-                canWatchAd={microCanWatchAd}
-                adLoading={microWatchAdLoading}
-                adFeedback={microRewardFeedback}
-                isPremiumPlan={isPremiumPlan}
-                canValidate={canUseMicroActions}
-                isMicroToday={isMicroToday}
-                onCategoryChange={handleMicroCategoryChange}
-                onDone={handleMicroActionDone}
-                onReroll={(indices) => handleMicroReroll(indices, { useCredit: false })}
-                onUseRerollCredit={(indices) => handleMicroReroll(indices, { useCredit: true })}
-                onWatchAd={handleMicroWatchAd}
-                onGoToToday={handleMicroGoToToday}
-              />
-            );
-          }
-
-          if (blockId === "notes") {
-            return (
-              <HomeCard className="todaySecondaryCard" data-tour-id="today-notes-card">
-                <div className="p18">
-                  <div className="row todayNotesHeader">
-                    <div className="cardSectionTitleRow">
-                      {drag ? (
-                        <button
-                          ref={setActivatorNodeRef}
-                          {...listeners}
-                          {...attributes}
-                          className="dragHandle"
-                          aria-label="Réorganiser"
-                        >
-                          ⋮⋮
-                        </button>
-                      ) : null}
-                      <div className="cardSectionTitle">Note du jour</div>
-                    </div>
-                    <div className="row todayNotesHeaderActions" style={{ gap: 8 }}>
-                      <IconButton
-                        aria-label="Historique des notes"
-                        onClick={() => {
-                          setNoteHistoryVersion((v) => v + 1);
-                          setNoteDeleteMode(false);
-                          setNoteDeleteTargetId(null);
-                          setShowNotesHistory(true);
-                        }}
-                        data-tour-id="today-notes-history"
-                      >
-                        +
-                      </IconButton>
-                    </div>
-                  </div>
-                  <div className="mt12">
-                    <Textarea
-                      rows={3}
-                      value={dailyNote}
-                      onChange={(e) => {
-                        setDailyNote(e.target.value);
-                      }}
-                      className=""
-                      placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
-                      data-tour-id="today-notes-text"
-                    />
-                  </div>
-                  <div className="mt12">
-                    <div className="small2 todayNotesKicker">Check-in rapide</div>
-                    <div className="noteMetaGrid mt8" data-tour-id="today-notes-meta">
-                      <div>
-                        <div className="small2 todayNotesLabel">Forme</div>
-                        <SelectMenu
-                          value={noteMeta.forme || ""}
-                          onChange={(next) => updateNoteMeta({ forme: next })}
-                          style={undefined}
-                          className=""
-                          placeholder="Choisir"
-                          options={[
-                            { value: "Excellente", label: "Excellente" },
-                            { value: "Bonne", label: "Bonne" },
-                            { value: "Moyenne", label: "Moyenne" },
-                            { value: "Faible", label: "Faible" },
-                          ]}
-                        />
-                      </div>
-                      <div>
-                        <div className="small2 todayNotesLabel">Humeur</div>
-                        <SelectMenu
-                          value={noteMeta.humeur || ""}
-                          onChange={(next) => updateNoteMeta({ humeur: next })}
-                          style={undefined}
-                          className=""
-                          placeholder="Choisir"
-                          options={[
-                            { value: "Positif", label: "Positif" },
-                            { value: "Neutre", label: "Neutre" },
-                            { value: "Basse", label: "Basse" },
-                          ]}
-                        />
-                      </div>
-                      <div>
-                        <div className="small2 todayNotesLabel">Énergie</div>
-                        <input
-                          className="GateInputPremium"
-                          type="number"
-                          min="0"
-                          max="10"
-                          step="1"
-                          value={noteMeta.motivation || ""}
-                          onChange={(e) => updateNoteMeta({ motivation: e.target.value })}
-                          placeholder="0-10"
-                          style={undefined}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="noteActions mt12 todayNotesFooter">
-                    <Button onClick={addNoteToHistory} data-tour-id="today-notes-add">
-                      {UI_COPY.save}
-                    </Button>
-                  </div>
-                </div>
-              </HomeCard>
-            );
-          }
-          if (blockId === "calendar") {
-            return (
-              <CalendarCard
-                drag={drag}
-                setActivatorNodeRef={setActivatorNodeRef}
-                listeners={listeners}
-                attributes={attributes}
-                selectedDateKey={selectedDateKey}
-                selectedDateLabel={selectedDateLabel}
-                localTodayKey={localTodayKey}
-                calendarView={calendarView}
-                onSetCalendarView={setCalendarView}
-                calendarPaneKey={calendarPaneKey}
-                calendarPanePhase={calendarPanePhase}
-                plannedByDate={plannedByDate}
-                doneByDate={doneByDate}
-                accentByDate={accentByDate}
-                selectedAccent={selectedDateAccent}
-                accent={accent}
-                getDayDots={getDayDots}
-                onDayOpen={handleDayOpen}
-                onCommitDateKey={commitDateKey}
-                monthCursor={monthCursor}
-                onPrevMonth={() => setMonthCursor((d) => addMonths(d, -1))}
-                onNextMonth={() => setMonthCursor((d) => addMonths(d, 1))}
-                monthGrid={monthGrid}
-                selectedDayAccent={selectedDateAccent}
-                onAddOccurrence={typeof onAddOccurrence === "function" ? handleAddOccurrence : null}
-                addActionContext={addActionContext}
-              />
-            );
-          }
-          return null;
-          }}
+        <TodayHero
+          title={typedHeroTitle || heroViewModel.title}
+          categoryName={heroCategory?.name || ""}
+          durationLabel={heroDurationLabel}
+          reason={heroViewModel.meta || whyDisplay}
+          onStart={handleHeroSessionOpen}
+          onOpenPlanning={openPlanningForToday}
+          canStart={canOpenHeroSession}
+          isAiRecommendation={heroViewModel.source === "ai"}
+          isFresh={isHeroFresh}
+        />
+        <TodayNextActions actions={nextActions} onOpenOccurrence={handleStartSession} />
+        <TodayDailyState
+          plannedMinutes={dailyState.plannedMinutes}
+          doneMinutes={dailyState.doneMinutes}
+          remainingMinutes={dailyState.remainingMinutes}
         />
       </div>
-      {showDayStats ? (
-        <div className="modalBackdrop disciplineOverlay" onClick={() => setShowDayStats(false)}>
-          <HomeCard className="disciplineCard" onClick={(e) => e.stopPropagation()}>
-            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-              <div className="titleSm">Progression du jour</div>
-              <button className="linkBtn" type="button" onClick={() => setShowDayStats(false)}>
-                {UI_COPY.close}
-              </button>
-            </div>
-            <div className="mt12 col" style={{ gap: 10 }}>
-              <div className="row" style={{ justifyContent: "space-between" }}>
-                <div className="small2">Date</div>
-                <div className="titleSm">{selectedDateKey}</div>
-              </div>
-              <div className="row" style={{ justifyContent: "space-between" }}>
-                <div className="small2">Actions du jour</div>
-                <div className="titleSm">Tu as validé {habitsDoneCount} sur {activeHabits.length}</div>
-              </div>
-              <div className="row" style={{ justifyContent: "space-between" }}>
-                <div className="small2">Total</div>
-                <div className="titleSm">{coreProgress.done}/{coreProgress.total || 0}</div>
-              </div>
-            </div>
-          </HomeCard>
-        </div>
-      ) : null}
-
-      {showDisciplineStats ? (
-        <div className="modalBackdrop disciplineOverlay" onClick={() => setShowDisciplineStats(false)}>
-          <HomeCard className="disciplineCard" onClick={(e) => e.stopPropagation()}>
-            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-              <div className="titleSm">Discipline</div>
-              <button className="linkBtn" type="button" onClick={() => setShowDisciplineStats(false)}>
-                {UI_COPY.close}
-              </button>
-            </div>
-            <div className="mt12 col" style={{ gap: 10 }}>
-              <div className="row" style={{ justifyContent: "space-between" }}>
-                <div className="small2">Assiduité (14j)</div>
-                <div className="titleSm">{disciplineBreakdown.habitDaysKept14} jours tenus</div>
-              </div>
-              <div className="row" style={{ justifyContent: "space-between" }}>
-                <div className="small2">Micro-actions (14j)</div>
-                <div className="titleSm">{disciplineBreakdown.microDone14}/{disciplineBreakdown.microMax14}</div>
-              </div>
-              <div className="row" style={{ justifyContent: "space-between" }}>
-                <div className="small2">Fiabilité (90j)</div>
-                <div className="titleSm">{Math.round(disciplineBreakdown.reliabilityRatio * 100)}%</div>
-              </div>
-              <div className="row" style={{ justifyContent: "space-between" }}>
-                <div className="small2">Score</div>
-                <div className="titleSm">{disciplineBreakdown.score}%</div>
-              </div>
-            </div>
-          </HomeCard>
-        </div>
-      ) : null}
-      {showNotesHistory ? (
-        <div
-          className="modalBackdrop disciplineOverlay noteHistoryBackdrop"
-          onClick={() => {
-            setShowNotesHistory(false);
-            setNoteDeleteMode(false);
-            setNoteDeleteTargetId(null);
-          }}
-        >
-          <HomeCard className="noteHistorySheet" onClick={(e) => e.stopPropagation()}>
-            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-              <div className="titleSm">Historique des notes</div>
-              <div className="row" style={{ gap: 8 }}>
-                <IconButton
-                  aria-label="Mode suppression"
-                  title="Mode suppression"
-                  onClick={() => {
-                    setNoteDeleteMode((v) => !v);
-                    setNoteDeleteTargetId(null);
-                  }}
-                  aria-pressed={noteDeleteMode}
-                >
-                  🗑
-                </IconButton>
-                {noteDeleteMode ? (
-                  <Button variant="danger" onClick={deleteSelectedNote} disabled={!noteDeleteTargetId}>
-                    Supprimer
-                  </Button>
-                ) : null}
-                {!isPremiumPlan && hasHistoryBeyondLimit ? (
-                  <Button
-                    variant="ghost"
-                    onClick={() => (typeof onOpenPaywall === "function" ? onOpenPaywall("Historique complet") : null)}
-                  >
-                    Débloquer tout
-                  </Button>
-                ) : null}
-                <button
-                  className="linkBtn"
-                  type="button"
-                  onClick={() => {
-                    setShowNotesHistory(false);
-                    setNoteDeleteMode(false);
-                    setNoteDeleteTargetId(null);
-                  }}
-                >
-                  {UI_COPY.close}
-                </button>
-              </div>
-            </div>
-            <div className="noteHistoryBody col" style={{ gap: 10 }}>
-              {noteHistoryItems.length ? (
-                noteHistoryItems.map((item) => {
-                  const meta = item.meta || {};
-                  const metaParts = [];
-                  if (meta.forme) metaParts.push(`Forme: ${meta.forme}`);
-                  if (meta.humeur) metaParts.push(`Humeur: ${meta.humeur}`);
-                  if (meta.motivation) metaParts.push(`Énergie: ${meta.motivation}/10`);
-                  const isSelected = noteDeleteMode && noteDeleteTargetId === item.id;
-                  if (isSelected) {
-                    return (
-                      <GateRow
-                        key={item.id || item.dateKey}
-                        className="listItem GateRowPremium GatePressable"
-                        selected
-                        onClick={
-                          noteDeleteMode
-                            ? () => setNoteDeleteTargetId((prev) => (prev === item.id ? null : item.id))
-                            : undefined
-                        }
-                      >
-                        <div className="small2">{item.dateKey}</div>
-                        {metaParts.length ? <div className="small2 mt8">{metaParts.join(" · ")}</div> : null}
-                        {item.note ? <div className="small2 mt8">{item.note}</div> : null}
-                      </GateRow>
-                    );
-                  }
-
-                  return (
-                    <GateRow
-                      key={item.id || item.dateKey}
-                      className={`listItem GateRowPremium${noteDeleteMode ? " GatePressable" : ""}`}
-                      onClick={noteDeleteMode ? () => setNoteDeleteTargetId((prev) => (prev === item.id ? null : item.id)) : undefined}
-                    >
-                      <div className="small2">{item.dateKey}</div>
-                      {metaParts.length ? <div className="small2 mt8">{metaParts.join(" · ")}</div> : null}
-                      {item.note ? <div className="small2 mt8">{item.note}</div> : null}
-                    </GateRow>
-                  );
-                })
-              ) : (
-                <div className="small2">Aucune note enregistrée.</div>
-              )}
-            </div>
-          </HomeCard>
-        </div>
-      ) : null}
-      <RewardedAdModal
-        open={rewardedAdRequest.open}
-        placement={rewardedAdRequest.placement}
-        onDismiss={handleRewardedAdDismiss}
-        onComplete={handleRewardedAdComplete}
-      />
     </ScreenShell>
   );
 }

@@ -89,6 +89,83 @@ describe("sessionRuntime transitions", () => {
     expect(done.sessionHistory[0].endedReason).toBe("done");
   });
 
+  it("stores feedback on finish when provided", () => {
+    const started = applySessionRuntimeTransition(baseState(), {
+      type: "start",
+      occurrenceId: "occ1",
+      dateKey: "2026-02-20",
+      habitIds: ["g1"],
+      now: new Date("2026-02-20T09:00:00.000Z"),
+    });
+    const finished = applySessionRuntimeTransition(started, {
+      type: "finish",
+      occurrenceId: "occ1",
+      dateKey: "2026-02-20",
+      doneHabitIds: ["g1"],
+      durationSec: 600,
+      feedbackLevel: "normal",
+      feedbackText: "Rythme correct",
+      now: new Date("2026-02-20T09:10:00.000Z"),
+    });
+    expect(finished.sessionHistory[0].feedbackLevel).toBe("normal");
+    expect(finished.sessionHistory[0].feedbackText).toBe("Rythme correct");
+  });
+
+  it("block keeps the occurrence planifiable and writes a blocked history", () => {
+    const running = applySessionRuntimeTransition(
+      applySessionRuntimeTransition(baseState(), {
+        type: "start",
+        occurrenceId: "occ1",
+        dateKey: "2026-02-20",
+        habitIds: ["g1"],
+        now: new Date("2026-02-20T09:00:00.000Z"),
+      }),
+      {
+        type: "resume",
+        occurrenceId: "occ1",
+        durationSec: 120,
+        now: new Date("2026-02-20T09:02:00.000Z"),
+      }
+    );
+    const blocked = applySessionRuntimeTransition(running, {
+      type: "block",
+      occurrenceId: "occ1",
+      dateKey: "2026-02-20",
+      durationSec: 180,
+      now: new Date("2026-02-20T09:03:00.000Z"),
+    });
+    expect(blocked.ui.activeSession.runtimePhase).toBe("blocked");
+    expect(blocked.occurrences.find((item) => item.id === "occ1")?.status).toBe("planned");
+    expect(blocked.sessionHistory[0].endedReason).toBe("blocked");
+  });
+
+  it("report closes the runtime session with a reported reason", () => {
+    const running = applySessionRuntimeTransition(
+      applySessionRuntimeTransition(baseState(), {
+        type: "start",
+        occurrenceId: "occ1",
+        dateKey: "2026-02-20",
+        habitIds: ["g1"],
+        now: new Date("2026-02-20T09:00:00.000Z"),
+      }),
+      {
+        type: "resume",
+        occurrenceId: "occ1",
+        durationSec: 120,
+        now: new Date("2026-02-20T09:02:00.000Z"),
+      }
+    );
+    const reported = applySessionRuntimeTransition(running, {
+      type: "report",
+      occurrenceId: "occ1",
+      dateKey: "2026-02-20",
+      durationSec: 180,
+      now: new Date("2026-02-20T09:03:00.000Z"),
+    });
+    expect(reported.ui.activeSession.runtimePhase).toBe("reported");
+    expect(reported.sessionHistory[0].endedReason).toBe("reported");
+  });
+
   it("start on same open occurrence does not reset timer progress", () => {
     const started = applySessionRuntimeTransition(baseState(), {
       type: "start",

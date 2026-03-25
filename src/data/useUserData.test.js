@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { createDebouncedSave } from "./useUserData";
+import { createDebouncedSave, createStateSignature, shouldSkipHydrationRemoteSave } from "./useUserData";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -39,5 +39,28 @@ describe("createDebouncedSave", () => {
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onError).toHaveBeenCalledTimes(1);
     expect(onError).toHaveBeenCalledWith(error);
+  });
+});
+
+describe("hydration save guard", () => {
+  it("skips only the exact hydrated snapshot", () => {
+    const hydrated = { profile: { whyText: "Initial" } };
+    const hydratedSignature = createStateSignature(hydrated);
+
+    expect(
+      shouldSkipHydrationRemoteSave({
+        skipNextRemoteSave: true,
+        hydratedSignature,
+        nextSignature: hydratedSignature,
+      })
+    ).toBe(true);
+
+    expect(
+      shouldSkipHydrationRemoteSave({
+        skipNextRemoteSave: true,
+        hydratedSignature,
+        nextSignature: createStateSignature({ profile: { whyText: "Modifié" } }),
+      })
+    ).toBe(false);
   });
 });

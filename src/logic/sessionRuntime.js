@@ -10,6 +10,8 @@ export const SESSION_RUNTIME_EVENT = Object.freeze({
   RESUME: "resume",
   FINISH: "finish",
   CANCEL: "cancel",
+  BLOCK: "block",
+  REPORT: "report",
 });
 
 export const SESSION_RUNTIME_PHASE = Object.freeze({
@@ -17,15 +19,29 @@ export const SESSION_RUNTIME_PHASE = Object.freeze({
   PAUSED: "paused",
   DONE: "done",
   CANCELED: "canceled",
+  BLOCKED: "blocked",
+  REPORTED: "reported",
 });
 
 const OPEN_PHASES = new Set([SESSION_RUNTIME_PHASE.IN_PROGRESS, SESSION_RUNTIME_PHASE.PAUSED]);
-const FINAL_PHASES = new Set([SESSION_RUNTIME_PHASE.DONE, SESSION_RUNTIME_PHASE.CANCELED]);
+const FINAL_PHASES = new Set([
+  SESSION_RUNTIME_PHASE.DONE,
+  SESSION_RUNTIME_PHASE.CANCELED,
+  SESSION_RUNTIME_PHASE.BLOCKED,
+  SESSION_RUNTIME_PHASE.REPORTED,
+]);
 
 function normalizePhase(raw, session) {
   const value = typeof raw === "string" ? raw.trim() : "";
   if (value === SESSION_RUNTIME_PHASE.IN_PROGRESS || value === SESSION_RUNTIME_PHASE.PAUSED) return value;
-  if (value === SESSION_RUNTIME_PHASE.DONE || value === SESSION_RUNTIME_PHASE.CANCELED) return value;
+  if (
+    value === SESSION_RUNTIME_PHASE.DONE ||
+    value === SESSION_RUNTIME_PHASE.CANCELED ||
+    value === SESSION_RUNTIME_PHASE.BLOCKED ||
+    value === SESSION_RUNTIME_PHASE.REPORTED
+  ) {
+    return value;
+  }
   const status = typeof session?.status === "string" ? session.status.trim().toLowerCase() : "";
   if (status === "done") return SESSION_RUNTIME_PHASE.DONE;
   if (status === "skipped" || status === "canceled") return SESSION_RUNTIME_PHASE.CANCELED;
@@ -39,6 +55,7 @@ function normalizePhase(raw, session) {
 
 function toLegacyStatus(phase) {
   if (phase === SESSION_RUNTIME_PHASE.DONE) return "done";
+  if (phase === SESSION_RUNTIME_PHASE.BLOCKED || phase === SESSION_RUNTIME_PHASE.REPORTED) return "skipped";
   if (phase === SESSION_RUNTIME_PHASE.CANCELED) return "skipped";
   return "partial";
 }
@@ -113,6 +130,8 @@ function buildHistoryRecord({
   endedReason = null,
   nowIso,
   timerSeconds,
+  feedbackLevel = "",
+  feedbackText = "",
 }) {
   const actionId =
     typeof occurrence?.goalId === "string"
@@ -131,6 +150,8 @@ function buildHistoryRecord({
     endedReason: state === "ended" ? endedReason : null,
     timerSeconds: clampDurationSec(timerSeconds),
     notes: typeof currentSession?.notes === "string" ? currentSession.notes : "",
+    feedbackLevel: state === "ended" ? feedbackLevel || "" : "",
+    feedbackText: state === "ended" ? feedbackText || "" : "",
   };
 }
 
@@ -165,7 +186,14 @@ function isAllowedTransition(phase, eventType) {
   if (!phase) return false;
   if (eventType === SESSION_RUNTIME_EVENT.PAUSE) return phase === SESSION_RUNTIME_PHASE.IN_PROGRESS;
   if (eventType === SESSION_RUNTIME_EVENT.RESUME) return phase === SESSION_RUNTIME_PHASE.PAUSED || phase === SESSION_RUNTIME_PHASE.IN_PROGRESS;
-  if (eventType === SESSION_RUNTIME_EVENT.FINISH || eventType === SESSION_RUNTIME_EVENT.CANCEL) return OPEN_PHASES.has(phase);
+  if (
+    eventType === SESSION_RUNTIME_EVENT.FINISH ||
+    eventType === SESSION_RUNTIME_EVENT.CANCEL ||
+    eventType === SESSION_RUNTIME_EVENT.BLOCK ||
+    eventType === SESSION_RUNTIME_EVENT.REPORT
+  ) {
+    return OPEN_PHASES.has(phase);
+  }
   return false;
 }
 
@@ -367,6 +395,59 @@ export function applySessionRuntimeTransition(state, input = {}) {
       dateKey,
       state: "ended",
       endedReason: "done",
+      nowIso,
+      timerSeconds: elapsedSec,
+      feedbackLevel: typeof input?.feedbackLevel === "string" ? input.feedbackLevel : "",
+      feedbackText: typeof input?.feedbackText === "string" ? input.feedbackText : "",
+    });
+    nextHistory = upsertSessionV2(prevHistory, record);
+  } else if (type === SESSION_RUNTIME_EVENT.BLOCK) {
+    const elapsedSec = clampDurationSec(input?.durationSec) ?? computeElapsedSec(current, nowMs);
+    nextSession = {
+      ...current,
+      status: toLegacyStatus(SESSION_RUNTIME_PHASE.BLOCKED),
+      runtimePhase: SESSION_RUNTIME_PHASE.BLOCKED,
+      doneHabitIds: [],
+      timerRunning: false,
+      timerStartedAt: "",
+      timerAccumulatedSec: elapsedSec,
+      finishedAt: nowIso,
+    };
+    nextOccurrences = applyOccurrenceRuntimeStatus(occurrences, goals, occurrenceId, OCCURRENCE_STATUS.PLANNED);
+    const record = buildHistoryRecord({
+      currentSession: nextSession,
+      occurrence,
+      occurrenceId,
+      dateKey,
+      state: "ended",
+      endedReason: "blocked",
+      nowIso,
+      timerSeconds: elapsedSec,
+    });
+    nextHistory = upsertSessionV2(prevHistory, record);
+  } else if (type === SESSION_RUNTIME_EVENT.REPORT) {
+    const elapsedSec = clampDurationSec(input?.durationSec) ?? computeElapsedSec(current, nowMs);
+    nextSession = {
+      ...current,
+      status: toLegacyStatus(SESSION_RUNTIME_PHASE.REPORTED),
+      runtimePhase: SESSION_RUNTIME_PHASE.REPORTED,
+      doneHabitIds: [],
+      timerRunning: false,
+      timerStartedAt: "",
+      timerAccumulatedSec: elapsedSec,
+      finishedAt: nowIso,
+    };
+    const occurrenceStatus = typeof input?.occurrenceStatus === "string" ? input.occurrenceStatus : "";
+    nextOccurrences = occurrenceStatus
+      ? applyOccurrenceRuntimeStatus(occurrences, goals, occurrenceId, occurrenceStatus)
+      : occurrences;
+    const record = buildHistoryRecord({
+      currentSession: nextSession,
+      occurrence,
+      occurrenceId,
+      dateKey,
+      state: "ended",
+      endedReason: "reported",
       nowIso,
       timerSeconds: elapsedSec,
     });

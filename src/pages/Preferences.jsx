@@ -70,14 +70,17 @@ export default function Preferences({ data, setData }) {
   const [soundEnabled, setSoundEnabledState] = useState(() => isClickSoundEnabled());
 
   const [whyDraft, setWhyDraft] = useState(profile.whyText || "");
-  const [nowMs] = useState(() => Date.now());
-
   useEffect(() => {
     setWhyDraft(profile.whyText || "");
   }, [profile.whyText]);
 
+  const nowMs = Date.now();
   const lastUpdatedMs = profile.whyUpdatedAt ? Date.parse(profile.whyUpdatedAt) : 0;
-  const daysSince = nowMs && lastUpdatedMs ? Math.floor((nowMs - lastUpdatedMs) / (24 * 60 * 60 * 1000)) : 999;
+  const rawDaysSince =
+    Number.isFinite(nowMs) && Number.isFinite(lastUpdatedMs) && lastUpdatedMs > 0
+      ? Math.floor((nowMs - lastUpdatedMs) / (24 * 60 * 60 * 1000))
+      : 999;
+  const daysSince = Number.isFinite(rawDaysSince) ? Math.max(0, rawDaysSince) : 999;
   const daysLeft = premium ? 0 : Math.max(0, 30 - daysSince);
   const canEditWhy = premium || daysLeft === 0;
   const cleanWhy = (whyDraft || "").trim();

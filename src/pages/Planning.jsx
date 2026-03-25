@@ -181,6 +181,13 @@ export default function Planning({ data, setData, setTab }) {
     () => collectSystemInboxBuckets({ goals: safeData.goals, categories: safeData.categories }),
     [safeData.categories, safeData.goals]
   );
+  const pendingOccurrenceId =
+    typeof safeUi.planningPendingOccurrenceId === "string" ? safeUi.planningPendingOccurrenceId : "";
+  const pendingOccurrence = pendingOccurrenceId
+    ? occurrences.find((occurrence) => occurrence?.id === pendingOccurrenceId) || null
+    : null;
+  const pendingGoal = pendingOccurrence?.goalId ? goalsById.get(pendingOccurrence.goalId) || null : null;
+  const pendingCategory = categoriesById.get(pendingGoal?.categoryId || "") || null;
 
   const commitDateKey = (dateKey) => {
     if (!dateKey || typeof setData !== "function") return;
@@ -190,6 +197,17 @@ export default function Planning({ data, setData, setTab }) {
         ...(previous.ui || {}),
         selectedDateKey: dateKey,
         selectedDate: dateKey,
+      },
+    }));
+  };
+  const clearPlanningPending = () => {
+    if (typeof setData !== "function") return;
+    setData((previous) => ({
+      ...previous,
+      ui: {
+        ...(previous.ui || {}),
+        planningPendingOccurrenceId: null,
+        planningPendingIntent: null,
       },
     }));
   };
@@ -213,6 +231,27 @@ export default function Planning({ data, setData, setTab }) {
       headerSubtitle="Répartis, ajuste et garde une charge crédible."
     >
       <div className="col" style={{ gap: 12 }}>
+        {pendingOccurrence ? (
+          <Card accentBorder>
+            <div className="p18 col" style={{ gap: 8 }}>
+              <div className="titleSm">Occurrence à replanifier</div>
+              <div className="small">
+                {pendingGoal?.title || "Action"}{pendingCategory?.name ? ` · ${pendingCategory.name}` : ""}
+              </div>
+              <div className="small2" style={{ opacity: 0.82 }}>
+                Déplace cette occurrence puis confirme ou annule ce brouillon de replanification.
+              </div>
+              <div className="row" style={{ justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
+                <Button variant="ghost" onClick={clearPlanningPending}>
+                  Annuler
+                </Button>
+                <Button onClick={clearPlanningPending}>
+                  J&apos;ai replanifié
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ) : null}
         {legacyBuckets.reclassifyCandidates.length > 0 ? (
           <Card accentBorder>
             <div className="p18 col" style={{ gap: 8 }}>

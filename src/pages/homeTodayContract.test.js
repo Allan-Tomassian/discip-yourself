@@ -27,13 +27,17 @@ describe("home today canonical contract", () => {
     expect(home).toContain("gapSummary: localGapSummary");
   });
 
-  it("shows the focus block only when it has adjustment value", () => {
+  it("renders the simplified Today v2 stack instead of legacy reorderable cards", () => {
     const home = readSrc("pages/Home.jsx");
 
-    expect(home).toContain("const shouldShowFocusCard = isFocusOverride || alternativeCandidates.length > 0;");
-    expect(home).toContain("const visibleBlockOrder = useMemo(");
-    expect(home).toContain('blockOrder.filter((id) => id !== "focus" || shouldShowFocusCard)');
-    expect(home).toContain("onReorder={handleVisibleReorder}");
+    expect(home).toContain("<TodayHero");
+    expect(home).toContain("<TodayNextActions");
+    expect(home).toContain("<TodayDailyState");
+    expect(home).not.toContain("<SortableBlocks");
+    expect(home).not.toContain("onReorder={handleVisibleReorder}");
+    expect(home).not.toContain("<CalendarCard");
+    expect(home).not.toContain("<MicroActionsCard");
+    expect(home).not.toContain('data-tour-id="today-notes-card"');
   });
 
   it("logs today coach diagnostics in local dev with a visible console log", () => {
@@ -59,6 +63,25 @@ describe("home today canonical contract", () => {
     expect(home).toContain("deriveTodayHeroChrome({");
     expect(home).toContain("todayDecisionDiagnostics");
     expect(home).not.toContain("const typedHeroHint = useTypingReveal(");
+  });
+
+  it("routes the planning CTA to today with the active category preserved", () => {
+    const home = readSrc("pages/Home.jsx");
+
+    expect(home).toContain("const openPlanningForToday = useCallback(() => {");
+    expect(home).toContain("selectedDateKey: localTodayKey");
+    expect(home).toContain("selectedDate: localTodayKey");
+    expect(home).toContain("planning: executionCategoryId || focusCategory?.id || getSelectedCategoryForView(prev, CATEGORY_VIEW.TODAY) || null");
+    expect(home).toContain("onOpenPlanning={openPlanningForToday}");
+  });
+
+  it("computes daily state from planned minutes, runtime seconds and remaining load", () => {
+    const home = readSrc("pages/Home.jsx");
+
+    expect(home).toContain('if (status === "canceled" || status === "skipped") return sum;');
+    expect(home).toContain('if (occurrence?.status !== "done") return sum;');
+    expect(home).toContain("Math.round(runtimeEntry.timerSeconds / 60)");
+    expect(home).toContain("remainingMinutes: Math.max(plannedMinutes - doneMinutes, 0)");
   });
 
   it("keeps a concrete planifier aujourd'hui fallback for passive Today states", () => {

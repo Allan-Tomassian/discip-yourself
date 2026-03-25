@@ -57,6 +57,24 @@ function logSaveError(error) {
   console.error("[user-data] save failed", error);
 }
 
+export function createStateSignature(value) {
+  try {
+    return JSON.stringify(value && typeof value === "object" ? value : {});
+  } catch {
+    return "";
+  }
+}
+
+export function shouldSkipHydrationRemoteSave({
+  skipNextRemoteSave = false,
+  hydratedSignature = "",
+  nextSignature = "",
+} = {}) {
+  if (!skipNextRemoteSave) return false;
+  if (!hydratedSignature || !nextSignature) return false;
+  return hydratedSignature === nextSignature;
+}
+
 function isUsingE2EMockedSession(userId) {
   if (!userId || typeof window === "undefined") return false;
   if (!import.meta.env.DEV) return false;
@@ -105,6 +123,7 @@ export function useUserData() {
   const [loadError, setLoadError] = useState("");
 
   const skipNextRemoteSaveRef = useRef(true);
+  const hydratedSignatureRef = useRef("");
   const saverRef = useRef(null);
   const useDebounceRef = useRef(false);
 
@@ -117,7 +136,9 @@ export function useUserData() {
     if (saverRef.current) saverRef.current.cancel();
 
     if (!userId) {
-      setDataState(toSafeState(loadState() || initialData()));
+      const next = toSafeState(loadState() || initialData());
+      hydratedSignatureRef.current = createStateSignature(next);
+      setDataState(next);
       setLoading(false);
       setLoadError("");
       return undefined;
@@ -155,6 +176,7 @@ export function useUserData() {
         const next = toSafeState(sourceData);
         if (!active) return;
 
+        hydratedSignatureRef.current = createStateSignature(next);
         skipNextRemoteSaveRef.current = true;
         setDataState(next);
         saveState(next);
@@ -183,11 +205,17 @@ export function useUserData() {
     if (loading || !userId) return;
 
     const safeData = toSafeState(data);
+    const nextSignature = createStateSignature(safeData);
     saveState(safeData);
 
     if (skipNextRemoteSaveRef.current) {
+      const shouldSkip = shouldSkipHydrationRemoteSave({
+        skipNextRemoteSave: true,
+        hydratedSignature: hydratedSignatureRef.current,
+        nextSignature,
+      });
       skipNextRemoteSaveRef.current = false;
-      return;
+      if (shouldSkip) return;
     }
 
     if (!isRemoteUserDataEnabled || !useDebounceRef.current) {

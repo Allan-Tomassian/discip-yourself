@@ -37,4 +37,23 @@ describe("upsertSessionV2", () => {
     expect(third).toBe(second);
     expect(second[0].state).toBe("ended");
   });
+
+  it("stores extended ended metadata for feedback-oriented sessions", () => {
+    const next = upsertSessionV2([], {
+      occurrenceId: "occ_2",
+      actionId: "goal_2",
+      dateKey: "2026-02-03",
+      startAt: "2026-02-03T10:00:00.000Z",
+      endAt: "2026-02-03T10:20:00.000Z",
+      state: "ended",
+      endedReason: "reported",
+      timerSeconds: 1200,
+      feedbackLevel: "difficile",
+      feedbackText: "Beaucoup trop dispersé",
+    });
+
+    expect(next[0].endedReason).toBe("reported");
+    expect(next[0].feedbackLevel).toBe("difficile");
+    expect(next[0].feedbackText).toBe("Beaucoup trop dispersé");
+  });
 });
