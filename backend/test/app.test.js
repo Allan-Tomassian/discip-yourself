@@ -290,6 +290,7 @@ test("POST /ai/chat returns a structured rules fallback", async () => {
   assert.equal(payload.decisionSource, "rules");
   assert.equal(payload.meta.selectedDateKey, TODAY_KEY);
   assert.equal(payload.meta.messagePreview, "Je suis en retard, quel est le meilleur prochain bloc ?");
+  assert.deepEqual(payload.draftChanges, []);
   assert.match(payload.primaryAction.intent, /start_occurrence|open_today|open_pilotage|resume_session|open_library/);
   await app.close();
 });

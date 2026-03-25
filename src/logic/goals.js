@@ -4,6 +4,7 @@ import { fromLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKe
 import { ensureWindowFromScheduleRules, validateOccurrences } from "./occurrencePlanner";
 import { getGenerationWindowDays } from "./entitlements";
 import { ensureSystemInboxCategory, normalizeGoalFields, normalizeResetPolicy } from "./state";
+import { getFirstVisibleCategoryId } from "../domain/categoryVisibility";
 import { resolveGoalType, isOutcome, isProcess } from "../domain/goalType";
 
 const ALLOWED = new Set(["queued", "active", "done", "invalid"]);
@@ -650,9 +651,14 @@ export function createGoal(state, goalInput = {}) {
   let workingState = state;
 
   if (!base.categoryId || !String(base.categoryId).trim()) {
-    const ensured = ensureSystemInboxCategory(workingState);
-    workingState = ensured.state;
-    if (ensured.category?.id) base.categoryId = ensured.category.id;
+    const firstVisibleCategoryId = getFirstVisibleCategoryId(workingState.categories);
+    if (firstVisibleCategoryId) {
+      base.categoryId = firstVisibleCategoryId;
+    } else {
+      const ensured = ensureSystemInboxCategory(workingState);
+      workingState = ensured.state;
+      if (ensured.category?.id) base.categoryId = ensured.category.id;
+    }
   }
 
   const goals = Array.isArray(workingState.goals) ? workingState.goals : [];

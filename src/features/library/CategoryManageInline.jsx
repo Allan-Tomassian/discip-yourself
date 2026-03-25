@@ -229,7 +229,7 @@ export default function CategoryManageInline({
   function deleteCategory() {
     if (!category?.id || typeof setData !== "function") return;
     if (category.id === SYSTEM_INBOX_ID) return;
-    const ok = safeConfirm("Supprimer cette catégorie ? Les éléments seront déplacés vers Général.");
+    const ok = safeConfirm("Supprimer cette catégorie ? Les éléments sortiront du flux principal et devront être reclassés.");
     if (!ok) return;
     setData((prev) => {
       let next = prev;

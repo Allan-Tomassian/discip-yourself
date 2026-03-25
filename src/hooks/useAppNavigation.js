@@ -3,6 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "reac
 const TABS = new Set([
   "onboarding",
   "today",
+  "planning",
   "library",
   "pilotage",
   "create-goal",
@@ -29,7 +30,8 @@ const TABS = new Set([
 ]);
 
 export function normalizeTab(t) {
-  if (t === "tools" || t === "plan") return "pilotage";
+  if (t === "tools") return "pilotage";
+  if (t === "plan") return "planning";
   if (t === "create") return "today";
   if (t === "settings") return "preferences";
   return TABS.has(t) ? t : "today";
@@ -47,9 +49,11 @@ function getInitialNavigationState() {
   const initialCategoryDetailId =
     pathParts[0] === "category" && pathParts.length === 2 ? decodeURIComponent(pathParts[1] || "") : null;
   const isPilotagePath = initialPath.startsWith("/pilotage") || initialPath.startsWith("/tools");
+  const isPlanningPath = initialPath.startsWith("/planning") || initialPath.startsWith("/plan");
   let initialTab = "today";
   if (initialPath.startsWith("/onboarding")) initialTab = "onboarding";
   else if (initialPath.startsWith("/coach/chat")) initialTab = "coach-chat";
+  else if (isPlanningPath) initialTab = "planning";
   else if (isPilotagePath) initialTab = "pilotage";
   else if (initialPath.startsWith("/session")) initialTab = "session";
   else if (initialPath.startsWith("/account")) initialTab = "account";
@@ -133,7 +137,8 @@ export function useAppNavigation({ safeData, setData }) {
           nextPath = nextCategoryProgressId ? `/category/${nextCategoryProgressId}/progress` : "/category";
         } else if (t === "category-detail") {
           nextPath = nextCategoryDetailId ? `/category/${nextCategoryDetailId}` : "/category";
-        } else if (t === "pilotage") nextPath = "/pilotage";
+        } else if (t === "planning") nextPath = "/planning";
+        else if (t === "pilotage") nextPath = "/pilotage";
         else if (t === "onboarding") nextPath = "/onboarding";
         else if (t === "account") nextPath = "/account";
         else if (t === "preferences") nextPath = "/preferences";

@@ -7,6 +7,7 @@ const TEXT_LIMITS = Object.freeze({
   headline: 72,
   reason: 160,
   actionLabel: 32,
+  draftTitle: 96,
 });
 
 export const MODEL_OUTPUT_ISSUE_CODE = Object.freeze({
@@ -61,6 +62,26 @@ function normalizeActionCandidate(action) {
   return normalized;
 }
 
+function normalizeDraftChangeCandidate(change) {
+  if (!isPlainObject(change)) return change;
+  const normalized = { ...change };
+  normalized.title = typeof normalized.title === "string" ? normalized.title.slice(0, TEXT_LIMITS.draftTitle) : normalized.title;
+  normalizeNullableField(normalized, "title");
+  normalizeNullableField(normalized, "categoryId");
+  normalizeNullableField(normalized, "actionId");
+  normalizeNullableField(normalized, "occurrenceId");
+  normalizeNullableField(normalized, "repeat");
+  normalizeNullableField(normalized, "startTime");
+  normalizeNullableField(normalized, "durationMin");
+  normalizeNullableField(normalized, "dateKey");
+  if (!Array.isArray(normalized.daysOfWeek)) normalized.daysOfWeek = [];
+  normalized.daysOfWeek = normalized.daysOfWeek
+    .map((day) => Number(day))
+    .filter((day) => Number.isInteger(day) && day >= 1 && day <= 7)
+    .slice(0, 7);
+  return normalized;
+}
+
 export function normalizeCoachPayloadCandidate(candidate) {
   if (!isPlainObject(candidate)) return candidate;
   const normalized = { ...candidate };
@@ -110,6 +131,12 @@ function normalizeChatPayloadCandidate(candidate) {
 
   if (!("suggestedDurationMin" in normalized) || normalized.suggestedDurationMin === undefined) {
     normalized.suggestedDurationMin = null;
+  }
+
+  if (!Array.isArray(normalized.draftChanges)) {
+    normalized.draftChanges = [];
+  } else {
+    normalized.draftChanges = normalized.draftChanges.map(normalizeDraftChangeCandidate).filter(isPlainObject).slice(0, 4);
   }
 
   return normalized;
@@ -367,9 +394,25 @@ function buildChatPrompt(context) {
           actionId: null,
           occurrenceId: null,
           dateKey: context.activeDate,
-        },
+    },
     secondaryAction: null,
     suggestedDurationMin: gapCandidate?.durationMin || 10,
+    draftChanges: gapCandidate?.actionId
+      ? [
+          {
+            type: "schedule_action",
+            title: null,
+            categoryId: context.activeCategoryId || "cat-1",
+            actionId: gapCandidate.actionId || "goal-1",
+            occurrenceId: null,
+            repeat: "none",
+            daysOfWeek: [],
+            startTime: null,
+            durationMin: gapCandidate?.durationMin || 20,
+            dateKey: context.activeDate,
+          },
+        ]
+      : [],
   };
 
   return [
@@ -378,10 +421,18 @@ function buildChatPrompt(context) {
     "No markdown. No prose outside JSON.",
     "Never invent actions or occurrences that are not in the context.",
     "Use only start_occurrence, resume_session, open_library, open_pilotage, or open_today intents.",
+    "You may include draftChanges only when the user explicitly asks to create, update, schedule, reschedule, or archive something in the app.",
+    "draftChanges are proposals only. They are never applied automatically.",
+    "When draftChanges is not needed, return an empty array.",
+    "Never invent actionId or occurrenceId values. Only use ids present in the context.",
+    "For create_action, choose a categoryId from availableCategories or use the active category when present.",
+    "For update_action, schedule_action, or archive_action, use one actionId from actionSummaries.",
+    "For reschedule_occurrence, use one occurrenceId from focusOccurrenceSummary or alternativeOccurrenceSummaries.",
     "Prefer resume_session when a session is already open today.",
     "Prefer start_occurrence when a credible occurrence can start now.",
     "Use open_pilotage when the best next step is to plan or replan.",
     "Keep headline <= 72 chars and reason <= 160 chars.",
+    "Keep draft change titles <= 96 chars.",
     "Use null instead of omitting nullable fields.",
     `Valid JSON example: ${JSON.stringify(validExample)}`,
     `Context: ${JSON.stringify({
@@ -409,6 +460,8 @@ function buildChatPrompt(context) {
       alternativeOccurrenceSummaries: Array.isArray(context.alternativeOccurrenceSummaries)
         ? context.alternativeOccurrenceSummaries
         : [],
+      availableCategories: Array.isArray(context.availableCategories) ? context.availableCategories : [],
+      actionSummaries: Array.isArray(context.actionSummaries) ? context.actionSummaries : [],
       gapSummary: context.gapSummary || null,
       dayLoadSummary: context.dayLoadSummary || null,
       focusSelectionReason: context.focusSelectionReason || null,

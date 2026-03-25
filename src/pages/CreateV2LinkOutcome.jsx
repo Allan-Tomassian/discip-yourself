@@ -9,7 +9,7 @@ import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_PICK_CATEGORY } from "../creation/creationSchema";
 import { createGoal } from "../logic/goals";
 import { safeUpdateGoal } from "../logic/goalGuards";
-import { ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
+import { getFirstVisibleCategoryId } from "../domain/categoryVisibility";
 import { resolveGoalType } from "../domain/goalType";
 import { fromLocalDateKey, normalizeLocalDateKey, todayLocalKey, toLocalDateKey } from "../utils/dateKey";
 import { uid } from "../utils/helpers";
@@ -118,12 +118,13 @@ export default function CreateV2LinkOutcome({
     }
     if (typeof setData !== "function") return;
     const outcomeId = uid();
-    const targetCategoryId = actions[0]?.categoryId || SYSTEM_INBOX_ID;
+    const targetCategoryId = actions[0]?.categoryId || getFirstVisibleCategoryId(safeData.categories);
+    if (!targetCategoryId) {
+      setError("Catégorie requise.");
+      return;
+    }
     setData((prev) => {
       let next = prev;
-      if (targetCategoryId === SYSTEM_INBOX_ID) {
-        next = ensureSystemInboxCategory(next).state;
-      }
       next = createGoal(next, {
         id: outcomeId,
         categoryId: targetCategoryId,

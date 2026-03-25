@@ -4,7 +4,14 @@ const AuthContext = React.createContext({
   session: null,
   user: null,
   loading: true,
-  signInWithEmail: async () => {},
+  isEmailVerified: false,
+  lastAuthEvent: "",
+  recoveryMode: false,
+  signUpWithPassword: async () => {},
+  signInWithPassword: async () => {},
+  resendSignupVerification: async () => {},
+  sendPasswordReset: async () => {},
+  updatePassword: async () => {},
   signOut: async () => {},
 });
 

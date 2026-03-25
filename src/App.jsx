@@ -15,6 +15,7 @@ import "./features/navigation/navPillUnified.css";
 
 import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
+import Planning from "./pages/Planning";
 import Categories from "./pages/Categories";
 import CreateV2Outcome from "./pages/CreateV2Outcome";
 import CreateV2HabitType from "./pages/CreateV2HabitType";
@@ -68,6 +69,12 @@ import { isProfileComplete } from "./profile/profileApi";
 import { applySessionRuntimeTransition, isRuntimeSessionOpen } from "./logic/sessionRuntime";
 import { emitSessionRuntimeNotificationHook } from "./logic/sessionRuntimeNotifications";
 import { buildUserAiProfileSignature, updateUserAiProfileAdaptation } from "./domain/userAiProfile";
+import {
+  getVisibleCategories,
+  normalizeSelectedCategoryByView,
+  sanitizeVisibleCategoryUi,
+  withSelectedCategoryByView,
+} from "./domain/categoryVisibility";
 
 function runSelfTests(data) {
   const isProd = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
@@ -261,6 +268,8 @@ export default function App() {
           ? "today"
           : currentTab === "coach-chat" || currentTab === "onboarding"
             ? "today"
+          : currentTab === "planning"
+            ? "planning"
           : currentTab === "pilotage"
             ? "pilotage"
             : currentTab === "preferences"
@@ -299,6 +308,10 @@ export default function App() {
     () => (Array.isArray(safeData.categories) ? safeData.categories : []),
     [safeData.categories]
   );
+  const visibleCategories = useMemo(
+    () => getVisibleCategories(categories),
+    [categories]
+  );
   const userAiProfileSignature = useMemo(
     () => buildUserAiProfileSignature(safeData.user_ai_profile),
     [safeData.user_ai_profile]
@@ -315,16 +328,16 @@ export default function App() {
       ),
     [safeData.occurrences]
   );
-  const categoryIdsKey = useMemo(() => categories.map((c) => c.id).join("|"), [categories]);
+  const categoryIdsKey = useMemo(() => visibleCategories.map((c) => c.id).join("|"), [visibleCategories]);
   const categoryRailOrder = useMemo(
-    () => ensureOrder(safeData?.ui?.categoryRailOrder, categories),
-    [safeData?.ui?.categoryRailOrder, categories]
+    () => ensureOrder(safeData?.ui?.categoryRailOrder, visibleCategories),
+    [safeData?.ui?.categoryRailOrder, visibleCategories]
   );
   const isDevEnv = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
   const orderedCategories = useMemo(() => {
-    const map = new Map(categories.map((c) => [c.id, c]));
+    const map = new Map(visibleCategories.map((c) => [c.id, c]));
     return categoryRailOrder.map((id) => map.get(id)).filter(Boolean);
-  }, [categories, categoryRailOrder]);
+  }, [visibleCategories, categoryRailOrder]);
   const railCategories = orderedCategories;
   const {
     homeActiveCategoryId,
@@ -337,7 +350,7 @@ export default function App() {
     tab,
     isCreateTab,
     safeData,
-    categories,
+    categories: visibleCategories,
     setData,
     setTab,
     libraryCategoryId,
@@ -384,7 +397,7 @@ export default function App() {
     isCreateTab,
     setTab,
     safeData,
-    categories,
+    categories: visibleCategories,
     setData,
     dataRef,
     openPaywall,
@@ -490,24 +503,22 @@ export default function App() {
       const data = safeData && typeof safeData === "object" ? safeData : null;
       if (!data) return;
       const cats = Array.isArray(data.categories) ? data.categories : [];
-      const ids = new Set(cats.map((c) => c && c.id).filter(Boolean));
+      const visibleIds = new Set(getVisibleCategories(cats).map((c) => c.id));
       const ui = data.ui && typeof data.ui === "object" ? data.ui : {};
       const issues = [];
       const inboxId = getInboxId(dataRef.current || safeData || data);
-      if (!ids.has(inboxId)) issues.push("systemInboxMissing");
-      if (Array.isArray(ui.categoryRailOrder) && ui.categoryRailOrder.some((id) => !ids.has(id))) {
+      if (!cats.some((category) => category?.id === inboxId)) issues.push("systemInboxMissing");
+      if (Array.isArray(ui.categoryRailOrder) && ui.categoryRailOrder.some((id) => !visibleIds.has(id))) {
         issues.push("categoryRailOrder");
       }
-      if (ui.selectedCategoryId && !ids.has(ui.selectedCategoryId)) issues.push("selectedCategoryId");
-      if (ui.librarySelectedCategoryId && !ids.has(ui.librarySelectedCategoryId)) {
+      const scv = normalizeSelectedCategoryByView(ui.selectedCategoryByView);
+      if (ui.selectedCategoryId && !visibleIds.has(ui.selectedCategoryId)) issues.push("selectedCategoryId");
+      if (ui.librarySelectedCategoryId && !visibleIds.has(ui.librarySelectedCategoryId)) {
         issues.push("librarySelectedCategoryId");
       }
-      if (ui.selectedCategoryByView && typeof ui.selectedCategoryByView === "object") {
-        const scv = ui.selectedCategoryByView;
-        ["home", "library", "plan", "pilotage"].forEach((key) => {
-          if (scv[key] && !ids.has(scv[key])) issues.push(`selectedCategoryByView.${key}`);
-        });
-      }
+      ["today", "planning", "library", "pilotage"].forEach((key) => {
+        if (scv[key] && !visibleIds.has(scv[key])) issues.push(`selectedCategoryByView.${key}`);
+      });
       if (!issues.length) return;
 
       setData((prev) => {
@@ -515,43 +526,25 @@ export default function App() {
           const base = prev && typeof prev === "object" ? prev : {};
           const ensured = ensureSystemInboxCategory(base);
           const next = ensured?.state && typeof ensured.state === "object" ? ensured.state : base;
-          const inboxIdNext = getInboxId(next);
           const nextCats = Array.isArray(next.categories) ? next.categories : [];
-          const nextIds = new Set(nextCats.map((c) => c && c.id).filter(Boolean));
+          const nextVisibleIds = new Set(getVisibleCategories(nextCats).map((c) => c.id));
           const nextUi = { ...(next.ui || {}) };
           const fixed = new Set();
           let didChange = next !== base;
 
           if (Array.isArray(nextUi.categoryRailOrder)) {
-            const filtered = nextUi.categoryRailOrder.filter((id) => nextIds.has(id));
+            const filtered = nextUi.categoryRailOrder.filter((id) => nextVisibleIds.has(id));
             if (filtered.length !== nextUi.categoryRailOrder.length) {
               nextUi.categoryRailOrder = filtered;
               fixed.add("categoryRailOrder");
               didChange = true;
             }
           }
-          if (nextUi.selectedCategoryId && !nextIds.has(nextUi.selectedCategoryId)) {
-            nextUi.selectedCategoryId = inboxIdNext;
-            fixed.add("selectedCategoryId");
+          const sanitizedUi = sanitizeVisibleCategoryUi(nextUi, nextCats);
+          if (JSON.stringify(sanitizedUi) !== JSON.stringify(nextUi)) {
+            Object.assign(nextUi, sanitizedUi);
+            fixed.add("selectedCategoryByView");
             didChange = true;
-          }
-          if (nextUi.librarySelectedCategoryId && !nextIds.has(nextUi.librarySelectedCategoryId)) {
-            nextUi.librarySelectedCategoryId = inboxIdNext;
-            fixed.add("librarySelectedCategoryId");
-            didChange = true;
-          }
-          if (nextUi.selectedCategoryByView && typeof nextUi.selectedCategoryByView === "object") {
-            const scv = { ...nextUi.selectedCategoryByView };
-            let scvChanged = false;
-            ["home", "library", "plan", "pilotage"].forEach((key) => {
-              if (scv[key] && !nextIds.has(scv[key])) {
-                scv[key] = inboxIdNext;
-                scvChanged = true;
-                fixed.add(`selectedCategoryByView.${key}`);
-                didChange = true;
-              }
-            });
-            if (scvChanged) nextUi.selectedCategoryByView = scv;
           }
 
           if (!didChange) return prev;
@@ -578,7 +571,7 @@ export default function App() {
     openCreateOutcomeDirect({ source: "pilotage", categoryId });
   };
 
-  const showBottomRail = tab === "today" || tab === "library" || tab === "pilotage";
+  const showBottomRail = tab === "today" || tab === "planning" || tab === "library" || tab === "pilotage";
   const totemDockLayer = <TotemDockLayer data={safeData} setData={setData} />;
 
   useEffect(() => {
@@ -711,11 +704,10 @@ export default function App() {
             setLibraryCategoryId(categoryId);
             setData((prev) => ({
               ...prev,
-              ui: {
-                ...(prev.ui || {}),
+              ui: withSelectedCategoryByView(prev.ui, {
+                library: categoryId,
                 librarySelectedCategoryId: categoryId,
-                selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), library: categoryId },
-              },
+              }),
             }));
             setTab("library");
           }}
@@ -734,6 +726,12 @@ export default function App() {
           generationWindowDays={generationWindowDays}
           isPlanningUnlimited={planningUnlimited}
         />
+      ) : tab === "planning" ? (
+        <Planning
+          data={data}
+          setData={setData}
+          setTab={setTab}
+        />
       ) : tab === "category-detail" ? (
         <CategoryDetailView
           data={data}
@@ -743,11 +741,10 @@ export default function App() {
             setLibraryCategoryId(detailCategoryId);
             setData((prev) => ({
               ...prev,
-              ui: {
-                ...(prev.ui || {}),
+              ui: withSelectedCategoryByView(prev.ui, {
+                library: detailCategoryId,
                 librarySelectedCategoryId: detailCategoryId,
-                selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), library: detailCategoryId },
-              },
+              }),
             }));
             setCategoryDetailId(null);
             setTab("library");
@@ -819,11 +816,10 @@ export default function App() {
               setLibraryCategoryId(nextId);
               setData((prev) => ({
                 ...prev,
-                ui: {
-                  ...(prev.ui || {}),
+                ui: withSelectedCategoryByView(prev.ui, {
+                  library: nextId,
                   librarySelectedCategoryId: nextId,
-                  selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), library: nextId },
-                },
+                }),
               }));
             }
             setEditItem({ id, type, categoryId: nextId, returnTab: tab });
@@ -1093,7 +1089,10 @@ export default function App() {
                     if (target?.categoryId) {
                       setData((prev) => ({
                         ...prev,
-                        ui: { ...(prev.ui || {}), selectedCategoryId: target.categoryId },
+                        ui: withSelectedCategoryByView(prev.ui, {
+                          pilotage: target.categoryId,
+                          selectedCategoryId: target.categoryId,
+                        }),
                       }));
                       setTab("pilotage");
                     }
@@ -1123,7 +1122,7 @@ export default function App() {
       <DiagnosticOverlay data={safeData} tab={tab} />
       <CategoryGateModal
         open={categoryGateOpen}
-        categories={categories}
+        categories={visibleCategories}
         categoryRailOrder={safeData?.ui?.categoryRailOrder}
         activeCategoryId={homeActiveCategoryId}
         goals={data?.goals || []}
@@ -1137,7 +1136,7 @@ export default function App() {
         open={createFlowOpen}
         data={data}
         setData={setData}
-        categories={categories}
+        categories={visibleCategories}
         selectedCategoryId={createFlowCategoryId || selectedCategoryId}
         seedCreateDraft={seedCreateDraft}
         resetCreateDraft={resetCreateDraft}

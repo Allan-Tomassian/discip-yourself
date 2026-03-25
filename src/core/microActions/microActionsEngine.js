@@ -13,12 +13,13 @@ function resolveCategoryKey(categoryId, categoryName) {
   const key = normalizeKey(categoryId);
   const nameKey = normalizeKey(categoryName);
   const source = key || nameKey;
-  if (!source) return "general";
+  if (!source) return "neutral";
   if (source.includes("sante") || source.includes("health") || source.includes("sport")) return "sante";
   if (source.includes("business") || source.includes("travail") || source.includes("work") || source.includes("finance")) {
     return "business";
   }
-  return source === "general" ? "general" : "general";
+  if (source.includes("planning") || source.includes("organis") || source.includes("agenda")) return "planning";
+  return "neutral";
 }
 
 function safeNumber(value, fallback = null) {
@@ -141,8 +142,8 @@ export function getMicroActionsForToday(context = {}, limit = 3) {
   const rankMap = buildRankMap(library, ctx, seed);
 
   const categoryCandidates = library.filter((t) => t && t.categoryId === categoryKey);
-  const generalCandidates = library.filter((t) => t && t.categoryId === "general");
-  const base = categoryCandidates.length ? categoryCandidates : generalCandidates;
+  const neutralCandidates = library.filter((t) => t && t.categoryId === "neutral");
+  const base = categoryCandidates.length ? categoryCandidates : neutralCandidates;
 
   const clarityCandidates = base.filter((t) => {
     const tags = getTemplateTags(t);

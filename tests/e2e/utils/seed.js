@@ -120,7 +120,12 @@ export function buildBaseState({ withContent = false } = {}) {
   return data;
 }
 
-export function buildMockAuthSession({ userId = "e2e-user-id", email = "e2e@example.com" } = {}) {
+export function buildMockAuthSession({
+  userId = "e2e-user-id",
+  email = "e2e@example.com",
+  verified = true,
+} = {}) {
+  const emailConfirmedAt = verified ? "2026-03-23T10:00:00.000Z" : "";
   return {
     access_token: "e2e-access-token",
     refresh_token: "e2e-refresh-token",
@@ -133,6 +138,8 @@ export function buildMockAuthSession({ userId = "e2e-user-id", email = "e2e@exam
       role: "authenticated",
       app_metadata: { provider: "email" },
       user_metadata: {},
+      email_confirmed_at: emailConfirmedAt,
+      confirmed_at: emailConfirmedAt,
     },
   };
 }

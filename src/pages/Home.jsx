@@ -55,6 +55,12 @@ import {
 } from "../features/today/aiNowHeroAdapter";
 import { useTypingReveal } from "../features/today/useTypingReveal";
 import { createAiNowContextSignature, useAiNow } from "../hooks/useAiNow";
+import {
+  CATEGORY_VIEW,
+  getSelectedCategoryForView,
+  getVisibleCategories,
+  resolvePreferredVisibleCategoryId,
+} from "../domain/categoryVisibility";
 
 // TOUR MAP:
 // - primary_action: start session (GO) for today
@@ -473,16 +479,28 @@ export default function Home({
   // Data slices
   const profile = safeData.profile || {};
   // per-view category selection for Home (fallback to legacy)
-  const homeSelectedCategoryIdRaw =
-    safeData.ui?.selectedCategoryByView?.home || safeData.ui?.selectedCategoryId || null;
-  const homeSelectedCategoryId = homeSelectedCategoryIdRaw || "general";
+  const homeSelectedCategoryIdRaw = getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY);
   const categories = useMemo(
-    () => (Array.isArray(safeData.categories) ? safeData.categories : []),
+    () => getVisibleCategories(safeData.categories),
     [safeData.categories]
   );
-  const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
+  const homeSelectedCategoryId = useMemo(
+    () =>
+      resolvePreferredVisibleCategoryId({
+        categories,
+        candidates: [homeSelectedCategoryIdRaw, safeData.ui?.selectedCategoryId],
+      }),
+    [categories, homeSelectedCategoryIdRaw, safeData.ui?.selectedCategoryId]
+  );
+  const goals = useMemo(
+    () =>
+      (Array.isArray(safeData.goals) ? safeData.goals : []).filter(
+        (goal) => goal?.categoryId && categories.some((category) => category.id === goal.categoryId)
+      ),
+    [categories, safeData.goals]
+  );
   const totemV1 = useMemo(() => ensureTotemV1(safeData?.ui?.totemV1), [safeData?.ui?.totemV1]);
-  const noteCategoryId = homeSelectedCategoryId;
+  const noteCategoryId = homeSelectedCategoryId || "today";
   const noteKeyPrefix = noteCategoryId ? `dailyNote:${noteCategoryId}:` : "dailyNote:";
   const noteMetaKeyPrefix = noteCategoryId ? `dailyNoteMeta:${noteCategoryId}:` : "dailyNoteMeta:";
   const noteStorageKey = `${noteKeyPrefix}${selectedDateKey}`;
@@ -537,15 +555,14 @@ export default function Home({
       const name = typeof category?.name === "string" && category.name.trim() ? category.name.trim() : id;
       list.push({ value: id, label: name });
     }
-    if (!seen.has("general")) list.unshift({ value: "general", label: "Général" });
     return list;
   }, [categories]);
   const microSelectedCategoryId = useMemo(() => {
     const fromUi = typeof safeData?.ui?.microActionsV1?.categoryId === "string" ? safeData.ui.microActionsV1.categoryId : "";
-    const fallback = fromUi || microDefaultCategoryId || "general";
+    const fallback = fromUi || microDefaultCategoryId || homeSelectedCategoryId || categories[0]?.id || null;
     const exists = microCategoryOptions.some((opt) => opt.value === fallback);
-    return exists ? fallback : microDefaultCategoryId || "general";
-  }, [microCategoryOptions, microDefaultCategoryId, safeData?.ui?.microActionsV1?.categoryId]);
+    return exists ? fallback : microDefaultCategoryId || homeSelectedCategoryId || categories[0]?.id || null;
+  }, [categories, homeSelectedCategoryId, microCategoryOptions, microDefaultCategoryId, safeData?.ui?.microActionsV1?.categoryId]);
   const microActionsV1 = useMemo(
     () => ensureMicroActionsV1(safeData, microDateKey, microSelectedCategoryId),
     [microDateKey, microSelectedCategoryId, safeData]

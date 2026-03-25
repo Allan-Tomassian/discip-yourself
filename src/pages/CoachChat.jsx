@@ -6,6 +6,8 @@ import { requestAiCoachChat } from "../infra/aiCoachChatClient";
 import { todayLocalKey } from "../utils/dateKey";
 import { applySessionRuntimeTransition } from "../logic/sessionRuntime";
 import { resolveExecutableOccurrence } from "../logic/sessionResolver";
+import { applyChatDraftChanges } from "../logic/chatDraftChanges";
+import { CATEGORY_VIEW, getSelectedCategoryForView } from "../domain/categoryVisibility";
 
 function trimHistory(history) {
   const safeHistory = Array.isArray(history) ? history.filter(Boolean) : [];
@@ -37,19 +39,61 @@ function renderActionButtonLabel(action) {
   return [action.label, durationLabel].filter(Boolean).join(" • ");
 }
 
+function describeDraftChange(change, { goalsById, categoriesById }) {
+  if (!change || typeof change !== "object") return "";
+  const goalTitle =
+    (typeof change.title === "string" && change.title.trim()) ||
+    goalsById.get(change.actionId || "")?.title ||
+    "Action";
+  const categoryName = categoriesById.get(change.categoryId || "")?.name || null;
+  const timingBits = [];
+  if (change.dateKey) timingBits.push(change.dateKey);
+  if (change.startTime) timingBits.push(change.startTime);
+  if (Number.isFinite(change.durationMin)) timingBits.push(`${change.durationMin} min`);
+
+  if (change.type === "create_action") {
+    return ["Créer", goalTitle, categoryName, ...timingBits].filter(Boolean).join(" · ");
+  }
+  if (change.type === "update_action") {
+    return ["Mettre à jour", goalTitle, categoryName].filter(Boolean).join(" · ");
+  }
+  if (change.type === "schedule_action") {
+    return ["Planifier", goalTitle, ...timingBits].filter(Boolean).join(" · ");
+  }
+  if (change.type === "reschedule_occurrence") {
+    return ["Replanifier", goalTitle, ...timingBits].filter(Boolean).join(" · ");
+  }
+  if (change.type === "archive_action") {
+    return ["Archiver", goalTitle].filter(Boolean).join(" · ");
+  }
+  return goalTitle;
+}
+
 export default function CoachChat({ data, setData, setTab }) {
   const { session } = useAuth();
   const accessToken = session?.access_token || "";
   const safeData = data && typeof data === "object" ? data : {};
   const safeUi = safeData?.ui && typeof safeData.ui === "object" ? safeData.ui : {};
   const selectedDateKey = safeUi.selectedDateKey || safeUi.selectedDate || todayLocalKey();
-  const activeCategoryId = safeUi.selectedCategoryByView?.home || safeUi.selectedCategoryId || null;
+  const activeCategoryId =
+    getSelectedCategoryForView(safeUi, CATEGORY_VIEW.TODAY) ||
+    safeUi.selectedCategoryId ||
+    null;
   const [draft, setDraft] = useState("");
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [applyingDraftId, setApplyingDraftId] = useState(null);
   const [error, setError] = useState("");
 
   const visibleHistory = useMemo(() => trimHistory(history), [history]);
+  const categoriesById = useMemo(
+    () => new Map((Array.isArray(safeData.categories) ? safeData.categories : []).map((category) => [category?.id, category])),
+    [safeData.categories]
+  );
+  const goalsById = useMemo(
+    () => new Map((Array.isArray(safeData.goals) ? safeData.goals : []).map((goal) => [goal?.id, goal])),
+    [safeData.goals]
+  );
 
   function applyAction(action) {
     if (!action || !action.intent) return;
@@ -94,6 +138,43 @@ export default function CoachChat({ data, setData, setTab }) {
     });
   }
 
+  function applyDraftProposal(entry) {
+    if (!entry?.id || applyingDraftId) return;
+    const draftChanges = Array.isArray(entry.reply?.draftChanges) ? entry.reply.draftChanges : [];
+    if (!draftChanges.length) return;
+    setApplyingDraftId(entry.id);
+    setError("");
+    let result = { state: safeData, appliedCount: 0, navigationTarget: null };
+    setData((previous) => {
+      result = applyChatDraftChanges(previous, draftChanges);
+      return result.state;
+    });
+    setHistory((previous) =>
+      previous.map((item) => {
+        if (item.id !== entry.id) return item;
+        if (result.appliedCount > 0) {
+          return {
+            ...item,
+            draftApplyStatus: "applied",
+            draftApplyMessage:
+              result.appliedCount > 1
+                ? `${result.appliedCount} changements appliqués.`
+                : "Brouillon appliqué.",
+          };
+        }
+        return {
+          ...item,
+          draftApplyStatus: "error",
+          draftApplyMessage: "Aucun changement applicable dans l'état actuel.",
+        };
+      })
+    );
+    if (result.appliedCount > 0 && result.navigationTarget) {
+      setTab(result.navigationTarget);
+    }
+    setApplyingDraftId(null);
+  }
+
   async function submitMessage() {
     const message = draft.trim();
     if (!message || loading) return;
@@ -130,6 +211,8 @@ export default function CoachChat({ data, setData, setTab }) {
         id: `${Date.now()}_assistant`,
         role: "assistant",
         reply: result.reply,
+        draftApplyStatus: Array.isArray(result.reply?.draftChanges) && result.reply.draftChanges.length ? "idle" : null,
+        draftApplyMessage: "",
       };
       setHistory((previous) => trimHistory([...previous, userEntry, assistantEntry]));
       setDraft("");
@@ -188,6 +271,47 @@ export default function CoachChat({ data, setData, setTab }) {
                     </Button>
                   ) : null}
                 </div>
+                {Array.isArray(entry.reply?.draftChanges) && entry.reply.draftChanges.length ? (
+                  <div
+                    style={{
+                      borderTop: "1px solid rgba(255,255,255,0.08)",
+                      paddingTop: 10,
+                      display: "grid",
+                      gap: 8,
+                    }}
+                  >
+                    <div className="small2" style={{ opacity: 0.8 }}>
+                      Brouillon d&apos;application
+                    </div>
+                    <div className="col" style={{ gap: 6 }}>
+                      {entry.reply.draftChanges.map((change, index) => (
+                        <div key={`${entry.id}_draft_${index}`} className="small2" style={{ opacity: 0.92 }}>
+                          {describeDraftChange(change, { goalsById, categoriesById })}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                      <Button
+                        onClick={() => applyDraftProposal(entry)}
+                        disabled={applyingDraftId === entry.id || entry.draftApplyStatus === "applied"}
+                      >
+                        {applyingDraftId === entry.id
+                          ? "Application..."
+                          : entry.draftApplyStatus === "applied"
+                            ? "Appliqué"
+                            : "Appliquer le brouillon"}
+                      </Button>
+                    </div>
+                    {entry.draftApplyMessage ? (
+                      <div
+                        className="small2"
+                        style={{ color: entry.draftApplyStatus === "error" ? "#F87171" : undefined, opacity: 0.9 }}
+                      >
+                        {entry.draftApplyMessage}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </Card>
           ) : (

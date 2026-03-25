@@ -4,7 +4,7 @@ import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
 export const MICRO_ACTIONS_V1_ITEMS_COUNT = 3;
 export const BASIC_MICRO_REROLL_LIMIT = 3;
 
-const DEFAULT_CATEGORY_ID = "general";
+const DEFAULT_CATEGORY_ID = "neutral";
 const TODO_STATUS = "todo";
 const DONE_STATUS = "done";
 
@@ -68,8 +68,8 @@ function buildTemplatePool(state, categoryId) {
   const library = Array.isArray(MICRO_ACTIONS_LIBRARY) ? MICRO_ACTIONS_LIBRARY : [];
   const byCategory = library.filter((item) => item && item.id && item.categoryId === key);
   if (byCategory.length) return byCategory;
-  const general = library.filter((item) => item && item.id && item.categoryId === DEFAULT_CATEGORY_ID);
-  if (general.length) return general;
+  const neutral = library.filter((item) => item && item.id && item.categoryId === DEFAULT_CATEGORY_ID);
+  if (neutral.length) return neutral;
   return library.filter((item) => item && item.id);
 }
 
@@ -269,17 +269,15 @@ function sanitizeRerollIndices(indices, itemCount) {
 
 export function getDefaultMicroCategoryId(state) {
   const safeState = asObject(state);
-  const categories = Array.isArray(safeState.categories) ? safeState.categories.filter(Boolean) : [];
+  const categories = Array.isArray(safeState.categories)
+    ? safeState.categories.filter((category) => category && category.id && !category.system && !category.isSystem)
+    : [];
   const selected =
+    asString(safeState.ui?.selectedCategoryByView?.today).trim() ||
     asString(safeState.ui?.selectedCategoryByView?.home).trim() ||
     asString(safeState.ui?.selectedCategoryId).trim();
   if (selected && categories.some((cat) => cat && cat.id === selected)) return selected;
-
-  const firstUser = categories.find((cat) => cat && cat.id && !cat.system && !cat.isSystem);
-  if (firstUser?.id) return firstUser.id;
-
-  const firstAny = categories.find((cat) => cat && cat.id);
-  if (firstAny?.id) return firstAny.id;
+  if (categories[0]?.id) return categories[0].id;
 
   return DEFAULT_CATEGORY_ID;
 }

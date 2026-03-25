@@ -22,6 +22,13 @@ import { addDays } from "../utils/dates";
 import { fromLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { useDraftStore } from "../shared/draft/useDraft";
 import { flushDraftScopes, onBeforeLeaveScope } from "../shared/draft/draftGuards";
+import {
+  CATEGORY_VIEW,
+  getSelectedCategoryForView,
+  getVisibleCategories,
+  withSelectedCategoryByView,
+} from "../domain/categoryVisibility";
+import { collectSystemInboxBuckets } from "../domain/systemInboxMigration";
 import "../features/library/library.css";
 
 // TOUR MAP:
@@ -172,15 +179,15 @@ export default function Categories({
     () => (Array.isArray(safeData.reminders) ? safeData.reminders : []),
     [safeData.reminders]
   );
-  const sysCategory = useMemo(
-    () => categories.find((c) => c?.id === SYSTEM_INBOX_ID) || categories.find((c) => c?.system) || null,
-    [categories]
-  );
   const activeCategories = useMemo(
-    () => categories.filter((c) => c && c.id !== SYSTEM_INBOX_ID),
+    () => getVisibleCategories(categories),
     [categories]
   );
   const isEmpty = activeCategories.length === 0;
+  const legacyBuckets = useMemo(
+    () => collectSystemInboxBuckets({ goals: safeData.goals, categories: safeData.categories }),
+    [safeData.categories, safeData.goals]
+  );
   const suggestedIds = useMemo(() => {
     const ids = new Set();
     for (const cat of SUGGESTED_CATEGORIES) {
@@ -193,8 +200,8 @@ export default function Categories({
     [categories]
   );
   const activeCategoryIds = useMemo(
-    () => new Set(categories.map((c) => c?.id).filter(Boolean)),
-    [categories]
+    () => new Set(activeCategories.map((c) => c?.id).filter(Boolean)),
+    [activeCategories]
   );
   const defaultSuggestionsCollapsed = activeCategories.length > 0;
   const suggestionsCollapsed =
@@ -206,9 +213,10 @@ export default function Categories({
   const getGoalScopeKey = (goalId) => `goal:${goalId}`;
 
   useEffect(() => {
-    if (sysCategory || typeof setData !== "function") return;
+    if (typeof setData !== "function") return;
+    if (categories.some((c) => c?.id === SYSTEM_INBOX_ID || c?.system)) return;
     setData((prev) => ensureSystemInboxCategory(prev).state);
-  }, [sysCategory, setData]);
+  }, [categories, setData]);
 
   useEffect(() => {
     if (!editedCategoryId) return;
@@ -447,6 +455,19 @@ export default function Categories({
     setEditPanelGoalId(null);
   }
 
+  function handleReclassifyLegacyGoal(goal, categoryId) {
+    if (!goal?.id || !categoryId || typeof setData !== "function") return;
+    setData((prev) => {
+      const result = safeUpdateGoal(prev, goal.id, { categoryId }, { onOpenPaywall });
+      return result.state;
+    });
+  }
+
+  function openLegacyGoalEdit(goal) {
+    if (!goal?.id) return;
+    setEditPanelGoalId(goal.id);
+  }
+
   function activateSuggestedCategory(cat) {
     if (!cat || typeof setData !== "function") return;
     if (!canCreateCategory(safeData)) {
@@ -478,16 +499,21 @@ export default function Categories({
       const nextHabits = (next.habits || []).map((h) =>
         h && h.categoryId === cat.id ? { ...h, categoryId: sysId } : h
       );
-      const nextUi = { ...(next.ui || {}) };
-      if (nextUi.selectedCategoryId === cat.id) nextUi.selectedCategoryId = sysId;
-      if (nextUi.selectedCategoryByView) {
-        const scv = { ...nextUi.selectedCategoryByView };
-        if (scv.library === cat.id) scv.library = sysId;
-        if (scv.plan === cat.id) scv.plan = sysId;
-        if (scv.home === cat.id) scv.home = sysId;
-        if (scv.pilotage === cat.id) scv.pilotage = sysId;
-        nextUi.selectedCategoryByView = scv;
-      }
+      const fallbackSelectedId = getVisibleCategories(nextCategories)[0]?.id || null;
+      const nextUi = withSelectedCategoryByView(next.ui || {}, {
+        ...(getSelectedCategoryForView(next.ui || {}, CATEGORY_VIEW.TODAY) === cat.id
+          ? { today: fallbackSelectedId, selectedCategoryId: fallbackSelectedId }
+          : {}),
+        ...(getSelectedCategoryForView(next.ui || {}, CATEGORY_VIEW.PLANNING) === cat.id
+          ? { planning: fallbackSelectedId }
+          : {}),
+        ...(getSelectedCategoryForView(next.ui || {}, CATEGORY_VIEW.LIBRARY) === cat.id
+          ? { library: fallbackSelectedId, librarySelectedCategoryId: fallbackSelectedId }
+          : {}),
+        ...(getSelectedCategoryForView(next.ui || {}, CATEGORY_VIEW.PILOTAGE) === cat.id
+          ? { pilotage: fallbackSelectedId }
+          : {}),
+      });
       return {
         ...next,
         categories: nextCategories,
@@ -502,8 +528,8 @@ export default function Categories({
     if (typeof setData !== "function") return;
     setData((prev) => {
       const prevUi = prev.ui || {};
-      const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
-      const hasActive = prevCategories.some((c) => c && c.id !== SYSTEM_INBOX_ID);
+      const prevCategories = getVisibleCategories(prev.categories);
+      const hasActive = prevCategories.length > 0;
       const fallbackCollapsed = hasActive;
       const currentCollapsed =
         typeof prevUi.librarySuggestionsCollapsed === "boolean"
@@ -519,9 +545,14 @@ export default function Categories({
   // IMPORTANT:
   // This page must not mutate ui.selectedCategoryId (used by Plan / CategoryDetail).
   // We isolate the Library selection using ui.librarySelectedCategoryId.
-  const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
+  const librarySelectedCategoryId =
+    getSelectedCategoryForView(safeData, CATEGORY_VIEW.LIBRARY) ||
+    safeData?.ui?.librarySelectedCategoryId ||
+    null;
   const homeSelectedCategoryId =
-    safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
+    getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY) ||
+    safeData?.ui?.selectedCategoryId ||
+    null;
   const libraryDetailExpandedId = safeData?.ui?.libraryDetailExpandedId || null;
   const libraryViewSelectedId = librarySelectedCategoryId || homeSelectedCategoryId || null;
 
@@ -540,17 +571,12 @@ export default function Categories({
     if (typeof setData === "function") {
       setData((prev) => {
         const prevUi = prev.ui || {};
-        const prevSel =
-          prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-            ? prevUi.selectedCategoryByView
-            : {};
         return {
           ...prev,
-          ui: {
-            ...prevUi,
+          ui: withSelectedCategoryByView(prevUi, {
+            library: categoryId,
             librarySelectedCategoryId: categoryId,
-            selectedCategoryByView: { ...prevSel, library: categoryId },
-          },
+          }),
         };
       });
     }
@@ -600,10 +626,11 @@ export default function Categories({
     [safeData?.ui?.categoryRailOrder]
   );
   const orderedUserCategories = useMemo(() => {
-    const hasUserOrder = categoryRailOrder.some((id) => id && id !== SYSTEM_INBOX_ID);
+    const visibleIds = new Set(activeCategories.map((category) => category.id));
+    const hasUserOrder = categoryRailOrder.some((id) => id && visibleIds.has(id));
     if (hasUserOrder) {
       const map = new Map(activeCategories.map((c) => [c.id, c]));
-      const ordered = categoryRailOrder.map((id) => map.get(id)).filter(Boolean);
+      const ordered = categoryRailOrder.filter((id) => visibleIds.has(id)).map((id) => map.get(id)).filter(Boolean);
       const missing = activeCategories.filter((c) => !categoryRailOrder.includes(c.id));
       return ordered.concat(missing);
     }
@@ -616,12 +643,12 @@ export default function Categories({
 
   const countsByCategory = useMemo(() => {
     const map = new Map();
-    for (const c of categories) {
+    for (const c of activeCategories) {
       const counts = getCategoryCounts({ goals }, c.id);
       map.set(c.id, { habits: counts.processCount, objectives: counts.outcomesCount });
     }
     return map;
-  }, [categories, goals]);
+  }, [activeCategories, goals]);
 
   const selectedCategory = categories.find((c) => c.id === libraryDetailExpandedId) || null;
   const outcomeGoals = useMemo(() => {
@@ -1073,15 +1100,6 @@ export default function Categories({
     );
   }
 
-  const sysCategoryDisplay = useMemo(
-    () => sysCategory || { id: SYSTEM_INBOX_ID, name: "Général", color: "#64748B" },
-    [sysCategory]
-  );
-  const orderedRealCategories = useMemo(
-    () => [sysCategoryDisplay, ...orderedUserCategories].filter(Boolean),
-    [sysCategoryDisplay, orderedUserCategories]
-  );
-
   return (
       <ScreenShell
         headerTitle={<span data-tour-id="library-title">Bibliothèque</span>}
@@ -1089,6 +1107,61 @@ export default function Categories({
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
       <div className="stack stackGap12 pageNarrow">
+        {legacyBuckets.reclassifyCandidates.length ? (
+          <Card>
+            <div className="p18 col gap10">
+              <div className="row rowBetween alignCenter libraryCardHeader">
+                <div className="sectionTitle">À reclasser</div>
+                <div className="small2 textMuted2">
+                  {legacyBuckets.reclassifyCandidates.length} action{legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} hors catégorie visible
+                </div>
+              </div>
+              <div className="small2 textMuted">
+                Les actions héritées de <strong>Général</strong> ne remontent plus dans Today ni Planning tant qu&apos;elles ne sont pas reclassées.
+              </div>
+              <div className="col gap8">
+                {legacyBuckets.reclassifyCandidates.map(({ goal, inferredCategoryId }) => {
+                  const inferredCategory = activeCategories.find((category) => category.id === inferredCategoryId) || null;
+                  return (
+                    <AccentCategoryRow
+                      key={goal.id}
+                      color={inferredCategory?.color || "#64748B"}
+                      className="listItem"
+                    >
+                      <div className="row rowBetween gap8">
+                        <div className="col gap6 minW0">
+                          <div className="itemTitle">{goal.title || "Action"}</div>
+                          <div className="itemSub">
+                            {inferredCategory
+                              ? `Suggestion: ${inferredCategory.name}`
+                              : "Choisis une catégorie avant de la réutiliser."}
+                          </div>
+                        </div>
+                        <div className="row gap8 alignCenter">
+                          {inferredCategory ? (
+                            <Button
+                              variant="ghost"
+                              onClick={() => handleReclassifyLegacyGoal(goal, inferredCategory.id)}
+                            >
+                              Classer
+                            </Button>
+                          ) : null}
+                          <Button
+                            variant="ghost"
+                            onClick={() => openLegacyGoalEdit(goal)}
+                          >
+                            Éditer
+                          </Button>
+                        </div>
+                      </div>
+                    </AccentCategoryRow>
+                  );
+                })}
+              </div>
+            </div>
+          </Card>
+        ) : null}
+
         <Card>
           <div className="p18">
             <div className="row rowBetween alignCenter libraryCardHeader">
@@ -1097,24 +1170,20 @@ export default function Categories({
 
             <div className="mt12 col gap10" data-tour-id="library-category-list">
               {isEmpty ? <div className="small2 textMuted">Aucune catégorie active.</div> : null}
-              {orderedRealCategories.length ? (
+              {orderedUserCategories.length ? (
                 <SortableBlocks
-                  items={orderedRealCategories}
+                  items={orderedUserCategories}
                   getId={(item) => item.id}
                   onReorder={(nextItems) => {
                     if (typeof setData !== "function") return;
                     const nextIds = nextItems.map((item) => item.id).filter(Boolean);
-                    const filtered = nextIds.filter((id) => id !== SYSTEM_INBOX_ID);
-                    const nextOrder = [SYSTEM_INBOX_ID, ...filtered];
                     setData((prev) => ({
                       ...prev,
-                      ui: { ...(prev.ui || {}), categoryRailOrder: nextOrder },
+                      ui: { ...(prev.ui || {}), categoryRailOrder: nextIds },
                     }));
                   }}
                   className="col"
-                  renderItem={(category, drag) =>
-                    renderCategoryItem(category, drag, category?.id !== SYSTEM_INBOX_ID)
-                  }
+                  renderItem={(category, drag) => renderCategoryItem(category, drag, true)}
                 />
               ) : null}
               {remainingSuggestions.length ? (

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { SYSTEM_INBOX_ID } from "../../logic/state";
+import { getFirstVisibleCategoryId } from "../../domain/categoryVisibility";
 import { LABELS, UI_COPY } from "../labels";
 import { GateButton, GateCard, GateFooter, GateHeader, GatePanel, GateRow } from "../../shared/ui/gate/Gate";
 import CreateV2Outcome from "../../pages/CreateV2Outcome";
@@ -20,7 +20,7 @@ function resolveCategory(categories, categoryId) {
     const match = list.find((c) => c?.id === categoryId);
     if (match) return match;
   }
-  return list[0] || { id: SYSTEM_INBOX_ID, name: "Général", color: "#F97316" };
+  return list[0] || { id: "", name: "Catégorie requise", color: "#F97316" };
 }
 
 export default function CreateFlowModal({
@@ -57,7 +57,7 @@ export default function CreateFlowModal({
 
   useEffect(() => {
     if (!open) return;
-    const nextCategoryId = selectedCategoryId || resolvedSelected?.id || SYSTEM_INBOX_ID;
+    const nextCategoryId = selectedCategoryId || resolvedSelected?.id || getFirstVisibleCategoryId(categories) || null;
     setCategoryId(nextCategoryId);
     setStep("choice");
     setChoice("action");
@@ -136,7 +136,7 @@ export default function CreateFlowModal({
       return;
     }
     if (choice === "guided") {
-      const catId = nextCategoryId || categoryId || SYSTEM_INBOX_ID;
+      const catId = nextCategoryId || categoryId || getFirstVisibleCategoryId(categories) || null;
       if (typeof seedCreateDraft === "function") {
         seedCreateDraft({ source: "create-guided", categoryId: catId, outcomeId, step: STEP_HABIT_TYPE });
       }

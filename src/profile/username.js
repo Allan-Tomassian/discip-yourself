@@ -25,3 +25,11 @@ export function validateUsername(value) {
 
   return { ok: true, normalized, reason: "" };
 }
+
+export function validateOptionalUsername(value) {
+  const normalized = normalizeUsername(value);
+  if (!normalized) {
+    return { ok: true, normalized: "", reason: "" };
+  }
+  return validateUsername(normalized);
+}

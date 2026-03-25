@@ -10,6 +10,14 @@ import SortableBlocks from "../components/SortableBlocks";
 import AccentCategoryRow from "../components/AccentCategoryRow";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
 import { LABELS } from "../ui/labels";
+import {
+  CATEGORY_VIEW,
+  getSelectedCategoryForView,
+  getVisibleCategories,
+  resolvePreferredVisibleCategoryId,
+  withSelectedCategoryByView,
+} from "../domain/categoryVisibility";
+import { collectSystemInboxBuckets } from "../domain/systemInboxMigration";
 import { computeCategoryRadarRows, computePilotageInsights } from "../features/pilotage/radarModel";
 import { sanitizePilotageRadarSelection } from "../logic/state/normalizers";
 import "../features/pilotage/pilotage.css";
@@ -212,10 +220,14 @@ export default function Pilotage({
 }) {
   const safeData = useMemo(() => (data && typeof data === "object" ? data : {}), [data]);
   const categories = useMemo(
-    () => (Array.isArray(safeData.categories) ? safeData.categories : []),
+    () => getVisibleCategories(safeData.categories),
     [safeData.categories]
   );
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
+  const legacyBuckets = useMemo(
+    () => collectSystemInboxBuckets({ goals: safeData.goals, categories: safeData.categories }),
+    [safeData.categories, safeData.goals]
+  );
 
   const now = useMemo(() => {
     void safeData;
@@ -252,8 +264,13 @@ export default function Pilotage({
   );
 
 
-  const selectedCategoryId =
-    safeData?.ui?.selectedCategoryByView?.pilotage || categories?.[0]?.id || null;
+  const selectedCategoryId = resolvePreferredVisibleCategoryId({
+    categories,
+    candidates: [
+      getSelectedCategoryForView(safeData, CATEGORY_VIEW.PILOTAGE),
+      getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY),
+    ],
+  });
 
   const [reportWindow, setReportWindow] = useState("7d");
   const [reportFrom, setReportFrom] = useState("");
@@ -555,20 +572,13 @@ export default function Pilotage({
       if (!categoryId || typeof setData !== "function") return;
       setData((prev) => {
         const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-        const prevSel =
-          prevUi?.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-            ? prevUi.selectedCategoryByView
-            : {};
-        if (prevSel?.pilotage === categoryId) return prev;
+        if (getSelectedCategoryForView(prevUi, CATEGORY_VIEW.PILOTAGE) === categoryId) return prev;
         return {
           ...prev,
-          ui: {
-            ...prevUi,
-            selectedCategoryByView: {
-              ...prevSel,
-              pilotage: categoryId,
-            },
-          },
+          ui: withSelectedCategoryByView(prevUi, {
+            pilotage: categoryId,
+            selectedCategoryId: categoryId,
+          }),
         };
       });
     },
@@ -581,31 +591,23 @@ export default function Pilotage({
     if (!categories.length) {
       setData((prev) => {
         const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-        const prevSel =
-          prevUi?.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-            ? prevUi.selectedCategoryByView
-            : {};
-        if (prevSel?.pilotage == null) return prev;
+        if (getSelectedCategoryForView(prevUi, CATEGORY_VIEW.PILOTAGE) == null) return prev;
         return {
           ...prev,
-          ui: {
-            ...prevUi,
-            selectedCategoryByView: {
-              ...prevSel,
-              pilotage: null,
-            },
-          },
+          ui: withSelectedCategoryByView(prevUi, {
+            pilotage: null,
+          }),
         };
       });
       return;
     }
 
-    const current = safeData?.ui?.selectedCategoryByView?.pilotage || null;
+    const current = getSelectedCategoryForView(safeData, CATEGORY_VIEW.PILOTAGE) || null;
     const exists = current ? categories.some((c) => c.id === current) : false;
     if (!exists) {
       setPilotageSelectedCategory(categories[0].id);
     }
-  }, [categories, safeData?.ui?.selectedCategoryByView?.pilotage, setData, setPilotageSelectedCategory]);
+  }, [categories, safeData, setData, setPilotageSelectedCategory]);
 
   const downloadFile = useCallback((filename, content, type) => {
     try {
@@ -646,6 +648,23 @@ export default function Pilotage({
       headerSubtitle="Vue d'ensemble"
       backgroundImage={safeData?.profile?.whyImage || ""}
     >
+      {legacyBuckets.pilotageRituals.length ? (
+        <Card>
+          <div className="p18 col" style={{ gap: 8 }}>
+            <div className="sectionTitle">Rituels hérités</div>
+            <div className="small">
+              {legacyBuckets.pilotageRituals.length} élément{legacyBuckets.pilotageRituals.length > 1 ? "s" : ""} d’organisation ou de revue a été retiré{legacyBuckets.pilotageRituals.length > 1 ? "s" : ""} du flux d’exécution.
+            </div>
+            <div className="col" style={{ gap: 6 }}>
+              {legacyBuckets.pilotageRituals.slice(0, 4).map((goal) => (
+                <div key={goal.id} className="small2 textMuted">
+                  {goal.title || "Rituel"}
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      ) : null}
       <SortableBlocks
         items={blockItems}
         getId={(item) => item.id}

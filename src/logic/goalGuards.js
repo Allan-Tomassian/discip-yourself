@@ -11,6 +11,9 @@ export function safeUpdateGoal(state, goalId, patch, options = {}) {
 
   if ("categoryId" in patch) {
     const rawId = typeof patch.categoryId === "string" ? patch.categoryId.trim() : "";
+    if (!rawId || rawId === SYSTEM_INBOX_ID) {
+      return { state: safeState, applied: false, blocked: true };
+    }
     if (rawId && rawId !== SYSTEM_INBOX_ID) {
       const categories = Array.isArray(safeState.categories) ? safeState.categories : [];
       const exists = categories.some((c) => c && c.id === rawId);

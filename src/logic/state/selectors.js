@@ -1,3 +1,5 @@
+import { normalizeSelectedCategoryByView } from "../../domain/categoryVisibility";
+
 export function selectProfile(state) {
   return state && typeof state === "object" && state.profile && typeof state.profile === "object"
     ? state.profile
@@ -18,11 +20,5 @@ export function selectGoals(state) {
 
 export function selectSelectedCategoryByView(state) {
   const ui = selectUi(state);
-  const raw = ui.selectedCategoryByView && typeof ui.selectedCategoryByView === "object" ? ui.selectedCategoryByView : {};
-  return {
-    home: raw.home || null,
-    library: raw.library || null,
-    plan: raw.plan || null,
-    pilotage: raw.pilotage || null,
-  };
+  return normalizeSelectedCategoryByView(ui.selectedCategoryByView);
 }

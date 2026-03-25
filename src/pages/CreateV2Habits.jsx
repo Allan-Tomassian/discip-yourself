@@ -17,6 +17,12 @@ import ConflictResolver from "../ui/scheduling/ConflictResolver";
 import { GateSection } from "../shared/ui/gate/Gate";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_HABITS } from "../creation/creationSchema";
+import { createActionModel } from "../domain/actionModel";
+import {
+  getFirstVisibleCategoryId,
+  getVisibleCategories,
+  resolveVisibleCategoryId,
+} from "../domain/categoryVisibility";
 import { uid } from "../utils/helpers";
 import { createGoal } from "../logic/goals";
 import { ensureWindowFromScheduleRules } from "../logic/occurrencePlanner";
@@ -33,7 +39,7 @@ import {
   minutesToTimeStr,
   clampTimeToDay,
 } from "../utils/datetime";
-import { createDefaultGoalSchedule, ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
+import { createDefaultGoalSchedule } from "../logic/state";
 import { normalizeReminder } from "../logic/reminders";
 import { normalizeTimeFields } from "../logic/timeFields";
 import { resolveGoalType } from "../domain/goalType";
@@ -320,15 +326,19 @@ export default function CreateV2Habits({
   const [error, setError] = useState("");
   const [conflictState, setConflictState] = useState(null);
 
+  const visibleCategories = useMemo(() => getVisibleCategories(categories), [categories]);
   const habits = Array.isArray(draft.habits) ? draft.habits : [];
-  const lockedCategoryId = draft?.category?.id || draft?.pendingCategoryId || SYSTEM_INBOX_ID;
+  const lockedCategoryId =
+    resolveVisibleCategoryId(draft?.category?.id || draft?.pendingCategoryId, visibleCategories) ||
+    getFirstVisibleCategoryId(visibleCategories) ||
+    null;
   const lockedCategory = useMemo(() => {
     return (
-      categories.find((cat) => cat?.id === lockedCategoryId) ||
-      categories.find((cat) => cat?.id === SYSTEM_INBOX_ID) ||
-      { id: SYSTEM_INBOX_ID, name: "Général", color: "#F97316" }
+      visibleCategories.find((cat) => cat?.id === lockedCategoryId) ||
+      visibleCategories[0] ||
+      { id: "", name: "Catégorie requise", color: "#F97316" }
     );
-  }, [categories, lockedCategoryId]);
+  }, [visibleCategories, lockedCategoryId]);
 
   const existingActionCount = useMemo(
     () => goals.filter((g) => resolveGoalType(g) === "PROCESS").length,
@@ -899,6 +909,10 @@ export default function CreateV2Habits({
       if (typeof onOpenPaywall === "function") onOpenPaywall("Limite d’actions atteinte.");
       return;
     }
+    if (!lockedCategoryId) {
+      setError("Choisis d’abord une vraie catégorie.");
+      return;
+    }
     if (typeof setData !== "function") return;
 
     const validHabits = habitsToSave.filter((habit) => habit && habit.title).slice(0, 1);
@@ -946,14 +960,11 @@ export default function CreateV2Habits({
           next = { ...next, occurrences: updatedOccurrences };
         }
       }
-      next = ensureSystemInboxCategory(next).state;
-
       const baseSchedule = createDefaultGoalSchedule();
       let finalState = next;
-      const categoryPool = Array.isArray(finalState.categories) ? finalState.categories : [];
-      const seededCategoryId = categoryPool.some((cat) => cat?.id === lockedCategoryId)
-        ? lockedCategoryId
-        : SYSTEM_INBOX_ID;
+      const categoryPool = getVisibleCategories(finalState.categories);
+      const seededCategoryId = resolveVisibleCategoryId(lockedCategoryId, categoryPool);
+      if (!seededCategoryId) return prev;
 
       for (let index = 0; index < validHabits.length; index += 1) {
         const habit = validHabits[index];
@@ -1013,7 +1024,7 @@ export default function CreateV2Habits({
         const normalizedMemo = typeof habit.memo === "string" ? habit.memo.trim() : "";
         const normalizedLocation = typeof habit.location === "string" ? habit.location.trim() : "";
 
-        finalState = createGoal(finalState, {
+        const actionCandidate = createActionModel({
           id: habitId,
           categoryId: seededCategoryId,
           title: habit.title,
@@ -1067,7 +1078,12 @@ export default function CreateV2Habits({
 
           location: normalizedLocation,
           habitNotes: normalizedMemo,
-        });
+        }, { categories: categoryPool });
+        if (!actionCandidate.ok || !actionCandidate.value) {
+          continue;
+        }
+
+        finalState = createGoal(finalState, actionCandidate.value);
 
         if (reminderEnabled) {
           const existingReminders = Array.isArray(finalState.reminders) ? finalState.reminders : [];

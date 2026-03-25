@@ -545,6 +545,8 @@ export function initialData() {
 
       // V3: per-view focus (used to decouple Today/Library/Plan later)
       selectedCategoryByView: {
+        today: null,
+        planning: null,
         home: null,
         library: null,
         plan: null,

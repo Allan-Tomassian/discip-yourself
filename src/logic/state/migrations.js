@@ -12,6 +12,11 @@ import { buildScheduleRuleSourceKey, buildScheduleRulesFromAction, normalizeSche
 import { BRAND_ACCENT } from "../../theme/themeTokens";
 import { ensureSystemInboxCategory } from "./inbox";
 import {
+  normalizeSelectedCategoryByView,
+  sanitizeVisibleCategoryUi,
+} from "../../domain/categoryVisibility";
+import { autoReclassifySystemGoals } from "../../domain/systemInboxMigration";
+import {
   DEFAULT_BLOCKS,
   ensureCategoryId,
   initialData,
@@ -432,30 +437,23 @@ export function migrate(prev) {
   }
   if (!Array.isArray(next.ui.categoryRailOrder)) next.ui.categoryRailOrder = [];
 
-  // V3: per-view selected category (decouple Today/Library/Plan)
-  if (!next.ui.selectedCategoryByView || typeof next.ui.selectedCategoryByView !== "object") {
-    next.ui.selectedCategoryByView = { home: null, library: null, plan: null, pilotage: null };
-  } else {
-    if (typeof next.ui.selectedCategoryByView.home === "undefined") next.ui.selectedCategoryByView.home = null;
-    if (typeof next.ui.selectedCategoryByView.library === "undefined") next.ui.selectedCategoryByView.library = null;
-    if (typeof next.ui.selectedCategoryByView.plan === "undefined") next.ui.selectedCategoryByView.plan = null;
-    if (typeof next.ui.selectedCategoryByView.pilotage === "undefined") next.ui.selectedCategoryByView.pilotage = null;
-  }
-
-  // Backfill per-view focus from legacy selectedCategoryId (one-time initialization)
-  // Goal: views can diverge later without being coupled via selectedCategoryId.
-  if (!next.ui.selectedCategoryByView.home) {
-    next.ui.selectedCategoryByView.home = next.ui.selectedCategoryId || null;
+  next.ui.selectedCategoryByView = normalizeSelectedCategoryByView(next.ui.selectedCategoryByView);
+  if (!next.ui.selectedCategoryByView.today) {
+    next.ui.selectedCategoryByView.today = next.ui.selectedCategoryId || null;
   }
   if (!next.ui.selectedCategoryByView.library) {
     next.ui.selectedCategoryByView.library = next.ui.selectedCategoryId || null;
   }
-  if (!next.ui.selectedCategoryByView.plan) {
-    next.ui.selectedCategoryByView.plan = next.ui.selectedCategoryId || null;
+  if (!next.ui.selectedCategoryByView.planning) {
+    next.ui.selectedCategoryByView.planning =
+      next.ui.selectedCategoryId || next.ui.selectedCategoryByView.today || null;
   }
   if (!next.ui.selectedCategoryByView.pilotage) {
-    next.ui.selectedCategoryByView.pilotage = next.ui.selectedCategoryId || null;
+    next.ui.selectedCategoryByView.pilotage =
+      next.ui.selectedCategoryByView.today || next.ui.selectedCategoryId || null;
   }
+  next.ui.selectedCategoryByView.home = next.ui.selectedCategoryByView.today;
+  next.ui.selectedCategoryByView.plan = next.ui.selectedCategoryByView.planning;
 
   if (typeof next.ui.soundEnabled === "undefined") next.ui.soundEnabled = false;
   next.ui.pilotageRadarSelection = sanitizePilotageRadarSelection(next, {
@@ -588,36 +586,7 @@ export function migrate(prev) {
     const ensured = ensureSystemInboxCategory(next);
     next = ensured.state || next;
   }
-
-  // Ensure selectedCategoryId always points to an existing category (or null)
-  // NOTE: This legacy field is only kept for backward compatibility and should NOT drive per-view selection anymore.
-  if (next.ui?.selectedCategoryId) {
-    const exists = next.categories.some((c) => c.id === next.ui.selectedCategoryId);
-    if (!exists) next.ui.selectedCategoryId = next.categories[0]?.id || null;
-  }
-
-  // Ensure per-view home selection is valid as well
-  if (next.ui?.selectedCategoryByView?.home) {
-    const exists = next.categories.some((c) => c.id === next.ui.selectedCategoryByView.home);
-    if (!exists) next.ui.selectedCategoryByView.home = next.categories[0]?.id || null;
-  }
-
-  // Ensure per-view library selection is valid
-  if (next.ui?.selectedCategoryByView?.library) {
-    const exists = next.categories.some((c) => c.id === next.ui.selectedCategoryByView.library);
-    if (!exists) next.ui.selectedCategoryByView.library = next.categories[0]?.id || null;
-  }
-
-  // Ensure per-view plan selection is valid
-  if (next.ui?.selectedCategoryByView?.plan) {
-    const exists = next.categories.some((c) => c.id === next.ui.selectedCategoryByView.plan);
-    if (!exists) next.ui.selectedCategoryByView.plan = next.categories[0]?.id || null;
-  }
-  // Ensure per-view pilotage selection is valid
-  if (next.ui?.selectedCategoryByView?.pilotage) {
-    const exists = next.categories.some((c) => c.id === next.ui.selectedCategoryByView.pilotage);
-    if (!exists) next.ui.selectedCategoryByView.pilotage = next.categories[0]?.id || null;
-  }
+  next.ui = sanitizeVisibleCategoryUi(next.ui, next.categories);
 
   // goals (V2 normalize)
   if (!Array.isArray(next.goals)) next.goals = [];
@@ -627,6 +596,10 @@ export function migrate(prev) {
   next = mergeLegacyHabitsIntoGoals(next);
   next.goals = next.goals.map((g) => backfillGoalLegacyFields(g));
   next.goals = next.goals.map((g, i) => normalizeGoal(g, i, next.categories));
+  {
+    const reclassified = autoReclassifySystemGoals(next.goals, next.categories);
+    if (reclassified.changed) next.goals = reclassified.goals;
+  }
   // Safety: enforce mandatory lifecycle period on PROCESS goals after normalizeGoal.
   {
     const todayKey = toLocalDateKey();
@@ -715,7 +688,11 @@ export function migrate(prev) {
 
   // `mainGoalId` is a UI convenience, but it must follow the Today (home) context,
   // not the legacy global `selectedCategoryId` (which is kept for backward compatibility).
-  const homeCategoryId = next.ui?.selectedCategoryByView?.home || next.ui?.selectedCategoryId || null;
+  const homeCategoryId =
+    next.ui?.selectedCategoryByView?.today ||
+    next.ui?.selectedCategoryByView?.home ||
+    next.ui?.selectedCategoryId ||
+    null;
   const homeCategoryForMain =
     next.categories.find((cat) => cat.id === homeCategoryId) || next.categories[0] || null;
   next.ui.mainGoalId = homeCategoryForMain?.mainGoalId || null;
@@ -926,7 +903,12 @@ export function migrate(prev) {
 
     normalized.categories = fixedCategories;
 
-    const homeCatId = normalized.ui?.selectedCategoryByView?.home || normalized.ui?.selectedCategoryId || fixedCategories[0]?.id || null;
+    const homeCatId =
+      normalized.ui?.selectedCategoryByView?.today ||
+      normalized.ui?.selectedCategoryByView?.home ||
+      normalized.ui?.selectedCategoryId ||
+      fixedCategories[0]?.id ||
+      null;
     const homeCat = homeCatId ? fixedCategories.find((c) => c.id === homeCatId) || null : null;
     normalized.ui = {
       ...(normalized.ui || {}),
@@ -936,40 +918,22 @@ export function migrate(prev) {
 
   // Re-validate per-view selections after normalizeGoalsState
   const cats = Array.isArray(normalized.categories) ? normalized.categories : [];
-  const first = cats[0]?.id || null;
   const goalList = Array.isArray(normalized.goals) ? normalized.goals : [];
-
-  const scv = normalized.ui?.selectedCategoryByView || { home: null, library: null, plan: null, pilotage: null };
+  const safeUi = sanitizeVisibleCategoryUi(normalized.ui, cats);
+  const scv = normalizeSelectedCategoryByView(safeUi.selectedCategoryByView);
   const safeRadarSelection = sanitizePilotageRadarSelection(normalized, {
-    selection: normalized.ui?.pilotageRadarSelection,
+    selection: safeUi?.pilotageRadarSelection,
   });
-
-  const safeHome = scv.home && cats.some((c) => c.id === scv.home) ? scv.home : first;
-  const safeLibrary = scv.library && cats.some((c) => c.id === scv.library) ? scv.library : first;
-  const safePlan = scv.plan && cats.some((c) => c.id === scv.plan) ? scv.plan : first;
-  const safePilotage = scv.pilotage && cats.some((c) => c.id === scv.pilotage) ? scv.pilotage : first;
-
-  // Keep legacy `selectedCategoryId` as the Plan context to avoid coupling Today/Library to it.
-  const legacySelectedCategoryId = safePlan || null;
-  const rawLibrarySelected = normalized.ui?.librarySelectedCategoryId || null;
-  const safeLibrarySelected = rawLibrarySelected && cats.some((c) => c.id === rawLibrarySelected) ? rawLibrarySelected : null;
-  const rawOpenGoalEditId = normalized.ui?.openGoalEditId || null;
+  const rawOpenGoalEditId = safeUi?.openGoalEditId || null;
   const safeOpenGoalEditId = rawOpenGoalEditId && goalList.some((g) => g.id === rawOpenGoalEditId) ? rawOpenGoalEditId : null;
 
   return {
     ...normalized,
     ui: {
-      ...(normalized.ui || {}),
-      selectedCategoryId: legacySelectedCategoryId,
+      ...safeUi,
       mainGoalId: normalized.ui?.mainGoalId || null,
-      librarySelectedCategoryId: safeLibrarySelected,
       openGoalEditId: safeOpenGoalEditId,
-      selectedCategoryByView: {
-        home: safeHome,
-        library: safeLibrary,
-        plan: safePlan,
-        pilotage: safePilotage,
-      },
+      selectedCategoryByView: normalizeSelectedCategoryByView(safeUi.selectedCategoryByView),
       pilotageRadarSelection: safeRadarSelection,
     },
   };

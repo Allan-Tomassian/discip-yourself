@@ -4,7 +4,7 @@ import { GateButton, GateSection } from "../shared/ui/gate/Gate";
 import GatePage from "../shared/ui/gate/GatePage";
 import { useAuth } from "../auth/useAuth";
 import { useProfile } from "../profile/useProfile";
-import { normalizeUsername, validateUsername } from "../profile/username";
+import { normalizeUsername, validateOptionalUsername } from "../profile/username";
 import "../features/account/accountGate.css";
 
 const AVAILABILITY_DEBOUNCE_MS = 450;
@@ -50,7 +50,7 @@ export default function Account({ data }) {
     setAvatarUrl(String(profile?.avatar_url || "").trim());
   }, [profile?.avatar_url, profile?.full_name, profile?.username]);
 
-  const usernameValidation = useMemo(() => validateUsername(username), [username]);
+  const usernameValidation = useMemo(() => validateOptionalUsername(username), [username]);
 
   useEffect(() => {
     if (!username.trim()) {
@@ -139,10 +139,7 @@ export default function Account({ data }) {
     setSaving(true);
     try {
       const avatarUpdate = getOptionalAvatarUpdate(avatarUrl);
-      const payload = {
-        username: normalizeUsername(username),
-        full_name: fullName,
-      };
+      const payload = { username: usernameValidation.normalized, full_name: fullName };
       if (avatarUpdate.include) payload.avatar_url = avatarUpdate.value;
       await saveProfile(payload);
       setStatus({ type: "success", message: "Profil enregistré." });
@@ -162,7 +159,7 @@ export default function Account({ data }) {
       >
         <GateSection
           title="Profil"
-          description={profile?.username ? "Ton profil est actif." : "Complète ton profil pour continuer."}
+          description={profile?.username ? "Ton profil est actif." : "Username optionnel. Tu peux le definir plus tard."}
           className="accountGateCard GateSurfacePremium GateCardPremium"
           collapsible={false}
         >
@@ -181,9 +178,8 @@ export default function Account({ data }) {
                 data-testid="account-username-input"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                placeholder="username"
+                placeholder="Username (optionnel)"
                 autoComplete="username"
-                required
               />
             </label>
 

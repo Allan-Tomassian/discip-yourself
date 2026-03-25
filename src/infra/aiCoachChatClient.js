@@ -8,6 +8,14 @@ const ACTION_INTENTS = new Set([
   "open_pilotage",
   "open_today",
 ]);
+const DRAFT_CHANGE_TYPES = new Set([
+  "create_action",
+  "update_action",
+  "schedule_action",
+  "reschedule_occurrence",
+  "archive_action",
+]);
+const DRAFT_REPEAT_TYPES = new Set(["none", "daily", "weekly"]);
 const DECISION_SOURCES = new Set(["ai", "rules"]);
 const META_FALLBACK_REASONS = new Set(["none", "quota", "timeout", "invalid_model_output", "backend_error"]);
 const CHAT_ROLES = new Set(["user", "assistant"]);
@@ -24,6 +32,14 @@ function isNullableString(value) {
   return value === null || typeof value === "string";
 }
 
+function isNullableTime(value) {
+  return value === null || (typeof value === "string" && /^([01]\d|2[0-3]):([0-5]\d)$/.test(value));
+}
+
+function isNullableRepeat(value) {
+  return value === null || DRAFT_REPEAT_TYPES.has(value);
+}
+
 function isChatAction(value) {
   return (
     isPlainObject(value) &&
@@ -35,6 +51,41 @@ function isChatAction(value) {
     isNullableString(value.occurrenceId) &&
     (value.dateKey === null || isDateKey(value.dateKey))
   );
+}
+
+function isDraftChange(value) {
+  if (!isPlainObject(value)) return false;
+  if (!DRAFT_CHANGE_TYPES.has(value.type)) return false;
+  if (!isNullableString(value.title)) return false;
+  if (!isNullableString(value.categoryId)) return false;
+  if (!isNullableString(value.actionId)) return false;
+  if (!isNullableString(value.occurrenceId)) return false;
+  if (!isNullableRepeat(value.repeat)) return false;
+  if (!isNullableTime(value.startTime)) return false;
+  if (!(value.dateKey === null || isDateKey(value.dateKey))) return false;
+  if (
+    value.durationMin !== null &&
+    (!Number.isInteger(value.durationMin) || value.durationMin < 1 || value.durationMin > 240)
+  ) {
+    return false;
+  }
+  if (!Array.isArray(value.daysOfWeek)) return false;
+  if (
+    value.daysOfWeek.some(
+      (day) => !Number.isInteger(day) || day < 1 || day > 7
+    )
+  ) {
+    return false;
+  }
+  if (value.type === "create_action" && !value.title) return false;
+  if (
+    (value.type === "update_action" || value.type === "schedule_action" || value.type === "archive_action") &&
+    !value.actionId
+  ) {
+    return false;
+  }
+  if (value.type === "reschedule_occurrence" && !value.occurrenceId) return false;
+  return true;
 }
 
 export function isAiCoachChatResponse(value) {
@@ -52,6 +103,9 @@ export function isAiCoachChatResponse(value) {
       (Number.isInteger(value.suggestedDurationMin) &&
         value.suggestedDurationMin >= 1 &&
         value.suggestedDurationMin <= 240)) &&
+    Array.isArray(value.draftChanges) &&
+    value.draftChanges.length <= 4 &&
+    value.draftChanges.every(isDraftChange) &&
     isPlainObject(value.meta) &&
     value.meta.coachVersion === "v1" &&
     typeof value.meta.requestId === "string" &&

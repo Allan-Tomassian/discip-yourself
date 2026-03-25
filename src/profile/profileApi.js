@@ -108,7 +108,7 @@ function mapProfileError(error) {
   return mapped === error ? error : mapped;
 }
 
-function normalizeProfilePayload(userId, data = {}) {
+export function normalizeProfilePayload(userId, data = {}) {
   const payload = { id: String(userId || "").trim() };
 
   if (Object.prototype.hasOwnProperty.call(data, "email")) {
@@ -117,9 +117,14 @@ function normalizeProfilePayload(userId, data = {}) {
   }
 
   if (Object.prototype.hasOwnProperty.call(data, "username")) {
-    const parsed = validateUsername(data.username);
-    if (!parsed.ok) throw new Error(parsed.reason);
-    payload.username = parsed.normalized;
+    const normalizedUsername = normalizeUsername(data.username);
+    if (!normalizedUsername) {
+      payload.username = null;
+    } else {
+      const parsed = validateUsername(normalizedUsername);
+      if (!parsed.ok) throw new Error(parsed.reason);
+      payload.username = parsed.normalized;
+    }
   }
 
   if (Object.prototype.hasOwnProperty.call(data, "full_name")) {

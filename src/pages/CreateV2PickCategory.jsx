@@ -5,8 +5,8 @@ import FlowShell from "../ui/create/FlowShell";
 import Select from "../ui/select/Select";
 import { GateSection } from "../shared/ui/gate/Gate";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
+import { getFirstVisibleCategoryId, getVisibleCategories } from "../domain/categoryVisibility";
 import { safeUpdateGoal } from "../logic/goalGuards";
-import { ensureSystemInboxCategory, SYSTEM_INBOX_ID } from "../logic/state";
 
 export default function CreateV2PickCategory({
   data,
@@ -18,7 +18,7 @@ export default function CreateV2PickCategory({
 }) {
   const isGate = skin === "gate";
   const safeData = data && typeof data === "object" ? data : {};
-  const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
+  const categories = getVisibleCategories(safeData.categories);
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
   const draft = normalizeCreationDraft(safeData?.ui?.createDraft);
   const createdActionIds = Array.isArray(draft.createdActionIds) ? draft.createdActionIds : [];
@@ -26,18 +26,14 @@ export default function CreateV2PickCategory({
   const linkedOutcomeId = draft?.activeOutcomeId ? String(draft.activeOutcomeId) : "";
   const createdOutcomeId = draft?.createdOutcomeId ? String(draft.createdOutcomeId) : "";
   const outcomeIds = [linkedOutcomeId, createdOutcomeId].filter(Boolean);
-  const sys = categories.find((c) => c?.id === SYSTEM_INBOX_ID) || { id: SYSTEM_INBOX_ID, name: "Général" };
-  const rest = categories.filter((c) => c?.id !== SYSTEM_INBOX_ID);
-  rest.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
-  const options = [sys, ...rest];
-  if (!options.length) options.push({ id: SYSTEM_INBOX_ID, name: "Général" });
+  const options = categories.slice().sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
 
   const initialCategoryId =
     (actions[0]?.categoryId && options.some((c) => c.id === actions[0].categoryId)
       ? actions[0].categoryId
       : draft.pendingCategoryId && options.some((c) => c.id === draft.pendingCategoryId)
         ? draft.pendingCategoryId
-        : sys.id) || SYSTEM_INBOX_ID;
+        : getFirstVisibleCategoryId(options)) || "";
   const [selectedCategoryId, setSelectedCategoryId] = useState(initialCategoryId);
 
   function finalize() {
@@ -63,17 +59,13 @@ export default function CreateV2PickCategory({
       return;
     }
     if (typeof setData !== "function") return;
-    const nextCategoryId = selectedCategoryId || initialCategoryId || SYSTEM_INBOX_ID;
+    const nextCategoryId = selectedCategoryId || initialCategoryId || getFirstVisibleCategoryId(options) || "";
     if (nextCategoryId && !options.some((c) => c.id === nextCategoryId)) {
-      // No category creation in this flow: fallback to system inbox.
-      setSelectedCategoryId(SYSTEM_INBOX_ID);
+      setSelectedCategoryId(getFirstVisibleCategoryId(options) || "");
       return;
     }
     setData((prev) => {
       let next = prev;
-      if (nextCategoryId === SYSTEM_INBOX_ID) {
-        next = ensureSystemInboxCategory(next).state;
-      }
       const idsToUpdate = [...createdActionIds, ...outcomeIds].filter(Boolean);
       const seen = new Set();
       for (const id of idsToUpdate) {
@@ -100,19 +92,20 @@ export default function CreateV2PickCategory({
     <div className="flowShellBody col gap12">
       <GateSection title="Catégorie" description="Dernière étape" collapsible={false}>
         <div className="small2">Dans quelle catégorie veux-tu agir ?</div>
-        <Select value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)}>
+        <Select value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)} disabled={!options.length}>
           {options.map((cat) => (
             <option key={cat.id} value={cat.id}>
               {cat.name || "Catégorie"}
             </option>
           ))}
         </Select>
+        {!options.length ? <div className="small">Crée d&apos;abord une catégorie dans la bibliothèque.</div> : null}
       </GateSection>
       <div className="row rowBetween">
         <Button variant="ghost" onClick={finalize}>
           Plus tard
         </Button>
-        <Button onClick={applyCategory}>Terminer</Button>
+        <Button onClick={applyCategory} disabled={!options.length || !selectedCategoryId}>Terminer</Button>
       </div>
     </div>
   );

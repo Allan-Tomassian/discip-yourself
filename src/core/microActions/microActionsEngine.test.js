@@ -5,8 +5,8 @@ const LIB = [
   { id: "clarA", title: "Clarify A", durationMin: 2, categoryId: "business", intent: "prep", tags: ["clarify"] },
   { id: "prepA", title: "Prep A", durationMin: 2, categoryId: "business", intent: "prep", tags: ["prep"] },
   { id: "execA", title: "Exec A", durationMin: 3, categoryId: "business", intent: "execute", tags: ["exec"] },
-  { id: "genPrep", title: "Gen Prep", durationMin: 3, categoryId: "general", intent: "prep", tags: ["prep"] },
-  { id: "genExec", title: "Gen Exec", durationMin: 3, categoryId: "general", intent: "execute", tags: ["exec"] },
+  { id: "genPrep", title: "Gen Prep", durationMin: 3, categoryId: "neutral", intent: "prep", tags: ["prep"] },
+  { id: "genExec", title: "Gen Exec", durationMin: 3, categoryId: "neutral", intent: "execute", tags: ["exec"] },
 ];
 
 describe("getMicroActionsForToday", () => {
@@ -38,7 +38,7 @@ describe("getMicroActionsForToday", () => {
     expect(ids).toContain("execA");
   });
 
-  it("falls back to general when category is unknown", () => {
+  it("falls back to neutral when category is unknown", () => {
     const list = getMicroActionsForToday(
       {
         categoryId: "unknown",

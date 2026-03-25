@@ -10,6 +10,7 @@ import "../features/navigation/topMenuGate.css";
 // - optional_elements: none
 const NAV_ITEMS = [
   { id: "today", label: "Aujourd’hui" },
+  { id: "planning", label: "Planning" },
   { id: "library", label: "Bibliothèque" },
   { id: "pilotage", label: "Pilotage" },
 ];

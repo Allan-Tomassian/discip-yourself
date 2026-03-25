@@ -4,7 +4,7 @@ import { Button } from "../components/UI";
 import FlowShell from "../ui/create/FlowShell";
 import { GateSection } from "../shared/ui/gate/Gate";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
-import { SYSTEM_INBOX_ID } from "../logic/state";
+import { getFirstVisibleCategoryId, getVisibleCategories } from "../domain/categoryVisibility";
 import { resolveGoalType } from "../domain/goalType";
 import { LABELS } from "../ui/labels";
 
@@ -19,10 +19,15 @@ export default function CreateV2OutcomeNextAction({
   const isGate = skin === "gate";
   const safeData = data && typeof data === "object" ? data : {};
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
+  const categories = getVisibleCategories(safeData.categories);
   const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
   const outcomeId = draft.createdOutcomeId || draft.activeOutcomeId || "";
   const outcome = goals.find((g) => g && g.id === outcomeId && resolveGoalType(g) === "OUTCOME") || null;
-  const categoryId = outcome?.categoryId || (draft.category?.mode === "existing" ? draft.category.id : "") || SYSTEM_INBOX_ID;
+  const categoryId =
+    outcome?.categoryId ||
+    (draft.category?.mode === "existing" ? draft.category.id : "") ||
+    getFirstVisibleCategoryId(categories) ||
+    "";
 
   const clearDraftAndExit = useCallback(() => {
     if (typeof setData === "function") {
@@ -53,7 +58,7 @@ export default function CreateV2OutcomeNextAction({
       <GateSection title="Ajouter une action maintenant ?" description="Optionnel" collapsible={false}>
         <div className="small2">Tu peux créer une action liée maintenant, ou garder cet {LABELS.goalLower} seul pour l’instant.</div>
         <div className="small textMuted">
-          {outcome?.title || LABELS.goal} · {categoryId === SYSTEM_INBOX_ID ? "Général" : "Catégorie choisie"}
+          {outcome?.title || LABELS.goal} · {categoryId ? "Catégorie choisie" : "Catégorie requise"}
         </div>
         <div className="row rowBetween">
           <Button variant="ghost" onClick={clearDraftAndExit}>
@@ -61,10 +66,11 @@ export default function CreateV2OutcomeNextAction({
           </Button>
           <Button
             onClick={() => {
-              if (typeof onCreateAction === "function") {
-                onCreateAction(outcomeId, categoryId || SYSTEM_INBOX_ID);
+              if (typeof onCreateAction === "function" && categoryId) {
+                onCreateAction(outcomeId, categoryId);
               }
             }}
+            disabled={!categoryId}
           >
             Créer une action
           </Button>

@@ -1,12 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
+import { shouldDetectSupabaseSessionInUrl } from "../auth/authPaths";
 
 const ENV =
   typeof import.meta !== "undefined" && import.meta.env && typeof import.meta.env === "object"
     ? import.meta.env
     : {};
-const PROCESS_ENV = typeof process !== "undefined" && process.env && typeof process.env === "object"
-  ? process.env
-  : {};
+const PROCESS_ENV =
+  typeof globalThis !== "undefined"
+  && globalThis.process
+  && typeof globalThis.process === "object"
+  && globalThis.process.env
+  && typeof globalThis.process.env === "object"
+    ? globalThis.process.env
+    : {};
 
 export const SUPABASE_URL = String(
   ENV.VITE_SUPABASE_URL || PROCESS_ENV.VITE_SUPABASE_URL || PROCESS_ENV.E2E_SUPABASE_URL || ""
@@ -89,6 +95,6 @@ export const supabase = createClient(validatedEnv.url, validatedEnv.anonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl: shouldDetectSupabaseSessionInUrl,
   },
 });

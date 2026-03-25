@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef } from "react";
 import { resolveGoalType } from "../domain/goalType";
+import {
+  CATEGORY_VIEW,
+  getFirstVisibleCategoryId,
+  getSelectedCategoryForView,
+  withSelectedCategoryByView,
+} from "../domain/categoryVisibility";
 import { isPrimaryCategory } from "../logic/priority";
 import { todayLocalKey } from "../utils/datetime";
 
@@ -7,7 +13,7 @@ function getHomeSelectedCategoryId(data) {
   const safe = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safe.categories) ? safe.categories : [];
   const goals = Array.isArray(safe.goals) ? safe.goals : [];
-  const homeSelectedId = safe.ui?.selectedCategoryByView?.home || safe.ui?.selectedCategoryId || null;
+  const homeSelectedId = getSelectedCategoryForView(safe, CATEGORY_VIEW.TODAY);
   if (homeSelectedId && categories.some((c) => c.id === homeSelectedId)) return homeSelectedId;
   const primary = categories.find((c) => isPrimaryCategory(c)) || null;
   if (primary) return primary.id;
@@ -36,8 +42,7 @@ export function useCategorySelectionSync({
   const didInitTodaySyncRef = useRef(false);
 
   const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
-  const homeActiveCategoryId =
-    safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null;
+  const homeActiveCategoryId = getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY);
   const selectedCategoryId = safeData?.ui?.selectedCategoryId || null;
   const homeSelectedCategoryId = getHomeSelectedCategoryId(safeData);
 
@@ -50,7 +55,7 @@ export function useCategorySelectionSync({
       touched = false;
     }
     const libraryViewSelectedId = touched
-      ? safeData?.ui?.selectedCategoryByView?.library || librarySelectedCategoryId || null
+      ? getSelectedCategoryForView(safeData, CATEGORY_VIEW.LIBRARY) || librarySelectedCategoryId || null
       : null;
     const hasLibrarySelection =
       libraryViewSelectedId && categories.some((c) => c.id === libraryViewSelectedId);
@@ -64,16 +69,14 @@ export function useCategorySelectionSync({
     if (!hasLibrarySelection) {
       setData((prev) => {
         const prevUi = prev.ui || {};
-        const prevSel =
-          prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-            ? prevUi.selectedCategoryByView
-            : {};
+        const nextUi = withSelectedCategoryByView(prevUi, {
+          library: targetId,
+          librarySelectedCategoryId: targetId,
+        });
         return {
           ...prev,
           ui: {
-            ...prevUi,
-            librarySelectedCategoryId: targetId,
-            selectedCategoryByView: { ...prevSel, library: targetId },
+            ...nextUi,
             libraryDetailExpandedId: null,
           },
         };
@@ -133,7 +136,7 @@ export function useCategorySelectionSync({
       }
       if (!touched) {
         const libraryId =
-          safeData?.ui?.selectedCategoryByView?.library || safeData?.ui?.librarySelectedCategoryId || null;
+          getSelectedCategoryForView(safeData, CATEGORY_VIEW.LIBRARY) || safeData?.ui?.librarySelectedCategoryId || null;
         const hasHome =
           homeActiveCategoryId && categories.some((category) => category.id === homeActiveCategoryId);
         if (hasHome && homeActiveCategoryId !== libraryId) {
@@ -141,20 +144,19 @@ export function useCategorySelectionSync({
             const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
             if (!prevCategories.some((category) => category.id === homeActiveCategoryId)) return prev;
             const prevUi = prev.ui || {};
-            const prevSel =
-              prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-                ? prevUi.selectedCategoryByView
-                : {};
-            if (prevUi.librarySelectedCategoryId === homeActiveCategoryId && prevSel.library === homeActiveCategoryId) {
+            const nextUi = withSelectedCategoryByView(prevUi, {
+              library: homeActiveCategoryId,
+              librarySelectedCategoryId: homeActiveCategoryId,
+            });
+            if (
+              prevUi.librarySelectedCategoryId === homeActiveCategoryId &&
+              getSelectedCategoryForView(prevUi, CATEGORY_VIEW.LIBRARY) === homeActiveCategoryId
+            ) {
               return prev;
             }
             return {
               ...prev,
-              ui: {
-                ...prevUi,
-                librarySelectedCategoryId: homeActiveCategoryId,
-                selectedCategoryByView: { ...prevSel, library: homeActiveCategoryId },
-              },
+              ui: nextUi,
             };
           });
         }
@@ -183,32 +185,39 @@ export function useCategorySelectionSync({
       const shouldUpdateLegacy = Boolean(updateLegacy);
       setData((prev) => {
         const prevUi = prev.ui || {};
-        const prevSel =
-          prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-            ? prevUi.selectedCategoryByView
-            : {};
+        const nextUi = withSelectedCategoryByView(prevUi, {
+          today: tab === "today" ? categoryId : getSelectedCategoryForView(prevUi, CATEGORY_VIEW.TODAY),
+          planning: tab === "planning" ? categoryId : getSelectedCategoryForView(prevUi, CATEGORY_VIEW.PLANNING),
+          library:
+            tab === "library" || tab === "category-detail" || tab === "category-progress" || tab === "edit-item"
+              ? categoryId
+              : getSelectedCategoryForView(prevUi, CATEGORY_VIEW.LIBRARY),
+          pilotage: tab === "pilotage" ? categoryId : getSelectedCategoryForView(prevUi, CATEGORY_VIEW.PILOTAGE),
+          ...(shouldUpdateLegacy ? { selectedCategoryId: categoryId } : {}),
+          ...(tab === "library" || tab === "category-detail" || tab === "category-progress" || tab === "edit-item"
+            ? { librarySelectedCategoryId: categoryId }
+            : {}),
+        });
         if (
-          prevUi.librarySelectedCategoryId === categoryId &&
-          prevSel.library === categoryId &&
-          prevSel.home === categoryId &&
+          prevUi.librarySelectedCategoryId === nextUi.librarySelectedCategoryId &&
+          JSON.stringify(prevUi.selectedCategoryByView || {}) === JSON.stringify(nextUi.selectedCategoryByView || {}) &&
           (!shouldUpdateLegacy || prevUi.selectedCategoryId === categoryId)
         ) {
           return prev;
         }
         return {
           ...prev,
-          ui: {
-            ...prevUi,
-            librarySelectedCategoryId: categoryId,
-            selectedCategoryByView: { ...prevSel, library: categoryId, home: categoryId },
-            ...(shouldUpdateLegacy ? { selectedCategoryId: categoryId } : {}),
-          },
+          ui: nextUi,
         };
       });
     };
     if (tab === "today") {
       syncCategorySelection({ updateLegacy: true });
       setCategoryDetailId(categoryId);
+      return;
+    }
+    if (tab === "planning") {
+      syncCategorySelection({ updateLegacy: true });
       return;
     }
     if (tab === "library") {
@@ -220,17 +229,14 @@ export function useCategorySelectionSync({
       }
       setData((prev) => {
         const prevUi = prev.ui || {};
-        const prevSel =
-          prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-            ? prevUi.selectedCategoryByView
-            : {};
         const isExpanded = prevUi.libraryDetailExpandedId === categoryId;
         return {
           ...prev,
           ui: {
-            ...prevUi,
-            librarySelectedCategoryId: categoryId,
-            selectedCategoryByView: { ...prevSel, library: categoryId },
+            ...withSelectedCategoryByView(prevUi, {
+              library: categoryId,
+              librarySelectedCategoryId: categoryId,
+            }),
             libraryDetailExpandedId: isExpanded ? null : categoryId,
           },
         };
@@ -264,10 +270,10 @@ export function useCategorySelectionSync({
     if (tab === "pilotage") {
       setData((prev) => ({
         ...prev,
-        ui: {
-          ...(prev.ui || {}),
-          selectedCategoryByView: { ...(prev.ui?.selectedCategoryByView || {}), pilotage: categoryId },
-        },
+        ui: withSelectedCategoryByView(prev.ui, {
+          pilotage: categoryId,
+          selectedCategoryId: categoryId,
+        }),
       }));
       return;
     }
@@ -284,21 +290,27 @@ export function useCategorySelectionSync({
           ? categoryProgressId
           : tab === "pilotage"
             ? safeData?.ui?.selectedCategoryByView?.pilotage ||
-              safeData?.ui?.selectedCategoryByView?.home ||
+              getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY) ||
+              safeData?.ui?.selectedCategoryId ||
+              null
+          : tab === "planning"
+            ? getSelectedCategoryForView(safeData, CATEGORY_VIEW.PLANNING) ||
+              getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY) ||
               safeData?.ui?.selectedCategoryId ||
               null
             : tab === "library" || tab === "edit-item" || isCreateTab
-              ? safeData?.ui?.selectedCategoryByView?.library ||
+              ? getSelectedCategoryForView(safeData, CATEGORY_VIEW.LIBRARY) ||
                 librarySelectedCategoryId ||
-                safeData?.ui?.selectedCategoryByView?.home ||
+                getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY) ||
                 safeData?.ui?.selectedCategoryId ||
                 null
-              : safeData?.ui?.selectedCategoryByView?.home || safeData?.ui?.selectedCategoryId || null,
+              : getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY) || safeData?.ui?.selectedCategoryId || null,
     [
       tab,
       categoryDetailId,
       categoryProgressId,
       safeData?.ui?.selectedCategoryByView?.pilotage,
+      safeData?.ui?.selectedCategoryByView?.planning,
       safeData?.ui?.selectedCategoryByView?.home,
       safeData?.ui?.selectedCategoryByView?.library,
       safeData?.ui?.selectedCategoryId,
@@ -309,9 +321,9 @@ export function useCategorySelectionSync({
 
   const detailCategoryId =
     categoryDetailId ||
-    safeData?.ui?.selectedCategoryByView?.home ||
+    getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY) ||
     safeData?.ui?.selectedCategoryId ||
-    safeData?.categories?.[0]?.id ||
+    getFirstVisibleCategoryId(safeData?.categories) ||
     null;
 
   return {

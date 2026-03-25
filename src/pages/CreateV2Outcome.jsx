@@ -7,12 +7,17 @@ import DatePicker from "../ui/date/DatePicker";
 import { GateSection } from "../shared/ui/gate/Gate";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_OUTCOME_NEXT_ACTION } from "../creation/creationSchema";
+import {
+  getFirstVisibleCategoryId,
+  getVisibleCategories,
+  resolveVisibleCategoryId,
+} from "../domain/categoryVisibility";
 import { resolveGoalType } from "../domain/goalType";
 import { LABELS } from "../ui/labels";
 import { uid } from "../utils/helpers";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { createGoal } from "../logic/goals";
-import { ensureSystemInboxCategory, normalizeCategory, SYSTEM_INBOX_ID } from "../logic/state";
+import { normalizeCategory } from "../logic/state";
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
 import { canCreateCategory } from "../logic/entitlements";
 
@@ -40,7 +45,7 @@ export default function CreateV2Outcome({
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
   const categories = useMemo(
-    () => (Array.isArray(safeData.categories) ? safeData.categories : []),
+    () => getVisibleCategories(safeData.categories),
     [safeData.categories]
   );
   const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
@@ -62,9 +67,8 @@ export default function CreateV2Outcome({
   );
 
   const draftCategoryId = getCategoryIdFromDraft(draft);
-  const sysCategoryId = categories.find((c) => c.id === SYSTEM_INBOX_ID)?.id || SYSTEM_INBOX_ID;
   const initialCategoryId =
-    (draftCategoryId && categories.some((c) => c.id === draftCategoryId) && draftCategoryId) || sysCategoryId;
+    resolveVisibleCategoryId(draftCategoryId, categories) || getFirstVisibleCategoryId(categories) || "";
   const [categoryId, setCategoryId] = useState(initialCategoryId);
   const [title, setTitle] = useState(draft.outcomes?.[0]?.title || "");
   const [startDate, setStartDate] = useState(() => normalizeLocalDateKey(draft.outcomes?.[0]?.startDate) || todayLocalKey());
@@ -91,16 +95,14 @@ export default function CreateV2Outcome({
   const canContinue = Boolean(title.trim() && deadline.trim() && !deadlineError);
   const startDateHelper = startDate ? "Démarre à la date choisie." : "Si vide : démarre aujourd’hui.";
   const categoryOptions = useMemo(() => {
-    const sys = categories.find((c) => c.id === SYSTEM_INBOX_ID) || { id: SYSTEM_INBOX_ID, name: "Général" };
-    const rest = categories.filter((c) => c.id !== SYSTEM_INBOX_ID);
-    rest.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+    const rest = categories.slice().sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
     const suggestions = suggestedCategories.map((cat) => ({
       id: cat.id,
       name: cat.name,
       color: cat.color,
       suggested: true,
     }));
-    return [sys, ...rest, ...suggestions];
+    return [...rest, ...suggestions];
   }, [categories, suggestedCategories]);
 
   function validateDeadline(nextValue) {
@@ -116,6 +118,10 @@ export default function CreateV2Outcome({
     if (!canContinue) return;
     if (deadlineError) {
       setError(deadlineError);
+      return;
+    }
+    if (!resolveVisibleCategoryId(categoryId, categories)) {
+      setError("Choisis une vraie catégorie.");
       return;
     }
     const selectedSuggestion = suggestedCategories.find((cat) => cat.id === categoryId) || null;
@@ -136,9 +142,6 @@ export default function CreateV2Outcome({
     const outcomeId = outcomeIdRef.current;
     setData((prev) => {
       let next = prev;
-      if (categoryId === SYSTEM_INBOX_ID) {
-        next = ensureSystemInboxCategory(next).state;
-      }
       if (selectedSuggestion) {
         const prevCategories = Array.isArray(next.categories) ? next.categories : [];
         if (!prevCategories.some((c) => c?.id === selectedSuggestion.id)) {
@@ -151,7 +154,7 @@ export default function CreateV2Outcome({
       }
       next = createGoal(next, {
         id: outcomeId,
-        categoryId: categoryId || sysCategoryId,
+        categoryId: categoryId,
         title: title.trim(),
         type: "OUTCOME",
         planType: "STATE",
@@ -177,7 +180,7 @@ export default function CreateV2Outcome({
         },
       };
     });
-    if (typeof onAfterSave === "function") onAfterSave(outcomeId, categoryId || sysCategoryId);
+    if (typeof onAfterSave === "function") onAfterSave(outcomeId, categoryId);
   }
 
   function activateSuggestedCategory(cat) {

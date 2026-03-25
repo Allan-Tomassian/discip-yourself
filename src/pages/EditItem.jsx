@@ -18,7 +18,13 @@ import {
 } from "../utils/datetime";
 import { addDays } from "../utils/dates";
 import { uid } from "../utils/helpers";
-import { createDefaultGoalSchedule, ensureSystemInboxCategory, normalizeCategory, SYSTEM_INBOX_ID } from "../logic/state";
+import { createDefaultGoalSchedule, normalizeCategory } from "../logic/state";
+import { updateActionModel } from "../domain/actionModel";
+import {
+  getFirstVisibleCategoryId,
+  getVisibleCategories,
+  resolveVisibleCategoryId,
+} from "../domain/categoryVisibility";
 import { updateGoal } from "../logic/goals";
 import { setPrimaryGoalForCategory } from "../logic/priority";
 import { resolveGoalType } from "../domain/goalType";
@@ -255,7 +261,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     [safeData.occurrences]
   );
   const categories = useMemo(
-    () => (Array.isArray(safeData.categories) ? safeData.categories : []),
+    () => getVisibleCategories(safeData.categories),
     [safeData.categories]
   );
   const outcomes = useMemo(() => goals.filter((g) => resolveGoalType(g) === "OUTCOME"), [goals]);
@@ -265,12 +271,8 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     (cat) =>
       cat && !existingIds.has(cat.id) && !existingNames.has(String(cat.name || "").trim().toLowerCase())
   );
-  const sysCategory = categories.find((c) => c?.id === SYSTEM_INBOX_ID) || { id: SYSTEM_INBOX_ID, name: "Général" };
-  const restCategories = categories.filter((c) => c?.id !== SYSTEM_INBOX_ID);
-  restCategories.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
   const categoryOptions = [
-    sysCategory,
-    ...restCategories,
+    ...categories.slice().sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || ""))),
     ...suggestedCategories.map((cat) => ({ id: cat.id, name: cat.name, suggested: true })),
   ];
 
@@ -430,12 +432,16 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     setQuantityValue(rawQuantityValue != null ? String(rawQuantityValue) : "");
     setQuantityUnit(rawQuantityUnit);
     setQuantityPeriod(rawQuantityPeriod || "DAY");
-    setSelectedCategoryId(item.categoryId || SYSTEM_INBOX_ID);
+    setSelectedCategoryId(
+      resolveVisibleCategoryId(item.categoryId, categories) ||
+      getFirstVisibleCategoryId(categories) ||
+      ""
+    );
     setSelectedOutcomeId(item.parentId || item.outcomeId || "");
     setDeadlineTouched(Boolean(item.deadline));
     setError("");
     setPlanOpen(false);
-  }, [item, isProcess, canUseReminders]);
+  }, [categories, item, isProcess, canUseReminders]);
 
   function buildCandidateIntervalsForEdit(windowFromKey, windowToKey, overrides = {}) {
     if (!isProcess) return [];
@@ -573,7 +579,14 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     // legacy backfill (kept for compatibility)
     updates.priorityLevel = priority === "prioritaire" ? "primary" : priority === "secondaire" ? "secondary" : "bonus";
 
-    const normalizedCategoryId = selectedCategoryId || SYSTEM_INBOX_ID;
+    const normalizedCategoryId =
+      resolveVisibleCategoryId(selectedCategoryId, categories) ||
+      getFirstVisibleCategoryId(categories) ||
+      "";
+    if (!normalizedCategoryId) {
+      setError("Choisis une vraie catégorie.");
+      return;
+    }
     const selectedSuggestion = suggestedCategories.find((cat) => cat.id === normalizedCategoryId) || null;
     if (selectedSuggestion && !canCreateCategory(safeData)) {
       if (typeof onOpenPaywall === "function") {
@@ -759,9 +772,6 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
             nextState = { ...nextState, occurrences: updatedOccurrences };
           }
         }
-        if (categoryId === SYSTEM_INBOX_ID) {
-          nextState = ensureSystemInboxCategory(nextState).state;
-        }
         if (selectedSuggestion) {
           const prevCategories = Array.isArray(nextState.categories) ? nextState.categories : [];
           if (!prevCategories.some((c) => c?.id === selectedSuggestion.id)) {
@@ -776,7 +786,13 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
         const prevGoal = Array.isArray(prev?.goals) ? prev.goals.find((g) => g?.id === goalId) : null;
         const prevPlanSig = buildPlanSignature(prevGoal, prevOccurrencesByGoal);
 
-        let next = updateGoal(nextState, goalId, updates);
+        const normalizedUpdates =
+          type === "OUTCOME"
+            ? updates
+            : updateActionModel(prevGoal, updates, { categories: nextState.categories }).value;
+        if (type !== "OUTCOME" && !normalizedUpdates) return nextState;
+
+        let next = updateGoal(nextState, goalId, normalizedUpdates);
         if (type === "OUTCOME" && updates.priority === "prioritaire" && categoryId) {
           next = setPrimaryGoalForCategory(next, categoryId, goalId);
         }

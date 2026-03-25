@@ -6,8 +6,17 @@ import {
 } from "../../../src/domain/todayIntervention.js";
 
 const isoDateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const hhmmSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/);
 const fallbackReasonSchema = z.enum(["none", "quota", "timeout", "invalid_model_output", "backend_error"]);
 const decisionSourceSchema = z.enum(["ai", "rules"]);
+const draftChangeTypeSchema = z.enum([
+  "create_action",
+  "update_action",
+  "schedule_action",
+  "reschedule_occurrence",
+  "archive_action",
+]);
+const repeatSchema = z.enum(["none", "daily", "weekly"]);
 const interventionTypeSchema = z.enum([
   TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
   TODAY_INTERVENTION_TYPE.SESSION_RESUME,
@@ -75,6 +84,49 @@ const chatMessageSchema = z
   })
   .strict();
 
+const chatDraftChangeSchema = z
+  .object({
+    type: draftChangeTypeSchema,
+    title: z.string().trim().min(1).max(96).nullable().optional().default(null),
+    categoryId: z.string().nullable().optional().default(null),
+    actionId: z.string().nullable().optional().default(null),
+    occurrenceId: z.string().nullable().optional().default(null),
+    repeat: repeatSchema.nullable().optional().default(null),
+    daysOfWeek: z.array(z.number().int().min(1).max(7)).max(7).optional().default([]),
+    startTime: hhmmSchema.nullable().optional().default(null),
+    durationMin: z.number().int().min(1).max(240).nullable().optional().default(null),
+    dateKey: isoDateKey.nullable().optional().default(null),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.type === "create_action" && !value.title) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["title"],
+        message: "title is required for create_action",
+      });
+    }
+    if (
+      (value.type === "update_action" ||
+        value.type === "schedule_action" ||
+        value.type === "archive_action") &&
+      !value.actionId
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["actionId"],
+        message: "actionId is required for this draft change",
+      });
+    }
+    if (value.type === "reschedule_occurrence" && !value.occurrenceId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["occurrenceId"],
+        message: "occurrenceId is required for reschedule_occurrence",
+      });
+    }
+  });
+
 export const coachPayloadSchema = z
   .object({
     kind: z.enum(["now", "recovery"]),
@@ -110,6 +162,7 @@ export const coachChatPayloadSchema = z
     primaryAction: actionSchema,
     secondaryAction: actionSchema.nullable(),
     suggestedDurationMin: z.number().int().min(1).max(240).nullable(),
+    draftChanges: z.array(chatDraftChangeSchema).max(4).optional().default([]),
   })
   .strict();
 
@@ -191,6 +244,7 @@ export const coachChatResponseSchema = z
     primaryAction: actionSchema,
     secondaryAction: actionSchema.nullable(),
     suggestedDurationMin: z.number().int().min(1).max(240).nullable(),
+    draftChanges: z.array(chatDraftChangeSchema).max(4).optional().default([]),
     meta: z
       .object({
         coachVersion: z.literal("v1"),

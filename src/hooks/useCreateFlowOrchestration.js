@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { isValidCreationStep, STEP_HABIT_TYPE } from "../creation/creationSchema";
+import {
+  CATEGORY_VIEW,
+  getFirstVisibleCategoryId,
+  getSelectedCategoryForView,
+  resolvePreferredVisibleCategoryId,
+  withSelectedCategoryByView,
+} from "../domain/categoryVisibility";
 import { canCreateCategory } from "../logic/entitlements";
 import { ensureSystemInboxCategory, normalizeCategory } from "../logic/state";
 import { findSuggestedCategory } from "../utils/categoriesSuggested";
 import { uid } from "../utils/helpers";
-import { getInboxId } from "../app/inbox";
 
 function normalizeAnchorRect(rect) {
   if (!rect) return null;
@@ -81,16 +87,16 @@ export function useCreateFlowOrchestration({
   };
 
   const resolvePreferredCategoryId = useCallback((explicitCategoryId) => {
-    if (explicitCategoryId) return explicitCategoryId;
-    const selectedByView = safeData?.ui?.selectedCategoryByView;
-    return (
-      selectedByView?.home ||
-      safeData?.ui?.selectedCategoryId ||
-      safeData?.ui?.librarySelectedCategoryId ||
-      categories?.[0]?.id ||
-      null
-    );
-  }, [categories, safeData?.ui?.librarySelectedCategoryId, safeData?.ui?.selectedCategoryByView, safeData?.ui?.selectedCategoryId]);
+    return resolvePreferredVisibleCategoryId({
+      categories,
+      candidates: [
+        explicitCategoryId,
+        getSelectedCategoryForView(safeData, CATEGORY_VIEW.LIBRARY),
+        getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY),
+        safeData?.ui?.selectedCategoryId,
+      ],
+    });
+  }, [categories, safeData]);
 
   const openCreateFlowModal = ({ categoryId } = {}) => {
     setPlusOpen(false);
@@ -118,33 +124,36 @@ export function useCreateFlowOrchestration({
           }
         : prevUi;
       const baseState = shouldReset ? { ...prev, ui: baseUi } : prev;
-      const ensured = ensureSystemInboxCategory(baseState);
-      const stateWithInbox = ensured.state;
+      const stateWithInbox = ensureSystemInboxCategory(baseState).state;
       const baseUiWithInbox = stateWithInbox.ui || baseUi;
-      const prevCategories = Array.isArray(stateWithInbox.categories) ? stateWithInbox.categories : [];
+      const prevCategories = Array.isArray(categories) && categories.length
+        ? categories
+        : Array.isArray(stateWithInbox.categories)
+          ? stateWithInbox.categories.filter((category) => category && !category.system && !category.isSystem)
+          : [];
       let resolvedCategoryId = categoryId || null;
       if (!resolvedCategoryId) {
         if (source === "library") {
           resolvedCategoryId =
-            baseUiWithInbox?.selectedCategoryByView?.library ||
+            getSelectedCategoryForView(baseUiWithInbox, CATEGORY_VIEW.LIBRARY) ||
             baseUiWithInbox?.librarySelectedCategoryId ||
-            baseUiWithInbox?.selectedCategoryByView?.home ||
+            getSelectedCategoryForView(baseUiWithInbox, CATEGORY_VIEW.TODAY) ||
             baseUiWithInbox?.selectedCategoryId ||
             null;
         } else if (source === "pilotage") {
           resolvedCategoryId =
-            baseUiWithInbox?.selectedCategoryByView?.pilotage ||
-            baseUiWithInbox?.selectedCategoryByView?.home ||
+            getSelectedCategoryForView(baseUiWithInbox, CATEGORY_VIEW.PILOTAGE) ||
+            getSelectedCategoryForView(baseUiWithInbox, CATEGORY_VIEW.TODAY) ||
             baseUiWithInbox?.selectedCategoryId ||
             null;
         } else if (source === "today") {
           resolvedCategoryId =
-            baseUiWithInbox?.selectedCategoryByView?.home ||
+            getSelectedCategoryForView(baseUiWithInbox, CATEGORY_VIEW.TODAY) ||
             baseUiWithInbox?.selectedCategoryId ||
             null;
         } else {
           resolvedCategoryId =
-            baseUiWithInbox?.selectedCategoryByView?.home ||
+            getSelectedCategoryForView(baseUiWithInbox, CATEGORY_VIEW.TODAY) ||
             baseUiWithInbox?.selectedCategoryId ||
             null;
         }
@@ -153,7 +162,7 @@ export function useCreateFlowOrchestration({
         resolvedCategoryId = null;
       }
       if (!resolvedCategoryId) {
-        resolvedCategoryId = ensured.category?.id || getInboxId(stateWithInbox) || null;
+        resolvedCategoryId = getFirstVisibleCategoryId(prevCategories) || null;
       }
       let resolvedOutcomeId = outcomeId || null;
       if (resolvedOutcomeId && !Array.isArray(stateWithInbox.goals)) resolvedOutcomeId = null;
@@ -168,7 +177,9 @@ export function useCreateFlowOrchestration({
       return {
         ...stateWithInbox,
         ui: {
-          ...baseUiWithInbox,
+          ...withSelectedCategoryByView(baseUiWithInbox, {
+            ...(resolvedCategoryId ? { today: resolvedCategoryId } : {}),
+          }),
           createDraft: nextDraft,
           createDraftWasCanceled: shouldReset ? false : baseUiWithInbox.createDraftWasCanceled,
           createDraftWasCompleted: false,
@@ -285,20 +296,26 @@ export function useCreateFlowOrchestration({
         const prevHabits = Array.isArray(next.habits) ? next.habits : [];
         const prevCategories = Array.isArray(next.categories) ? next.categories : [];
         const exists = prevCategories.some((c) => c?.id === catId);
-        const nextUi = { ...(next.ui || {}) };
+        const nextCategories = exists ? prevCategories.filter((c) => c.id !== catId) : prevCategories;
+        const fallbackSelectedId = getFirstVisibleCategoryId(nextCategories);
+        let nextUi = { ...(next.ui || {}) };
         if (Array.isArray(nextUi.categoryRailOrder)) {
           nextUi.categoryRailOrder = nextUi.categoryRailOrder.filter((id) => id !== catId);
         }
-        if (nextUi.selectedCategoryId === catId) nextUi.selectedCategoryId = sysId;
-        if (nextUi.librarySelectedCategoryId === catId) nextUi.librarySelectedCategoryId = sysId;
-        if (nextUi.selectedCategoryByView) {
-          const scv = { ...nextUi.selectedCategoryByView };
-          if (scv.library === catId) scv.library = sysId;
-          if (scv.plan === catId) scv.plan = sysId;
-          if (scv.home === catId) scv.home = sysId;
-          if (scv.pilotage === catId) scv.pilotage = sysId;
-          nextUi.selectedCategoryByView = scv;
-        }
+        nextUi = withSelectedCategoryByView(nextUi, {
+          ...(getSelectedCategoryForView(nextUi, CATEGORY_VIEW.TODAY) === catId
+            ? { today: fallbackSelectedId, selectedCategoryId: fallbackSelectedId }
+            : {}),
+          ...(getSelectedCategoryForView(nextUi, CATEGORY_VIEW.PLANNING) === catId
+            ? { planning: fallbackSelectedId }
+            : {}),
+          ...(getSelectedCategoryForView(nextUi, CATEGORY_VIEW.LIBRARY) === catId
+            ? { library: fallbackSelectedId, librarySelectedCategoryId: fallbackSelectedId }
+            : {}),
+          ...(getSelectedCategoryForView(nextUi, CATEGORY_VIEW.PILOTAGE) === catId
+            ? { pilotage: fallbackSelectedId }
+            : {}),
+        });
         if (!exists) {
           if (logDebug) {
             const orderLen = Array.isArray(nextUi.categoryRailOrder) ? nextUi.categoryRailOrder.length : 0;
@@ -307,7 +324,6 @@ export function useCreateFlowOrchestration({
           }
           return { ...next, ui: nextUi };
         }
-        const nextCategories = prevCategories.filter((c) => c.id !== catId);
         let nextGoals = prevGoals;
         let nextHabits = prevHabits;
         let removedIds = new Set();
@@ -382,17 +398,18 @@ export function useCreateFlowOrchestration({
         nextCategories = [...prevCategories, created];
         if (!prevOrder.includes(created.id)) nextOrder = [...prevOrder, created.id];
       }
-      const prevSel =
-        prevUi.selectedCategoryByView && typeof prevUi.selectedCategoryByView === "object"
-          ? prevUi.selectedCategoryByView
-          : {};
       return {
         ...next,
         categories: nextCategories,
         ui: {
-          ...prevUi,
-          selectedCategoryId: categoryId,
-          selectedCategoryByView: { ...prevSel, home: categoryId, library: categoryId, pilotage: categoryId },
+          ...withSelectedCategoryByView(prevUi, {
+            today: categoryId,
+            planning: categoryId,
+            library: categoryId,
+            pilotage: categoryId,
+            selectedCategoryId: categoryId,
+            librarySelectedCategoryId: categoryId,
+          }),
           categoryRailOrder: nextOrder,
         },
       };

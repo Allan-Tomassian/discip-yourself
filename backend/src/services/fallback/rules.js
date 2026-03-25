@@ -390,6 +390,7 @@ export function buildChatFallback(context) {
         dateKey: context.activeDate,
       }),
       suggestedDurationMin: 10,
+      draftChanges: [],
     };
   }
 
@@ -421,6 +422,7 @@ export function buildChatFallback(context) {
         dateKey: context.activeDate,
       }),
       suggestedDurationMin: duration,
+      draftChanges: [],
     };
   }
 
@@ -447,6 +449,7 @@ export function buildChatFallback(context) {
         dateKey: context.activeDate,
       }),
       suggestedDurationMin: null,
+      draftChanges: [],
     };
   }
 
@@ -472,6 +475,7 @@ export function buildChatFallback(context) {
         dateKey: context.activeDate,
       }),
       suggestedDurationMin: gapCandidate.durationMin || null,
+      draftChanges: [],
     };
   }
 
@@ -492,5 +496,6 @@ export function buildChatFallback(context) {
       dateKey: context.activeDate,
     }),
     suggestedDurationMin: 10,
+    draftChanges: [],
   };
 }
