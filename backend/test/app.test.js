@@ -650,7 +650,7 @@ test("POST /ai/now proposes planning an existing action when today is empty", as
   await app.close();
 });
 
-test("POST /ai/now explains a proven cross-category fallback when work advances finance", async () => {
+test("POST /ai/now prioritizes structure_missing before a proven cross-category fallback", async () => {
   const app = await buildApp({
     config: TEST_CONFIG,
     verifyAccessToken: async () => ({ id: "user-gap-cross-category" }),
@@ -687,9 +687,9 @@ test("POST /ai/now explains a proven cross-category fallback when work advances 
   const payload = coachResponseSchema.parse(response.json());
   assert.equal(payload.interventionType, "today_recommendation");
   assert.equal(payload.primaryAction.intent, "open_pilotage");
-  assert.equal(payload.primaryAction.label, "Planifier aujourd’hui");
-  assert.match(payload.reason, /Travailler l'offre/i);
-  assert.match(payload.reason, /Work/i);
+  assert.equal(payload.primaryAction.label, "Structurer");
+  assert.match(payload.reason, /clarifier l'objectif/i);
+  assert.match(payload.reason, /premiere action/i);
   assert.match(payload.reason, /Augmenter les revenus/i);
   await app.close();
 });

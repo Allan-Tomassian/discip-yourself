@@ -50,7 +50,7 @@ function resolveLoadTone(totalMinutes) {
   return "Charge légère";
 }
 
-export default function Planning({ data, setData, setTab }) {
+export default function Planning({ data, setData, setTab, persistenceScope = "local_fallback" }) {
   const safeData = data && typeof data === "object" ? data : {};
   const safeUi = safeData?.ui && typeof safeData.ui === "object" ? safeData.ui : {};
   const selectedDateKey =
@@ -257,6 +257,7 @@ export default function Planning({ data, setData, setTab }) {
           data={safeData}
           setData={setData}
           setTab={setTab}
+          persistenceScope={persistenceScope}
           selectedDateKey={selectedDateKey}
           activeCategoryId={activeCategoryId}
           planningView={planningView}

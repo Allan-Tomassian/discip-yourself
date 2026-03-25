@@ -448,6 +448,7 @@ describe("buildLocalTodayHeroModel", () => {
       systemTodayKey: SYSTEM_TODAY,
       activeCategoryId: "c1",
       activeCategoryName: "Finance",
+      activeCategoryHasMainGoal: true,
       focusOccurrenceForActiveDate: null,
       gapSummary: {
         hasGapToday: true,
@@ -464,8 +465,8 @@ describe("buildLocalTodayHeroModel", () => {
       },
     });
 
-    expect(result.primaryAction).toMatchObject({ kind: "open_pilotage" });
-    expect(result.primaryLabel).toBe("Structurer");
+    expect(result.primaryAction).toMatchObject({ kind: "open_library" });
+    expect(result.primaryLabel).toBe("Créer une première action");
     expect(result.reasonLinkType).toBe("structure_missing");
     expect(result.reasonLinkLabel).toBe("Structurer Finance");
     expect(result.meta).toMatch(/clarifier l'objectif/i);

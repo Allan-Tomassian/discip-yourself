@@ -3,6 +3,10 @@ import { E2E_AUTH_SESSION_KEY } from "../auth/constants";
 import { canUseLocalPersistenceFallback, mapUserDataPersistenceError } from "../infra/supabasePersistenceErrors";
 
 const LOCAL_USER_DATA_PREFIX = "e2e.supabase.user_data.";
+export const USER_DATA_STORAGE_SCOPE = Object.freeze({
+  CLOUD: "cloud",
+  LOCAL_FALLBACK: "local_fallback",
+});
 
 function safeParse(raw) {
   if (typeof raw !== "string" || !raw.trim()) return {};
@@ -48,15 +52,31 @@ function saveLocalUserData(userId, data) {
 }
 
 export async function loadUserData(userId) {
+  const result = await loadUserDataWithMeta(userId);
+  return result.data;
+}
+
+export async function loadUserDataWithMeta(userId) {
   const normalizedUserId = String(userId || "").trim();
-  if (!normalizedUserId) return {};
+  if (!normalizedUserId) {
+    return {
+      data: {},
+      storageScope: USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK,
+    };
+  }
 
   if (isUsingE2EMockedSession(normalizedUserId)) {
-    return loadLocalUserData(normalizedUserId);
+    return {
+      data: loadLocalUserData(normalizedUserId),
+      storageScope: USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK,
+    };
   }
 
   if (!supabase) {
-    return loadLocalUserData(normalizedUserId);
+    return {
+      data: loadLocalUserData(normalizedUserId),
+      storageScope: USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK,
+    };
   }
 
   const { data, error } = await supabase
@@ -68,7 +88,10 @@ export async function loadUserData(userId) {
   if (error) {
     const mappedError = mapUserDataPersistenceError(error);
     if (canUseLocalPersistenceFallback(mappedError)) {
-      return loadLocalUserData(normalizedUserId);
+      return {
+        data: loadLocalUserData(normalizedUserId),
+        storageScope: USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK,
+      };
     }
     throw mappedError;
   }
@@ -77,26 +100,46 @@ export async function loadUserData(userId) {
   if (!hasObjectKeys(safePayload)) {
     const localFallback = loadLocalUserData(normalizedUserId);
     if (hasObjectKeys(localFallback)) {
-      return localFallback;
+      return {
+        data: localFallback,
+        storageScope: USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK,
+      };
     }
   }
   saveLocalUserData(normalizedUserId, safePayload);
-  return safePayload;
+  return {
+    data: safePayload,
+    storageScope: USER_DATA_STORAGE_SCOPE.CLOUD,
+  };
 }
 
 export async function upsertUserData(userId, data) {
+  const result = await upsertUserDataWithMeta(userId, data);
+  if (result.error) throw result.error;
+  return result.data;
+}
+
+export async function upsertUserDataWithMeta(userId, data) {
   const normalizedUserId = String(userId || "").trim();
   if (!normalizedUserId) throw new Error("userId requis");
   const payload = data && typeof data === "object" ? data : {};
 
   if (isUsingE2EMockedSession(normalizedUserId)) {
     saveLocalUserData(normalizedUserId, payload);
-    return payload;
+    return {
+      data: payload,
+      storageScope: USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK,
+      error: null,
+    };
   }
 
   if (!supabase) {
     saveLocalUserData(normalizedUserId, payload);
-    return payload;
+    return {
+      data: payload,
+      storageScope: USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK,
+      error: null,
+    };
   }
 
   const { error } = await supabase
@@ -114,9 +157,18 @@ export async function upsertUserData(userId, data) {
     const mappedError = mapUserDataPersistenceError(error);
     if (canUseLocalPersistenceFallback(mappedError)) {
       saveLocalUserData(normalizedUserId, payload);
+      return {
+        data: payload,
+        storageScope: USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK,
+        error: mappedError,
+      };
     }
     throw mappedError;
   }
   saveLocalUserData(normalizedUserId, payload);
-  return payload;
+  return {
+    data: payload,
+    storageScope: USER_DATA_STORAGE_SCOPE.CLOUD,
+    error: null,
+  };
 }

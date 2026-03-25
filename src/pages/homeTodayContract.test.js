@@ -18,10 +18,10 @@ describe("home today canonical contract", () => {
     expect(home).toContain("futureSessions");
     expect(home).toContain("plannedActionsForActiveDate");
     expect(home).toContain("focusOccurrenceForActiveDate");
-    expect(home).toContain("const aiNowContextSignature = useMemo(");
-    expect(home).toContain("createAiNowContextSignature({");
-    expect(home).toContain("activeSessionId: activeSessionForActiveDate?.id || activeSessionForActiveDate?.occurrenceId || null");
-    expect(home).toContain("contextSignature: aiNowContextSignature");
+    expect(home).toContain("const todayAnalysisContextKey = useMemo(");
+    expect(home).toContain("buildTodayManualAiContextKey({");
+    expect(home).toContain("const manualTodayAnalysis = useManualAiAnalysis({");
+    expect(home).toContain("contextKey: todayAnalysisContextKey");
     expect(home).toContain("const localGapSummary = useMemo(");
     expect(home).toContain("buildLocalGapSummary({");
     expect(home).toContain("gapSummary: localGapSummary");
@@ -45,15 +45,20 @@ describe("home today canonical contract", () => {
 
     expect(home).toContain("const heroImpactText = useMemo(");
     expect(home).toContain("const heroContributionLabel =");
-    expect(home).toContain("const heroAiStatusLabel = useMemo(");
+    expect(home).toContain("const heroAnalysisModeLabel = useMemo(");
+    expect(home).toContain("const heroStorageLabel = useMemo(");
     expect(home).toContain("const heroTimestampLabel = useMemo(");
-    expect(home).toContain("const isHeroPreparing =");
+    expect(home).toContain("const heroAnalysisState = useMemo(");
     expect(home).toContain("impactText={heroImpactText}");
     expect(home).toContain("contributionLabel={heroContributionLabel}");
     expect(home).toContain("reasonLinkType={heroViewModel.reasonLinkType || \"\"}");
-    expect(home).toContain("aiStatusLabel={heroAiStatusLabel}");
+    expect(home).toContain("analysisStatusKind={heroAnalysisState.kind}");
+    expect(home).toContain("analysisModeLabel={heroAnalysisModeLabel}");
+    expect(home).toContain("analysisStorageLabel={heroStorageLabel}");
     expect(home).toContain("timestampLabel={heroTimestampLabel}");
-    expect(home).toContain("isPreparing={isHeroPreparing}");
+    expect(home).toContain("analysisStageLabel={manualTodayAnalysis.loadingStageLabel}");
+    expect(home).toContain("analyzeLabel={heroAnalyzeLabel}");
+    expect(home).toContain("analyzeError={manualTodayAnalysis.error}");
     expect(home).toContain("isAiPriority:");
   });
 
@@ -75,9 +80,8 @@ describe("home today canonical contract", () => {
     expect(home).toContain("if (!startPolicy.canStartDirectly) return;");
     expect(home).toContain("const typedHeroTitle = useTypingReveal(");
     expect(home).toContain("const shouldAnimateCoachResponse =");
-    expect(home).toContain('aiNow.requestDiagnostics.deliverySource === "network"');
-    expect(home).toContain("aiNow.requestDiagnostics.hadVisibleLoading");
-    expect(home).toContain("deriveTodayHeroChrome({");
+    expect(home).toContain('manualTodayAnalysis.requestDiagnostics.deliverySource === "network"');
+    expect(home).toContain("manualTodayAnalysis.requestDiagnostics.hadVisibleLoading");
     expect(home).toContain("todayDecisionDiagnostics");
     expect(home).not.toContain("const typedHeroHint = useTypingReveal(");
   });
@@ -106,12 +110,12 @@ describe("home today canonical contract", () => {
     const home = readSrc("pages/Home.jsx");
 
     expect(adapter).toContain('primaryLabel: activeDate === systemTodayKey ? "Planifier aujourd’hui" : "Aucune action active"');
-    expect(adapter).toContain('primaryLabel: gapSummary.selectionScope === "structure_missing" ? "Structurer" : "Planifier aujourd’hui"');
+    expect(adapter).toContain('kind: gapSummary.selectionScope === "structure_missing" ? "open_library" : "open_pilotage"');
     expect(adapter).toContain("gapSummary?.hasGapToday");
     expect(adapter).toContain('gapSummary.selectionScope === "cross_category"');
     expect(home).toContain("computeCategoryScopedRecommendation");
     expect(home).toContain("const scopedFocusOccurrence = localGapSummary?.recommendedOccurrence || null;");
     expect(home).toContain("reasonLinkLabel={heroViewModel.reasonLinkLabel || \"\"}");
-    expect(adapter).not.toContain('primaryLabel: "Aucune action active"');
+    expect(home).toContain("const heroAnalyzeLabel = manualTodayAnalysis.isPersistedForContext ? \"Rafraîchir l’analyse\" : \"Analyser ma priorité\";");
   });
 });

@@ -1288,19 +1288,27 @@ a{ color:inherit; }
   max-height:100%;
 }
 .drawerBackdrop{
+  position:fixed;
+  inset:0;
+  height:100dvh;
   justify-content:flex-end;
   align-items:stretch;
+  overflow:hidden;
 }
 .drawerPanelOuter{
   position:fixed;
-  top:70px;
-  right:calc(var(--page-pad) + var(--safe-right));
-  bottom:calc(12px + var(--safe-bottom));
+  top:0;
+  right:0;
+  bottom:0;
   width:min(360px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
+  padding-top:calc(70px + var(--safe-top));
+  padding-right:calc(var(--page-pad) + var(--safe-right));
+  padding-bottom:calc(12px + var(--safe-bottom));
+  padding-left:12px;
   border-radius:20px;
   --gate-glass-radius: 20px;
   --gate-glass-shadow: var(--shadow-lg, var(--drawerShadow, 0 24px 80px rgba(0,0,0,.4)));
-  max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
+  height:100dvh;
   box-sizing: border-box;
 }
 .drawerPanelClip{
@@ -1309,13 +1317,26 @@ a{ color:inherit; }
 }
 .drawerPanel{
   height:100%;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
   border:1px solid var(--border-subtle, var(--border));
   background: linear-gradient(180deg, var(--surface-2, var(--glass2)), var(--surface-1, var(--glass)));
   border-radius:inherit;
   padding:16px;
-  overflow:auto;
+  overflow:hidden;
   overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
+}
+.drawerBody{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
 }
 .plusExpander{
   position:fixed;
@@ -1443,6 +1464,14 @@ a{ color:inherit; }
   align-items:center;
   gap:8px;
 }
-.ios .drawerPanelOuter{
-  position:absolute;
+@media (max-width: 767px){
+  .drawerPanelOuter{
+    right:0;
+    left:0;
+    width:auto;
+    padding-top:calc(12px + var(--safe-top));
+    padding-right:calc(12px + var(--safe-right));
+    padding-bottom:calc(12px + var(--safe-bottom));
+    padding-left:calc(12px + var(--safe-left));
+  }
 }

@@ -258,6 +258,14 @@ function buildCategorySnapshot({ activeCategory, goals, occurrences }) {
   };
 }
 
+function hasActiveCategoryStructureGap({ activeCategory, goals }) {
+  if (!activeCategory?.id) return false;
+  const executableGoals = safeArray(goals)
+    .filter(isExecutableGoal)
+    .filter((goal) => goal.categoryId === activeCategory.id);
+  return executableGoals.length === 0;
+}
+
 function buildReasonLinkLabel({ reasonLinkType, activeCategoryLabel, recommendedCategoryLabel }) {
   if (reasonLinkType === TODAY_CATEGORY_REASON_LINK_TYPE.CROSS_CATEGORY) {
     if (recommendedCategoryLabel && activeCategoryLabel) {
@@ -459,6 +467,7 @@ export function computeCategoryScopedRecommendation({
   const goalsById = buildGoalsById(goals);
   const activeCategory = activeCategoryId ? categoriesById.get(activeCategoryId) || null : null;
   const categorySnapshot = buildCategorySnapshot({ activeCategory, goals, occurrences });
+  const activeCategoryNeedsStructure = hasActiveCategoryStructureGap({ activeCategory, goals });
   const contributionTarget = resolveContributionTarget(activeCategory, goalsById);
   const contributionTargetLabel = contributionTarget.label;
   const isToday = Boolean(activeDate && systemToday && activeDate === systemToday);
@@ -605,6 +614,28 @@ export function computeCategoryScopedRecommendation({
       hasGapToday,
       activeCategoryCandidateCount: activeCategoryCandidates.length,
       crossCategoryCandidateCount: crossCategoryCandidates.length,
+    });
+  }
+
+  if (hasGapToday && activeCategoryNeedsStructure) {
+    return withSharedFields({
+      activeCategory,
+      categorySnapshot,
+      contributionTargetLabel,
+      reasonLinkType: TODAY_CATEGORY_REASON_LINK_TYPE.STRUCTURE_MISSING,
+      selectionScope: TODAY_CATEGORY_SELECTION_SCOPE.STRUCTURE_MISSING,
+      recommendedAction: null,
+      recommendedOccurrence: null,
+      recommendedCategory: activeCategory,
+      explanation: buildStructureMissingExplanation({
+        activeCategoryLabel: activeCategory?.name || null,
+        contributionTargetLabel,
+      }),
+      candidateActionSummaries: [],
+      gapReason,
+      hasGapToday,
+      activeCategoryCandidateCount: activeCategoryCandidates.length,
+      crossCategoryCandidateCount: 0,
     });
   }
 

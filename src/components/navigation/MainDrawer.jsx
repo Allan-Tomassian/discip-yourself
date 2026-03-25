@@ -50,6 +50,32 @@ export default function MainDrawer({
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [onClose, open]);
 
+  useEffect(() => {
+    if (!open || typeof document === "undefined") return undefined;
+    const { body, documentElement } = document;
+    const scrollY = typeof window !== "undefined" ? window.scrollY || 0 : 0;
+    const previousBodyOverflow = body.style.overflow;
+    const previousBodyPosition = body.style.position;
+    const previousBodyTop = body.style.top;
+    const previousBodyWidth = body.style.width;
+    const previousHtmlOverflow = documentElement.style.overflow;
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    documentElement.style.overflow = "hidden";
+    return () => {
+      body.style.overflow = previousBodyOverflow;
+      body.style.position = previousBodyPosition;
+      body.style.top = previousBodyTop;
+      body.style.width = previousBodyWidth;
+      documentElement.style.overflow = previousHtmlOverflow;
+      if (typeof window !== "undefined") {
+        window.scrollTo(0, scrollY);
+      }
+    };
+  }, [open]);
+
   if (!open || typeof document === "undefined") return null;
 
   return createPortal(
@@ -70,7 +96,7 @@ export default function MainDrawer({
             role="dialog"
             aria-modal="true"
             aria-label="Menu principal"
-          >
+            >
             <div className="drawerHeader">
               <div style={{ fontWeight: 800 }}>Menu</div>
               <GateButton
@@ -84,7 +110,7 @@ export default function MainDrawer({
                 Fermer
               </GateButton>
             </div>
-            <div className="mt12 col" style={{ gap: 18 }}>
+            <div className="drawerBody mt12 col" style={{ gap: 18 }}>
               {SECTIONS.map((section) => (
                 <section key={section.title} className="col" style={{ gap: 10 }}>
                   <div className="small2" style={{ opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.08em" }}>

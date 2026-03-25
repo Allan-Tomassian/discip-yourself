@@ -3,7 +3,12 @@ import { useAuth } from "../auth/useAuth";
 import { E2E_AUTH_SESSION_KEY } from "../auth/constants";
 import { migrate, initialData } from "../logic/state";
 import { loadState, saveState } from "../utils/storage";
-import { isRemoteUserDataEnabled, loadUserData, upsertUserData } from "./userDataApi";
+import {
+  isRemoteUserDataEnabled,
+  loadUserDataWithMeta,
+  upsertUserDataWithMeta,
+  USER_DATA_STORAGE_SCOPE,
+} from "./userDataApi";
 
 export const USER_DATA_SAVE_DEBOUNCE_MS = 500;
 
@@ -121,6 +126,7 @@ export function useUserData() {
   const [data, setDataState] = useState(() => toSafeState(loadState() || initialData()));
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [persistenceScope, setPersistenceScope] = useState(USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK);
 
   const skipNextRemoteSaveRef = useRef(true);
   const hydratedSignatureRef = useRef("");
@@ -141,6 +147,7 @@ export function useUserData() {
       setDataState(next);
       setLoading(false);
       setLoadError("");
+      setPersistenceScope(USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK);
       return undefined;
     }
 
@@ -150,7 +157,9 @@ export function useUserData() {
       saverRef.current = createDebouncedSave({
         delayMs: USER_DATA_SAVE_DEBOUNCE_MS,
         onSave: async (nextData) => {
-          await upsertUserData(userId, nextData);
+          const result = await upsertUserDataWithMeta(userId, nextData);
+          setPersistenceScope(result.storageScope || USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK);
+          if (result.error) throw result.error;
         },
         onError: logSaveError,
       });
@@ -163,13 +172,16 @@ export function useUserData() {
     (async () => {
       setLoading(true);
       try {
-        const [remoteRaw, localRaw] = await Promise.all([loadUserData(userId), Promise.resolve(loadState())]);
+        const [remoteResult, localRaw] = await Promise.all([loadUserDataWithMeta(userId), Promise.resolve(loadState())]);
+        const remoteRaw = remoteResult?.data;
         const remoteIsEmpty = isEmptyObject(remoteRaw);
         const localCandidate = localRaw ? toSafeState(localRaw) : null;
+        let nextPersistenceScope = remoteResult?.storageScope || USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK;
 
         let sourceData = remoteRaw;
         if (remoteIsEmpty && hasMeaningfulLocalData(localCandidate)) {
-          await upsertUserData(userId, localCandidate);
+          const syncResult = await upsertUserDataWithMeta(userId, localCandidate);
+          nextPersistenceScope = syncResult.storageScope || USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK;
           sourceData = localCandidate;
         }
 
@@ -181,6 +193,7 @@ export function useUserData() {
         setDataState(next);
         saveState(next);
         setLoadError("");
+        setPersistenceScope(nextPersistenceScope);
       } catch (error) {
         if (!active) return;
         // eslint-disable-next-line no-console
@@ -189,6 +202,7 @@ export function useUserData() {
         skipNextRemoteSaveRef.current = true;
         setDataState(fallback);
         setLoadError(String(error?.message || "").trim() || "Impossible de charger user_data.");
+        setPersistenceScope(USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK);
       } finally {
         if (!active) return;
         setLoading(false);
@@ -219,7 +233,12 @@ export function useUserData() {
     }
 
     if (!isRemoteUserDataEnabled || !useDebounceRef.current) {
-      upsertUserData(userId, safeData).catch(logSaveError);
+      upsertUserDataWithMeta(userId, safeData)
+        .then((result) => {
+          setPersistenceScope(result.storageScope || USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK);
+          if (result.error) logSaveError(result.error);
+        })
+        .catch(logSaveError);
       return;
     }
 
@@ -232,7 +251,8 @@ export function useUserData() {
       setData,
       loading,
       loadError,
+      persistenceScope,
     }),
-    [data, loadError, loading, setData]
+    [data, loadError, loading, persistenceScope, setData]
   );
 }

@@ -33,7 +33,7 @@ describe("computeCategoryScopedRecommendation", () => {
     expect(result.recommendedActionId).toBe("goal-finance");
   });
 
-  it("allows a cross-category recommendation only when the proof is deterministic", () => {
+  it("prioritizes structure_missing before cross-category when the active category has no actionable process", () => {
     const result = computeCategoryScopedRecommendation({
       activeDate: TODAY,
       systemToday: TODAY,
@@ -50,10 +50,10 @@ describe("computeCategoryScopedRecommendation", () => {
       plannedActionsForActiveDate: [{ id: "occ-work", goalId: "goal-work", date: TODAY, status: "planned", start: "08:00", durationMinutes: 30 }],
     });
 
-    expect(result.reasonLinkType).toBe("cross_category");
-    expect(result.selectionScope).toBe("cross_category");
-    expect(result.recommendedOccurrenceId).toBe("occ-work");
-    expect(result.recommendedCategoryLabel).toBe("Work");
+    expect(result.reasonLinkType).toBe("structure_missing");
+    expect(result.selectionScope).toBe("structure_missing");
+    expect(result.recommendedOccurrenceId).toBeNull();
+    expect(result.recommendedCategoryLabel).toBe("Finance");
     expect(result.contributionTargetLabel).toBe("Augmenter les revenus");
   });
 

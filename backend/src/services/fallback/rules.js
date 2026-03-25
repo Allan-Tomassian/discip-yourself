@@ -215,8 +215,8 @@ export function buildNowFallback(context) {
 
     let headline = "Aucune action prévue aujourd’hui";
     let reason = gapCandidate
-      ? `Tu peux planifier ${candidateWithDuration || gapCandidate.title} aujourd'hui pour maintenir la continuité.`
-      : "Planifie une action simple aujourd'hui pour maintenir la continuité.";
+      ? `Planifie ${candidateWithDuration || gapCandidate.title} aujourd'hui pour garder un bloc concret.`
+      : "Planifie un bloc court aujourd'hui pour relancer la journée.";
 
     if (context.gapSummary.selectionScope === "structure_missing") {
       headline = categoryName ? `Structure ${categoryName}`.slice(0, 72) : "Structure la categorie active";
@@ -240,7 +240,7 @@ export function buildNowFallback(context) {
               `Tu n'as pas encore defini d'action exploitable pour ${categoryName}. Commence par clarifier l'objectif ou creer une premiere action.`
           : gapCandidate
             ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. Une courte action suffit pour maintenir l'élan.`
-            : "Une courte action suffit pour maintenir l'élan aujourd'hui.";
+            : "Ajoute un bloc court aujourd'hui pour recréer un point d'appui.";
     } else if (context.gapSummary.gapReason === TODAY_GAP_REASON.LOW_LOAD_DAY) {
       headline = gapCandidate ? `Ajoute ${gapCandidate.title} aujourd’hui`.slice(0, 72) : "Le plan du jour reste léger";
       reason =
@@ -252,7 +252,7 @@ export function buildNowFallback(context) {
               `Le plan du jour est leger mais ${categoryName} manque encore d'action exploitable. Clarifie l'objectif ou cree une premiere action.`
           : gapCandidate
             ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. ${durationLabel || "Une courte durée"} suffit pour compléter la journée.`
-            : "Une action simple peut compléter la journée sans surcharge.";
+            : "Ajoute un bloc court pour compléter la journée sans surcharge.";
     } else if (context.gapSummary.selectionScope === "cross_category" && gapCandidate && categoryName) {
       reason =
         categoryCoherence?.explanation ||
@@ -290,7 +290,7 @@ export function buildNowFallback(context) {
     interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
     decisionSource: "rules",
     headline: "Aucune action prévue aujourd’hui",
-    reason: "Planifie une action simple aujourd'hui pour maintenir la continuité.",
+    reason: "Planifie un bloc court aujourd'hui pour relancer la journée.",
     primaryAction: buildAction({
       label: "Planifier aujourd’hui",
       intent: "open_pilotage",
@@ -504,7 +504,7 @@ export function buildChatFallback(context) {
             "Clarifie l'objectif de la categorie active ou cree une premiere action exploitable."
           : context.gapSummary.selectionScope === "cross_category"
             ? categoryCoherence?.explanation ||
-              `${gapCandidate?.title || "Cette action"} contribue a ${categoryCoherence?.contributionTargetLabel || "ta priorite active"}. Programme-la en bloc court.`
+              `${gapCandidate?.title || "Cette action"} contribue a ${categoryCoherence?.contributionTargetLabel || "ta priorite active"}. Programme-la sur un bloc court concret.`
             : `${gapCandidate?.title || "Cette action"} n'est pas encore planifiée aujourd'hui. Pose un bloc court crédible.`,
       primaryAction: buildAction({
         label: context.gapSummary.selectionScope === "structure_missing" ? "Structurer" : "Planifier aujourd’hui",

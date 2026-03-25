@@ -3,6 +3,13 @@ import { useAuth } from "../../auth/useAuth";
 import { requestAiCoachChat } from "../../infra/aiCoachChatClient";
 import { applyChatDraftChanges } from "../../logic/chatDraftChanges";
 import { buildPlanningCoachFallback } from "../../features/planning/planningCoachModel";
+import {
+  buildPlanningManualAiContextKey,
+  createPersistedChatAnalysisEntry,
+} from "../../features/manualAi/manualAiAnalysis";
+import { resolveManualAiDisplayState } from "../../features/manualAi/displayState";
+import { useManualAiAnalysis } from "../../hooks/useManualAiAnalysis";
+import ManualAiStatus from "../ai/ManualAiStatus";
 import { Button, Card } from "../UI";
 
 function describeDraftChange(change, { goalsById, categoriesById }) {
@@ -29,6 +36,7 @@ export default function PlanningCoachCard({
   data,
   setData,
   setTab,
+  persistenceScope = "local_fallback",
   selectedDateKey,
   activeCategoryId = null,
   planningView = "day",
@@ -38,6 +46,7 @@ export default function PlanningCoachCard({
 }) {
   const { session } = useAuth();
   const accessToken = session?.access_token || "";
+  const userId = session?.user?.id || "";
   const fallbackReply = useMemo(
     () =>
       buildPlanningCoachFallback({
@@ -49,55 +58,94 @@ export default function PlanningCoachCard({
       }),
     [activeCategoryId, categoriesById, goalsById, occurrences, selectedDateKey]
   );
+  const planningAnalysisContextKey = useMemo(
+    () =>
+      buildPlanningManualAiContextKey({
+        userId,
+        planningView,
+        selectedDateKey,
+        activeCategoryId,
+      }),
+    [activeCategoryId, planningView, selectedDateKey, userId]
+  );
+  const manualPlanningAnalysis = useManualAiAnalysis({
+    data,
+    setData,
+    contextKey: planningAnalysisContextKey,
+    surface: "planning",
+  });
+  const planningAnalysisState = useMemo(
+    () =>
+      resolveManualAiDisplayState({
+        loading: manualPlanningAnalysis.loading,
+        visibleAnalysis: manualPlanningAnalysis.visibleAnalysis,
+        wasRefreshed: manualPlanningAnalysis.wasRefreshed,
+      }),
+    [manualPlanningAnalysis.loading, manualPlanningAnalysis.visibleAnalysis, manualPlanningAnalysis.wasRefreshed]
+  );
   const [reply, setReply] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [ignoredDraftKey, setIgnoredDraftKey] = useState("");
   const [applying, setApplying] = useState(false);
   const [draftMessage, setDraftMessage] = useState("");
-
   useEffect(() => {
-    let cancelled = false;
     setReply(null);
     setIgnoredDraftKey("");
     setDraftMessage("");
+  }, [planningAnalysisContextKey]);
 
-    if (!accessToken) {
-      setLoading(false);
-      return undefined;
-    }
-
-    setLoading(true);
-    requestAiCoachChat({
-      accessToken,
-      payload: {
-        selectedDateKey,
-        activeCategoryId,
-        message:
-          planningView === "week"
-            ? "Analyse ce planning hebdomadaire et propose un ajustement prioritaire concret."
-            : "Analyse ce planning du jour et propose un ajustement prioritaire concret.",
-        recentMessages: [],
-      },
-    })
-      .then((result) => {
-        if (cancelled) return;
-        if (result.ok && result.reply) {
-          setReply(result.reply);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [accessToken, activeCategoryId, planningView, selectedDateKey]);
-
-  const visibleReply = reply || fallbackReply;
-  const draftChanges = Array.isArray(visibleReply?.draftChanges) ? visibleReply.draftChanges : [];
+  const persistedReply = manualPlanningAnalysis.visibleAnalysis
+    ? {
+        kind: "chat",
+        decisionSource: manualPlanningAnalysis.visibleAnalysis.decisionSource || "ai",
+        headline: manualPlanningAnalysis.visibleAnalysis.headline,
+        reason: manualPlanningAnalysis.visibleAnalysis.reason,
+        primaryAction: manualPlanningAnalysis.visibleAnalysis.primaryAction,
+        secondaryAction: manualPlanningAnalysis.visibleAnalysis.secondaryAction,
+        suggestedDurationMin: manualPlanningAnalysis.visibleAnalysis.suggestedDurationMin,
+        draftChanges: [],
+      }
+    : null;
+  const visibleReply = reply || persistedReply || fallbackReply;
+  const draftChanges = Array.isArray(reply?.draftChanges) ? reply.draftChanges : [];
   const draftKey = draftChanges.length ? JSON.stringify(draftChanges) : "";
   const showDraft = Boolean(draftChanges.length && draftKey !== ignoredDraftKey);
+
+  async function handleAnalyzePlanning() {
+    setDraftMessage("");
+    setIgnoredDraftKey("");
+    const result = await manualPlanningAnalysis.runAnalysis({
+      execute: () =>
+        requestAiCoachChat({
+          accessToken,
+          payload: {
+            selectedDateKey,
+            activeCategoryId,
+            message:
+              planningView === "week"
+                ? "Analyse ce planning hebdomadaire et propose un ajustement prioritaire concret."
+                : "Analyse ce planning du jour et propose un ajustement prioritaire concret.",
+            recentMessages: [],
+          },
+        }),
+      serializeSuccess: (success) =>
+        createPersistedChatAnalysisEntry({
+          contextKey: planningAnalysisContextKey,
+          surface: "planning",
+          storageScope: persistenceScope,
+          reply: success?.reply,
+        }),
+    });
+    if (result?.ok && result.reply) {
+      setReply(result.reply);
+    }
+  }
+
+  function handleDismissPlanningAnalysis() {
+    setReply(null);
+    setIgnoredDraftKey("");
+    setDraftMessage("");
+    manualPlanningAnalysis.dismissAnalysis();
+  }
 
   function applyDraft() {
     if (!showDraft || applying) return;
@@ -126,9 +174,32 @@ export default function PlanningCoachCard({
         <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div>
             <div className="titleSm">Coach planning</div>
-            <div className="small2" style={{ opacity: 0.82 }}>
-              {loading ? "Analyse IA en cours, heuristique locale visible." : reply ? "Suggestion IA active." : "Heuristique locale active."}
-            </div>
+            <ManualAiStatus
+              statusKind={planningAnalysisState.kind}
+              statusLabel={planningAnalysisState.label}
+              detailLabel={
+                manualPlanningAnalysis.visibleAnalysis
+                  ? persistenceScope === "cloud"
+                    ? "Synchronisée sur tes appareils."
+                    : "Enregistrée sur cet appareil."
+                  : ""
+              }
+              stageLabel={manualPlanningAnalysis.loadingStageLabel}
+            />
+          </div>
+          <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+            <Button onClick={handleAnalyzePlanning} disabled={manualPlanningAnalysis.loading}>
+              {manualPlanningAnalysis.loading
+                ? manualPlanningAnalysis.loadingStageLabel || "Analyse..."
+                : planningView === "week"
+                  ? "Analyser cette semaine"
+                  : "Analyser ce jour"}
+            </Button>
+            {manualPlanningAnalysis.isPersistedForContext ? (
+              <Button variant="ghost" onClick={handleDismissPlanningAnalysis}>
+                Revenir au diagnostic local
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -143,6 +214,12 @@ export default function PlanningCoachCard({
             <div className="small">{renderSuggestion(visibleReply)}</div>
           </div>
         </div>
+
+        {manualPlanningAnalysis.error ? (
+          <div className="small2" style={{ opacity: 0.88 }}>
+            {manualPlanningAnalysis.error}
+          </div>
+        ) : null}
 
         {showDraft ? (
           <div

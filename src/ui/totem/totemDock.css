@@ -7,8 +7,8 @@
   --totem-dock-anchor-x: calc(env(safe-area-inset-right) + 20px);
   --totem-dock-shift-x: clamp(46px, 7vw, 72px);
   --totem-bleed: 0px;
-  --totem-scale: 0.56;
-  --totem-scale-small: 0.53;
+  --totem-scale: 0.48;
+  --totem-scale-small: 0.46;
 }
 
 .totemDockLayer::before {
@@ -112,7 +112,7 @@
   width: 146px;
   height: 146px;
   animation: totemDockIdleFloat 4.8s ease-in-out infinite;
-  opacity: 0.88;
+  opacity: 0.74;
 }
 
 .totemDockEagleAsset {

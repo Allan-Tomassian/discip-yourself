@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { E2E_AUTH_SESSION_KEY } from "../auth/constants";
-import { buildLocalUserDataKey, upsertUserData } from "./userDataApi";
+import {
+  buildLocalUserDataKey,
+  loadUserDataWithMeta,
+  upsertUserData,
+  upsertUserDataWithMeta,
+} from "./userDataApi";
 
 function createLocalStorageMock() {
   const store = new Map();
@@ -43,5 +48,22 @@ describe("userDataApi mocked session fallback", () => {
     expect(
       JSON.parse(window.localStorage.getItem(buildLocalUserDataKey(userId)) || "null")
     ).toEqual(payload);
+  });
+
+  it("reports a local_fallback storage scope for mocked E2E persistence", async () => {
+    const userId = "e2e-user-id";
+    const payload = { profile: { whyText: "Pourquoi local" } };
+
+    window.localStorage.setItem(
+      E2E_AUTH_SESSION_KEY,
+      JSON.stringify({ user: { id: userId } })
+    );
+
+    const writeResult = await upsertUserDataWithMeta(userId, payload);
+    const readResult = await loadUserDataWithMeta(userId);
+
+    expect(writeResult.storageScope).toBe("local_fallback");
+    expect(readResult.storageScope).toBe("local_fallback");
+    expect(readResult.data).toEqual(payload);
   });
 });

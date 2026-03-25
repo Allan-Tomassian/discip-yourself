@@ -15,6 +15,7 @@ import {
   normalizeSelectedCategoryByView,
   sanitizeVisibleCategoryUi,
 } from "../../domain/categoryVisibility";
+import { ensureManualAiAnalysisState } from "../../features/manualAi/manualAiAnalysis";
 import { autoReclassifySystemGoals } from "../../domain/systemInboxMigration";
 import {
   DEFAULT_BLOCKS,
@@ -22,7 +23,6 @@ import {
   initialData,
   normalizeCategory,
   normalizeGoal,
-  sanitizePilotageRadarSelection,
 } from "./normalizers";
 import {
   SCHEMA_VERSION,
@@ -456,9 +456,7 @@ export function migrate(prev) {
   next.ui.selectedCategoryByView.plan = next.ui.selectedCategoryByView.planning;
 
   if (typeof next.ui.soundEnabled === "undefined") next.ui.soundEnabled = false;
-  next.ui.pilotageRadarSelection = sanitizePilotageRadarSelection(next, {
-    selection: next.ui.pilotageRadarSelection,
-  });
+  delete next.ui.pilotageRadarSelection;
   if (typeof next.ui.onboardingCompleted === "undefined") next.ui.onboardingCompleted = false;
   if (typeof next.ui.onboardingSeenVersion !== "number") next.ui.onboardingSeenVersion = 0;
   if (typeof next.ui.onboardingStep === "undefined") next.ui.onboardingStep = 1;
@@ -921,20 +919,19 @@ export function migrate(prev) {
   const goalList = Array.isArray(normalized.goals) ? normalized.goals : [];
   const safeUi = sanitizeVisibleCategoryUi(normalized.ui, cats);
   const scv = normalizeSelectedCategoryByView(safeUi.selectedCategoryByView);
-  const safeRadarSelection = sanitizePilotageRadarSelection(normalized, {
-    selection: safeUi?.pilotageRadarSelection,
-  });
+  const safeManualAiAnalysis = ensureManualAiAnalysisState(safeUi?.manualAiAnalysisV1);
   const rawOpenGoalEditId = safeUi?.openGoalEditId || null;
   const safeOpenGoalEditId = rawOpenGoalEditId && goalList.some((g) => g.id === rawOpenGoalEditId) ? rawOpenGoalEditId : null;
+  const { pilotageRadarSelection: _legacyPilotageRadarSelection, ...safeUiWithoutRadar } = safeUi;
 
   return {
     ...normalized,
     ui: {
-      ...safeUi,
+      ...safeUiWithoutRadar,
       mainGoalId: normalized.ui?.mainGoalId || null,
       openGoalEditId: safeOpenGoalEditId,
       selectedCategoryByView: normalizeSelectedCategoryByView(safeUi.selectedCategoryByView),
-      pilotageRadarSelection: safeRadarSelection,
+      manualAiAnalysisV1: safeManualAiAnalysis,
     },
   };
 }

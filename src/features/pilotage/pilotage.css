@@ -80,70 +80,6 @@
   color: #ffb4b4;
 }
 
-.pilotageRadarGrid {
-  margin-top: 12px;
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: 12px;
-}
-
-.pilotageRadarPanel {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-
-.pilotageRadarSvg {
-  width: 100%;
-  display: grid;
-  place-items: center;
-  min-height: 220px;
-}
-
-.pilotageRadarGridLine {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.08);
-}
-
-.pilotageRadarAxis {
-  stroke: rgba(255, 255, 255, 0.12);
-}
-
-.pilotageRadarLabel {
-  fill: rgba(255, 255, 255, 0.65);
-  font-size: 10px;
-  text-anchor: middle;
-  dominant-baseline: middle;
-}
-
-.pilotageRadarLegend {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.pilotageLegendRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pilotageLegendRow .small2 {
-  line-height: 1.34;
-}
-
-.pilotageLegendDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-}
-
-.pilotageRadarSelects {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-
 .pilotageInsights {
   margin-top: 12px;
   display: flex;
@@ -164,35 +100,47 @@
   word-break: break-word;
 }
 
-.pilotageDetails {
-  margin-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 10px;
-}
-
-.pilotageDetails summary {
-  cursor: pointer;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.pilotageRadarSelects .GateSelectWrap {
-  width: 100%;
-}
-
-.pilotageDetailsBody {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
+.pilotageTrendChart {
+  display: grid;
   gap: 8px;
+}
+
+.pilotageTrendChart svg {
+  width: 100%;
+  min-height: 180px;
+  display: block;
+}
+
+.pilotageTrendAxis {
+  stroke: rgba(255, 255, 255, 0.14);
+  stroke-width: 1;
+}
+
+.pilotageTrendGuide {
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+}
+
+.pilotageTrendAxisLabel {
+  fill: rgba(255, 255, 255, 0.58);
+  font-size: 10px;
+}
+
+.pilotageTrendNeutral {
+  fill: rgba(255, 255, 255, 0.36);
+}
+
+.pilotageTrendAxisFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 11px;
 }
 
 @media (max-width: 900px) {
   .pilotageTopGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .pilotageRadarGrid {
     grid-template-columns: 1fr;
   }
 }

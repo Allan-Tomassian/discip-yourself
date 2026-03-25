@@ -107,6 +107,7 @@ export function buildLocalTodayHeroModel({
   systemTodayKey = "",
   activeCategoryId = null,
   activeCategoryName = null,
+  activeCategoryHasMainGoal = false,
   activeSessionForActiveDate = null,
   openSessionOutsideActiveDate = null,
   futureSessions = [],
@@ -244,9 +245,14 @@ export function buildLocalTodayHeroModel({
       interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
       title,
       meta,
-      primaryLabel: gapSummary.selectionScope === "structure_missing" ? "Structurer" : "Planifier aujourd’hui",
+      primaryLabel:
+        gapSummary.selectionScope === "structure_missing"
+          ? activeCategoryHasMainGoal
+            ? "Créer une première action"
+            : "Clarifier l’objectif"
+          : "Planifier aujourd’hui",
       primaryAction: {
-        kind: "open_pilotage",
+        kind: gapSummary.selectionScope === "structure_missing" ? "open_library" : "open_pilotage",
       },
       secondaryLabel: "Voir progression",
     }, { activeCategoryId, activeCategoryName, coherence });

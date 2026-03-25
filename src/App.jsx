@@ -120,7 +120,7 @@ function normalizeWalletPreview(wallet) {
 export default function App() {
   const { profile: supabaseProfile } = useProfile();
   const profileNeedsCompletion = !isProfileComplete(supabaseProfile);
-  const { data, setData, loading: dataLoading } = useUserData();
+  const { data, setData, loading: dataLoading, persistenceScope } = useUserData();
   const safeData = data && typeof data === "object" ? data : {};
   const {
     tab,
@@ -756,6 +756,7 @@ export default function App() {
         <Home
           data={data}
           setData={setData}
+          persistenceScope={persistenceScope}
           onOpenLibrary={homeNavigationHandlers.onOpenLibrary}
           onOpenPlanning={() => setTab("planning")}
           onOpenPilotage={homeNavigationHandlers.onOpenPilotage}
@@ -794,6 +795,7 @@ export default function App() {
         <Planning
           data={data}
           setData={setData}
+          persistenceScope={persistenceScope}
           setTab={setTab}
         />
       ) : tab === "category-detail" ? (
@@ -840,6 +842,7 @@ export default function App() {
         <Pilotage
           data={data}
           setData={setData}
+          persistenceScope={persistenceScope}
           onPlanCategory={handlePlanCategory}
           generationWindowDays={generationWindowDays}
           isPlanningUnlimited={planningUnlimited}

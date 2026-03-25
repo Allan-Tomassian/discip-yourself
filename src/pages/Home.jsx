@@ -50,15 +50,18 @@ import { computeCategoryScopedRecommendation } from "../domain/todayCategoryCohe
 import { deriveTodayNowModel } from "../features/today/nowModel";
 import { deriveTodayCalendarModel } from "../features/today/todayCalendarModel";
 import { deriveTodayProgressModel } from "../features/today/todayProgressModel";
+import {
+  buildTodayManualAiContextKey,
+  createPersistedNowAnalysisEntry,
+} from "../features/manualAi/manualAiAnalysis";
+import { resolveManualAiDisplayState } from "../features/manualAi/displayState";
 import { isAiFoundationPlanningGoal } from "../logic/aiFoundation";
 import {
   buildLocalTodayHeroModel,
-  deriveTodayDecisionDiagnostics,
-  deriveTodayHeroChrome,
-  deriveTodayHeroModel,
 } from "../features/today/aiNowHeroAdapter";
 import { useTypingReveal } from "../features/today/useTypingReveal";
-import { AI_NOW_CACHE_TTL_MS, createAiNowContextSignature, useAiNow } from "../hooks/useAiNow";
+import { useManualAiAnalysis } from "../hooks/useManualAiAnalysis";
+import { requestAiNow } from "../infra/aiNowClient";
 import {
   CATEGORY_VIEW,
   getSelectedCategoryForView,
@@ -133,19 +136,102 @@ function formatRelativeCoachTimestamp(fetchedAt) {
   }
 }
 
-function resolveTodayAiStatusLabel(aiNow) {
-  if (!aiNow || typeof aiNow !== "object") return "";
-  if (aiNow.status === "loading" || aiNow.isRefreshingInBackground) {
-    return "IA analyse ton planning";
+function resolveTodayAnalysisModeLabel(visibleAnalysis) {
+  return visibleAnalysis ? "Analyse IA" : "Diagnostic local";
+}
+
+function resolveTodayAnalysisStorageLabel(visibleAnalysis, persistenceScope = "local_fallback") {
+  if (!visibleAnalysis) return "";
+  return persistenceScope === "cloud"
+    ? "Synchronisée sur tes appareils"
+    : "Enregistrée sur cet appareil";
+}
+
+function buildTodayReasonLinkLabel({
+  reasonLinkType,
+  activeCategoryName,
+  recommendedCategoryName,
+}) {
+  if (reasonLinkType === "structure_missing") {
+    return activeCategoryName ? `Structurer ${activeCategoryName}` : "Structurer la categorie active";
   }
-  if (aiNow.status === "fresh") return "IA a mis à jour la priorité";
-  if (aiNow.status === "stale" && aiNow.hasEverLoaded) {
-    return "Priorité IA conservée";
+  if (reasonLinkType === "cross_category") {
+    if (recommendedCategoryName && activeCategoryName) {
+      return `Action en ${recommendedCategoryName} utile pour ${activeCategoryName}`;
+    }
+    return "Action utile a ta priorite active";
   }
-  if (aiNow.status === "error" && aiNow.hasEverLoaded) {
-    return "Dernière priorité conservée";
+  return activeCategoryName ? `Recommande dans ${activeCategoryName}` : "Recommande dans la categorie active";
+}
+
+function buildTodayAnalysisHeroModel({
+  analysis,
+  localHero,
+  occurrencesForSelectedDay,
+  goalsById,
+  categoriesById,
+  activeCategoryId,
+  activeCategoryName,
+}) {
+  if (!analysis || typeof analysis !== "object" || !localHero) return null;
+  const primaryAction = analysis.primaryAction && typeof analysis.primaryAction === "object" ? analysis.primaryAction : null;
+  if (!primaryAction) return null;
+  const occurrence =
+    primaryAction.occurrenceId && Array.isArray(occurrencesForSelectedDay)
+      ? occurrencesForSelectedDay.find((item) => item?.id === primaryAction.occurrenceId) || null
+      : null;
+  const goal =
+    (occurrence?.goalId && goalsById.get(occurrence.goalId)) ||
+    (primaryAction.actionId && goalsById.get(primaryAction.actionId)) ||
+    null;
+  const recommendedCategoryId = goal?.categoryId || primaryAction.categoryId || activeCategoryId || null;
+  const recommendedCategoryName = categoriesById.get(recommendedCategoryId || "")?.name || activeCategoryName || "";
+  const reasonLinkType =
+    primaryAction.intent === "open_library" && localHero.selectionScope === "structure_missing"
+      ? "structure_missing"
+      : recommendedCategoryId && activeCategoryId && recommendedCategoryId !== activeCategoryId
+        ? "cross_category"
+        : "direct_category";
+  let mappedPrimaryAction = null;
+  if (primaryAction.intent === "start_occurrence") {
+    mappedPrimaryAction = {
+      kind: "start_occurrence",
+      occurrence,
+      occurrenceId: primaryAction.occurrenceId || null,
+      categoryId: recommendedCategoryId,
+    };
+  } else if (primaryAction.intent === "resume_session") {
+    mappedPrimaryAction = {
+      kind: "resume_session",
+      categoryId: primaryAction.categoryId || activeCategoryId || null,
+    };
+  } else if (primaryAction.intent === "open_library") {
+    mappedPrimaryAction = { kind: "open_library" };
+  } else if (primaryAction.intent === "open_pilotage") {
+    mappedPrimaryAction = { kind: "open_pilotage" };
   }
-  return aiNow.hasEverLoaded ? "Priorité disponible" : "Préparation de la recommandation";
+
+  return {
+    ...localHero,
+    source: "ai",
+    title: analysis.headline || localHero.title,
+    meta: analysis.reason || localHero.meta,
+    primaryLabel: primaryAction.label || localHero.primaryLabel,
+    primaryAction: mappedPrimaryAction,
+    reasonLinkType,
+    reasonLinkLabel: buildTodayReasonLinkLabel({
+      reasonLinkType,
+      activeCategoryName,
+      recommendedCategoryName,
+    }),
+    recommendedCategoryLabel: recommendedCategoryName || localHero.recommendedCategoryLabel || "",
+    recommendedCategoryId: recommendedCategoryId || localHero.recommendedCategoryId || activeCategoryId || null,
+    contributionLabel: localHero.contributionLabel || activeCategoryName || "ta priorite active",
+    savedAt: analysis.savedAt || null,
+    storageScope: analysis.storageScope || "local_fallback",
+    decisionSource: analysis.decisionSource || "ai",
+    requestId: analysis.requestId || null,
+  };
 }
 
 function resolveImpactText({ heroGoal, heroCategory, goalsById }) {
@@ -367,6 +453,7 @@ function Textarea({ className = "", ...props }) {
 export default function Home({
   data,
   setData,
+  persistenceScope = "local_fallback",
   onOpenLibrary,
   onOpenPlanning,
   onOpenPilotage,
@@ -810,34 +897,20 @@ export default function Home({
     isFocusOverride,
     alternativeCandidates,
   } = todayNowModel;
-  const aiNowContextSignature = useMemo(
+  const todayAnalysisContextKey = useMemo(
     () =>
-      createAiNowContextSignature({
-        activeDate,
+      buildTodayManualAiContextKey({
+        userId: session?.user?.id || "",
+        dateKey: activeDate,
         activeCategoryId: executionCategoryId,
-        activeSessionForActiveDate,
-        openSessionOutsideActiveDate,
-        futureSessions,
-        focusOccurrenceForActiveDate,
-        plannedActionsForActiveDate,
       }),
-    [
-      activeDate,
-      activeSessionForActiveDate,
-      executionCategoryId,
-      focusOccurrenceForActiveDate,
-      futureSessions,
-      openSessionOutsideActiveDate,
-      plannedActionsForActiveDate,
-    ]
+    [activeDate, executionCategoryId, session?.user?.id]
   );
-  const aiNow = useAiNow({
-    selectedDateKey,
-    activeCategoryId: executionCategoryId,
-    activeSessionId: activeSessionForActiveDate?.id || activeSessionForActiveDate?.occurrenceId || null,
-    contextSignature: aiNowContextSignature,
-    isAuthenticated: Boolean(session),
-    enabled: true,
+  const manualTodayAnalysis = useManualAiAnalysis({
+    data: safeData,
+    setData,
+    contextKey: todayAnalysisContextKey,
+    surface: "today",
   });
   const shouldShowFocusCard = isFocusOverride || alternativeCandidates.length > 0;
   const visibleBlockOrder = useMemo(
@@ -1672,6 +1745,7 @@ export default function Home({
         activeDate,
         systemTodayKey: systemToday,
         activeCategoryId: executionCategoryId || focusCategory?.id || null,
+        activeCategoryHasMainGoal: Boolean(focusCategory?.mainGoalId),
         activeSessionForActiveDate,
         openSessionOutsideActiveDate,
         futureSessions,
@@ -1686,6 +1760,7 @@ export default function Home({
       activeSessionForActiveDate,
       executionCategoryId,
       focusCategory?.id,
+      focusCategory?.mainGoalId,
       focusCategory?.name,
       futureSessions,
       localGapSummary,
@@ -1717,56 +1792,53 @@ export default function Home({
       systemToday,
     ]
   );
-  const heroViewModel = useMemo(
+  const aiHeroViewModel = useMemo(
     () =>
-      deriveTodayHeroModel({
+      buildTodayAnalysisHeroModel({
+        analysis: manualTodayAnalysis.visibleAnalysis,
         localHero: localHeroModel,
-        coach: aiNow.state === "success" ? aiNow.coach : null,
         occurrencesForSelectedDay,
         goalsById,
-        hasOpenSession: isRuntimeSessionOpen(activeSessionForActiveDate),
-        handlersAvailable: {
-          openLibrary: typeof onOpenLibrary === "function",
-          openPilotage: typeof onOpenPilotage === "function",
-        },
-        canonicalContextSummary,
-        systemTodayKey: systemToday,
+        categoriesById,
+        activeCategoryId: executionCategoryId || focusCategory?.id || null,
+        activeCategoryName: focusCategory?.name || null,
       }),
     [
-      activeSessionForActiveDate,
-      aiNow.coach,
-      aiNow.state,
-      canonicalContextSummary,
+      categoriesById,
+      executionCategoryId,
+      focusCategory?.id,
+      focusCategory?.name,
       goalsById,
       localHeroModel,
+      manualTodayAnalysis.visibleAnalysis,
       occurrencesForSelectedDay,
-      onOpenLibrary,
-      onOpenPilotage,
-      systemToday,
     ]
+  );
+  const heroViewModel = useMemo(
+    () => aiHeroViewModel || localHeroModel,
+    [aiHeroViewModel, localHeroModel]
   );
   const todayDecisionDiagnostics = useMemo(
     () =>
-      deriveTodayDecisionDiagnostics({
-        aiNowState: aiNow.state,
-        heroViewModel,
-        coach: aiNow.coach,
+      ({
+        mode: heroViewModel?.source === "ai" ? "manual_ai" : "local",
+        contextKey: todayAnalysisContextKey,
+        storageScope: manualTodayAnalysis.visibleAnalysis?.storageScope || null,
+        requestState: manualTodayAnalysis.loading ? "loading" : manualTodayAnalysis.visibleAnalysis ? "visible" : "local",
         canonicalContextSummary,
       }),
-    [aiNow.coach, aiNow.state, canonicalContextSummary, heroViewModel]
-  );
-  const heroChrome = useMemo(
-    () =>
-      deriveTodayHeroChrome({
-        todayDecisionDiagnostics,
-      }),
-    [todayDecisionDiagnostics]
+    [
+      canonicalContextSummary,
+      heroViewModel?.source,
+      manualTodayAnalysis.loading,
+      manualTodayAnalysis.visibleAnalysis,
+      todayAnalysisContextKey,
+    ]
   );
   const shouldAnimateCoachResponse =
-    aiNow.requestDiagnostics.deliverySource === "network" &&
-    aiNow.requestDiagnostics.hadVisibleLoading &&
-    (todayDecisionDiagnostics.resolutionStatus === "backend_accepted" ||
-      todayDecisionDiagnostics.resolutionStatus === "backend_rules");
+    manualTodayAnalysis.requestDiagnostics.deliverySource === "network" &&
+    manualTodayAnalysis.requestDiagnostics.hadVisibleLoading &&
+    heroViewModel?.source === "ai";
   const typedHeroTitle = useTypingReveal(heroViewModel.title, {
     enabled: shouldAnimateCoachResponse,
     charsPerTick: 1,
@@ -1844,20 +1916,29 @@ export default function Home({
       }),
     [goalsById, heroCategory, heroGoal]
   );
-  const heroAiStatusLabel = useMemo(
-    () => resolveTodayAiStatusLabel(aiNow),
-    [aiNow.hasEverLoaded, aiNow.isRefreshingInBackground, aiNow.status]
+  const heroAnalysisState = useMemo(
+    () =>
+      resolveManualAiDisplayState({
+        loading: manualTodayAnalysis.loading,
+        visibleAnalysis: manualTodayAnalysis.visibleAnalysis,
+        wasRefreshed: manualTodayAnalysis.wasRefreshed,
+      }),
+    [manualTodayAnalysis.loading, manualTodayAnalysis.visibleAnalysis, manualTodayAnalysis.wasRefreshed]
+  );
+  const heroAnalysisModeLabel = useMemo(
+    () => heroAnalysisState.label || resolveTodayAnalysisModeLabel(manualTodayAnalysis.visibleAnalysis),
+    [heroAnalysisState.label, manualTodayAnalysis.visibleAnalysis]
   );
   const heroDisplayCategoryName = heroViewModel?.recommendedCategoryLabel || heroCategory?.name || "";
   const heroContributionLabel = heroViewModel?.contributionLabel || heroImpactText;
-  const heroTimestampLabel = useMemo(
-    () => formatRelativeCoachTimestamp(aiNow.requestDiagnostics?.fetchedAt),
-    [aiNow.requestDiagnostics?.fetchedAt]
+  const heroStorageLabel = useMemo(
+    () => resolveTodayAnalysisStorageLabel(manualTodayAnalysis.visibleAnalysis, persistenceScope),
+    [manualTodayAnalysis.visibleAnalysis, persistenceScope]
   );
-  const isHeroPreparing = !aiNow.hasEverLoaded && (aiNow.status === "idle" || aiNow.status === "loading");
-  const isHeroFresh =
-    Number.isFinite(aiNow.requestDiagnostics?.fetchedAt) &&
-    Date.now() - aiNow.requestDiagnostics.fetchedAt < AI_NOW_CACHE_TTL_MS;
+  const heroTimestampLabel = useMemo(
+    () => formatRelativeCoachTimestamp(manualTodayAnalysis.visibleAnalysis?.savedAt),
+    [manualTodayAnalysis.visibleAnalysis?.savedAt]
+  );
   const sessionHistoryByOccurrenceId = useMemo(() => {
     const history = Array.isArray(safeData.sessionHistory) ? safeData.sessionHistory : [];
     const map = new Map();
@@ -1952,19 +2033,41 @@ export default function Home({
     }
     onOpenPlanning?.();
   }, [executionCategoryId, focusCategory?.id, localTodayKey, onOpenPlanning, setData]);
-  const canOpenHeroSession = Boolean(
-    (heroViewModel?.primaryAction?.kind === "resume_session") ||
-    heroOccurrence
+  const handleAnalyzeHero = useCallback(async () => {
+    await manualTodayAnalysis.runAnalysis({
+      execute: () =>
+        requestAiNow({
+          accessToken: session?.access_token || "",
+          payload: {
+            selectedDateKey,
+            activeCategoryId: executionCategoryId,
+            surface: "today",
+            trigger: "manual",
+          },
+        }),
+      serializeSuccess: (result) =>
+        createPersistedNowAnalysisEntry({
+          contextKey: todayAnalysisContextKey,
+          storageScope: persistenceScope,
+          coach: result?.coach,
+        }),
+    });
+  }, [
+    executionCategoryId,
+    manualTodayAnalysis,
+    persistenceScope,
+    selectedDateKey,
+    session?.access_token,
+    todayAnalysisContextKey,
+  ]);
+  const canTriggerHeroPrimaryAction = Boolean(
+    heroViewModel?.primaryAction?.kind === "resume_session" ||
+      heroViewModel?.primaryAction?.kind === "open_library" ||
+      heroViewModel?.primaryAction?.kind === "open_pilotage" ||
+      (heroViewModel?.primaryAction?.kind === "start_occurrence" && heroOccurrence)
   );
-  const handleHeroSessionOpen = useCallback(() => {
-    if (heroViewModel?.primaryAction?.kind === "resume_session") {
-      handleHeroPrimaryAction();
-      return;
-    }
-    if (heroOccurrence) {
-      handleStartSession(heroOccurrence);
-    }
-  }, [handleHeroPrimaryAction, handleStartSession, heroOccurrence, heroViewModel?.primaryAction?.kind]);
+  const heroAnalyzeLabel = manualTodayAnalysis.isPersistedForContext ? "Rafraîchir l’analyse" : "Analyser ma priorité";
+  const showHeroPlanningShortcut = heroViewModel?.primaryAction?.kind !== "open_pilotage";
 
   return (
     <ScreenShell
@@ -1986,14 +2089,22 @@ export default function Home({
           contributionLabel={heroContributionLabel}
           recommendedCategoryLabel={heroViewModel.recommendedCategoryLabel || ""}
           impactText={heroImpactText}
-          aiStatusLabel={heroAiStatusLabel}
+          analysisStatusKind={heroAnalysisState.kind}
+          analysisModeLabel={heroAnalysisModeLabel}
+          analysisStorageLabel={heroStorageLabel}
           timestampLabel={heroTimestampLabel}
-          onStart={handleHeroSessionOpen}
+          analysisStageLabel={manualTodayAnalysis.loadingStageLabel}
+          primaryLabel={heroViewModel.primaryLabel || "Démarrer"}
+          onPrimaryAction={handleHeroPrimaryAction}
+          canPrimaryAction={canTriggerHeroPrimaryAction}
+          onAnalyze={handleAnalyzeHero}
+          analyzeLabel={heroAnalyzeLabel}
+          analyzeDisabled={manualTodayAnalysis.loading}
+          analyzeError={manualTodayAnalysis.error}
+          onDismissAnalysis={manualTodayAnalysis.isPersistedForContext ? manualTodayAnalysis.dismissAnalysis : null}
           onOpenPlanning={openPlanningForToday}
-          canStart={canOpenHeroSession}
-          isAiRecommendation={heroViewModel.source === "ai"}
-          isFresh={isHeroFresh}
-          isPreparing={isHeroPreparing}
+          showPlanningShortcut={showHeroPlanningShortcut}
+          isPreparing={manualTodayAnalysis.loading}
         />
         <TodayNextActions actions={nextActions} onOpenOccurrence={handleStartSession} />
         <TodayDailyState

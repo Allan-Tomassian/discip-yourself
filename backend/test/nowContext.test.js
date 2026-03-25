@@ -188,7 +188,7 @@ test("buildNowContext falls back to structure_missing when no cross-category pro
   assert.equal(context.focusOccurrenceForActiveDate, null);
 });
 
-test("buildNowContext accepts a proven cross-category occurrence for finance when work advances revenue", () => {
+test("buildNowContext prioritizes structure_missing before a proven cross-category occurrence", () => {
   const context = buildNowContext({
     data: {
       categories: [
@@ -211,11 +211,11 @@ test("buildNowContext accepts a proven cross-category occurrence for finance whe
     now: new Date(2026, 2, 6, 12, 0, 0),
   });
 
-  assert.equal(context.gapSummary.selectionScope, "cross_category");
-  assert.equal(context.categoryCoherence.reasonLinkType, "cross_category");
-  assert.equal(context.categoryCoherence.recommendedCategoryLabel, "Work");
+  assert.equal(context.gapSummary.selectionScope, "structure_missing");
+  assert.equal(context.categoryCoherence.reasonLinkType, "structure_missing");
+  assert.equal(context.categoryCoherence.recommendedCategoryLabel, "Finance");
   assert.equal(context.categoryCoherence.contributionTargetLabel, "Augmenter les revenus");
-  assert.equal(context.focusOccurrenceForActiveDate?.id, "occ-work");
+  assert.equal(context.focusOccurrenceForActiveDate, null);
 });
 
 test("buildNowContext prefers an occurrence in the active category over an earlier off-category block", () => {

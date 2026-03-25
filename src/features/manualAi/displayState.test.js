@@ -1,0 +1,33 @@
+import { describe, expect, it } from "vitest";
+import { resolveManualAiDisplayState } from "./displayState";
+
+describe("resolveManualAiDisplayState", () => {
+  it("returns local when no analysis is visible and no request is loading", () => {
+    expect(resolveManualAiDisplayState()).toEqual({
+      kind: "local",
+      label: "Diagnostic local",
+      isAi: false,
+    });
+  });
+
+  it("returns ai while a first manual analysis is loading", () => {
+    expect(resolveManualAiDisplayState({ loading: true })).toEqual({
+      kind: "ai",
+      label: "Analyse IA",
+      isAi: true,
+    });
+  });
+
+  it("returns ai_updated only after a same-context refresh", () => {
+    expect(
+      resolveManualAiDisplayState({
+        visibleAnalysis: { savedAt: 1 },
+        wasRefreshed: true,
+      })
+    ).toEqual({
+      kind: "ai_updated",
+      label: "Analyse IA mise à jour",
+      isAi: true,
+    });
+  });
+});

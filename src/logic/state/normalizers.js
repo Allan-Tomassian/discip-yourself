@@ -1,6 +1,7 @@
 import { uid } from "../../utils/helpers";
 import { normalizeLocalDateKey, toLocalDateKey } from "../../utils/dateKey";
 import { resolveGoalType, isOutcome, isProcess } from "../../domain/goalType";
+import { ensureManualAiAnalysisState } from "../../features/manualAi/manualAiAnalysis";
 import { normalizeTimeFields } from "../timeFields";
 import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "../blocks/registry";
 import { BRAND_ACCENT } from "../../theme/themeTokens";
@@ -89,51 +90,6 @@ export function ensureCategoryId(entity, fallbackId = DEFAULT_CATEGORY_ID) {
   const raw = typeof next.categoryId === "string" ? next.categoryId.trim() : "";
   next.categoryId = raw || fallbackId;
   return next;
-}
-
-export function sanitizePilotageRadarSelection(state, options = {}) {
-  const safeState = state && typeof state === "object" ? state : {};
-  const categories = Array.isArray(options.categories)
-    ? options.categories
-    : Array.isArray(safeState.categories)
-      ? safeState.categories
-      : [];
-  const rawSelection = Array.isArray(options.selection)
-    ? options.selection
-    : Array.isArray(safeState?.ui?.pilotageRadarSelection)
-      ? safeState.ui.pilotageRadarSelection
-      : [];
-  const max = Number.isFinite(options.max) ? Math.max(0, Math.floor(options.max)) : 3;
-  const reserveInbox = options.reserveInbox === true;
-  const inboxId =
-    typeof options.inboxId === "string" && options.inboxId.trim()
-      ? options.inboxId.trim()
-      : SYSTEM_INBOX_ID;
-
-  const categoryIds = [];
-  const seenCategories = new Set();
-  for (const category of categories) {
-    const rawId = typeof category?.id === "string" ? category.id.trim() : "";
-    if (!rawId || seenCategories.has(rawId)) continue;
-    seenCategories.add(rawId);
-    categoryIds.push(rawId);
-  }
-
-  const allowedIds = reserveInbox ? categoryIds.filter((id) => id !== inboxId) : categoryIds;
-  const allowedSet = new Set(allowedIds);
-  const out = [];
-  for (const rawId of rawSelection) {
-    const id = typeof rawId === "string" ? rawId.trim() : "";
-    if (!id || !allowedSet.has(id) || out.includes(id)) continue;
-    out.push(id);
-    if (out.length >= max) return out;
-  }
-  for (const id of allowedIds) {
-    if (out.includes(id)) continue;
-    out.push(id);
-    if (out.length >= max) break;
-  }
-  return out;
 }
 
 export function normalizeGoal(rawGoal, index = 0) {
@@ -622,8 +578,8 @@ export function initialData() {
         variant: "B",
         lastInteractionAt: null,
       },
+      manualAiAnalysisV1: ensureManualAiAnalysisState(null),
       selectedHabits: {},
-      pilotageRadarSelection: [],
       sessionDraft: null,
       activeSession: null,
     },
@@ -639,9 +595,6 @@ export function initialData() {
     microChecks: {},
     user_ai_profile: createDefaultUserAiProfile(),
   };
-  data.ui.pilotageRadarSelection = sanitizePilotageRadarSelection(data, {
-    selection: data.ui.pilotageRadarSelection,
-  });
   return data;
 }
 
@@ -744,8 +697,8 @@ export function demoData() {
         variant: "B",
         lastInteractionAt: null,
       },
+      manualAiAnalysisV1: ensureManualAiAnalysisState(null),
       selectedHabits: {},
-      pilotageRadarSelection: [],
       sessionDraft: null,
       activeSession: null,
     },
@@ -789,8 +742,5 @@ export function demoData() {
     microChecks: {},
     user_ai_profile: createDefaultUserAiProfile(),
   };
-  data.ui.pilotageRadarSelection = sanitizePilotageRadarSelection(data, {
-    selection: data.ui.pilotageRadarSelection,
-  });
   return data;
 }

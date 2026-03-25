@@ -1,5 +1,6 @@
 import { buildNowContext } from "./nowContext.js";
 import { safeArray } from "./shared.js";
+import { buildPilotageDisciplineTrend } from "../../../../src/features/pilotage/disciplineTrendModel.js";
 
 const AI_FOUNDATION_PLANNING_TEMPLATE_ID = "ai_onboarding_planning";
 
@@ -194,6 +195,11 @@ function buildPilotageSummary(data, activeCategoryId) {
   const daysActive7 = activeDays.size;
   const constanceLabel =
     daysActive7 >= 4 && realMinutes >= 60 ? "stable" : daysActive7 >= 2 ? "en progression" : "irrégulier";
+  const disciplineTrend = buildPilotageDisciplineTrend(data, {
+    categoryId: activeCategoryId,
+    windowDays: 14,
+    now: today,
+  });
 
   return {
     daysActive7,
@@ -202,6 +208,14 @@ function buildPilotageSummary(data, activeCategoryId) {
     done7: done,
     missed7: missed,
     constanceLabel,
+    disciplineTrend14d: {
+      currentScore: disciplineTrend.summary.currentScore,
+      trendLabel: disciplineTrend.summary.trendLabel,
+      trendDetail: disciplineTrend.summary.trendDetail,
+      delta: disciplineTrend.summary.delta,
+      scoredDays: disciplineTrend.summary.scoredDays,
+      neutralDays: disciplineTrend.summary.neutralDays,
+    },
   };
 }
 

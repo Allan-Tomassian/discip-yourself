@@ -1,12 +1,7 @@
 import React from "react";
 import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
-
-function buildBadges({ isAiRecommendation, isFresh }) {
-  const badges = [];
-  if (isAiRecommendation) badges.push("Recommandation IA");
-  if (isFresh) badges.push("Mis à jour récemment");
-  return badges;
-}
+import "../../features/today/today.css";
+import ManualAiStatus from "../ai/ManualAiStatus";
 
 export default function TodayHero({
   title = "Aucune action prioritaire",
@@ -18,18 +13,25 @@ export default function TodayHero({
   contributionLabel = "",
   recommendedCategoryLabel = "",
   impactText = "",
-  aiStatusLabel = "",
+  analysisStatusKind = "local",
+  analysisModeLabel = "",
+  analysisStorageLabel = "",
   timestampLabel = "",
-  onStart,
+  analysisStageLabel = "",
+  primaryLabel = "Démarrer",
+  onPrimaryAction,
+  canPrimaryAction = false,
+  onAnalyze,
+  analyzeLabel = "Analyser ma priorité",
+  analyzeDisabled = false,
+  analyzeError = "",
+  onDismissAnalysis,
   onOpenPlanning,
-  canStart = false,
-  isAiRecommendation = false,
-  isFresh = false,
+  showPlanningShortcut = true,
   isPreparing = false,
 }) {
-  const badges = buildBadges({ isAiRecommendation, isFresh });
   const displayTitle = title || (isPreparing ? "Préparation de la recommandation" : "Aucune action prioritaire");
-  const displayReason = reason || (isPreparing ? "L’IA prépare la priorité du moment." : "Aucune raison disponible.");
+  const displayReason = reason || (isPreparing ? "Analyse en cours." : "Aucune raison disponible.");
   const displayContribution = contributionLabel || impactText || "Maintenir l’élan sur ta priorité active.";
   const displayCategory = recommendedCategoryLabel || categoryName || "À préciser";
 
@@ -37,21 +39,12 @@ export default function TodayHero({
     <GateSection className="todayHeroCard GateSurfacePremium GateCardPremium" collapsible={false}>
       <div className="todayHeroHeader">
         <div className="todayHeroHeaderCluster">
-          <div className="todayHeroKicker">Action recommandée</div>
-          {aiStatusLabel || timestampLabel ? (
-            <div className="small2" style={{ opacity: 0.82 }}>
-              {[aiStatusLabel, timestampLabel].filter(Boolean).join(" • ")}
-            </div>
-          ) : null}
-          {badges.length ? (
-            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-              {badges.map((badge) => (
-                <span key={badge} className="todayHeroCoachBadge is-ai">
-                  {badge}
-                </span>
-              ))}
-            </div>
-          ) : null}
+          <ManualAiStatus
+            statusKind={analysisStatusKind}
+            statusLabel={analysisModeLabel || "Diagnostic local"}
+            detailLabel={[analysisStorageLabel, timestampLabel].filter(Boolean).join(" • ")}
+            stageLabel={analysisStageLabel}
+          />
         </div>
       </div>
       <div className="todayHeroBody">
@@ -95,21 +88,53 @@ export default function TodayHero({
           type="button"
           className="GatePressable todayHeroPrimaryBtn"
           withSound
-          onClick={() => onStart?.()}
-          disabled={!canStart}
+          onClick={() => onPrimaryAction?.()}
+          disabled={!canPrimaryAction}
         >
-          Démarrer
+          {primaryLabel}
         </GateButton>
         <GateButton
           type="button"
           variant="ghost"
           className="GatePressable todayHeroSecondaryBtn"
           withSound
-          onClick={() => onOpenPlanning?.()}
+          onClick={() => onAnalyze?.()}
+          disabled={analyzeDisabled}
         >
-          Voir planning
+          {analyzeDisabled && analysisStageLabel ? analysisStageLabel : analyzeLabel}
         </GateButton>
       </div>
+      {analyzeError ? (
+        <div className="small2" style={{ opacity: 0.88 }}>
+          {analyzeError}
+        </div>
+      ) : null}
+      {showPlanningShortcut || onDismissAnalysis ? (
+        <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+          {onDismissAnalysis ? (
+            <GateButton
+              type="button"
+              variant="ghost"
+              className="GatePressable"
+              withSound
+              onClick={() => onDismissAnalysis?.()}
+            >
+              Revenir au diagnostic local
+            </GateButton>
+          ) : null}
+          {showPlanningShortcut ? (
+            <GateButton
+              type="button"
+              variant="ghost"
+              className="GatePressable"
+              withSound
+              onClick={() => onOpenPlanning?.()}
+            >
+              Voir planning
+            </GateButton>
+          ) : null}
+        </div>
+      ) : null}
     </GateSection>
   );
 }
