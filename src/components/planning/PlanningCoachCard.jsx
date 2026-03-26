@@ -179,7 +179,7 @@ export default function PlanningCoachCard({
       <div className="p18 col" style={{ gap: 12 }}>
         <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div>
-            <div className="titleSm">Coach planning</div>
+            <div className="titleSm">Ajustement prioritaire</div>
             <ManualAiStatus
               statusKind={planningAnalysisState.kind}
               statusLabel={planningAnalysisState.label}
@@ -212,11 +212,11 @@ export default function PlanningCoachCard({
         <div className="col" style={{ gap: 8 }}>
           <div className="titleSm">{visibleReply?.headline || "Ajustement du planning"}</div>
           <div>
-            <div className="small2" style={{ opacity: 0.7 }}>Insight</div>
+            <div className="small2" style={{ opacity: 0.7 }}>Ce qui compte</div>
             <div className="small">{visibleReply?.reason || "Le planning a besoin d’un ajustement simple et crédible."}</div>
           </div>
           <div>
-            <div className="small2" style={{ opacity: 0.7 }}>Suggestion</div>
+            <div className="small2" style={{ opacity: 0.7 }}>Prochain pas</div>
             <div className="small">{renderSuggestion(visibleReply)}</div>
           </div>
         </div>

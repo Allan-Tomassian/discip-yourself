@@ -37,6 +37,8 @@ describe("design system contract", () => {
     const main = readSrc("main.jsx");
 
     expect(topNav).toContain('{ id: "today", label: "Today" }');
+    expect(topNav).toContain("const [isMobileLayout, setIsMobileLayout] = useState(");
+    expect(topNav).toContain("{!isMobileLayout ? (");
     expect(topNav).not.toContain("Aujourd’hui");
     expect(app).toContain("theme: DEFAULT_THEME");
     expect(app).toContain("applyThemeTokens(DEFAULT_THEME, BRAND_ACCENT);");

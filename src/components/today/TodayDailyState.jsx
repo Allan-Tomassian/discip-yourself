@@ -12,28 +12,29 @@ export default function TodayDailyState({
   remainingMinutes = 0,
 }) {
   return (
-    <GateSection className="GateSurfacePremium GateCardPremium" collapsible={false}>
-      <div className="col" style={{ gap: 12 }}>
-        <div>
+    <GateSection className="todaySectionCard GateSurfacePremium GateCardPremium" collapsible={false}>
+      <div className="col todaySectionBody">
+        <div className="todaySectionHeader">
           <div className="titleSm">État du jour</div>
           <div className="small2" style={{ opacity: 0.8 }}>Résumé compact de la charge et de l’exécution.</div>
         </div>
         <div
+          className="todayDailyStateGrid"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
             gap: 10,
           }}
         >
-          <div className="listItem GateRowPremium">
+          <div className="listItem GateRowPremium todayDailyStateItem">
             <div className="small2">Planifié</div>
             <div className="titleSm">{formatMinutes(plannedMinutes)}</div>
           </div>
-          <div className="listItem GateRowPremium">
+          <div className="listItem GateRowPremium todayDailyStateItem">
             <div className="small2">Réalisé</div>
             <div className="titleSm">{formatMinutes(doneMinutes)}</div>
           </div>
-          <div className="listItem GateRowPremium">
+          <div className="listItem GateRowPremium todayDailyStateItem">
             <div className="small2">Restant</div>
             <div className="titleSm">{formatMinutes(remainingMinutes)}</div>
           </div>

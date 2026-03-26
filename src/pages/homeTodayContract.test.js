@@ -45,12 +45,17 @@ describe("home today canonical contract", () => {
 
     expect(home).toContain("const heroImpactText = useMemo(");
     expect(home).toContain("const heroContributionLabel =");
+    expect(home).toContain("const heroDisplayCategory =");
     expect(home).toContain("const heroAnalysisModeLabel = useMemo(");
     expect(home).toContain("const heroStorageLabel = useMemo(");
     expect(home).toContain("const heroTimestampLabel = useMemo(");
     expect(home).toContain("const heroAnalysisState = useMemo(");
+    expect(home).toContain("const todayHelpStorageKey = useMemo(");
+    expect(home).toContain("helpText=\"Today te montre le prochain bloc utile à lancer maintenant, avec un lien clair vers ta priorité active.\"");
+    expect(home).toContain("onToggleHelp={handleToggleTodayHelp}");
     expect(home).toContain("impactText={heroImpactText}");
     expect(home).toContain("contributionLabel={heroContributionLabel}");
+    expect(home).toContain("category={heroDisplayCategory}");
     expect(home).toContain("reasonLinkType={heroViewModel.reasonLinkType || \"\"}");
     expect(home).toContain("analysisStatusKind={heroAnalysisState.kind}");
     expect(home).toContain("analysisModeLabel={heroAnalysisModeLabel}");

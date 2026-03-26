@@ -319,6 +319,26 @@
   gap: 0;
 }
 
+@media (max-width: 767px) {
+  .pageNarrow {
+    max-width: none;
+    width: 100%;
+  }
+
+  .pageNarrow > .gateSection.GateCardPremium > .p18 {
+    padding: 16px;
+  }
+
+  .libraryAccentItem.listItem {
+    padding: 14px 16px;
+  }
+
+  .librarySuggestionsList,
+  .categoryGateList {
+    width: 100%;
+  }
+}
+
 @media (max-width: 720px) {
   .categoryGateModal {
     width: min(var(--app-modal-max, 720px), calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));

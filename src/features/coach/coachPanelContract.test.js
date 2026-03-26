@@ -18,6 +18,8 @@ describe("coach panel contract", () => {
     expect(app).toContain("className={`coachFab${showBottomRail ? \" has-rail\" : \"\"}${coachOpen ? \" is-open\" : \"\"}`}");
     expect(app).toContain("data-testid=\"coach-fab\"");
     expect(app).toContain("<span>Coach</span>");
+    expect(app).toContain("aria-label=\"Coach\"");
+    expect(app).toContain("onPointerDown={handleCoachFabPointerDown}");
     expect(app).toContain("<CoachPanel");
     expect(app).toContain("surfaceTab={coachSurfaceTab}");
     expect(app).toContain("sourceTab={coachSurfaceTab}");
@@ -32,6 +34,8 @@ describe("coach panel contract", () => {
     expect(coachPage).toContain("sourceTab = \"today\"");
     expect(coachPanel).toContain("coachConversationRail");
     expect(coachPanel).toContain("setActiveConversationId");
-    expect(coachPanel).toContain("Conversations");
+    expect(coachPanel).toContain("archiveConversation");
+    expect(coachPanel).not.toContain("Coach prêt");
+    expect(coachPanel).not.toContain(">Conversations<");
   });
 });

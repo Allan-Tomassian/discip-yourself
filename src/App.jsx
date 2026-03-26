@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TopNav from "./components/TopNav";
 import CategoryRail from "./components/CategoryRail";
 import MainDrawer from "./components/navigation/MainDrawer";
@@ -118,6 +118,27 @@ function normalizeWalletPreview(wallet) {
   return { balance, deltaAmount, deltaKey };
 }
 
+const COACH_FAB_OFFSET_STORAGE_KEY = "coach:fab-offset-y:v1";
+
+function loadCoachFabOffset() {
+  if (typeof window === "undefined") return -10;
+  try {
+    const parsed = Number.parseFloat(window.localStorage.getItem(COACH_FAB_OFFSET_STORAGE_KEY) || "");
+    return Number.isFinite(parsed) ? parsed : -10;
+  } catch {
+    return -10;
+  }
+}
+
+function persistCoachFabOffset(value) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(COACH_FAB_OFFSET_STORAGE_KEY, String(Math.round(value)));
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
 export default function App() {
   const { profile: supabaseProfile } = useProfile();
   const profileNeedsCompletion = !isProfileComplete(supabaseProfile);
@@ -186,6 +207,13 @@ export default function App() {
   );
   const isDrawerOpen = Boolean(safeData?.ui?.isDrawerOpen);
   const [coachOpen, setCoachOpen] = useState(false);
+  const [coachFabOffsetY, setCoachFabOffsetY] = useState(() => loadCoachFabOffset());
+  const coachFabOffsetRef = useRef(coachFabOffsetY);
+  const coachFabDraggedRef = useRef(false);
+
+  useEffect(() => {
+    coachFabOffsetRef.current = coachFabOffsetY;
+  }, [coachFabOffsetY]);
 
   const setDrawerOpen = (open) => {
     setData((prev) => {
@@ -635,6 +663,36 @@ export default function App() {
     }
   }, [coachFabVisibleTabs, coachOpen, hasCoachBlockingOverlay, tab]);
 
+  const handleCoachFabPointerDown = useCallback(
+    (event) => {
+      if (event.button != null && event.button !== 0) return;
+      const startY = event.clientY;
+      const startOffset = coachFabOffsetRef.current;
+      const maxOffset = showBottomRail ? 6 : 24;
+      const minOffset = -Math.max(140, (typeof window !== "undefined" ? window.innerHeight : 0) - 240);
+      coachFabDraggedRef.current = false;
+
+      const handlePointerMove = (moveEvent) => {
+        const deltaY = moveEvent.clientY - startY;
+        const nextOffset = Math.max(minOffset, Math.min(maxOffset, startOffset + deltaY));
+        if (Math.abs(nextOffset - startOffset) > 4) coachFabDraggedRef.current = true;
+        setCoachFabOffsetY(nextOffset);
+      };
+
+      const handlePointerUp = () => {
+        window.removeEventListener("pointermove", handlePointerMove);
+        window.removeEventListener("pointerup", handlePointerUp);
+        window.removeEventListener("pointercancel", handlePointerUp);
+        persistCoachFabOffset(coachFabOffsetRef.current);
+      };
+
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+      window.addEventListener("pointercancel", handlePointerUp);
+    },
+    [showBottomRail]
+  );
+
   useEffect(() => {
     if (typeof window === "undefined" || dataLoading) return;
     if (!onboardingCompleted && window.location.pathname !== "/onboarding") {
@@ -801,6 +859,10 @@ export default function App() {
           setData={setData}
           persistenceScope={persistenceScope}
           setTab={setTab}
+          onOpenCoach={() => {
+            setDrawerOpen(false);
+            setCoachOpen(true);
+          }}
         />
       ) : tab === "category-detail" ? (
         <CategoryDetailView
@@ -1099,11 +1161,17 @@ export default function App() {
           type="button"
           className={`coachFab${showBottomRail ? " has-rail" : ""}${coachOpen ? " is-open" : ""}`}
           data-testid="coach-fab"
+          style={{ "--coach-fab-offset-y": `${coachFabOffsetY}px` }}
+          onPointerDown={handleCoachFabPointerDown}
           onClick={() => {
+            if (coachFabDraggedRef.current) {
+              coachFabDraggedRef.current = false;
+              return;
+            }
             setDrawerOpen(false);
             setCoachOpen((current) => !current);
           }}
-          aria-label={coachOpen ? "Masquer le coach" : "Ouvrir le coach"}
+          aria-label="Coach"
         >
           <span className="coachFabDot" aria-hidden="true" />
           <span>Coach</span>

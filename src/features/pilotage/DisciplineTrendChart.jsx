@@ -92,7 +92,7 @@ export default function DisciplineTrendChart({ trend, color = "#6EE7FF", animate
   if (Number.isFinite(trend?.summary?.currentScore)) summaryParts.push(`Niveau actuel ${trend.summary.currentScore}%`);
   if (typeof trend?.summary?.trendLabel === "string" && trend.summary.trendLabel) summaryParts.push(formatTrendSummaryLabel(trend.summary.trendLabel));
   if (Number.isFinite(trend?.summary?.scoredDays)) {
-    summaryParts.push(`${trend.summary.scoredDays} jour${trend.summary.scoredDays > 1 ? "s" : ""} avec progression`);
+    summaryParts.push(`${trend.summary.scoredDays} jour${trend.summary.scoredDays > 1 ? "s" : ""} utiles`);
   }
   const [selectedPointDateKey, setSelectedPointDateKey] = useState(chart.lastScoredPoint?.dateKey || "");
   useEffect(() => {

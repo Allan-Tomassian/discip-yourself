@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import WalletBadge from "./WalletBadge";
 import { GatePanel } from "../shared/ui/gate/Gate";
 import "../features/navigation/topMenuGate.css";
@@ -26,6 +26,11 @@ export default function TopNav({
   const navBarRef = useRef(null);
   const topbarSurfaceRef = useRef(null);
   const topbarRef = useRef(null);
+  const [isMobileLayout, setIsMobileLayout] = useState(() =>
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia("(max-width: 767px)").matches
+      : false
+  );
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
@@ -53,6 +58,16 @@ export default function TopNav({
       if (ro) ro.disconnect();
       else window.removeEventListener("resize", updateOffset);
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const syncLayout = (matches) => setIsMobileLayout(matches);
+    syncLayout(mediaQuery.matches);
+    const handleChange = (event) => syncLayout(event.matches);
+    mediaQuery.addEventListener?.("change", handleChange);
+    return () => mediaQuery.removeEventListener?.("change", handleChange);
   }, []);
 
   useLayoutEffect(() => {
@@ -118,7 +133,7 @@ export default function TopNav({
         <div className="TopNavSurfaceOuter" ref={topbarSurfaceRef}>
           <div className="TopNavSurfaceClip TopNavBackdrop GateGlassClip GateGlassBackdrop">
             <GatePanel className="topNavGateBar GateGlassContent GateSurfacePremium GateCardPremium" data-tour-id="topnav-row">
-              <div ref={topbarRef} className="navRow">
+              <div ref={topbarRef} className={`navRow${isMobileLayout ? " is-mobile-layout" : ""}`}>
                 <div className="navActions topNavMenuSlot" style={{ justifyContent: "flex-start" }}>
                   <button
                     type="button"
@@ -145,16 +160,18 @@ export default function TopNav({
                     </button>
                   ))}
                 </div>
-                <div className="navActions topNavWalletSlot">
-                  <WalletBadge
-                    className="topNavWalletBadge"
-                    balance={coinsBalance}
-                    deltaAmount={coinDeltaAmount}
-                    deltaKey={coinDeltaKey}
-                    dataTestId="topnav-coins-balance"
-                    showDelta
-                  />
-                </div>
+                {!isMobileLayout ? (
+                  <div className="navActions topNavWalletSlot">
+                    <WalletBadge
+                      className="topNavWalletBadge"
+                      balance={coinsBalance}
+                      deltaAmount={coinDeltaAmount}
+                      deltaKey={coinDeltaKey}
+                      dataTestId="topnav-coins-balance"
+                      showDelta
+                    />
+                  </div>
+                ) : null}
               </div>
             </GatePanel>
           </div>

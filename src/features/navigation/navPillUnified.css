@@ -21,6 +21,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
+  min-width: 0;
   min-height: var(--nav-pill-height);
   padding: var(--nav-pill-py) var(--nav-pill-px);
   border: 1px solid var(--nav-pill-border);
@@ -31,6 +32,8 @@
   font-weight: 600;
   line-height: 1.1;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
   box-shadow: var(--nav-pill-shadow);
   transition:
     border-color 150ms ease,
@@ -85,13 +88,13 @@
 
 @media (max-width: 767px) {
   :root {
-    --nav-pill-height: 42px;
-    --nav-pill-px: 8px;
+    --nav-pill-height: 44px;
+    --nav-pill-px: 4px;
     --nav-pill-py: 8px;
   }
 
   .NavPillUnified {
-    font-size: 11px;
-    letter-spacing: -0.01em;
+    font-size: clamp(9px, 2.7vw, 11px);
+    letter-spacing: -0.025em;
   }
 }

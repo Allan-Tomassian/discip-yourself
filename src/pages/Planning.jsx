@@ -52,7 +52,13 @@ function resolveLoadTone(totalMinutes) {
   return "Charge légère";
 }
 
-export default function Planning({ data, setData, setTab, persistenceScope = "local_fallback" }) {
+export default function Planning({
+  data,
+  setData,
+  setTab,
+  persistenceScope = "local_fallback",
+  onOpenCoach,
+}) {
   const safeData = data && typeof data === "object" ? data : {};
   const safeUi = safeData?.ui && typeof safeData.ui === "object" ? safeData.ui : {};
   const selectedDateKey =
@@ -169,6 +175,7 @@ export default function Planning({ data, setData, setTab, persistenceScope = "lo
       return {
         dateKey,
         label: formatDateLabel(dateKey),
+        isToday: dateKey === todayLocalKey(),
         items,
         totalMinutes,
       };
@@ -330,7 +337,7 @@ export default function Planning({ data, setData, setTab, persistenceScope = "lo
               <div className="titleSm">Créneaux du jour</div>
               {dayItems.length ? (
                 dayItems.map((item) => (
-                  <div key={item.id} className="planningDayCard">
+                  <div key={item.id} className="planningItemCard planningItemCard--day listItem GateRowPremium">
                     <div className="planningDayCardTop">
                       <div className="planningDayCardTime">{item.start || "Fenêtre libre"}</div>
                       <CategoryPill category={item.category || null} label={item.category?.name || "Catégorie"} />
@@ -351,17 +358,29 @@ export default function Planning({ data, setData, setTab, persistenceScope = "lo
             {weekBuckets.map((bucket) => (
               <Card key={bucket.dateKey} className="planningCard planningWeekCard">
                 <div className="planningWeekCardBody">
+                  <div className="planningWeekCardHeader">
+                    <div className="planningWeekCardHeaderMain">
+                      <div className="titleSm">{bucket.label}</div>
+                      {bucket.isToday ? <span className="planningTodayTag">Aujourd’hui</span> : null}
+                    </div>
+                  </div>
                   <div>
-                    <div className="titleSm">{bucket.label}</div>
                     <div className="small2" style={{ opacity: 0.85 }}>
                       {bucket.totalMinutes || 0} min · {resolveLoadTone(bucket.totalMinutes)}
                     </div>
                   </div>
                   {bucket.items.length ? (
                     <div className="planningWeekList">
-                      {bucket.items.slice(0, 4).map((item) => (
-                        <div key={item.id} className="small planningWeekItem">
-                          {(item.start || "Fenêtre")} · {item.title}
+                      {bucket.items.slice(0, 3).map((item) => (
+                        <div key={item.id} className="planningItemCard planningItemCard--week listItem GateRowPremium">
+                          <div className="planningWeekItemTop">
+                            <div className="planningWeekItemTime">{item.start || "Fenêtre libre"}</div>
+                            <CategoryPill category={item.category || null} label={item.category?.name || "Catégorie"} />
+                          </div>
+                          <div className="planningWeekItemTitle">{item.title}</div>
+                          <div className="planningWeekItemDuration">
+                            {Number.isFinite(item.durationMinutes) ? `${item.durationMinutes} min` : "Durée libre"}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -381,7 +400,7 @@ export default function Planning({ data, setData, setTab, persistenceScope = "lo
               Planning s&apos;appuie sur l&apos;engine existant. Les replanifications IA restent proposées sous forme de brouillon avant application.
             </div>
             <div className="row" style={{ gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-              <Button variant="ghost" onClick={() => setTab?.("coach-chat")}>
+              <Button variant="ghost" onClick={() => onOpenCoach?.()}>
                 Ouvrir le coach
               </Button>
               <Button variant="ghost" onClick={() => setTab?.("pilotage")}>

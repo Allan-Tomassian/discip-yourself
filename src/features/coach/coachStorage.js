@@ -121,6 +121,16 @@ export function upsertCoachConversation(rawValue, nextConversation) {
   });
 }
 
+export function removeCoachConversation(rawValue, conversationId) {
+  const safeConversationId = trimString(conversationId, 120);
+  if (!safeConversationId) return ensureCoachConversationsState(rawValue);
+  const state = ensureCoachConversationsState(rawValue);
+  return ensureCoachConversationsState({
+    version: COACH_CONVERSATIONS_VERSION,
+    conversations: state.conversations.filter((entry) => entry.id !== safeConversationId),
+  });
+}
+
 export function appendCoachConversationMessages(rawValue, { conversationId = null, messages = [], contextSnapshot = null } = {}) {
   const state = ensureCoachConversationsState(rawValue);
   const normalizedMessages = (Array.isArray(messages) ? messages : [])

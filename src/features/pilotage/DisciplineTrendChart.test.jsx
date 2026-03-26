@@ -59,7 +59,7 @@ describe("DisciplineTrendChart", () => {
     expect(html).toContain("Évolution discipline");
     expect(html).toContain("pilotageTrendLine");
     expect(html).toContain("Niveau actuel 90%");
-    expect(html).toContain("3 jours avec progression");
+    expect(html).toContain("3 jours utiles");
     expect(html).toContain("pilotageTrendTooltip");
   });
 });

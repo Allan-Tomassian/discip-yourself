@@ -6,6 +6,7 @@ import CategoryPill from "../CategoryPill";
 
 export default function TodayHero({
   title = "Aucune action prioritaire",
+  category = null,
   categoryName = "",
   durationLabel = "",
   reason = "",
@@ -30,6 +31,9 @@ export default function TodayHero({
   onOpenPlanning,
   showPlanningShortcut = true,
   isPreparing = false,
+  helpExpanded = false,
+  helpText = "",
+  onToggleHelp,
 }) {
   const displayTitle = title || (isPreparing ? "Préparation de la recommandation" : "Aucune action prioritaire");
   const displayReason = reason || (isPreparing ? "Analyse en cours." : "Aucune raison disponible.");
@@ -48,33 +52,45 @@ export default function TodayHero({
             stageLabel={analysisStageLabel}
           />
         </div>
+        {helpText ? (
+          <GateButton
+            type="button"
+            variant="ghost"
+            className="GatePressable todayHeroHelpToggle"
+            withSound
+            onClick={() => onToggleHelp?.()}
+          >
+            {helpExpanded ? "Masquer l’aide" : "À quoi sert Today ?"}
+          </GateButton>
+        ) : null}
       </div>
+      {helpExpanded && helpText ? <div className="todayHeroHelp">{helpText}</div> : null}
       <div className="todayHeroBody">
         <div className="todayHeroTitle">{displayTitle}</div>
         <div className="todayHeroMetaRow">
-          <CategoryPill label={displayCategory} className="todayHeroCategoryPill" />
+          <CategoryPill category={category} label={displayCategory} className="todayHeroCategoryPill" />
           <div className="todayHeroDurationChip">{durationLabel || "Durée libre"}</div>
         </div>
         {reasonLinkLabel ? (
-          <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-            <span className={`todayHeroCoachBadge${reasonLinkType === "cross_category" ? " is-ai" : ""}`}>
+          <div className="todayHeroScopeRow">
+            <span className={`todayHeroScopeTag${reasonLinkType === "cross_category" ? " is-cross" : ""}`}>
               {reasonLinkLabel}
             </span>
           </div>
         ) : null}
-        <div className="col" style={{ gap: 8 }}>
-          <div>
-            <div className="small2" style={{ opacity: 0.72 }}>Pourquoi</div>
-            <div className="small2" style={{ opacity: 0.92 }}>{displayReason}</div>
+        <div className="todayHeroDetailList">
+          <div className="todayHeroDetailBlock">
+            <div className="todayHeroDetailLabel">Pourquoi</div>
+            <div className="todayHeroDetailText">{displayReason}</div>
           </div>
-          <div>
-            <div className="small2" style={{ opacity: 0.72 }}>Contribue à</div>
-            <div className="small2" style={{ opacity: 0.92 }}>{displayContribution}</div>
+          <div className="todayHeroDetailBlock">
+            <div className="todayHeroDetailLabel">Contribue à</div>
+            <div className="todayHeroDetailText">{displayContribution}</div>
           </div>
           {displayImpact ? (
-            <div>
-              <div className="small2" style={{ opacity: 0.72 }}>Impact attendu</div>
-              <div className="small2" style={{ opacity: 0.92 }}>{displayImpact}</div>
+            <div className="todayHeroDetailBlock">
+              <div className="todayHeroDetailLabel">Impact attendu</div>
+              <div className="todayHeroDetailText">{displayImpact}</div>
             </div>
           ) : null}
         </div>

@@ -50,4 +50,17 @@ describe("Pilotage contract", () => {
     expect(source).toContain("Jours avec progression");
     expect(source).toContain("Analyser cette catégorie");
   });
+
+  it("splits pilotage into a global view and a category detail view in the same page", () => {
+    const source = readSrc("pages/Pilotage.jsx");
+
+    expect(source).toContain("const [pilotageView, setPilotageView] = useState(\"global\");");
+    expect(source).toContain("buildPilotageGlobalSummary");
+    expect(source).toContain("buildPilotageGlobalStats");
+    expect(source).toContain("Statistiques globales");
+    expect(source).toContain("openPilotageDetail");
+    expect(source).toContain("Synthèse globale");
+    expect(source).toContain("Retour à la vue globale");
+    expect(source).toContain("Vue catégorie");
+  });
 });

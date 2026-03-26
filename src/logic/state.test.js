@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { DEFAULT_CATEGORY_ID, ensureCategoryId, initialData, migrate } from "./state";
 import { buildScheduleRuleSourceKey, buildScheduleRulesFromAction } from "./scheduleRules";
+import { DEFAULT_THEME } from "../theme/themeTokens";
 
 function buildBaseState() {
   const base = initialData();
@@ -146,5 +147,25 @@ describe("category_profiles_v1", () => {
         },
       },
     });
+  });
+});
+
+describe("locked theme normalization", () => {
+  it("does not reintroduce legacy page theme values during migrate", () => {
+    const base = buildBaseState();
+    base.ui.theme = "aurora";
+    base.ui.pageThemes = { home: "aurora" };
+    base.ui.pageAccents = { home: "#7C3AED" };
+    base.ui.pageThemeHome = "aurora";
+
+    const migrated = migrate(base);
+
+    expect(migrated.ui.theme).toBe(DEFAULT_THEME);
+    expect(migrated.ui.pageThemes).toEqual({
+      __default: DEFAULT_THEME,
+      home: DEFAULT_THEME,
+    });
+    expect(migrated.ui.pageAccents).toEqual({});
+    expect(migrated.ui.pageThemeHome).toBe(DEFAULT_THEME);
   });
 });

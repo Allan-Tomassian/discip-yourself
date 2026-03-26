@@ -9,9 +9,9 @@ export default function TodayNextActions({
   const safeActions = Array.isArray(actions) ? actions.slice(0, 3) : [];
 
   return (
-    <GateSection className="GateSurfacePremium GateCardPremium" collapsible={false}>
-      <div className="col" style={{ gap: 12 }}>
-        <div>
+    <GateSection className="todaySectionCard GateSurfacePremium GateCardPremium" collapsible={false}>
+      <div className="col todaySectionBody">
+        <div className="todaySectionHeader">
           <div className="titleSm">À venir aujourd’hui</div>
           <div className="small2" style={{ opacity: 0.8 }}>3 créneaux maximum, triés par heure.</div>
         </div>

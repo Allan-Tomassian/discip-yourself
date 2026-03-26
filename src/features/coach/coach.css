@@ -1,7 +1,7 @@
 .coachFab {
   position: fixed;
   right: calc(var(--page-pad) + var(--safe-right));
-  bottom: calc(var(--safe-bottom) + 18px);
+  bottom: calc(var(--safe-bottom) + 14px);
   z-index: 1350;
   display: inline-flex;
   align-items: center;
@@ -23,14 +23,16 @@
     transform 140ms ease,
     opacity 140ms ease,
     box-shadow 140ms ease;
+  transform: translateY(var(--coach-fab-offset-y, 0px));
+  touch-action: none;
 }
 
 .coachFab.has-rail {
-  bottom: calc(var(--bottomCategoryBarSpace, 112px) + var(--safe-bottom) + 12px);
+  bottom: calc(var(--bottomCategoryBarSpace, 112px) + var(--safe-bottom) + 8px);
 }
 
 .coachFab:hover {
-  transform: translateY(-1px);
+  transform: translateY(calc(var(--coach-fab-offset-y, 0px) - 1px));
 }
 
 .coachFab.is-open {
@@ -79,10 +81,10 @@
 
 .coachPanelHeader {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 18px 18px 16px;
+  padding: 16px 18px 14px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -97,17 +99,10 @@
   color: var(--text-primary);
 }
 
-.coachPanelSubtitle {
-  margin-top: 4px;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--text-secondary);
-}
-
 .coachPanelHeaderActions {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
 }
 
@@ -133,21 +128,14 @@
 
 .coachConversationRailHeader {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 16px 16px 12px;
+  padding: 14px 14px 10px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.coachConversationRailTitle {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
 .coachConversationRailMeta {
-  margin-top: 4px;
   font-size: 12px;
   color: var(--text-secondary);
 }
@@ -156,6 +144,10 @@
   display: grid;
   gap: 8px;
   padding: 12px;
+}
+
+.coachConversationItemShell {
+  position: relative;
 }
 
 .coachConversationItem {
@@ -169,6 +161,7 @@
   display: grid;
   gap: 6px;
   cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
 }
 
 .coachConversationItem.is-active {
@@ -176,6 +169,10 @@
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 56%, transparent), transparent 72%),
     color-mix(in srgb, var(--surface-elevated) 94%, #111824);
+}
+
+.coachConversationItemShell.is-archive-revealed .coachConversationItem {
+  transform: translateX(-72px);
 }
 
 .coachConversationItemTop {
@@ -204,6 +201,21 @@
   white-space: nowrap;
 }
 
+.coachConversationArchiveButton {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  min-width: 64px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.coachConversationItemShell.is-archive-revealed .coachConversationArchiveButton {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .coachConversationRailScrim {
   position: absolute;
   inset: 0;
@@ -218,8 +230,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 18px 12px;
-  border-bottom: 1px solid var(--border-subtle);
+  padding: 12px 18px 8px;
 }
 
 .coachSurfaceToolbarActions {
@@ -229,23 +240,25 @@
   flex-wrap: wrap;
 }
 
-.coachSurfaceStatus {
+.coachSurfaceStage {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.coachSurfaceStatusDot {
-  width: 8px;
-  height: 8px;
+  min-height: 28px;
+  padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 18%, var(--border-subtle));
+  background: color-mix(in srgb, var(--accent-soft) 56%, var(--surface-primary));
+  font-size: 12px;
+  color: var(--text-primary);
 }
 
-.coachSurfaceStatusDot.is-loading {
-  background: color-mix(in srgb, var(--accent-primary) 72%, white);
+.coachArchiveNotice {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
 }
 
 .coachConversationScroll {
@@ -424,6 +437,25 @@
   justify-content: flex-end;
 }
 
+.coachRailHandle {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 94%, rgba(255, 255, 255, 0.08));
+  background: color-mix(in srgb, var(--surface-primary) 96%, #0d1118);
+  display: inline-grid;
+  place-items: center;
+  gap: 3px;
+  cursor: pointer;
+}
+
+.coachRailHandle span {
+  width: 14px;
+  height: 1.5px;
+  border-radius: 999px;
+  background: var(--text-secondary);
+}
+
 .coachComposerError {
   font-size: 12px;
 }
@@ -431,16 +463,16 @@
 .keyboardOpen .coachFab {
   opacity: 0;
   pointer-events: none;
-  transform: translateY(16px);
+  transform: translateY(calc(var(--coach-fab-offset-y, 0px) + 16px));
 }
 
 @media (min-width: 901px) {
   .coachFab {
-    bottom: calc(var(--safe-bottom) + 22px);
+    bottom: calc(var(--safe-bottom) + 18px);
   }
 
   .coachFab.has-rail {
-    bottom: calc(var(--safe-bottom) + 22px);
+    bottom: calc(var(--safe-bottom) + 18px);
   }
 
   .coachSurface {
@@ -453,6 +485,12 @@
 
   .coachSurface.is-rail-closed .coachConversationRail {
     display: none;
+  }
+
+  .coachConversationItemShell:hover .coachConversationArchiveButton,
+  .coachConversationItemShell:focus-within .coachConversationArchiveButton {
+    opacity: 1;
+    pointer-events: auto;
   }
 }
 
@@ -490,7 +528,7 @@
   }
 
   .coachPanelHeader {
-    padding-top: calc(16px + var(--safe-top));
+    padding-top: calc(14px + var(--safe-top));
   }
 
   .coachConversationScroll {
@@ -513,5 +551,9 @@
 
   .coachComposerActions .gateButton {
     flex: 1 1 0;
+  }
+
+  .coachConversationRailHeader {
+    padding-top: 18px;
   }
 }

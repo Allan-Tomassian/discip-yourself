@@ -315,6 +315,85 @@ function buildPilotageCoachFallback({
   };
 }
 
+function buildPilotageGlobalSummary({ categories, countsByCategory, statusByCategory, selectedCategory }) {
+  const safeCategories = Array.isArray(categories) ? categories : [];
+  const structuredCategories = safeCategories.filter((category) => {
+    const counts = countsByCategory.get(category.id) || {};
+    return (counts.activeOutcomesCount || 0) > 0 || (counts.processCount || 0) > 0;
+  });
+  const emptyCategories = safeCategories.filter((category) => {
+    const counts = countsByCategory.get(category.id) || {};
+    return (counts.activeOutcomesCount || 0) === 0 && (counts.processCount || 0) === 0;
+  });
+  const activeStatuses = safeCategories.filter((category) => (statusByCategory.get(category.id) || "ACTIVE") === "ACTIVE");
+  const focusCategory =
+    selectedCategory ||
+    [...structuredCategories].sort((left, right) => {
+      const leftCounts = countsByCategory.get(left.id) || {};
+      const rightCounts = countsByCategory.get(right.id) || {};
+      return (rightCounts.processCount || 0) - (leftCounts.processCount || 0);
+    })[0] ||
+    safeCategories[0] ||
+    null;
+
+  if (!safeCategories.length) {
+    return {
+      summary: "Aucune catégorie visible pour le moment.",
+      signals: ["Ajoute une catégorie ou rends-la visible pour commencer le pilotage."],
+      focusCategory: null,
+    };
+  }
+
+  const signals = [];
+  if (focusCategory?.name) {
+    signals.push(`${focusCategory.name} reste le meilleur point d’entrée pour lire tes progrès actuels.`);
+  }
+  if (structuredCategories.length) {
+    signals.push(`${structuredCategories.length} catégorie${structuredCategories.length > 1 ? "s" : ""} ont déjà une structure exploitable.`);
+  }
+  if (emptyCategories.length) {
+    signals.push(`${emptyCategories.length} catégorie${emptyCategories.length > 1 ? "s" : ""} restent encore sans base claire.`);
+  }
+  if (activeStatuses.length) {
+    signals.push(`${activeStatuses.length} catégorie${activeStatuses.length > 1 ? "s" : ""} sont actives cette semaine.`);
+  }
+
+  return {
+    summary:
+      structuredCategories.length > 0
+        ? `${structuredCategories.length} catégorie${structuredCategories.length > 1 ? "s" : ""} sur ${safeCategories.length} montrent déjà une dynamique exploitable.`
+        : "Aucune catégorie n’a encore assez de structure pour dégager une vraie lecture.",
+    signals: signals.slice(0, 3),
+    focusCategory,
+  };
+}
+
+function buildPilotageGlobalStats({
+  categories,
+  countsByCategory,
+  statusByCategory,
+  globalWindowStats,
+  globalConstanceSummary,
+}) {
+  const safeCategories = Array.isArray(categories) ? categories : [];
+  const structuredCategories = safeCategories.filter((category) => {
+    const counts = countsByCategory.get(category.id) || {};
+    return (counts.activeOutcomesCount || 0) > 0 || (counts.processCount || 0) > 0;
+  });
+  const activeCategories = safeCategories.filter((category) => (statusByCategory.get(category.id) || "ACTIVE") === "ACTIVE");
+
+  return {
+    globalScore: Number.isFinite(globalWindowStats?.discipline?.score) ? globalWindowStats.discipline.score : 0,
+    doneCount: globalWindowStats?.occurrences?.done || 0,
+    expectedCount: globalWindowStats?.occurrences?.expected || 0,
+    missedCount: globalWindowStats?.occurrences?.missed || 0,
+    activeDays7: globalConstanceSummary?.activeDays7 || 0,
+    realMinutes7: globalConstanceSummary?.realMinutes7 || 0,
+    structuredCategories: structuredCategories.length,
+    activeCategories: activeCategories.length,
+  };
+}
+
 export default function Pilotage({
   data,
   setData,
@@ -387,6 +466,13 @@ export default function Pilotage({
       includeMicroContribution: false,
     }).occurrences;
   }, [safeData, selectedCategoryId, weekBounds.fromKey, weekBounds.toKey]);
+  const globalWeek = useMemo(
+    () =>
+      computeWindowStats(safeData, weekBounds.fromKey, weekBounds.toKey, {
+        includeMicroContribution: false,
+      }),
+    [safeData, weekBounds.fromKey, weekBounds.toKey]
+  );
 
   const sessionHistoryByOccurrenceId = useMemo(() => {
     const map = new Map();
@@ -412,10 +498,20 @@ export default function Pilotage({
       return goal?.categoryId === selectedCategoryId;
     });
   }, [goals, occurrences, selectedCategoryId, weekBounds.fromKey, weekBounds.toKey]);
+  const globalWeekOccurrences = useMemo(() => {
+    return occurrences.filter((occurrence) => {
+      const dateKey = typeof occurrence?.date === "string" ? occurrence.date : "";
+      return Boolean(dateKey) && dateKey >= weekBounds.fromKey && dateKey <= weekBounds.toKey;
+    });
+  }, [occurrences, weekBounds.fromKey, weekBounds.toKey]);
 
   const constanceSummary = useMemo(
     () => buildConstanceSummary({ occurrences: selectedWeekOccurrences, sessionHistoryByOccurrenceId }),
     [selectedWeekOccurrences, sessionHistoryByOccurrenceId]
+  );
+  const globalConstanceSummary = useMemo(
+    () => buildConstanceSummary({ occurrences: globalWeekOccurrences, sessionHistoryByOccurrenceId }),
+    [globalWeekOccurrences, sessionHistoryByOccurrenceId]
   );
   const selectedCategoryProfileSummary = useMemo(
     () => getCategoryProfileSummary(safeData, selectedCategory?.id || null),
@@ -457,6 +553,7 @@ export default function Pilotage({
   }, [reportCategoryId, reportFrom, reportGoalId, reportTo, safeData]);
 
   const [disciplineWindowDays, setDisciplineWindowDays] = useState(14);
+  const [pilotageView, setPilotageView] = useState("global");
 
   const setPilotageSelectedCategory = useCallback(
     (categoryId) => {
@@ -474,6 +571,15 @@ export default function Pilotage({
       });
     },
     [setData]
+  );
+
+  const openPilotageDetail = useCallback(
+    (categoryId) => {
+      if (!categoryId) return;
+      setPilotageSelectedCategory(categoryId);
+      setPilotageView("detail");
+    },
+    [setPilotageSelectedCategory]
   );
 
   useEffect(() => {
@@ -498,6 +604,12 @@ export default function Pilotage({
     }
   }, [categories, safeData, setData, setPilotageSelectedCategory]);
 
+  useEffect(() => {
+    if (!selectedCategory) {
+      setPilotageView("global");
+    }
+  }, [selectedCategory]);
+
   const disciplineTrend = useMemo(
     () =>
       buildPilotageDisciplineTrend(safeData, {
@@ -516,6 +628,27 @@ export default function Pilotage({
         disciplineTrend?.toKey || "to",
       ].join(":"),
     [disciplineTrend?.fromKey, disciplineTrend?.toKey, disciplineTrend?.windowDays, disciplineWindowDays, selectedCategory?.id]
+  );
+  const globalPilotageSummary = useMemo(
+    () =>
+      buildPilotageGlobalSummary({
+        categories,
+        countsByCategory,
+        statusByCategory,
+        selectedCategory,
+      }),
+    [categories, countsByCategory, selectedCategory, statusByCategory]
+  );
+  const globalPilotageStats = useMemo(
+    () =>
+      buildPilotageGlobalStats({
+        categories,
+        countsByCategory,
+        statusByCategory,
+        globalWindowStats: globalWeek,
+        globalConstanceSummary,
+      }),
+    [categories, countsByCategory, globalConstanceSummary, globalWeek, statusByCategory]
   );
 
   const coachFallback = useMemo(
@@ -630,7 +763,11 @@ export default function Pilotage({
   return (
     <ScreenShell
       headerTitle={<span data-tour-id="pilotage-title">Pilotage</span>}
-      headerSubtitle="Vue d'ensemble"
+      headerSubtitle={
+        pilotageView === "detail" && selectedCategory
+          ? `${selectedCategory.name || "Catégorie"} · lecture détaillée`
+          : "Vue d’ensemble"
+      }
       backgroundImage={safeData?.profile?.whyImage || ""}
     >
       <div className="stack stackGap12">
@@ -669,7 +806,7 @@ export default function Pilotage({
                     category={category}
                     color={getCategoryColor(category)}
                     selected={selectedCategoryId === category.id}
-                    onClick={() => setPilotageSelectedCategory(category.id)}
+                    onClick={() => openPilotageDetail(category.id)}
                     summary={summary}
                     statusLabel={STATUS_LABELS[label] || "Active"}
                     statusStyle={STATUS_STYLES[label] || STATUS_STYLES.ACTIVE}
@@ -679,29 +816,193 @@ export default function Pilotage({
                 );
               })}
             </div>
+          </div>
+        </Card>
 
-            {selectedCategory ? (
-              <div className="mt14" style={{ paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                <div className="row pilotageCardHeader" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                  <div>
-                    <div className="sectionTitle">{selectedCategory.name || "Catégorie"}</div>
-                <div className="small2 textMuted">Lecture stratégique simplifiée</div>
-                  </div>
-                  {selectedStatus ? (
-                    <GateBadge
-                      className="pilotageStatusBadge"
-                      style={{
-                        ...(STATUS_STYLES[selectedStatus] || STATUS_STYLES.ACTIVE),
-                        borderWidth: 1,
-                        borderStyle: "solid",
-                      }}
-                    >
-                      {STATUS_LABELS[selectedStatus] || "Active"}
-                    </GateBadge>
-                  ) : null}
+        {pilotageView === "global" ? (
+          <>
+            <Card>
+              <div className="p18 col" style={{ gap: 12 }}>
+                <div>
+                  <div className="sectionTitle">Statistiques globales</div>
+                  <div className="small2 textMuted">Lecture d’ensemble de l’activité récente avant d’ouvrir une catégorie.</div>
                 </div>
+                <div className="pilotageTopGrid">
+                  <div className="listItem GateRowPremium">
+                    <div className="small2">Niveau global</div>
+                    <div className="titleSm">{globalPilotageStats.globalScore}%</div>
+                  </div>
+                  <div className="listItem GateRowPremium">
+                    <div className="small2">Actions faites / attendues</div>
+                    <div className="titleSm">
+                      {globalPilotageStats.doneCount} / {globalPilotageStats.expectedCount}
+                    </div>
+                  </div>
+                  <div className="listItem GateRowPremium">
+                    <div className="small2">Temps investi réel</div>
+                    <div className="titleSm">{formatMinutes(globalPilotageStats.realMinutes7)}</div>
+                  </div>
+                  <div className="listItem GateRowPremium">
+                    <div className="small2">Catégories actives</div>
+                    <div className="titleSm">
+                      {globalPilotageStats.activeCategories} / {Math.max(categories.length, 1)}
+                    </div>
+                  </div>
+                </div>
+                <div className="pilotageInsights">
+                  <div className="pilotageInsightItem">
+                    <div className="small2 textMuted">Lecture globale</div>
+                    <div>
+                      {globalPilotageStats.structuredCategories} catégorie
+                      {globalPilotageStats.structuredCategories > 1 ? "s" : ""} ont déjà une base exploitable, avec{" "}
+                      {globalPilotageStats.activeDays7} jour{globalPilotageStats.activeDays7 > 1 ? "s" : ""} utile
+                      {globalPilotageStats.activeDays7 > 1 ? "s" : ""} sur 7.
+                    </div>
+                  </div>
+                  <div className="pilotageInsightItem">
+                    <div className="small2 textMuted">Points de friction</div>
+                    <div>
+                      {globalPilotageStats.missedCount > 0
+                        ? `${globalPilotageStats.missedCount} occurrence${globalPilotageStats.missedCount > 1 ? "s" : ""} manquée${globalPilotageStats.missedCount > 1 ? "s" : ""} sur la fenêtre récente.`
+                        : "Aucune occurrence manquée sur la fenêtre récente."}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
 
-                <div className="mt10 col" style={{ gap: 10 }}>
+            <Card>
+              <div className="p18 col" style={{ gap: 12 }}>
+                <div>
+                  <div className="sectionTitle">Synthèse globale</div>
+                  <div className="small2 textMuted">Lis rapidement où ton système avance vraiment.</div>
+                </div>
+                <div className="pilotageInsights">
+                  <div className="pilotageInsightItem">
+                    <div className="small2 textMuted">Vue d’ensemble</div>
+                    <div>{globalPilotageSummary.summary}</div>
+                  </div>
+                  {globalPilotageSummary.signals.map((signal) => (
+                    <div key={signal} className="pilotageInsightItem">
+                      <div className="small2 textMuted">Signal principal</div>
+                      <div>{signal}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+
+            <Card data-tour-id="pilotage-reporting">
+              <div className="p18">
+                <div className="sectionTitle">Reporting</div>
+                <div className="mt12 col" style={{ gap: 12 }}>
+                  <div className="col" style={{ gap: 6 }}>
+                    <div className="small2 textMuted">Période</div>
+                    <Select value={reportWindow} onChange={(event) => setReportWindow(event.target.value)}>
+                      <option value="7d">7 jours</option>
+                      <option value="14d">14 jours</option>
+                      <option value="90d">90 jours</option>
+                      <option value="custom">Personnalisée</option>
+                    </Select>
+                  </div>
+
+                  {reportWindow === "custom" ? (
+                    <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+                      <div className="col" style={{ gap: 6 }}>
+                        <div className="small2 textMuted">Du</div>
+                        <Input type="date" value={reportFrom} onChange={(event) => setReportFrom(event.target.value)} />
+                      </div>
+                      <div className="col" style={{ gap: 6 }}>
+                        <div className="small2 textMuted">Au</div>
+                        <Input type="date" value={reportTo} onChange={(event) => setReportTo(event.target.value)} />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+                    <div className="col" style={{ gap: 6, minWidth: 180 }}>
+                      <div className="small2 textMuted">Catégorie</div>
+                      <Select value={reportCategoryId} onChange={(event) => setReportCategoryId(event.target.value)}>
+                        <option value="">Toutes</option>
+                        {categories.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name || "Catégorie"}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div className="col" style={{ gap: 6, minWidth: 200 }}>
+                      <div className="small2 textMuted">Action</div>
+                      <Select value={reportGoalId} onChange={(event) => setReportGoalId(event.target.value)}>
+                        <option value="">Toutes</option>
+                        {reportGoals
+                          .filter((goal) => !reportCategoryId || goal.categoryId === reportCategoryId)
+                          .map((goal) => (
+                            <option key={goal.id} value={goal.id}>
+                              {goal.title || "Action"}
+                            </option>
+                          ))}
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="col" style={{ gap: 8 }}>
+                    <StatRow label="Occurrences attendues" value={String(reportPreview?.totals?.expected || 0)} />
+                    <StatRow label="Occurrences faites" value={String(reportPreview?.totals?.done || 0)} />
+                    <StatRow label="Occurrences manquées" value={String(reportPreview?.totals?.missed || 0)} />
+                    <StatRow label="Occurrences annulées" value={String(reportPreview?.totals?.canceled || 0)} />
+                    <StatRow label="Occurrences planifiées" value={String(reportPreview?.totals?.planned || 0)} />
+                  </div>
+
+                  <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                    <div className="small2 textMuted">Exporte JSON + CSV (par jour et par action).</div>
+                    <Button onClick={handleExportReport} disabled={!reportPreview}>
+                      Exporter
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </>
+        ) : null}
+
+        {pilotageView === "detail" && selectedCategory ? (
+          <>
+            <Card>
+              <div className="p18 col" style={{ gap: 12 }}>
+                <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <div>
+                    <div className="sectionTitle">Vue catégorie</div>
+                    <div className="small2 textMuted">Lecture ciblée pour comprendre ce qui avance vraiment.</div>
+                  </div>
+                  <Button variant="ghost" onClick={() => setPilotageView("global")}>
+                    Retour à la vue globale
+                  </Button>
+                </div>
+                <AccentCategoryRow
+                  category={selectedCategory}
+                  color={getCategoryColor(selectedCategory)}
+                  className="pilotageCategoryRow"
+                  rightSlot={
+                    selectedStatus ? (
+                      <GateBadge
+                        className="pilotageStatusBadge"
+                        style={{
+                          ...(STATUS_STYLES[selectedStatus] || STATUS_STYLES.ACTIVE),
+                          borderWidth: 1,
+                          borderStyle: "solid",
+                        }}
+                      >
+                        {STATUS_LABELS[selectedStatus] || "Active"}
+                      </GateBadge>
+                    ) : null
+                  }
+                >
+                  <div className="itemTitle">{selectedCategory.name || "Catégorie"}</div>
+                  <div className="itemSub">Ouvre une lecture plus précise de cette catégorie.</div>
+                </AccentCategoryRow>
+
+                <div className="col" style={{ gap: 10 }}>
                   {selectedCategoryProfileSummary?.subject ? (
                     <StatRow label="Sujet principal" value={selectedCategoryProfileSummary.subject} />
                   ) : null}
@@ -735,16 +1036,14 @@ export default function Pilotage({
                   />
                 </div>
               </div>
-            ) : null}
-          </div>
-        </Card>
+            </Card>
 
-        <Card data-tour-id="pilotage-discipline">
+            <Card data-tour-id="pilotage-discipline">
           <div className="p18 col" style={{ gap: 12 }}>
             <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div>
                 <div className="sectionTitle">Évolution discipline</div>
-                <div className="small2 textMuted">Lecture simple du rythme récent sur la catégorie active.</div>
+                <div className="small2 textMuted">La courbe montre comment cette catégorie avance sur les derniers jours.</div>
               </div>
               <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
                 {PILOTAGE_DISCIPLINE_WINDOWS.map((windowDays) => (
@@ -786,22 +1085,22 @@ export default function Pilotage({
             />
             <div className="pilotageInsights">
               <div className="pilotageInsightItem">
-                <div className="small2 textMuted">Rythme</div>
+                <div className="small2 textMuted">Rythme observé</div>
                 <div>{formatDisciplineTrendLabel(disciplineTrend.summary.trendLabel)}</div>
               </div>
               <div className="pilotageInsightItem">
-                <div className="small2 textMuted">Écart récent</div>
+                <div className="small2 textMuted">Variation récente</div>
                 <div>{disciplineTrend.summary.delta > 0 ? "+" : ""}{disciplineTrend.summary.delta} points</div>
               </div>
             </div>
           </div>
-        </Card>
+            </Card>
 
-        <Card data-tour-id="pilotage-load">
+            <Card data-tour-id="pilotage-load">
           <div className="p18 col" style={{ gap: 12 }}>
             <div>
               <div className="sectionTitle">Constance</div>
-              <div className="small2 textMuted">Lecture utile sur 7 jours</div>
+              <div className="small2 textMuted">Comprends vite si la cadence tient réellement sur la semaine.</div>
             </div>
             <div className="pilotageTopGrid">
               <div className="listItem GateRowPremium">
@@ -838,13 +1137,13 @@ export default function Pilotage({
               <StatRow label="Sessions manquées" value={String(constanceSummary.missedCount || 0)} />
             </div>
           </div>
-        </Card>
+            </Card>
 
-        <Card>
+            <Card>
           <div className="p18 col" style={{ gap: 12 }}>
             <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div>
-                <div className="sectionTitle">Lecture locale</div>
+                <div className="sectionTitle">Lecture de la catégorie</div>
                 <ManualAiStatus
                   statusKind={pilotageAnalysisState.kind}
                   statusLabel={pilotageAnalysisState.label}
@@ -930,79 +1229,9 @@ export default function Pilotage({
               </div>
             ) : null}
           </div>
-        </Card>
-
-        <Card data-tour-id="pilotage-reporting">
-          <div className="p18">
-            <div className="sectionTitle">Reporting</div>
-            <div className="mt12 col" style={{ gap: 12 }}>
-              <div className="col" style={{ gap: 6 }}>
-                <div className="small2 textMuted">Période</div>
-                <Select value={reportWindow} onChange={(event) => setReportWindow(event.target.value)}>
-                  <option value="7d">7 jours</option>
-                  <option value="14d">14 jours</option>
-                  <option value="90d">90 jours</option>
-                  <option value="custom">Personnalisée</option>
-                </Select>
-              </div>
-
-              {reportWindow === "custom" ? (
-                <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
-                  <div className="col" style={{ gap: 6 }}>
-                    <div className="small2 textMuted">Du</div>
-                    <Input type="date" value={reportFrom} onChange={(event) => setReportFrom(event.target.value)} />
-                  </div>
-                  <div className="col" style={{ gap: 6 }}>
-                    <div className="small2 textMuted">Au</div>
-                    <Input type="date" value={reportTo} onChange={(event) => setReportTo(event.target.value)} />
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
-                <div className="col" style={{ gap: 6, minWidth: 180 }}>
-                  <div className="small2 textMuted">Catégorie</div>
-                  <Select value={reportCategoryId} onChange={(event) => setReportCategoryId(event.target.value)}>
-                    <option value="">Toutes</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name || "Catégorie"}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="col" style={{ gap: 6, minWidth: 200 }}>
-                  <div className="small2 textMuted">Action</div>
-                  <Select value={reportGoalId} onChange={(event) => setReportGoalId(event.target.value)}>
-                    <option value="">Toutes</option>
-                    {reportGoals
-                      .filter((goal) => !reportCategoryId || goal.categoryId === reportCategoryId)
-                      .map((goal) => (
-                        <option key={goal.id} value={goal.id}>
-                          {goal.title || "Action"}
-                        </option>
-                      ))}
-                  </Select>
-                </div>
-              </div>
-
-              <div className="col" style={{ gap: 8 }}>
-                <StatRow label="Occurrences attendues" value={String(reportPreview?.totals?.expected || 0)} />
-                <StatRow label="Occurrences faites" value={String(reportPreview?.totals?.done || 0)} />
-                <StatRow label="Occurrences manquées" value={String(reportPreview?.totals?.missed || 0)} />
-                <StatRow label="Occurrences annulées" value={String(reportPreview?.totals?.canceled || 0)} />
-                <StatRow label="Occurrences planifiées" value={String(reportPreview?.totals?.planned || 0)} />
-              </div>
-
-              <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                <div className="small2 textMuted">Exporte JSON + CSV (par jour et par action).</div>
-                <Button onClick={handleExportReport} disabled={!reportPreview}>
-                  Exporter
-                </Button>
-              </div>
-            </div>
-          </div>
-        </Card>
+            </Card>
+          </>
+        ) : null}
       </div>
     </ScreenShell>
   );

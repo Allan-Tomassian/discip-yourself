@@ -10,7 +10,7 @@ import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "../blocks/registr
 import { ensureBlocksConfig } from "../blocks/ensureBlocksConfig";
 import { validateBlocksState } from "../blocks/validateBlocksState";
 import { buildScheduleRuleSourceKey, buildScheduleRulesFromAction, normalizeScheduleRule } from "../scheduleRules";
-import { BRAND_ACCENT } from "../../theme/themeTokens";
+import { BRAND_ACCENT, DEFAULT_THEME } from "../../theme/themeTokens";
 import { ensureSystemInboxCategory } from "./inbox";
 import {
   normalizeSelectedCategoryByView,
@@ -413,21 +413,20 @@ export function migrate(prev) {
     next.ui.selectedCategoryId = null;
   }
 
-  // V2: ensure pageThemes/pageAccents exist (used by utils/_theme)
+  // Locked theme system: normalize persisted theme keys to the canonical theme shape.
   if (!next.ui.pageThemes || typeof next.ui.pageThemes !== "object") next.ui.pageThemes = {};
   if (!next.ui.pageAccents || typeof next.ui.pageAccents !== "object") next.ui.pageAccents = {};
 
-  // migrate legacy single-value keys into the V2 objects
-  if (!next.ui.pageThemes.home) {
-    if (next.ui.pageThemeHome) next.ui.pageThemes.home = next.ui.pageThemeHome;
-    else next.ui.pageThemes.home = "aurora";
-  }
-  if (!next.ui.pageAccents.home || next.ui.pageAccents.home !== BRAND_ACCENT) {
-    next.ui.pageAccents.home = BRAND_ACCENT;
-  }
+  next.ui.theme = DEFAULT_THEME;
+  next.ui.pageThemes = {
+    ...next.ui.pageThemes,
+    __default: DEFAULT_THEME,
+    home: DEFAULT_THEME,
+  };
+  next.ui.pageAccents = {};
 
   // legacy defaults (kept so old code paths don't crash)
-  if (!next.ui.pageThemeHome) next.ui.pageThemeHome = next.ui.pageThemes?.home || "aurora";
+  next.ui.pageThemeHome = DEFAULT_THEME;
   if (!next.ui.accentHome || next.ui.accentHome !== BRAND_ACCENT) {
     next.ui.accentHome = BRAND_ACCENT;
   }

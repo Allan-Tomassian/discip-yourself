@@ -564,16 +564,46 @@
 
 @media (max-width: 767px) {
   .topNavGateBar {
-    padding: 8px;
+    padding: 7px 8px;
   }
 
   .topNavGateBar .navRow {
     gap: 6px;
   }
 
+  .topNavGateBar .navRow.is-mobile-layout {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: center;
+  }
+
   .topNavGateBar .navGrid,
   .topNavGateBar .navActions {
-    gap: 6px;
+    gap: 4px;
+  }
+
+  .topNavMenuSlot {
+    flex: 0 0 44px;
+    width: 44px;
+  }
+
+  .topNavMenuSlot .NavPillUnified {
+    width: 44px;
+    min-width: 44px;
+    padding-inline: 0;
+  }
+
+  .topNavTabsGrid {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .topNavTabsGrid .NavPillUnified {
+    width: 100%;
+    min-width: 0;
+    padding-inline: 1px;
+    font-size: clamp(8.8px, 2.45vw, 10.25px);
+    letter-spacing: -0.045em;
   }
 
   .topNavWalletSlot {
@@ -581,6 +611,6 @@
   }
 
   .topNavTabsGrid.navGrid {
-    grid-template-columns: minmax(0, 0.86fr) minmax(0, 0.98fr) minmax(0, 1.26fr) minmax(0, 0.96fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

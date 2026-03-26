@@ -25,6 +25,7 @@ import {
   getCoachConversationById,
   getCoachSessionReplies,
   getLatestCoachConversation,
+  removeCoachConversation,
   setCoachSessionReply,
   subscribeCoachSessionReplies,
   updateCoachSessionReplyDraftStatus,
@@ -99,6 +100,8 @@ export function useCoachConversationController({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [loadingStageIndex, setLoadingStageIndex] = useState(-1);
+  const [archivedConversation, setArchivedConversation] = useState(null);
+  const archiveTimeoutRef = useRef(null);
   const loadingStages = useMemo(() => getManualAiLoadingStages("coach"), []);
 
   const contextSnapshot = useMemo(
@@ -184,6 +187,56 @@ export function useCoachConversationController({
     setActiveConversationId(nextConversation.id);
     clearCoachSessionReplies(nextConversation.id);
   }, [contextSnapshot.activeCategoryId, contextSnapshot.selectedDateKey, setData]);
+
+  useEffect(() => {
+    return () => {
+      if (archiveTimeoutRef.current) {
+        window.clearTimeout(archiveTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const archiveConversation = useCallback(
+    (conversationId) => {
+      if (!conversationId || typeof setData !== "function") return;
+      const archived = getCoachConversationById(safeData?.coach_conversations_v1, conversationId);
+      if (!archived) return;
+      if (archiveTimeoutRef.current) window.clearTimeout(archiveTimeoutRef.current);
+      setData((previous) => {
+        const safePrevious = previous && typeof previous === "object" ? previous : {};
+        return {
+          ...safePrevious,
+          coach_conversations_v1: removeCoachConversation(safePrevious.coach_conversations_v1, conversationId),
+        };
+      });
+      clearCoachSessionReplies(conversationId);
+      setArchivedConversation({
+        conversation: archived,
+        label: buildConversationPreview(archived),
+      });
+      archiveTimeoutRef.current = window.setTimeout(() => {
+        setArchivedConversation(null);
+      }, 5000);
+    },
+    [safeData?.coach_conversations_v1, setData]
+  );
+
+  const undoArchivedConversation = useCallback(() => {
+    if (!archivedConversation?.conversation || typeof setData !== "function") return;
+    if (archiveTimeoutRef.current) window.clearTimeout(archiveTimeoutRef.current);
+    setData((previous) => {
+      const safePrevious = previous && typeof previous === "object" ? previous : {};
+      return {
+        ...safePrevious,
+        coach_conversations_v1: upsertCoachConversation(
+          safePrevious.coach_conversations_v1,
+          archivedConversation.conversation
+        ),
+      };
+    });
+    setActiveConversationId(archivedConversation.conversation.id);
+    setArchivedConversation(null);
+  }, [archivedConversation, setData]);
 
   const applyAction = useCallback(
     (action) => {
@@ -379,12 +432,19 @@ export function useCoachConversationController({
     handleNewChat,
     applyAction,
     applyDraftProposal,
+    archiveConversation,
+    archivedConversation,
+    undoArchivedConversation,
   };
 }
 
 export function CoachConversationSurface({
   controller,
   mode = "panel",
+  railExpanded: railExpandedProp,
+  setRailExpanded: setRailExpandedProp,
+  isDesktopLayout: isDesktopLayoutProp,
+  setIsDesktopLayout: setIsDesktopLayoutProp,
 }) {
   const {
     draft,
@@ -405,14 +465,24 @@ export function CoachConversationSurface({
     handleNewChat,
     applyAction,
     applyDraftProposal,
+    archiveConversation,
+    archivedConversation,
+    undoArchivedConversation,
   } = controller;
   const scrollRef = useRef(null);
-  const [isDesktopLayout, setIsDesktopLayout] = useState(() =>
+  const [internalIsDesktopLayout, setInternalIsDesktopLayout] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(min-width: 901px)").matches : false
   );
-  const [railExpanded, setRailExpanded] = useState(() =>
+  const [internalRailExpanded, setInternalRailExpanded] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(min-width: 901px)").matches : false
   );
+  const [revealedArchiveId, setRevealedArchiveId] = useState("");
+  const swipeStartRef = useRef({ id: "", x: 0 });
+  const railSwipeStartRef = useRef(0);
+  const isDesktopLayout = typeof isDesktopLayoutProp === "boolean" ? isDesktopLayoutProp : internalIsDesktopLayout;
+  const setIsDesktopLayout = setIsDesktopLayoutProp || setInternalIsDesktopLayout;
+  const railExpanded = typeof railExpandedProp === "boolean" ? railExpandedProp : internalRailExpanded;
+  const setRailExpanded = setRailExpandedProp || setInternalRailExpanded;
 
   useEffect(() => {
     const node = scrollRef.current;
@@ -437,8 +507,53 @@ export function CoachConversationSurface({
     (conversationId) => {
       setActiveConversationId(conversationId);
       if (!isDesktopLayout) setRailExpanded(false);
+      setRevealedArchiveId("");
     },
     [isDesktopLayout, setActiveConversationId]
+  );
+
+  const handleConversationPointerStart = useCallback(
+    (conversationId, event) => {
+      if (isDesktopLayout || event.pointerType === "mouse") return;
+      swipeStartRef.current = { id: conversationId, x: event.clientX };
+    },
+    [isDesktopLayout]
+  );
+
+  const handleConversationPointerEnd = useCallback(
+    (conversationId, event) => {
+      if (isDesktopLayout || event.pointerType === "mouse") return;
+      const currentSwipe = swipeStartRef.current;
+      swipeStartRef.current = { id: "", x: 0 };
+      if (currentSwipe.id !== conversationId) return;
+      const deltaX = event.clientX - currentSwipe.x;
+      if (deltaX <= -36) {
+        setRevealedArchiveId(conversationId);
+      } else if (deltaX >= 20 && revealedArchiveId === conversationId) {
+        setRevealedArchiveId("");
+      }
+    },
+    [isDesktopLayout, revealedArchiveId]
+  );
+
+  const handleRailPointerDown = useCallback(
+    (event) => {
+      if (isDesktopLayout || event.pointerType === "mouse") return;
+      railSwipeStartRef.current = event.clientX;
+    },
+    [isDesktopLayout]
+  );
+
+  const handleRailPointerUp = useCallback(
+    (event) => {
+      if (isDesktopLayout || event.pointerType === "mouse") return;
+      const deltaX = event.clientX - railSwipeStartRef.current;
+      railSwipeStartRef.current = 0;
+      if (deltaX <= -36) {
+        setRailExpanded(false);
+      }
+    },
+    [isDesktopLayout, setRailExpanded]
   );
 
   return (
@@ -459,50 +574,74 @@ export function CoachConversationSurface({
           onClick={() => setRailExpanded(false)}
         />
       ) : null}
-      <aside className={`coachConversationRail${railExpanded ? " is-open" : ""}`}>
+      <aside
+        className={`coachConversationRail${railExpanded ? " is-open" : ""}`}
+        onPointerDown={handleRailPointerDown}
+        onPointerUp={handleRailPointerUp}
+      >
         <div className="coachConversationRailHeader">
-          <div>
-            <div className="coachConversationRailTitle">Conversations</div>
-            <div className="coachConversationRailMeta">
-              {conversations.length ? `${conversations.length} conversation${conversations.length > 1 ? "s" : ""}` : "Aucun échange"}
-            </div>
+          <div className="coachConversationRailMeta">
+            {conversations.length ? `${conversations.length} conversation${conversations.length > 1 ? "s" : ""}` : "Aucun échange"}
           </div>
-          <GateButton variant="ghost" className="GatePressable" onClick={() => setRailExpanded(false)}>
-            Réduire
+          <GateButton variant="ghost" className="GatePressable" onClick={handleNewChat}>
+            Nouveau chat
           </GateButton>
         </div>
         <div className="coachConversationList">
           {conversations.map((conversation) => (
-            <button
+            <div
               key={conversation.id}
-              type="button"
-              className={`coachConversationItem${activeConversationId === conversation.id ? " is-active" : ""}`}
-              onClick={() => handleSelectConversation(conversation.id)}
+              className={`coachConversationItemShell${revealedArchiveId === conversation.id ? " is-archive-revealed" : ""}`}
             >
-              <div className="coachConversationItemTop">
-                <div className="coachConversationItemTitle">
-                  {conversation.messages.length ? `Conversation ${formatConversationTimestamp(conversation.updatedAt)}` : "Nouveau chat"}
+              <button
+                type="button"
+                className={`coachConversationItem${activeConversationId === conversation.id ? " is-active" : ""}`}
+                onClick={() => handleSelectConversation(conversation.id)}
+                onPointerDown={(event) => handleConversationPointerStart(conversation.id, event)}
+                onPointerUp={(event) => handleConversationPointerEnd(conversation.id, event)}
+              >
+                <div className="coachConversationItemTop">
+                  <div className="coachConversationItemTitle">
+                    {conversation.messages.length ? `Conversation ${formatConversationTimestamp(conversation.updatedAt)}` : "Nouveau chat"}
+                  </div>
+                  <div className="coachConversationItemMeta">{formatConversationTimestamp(conversation.updatedAt)}</div>
                 </div>
-                <div className="coachConversationItemMeta">{formatConversationTimestamp(conversation.updatedAt)}</div>
-              </div>
-              <div className="coachConversationItemPreview">{buildConversationPreview(conversation)}</div>
-            </button>
+                <div className="coachConversationItemPreview">{buildConversationPreview(conversation)}</div>
+              </button>
+              <GateButton
+                variant="ghost"
+                className="GatePressable coachConversationArchiveButton"
+                onClick={() => archiveConversation(conversation.id)}
+              >
+                Archiver
+              </GateButton>
+            </div>
           ))}
         </div>
       </aside>
       <div className="coachSurfaceMain">
         <div className="coachSurfaceToolbar">
-          <div className="coachSurfaceStatus">
-            <span className={`coachSurfaceStatusDot${loading ? " is-loading" : ""}`} />
-            <span>{loading ? loadingStageLabel || "Analyse du contexte" : "Coach prêt"}</span>
-          </div>
+          {mode === "page" ? (
+            <button
+              type="button"
+              className="coachRailHandle"
+              aria-label={railExpanded ? "Masquer les conversations" : "Ouvrir les conversations"}
+              onClick={() => setRailExpanded((current) => !current)}
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+          ) : (
+            <div />
+          )}
           <div className="coachSurfaceToolbarActions">
-            <GateButton variant="ghost" className="GatePressable" onClick={() => setRailExpanded((current) => !current)}>
-              Conversations
-            </GateButton>
-            <GateButton variant="ghost" className="GatePressable" onClick={handleNewChat}>
-              Nouveau chat
-            </GateButton>
+            {loading ? <div className="coachSurfaceStage">{loadingStageLabel || "Analyse du contexte"}</div> : null}
+            {archivedConversation ? (
+              <button type="button" className="coachArchiveNotice" onClick={undoArchivedConversation}>
+                Conversation archivée · Annuler
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -630,9 +769,6 @@ export function CoachConversationSurface({
                 : "Pas d’historique pour l’instant"}
             </div>
             <div className="coachComposerActions">
-              <GateButton variant="ghost" className="GatePressable" onClick={handleNewChat} disabled={loading}>
-                Nouveau chat
-              </GateButton>
               <GateButton className="GatePressable" onClick={() => submitMessage()} disabled={loading || !draft.trim()}>
                 {loading ? "Analyse..." : "Envoyer"}
               </GateButton>
@@ -660,6 +796,12 @@ export default function CoachPanel({
     surfaceTab,
     onRequestClose: onClose,
   });
+  const [isDesktopLayout, setIsDesktopLayout] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 901px)").matches : false
+  );
+  const [railExpanded, setRailExpanded] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 901px)").matches : false
+  );
 
   useEffect(() => {
     if (!open) return undefined;
@@ -696,6 +838,19 @@ export default function CoachPanel({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
+    const mediaQuery = window.matchMedia("(min-width: 901px)");
+    const syncLayout = (matches) => {
+      setIsDesktopLayout(matches);
+      if (matches) setRailExpanded(true);
+    };
+    syncLayout(mediaQuery.matches);
+    const handleChange = (event) => syncLayout(event.matches);
+    mediaQuery.addEventListener?.("change", handleChange);
+    return () => mediaQuery.removeEventListener?.("change", handleChange);
+  }, []);
+
   if (!open || typeof document === "undefined") return null;
 
   return createPortal(
@@ -719,17 +874,31 @@ export default function CoachPanel({
             <div className="coachPanelHeader">
               <div className="coachPanelHeaderText">
                 <div className="coachPanelTitle">Coach</div>
-                <div className="coachPanelSubtitle">
-                  {controller.loading ? controller.loadingStageLabel || "Analyse du contexte" : "Conversation rapide, orientée action."}
-                </div>
               </div>
-            <div className="coachPanelHeaderActions">
-              <GateButton variant="ghost" className="GatePressable" onClick={() => onClose?.()}>
-                Fermer
-              </GateButton>
+              <div className="coachPanelHeaderActions">
+                <button
+                  type="button"
+                  className="coachRailHandle"
+                  aria-label={railExpanded ? "Masquer les conversations" : "Ouvrir les conversations"}
+                  onClick={() => setRailExpanded((current) => !current)}
+                >
+                  <span />
+                  <span />
+                  <span />
+                </button>
+                <GateButton variant="ghost" className="GatePressable" onClick={() => onClose?.()}>
+                  Fermer
+                </GateButton>
               </div>
             </div>
-            <CoachConversationSurface controller={controller} mode="panel" />
+            <CoachConversationSurface
+              controller={controller}
+              mode="panel"
+              railExpanded={railExpanded}
+              setRailExpanded={setRailExpanded}
+              isDesktopLayout={isDesktopLayout}
+              setIsDesktopLayout={setIsDesktopLayout}
+            />
           </GatePanel>
         </div>
       </div>

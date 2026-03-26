@@ -5,7 +5,7 @@ import { ensureManualAiAnalysisState } from "../../features/manualAi/manualAiAna
 import { ensureCoachConversationsState } from "../../features/coach/coachStorage";
 import { normalizeTimeFields } from "../timeFields";
 import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "../blocks/registry";
-import { BRAND_ACCENT } from "../../theme/themeTokens";
+import { BRAND_ACCENT, DEFAULT_THEME } from "../../theme/themeTokens";
 import { createDefaultUserAiProfile } from "../../domain/userAiProfile";
 import { createEmptyCategoryProfilesState } from "../../domain/categoryProfile";
 import { DEFAULT_CATEGORY_ID, SYSTEM_INBOX_ID } from "./inbox";
@@ -511,12 +511,12 @@ export function initialData() {
         pilotage: null,
       },
 
-      // V2: per-page theming
-      pageThemes: { home: "aurora" },
-      pageAccents: { home: BRAND_ACCENT },
+      // Single locked design system: keep persisted theme fields normalized to the canonical theme.
+      pageThemes: { __default: DEFAULT_THEME, home: DEFAULT_THEME },
+      pageAccents: {},
 
-      // legacy (kept for backward compatibility during migration)
-      pageThemeHome: "aurora",
+      // legacy compatibility keys
+      pageThemeHome: DEFAULT_THEME,
       accentHome: BRAND_ACCENT,
 
       // V2: one active goal at a time
@@ -637,9 +637,9 @@ export function demoData() {
         pilotage: categories[0].id,
       },
 
-      pageThemes: { home: "aurora" },
-      pageAccents: { home: BRAND_ACCENT },
-      pageThemeHome: "aurora",
+      pageThemes: { __default: DEFAULT_THEME, home: DEFAULT_THEME },
+      pageAccents: {},
+      pageThemeHome: DEFAULT_THEME,
       accentHome: BRAND_ACCENT,
       activeGoalId: null,
       mainGoalId: outcomeId,

@@ -172,6 +172,15 @@ function resolveTodayImpactLabel({ profileSummary, fallbackImpact }) {
   return fallbackImpact;
 }
 
+function loadTodayHelpExpanded(storageKey) {
+  if (!storageKey || typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(storageKey) === "1";
+  } catch {
+    return false;
+  }
+}
+
 function buildTodayReasonLinkLabel({
   reasonLinkType,
   activeCategoryName,
@@ -1959,6 +1968,8 @@ export default function Home({
     [heroAnalysisState.label, manualTodayAnalysis.visibleAnalysis]
   );
   const heroDisplayCategoryName = heroViewModel?.recommendedCategoryLabel || heroCategory?.name || "";
+  const heroDisplayCategory =
+    categoriesById.get(heroViewModel?.recommendedCategoryId || heroCategory?.id || "") || heroCategory || null;
   const heroContributionLabel =
     activeCategoryProfileSummary?.mainGoal ||
     heroViewModel?.contributionLabel ||
@@ -2113,19 +2124,41 @@ export default function Home({
   );
   const heroAnalyzeLabel = manualTodayAnalysis.isPersistedForContext ? "Rafraîchir l’analyse" : "Analyser ma priorité";
   const showHeroPlanningShortcut = heroViewModel?.primaryAction?.kind !== "open_pilotage";
+  const todayHelpStorageKey = useMemo(
+    () => `today:hero-help-expanded:v1:${session?.user?.id || "anon"}`,
+    [session?.user?.id]
+  );
+  const [todayHelpExpanded, setTodayHelpExpanded] = useState(() => loadTodayHelpExpanded(""));
+
+  useEffect(() => {
+    setTodayHelpExpanded(loadTodayHelpExpanded(todayHelpStorageKey));
+  }, [todayHelpStorageKey]);
+
+  const handleToggleTodayHelp = useCallback(() => {
+    setTodayHelpExpanded((current) => {
+      const next = !current;
+      try {
+        window.localStorage.setItem(todayHelpStorageKey, next ? "1" : "0");
+      } catch {
+        // Ignore storage failures.
+      }
+      return next;
+    });
+  }, [todayHelpStorageKey]);
 
   return (
     <ScreenShell
       accent={accent}
       backgroundImage={backgroundImage}
       headerTitle={<span data-tour-id="today-title">Today</span>}
-      headerSubtitle={<span data-tour-id="today-subtitle">Exécution</span>}
+      headerSubtitle={null}
       headerRight={headerRight}
       headerRowAlign="start"
     >
       <div className="stack stackGap12 todayPageShell">
         <TodayHero
           title={typedHeroTitle || heroViewModel.title}
+          category={heroDisplayCategory}
           categoryName={heroDisplayCategoryName}
           durationLabel={heroDurationLabel}
           reason={heroReasonText}
@@ -2150,6 +2183,9 @@ export default function Home({
           onOpenPlanning={openPlanningForToday}
           showPlanningShortcut={showHeroPlanningShortcut}
           isPreparing={manualTodayAnalysis.loading}
+          helpExpanded={todayHelpExpanded}
+          helpText="Today te montre le prochain bloc utile à lancer maintenant, avec un lien clair vers ta priorité active."
+          onToggleHelp={handleToggleTodayHelp}
         />
         <TodayNextActions actions={nextActions} onOpenOccurrence={handleStartSession} />
         <TodayDailyState
