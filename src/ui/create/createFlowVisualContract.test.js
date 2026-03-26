@@ -28,11 +28,14 @@ describe("create flow visual contract", () => {
       "pages/CreateV2LinkOutcome.jsx",
       "pages/CreateV2PickCategory.jsx",
       "pages/CreateV2Habits.jsx",
+      "pages/Onboarding.jsx",
     ].map(readSrc);
 
     for (const source of sources) {
       expect(source).not.toContain("../components/UI");
-      expect(source).toContain("CreateSection");
     }
+
+    expect(readSrc("pages/Onboarding.jsx")).toContain("CreateChoiceCard");
+    expect(readSrc("pages/CreateV2Habits.jsx")).toContain("CreateSection");
   });
 });

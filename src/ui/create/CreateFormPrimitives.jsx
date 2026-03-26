@@ -1,5 +1,5 @@
 import React from "react";
-import { GateButton } from "../../shared/ui/gate/Gate";
+import { GateBadge, GateButton, GateCard } from "../../shared/ui/gate/Gate";
 import Select from "../select/Select";
 import "../../features/create-flow/createFlow.css";
 
@@ -28,6 +28,41 @@ export function CreateButton({
     >
       {children}
     </GateButton>
+  );
+}
+
+export function CreateChoiceCard({
+  title,
+  description = "",
+  badge = "",
+  selected = false,
+  disabled = false,
+  className = "",
+  onClick,
+  children = null,
+  ...props
+}) {
+  return (
+    <GateCard
+      className={cx(
+        "createChoiceCard",
+        "GateRowPremium",
+        "GatePressable",
+        disabled && "isDisabled",
+        className
+      )}
+      selected={selected}
+      onClick={disabled ? undefined : onClick}
+      withSound
+      {...props}
+    >
+      <div className="createChoiceText">
+        {title ? <div className="createChoiceTitle">{title}</div> : null}
+        {description ? <div className="createChoiceDescription">{description}</div> : null}
+        {children}
+      </div>
+      {badge ? <GateBadge className="createChoiceBadge">{badge}</GateBadge> : null}
+    </GateCard>
   );
 }
 

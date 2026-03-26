@@ -1,7 +1,12 @@
 import React, { useMemo, useState } from "react";
-import { Badge, Button, Card } from "../components/UI";
 import ScreenShell from "./_ScreenShell";
-import { BRAND_ACCENT } from "../theme/themeTokens";
+import { GateBadge, GateFooter, GateHeader, GatePanel } from "../shared/ui/gate/Gate";
+import {
+  CreateButton,
+  CreateChoiceCard,
+  CreateHint,
+} from "../ui/create/CreateFormPrimitives";
+import "../features/create-flow/createFlow.css";
 import { buildInitialAiFoundationState } from "../logic/aiFoundation";
 import { migrate } from "../logic/state";
 import {
@@ -12,10 +17,6 @@ import {
   USER_AI_TIME_BLOCK_WINDOWS,
   normalizeUserAiProfile,
 } from "../domain/userAiProfile";
-
-const ACCENT = `var(--accent, ${BRAND_ACCENT})`;
-const BORDER_DEFAULT = "var(--border)";
-const SURFACE_SOFT = "var(--surface)";
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -31,32 +32,15 @@ function hasExistingPlanningData(state) {
 
 function OptionCard({ title, description, selected, disabled = false, onClick, badge = "" }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <CreateChoiceCard
+      title={title}
+      description={description}
+      selected={selected}
       disabled={disabled}
-      style={{
-        display: "block",
-        width: "100%",
-        textAlign: "left",
-        borderRadius: 16,
-        border: `1px solid ${selected ? ACCENT : BORDER_DEFAULT}`,
-        background: selected ? "rgba(255,255,255,0.08)" : SURFACE_SOFT,
-        padding: 14,
-        opacity: disabled ? 0.5 : 1,
-        cursor: disabled ? "not-allowed" : "pointer",
-      }}
-    >
-      <div className="row" style={{ justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-        <div className="titleSm">{title}</div>
-        {badge ? <Badge>{badge}</Badge> : null}
-      </div>
-      {description ? (
-        <div className="small" style={{ marginTop: 6 }}>
-          {description}
-        </div>
-      ) : null}
-    </button>
+      badge={badge}
+      className="onboardingOptionCard"
+      onClick={onClick}
+    />
   );
 }
 
@@ -91,11 +75,11 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
     () => [
       {
         key: "goals",
-        title: "Choisis tes priorites",
-        subtitle: "Maximum 3 domaines. L'ordre de selection devient ton ordre de priorite.",
+        title: "Choisis tes priorités",
+        subtitle: "Maximum 3 domaines. L’ordre de sélection guide la suite.",
         valid: selectedGoals.length > 0,
         content: (
-          <div className="col" style={{ gap: 10 }}>
+          <div className="onboardingOptionGrid">
             {Object.values(USER_AI_CATEGORY_META).map((goalMeta) => {
               const selected = selectedGoals.includes(goalMeta.id);
               const selectionIndex = selectedGoals.indexOf(goalMeta.id);
@@ -103,7 +87,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
                 <OptionCard
                   key={goalMeta.id}
                   title={goalMeta.label}
-                  description="Sera utilise pour creer tes premieres categories et actions."
+                  description="Servira de base pour tes premières catégories et actions."
                   selected={selected}
                   badge={selected ? `#${selectionIndex + 1}` : ""}
                   disabled={!selected && selectedGoals.length >= 3}
@@ -119,15 +103,15 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
       {
         key: "budget",
         title: "Temps quotidien",
-        subtitle: "Choisis un budget credible pour aujourd'hui.",
+        subtitle: "Choisis une base crédible pour démarrer.",
         valid: USER_AI_TIME_BUDGETS.includes(Number(budgetMinutes)),
         content: (
-          <div className="col" style={{ gap: 10 }}>
+          <div className="onboardingOptionGrid">
             {USER_AI_TIME_BUDGETS.map((value) => (
               <OptionCard
                 key={value}
                 title={`${value} min / jour`}
-                description={value <= 60 ? "Lean et tenable." : "Plus ambitieux, mais encore lisible."}
+                description={value <= 60 ? "Sobre et tenable." : "Plus ambitieux, mais encore lisible."}
                 selected={budgetMinutes === value}
                 onClick={() => setBudgetMinutes(value)}
               />
@@ -137,26 +121,26 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
       },
       {
         key: "intensity",
-        title: "Intensite souhaitee",
-        subtitle: "On regle la charge initiale, pas un engagement definitif.",
+        title: "Intensité souhaitée",
+        subtitle: "On règle la charge de départ, pas un engagement figé.",
         valid: USER_AI_INTENSITIES.includes(intensityPreference),
         content: (
-          <div className="col" style={{ gap: 10 }}>
+          <div className="onboardingOptionGrid">
             <OptionCard
-              title="Light"
-              description="Actions plus courtes, slots plus souples."
+              title="Léger"
+              description="Des actions plus courtes et un cadre plus souple."
               selected={intensityPreference === "light"}
               onClick={() => setIntensityPreference("light")}
             />
             <OptionCard
-              title="Balanced"
-              description="Le mode par defaut: credible et progressif."
+              title="Équilibré"
+              description="Le mode par défaut: crédible, progressif, durable."
               selected={intensityPreference === "balanced"}
               onClick={() => setIntensityPreference("balanced")}
             />
             <OptionCard
-              title="Intense"
-              description="Priorite aux blocs principaux quand c'est credible."
+              title="Soutenu"
+              description="Plus de place aux blocs principaux quand c’est crédible."
               selected={intensityPreference === "intense"}
               onClick={() => setIntensityPreference("intense")}
             />
@@ -165,11 +149,11 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
       },
       {
         key: "time-blocks",
-        title: "Moments preferes",
-        subtitle: "Choisis un ou plusieurs moments. L'ordre sert de priorite de placement.",
+        title: "Moments préférés",
+        subtitle: "Choisis un à trois moments. L’ordre aide au placement.",
         valid: preferredTimeBlocks.length > 0,
         content: (
-          <div className="col" style={{ gap: 10 }}>
+          <div className="onboardingOptionGrid">
             {Object.values(USER_AI_TIME_BLOCK_WINDOWS).map((timeBlock) => {
               const selected = preferredTimeBlocks.includes(timeBlock.id);
               const selectionIndex = preferredTimeBlocks.indexOf(timeBlock.id);
@@ -192,25 +176,25 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
       {
         key: "structure",
         title: "Niveau de structure",
-        subtitle: "Plus tu structures, plus Today sera precise des l'ouverture.",
+        subtitle: "Plus c’est structuré, plus Today arrive prêt dès l’ouverture.",
         valid: USER_AI_STRUCTURES.includes(structurePreference),
         content: (
-          <div className="col" style={{ gap: 10 }}>
+          <div className="onboardingOptionGrid">
             <OptionCard
               title="Simple"
-              description="Blocs souples, sans rigidite horaire."
+              description="Des blocs souples, sans rigidité horaire."
               selected={structurePreference === "simple"}
               onClick={() => setStructurePreference("simple")}
             />
             <OptionCard
-              title="Structured"
-              description="Un premier bloc fixe, le reste reste flexible."
+              title="Structuré"
+              description="Un premier bloc fixe, puis de la souplesse autour."
               selected={structurePreference === "structured"}
               onClick={() => setStructurePreference("structured")}
             />
             <OptionCard
-              title="Optimized"
-              description="Des slots les plus precis possibles, sans refonte lourde."
+              title="Optimisé"
+              description="Des créneaux plus précis, sans basculer dans l’usine à gaz."
               selected={structurePreference === "optimized"}
               onClick={() => setStructurePreference("optimized")}
             />
@@ -223,6 +207,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
 
   const currentScreen = questionScreens[step];
   const canContinue = Boolean(currentScreen?.valid);
+  const backgroundImage = safeData?.profile?.whyImage || "";
 
   const finishOnboarding = () => {
     const now = new Date();
@@ -267,114 +252,115 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
 
   if (planOnly) {
     return (
-      <ScreenShell data={safeData} pageId="onboarding" headerTitle="Abonnement" headerSubtitle="Choisis ton plan">
-        <Card accentBorder>
-          <div className="p18">
-            <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <div className="titleSm">Choisis ton plan</div>
-                <div className="small">Aucune facturation ici. Tu pourras changer plus tard.</div>
-                <div className="small2" style={{ marginTop: 6, opacity: 0.9 }}>
-                  L’acces IA Premium sera toujours verifie cote serveur au moment de l’utilisation.
-                </div>
-              </div>
-              <Badge>Plan</Badge>
-            </div>
+      <ScreenShell data={safeData} pageId="onboarding" backgroundImage={backgroundImage}>
+        <GatePanel className="onboardingShell createFlowScope GateMainSection GateSurfacePremium GateCardPremium">
+          <GateHeader
+            title={
+              <span className="createFlowHeaderTitleBlock">
+                <span className="createFlowHeaderEyebrow">Abonnement</span>
+                <span>Choisis ton plan</span>
+              </span>
+            }
+            subtitle="Aucune facturation ici. Tu pourras ajuster ce choix plus tard."
+            actions={<GateBadge>Plan</GateBadge>}
+          />
 
-            <div className="mt14 grid2">
-              <Card accentBorder style={{ borderColor: planChoice === "free" ? ACCENT : BORDER_DEFAULT }}>
-                <div className="p18 col">
-                  <div className="titleSm">Gratuit</div>
-                  <div className="small2">L’essentiel pour demarrer.</div>
-                  <Button
-                    variant={planChoice === "free" ? "primary" : "ghost"}
-                    onClick={() => setPlanChoice("free")}
-                  >
-                    {planChoice === "free" ? "Selectionne" : "Choisir Gratuit"}
-                  </Button>
-                </div>
-              </Card>
+          <div className="onboardingBody">
+            <CreateHint className="onboardingHint">
+              L’accès IA Premium reste vérifié côté serveur au moment de l’utilisation.
+            </CreateHint>
 
-              <Card accentBorder style={{ borderColor: planChoice === "premium" ? ACCENT : BORDER_DEFAULT }}>
-                <div className="p18 col">
-                  <div className="titleSm">Premium</div>
-                  <div className="small2">Liberte totale et reglages avances.</div>
-                  <Button
-                    variant={planChoice === "premium" ? "primary" : "ghost"}
-                    onClick={() => setPlanChoice("premium")}
-                  >
-                    {planChoice === "premium" ? "Selectionne" : "Choisir Premium"}
-                  </Button>
-                </div>
-              </Card>
-            </div>
-
-            <div className="mt12">
-              <Button
-                onClick={() => {
-                  setData((previous) =>
-                    migrate({
-                      ...previous,
-                      profile: {
-                        ...(previous?.profile || {}),
-                        plan: planChoice,
-                      },
-                      ui: {
-                        ...(previous?.ui || {}),
-                        onboardingCompleted: true,
-                        onboardingStep: 5,
-                        showPlanStep: false,
-                      },
-                    })
-                  );
-                  if (typeof onDone === "function") onDone();
-                }}
-              >
-                Acceder a l’app
-              </Button>
+            <div className="onboardingPlanGrid">
+              <CreateChoiceCard
+                className="onboardingPlanCard"
+                title="Gratuit"
+                description="L’essentiel pour démarrer avec un cadre simple."
+                selected={planChoice === "free"}
+                badge={planChoice === "free" ? "Actuel" : ""}
+                onClick={() => setPlanChoice("free")}
+              />
+              <CreateChoiceCard
+                className="onboardingPlanCard"
+                title="Premium"
+                description="Plus de liberté, plus de profondeur, plus d’IA quand tu en as besoin."
+                selected={planChoice === "premium"}
+                badge={planChoice === "premium" ? "Actuel" : ""}
+                onClick={() => setPlanChoice("premium")}
+              />
             </div>
           </div>
-        </Card>
+
+          <GateFooter className="createFlowFooter">
+            <CreateButton
+              onClick={() => {
+                setData((previous) =>
+                  migrate({
+                    ...previous,
+                    profile: {
+                      ...(previous?.profile || {}),
+                      plan: planChoice,
+                    },
+                    ui: {
+                      ...(previous?.ui || {}),
+                      onboardingCompleted: true,
+                      onboardingStep: 5,
+                      showPlanStep: false,
+                    },
+                  })
+                );
+                if (typeof onDone === "function") onDone();
+              }}
+            >
+              Accéder à l’app
+            </CreateButton>
+          </GateFooter>
+        </GatePanel>
       </ScreenShell>
     );
   }
 
   return (
-    <ScreenShell
-      data={safeData}
-      pageId="onboarding"
-      headerTitle={currentScreen?.title || "Onboarding"}
-      headerSubtitle={`${currentScreen?.subtitle || ""} · ${step + 1}/${questionScreens.length}`}
-    >
-      <Card accentBorder>
-        <div className="p18 col" style={{ gap: 14 }}>
-          {currentScreen?.content}
-          <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                if (step === 0) return;
-                setStep((previous) => Math.max(0, previous - 1));
-              }}
-            >
-              Retour
-            </Button>
-            <Button
-              disabled={!canContinue}
-              onClick={() => {
-                if (!canContinue) return;
-                if (step < questionScreens.length - 1) {
-                  setStep((previous) => previous + 1);
-                  return;
-                }
-                finishOnboarding();
-              }}
-            >
-              {step === questionScreens.length - 1 ? "Creer mon plan" : "Continuer"}
-            </Button>
-          </div>
-        </div>
-      </Card>
+    <ScreenShell data={safeData} pageId="onboarding" backgroundImage={backgroundImage}>
+      <GatePanel className="onboardingShell createFlowScope GateMainSection GateSurfacePremium GateCardPremium">
+        <GateHeader
+          title={
+            <span className="createFlowHeaderTitleBlock">
+              <span className="createFlowHeaderEyebrow">Setup initial</span>
+              <span>{currentScreen?.title || "Onboarding"}</span>
+            </span>
+          }
+          subtitle={currentScreen?.subtitle || ""}
+          actions={<GateBadge>{step + 1}/{questionScreens.length}</GateBadge>}
+        />
+
+        <div className="onboardingBody">{currentScreen?.content}</div>
+
+        <GateFooter className="createFlowFooter">
+          <CreateButton
+            variant="ghost"
+            disabled={step === 0}
+            onClick={() => {
+              if (step === 0) return;
+              setStep((previous) => Math.max(0, previous - 1));
+            }}
+          >
+            Retour
+          </CreateButton>
+          <CreateButton
+            disabled={!canContinue}
+            onClick={() => {
+              if (!canContinue) return;
+              if (step < questionScreens.length - 1) {
+                setStep((previous) => previous + 1);
+                return;
+              }
+              finishOnboarding();
+            }}
+          >
+            {step === questionScreens.length - 1 ? "Créer mon plan" : "Continuer"}
+          </CreateButton>
+        </GateFooter>
+      </GatePanel>
     </ScreenShell>
   );
 }

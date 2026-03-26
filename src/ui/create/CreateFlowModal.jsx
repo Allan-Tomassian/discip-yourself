@@ -4,7 +4,8 @@ import { getFirstVisibleCategoryId } from "../../domain/categoryVisibility";
 import { normalizeCreationDraft } from "../../creation/creationDraft";
 import { normalizeCreateFlowMode, resolveCreateFlowPresentation } from "../../creation/createFlowController";
 import { LABELS, UI_COPY } from "../labels";
-import { GateButton, GateCard, GateFooter, GateHeader, GatePanel, GateRow } from "../../shared/ui/gate/Gate";
+import { GateBadge, GateButton, GateFooter, GateHeader, GatePanel, GateRow } from "../../shared/ui/gate/Gate";
+import { CreateChoiceCard } from "./CreateFormPrimitives";
 import CreateV2Outcome from "../../pages/CreateV2Outcome";
 import CreateV2OutcomeNextAction from "../../pages/CreateV2OutcomeNextAction";
 import CreateV2HabitType from "../../pages/CreateV2HabitType";
@@ -31,6 +32,99 @@ function resolveCategory(categories, categoryId) {
     if (match) return match;
   }
   return list[0] || { id: "", name: "Catégorie requise", color: "#F97316" };
+}
+
+function resolveFlowHeader({ step, choice }) {
+  if (step === "choice") {
+    return {
+      progress: "Départ",
+      eyebrow: "Flow de création",
+      title: "Créer quelque chose d’utile",
+      subtitle: "Commence par une action simple. Tu pourras structurer davantage seulement si ça t’aide.",
+    };
+  }
+
+  if (step === "outcome") {
+    return {
+      progress: choice === "guided" ? "Étape 1" : "Étape 1",
+      eyebrow: choice === "guided" ? "Mode guidé" : `${LABELS.goal} avancé`,
+      title: choice === "guided" ? "Structurer avant l’action" : `Créer un ${LABELS.goalLower}`,
+      subtitle:
+        choice === "guided"
+          ? `On pose d’abord un ${LABELS.goalLower} clair, puis on enchaîne sur l’action.`
+          : `Optionnel. Utilise ce mode si tu veux poser une direction avant d’agir.`,
+    };
+  }
+
+  if (step === "outcome-next-action") {
+    return {
+      progress: "Étape 2",
+      eyebrow: "Enchaînement",
+      title: "Ajouter une action maintenant ?",
+      subtitle: "Décision rapide. Tu peux aussi garder cet objectif seul pour l’instant.",
+    };
+  }
+
+  if (step === "habit-type") {
+    return {
+      progress: choice === "guided" ? "Étape 2" : "Étape 1",
+      eyebrow: "Type d’action",
+      title: "Choisis ton niveau de cadrage",
+      subtitle: "Ponctuelle, planifiée ou flexible: garde le format le plus crédible pour toi.",
+    };
+  }
+
+  if (step === "habit-oneoff") {
+    return {
+      progress: choice === "guided" ? "Étape 3" : "Étape 2",
+      eyebrow: "Action ponctuelle",
+      title: "Cadre un seul moment",
+      subtitle: "Date, moment, durée: juste ce qu’il faut pour agir vite.",
+    };
+  }
+
+  if (step === "habit-recurring") {
+    return {
+      progress: choice === "guided" ? "Étape 3" : "Étape 2",
+      eyebrow: "Action planifiée",
+      title: "Cadre une routine crédible",
+      subtitle: "Jours, moment, rappel: tout doit rester lisible et tenable.",
+    };
+  }
+
+  if (step === "habit-anytime") {
+    return {
+      progress: choice === "guided" ? "Étape 3" : "Étape 2",
+      eyebrow: "Action flexible",
+      title: "Garde une fréquence légère",
+      subtitle: "Un cadre suffisant pour exister, sans te rigidifier.",
+    };
+  }
+
+  if (step === "link-outcome") {
+    return {
+      progress: "Optionnel",
+      eyebrow: `${LABELS.goal} avancé`,
+      title: `Lier cette action à un ${LABELS.goalLower} ?`,
+      subtitle: "Ajoute une couche de structure seulement si elle clarifie vraiment le sujet.",
+    };
+  }
+
+  if (step === "pick-category") {
+    return {
+      progress: "Finalisation",
+      eyebrow: "Dernier réglage",
+      title: "Confirme la catégorie finale",
+      subtitle: "Un dernier check rapide avant de fermer le flow.",
+    };
+  }
+
+  return {
+    progress: "Créer",
+    eyebrow: "Flow de création",
+    title: "Créer",
+    subtitle: "Avance étape par étape.",
+  };
 }
 
 export default function CreateFlowModal({
@@ -222,6 +316,7 @@ export default function CreateFlowModal({
     if (step === "pick-category") return STEP_PICK_CATEGORY;
     return choice === "project" || choice === "guided" ? STEP_OUTCOME : STEP_HABIT_TYPE;
   })();
+  const flowHeader = resolveFlowHeader({ step, choice });
 
   if (!open) return null;
 
@@ -235,12 +330,12 @@ export default function CreateFlowModal({
       role="presentation"
     >
       <div
-        className="modalPanelOuter GateGlassOuter"
+        className="modalPanelOuter createFlowPanelOuter GateGlassOuter"
         onClick={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}
         onPointerDown={(event) => event.stopPropagation()}
       >
-        <div className="modalPanelClip GateGlassClip GateGlassBackdrop">
+        <div className="modalPanelClip createFlowPanelClip GateGlassClip GateGlassBackdrop">
           <div
             ref={panelRef}
             className="modalPanel createFlowModal gateModal gateModal--flow GateGlassContent"
@@ -251,7 +346,17 @@ export default function CreateFlowModal({
             onPointerDown={(event) => event.stopPropagation()}
           >
             <GatePanel className="createFlowShell gateModal gateModal--flow createFlowScope GateMainSection GateSurfacePremium GateCardPremium" data-testid="create-flow-modal">
-        <GateHeader title="Créer" subtitle="Commence par une action. Les objectifs restent avancés et optionnels." />
+        <GateHeader
+          className="createFlowHeader"
+          title={
+            <span className="createFlowHeaderTitleBlock">
+              <span className="createFlowHeaderEyebrow">{flowHeader.eyebrow}</span>
+              <span>{flowHeader.title}</span>
+            </span>
+          }
+          subtitle={<span className="createFlowHeaderSubtitle">{flowHeader.subtitle}</span>}
+          actions={<GateBadge className="createFlowProgressBadge">{flowHeader.progress}</GateBadge>}
+        />
 
         <GateRow
           className="createFlowCategoryRow GateRowPremium"
@@ -282,53 +387,41 @@ export default function CreateFlowModal({
         <div className="createFlowBody">
           {step === "choice" ? (
             <div className="createFlowChoiceGrid">
-              <GateCard
-                className={`createFlowChoiceCard GateRowPremium GatePressable${!canProceed ? " isDisabled" : ""}`}
+              <CreateChoiceCard
+                className={`createFlowChoiceCard${!canProceed ? " isDisabled" : ""}`}
                 data-testid="create-choice-action"
-                withSound
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   if (canProceed) startChoice("action");
                 }}
-              >
-                <div className="createFlowChoiceText">
-                  <div className="titleSm">{LABELS.action}</div>
-                  <div className="small2">Voie recommandée. Tu pourras ajouter un objectif avancé plus tard si utile.</div>
-                </div>
-              </GateCard>
+                title={LABELS.action}
+                description="Voie recommandée. Tu pourras structurer ensuite si le sujet le demande."
+              />
               {showLegacyChoices ? (
                 <>
-                  <GateCard
-                    className={`createFlowChoiceCard GateRowPremium GatePressable${!canProceed ? " isDisabled" : ""}`}
+                  <CreateChoiceCard
+                    className={`createFlowChoiceCard${!canProceed ? " isDisabled" : ""}`}
                     data-testid="create-choice-guided"
-                    withSound
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       if (canProceed) startChoice("guided");
                     }}
-                  >
-                    <div className="createFlowChoiceText">
-                      <div className="titleSm">Structurer avec un {LABELS.goalLower} avancé</div>
-                      <div className="small2">Mode avancé pour créer un objectif puis enchaîner sur une action liée.</div>
-                    </div>
-                  </GateCard>
-                  <GateCard
-                    className={`createFlowChoiceCard GateRowPremium GatePressable${!canProceed ? " isDisabled" : ""}`}
+                    title={`Structurer avec un ${LABELS.goalLower} avancé`}
+                    description={`Mode guidé: tu poses d’abord un ${LABELS.goalLower}, puis tu enchaînes sur l’action liée.`}
+                  />
+                  <CreateChoiceCard
+                    className={`createFlowChoiceCard${!canProceed ? " isDisabled" : ""}`}
                     data-testid="create-choice-project"
-                    withSound
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       if (canProceed) startChoice("project");
                     }}
-                  >
-                    <div className="createFlowChoiceText">
-                      <div className="titleSm">Créer un {LABELS.goalLower} avancé</div>
-                      <div className="small2">Créer un {LABELS.goalLower} sans action pour l’instant.</div>
-                    </div>
-                  </GateCard>
+                    title={`Créer un ${LABELS.goalLower} avancé`}
+                    description={`Seulement l’objectif pour l’instant, sans action liée.`}
+                  />
                 </>
               ) : null}
               <GateButton
