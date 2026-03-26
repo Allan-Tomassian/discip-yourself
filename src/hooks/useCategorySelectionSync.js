@@ -3,8 +3,12 @@ import { resolveGoalType } from "../domain/goalType";
 import {
   CATEGORY_VIEW,
   getFirstVisibleCategoryId,
+  getExecutionActiveCategoryId,
   getSelectedCategoryForView,
-  withSelectedCategoryByView,
+  getStoredLibraryActiveCategoryId,
+  resolveLibraryEntryCategoryId,
+  withExecutionActiveCategoryId,
+  withLibraryActiveCategoryId,
 } from "../domain/categoryVisibility";
 import { isPrimaryCategory } from "../logic/priority";
 import { todayLocalKey } from "../utils/datetime";
@@ -41,38 +45,24 @@ export function useCategorySelectionSync({
   const prevTabRef = useRef(tab);
   const didInitTodaySyncRef = useRef(false);
 
-  const librarySelectedCategoryId = safeData?.ui?.librarySelectedCategoryId || null;
-  const homeActiveCategoryId = getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY);
-  const selectedCategoryId = safeData?.ui?.selectedCategoryId || null;
+  const librarySelectedCategoryId = getStoredLibraryActiveCategoryId(safeData);
+  const homeActiveCategoryId = getExecutionActiveCategoryId(safeData);
+  const selectedCategoryId = getExecutionActiveCategoryId(safeData);
   const homeSelectedCategoryId = getHomeSelectedCategoryId(safeData);
+  const libraryEntryCategoryId = resolveLibraryEntryCategoryId({ source: safeData, categories });
 
   const openLibraryDetail = () => {
-    let touched = false;
-    try {
-      touched = sessionStorage.getItem("library:selectedCategoryTouched") === "1";
-    } catch (err) {
-      void err;
-      touched = false;
-    }
-    const libraryViewSelectedId = touched
-      ? getSelectedCategoryForView(safeData, CATEGORY_VIEW.LIBRARY) || librarySelectedCategoryId || null
-      : null;
-    const hasLibrarySelection =
-      libraryViewSelectedId && categories.some((c) => c.id === libraryViewSelectedId);
-    const targetId = hasLibrarySelection ? libraryViewSelectedId : homeSelectedCategoryId;
+    const targetId = libraryEntryCategoryId || homeSelectedCategoryId;
     if (!targetId) {
       setLibraryCategoryId(null);
       setCategoryDetailId(null);
       setTab("library");
       return;
     }
-    if (!hasLibrarySelection) {
+    if (!librarySelectedCategoryId || librarySelectedCategoryId !== targetId) {
       setData((prev) => {
         const prevUi = prev.ui || {};
-        const nextUi = withSelectedCategoryByView(prevUi, {
-          library: targetId,
-          librarySelectedCategoryId: targetId,
-        });
+        const nextUi = withLibraryActiveCategoryId(prevUi, targetId);
         return {
           ...prev,
           ui: {
@@ -82,7 +72,7 @@ export function useCategorySelectionSync({
         };
       });
     }
-    if (hasLibrarySelection) {
+    if (librarySelectedCategoryId === targetId) {
       setData((prev) => {
         const prevUi = prev.ui || {};
         if (!prevUi.libraryDetailExpandedId) return prev;
@@ -126,120 +116,85 @@ export function useCategorySelectionSync({
     } else if (tab === "today") {
       didInitTodaySyncRef.current = true;
     }
-    if (prevTab !== "library" && tab === "library") {
-      let touched = false;
-      try {
-        touched = sessionStorage.getItem("library:selectedCategoryTouched") === "1";
-      } catch (err) {
-        void err;
-        touched = false;
-      }
-      if (!touched) {
-        const libraryId =
-          getSelectedCategoryForView(safeData, CATEGORY_VIEW.LIBRARY) || safeData?.ui?.librarySelectedCategoryId || null;
-        const hasHome =
-          homeActiveCategoryId && categories.some((category) => category.id === homeActiveCategoryId);
-        if (hasHome && homeActiveCategoryId !== libraryId) {
-          setData((prev) => {
-            const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
-            if (!prevCategories.some((category) => category.id === homeActiveCategoryId)) return prev;
-            const prevUi = prev.ui || {};
-            const nextUi = withSelectedCategoryByView(prevUi, {
-              library: homeActiveCategoryId,
-              librarySelectedCategoryId: homeActiveCategoryId,
-            });
-            if (
-              prevUi.librarySelectedCategoryId === homeActiveCategoryId &&
-              getSelectedCategoryForView(prevUi, CATEGORY_VIEW.LIBRARY) === homeActiveCategoryId
-            ) {
-              return prev;
-            }
-            return {
-              ...prev,
-              ui: nextUi,
-            };
-          });
-        }
-      }
+    if (prevTab !== "library" && tab === "library" && !librarySelectedCategoryId && libraryEntryCategoryId) {
+      setData((prev) => {
+        const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
+        if (!prevCategories.some((category) => category.id === libraryEntryCategoryId)) return prev;
+        const prevUi = prev.ui || {};
+        const nextUi = withLibraryActiveCategoryId(prevUi, libraryEntryCategoryId);
+        if (getStoredLibraryActiveCategoryId(prevUi) === libraryEntryCategoryId) return prev;
+        return {
+          ...prev,
+          ui: nextUi,
+        };
+      });
     }
     prevTabRef.current = tab;
   }, [
     tab,
     categories,
-    homeActiveCategoryId,
-    safeData?.ui?.selectedCategoryByView?.library,
-    safeData?.ui?.librarySelectedCategoryId,
+    libraryEntryCategoryId,
+    librarySelectedCategoryId,
     setData,
   ]);
 
   const handleSelectCategory = (categoryId) => {
     if (!categoryId) return;
-    const markLibraryTouched = () => {
-      try {
-        sessionStorage.setItem("library:selectedCategoryTouched", "1");
-      } catch (err) {
-        void err;
-      }
-    };
-    const syncCategorySelection = ({ updateLegacy } = {}) => {
-      const shouldUpdateLegacy = Boolean(updateLegacy);
+    const syncExecutionCategorySelection = () => {
       setData((prev) => {
         const prevUi = prev.ui || {};
-        const nextUi = withSelectedCategoryByView(prevUi, {
-          today: tab === "today" ? categoryId : getSelectedCategoryForView(prevUi, CATEGORY_VIEW.TODAY),
-          planning: tab === "planning" ? categoryId : getSelectedCategoryForView(prevUi, CATEGORY_VIEW.PLANNING),
-          library:
-            tab === "library" || tab === "category-detail" || tab === "category-progress" || tab === "edit-item"
-              ? categoryId
-              : getSelectedCategoryForView(prevUi, CATEGORY_VIEW.LIBRARY),
-          pilotage: tab === "pilotage" ? categoryId : getSelectedCategoryForView(prevUi, CATEGORY_VIEW.PILOTAGE),
-          ...(shouldUpdateLegacy ? { selectedCategoryId: categoryId } : {}),
-          ...(tab === "library" || tab === "category-detail" || tab === "category-progress" || tab === "edit-item"
-            ? { librarySelectedCategoryId: categoryId }
-            : {}),
-        });
+        const nextUi = withExecutionActiveCategoryId(prevUi, categoryId);
         if (
-          prevUi.librarySelectedCategoryId === nextUi.librarySelectedCategoryId &&
-          JSON.stringify(prevUi.selectedCategoryByView || {}) === JSON.stringify(nextUi.selectedCategoryByView || {}) &&
-          (!shouldUpdateLegacy || prevUi.selectedCategoryId === categoryId)
-        ) {
-          return prev;
-        }
+          prevUi.selectedCategoryId === nextUi.selectedCategoryId &&
+          JSON.stringify(prevUi.selectedCategoryByView || {}) === JSON.stringify(nextUi.selectedCategoryByView || {})
+        ) return prev;
         return {
           ...prev,
           ui: nextUi,
         };
       });
     };
+    const syncLibraryCategorySelection = (options = {}) => {
+      const nextExpandedId = Object.prototype.hasOwnProperty.call(options, "libraryDetailExpandedId")
+        ? options.libraryDetailExpandedId
+        : undefined;
+      setData((prev) => {
+        const prevUi = prev.ui || {};
+        const nextUi = withLibraryActiveCategoryId(prevUi, categoryId);
+        const nextDetailExpandedId =
+          nextExpandedId === undefined ? prevUi.libraryDetailExpandedId : nextExpandedId;
+        if (
+          getStoredLibraryActiveCategoryId(prevUi) === getStoredLibraryActiveCategoryId(nextUi) &&
+          prevUi.libraryDetailExpandedId === nextDetailExpandedId &&
+          JSON.stringify(prevUi.selectedCategoryByView || {}) === JSON.stringify(nextUi.selectedCategoryByView || {})
+        ) return prev;
+        return {
+          ...prev,
+          ui:
+            nextDetailExpandedId === prevUi.libraryDetailExpandedId
+              ? nextUi
+              : { ...nextUi, libraryDetailExpandedId: nextDetailExpandedId },
+        };
+      });
+    };
     if (tab === "today") {
-      syncCategorySelection({ updateLegacy: true });
+      syncExecutionCategorySelection();
       setCategoryDetailId(categoryId);
       return;
     }
     if (tab === "planning") {
-      syncCategorySelection({ updateLegacy: true });
+      syncExecutionCategorySelection();
       return;
     }
     if (tab === "library") {
-      markLibraryTouched();
-      syncCategorySelection();
       if (libraryCategoryId) {
+        syncLibraryCategorySelection();
         setLibraryCategoryId(categoryId);
         return;
       }
-      setData((prev) => {
-        const prevUi = prev.ui || {};
-        const isExpanded = prevUi.libraryDetailExpandedId === categoryId;
-        return {
-          ...prev,
-          ui: {
-            ...withSelectedCategoryByView(prevUi, {
-              library: categoryId,
-              librarySelectedCategoryId: categoryId,
-            }),
-            libraryDetailExpandedId: isExpanded ? null : categoryId,
-          },
-        };
+      syncLibraryCategorySelection({
+        libraryDetailExpandedId:
+          libraryEntryCategoryId === categoryId && safeData?.ui?.libraryDetailExpandedId === categoryId ? null : categoryId,
       });
       setLibraryCategoryId(null);
       setCategoryDetailId(null);
@@ -247,34 +202,25 @@ export function useCategorySelectionSync({
       return;
     }
     if (tab === "category-detail") {
-      markLibraryTouched();
-      syncCategorySelection();
+      syncLibraryCategorySelection();
       setLibraryCategoryId(null);
       setCategoryDetailId(null);
       setTab("library");
       return;
     }
     if (tab === "category-progress") {
-      markLibraryTouched();
-      syncCategorySelection();
+      syncLibraryCategorySelection();
       setLibraryCategoryId(null);
       setCategoryProgressId(categoryId);
       setTab("category-progress", { categoryProgressId: categoryId });
       return;
     }
     if (tab === "edit-item") {
-      markLibraryTouched();
-      syncCategorySelection();
+      syncLibraryCategorySelection();
       return;
     }
     if (tab === "pilotage") {
-      setData((prev) => ({
-        ...prev,
-        ui: withSelectedCategoryByView(prev.ui, {
-          pilotage: categoryId,
-          selectedCategoryId: categoryId,
-        }),
-      }));
+      syncExecutionCategorySelection();
       return;
     }
     if (tab === "session") {
@@ -289,40 +235,26 @@ export function useCategorySelectionSync({
         : tab === "category-progress"
           ? categoryProgressId
           : tab === "pilotage"
-            ? safeData?.ui?.selectedCategoryByView?.pilotage ||
-              getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY) ||
-              safeData?.ui?.selectedCategoryId ||
-              null
+            ? getExecutionActiveCategoryId(safeData) || homeSelectedCategoryId || null
           : tab === "planning"
-            ? getSelectedCategoryForView(safeData, CATEGORY_VIEW.PLANNING) ||
-              getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY) ||
-              safeData?.ui?.selectedCategoryId ||
-              null
+            ? getExecutionActiveCategoryId(safeData) || homeSelectedCategoryId || null
             : tab === "library" || tab === "edit-item" || isCreateTab
-              ? getSelectedCategoryForView(safeData, CATEGORY_VIEW.LIBRARY) ||
-                librarySelectedCategoryId ||
-                getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY) ||
-                safeData?.ui?.selectedCategoryId ||
-                null
-              : getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY) || safeData?.ui?.selectedCategoryId || null,
+              ? libraryEntryCategoryId || null
+              : getExecutionActiveCategoryId(safeData) || homeSelectedCategoryId || null,
     [
       tab,
       categoryDetailId,
       categoryProgressId,
-      safeData?.ui?.selectedCategoryByView?.pilotage,
-      safeData?.ui?.selectedCategoryByView?.planning,
-      safeData?.ui?.selectedCategoryByView?.home,
-      safeData?.ui?.selectedCategoryByView?.library,
-      safeData?.ui?.selectedCategoryId,
+      safeData,
       isCreateTab,
-      librarySelectedCategoryId,
+      libraryEntryCategoryId,
+      homeSelectedCategoryId,
     ]
   );
 
   const detailCategoryId =
     categoryDetailId ||
-    getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY) ||
-    safeData?.ui?.selectedCategoryId ||
+    resolveLibraryEntryCategoryId({ source: safeData, categories: safeData?.categories }) ||
     getFirstVisibleCategoryId(safeData?.categories) ||
     null;
 

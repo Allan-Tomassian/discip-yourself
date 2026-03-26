@@ -1,5 +1,6 @@
 import React from "react";
 import { GateSection } from "../../shared/ui/gate/Gate";
+import { getCategoryUiVars } from "../../utils/categoryAccent";
 
 function formatMinutes(value) {
   const safe = Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
@@ -10,9 +11,14 @@ export default function TodayDailyState({
   plannedMinutes = 0,
   doneMinutes = 0,
   remainingMinutes = 0,
+  activeCategory = null,
 }) {
   return (
-    <GateSection className="todaySectionCard GateSurfacePremium GateCardPremium" collapsible={false}>
+    <GateSection
+      className="GateMainSection todaySectionCard GateSurfacePremium GateCardPremium"
+      collapsible={false}
+      style={activeCategory ? getCategoryUiVars(activeCategory, { level: "surface" }) : undefined}
+    >
       <div className="col todaySectionBody">
         <div className="todaySectionHeader">
           <div className="titleSm">État du jour</div>

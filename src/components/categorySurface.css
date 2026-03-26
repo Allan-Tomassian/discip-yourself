@@ -1,0 +1,63 @@
+.categorySurface {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--categoryUiBorder, var(--border-subtle)) 96%, rgba(255, 255, 255, 0.08));
+}
+
+.categorySurface--surface {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--categoryUiTint, rgba(91, 140, 255, 0.16)) 84%, transparent),
+      transparent 72%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-elevated) 96%, rgba(255,255,255,0.02)),
+      color-mix(in srgb, var(--surface-primary) 98%, rgba(0,0,0,0.08))
+    );
+}
+
+.categorySurface--surface::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 0;
+  height: 42px;
+  border-radius: 0 0 16px 16px;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--categoryUiBand, rgba(91, 140, 255, 0.18)) 100%, transparent),
+      transparent 78%
+    );
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+.categorySurface--focus {
+  border-color: color-mix(in srgb, var(--categoryUiBorderStrong, var(--accent)) 94%, rgba(255, 255, 255, 0.12));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--categoryUiFocusStart, rgba(91, 140, 255, 0.2)) 100%, transparent),
+      color-mix(in srgb, var(--categoryUiFocusEnd, rgba(124, 92, 255, 0.12)) 100%, transparent) 62%,
+      transparent
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-elevated) 96%, rgba(255,255,255,0.04)),
+      color-mix(in srgb, var(--surface-primary) 98%, rgba(0,0,0,0.08))
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 18px 32px rgba(0, 0, 0, 0.34),
+    0 0 0 1px color-mix(in srgb, var(--categoryUiGlow, rgba(91, 140, 255, 0.18)) 30%, transparent);
+}
+
+.categorySurfaceBody {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}

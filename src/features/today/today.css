@@ -8,24 +8,21 @@
 .todayHeroCard {
   width: 100%;
   box-sizing: border-box;
-  border-color: color-mix(in srgb, var(--accent) 28%, var(--gate-border));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 18px 32px rgba(0, 0, 0, 0.34),
-    0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .todayHeroCard .gateSectionBody {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
 }
 
 .todayHeroHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   padding-inline: 2px;
   flex-wrap: wrap;
 }
@@ -123,7 +120,7 @@
 .todayHeroBody {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 9px;
   padding-inline: 2px;
 }
 
@@ -141,8 +138,8 @@
 .todayHeroDurationChip {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
-  padding: 6px 10px;
+  min-height: 26px;
+  padding: 5px 9px;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--border-subtle) 94%, rgba(255, 255, 255, 0.06));
   background: color-mix(in srgb, var(--surface-primary) 96%, #0d1118);
@@ -152,56 +149,14 @@
   white-space: nowrap;
 }
 
-.todayHeroHelpToggle {
-  min-height: 30px;
-  padding-inline: 10px;
-  font-size: 12px;
-}
-
-.todayHeroHelp {
-  margin: 0 2px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.06));
-  background: color-mix(in srgb, var(--surface-primary) 96%, #0d1118);
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.todayHeroScopeRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.todayHeroScopeTag {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.08));
-  background: color-mix(in srgb, var(--surface-primary) 96%, #0d1118);
-  color: var(--text-secondary);
-  font-size: 11px;
-  line-height: 1;
-  font-weight: 600;
-}
-
-.todayHeroScopeTag.is-cross {
-  border-color: color-mix(in srgb, var(--accent-primary) 24%, var(--border-subtle));
-  color: var(--text-primary);
-}
-
 .todayHeroDetailList {
   display: grid;
-  gap: 10px;
+  gap: 7px;
 }
 
 .todayHeroDetailBlock {
   display: grid;
-  gap: 3px;
+  gap: 2px;
 }
 
 .todayHeroDetailLabel {
@@ -211,8 +166,8 @@
 }
 
 .todayHeroDetailText {
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.38;
   color: var(--text-primary);
 }
 
@@ -260,7 +215,7 @@
 }
 
 .todayHeroActions {
-  margin-top: 4px;
+  margin-top: 2px;
   padding-inline: 2px;
 }
 
@@ -271,20 +226,28 @@
 }
 
 .todayHeroPrimaryBtn {
-  min-width: 170px;
+  min-width: 156px;
   justify-content: center;
   font-weight: 700;
 }
 
 .todayHeroSecondaryBtn {
-  min-width: 132px;
+  min-width: 118px;
+  min-height: 38px;
   justify-content: center;
+  font-size: 13px;
 }
 
 .todayNextActionItem {
+  position: relative;
   display: grid;
-  gap: 10px;
-  padding: 15px 16px;
+  gap: 8px;
+  padding: 13px 14px;
+}
+
+.todayNextActionItem > * {
+  position: relative;
+  z-index: 1;
 }
 
 .todayNextActionTop {
@@ -327,16 +290,21 @@
   color: var(--text-secondary);
 }
 
+.todaySectionCard {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .todaySectionCard .gateSectionBody {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .todaySectionBody {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .todaySectionHeader {
@@ -358,11 +326,11 @@
 @media (max-width: 767px) {
   .todayHeroCard .gateSectionBody,
   .todaySectionCard .gateSectionBody {
-    gap: 14px;
+    gap: 12px;
   }
 
   .todayHeroTitle {
-    font-size: 17px;
+    font-size: 16px;
   }
 
   .todayHeroActions {

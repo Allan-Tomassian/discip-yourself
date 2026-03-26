@@ -1,6 +1,7 @@
 import React from "react";
 import { GateRow } from "../shared/ui/gate/Gate";
-import { getCategoryAccentVars } from "../utils/categoryAccent";
+import { getCategoryUiVars } from "../utils/categoryAccent";
+import "./categorySurface.css";
 
 export default function AccentCategoryRow({
   category = null,
@@ -17,6 +18,8 @@ export default function AccentCategoryRow({
   const mergedClassName = [
     "accentItem",
     "libraryAccentItem",
+    "categorySurface",
+    "categorySurface--surface",
     "GateRowPremium",
     onClick ? "GatePressable" : "",
     className,
@@ -32,13 +35,13 @@ export default function AccentCategoryRow({
       onKeyDown={onKeyDown}
       right={rightSlot}
       style={{
-        ...getCategoryAccentVars(category || color || "#6EE7FF"),
+        ...getCategoryUiVars(category || color || "#6EE7FF", { level: "surface" }),
         "--libraryAccent": color || category?.color || "#6EE7FF",
         ...style,
       }}
       {...props}
     >
-      <div className="libraryAccentItemBody">{children}</div>
+      <div className="libraryAccentItemBody categorySurfaceBody">{children}</div>
     </GateRow>
   );
 }

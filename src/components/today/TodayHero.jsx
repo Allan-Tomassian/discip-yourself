@@ -1,17 +1,17 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
 import "../../features/today/today.css";
 import ManualAiStatus from "../ai/ManualAiStatus";
 import CategoryPill from "../CategoryPill";
+import { getCategoryUiVars } from "../../utils/categoryAccent";
 
 export default function TodayHero({
   title = "Aucune action prioritaire",
   category = null,
+  activeCategory = null,
   categoryName = "",
   durationLabel = "",
   reason = "",
-  reasonLinkType = "",
-  reasonLinkLabel = "",
   contributionLabel = "",
   recommendedCategoryLabel = "",
   impactText = "",
@@ -31,10 +31,11 @@ export default function TodayHero({
   onOpenPlanning,
   showPlanningShortcut = true,
   isPreparing = false,
-  helpExpanded = false,
-  helpText = "",
-  onToggleHelp,
 }) {
+  const heroAccentVars = useMemo(
+    () => (activeCategory ? getCategoryUiVars(activeCategory, { level: "surface" }) : null),
+    [activeCategory]
+  );
   const displayTitle = title || (isPreparing ? "Préparation de la recommandation" : "Aucune action prioritaire");
   const displayReason = reason || (isPreparing ? "Analyse en cours." : "Aucune raison disponible.");
   const displayContribution = contributionLabel || "Maintenir l’élan sur ta priorité active.";
@@ -42,7 +43,18 @@ export default function TodayHero({
   const displayCategory = recommendedCategoryLabel || categoryName || "À préciser";
 
   return (
-    <GateSection className="todayHeroCard GateSurfacePremium GateCardPremium" collapsible={false}>
+    <GateSection
+      className={[
+        "GateMainSection",
+        "todayHeroCard",
+        "GateSurfacePremium",
+        "GateCardPremium",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      collapsible={false}
+      style={heroAccentVars || undefined}
+    >
       <div className="todayHeroHeader">
         <div className="todayHeroHeaderCluster">
           <ManualAiStatus
@@ -52,32 +64,13 @@ export default function TodayHero({
             stageLabel={analysisStageLabel}
           />
         </div>
-        {helpText ? (
-          <GateButton
-            type="button"
-            variant="ghost"
-            className="GatePressable todayHeroHelpToggle"
-            withSound
-            onClick={() => onToggleHelp?.()}
-          >
-            {helpExpanded ? "Masquer l’aide" : "À quoi sert Today ?"}
-          </GateButton>
-        ) : null}
       </div>
-      {helpExpanded && helpText ? <div className="todayHeroHelp">{helpText}</div> : null}
       <div className="todayHeroBody">
         <div className="todayHeroTitle">{displayTitle}</div>
         <div className="todayHeroMetaRow">
           <CategoryPill category={category} label={displayCategory} className="todayHeroCategoryPill" />
           <div className="todayHeroDurationChip">{durationLabel || "Durée libre"}</div>
         </div>
-        {reasonLinkLabel ? (
-          <div className="todayHeroScopeRow">
-            <span className={`todayHeroScopeTag${reasonLinkType === "cross_category" ? " is-cross" : ""}`}>
-              {reasonLinkLabel}
-            </span>
-          </div>
-        ) : null}
         <div className="todayHeroDetailList">
           <div className="todayHeroDetailBlock">
             <div className="todayHeroDetailLabel">Pourquoi</div>

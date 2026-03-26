@@ -12,6 +12,8 @@ import { resolveManualAiDisplayState } from "../../features/manualAi/displayStat
 import { useManualAiAnalysis } from "../../hooks/useManualAiAnalysis";
 import ManualAiStatus from "../ai/ManualAiStatus";
 import { GateButton as Button, GateSection } from "../../shared/ui/gate/Gate";
+import { getCategoryUiVars } from "../../utils/categoryAccent";
+import "../categorySurface.css";
 
 function describeDraftChange(change, { goalsById, categoriesById }) {
   if (!change || typeof change !== "object") return "";
@@ -44,6 +46,9 @@ export default function PlanningCoachCard({
   occurrences = [],
   goalsById,
   categoriesById,
+  activeCategory = null,
+  onOpenCoach,
+  onOpenPilotage,
 }) {
   const { session } = useAuth();
   const accessToken = session?.access_token || "";
@@ -175,11 +180,23 @@ export default function PlanningCoachCard({
   }
 
   return (
-    <GateSection className="planningSectionCard planningCoachSection GateSurfacePremium GateCardPremium" collapsible={false}>
+    <GateSection
+      className={[
+        "GateMainSection",
+        "planningSectionCard",
+        "planningCoachSection",
+        "GateSurfacePremium",
+        "GateCardPremium",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      collapsible={false}
+      style={activeCategory ? getCategoryUiVars(activeCategory, { level: "surface" }) : undefined}
+    >
       <div className="planningSectionBody">
         <div className="planningSectionHeader planningSectionHeader--split">
           <div className="planningSectionHeaderText">
-            <div className="titleSm">Ajustement prioritaire</div>
+            <div className="titleSm">Coach Planning</div>
             <ManualAiStatus
               statusKind={planningAnalysisState.kind}
               statusLabel={planningAnalysisState.label}
@@ -256,6 +273,15 @@ export default function PlanningCoachCard({
             {draftMessage}
           </div>
         ) : null}
+
+        <div className="planningSectionFooter planningCoachFooter">
+          <Button variant="ghost" onClick={() => onOpenCoach?.()}>
+            Ouvrir le coach
+          </Button>
+          <Button variant="ghost" onClick={() => onOpenPilotage?.()}>
+            Voir mes progrès
+          </Button>
+        </div>
       </div>
     </GateSection>
   );

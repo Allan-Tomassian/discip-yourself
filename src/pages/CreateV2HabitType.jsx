@@ -1,8 +1,8 @@
 import React, { useEffect } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button } from "../components/UI";
 import FlowShell from "../ui/create/FlowShell";
-import { GateSection } from "../shared/ui/gate/Gate";
+import CreateSection from "../ui/create/CreateSection";
+import { CreateButton } from "../ui/create/CreateFormPrimitives";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_HABIT_TYPE, STEP_HABITS } from "../creation/creationSchema";
 
@@ -46,25 +46,25 @@ export default function CreateV2HabitType({
 
   const content = (
     <div className="flowShellBody col gap12">
-      <GateSection title="Type d’action" description="Choisis le planning" collapsible={false}>
+      <CreateSection title="Type d’action" description="Choisis le planning" collapsible={false}>
         <div className="small2 textMuted">
           Choisis le type. Tu configures le planning à l’étape suivante.
         </div>
 
-        <Button onClick={() => setType("ONE_OFF")} data-testid="create-type-oneoff">
+        <CreateButton onClick={() => setType("ONE_OFF")} data-testid="create-type-oneoff">
           Ponctuelle (une fois)
-        </Button>
-        <Button onClick={() => setType("RECURRING")} data-testid="create-type-recurring">
+        </CreateButton>
+        <CreateButton onClick={() => setType("RECURRING")} data-testid="create-type-recurring">
           Récurrente (planifiée)
-        </Button>
-        <Button onClick={() => setType("ANYTIME")} data-testid="create-type-anytime">
+        </CreateButton>
+        <CreateButton onClick={() => setType("ANYTIME")} data-testid="create-type-anytime">
           Anytime (sans planification)
-        </Button>
+        </CreateButton>
 
         {draft?.habitType ? (
           <div className="small2 textMuted">Sélection actuelle : {draft.habitType}</div>
         ) : null}
-      </GateSection>
+      </CreateSection>
     </div>
   );
 
@@ -83,9 +83,9 @@ export default function CreateV2HabitType({
     >
       <div className="stack stackGap12">
         {!hideBack && !isGate ? (
-          <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+          <CreateButton variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
             ← Retour
-          </Button>
+          </CreateButton>
         ) : null}
         <FlowShell>{content}</FlowShell>
       </div>

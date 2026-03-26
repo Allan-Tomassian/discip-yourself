@@ -51,6 +51,11 @@
   padding: 16px;
 }
 
+.libraryPrimaryCard {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .pageNarrow .sectionTitle {
   font-size: 12px;
   line-height: 1.34;
@@ -85,34 +90,8 @@
 }
 
 .libraryAccentItem {
-  position: relative;
   align-items: flex-start;
-  overflow: hidden;
-  border-color: color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.08));
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--accentTint, rgba(91, 140, 255, 0.16)) 84%, transparent),
-      transparent 72%
-    ),
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, rgba(255,255,255,0.02)), color-mix(in srgb, var(--surface-primary) 98%, rgba(0,0,0,0.08)));
-}
-
-.libraryAccentItem::before {
-  content: "";
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  top: 0;
-  height: 42px;
-  border-radius: 0 0 16px 16px;
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--libraryAccent, var(--accent)) 16%, transparent),
-      transparent 78%
-    );
-  opacity: 0.95;
+  position: relative;
 }
 
 .libraryAccentItemBody {
@@ -125,6 +104,26 @@
 
 .libraryAccentItem.listItem {
   padding: 12px 14px;
+}
+
+.libraryDetailStack {
+  gap: 6px;
+}
+
+.libraryDetailStack .mt12 {
+  margin-top: 8px;
+}
+
+.libraryDetailStack .gap10 {
+  gap: 8px;
+}
+
+.libraryDetailStack .gap8 {
+  gap: 6px;
+}
+
+.libraryDetailStack .mt6 {
+  margin-top: 4px;
 }
 
 .categoryGateList.isExpanded {

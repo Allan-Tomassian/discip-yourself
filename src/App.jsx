@@ -18,14 +18,6 @@ import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
 import Planning from "./pages/Planning";
 import Categories from "./pages/Categories";
-import CreateV2Outcome from "./pages/CreateV2Outcome";
-import CreateV2HabitType from "./pages/CreateV2HabitType";
-import CreateV2HabitOneOff from "./pages/CreateV2HabitOneOff";
-import CreateV2HabitRecurring from "./pages/CreateV2HabitRecurring";
-import CreateV2HabitAnytime from "./pages/CreateV2HabitAnytime";
-import CreateV2LinkOutcome from "./pages/CreateV2LinkOutcome";
-import CreateV2PickCategory from "./pages/CreateV2PickCategory";
-import CreateV2OutcomeNextAction from "./pages/CreateV2OutcomeNextAction";
 import CreateFlowModal from "./ui/create/CreateFlowModal";
 import TotemDockLayer from "./ui/totem/TotemDockLayer";
 import Preferences from "./pages/Preferences";
@@ -53,10 +45,6 @@ import { normalizePriorities } from "./logic/priority";
 import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
 import { useTour } from "./tour/useTour";
 import TourOverlay from "./tour/TourOverlay";
-import {
-  STEP_LINK_OUTCOME,
-  STEP_PICK_CATEGORY,
-} from "./creation/creationSchema";
 import DiagnosticOverlay from "./components/DiagnosticOverlay";
 import { ensureWindowFromScheduleRules, validateOccurrences } from "./logic/occurrencePlanner";
 import { resolveExecutableOccurrence } from "./logic/sessionResolver";
@@ -78,8 +66,10 @@ import { buildUserAiProfileSignature, updateUserAiProfileAdaptation } from "./do
 import {
   getVisibleCategories,
   normalizeSelectedCategoryByView,
+  resolveLibraryEntryCategoryId,
   sanitizeVisibleCategoryUi,
-  withSelectedCategoryByView,
+  withExecutionActiveCategoryId,
+  withLibraryActiveCategoryId,
 } from "./domain/categoryVisibility";
 
 function runSelfTests(data) {
@@ -398,7 +388,6 @@ export default function App() {
     [openLibraryDetail, setTab]
   );
   const {
-    draft,
     hasDraft,
     plusOpen,
     plusAnchorRect,
@@ -406,6 +395,7 @@ export default function App() {
     createFlowOpen,
     setCreateFlowOpen,
     createFlowCategoryId,
+    createFlowConfig,
     categoryGateOpen,
     setCategoryGateOpen,
     resetCreateDraft,
@@ -414,6 +404,7 @@ export default function App() {
     createCategoryFromGate,
     toggleCategoryActive,
     handleCategoryGateConfirm,
+    openCreateExpander,
     closePlusExpander,
     handleChooseObjective,
     handleChooseAction,
@@ -800,7 +791,12 @@ export default function App() {
                     onClick={(event) => {
                       const el = event?.currentTarget || null;
                       const rect = el?.getBoundingClientRect ? el.getBoundingClientRect() : null;
-                      openCategoryGate({ source: "bottomrail", anchorEl: el, anchorRect: rect, next: "flow" });
+                      openCreateExpander({
+                        source: tab,
+                        categoryId: railSelectedId || selectedCategoryId || homeActiveCategoryId || null,
+                        anchorEl: el,
+                        anchorRect: rect,
+                      });
                     }}
                   >
                     +
@@ -827,18 +823,15 @@ export default function App() {
             setLibraryCategoryId(categoryId);
             setData((prev) => ({
               ...prev,
-              ui: withSelectedCategoryByView(prev.ui, {
-                library: categoryId,
-                librarySelectedCategoryId: categoryId,
-              }),
+              ui: withLibraryActiveCategoryId(prev.ui, categoryId),
             }));
             setTab("library");
           }}
           onOpenCreateOutcome={() => {
-            openCategoryGate({ source: "today", intent: "outcome", next: "flow" });
+            openCreateOutcomeDirect({ source: "today" });
           }}
           onOpenCreateHabit={() => {
-            openCategoryGate({ source: "today", intent: "habit", next: "flow" });
+            openCreateHabitDirect({ source: "today" });
           }}
           onOpenSession={({ categoryId, dateKey, occurrenceId }) =>
             setTab("session", {
@@ -873,10 +866,7 @@ export default function App() {
             setLibraryCategoryId(detailCategoryId);
             setData((prev) => ({
               ...prev,
-              ui: withSelectedCategoryByView(prev.ui, {
-                library: detailCategoryId,
-                librarySelectedCategoryId: detailCategoryId,
-              }),
+              ui: withLibraryActiveCategoryId(prev.ui, detailCategoryId),
             }));
             setCategoryDetailId(null);
             setTab("library");
@@ -887,16 +877,14 @@ export default function App() {
           data={data}
           categoryId={
             categoryProgressId ||
-            data?.ui?.selectedCategoryByView?.library ||
-            data?.ui?.selectedCategoryId ||
+            resolveLibraryEntryCategoryId({ source: data, categories: data?.categories }) ||
             data?.categories?.[0]?.id ||
             null
           }
           onBack={() => {
             const fallbackId =
               categoryProgressId ||
-              data?.ui?.selectedCategoryByView?.library ||
-              data?.ui?.selectedCategoryId ||
+              resolveLibraryEntryCategoryId({ source: data, categories: data?.categories }) ||
               data?.categories?.[0]?.id ||
               null;
             setCategoryProgressId(null);
@@ -932,11 +920,11 @@ export default function App() {
             setLibraryCategoryId(null);
             setTab("pilotage");
           }}
-          onOpenCreateOutcome={() => {
-            openCreateOutcomeDirect({ source: "library", categoryId: libraryCategoryId });
+          onOpenCreateOutcome={(nextCategoryId) => {
+            openCreateOutcomeDirect({ source: "library", categoryId: nextCategoryId || libraryCategoryId });
           }}
-          onOpenCreateHabit={() => {
-            openCreateHabitDirect({ source: "library", categoryId: libraryCategoryId });
+          onOpenCreateHabit={(nextCategoryId) => {
+            openCreateHabitDirect({ source: "library", categoryId: nextCategoryId || libraryCategoryId });
           }}
           onOpenProgress={(categoryIdValue) => {
             if (!categoryIdValue) return;
@@ -949,10 +937,7 @@ export default function App() {
               setLibraryCategoryId(nextId);
               setData((prev) => ({
                 ...prev,
-                ui: withSelectedCategoryByView(prev.ui, {
-                  library: nextId,
-                  librarySelectedCategoryId: nextId,
-                }),
+                ui: withLibraryActiveCategoryId(prev.ui, nextId),
               }));
             }
             setEditItem({ id, type, categoryId: nextId, returnTab: tab });
@@ -967,148 +952,6 @@ export default function App() {
           onOpenCreateOutcome={() => {
             openCreateOutcomeDirect({ source: "library" });
           }}
-        />
-      ) : tab === "create-goal" ? (
-        <CreateV2Outcome
-          data={data}
-          setData={setData}
-          onBack={() => setTab("library")}
-          onCancel={() => {
-            resetCreateDraft();
-            setTab("library");
-          }}
-          onNext={() => setTab("create-outcome-next")}
-          onAfterSave={() => setTab("create-outcome-next")}
-          canCreateOutcome={canCreateOutcomeNow}
-          onOpenPaywall={openPaywall}
-          isPremiumPlan={isPremiumPlan}
-          planLimits={planLimits}
-        />
-      ) : tab === "create-outcome-next" ? (
-        <CreateV2OutcomeNextAction
-          data={data}
-          setData={setData}
-          onCreateAction={(outcomeId, categoryId) => {
-            openCreateHabitDirect({ source: "post-outcome", categoryId, outcomeId });
-          }}
-          onDone={() => {
-            resetCreateDraft();
-            setTab("library");
-          }}
-        />
-      ) : tab === "create-habit-type" ? (
-        <CreateV2HabitType
-          data={data}
-          setData={setData}
-          onBack={() => {
-            // If we came from objective creation, go back there; otherwise go back to library.
-            const hasOutcomeDraft = Boolean(draft?.createdOutcomeId || draft?.activeOutcomeId);
-            setTab(hasOutcomeDraft ? "create-goal" : "library");
-          }}
-          onNext={(habitType) => {
-            const ht = (habitType || "").toString().toUpperCase();
-            if (ht === "ONE_OFF") setTab("create-habit-oneoff");
-            else if (ht === "RECURRING") setTab("create-habit-recurring");
-            else if (ht === "ANYTIME") setTab("create-habit-anytime");
-            else setTab("create-habit-type");
-          }}
-        />
-            ) : tab === "create-habit-oneoff" ? (
-        <CreateV2HabitOneOff
-          data={data}
-          setData={setData}
-          onBack={() => setTab("create-habit-type")}
-          onNext={(step) => {
-            if (step === STEP_LINK_OUTCOME) setTab("create-link-outcome");
-            else if (step === STEP_PICK_CATEGORY) setTab("create-pick-category");
-            else setTab("library");
-          }}
-          onOpenCategories={() => setTab("library")}
-          onCancel={() => {
-            resetCreateDraft();
-            setTab("library");
-          }}
-          onDone={() => {
-            setLibraryCategoryId(null);
-            setTab("library");
-          }}
-          canCreateAction={canCreateActionNow}
-          onOpenPaywall={openPaywall}
-          isPremiumPlan={isPremiumPlan}
-          planLimits={planLimits}
-          generationWindowDays={generationWindowDays}
-        />
-      ) : tab === "create-habit-recurring" ? (
-        <CreateV2HabitRecurring
-          data={data}
-          setData={setData}
-          onBack={() => setTab("create-habit-type")}
-          onNext={(step) => {
-            if (step === STEP_LINK_OUTCOME) setTab("create-link-outcome");
-            else if (step === STEP_PICK_CATEGORY) setTab("create-pick-category");
-            else setTab("library");
-          }}
-          onOpenCategories={() => setTab("library")}
-          onCancel={() => {
-            resetCreateDraft();
-            setTab("library");
-          }}
-          onDone={() => {
-            setLibraryCategoryId(null);
-            setTab("library");
-          }}
-          canCreateAction={canCreateActionNow}
-          onOpenPaywall={openPaywall}
-          isPremiumPlan={isPremiumPlan}
-          planLimits={planLimits}
-          generationWindowDays={generationWindowDays}
-        />
-      ) : tab === "create-habit-anytime" ? (
-        <CreateV2HabitAnytime
-          data={data}
-          setData={setData}
-          onBack={() => setTab("create-habit-type")}
-          onNext={(step) => {
-            if (step === STEP_LINK_OUTCOME) setTab("create-link-outcome");
-            else if (step === STEP_PICK_CATEGORY) setTab("create-pick-category");
-            else setTab("library");
-          }}
-          onOpenCategories={() => setTab("library")}
-          onCancel={() => {
-            resetCreateDraft();
-            setTab("library");
-          }}
-          onDone={() => {
-            setLibraryCategoryId(null);
-            setTab("library");
-          }}
-          canCreateAction={canCreateActionNow}
-          onOpenPaywall={openPaywall}
-          isPremiumPlan={isPremiumPlan}
-          planLimits={planLimits}
-          generationWindowDays={generationWindowDays}
-        />
-      ) : tab === "create-link-outcome" ? (
-        <CreateV2LinkOutcome
-          data={data}
-          setData={setData}
-          onNext={() => setTab("create-pick-category")}
-          onCancel={() => setTab("create-pick-category")}
-          onDone={() => setTab("library")}
-          canCreateOutcome={canCreateOutcomeNow}
-          onOpenPaywall={openPaywall}
-        />
-      ) : tab === "create-pick-category" ? (
-        <CreateV2PickCategory
-          data={data}
-          setData={setData}
-          onDone={() => {
-            setTab("library");
-          }}
-          onCancel={() => {
-            setTab("library");
-          }}
-          onOpenPaywall={openPaywall}
         />
       ) : tab === "session" ? (
         <Session
@@ -1262,10 +1105,7 @@ export default function App() {
                     if (target?.categoryId) {
                       setData((prev) => ({
                         ...prev,
-                        ui: withSelectedCategoryByView(prev.ui, {
-                          pilotage: target.categoryId,
-                          selectedCategoryId: target.categoryId,
-                        }),
+                        ui: withExecutionActiveCategoryId(prev.ui, target.categoryId),
                       }));
                       setTab("pilotage");
                     }
@@ -1311,6 +1151,10 @@ export default function App() {
         setData={setData}
         categories={visibleCategories}
         selectedCategoryId={createFlowCategoryId || selectedCategoryId}
+        flowSource={createFlowConfig.source}
+        flowMode={createFlowConfig.mode}
+        requestedStep={createFlowConfig.step}
+        requestedHabitType={createFlowConfig.habitType}
         seedCreateDraft={seedCreateDraft}
         resetCreateDraft={resetCreateDraft}
         canCreateOutcome={canCreateOutcomeNow}
@@ -1319,9 +1163,20 @@ export default function App() {
         planLimits={planLimits}
         generationWindowDays={generationWindowDays}
         onOpenPaywall={openPaywall}
-        onChangeCategory={() => {
+        onChangeCategory={(nextFlow) => {
           setCreateFlowOpen(false);
-          openCategoryGate({ source: "create-flow", next: "flow" });
+          openCategoryGate({
+            source: nextFlow?.source || createFlowConfig.source || "create-flow",
+            intent: nextFlow?.mode || createFlowConfig.mode || "action",
+            next: {
+              source: nextFlow?.source || createFlowConfig.source || "create-flow",
+              mode: nextFlow?.mode || createFlowConfig.mode || "action",
+              step: nextFlow?.step || createFlowConfig.step,
+              outcomeId: nextFlow?.outcomeId || null,
+              habitType: nextFlow?.habitType || createFlowConfig.habitType || null,
+              preserveDraft: true,
+            },
+          });
         }}
         onClose={() => setCreateFlowOpen(false)}
       />

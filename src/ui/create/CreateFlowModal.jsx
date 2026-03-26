@@ -1,16 +1,26 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getFirstVisibleCategoryId } from "../../domain/categoryVisibility";
+import { normalizeCreationDraft } from "../../creation/creationDraft";
+import { normalizeCreateFlowMode, resolveCreateFlowPresentation } from "../../creation/createFlowController";
 import { LABELS, UI_COPY } from "../labels";
 import { GateButton, GateCard, GateFooter, GateHeader, GatePanel, GateRow } from "../../shared/ui/gate/Gate";
 import CreateV2Outcome from "../../pages/CreateV2Outcome";
+import CreateV2OutcomeNextAction from "../../pages/CreateV2OutcomeNextAction";
 import CreateV2HabitType from "../../pages/CreateV2HabitType";
 import CreateV2HabitOneOff from "../../pages/CreateV2HabitOneOff";
 import CreateV2HabitRecurring from "../../pages/CreateV2HabitRecurring";
 import CreateV2HabitAnytime from "../../pages/CreateV2HabitAnytime";
 import CreateV2LinkOutcome from "../../pages/CreateV2LinkOutcome";
 import CreateV2PickCategory from "../../pages/CreateV2PickCategory";
-import { STEP_HABIT_TYPE, STEP_LINK_OUTCOME, STEP_PICK_CATEGORY, STEP_OUTCOME } from "../../creation/creationSchema";
+import {
+  STEP_HABITS,
+  STEP_HABIT_TYPE,
+  STEP_LINK_OUTCOME,
+  STEP_OUTCOME,
+  STEP_OUTCOME_NEXT_ACTION,
+  STEP_PICK_CATEGORY,
+} from "../../creation/creationSchema";
 import "../../features/create-flow/createFlow.css";
 import "../../shared/ui/overlays/overlays.css";
 
@@ -31,6 +41,10 @@ export default function CreateFlowModal({
   setData,
   categories,
   selectedCategoryId,
+  flowSource = "create-modal",
+  flowMode = "action",
+  requestedStep = STEP_HABIT_TYPE,
+  requestedHabitType = null,
   seedCreateDraft,
   resetCreateDraft,
   canCreateOutcome,
@@ -46,6 +60,7 @@ export default function CreateFlowModal({
   const [categoryId, setCategoryId] = useState(null);
   const panelRef = useRef(null);
   const previousBodyOverflowRef = useRef("");
+  const draft = useMemo(() => normalizeCreationDraft(data?.ui?.createDraft), [data?.ui?.createDraft]);
 
   const resolvedSelected = useMemo(
     () => resolveCategory(categories, selectedCategoryId),
@@ -54,19 +69,43 @@ export default function CreateFlowModal({
   const category = useMemo(() => resolveCategory(categories, categoryId), [categories, categoryId]);
   const categoryName = category?.name || "Catégorie";
   const categoryColor = category?.color || "#F97316";
+  const initialPresentation = useMemo(
+    () =>
+      resolveCreateFlowPresentation({
+        draft: {
+          ...draft,
+          mode: normalizeCreateFlowMode(flowMode || draft?.mode),
+          step: requestedStep || draft?.step,
+          habitType: requestedHabitType || draft?.habitType,
+        },
+        requestedMode: flowMode || draft?.mode,
+        requestedStep: requestedStep || draft?.step,
+      }),
+    [draft, flowMode, requestedHabitType, requestedStep]
+  );
 
   useEffect(() => {
     if (!open) return;
-    const nextCategoryId = selectedCategoryId || resolvedSelected?.id || getFirstVisibleCategoryId(categories) || null;
+    const nextCategoryId =
+      (draft?.category?.mode === "existing" ? draft.category.id : null) ||
+      selectedCategoryId ||
+      resolvedSelected?.id ||
+      getFirstVisibleCategoryId(categories) ||
+      null;
     setCategoryId(nextCategoryId);
-    setStep("choice");
-    setChoice("action");
-    setShowLegacyChoices(false);
-    if (typeof seedCreateDraft === "function") {
-      seedCreateDraft({ source: "create-modal", categoryId: nextCategoryId, step: STEP_HABIT_TYPE });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+    setStep(initialPresentation.step);
+    setChoice(initialPresentation.choice);
+    setShowLegacyChoices(initialPresentation.choice !== "action" || initialPresentation.step === "choice");
+  }, [
+    categories,
+    draft?.category?.id,
+    draft?.category?.mode,
+    initialPresentation.choice,
+    initialPresentation.step,
+    open,
+    resolvedSelected?.id,
+    selectedCategoryId,
+  ]);
 
   const canProceed = Boolean(categoryId);
 
@@ -115,15 +154,16 @@ export default function CreateFlowModal({
 
   const startChoice = (nextChoice) => {
     if (!canProceed) return;
+    const nextMode = normalizeCreateFlowMode(nextChoice);
     setChoice(nextChoice);
     if (nextChoice === "action") {
       if (typeof seedCreateDraft === "function") {
-        seedCreateDraft({ source: "create-modal", categoryId, step: STEP_HABIT_TYPE });
+        seedCreateDraft({ source: flowSource, categoryId, step: STEP_HABIT_TYPE, mode: nextMode });
       }
       setStep("habit-type");
     } else if (nextChoice === "project" || nextChoice === "guided") {
       if (typeof seedCreateDraft === "function") {
-        seedCreateDraft({ source: "create-modal", categoryId, step: STEP_OUTCOME });
+        seedCreateDraft({ source: flowSource, categoryId, step: STEP_OUTCOME, mode: nextMode });
       }
       setStep("outcome");
     }
@@ -131,14 +171,20 @@ export default function CreateFlowModal({
 
   const handleOutcomeSaved = (outcomeId, nextCategoryId) => {
     if (choice === "project") {
-      if (typeof resetCreateDraft === "function") resetCreateDraft();
-      onClose?.();
+      setStep("outcome-next-action");
       return;
     }
     if (choice === "guided") {
       const catId = nextCategoryId || categoryId || getFirstVisibleCategoryId(categories) || null;
       if (typeof seedCreateDraft === "function") {
-        seedCreateDraft({ source: "create-guided", categoryId: catId, outcomeId, step: STEP_HABIT_TYPE });
+        seedCreateDraft({
+          source: flowSource,
+          categoryId: catId,
+          outcomeId,
+          step: STEP_HABIT_TYPE,
+          mode: "guided",
+          preserveDraft: true,
+        });
       }
       setStep("habit-type");
     }
@@ -167,6 +213,16 @@ export default function CreateFlowModal({
     handleHabitDone();
   };
 
+  const currentDraftStep = (() => {
+    if (step === "outcome") return STEP_OUTCOME;
+    if (step === "outcome-next-action") return STEP_OUTCOME_NEXT_ACTION;
+    if (step === "habit-type") return STEP_HABIT_TYPE;
+    if (step === "habit-oneoff" || step === "habit-recurring" || step === "habit-anytime") return STEP_HABITS;
+    if (step === "link-outcome") return STEP_LINK_OUTCOME;
+    if (step === "pick-category") return STEP_PICK_CATEGORY;
+    return choice === "project" || choice === "guided" ? STEP_OUTCOME : STEP_HABIT_TYPE;
+  })();
+
   if (!open) return null;
 
   const modalBody = (
@@ -194,20 +250,30 @@ export default function CreateFlowModal({
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
           >
-            <GatePanel className="createFlowShell gateModal gateModal--flow createFlowScope GateSurfacePremium GateCardPremium" data-testid="create-flow-modal">
+            <GatePanel className="createFlowShell gateModal gateModal--flow createFlowScope GateMainSection GateSurfacePremium GateCardPremium" data-testid="create-flow-modal">
         <GateHeader title="Créer" subtitle="Commence par une action. Les objectifs restent avancés et optionnels." />
 
         <GateRow
           className="createFlowCategoryRow GateRowPremium"
-          right={
-            step === "choice" ? (
-              <GateButton variant="ghost" className="GatePressable" withSound onClick={onChangeCategory} data-testid="create-change-category">
-                Modifier
-              </GateButton>
-            ) : (
-              <span className="small2 textMuted2">Verrouillée</span>
-            )
-          }
+          right={(
+            <GateButton
+              variant="ghost"
+              className="GatePressable"
+              withSound
+              onClick={() =>
+                onChangeCategory?.({
+                  source: flowSource,
+                  mode: choice,
+                  step: currentDraftStep,
+                  habitType: requestedHabitType || draft?.habitType || null,
+                  outcomeId: draft?.activeOutcomeId || draft?.createdOutcomeId || null,
+                })
+              }
+              data-testid="create-change-category"
+            >
+              Modifier
+            </GateButton>
+          )}
         >
           <span className="createFlowSwatch" style={{ background: categoryColor }} />
           <div className="createFlowCategoryName">{categoryName}</div>
@@ -295,6 +361,29 @@ export default function CreateFlowModal({
                   onOpenPaywall={onOpenPaywall}
                   isPremiumPlan={isPremiumPlan}
                   planLimits={planLimits}
+                  skin="gate"
+                />
+              ) : null}
+
+              {step === "outcome-next-action" ? (
+                <CreateV2OutcomeNextAction
+                  data={data}
+                  setData={setData}
+                  onCreateAction={(outcomeId, nextCategoryId) => {
+                    if (typeof seedCreateDraft === "function") {
+                      seedCreateDraft({
+                        source: flowSource,
+                        categoryId: nextCategoryId || categoryId,
+                        outcomeId,
+                        step: STEP_HABIT_TYPE,
+                        mode: "action",
+                        preserveDraft: true,
+                      });
+                    }
+                    setChoice("action");
+                    setStep("habit-type");
+                  }}
+                  onDone={handleHabitDone}
                   skin="gate"
                 />
               ) : null}

@@ -20,7 +20,7 @@
   flex-direction: column;
   min-height: 0;
   height: 100%;
-  gap: 12px;
+  gap: 16px;
   min-width: 0;
   box-sizing: border-box;
 }
@@ -59,6 +59,9 @@
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   padding-right: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .createFlowChoiceGrid {
@@ -85,52 +88,58 @@
 .createFlowStep {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .flowShell {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   min-height: 0;
+}
+
+.flowShellPanel {
+  gap: 14px;
 }
 
 .flowShellBody {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   min-height: 0;
-}
-
-.flowShell .card {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.flowShell .accentSurface {
-  background: transparent;
-}
-
-.flowShell .btnBackCompact {
-  display: none;
-}
-
-.flowShell .pageHeader,
-.flowShell .pageTitle,
-.flowShell .pageSubtitle {
-  display: none;
 }
 
 .flowShell .screenShellEmbedded {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
   min-height: 0;
 }
 
 .flowShell .pageContent {
   margin-top: 0;
+}
+
+.createStepSection {
+  --gate-premium-radius: 14px;
+}
+
+.createStepSection .gateSectionBody {
+  gap: 12px;
+}
+
+.createFlowScope .GateInputPremium,
+.createFlowScope .GateTextareaPremium,
+.createFlowScope .selectTrigger.GateSelectPremium {
+  width: 100%;
+}
+
+.createFlowScope .selectTrigger.GateSelectPremium {
+  justify-content: space-between;
+}
+
+.createActionButton {
+  min-width: 0;
 }
 
 .createFieldRow {
@@ -147,12 +156,14 @@
 }
 
 .createHelper {
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.4;
   color: var(--text-3, var(--muted2));
 }
 
 .createError {
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.4;
   color: var(--accent, #ff8a3d);
 }
 
@@ -168,9 +179,9 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--gate-border, var(--border-subtle, var(--border))) 84%, transparent);
   background: color-mix(in srgb, var(--surface-2, #0f172a) 90%, #05080f);
 }
@@ -180,6 +191,38 @@
   justify-content: flex-start;
 }
 
+.createHint {
+  font-size: 12px;
+}
+
+.createChipRow {
+  gap: 8px;
+}
+
+.createChip {
+  min-height: 36px;
+}
+
+.createCheckRow {
+  border-radius: 14px;
+}
+
+.createFlowFooter,
+.createInlineActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.createInlineActions {
+  justify-content: space-between;
+}
+
+.createFlowFooter {
+  justify-content: flex-end;
+}
+
 @media (max-width: 720px) {
   .createFlowModal {
     width: min(var(--app-modal-max, 720px), calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
@@ -187,10 +230,24 @@
     max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 16px);
     padding: 16px;
   }
+
+  .createFlowShell {
+    gap: 14px;
+  }
 }
 
 @media (max-width: 600px) {
   .createFieldGrid {
     grid-template-columns: 1fr;
+  }
+
+  .createInlineActions,
+  .createFlowFooter {
+    width: 100%;
+  }
+
+  .createInlineActions > *,
+  .createFlowFooter > * {
+    flex: 1 1 auto;
   }
 }

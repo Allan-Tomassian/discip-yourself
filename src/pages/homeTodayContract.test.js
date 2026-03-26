@@ -50,13 +50,10 @@ describe("home today canonical contract", () => {
     expect(home).toContain("const heroStorageLabel = useMemo(");
     expect(home).toContain("const heroTimestampLabel = useMemo(");
     expect(home).toContain("const heroAnalysisState = useMemo(");
-    expect(home).toContain("const todayHelpStorageKey = useMemo(");
-    expect(home).toContain("helpText=\"Today te montre le prochain bloc utile à lancer maintenant, avec un lien clair vers ta priorité active.\"");
-    expect(home).toContain("onToggleHelp={handleToggleTodayHelp}");
     expect(home).toContain("impactText={heroImpactText}");
     expect(home).toContain("contributionLabel={heroContributionLabel}");
     expect(home).toContain("category={heroDisplayCategory}");
-    expect(home).toContain("reasonLinkType={heroViewModel.reasonLinkType || \"\"}");
+    expect(home).toContain("activeCategory={focusCategory || null}");
     expect(home).toContain("analysisStatusKind={heroAnalysisState.kind}");
     expect(home).toContain("analysisModeLabel={heroAnalysisModeLabel}");
     expect(home).toContain("analysisStorageLabel={heroStorageLabel}");
@@ -65,6 +62,8 @@ describe("home today canonical contract", () => {
     expect(home).toContain("analyzeLabel={heroAnalyzeLabel}");
     expect(home).toContain("analyzeError={manualTodayAnalysis.error}");
     expect(home).toContain("isAiPriority:");
+    expect(home).not.toContain("helpText=");
+    expect(home).not.toContain("reasonLinkType=");
   });
 
   it("logs today coach diagnostics in local dev with a visible console log", () => {
@@ -97,7 +96,9 @@ describe("home today canonical contract", () => {
     expect(home).toContain("const openPlanningForToday = useCallback(() => {");
     expect(home).toContain("selectedDateKey: localTodayKey");
     expect(home).toContain("selectedDate: localTodayKey");
-    expect(home).toContain("planning: executionCategoryId || focusCategory?.id || getSelectedCategoryForView(prev, CATEGORY_VIEW.TODAY) || null");
+    expect(home).toContain("ui: withExecutionActiveCategoryId(");
+    expect(home).toContain("executionCategoryId || focusCategory?.id || getSelectedCategoryForView(prev, CATEGORY_VIEW.TODAY) || null");
+    expect(home).not.toContain("planning: executionCategoryId || focusCategory?.id || getSelectedCategoryForView(prev, CATEGORY_VIEW.TODAY) || null");
     expect(home).toContain("onOpenPlanning={openPlanningForToday}");
   });
 
@@ -120,7 +121,7 @@ describe("home today canonical contract", () => {
     expect(adapter).toContain('gapSummary.selectionScope === "cross_category"');
     expect(home).toContain("computeCategoryScopedRecommendation");
     expect(home).toContain("const scopedFocusOccurrence = localGapSummary?.recommendedOccurrence || null;");
-    expect(home).toContain("reasonLinkLabel={heroViewModel.reasonLinkLabel || \"\"}");
     expect(home).toContain("const heroAnalyzeLabel = manualTodayAnalysis.isPersistedForContext ? \"Rafraîchir l’analyse\" : \"Analyser ma priorité\";");
+    expect(home).not.toContain("reasonLinkLabel={heroViewModel.reasonLinkLabel || \"\"}");
   });
 });

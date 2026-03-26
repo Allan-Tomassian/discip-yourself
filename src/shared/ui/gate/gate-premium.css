@@ -120,6 +120,53 @@
   overflow: hidden;
 }
 
+.GateMainSection {
+  --gate-premium-radius: var(--radius-card, 16px);
+  border-width: 1px;
+  border-style: solid;
+  border-color: color-mix(
+    in srgb,
+    var(--categoryUiBorder, var(--gate-border)) 92%,
+    rgba(255, 255, 255, 0.14)
+  );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--gate-surface-1) 98%, rgba(255, 255, 255, 0.02)),
+    color-mix(in srgb, var(--gate-surface-2) 99%, rgba(0, 0, 0, 0.05))
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 16px 28px rgba(0, 0, 0, 0.28);
+}
+
+.gateSection.GateMainSection,
+.gatePanel.GateMainSection,
+.gateRow.GateMainSection {
+  border-radius: var(--gate-premium-radius);
+  border-color: color-mix(
+    in srgb,
+    var(--categoryUiBorder, var(--gate-border)) 92%,
+    rgba(255, 255, 255, 0.14)
+  );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--gate-surface-1) 98%, rgba(255, 255, 255, 0.02)),
+    color-mix(in srgb, var(--gate-surface-2) 99%, rgba(0, 0, 0, 0.05))
+  );
+  overflow: hidden;
+  background-clip: padding-box;
+}
+
+.GateMainSection .gateSectionBody {
+  gap: 12px;
+  min-width: 0;
+}
+
+.GateMainSection .gateSectionHeader,
+.GateMainSection .cardSectionTitleRow {
+  padding-inline: 2px;
+}
+
 /* Shared text-role hierarchy inside premium surfaces. */
 .GateRoleSectionTitle,
 .GateSurfacePremium .cardSectionTitle,

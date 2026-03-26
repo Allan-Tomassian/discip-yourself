@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { getCategoryAccentVars } from "../utils/categoryAccent";
+import { getCategoryUiVars } from "../utils/categoryAccent";
 
 const SWIPE_THRESHOLD_PX = 36;
 
@@ -62,7 +62,7 @@ export default function CategoryRail({
     >
       {categories.map((c) => {
         const isSelected = c.id === selectedCategoryId;
-        const accentVars = getCategoryAccentVars(c);
+        const accentVars = getCategoryUiVars(c, { level: "focus" });
 
         return (
           <button

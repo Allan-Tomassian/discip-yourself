@@ -111,6 +111,8 @@ export default function CategoryManageInline({
   data,
   setData,
   categoryId,
+  onOpenCreateOutcome,
+  onOpenCreateHabit,
   onOpenPilotage,
   onEditItem,
   onClose,
@@ -846,7 +848,17 @@ export default function CategoryManageInline({
 
       <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-actions-section")}>
         <div className="p18 stack stackGap12">
-          <div className="titleSm">Actions</div>
+          <div className="row rowBetween alignCenter">
+            <div className="titleSm">Actions</div>
+            {typeof onOpenCreateHabit === "function" ? (
+              <Button
+                onClick={() => onOpenCreateHabit(category.id)}
+                data-tour-id={getTourId(inlineEdit, "manage-actions-create")}
+              >
+                Créer une action
+              </Button>
+            ) : null}
+          </div>
           <div className="small2 textMuted">Les actions vivent d’abord ici. Tu peux les relier à un {LABELS.goalLower} avancé seulement si cela aide.</div>
           {actionSections.length ? (
             <div className="stack stackGap12">
@@ -933,7 +945,14 @@ export default function CategoryManageInline({
 
       <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-objectives-section")}>
         <div className="p18 stack stackGap12">
-          <div className="titleSm">{LABELS.goals} avancés (optionnel)</div>
+          <div className="row rowBetween alignCenter">
+            <div className="titleSm">{LABELS.goals} avancés (optionnel)</div>
+            {typeof onOpenCreateOutcome === "function" ? (
+              <Button variant="ghost" onClick={() => onOpenCreateOutcome(category.id)}>
+                Créer un {LABELS.goalLower} avancé
+              </Button>
+            ) : null}
+          </div>
           <div className="small2 textMuted">Utile pour structurer certaines actions, pas pour agir au quotidien.</div>
           {outcomeGoals.length ? (
             <div className="stack stackGap12">

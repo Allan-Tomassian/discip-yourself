@@ -2,7 +2,7 @@ import React from "react";
 import ScreenShell from "./_ScreenShell";
 import { AccentItem, Button, Card } from "../components/UI";
 import { getAccentForPage } from "../utils/_theme";
-import { getCategoryAccentVars } from "../utils/categoryAccent";
+import { getCategoryUiVars } from "../utils/categoryAccent";
 import { resolveGoalType } from "../domain/goalType";
 import { isProcessLinkedToOutcome } from "../logic/linking";
 import { LABELS } from "../ui/labels";
@@ -54,7 +54,7 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
   }
 
   const accent = category.color || getAccentForPage(safeData, "home");
-  const catAccentVars = getCategoryAccentVars(category || accent);
+  const catAccentVars = getCategoryUiVars(category || accent, { level: "surface" });
   const whyText = (category.whyText || "").trim();
 
   return (

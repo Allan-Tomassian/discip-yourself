@@ -14,6 +14,8 @@ export const CREATION_DRAFT_VERSION = 2;
 const REPEAT_VALUES = new Set(["none", "daily", "weekly"]);
 const DOW_VALUES = new Set([1, 2, 3, 4, 5, 6, 7]);
 const QUANTITY_PERIODS = new Set(["DAY", "WEEK", "MONTH"]);
+const CREATE_FLOW_MODES = new Set(["action", "guided", "project"]);
+const CREATE_FLOW_STATUSES = new Set(["draft", "review", "ready"]);
 
 const HABIT_TYPES = new Set(["ONE_OFF", "RECURRING", "ANYTIME"]);
 
@@ -97,6 +99,41 @@ function normalizeRepeat(value) {
   return REPEAT_VALUES.has(raw) ? raw : "";
 }
 
+function normalizeCreateFlowMode(value) {
+  const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return CREATE_FLOW_MODES.has(raw) ? raw : "action";
+}
+
+function normalizeCreateFlowStatus(value) {
+  const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return CREATE_FLOW_STATUSES.has(raw) ? raw : "draft";
+}
+
+function normalizePendingFields(value) {
+  if (!Array.isArray(value)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const entry of value) {
+    const next = typeof entry === "string" ? entry.trim() : "";
+    if (!next || seen.has(next)) continue;
+    seen.add(next);
+    out.push(next);
+  }
+  return out;
+}
+
+function normalizeSourceContext(value) {
+  if (!value || typeof value !== "object") {
+    return { source: null, trigger: null };
+  }
+  const source = typeof value.source === "string" ? value.source.trim() : "";
+  const trigger = typeof value.trigger === "string" ? value.trigger.trim() : "";
+  return {
+    source: source || null,
+    trigger: trigger || null,
+  };
+}
+
 function normalizeDaysOfWeek(value) {
   if (!Array.isArray(value)) return [];
   const out = [];
@@ -138,6 +175,10 @@ export function createEmptyDraft() {
   return {
     version: CREATION_DRAFT_VERSION,
     step: STEP_HABIT_TYPE,
+    mode: "action",
+    status: "draft",
+    sourceContext: { source: null, trigger: null },
+    pendingFields: [],
     habitType: null,
     category: null,
     outcome: null,
@@ -156,6 +197,10 @@ export function normalizeCreationDraft(raw) {
   const draft = raw && typeof raw === "object" ? { ...raw } : createEmptyDraft();
   if (draft.version !== CREATION_DRAFT_VERSION) draft.version = CREATION_DRAFT_VERSION;
   draft.uxV2 = normalizeBoolean(draft.uxV2);
+  draft.mode = normalizeCreateFlowMode(draft.mode);
+  draft.status = normalizeCreateFlowStatus(draft.status);
+  draft.sourceContext = normalizeSourceContext(draft.sourceContext);
+  draft.pendingFields = normalizePendingFields(draft.pendingFields);
   if (!CREATION_STEPS.includes(draft.step)) draft.step = STEP_HABIT_TYPE;
   draft.habitType = normalizeHabitType(draft.habitType);
   if (!draft.category || typeof draft.category !== "object") draft.category = null;

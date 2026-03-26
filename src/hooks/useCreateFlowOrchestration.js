@@ -1,12 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
+import {
+  applyCreateFlowDraftMeta,
+  getDefaultCreationStepForMode,
+  normalizeCreateFlowMode,
+  resolveLegacyCreateRouteIntent,
+} from "../creation/createFlowController";
 import { isValidCreationStep, STEP_HABIT_TYPE } from "../creation/creationSchema";
 import {
   CATEGORY_VIEW,
+  getExecutionActiveCategoryId,
   getFirstVisibleCategoryId,
   getSelectedCategoryForView,
+  getStoredLibraryActiveCategoryId,
   resolvePreferredVisibleCategoryId,
-  withSelectedCategoryByView,
+  withExecutionActiveCategoryId,
+  withLibraryActiveCategoryId,
 } from "../domain/categoryVisibility";
 import { canCreateCategory } from "../logic/entitlements";
 import { ensureSystemInboxCategory, normalizeCategory } from "../logic/state";
@@ -25,6 +34,15 @@ function normalizeAnchorRect(rect) {
   };
 }
 
+function resolveCategoryContextNamespace({ source, tab }) {
+  const safeSource = typeof source === "string" ? source.trim() : "";
+  if (safeSource === "library") return "library";
+  if (safeSource === "today" || safeSource === "planning" || safeSource === "pilotage") return "execution";
+  if (tab === "library" || tab === "category-detail" || tab === "category-progress" || tab === "edit-item") return "library";
+  if (tab === "today" || tab === "planning" || tab === "pilotage") return "execution";
+  return "none";
+}
+
 export function useCreateFlowOrchestration({
   tab,
   isCreateTab,
@@ -41,6 +59,12 @@ export function useCreateFlowOrchestration({
   const plusAnchorElRef = useRef(null);
   const [createFlowOpen, setCreateFlowOpen] = useState(false);
   const [createFlowCategoryId, setCreateFlowCategoryId] = useState(null);
+  const [createFlowConfig, setCreateFlowConfig] = useState({
+    source: null,
+    mode: "action",
+    step: STEP_HABIT_TYPE,
+    habitType: null,
+  });
   const [categoryGateOpen, setCategoryGateOpen] = useState(false);
   const [categoryGateContext, setCategoryGateContext] = useState({
     source: null,
@@ -86,31 +110,28 @@ export function useCreateFlowOrchestration({
     setCategoryGateOpen(true);
   };
 
-  const resolvePreferredCategoryId = useCallback((explicitCategoryId) => {
+  const resolvePreferredCategoryId = useCallback(({ categoryId: explicitCategoryId, source } = {}) => {
+    const contextNamespace = resolveCategoryContextNamespace({ source, tab });
+    const executionCategoryId = getExecutionActiveCategoryId(safeData);
+    const libraryCategoryId = getStoredLibraryActiveCategoryId(safeData);
+    const candidates =
+      contextNamespace === "library"
+        ? [explicitCategoryId, libraryCategoryId, executionCategoryId]
+        : contextNamespace === "execution"
+          ? [explicitCategoryId, executionCategoryId, libraryCategoryId]
+          : [
+              explicitCategoryId,
+              getSelectedCategoryForView(safeData, CATEGORY_VIEW.LIBRARY),
+              getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY),
+              safeData?.ui?.selectedCategoryId,
+            ];
     return resolvePreferredVisibleCategoryId({
       categories,
-      candidates: [
-        explicitCategoryId,
-        getSelectedCategoryForView(safeData, CATEGORY_VIEW.LIBRARY),
-        getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY),
-        safeData?.ui?.selectedCategoryId,
-      ],
+      candidates,
     });
-  }, [categories, safeData]);
+  }, [categories, safeData, tab]);
 
-  const openCreateFlowModal = ({ categoryId } = {}) => {
-    setPlusOpen(false);
-    setCreateFlowCategoryId(resolvePreferredCategoryId(categoryId));
-    setCreateFlowOpen(true);
-  };
-
-  useEffect(() => {
-    if (!isCreateTab || typeof setData !== "function") return;
-    if (!categoryGateOpen) openCategoryGate({ source: "create-block", next: "flow" });
-    if (tab !== "today") setTab("today");
-  }, [isCreateTab, setData, categoryGateOpen, tab]);
-
-  const seedCreateDraft = ({ source, categoryId, outcomeId, step } = {}) => {
+  const seedCreateDraft = useCallback(({ source, categoryId, outcomeId, step, mode, preserveDraft = false, habitType } = {}) => {
     if (typeof setData !== "function") return;
     setData((prev) => {
       const prevUi = prev.ui || {};
@@ -132,29 +153,21 @@ export function useCreateFlowOrchestration({
           ? stateWithInbox.categories.filter((category) => category && !category.system && !category.isSystem)
           : [];
       let resolvedCategoryId = categoryId || null;
+      const contextNamespace = resolveCategoryContextNamespace({ source, tab });
       if (!resolvedCategoryId) {
-        if (source === "library") {
+        if (contextNamespace === "library") {
           resolvedCategoryId =
-            getSelectedCategoryForView(baseUiWithInbox, CATEGORY_VIEW.LIBRARY) ||
-            baseUiWithInbox?.librarySelectedCategoryId ||
-            getSelectedCategoryForView(baseUiWithInbox, CATEGORY_VIEW.TODAY) ||
-            baseUiWithInbox?.selectedCategoryId ||
+            getStoredLibraryActiveCategoryId(baseUiWithInbox) ||
+            getExecutionActiveCategoryId(baseUiWithInbox) ||
             null;
-        } else if (source === "pilotage") {
+        } else if (contextNamespace === "execution") {
           resolvedCategoryId =
-            getSelectedCategoryForView(baseUiWithInbox, CATEGORY_VIEW.PILOTAGE) ||
-            getSelectedCategoryForView(baseUiWithInbox, CATEGORY_VIEW.TODAY) ||
-            baseUiWithInbox?.selectedCategoryId ||
-            null;
-        } else if (source === "today") {
-          resolvedCategoryId =
-            getSelectedCategoryForView(baseUiWithInbox, CATEGORY_VIEW.TODAY) ||
-            baseUiWithInbox?.selectedCategoryId ||
+            getExecutionActiveCategoryId(baseUiWithInbox) ||
             null;
         } else {
           resolvedCategoryId =
-            getSelectedCategoryForView(baseUiWithInbox, CATEGORY_VIEW.TODAY) ||
-            baseUiWithInbox?.selectedCategoryId ||
+            getExecutionActiveCategoryId(baseUiWithInbox) ||
+            getStoredLibraryActiveCategoryId(baseUiWithInbox) ||
             null;
         }
       }
@@ -169,24 +182,72 @@ export function useCreateFlowOrchestration({
       if (resolvedOutcomeId && !stateWithInbox.goals.some((g) => g && g.id === resolvedOutcomeId)) {
         resolvedOutcomeId = null;
       }
-      const nextDraft = createEmptyDraft();
+      const nextMode = normalizeCreateFlowMode(mode);
+      const nextDraft = preserveDraft ? normalizeCreationDraft(baseUiWithInbox.createDraft) : createEmptyDraft();
       if (resolvedCategoryId) nextDraft.category = { mode: "existing", id: resolvedCategoryId };
       if (resolvedOutcomeId) nextDraft.activeOutcomeId = resolvedOutcomeId;
+      if (habitType) nextDraft.habitType = String(habitType).trim().toUpperCase();
       if (isValidCreationStep(step)) nextDraft.step = step;
-      else nextDraft.step = STEP_HABIT_TYPE;
+      else nextDraft.step = getDefaultCreationStepForMode(nextMode);
+      const draftWithMeta = applyCreateFlowDraftMeta(nextDraft, { mode: nextMode, source });
+      let nextUi = baseUiWithInbox;
+      if (resolvedCategoryId && contextNamespace === "execution") {
+        nextUi = withExecutionActiveCategoryId(nextUi, resolvedCategoryId);
+      } else if (resolvedCategoryId && contextNamespace === "library") {
+        nextUi = withLibraryActiveCategoryId(nextUi, resolvedCategoryId);
+      }
       return {
         ...stateWithInbox,
         ui: {
-          ...withSelectedCategoryByView(baseUiWithInbox, {
-            ...(resolvedCategoryId ? { today: resolvedCategoryId } : {}),
-          }),
-          createDraft: nextDraft,
+          ...nextUi,
+          createDraft: draftWithMeta,
           createDraftWasCanceled: shouldReset ? false : baseUiWithInbox.createDraftWasCanceled,
           createDraftWasCompleted: false,
         },
       };
     });
-  };
+  }, [categories, setData, tab]);
+
+  const openCreateFlowModal = useCallback(
+    ({ categoryId, source, mode, step, outcomeId, preserveDraft = false, habitType } = {}) => {
+      const nextMode = normalizeCreateFlowMode(mode);
+      const resolvedCategoryId = resolvePreferredCategoryId({ categoryId, source });
+      const nextStep = isValidCreationStep(step) ? step : getDefaultCreationStepForMode(nextMode);
+      setPlusOpen(false);
+      setCreateFlowCategoryId(resolvedCategoryId);
+      setCreateFlowConfig({
+        source: source || "unknown",
+        mode: nextMode,
+        step: nextStep,
+        habitType: typeof habitType === "string" ? habitType.trim().toUpperCase() : null,
+      });
+      seedCreateDraft({
+        source,
+        categoryId: resolvedCategoryId,
+        outcomeId,
+        step: nextStep,
+        mode: nextMode,
+        preserveDraft,
+        habitType,
+      });
+      setCreateFlowOpen(true);
+    },
+    [resolvePreferredCategoryId, seedCreateDraft]
+  );
+
+  useEffect(() => {
+    if (!isCreateTab) return;
+    const legacyIntent = resolveLegacyCreateRouteIntent(tab);
+    if (!legacyIntent) return;
+    openCreateFlowModal({
+      source: legacyIntent.source,
+      mode: legacyIntent.mode,
+      step: legacyIntent.step,
+      preserveDraft: true,
+      habitType: legacyIntent.habitType,
+    });
+    if (tab !== legacyIntent.baseTab) setTab(legacyIntent.baseTab);
+  }, [isCreateTab, openCreateFlowModal, setTab, tab]);
 
   useEffect(() => {
     if (!isCreateTab) return;
@@ -302,20 +363,12 @@ export function useCreateFlowOrchestration({
         if (Array.isArray(nextUi.categoryRailOrder)) {
           nextUi.categoryRailOrder = nextUi.categoryRailOrder.filter((id) => id !== catId);
         }
-        nextUi = withSelectedCategoryByView(nextUi, {
-          ...(getSelectedCategoryForView(nextUi, CATEGORY_VIEW.TODAY) === catId
-            ? { today: fallbackSelectedId, selectedCategoryId: fallbackSelectedId }
-            : {}),
-          ...(getSelectedCategoryForView(nextUi, CATEGORY_VIEW.PLANNING) === catId
-            ? { planning: fallbackSelectedId }
-            : {}),
-          ...(getSelectedCategoryForView(nextUi, CATEGORY_VIEW.LIBRARY) === catId
-            ? { library: fallbackSelectedId, librarySelectedCategoryId: fallbackSelectedId }
-            : {}),
-          ...(getSelectedCategoryForView(nextUi, CATEGORY_VIEW.PILOTAGE) === catId
-            ? { pilotage: fallbackSelectedId }
-            : {}),
-        });
+        if (getExecutionActiveCategoryId(nextUi) === catId) {
+          nextUi = withExecutionActiveCategoryId(nextUi, fallbackSelectedId);
+        }
+        if (getStoredLibraryActiveCategoryId(nextUi) === catId) {
+          nextUi = withLibraryActiveCategoryId(nextUi, fallbackSelectedId);
+        }
         if (!exists) {
           if (logDebug) {
             const orderLen = Array.isArray(nextUi.categoryRailOrder) ? nextUi.categoryRailOrder.length : 0;
@@ -398,23 +451,32 @@ export function useCreateFlowOrchestration({
         nextCategories = [...prevCategories, created];
         if (!prevOrder.includes(created.id)) nextOrder = [...prevOrder, created.id];
       }
+      const contextNamespace = resolveCategoryContextNamespace({ source: categoryGateContext?.source, tab });
+      let nextUi = prevUi;
+      if (contextNamespace === "execution") {
+        nextUi = withExecutionActiveCategoryId(nextUi, categoryId);
+      } else if (contextNamespace === "library") {
+        nextUi = withLibraryActiveCategoryId(nextUi, categoryId);
+      }
       return {
         ...next,
         categories: nextCategories,
         ui: {
-          ...withSelectedCategoryByView(prevUi, {
-            today: categoryId,
-            planning: categoryId,
-            library: categoryId,
-            pilotage: categoryId,
-            selectedCategoryId: categoryId,
-            librarySelectedCategoryId: categoryId,
-          }),
+          ...nextUi,
           categoryRailOrder: nextOrder,
         },
       };
     });
-    openCreateFlowModal({ categoryId });
+    const nextFlow = categoryGateContext?.next && typeof categoryGateContext.next === "object" ? categoryGateContext.next : {};
+    openCreateFlowModal({
+      source: nextFlow.source || categoryGateContext?.source,
+      categoryId,
+      mode: nextFlow.mode,
+      step: nextFlow.step,
+      outcomeId: nextFlow.outcomeId,
+      preserveDraft: Boolean(nextFlow.preserveDraft),
+      habitType: nextFlow.habitType,
+    });
   };
 
   const openCreateExpander = ({ source, categoryId, anchorRect, anchorEl } = {}) => {
@@ -430,20 +492,49 @@ export function useCreateFlowOrchestration({
   const closePlusExpander = () => setPlusOpen(false);
 
   const openCreateOutcomeDirect = ({ source, categoryId, skipCategoryGate } = {}) => {
-    if (skipCategoryGate === true) {
-      openCreateFlowModal({ categoryId: resolvePreferredCategoryId(categoryId) });
+    const preferredCategoryId = resolvePreferredCategoryId({ categoryId, source });
+    if (skipCategoryGate === true || preferredCategoryId) {
+      openCreateFlowModal({
+        source,
+        categoryId: preferredCategoryId,
+        mode: "project",
+        step: getDefaultCreationStepForMode("project"),
+      });
       return;
     }
-    openCategoryGate({ source: source || "unknown", intent: "action", next: "flow" });
+    openCategoryGate({
+      source: source || "unknown",
+      intent: "project",
+      next: {
+        mode: "project",
+        step: getDefaultCreationStepForMode("project"),
+      },
+    });
   };
 
   const openCreateHabitDirect = ({ source, categoryId, outcomeId, skipCategoryGate } = {}) => {
-    void outcomeId;
-    if (skipCategoryGate === true) {
-      openCreateFlowModal({ categoryId: resolvePreferredCategoryId(categoryId) });
+    const preferredCategoryId = resolvePreferredCategoryId({ categoryId, source });
+    if (skipCategoryGate === true || preferredCategoryId) {
+      openCreateFlowModal({
+        source,
+        categoryId: preferredCategoryId,
+        outcomeId,
+        mode: "action",
+        step: getDefaultCreationStepForMode("action"),
+        preserveDraft: Boolean(outcomeId),
+      });
       return;
     }
-    openCategoryGate({ source: source || "unknown", intent: "habit", next: "flow" });
+    openCategoryGate({
+      source: source || "unknown",
+      intent: "action",
+      next: {
+        mode: "action",
+        step: getDefaultCreationStepForMode("action"),
+        outcomeId: outcomeId || null,
+        preserveDraft: Boolean(outcomeId),
+      },
+    });
   };
 
   const handleChooseObjective = () => {
@@ -457,7 +548,18 @@ export function useCreateFlowOrchestration({
   };
 
   const handleResumeDraft = () => {
-    openCategoryGate({ source: "resume-draft", next: "flow" });
+    openCreateFlowModal({
+      source: draft?.sourceContext?.source || "resume-draft",
+      categoryId:
+        (draft?.category?.mode === "existing" ? draft.category.id : null) ||
+        draft?.pendingCategoryId ||
+        null,
+      outcomeId: draft?.activeOutcomeId || draft?.createdOutcomeId || null,
+      mode: draft?.mode,
+      step: draft?.step,
+      preserveDraft: true,
+      habitType: draft?.habitType,
+    });
   };
 
   return {
@@ -469,6 +571,7 @@ export function useCreateFlowOrchestration({
     createFlowOpen,
     setCreateFlowOpen,
     createFlowCategoryId,
+    createFlowConfig,
     categoryGateOpen,
     setCategoryGateOpen,
     categoryGateContext,

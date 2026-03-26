@@ -1,15 +1,21 @@
 import React from "react";
 import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
 import CategoryPill from "../CategoryPill";
+import { getCategoryUiVars } from "../../utils/categoryAccent";
 
 export default function TodayNextActions({
   actions = [],
   onOpenOccurrence,
+  activeCategory = null,
 }) {
   const safeActions = Array.isArray(actions) ? actions.slice(0, 3) : [];
 
   return (
-    <GateSection className="todaySectionCard GateSurfacePremium GateCardPremium" collapsible={false}>
+    <GateSection
+      className="GateMainSection todaySectionCard GateSurfacePremium GateCardPremium"
+      collapsible={false}
+      style={activeCategory ? getCategoryUiVars(activeCategory, { level: "surface" }) : undefined}
+    >
       <div className="col todaySectionBody">
         <div className="todaySectionHeader">
           <div className="titleSm">À venir aujourd’hui</div>

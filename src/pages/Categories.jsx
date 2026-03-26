@@ -12,7 +12,7 @@ import { regenerateWindowFromScheduleRules, removeScheduleRulesForAction } from 
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
 import { canCreateCategory, getGenerationWindowDays } from "../logic/entitlements";
 import { LABELS } from "../ui/labels";
-import { getCategoryAccentVars } from "../utils/categoryAccent";
+import { getCategoryUiVars } from "../utils/categoryAccent";
 import { resolveGoalType } from "../domain/goalType";
 import { isProcessLinkedToOutcome, linkProcessToOutcome } from "../logic/linking";
 import { buildPlanningSections } from "../utils/librarySections";
@@ -23,10 +23,11 @@ import { fromLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKe
 import { useDraftStore } from "../shared/draft/useDraft";
 import { flushDraftScopes, onBeforeLeaveScope } from "../shared/draft/draftGuards";
 import {
-  CATEGORY_VIEW,
-  getSelectedCategoryForView,
+  getExecutionActiveCategoryId,
+  getStoredLibraryActiveCategoryId,
   getVisibleCategories,
-  withSelectedCategoryByView,
+  withExecutionActiveCategoryId,
+  withLibraryActiveCategoryId,
 } from "../domain/categoryVisibility";
 import { collectSystemInboxBuckets } from "../domain/systemInboxMigration";
 import "../features/library/library.css";
@@ -500,20 +501,14 @@ export default function Categories({
         h && h.categoryId === cat.id ? { ...h, categoryId: sysId } : h
       );
       const fallbackSelectedId = getVisibleCategories(nextCategories)[0]?.id || null;
-      const nextUi = withSelectedCategoryByView(next.ui || {}, {
-        ...(getSelectedCategoryForView(next.ui || {}, CATEGORY_VIEW.TODAY) === cat.id
-          ? { today: fallbackSelectedId, selectedCategoryId: fallbackSelectedId }
-          : {}),
-        ...(getSelectedCategoryForView(next.ui || {}, CATEGORY_VIEW.PLANNING) === cat.id
-          ? { planning: fallbackSelectedId }
-          : {}),
-        ...(getSelectedCategoryForView(next.ui || {}, CATEGORY_VIEW.LIBRARY) === cat.id
-          ? { library: fallbackSelectedId, librarySelectedCategoryId: fallbackSelectedId }
-          : {}),
-        ...(getSelectedCategoryForView(next.ui || {}, CATEGORY_VIEW.PILOTAGE) === cat.id
-          ? { pilotage: fallbackSelectedId }
-          : {}),
-      });
+      const prevUi = next.ui || {};
+      let nextUi = prevUi;
+      if (getExecutionActiveCategoryId(prevUi) === cat.id) {
+        nextUi = withExecutionActiveCategoryId(nextUi, fallbackSelectedId);
+      }
+      if (getStoredLibraryActiveCategoryId(prevUi) === cat.id) {
+        nextUi = withLibraryActiveCategoryId(nextUi, fallbackSelectedId);
+      }
       return {
         ...next,
         categories: nextCategories,
@@ -544,25 +539,12 @@ export default function Categories({
 
   // IMPORTANT:
   // This page must not mutate ui.selectedCategoryId (used by Plan / CategoryDetail).
-  // We isolate the Library selection using ui.librarySelectedCategoryId.
-  const librarySelectedCategoryId =
-    getSelectedCategoryForView(safeData, CATEGORY_VIEW.LIBRARY) ||
-    safeData?.ui?.librarySelectedCategoryId ||
-    null;
-  const homeSelectedCategoryId =
-    getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY) ||
-    safeData?.ui?.selectedCategoryId ||
-    null;
+  // We isolate the Library selection in the library namespace, with execution as entry fallback only.
+  const librarySelectedCategoryId = getStoredLibraryActiveCategoryId(safeData) || null;
+  const homeSelectedCategoryId = getExecutionActiveCategoryId(safeData) || null;
   const libraryDetailExpandedId = safeData?.ui?.libraryDetailExpandedId || null;
   const libraryViewSelectedId = librarySelectedCategoryId || homeSelectedCategoryId || null;
-
-  function markLibraryTouched() {
-    try {
-      sessionStorage.setItem("library:selectedCategoryTouched", "1");
-    } catch (err) {
-      void err;
-    }
-  }
+  const activeLibraryCategory = activeCategories.find((category) => category.id === libraryViewSelectedId) || null;
 
   function setLibraryCategory(categoryId) {
     if (!categoryId) return;
@@ -573,10 +555,7 @@ export default function Categories({
         const prevUi = prev.ui || {};
         return {
           ...prev,
-          ui: withSelectedCategoryByView(prevUi, {
-            library: categoryId,
-            librarySelectedCategoryId: categoryId,
-          }),
+          ui: withLibraryActiveCategoryId(prevUi, categoryId),
         };
       });
     }
@@ -602,7 +581,6 @@ export default function Categories({
 
   function handleOpenDetail(categoryId) {
     if (!categoryId) return;
-    markLibraryTouched();
     if (libraryDetailExpandedId === categoryId) {
       if (editedCategoryId === categoryId) {
         saveGoalTitleEditing();
@@ -751,7 +729,7 @@ export default function Categories({
     const isExpanded = libraryDetailExpandedId === category.id;
     const isEditing = editedCategoryId === category.id;
     const isSuggested = suggestedIds.has(category.id);
-    const detailAccentVars = getCategoryAccentVars(category);
+    const detailAccentVars = getCategoryUiVars(category, { level: "surface" });
     const detailWhy = (category.whyText || "").trim() || "Aucun mini-why pour cette catégorie.";
     const categoryDraft = isEditing ? draftStore.getDraft(getCategoryScopeKey(category.id)) : null;
     const draftCategoryName = categoryDraft?.working?.name ?? category.name ?? "";
@@ -817,7 +795,7 @@ export default function Categories({
           </div>
         </AccentCategoryRow>
         {isExpanded ? (
-          <div className="col gap8 pl10" style={detailAccentVars}>
+          <div className="col gap8 pl10 libraryDetailStack" style={detailAccentVars}>
             <div className="row rowBetween alignCenter">
               <div className="small2 textMuted2">
                 Détails
@@ -1162,7 +1140,10 @@ export default function Categories({
           </Card>
         ) : null}
 
-        <Card>
+        <Card
+          className="GateMainSection libraryPrimaryCard"
+          style={activeLibraryCategory ? getCategoryUiVars(activeLibraryCategory, { level: "surface" }) : undefined}
+        >
           <div className="p18">
             <div className="row rowBetween alignCenter libraryCardHeader">
               <div className="sectionTitle">Catégories</div>

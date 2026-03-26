@@ -1,10 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Input } from "../components/UI";
 import FlowShell from "../ui/create/FlowShell";
-import Select from "../ui/select/Select";
+import CreateSection from "../ui/create/CreateSection";
+import {
+  CreateButton,
+  CreateHint,
+  CreateInput,
+  CreateSelect,
+} from "../ui/create/CreateFormPrimitives";
 import DatePicker from "../ui/date/DatePicker";
-import { GateSection } from "../shared/ui/gate/Gate";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_OUTCOME_NEXT_ACTION } from "../creation/creationSchema";
 import {
@@ -204,28 +208,28 @@ export default function CreateV2Outcome({
 
   const content = (
     <div className="flowShellBody col gap12">
-      <GateSection title="Catégorie" collapsible={false}>
-        <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+      <CreateSection title="Catégorie" collapsible={false}>
+        <CreateSelect value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
           {categoryOptions.map((category) => (
             <option key={category.id} value={category.id}>
               {category.name || "Catégorie"}
               {category.suggested ? " (suggestion)" : ""}
             </option>
           ))}
-        </Select>
+        </CreateSelect>
         {selectedSuggestion ? (
-          <div className="row rowBetween alignCenter">
+          <div className="createInlineActions">
             <div className="small2 textMuted">Suggestion non activée.</div>
-            <Button variant="ghost" onClick={() => activateSuggestedCategory(selectedSuggestion)}>
+            <CreateButton variant="ghost" onClick={() => activateSuggestedCategory(selectedSuggestion)}>
               Activer
-            </Button>
+            </CreateButton>
           </div>
         ) : null}
-      </GateSection>
+      </CreateSection>
 
-      <GateSection title={`${LABELS.goal} avancé`} description="Optionnel" collapsible={false}>
+      <CreateSection title={`${LABELS.goal} avancé`} description="Optionnel" collapsible={false}>
         <div className="small2">Tu peux agir sans {LABELS.goalLower}. Utilise-le seulement pour structurer un sujet plus large.</div>
-        <Input
+        <CreateInput
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
@@ -233,14 +237,14 @@ export default function CreateV2Outcome({
           }}
           placeholder={`Nom du ${LABELS.goalLower}`}
         />
-        <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
+        <CreateSelect value={priority} onChange={(e) => setPriority(e.target.value)}>
           <option value="secondaire">Secondaire</option>
           <option value="prioritaire">Prioritaire</option>
           <option value="bonus">Bonus</option>
-        </Select>
-      </GateSection>
+        </CreateSelect>
+      </CreateSection>
 
-      <GateSection title="Dates" description="Début + fin" collapsible={false}>
+      <CreateSection title="Dates" description="Début + fin" collapsible={false}>
         <div className="stack stackGap6">
           <div className="small2 textMuted">Date de début (optionnel)</div>
           <DatePicker
@@ -271,22 +275,22 @@ export default function CreateV2Outcome({
           />
           {error ? (
             <div className="stack stackGap6">
-              <div className="small2 textAccent">{error}</div>
-              <Button
+              <CreateHint tone="danger">{error}</CreateHint>
+              <CreateButton
                 variant="ghost"
                 onClick={() => {
                   if (typeof onNext === "function") onNext();
                 }}
               >
                 Créer une action à la place
-              </Button>
+              </CreateButton>
             </div>
           ) : null}
           <div className="small2 textMuted2">{startDateHelper}</div>
         </div>
-      </GateSection>
-      <div className="row rowEnd gap10">
-        <Button
+      </CreateSection>
+      <div className="createFlowFooter">
+        <CreateButton
           variant="ghost"
           onClick={() => {
             if (typeof onCancel === "function") {
@@ -297,10 +301,10 @@ export default function CreateV2Outcome({
           }}
         >
           Annuler
-        </Button>
-        <Button onClick={handleNext} disabled={!canContinue}>
+        </CreateButton>
+        <CreateButton onClick={handleNext} disabled={!canContinue}>
           Continuer
-        </Button>
+        </CreateButton>
       </div>
     </div>
   );
@@ -320,9 +324,9 @@ export default function CreateV2Outcome({
     >
       <div className="stack stackGap12">
         {!hideBack && !isGate ? (
-          <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+          <CreateButton variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
             ← Retour
-          </Button>
+          </CreateButton>
         ) : null}
         <FlowShell>{content}</FlowShell>
       </div>

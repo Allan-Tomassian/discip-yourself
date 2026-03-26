@@ -4,20 +4,32 @@
 }
 
 .gatePagePanel {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  padding: 0;
-  gap: 24px;
+  gap: 18px;
+  padding: 18px;
 }
 
 .gatePageHeader {
-  padding: 2px 0 6px;
+  padding: 2px 2px 4px;
 }
 
 .gatePageContent {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
   min-width: 0;
+}
+
+.gatePageContent > .gateSection.GateSurfacePremium {
+  --gate-premium-radius: 14px;
+}
+
+@media (max-width: 720px) {
+  .gatePagePanel {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .gatePageContent {
+    gap: 14px;
+  }
 }

@@ -14,8 +14,10 @@ import {
   resolvePreferredVisibleCategoryId,
 } from "../domain/categoryVisibility";
 import { collectSystemInboxBuckets } from "../domain/systemInboxMigration";
+import { getCategoryUiVars } from "../utils/categoryAccent";
 import { deriveTodayCalendarModel } from "../features/today/todayCalendarModel";
 import "../features/planning/planning.css";
+import "../components/categorySurface.css";
 
 function sortOccurrences(left, right) {
   const a = typeof left?.start === "string" ? left.start : "";
@@ -79,6 +81,14 @@ export default function Planning({
     [categories, safeUi]
   );
   const planningView = safeUi.planningView === "week" ? "week" : "day";
+  const activeCategory = useMemo(
+    () => categories.find((category) => category.id === activeCategoryId) || null,
+    [activeCategoryId, categories]
+  );
+  const activeCategorySurfaceVars = useMemo(
+    () => (activeCategory ? getCategoryUiVars(activeCategory, { level: "surface" }) : null),
+    [activeCategory]
+  );
 
   const goals = useMemo(
     () =>
@@ -247,7 +257,11 @@ export default function Planning({
       headerSubtitle="Répartis, ajuste et garde une charge crédible."
     >
       <div className="col planningPage">
-        <GateSection className="planningSectionCard planningCalendarSection GateSurfacePremium GateCardPremium" collapsible={false}>
+        <GateSection
+          className="GateMainSection planningSectionCard planningCalendarSection GateSurfacePremium GateCardPremium"
+          collapsible={false}
+          style={activeCategorySurfaceVars || undefined}
+        >
           <div className="planningSectionBody">
             <div className="planningSectionHeader planningSectionHeader--split">
               <div className="planningSectionHeaderText">
@@ -293,10 +307,19 @@ export default function Planning({
         </GateSection>
 
         <GateSection
-          className="planningSectionCard planningContentSection GateSurfacePremium GateCardPremium"
+          className={[
+            "planningSectionCard",
+            "planningContentSection",
+            "GateMainSection",
+            "GateSurfacePremium",
+            "GateCardPremium",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           title={planningSectionTitle}
           description={planningSectionDescription}
           collapsible={false}
+          style={activeCategorySurfaceVars || undefined}
         >
           {planningView === "day" ? (
             <div className="planningDayList">
@@ -370,23 +393,10 @@ export default function Planning({
           occurrences={occurrences}
           goalsById={goalsById}
           categoriesById={categoriesById}
+          activeCategory={activeCategory}
+          onOpenCoach={onOpenCoach}
+          onOpenPilotage={() => setTab?.("pilotage")}
         />
-
-        <GateSection
-          className="planningSectionCard planningSupportSection GateSurfacePremium GateCardPremium"
-          title="Ajustements intelligents"
-          description="Planning s’appuie sur l’engine existant. Les replanifications IA restent proposées sous forme de brouillon avant application."
-          collapsible={false}
-        >
-          <div className="planningSectionFooter">
-            <Button variant="ghost" onClick={() => onOpenCoach?.()}>
-              Ouvrir le coach
-            </Button>
-            <Button variant="ghost" onClick={() => setTab?.("pilotage")}>
-              Voir mes progrès
-            </Button>
-          </div>
-        </GateSection>
 
         {pendingOccurrence ? (
           <GateSection

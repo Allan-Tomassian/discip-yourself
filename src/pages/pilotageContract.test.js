@@ -19,7 +19,7 @@ describe("Pilotage contract", () => {
     expect(source).toContain("buildPilotageDisciplineTrend");
     expect(source).toContain("PILOTAGE_DISCIPLINE_WINDOWS");
     expect(source).toContain("DisciplineTrendChart");
-    expect(source).toContain("Évolution discipline");
+    expect(source).toContain("Pilotage rapide");
     expect(source).toContain("disciplineTrendChartKey");
     expect(source).not.toContain("function buildChartPoint");
     expect(source).not.toContain("function buildChartPath");
@@ -30,6 +30,8 @@ describe("Pilotage contract", () => {
     expect(source).not.toContain("computePilotageInsights");
     expect(chartSource).toContain("buildDisciplineTrendChartGeometry");
     expect(chartSource).toContain("pilotageTrendChart--single");
+    expect(chartSource).toContain("variant = \"default\"");
+    expect(chartSource).toContain("pilotageTrendChart--compact");
     expect(chartSource).toContain("pathLength=\"1\"");
     expect(chartSource).toContain("pilotageTrendTooltip");
     expect(chartModelSource).toContain("hasSingleScoredPoint");
@@ -47,7 +49,7 @@ describe("Pilotage contract", () => {
     expect(source).toContain("<ManualAiStatus");
     expect(source).toContain("manualPilotageAnalysis.loadingStageLabel");
     expect(source).toContain("Niveau actuel");
-    expect(source).toContain("Jours avec progression");
+    expect(source).toContain("Jours actifs");
     expect(source).toContain("Analyser cette catégorie");
   });
 
@@ -56,12 +58,17 @@ describe("Pilotage contract", () => {
     const registrySource = readSrc("logic/blocks/registry.js");
 
     expect(source).toContain("const [openCategoryId, setOpenCategoryId] = useState(null);");
+    expect(source).toContain("const [showDeferredCategories, setShowDeferredCategories] = useState(false);");
     expect(source).toContain("buildPilotageGlobalSummary");
     expect(source).toContain("buildPilotageGlobalStats");
     expect(source).toContain("Statistiques globales");
     expect(source).toContain("Synthèse globale");
     expect(source).toContain("togglePilotageCategory");
     expect(source).toContain("pilotageInlineDetail");
+    expect(source).toContain("Catégories déjà exploitables");
+    expect(source).toContain("à structurer");
+    expect(source).not.toContain("pilotageInlineSummaryHead");
+    expect(source).not.toContain("Lecture rapide de cette catégorie.");
     expect(source).not.toContain("const [pilotageView, setPilotageView] = useState(\"global\");");
     expect(source).not.toContain("Retour à la vue globale");
     expect(source).not.toContain("data-tour-id=\"pilotage-reporting\"");

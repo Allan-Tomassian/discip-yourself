@@ -6,6 +6,8 @@ describe("creationDraft action-first defaults", () => {
   it("starts with habit type step for new drafts", () => {
     const draft = createEmptyDraft();
     expect(draft.step).toBe(STEP_HABIT_TYPE);
+    expect(draft.mode).toBe("action");
+    expect(draft.status).toBe("draft");
     expect(draft.uxV2).toBe(true);
   });
 
@@ -17,5 +19,19 @@ describe("creationDraft action-first defaults", () => {
   it("keeps explicit legacy outcome step for compatibility", () => {
     const draft = normalizeCreationDraft({ step: STEP_OUTCOME, outcomes: [] });
     expect(draft.step).toBe(STEP_OUTCOME);
+  });
+
+  it("normalizes flow metadata without adding a new persistence key", () => {
+    const draft = normalizeCreationDraft({
+      mode: "guided",
+      status: "ready",
+      sourceContext: { source: "today", trigger: "cta" },
+      pendingFields: ["categoryId", "categoryId", "", "habitType"],
+    });
+
+    expect(draft.mode).toBe("guided");
+    expect(draft.status).toBe("ready");
+    expect(draft.sourceContext).toEqual({ source: "today", trigger: "cta" });
+    expect(draft.pendingFields).toEqual(["categoryId", "habitType"]);
   });
 });

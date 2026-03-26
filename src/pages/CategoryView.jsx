@@ -25,6 +25,8 @@ export default function CategoryView({
   setData,
   categoryId,
   onBack,
+  onOpenCreateOutcome,
+  onOpenCreateHabit,
   onOpenPilotage,
   onOpenProgress,
   onEditItem,
@@ -185,6 +187,8 @@ export default function CategoryView({
         data={data}
         setData={setData}
         categoryId={resolvedCategoryId}
+        onOpenCreateOutcome={onOpenCreateOutcome}
+        onOpenCreateHabit={onOpenCreateHabit}
         onOpenPilotage={onOpenPilotage}
         onEditItem={onEditItem}
         onClose={onBack}

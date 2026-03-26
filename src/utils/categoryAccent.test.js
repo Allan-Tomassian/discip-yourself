@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getCategoryAccentVars } from "./categoryAccent";
+import { getCategoryAccentVars, getCategoryUiVars, resolveCategoryStateTone } from "./categoryAccent";
 
 describe("getCategoryAccentVars", () => {
   it("returns the mapped gradient for known categories", () => {
@@ -28,5 +28,44 @@ describe("getCategoryAccentVars", () => {
 
     expect(direct["--accent"]).toBe("#ABCDEF");
     expect(direct["--category-gradient"]).toContain("#ABCDEF");
+  });
+
+  it("derives stable UI vars for pill, surface and focus levels", () => {
+    const pill = getCategoryUiVars({ name: "Sport", color: "#3aa0ff" }, { level: "pill" });
+    const surface = getCategoryUiVars({ name: "Sport", color: "#3aa0ff" }, { level: "surface" });
+    const focus = getCategoryUiVars({ name: "Sport", color: "#3aa0ff" }, { level: "focus" });
+
+    expect(pill["--categoryUiLevel"]).toBe("pill");
+    expect(surface["--categoryUiLevel"]).toBe("surface");
+    expect(focus["--categoryUiLevel"]).toBe("focus");
+    expect(pill["--categoryUiTint"]).not.toBe(surface["--categoryUiTint"]);
+    expect(focus["--categoryUiBorderStrong"]).toContain("rgba(");
+    expect(surface["--categoryUiGradient"]).toContain("linear-gradient");
+  });
+
+  it("attenuates weak states and nudges critical states without losing category context", () => {
+    const weak = getCategoryUiVars({ name: "Finance", color: "#22c55e" }, { level: "surface", stateTone: "weak" });
+    const critical = getCategoryUiVars(
+      { name: "Finance", color: "#22c55e" },
+      { level: "surface", stateTone: "critical" }
+    );
+
+    expect(weak["--categoryUiStateTone"]).toBe("weak");
+    expect(critical["--categoryUiStateTone"]).toBe("critical");
+    expect(weak["--accent"]).not.toBe("#22c55e");
+    expect(critical["--accent"]).not.toBe("#22c55e");
+    expect(critical["--category-gradient"]).toContain("linear-gradient");
+  });
+});
+
+describe("resolveCategoryStateTone", () => {
+  it("keeps the default tone for healthy values", () => {
+    expect(resolveCategoryStateTone({ value: 0.75 })).toBe("default");
+  });
+
+  it("returns weak or critical for low values and empty expected work", () => {
+    expect(resolveCategoryStateTone({ value: 0.4 })).toBe("weak");
+    expect(resolveCategoryStateTone({ value: 0.2 })).toBe("critical");
+    expect(resolveCategoryStateTone({ done: 0, expected: 3 })).toBe("critical");
   });
 });

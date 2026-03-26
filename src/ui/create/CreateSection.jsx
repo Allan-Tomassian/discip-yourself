@@ -8,6 +8,8 @@ export default function CreateSection({
   children,
   collapsible = true,
   defaultOpen = true,
+  className = "",
+  ...props
 }) {
   return (
     <GateSection
@@ -15,6 +17,8 @@ export default function CreateSection({
       description={description}
       collapsible={collapsible}
       defaultOpen={defaultOpen}
+      className={`createStepSection GateSurfacePremium GateCardPremium${className ? ` ${className}` : ""}`}
+      {...props}
     >
       {children}
     </GateSection>

@@ -8,10 +8,10 @@ import { updateOccurrence } from "../logic/occurrences";
 import { applySessionRuntimeTransition, isRuntimeSessionOpen } from "../logic/sessionRuntime";
 import { emitSessionRuntimeNotificationHook } from "../logic/sessionRuntimeNotifications";
 import { getAccentForPage } from "../utils/_theme";
-import { getCategoryAccentVars } from "../utils/categoryAccent";
+import { getCategoryUiVars } from "../utils/categoryAccent";
 import { resolveConflictNearest } from "../logic/occurrencePlanner";
 import { normalizeActiveSessionForUI, normalizeOccurrenceForUI } from "../logic/compat";
-import { withSelectedCategoryByView } from "../domain/categoryVisibility";
+import { withExecutionActiveCategoryId } from "../domain/categoryVisibility";
 import "../features/session/session.css";
 
 function formatElapsed(ms) {
@@ -119,7 +119,7 @@ export default function Session({
   }, [goals, selectedOccurrence?.goalId, session?.habitIds]);
   const category = categories.find((item) => item?.id === goal?.categoryId) || null;
   const accent = category?.color || getAccentForPage(safeData, "home");
-  const catAccentVars = getCategoryAccentVars(category || accent);
+  const catAccentVars = getCategoryUiVars(category || accent, { level: "focus" });
 
   useEffect(() => {
     const isRunning = Boolean(session && isRuntimeSessionOpen(session) && session?.timerRunning);
@@ -293,7 +293,7 @@ export default function Session({
         : prev;
       return {
         ...reported,
-        ui: withSelectedCategoryByView(
+        ui: withExecutionActiveCategoryId(
           {
             ...(reported?.ui || {}),
             selectedDateKey: targetDateKey,
@@ -301,9 +301,7 @@ export default function Session({
             planningPendingOccurrenceId: selectedOccurrence.id,
             planningPendingIntent: "reschedule",
           },
-          {
-            planning: targetCategoryId,
-          }
+          targetCategoryId
         ),
       };
     });

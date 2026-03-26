@@ -15,8 +15,13 @@ describe("Planning primitive convergence contract", () => {
 
     expect(source).toContain("import { GateButton as Button, GateSection } from \"../shared/ui/gate/Gate\";");
     expect(source).not.toContain("from \"../components/UI\"");
-    expect(source).toContain("className=\"planningSectionCard planningCalendarSection GateSurfacePremium GateCardPremium\"");
-    expect(source).toContain("className=\"planningSectionCard planningContentSection GateSurfacePremium GateCardPremium\"");
+    expect(source).toContain("planningCalendarSection");
+    expect(source).toContain("planningContentSection");
+    expect(source).toContain("GateSurfacePremium");
+    expect(source).toContain("GateCardPremium");
+    expect(source).toContain("GateMainSection");
+    expect(source).not.toContain("planningSupportSection");
+    expect(source).not.toContain("Ajustements intelligents");
   });
 
   it("keeps the coach card on Gate primitives too", () => {
@@ -24,6 +29,11 @@ describe("Planning primitive convergence contract", () => {
 
     expect(source).toContain("import { GateButton as Button, GateSection } from \"../../shared/ui/gate/Gate\";");
     expect(source).not.toContain("from \"../UI\"");
-    expect(source).toContain("className=\"planningSectionCard planningCoachSection GateSurfacePremium GateCardPremium\"");
+    expect(source).toContain("planningCoachSection");
+    expect(source).toContain("GateSurfacePremium");
+    expect(source).toContain("GateCardPremium");
+    expect(source).toContain("GateMainSection");
+    expect(source).toContain("Coach Planning");
+    expect(source).toContain("Voir mes progrès");
   });
 });

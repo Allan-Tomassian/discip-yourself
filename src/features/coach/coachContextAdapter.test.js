@@ -5,21 +5,21 @@ describe("coachContextAdapter", () => {
   const data = {
     ui: {
       selectedDateKey: "2026-03-25",
-      selectedCategoryId: "cat_today",
+      selectedCategoryId: "cat_exec",
       librarySelectedCategoryId: "cat_library",
       selectedCategoryByView: {
-        today: "cat_today",
-        planning: "cat_planning",
+        today: "cat_exec",
+        planning: "cat_exec",
         library: "cat_library",
-        pilotage: "cat_pilotage",
+        pilotage: "cat_exec",
       },
     },
   };
 
-  it("uses the planning category when the coach is opened from planning", () => {
+  it("uses the shared execution category when the coach is opened from planning", () => {
     expect(getCoachContextSnapshot({ data, surfaceTab: "planning" })).toMatchObject({
       selectedDateKey: "2026-03-25",
-      activeCategoryId: "cat_planning",
+      activeCategoryId: "cat_exec",
       surfaceTab: "planning",
       categoryView: "planning",
     });
@@ -34,7 +34,7 @@ describe("coachContextAdapter", () => {
 
   it("falls back to the today category for the dedicated coach route", () => {
     expect(getCoachContextSnapshot({ data, surfaceTab: "coach-chat" })).toMatchObject({
-      activeCategoryId: "cat_today",
+      activeCategoryId: "cat_exec",
       categoryView: "today",
     });
   });

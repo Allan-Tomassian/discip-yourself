@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Button } from "./UI";
 import Portal from "../ui/portal/Portal";
 import { LABELS } from "../ui/labels";
+import { GateButton } from "../shared/ui/gate/Gate";
 
 function toAnchorRect(rect) {
   if (!rect) return null;
@@ -98,16 +98,16 @@ export default function PlusExpander({
           <div className="plusExpanderPanelClip GateGlassClip GateGlassBackdrop">
             <div className="plusExpanderPanelContent GateGlassContent" ref={panelRef} role="menu" aria-label="Créer">
               <div className="stack stackGap8">
-                <Button onClick={onChooseAction}>
+                <GateButton className="GatePressable" onClick={onChooseAction}>
                   Créer une action
-                </Button>
-                <Button variant="ghost" onClick={onChooseObjective}>
+                </GateButton>
+                <GateButton variant="ghost" className="GatePressable" onClick={onChooseObjective}>
                   Créer un {LABELS.goalLower} avancé
-                </Button>
+                </GateButton>
                 {hasDraft && typeof onResumeDraft === "function" ? (
-                  <Button variant="ghost" onClick={onResumeDraft}>
+                  <GateButton variant="ghost" className="GatePressable" onClick={onResumeDraft}>
                     Reprendre
-                  </Button>
+                  </GateButton>
                 ) : null}
               </div>
             </div>

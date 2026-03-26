@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button } from "../components/UI";
 import FlowShell from "../ui/create/FlowShell";
-import { GateSection } from "../shared/ui/gate/Gate";
+import CreateSection from "../ui/create/CreateSection";
+import { CreateButton } from "../ui/create/CreateFormPrimitives";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { getFirstVisibleCategoryId, getVisibleCategories } from "../domain/categoryVisibility";
 import { resolveGoalType } from "../domain/goalType";
@@ -55,16 +55,16 @@ export default function CreateV2OutcomeNextAction({
 
   const content = (
     <div className="flowShellBody col gap12">
-      <GateSection title="Ajouter une action maintenant ?" description="Optionnel" collapsible={false}>
+      <CreateSection title="Ajouter une action maintenant ?" description="Optionnel" collapsible={false}>
         <div className="small2">Tu peux créer une action liée maintenant, ou garder cet {LABELS.goalLower} seul pour l’instant.</div>
         <div className="small textMuted">
           {outcome?.title || LABELS.goal} · {categoryId ? "Catégorie choisie" : "Catégorie requise"}
         </div>
-        <div className="row rowBetween">
-          <Button variant="ghost" onClick={clearDraftAndExit}>
+        <div className="createInlineActions">
+          <CreateButton variant="ghost" onClick={clearDraftAndExit}>
             Plus tard
-          </Button>
-          <Button
+          </CreateButton>
+          <CreateButton
             onClick={() => {
               if (typeof onCreateAction === "function" && categoryId) {
                 onCreateAction(outcomeId, categoryId);
@@ -73,12 +73,12 @@ export default function CreateV2OutcomeNextAction({
             disabled={!categoryId}
           >
             Créer une action
-          </Button>
+          </CreateButton>
         </div>
         <div className="small2 textMuted2">
           Tu pourras ajouter ou lier une action plus tard.
         </div>
-      </GateSection>
+      </CreateSection>
     </div>
   );
 

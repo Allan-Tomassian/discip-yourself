@@ -17,17 +17,19 @@ import AccentCategoryRow from "../components/AccentCategoryRow";
 import { LABELS } from "../ui/labels";
 import {
   CATEGORY_VIEW,
+  getExecutionActiveCategoryId,
   getSelectedCategoryForView,
   getVisibleCategories,
   resolvePreferredVisibleCategoryId,
-  withSelectedCategoryByView,
+  withExecutionActiveCategoryId,
 } from "../domain/categoryVisibility";
 import { collectSystemInboxBuckets } from "../domain/systemInboxMigration";
-import { getCategoryAccentVars } from "../utils/categoryAccent";
+import { getCategoryUiVars, resolveCategoryStateTone } from "../utils/categoryAccent";
 import DisciplineTrendChart from "../features/pilotage/DisciplineTrendChart";
 import { buildPilotageDisciplineTrend, PILOTAGE_DISCIPLINE_WINDOWS } from "../features/pilotage/disciplineTrendModel";
 import ManualAiStatus from "../components/ai/ManualAiStatus";
 import "../features/pilotage/pilotage.css";
+import "../components/categorySurface.css";
 
 const STATUS_LABELS = {
   EMPTY: "Vide",
@@ -65,6 +67,11 @@ const clamp01 = (n) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 function formatMinutes(value) {
   if (!Number.isFinite(value)) return "0 min";
   return `${Math.max(0, Math.round(value))} min`;
+}
+
+function resolveExpectedRatio(done, expected) {
+  if (!Number.isFinite(expected) || expected <= 0) return null;
+  return clamp01((Number.isFinite(done) ? done : 0) / expected);
 }
 
 function Button({ variant = "primary", className = "", ...props }) {
@@ -324,31 +331,37 @@ function buildPilotageGlobalSummary({ categories, countsByCategory, statusByCate
   if (!safeCategories.length) {
     return {
       summary: "Aucune catégorie visible pour le moment.",
-      signals: ["Ajoute une catégorie ou rends-la visible pour commencer le pilotage."],
+      strongestSignal: "Ajoute une catégorie ou rends-la visible pour commencer le pilotage.",
+      frictionSignal: "",
+      dormantSignal: "",
       focusCategory: null,
     };
   }
 
-  const signals = [];
-  if (focusCategory?.name) {
-    signals.push(`${focusCategory.name} reste le meilleur point d’entrée pour lire tes progrès actuels.`);
-  }
-  if (structuredCategories.length) {
-    signals.push(`${structuredCategories.length} catégorie${structuredCategories.length > 1 ? "s" : ""} ont déjà une structure exploitable.`);
-  }
-  if (emptyCategories.length) {
-    signals.push(`${emptyCategories.length} catégorie${emptyCategories.length > 1 ? "s" : ""} restent encore sans base claire.`);
-  }
-  if (activeStatuses.length) {
-    signals.push(`${activeStatuses.length} catégorie${activeStatuses.length > 1 ? "s" : ""} sont actives cette semaine.`);
-  }
+  const strongestSignal = focusCategory?.name
+    ? `${focusCategory.name} est la catégorie la plus exploitable en ce moment.`
+    : structuredCategories.length
+      ? `${structuredCategories.length} catégorie${structuredCategories.length > 1 ? "s" : ""} ont déjà une base utile.`
+      : "Aucune catégorie n’a encore une base assez solide.";
+  const frictionSignal = emptyCategories.length
+    ? `${emptyCategories.length} catégorie${emptyCategories.length > 1 ? "s" : ""} restent sans structure claire.`
+    : activeStatuses.length
+      ? `${activeStatuses.length} catégorie${activeStatuses.length > 1 ? "s" : ""} tiennent encore une cadence active.`
+      : "Aucune catégorie n’entretient encore un vrai rythme.";
+  const dormantSignal = emptyCategories.length
+    ? `${emptyCategories[0]?.name || "Une catégorie"} reste encore vide ou peu structurée.`
+    : structuredCategories.length > activeStatuses.length
+      ? "Une partie des catégories structurées reste encore peu activée."
+      : "La base actuelle est exploitable sans angle mort majeur.";
 
   return {
     summary:
       structuredCategories.length > 0
         ? `${structuredCategories.length} catégorie${structuredCategories.length > 1 ? "s" : ""} sur ${safeCategories.length} montrent déjà une dynamique exploitable.`
         : "Aucune catégorie n’a encore assez de structure pour dégager une vraie lecture.",
-    signals: signals.slice(0, 3),
+    strongestSignal,
+    frictionSignal,
+    dormantSignal,
     focusCategory,
   };
 }
@@ -426,6 +439,7 @@ export default function Pilotage({
   const selectedCategoryId = resolvePreferredVisibleCategoryId({
     categories,
     candidates: [
+      getExecutionActiveCategoryId(safeData),
       getSelectedCategoryForView(safeData, CATEGORY_VIEW.PILOTAGE),
       getSelectedCategoryForView(safeData, CATEGORY_VIEW.TODAY),
     ],
@@ -440,14 +454,14 @@ export default function Pilotage({
     () => categories.find((category) => category.id === openCategoryId) || null,
     [categories, openCategoryId]
   );
+  const activePilotageSurfaceVars = useMemo(
+    () => (selectedCategory ? getCategoryUiVars(selectedCategory, { level: "surface" }) : null),
+    [selectedCategory]
+  );
 
   const detailCounts = useMemo(
     () => (detailCategory?.id ? countsByCategory.get(detailCategory.id) || null : null),
     [countsByCategory, detailCategory?.id]
-  );
-  const detailStatus = useMemo(
-    () => (detailCategory?.id ? statusByCategory.get(detailCategory.id) || null : null),
-    [detailCategory?.id, statusByCategory]
   );
   const detailWeek = useMemo(() => {
     if (!detailCategory?.id) return null;
@@ -515,13 +529,10 @@ export default function Pilotage({
       if (!categoryId || typeof setData !== "function") return;
       setData((previous) => {
         const prevUi = previous?.ui && typeof previous.ui === "object" ? previous.ui : {};
-        if (getSelectedCategoryForView(prevUi, CATEGORY_VIEW.PILOTAGE) === categoryId) return previous;
+        if (getExecutionActiveCategoryId(prevUi) === categoryId) return previous;
         return {
           ...previous,
-          ui: withSelectedCategoryByView(prevUi, {
-            pilotage: categoryId,
-            selectedCategoryId: categoryId,
-          }),
+          ui: withExecutionActiveCategoryId(prevUi, categoryId),
         };
       });
     },
@@ -542,12 +553,10 @@ export default function Pilotage({
     if (!categories.length) {
       setData((previous) => {
         const prevUi = previous?.ui && typeof previous.ui === "object" ? previous.ui : {};
-        if (getSelectedCategoryForView(prevUi, CATEGORY_VIEW.PILOTAGE) == null) return previous;
+        if (getExecutionActiveCategoryId(prevUi) == null) return previous;
         return {
           ...previous,
-          ui: withSelectedCategoryByView(prevUi, {
-            pilotage: null,
-          }),
+          ui: withExecutionActiveCategoryId(prevUi, null),
         };
       });
       return;
@@ -594,6 +603,37 @@ export default function Pilotage({
       }),
     [categories, countsByCategory, selectedCategory, statusByCategory]
   );
+  const [showDeferredCategories, setShowDeferredCategories] = useState(false);
+  const focusCategories = useMemo(
+    () =>
+      categories.map((category) => {
+        const counts = countsByCategory.get(category.id) || { activeOutcomesCount: 0, processCount: 0 };
+        const status = statusByCategory.get(category.id) || "ACTIVE";
+        return {
+          category,
+          counts,
+          status,
+          isStructured: Boolean((counts.activeOutcomesCount || 0) > 0 || (counts.processCount || 0) > 0),
+          summary:
+            counts.activeOutcomesCount || counts.processCount
+              ? `${counts.activeOutcomesCount} ${LABELS.goalsLower} · ${counts.processCount} ${LABELS.actionsLower}`
+              : "Aucun élément",
+        };
+      }),
+    [categories, countsByCategory, statusByCategory]
+  );
+  const structuredFocusCategories = useMemo(
+    () => focusCategories.filter((entry) => entry.isStructured),
+    [focusCategories]
+  );
+  const deferredFocusCategories = useMemo(
+    () => focusCategories.filter((entry) => !entry.isStructured),
+    [focusCategories]
+  );
+  const isDeferredGroupOpen =
+    showDeferredCategories ||
+    structuredFocusCategories.length === 0 ||
+    deferredFocusCategories.some((entry) => entry.category.id === openCategoryId);
   const globalPilotageStats = useMemo(
     () =>
       buildPilotageGlobalStats({
@@ -685,6 +725,150 @@ export default function Pilotage({
     (category) => category?.color || category?.accentColor || category?.hex || category?.themeColor || "#6EE7FF",
     []
   );
+  const renderInlineCategoryDetail = (category) => {
+    if (!category || openCategoryId !== category.id) return null;
+    const sharedSurfaceVars = getCategoryUiVars(category, { level: "surface" });
+    const completionTone = resolveCategoryStateTone({
+      value: resolveExpectedRatio(detailWeek?.done, detailWeek?.expected),
+      done: detailWeek?.done,
+      expected: detailWeek?.expected,
+    });
+    const scoreTone = resolveCategoryStateTone({
+      value: Number.isFinite(disciplineTrend.summary.currentScore) ? disciplineTrend.summary.currentScore / 100 : null,
+    });
+    const activeDaysTone = resolveCategoryStateTone({
+      value: constanceSummary.activeDays7 / 7,
+    });
+    const trendTone =
+      disciplineTrend.summary.trendLabel === "baisse"
+        ? "critical"
+        : disciplineTrend.summary.trendLabel === "irrégularité"
+          ? "weak"
+          : "default";
+    return (
+      <div className="pilotageInlineDetail" style={sharedSurfaceVars}>
+        <div className="pilotageInlineGrid">
+          <div
+            className="pilotageInlinePanel pilotageInlinePanel--metrics categorySurface categorySurface--surface"
+            data-tour-id="pilotage-discipline"
+            style={sharedSurfaceVars}
+          >
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div>
+                <div className="sectionTitle">Pilotage rapide</div>
+                <div className="small2 textMuted">4 signaux utiles et une mini courbe de lecture.</div>
+              </div>
+              <div className="row pilotageCompactWindowControls">
+                {PILOTAGE_DISCIPLINE_WINDOWS.map((windowDays) => (
+                  <Button
+                    key={windowDays}
+                    variant={disciplineWindowDays === windowDays ? "primary" : "ghost"}
+                    onClick={() => setDisciplineWindowDays(windowDays)}
+                  >
+                    {windowDays} j
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="pilotageMiniStatsGrid">
+              <div
+                className="pilotageMiniStat categorySurface categorySurface--surface"
+                style={getCategoryUiVars(detailCategory, { level: "surface", stateTone: completionTone })}
+              >
+                <div className="small2">Fait / attendu</div>
+                <div className="titleSm">{detailWeek ? `${detailWeek.done || 0} / ${detailWeek.expected || 0}` : "—"}</div>
+              </div>
+              <div
+                className="pilotageMiniStat categorySurface categorySurface--surface"
+                style={getCategoryUiVars(detailCategory, { level: "surface", stateTone: scoreTone })}
+              >
+                <div className="small2">Niveau actuel</div>
+                <div className="titleSm">
+                  {Number.isFinite(disciplineTrend.summary.currentScore) ? `${disciplineTrend.summary.currentScore}%` : "—"}
+                </div>
+              </div>
+              <div
+                className="pilotageMiniStat categorySurface categorySurface--surface"
+                style={getCategoryUiVars(detailCategory, { level: "surface", stateTone: trendTone })}
+              >
+                <div className="small2">Rythme</div>
+                <div className="titleSm">{formatDisciplineTrendLabel(disciplineTrend.summary.trendLabel)}</div>
+              </div>
+              <div
+                className="pilotageMiniStat categorySurface categorySurface--surface"
+                style={getCategoryUiVars(detailCategory, { level: "surface", stateTone: activeDaysTone })}
+              >
+                <div className="small2">Jours actifs</div>
+                <div className="titleSm">{constanceSummary.activeDays7}/7</div>
+              </div>
+            </div>
+            <DisciplineTrendChart
+              key={disciplineTrendChartKey}
+              trend={disciplineTrend}
+              color={getCategoryColor(detailCategory)}
+              animated
+              variant="compact"
+            />
+          </div>
+
+          <div className="pilotageInlinePanel categorySurface categorySurface--surface" style={sharedSurfaceVars}>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div>
+                <div className="sectionTitle">Lecture locale</div>
+                <ManualAiStatus
+                  statusKind={pilotageAnalysisState.kind}
+                  statusLabel={pilotageAnalysisState.label}
+                  detailLabel={
+                    manualPilotageAnalysis.visibleAnalysis
+                      ? persistenceScope === "cloud"
+                        ? "Synchronisée sur tes appareils."
+                        : "Enregistrée sur cet appareil."
+                      : "Lecture locale prête. Analyse IA sur demande."
+                  }
+                  stageLabel={manualPilotageAnalysis.loadingStageLabel}
+                />
+              </div>
+              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                <Button onClick={handleAnalyzeCategory} disabled={!detailCategory || manualPilotageAnalysis.loading}>
+                  {manualPilotageAnalysis.loading ? manualPilotageAnalysis.loadingStageLabel || "Analyse..." : "Analyser cette catégorie"}
+                </Button>
+                {manualPilotageAnalysis.isPersistedForContext ? (
+                  <Button variant="ghost" onClick={manualPilotageAnalysis.dismissAnalysis}>
+                    Revenir au diagnostic local
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+            {!detailCategoryProfileSummary?.hasProfile && !detailCounts?.processCount && !detailCounts?.activeOutcomesCount ? (
+              <div className="small2 textMuted">
+                Cette catégorie n’a pas encore assez de structure pour produire une lecture plus fine.
+              </div>
+            ) : null}
+            <div className="pilotageReadingGrid">
+              <div className="pilotageInsightItem">
+                <div className="small2 textMuted">Résumé</div>
+                <div>{persistedPilotageAnalysis?.summary || coachFallback.summary}</div>
+              </div>
+              <div className="pilotageInsightItem">
+                <div className="small2 textMuted">Point d’attention</div>
+                <div>{persistedPilotageAnalysis?.problem || coachFallback.problem}</div>
+              </div>
+              <div className="pilotageInsightItem">
+                <div className="small2 textMuted">Prochain pas</div>
+                <div>{persistedPilotageAnalysis?.recommendation || coachFallback.recommendation}</div>
+              </div>
+            </div>
+            {manualPilotageAnalysis.error ? (
+              <div className="pilotageInlineAiPanel">
+                <div className="sectionTitle">Analyse indisponible</div>
+                <div className="small2 textMuted">{manualPilotageAnalysis.error}</div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <ScreenShell
@@ -693,249 +877,84 @@ export default function Pilotage({
       backgroundImage={safeData?.profile?.whyImage || ""}
     >
       <div className="stack stackGap12">
-        <Card>
+        <Card
+          className="GateMainSection"
+          style={
+            activePilotageSurfaceVars || undefined
+          }
+        >
           <div className="p18">
             <div className="sectionTitle">Focus catégorie</div>
-            <div className="mt12 col" role="list" style={{ gap: 10 }}>
-              {categories.map((category) => {
-                const counts = countsByCategory.get(category.id) || { activeOutcomesCount: 0, processCount: 0 };
-                const label = statusByCategory.get(category.id) || "ACTIVE";
-                const summary =
-                  counts.activeOutcomesCount || counts.processCount
-                    ? `${counts.activeOutcomesCount} ${LABELS.goalsLower} · ${counts.processCount} ${LABELS.actionsLower}`
-                    : "Aucun élément";
-                return (
-                  <div key={category.id} className="pilotageCategoryStack">
-                    <PilotageCategoryRow
-                      category={category}
-                      color={getCategoryColor(category)}
-                      selected={openCategoryId === category.id}
-                      onClick={() => togglePilotageCategory(category.id)}
-                      summary={summary}
-                      statusLabel={STATUS_LABELS[label] || "Active"}
-                      statusStyle={STATUS_STYLES[label] || STATUS_STYLES.ACTIVE}
-                    >
-                      {category.name || "Catégorie"}
-                    </PilotageCategoryRow>
-                    {openCategoryId === category.id ? (
-                      <div
-                        className="pilotageInlineDetail"
-                        style={getCategoryAccentVars(category)}
+            <div className="mt12 col" role="list" style={{ gap: 12 }}>
+              <div className="pilotageFocusGroup">
+                <div className="pilotageFocusGroupHeader">
+                  <div className="small2 textMuted">Catégories déjà exploitables</div>
+                  <div className="small2 textMuted">{structuredFocusCategories.length}</div>
+                </div>
+                <div className="col" style={{ gap: 10 }}>
+                  {structuredFocusCategories.length ? structuredFocusCategories.map(({ category, status, summary }) => (
+                    <div key={category.id} className="pilotageCategoryStack">
+                      <PilotageCategoryRow
+                        category={category}
+                        color={getCategoryColor(category)}
+                        selected={openCategoryId === category.id}
+                        onClick={() => togglePilotageCategory(category.id)}
+                        summary={summary}
+                        statusLabel={STATUS_LABELS[status] || "Active"}
+                        statusStyle={STATUS_STYLES[status] || STATUS_STYLES.ACTIVE}
                       >
-                        <div className="pilotageInlineGrid">
-                          <div className="pilotageInlinePanel">
-                            <div className="sectionTitle">Structure de la catégorie</div>
-                            <div className="col" style={{ gap: 10 }}>
-                              {detailCategoryProfileSummary?.subject ? (
-                                <StatRow label="Sujet principal" value={detailCategoryProfileSummary.subject} />
-                              ) : null}
-                              {detailCategoryProfileSummary?.mainGoal ? (
-                                <StatRow label="Objectif principal" value={detailCategoryProfileSummary.mainGoal} />
-                              ) : null}
-                              {detailCategoryProfileSummary?.currentPriority ? (
-                                <StatRow label="Priorité actuelle" value={detailCategoryProfileSummary.currentPriority} />
-                              ) : null}
-                              <StatRow
-                                label="Structure"
-                                value={
-                                  detailCounts
-                                    ? `${detailCounts.activeOutcomesCount || 0} ${LABELS.goalsLower} · ${detailCounts.processCount || 0} ${LABELS.actionsLower}`
-                                    : "—"
-                                }
-                              />
-                              <StatRow
-                                label="Semaine (fait / attendu)"
-                                value={detailWeek ? `${detailWeek.done || 0} / ${detailWeek.expected || 0}` : "—"}
-                                right={
-                                  detailWeek && (detailWeek.missed || 0) > 0 ? (
-                                    <GateBadge
-                                      className="pilotageStatusBadge"
-                                      style={{ ...STATUS_STYLES.EMPTY, borderWidth: 1, borderStyle: "solid" }}
-                                    >
-                                      {detailWeek.missed} manquée{detailWeek.missed > 1 ? "s" : ""}
-                                    </GateBadge>
-                                  ) : null
-                                }
-                              />
-                              {!detailCategoryProfileSummary?.hasProfile && !detailCounts?.processCount && !detailCounts?.activeOutcomesCount ? (
-                                <div className="pilotageInsightItem">
-                                  <div className="small2 textMuted">État actuel</div>
-                                  <div>Cette catégorie n’a pas encore assez de structure pour produire une lecture plus fine.</div>
-                                </div>
-                              ) : null}
-                            </div>
-                          </div>
+                        {category.name || "Catégorie"}
+                      </PilotageCategoryRow>
+                      {renderInlineCategoryDetail(category)}
+                    </div>
+                  )) : (
+                    <div className="small2 textMuted">Aucune catégorie n’a encore une base assez solide.</div>
+                  )}
+                </div>
+              </div>
 
-                          <div className="pilotageInlinePanel" data-tour-id="pilotage-discipline">
-                            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                              <div>
-                                <div className="sectionTitle">Évolution discipline</div>
-                                <div className="small2 textMuted">La courbe montre comment cette catégorie avance sur les derniers jours.</div>
-                              </div>
-                              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                                {PILOTAGE_DISCIPLINE_WINDOWS.map((windowDays) => (
-                                  <Button
-                                    key={windowDays}
-                                    variant={disciplineWindowDays === windowDays ? "primary" : "ghost"}
-                                    onClick={() => setDisciplineWindowDays(windowDays)}
-                                  >
-                                    {windowDays} jours
-                                  </Button>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="pilotageTopGrid">
-                              <div className="listItem GateRowPremium">
-                                <div className="small2">Niveau actuel</div>
-                                <div className="titleSm">
-                                  {Number.isFinite(disciplineTrend.summary.currentScore) ? `${disciplineTrend.summary.currentScore}%` : "—"}
-                                </div>
-                              </div>
-                              <div className="listItem GateRowPremium">
-                                <div className="small2">Rythme</div>
-                                <div className="titleSm">{formatDisciplineTrendLabel(disciplineTrend.summary.trendLabel)}</div>
-                              </div>
-                              <div className="listItem GateRowPremium">
-                                <div className="small2">Jours avec progression</div>
-                                <div className="titleSm">{disciplineTrend.summary.scoredDays}</div>
-                              </div>
-                              <div className="listItem GateRowPremium">
-                                <div className="small2">Jours sans attente</div>
-                                <div className="titleSm">{disciplineTrend.summary.neutralDays}</div>
-                              </div>
-                            </div>
-                            <DisciplineTrendChart
-                              key={disciplineTrendChartKey}
-                              trend={disciplineTrend}
-                              color={getCategoryColor(detailCategory)}
-                              animated
-                            />
-                          </div>
-
-                          <div className="pilotageInlinePanel">
-                            <div className="sectionTitle">Constance locale</div>
-                            <div className="pilotageTopGrid">
-                              <div className="listItem GateRowPremium">
-                                <div className="small2">Jours actifs</div>
-                                <div className="titleSm">{constanceSummary.activeDays7}/7</div>
-                              </div>
-                              <div className="listItem GateRowPremium">
-                                <div className="small2">Temps investi réel</div>
-                                <div className="titleSm">{formatMinutes(constanceSummary.realMinutes7)}</div>
-                              </div>
-                              <div className="listItem GateRowPremium">
-                                <div className="small2">Régularité</div>
-                                <div className="titleSm">{Math.round(constanceSummary.regularity * 100)}%</div>
-                              </div>
-                              <div className="listItem GateRowPremium">
-                                <div className="small2">Qualification</div>
-                                <div className="titleSm">{constanceSummary.constanceLabel}</div>
-                              </div>
-                            </div>
-                            <Meter
-                              value01={constanceSummary.regularity}
-                              tone={
-                                constanceSummary.constanceLabel === "stable"
-                                  ? "good"
-                                  : constanceSummary.constanceLabel === "en progression"
-                                    ? "warn"
-                                    : "bad"
-                              }
-                              label="Régularité hebdo"
-                            />
-                            <div className="col" style={{ gap: 8 }}>
-                              <StatRow label="Sessions faites" value={String(constanceSummary.doneCount || 0)} />
-                              <StatRow label="Sessions attendues" value={String(constanceSummary.expectedCount || 0)} />
-                              <StatRow label="Sessions manquées" value={String(constanceSummary.missedCount || 0)} />
-                            </div>
-                          </div>
-
-                          <div className="pilotageInlinePanel">
-                            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                              <div>
-                                <div className="sectionTitle">Lecture de la catégorie</div>
-                                <ManualAiStatus
-                                  statusKind={pilotageAnalysisState.kind}
-                                  statusLabel={pilotageAnalysisState.label}
-                                  detailLabel={
-                                    manualPilotageAnalysis.visibleAnalysis
-                                      ? persistenceScope === "cloud"
-                                        ? "Synchronisée sur tes appareils."
-                                        : "Enregistrée sur cet appareil."
-                                      : "Métriques déterministes d’abord, analyse IA sur demande."
-                                  }
-                                  stageLabel={manualPilotageAnalysis.loadingStageLabel}
-                                />
-                              </div>
-                              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                                <Button onClick={handleAnalyzeCategory} disabled={!detailCategory || manualPilotageAnalysis.loading}>
-                                  {manualPilotageAnalysis.loading ? manualPilotageAnalysis.loadingStageLabel || "Analyse..." : "Analyser cette catégorie"}
-                                </Button>
-                                {manualPilotageAnalysis.isPersistedForContext ? (
-                                  <Button variant="ghost" onClick={manualPilotageAnalysis.dismissAnalysis}>
-                                    Revenir au diagnostic local
-                                  </Button>
-                                ) : null}
-                              </div>
-                            </div>
-                            <div className="pilotageInsights">
-                              <div className="pilotageInsightItem">
-                                <div className="small2 textMuted">Résumé</div>
-                                <div>{coachFallback.summary}</div>
-                              </div>
-                              <div className="pilotageInsightItem">
-                                <div className="small2 textMuted">Point d’attention</div>
-                                <div>{coachFallback.problem}</div>
-                              </div>
-                              <div className="pilotageInsightItem">
-                                <div className="small2 textMuted">Prochain pas</div>
-                                <div>{coachFallback.recommendation}</div>
-                              </div>
-                            </div>
-
-                            {persistedPilotageAnalysis ? (
-                              <div className="pilotageInlineAiPanel">
-                                <div>
-                                  <div className="sectionTitle">Analyse IA</div>
-                                  <div className="small2 textMuted">
-                                    {persistenceScope === "cloud" ? "Synchronisée sur tes appareils." : "Enregistrée sur cet appareil."}
-                                  </div>
-                                </div>
-                                <div className="pilotageInsights">
-                                  <div className="pilotageInsightItem">
-                                    <div className="small2 textMuted">Résumé</div>
-                                    <div>{persistedPilotageAnalysis.summary}</div>
-                                  </div>
-                                  <div className="pilotageInsightItem">
-                                    <div className="small2 textMuted">Point d’attention</div>
-                                    <div>{persistedPilotageAnalysis.problem}</div>
-                                  </div>
-                                  <div className="pilotageInsightItem">
-                                    <div className="small2 textMuted">Recommandation</div>
-                                    <div>{persistedPilotageAnalysis.recommendation}</div>
-                                  </div>
-                                </div>
-                              </div>
-                            ) : null}
-
-                            {manualPilotageAnalysis.error ? (
-                              <div className="pilotageInlineAiPanel">
-                                <div className="sectionTitle">Analyse indisponible</div>
-                                <div className="small2 textMuted">{manualPilotageAnalysis.error}</div>
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                      </div>
-                    ) : null}
+              {deferredFocusCategories.length ? (
+                <div className="pilotageFocusGroup pilotageFocusGroup--deferred">
+                  <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <div className="small2 textMuted">
+                      {deferredFocusCategories.length} catégorie{deferredFocusCategories.length > 1 ? "s" : ""} à structurer
+                    </div>
+                    <Button variant="ghost" onClick={() => setShowDeferredCategories((value) => !value)}>
+                      {isDeferredGroupOpen ? "Masquer" : `Voir ${deferredFocusCategories.length} catégorie${deferredFocusCategories.length > 1 ? "s" : ""}`}
+                    </Button>
                   </div>
-                );
-              })}
+                  {isDeferredGroupOpen ? (
+                    <div className="col" style={{ gap: 10 }}>
+                      {deferredFocusCategories.map(({ category, status, summary }) => (
+                        <div key={category.id} className="pilotageCategoryStack">
+                          <PilotageCategoryRow
+                            category={category}
+                            color={getCategoryColor(category)}
+                            selected={openCategoryId === category.id}
+                            onClick={() => togglePilotageCategory(category.id)}
+                            summary={summary}
+                            statusLabel={STATUS_LABELS[status] || "Active"}
+                            statusStyle={STATUS_STYLES[status] || STATUS_STYLES.ACTIVE}
+                          >
+                            {category.name || "Catégorie"}
+                          </PilotageCategoryRow>
+                          {renderInlineCategoryDetail(category)}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
         </Card>
 
-        <Card>
+        <Card
+          className="GateMainSection"
+          style={
+            activePilotageSurfaceVars || undefined
+          }
+        >
           <div className="p18 col" style={{ gap: 12 }}>
             <div>
               <div className="sectionTitle">Statistiques globales</div>
@@ -985,7 +1004,12 @@ export default function Pilotage({
           </div>
         </Card>
 
-        <Card>
+        <Card
+          className="GateMainSection"
+          style={
+            activePilotageSurfaceVars || undefined
+          }
+        >
           <div className="p18 col" style={{ gap: 12 }}>
             <div>
               <div className="sectionTitle">Synthèse globale</div>
@@ -996,12 +1020,24 @@ export default function Pilotage({
                 <div className="small2 textMuted">Vue d’ensemble</div>
                 <div>{globalPilotageSummary.summary}</div>
               </div>
-              {globalPilotageSummary.signals.map((signal) => (
-                <div key={signal} className="pilotageInsightItem">
-                  <div className="small2 textMuted">Signal principal</div>
-                  <div>{signal}</div>
+              {globalPilotageSummary.strongestSignal ? (
+                <div className="pilotageInsightItem">
+                  <div className="small2 textMuted">Zone la plus exploitable</div>
+                  <div>{globalPilotageSummary.strongestSignal}</div>
                 </div>
-              ))}
+              ) : null}
+              {globalPilotageSummary.frictionSignal ? (
+                <div className="pilotageInsightItem">
+                  <div className="small2 textMuted">Point de friction</div>
+                  <div>{globalPilotageSummary.frictionSignal}</div>
+                </div>
+              ) : null}
+              {globalPilotageSummary.dormantSignal ? (
+                <div className="pilotageInsightItem">
+                  <div className="small2 textMuted">Zone stagnante</div>
+                  <div>{globalPilotageSummary.dormantSignal}</div>
+                </div>
+              ) : null}
             </div>
           </div>
         </Card>

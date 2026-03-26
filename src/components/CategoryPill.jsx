@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { getCategoryAccentVars } from "../utils/categoryAccent";
+import { getCategoryUiVars } from "../utils/categoryAccent";
 import "./categoryPill.css";
 
 export default function CategoryPill({
@@ -8,10 +8,11 @@ export default function CategoryPill({
   label = "",
   className = "",
   title = "",
+  stateTone = "default",
 }) {
   const accentVars = useMemo(
-    () => getCategoryAccentVars(category || color || "#5B8CFF"),
-    [category, color]
+    () => getCategoryUiVars(category || color || "#5B8CFF", { level: "pill", stateTone }),
+    [category, color, stateTone]
   );
   const displayLabel = label || category?.name || "Catégorie";
 

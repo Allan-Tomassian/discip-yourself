@@ -81,7 +81,7 @@ function resolveChartPalette(color) {
   };
 }
 
-export default function DisciplineTrendChart({ trend, color = "#6EE7FF", animated = true }) {
+export default function DisciplineTrendChart({ trend, color = "#6EE7FF", animated = true, variant = "default" }) {
   const gradientId = useId();
   const chart = useMemo(() => buildDisciplineTrendChartGeometry(trend?.series || []), [trend?.series]);
   const palette = useMemo(() => resolveChartPalette(color), [color]);
@@ -89,10 +89,15 @@ export default function DisciplineTrendChart({ trend, color = "#6EE7FF", animate
   const firstLabel = trend?.series?.[0]?.dateKey ? formatShortDateLabel(trend.series[0].dateKey) : "";
   const lastLabel = trend?.series?.length ? formatShortDateLabel(trend.series[trend.series.length - 1].dateKey) : "";
   const summaryParts = [];
-  if (Number.isFinite(trend?.summary?.currentScore)) summaryParts.push(`Niveau actuel ${trend.summary.currentScore}%`);
-  if (typeof trend?.summary?.trendLabel === "string" && trend.summary.trendLabel) summaryParts.push(formatTrendSummaryLabel(trend.summary.trendLabel));
-  if (Number.isFinite(trend?.summary?.scoredDays)) {
-    summaryParts.push(`${trend.summary.scoredDays} jour${trend.summary.scoredDays > 1 ? "s" : ""} utiles`);
+  if (variant === "compact") {
+    if (Number.isFinite(trend?.summary?.currentScore)) summaryParts.push(`${trend.summary.currentScore}%`);
+    if (typeof trend?.summary?.trendLabel === "string" && trend.summary.trendLabel) summaryParts.push(formatTrendSummaryLabel(trend.summary.trendLabel));
+  } else {
+    if (Number.isFinite(trend?.summary?.currentScore)) summaryParts.push(`Niveau actuel ${trend.summary.currentScore}%`);
+    if (typeof trend?.summary?.trendLabel === "string" && trend.summary.trendLabel) summaryParts.push(formatTrendSummaryLabel(trend.summary.trendLabel));
+    if (Number.isFinite(trend?.summary?.scoredDays)) {
+      summaryParts.push(`${trend.summary.scoredDays} jour${trend.summary.scoredDays > 1 ? "s" : ""} utiles`);
+    }
   }
   const [selectedPointDateKey, setSelectedPointDateKey] = useState(chart.lastScoredPoint?.dateKey || "");
   useEffect(() => {
@@ -106,6 +111,7 @@ export default function DisciplineTrendChart({ trend, color = "#6EE7FF", animate
     animated ? "is-animated" : "",
     chart.isEmpty ? "pilotageTrendChart--empty" : "",
     chart.hasSingleScoredPoint ? "pilotageTrendChart--single" : "",
+    variant === "compact" ? "pilotageTrendChart--compact" : "",
   ]
     .filter(Boolean)
     .join(" ");

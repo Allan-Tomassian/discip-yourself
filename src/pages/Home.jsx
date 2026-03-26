@@ -68,6 +68,7 @@ import {
   getSelectedCategoryForView,
   getVisibleCategories,
   resolvePreferredVisibleCategoryId,
+  withExecutionActiveCategoryId,
 } from "../domain/categoryVisibility";
 
 // TOUR MAP:
@@ -172,32 +173,6 @@ function resolveTodayImpactLabel({ profileSummary, fallbackImpact }) {
   return fallbackImpact;
 }
 
-function loadTodayHelpExpanded(storageKey) {
-  if (!storageKey || typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(storageKey) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function buildTodayReasonLinkLabel({
-  reasonLinkType,
-  activeCategoryName,
-  recommendedCategoryName,
-}) {
-  if (reasonLinkType === "structure_missing") {
-    return activeCategoryName ? `Structurer ${activeCategoryName}` : "Structurer la categorie active";
-  }
-  if (reasonLinkType === "cross_category") {
-    if (recommendedCategoryName && activeCategoryName) {
-      return `Action en ${recommendedCategoryName} utile pour ${activeCategoryName}`;
-    }
-    return "Action utile a ta priorite active";
-  }
-  return activeCategoryName ? `Recommande dans ${activeCategoryName}` : "Recommande dans la categorie active";
-}
-
 function buildTodayAnalysisHeroModel({
   analysis,
   localHero,
@@ -220,12 +195,6 @@ function buildTodayAnalysisHeroModel({
     null;
   const recommendedCategoryId = goal?.categoryId || primaryAction.categoryId || activeCategoryId || null;
   const recommendedCategoryName = categoriesById.get(recommendedCategoryId || "")?.name || activeCategoryName || "";
-  const reasonLinkType =
-    primaryAction.intent === "open_library" && localHero.selectionScope === "structure_missing"
-      ? "structure_missing"
-      : recommendedCategoryId && activeCategoryId && recommendedCategoryId !== activeCategoryId
-        ? "cross_category"
-        : "direct_category";
   let mappedPrimaryAction = null;
   if (primaryAction.intent === "start_occurrence") {
     mappedPrimaryAction = {
@@ -252,12 +221,6 @@ function buildTodayAnalysisHeroModel({
     meta: analysis.reason || localHero.meta,
     primaryLabel: primaryAction.label || localHero.primaryLabel,
     primaryAction: mappedPrimaryAction,
-    reasonLinkType,
-    reasonLinkLabel: buildTodayReasonLinkLabel({
-      reasonLinkType,
-      activeCategoryName,
-      recommendedCategoryName,
-    }),
     recommendedCategoryLabel: recommendedCategoryName || localHero.recommendedCategoryLabel || "",
     recommendedCategoryId: recommendedCategoryId || localHero.recommendedCategoryId || activeCategoryId || null,
     contributionLabel: localHero.contributionLabel || activeCategoryName || "ta priorite active",
@@ -2075,15 +2038,13 @@ export default function Home({
     if (typeof setData === "function") {
       setData((prev) => ({
         ...prev,
-        ui: withSelectedCategoryByView(
+        ui: withExecutionActiveCategoryId(
           {
             ...(prev?.ui || {}),
             selectedDateKey: localTodayKey,
             selectedDate: localTodayKey,
           },
-          {
-            planning: executionCategoryId || focusCategory?.id || getSelectedCategoryForView(prev, CATEGORY_VIEW.TODAY) || null,
-          }
+          executionCategoryId || focusCategory?.id || getSelectedCategoryForView(prev, CATEGORY_VIEW.TODAY) || null
         ),
       }));
     }
@@ -2124,27 +2085,6 @@ export default function Home({
   );
   const heroAnalyzeLabel = manualTodayAnalysis.isPersistedForContext ? "Rafraîchir l’analyse" : "Analyser ma priorité";
   const showHeroPlanningShortcut = heroViewModel?.primaryAction?.kind !== "open_pilotage";
-  const todayHelpStorageKey = useMemo(
-    () => `today:hero-help-expanded:v1:${session?.user?.id || "anon"}`,
-    [session?.user?.id]
-  );
-  const [todayHelpExpanded, setTodayHelpExpanded] = useState(() => loadTodayHelpExpanded(""));
-
-  useEffect(() => {
-    setTodayHelpExpanded(loadTodayHelpExpanded(todayHelpStorageKey));
-  }, [todayHelpStorageKey]);
-
-  const handleToggleTodayHelp = useCallback(() => {
-    setTodayHelpExpanded((current) => {
-      const next = !current;
-      try {
-        window.localStorage.setItem(todayHelpStorageKey, next ? "1" : "0");
-      } catch {
-        // Ignore storage failures.
-      }
-      return next;
-    });
-  }, [todayHelpStorageKey]);
 
   return (
     <ScreenShell
@@ -2159,11 +2099,10 @@ export default function Home({
         <TodayHero
           title={typedHeroTitle || heroViewModel.title}
           category={heroDisplayCategory}
+          activeCategory={focusCategory || null}
           categoryName={heroDisplayCategoryName}
           durationLabel={heroDurationLabel}
           reason={heroReasonText}
-          reasonLinkType={heroViewModel.reasonLinkType || ""}
-          reasonLinkLabel={heroViewModel.reasonLinkLabel || ""}
           contributionLabel={heroContributionLabel}
           recommendedCategoryLabel={heroViewModel.recommendedCategoryLabel || ""}
           impactText={heroImpactText}
@@ -2183,15 +2122,17 @@ export default function Home({
           onOpenPlanning={openPlanningForToday}
           showPlanningShortcut={showHeroPlanningShortcut}
           isPreparing={manualTodayAnalysis.loading}
-          helpExpanded={todayHelpExpanded}
-          helpText="Today te montre le prochain bloc utile à lancer maintenant, avec un lien clair vers ta priorité active."
-          onToggleHelp={handleToggleTodayHelp}
         />
-        <TodayNextActions actions={nextActions} onOpenOccurrence={handleStartSession} />
+        <TodayNextActions
+          actions={nextActions}
+          onOpenOccurrence={handleStartSession}
+          activeCategory={focusCategory || null}
+        />
         <TodayDailyState
           plannedMinutes={dailyState.plannedMinutes}
           doneMinutes={dailyState.doneMinutes}
           remainingMinutes={dailyState.remainingMinutes}
+          activeCategory={focusCategory || null}
         />
       </div>
     </ScreenShell>

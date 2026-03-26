@@ -1,20 +1,20 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import {
-  Button,
-  Chip,
-  ChipRow,
-  CheckboxRow,
-  Hint,
-  Input,
-  Textarea,
-  ToggleChip,
-} from "../components/UI";
 import FlowShell from "../ui/create/FlowShell";
-import Select from "../ui/select/Select";
+import CreateSection from "../ui/create/CreateSection";
+import {
+  CreateButton,
+  CreateCheckboxRow,
+  CreateChip,
+  CreateChipRow,
+  CreateHint,
+  CreateInput,
+  CreateSelect,
+  CreateTextarea,
+  CreateToggleChip,
+} from "../ui/create/CreateFormPrimitives";
 import DatePicker from "../ui/date/DatePicker";
 import ConflictResolver from "../ui/scheduling/ConflictResolver";
-import { GateSection } from "../shared/ui/gate/Gate";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_HABITS } from "../creation/creationSchema";
 import { createActionModel } from "../domain/actionModel";
@@ -218,11 +218,11 @@ function formatWeeklySlotsSummary(habit) {
 function DayChips({ value, onChange }) {
   const days = Array.isArray(value) ? value : [];
   return (
-    <ChipRow>
+    <CreateChipRow>
       {DOWS.map((day) => {
         const active = days.includes(day.id);
         return (
-          <ToggleChip
+          <CreateToggleChip
             key={day.id}
             value={day.id}
             selected={active ? day.id : null}
@@ -235,20 +235,20 @@ function DayChips({ value, onChange }) {
             }
           >
             {day.label}
-          </ToggleChip>
+          </CreateToggleChip>
         );
       })}
-    </ChipRow>
+    </CreateChipRow>
   );
 }
 
 function PresetChips({ onAll, onWeekdays, onClear }) {
   return (
-    <ChipRow>
-      <Chip onClick={onAll}>Tous</Chip>
-      <Chip onClick={onWeekdays}>Lun–Ven</Chip>
-      <Chip onClick={onClear}>Effacer</Chip>
-    </ChipRow>
+    <CreateChipRow>
+      <CreateChip onClick={onAll}>Tous</CreateChip>
+      <CreateChip onClick={onWeekdays}>Lun–Ven</CreateChip>
+      <CreateChip onClick={onClear}>Effacer</CreateChip>
+    </CreateChipRow>
   );
 }
 
@@ -1199,16 +1199,16 @@ export default function CreateV2Habits({
     >
       <div className="stack stackGap12">
         {!hideBack && !isGate ? (
-          <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+          <CreateButton variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
             ← Retour
-          </Button>
+          </CreateButton>
         ) : null}
 
         <FlowShell>
           <div className="flowShellBody col gap12">
-            <GateSection title="Action" description="Titre + contexte" collapsible={false}>
+            <CreateSection title="Action" description="Titre + contexte" collapsible={false}>
               <div className="createFieldRow">
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nouvelle action" />
+                <CreateInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nouvelle action" />
               </div>
 
               <div className="createLockedCategory" data-testid="create-locked-category">
@@ -1218,15 +1218,15 @@ export default function CreateV2Habits({
 
               <div className="stack stackGap6">
                 <div className="small textMuted">Lieu (optionnel)</div>
-                <Input
+                <CreateInput
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="Ex: Salle, Bureau, 12 rue…"
                 />
               </div>
-            </GateSection>
+            </CreateSection>
 
-            <GateSection
+            <CreateSection
               title="Planification"
               description={isTypeOneOff ? "Ponctuelle" : isTypeAnytime ? "Flexible" : "Planifiée"}
               collapsible={false}
@@ -1243,7 +1243,7 @@ export default function CreateV2Habits({
                   <div className="stack stackGap6">
                     <div className="small2 textMuted">Moment</div>
                     <div className="createFieldRow">
-                      <Select
+                      <CreateSelect
                         value={timeMode}
                         onChange={(e) => {
                           const next = e.target.value;
@@ -1253,16 +1253,16 @@ export default function CreateV2Habits({
                       >
                         <option value="NONE">Dans la journée</option>
                         <option value="FIXED">À heure fixe</option>
-                      </Select>
+                      </CreateSelect>
                       {timeMode === "FIXED" ? (
-                        <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                        <CreateInput type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
                       ) : null}
                     </div>
                   </div>
 
                   <div className="stack stackGap6">
                     <div className="small2 textMuted">Durée (optionnel)</div>
-                    <Input
+                    <CreateInput
                       type="number"
                       min="1"
                       value={durationMinutes}
@@ -1286,7 +1286,7 @@ export default function CreateV2Habits({
                     </div>
                   ) : null}
 
-                  <CheckboxRow
+                  <CreateCheckboxRow
                     checked={anytimeFlexible}
                     onChange={(e) => {
                       const next = Boolean(e.target.checked);
@@ -1316,7 +1316,7 @@ export default function CreateV2Habits({
 
                   <div className="stack stackGap6">
                     <div className="small2 textMuted">Durée (optionnel)</div>
-                    <Input
+                    <CreateInput
                       type="number"
                       min="1"
                       value={durationMinutes}
@@ -1356,7 +1356,7 @@ export default function CreateV2Habits({
                   <div className="stack stackGap6">
                     <div className="small2 textMuted">Moment</div>
                     {showAdvanced ? (
-                      <Select
+                      <CreateSelect
                         value={scheduleMode}
                         onChange={(e) => {
                           const next = e.target.value;
@@ -1369,27 +1369,27 @@ export default function CreateV2Habits({
                       >
                         <option value="STANDARD">Dans la journée / Heure fixe</option>
                         <option value="WEEKLY_SLOTS">Créneaux par jour</option>
-                      </Select>
+                      </CreateSelect>
                     ) : null}
 
                     {scheduleMode === "STANDARD" ? (
                       <div className="stack stackGap8">
                         <div className="createFieldRow">
-                          <Input
+                          <CreateInput
                             type="time"
                             value={startTime}
                             onChange={(e) => setStartTime(e.target.value)}
                           />
-                          <Button
+                          <CreateButton
                             variant="ghost"
                             onClick={() => {
                               if (!normalizeStartTime(startTime)) setStartTime("08:00");
                             }}
                           >
                             Matin
-                          </Button>
-                          <Button variant="ghost" onClick={() => setStartTime("14:00")}>Après‑midi</Button>
-                          <Button variant="ghost" onClick={() => setStartTime("19:00")}>Soir</Button>
+                          </CreateButton>
+                          <CreateButton variant="ghost" onClick={() => setStartTime("14:00")}>Après‑midi</CreateButton>
+                          <CreateButton variant="ghost" onClick={() => setStartTime("19:00")}>Soir</CreateButton>
                         </div>
                         <div className="createHelper">Même heure pour tous les jours sélectionnés.</div>
                       </div>
@@ -1410,25 +1410,25 @@ export default function CreateV2Habits({
                               <div key={dayId} className="stack stackGap6">
                                 <div className="row rowBetween alignCenter">
                                   <div className="small2">{dayLabel}</div>
-                                  <Button variant="ghost" onClick={() => addWeeklySlot(dayId)}>+</Button>
+                                  <CreateButton variant="ghost" onClick={() => addWeeklySlot(dayId)}>+</CreateButton>
                                 </div>
 
                                 <div className="stack stackGap6">
                                   {slots.map((slot, idx) => (
                                     <div key={`${dayId}-${idx}`} className="createFieldRow">
-                                      <Input
+                                      <CreateInput
                                         type="time"
                                         value={slot.start || ""}
                                         onChange={(e) => updateWeeklySlot(dayId, idx, "start", e.target.value)}
                                       />
-                                      <Input
+                                      <CreateInput
                                         type="time"
                                         value={slot.end || ""}
                                         onChange={(e) => updateWeeklySlot(dayId, idx, "end", e.target.value)}
                                       />
-                                      <Button variant="ghost" onClick={() => removeWeeklySlot(dayId, idx)}>
+                                      <CreateButton variant="ghost" onClick={() => removeWeeklySlot(dayId, idx)}>
                                         Retirer
-                                      </Button>
+                                      </CreateButton>
                                     </div>
                                   ))}
                                 </div>
@@ -1442,7 +1442,7 @@ export default function CreateV2Habits({
 
                   <div className="stack stackGap6">
                     <div className="small2 textMuted">Durée (optionnel)</div>
-                    <Input
+                    <CreateInput
                       type="number"
                       min="1"
                       value={durationMinutes}
@@ -1453,20 +1453,20 @@ export default function CreateV2Habits({
                 </div>
               ) : null}
 
-              {planningError ? <Hint tone="danger">{planningError}</Hint> : null}
-            </GateSection>
+              {planningError ? <CreateHint tone="danger">{planningError}</CreateHint> : null}
+            </CreateSection>
 
-            <GateSection title="Rappel" description="Optionnel" defaultOpen={false} collapsible>
+            <CreateSection title="Rappel" description="Optionnel" defaultOpen={false} collapsible>
               <div className="createFieldRow">
-                <Input type="time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} />
+                <CreateInput type="time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} />
                 {showAdvanced && !isTypeAnytime ? (
                   <>
-                    <Input
+                    <CreateInput
                       type="time"
                       value={reminderWindowStart}
                       onChange={(e) => setReminderWindowStart(e.target.value)}
                     />
-                    <Input
+                    <CreateInput
                       type="time"
                       value={reminderWindowEnd}
                       onChange={(e) => setReminderWindowEnd(e.target.value)}
@@ -1477,50 +1477,50 @@ export default function CreateV2Habits({
               {showAdvanced && !isTypeAnytime ? (
                 <div className="createHelper">Fenêtre optionnelle (début / fin).</div>
               ) : null}
-              {reminderError ? <Hint tone="danger">{reminderError}</Hint> : null}
-            </GateSection>
+              {reminderError ? <CreateHint tone="danger">{reminderError}</CreateHint> : null}
+            </CreateSection>
 
             <div className="createAdvancedToggleRow">
-              <Button
+              <CreateButton
                 variant="ghost"
                 onClick={() => setShowAdvanced((prev) => !prev)}
                 data-testid="create-toggle-advanced"
               >
                 {showAdvanced ? "Masquer les options avancées" : "Afficher les options avancées"}
-              </Button>
+              </CreateButton>
             </div>
 
             {showAdvanced ? (
               <>
-                <GateSection title="Quantification" description="Optionnel" defaultOpen={false} collapsible>
+                <CreateSection title="Quantification" description="Optionnel" defaultOpen={false} collapsible>
                   <div className="createFieldRow">
-                    <Input
+                    <CreateInput
                       type="number"
                       min="1"
                       value={quantityValue}
                       onChange={(e) => setQuantityValue(e.target.value)}
                       placeholder="Quantité"
                     />
-                    <Input value={quantityUnit} onChange={(e) => setQuantityUnit(e.target.value)} placeholder="Unité" />
-                    <Select value={quantityPeriod} onChange={(e) => setQuantityPeriod(e.target.value)}>
+                    <CreateInput value={quantityUnit} onChange={(e) => setQuantityUnit(e.target.value)} placeholder="Unité" />
+                    <CreateSelect value={quantityPeriod} onChange={(e) => setQuantityPeriod(e.target.value)}>
                       {QUANTITY_PERIODS.map((period) => (
                         <option key={period.id} value={period.id}>{period.label}</option>
                       ))}
-                    </Select>
+                    </CreateSelect>
                   </div>
-                  {quantityError ? <Hint tone="danger">{quantityError}</Hint> : null}
-                </GateSection>
+                  {quantityError ? <CreateHint tone="danger">{quantityError}</CreateHint> : null}
+                </CreateSection>
 
-                <GateSection title="Mémo" description="Optionnel" defaultOpen={false} collapsible>
-                  <Textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="Note personnelle" />
-                </GateSection>
+                <CreateSection title="Mémo" description="Optionnel" defaultOpen={false} collapsible>
+                  <CreateTextarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="Note personnelle" />
+                </CreateSection>
               </>
             ) : null}
 
-            {error ? <Hint tone="danger">{error}</Hint> : null}
+            {error ? <CreateHint tone="danger">{error}</CreateHint> : null}
 
-            <div className="row rowEnd gap10">
-              <Button
+            <div className="createFlowFooter">
+              <CreateButton
                 variant="ghost"
                 onClick={() => {
                   if (typeof onCancel === "function") return onCancel();
@@ -1528,10 +1528,10 @@ export default function CreateV2Habits({
                 }}
               >
                 Annuler
-              </Button>
-              <Button onClick={handleDone} disabled={!canAddHabit} data-testid="action-save">
+              </CreateButton>
+              <CreateButton onClick={handleDone} disabled={!canAddHabit} data-testid="action-save">
                 Créer l’action
-              </Button>
+              </CreateButton>
             </div>
           </div>
         </FlowShell>

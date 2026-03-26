@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button } from "../components/UI";
 import FlowShell from "../ui/create/FlowShell";
-import Select from "../ui/select/Select";
-import { GateSection } from "../shared/ui/gate/Gate";
+import CreateSection from "../ui/create/CreateSection";
+import {
+  CreateButton,
+  CreateSelect,
+} from "../ui/create/CreateFormPrimitives";
 import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import { getFirstVisibleCategoryId, getVisibleCategories } from "../domain/categoryVisibility";
 import { safeUpdateGoal } from "../logic/goalGuards";
@@ -90,22 +92,22 @@ export default function CreateV2PickCategory({
 
   const content = (
     <div className="flowShellBody col gap12">
-      <GateSection title="Catégorie" description="Dernière étape" collapsible={false}>
+      <CreateSection title="Catégorie" description="Dernière étape" collapsible={false}>
         <div className="small2">Dans quelle catégorie veux-tu agir ?</div>
-        <Select value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)} disabled={!options.length}>
+        <CreateSelect value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)} disabled={!options.length}>
           {options.map((cat) => (
             <option key={cat.id} value={cat.id}>
               {cat.name || "Catégorie"}
             </option>
           ))}
-        </Select>
+        </CreateSelect>
         {!options.length ? <div className="small">Crée d&apos;abord une catégorie dans la bibliothèque.</div> : null}
-      </GateSection>
-      <div className="row rowBetween">
-        <Button variant="ghost" onClick={finalize}>
+      </CreateSection>
+      <div className="createInlineActions">
+        <CreateButton variant="ghost" onClick={finalize}>
           Plus tard
-        </Button>
-        <Button onClick={applyCategory} disabled={!options.length || !selectedCategoryId}>Terminer</Button>
+        </CreateButton>
+        <CreateButton onClick={applyCategory} disabled={!options.length || !selectedCategoryId}>Terminer</CreateButton>
       </div>
     </div>
   );

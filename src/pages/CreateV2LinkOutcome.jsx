@@ -1,10 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Input } from "../components/UI";
 import FlowShell from "../ui/create/FlowShell";
-import Select from "../ui/select/Select";
+import CreateSection from "../ui/create/CreateSection";
+import {
+  CreateButton,
+  CreateHint,
+  CreateInput,
+  CreateSelect,
+} from "../ui/create/CreateFormPrimitives";
 import DatePicker from "../ui/date/DatePicker";
-import { GateSection } from "../shared/ui/gate/Gate";
 import { normalizeCreationDraft } from "../creation/creationDraft";
 import { STEP_PICK_CATEGORY } from "../creation/creationSchema";
 import { createGoal } from "../logic/goals";
@@ -176,33 +180,33 @@ export default function CreateV2LinkOutcome({
 
   const content = (
     <div className="flowShellBody col gap12">
-      <GateSection title={`${LABELS.goal} avancé (optionnel)`} description="Structurer l’action" collapsible={false}>
+      <CreateSection title={`${LABELS.goal} avancé (optionnel)`} description="Structurer l’action" collapsible={false}>
         <div className="small2">Cette action peut rester autonome. Ajoute un {LABELS.goalLower} seulement si cela t’aide à structurer ce sujet.</div>
-        {error ? <div className="small2 textAccent">{error}</div> : null}
-        <Select value={choice} onChange={(e) => setChoice(e.target.value)}>
+        {error ? <CreateHint tone="danger">{error}</CreateHint> : null}
+        <CreateSelect value={choice} onChange={(e) => setChoice(e.target.value)}>
           <option value="none">Aucun</option>
           <option value="existing">Lier à un {LABELS.goalLower} avancé existant</option>
           <option value="new">Créer un {LABELS.goalLower} avancé</option>
-        </Select>
-      </GateSection>
+        </CreateSelect>
+      </CreateSection>
 
       {choice === "existing" ? (
-        <GateSection title={`${LABELS.goal} avancé existant`} collapsible={false}>
+        <CreateSection title={`${LABELS.goal} avancé existant`} collapsible={false}>
           <div className="small textMuted">{LABELS.goals} disponibles</div>
-          <Select value={selectedOutcomeId} onChange={(e) => setSelectedOutcomeId(e.target.value)}>
+          <CreateSelect value={selectedOutcomeId} onChange={(e) => setSelectedOutcomeId(e.target.value)}>
             <option value="">{`Choisir un ${LABELS.goalLower}`}</option>
             {outcomes.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.title || LABELS.goal}
               </option>
             ))}
-          </Select>
-        </GateSection>
+          </CreateSelect>
+        </CreateSection>
       ) : null}
 
       {choice === "new" ? (
-        <GateSection title={`Nouvel ${LABELS.goalLower} avancé`} collapsible={false}>
-          <Input
+        <CreateSection title={`Nouvel ${LABELS.goalLower} avancé`} collapsible={false}>
+          <CreateInput
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             placeholder={`Nom du ${LABELS.goalLower}`}
@@ -218,11 +222,11 @@ export default function CreateV2LinkOutcome({
             </div>
           </div>
           <div className="small2 textMuted2">Date de fin minimale : {minDeadlineKey}</div>
-        </GateSection>
+        </CreateSection>
       ) : null}
 
-      <div className="row rowBetween">
-        <Button
+      <div className="createInlineActions">
+        <CreateButton
           variant="ghost"
           onClick={() => {
             advanceDraft(null);
@@ -231,8 +235,8 @@ export default function CreateV2LinkOutcome({
           }}
         >
           Plus tard
-        </Button>
-        <Button onClick={handleContinue}>Continuer</Button>
+        </CreateButton>
+        <CreateButton onClick={handleContinue}>Continuer</CreateButton>
       </div>
       <div className="small2 textMuted2">L’action restera autonome. Tu pourras la lier plus tard.</div>
     </div>

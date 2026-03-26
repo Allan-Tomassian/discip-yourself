@@ -5,12 +5,12 @@
   min-height: 28px;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent, var(--accent-primary)) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--categoryUiBorder, var(--accent, var(--accent-primary))) 100%, transparent);
   background:
     linear-gradient(
       90deg,
-      color-mix(in srgb, var(--accent, var(--accent-primary)) 12%, transparent),
-      color-mix(in srgb, var(--accent-primary) 6%, transparent)
+      color-mix(in srgb, var(--categoryUiTint, var(--accentTint, rgba(91, 140, 255, 0.16))) 100%, transparent),
+      color-mix(in srgb, var(--categoryUiTintSecondary, rgba(91, 140, 255, 0.08)) 100%, transparent)
     ),
     color-mix(in srgb, var(--surface-primary) 96%, #0d1118);
   color: var(--text-primary);
