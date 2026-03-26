@@ -25,6 +25,7 @@ import {
   withSelectedCategoryByView,
 } from "../domain/categoryVisibility";
 import { collectSystemInboxBuckets } from "../domain/systemInboxMigration";
+import DisciplineTrendChart from "../features/pilotage/DisciplineTrendChart";
 import { buildPilotageDisciplineTrend, PILOTAGE_DISCIPLINE_WINDOWS } from "../features/pilotage/disciplineTrendModel";
 import ManualAiStatus from "../components/ai/ManualAiStatus";
 import "../features/pilotage/pilotage.css";
@@ -169,91 +170,6 @@ function PilotageCategoryRow({
       <div className="itemTitle">{children}</div>
       <div className="itemSub">{summary}</div>
     </AccentCategoryRow>
-  );
-}
-
-function formatShortDateLabel(dateKey) {
-  if (!dateKey) return "";
-  try {
-    return new Intl.DateTimeFormat("fr-FR", {
-      day: "2-digit",
-      month: "2-digit",
-    }).format(new Date(`${dateKey}T12:00:00`));
-  } catch {
-    return dateKey;
-  }
-}
-
-function buildChartPoint({ score, seriesIndex, totalCount }, { width, height, padding }) {
-  const x = padding + ((width - (padding * 2)) * seriesIndex) / Math.max(totalCount - 1, 1);
-  const y = height - padding - (((score || 0) / 100) * (height - (padding * 2)));
-  return { x, y };
-}
-
-function buildChartPath(points, { width, height, padding, totalCount }) {
-  if (!points.length) return "";
-  return points
-    .map((point, index) => {
-      const { x, y } = buildChartPoint(point, { width, height, padding, totalCount });
-      return `${index === 0 ? "M" : "L"} ${x} ${y}`;
-    })
-    .join(" ");
-}
-
-function buildAreaPath(points, { width, height, padding, totalCount }) {
-  if (!points.length) return "";
-  const linePath = buildChartPath(points, { width, height, padding, totalCount });
-  const firstX = buildChartPoint(points[0], { width, height, padding, totalCount }).x;
-  const lastX = buildChartPoint(points[points.length - 1], { width, height, padding, totalCount }).x;
-  const baseY = height - padding;
-  return `${linePath} L ${lastX} ${baseY} L ${firstX} ${baseY} Z`;
-}
-
-function DisciplineTrendChart({ trend, color = "#6EE7FF" }) {
-  const width = 320;
-  const height = 180;
-  const padding = 18;
-  const series = Array.isArray(trend?.series) ? trend.series : [];
-  const scoredPoints = series
-    .map((entry, seriesIndex) => ({ ...entry, seriesIndex }))
-    .filter((entry) => Number.isFinite(entry?.score));
-  const neutralPoints = series
-    .map((entry, seriesIndex) => ({ ...entry, seriesIndex }))
-    .filter((entry) => entry?.isNeutral);
-  const linePath = buildChartPath(scoredPoints, { width, height, padding, totalCount: series.length });
-  const areaPath = buildAreaPath(scoredPoints, { width, height, padding, totalCount: series.length });
-  const firstLabel = trend?.series?.[0]?.dateKey ? formatShortDateLabel(trend.series[0].dateKey) : "";
-  const lastLabel = trend?.series?.length ? formatShortDateLabel(trend.series[trend.series.length - 1].dateKey) : "";
-
-  if (!scoredPoints.length) {
-    return <div className="small2 textMuted">Aucune action prévue sur cette période.</div>;
-  }
-
-  return (
-    <div className="pilotageTrendChart">
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Évolution discipline">
-        <line x1={padding} y1={padding} x2={padding} y2={height - padding} className="pilotageTrendAxis" />
-        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} className="pilotageTrendAxis" />
-        <line x1={padding} y1={padding} x2={width - padding} y2={padding} className="pilotageTrendGuide" />
-        <line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} className="pilotageTrendGuide" />
-        {areaPath ? <path d={areaPath} fill={color} fillOpacity="0.14" /> : null}
-        {linePath ? <path d={linePath} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /> : null}
-        {scoredPoints.map((point) => {
-          const { x, y } = buildChartPoint(point, { width, height, padding, totalCount: series.length });
-          return <circle key={point.dateKey} cx={x} cy={y} r="3.5" fill={color} />;
-        })}
-        {neutralPoints.map((point) => {
-          const { x } = buildChartPoint({ ...point, score: 0 }, { width, height, padding, totalCount: series.length });
-          return <circle key={`neutral-${point.dateKey}`} cx={x} cy={height - padding} r="2.5" className="pilotageTrendNeutral" />;
-        })}
-        <text x={padding} y={padding - 4} className="pilotageTrendAxisLabel">100</text>
-        <text x={padding} y={height - padding + 14} className="pilotageTrendAxisLabel">0</text>
-      </svg>
-      <div className="pilotageTrendAxisFooter">
-        <span>{firstLabel}</span>
-        <span>{lastLabel}</span>
-      </div>
-    </div>
   );
 }
 
@@ -578,6 +494,16 @@ export default function Pilotage({
       }),
     [disciplineWindowDays, now, safeData, selectedCategory?.id]
   );
+  const disciplineTrendChartKey = useMemo(
+    () =>
+      [
+        selectedCategory?.id || "all",
+        disciplineTrend?.windowDays || disciplineWindowDays,
+        disciplineTrend?.fromKey || "from",
+        disciplineTrend?.toKey || "to",
+      ].join(":"),
+    [disciplineTrend?.fromKey, disciplineTrend?.toKey, disciplineTrend?.windowDays, disciplineWindowDays, selectedCategory?.id]
+  );
 
   const coachFallback = useMemo(
     () =>
@@ -838,7 +764,12 @@ export default function Pilotage({
                 <div className="titleSm">{disciplineTrend.summary.neutralDays}</div>
               </div>
             </div>
-            <DisciplineTrendChart trend={disciplineTrend} color={getCategoryColor(selectedCategory)} />
+            <DisciplineTrendChart
+              key={disciplineTrendChartKey}
+              trend={disciplineTrend}
+              color={getCategoryColor(selectedCategory)}
+              animated
+            />
             <div className="pilotageInsights">
               <div className="pilotageInsightItem">
                 <div className="small2 textMuted">Tendance</div>
