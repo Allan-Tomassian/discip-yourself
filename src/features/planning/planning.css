@@ -2,32 +2,84 @@
   gap: 14px;
 }
 
-.planningCard {
-  border-color: var(--border-subtle);
-  box-shadow: var(--shadow-md);
+.planningSectionCard {
+  width: 100%;
+  box-sizing: border-box;
+  border-color: color-mix(in srgb, var(--gate-border) 92%, rgba(255, 255, 255, 0.12));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    0 14px 26px rgba(0, 0, 0, 0.28);
 }
 
-.planningWeekCard {
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.05));
-  border-radius: var(--radius-medium);
-  background: color-mix(in srgb, var(--surface-elevated) 94%, #0d1118);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+.planningSectionCard .gateSectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.planningItemCard {
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.05));
-  border-radius: var(--radius-medium);
-  background: color-mix(in srgb, var(--surface-elevated) 94%, #0d1118);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+.planningSectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.planningItemCard--day {
+.planningSectionHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.planningSectionHeader--split {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.planningSectionHeaderText {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.planningSectionMeta {
+  color: var(--text-secondary);
+}
+
+.planningSectionActions,
+.planningSectionFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.planningSectionFooter {
+  justify-content: flex-end;
+}
+
+.planningCalendarRail {
+  margin-inline: -2px;
+  padding-inline: 2px;
+}
+
+.planningDayList {
+  display: grid;
+  gap: 10px;
+}
+
+.planningItemRow {
   display: grid;
   gap: 10px;
   padding: 15px 16px;
 }
 
-.planningDayCardTop {
+.planningItemRow--compact {
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.planningItemRowTop {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -35,18 +87,18 @@
   flex-wrap: wrap;
 }
 
-.planningDayCardTime {
+.planningItemTime {
   font-size: 12px;
   line-height: 1.45;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
-.planningDayCardTitle {
+.planningItemTitle {
   color: var(--text-primary);
 }
 
-.planningDayCardDuration {
+.planningItemDuration {
   color: var(--text-secondary);
 }
 
@@ -56,65 +108,38 @@
   gap: 10px;
 }
 
-.planningWeekCard {
-  padding: 15px 16px;
-}
-
-.planningWeekCardBody {
+.planningWeekBucket {
   display: grid;
   gap: 10px;
+  padding: 14px 14px 12px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.06));
+  background: color-mix(in srgb, var(--surface-primary) 96%, #0d1118);
 }
 
-.planningWeekCardHeader {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
+.planningWeekBucket.isToday {
+  border-color: color-mix(in srgb, var(--accent-primary) 22%, var(--border-subtle));
 }
 
-.planningWeekCardHeaderMain {
+.planningWeekBucketHeader {
+  display: grid;
+  gap: 6px;
+}
+
+.planningWeekBucketHeaderMain {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
+.planningWeekBucketMeta {
+  color: var(--text-secondary);
+}
+
 .planningWeekList {
   display: grid;
   gap: 8px;
-}
-
-.planningItemCard--week {
-  display: grid;
-  gap: 8px;
-  padding: 12px 14px;
-}
-
-.planningWeekItemTop {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.planningWeekItemTime {
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.planningWeekItemTitle {
-  font-size: 13px;
-  line-height: 1.34;
-  font-weight: 650;
-  color: var(--text-primary);
-}
-
-.planningWeekItemDuration {
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--text-muted);
 }
 
 .planningTodayTag {
@@ -132,9 +157,59 @@
   white-space: nowrap;
 }
 
+.planningCoachSection .manualAiStatus {
+  margin-top: 2px;
+}
+
+.planningCoachSummary {
+  display: grid;
+  gap: 10px;
+}
+
+.planningCoachBlock {
+  display: grid;
+  gap: 3px;
+}
+
+.planningCoachLabel {
+  color: var(--text-muted);
+}
+
+.planningDraftSection {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.08));
+}
+
+.planningEmptyState {
+  color: var(--text-secondary);
+}
+
 @media (max-width: 389px) {
   .planningWeekGrid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .planningSectionCard .gateSectionBody {
+    gap: 14px;
+  }
+
+  .planningSectionHeader--split {
+    align-items: stretch;
+  }
+
+  .planningSectionActions,
+  .planningSectionFooter {
+    width: 100%;
+  }
+
+  .planningSectionActions .gateButton,
+  .planningSectionFooter .gateButton {
+    flex: 1 1 0;
+    min-width: 0;
   }
 }
 

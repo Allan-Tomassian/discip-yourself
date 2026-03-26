@@ -51,16 +51,20 @@ describe("Pilotage contract", () => {
     expect(source).toContain("Analyser cette catégorie");
   });
 
-  it("splits pilotage into a global view and a category detail view in the same page", () => {
+  it("keeps the global view and opens category detail inline from focus categories", () => {
     const source = readSrc("pages/Pilotage.jsx");
+    const registrySource = readSrc("logic/blocks/registry.js");
 
-    expect(source).toContain("const [pilotageView, setPilotageView] = useState(\"global\");");
+    expect(source).toContain("const [openCategoryId, setOpenCategoryId] = useState(null);");
     expect(source).toContain("buildPilotageGlobalSummary");
     expect(source).toContain("buildPilotageGlobalStats");
     expect(source).toContain("Statistiques globales");
-    expect(source).toContain("openPilotageDetail");
     expect(source).toContain("Synthèse globale");
-    expect(source).toContain("Retour à la vue globale");
-    expect(source).toContain("Vue catégorie");
+    expect(source).toContain("togglePilotageCategory");
+    expect(source).toContain("pilotageInlineDetail");
+    expect(source).not.toContain("const [pilotageView, setPilotageView] = useState(\"global\");");
+    expect(source).not.toContain("Retour à la vue globale");
+    expect(source).not.toContain("data-tour-id=\"pilotage-reporting\"");
+    expect(registrySource).not.toContain("pilotage.reporting");
   });
 });

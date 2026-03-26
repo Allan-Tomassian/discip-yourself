@@ -11,7 +11,7 @@ import {
 import { resolveManualAiDisplayState } from "../../features/manualAi/displayState";
 import { useManualAiAnalysis } from "../../hooks/useManualAiAnalysis";
 import ManualAiStatus from "../ai/ManualAiStatus";
-import { Button, Card } from "../UI";
+import { GateButton as Button, GateSection } from "../../shared/ui/gate/Gate";
 
 function describeDraftChange(change, { goalsById, categoriesById }) {
   if (!change || typeof change !== "object") return "";
@@ -175,10 +175,10 @@ export default function PlanningCoachCard({
   }
 
   return (
-    <Card>
-      <div className="p18 col" style={{ gap: 12 }}>
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <div>
+    <GateSection className="planningSectionCard planningCoachSection GateSurfacePremium GateCardPremium" collapsible={false}>
+      <div className="planningSectionBody">
+        <div className="planningSectionHeader planningSectionHeader--split">
+          <div className="planningSectionHeaderText">
             <div className="titleSm">Ajustement prioritaire</div>
             <ManualAiStatus
               statusKind={planningAnalysisState.kind}
@@ -193,7 +193,7 @@ export default function PlanningCoachCard({
               stageLabel={manualPlanningAnalysis.loadingStageLabel}
             />
           </div>
-          <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+          <div className="planningSectionActions">
             <Button onClick={handleAnalyzePlanning} disabled={manualPlanningAnalysis.loading}>
               {manualPlanningAnalysis.loading
                 ? manualPlanningAnalysis.loadingStageLabel || "Analyse..."
@@ -209,36 +209,30 @@ export default function PlanningCoachCard({
           </div>
         </div>
 
-        <div className="col" style={{ gap: 8 }}>
-          <div className="titleSm">{visibleReply?.headline || "Ajustement du planning"}</div>
-          <div>
-            <div className="small2" style={{ opacity: 0.7 }}>Ce qui compte</div>
+        <div className="planningCoachSummary">
+          <div className="planningCoachBlock">
+            <div className="small2 planningCoachLabel">Ajustement proposé</div>
+            <div className="titleSm">{visibleReply?.headline || "Ajustement du planning"}</div>
+          </div>
+          <div className="planningCoachBlock">
+            <div className="small2 planningCoachLabel">Ce qui compte</div>
             <div className="small">{visibleReply?.reason || "Le planning a besoin d’un ajustement simple et crédible."}</div>
           </div>
-          <div>
-            <div className="small2" style={{ opacity: 0.7 }}>Prochain pas</div>
+          <div className="planningCoachBlock">
+            <div className="small2 planningCoachLabel">Prochain pas</div>
             <div className="small">{renderSuggestion(visibleReply)}</div>
           </div>
         </div>
 
         {manualPlanningAnalysis.error ? (
-          <div className="small2" style={{ opacity: 0.88 }}>
+          <div className="small2 planningSectionMeta">
             {manualPlanningAnalysis.error}
           </div>
         ) : null}
 
         {showDraft ? (
-          <div
-            style={{
-              borderTop: "1px solid rgba(255,255,255,0.08)",
-              paddingTop: 12,
-              display: "grid",
-              gap: 8,
-            }}
-          >
-            <div className="small2" style={{ opacity: 0.78 }}>
-              Brouillon proposé
-            </div>
+          <div className="planningDraftSection">
+            <div className="small2 planningCoachLabel">Brouillon proposé</div>
             <div className="col" style={{ gap: 6 }}>
               {draftChanges.map((change, index) => (
                 <div key={`planning-draft-${index}`} className="small2">
@@ -246,7 +240,7 @@ export default function PlanningCoachCard({
                 </div>
               ))}
             </div>
-            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+            <div className="planningSectionFooter">
               <Button onClick={applyDraft} disabled={applying}>
                 {applying ? "Application..." : "Appliquer"}
               </Button>
@@ -258,11 +252,11 @@ export default function PlanningCoachCard({
         ) : null}
 
         {draftMessage ? (
-          <div className="small2" style={{ opacity: 0.88 }}>
+          <div className="small2 planningSectionMeta">
             {draftMessage}
           </div>
         ) : null}
       </div>
-    </Card>
+    </GateSection>
   );
 }

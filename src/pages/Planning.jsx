@@ -1,9 +1,9 @@
 import React, { useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card } from "../components/UI";
 import CategoryPill from "../components/CategoryPill";
 import PlanningCoachCard from "../components/planning/PlanningCoachCard";
 import DayRail from "../ui/calendar/DayRail";
+import { GateButton as Button, GateSection } from "../shared/ui/gate/Gate";
 import { addDays, startOfWeekKey } from "../utils/dates";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { resolveGoalType } from "../domain/goalType";
@@ -233,6 +233,12 @@ export default function Planning({
     }));
   };
 
+  const planningSectionTitle = planningView === "week" ? "Semaine planifiée" : "Créneaux du jour";
+  const planningSectionDescription =
+    planningView === "week"
+      ? "Relis ta charge prévue jour par jour, sans effet tableau de bord."
+      : "Lecture rapide de la journée, avec la même densité que Today.";
+
   return (
     <ScreenShell
       data={safeData}
@@ -241,63 +247,16 @@ export default function Planning({
       headerSubtitle="Répartis, ajuste et garde une charge crédible."
     >
       <div className="col planningPage">
-        {pendingOccurrence ? (
-          <Card className="planningCard">
-            <div className="p18 col" style={{ gap: 8 }}>
-              <div className="titleSm">Occurrence à replanifier</div>
-              <div className="small">
-                {pendingGoal?.title || "Action"}{pendingCategory?.name ? ` · ${pendingCategory.name}` : ""}
-              </div>
-              <div className="small2" style={{ opacity: 0.82 }}>
-                Déplace cette occurrence puis confirme ou annule ce brouillon de replanification.
-              </div>
-              <div className="row" style={{ justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
-                <Button variant="ghost" onClick={clearPlanningPending}>
-                  Annuler
-                </Button>
-                <Button onClick={clearPlanningPending}>
-                  J&apos;ai replanifié
-                </Button>
-              </div>
-            </div>
-          </Card>
-        ) : null}
-        <PlanningCoachCard
-          data={safeData}
-          setData={setData}
-          setTab={setTab}
-          persistenceScope={persistenceScope}
-          selectedDateKey={selectedDateKey}
-          activeCategoryId={activeCategoryId}
-          planningView={planningView}
-          occurrences={occurrences}
-          goalsById={goalsById}
-          categoriesById={categoriesById}
-        />
-        {legacyBuckets.reclassifyCandidates.length > 0 ? (
-          <Card className="planningCard">
-            <div className="p18 col" style={{ gap: 8 }}>
-              <div className="titleSm">Éléments à reclasser</div>
-              <div className="small">
-                {legacyBuckets.reclassifyCandidates.length} action{legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} héritée{legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} ne remontent plus dans Today tant qu&apos;elles restent hors catégorie.
-              </div>
-              <div className="row" style={{ justifyContent: "flex-end" }}>
-                <Button variant="ghost" onClick={() => setTab?.("library")}>
-                  Ouvrir la bibliothèque
-                </Button>
-              </div>
-            </div>
-          </Card>
-        ) : null}
-
-        <Card className="planningCard">
-          <div className="p18 col" style={{ gap: 12 }}>
-            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <div>
+        <GateSection className="planningSectionCard planningCalendarSection GateSurfacePremium GateCardPremium" collapsible={false}>
+          <div className="planningSectionBody">
+            <div className="planningSectionHeader planningSectionHeader--split">
+              <div className="planningSectionHeaderText">
                 <div className="titleSm">{formatDateLabel(selectedDateKey)}</div>
-                <div className="small2" style={{ opacity: 0.85 }}>{selectedDayTone} · {selectedDayLoadMinutes || 0} min planifiées</div>
+                <div className="small2 planningSectionMeta">
+                  {selectedDayTone} · {selectedDayLoadMinutes || 0} min planifiées
+                </div>
               </div>
-              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+              <div className="planningSectionActions">
                 <Button variant={planningView === "day" ? "primary" : "ghost"} onClick={() => setPlanningView("day")}>
                   Jour
                 </Button>
@@ -310,105 +269,163 @@ export default function Planning({
               </div>
             </div>
 
-            <DayRail
-              selectedDateKey={selectedDateKey}
-              localTodayKey={todayLocalKey()}
-              plannedByDate={calendarModel.plannedByDate}
-              doneByDate={calendarModel.doneByDate}
-              accentByDate={calendarModel.accentByDate}
-              selectedAccent={calendarModel.selectedDateAccent}
-              accent={calendarModel.selectedDateAccent}
-              getDayDots={(dateKey, max = 3) => {
-                const list = calendarModel.categoryDotsByDate.get(dateKey) || [];
-                return { dots: list.slice(0, max), extra: Math.max(0, list.length - max) };
-              }}
-              onDayOpen={commitDateKey}
-              onCommitDateKey={commitDateKey}
-              isActive
-              windowBefore={10}
-              windowAfter={10}
-            />
+            <div className="planningCalendarRail">
+              <DayRail
+                selectedDateKey={selectedDateKey}
+                localTodayKey={todayLocalKey()}
+                plannedByDate={calendarModel.plannedByDate}
+                doneByDate={calendarModel.doneByDate}
+                accentByDate={calendarModel.accentByDate}
+                selectedAccent={calendarModel.selectedDateAccent}
+                accent={calendarModel.selectedDateAccent}
+                getDayDots={(dateKey, max = 3) => {
+                  const list = calendarModel.categoryDotsByDate.get(dateKey) || [];
+                  return { dots: list.slice(0, max), extra: Math.max(0, list.length - max) };
+                }}
+                onDayOpen={commitDateKey}
+                onCommitDateKey={commitDateKey}
+                isActive
+                windowBefore={10}
+                windowAfter={10}
+              />
+            </div>
           </div>
-        </Card>
+        </GateSection>
 
-        {planningView === "day" ? (
-          <Card className="planningCard">
-            <div className="p18 col" style={{ gap: 10 }}>
-              <div className="titleSm">Créneaux du jour</div>
+        <GateSection
+          className="planningSectionCard planningContentSection GateSurfacePremium GateCardPremium"
+          title={planningSectionTitle}
+          description={planningSectionDescription}
+          collapsible={false}
+        >
+          {planningView === "day" ? (
+            <div className="planningDayList">
               {dayItems.length ? (
                 dayItems.map((item) => (
-                  <div key={item.id} className="planningItemCard planningItemCard--day listItem GateRowPremium">
-                    <div className="planningDayCardTop">
-                      <div className="planningDayCardTime">{item.start || "Fenêtre libre"}</div>
+                  <div key={item.id} className="planningItemRow listItem GateRowPremium">
+                    <div className="planningItemRowTop">
+                      <div className="planningItemTime">{item.start || "Fenêtre libre"}</div>
                       <CategoryPill category={item.category || null} label={item.category?.name || "Catégorie"} />
                     </div>
-                    <div className="titleSm planningDayCardTitle">{item.title}</div>
-                    <div className="small2 planningDayCardDuration">
+                    <div className="titleSm planningItemTitle">{item.title}</div>
+                    <div className="small2 planningItemDuration">
                       {Number.isFinite(item.durationMinutes) ? `${item.durationMinutes} min` : "Durée libre"}
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="small">Aucun créneau planifié sur cette journée pour la catégorie active.</div>
+                <div className="small2 planningEmptyState">
+                  Aucun créneau planifié sur cette journée pour la catégorie active.
+                </div>
               )}
             </div>
-          </Card>
-        ) : (
-          <div className="planningWeekGrid">
-            {weekBuckets.map((bucket) => (
-              <Card key={bucket.dateKey} className="planningCard planningWeekCard">
-                <div className="planningWeekCardBody">
-                  <div className="planningWeekCardHeader">
-                    <div className="planningWeekCardHeaderMain">
+          ) : (
+            <div className="planningWeekGrid">
+              {weekBuckets.map((bucket) => (
+                <div
+                  key={bucket.dateKey}
+                  className={`planningWeekBucket${bucket.isToday ? " isToday" : ""}`}
+                >
+                  <div className="planningWeekBucketHeader">
+                    <div className="planningWeekBucketHeaderMain">
                       <div className="titleSm">{bucket.label}</div>
                       {bucket.isToday ? <span className="planningTodayTag">Aujourd’hui</span> : null}
                     </div>
-                  </div>
-                  <div>
-                    <div className="small2" style={{ opacity: 0.85 }}>
+                    <div className="small2 planningWeekBucketMeta">
                       {bucket.totalMinutes || 0} min · {resolveLoadTone(bucket.totalMinutes)}
                     </div>
                   </div>
                   {bucket.items.length ? (
                     <div className="planningWeekList">
                       {bucket.items.slice(0, 3).map((item) => (
-                        <div key={item.id} className="planningItemCard planningItemCard--week listItem GateRowPremium">
-                          <div className="planningWeekItemTop">
-                            <div className="planningWeekItemTime">{item.start || "Fenêtre libre"}</div>
+                        <div key={item.id} className="planningItemRow planningItemRow--compact listItem GateRowPremium">
+                          <div className="planningItemRowTop">
+                            <div className="planningItemTime">{item.start || "Fenêtre libre"}</div>
                             <CategoryPill category={item.category || null} label={item.category?.name || "Catégorie"} />
                           </div>
-                          <div className="planningWeekItemTitle">{item.title}</div>
-                          <div className="planningWeekItemDuration">
+                          <div className="planningItemTitle">{item.title}</div>
+                          <div className="planningItemDuration">
                             {Number.isFinite(item.durationMinutes) ? `${item.durationMinutes} min` : "Durée libre"}
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="small">Aucun créneau.</div>
+                    <div className="small2 planningEmptyState">Aucun créneau.</div>
                   )}
                 </div>
-              </Card>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </GateSection>
 
-        <Card className="planningCard">
-          <div className="p18 col" style={{ gap: 8 }}>
-            <div className="titleSm">Ajustements intelligents</div>
-            <div className="small">
-              Planning s&apos;appuie sur l&apos;engine existant. Les replanifications IA restent proposées sous forme de brouillon avant application.
-            </div>
-            <div className="row" style={{ gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-              <Button variant="ghost" onClick={() => onOpenCoach?.()}>
-                Ouvrir le coach
-              </Button>
-              <Button variant="ghost" onClick={() => setTab?.("pilotage")}>
-                Voir mes progrès
-              </Button>
-            </div>
+        <PlanningCoachCard
+          data={safeData}
+          setData={setData}
+          setTab={setTab}
+          persistenceScope={persistenceScope}
+          selectedDateKey={selectedDateKey}
+          activeCategoryId={activeCategoryId}
+          planningView={planningView}
+          occurrences={occurrences}
+          goalsById={goalsById}
+          categoriesById={categoriesById}
+        />
+
+        <GateSection
+          className="planningSectionCard planningSupportSection GateSurfacePremium GateCardPremium"
+          title="Ajustements intelligents"
+          description="Planning s’appuie sur l’engine existant. Les replanifications IA restent proposées sous forme de brouillon avant application."
+          collapsible={false}
+        >
+          <div className="planningSectionFooter">
+            <Button variant="ghost" onClick={() => onOpenCoach?.()}>
+              Ouvrir le coach
+            </Button>
+            <Button variant="ghost" onClick={() => setTab?.("pilotage")}>
+              Voir mes progrès
+            </Button>
           </div>
-        </Card>
+        </GateSection>
+
+        {pendingOccurrence ? (
+          <GateSection
+            className="planningSectionCard planningSecondarySection GateSurfacePremium GateCardPremium"
+            title="Occurrence à replanifier"
+            description={`${pendingGoal?.title || "Action"}${pendingCategory?.name ? ` · ${pendingCategory.name}` : ""}`}
+            collapsible={false}
+          >
+            <div className="small2 planningSectionMeta">
+              Déplace cette occurrence puis confirme ou annule ce brouillon de replanification.
+            </div>
+            <div className="planningSectionFooter">
+              <Button variant="ghost" onClick={clearPlanningPending}>
+                Annuler
+              </Button>
+              <Button onClick={clearPlanningPending}>
+                J&apos;ai replanifié
+              </Button>
+            </div>
+          </GateSection>
+        ) : null}
+
+        {legacyBuckets.reclassifyCandidates.length > 0 ? (
+          <GateSection
+            className="planningSectionCard planningSecondarySection GateSurfacePremium GateCardPremium"
+            title="Éléments à reclasser"
+            description={`${legacyBuckets.reclassifyCandidates.length} action${legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} héritée${legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} restent hors catégorie.`}
+            collapsible={false}
+          >
+            <div className="small2 planningSectionMeta">
+              Elles ne remontent plus dans Today tant qu&apos;elles restent hors catégorie.
+            </div>
+            <div className="planningSectionFooter">
+              <Button variant="ghost" onClick={() => setTab?.("library")}>
+                Ouvrir la bibliothèque
+              </Button>
+            </div>
+          </GateSection>
+        ) : null}
       </div>
     </ScreenShell>
   );

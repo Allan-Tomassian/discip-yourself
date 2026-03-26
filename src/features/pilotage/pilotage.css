@@ -36,6 +36,44 @@
   align-items: flex-start;
 }
 
+.pilotageCategoryStack {
+  display: grid;
+  gap: 8px;
+}
+
+.pilotageInlineDetail {
+  margin-left: 12px;
+  padding-left: 12px;
+  border-left: 1px solid color-mix(in srgb, var(--accent) 20%, var(--gate-border));
+}
+
+.pilotageInlineGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.pilotageInlinePanel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.08));
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--accentTint, rgba(91, 140, 255, 0.16)) 62%, transparent),
+      transparent 72%
+    ),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, rgba(255,255,255,0.02)), color-mix(in srgb, var(--surface-primary) 98%, rgba(0,0,0,0.08)));
+}
+
+.pilotageInlineAiPanel {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.08));
+}
+
 .pilotageCardHeader {
   padding-inline: 2px;
   min-height: 22px;
@@ -281,5 +319,11 @@
 @media (max-width: 900px) {
   .pilotageTopGrid {
     grid-template-columns: 1fr;
+  }
+
+  .pilotageInlineDetail {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
   }
 }
