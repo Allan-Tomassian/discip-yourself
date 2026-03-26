@@ -8,16 +8,16 @@
   background: transparent;
   box-shadow: none;
   padding: 0;
-  gap: 12px;
+  gap: 24px;
 }
 
 .gatePageHeader {
-  padding: 2px 0 4px;
+  padding: 2px 0 6px;
 }
 
 .gatePageContent {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 24px;
   min-width: 0;
 }

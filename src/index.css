@@ -1475,3 +1475,272 @@ a{ color:inherit; }
     padding-left:calc(12px + var(--safe-left));
   }
 }
+
+/* === Global Design System Refresh === */
+:root{
+  --page-pad: 16px;
+  --layout-max: 1200px;
+  --floating-max: 1200px;
+  --page-top-gap: 32px;
+  --page-section-gap: 32px;
+  --bottomCategoryBarSpace: 120px;
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  :root {
+    --page-pad: 24px;
+    --layout-max: 1200px;
+    --floating-max: 1100px;
+    --page-top-gap: 36px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --page-pad: 32px;
+    --layout-max: 1200px;
+    --floating-max: 1200px;
+    --page-top-gap: 40px;
+  }
+}
+
+html,
+body,
+#root {
+  color: var(--text-primary);
+  background-color: var(--background-primary);
+}
+
+html,
+body {
+  background-image:
+    radial-gradient(circle at top, rgba(91, 140, 255, 0.12), transparent 34%),
+    linear-gradient(180deg, var(--background-secondary) 0%, var(--background-primary) 48%, #0c0f14 100%);
+}
+
+body,
+button,
+input,
+textarea,
+select {
+  font-family: Inter, "SF Pro Display", "SF Pro Text", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.screenShell,
+.screenShellEmbedded {
+  color: var(--text-primary);
+}
+
+.container {
+  max-width: min(var(--layout-max), calc(100vw - var(--safe-left) - var(--safe-right)));
+  padding-top: calc(var(--navOffset, 0px) + var(--navGap, 10px) + var(--page-top-gap));
+  padding-bottom: calc(40px + var(--bottomCategoryBarSpace, var(--bottomRailOffset, 120px)) + var(--safe-bottom));
+}
+
+.pageHeader {
+  gap: 20px;
+}
+
+.pageHeaderRight {
+  max-width: 320px;
+}
+
+.pageTitle {
+  font-size: 28px;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+
+.pageSubtitle {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.pageContent {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.pageContent > .row,
+.pageContent > .col,
+.pageContent > .card,
+.pageContent > .GatePanel,
+.pageContent > .GatePageSection,
+.pageContent > section {
+  min-width: 0;
+}
+
+.navTop {
+  padding-top: 12px;
+}
+
+.navRow {
+  width: 100%;
+  gap: 10px;
+}
+
+.navGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.navBtn {
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.card {
+  border-color: var(--border-subtle);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, rgba(255,255,255,0.02)), color-mix(in srgb, var(--surface-primary) 98%, rgba(0,0,0,0.08)));
+  border-radius: var(--radius-medium);
+  box-shadow: var(--shadow-md);
+}
+
+.accentSurface {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
+    linear-gradient(90deg, color-mix(in srgb, var(--accentTint, rgba(91,140,255,0.15)) 100%, transparent), transparent 60%),
+    color-mix(in srgb, var(--surface-primary) 98%, #0d1118);
+}
+
+.accentRail::before {
+  background-image: var(--category-gradient, linear-gradient(180deg, var(--accent-primary), var(--accent-secondary)));
+  background-color: transparent;
+}
+
+.badge {
+  min-height: 24px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  line-height: 1;
+  background: color-mix(in srgb, var(--surface-primary) 96%, #0d1118);
+  color: var(--text-secondary);
+}
+
+.badgeAccent {
+  border-color: color-mix(in srgb, var(--accent-primary) 30%, var(--border-subtle));
+  background: color-mix(in srgb, var(--accent-soft) 70%, var(--surface-primary));
+  color: var(--text-primary);
+}
+
+.btn,
+.input,
+.textarea,
+.select,
+.iconBtn {
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.btn {
+  min-height: 42px;
+  border-radius: var(--radius-medium);
+}
+
+.btnGhost,
+.btnSecondary {
+  background: color-mix(in srgb, var(--surface-primary) 92%, transparent);
+}
+
+.input,
+.textarea,
+.select,
+.controlClip {
+  border-color: color-mix(in srgb, var(--border-subtle) 96%, rgba(255,255,255,0.05));
+  background: color-mix(in srgb, var(--surface-primary) 98%, #0d1118);
+  color: var(--text-primary);
+}
+
+.input,
+.select {
+  font-size: 15px;
+}
+
+.textarea {
+  min-height: 132px;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.small {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.small2 {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.titleSm {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.modalBackdrop {
+  background: rgba(5, 7, 12, 0.68);
+}
+
+.modalPanel,
+.drawerPanel,
+.plusExpanderPanelContent,
+.editSection {
+  border-color: var(--border-subtle);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, rgba(255,255,255,0.02)), color-mix(in srgb, var(--surface-primary) 98%, rgba(0,0,0,0.08)));
+}
+
+.drawerHeader,
+.editSectionTitle,
+.cardSectionTitle {
+  color: var(--text-primary);
+}
+
+[data-page-id="today"] .pageTitle,
+[data-page-id="planning"] .pageTitle,
+[data-page-id="library"] .pageTitle,
+[data-page-id="pilotage"] .pageTitle {
+  letter-spacing: -0.03em;
+}
+
+@media (max-width: 767px) {
+  .pageContent {
+    gap: 24px;
+  }
+
+  .navGrid {
+    gap: 6px;
+  }
+
+  .navBtn {
+    font-size: 12px;
+    padding-inline: 8px;
+  }
+
+  .pageHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pageHeaderRight {
+    width: 100%;
+    max-width: none;
+  }
+}

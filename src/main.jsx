@@ -8,42 +8,12 @@ import ProfileProvider from "./profile/ProfileProvider.jsx";
 import ProfileGate from "./profile/ProfileGate.jsx";
 import "./index.css";
 
-// Theme bootstrap: ensure the selected theme is applied BEFORE first paint.
-// This prevents refresh on non-Settings pages from snapping back to a default theme.
-import { applyThemeTokens, BRAND_ACCENT, getThemeName } from "./theme/themeTokens";
-import { LS_KEY } from "./utils/storage";
-
-function readStoredState() {
-  try {
-    const raw = window.localStorage.getItem(LS_KEY);
-    if (!raw || !raw.trim()) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-function readLegacyThemeId() {
-  const keys = ["discip_theme", "discipTheme", "themeId", "theme", "appTheme", "selectedTheme", "dy_theme"];
-  for (const k of keys) {
-    const raw = window.localStorage.getItem(k);
-    if (!raw) continue;
-    try {
-      const parsed = JSON.parse(raw);
-      const id = parsed?.themeId ?? parsed?.id ?? parsed?.theme;
-      if (typeof id === "string" && id.trim()) return id.trim();
-    } catch {
-      if (typeof raw === "string" && raw.trim()) return raw.trim();
-    }
-  }
-  return null;
-}
+// Theme bootstrap: apply the single canonical design system before first paint.
+import { applyThemeTokens, BRAND_ACCENT, DEFAULT_THEME } from "./theme/themeTokens";
 
 function applyThemeEarly() {
   try {
-    const storedState = readStoredState();
-    const themeId = storedState ? getThemeName(storedState, "home") : readLegacyThemeId();
-    applyThemeTokens(themeId, BRAND_ACCENT);
+    applyThemeTokens(DEFAULT_THEME, BRAND_ACCENT);
   } catch {
     // Never block app boot on theme errors.
   }

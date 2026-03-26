@@ -1,99 +1,41 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { applyThemeTokens, BRAND_ACCENT, getThemeName, listThemes } from "../theme/themeTokens";
-import { SelectMenu } from "./UI";
+import React from "react";
+import { DEFAULT_THEME } from "../theme/themeTokens";
 import { GateButton, GateHeader, GatePanel } from "../shared/ui/gate/Gate";
 
-function toLabel(name) {
-  if (!name) return "";
-  const s = String(name).trim();
-  if (!s) return "";
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-function preserveAccentWhile(applyFn) {
-  if (typeof document === "undefined") return applyFn();
-  const root = document.documentElement;
-  const cs = getComputedStyle(root);
-  const keys = [
-    "--accent",
-    "--accentStrong",
-    "--accentPrimary",
-    "--focus",
-    "--ring",
-    "--accentText",
-  ];
-  const snapshot = {};
-  for (const k of keys) snapshot[k] = cs.getPropertyValue(k);
-  applyFn();
-  for (const k of keys) {
-    const v = snapshot[k];
-    if (v != null && String(v).trim() !== "") root.style.setProperty(k, v);
-  }
-}
-
 export default function ThemePicker({ data, setData }) {
-  const persistedGlobalTheme = data?.ui?.theme;
-  const savedTheme = persistedGlobalTheme || getThemeName(data, "home");
-  const savedAccent = BRAND_ACCENT;
-
-  const themeOptions = useMemo(() => {
-    const themes = listThemes();
-    const safe = Array.isArray(themes) && themes.length ? themes : ["aurora"];
-    return safe.map((p) => ({ value: p, label: toLabel(p) }));
-  }, []);
-
-  const [pendingTheme, setPendingTheme] = useState(() => savedTheme || "aurora");
-
-  useEffect(() => {
-    setPendingTheme(savedTheme || "aurora");
-  }, [savedTheme]);
-
-  useEffect(() => {
-    preserveAccentWhile(() => applyThemeTokens(pendingTheme, savedAccent));
-    return () => {
-      preserveAccentWhile(() => applyThemeTokens(savedTheme || "aurora", savedAccent));
-    };
-  }, [pendingTheme, savedTheme, savedAccent]);
-
-  const isDirty = pendingTheme !== (savedTheme || "aurora");
+  void data;
+  const visualSystemLabel = DEFAULT_THEME.charAt(0).toUpperCase() + DEFAULT_THEME.slice(1);
 
   return (
     <GatePanel className="GateSurfacePremium GateCardPremium">
-      <GateHeader title="Apparence" subtitle="Choisis un style. Aperçu instantané, puis valide." />
-      <SelectMenu value={pendingTheme} onChange={setPendingTheme} options={themeOptions} />
+      <GateHeader title="Apparence" subtitle="Le design system global est maintenant unique sur toute l’app." />
       <div className="row rowBetween rowWrap gap8">
         <div className="GatePageSubtitle">
-          Thème actuel : <span style={{ color: "var(--text)" }}>{toLabel(savedTheme || "aurora")}</span>
+          Thème actuel : <span style={{ color: "var(--text)" }}>{visualSystemLabel}</span>
         </div>
         <div className="GatePrimaryCtaRow">
           <GateButton
             variant="ghost"
             className="GatePressable"
-            disabled={!isDirty}
-            onClick={() => setPendingTheme(savedTheme || "aurora")}
-          >
-            Réinitialiser
-          </GateButton>
-
-          <GateButton
-            className="GatePressable"
-            disabled={!isDirty}
             onClick={() => {
-              setData((prev) => {
-                const nextUi = {
-                  ...(prev.ui || {}),
-                  theme: pendingTheme,
+              if (typeof setData !== "function") return;
+              setData((prev) => ({
+                ...prev,
+                ui: {
+                  ...(prev?.ui || {}),
+                  theme: DEFAULT_THEME,
                   pageThemes: {
-                    ...(prev.ui?.pageThemes || {}),
-                    home: pendingTheme,
-                    __default: pendingTheme,
+                    ...((prev?.ui?.pageThemes && typeof prev.ui.pageThemes === "object")
+                      ? prev.ui.pageThemes
+                      : {}),
+                    __default: DEFAULT_THEME,
+                    home: DEFAULT_THEME,
                   },
-                };
-                return { ...prev, ui: nextUi };
-              });
+                },
+              }));
             }}
           >
-            Appliquer
+            Confirmer le thème global
           </GateButton>
         </div>
       </div>

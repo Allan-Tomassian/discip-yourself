@@ -40,7 +40,7 @@ function isDesktopLikeInput() {
 export { default as AccentItem } from "./AccentItem";
 
 export function Badge({ children }) {
-  return <span className="badge">{children}</span>;
+  return <span className="badge gateBadge">{children}</span>;
 }
 
 export function Card({ children, accentBorder = false, style, className = "", ...props }) {
@@ -55,7 +55,7 @@ export function Card({ children, accentBorder = false, style, className = "", ..
     : {};
   return (
     <div
-      className={`card${accentBorder ? " accentSurface accentRail" : ""}${className ? ` ${className}` : ""}`}
+      className={`card GateSurfacePremium GateCardPremium${accentBorder ? " accentSurface accentRail" : ""}${className ? ` ${className}` : ""}`}
       style={{
         ...accentStyle,
         ...(style || {}),
@@ -78,7 +78,7 @@ export function Button({ children, variant = "primary", className = "", type = "
         : "btn";
   const mergedClassName = className ? `${cls} ${className}` : cls;
   return (
-    <button className={mergedClassName} type={type} {...props}>
+    <button className={`${mergedClassName} GatePressable`} type={type} {...props}>
       {children}
     </button>
   );
@@ -89,7 +89,7 @@ export function IconButton({ icon, children, className = "", type = "button", ..
   const content = children || iconMap[icon] || icon;
   const mergedClassName = className ? `iconBtn ${className}` : "iconBtn";
   return (
-    <button className={mergedClassName} type={type} {...props}>
+    <button className={`${mergedClassName} GatePressable`} type={type} {...props}>
       {content}
     </button>
   );
@@ -100,7 +100,7 @@ export function Input({ className = "", style, ...props }) {
   const isDateLike = type === "date" || type === "datetime-local" || type === "time";
   const input = (
     <input
-      className={`input${className ? ` ${className}` : ""}`}
+      className={`input GateInputPremium${className ? ` ${className}` : ""}`}
       style={{ maxWidth: "100%", minWidth: 0, ...(style || {}) }}
       {...props}
     />
@@ -112,7 +112,7 @@ export function Input({ className = "", style, ...props }) {
 export function Textarea({ className = "", style, ...props }) {
   return (
     <textarea
-      className={`textarea${className ? ` ${className}` : ""}`}
+      className={`textarea GateTextareaPremium${className ? ` ${className}` : ""}`}
       style={{ maxWidth: "100%", minWidth: 0, ...(style || {}) }}
       {...props}
     />
@@ -241,7 +241,7 @@ export function Modal({ open, onClose, children, className = "", backdropClassNa
         <div className="modalPanelClip GateGlassClip GateGlassBackdrop">
           <div
             ref={panelRef}
-            className={`modalPanel GateGlassContent${className ? ` ${className}` : ""}`}
+            className={`modalPanel GateGlassContent GateSurfacePremium GateCardPremium${className ? ` ${className}` : ""}`}
             role="dialog"
             aria-modal="true"
             onClick={(e) => e.stopPropagation()}

@@ -62,7 +62,7 @@ export default function CategoryRail({
     >
       {categories.map((c) => {
         const isSelected = c.id === selectedCategoryId;
-        const accentVars = getCategoryAccentVars(c.color);
+        const accentVars = getCategoryAccentVars(c);
 
         return (
           <button

@@ -119,7 +119,7 @@ export default function Session({
   }, [goals, selectedOccurrence?.goalId, session?.habitIds]);
   const category = categories.find((item) => item?.id === goal?.categoryId) || null;
   const accent = category?.color || getAccentForPage(safeData, "home");
-  const catAccentVars = getCategoryAccentVars(accent);
+  const catAccentVars = getCategoryAccentVars(category || accent);
 
   useEffect(() => {
     const isRunning = Boolean(session && isRuntimeSessionOpen(session) && session?.timerRunning);

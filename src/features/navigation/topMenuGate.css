@@ -19,7 +19,7 @@
 .topNavGateBar {
   gap: 0;
   min-height: 0;
-  padding: 8px;
+  padding: 10px;
   position: relative;
   z-index: 1;
 }
@@ -32,7 +32,8 @@
 
 .topNavWalletBadge {
   flex: 0 0 auto;
-  min-width: 94px;
+  min-width: 88px;
+  align-self: stretch;
 }
 
 .topNavWalletTrigger {
@@ -52,7 +53,7 @@
   position: fixed;
   inset: 0;
   z-index: var(--z-scrim, 1200); /* scrim derrière le popover */
-  background: rgba(2, 4, 10, 0.42);
+  background: rgba(5, 7, 12, 0.58);
 }
 
 .topMenuPopoverLayer {
@@ -95,7 +96,7 @@
 }
 
 .topMenuGateHeader {
-  padding: 2px 2px 4px;
+  padding: 4px 2px 8px;
 }
 
 .topMenuGate .gateHeaderText {
@@ -109,12 +110,12 @@
 }
 
 .topMenuHeaderIconButton {
-  width: 28px;
-  height: 28px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--gate-border) 84%, rgba(255, 255, 255, 0.22));
-  background: color-mix(in srgb, var(--gate-surface-1) 90%, #050910);
-  color: var(--gate-text);
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 90%, rgba(255, 255, 255, 0.1));
+  background: color-mix(in srgb, var(--surface-primary) 94%, #0c1016);
+  color: var(--text-primary);
   display: inline-grid;
   place-items: center;
   cursor: pointer;
@@ -123,19 +124,19 @@
 }
 
 .topMenuHeaderIconButton:hover {
-  border-color: color-mix(in srgb, var(--accent) 24%, var(--gate-border));
-  background: color-mix(in srgb, var(--gate-surface-1) 94%, rgba(255, 255, 255, 0.05));
+  border-color: color-mix(in srgb, var(--accent-primary) 24%, var(--border-subtle));
+  background: color-mix(in srgb, var(--surface-elevated) 90%, #101722);
 }
 
 .topMenuGateList {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
   padding: 0 2px;
 }
 
 .topMenuGateItem {
-  padding: 10px 12px;
+  padding: 12px 14px;
 }
 
 .topMenuGateSectionFlat {
@@ -147,28 +148,27 @@
 }
 
 .topMenuGateRowFlat {
-  border: 1px solid color-mix(in srgb, var(--gate-border) 90%, rgba(255, 255, 255, 0.1));
-  background: color-mix(in srgb, var(--gate-surface-1) 95%, #05080f);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 92%, rgba(255, 255, 255, 0.08));
+  background: color-mix(in srgb, var(--surface-primary) 96%, #0c1017);
+  box-shadow: none;
 }
 
 .topMenuGateRowFlat .gateRowLabel {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.34;
-  font-weight: 650;
-  color: var(--gate-text);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .topMenuGateRowFlat .gateRowMeta {
   font-size: 12px;
   line-height: 1.34;
-  color: color-mix(in srgb, var(--gate-text-muted) 86%, rgba(255, 255, 255, 0.2));
+  color: color-mix(in srgb, var(--text-secondary) 88%, rgba(255, 255, 255, 0.12));
 }
 
 .topMenuGateRowFlat.isInteractive:hover {
-  border-color: color-mix(in srgb, var(--accent) 22%, var(--gate-border));
-  background: color-mix(in srgb, var(--gate-surface-1) 94%, rgba(255, 255, 255, 0.07));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-color: color-mix(in srgb, var(--accent-primary) 22%, var(--border-subtle));
+  background: color-mix(in srgb, var(--surface-elevated) 92%, #101722);
 }
 
 .topMenuGateRowFlat.isInteractive:focus-visible {
@@ -177,7 +177,7 @@
 }
 
 .topMenuGateChevron {
-  color: var(--gate-text-muted);
+  color: var(--text-muted);
   font-size: 16px;
   line-height: 1;
 }
@@ -252,6 +252,7 @@
 .topMenuWalletBalance .WalletBadgeCard {
   min-height: 32px;
   padding-inline: 12px;
+  opacity: 0.92;
 }
 
 .topMenuWalletStats {

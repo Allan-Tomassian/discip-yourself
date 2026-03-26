@@ -12,12 +12,18 @@ export default function ScreenShell({
   headerAlign = "left",
   headerRowAlign = "end",
   embedded = false,
+  pageId = "",
+  className = "",
   children,
 }) {
   if (embedded) {
     return (
       <AccentContext.Provider value={{ accent }}>
-        <div className="screenShellEmbedded" style={{ "--accent": accent }}>
+        <div
+          className={`screenShellEmbedded${className ? ` ${className}` : ""}`}
+          style={{ "--accent": accent }}
+          data-page-id={pageId || undefined}
+        >
           {children}
         </div>
       </AccentContext.Provider>
@@ -58,7 +64,11 @@ export default function ScreenShell({
 
   return (
     <AccentContext.Provider value={{ accent }}>
-      <div className="screenShell" style={{ "--accent": accent }}>
+      <div
+        className={`screenShell${className ? ` ${className}` : ""}`}
+        style={{ "--accent": accent }}
+        data-page-id={pageId || undefined}
+      >
         {/* Background preset (gradient) */}
         <div className="bg" style={backgroundCss ? { backgroundImage: backgroundCss } : undefined} />
 

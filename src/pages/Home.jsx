@@ -1718,7 +1718,7 @@ export default function Home({
   // Render
   const accent = focusCategory && focusCategory.color ? focusCategory.color : getAccentForPage(safeData, "home");
   const backgroundImage = profile.whyImage || "";
-  const accentVars = getCategoryAccentVars(accent);
+  const accentVars = getCategoryAccentVars(focusCategory || accent);
 
   const whyText = (profile.whyText || "").trim();
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
@@ -2117,7 +2117,7 @@ export default function Home({
     <ScreenShell
       accent={accent}
       backgroundImage={backgroundImage}
-      headerTitle={<span data-tour-id="today-title">Aujourd’hui</span>}
+      headerTitle={<span data-tour-id="today-title">Today</span>}
       headerSubtitle={<span data-tour-id="today-subtitle">Exécution</span>}
       headerRight={headerRight}
       headerRowAlign="start"

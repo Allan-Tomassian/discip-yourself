@@ -5,16 +5,16 @@
 // - “Motion-ready” tokens (optional CSS animation using background-position)
 // - Backward compatible keys: background, bg, text, muted, muted2, border, glass, glass2, accent, glow
 
-export const DEFAULT_THEME = "aurora";
+export const DEFAULT_THEME = "discipline";
 
 // Brand accent fallback (can still be overridden per theme or per user).
-export const BRAND_ACCENT = "#F7931A";
+export const BRAND_ACCENT = "#5B8CFF";
 
 // Helper: a consistent glow for brand accent (kept subtle).
-export const BRAND_GLOW = "rgba(247,147,26,.22)";
+export const BRAND_GLOW = "rgba(91,140,255,.22)";
 
 // CTA text tuned for the brand accent.
-const CTA_TEXT_DARK = "#1A1208";
+const CTA_TEXT_DARK = "#FFFFFF";
 const IS_DEV = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
 let warnedAccentOverride = false;
 
@@ -495,8 +495,159 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+const SINGLE_THEME = {
+  ...SHARED,
+  background:
+    "radial-gradient(1100px 700px at 12% 0%, rgba(91,140,255,.13), transparent 60%)," +
+    "radial-gradient(900px 560px at 100% 12%, rgba(124,92,255,.10), transparent 60%)," +
+    "linear-gradient(180deg, #0f1115, #151922 48%, #1b2130)",
+  bgBase:
+    "radial-gradient(1100px 700px at 12% 0%, rgba(91,140,255,.13), transparent 60%)," +
+    "radial-gradient(900px 560px at 100% 12%, rgba(124,92,255,.10), transparent 60%)," +
+    "linear-gradient(180deg, #0f1115, #151922 48%, #1b2130)",
+  backgroundVignette:
+    "radial-gradient(1200px 900px at 50% 45%, rgba(0,0,0,0), rgba(0,0,0,.42) 74%, rgba(0,0,0,.62) 100%)",
+  bgVignette:
+    "radial-gradient(1200px 900px at 50% 45%, rgba(0,0,0,0), rgba(0,0,0,.42) 74%, rgba(0,0,0,.62) 100%)",
+  backgroundGrain:
+    "repeating-linear-gradient(135deg, rgba(255,255,255,.007) 0px, rgba(255,255,255,.007) 1px, rgba(255,255,255,0) 2px, rgba(255,255,255,0) 10px)",
+  bgNoise:
+    "repeating-linear-gradient(135deg, rgba(255,255,255,.007) 0px, rgba(255,255,255,.007) 1px, rgba(255,255,255,0) 2px, rgba(255,255,255,0) 10px)",
+  bgStripes: "none",
+  bg: "#0f1115",
+  text: "rgba(255,255,255,.92)",
+  muted: "rgba(255,255,255,.65)",
+  muted2: "rgba(255,255,255,.45)",
+  border: "rgba(255,255,255,.08)",
+  glass: "rgba(255,255,255,.04)",
+  glass2: "rgba(255,255,255,.06)",
+  surface: "rgba(255,255,255,.04)",
+  surface1: "rgba(255,255,255,.04)",
+  surface2: "rgba(255,255,255,.06)",
+  surface3: "rgba(255,255,255,.09)",
+  borderStrong: "rgba(255,255,255,.14)",
+  textStrong: "rgba(255,255,255,.92)",
+  text1: "rgba(255,255,255,.92)",
+  text2: "rgba(255,255,255,.65)",
+  text3: "rgba(255,255,255,.45)",
+  shadow: "0 16px 32px rgba(0,0,0,.22)",
+  shadowSoft: "0 12px 24px rgba(0,0,0,.18)",
+  shadowCard: "0 20px 40px rgba(0,0,0,.25)",
+  shadowSm: "0 12px 24px rgba(0,0,0,.18)",
+  shadowMd: "0 16px 32px rgba(0,0,0,.22)",
+  shadowLg: "0 20px 40px rgba(0,0,0,.25)",
+  shadowControl: "inset 0 1px 0 rgba(255,255,255,.04)",
+  danger: "#ef4444",
+  warning: "#f59e0b",
+  success: "#22c55e",
+  info: "#38bdf8",
+  cardBg: "rgba(255,255,255,.04)",
+  cardBorder: "rgba(255,255,255,.08)",
+  cardShadow: "0 16px 32px rgba(0,0,0,.22)",
+  cardRadius: "20px",
+  controlBg: "rgba(255,255,255,.04)",
+  controlBgHover: "rgba(255,255,255,.06)",
+  controlBgActive: "rgba(255,255,255,.09)",
+  controlBorder: "rgba(255,255,255,.08)",
+  controlBorderStrong: "rgba(255,255,255,.14)",
+  controlText: "rgba(255,255,255,.92)",
+  controlPlaceholder: "rgba(255,255,255,.45)",
+  controlRadius: "14px",
+  controlHeight: "44px",
+  buttonHeight: "44px",
+  buttonRadius: "14px",
+  buttonGhostBg: "transparent",
+  buttonGhostBorder: "rgba(255,255,255,.08)",
+  buttonGhostText: "rgba(255,255,255,.92)",
+  buttonSecondaryBg: "rgba(255,255,255,.04)",
+  buttonSecondaryBorder: "rgba(255,255,255,.08)",
+  buttonSecondaryText: "rgba(255,255,255,.92)",
+  buttonDangerBg: "rgba(239,68,68,.92)",
+  buttonDangerBorder: "rgba(239,68,68,.48)",
+  buttonDangerText: "#FFFFFF",
+  iconBtnBg: "rgba(255,255,255,.04)",
+  iconBtnBorder: "rgba(255,255,255,.08)",
+  iconBtnText: "rgba(255,255,255,.65)",
+  iconBtnHoverBg: "rgba(255,255,255,.08)",
+  menuBg: "rgba(21,25,34,.94)",
+  menuBorder: "rgba(255,255,255,.08)",
+  menuShadow: "0 12px 24px rgba(0,0,0,.18)",
+  menuOptionHover: "rgba(255,255,255,.05)",
+  badgeBg: "rgba(255,255,255,.05)",
+  badgeBorder: "rgba(255,255,255,.08)",
+  badgeText: "rgba(255,255,255,.65)",
+  chipBg: "rgba(255,255,255,.05)",
+  chipHoverBg: "rgba(255,255,255,.08)",
+  hintBg: "rgba(255,255,255,.03)",
+  hintBorder: "rgba(255,255,255,.08)",
+  divider: "rgba(255,255,255,.08)",
+  kpiBg: "rgba(255,255,255,.03)",
+  kpiBorder: "rgba(255,255,255,.08)",
+  textSubtle: "rgba(255,255,255,.45)",
+  linkBtnText: "rgba(255,255,255,.92)",
+  dragHandleBg: "rgba(255,255,255,.04)",
+  dragHandleText: "rgba(255,255,255,.65)",
+  progressTrackBg: "rgba(255,255,255,.08)",
+  progressFillBg: BRAND_ACCENT,
+  checkRowBorder: "rgba(255,255,255,.08)",
+  checkRowBg: "rgba(255,255,255,.03)",
+  checkRowHoverBg: "rgba(255,255,255,.05)",
+  panelBorder: "rgba(255,255,255,.08)",
+  panelBg: "rgba(255,255,255,.03)",
+  panelFooterBg: "rgba(15,17,21,.86)",
+  panelFooterBorder: "rgba(255,255,255,.08)",
+  editDayOptionBg: "rgba(255,255,255,.04)",
+  overlayBackdrop: "rgba(3,5,10,.58)",
+  overlaySheetBackdrop: "rgba(3,5,10,.46)",
+  overlayTransparent: "rgba(0,0,0,0)",
+  overlayBlur: "12px",
+  panelFooterBlur: "20px",
+  pulseBorder: "rgba(255,255,255,.18)",
+  drawerShadow: "0 24px 60px rgba(0,0,0,.32)",
+  navBtnBorder: "rgba(255,255,255,.08)",
+  navBtnText: "rgba(255,255,255,.65)",
+  navBtnHoverBg: "rgba(255,255,255,.06)",
+  navBtnActiveBg: "rgba(255,255,255,.08)",
+  navBtnActiveText: "rgba(255,255,255,.92)",
+  navBtnActiveShadow: "inset 0 0 0 1px rgba(91,140,255,.18)",
+  navGearBg: "rgba(255,255,255,.04)",
+  navGearText: "rgba(255,255,255,.65)",
+  navGearHoverBg: "rgba(255,255,255,.08)",
+  navGearActiveBg: "rgba(255,255,255,.08)",
+  navGearActiveText: "rgba(255,255,255,.92)",
+  navGearActiveShadow: "inset 0 0 0 1px rgba(91,140,255,.18)",
+  railAddBg: "rgba(255,255,255,.04)",
+  railAddShadow: "0 12px 24px rgba(0,0,0,.18)",
+  liquidSelectBg: "rgba(255,255,255,.04)",
+  liquidSelectBorder: "rgba(255,255,255,.08)",
+  liquidSelectShadow: "inset 0 1px 0 rgba(255,255,255,.05)",
+  liquidSelectBlur: "12px",
+  bgVignetteOpacity: "0.54",
+  bgNoiseOpacity: "0.14",
+  bgNoiseBlend: "soft-light",
+  backgroundSize: "100% 100%",
+  backgroundPosition: "50% 50%",
+  backgroundVignetteOpacity: "0.54",
+  backgroundGrainOpacity: "0.14",
+  backgroundGrainBlend: "soft-light",
+  pageTitleMarginTop: "0px",
+  pageTitleToSubtitle: "8px",
+  subtitleToContent: "20px",
+  cardGap: "16px",
+  navOffset: "92px",
+  navGap: "12px",
+  "font-xs": "12px",
+  "font-sm": "13px",
+  "font-md": "15px",
+  "font-lg": "15px",
+  "font-title": "28px",
+  "font-weight-regular": "400",
+  "font-weight-semibold": "600",
+  "font-weight-bold": "700",
+};
+
 export function listThemes() {
-  return Object.keys(THEME_TOKENS);
+  return [DEFAULT_THEME];
 }
 
 /**
@@ -505,15 +656,8 @@ export function listThemes() {
  * Backward compatible for the legacy home fields.
  */
 export function getThemeName(data, page = "home") {
-  const byPage = data?.ui?.pageThemes?.[page];
-  if (typeof byPage === "string" && byPage.trim()) return byPage.trim();
-
-  // Legacy (home only)
-  if (page === "home") {
-    const legacy = data?.ui?.pageThemeHome;
-    if (typeof legacy === "string" && legacy.trim()) return legacy.trim();
-  }
-
+  void data;
+  void page;
   return DEFAULT_THEME;
 }
 
@@ -523,29 +667,14 @@ export function getThemeName(data, page = "home") {
  * Backward compatible for the legacy home fields.
  */
 export function getThemeAccent(data, page = "home") {
-  const byPage = data?.ui?.pageAccents?.[page];
-  if (typeof byPage === "string" && byPage.trim()) {
-    const normalized = normalizeHexColor(byPage);
-    if (normalized && normalized !== BRAND_ACCENT) warnAccentOverride(normalized, "state.pageAccents");
-    return normalized === BRAND_ACCENT ? normalized : null;
-  }
-
-  // Legacy (home only)
-  if (page === "home") {
-    const legacy = data?.ui?.accentHome;
-    if (typeof legacy === "string" && legacy.trim()) {
-      const normalized = normalizeHexColor(legacy);
-      if (normalized && normalized !== BRAND_ACCENT) warnAccentOverride(normalized, "state.accentHome");
-      return normalized === BRAND_ACCENT ? normalized : null;
-    }
-  }
-
-  return null;
+  void data;
+  void page;
+  return BRAND_ACCENT;
 }
 
 export function resolveThemeTokens(themeName) {
-  if (typeof themeName !== "string" || !themeName.trim()) return THEME_TOKENS[DEFAULT_THEME];
-  return THEME_TOKENS[themeName.trim()] || THEME_TOKENS[DEFAULT_THEME];
+  void themeName;
+  return SINGLE_THEME;
 }
 
 /**
@@ -590,11 +719,13 @@ export function applyThemeTokens(themeName, accentOverride) {
     // Cross-app aliases to avoid hardcoded colors elsewhere.
     accentStrong: accentBase,
     accentPrimary: accentBase,
+    accentSecondary: "#7C5CFF",
     focus: accentBase,
     focusGlow: hexToRgba(accentBase, 0.22) || BRAND_GLOW,
     cta: accentBase,
     ctaText: CTA_TEXT_DARK,
     accentText: CTA_TEXT_DARK,
+    textOnLight: CTA_TEXT_DARK,
     // Unified focus ring tokens
     focusRing: `0 0 0 1px ${accentBase}, 0 0 6px ${hexToRgba(accentBase, 0.18) || BRAND_GLOW}`,
     controlFocusRing: `0 0 0 1px ${accentBase}, 0 0 5px ${hexToRgba(accentBase, 0.18) || BRAND_GLOW}`,
@@ -635,6 +766,11 @@ export function applyThemeTokens(themeName, accentOverride) {
     "surface-1": tokens.surface || tokens.surface1,
     "surface-2": tokens.surface2,
     "surface-3": tokens.surface3,
+    "background-primary": "#0f1115",
+    "background-secondary": "#151922",
+    "background-tertiary": "#1b2130",
+    "surface-primary": tokens.surface || tokens.surface1,
+    "surface-elevated": tokens.surface2,
     "border-subtle": tokens.border,
     "border-strong": tokens.borderStrong || tokens["border-strong"],
     "shadow-sm": tokens.shadowSm || tokens.shadowSoft,
@@ -643,6 +779,9 @@ export function applyThemeTokens(themeName, accentOverride) {
     "text-1": tokens.text,
     "text-2": tokens.muted,
     "text-3": tokens.muted2,
+    "text-primary": tokens.text,
+    "text-secondary": tokens.muted,
+    "text-muted": tokens.muted2,
   };
 
   const root = document.documentElement;
@@ -661,7 +800,7 @@ export function applyThemeTokens(themeName, accentOverride) {
   root.style.setProperty("--accentGlow", finalTokens.glow);
 
   // Debug-friendly dataset values
-  root.dataset.theme = (typeof themeName === "string" && themeName.trim()) ? themeName.trim() : DEFAULT_THEME;
+  root.dataset.theme = DEFAULT_THEME;
   root.dataset.accent = finalTokens.accent;
 
   // iOS browser chrome color
@@ -682,11 +821,9 @@ export function applyThemeTokens(themeName, accentOverride) {
  * Convenience helper: apply tokens directly from the persisted app state.
  */
 export function applyThemeFromState(data, page = "home") {
-  // Force a single global theme across the app.
-  // This avoids the Settings page (or any other page) overriding the theme and creating color inconsistencies.
-  const name = getThemeName(data, "home");
-  const accent = getThemeAccent(data, "home");
-  applyThemeTokens(name, accent);
+  void data;
+  void page;
+  applyThemeTokens(DEFAULT_THEME, BRAND_ACCENT);
 }
 
 export { THEME_TOKENS };

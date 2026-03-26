@@ -1,39 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { GateButton, GateRow, GateSection } from "../shared/ui/gate/Gate";
 import GatePage from "../shared/ui/gate/GatePage";
-import { BRAND_ACCENT, applyThemeTokens, getThemeName, listThemes } from "../theme/themeTokens";
+import { DEFAULT_THEME } from "../theme/themeTokens";
 import { getPlanLimits, isPremium } from "../logic/entitlements";
 import { isClickSoundEnabled, setClickSoundEnabled } from "../shared/ui/sound/useClickSound";
 import "../features/preferences/preferencesGate.css";
-
-function toLabel(name) {
-  if (!name) return "";
-  const value = String(name).trim();
-  if (!value) return "";
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function preserveAccentWhile(applyFn) {
-  if (typeof document === "undefined") return applyFn();
-  const root = document.documentElement;
-  const cs = getComputedStyle(root);
-  const keys = [
-    "--accent",
-    "--accentStrong",
-    "--accentPrimary",
-    "--focus",
-    "--ring",
-    "--accentText",
-  ];
-  const snapshot = {};
-  for (const key of keys) snapshot[key] = cs.getPropertyValue(key);
-  applyFn();
-  for (const key of keys) {
-    const value = snapshot[key];
-    if (value != null && String(value).trim() !== "") root.style.setProperty(key, value);
-  }
-}
 
 export default function Preferences({ data, setData }) {
   const safeData = data && typeof data === "object" ? data : {};
@@ -41,32 +13,9 @@ export default function Preferences({ data, setData }) {
   const fallbackWallpaper = Array.isArray(safeData.categories) ? safeData.categories[0]?.wallpaper : "";
   const backgroundImage = fallbackWallpaper || profile?.whyImage || "";
 
-  const persistedGlobalTheme = safeData?.ui?.theme;
-  const savedTheme = persistedGlobalTheme || getThemeName(safeData, "home");
-  const savedAccent = BRAND_ACCENT;
-  const [pendingTheme, setPendingTheme] = useState(() => savedTheme || "aurora");
-
-  const themeOptions = useMemo(() => {
-    const themes = listThemes();
-    const available = Array.isArray(themes) && themes.length ? themes : ["aurora"];
-    return available.map((themeName) => ({ value: themeName, label: toLabel(themeName) }));
-  }, []);
-
-  useEffect(() => {
-    setPendingTheme(savedTheme || "aurora");
-  }, [savedTheme]);
-
-  useEffect(() => {
-    preserveAccentWhile(() => applyThemeTokens(pendingTheme, savedAccent));
-    return () => {
-      preserveAccentWhile(() => applyThemeTokens(savedTheme || "aurora", savedAccent));
-    };
-  }, [pendingTheme, savedTheme, savedAccent]);
-
-  const isThemeDirty = pendingTheme !== (savedTheme || "aurora");
-
   const premium = isPremium(safeData);
   const limits = getPlanLimits();
+  const visualSystemLabel = DEFAULT_THEME.charAt(0).toUpperCase() + DEFAULT_THEME.slice(1);
   const [soundEnabled, setSoundEnabledState] = useState(() => isClickSoundEnabled());
 
   const [whyDraft, setWhyDraft] = useState(profile.whyText || "");
@@ -106,64 +55,21 @@ export default function Preferences({ data, setData }) {
       >
         <GateSection
           title="Apparence"
-          description="Choisis le thème de l'app"
+          description="Le design system global est appliqué partout dans l’app."
           collapsible={false}
           className="preferencesGateCard GateSurfacePremium GateCardPremium"
           data-tour-id="settings-theme"
         >
-          <div className="preferencesGateForm">
-            <label className="preferencesGateField GateFormField" htmlFor="preferences-theme-select">
-              <span className="preferencesGateFieldLabel GateFormLabel">Thème</span>
-              <select
-                id="preferences-theme-select"
-                className="preferencesGateSelect GateSelectPremium"
-                value={pendingTheme}
-                onChange={(event) => setPendingTheme(event.target.value)}
-              >
-                {themeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="preferencesGateNote">
-              Thème actuel : <span className="preferencesGateNoteStrong">{toLabel(savedTheme || "aurora")}</span>
+          <div className="preferencesGateSummary">
+            <p className="preferencesGateNote preferencesGateNoteStrong">
+              Système visuel actif : {visualSystemLabel}
             </p>
-            <div className="preferencesGateActions">
-              <GateButton
-                type="button"
-                variant="ghost"
-                className="GatePressable"
-                withSound
-                disabled={!isThemeDirty}
-                onClick={() => setPendingTheme(savedTheme || "aurora")}
-              >
-                Réinitialiser
-              </GateButton>
-              <GateButton
-                type="button"
-                className="GatePressable"
-                withSound
-                disabled={!isThemeDirty}
-                onClick={() => {
-                  setData((prev) => {
-                    const nextUi = {
-                      ...(prev.ui || {}),
-                      theme: pendingTheme,
-                      pageThemes: {
-                        ...(prev.ui?.pageThemes || {}),
-                        home: pendingTheme,
-                        __default: pendingTheme,
-                      },
-                    };
-                    return { ...prev, ui: nextUi };
-                  });
-                }}
-              >
-                Appliquer
-              </GateButton>
-            </div>
+            <p className="preferencesGateNote">
+              Toutes les surfaces partagent désormais le même thème sombre, calme et responsive.
+            </p>
+            <p className="preferencesGateNote">
+              Les anciennes préférences visuelles sont conservées uniquement pour compatibilité technique, sans effet sur l’interface.
+            </p>
           </div>
         </GateSection>
 

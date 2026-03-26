@@ -54,7 +54,7 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
   }
 
   const accent = category.color || getAccentForPage(safeData, "home");
-  const catAccentVars = getCategoryAccentVars(accent);
+  const catAccentVars = getCategoryAccentVars(category || accent);
   const whyText = (category.whyText || "").trim();
 
   return (

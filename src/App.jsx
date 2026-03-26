@@ -47,7 +47,7 @@ import Privacy from "./pages/Privacy";
 import Support from "./pages/Support";
 import CoachChat from "./pages/CoachChat";
 import CoachPanel from "./features/coach/CoachPanel";
-import { applyThemeTokens } from "./theme/themeTokens";
+import { applyThemeTokens, BRAND_ACCENT, DEFAULT_THEME } from "./theme/themeTokens";
 import { todayLocalKey } from "./utils/dateKey";
 import { normalizePriorities } from "./logic/priority";
 import { FIRST_USE_TOUR_STEPS, TOUR_VERSION } from "./tour/tourSpec";
@@ -253,37 +253,6 @@ export default function App() {
     (typeof safeData?.ui?.selectedDateKey === "string" && safeData.ui.selectedDateKey) ||
     (typeof safeData?.ui?.selectedDate === "string" && safeData.ui.selectedDate) ||
     todayLocalKey();
-  // Single source of truth for theme:
-  // - ui.theme is authoritative
-  // - legacy fallbacks are read ONCE and immediately promoted into ui.theme
-  const deriveLegacyTheme = (uiObj) => {
-    const ui = uiObj && typeof uiObj === "object" ? uiObj : {};
-    const pageThemes = ui.pageThemes && typeof ui.pageThemes === "object" ? ui.pageThemes : null;
-    if (!pageThemes) return "";
-    // Some pages used to persist their own key; pick the first meaningful value.
-    const candidates = [
-      pageThemes.__default,
-      pageThemes.settings,
-      pageThemes.home,
-      pageThemes.today,
-      pageThemes.library,
-      pageThemes.pilotage,
-    ];
-    for (const c of candidates) {
-      const v = (c || "").toString().trim();
-      if (v) return v;
-    }
-    return "";
-  };
-
-  const themeName = useMemo(() => {
-    const ui = safeData?.ui && typeof safeData.ui === "object" ? safeData.ui : {};
-    const direct = (ui.theme || "").toString().trim();
-    if (direct) return direct;
-    const legacy = deriveLegacyTheme(ui);
-    return legacy || "bitcoin";
-  }, [safeData?.ui]);
-
   const topNav = (
     <TopNav
       active={
@@ -446,54 +415,62 @@ export default function App() {
   };
 
   // Theme reconciliation:
-  // - If ui.theme is missing but legacy pageThemes exist, promote them into ui.theme.
-  // - If ui.theme exists, keep legacy __default in sync so older code (e.g. Settings) cannot override on refresh.
+  // - The app now ships a single locked design system.
+  // - Keep persisted ui.theme/pageThemes/pageAccents aligned silently for backward compatibility.
   useEffect(() => {
     const ui = safeData?.ui && typeof safeData.ui === "object" ? safeData.ui : {};
-    const current = (ui.theme || "").toString().trim();
-    const legacy = deriveLegacyTheme(ui);
+    const currentTheme = (ui.theme || "").toString().trim();
+    const pageThemes = ui.pageThemes && typeof ui.pageThemes === "object" ? ui.pageThemes : {};
+    const defaultTheme = (pageThemes.__default || "").toString().trim();
+    const homeTheme = (pageThemes.home || "").toString().trim();
+    const hasPageAccents =
+      ui.pageAccents && typeof ui.pageAccents === "object" && Object.keys(ui.pageAccents).length > 0;
+    const needsSync =
+      currentTheme !== DEFAULT_THEME ||
+      defaultTheme !== DEFAULT_THEME ||
+      homeTheme !== DEFAULT_THEME ||
+      hasPageAccents;
 
-    // Promote legacy -> ui.theme (only when ui.theme is empty)
-    if (!current && legacy && typeof setData === "function") {
-      setData((prev) => {
-        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-        const prevCur = (prevUi.theme || "").toString().trim();
-        if (prevCur) return prev;
-        return { ...prev, ui: { ...prevUi, theme: legacy } };
-      });
-      return;
-    }
+    if (!needsSync || typeof setData !== "function") return;
 
-    // Keep legacy __default aligned with ui.theme to prevent refresh regressions
-    if (current && typeof setData === "function") {
-      const pageThemes = ui.pageThemes && typeof ui.pageThemes === "object" ? ui.pageThemes : {};
-      const def = (pageThemes.__default || "").toString().trim();
-      if (def === current) return;
-      setData((prev) => {
-        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-        const prevTheme = (prevUi.theme || "").toString().trim();
-        if (!prevTheme) return prev; // only sync when ui.theme exists
-        const prevPageThemes =
-          prevUi.pageThemes && typeof prevUi.pageThemes === "object" ? prevUi.pageThemes : {};
-        const prevDef = (prevPageThemes.__default || "").toString().trim();
-        if (prevDef === prevTheme) return prev;
-        return {
-          ...prev,
-          ui: {
-            ...prevUi,
-            pageThemes: {
-              ...prevPageThemes,
-              __default: prevTheme,
-            },
+    setData((prev) => {
+      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+      const prevPageThemes =
+        prevUi.pageThemes && typeof prevUi.pageThemes === "object" ? prevUi.pageThemes : {};
+      const prevCurrent = (prevUi.theme || "").toString().trim();
+      const prevDefault = (prevPageThemes.__default || "").toString().trim();
+      const prevHome = (prevPageThemes.home || "").toString().trim();
+      const prevHasPageAccents =
+        prevUi.pageAccents &&
+        typeof prevUi.pageAccents === "object" &&
+        Object.keys(prevUi.pageAccents).length > 0;
+      if (
+        prevCurrent === DEFAULT_THEME &&
+        prevDefault === DEFAULT_THEME &&
+        prevHome === DEFAULT_THEME &&
+        !prevHasPageAccents
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          theme: DEFAULT_THEME,
+          pageThemes: {
+            ...prevPageThemes,
+            __default: DEFAULT_THEME,
+            home: DEFAULT_THEME,
           },
-        };
-      });
-    }
+          pageAccents: {},
+        },
+      };
+    });
   }, [safeData?.ui, setData]);
 
   useEffect(() => {
-    applyThemeTokens(themeName);
-  }, [themeName]);
+    applyThemeTokens(DEFAULT_THEME, BRAND_ACCENT);
+  }, []);
   useEffect(() => {
     if (!isSameOrder(categoryRailOrder, safeData?.ui?.categoryRailOrder || [])) {
       setData((prev) => ({

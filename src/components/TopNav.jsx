@@ -4,7 +4,7 @@ import { GatePanel } from "../shared/ui/gate/Gate";
 import "../features/navigation/topMenuGate.css";
 
 const NAV_ITEMS = [
-  { id: "today", label: "Aujourd’hui" },
+  { id: "today", label: "Today" },
   { id: "planning", label: "Planning" },
   { id: "library", label: "Bibliothèque" },
   { id: "pilotage", label: "Pilotage" },

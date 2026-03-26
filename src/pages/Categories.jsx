@@ -751,7 +751,7 @@ export default function Categories({
     const isExpanded = libraryDetailExpandedId === category.id;
     const isEditing = editedCategoryId === category.id;
     const isSuggested = suggestedIds.has(category.id);
-    const detailAccentVars = getCategoryAccentVars(category.color);
+    const detailAccentVars = getCategoryAccentVars(category);
     const detailWhy = (category.whyText || "").trim() || "Aucun mini-why pour cette catégorie.";
     const categoryDraft = isEditing ? draftStore.getDraft(getCategoryScopeKey(category.id)) : null;
     const draftCategoryName = categoryDraft?.working?.name ?? category.name ?? "";
