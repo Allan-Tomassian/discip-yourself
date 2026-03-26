@@ -303,9 +303,7 @@ export default function App() {
   // Single header: keep TopNav only (prevents duplicate logo/title)
   const headerStack = topNav;
   // Spacer under the fixed header stack (TopNav + wordmark). Keep it tight to avoid a big empty gap.
-  const headerSpacer = (
-    <div aria-hidden="true" className="appHeaderSpacer" style={{ height: 48 }} />
-  );
+  const headerSpacer = null;
   const categories = useMemo(
     () => (Array.isArray(safeData.categories) ? safeData.categories : []),
     [safeData.categories]
@@ -1105,10 +1103,10 @@ export default function App() {
             setDrawerOpen(false);
             setCoachOpen((current) => !current);
           }}
-          aria-label={coachOpen ? "Fermer le coach" : "Ouvrir le coach"}
+          aria-label={coachOpen ? "Masquer le coach" : "Ouvrir le coach"}
         >
           <span className="coachFabDot" aria-hidden="true" />
-          <span>{coachOpen ? "Fermer" : "Coach"}</span>
+          <span>Coach</span>
         </button>
       ) : null}
       <CoachPanel

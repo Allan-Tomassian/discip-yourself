@@ -18,6 +18,7 @@ describe("DisciplineTrendChart", () => {
     );
 
     expect(html).toContain("Aucune action prévue sur cette période.");
+    expect(html).toContain("pilotageTrendBaseline");
     expect(html).not.toContain("pilotageTrendLine");
   });
 
@@ -37,6 +38,7 @@ describe("DisciplineTrendChart", () => {
     expect(html).toContain("Une seule journée scorée sur cette fenêtre.");
     expect(html).toContain("1 seul jour scoré");
     expect(html).not.toContain("pilotageTrendLineGlow");
+    expect(html).toContain("pilotageTrendTooltip");
   });
 
   it("renders a visible path when multiple scored points exist", () => {
@@ -56,7 +58,8 @@ describe("DisciplineTrendChart", () => {
 
     expect(html).toContain("Évolution discipline");
     expect(html).toContain("pilotageTrendLine");
-    expect(html).toContain("Dernier score 90%");
-    expect(html).toContain("3 jours scorés");
+    expect(html).toContain("Niveau actuel 90%");
+    expect(html).toContain("3 jours avec progression");
+    expect(html).toContain("pilotageTrendTooltip");
   });
 });

@@ -31,7 +31,9 @@ describe("Pilotage contract", () => {
     expect(chartSource).toContain("buildDisciplineTrendChartGeometry");
     expect(chartSource).toContain("pilotageTrendChart--single");
     expect(chartSource).toContain("pathLength=\"1\"");
+    expect(chartSource).toContain("pilotageTrendTooltip");
     expect(chartModelSource).toContain("hasSingleScoredPoint");
+    expect(chartModelSource).toContain("baselineY");
     expect(chartModelSource).toContain("linePathD");
     expect(cssSource).toContain("prefers-reduced-motion: reduce");
     expect(cssSource).toContain("pilotageTrendReveal");
@@ -44,6 +46,8 @@ describe("Pilotage contract", () => {
     expect(source).toContain("resolveManualAiDisplayState");
     expect(source).toContain("<ManualAiStatus");
     expect(source).toContain("manualPilotageAnalysis.loadingStageLabel");
+    expect(source).toContain("Niveau actuel");
+    expect(source).toContain("Jours avec progression");
     expect(source).toContain("Analyser cette catégorie");
   });
 });

@@ -416,7 +416,7 @@ function DayRail(
               }}
               className={`calendarDayPill calendarItem ${
                 isSelected ? "is-current" : item.key < selectedKeyForVisual ? "is-past" : "is-future"
-              }`}
+              }${isToday ? " is-today" : ""}`}
               data-datekey={item.key}
               data-status={item.status}
               data-planned={plannedCount}
@@ -437,11 +437,10 @@ function DayRail(
                   isSelected ? accentForItem : accentByDate.get(item.key) || "rgba(255,255,255,.14)",
                 boxShadow: isSelected ? `0 0 0 2px ${accentForItem}33` : undefined,
               }}
-            >
+              >
               <div className="calendarPillWeekday">{item.weekday}</div>
               <div className="calendarPillDay">{item.day}</div>
               <div className="calendarPillMonth">/{item.month}</div>
-              {isToday ? <div className="calendarPillBadge">Aujourd’hui</div> : null}
               {(() => {
                 const { dots, extra } = getDayDots(item.key, 3);
                 if (!dots.length) return null;

@@ -1486,6 +1486,13 @@ a{ color:inherit; }
   --bottomCategoryBarSpace: 120px;
 }
 
+@media (max-width: 767px) {
+  :root {
+    --page-top-gap: 16px;
+    --navGap: 8px;
+  }
+}
+
 @media (min-width: 768px) and (max-width: 1023px) {
   :root {
     --page-pad: 24px;
@@ -1725,13 +1732,17 @@ select {
     gap: 24px;
   }
 
+  .navTop {
+    padding-top: 8px;
+  }
+
   .navGrid {
     gap: 6px;
   }
 
   .navBtn {
-    font-size: 12px;
-    padding-inline: 8px;
+    font-size: 11px;
+    padding-inline: 7px;
   }
 
   .pageHeader {

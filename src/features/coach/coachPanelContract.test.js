@@ -17,6 +17,7 @@ describe("coach panel contract", () => {
     expect(app).toContain("const coachSurfaceTab = tab === \"coach-chat\" ? lastNonCoachTabRef.current : tab;");
     expect(app).toContain("className={`coachFab${showBottomRail ? \" has-rail\" : \"\"}${coachOpen ? \" is-open\" : \"\"}`}");
     expect(app).toContain("data-testid=\"coach-fab\"");
+    expect(app).toContain("<span>Coach</span>");
     expect(app).toContain("<CoachPanel");
     expect(app).toContain("surfaceTab={coachSurfaceTab}");
     expect(app).toContain("sourceTab={coachSurfaceTab}");
@@ -24,9 +25,13 @@ describe("coach panel contract", () => {
 
   it("keeps the dedicated coach route on the shared conversation surface", () => {
     const coachPage = readSrc("pages/CoachChat.jsx");
+    const coachPanel = readSrc("features/coach/CoachPanel.jsx");
 
     expect(coachPage).toContain("useCoachConversationController");
     expect(coachPage).toContain("<CoachConversationSurface controller={controller} mode=\"page\" />");
     expect(coachPage).toContain("sourceTab = \"today\"");
+    expect(coachPanel).toContain("coachConversationRail");
+    expect(coachPanel).toContain("setActiveConversationId");
+    expect(coachPanel).toContain("Conversations");
   });
 });

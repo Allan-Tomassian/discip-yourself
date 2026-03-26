@@ -21,6 +21,8 @@ import {
   buildRecentMessagesFromConversation,
   clearCoachSessionReplies,
   createCoachConversation,
+  ensureCoachConversationsState,
+  getCoachConversationById,
   getCoachSessionReplies,
   getLatestCoachConversation,
   setCoachSessionReply,
@@ -31,7 +33,7 @@ import {
 import "./coach.css";
 
 const COACH_QUICK_PROMPTS = [
-  "Créer une action",
+  "Ajouter une action",
   "Structurer ma semaine",
   "Clarifier une catégorie",
   "Pourquoi cette recommandation ?",
@@ -60,6 +62,29 @@ function useCoachSessionReplies(conversationId) {
   return useMemo(() => getCoachSessionReplies(conversationId), [conversationId, revision]);
 }
 
+function formatConversationTimestamp(updatedAt) {
+  if (!updatedAt) return "";
+  try {
+    return new Intl.DateTimeFormat("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(updatedAt));
+  } catch {
+    return "";
+  }
+}
+
+function buildConversationPreview(conversation) {
+  const lastMessage = Array.isArray(conversation?.messages)
+    ? conversation.messages[conversation.messages.length - 1] || null
+    : null;
+  const text = String(lastMessage?.text || "").trim();
+  if (!text) return "Nouveau chat";
+  return text.length > 72 ? `${text.slice(0, 72)}…` : text;
+}
+
 export function useCoachConversationController({
   data,
   setData,
@@ -80,9 +105,28 @@ export function useCoachConversationController({
     () => getCoachContextSnapshot({ data: safeData, surfaceTab }),
     [safeData, surfaceTab]
   );
-  const currentConversation = useMemo(
-    () => getLatestCoachConversation(safeData?.coach_conversations_v1),
+  const conversations = useMemo(
+    () => ensureCoachConversationsState(safeData?.coach_conversations_v1).conversations,
     [safeData?.coach_conversations_v1]
+  );
+  const latestConversation = conversations[0] || null;
+  const [activeConversationId, setActiveConversationId] = useState(latestConversation?.id || "");
+  useEffect(() => {
+    if (!conversations.length) {
+      if (activeConversationId) setActiveConversationId("");
+      return;
+    }
+    if (activeConversationId && conversations.some((conversation) => conversation.id === activeConversationId)) {
+      return;
+    }
+    setActiveConversationId(latestConversation?.id || "");
+  }, [activeConversationId, conversations, latestConversation?.id]);
+  const currentConversation = useMemo(
+    () =>
+      getCoachConversationById(safeData?.coach_conversations_v1, activeConversationId) ||
+      latestConversation ||
+      getLatestCoachConversation(safeData?.coach_conversations_v1),
+    [activeConversationId, latestConversation, safeData?.coach_conversations_v1]
   );
   const sessionReplies = useCoachSessionReplies(currentConversation?.id || "");
   const messageEntries = useMemo(
@@ -130,12 +174,16 @@ export function useCoachConversationController({
         dateKey: contextSnapshot.selectedDateKey,
       },
     });
-    setData({
-      ...safeData,
-      coach_conversations_v1: upsertCoachConversation(safeData.coach_conversations_v1, nextConversation),
+    setData((previous) => {
+      const safePrevious = previous && typeof previous === "object" ? previous : {};
+      return {
+        ...safePrevious,
+        coach_conversations_v1: upsertCoachConversation(safePrevious.coach_conversations_v1, nextConversation),
+      };
     });
+    setActiveConversationId(nextConversation.id);
     clearCoachSessionReplies(nextConversation.id);
-  }, [contextSnapshot.activeCategoryId, contextSnapshot.selectedDateKey, safeData, setData]);
+  }, [contextSnapshot.activeCategoryId, contextSnapshot.selectedDateKey, setData]);
 
   const applyAction = useCallback(
     (action) => {
@@ -246,6 +294,7 @@ export function useCoachConversationController({
         },
       });
       const preparedConversation = preparedResult.conversation;
+      setActiveConversationId(preparedConversation?.id || "");
       setData({
         ...safeData,
         coach_conversations_v1: preparedResult.state,
@@ -318,6 +367,9 @@ export function useCoachConversationController({
     loading,
     loadingStageLabel,
     currentConversation,
+    conversations,
+    activeConversationId,
+    setActiveConversationId,
     messageEntries,
     quickPrompts: COACH_QUICK_PROMPTS,
     hasMessages: messageEntries.length > 0,
@@ -341,6 +393,9 @@ export function CoachConversationSurface({
     loading,
     loadingStageLabel,
     currentConversation,
+    conversations,
+    activeConversationId,
+    setActiveConversationId,
     messageEntries,
     quickPrompts,
     hasMessages,
@@ -352,6 +407,12 @@ export function CoachConversationSurface({
     applyDraftProposal,
   } = controller;
   const scrollRef = useRef(null);
+  const [isDesktopLayout, setIsDesktopLayout] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 901px)").matches : false
+  );
+  const [railExpanded, setRailExpanded] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 901px)").matches : false
+  );
 
   useEffect(() => {
     const node = scrollRef.current;
@@ -359,153 +420,226 @@ export function CoachConversationSurface({
     node.scrollTop = node.scrollHeight;
   }, [hasMessages, loading, messageEntries.length]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
+    const mediaQuery = window.matchMedia("(min-width: 901px)");
+    const syncLayout = (matches) => {
+      setIsDesktopLayout(matches);
+      if (matches) setRailExpanded(true);
+    };
+    syncLayout(mediaQuery.matches);
+    const handleChange = (event) => syncLayout(event.matches);
+    mediaQuery.addEventListener?.("change", handleChange);
+    return () => mediaQuery.removeEventListener?.("change", handleChange);
+  }, []);
+
+  const handleSelectConversation = useCallback(
+    (conversationId) => {
+      setActiveConversationId(conversationId);
+      if (!isDesktopLayout) setRailExpanded(false);
+    },
+    [isDesktopLayout, setActiveConversationId]
+  );
+
   return (
-    <div className={`coachSurface coachSurface--${mode}`}>
-      {mode !== "panel" ? (
+    <div
+      className={[
+        `coachSurface coachSurface--${mode}`,
+        railExpanded ? "is-rail-open" : "is-rail-closed",
+        isDesktopLayout ? "is-desktop" : "is-mobile",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {!isDesktopLayout && railExpanded ? (
+        <button
+          type="button"
+          className="coachConversationRailScrim"
+          aria-label="Fermer la liste des conversations"
+          onClick={() => setRailExpanded(false)}
+        />
+      ) : null}
+      <aside className={`coachConversationRail${railExpanded ? " is-open" : ""}`}>
+        <div className="coachConversationRailHeader">
+          <div>
+            <div className="coachConversationRailTitle">Conversations</div>
+            <div className="coachConversationRailMeta">
+              {conversations.length ? `${conversations.length} conversation${conversations.length > 1 ? "s" : ""}` : "Aucun échange"}
+            </div>
+          </div>
+          <GateButton variant="ghost" className="GatePressable" onClick={() => setRailExpanded(false)}>
+            Réduire
+          </GateButton>
+        </div>
+        <div className="coachConversationList">
+          {conversations.map((conversation) => (
+            <button
+              key={conversation.id}
+              type="button"
+              className={`coachConversationItem${activeConversationId === conversation.id ? " is-active" : ""}`}
+              onClick={() => handleSelectConversation(conversation.id)}
+            >
+              <div className="coachConversationItemTop">
+                <div className="coachConversationItemTitle">
+                  {conversation.messages.length ? `Conversation ${formatConversationTimestamp(conversation.updatedAt)}` : "Nouveau chat"}
+                </div>
+                <div className="coachConversationItemMeta">{formatConversationTimestamp(conversation.updatedAt)}</div>
+              </div>
+              <div className="coachConversationItemPreview">{buildConversationPreview(conversation)}</div>
+            </button>
+          ))}
+        </div>
+      </aside>
+      <div className="coachSurfaceMain">
         <div className="coachSurfaceToolbar">
           <div className="coachSurfaceStatus">
             <span className={`coachSurfaceStatusDot${loading ? " is-loading" : ""}`} />
             <span>{loading ? loadingStageLabel || "Analyse du contexte" : "Coach prêt"}</span>
           </div>
-          <GateButton variant="ghost" className="GatePressable" onClick={handleNewChat}>
-            Nouveau chat
-          </GateButton>
-        </div>
-      ) : null}
-
-      <div ref={scrollRef} className="coachConversationScroll">
-        {!hasMessages ? (
-          <div className="coachConversationEmpty">
-            <div className="coachConversationEmptyTitle">Pose une question courte.</div>
-            <div className="coachConversationEmptyText">
-              Le coach répond avec une action concrète, une explication brève ou une proposition structurée.
-            </div>
-          </div>
-        ) : null}
-
-        {!hasMessages ? (
-          <div className="coachQuickPrompts">
-            {quickPrompts.map((prompt) => (
-              <button
-                key={prompt}
-                type="button"
-                className="coachQuickPrompt"
-                onClick={() => submitMessage(prompt)}
-                disabled={loading}
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
-        ) : null}
-
-        {messageEntries.map((entry) =>
-          entry.role === "assistant" && entry.reply ? (
-            <div key={entry.id} className="coachMessage coachMessage--assistant">
-              <div className="coachMessageCard">
-                <div className="coachMessageEyebrow">Coach</div>
-                <div className="coachMessageTitle">{entry.reply?.headline || "Action"}</div>
-                <div className="coachMessageText">{entry.reply?.reason || entry.text}</div>
-                <div className="coachMessageActions">
-                  {entry.reply?.primaryAction ? (
-                    <GateButton
-                      className="GatePressable"
-                      onClick={() =>
-                        applyAction({
-                          ...entry.reply.primaryAction,
-                          suggestedDurationMin: entry.reply.suggestedDurationMin,
-                        })
-                      }
-                    >
-                      {renderCoachActionButtonLabel(entry.reply.primaryAction, entry.reply.suggestedDurationMin)}
-                    </GateButton>
-                  ) : null}
-                  {entry.reply?.secondaryAction ? (
-                    <GateButton variant="ghost" className="GatePressable" onClick={() => applyAction(entry.reply.secondaryAction)}>
-                      {entry.reply.secondaryAction.label}
-                    </GateButton>
-                  ) : null}
-                </div>
-                {Array.isArray(entry.reply?.draftChanges) && entry.reply.draftChanges.length ? (
-                  <div className="coachDraftBlock">
-                    <div className="coachDraftTitle">Brouillon proposé</div>
-                    <div className="coachDraftList">
-                      {entry.reply.draftChanges.map((change, index) => (
-                        <div key={`${entry.id}_draft_${index}`} className="coachDraftItem">
-                          {describeCoachDraftChange(change, { goalsById, categoriesById })}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="coachMessageActions">
-                      <GateButton
-                        className="GatePressable"
-                        onClick={() => applyDraftProposal(entry)}
-                        disabled={entry.draftApplyStatus === "applying" || entry.draftApplyStatus === "applied"}
-                      >
-                        {entry.draftApplyStatus === "applying"
-                          ? "Application..."
-                          : entry.draftApplyStatus === "applied"
-                            ? "Appliqué"
-                            : "Appliquer le brouillon"}
-                      </GateButton>
-                    </div>
-                    {entry.draftApplyMessage ? (
-                      <div className={`coachDraftMessage${entry.draftApplyStatus === "error" ? " is-error" : ""}`}>
-                        {entry.draftApplyMessage}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          ) : (
-            <div
-              key={entry.id}
-              className={`coachMessage ${entry.role === "assistant" ? "coachMessage--assistantTranscript" : "coachMessage--user"}`}
-            >
-              <div className="coachMessageBubble">
-                <div className="coachMessageEyebrow">{entry.role === "assistant" ? "Coach" : "Toi"}</div>
-                <div className="coachMessageText" style={{ whiteSpace: "pre-line" }}>
-                  {entry.text}
-                </div>
-              </div>
-            </div>
-          )
-        )}
-
-        {loading ? (
-          <div className="coachMessage coachMessage--assistantTranscript">
-            <div className="coachMessageBubble coachMessageBubble--loading">
-              <div className="coachMessageEyebrow">Coach</div>
-              <div className="coachMessageText">{loadingStageLabel || "Analyse du contexte"}</div>
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      <div className="coachComposer">
-        <Textarea
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="Ex: Je suis en retard, quel est le meilleur prochain bloc ?"
-          rows={3}
-        />
-        <div className="coachComposerFooter">
-          <div className="coachComposerMeta">
-            {currentConversation?.messages?.length
-              ? `${currentConversation.messages.length} message${currentConversation.messages.length > 1 ? "s" : ""}`
-              : "Pas d’historique pour l’instant"}
-          </div>
-          <div className="coachComposerActions">
-            <GateButton variant="ghost" className="GatePressable" onClick={handleNewChat} disabled={loading}>
+          <div className="coachSurfaceToolbarActions">
+            <GateButton variant="ghost" className="GatePressable" onClick={() => setRailExpanded((current) => !current)}>
+              Conversations
+            </GateButton>
+            <GateButton variant="ghost" className="GatePressable" onClick={handleNewChat}>
               Nouveau chat
             </GateButton>
-            <GateButton className="GatePressable" onClick={() => submitMessage()} disabled={loading || !draft.trim()}>
-              {loading ? "Analyse..." : "Envoyer"}
-            </GateButton>
           </div>
         </div>
-        {error ? <div className="coachComposerError">{error}</div> : null}
+
+        <div ref={scrollRef} className="coachConversationScroll">
+          {!hasMessages ? (
+            <div className="coachConversationEmpty">
+              <div className="coachConversationEmptyTitle">Pose une question courte.</div>
+              <div className="coachConversationEmptyText">
+                Le coach répond avec une action concrète, une explication brève ou une proposition structurée.
+              </div>
+            </div>
+          ) : null}
+
+          {!hasMessages ? (
+            <div className="coachQuickPrompts">
+              {quickPrompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  className="coachQuickPrompt"
+                  onClick={() => submitMessage(prompt)}
+                  disabled={loading}
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {messageEntries.map((entry) =>
+            entry.role === "assistant" && entry.reply ? (
+              <div key={entry.id} className="coachMessage coachMessage--assistant">
+                <div className="coachMessageCard">
+                  <div className="coachMessageEyebrow">Coach</div>
+                  <div className="coachMessageTitle">{entry.reply?.headline || "Action"}</div>
+                  <div className="coachMessageText">{entry.reply?.reason || entry.text}</div>
+                  <div className="coachMessageActions">
+                    {entry.reply?.primaryAction ? (
+                      <GateButton
+                        className="GatePressable"
+                        onClick={() =>
+                          applyAction({
+                            ...entry.reply.primaryAction,
+                            suggestedDurationMin: entry.reply.suggestedDurationMin,
+                          })
+                        }
+                      >
+                        {renderCoachActionButtonLabel(entry.reply.primaryAction, entry.reply.suggestedDurationMin)}
+                      </GateButton>
+                    ) : null}
+                    {entry.reply?.secondaryAction ? (
+                      <GateButton variant="ghost" className="GatePressable" onClick={() => applyAction(entry.reply.secondaryAction)}>
+                        {entry.reply.secondaryAction.label}
+                      </GateButton>
+                    ) : null}
+                  </div>
+                  {Array.isArray(entry.reply?.draftChanges) && entry.reply.draftChanges.length ? (
+                    <div className="coachDraftBlock">
+                      <div className="coachDraftTitle">Brouillon proposé</div>
+                      <div className="coachDraftList">
+                        {entry.reply.draftChanges.map((change, index) => (
+                          <div key={`${entry.id}_draft_${index}`} className="coachDraftItem">
+                            {describeCoachDraftChange(change, { goalsById, categoriesById })}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="coachMessageActions">
+                        <GateButton
+                          className="GatePressable"
+                          onClick={() => applyDraftProposal(entry)}
+                          disabled={entry.draftApplyStatus === "applying" || entry.draftApplyStatus === "applied"}
+                        >
+                          {entry.draftApplyStatus === "applying"
+                            ? "Application..."
+                            : entry.draftApplyStatus === "applied"
+                              ? "Appliqué"
+                              : "Appliquer le brouillon"}
+                        </GateButton>
+                      </div>
+                      {entry.draftApplyMessage ? (
+                        <div className={`coachDraftMessage${entry.draftApplyStatus === "error" ? " is-error" : ""}`}>
+                          {entry.draftApplyMessage}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : (
+              <div
+                key={entry.id}
+                className={`coachMessage ${entry.role === "assistant" ? "coachMessage--assistantTranscript" : "coachMessage--user"}`}
+              >
+                <div className="coachMessageBubble">
+                  <div className="coachMessageEyebrow">{entry.role === "assistant" ? "Coach" : "Toi"}</div>
+                  <div className="coachMessageText" style={{ whiteSpace: "pre-line" }}>
+                    {entry.text}
+                  </div>
+                </div>
+              </div>
+            )
+          )}
+
+          {loading ? (
+            <div className="coachMessage coachMessage--assistantTranscript">
+              <div className="coachMessageBubble coachMessageBubble--loading">
+                <div className="coachMessageEyebrow">Coach</div>
+                <div className="coachMessageText">{loadingStageLabel || "Analyse du contexte"}</div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="coachComposer">
+          <Textarea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder="Ex: Je suis en retard, quel est le meilleur prochain bloc ?"
+            rows={3}
+          />
+          <div className="coachComposerFooter">
+            <div className="coachComposerMeta">
+              {currentConversation?.messages?.length
+                ? `${currentConversation.messages.length} message${currentConversation.messages.length > 1 ? "s" : ""}`
+                : "Pas d’historique pour l’instant"}
+            </div>
+            <div className="coachComposerActions">
+              <GateButton variant="ghost" className="GatePressable" onClick={handleNewChat} disabled={loading}>
+                Nouveau chat
+              </GateButton>
+              <GateButton className="GatePressable" onClick={() => submitMessage()} disabled={loading || !draft.trim()}>
+                {loading ? "Analyse..." : "Envoyer"}
+              </GateButton>
+            </div>
+          </div>
+          {error ? <div className="coachComposerError">{error}</div> : null}
+        </div>
       </div>
     </div>
   );
@@ -589,13 +723,10 @@ export default function CoachPanel({
                   {controller.loading ? controller.loadingStageLabel || "Analyse du contexte" : "Conversation rapide, orientée action."}
                 </div>
               </div>
-              <div className="coachPanelHeaderActions">
-                <GateButton variant="ghost" className="GatePressable" onClick={controller.handleNewChat} disabled={controller.loading}>
-                  Nouveau chat
-                </GateButton>
-                <GateButton variant="ghost" className="GatePressable" onClick={() => onClose?.()}>
-                  Fermer
-                </GateButton>
+            <div className="coachPanelHeaderActions">
+              <GateButton variant="ghost" className="GatePressable" onClick={() => onClose?.()}>
+                Fermer
+              </GateButton>
               </div>
             </div>
             <CoachConversationSurface controller={controller} mode="panel" />

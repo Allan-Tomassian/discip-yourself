@@ -122,8 +122,33 @@
 .todayHeroBody {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 10px;
   padding-inline: 2px;
+}
+
+.todayHeroMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.todayHeroCategoryPill {
+  max-width: 100%;
+}
+
+.todayHeroDurationChip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 94%, rgba(255, 255, 255, 0.06));
+  background: color-mix(in srgb, var(--surface-primary) 96%, #0d1118);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .todayHeroCoachHint {
@@ -189,6 +214,52 @@
 .todayHeroSecondaryBtn {
   min-width: 132px;
   justify-content: center;
+}
+
+.todayNextActionItem {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.todayNextActionTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.todayNextActionTime {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.todayNextActionTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.todayNextActionTitle {
+  min-width: 0;
+  color: var(--text-primary);
+}
+
+.todayNextActionFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.todayNextActionDuration {
+  color: var(--text-secondary);
 }
 
 @keyframes todayHeroCoachPulse {

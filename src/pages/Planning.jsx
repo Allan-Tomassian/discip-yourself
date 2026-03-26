@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
 import { Button, Card } from "../components/UI";
+import CategoryPill from "../components/CategoryPill";
 import PlanningCoachCard from "../components/planning/PlanningCoachCard";
 import DayRail from "../ui/calendar/DayRail";
 import { addDays, startOfWeekKey } from "../utils/dates";
@@ -14,6 +15,7 @@ import {
 } from "../domain/categoryVisibility";
 import { collectSystemInboxBuckets } from "../domain/systemInboxMigration";
 import { deriveTodayCalendarModel } from "../features/today/todayCalendarModel";
+import "../features/planning/planning.css";
 
 function sortOccurrences(left, right) {
   const a = typeof left?.start === "string" ? left.start : "";
@@ -231,9 +233,9 @@ export default function Planning({ data, setData, setTab, persistenceScope = "lo
       headerTitle="Planning"
       headerSubtitle="Répartis, ajuste et garde une charge crédible."
     >
-      <div className="col" style={{ gap: 12 }}>
+      <div className="col planningPage">
         {pendingOccurrence ? (
-          <Card accentBorder>
+          <Card className="planningCard">
             <div className="p18 col" style={{ gap: 8 }}>
               <div className="titleSm">Occurrence à replanifier</div>
               <div className="small">
@@ -266,7 +268,7 @@ export default function Planning({ data, setData, setTab, persistenceScope = "lo
           categoriesById={categoriesById}
         />
         {legacyBuckets.reclassifyCandidates.length > 0 ? (
-          <Card accentBorder>
+          <Card className="planningCard">
             <div className="p18 col" style={{ gap: 8 }}>
               <div className="titleSm">Éléments à reclasser</div>
               <div className="small">
@@ -281,7 +283,7 @@ export default function Planning({ data, setData, setTab, persistenceScope = "lo
           </Card>
         ) : null}
 
-        <Card accentBorder>
+        <Card className="planningCard">
           <div className="p18 col" style={{ gap: 12 }}>
             <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <div>
@@ -323,26 +325,18 @@ export default function Planning({ data, setData, setTab, persistenceScope = "lo
         </Card>
 
         {planningView === "day" ? (
-          <Card accentBorder>
+          <Card className="planningCard">
             <div className="p18 col" style={{ gap: 10 }}>
               <div className="titleSm">Créneaux du jour</div>
               {dayItems.length ? (
                 dayItems.map((item) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      borderRadius: 16,
-                      padding: 12,
-                      display: "grid",
-                      gap: 4,
-                    }}
-                  >
-                    <div className="small2" style={{ opacity: 0.8 }}>
-                      {item.start || "Fenêtre libre"} · {item.category?.name || "Catégorie"}
+                  <div key={item.id} className="planningDayCard">
+                    <div className="planningDayCardTop">
+                      <div className="planningDayCardTime">{item.start || "Fenêtre libre"}</div>
+                      <CategoryPill category={item.category || null} label={item.category?.name || "Catégorie"} />
                     </div>
-                    <div className="titleSm">{item.title}</div>
-                    <div className="small2" style={{ opacity: 0.85 }}>
+                    <div className="titleSm planningDayCardTitle">{item.title}</div>
+                    <div className="small2 planningDayCardDuration">
                       {Number.isFinite(item.durationMinutes) ? `${item.durationMinutes} min` : "Durée libre"}
                     </div>
                   </div>
@@ -353,16 +347,10 @@ export default function Planning({ data, setData, setTab, persistenceScope = "lo
             </div>
           </Card>
         ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-              gap: 12,
-            }}
-          >
+          <div className="planningWeekGrid">
             {weekBuckets.map((bucket) => (
-              <Card key={bucket.dateKey} accentBorder>
-                <div className="p18 col" style={{ gap: 10 }}>
+              <Card key={bucket.dateKey} className="planningCard planningWeekCard">
+                <div className="planningWeekCardBody">
                   <div>
                     <div className="titleSm">{bucket.label}</div>
                     <div className="small2" style={{ opacity: 0.85 }}>
@@ -370,11 +358,13 @@ export default function Planning({ data, setData, setTab, persistenceScope = "lo
                     </div>
                   </div>
                   {bucket.items.length ? (
-                    bucket.items.slice(0, 4).map((item) => (
-                      <div key={item.id} className="small" style={{ opacity: 0.92 }}>
-                        {(item.start || "Fenêtre")} · {item.title}
-                      </div>
-                    ))
+                    <div className="planningWeekList">
+                      {bucket.items.slice(0, 4).map((item) => (
+                        <div key={item.id} className="small planningWeekItem">
+                          {(item.start || "Fenêtre")} · {item.title}
+                        </div>
+                      ))}
+                    </div>
                   ) : (
                     <div className="small">Aucun créneau.</div>
                   )}
@@ -384,7 +374,7 @@ export default function Planning({ data, setData, setTab, persistenceScope = "lo
           </div>
         )}
 
-        <Card accentBorder>
+        <Card className="planningCard">
           <div className="p18 col" style={{ gap: 8 }}>
             <div className="titleSm">Ajustements intelligents</div>
             <div className="small">
@@ -395,7 +385,7 @@ export default function Planning({ data, setData, setTab, persistenceScope = "lo
                 Ouvrir le coach
               </Button>
               <Button variant="ghost" onClick={() => setTab?.("pilotage")}>
-                Voir Pilotage
+                Voir mes progrès
               </Button>
             </div>
           </div>

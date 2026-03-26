@@ -1,4 +1,4 @@
-import React, { useId, useMemo } from "react";
+import React, { useEffect, useId, useMemo, useState } from "react";
 import { buildDisciplineTrendChartGeometry } from "./disciplineTrendChartModel";
 
 function formatShortDateLabel(dateKey) {
@@ -11,6 +11,13 @@ function formatShortDateLabel(dateKey) {
   } catch {
     return dateKey;
   }
+}
+
+function formatTrendSummaryLabel(label) {
+  if (label === "hausse") return "En hausse";
+  if (label === "baisse") return "En baisse";
+  if (label === "irrégularité") return "Rythme irrégulier";
+  return "Rythme stable";
 }
 
 function parseColor(input) {
@@ -82,23 +89,22 @@ export default function DisciplineTrendChart({ trend, color = "#6EE7FF", animate
   const firstLabel = trend?.series?.[0]?.dateKey ? formatShortDateLabel(trend.series[0].dateKey) : "";
   const lastLabel = trend?.series?.length ? formatShortDateLabel(trend.series[trend.series.length - 1].dateKey) : "";
   const summaryParts = [];
-  if (Number.isFinite(trend?.summary?.currentScore)) summaryParts.push(`Dernier score ${trend.summary.currentScore}%`);
-  if (typeof trend?.summary?.trendLabel === "string" && trend.summary.trendLabel) summaryParts.push(trend.summary.trendLabel);
+  if (Number.isFinite(trend?.summary?.currentScore)) summaryParts.push(`Niveau actuel ${trend.summary.currentScore}%`);
+  if (typeof trend?.summary?.trendLabel === "string" && trend.summary.trendLabel) summaryParts.push(formatTrendSummaryLabel(trend.summary.trendLabel));
   if (Number.isFinite(trend?.summary?.scoredDays)) {
-    summaryParts.push(`${trend.summary.scoredDays} jour${trend.summary.scoredDays > 1 ? "s" : ""} scoré${trend.summary.scoredDays > 1 ? "s" : ""}`);
+    summaryParts.push(`${trend.summary.scoredDays} jour${trend.summary.scoredDays > 1 ? "s" : ""} avec progression`);
   }
-
-  if (chart.isEmpty) {
-    return (
-      <div className="pilotageTrendChart pilotageTrendChart--empty">
-        <div className="pilotageTrendState small2 textMuted">Aucune action prévue sur cette période.</div>
-      </div>
-    );
-  }
+  const [selectedPointDateKey, setSelectedPointDateKey] = useState(chart.lastScoredPoint?.dateKey || "");
+  useEffect(() => {
+    setSelectedPointDateKey(chart.lastScoredPoint?.dateKey || "");
+  }, [chart.lastScoredPoint?.dateKey]);
+  const selectedPoint =
+    chart.scoredPoints.find((point) => point.dateKey === selectedPointDateKey) || chart.lastScoredPoint || null;
 
   const rootClassName = [
     "pilotageTrendChart",
     animated ? "is-animated" : "",
+    chart.isEmpty ? "pilotageTrendChart--empty" : "",
     chart.hasSingleScoredPoint ? "pilotageTrendChart--single" : "",
   ]
     .filter(Boolean)
@@ -127,10 +133,17 @@ export default function DisciplineTrendChart({ trend, color = "#6EE7FF", animate
         />
         <line
           x1={geometry.paddingLeft}
-          y1={geometry.height - geometry.paddingBottom}
+          y1={chart.baselineY}
           x2={geometry.width - geometry.paddingRight}
-          y2={geometry.height - geometry.paddingBottom}
+          y2={chart.baselineY}
           className="pilotageTrendAxis"
+        />
+        <line
+          x1={geometry.paddingLeft}
+          y1={chart.baselineY}
+          x2={geometry.width - geometry.paddingRight}
+          y2={chart.baselineY}
+          className="pilotageTrendBaseline"
         />
         <line
           x1={geometry.paddingLeft}
@@ -176,7 +189,7 @@ export default function DisciplineTrendChart({ trend, color = "#6EE7FF", animate
           <circle
             key={`neutral-${point.dateKey}`}
             cx={point.x}
-            cy={geometry.height - geometry.paddingBottom}
+            cy={chart.baselineY}
             r="3"
             className="pilotageTrendNeutralPoint"
           />
@@ -187,8 +200,31 @@ export default function DisciplineTrendChart({ trend, color = "#6EE7FF", animate
             className="pilotageTrendPointGroup"
             style={{ "--pilotage-point-delay": `${Math.min(index * 80, 280)}ms` }}
           >
+            <circle
+              cx={point.x}
+              cy={point.y}
+              r="14"
+              fill="transparent"
+              className="pilotageTrendPointHit"
+              role="button"
+              tabIndex="0"
+              aria-label={`${formatShortDateLabel(point.dateKey)} • ${point.score}% • ${point.done} fait / ${point.expected} prévu`}
+              onClick={() => setSelectedPointDateKey(point.dateKey)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setSelectedPointDateKey(point.dateKey);
+                }
+              }}
+            />
             <circle cx={point.x} cy={point.y} r="7" fill={palette.pointHalo} className="pilotageTrendPointHalo" />
-            <circle cx={point.x} cy={point.y} r="4.2" fill={palette.pointFill} className="pilotageTrendPoint" />
+            <circle
+              cx={point.x}
+              cy={point.y}
+              r="4.2"
+              fill={palette.pointFill}
+              className={`pilotageTrendPoint${selectedPoint?.dateKey === point.dateKey ? " is-selected" : ""}`}
+            />
           </g>
         ))}
         {chart.hasSingleScoredPoint && chart.lastScoredPoint ? (
@@ -204,7 +240,18 @@ export default function DisciplineTrendChart({ trend, color = "#6EE7FF", animate
         <text x={geometry.paddingLeft} y={geometry.paddingTop - 6} className="pilotageTrendAxisLabel">100</text>
         <text x={geometry.paddingLeft} y={geometry.height - geometry.paddingBottom + 16} className="pilotageTrendAxisLabel">0</text>
       </svg>
+      {selectedPoint ? (
+        <div className="pilotageTrendTooltip" role="status" aria-live="polite">
+          <div className="pilotageTrendTooltipTitle">{formatShortDateLabel(selectedPoint.dateKey)} • {selectedPoint.score}%</div>
+          <div className="pilotageTrendTooltipText">
+            {selectedPoint.done} fait / {selectedPoint.expected} prévu
+          </div>
+        </div>
+      ) : null}
       {summaryParts.length ? <div className="pilotageTrendSummary">{summaryParts.join(" • ")}</div> : null}
+      {chart.isEmpty ? (
+        <div className="pilotageTrendState small2 textMuted">Aucune action prévue sur cette période.</div>
+      ) : null}
       {chart.hasSingleScoredPoint ? (
         <div className="pilotageTrendState small2 textMuted">
           Une seule journée scorée sur cette fenêtre. Planifie encore 1 ou 2 blocs pour lire une vraie courbe.

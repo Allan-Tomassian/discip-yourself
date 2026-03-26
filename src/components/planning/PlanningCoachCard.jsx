@@ -175,7 +175,7 @@ export default function PlanningCoachCard({
   }
 
   return (
-    <Card accentBorder>
+    <Card>
       <div className="p18 col" style={{ gap: 12 }}>
         <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div>
@@ -198,8 +198,8 @@ export default function PlanningCoachCard({
               {manualPlanningAnalysis.loading
                 ? manualPlanningAnalysis.loadingStageLabel || "Analyse..."
                 : planningView === "week"
-                  ? "Analyser cette semaine"
-                  : "Analyser ce jour"}
+                  ? "Analyser ma semaine"
+                  : "Analyser ma journée"}
             </Button>
             {manualPlanningAnalysis.isPersistedForContext ? (
               <Button variant="ghost" onClick={handleDismissPlanningAnalysis}>

@@ -1,5 +1,6 @@
 import React from "react";
 import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
+import CategoryPill from "../CategoryPill";
 
 export default function TodayNextActions({
   actions = [],
@@ -18,20 +19,24 @@ export default function TodayNextActions({
           safeActions.map((item) => (
             <div
               key={item.id}
-              className="listItem GateRowPremium"
-              style={{ display: "grid", gap: 6 }}
+              className="listItem GateRowPremium todayNextActionItem"
             >
-              <div className="small2" style={{ opacity: 0.78 }}>
-                {[item.start || "Fenêtre libre", item.categoryName || "Catégorie"].filter(Boolean).join(" • ")}
+              <div className="todayNextActionTop">
+                <div className="todayNextActionTime">{item.start || "Fenêtre libre"}</div>
+                <CategoryPill
+                  category={item.category || null}
+                  color={item.category?.color || ""}
+                  label={item.categoryName || "Catégorie"}
+                />
               </div>
-              <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <div className="itemTitle">{item.title || "Action"}</div>
+              <div className="todayNextActionTitleRow">
+                <div className="itemTitle todayNextActionTitle">{item.title || "Action"}</div>
                 {item.isAiPriority ? (
                   <span className="todayHeroCoachBadge is-ai">Priorité IA</span>
                 ) : null}
               </div>
-              <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-                <div className="small2" style={{ opacity: 0.82 }}>
+              <div className="todayNextActionFooter">
+                <div className="small2 todayNextActionDuration">
                   {Number.isFinite(item.durationMinutes) ? `${item.durationMinutes} min` : "Durée libre"}
                 </div>
                 <GateButton
@@ -41,7 +46,7 @@ export default function TodayNextActions({
                   withSound
                   onClick={() => onOpenOccurrence?.(item)}
                 >
-                  Ouvrir
+                  Démarrer
                 </GateButton>
               </div>
             </div>

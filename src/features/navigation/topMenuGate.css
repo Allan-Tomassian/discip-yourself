@@ -36,6 +36,18 @@
   align-self: stretch;
 }
 
+.topNavMenuSlot {
+  flex: 0 0 auto;
+}
+
+.topNavTabsGrid {
+  min-width: 0;
+}
+
+.topNavWalletSlot {
+  flex: 0 0 auto;
+}
+
 .topNavWalletTrigger {
   flex: 0 0 auto;
   display: inline-flex;
@@ -547,5 +559,28 @@
 @media (max-width: 520px) {
   .topMenuPopoverLayer {
     max-width: calc(100vw - 32px);
+  }
+}
+
+@media (max-width: 767px) {
+  .topNavGateBar {
+    padding: 8px;
+  }
+
+  .topNavGateBar .navRow {
+    gap: 6px;
+  }
+
+  .topNavGateBar .navGrid,
+  .topNavGateBar .navActions {
+    gap: 6px;
+  }
+
+  .topNavWalletSlot {
+    display: none;
+  }
+
+  .topNavTabsGrid.navGrid {
+    grid-template-columns: minmax(0, 0.86fr) minmax(0, 0.98fr) minmax(0, 1.26fr) minmax(0, 0.96fr);
   }
 }

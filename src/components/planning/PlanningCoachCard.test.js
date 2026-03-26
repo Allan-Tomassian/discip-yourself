@@ -30,5 +30,7 @@ describe("PlanningCoachCard contract", () => {
     expect(source).toContain("statusLabel={planningAnalysisState.label}");
     expect(source).toContain("stageLabel={manualPlanningAnalysis.loadingStageLabel}");
     expect(source).toContain("manualPlanningAnalysis.loadingStageLabel || \"Analyse...\"");
+    expect(source).toContain("Analyser ma semaine");
+    expect(source).toContain("Analyser ma journée");
   });
 });

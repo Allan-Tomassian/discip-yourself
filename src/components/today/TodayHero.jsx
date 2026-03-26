@@ -2,6 +2,7 @@ import React from "react";
 import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
 import "../../features/today/today.css";
 import ManualAiStatus from "../ai/ManualAiStatus";
+import CategoryPill from "../CategoryPill";
 
 export default function TodayHero({
   title = "Aucune action prioritaire",
@@ -50,6 +51,10 @@ export default function TodayHero({
       </div>
       <div className="todayHeroBody">
         <div className="todayHeroTitle">{displayTitle}</div>
+        <div className="todayHeroMetaRow">
+          <CategoryPill label={displayCategory} className="todayHeroCategoryPill" />
+          <div className="todayHeroDurationChip">{durationLabel || "Durée libre"}</div>
+        </div>
         {reasonLinkLabel ? (
           <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
             <span className={`todayHeroCoachBadge${reasonLinkType === "cross_category" ? " is-ai" : ""}`}>
@@ -57,22 +62,6 @@ export default function TodayHero({
             </span>
           </div>
         ) : null}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-            gap: 10,
-          }}
-        >
-          <div className="listItem GateRowPremium">
-            <div className="small2">Catégorie</div>
-            <div className="titleSm">{displayCategory}</div>
-          </div>
-          <div className="listItem GateRowPremium">
-            <div className="small2">Durée</div>
-            <div className="titleSm">{durationLabel || "Libre"}</div>
-          </div>
-        </div>
         <div className="col" style={{ gap: 8 }}>
           <div>
             <div className="small2" style={{ opacity: 0.72 }}>Pourquoi</div>
@@ -137,7 +126,7 @@ export default function TodayHero({
               withSound
               onClick={() => onOpenPlanning?.()}
             >
-              Voir planning
+              Ouvrir mon planning
             </GateButton>
           ) : null}
         </div>

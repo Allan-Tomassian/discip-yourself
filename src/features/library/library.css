@@ -87,28 +87,44 @@
 .libraryAccentItem {
   position: relative;
   align-items: flex-start;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.08));
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--accentTint, rgba(91, 140, 255, 0.16)) 84%, transparent),
+      transparent 72%
+    ),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, rgba(255,255,255,0.02)), color-mix(in srgb, var(--surface-primary) 98%, rgba(0,0,0,0.08)));
 }
 
 .libraryAccentItem::before {
   content: "";
   position: absolute;
-  left: 8px;
-  top: 8px;
-  bottom: 8px;
-  width: 2px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--libraryAccent, var(--accent)) 72%, transparent);
-  opacity: 0.85;
+  left: 12px;
+  right: 12px;
+  top: 0;
+  height: 42px;
+  border-radius: 0 0 16px 16px;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--libraryAccent, var(--accent)) 16%, transparent),
+      transparent 78%
+    );
+  opacity: 0.95;
 }
 
 .libraryAccentItemBody {
   width: 100%;
   min-width: 0;
-  padding-left: 8px;
+  padding-left: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .libraryAccentItem.listItem {
-  padding: 11px 12px;
+  padding: 12px 14px;
 }
 
 .categoryGateList.isExpanded {

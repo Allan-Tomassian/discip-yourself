@@ -54,6 +54,13 @@ const STATUS_STYLES = {
   },
 };
 
+const DISCIPLINE_TREND_LABELS = {
+  stable: "Rythme stable",
+  hausse: "En hausse",
+  baisse: "En baisse",
+  irrégularité: "Rythme irrégulier",
+};
+
 const clamp01 = (n) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 
 function formatMinutes(value) {
@@ -145,6 +152,7 @@ function Meter({ value01 = 0, label = "", tone = "accent" }) {
 }
 
 function PilotageCategoryRow({
+  category,
   color,
   selected,
   onClick,
@@ -157,6 +165,7 @@ function PilotageCategoryRow({
   return (
     <AccentCategoryRow
       className="pilotageCategoryRow"
+      category={category}
       color={color}
       selected={selected}
       onClick={onClick}
@@ -212,6 +221,10 @@ function buildConstanceSummary({ occurrences, sessionHistoryByOccurrenceId }) {
     doneCount,
     missedCount,
   };
+}
+
+function formatDisciplineTrendLabel(label) {
+  return DISCIPLINE_TREND_LABELS[label] || "Rythme stable";
 }
 
 function buildPilotageCoachFallback({
@@ -653,6 +666,7 @@ export default function Pilotage({
                 return (
                   <PilotageCategoryRow
                     key={category.id}
+                    category={category}
                     color={getCategoryColor(category)}
                     selected={selectedCategoryId === category.id}
                     onClick={() => setPilotageSelectedCategory(category.id)}
@@ -671,7 +685,7 @@ export default function Pilotage({
                 <div className="row pilotageCardHeader" style={{ alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                   <div>
                     <div className="sectionTitle">{selectedCategory.name || "Catégorie"}</div>
-                    <div className="small2 textMuted">Lecture stratégique simplifiée</div>
+                <div className="small2 textMuted">Lecture stratégique simplifiée</div>
                   </div>
                   {selectedStatus ? (
                     <GateBadge
@@ -730,7 +744,7 @@ export default function Pilotage({
             <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div>
                 <div className="sectionTitle">Évolution discipline</div>
-                <div className="small2 textMuted">Courbe simple du ratio fait / prévu sur la catégorie active.</div>
+                <div className="small2 textMuted">Lecture simple du rythme récent sur la catégorie active.</div>
               </div>
               <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
                 {PILOTAGE_DISCIPLINE_WINDOWS.map((windowDays) => (
@@ -746,21 +760,21 @@ export default function Pilotage({
             </div>
             <div className="pilotageTopGrid">
               <div className="listItem GateRowPremium">
-                <div className="small2">Score actuel</div>
+                <div className="small2">Niveau actuel</div>
                 <div className="titleSm">
                   {Number.isFinite(disciplineTrend.summary.currentScore) ? `${disciplineTrend.summary.currentScore}%` : "—"}
                 </div>
               </div>
               <div className="listItem GateRowPremium">
-                <div className="small2">Lecture</div>
-                <div className="titleSm">{disciplineTrend.summary.trendLabel}</div>
+                <div className="small2">Rythme</div>
+                <div className="titleSm">{formatDisciplineTrendLabel(disciplineTrend.summary.trendLabel)}</div>
               </div>
               <div className="listItem GateRowPremium">
-                <div className="small2">Jours scorés</div>
+                <div className="small2">Jours avec progression</div>
                 <div className="titleSm">{disciplineTrend.summary.scoredDays}</div>
               </div>
               <div className="listItem GateRowPremium">
-                <div className="small2">Jours neutres</div>
+                <div className="small2">Jours sans attente</div>
                 <div className="titleSm">{disciplineTrend.summary.neutralDays}</div>
               </div>
             </div>
@@ -772,11 +786,11 @@ export default function Pilotage({
             />
             <div className="pilotageInsights">
               <div className="pilotageInsightItem">
-                <div className="small2 textMuted">Tendance</div>
-                <div>{disciplineTrend.summary.trendDetail}</div>
+                <div className="small2 textMuted">Rythme</div>
+                <div>{formatDisciplineTrendLabel(disciplineTrend.summary.trendLabel)}</div>
               </div>
               <div className="pilotageInsightItem">
-                <div className="small2 textMuted">Delta récent</div>
+                <div className="small2 textMuted">Écart récent</div>
                 <div>{disciplineTrend.summary.delta > 0 ? "+" : ""}{disciplineTrend.summary.delta} points</div>
               </div>
             </div>

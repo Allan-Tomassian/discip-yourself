@@ -1,0 +1,80 @@
+.planningPage {
+  gap: 12px;
+}
+
+.planningCard {
+  border-color: var(--border-subtle);
+}
+
+.planningDayCard,
+.planningWeekCard {
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.05));
+  border-radius: var(--radius-medium);
+  background: color-mix(in srgb, var(--surface-elevated) 94%, #0d1118);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.planningDayCard {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.planningDayCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.planningDayCardTime {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.planningDayCardTitle {
+  color: var(--text-primary);
+}
+
+.planningDayCardDuration {
+  color: var(--text-secondary);
+}
+
+.planningWeekGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.planningWeekCard {
+  padding: 14px;
+}
+
+.planningWeekCardBody {
+  display: grid;
+  gap: 8px;
+}
+
+.planningWeekList {
+  display: grid;
+  gap: 6px;
+}
+
+.planningWeekItem {
+  color: var(--text-secondary);
+}
+
+@media (min-width: 768px) {
+  .planningWeekGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .planningWeekGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

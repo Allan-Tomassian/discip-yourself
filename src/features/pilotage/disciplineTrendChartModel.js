@@ -108,6 +108,7 @@ export function buildDisciplineTrendChartGeometry(series, geometryOverrides = {}
     neutralPoints,
     linePathD,
     areaPathD,
+    baselineY,
     hasDrawableLine,
     hasSingleScoredPoint,
     lastScoredPoint,

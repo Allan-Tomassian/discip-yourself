@@ -1,7 +1,9 @@
 import React from "react";
 import { GateRow } from "../shared/ui/gate/Gate";
+import { getCategoryAccentVars } from "../utils/categoryAccent";
 
 export default function AccentCategoryRow({
+  category = null,
   color = "#6EE7FF",
   selected = false,
   onClick,
@@ -29,7 +31,11 @@ export default function AccentCategoryRow({
       onClick={onClick}
       onKeyDown={onKeyDown}
       right={rightSlot}
-      style={{ "--libraryAccent": color || "#6EE7FF", ...style }}
+      style={{
+        ...getCategoryAccentVars(category || color || "#6EE7FF"),
+        "--libraryAccent": color || category?.color || "#6EE7FF",
+        ...style,
+      }}
       {...props}
     >
       <div className="libraryAccentItemBody">{children}</div>

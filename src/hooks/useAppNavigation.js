@@ -221,8 +221,7 @@ export function useAppNavigation({ safeData, setData }) {
     if (!completed) return;
     if (typeof window !== "undefined" && window.location.pathname !== "/")
       return;
-    const last = normalizeTab(safeData?.ui?.lastTab);
-    _setTab((cur) => (normalizeTab(cur) === last ? cur : last));
+    _setTab((cur) => (normalizeTab(cur) === "today" ? cur : "today"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

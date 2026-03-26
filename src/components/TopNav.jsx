@@ -119,7 +119,7 @@ export default function TopNav({
           <div className="TopNavSurfaceClip TopNavBackdrop GateGlassClip GateGlassBackdrop">
             <GatePanel className="topNavGateBar GateGlassContent GateSurfacePremium GateCardPremium" data-tour-id="topnav-row">
               <div ref={topbarRef} className="navRow">
-                <div className="navActions" style={{ justifyContent: "flex-start" }}>
+                <div className="navActions topNavMenuSlot" style={{ justifyContent: "flex-start" }}>
                   <button
                     type="button"
                     className="navBtn NavPillUnified GatePressable"
@@ -131,7 +131,7 @@ export default function TopNav({
                     ☰
                   </button>
                 </div>
-                <div className="navGrid" data-tour-id="topnav-tabs">
+                <div className="navGrid topNavTabsGrid" data-tour-id="topnav-tabs">
                   {NAV_ITEMS.map((it) => (
                     <button
                       key={it.id}
@@ -145,7 +145,7 @@ export default function TopNav({
                     </button>
                   ))}
                 </div>
-                <div className="navActions">
+                <div className="navActions topNavWalletSlot">
                   <WalletBadge
                     className="topNavWalletBadge"
                     balance={coinsBalance}

@@ -2014,6 +2014,7 @@ export default function Home({
           ...occurrence,
           title: goal?.title || occurrence?.title || "Action",
           categoryName: category?.name || "Catégorie",
+          category,
         };
       })
       .sort(compareTodayOccurrences);

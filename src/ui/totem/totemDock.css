@@ -618,6 +618,7 @@
 
 @media (max-width: 640px) {
   .totemDockLayer {
+    display: none;
     --totem-dock-anchor-x: calc(env(safe-area-inset-right) + 14px);
     --totem-dock-shift-x: 44px;
     --totem-anchor-top: calc(var(--topbar-bottom, calc(env(safe-area-inset-top) + 74px)) - 4px);

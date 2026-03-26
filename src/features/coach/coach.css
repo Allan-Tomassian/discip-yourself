@@ -34,8 +34,6 @@
 }
 
 .coachFab.is-open {
-  top: calc(var(--safe-top) + 14px);
-  bottom: auto;
   z-index: 1850;
 }
 
@@ -116,8 +114,103 @@
 .coachSurface {
   flex: 1 1 auto;
   min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  position: relative;
+}
+
+.coachSurfaceMain {
+  min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.coachConversationRail {
+  border-right: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-primary) 94%, #0d1118);
+  min-width: 0;
+}
+
+.coachConversationRailHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.coachConversationRailTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.coachConversationRailMeta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.coachConversationList {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.coachConversationItem {
+  width: 100%;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-primary) 96%, #0d1118);
+  color: var(--text-primary);
+  text-align: left;
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.coachConversationItem.is-active {
+  border-color: color-mix(in srgb, var(--accent-primary) 28%, var(--border-subtle));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 56%, transparent), transparent 72%),
+    color-mix(in srgb, var(--surface-elevated) 94%, #111824);
+}
+
+.coachConversationItemTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.coachConversationItemTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.coachConversationItemMeta,
+.coachConversationItemPreview {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.coachConversationItemPreview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coachConversationRailScrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 0;
+  background: rgba(5, 7, 12, 0.62);
+  cursor: pointer;
 }
 
 .coachSurfaceToolbar {
@@ -125,7 +218,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding-bottom: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.coachSurfaceToolbarActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .coachSurfaceStatus {
@@ -341,14 +442,38 @@
   .coachFab.has-rail {
     bottom: calc(var(--safe-bottom) + 22px);
   }
+
+  .coachSurface {
+    grid-template-columns: 248px minmax(0, 1fr);
+  }
+
+  .coachSurface.is-rail-closed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .coachSurface.is-rail-closed .coachConversationRail {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .coachConversationRail {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: min(288px, calc(100% - 56px));
+    max-width: calc(100% - 56px);
+    transform: translateX(-100%);
+    transition: transform 180ms ease;
+    z-index: 3;
+    box-shadow: 16px 0 34px rgba(0, 0, 0, 0.28);
+  }
+
+  .coachConversationRail.is-open {
+    transform: translateX(0);
+  }
 }
 
 @media (max-width: 640px) {
-  .coachFab.is-open {
-    top: calc(var(--safe-top) + 12px);
-    right: calc(var(--safe-right) + 12px);
-  }
-
   .coachPanelBackdrop {
     padding: 0;
   }
