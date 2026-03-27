@@ -1,0 +1,99 @@
+.behaviorFeedbackViewport {
+  position: fixed;
+  inset: max(env(safe-area-inset-top, 0px), 14px) 16px auto 16px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: var(--z-toast, 3000);
+}
+
+.behaviorFeedbackToast {
+  width: min(100%, 420px);
+  padding: 10px 14px;
+  border-radius: 18px;
+  opacity: 0;
+  transform: translateY(-8px);
+  box-shadow: 0 14px 28px rgba(4, 8, 20, 0.2);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.behaviorFeedbackToast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  box-shadow: 0 18px 34px rgba(4, 8, 20, 0.24);
+}
+
+.behaviorFeedbackToast.is-exit {
+  opacity: 0;
+  transform: translateY(-6px);
+  box-shadow: 0 8px 18px rgba(4, 8, 20, 0.14);
+  transition-duration: 160ms;
+}
+
+.behaviorFeedbackToastInner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.behaviorFeedbackCheck {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.behaviorFeedbackMessage {
+  min-width: 0;
+  color: var(--text, rgba(255, 255, 255, 0.96));
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.behaviorCue {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--behaviorCueAccent, rgba(255, 255, 255, 0.52)) 44%, rgba(255, 255, 255, 0.22));
+  background: color-mix(in srgb, var(--behaviorCueAccent, rgba(255, 255, 255, 0.12)) 14%, rgba(255, 255, 255, 0.08));
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.behaviorCueDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--behaviorCueAccent, rgba(255, 255, 255, 0.86));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--behaviorCueAccent, rgba(255, 255, 255, 0.16)) 24%, transparent);
+  flex: 0 0 auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .behaviorFeedbackToast {
+    transform: none;
+    transition: opacity 120ms ease;
+  }
+
+  .behaviorFeedbackToast.is-exit {
+    transform: none;
+  }
+}

@@ -16,6 +16,8 @@ import {
 } from "../../domain/categoryProfile";
 import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
 import { GateIconButton, GateInput, GateTextarea } from "../../shared/ui/gate/GateForm";
+import { BehaviorCue, useBehaviorFeedback } from "../../feedback/BehaviorFeedbackContext";
+import { deriveBehaviorFeedbackSignal, deriveLibraryBehaviorCue } from "../../feedback/feedbackDerivers";
 
 function Button({ variant = "primary", className = "", ...props }) {
   const gateVariant =
@@ -180,6 +182,7 @@ export default function CategoryManageInline({
   onClose,
   inlineEdit = false,
 }) {
+  const { emitBehaviorFeedback } = useBehaviorFeedback();
   const safeData = data && typeof data === "object" ? data : {};
   const categories = useMemo(
     () => (Array.isArray(safeData.categories) ? safeData.categories : []),
@@ -300,6 +303,16 @@ export default function CategoryManageInline({
     () => buildPlanningSections([...linkedHabits, ...unlinkedHabits], outcomeGoals),
     [linkedHabits, outcomeGoals, unlinkedHabits]
   );
+  const categoryBehaviorCue = useMemo(
+    () =>
+      deriveLibraryBehaviorCue({
+        category,
+        outcomeCount: outcomeGoals.length,
+        processCount: processGoals.length,
+        hasProfile: hasMeaningfulCategoryProfile(categoryProfile),
+      }),
+    [category, categoryProfile, outcomeGoals.length, processGoals.length]
+  );
 
   const commitName = useCallback(() => {
     if (!category?.id || typeof setData !== "function") return;
@@ -315,7 +328,16 @@ export default function CategoryManageInline({
         cat.id === category.id ? { ...cat, name: nextName } : cat
       ),
     }));
-  }, [category?.id, category?.name, nameDraft, setData]);
+    emitBehaviorFeedback(
+      deriveBehaviorFeedbackSignal({
+        intent: "clarify_category",
+        payload: {
+          surface: "library",
+          categoryId: category.id,
+        },
+      })
+    );
+  }, [category?.id, category?.name, emitBehaviorFeedback, nameDraft, setData]);
 
   const commitWhy = useCallback(() => {
     if (!category?.id || typeof setData !== "function") return;
@@ -327,7 +349,16 @@ export default function CategoryManageInline({
         cat.id === category.id ? { ...cat, whyText: nextWhy } : cat
       ),
     }));
-  }, [category?.id, category?.whyText, setData, whyDraft]);
+    emitBehaviorFeedback(
+      deriveBehaviorFeedbackSignal({
+        intent: "clarify_category",
+        payload: {
+          surface: "library",
+          categoryId: category.id,
+        },
+      })
+    );
+  }, [category?.id, category?.whyText, emitBehaviorFeedback, setData, whyDraft]);
 
   const commitCategoryProfilePatch = useCallback(
     (patch) => {
@@ -395,6 +426,15 @@ export default function CategoryManageInline({
   function linkHabitToSelectedOutcome(habitId) {
     if (!selectedOutcome?.id || typeof setData !== "function") return;
     setData((prev) => linkProcessToOutcome(prev, habitId, selectedOutcome.id));
+    emitBehaviorFeedback(
+      deriveBehaviorFeedbackSignal({
+        intent: "link_action",
+        payload: {
+          surface: "library",
+          categoryId: category?.id || null,
+        },
+      })
+    );
   }
 
   function openPilotage() {
@@ -437,6 +477,15 @@ export default function CategoryManageInline({
         cat.id === category.id ? { ...cat, name: nextName.trim() } : cat
       ),
     }));
+    emitBehaviorFeedback(
+      deriveBehaviorFeedbackSignal({
+        intent: "clarify_category",
+        payload: {
+          surface: "library",
+          categoryId: category.id,
+        },
+      })
+    );
   }
 
   function recolorCategory() {
@@ -461,11 +510,29 @@ export default function CategoryManageInline({
         cat.id === category.id ? { ...cat, whyText: String(nextWhy) } : cat
       ),
     }));
+    emitBehaviorFeedback(
+      deriveBehaviorFeedbackSignal({
+        intent: "clarify_category",
+        payload: {
+          surface: "library",
+          categoryId: category.id,
+        },
+      })
+    );
   }
 
   function setCategoryPriority() {
     if (!category?.id || typeof setData !== "function") return;
     setData((prev) => setPrimaryCategory(prev, category.id));
+    emitBehaviorFeedback(
+      deriveBehaviorFeedbackSignal({
+        intent: "set_priority",
+        payload: {
+          surface: "library",
+          categoryId: category.id,
+        },
+      })
+    );
   }
 
   function deleteCategory() {
@@ -636,11 +703,14 @@ export default function CategoryManageInline({
                   ) : null}
                 </div>
               ) : (
-                <div className="small2">
-                  {category.name || "Catégorie"}
-                  {isPrimaryCategory(category) ? (
-                    <span className="badge badgeAccent ml8">Prioritaire</span>
-                  ) : null}
+                <div className="stack stackGap12">
+                  <div className="small2">
+                    {category.name || "Catégorie"}
+                    {isPrimaryCategory(category) ? (
+                      <span className="badge badgeAccent ml8">Prioritaire</span>
+                    ) : null}
+                  </div>
+                  {categoryBehaviorCue ? <BehaviorCue cue={categoryBehaviorCue} category={category} /> : null}
                 </div>
               )}
             </div>

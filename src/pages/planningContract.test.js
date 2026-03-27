@@ -15,6 +15,10 @@ describe("Planning primitive convergence contract", () => {
 
     expect(source).toContain("import { GateButton as Button, GateSection } from \"../shared/ui/gate/Gate\";");
     expect(source).not.toContain("from \"../components/UI\"");
+    expect(source).toContain('headerSubtitle={MAIN_PAGE_COPY.planning.orientation}');
+    expect(source).toContain('className="mainPageStack planningPage"');
+    expect(source).toContain("MAIN_PAGE_COPY.planning.weekDescription");
+    expect(source).toContain("MAIN_PAGE_COPY.planning.dayDescription");
     expect(source).toContain("planningCalendarSection");
     expect(source).toContain("planningContentSection");
     expect(source).toContain("GateSurfacePremium");
@@ -22,6 +26,8 @@ describe("Planning primitive convergence contract", () => {
     expect(source).toContain("GateMainSection");
     expect(source).not.toContain("planningSupportSection");
     expect(source).not.toContain("Ajustements intelligents");
+    expect(source).not.toContain("sans effet tableau de bord");
+    expect(source).not.toContain("avec la même densité que Today");
   });
 
   it("keeps the coach card on Gate primitives too", () => {

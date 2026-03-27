@@ -12,6 +12,9 @@ import { getCategoryUiVars } from "../utils/categoryAccent";
 import { resolveConflictNearest } from "../logic/occurrencePlanner";
 import { normalizeActiveSessionForUI, normalizeOccurrenceForUI } from "../logic/compat";
 import { withExecutionActiveCategoryId } from "../domain/categoryVisibility";
+import { computeStreakDays } from "../logic/habits";
+import { useBehaviorFeedback } from "../feedback/BehaviorFeedbackContext";
+import { deriveBehaviorFeedbackSignal, deriveSessionBehaviorCue } from "../feedback/feedbackDerivers";
 import "../features/session/session.css";
 
 function formatElapsed(ms) {
@@ -52,6 +55,7 @@ export default function Session({
   categoryId,
   setTab,
 }) {
+  const { emitBehaviorFeedback } = useBehaviorFeedback();
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -156,6 +160,15 @@ export default function Session({
     if (session?.runtimePhase === "paused") return "paused";
     return "idle";
   })();
+  const sessionBehaviorCue = useMemo(
+    () =>
+      deriveSessionBehaviorCue({
+        viewState,
+        plannedMinutes,
+        categoryId: category?.id || effectiveCategoryId || null,
+      }),
+    [category?.id, effectiveCategoryId, plannedMinutes, viewState]
+  );
 
   function startTimer() {
     if (!selectedOccurrence?.id || typeof setData !== "function") return;
@@ -227,18 +240,31 @@ export default function Session({
   function endSession() {
     if (!session?.occurrenceId || typeof setData !== "function" || !feedbackLevel) return;
     const occurrenceGoalId = selectedOccurrence?.goalId || "";
+    let feedbackSignal = null;
     setData((prev) =>
-      applySessionRuntimeTransition(prev, {
-        type: "finish",
-        occurrenceId: session.occurrenceId,
-        dateKey: selectedOccurrence?.date || effectiveDateKey,
-        doneHabitIds: occurrenceGoalId ? [occurrenceGoalId] : [],
-        durationSec: elapsedSec,
-        feedbackLevel,
-        feedbackText,
-      })
+      {
+        const next = applySessionRuntimeTransition(prev, {
+          type: "finish",
+          occurrenceId: session.occurrenceId,
+          dateKey: selectedOccurrence?.date || effectiveDateKey,
+          doneHabitIds: occurrenceGoalId ? [occurrenceGoalId] : [],
+          durationSec: elapsedSec,
+          feedbackLevel,
+          feedbackText,
+        });
+        feedbackSignal = deriveBehaviorFeedbackSignal({
+          intent: "finish_session",
+          payload: {
+            surface: "session",
+            categoryId: category?.id || goal?.categoryId || effectiveCategoryId || null,
+            streakDays: computeStreakDays(next, new Date()),
+          },
+        });
+        return next;
+      }
     );
     setShowFeedback(false);
+    if (feedbackSignal) emitBehaviorFeedback(feedbackSignal);
     emitSessionRuntimeNotificationHook("finish", {
       occurrenceId: session.occurrenceId,
       dateKey: selectedOccurrence?.date || effectiveDateKey,
@@ -306,6 +332,15 @@ export default function Session({
       };
     });
     setReportMode(false);
+    emitBehaviorFeedback(
+      deriveBehaviorFeedbackSignal({
+        intent: "reschedule_action",
+        payload: {
+          surface: "session",
+          categoryId: targetCategoryId,
+        },
+      })
+    );
     setTab?.("planning");
   };
 
@@ -353,6 +388,15 @@ export default function Session({
         : next;
     });
     setReportMode(false);
+    emitBehaviorFeedback(
+      deriveBehaviorFeedbackSignal({
+        intent: "reschedule_action",
+        payload: {
+          surface: "session",
+          categoryId: category?.id || effectiveCategoryId || null,
+        },
+      })
+    );
   };
 
   if (!selectedOccurrence && !session) {
@@ -391,6 +435,7 @@ export default function Session({
         <FocusSessionView
           title={goal?.title || "Session"}
           categoryName={category?.name || "Catégorie"}
+          behaviorCue={sessionBehaviorCue}
           plannedDurationLabel={Number.isFinite(plannedMinutes) ? `${plannedMinutes} min` : ""}
           elapsedLabel={formatElapsed(elapsedSec * 1000)}
           remainingLabel={remainingSec != null ? formatElapsed(remainingSec * 1000) : ""}

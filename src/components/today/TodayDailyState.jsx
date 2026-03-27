@@ -1,6 +1,7 @@
 import React from "react";
 import { GateSection } from "../../shared/ui/gate/Gate";
 import { getCategoryUiVars } from "../../utils/categoryAccent";
+import { MAIN_PAGE_COPY } from "../../ui/labels";
 
 function formatMinutes(value) {
   const safe = Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
@@ -21,8 +22,8 @@ export default function TodayDailyState({
     >
       <div className="col todaySectionBody">
         <div className="todaySectionHeader">
-          <div className="titleSm">État du jour</div>
-          <div className="small2" style={{ opacity: 0.8 }}>Résumé compact de la charge et de l’exécution.</div>
+          <div className="titleSm">{MAIN_PAGE_COPY.today.dailyStateTitle}</div>
+          <div className="small2" style={{ opacity: 0.8 }}>{MAIN_PAGE_COPY.today.dailyStateSubtitle}</div>
         </div>
         <div
           className="todayDailyStateGrid"

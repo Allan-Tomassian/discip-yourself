@@ -36,6 +36,8 @@ import { normalizeTimeFields } from "../logic/timeFields";
 import { setOccurrenceStatusById } from "../logic/occurrences";
 import { findConflicts, suggestNextSlots } from "../core/scheduling/intervals";
 import { LABELS } from "../ui/labels";
+import { useBehaviorFeedback } from "../feedback/BehaviorFeedbackContext";
+import { deriveBehaviorFeedbackSignal } from "../feedback/feedbackDerivers";
 import "../features/library/editItemPanelGate.css";
 
 function Button({ variant = "primary", className = "", ...props }) {
@@ -281,6 +283,7 @@ function updateRemindersForGoal(state, goalId, config, fallbackLabel, options = 
 }
 
 export default function EditItem({ data, setData, editItem, onBack, generationWindowDays = null, onOpenPaywall }) {
+  const { emitBehaviorFeedback } = useBehaviorFeedback();
   const safeData = useMemo(() => (data && typeof data === "object" ? data : {}), [data]);
   const backgroundImage = safeData?.profile?.whyImage || "";
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
@@ -794,6 +797,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     if (typeof setData === "function") {
       const goalId = item.id;
       const categoryId = updates.categoryId || item.categoryId;
+      let feedbackSignal = null;
       setData((prev) => {
         let nextState = prev;
         if (conflictResolution?.cancelOccurrenceIds?.length) {
@@ -862,8 +866,17 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
           const toKey = baseDate ? toLocalDateKey(addDays(baseDate, Math.max(0, days - 1))) : fromKey;
           next = regenerateWindowFromScheduleRules(next, goalId, fromKey, toKey);
         }
+        feedbackSignal = deriveBehaviorFeedbackSignal({
+          intent: type === "OUTCOME" ? "update_outcome" : "update_action",
+          payload: {
+            surface: "edit-item",
+            categoryId,
+            planChanged,
+          },
+        });
         return next;
       });
+      if (feedbackSignal) emitBehaviorFeedback(feedbackSignal);
     }
 
     if (typeof onBack === "function") onBack();

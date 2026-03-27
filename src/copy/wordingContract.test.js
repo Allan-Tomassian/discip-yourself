@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { ANALYSIS_COPY, MARKETING_COPY, SURFACE_LABELS } from "./productCopy";
+import { ANALYSIS_COPY, MAIN_PAGE_COPY, MARKETING_COPY, SURFACE_LABELS } from "./productCopy";
 
 const SRC_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -20,6 +20,10 @@ describe("product wording contract", () => {
     expect(SURFACE_LABELS.journal).toBe("Journal");
     expect(MARKETING_COPY.essentialPlan).toBe("Accès essentiel");
     expect(ANALYSIS_COPY.coachAnalysis).toBe("Analyse du Coach");
+    expect(MAIN_PAGE_COPY.today.orientation).toBe("Avance sur ce qui compte aujourd’hui.");
+    expect(MAIN_PAGE_COPY.planning.orientation).toBe("Répartis l’effort sans casser ton rythme.");
+    expect(MAIN_PAGE_COPY.library.orientation).toBe("Clarifie ce que tu veux construire.");
+    expect(MAIN_PAGE_COPY.pilotage.orientation).toBe("Observe ce qui progresse réellement.");
   });
 
   it("removes legacy wording from critical user-facing surfaces", () => {

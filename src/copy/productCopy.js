@@ -14,6 +14,32 @@ export const SURFACE_LABELS = Object.freeze({
   legal: "Conditions",
 });
 
+export const MAIN_PAGE_COPY = Object.freeze({
+  today: Object.freeze({
+    orientation: "Avance sur ce qui compte aujourd’hui.",
+    nextActionsSubtitle: "Trois créneaux max, pour garder une lecture simple.",
+    dailyStateTitle: "Charge du jour",
+    dailyStateSubtitle: "Prévu, réalisé, restant.",
+  }),
+  planning: Object.freeze({
+    orientation: "Répartis l’effort sans casser ton rythme.",
+    weekDescription: "Répartis l’effort jour par jour, sans surcharge.",
+    dayDescription: "Ajuste la journée sans casser ta charge.",
+  }),
+  library: Object.freeze({
+    orientation: "Clarifie ce que tu veux construire.",
+    primaryTitle: "Structure active",
+    reclassifyTitle: "À clarifier",
+    suggestionsTitle: "Suggestions à activer",
+  }),
+  pilotage: Object.freeze({
+    orientation: "Observe ce qui progresse réellement.",
+    summaryTitle: "Progression actuelle",
+    focusTitle: "Lecture par catégorie",
+    statsTitle: "Rythme récent",
+  }),
+});
+
 export const LABELS = Object.freeze({
   goal: "Objectif",
   goals: "Objectifs",

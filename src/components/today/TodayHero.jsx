@@ -5,6 +5,7 @@ import ManualAiStatus from "../ai/ManualAiStatus";
 import CategoryPill from "../CategoryPill";
 import { getCategoryUiVars } from "../../utils/categoryAccent";
 import { ANALYSIS_COPY, UI_COPY } from "../../ui/labels";
+import { BehaviorCue } from "../../feedback/BehaviorFeedbackContext";
 
 export default function TodayHero({
   title = "Aucune action prioritaire",
@@ -21,6 +22,7 @@ export default function TodayHero({
   analysisStorageLabel = "",
   timestampLabel = "",
   analysisStageLabel = "",
+  behaviorCue = null,
   primaryLabel = "Démarrer",
   onPrimaryAction,
   canPrimaryAction = false,
@@ -64,6 +66,7 @@ export default function TodayHero({
             detailLabel={[analysisStorageLabel, timestampLabel].filter(Boolean).join(" • ")}
             stageLabel={analysisStageLabel}
           />
+          {behaviorCue ? <BehaviorCue cue={behaviorCue} category={activeCategory || category || null} /> : null}
         </div>
       </div>
       <div className="todayHeroBody">

@@ -14,6 +14,8 @@ import ManualAiStatus from "../ai/ManualAiStatus";
 import { GateButton as Button, GateSection } from "../../shared/ui/gate/Gate";
 import { getCategoryUiVars } from "../../utils/categoryAccent";
 import { ANALYSIS_COPY, UI_COPY } from "../../ui/labels";
+import { useBehaviorFeedback } from "../../feedback/BehaviorFeedbackContext";
+import { deriveBehaviorFeedbackSignal } from "../../feedback/feedbackDerivers";
 import "../categorySurface.css";
 
 function describeDraftChange(change, { goalsById, categoriesById }) {
@@ -51,6 +53,7 @@ export default function PlanningCoachCard({
   onOpenCoach,
   onOpenPilotage,
 }) {
+  const { emitBehaviorFeedback } = useBehaviorFeedback();
   const { session } = useAuth();
   const accessToken = session?.access_token || "";
   const userId = session?.user?.id || "";
@@ -171,6 +174,15 @@ export default function PlanningCoachCard({
     if (result.appliedCount > 0) {
       setDraftMessage(
         result.appliedCount > 1 ? `${result.appliedCount} changements appliqués.` : "Brouillon appliqué."
+      );
+      emitBehaviorFeedback(
+        deriveBehaviorFeedbackSignal({
+          intent: draftChanges.some((change) => change?.dateKey || change?.startTime) ? "reschedule_action" : "apply_coach_draft",
+          payload: {
+            surface: "planning",
+            categoryId: activeCategoryId || null,
+          },
+        })
       );
       if (result.navigationTarget) setTab?.(result.navigationTarget);
       setIgnoredDraftKey(draftKey);

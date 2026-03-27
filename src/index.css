@@ -563,6 +563,13 @@ a{ color:inherit; }
   margin:0 auto;
 }
 
+.mainPageStack{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  width:100%;
+}
+
 @media (min-width: 900px) {
   .pageNarrow {
     max-width: 980px;

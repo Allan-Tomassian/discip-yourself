@@ -71,6 +71,7 @@ import {
   withExecutionActiveCategoryId,
   withLibraryActiveCategoryId,
 } from "./domain/categoryVisibility";
+import { BehaviorFeedbackHost, BehaviorFeedbackProvider } from "./feedback/BehaviorFeedbackContext";
 
 function runSelfTests(data) {
   const isProd = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
@@ -709,8 +710,17 @@ export default function App() {
     </div>
   ) : null;
 
+  const renderWithBehaviorFeedback = (content) => (
+    <BehaviorFeedbackProvider>
+      <>
+        {content}
+        <BehaviorFeedbackHost categories={visibleCategories} />
+      </>
+    </BehaviorFeedbackProvider>
+  );
+
   if (dataLoading) {
-    return (
+    return renderWithBehaviorFeedback(
       <div
         data-testid="user-data-loading-screen"
         style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}
@@ -721,7 +731,7 @@ export default function App() {
   }
 
   if (showPlanStep && onboardingCompleted) {
-    return (
+    return renderWithBehaviorFeedback(
       <>
         {headerStack}
         {headerSpacer}
@@ -743,7 +753,7 @@ export default function App() {
     );
   }
   if (!onboardingCompleted) {
-    return (
+    return renderWithBehaviorFeedback(
       <>
         <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />
         <DiagnosticOverlay data={safeData} tab={tab} />
@@ -752,7 +762,7 @@ export default function App() {
     );
   }
 
-  return (
+  return renderWithBehaviorFeedback(
     <>
       {headerStack}
       {headerSpacer}

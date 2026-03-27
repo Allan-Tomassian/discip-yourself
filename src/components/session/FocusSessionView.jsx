@@ -1,5 +1,6 @@
 import React from "react";
 import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
+import { BehaviorCue } from "../../feedback/BehaviorFeedbackContext";
 
 function labelForState(viewState) {
   if (viewState === "running") return "En cours";
@@ -16,6 +17,7 @@ export default function FocusSessionView({
   plannedDurationLabel = "",
   elapsedLabel = "",
   remainingLabel = "",
+  behaviorCue = null,
   viewState = "idle",
   canStart = false,
   canPause = false,
@@ -41,6 +43,7 @@ export default function FocusSessionView({
       <GateSection title={title} collapsible={false} className="GateSurfacePremium GateCardPremium">
         <div className="col" style={{ gap: 8 }}>
           <div className="small2" style={{ opacity: 0.78 }}>{categoryName}</div>
+          {behaviorCue ? <BehaviorCue cue={behaviorCue} /> : null}
           <div className="titleSm">{labelForState(viewState)}</div>
           {plannedDurationLabel ? <div className="small2">Prévu: {plannedDurationLabel}</div> : null}
           {elapsedLabel ? <div className="small2">Écoulé: {elapsedLabel}</div> : null}

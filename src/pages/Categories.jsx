@@ -11,7 +11,7 @@ import { updateGoal } from "../logic/goals";
 import { regenerateWindowFromScheduleRules, removeScheduleRulesForAction } from "../logic/occurrencePlanner";
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
 import { canCreateCategory, getGenerationWindowDays } from "../logic/entitlements";
-import { LABELS } from "../ui/labels";
+import { LABELS, MAIN_PAGE_COPY, SURFACE_LABELS } from "../ui/labels";
 import { getCategoryUiVars } from "../utils/categoryAccent";
 import { resolveGoalType } from "../domain/goalType";
 import { isProcessLinkedToOutcome, linkProcessToOutcome } from "../logic/linking";
@@ -30,6 +30,8 @@ import {
   withLibraryActiveCategoryId,
 } from "../domain/categoryVisibility";
 import { collectSystemInboxBuckets } from "../domain/systemInboxMigration";
+import { useBehaviorFeedback } from "../feedback/BehaviorFeedbackContext";
+import { deriveBehaviorFeedbackSignal } from "../feedback/feedbackDerivers";
 import "../features/library/library.css";
 
 // TOUR MAP:
@@ -162,6 +164,7 @@ export default function Categories({
   setData,
   onOpenPaywall,
 }) {
+  const { emitBehaviorFeedback } = useBehaviorFeedback();
   const safeData = data && typeof data === "object" ? data : {};
   const draftStore = useDraftStore();
   const [editedCategoryId, setEditedCategoryId] = useState(null);
@@ -327,6 +330,15 @@ export default function Categories({
             cat?.id === categoryId ? { ...cat, ...patch } : cat
           ),
         }));
+        emitBehaviorFeedback(
+          deriveBehaviorFeedbackSignal({
+            intent: "clarify_category",
+            payload: {
+              surface: "library",
+              categoryId,
+            },
+          })
+        );
       },
       clearAfterCommit: options.clear === true,
       clearAfterCancel: options.clear === true,
@@ -671,6 +683,7 @@ export default function Categories({
     const updates = rawPayload.updates && typeof rawPayload.updates === "object" ? rawPayload.updates : {};
     const reminderConfig = rawPayload.reminderConfig || null;
 
+    let feedbackSignal = null;
     setData((prev) => {
       const prevOccurrencesByGoal = buildOccurrencesByGoal(prev?.occurrences);
       const prevGoal = Array.isArray(prev?.goals) ? prev.goals.find((g) => g?.id === goalId) : null;
@@ -709,8 +722,17 @@ export default function Categories({
         next = regenerateWindowFromScheduleRules(next, goalId, fromKey, toKey);
       }
 
+      feedbackSignal = deriveBehaviorFeedbackSignal({
+        intent: goalType === "OUTCOME" ? "update_outcome" : "update_action",
+        payload: {
+          surface: "library",
+          categoryId: nextGoal?.categoryId || prevGoal?.categoryId || null,
+          planChanged,
+        },
+      });
       return next;
     });
+    if (feedbackSignal) emitBehaviorFeedback(feedbackSignal);
     closeActionEditPanel();
   }
 
@@ -1080,22 +1102,23 @@ export default function Categories({
 
   return (
       <ScreenShell
-        headerTitle={<span data-tour-id="library-title">Bibliothèque</span>}
-        headerSubtitle="Catégories"
+        pageId="library"
+        headerTitle={<span data-tour-id="library-title">{SURFACE_LABELS.library}</span>}
+        headerSubtitle={MAIN_PAGE_COPY.library.orientation}
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
-      <div className="stack stackGap12 pageNarrow">
+      <div className="mainPageStack pageNarrow">
         {legacyBuckets.reclassifyCandidates.length ? (
           <Card>
             <div className="p18 col gap10">
               <div className="row rowBetween alignCenter libraryCardHeader">
-                <div className="sectionTitle">À reclasser</div>
+                <div className="sectionTitle">{MAIN_PAGE_COPY.library.reclassifyTitle}</div>
                 <div className="small2 textMuted2">
-                  {legacyBuckets.reclassifyCandidates.length} action{legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} hors catégorie visible
+                  {legacyBuckets.reclassifyCandidates.length} action{legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} hors structure visible
                 </div>
               </div>
               <div className="small2 textMuted">
-                Les actions héritées de <strong>Général</strong> ne remontent plus dans Today ni dans la planification tant qu&apos;elles ne sont pas reclassées.
+                Les actions héritées de <strong>Général</strong> restent hors de la structure active tant qu&apos;elles ne sont pas reclassées.
               </div>
               <div className="col gap8">
                 {legacyBuckets.reclassifyCandidates.map(({ goal, inferredCategoryId }) => {
@@ -1146,7 +1169,7 @@ export default function Categories({
         >
           <div className="p18">
             <div className="row rowBetween alignCenter libraryCardHeader">
-              <div className="sectionTitle">Catégories</div>
+              <div className="sectionTitle">{MAIN_PAGE_COPY.library.primaryTitle}</div>
             </div>
 
             <div className="mt12 col gap10" data-tour-id="library-category-list">
@@ -1182,7 +1205,7 @@ export default function Categories({
                     }}
                   >
                     <div className="small2">
-                      Suggestions de catégories
+                      {MAIN_PAGE_COPY.library.suggestionsTitle}
                       <span className="textMuted2"> ({remainingSuggestions.length})</span>
                     </div>
                     <span className="small2 textMuted2">

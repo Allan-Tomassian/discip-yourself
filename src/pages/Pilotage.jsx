@@ -14,7 +14,7 @@ import { getCategoryPilotageCounts, getCategoryStatus } from "../logic/pilotage"
 import { getWindowBounds } from "../logic/metrics";
 import { computeWindowStats } from "../logic/progressionModel";
 import AccentCategoryRow from "../components/AccentCategoryRow";
-import { ANALYSIS_COPY, LABELS } from "../ui/labels";
+import { ANALYSIS_COPY, LABELS, MAIN_PAGE_COPY, SURFACE_LABELS } from "../ui/labels";
 import {
   CATEGORY_VIEW,
   getExecutionActiveCategoryId,
@@ -28,6 +28,8 @@ import { getCategoryUiVars, resolveCategoryStateTone } from "../utils/categoryAc
 import DisciplineTrendChart from "../features/pilotage/DisciplineTrendChart";
 import { buildPilotageDisciplineTrend, PILOTAGE_DISCIPLINE_WINDOWS } from "../features/pilotage/disciplineTrendModel";
 import ManualAiStatus from "../components/ai/ManualAiStatus";
+import { BehaviorCue } from "../feedback/BehaviorFeedbackContext";
+import { derivePilotageBehaviorCue } from "../feedback/feedbackDerivers";
 import "../features/pilotage/pilotage.css";
 import "../components/categorySurface.css";
 
@@ -697,6 +699,15 @@ export default function Pilotage({
           .join(" • "),
       }
     : null;
+  const pilotageBehaviorCue = useMemo(
+    () =>
+      derivePilotageBehaviorCue({
+        disciplineTrend,
+        constanceSummary,
+        selectedCategory: detailCategory,
+      }),
+    [constanceSummary, detailCategory, disciplineTrend]
+  );
 
   const handleAnalyzeCategory = useCallback(async () => {
     if (!detailCategory) return;
@@ -872,11 +883,50 @@ export default function Pilotage({
 
   return (
     <ScreenShell
-      headerTitle={<span data-tour-id="pilotage-title">Pilotage</span>}
-      headerSubtitle="Vue d’ensemble"
+      pageId="pilotage"
+      headerTitle={<span data-tour-id="pilotage-title">{SURFACE_LABELS.pilotage}</span>}
+      headerSubtitle={MAIN_PAGE_COPY.pilotage.orientation}
       backgroundImage={safeData?.profile?.whyImage || ""}
     >
-      <div className="stack stackGap12">
+      <div className="mainPageStack">
+        <Card
+          className="GateMainSection"
+          style={
+            activePilotageSurfaceVars || undefined
+          }
+        >
+          <div className="p18 col" style={{ gap: 12 }}>
+            <div>
+              <div className="sectionTitle">{MAIN_PAGE_COPY.pilotage.summaryTitle}</div>
+              <div className="small2 textMuted">Lis rapidement où ton système progresse vraiment.</div>
+            </div>
+            <div className="pilotageInsights">
+              <div className="pilotageInsightItem">
+                <div className="small2 textMuted">Signal principal</div>
+                <div>{globalPilotageSummary.summary}</div>
+              </div>
+              {globalPilotageSummary.strongestSignal ? (
+                <div className="pilotageInsightItem">
+                  <div className="small2 textMuted">Zone la plus exploitable</div>
+                  <div>{globalPilotageSummary.strongestSignal}</div>
+                </div>
+              ) : null}
+              {globalPilotageSummary.frictionSignal ? (
+                <div className="pilotageInsightItem">
+                  <div className="small2 textMuted">Point de friction</div>
+                  <div>{globalPilotageSummary.frictionSignal}</div>
+                </div>
+              ) : null}
+              {globalPilotageSummary.dormantSignal ? (
+                <div className="pilotageInsightItem">
+                  <div className="small2 textMuted">Zone stagnante</div>
+                  <div>{globalPilotageSummary.dormantSignal}</div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </Card>
+
         <Card
           className="GateMainSection"
           style={
@@ -884,11 +934,16 @@ export default function Pilotage({
           }
         >
           <div className="p18">
-            <div className="sectionTitle">Focus catégorie</div>
+            <div className="sectionTitle">{MAIN_PAGE_COPY.pilotage.focusTitle}</div>
+            {pilotageBehaviorCue ? (
+              <div className="mt12">
+                <BehaviorCue cue={pilotageBehaviorCue} category={detailCategory || selectedCategory || null} />
+              </div>
+            ) : null}
             <div className="mt12 col" role="list" style={{ gap: 12 }}>
               <div className="pilotageFocusGroup">
                 <div className="pilotageFocusGroupHeader">
-                  <div className="small2 textMuted">Catégories déjà exploitables</div>
+                  <div className="small2 textMuted">Catégories déjà structurées</div>
                   <div className="small2 textMuted">{structuredFocusCategories.length}</div>
                 </div>
                 <div className="col" style={{ gap: 10 }}>
@@ -957,8 +1012,8 @@ export default function Pilotage({
         >
           <div className="p18 col" style={{ gap: 12 }}>
             <div>
-              <div className="sectionTitle">Statistiques globales</div>
-              <div className="small2 textMuted">Lecture d’ensemble de l’activité récente avant d’ouvrir une catégorie.</div>
+              <div className="sectionTitle">{MAIN_PAGE_COPY.pilotage.statsTitle}</div>
+              <div className="small2 textMuted">Lis le rythme récent avant d’ouvrir une catégorie.</div>
             </div>
             <div className="pilotageTopGrid">
               <div className="listItem GateRowPremium">
@@ -984,7 +1039,7 @@ export default function Pilotage({
             </div>
             <div className="pilotageInsights">
               <div className="pilotageInsightItem">
-                <div className="small2 textMuted">Lecture globale</div>
+                <div className="small2 textMuted">Lecture du rythme</div>
                 <div>
                   {globalPilotageStats.structuredCategories} catégorie
                   {globalPilotageStats.structuredCategories > 1 ? "s" : ""} ont déjà une base exploitable, avec{" "}
@@ -1000,44 +1055,6 @@ export default function Pilotage({
                     : "Aucune occurrence manquée sur la fenêtre récente."}
                 </div>
               </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card
-          className="GateMainSection"
-          style={
-            activePilotageSurfaceVars || undefined
-          }
-        >
-          <div className="p18 col" style={{ gap: 12 }}>
-            <div>
-              <div className="sectionTitle">Synthèse globale</div>
-              <div className="small2 textMuted">Lis rapidement où ton système avance vraiment.</div>
-            </div>
-            <div className="pilotageInsights">
-              <div className="pilotageInsightItem">
-                <div className="small2 textMuted">Vue d’ensemble</div>
-                <div>{globalPilotageSummary.summary}</div>
-              </div>
-              {globalPilotageSummary.strongestSignal ? (
-                <div className="pilotageInsightItem">
-                  <div className="small2 textMuted">Zone la plus exploitable</div>
-                  <div>{globalPilotageSummary.strongestSignal}</div>
-                </div>
-              ) : null}
-              {globalPilotageSummary.frictionSignal ? (
-                <div className="pilotageInsightItem">
-                  <div className="small2 textMuted">Point de friction</div>
-                  <div>{globalPilotageSummary.frictionSignal}</div>
-                </div>
-              ) : null}
-              {globalPilotageSummary.dormantSignal ? (
-                <div className="pilotageInsightItem">
-                  <div className="small2 textMuted">Zone stagnante</div>
-                  <div>{globalPilotageSummary.dormantSignal}</div>
-                </div>
-              ) : null}
             </div>
           </div>
         </Card>

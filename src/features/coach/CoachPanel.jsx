@@ -30,6 +30,8 @@ import {
   updateCoachSessionReplyDraftStatus,
   upsertCoachConversation,
 } from "./coachStorage";
+import { useBehaviorFeedback } from "../../feedback/BehaviorFeedbackContext";
+import { deriveBehaviorFeedbackSignal } from "../../feedback/feedbackDerivers";
 import "./coach.css";
 
 const COACH_QUICK_PROMPTS = [
@@ -91,6 +93,7 @@ export function useCoachConversationController({
   setTab,
   surfaceTab = "today",
   onRequestClose,
+  emitBehaviorFeedback,
 }) {
   const { session } = useAuth();
   const accessToken = session?.access_token || "";
@@ -314,6 +317,15 @@ export function useCoachConversationController({
           draftApplyMessage:
             result.appliedCount > 1 ? `${result.appliedCount} changements appliqués.` : "Brouillon appliqué.",
         });
+        emitBehaviorFeedback?.(
+          deriveBehaviorFeedbackSignal({
+            intent: "apply_coach_draft",
+            payload: {
+              surface: "coach",
+              categoryId: contextSnapshot.activeCategoryId || null,
+            },
+          })
+        );
         if (result.navigationTarget) {
           setTab?.(result.navigationTarget);
           onRequestClose?.();
@@ -789,12 +801,14 @@ export default function CoachPanel({
   setTab,
   surfaceTab = "today",
 }) {
+  const { emitBehaviorFeedback } = useBehaviorFeedback();
   const controller = useCoachConversationController({
     data,
     setData,
     setTab,
     surfaceTab,
     onRequestClose: onClose,
+    emitBehaviorFeedback,
   });
   const [isDesktopLayout, setIsDesktopLayout] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(min-width: 901px)").matches : false

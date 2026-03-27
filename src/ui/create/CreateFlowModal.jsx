@@ -22,6 +22,8 @@ import {
   STEP_OUTCOME_NEXT_ACTION,
   STEP_PICK_CATEGORY,
 } from "../../creation/creationSchema";
+import { useBehaviorFeedback } from "../../feedback/BehaviorFeedbackContext";
+import { deriveBehaviorFeedbackSignal } from "../../feedback/feedbackDerivers";
 import "../../features/create-flow/createFlow.css";
 import "../../shared/ui/overlays/overlays.css";
 
@@ -148,6 +150,7 @@ export default function CreateFlowModal({
   planLimits,
   generationWindowDays,
 }) {
+  const { emitBehaviorFeedback } = useBehaviorFeedback();
   const [step, setStep] = useState("choice");
   const [choice, setChoice] = useState("action");
   const [showLegacyChoices, setShowLegacyChoices] = useState(false);
@@ -291,6 +294,16 @@ export default function CreateFlowModal({
   };
 
   const handleHabitDone = () => {
+    const outcomeId = draft?.activeOutcomeId || draft?.createdOutcomeId || null;
+    emitBehaviorFeedback(
+      deriveBehaviorFeedbackSignal({
+        intent: choice === "project" ? "create_outcome" : outcomeId ? "link_action" : "create_action",
+        payload: {
+          surface: "create-flow",
+          categoryId: categoryId || selectedCategoryId || null,
+        },
+      })
+    );
     if (typeof resetCreateDraft === "function") resetCreateDraft();
     onClose?.();
   };

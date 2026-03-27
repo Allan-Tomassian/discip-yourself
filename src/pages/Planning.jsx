@@ -16,7 +16,9 @@ import {
 import { collectSystemInboxBuckets } from "../domain/systemInboxMigration";
 import { getCategoryUiVars } from "../utils/categoryAccent";
 import { deriveTodayCalendarModel } from "../features/today/todayCalendarModel";
-import { SURFACE_LABELS } from "../ui/labels";
+import { MAIN_PAGE_COPY, SURFACE_LABELS } from "../ui/labels";
+import { BehaviorCue } from "../feedback/BehaviorFeedbackContext";
+import { derivePlanningBehaviorCue } from "../feedback/feedbackDerivers";
 import "../features/planning/planning.css";
 import "../components/categorySurface.css";
 
@@ -198,6 +200,17 @@ export default function Planning({
     0
   );
   const selectedDayTone = resolveLoadTone(selectedDayLoadMinutes);
+  const planningBehaviorCue = useMemo(
+    () =>
+      derivePlanningBehaviorCue({
+        planningView,
+        dayItems,
+        dayMinutes: selectedDayLoadMinutes,
+        weekBuckets,
+        activeCategoryId,
+      }),
+    [activeCategoryId, dayItems, planningView, selectedDayLoadMinutes, weekBuckets]
+  );
   const legacyBuckets = useMemo(
     () => collectSystemInboxBuckets({ goals: safeData.goals, categories: safeData.categories }),
     [safeData.categories, safeData.goals]
@@ -247,17 +260,17 @@ export default function Planning({
   const planningSectionTitle = planningView === "week" ? "Semaine planifiée" : "Créneaux du jour";
   const planningSectionDescription =
     planningView === "week"
-      ? "Relis ta charge prévue jour par jour, sans effet tableau de bord."
-      : "Lecture rapide de la journée, avec la même densité que Today.";
+      ? MAIN_PAGE_COPY.planning.weekDescription
+      : MAIN_PAGE_COPY.planning.dayDescription;
 
   return (
     <ScreenShell
       data={safeData}
       pageId="planning"
       headerTitle={SURFACE_LABELS.planning}
-      headerSubtitle="Répartis, ajuste et garde une charge crédible."
+      headerSubtitle={MAIN_PAGE_COPY.planning.orientation}
     >
-      <div className="col planningPage">
+      <div className="mainPageStack planningPage">
         <GateSection
           className="GateMainSection planningSectionCard planningCalendarSection GateSurfacePremium GateCardPremium"
           collapsible={false}
@@ -270,6 +283,7 @@ export default function Planning({
                 <div className="small2 planningSectionMeta">
                   {selectedDayTone} · {selectedDayLoadMinutes || 0} min planifiées
                 </div>
+                {planningBehaviorCue ? <BehaviorCue cue={planningBehaviorCue} category={activeCategory} /> : null}
               </div>
               <div className="planningSectionActions">
                 <Button variant={planningView === "day" ? "primary" : "ghost"} onClick={() => setPlanningView("day")}>

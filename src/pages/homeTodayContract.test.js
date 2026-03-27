@@ -30,6 +30,10 @@ describe("home today canonical contract", () => {
   it("renders the simplified Today v2 stack instead of legacy reorderable cards", () => {
     const home = readSrc("pages/Home.jsx");
 
+    expect(home).toContain('pageId="today"');
+    expect(home).toContain("headerSubtitle={MAIN_PAGE_COPY.today.orientation}");
+    expect(home).toContain('headerTitle={<span data-tour-id="today-title">{SURFACE_LABELS.today}</span>}');
+    expect(home).toContain('className="mainPageStack todayPageShell"');
     expect(home).toContain("<TodayHero");
     expect(home).toContain("<TodayNextActions");
     expect(home).toContain("<TodayDailyState");

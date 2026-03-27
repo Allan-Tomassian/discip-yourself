@@ -44,7 +44,7 @@ import TodayDailyState from "../components/today/TodayDailyState";
 import TodayHero from "../components/today/TodayHero";
 import TodayNextActions from "../components/today/TodayNextActions";
 import { emitTotemEvent } from "../ui/totem/totemEvents";
-import { ANALYSIS_COPY, LABELS, UI_COPY } from "../ui/labels";
+import { ANALYSIS_COPY, LABELS, MAIN_PAGE_COPY, SURFACE_LABELS, UI_COPY } from "../ui/labels";
 import { useAuth } from "../auth/useAuth";
 import { buildTodayCanonicalContextSummary, resolveTodayOccurrenceStartPolicy } from "../domain/todayIntervention";
 import { computeCategoryScopedRecommendation } from "../domain/todayCategoryCoherence";
@@ -70,6 +70,8 @@ import {
   resolvePreferredVisibleCategoryId,
   withExecutionActiveCategoryId,
 } from "../domain/categoryVisibility";
+import { useBehaviorFeedback } from "../feedback/BehaviorFeedbackContext";
+import { deriveBehaviorFeedbackSignal, deriveTodayBehaviorCue } from "../feedback/feedbackDerivers";
 
 // TOUR MAP:
 // - primary_action: start session (GO) for today
@@ -461,6 +463,7 @@ export default function Home({
   isPremiumPlan = false,
   planLimits = null,
 }) {
+  const { emitBehaviorFeedback } = useBehaviorFeedback();
   const safeData = data && typeof data === "object" ? data : {};
   const legacyPendingDateKey = safeData.ui?.pendingDateKey;
   const selectedDateKey =
@@ -1481,6 +1484,8 @@ export default function Home({
     if (!canUseMicroActions) return;
     if (typeof setData !== "function") return;
     let coinGranted = false;
+    let didComplete = false;
+    let feedbackCategoryId = null;
     const eventTs = Date.now();
     setData((prev) => {
       const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
@@ -1491,6 +1496,8 @@ export default function Home({
         categoryId: selectedCategory,
       });
       if (!result.doneItem?.id) return prev;
+      didComplete = true;
+      feedbackCategoryId = selectedCategory;
 
       const prevMicroChecks = prev?.microChecks && typeof prev.microChecks === "object" ? prev.microChecks : {};
       const prevDay = prevMicroChecks?.[microDateKey] && typeof prevMicroChecks[microDateKey] === "object"
@@ -1542,6 +1549,17 @@ export default function Home({
         microChecks: nextMicroChecks,
       };
     });
+    if (didComplete) {
+      emitBehaviorFeedback(
+        deriveBehaviorFeedbackSignal({
+          intent: "complete_micro_action",
+          payload: {
+            surface: "today",
+            categoryId: feedbackCategoryId || executionCategoryId || focusCategory?.id || null,
+          },
+        })
+      );
+    }
     if (totemV1.animationEnabled) {
       emitTotemEvent({
         type: "MICRO_DONE",
@@ -2034,6 +2052,16 @@ export default function Home({
       remainingMinutes: Math.max(plannedMinutes - doneMinutes, 0),
     };
   }, [occurrencesForSelectedDay, sessionHistoryByOccurrenceId]);
+  const todayBehaviorCue = useMemo(
+    () =>
+      deriveTodayBehaviorCue({
+        disciplineSummary: disciplineBreakdown,
+        coreProgress,
+        activeCategory: heroCategory || focusCategory || null,
+        profileSummary: activeCategoryProfileSummary,
+      }),
+    [activeCategoryProfileSummary, coreProgress, disciplineBreakdown, focusCategory, heroCategory]
+  );
   const openPlanningForToday = useCallback(() => {
     if (typeof setData === "function") {
       setData((prev) => ({
@@ -2090,16 +2118,18 @@ export default function Home({
     <ScreenShell
       accent={accent}
       backgroundImage={backgroundImage}
-      headerTitle={<span data-tour-id="today-title">Today</span>}
-      headerSubtitle={null}
+      pageId="today"
+      headerTitle={<span data-tour-id="today-title">{SURFACE_LABELS.today}</span>}
+      headerSubtitle={MAIN_PAGE_COPY.today.orientation}
       headerRight={headerRight}
       headerRowAlign="start"
     >
-      <div className="stack stackGap12 todayPageShell">
+      <div className="mainPageStack todayPageShell">
         <TodayHero
           title={typedHeroTitle || heroViewModel.title}
           category={heroDisplayCategory}
           activeCategory={focusCategory || null}
+          behaviorCue={todayBehaviorCue}
           categoryName={heroDisplayCategoryName}
           durationLabel={heroDurationLabel}
           reason={heroReasonText}

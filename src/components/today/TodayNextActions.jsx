@@ -2,6 +2,7 @@ import React from "react";
 import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
 import CategoryPill from "../CategoryPill";
 import { getCategoryUiVars } from "../../utils/categoryAccent";
+import { MAIN_PAGE_COPY } from "../../ui/labels";
 
 export default function TodayNextActions({
   actions = [],
@@ -19,7 +20,7 @@ export default function TodayNextActions({
       <div className="col todaySectionBody">
         <div className="todaySectionHeader">
           <div className="titleSm">À venir aujourd’hui</div>
-          <div className="small2" style={{ opacity: 0.8 }}>3 créneaux maximum, triés par heure.</div>
+          <div className="small2" style={{ opacity: 0.8 }}>{MAIN_PAGE_COPY.today.nextActionsSubtitle}</div>
         </div>
         {safeActions.length ? (
           safeActions.map((item) => (
