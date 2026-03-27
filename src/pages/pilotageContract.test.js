@@ -48,6 +48,8 @@ describe("Pilotage contract", () => {
     expect(source).toContain("resolveManualAiDisplayState");
     expect(source).toContain("<ManualAiStatus");
     expect(source).toContain("manualPilotageAnalysis.loadingStageLabel");
+    expect(source).toContain("GateSecondarySectionCard");
+    expect(source).toContain("GateAnalyticsCard");
     expect(source).toContain("Niveau actuel");
     expect(source).toContain("Jours actifs");
     expect(source).toContain("Analyser cette catégorie");
@@ -66,6 +68,7 @@ describe("Pilotage contract", () => {
     expect(source).toContain("MAIN_PAGE_COPY.pilotage.statsTitle");
     expect(source).toContain('headerSubtitle={MAIN_PAGE_COPY.pilotage.orientation}');
     expect(source).toContain('className="mainPageStack"');
+    expect(source).toContain("GateMainSection GateMainSectionCard");
     expect(source).toContain("togglePilotageCategory");
     expect(source).toContain("pilotageInlineDetail");
     expect(source).toContain("Catégories déjà structurées");

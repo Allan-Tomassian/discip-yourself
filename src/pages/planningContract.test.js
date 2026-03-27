@@ -24,6 +24,10 @@ describe("Planning primitive convergence contract", () => {
     expect(source).toContain("GateSurfacePremium");
     expect(source).toContain("GateCardPremium");
     expect(source).toContain("GateMainSection");
+    expect(source).toContain("GateMainSectionCard");
+    expect(source).toContain("GateSecondarySectionCard");
+    expect(source).toContain("GateAnalyticsCard");
+    expect(source).toContain("GateInlineMetaCard");
     expect(source).not.toContain("planningSupportSection");
     expect(source).not.toContain("Ajustements intelligents");
     expect(source).not.toContain("sans effet tableau de bord");
@@ -39,6 +43,8 @@ describe("Planning primitive convergence contract", () => {
     expect(source).toContain("GateSurfacePremium");
     expect(source).toContain("GateCardPremium");
     expect(source).toContain("GateMainSection");
+    expect(source).toContain("GateSecondarySectionCard");
+    expect(source).toContain("GateAnalyticsCard");
     expect(source).toContain("Coach de planification");
     expect(source).toContain("Voir mes progrès");
   });

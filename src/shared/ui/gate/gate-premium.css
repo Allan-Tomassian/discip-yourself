@@ -115,8 +115,8 @@
 
 .GateCardPremium {
   border-radius: var(--gate-premium-radius);
-  padding: 16px;
-  gap: 16px;
+  padding: var(--gate-card-padding, 16px);
+  gap: var(--gate-card-gap, 16px);
   overflow: hidden;
 }
 
@@ -158,13 +158,53 @@
 }
 
 .GateMainSection .gateSectionBody {
-  gap: 12px;
+  gap: var(--gate-section-body-gap, 12px);
   min-width: 0;
 }
 
 .GateMainSection .gateSectionHeader,
 .GateMainSection .cardSectionTitleRow {
   padding-inline: 2px;
+}
+
+.GateMainSectionCard,
+.GateSecondarySectionCard {
+  --gate-card-padding: 16px;
+  --gate-card-gap: 14px;
+  --gate-section-body-gap: 14px;
+  --gate-section-header-gap: 4px;
+}
+
+.GateSecondarySectionCard {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 24px rgba(0, 0, 0, 0.22);
+}
+
+.GateMainSectionCard .gateSectionHeaderText,
+.GateSecondarySectionCard .gateSectionHeaderText {
+  gap: var(--gate-section-header-gap, 4px);
+}
+
+.GateAnalyticsCard,
+.GateInlineMetaCard {
+  position: relative;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--gate-border) 96%, rgba(255, 255, 255, 0.08));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--gate-surface-1) 94%, var(--background-secondary, #151922));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.GateAnalyticsCard {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+}
+
+.GateInlineMetaCard {
+  gap: 8px;
+  padding: 12px 14px;
 }
 
 /* Shared text-role hierarchy inside premium surfaces. */
@@ -185,6 +225,13 @@
   font-size: 12px;
   line-height: 1.36;
   color: color-mix(in srgb, var(--gate-text-muted) 90%, rgba(255, 255, 255, 0.16));
+}
+
+.GateRoleHelperText,
+.GateSurfacePremium .small {
+  font-size: 13px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--gate-text) 88%, rgba(255, 255, 255, 0.08));
 }
 
 .GateRoleCardTitle,
@@ -208,6 +255,14 @@
   font-size: 13px;
   line-height: 1.45;
   color: color-mix(in srgb, var(--gate-text-muted) 90%, rgba(255, 255, 255, 0.16));
+}
+
+.GateAnalyticsCard .GateRoleMetricValue,
+.GateAnalyticsCard .titleSm {
+  font-size: 18px;
+  line-height: 1.28;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .GateSurfacePremium .cardSectionTitleRow {

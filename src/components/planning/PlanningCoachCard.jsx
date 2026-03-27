@@ -196,6 +196,7 @@ export default function PlanningCoachCard({
     <GateSection
       className={[
         "GateMainSection",
+        "GateSecondarySectionCard",
         "planningSectionCard",
         "planningCoachSection",
         "GateSurfacePremium",
@@ -209,7 +210,7 @@ export default function PlanningCoachCard({
       <div className="planningSectionBody">
         <div className="planningSectionHeader planningSectionHeader--split">
           <div className="planningSectionHeaderText">
-            <div className="titleSm">Coach de planification</div>
+            <div className="titleSm GateRoleSectionTitle">Coach de planification</div>
             <ManualAiStatus
               statusKind={planningAnalysisState.kind}
               statusLabel={planningAnalysisState.label}
@@ -240,17 +241,19 @@ export default function PlanningCoachCard({
         </div>
 
         <div className="planningCoachSummary">
-          <div className="planningCoachBlock">
-            <div className="small2 planningCoachLabel">Ajustement proposé</div>
-            <div className="titleSm">{visibleReply?.headline || "Ajustement du planning"}</div>
+          <div className="planningCoachBlock GateAnalyticsCard">
+            <div className="small2 GateRoleCardMeta planningCoachLabel">Ajustement proposé</div>
+            <div className="titleSm GateRoleCardTitle">{visibleReply?.headline || "Ajustement du planning"}</div>
           </div>
-          <div className="planningCoachBlock">
-            <div className="small2 planningCoachLabel">Ce qui compte</div>
-            <div className="small">{visibleReply?.reason || "Le planning a besoin d’un ajustement simple et crédible."}</div>
+          <div className="planningCoachBlock GateAnalyticsCard">
+            <div className="small2 GateRoleCardMeta planningCoachLabel">Ce qui compte</div>
+            <div className="small GateRoleHelperText">
+              {visibleReply?.reason || "Le planning a besoin d’un ajustement simple et crédible."}
+            </div>
           </div>
-          <div className="planningCoachBlock">
-            <div className="small2 planningCoachLabel">Prochain pas</div>
-            <div className="small">{renderSuggestion(visibleReply)}</div>
+          <div className="planningCoachBlock GateAnalyticsCard">
+            <div className="small2 GateRoleCardMeta planningCoachLabel">Prochain pas</div>
+            <div className="small GateRoleHelperText">{renderSuggestion(visibleReply)}</div>
           </div>
         </div>
 

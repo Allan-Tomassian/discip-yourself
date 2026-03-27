@@ -49,6 +49,7 @@ export default function TodayHero({
     <GateSection
       className={[
         "GateMainSection",
+        "GateMainSectionCard",
         "todayHeroCard",
         "GateSurfacePremium",
         "GateCardPremium",
@@ -70,24 +71,24 @@ export default function TodayHero({
         </div>
       </div>
       <div className="todayHeroBody">
-        <div className="todayHeroTitle">{displayTitle}</div>
+        <div className="todayHeroTitle GateRoleCardTitle">{displayTitle}</div>
         <div className="todayHeroMetaRow">
           <CategoryPill category={category} label={displayCategory} className="todayHeroCategoryPill" />
           <div className="todayHeroDurationChip">{durationLabel || "Durée libre"}</div>
         </div>
         <div className="todayHeroDetailList">
           <div className="todayHeroDetailBlock">
-            <div className="todayHeroDetailLabel">Pourquoi</div>
-            <div className="todayHeroDetailText">{displayReason}</div>
+            <div className="todayHeroDetailLabel GateRoleCardMeta">Pourquoi</div>
+            <div className="todayHeroDetailText GateRoleHelperText">{displayReason}</div>
           </div>
           <div className="todayHeroDetailBlock">
-            <div className="todayHeroDetailLabel">Contribue à</div>
-            <div className="todayHeroDetailText">{displayContribution}</div>
+            <div className="todayHeroDetailLabel GateRoleCardMeta">Contribue à</div>
+            <div className="todayHeroDetailText GateRoleHelperText">{displayContribution}</div>
           </div>
           {displayImpact ? (
             <div className="todayHeroDetailBlock">
-              <div className="todayHeroDetailLabel">Impact attendu</div>
-              <div className="todayHeroDetailText">{displayImpact}</div>
+              <div className="todayHeroDetailLabel GateRoleCardMeta">Impact attendu</div>
+              <div className="todayHeroDetailText GateRoleHelperText">{displayImpact}</div>
             </div>
           ) : null}
         </div>
@@ -114,7 +115,7 @@ export default function TodayHero({
         </GateButton>
       </div>
       {analyzeError ? (
-        <div className="small2" style={{ opacity: 0.88 }}>
+        <div className="small2 GateRoleCardMeta" style={{ opacity: 0.88 }}>
           {analyzeError}
         </div>
       ) : null}

@@ -758,16 +758,16 @@ export default function Pilotage({
           : "default";
     return (
       <div className="pilotageInlineDetail" style={sharedSurfaceVars}>
-        <div className="pilotageInlineGrid">
+          <div className="pilotageInlineGrid">
           <div
-            className="pilotageInlinePanel pilotageInlinePanel--metrics categorySurface categorySurface--surface"
+            className="pilotageInlinePanel pilotageInlinePanel--metrics GateSecondarySectionCard categorySurface categorySurface--surface"
             data-tour-id="pilotage-discipline"
             style={sharedSurfaceVars}
           >
             <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div>
-                <div className="sectionTitle">Pilotage rapide</div>
-                <div className="small2 textMuted">4 signaux utiles et une mini courbe de lecture.</div>
+                <div className="sectionTitle GateRoleSectionTitle">Pilotage rapide</div>
+                <div className="small2 GateRoleSectionSubtitle textMuted">4 signaux utiles et une mini courbe de lecture.</div>
               </div>
               <div className="row pilotageCompactWindowControls">
                 {PILOTAGE_DISCIPLINE_WINDOWS.map((windowDays) => (
@@ -783,34 +783,34 @@ export default function Pilotage({
             </div>
             <div className="pilotageMiniStatsGrid">
               <div
-                className="pilotageMiniStat categorySurface categorySurface--surface"
+                className="pilotageMiniStat GateAnalyticsCard categorySurface categorySurface--surface"
                 style={getCategoryUiVars(detailCategory, { level: "surface", stateTone: completionTone })}
               >
-                <div className="small2">Fait / attendu</div>
-                <div className="titleSm">{detailWeek ? `${detailWeek.done || 0} / ${detailWeek.expected || 0}` : "—"}</div>
+                <div className="small2 GateRoleMetricLabel">Fait / attendu</div>
+                <div className="titleSm GateRoleMetricValue">{detailWeek ? `${detailWeek.done || 0} / ${detailWeek.expected || 0}` : "—"}</div>
               </div>
               <div
-                className="pilotageMiniStat categorySurface categorySurface--surface"
+                className="pilotageMiniStat GateAnalyticsCard categorySurface categorySurface--surface"
                 style={getCategoryUiVars(detailCategory, { level: "surface", stateTone: scoreTone })}
               >
-                <div className="small2">Niveau actuel</div>
-                <div className="titleSm">
+                <div className="small2 GateRoleMetricLabel">Niveau actuel</div>
+                <div className="titleSm GateRoleMetricValue">
                   {Number.isFinite(disciplineTrend.summary.currentScore) ? `${disciplineTrend.summary.currentScore}%` : "—"}
                 </div>
               </div>
               <div
-                className="pilotageMiniStat categorySurface categorySurface--surface"
+                className="pilotageMiniStat GateAnalyticsCard categorySurface categorySurface--surface"
                 style={getCategoryUiVars(detailCategory, { level: "surface", stateTone: trendTone })}
               >
-                <div className="small2">Rythme</div>
-                <div className="titleSm">{formatDisciplineTrendLabel(disciplineTrend.summary.trendLabel)}</div>
+                <div className="small2 GateRoleMetricLabel">Rythme</div>
+                <div className="titleSm GateRoleMetricValue">{formatDisciplineTrendLabel(disciplineTrend.summary.trendLabel)}</div>
               </div>
               <div
-                className="pilotageMiniStat categorySurface categorySurface--surface"
+                className="pilotageMiniStat GateAnalyticsCard categorySurface categorySurface--surface"
                 style={getCategoryUiVars(detailCategory, { level: "surface", stateTone: activeDaysTone })}
               >
-                <div className="small2">Jours actifs</div>
-                <div className="titleSm">{constanceSummary.activeDays7}/7</div>
+                <div className="small2 GateRoleMetricLabel">Jours actifs</div>
+                <div className="titleSm GateRoleMetricValue">{constanceSummary.activeDays7}/7</div>
               </div>
             </div>
             <DisciplineTrendChart
@@ -822,10 +822,10 @@ export default function Pilotage({
             />
           </div>
 
-          <div className="pilotageInlinePanel categorySurface categorySurface--surface" style={sharedSurfaceVars}>
+          <div className="pilotageInlinePanel GateSecondarySectionCard categorySurface categorySurface--surface" style={sharedSurfaceVars}>
             <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div>
-                <div className="sectionTitle">Lecture locale</div>
+                <div className="sectionTitle GateRoleSectionTitle">Lecture locale</div>
                 <ManualAiStatus
                   statusKind={pilotageAnalysisState.kind}
                   statusLabel={pilotageAnalysisState.label}
@@ -856,22 +856,22 @@ export default function Pilotage({
               </div>
             ) : null}
             <div className="pilotageReadingGrid">
-              <div className="pilotageInsightItem">
-                <div className="small2 textMuted">Résumé</div>
+              <div className="pilotageInsightItem GateAnalyticsCard">
+                <div className="small2 GateRoleCardMeta textMuted">Résumé</div>
                 <div>{persistedPilotageAnalysis?.summary || coachFallback.summary}</div>
               </div>
-              <div className="pilotageInsightItem">
-                <div className="small2 textMuted">Point d’attention</div>
+              <div className="pilotageInsightItem GateAnalyticsCard">
+                <div className="small2 GateRoleCardMeta textMuted">Point d’attention</div>
                 <div>{persistedPilotageAnalysis?.problem || coachFallback.problem}</div>
               </div>
-              <div className="pilotageInsightItem">
-                <div className="small2 textMuted">Prochain pas</div>
+              <div className="pilotageInsightItem GateAnalyticsCard">
+                <div className="small2 GateRoleCardMeta textMuted">Prochain pas</div>
                 <div>{persistedPilotageAnalysis?.recommendation || coachFallback.recommendation}</div>
               </div>
             </div>
             {manualPilotageAnalysis.error ? (
               <div className="pilotageInlineAiPanel">
-                <div className="sectionTitle">Analyse indisponible</div>
+                <div className="sectionTitle GateRoleSectionTitle">Analyse indisponible</div>
                 <div className="small2 textMuted">{manualPilotageAnalysis.error}</div>
               </div>
             ) : null}
@@ -890,36 +890,36 @@ export default function Pilotage({
     >
       <div className="mainPageStack">
         <Card
-          className="GateMainSection"
+          className="GateMainSection GateMainSectionCard"
           style={
             activePilotageSurfaceVars || undefined
           }
         >
-          <div className="p18 col" style={{ gap: 12 }}>
+          <div className="col" style={{ gap: 12 }}>
             <div>
-              <div className="sectionTitle">{MAIN_PAGE_COPY.pilotage.summaryTitle}</div>
-              <div className="small2 textMuted">Lis rapidement où ton système progresse vraiment.</div>
+              <div className="sectionTitle GateRoleSectionTitle">{MAIN_PAGE_COPY.pilotage.summaryTitle}</div>
+              <div className="small2 GateRoleSectionSubtitle textMuted">Lis rapidement où ton système progresse vraiment.</div>
             </div>
             <div className="pilotageInsights">
-              <div className="pilotageInsightItem">
-                <div className="small2 textMuted">Signal principal</div>
+              <div className="pilotageInsightItem GateAnalyticsCard">
+                <div className="small2 GateRoleCardMeta textMuted">Signal principal</div>
                 <div>{globalPilotageSummary.summary}</div>
               </div>
               {globalPilotageSummary.strongestSignal ? (
-                <div className="pilotageInsightItem">
-                  <div className="small2 textMuted">Zone la plus exploitable</div>
+                <div className="pilotageInsightItem GateAnalyticsCard">
+                  <div className="small2 GateRoleCardMeta textMuted">Zone la plus exploitable</div>
                   <div>{globalPilotageSummary.strongestSignal}</div>
                 </div>
               ) : null}
               {globalPilotageSummary.frictionSignal ? (
-                <div className="pilotageInsightItem">
-                  <div className="small2 textMuted">Point de friction</div>
+                <div className="pilotageInsightItem GateAnalyticsCard">
+                  <div className="small2 GateRoleCardMeta textMuted">Point de friction</div>
                   <div>{globalPilotageSummary.frictionSignal}</div>
                 </div>
               ) : null}
               {globalPilotageSummary.dormantSignal ? (
-                <div className="pilotageInsightItem">
-                  <div className="small2 textMuted">Zone stagnante</div>
+                <div className="pilotageInsightItem GateAnalyticsCard">
+                  <div className="small2 GateRoleCardMeta textMuted">Zone stagnante</div>
                   <div>{globalPilotageSummary.dormantSignal}</div>
                 </div>
               ) : null}
@@ -928,23 +928,23 @@ export default function Pilotage({
         </Card>
 
         <Card
-          className="GateMainSection"
+          className="GateMainSection GateMainSectionCard"
           style={
             activePilotageSurfaceVars || undefined
           }
         >
-          <div className="p18">
-            <div className="sectionTitle">{MAIN_PAGE_COPY.pilotage.focusTitle}</div>
+          <div className="col" style={{ gap: 12 }}>
+            <div className="sectionTitle GateRoleSectionTitle">{MAIN_PAGE_COPY.pilotage.focusTitle}</div>
             {pilotageBehaviorCue ? (
-              <div className="mt12">
+              <div>
                 <BehaviorCue cue={pilotageBehaviorCue} category={detailCategory || selectedCategory || null} />
               </div>
             ) : null}
-            <div className="mt12 col" role="list" style={{ gap: 12 }}>
+            <div className="col" role="list" style={{ gap: 12 }}>
               <div className="pilotageFocusGroup">
                 <div className="pilotageFocusGroupHeader">
-                  <div className="small2 textMuted">Catégories déjà structurées</div>
-                  <div className="small2 textMuted">{structuredFocusCategories.length}</div>
+                  <div className="small2 GateRoleCardMeta textMuted">Catégories déjà structurées</div>
+                  <div className="small2 GateRoleCardMeta textMuted">{structuredFocusCategories.length}</div>
                 </div>
                 <div className="col" style={{ gap: 10 }}>
                   {structuredFocusCategories.length ? structuredFocusCategories.map(({ category, status, summary }) => (
@@ -971,7 +971,7 @@ export default function Pilotage({
               {deferredFocusCategories.length ? (
                 <div className="pilotageFocusGroup pilotageFocusGroup--deferred">
                   <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <div className="small2 textMuted">
+                    <div className="small2 GateRoleCardMeta textMuted">
                       {deferredFocusCategories.length} catégorie{deferredFocusCategories.length > 1 ? "s" : ""} à structurer
                     </div>
                     <Button variant="ghost" onClick={() => setShowDeferredCategories((value) => !value)}>
@@ -1005,41 +1005,41 @@ export default function Pilotage({
         </Card>
 
         <Card
-          className="GateMainSection"
+          className="GateMainSection GateMainSectionCard"
           style={
             activePilotageSurfaceVars || undefined
           }
         >
-          <div className="p18 col" style={{ gap: 12 }}>
+          <div className="col" style={{ gap: 12 }}>
             <div>
-              <div className="sectionTitle">{MAIN_PAGE_COPY.pilotage.statsTitle}</div>
-              <div className="small2 textMuted">Lis le rythme récent avant d’ouvrir une catégorie.</div>
+              <div className="sectionTitle GateRoleSectionTitle">{MAIN_PAGE_COPY.pilotage.statsTitle}</div>
+              <div className="small2 GateRoleSectionSubtitle textMuted">Lis le rythme récent avant d’ouvrir une catégorie.</div>
             </div>
             <div className="pilotageTopGrid">
-              <div className="listItem GateRowPremium">
-                <div className="small2">Niveau global</div>
-                <div className="titleSm">{globalPilotageStats.globalScore}%</div>
+              <div className="listItem GateRowPremium GateAnalyticsCard">
+                <div className="small2 GateRoleMetricLabel">Niveau global</div>
+                <div className="titleSm GateRoleMetricValue">{globalPilotageStats.globalScore}%</div>
               </div>
-              <div className="listItem GateRowPremium">
-                <div className="small2">Actions faites / attendues</div>
-                <div className="titleSm">
+              <div className="listItem GateRowPremium GateAnalyticsCard">
+                <div className="small2 GateRoleMetricLabel">Actions faites / attendues</div>
+                <div className="titleSm GateRoleMetricValue">
                   {globalPilotageStats.doneCount} / {globalPilotageStats.expectedCount}
                 </div>
               </div>
-              <div className="listItem GateRowPremium">
-                <div className="small2">Temps investi réel</div>
-                <div className="titleSm">{formatMinutes(globalPilotageStats.realMinutes7)}</div>
+              <div className="listItem GateRowPremium GateAnalyticsCard">
+                <div className="small2 GateRoleMetricLabel">Temps investi réel</div>
+                <div className="titleSm GateRoleMetricValue">{formatMinutes(globalPilotageStats.realMinutes7)}</div>
               </div>
-              <div className="listItem GateRowPremium">
-                <div className="small2">Catégories actives</div>
-                <div className="titleSm">
+              <div className="listItem GateRowPremium GateAnalyticsCard">
+                <div className="small2 GateRoleMetricLabel">Catégories actives</div>
+                <div className="titleSm GateRoleMetricValue">
                   {globalPilotageStats.activeCategories} / {Math.max(categories.length, 1)}
                 </div>
               </div>
             </div>
             <div className="pilotageInsights">
-              <div className="pilotageInsightItem">
-                <div className="small2 textMuted">Lecture du rythme</div>
+              <div className="pilotageInsightItem GateAnalyticsCard">
+                <div className="small2 GateRoleCardMeta textMuted">Lecture du rythme</div>
                 <div>
                   {globalPilotageStats.structuredCategories} catégorie
                   {globalPilotageStats.structuredCategories > 1 ? "s" : ""} ont déjà une base exploitable, avec{" "}
@@ -1047,8 +1047,8 @@ export default function Pilotage({
                   {globalPilotageStats.activeDays7 > 1 ? "s" : ""} sur 7.
                 </div>
               </div>
-              <div className="pilotageInsightItem">
-                <div className="small2 textMuted">Points de friction</div>
+              <div className="pilotageInsightItem GateAnalyticsCard">
+                <div className="small2 GateRoleCardMeta textMuted">Points de friction</div>
                 <div>
                   {globalPilotageStats.missedCount > 0
                     ? `${globalPilotageStats.missedCount} occurrence${globalPilotageStats.missedCount > 1 ? "s" : ""} manquée${globalPilotageStats.missedCount > 1 ? "s" : ""} sur la fenêtre récente.`
@@ -1060,9 +1060,9 @@ export default function Pilotage({
         </Card>
 
         {legacyBuckets.pilotageRituals.length ? (
-          <Card>
-            <div className="p18 col" style={{ gap: 8 }}>
-              <div className="sectionTitle">Rituels hérités</div>
+          <Card className="GateSecondarySectionCard">
+            <div className="col" style={{ gap: 8 }}>
+              <div className="sectionTitle GateRoleSectionTitle">Rituels hérités</div>
               <div className="small">
                 {legacyBuckets.pilotageRituals.length} élément{legacyBuckets.pilotageRituals.length > 1 ? "s" : ""} d’organisation ou de revue a été retiré{legacyBuckets.pilotageRituals.length > 1 ? "s" : ""} du flux d’exécution.
               </div>

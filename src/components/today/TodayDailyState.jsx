@@ -16,34 +16,29 @@ export default function TodayDailyState({
 }) {
   return (
     <GateSection
-      className="GateMainSection todaySectionCard GateSurfacePremium GateCardPremium"
+      className="GateMainSection GateSecondarySectionCard todaySectionCard GateSurfacePremium GateCardPremium"
       collapsible={false}
       style={activeCategory ? getCategoryUiVars(activeCategory, { level: "surface" }) : undefined}
     >
       <div className="col todaySectionBody">
         <div className="todaySectionHeader">
-          <div className="titleSm">{MAIN_PAGE_COPY.today.dailyStateTitle}</div>
-          <div className="small2" style={{ opacity: 0.8 }}>{MAIN_PAGE_COPY.today.dailyStateSubtitle}</div>
+          <div className="titleSm GateRoleSectionTitle">{MAIN_PAGE_COPY.today.dailyStateTitle}</div>
+          <div className="small2 GateRoleSectionSubtitle" style={{ opacity: 0.8 }}>
+            {MAIN_PAGE_COPY.today.dailyStateSubtitle}
+          </div>
         </div>
-        <div
-          className="todayDailyStateGrid"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-            gap: 10,
-          }}
-        >
-          <div className="listItem GateRowPremium todayDailyStateItem">
-            <div className="small2">Planifié</div>
-            <div className="titleSm">{formatMinutes(plannedMinutes)}</div>
+        <div className="todayDailyStateGrid">
+          <div className="listItem GateRowPremium GateAnalyticsCard todayDailyStateItem">
+            <div className="small2 GateRoleMetricLabel">Planifié</div>
+            <div className="titleSm GateRoleMetricValue">{formatMinutes(plannedMinutes)}</div>
           </div>
-          <div className="listItem GateRowPremium todayDailyStateItem">
-            <div className="small2">Réalisé</div>
-            <div className="titleSm">{formatMinutes(doneMinutes)}</div>
+          <div className="listItem GateRowPremium GateAnalyticsCard todayDailyStateItem">
+            <div className="small2 GateRoleMetricLabel">Réalisé</div>
+            <div className="titleSm GateRoleMetricValue">{formatMinutes(doneMinutes)}</div>
           </div>
-          <div className="listItem GateRowPremium todayDailyStateItem">
-            <div className="small2">Restant</div>
-            <div className="titleSm">{formatMinutes(remainingMinutes)}</div>
+          <div className="listItem GateRowPremium GateAnalyticsCard todayDailyStateItem">
+            <div className="small2 GateRoleMetricLabel">Restant</div>
+            <div className="titleSm GateRoleMetricValue">{formatMinutes(remainingMinutes)}</div>
           </div>
         </div>
       </div>

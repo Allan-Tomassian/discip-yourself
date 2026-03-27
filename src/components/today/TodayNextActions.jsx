@@ -13,23 +13,25 @@ export default function TodayNextActions({
 
   return (
     <GateSection
-      className="GateMainSection todaySectionCard GateSurfacePremium GateCardPremium"
+      className="GateMainSection GateSecondarySectionCard todaySectionCard GateSurfacePremium GateCardPremium"
       collapsible={false}
       style={activeCategory ? getCategoryUiVars(activeCategory, { level: "surface" }) : undefined}
     >
       <div className="col todaySectionBody">
         <div className="todaySectionHeader">
-          <div className="titleSm">À venir aujourd’hui</div>
-          <div className="small2" style={{ opacity: 0.8 }}>{MAIN_PAGE_COPY.today.nextActionsSubtitle}</div>
+          <div className="titleSm GateRoleSectionTitle">À venir aujourd’hui</div>
+          <div className="small2 GateRoleSectionSubtitle" style={{ opacity: 0.8 }}>
+            {MAIN_PAGE_COPY.today.nextActionsSubtitle}
+          </div>
         </div>
         {safeActions.length ? (
           safeActions.map((item) => (
             <div
               key={item.id}
-              className="listItem GateRowPremium todayNextActionItem"
+              className="listItem GateRowPremium GateInlineMetaCard todayNextActionItem"
             >
               <div className="todayNextActionTop">
-                <div className="todayNextActionTime">{item.start || "Fenêtre libre"}</div>
+                <div className="todayNextActionTime GateRoleCardMeta">{item.start || "Fenêtre libre"}</div>
                 <CategoryPill
                   category={item.category || null}
                   color={item.category?.color || ""}
@@ -37,13 +39,13 @@ export default function TodayNextActions({
                 />
               </div>
               <div className="todayNextActionTitleRow">
-                <div className="itemTitle todayNextActionTitle">{item.title || "Action"}</div>
+                <div className="itemTitle GateRoleCardTitle todayNextActionTitle">{item.title || "Action"}</div>
                 {item.isAiPriority ? (
                   <span className="todayHeroCoachBadge is-ai">Priorité IA</span>
                 ) : null}
               </div>
               <div className="todayNextActionFooter">
-                <div className="small2 todayNextActionDuration">
+                <div className="small2 GateRoleCardMeta todayNextActionDuration">
                   {Number.isFinite(item.durationMinutes) ? `${item.durationMinutes} min` : "Durée libre"}
                 </div>
                 <GateButton

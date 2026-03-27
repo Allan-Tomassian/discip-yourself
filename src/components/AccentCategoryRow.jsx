@@ -21,6 +21,7 @@ export default function AccentCategoryRow({
     "categorySurface",
     "categorySurface--surface",
     "GateRowPremium",
+    "GateInlineMetaCard",
     onClick ? "GatePressable" : "",
     className,
   ]

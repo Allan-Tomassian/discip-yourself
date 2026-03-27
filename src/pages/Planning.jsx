@@ -272,15 +272,15 @@ export default function Planning({
     >
       <div className="mainPageStack planningPage">
         <GateSection
-          className="GateMainSection planningSectionCard planningCalendarSection GateSurfacePremium GateCardPremium"
+          className="GateMainSection GateMainSectionCard planningSectionCard planningCalendarSection GateSurfacePremium GateCardPremium"
           collapsible={false}
           style={activeCategorySurfaceVars || undefined}
         >
           <div className="planningSectionBody">
             <div className="planningSectionHeader planningSectionHeader--split">
               <div className="planningSectionHeaderText">
-                <div className="titleSm">{formatDateLabel(selectedDateKey)}</div>
-                <div className="small2 planningSectionMeta">
+                <div className="titleSm GateRoleCardTitle">{formatDateLabel(selectedDateKey)}</div>
+                <div className="small2 GateRoleCardMeta planningSectionMeta">
                   {selectedDayTone} · {selectedDayLoadMinutes || 0} min planifiées
                 </div>
                 {planningBehaviorCue ? <BehaviorCue cue={planningBehaviorCue} category={activeCategory} /> : null}
@@ -326,6 +326,7 @@ export default function Planning({
             "planningSectionCard",
             "planningContentSection",
             "GateMainSection",
+            "GateSecondarySectionCard",
             "GateSurfacePremium",
             "GateCardPremium",
           ]
@@ -340,13 +341,13 @@ export default function Planning({
             <div className="planningDayList">
               {dayItems.length ? (
                 dayItems.map((item) => (
-                  <div key={item.id} className="planningItemRow listItem GateRowPremium">
+                  <div key={item.id} className="planningItemRow listItem GateRowPremium GateInlineMetaCard">
                     <div className="planningItemRowTop">
-                      <div className="planningItemTime">{item.start || "Fenêtre libre"}</div>
+                      <div className="planningItemTime GateRoleCardMeta">{item.start || "Fenêtre libre"}</div>
                       <CategoryPill category={item.category || null} label={item.category?.name || "Catégorie"} />
                     </div>
-                    <div className="titleSm planningItemTitle">{item.title}</div>
-                    <div className="small2 planningItemDuration">
+                    <div className="titleSm GateRoleCardTitle planningItemTitle">{item.title}</div>
+                    <div className="small2 GateRoleCardMeta planningItemDuration">
                       {Number.isFinite(item.durationMinutes) ? `${item.durationMinutes} min` : "Durée libre"}
                     </div>
                   </div>
@@ -362,27 +363,27 @@ export default function Planning({
               {weekBuckets.map((bucket) => (
                 <div
                   key={bucket.dateKey}
-                  className={`planningWeekBucket${bucket.isToday ? " isToday" : ""}`}
+                  className={`planningWeekBucket GateAnalyticsCard${bucket.isToday ? " isToday" : ""}`}
                 >
                   <div className="planningWeekBucketHeader">
                     <div className="planningWeekBucketHeaderMain">
-                      <div className="titleSm">{bucket.label}</div>
+                      <div className="titleSm GateRoleCardTitle">{bucket.label}</div>
                       {bucket.isToday ? <span className="planningTodayTag">Aujourd’hui</span> : null}
                     </div>
-                    <div className="small2 planningWeekBucketMeta">
+                    <div className="small2 GateRoleCardMeta planningWeekBucketMeta">
                       {bucket.totalMinutes || 0} min · {resolveLoadTone(bucket.totalMinutes)}
                     </div>
                   </div>
                   {bucket.items.length ? (
                     <div className="planningWeekList">
                       {bucket.items.slice(0, 3).map((item) => (
-                        <div key={item.id} className="planningItemRow planningItemRow--compact listItem GateRowPremium">
+                        <div key={item.id} className="planningItemRow planningItemRow--compact listItem GateRowPremium GateInlineMetaCard">
                           <div className="planningItemRowTop">
-                            <div className="planningItemTime">{item.start || "Fenêtre libre"}</div>
+                            <div className="planningItemTime GateRoleCardMeta">{item.start || "Fenêtre libre"}</div>
                             <CategoryPill category={item.category || null} label={item.category?.name || "Catégorie"} />
                           </div>
-                          <div className="planningItemTitle">{item.title}</div>
-                          <div className="planningItemDuration">
+                          <div className="planningItemTitle GateRoleCardTitle">{item.title}</div>
+                          <div className="planningItemDuration GateRoleCardMeta">
                             {Number.isFinite(item.durationMinutes) ? `${item.durationMinutes} min` : "Durée libre"}
                           </div>
                         </div>
@@ -415,7 +416,7 @@ export default function Planning({
 
         {pendingOccurrence ? (
           <GateSection
-            className="planningSectionCard planningSecondarySection GateSurfacePremium GateCardPremium"
+            className="planningSectionCard planningSecondarySection GateSecondarySectionCard GateSurfacePremium GateCardPremium"
             title="Occurrence à replanifier"
             description={`${pendingGoal?.title || "Action"}${pendingCategory?.name ? ` · ${pendingCategory.name}` : ""}`}
             collapsible={false}
@@ -436,7 +437,7 @@ export default function Planning({
 
         {legacyBuckets.reclassifyCandidates.length > 0 ? (
           <GateSection
-            className="planningSectionCard planningSecondarySection GateSurfacePremium GateCardPremium"
+            className="planningSectionCard planningSecondarySection GateSecondarySectionCard GateSurfacePremium GateCardPremium"
             title="Éléments à reclasser"
             description={`${legacyBuckets.reclassifyCandidates.length} action${legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} héritée${legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} restent hors catégorie.`}
             collapsible={false}

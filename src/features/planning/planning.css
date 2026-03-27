@@ -10,7 +10,7 @@
 .planningSectionCard .gateSectionBody {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   position: relative;
   z-index: 1;
 }
@@ -18,7 +18,7 @@
 .planningSectionBody {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .planningSectionHeader {
@@ -69,12 +69,10 @@
 .planningItemRow {
   display: grid;
   gap: 8px;
-  padding: 13px 14px;
 }
 
 .planningItemRow--compact {
   gap: 7px;
-  padding: 10px 12px;
 }
 
 .planningItemRowTop {
@@ -86,8 +84,6 @@
 }
 
 .planningItemTime {
-  font-size: 12px;
-  line-height: 1.45;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
@@ -109,10 +105,6 @@
 .planningWeekBucket {
   display: grid;
   gap: 8px;
-  padding: 11px 12px 10px;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.06));
-  background: color-mix(in srgb, var(--surface-primary) 96%, #0d1118);
 }
 
 .planningWeekBucket.isToday {
@@ -166,7 +158,7 @@
 
 .planningCoachBlock {
   display: grid;
-  gap: 3px;
+  gap: 4px;
 }
 
 .planningCoachLabel {
@@ -200,10 +192,6 @@
 }
 
 @media (max-width: 767px) {
-  .planningSectionCard .gateSectionBody {
-    gap: 14px;
-  }
-
   .planningSectionHeader--split {
     align-items: stretch;
   }

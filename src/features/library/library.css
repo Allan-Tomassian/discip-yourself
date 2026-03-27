@@ -47,32 +47,9 @@
   min-width: 0;
 }
 
-.pageNarrow > .gateSection.GateCardPremium > .p18 {
-  padding: 16px;
-}
-
 .libraryPrimaryCard {
   width: 100%;
   box-sizing: border-box;
-}
-
-.pageNarrow .sectionTitle {
-  font-size: 12px;
-  line-height: 1.34;
-  font-weight: 650;
-}
-
-.pageNarrow .itemTitle {
-  font-size: 13px;
-  line-height: 1.34;
-  font-weight: 650;
-}
-
-.pageNarrow .itemSub,
-.pageNarrow .small2,
-.pageNarrow .textMuted,
-.pageNarrow .textMuted2 {
-  line-height: 1.34;
 }
 
 .libraryCardHeader {
@@ -100,10 +77,6 @@
   padding-left: 0;
   position: relative;
   z-index: 1;
-}
-
-.libraryAccentItem.listItem {
-  padding: 12px 14px;
 }
 
 .libraryDetailStack {
@@ -322,14 +295,6 @@
   .pageNarrow {
     max-width: none;
     width: 100%;
-  }
-
-  .pageNarrow > .gateSection.GateCardPremium > .p18 {
-    padding: 16px;
-  }
-
-  .libraryAccentItem.listItem {
-    padding: 14px 16px;
   }
 
   .librarySuggestionsList,

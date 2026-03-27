@@ -1109,15 +1109,15 @@ export default function Categories({
       >
       <div className="mainPageStack pageNarrow">
         {legacyBuckets.reclassifyCandidates.length ? (
-          <Card>
-            <div className="p18 col gap10">
+          <Card className="GateSecondarySectionCard">
+            <div className="col gap10">
               <div className="row rowBetween alignCenter libraryCardHeader">
-                <div className="sectionTitle">{MAIN_PAGE_COPY.library.reclassifyTitle}</div>
-                <div className="small2 textMuted2">
+                <div className="sectionTitle GateRoleSectionTitle">{MAIN_PAGE_COPY.library.reclassifyTitle}</div>
+                <div className="small2 GateRoleCardMeta textMuted2">
                   {legacyBuckets.reclassifyCandidates.length} action{legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} hors structure visible
                 </div>
               </div>
-              <div className="small2 textMuted">
+              <div className="small2 GateRoleSectionSubtitle textMuted">
                 Les actions héritées de <strong>Général</strong> restent hors de la structure active tant qu&apos;elles ne sont pas reclassées.
               </div>
               <div className="col gap8">
@@ -1164,15 +1164,15 @@ export default function Categories({
         ) : null}
 
         <Card
-          className="GateMainSection libraryPrimaryCard"
+          className="GateMainSection GateMainSectionCard libraryPrimaryCard"
           style={activeLibraryCategory ? getCategoryUiVars(activeLibraryCategory, { level: "surface" }) : undefined}
         >
-          <div className="p18">
+          <div className="col gap10">
             <div className="row rowBetween alignCenter libraryCardHeader">
-              <div className="sectionTitle">{MAIN_PAGE_COPY.library.primaryTitle}</div>
+              <div className="sectionTitle GateRoleSectionTitle">{MAIN_PAGE_COPY.library.primaryTitle}</div>
             </div>
 
-            <div className="mt12 col gap10" data-tour-id="library-category-list">
+            <div className="col gap10" data-tour-id="library-category-list">
               {isEmpty ? <div className="small2 textMuted">Aucune catégorie active.</div> : null}
               {orderedUserCategories.length ? (
                 <SortableBlocks
@@ -1204,7 +1204,7 @@ export default function Categories({
                       }
                     }}
                   >
-                    <div className="small2">
+                    <div className="small2 GateRoleSectionSubtitle">
                       {MAIN_PAGE_COPY.library.suggestionsTitle}
                       <span className="textMuted2"> ({remainingSuggestions.length})</span>
                     </div>
@@ -1215,7 +1215,7 @@ export default function Categories({
                   {suggestionsOpen ? (
                     <div className="categoryGateList isCollapsed librarySuggestionsList">
                       {remainingSuggestions.map((cat) => (
-                        <div key={cat.id} className="categoryGateItem GateRowPremium">
+                        <div key={cat.id} className="categoryGateItem GateRowPremium GateInlineMetaCard">
                           <span className="categoryGateSwatch" style={{ background: cat.color || "#F97316" }} />
                           <span className="categoryGateName">{cat.name || "Catégorie"}</span>
                           <button

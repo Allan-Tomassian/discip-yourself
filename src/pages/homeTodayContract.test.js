@@ -29,6 +29,9 @@ describe("home today canonical contract", () => {
 
   it("renders the simplified Today v2 stack instead of legacy reorderable cards", () => {
     const home = readSrc("pages/Home.jsx");
+    const hero = readSrc("components/today/TodayHero.jsx");
+    const nextActions = readSrc("components/today/TodayNextActions.jsx");
+    const dailyState = readSrc("components/today/TodayDailyState.jsx");
 
     expect(home).toContain('pageId="today"');
     expect(home).toContain("headerSubtitle={MAIN_PAGE_COPY.today.orientation}");
@@ -37,6 +40,15 @@ describe("home today canonical contract", () => {
     expect(home).toContain("<TodayHero");
     expect(home).toContain("<TodayNextActions");
     expect(home).toContain("<TodayDailyState");
+    expect(hero).toContain("GateMainSectionCard");
+    expect(hero).toContain("GateRoleCardTitle");
+    expect(hero).toContain("GateRoleHelperText");
+    expect(nextActions).toContain("GateSecondarySectionCard");
+    expect(nextActions).toContain("GateInlineMetaCard");
+    expect(nextActions).toContain("GateRoleSectionTitle");
+    expect(dailyState).toContain("GateSecondarySectionCard");
+    expect(dailyState).toContain("GateAnalyticsCard");
+    expect(dailyState).toContain("GateRoleMetricValue");
     expect(home).not.toContain("<SortableBlocks");
     expect(home).not.toContain("onReorder={handleVisibleReorder}");
     expect(home).not.toContain("<CalendarCard");

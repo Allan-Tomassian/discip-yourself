@@ -14,6 +14,10 @@ describe("main section container contract", () => {
     const premiumCss = readSrc("shared/ui/gate/gate-premium.css");
 
     expect(premiumCss).toContain(".GateMainSection");
+    expect(premiumCss).toContain(".GateMainSectionCard");
+    expect(premiumCss).toContain(".GateSecondarySectionCard");
+    expect(premiumCss).toContain(".GateAnalyticsCard");
+    expect(premiumCss).toContain(".GateInlineMetaCard");
     expect(premiumCss).toContain("var(--categoryUiBorder, var(--gate-border))");
     expect(premiumCss).toContain(".GateMainSection .gateSectionBody");
   });
@@ -27,13 +31,20 @@ describe("main section container contract", () => {
     const library = readSrc("pages/Categories.jsx");
     const pilotage = readSrc("pages/Pilotage.jsx");
 
-    expect(todayHero).toContain("GateMainSection");
-    expect(todayNextActions).toContain("GateMainSection");
-    expect(todayDailyState).toContain("GateMainSection");
-    expect(planning).toContain("GateMainSection planningSectionCard planningCalendarSection");
+    expect(todayHero).toContain("GateMainSectionCard");
+    expect(todayNextActions).toContain("GateSecondarySectionCard");
+    expect(todayDailyState).toContain("GateSecondarySectionCard");
+    expect(planning).toContain("GateMainSectionCard planningSectionCard planningCalendarSection");
     expect(planning).toContain("\"GateMainSection\"");
+    expect(planning).toContain("GateSecondarySectionCard");
+    expect(planning).toContain("GateAnalyticsCard");
+    expect(planning).toContain("GateInlineMetaCard");
     expect(planningCoach).toContain("\"GateMainSection\"");
-    expect(library).toContain("GateMainSection libraryPrimaryCard");
-    expect(pilotage).toContain("className=\"GateMainSection\"");
+    expect(planningCoach).toContain("GateSecondarySectionCard");
+    expect(planningCoach).toContain("GateAnalyticsCard");
+    expect(library).toContain("GateMainSection GateMainSectionCard libraryPrimaryCard");
+    expect(pilotage).toContain("GateMainSection GateMainSectionCard");
+    expect(pilotage).toContain("GateSecondarySectionCard");
+    expect(pilotage).toContain("GateAnalyticsCard");
   });
 });

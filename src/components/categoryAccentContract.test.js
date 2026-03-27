@@ -45,6 +45,6 @@ describe("category accent UI contract", () => {
     expect(library).toContain("libraryPrimaryCard");
     expect(library).toContain("GateMainSection");
     expect(pilotage).toContain("resolveCategoryStateTone");
-    expect(pilotage).toContain("className=\"GateMainSection\"");
+    expect(pilotage).toContain("GateMainSection GateMainSectionCard");
   });
 });
