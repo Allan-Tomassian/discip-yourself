@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Button, Card, Input } from "../components/UI";
 import { useAuth } from "../auth/useAuth";
 import { useProfile } from "./useProfile";
 import { normalizeUsername, validateUsername } from "./username";
+import { GateButton } from "../shared/ui/gate/Gate";
+import { GateInput, GateStandaloneScreen } from "../shared/ui/gate/GateForm";
 
 const AVAILABILITY_DEBOUNCE_MS = 450;
 
@@ -148,18 +149,13 @@ export default function ProfileSetupScreen() {
     availability.state !== "checking";
 
   return (
-    <div
+    <GateStandaloneScreen
       data-testid="profile-setup-screen"
-      style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}
+      title="Complète ton profil"
+      subtitle={`Connecté en tant que ${user?.email || "utilisateur"}. Choisis un nom d'utilisateur unique.`}
     >
-      <Card style={{ width: "100%", maxWidth: 460, padding: 20 }}>
-        <h1 style={{ margin: "0 0 12px" }}>Complète ton profil</h1>
-        <p style={{ margin: "0 0 16px", opacity: 0.8 }}>
-          Connecté en tant que {user?.email || "utilisateur"}. Choisis un nom d'utilisateur unique.
-        </p>
-
-        <form onSubmit={onSubmit}>
-          <Input
+      <form onSubmit={onSubmit}>
+          <GateInput
             data-testid="profile-username-input"
             placeholder="username"
             value={username}
@@ -167,31 +163,31 @@ export default function ProfileSetupScreen() {
             required
             autoComplete="username"
           />
-          <div style={{ height: 10 }} />
-          <Input
+          <GateInput
             data-testid="profile-full-name-input"
             placeholder="Nom complet (optionnel)"
             value={fullName}
             onChange={(event) => setFullName(event.target.value)}
             autoComplete="name"
+            style={{ marginTop: 10 }}
           />
-          <div style={{ height: 10 }} />
-          <Input
+          <GateInput
             data-testid="profile-avatar-url-input"
             placeholder="URL avatar (optionnel)"
             value={avatarUrl}
             onChange={(event) => setAvatarUrl(event.target.value)}
             autoComplete="url"
+            style={{ marginTop: 10 }}
           />
-          <div style={{ height: 12 }} />
-          <Button data-testid="profile-submit-button" type="submit" disabled={!canSubmit}>
+          <GateButton data-testid="profile-submit-button" type="submit" disabled={!canSubmit} className="GatePressable" style={{ marginTop: 12 }}>
             {submitting ? "Création..." : "Créer mon profil"}
-          </Button>
-        </form>
+          </GateButton>
+      </form>
 
         {availability.message ? (
           <p
             data-testid="profile-username-feedback"
+            className="small2"
             style={{
               margin: "12px 0 0",
               color: availability.state === "available" ? "#10B981" : "#EF4444",
@@ -205,6 +201,7 @@ export default function ProfileSetupScreen() {
           <p
             data-testid="profile-status"
             role={status.type === "error" ? "alert" : "status"}
+            className="small2"
             style={{
               margin: "12px 0 0",
               color: status.type === "error" ? "#EF4444" : "#10B981",
@@ -214,9 +211,10 @@ export default function ProfileSetupScreen() {
           </p>
         ) : null}
         {status.type === "error" && !submitting ? (
-          <Button
+          <GateButton
             type="button"
             variant="ghost"
+            className="GatePressable"
             data-testid="profile-submit-retry-button"
             onClick={() => {
               submitProfile();
@@ -224,9 +222,8 @@ export default function ProfileSetupScreen() {
             style={{ marginTop: 10 }}
           >
             Réessayer
-          </Button>
+          </GateButton>
         ) : null}
-      </Card>
-    </div>
+    </GateStandaloneScreen>
   );
 }

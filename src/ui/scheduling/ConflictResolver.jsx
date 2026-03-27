@@ -1,5 +1,6 @@
 import React from "react";
-import { Button, Modal } from "../../components/UI";
+import { GateButton } from "../../shared/ui/gate/Gate";
+import GateDialog from "../../shared/ui/gate/GateDialog";
 import "./conflictResolver.css";
 
 function formatRange(start, end) {
@@ -20,7 +21,7 @@ export default function ConflictResolver({
 }) {
   if (!open) return null;
   return (
-    <Modal open={open} onClose={onClose} className="conflictModal">
+    <GateDialog open={open} onClose={onClose} className="conflictModal">
       <div className="stack stackGap12" data-testid="conflict-resolver-modal">
         <div className="titleSm">Conflit d’horaire</div>
         <div className="small2 textMuted">
@@ -45,26 +46,26 @@ export default function ConflictResolver({
             <div className="small2 textMuted">Décaler vers :</div>
             <div className="row rowWrap gap8">
               {suggestions.map((slot) => (
-                <Button key={slot} variant="ghost" onClick={() => onShift(slot)}>
+                <GateButton key={slot} variant="ghost" className="GatePressable" onClick={() => onShift(slot)}>
                   {slot}
-                </Button>
+                </GateButton>
               ))}
             </div>
           </div>
         ) : null}
 
         <div className="row rowWrap gap8">
-          <Button variant="primary" onClick={onReplace} data-testid="conflict-resolver-replace">
+          <GateButton className="GatePressable" onClick={onReplace} data-testid="conflict-resolver-replace">
             Remplacer
-          </Button>
-          <Button variant="ghost" onClick={onUnset} data-testid="conflict-resolver-unset">
+          </GateButton>
+          <GateButton variant="ghost" className="GatePressable" onClick={onUnset} data-testid="conflict-resolver-unset">
             Mettre sans horaire
-          </Button>
-          <Button variant="ghost" onClick={onClose} data-testid="conflict-resolver-cancel">
+          </GateButton>
+          <GateButton variant="ghost" className="GatePressable" onClick={onClose} data-testid="conflict-resolver-cancel">
             Annuler
-          </Button>
+          </GateButton>
         </div>
       </div>
-    </Modal>
+    </GateDialog>
   );
 }

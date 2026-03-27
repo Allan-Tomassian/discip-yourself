@@ -180,18 +180,18 @@ export default function CreateV2LinkOutcome({
 
   const content = (
     <div className="flowShellBody col gap12">
-      <CreateSection title={`${LABELS.goal} avancé (optionnel)`} description="Structurer l’action" collapsible={false}>
+      <CreateSection title={`${LABELS.goal} (optionnel)`} description="Structurer l’action" collapsible={false}>
         <div className="small2">Cette action peut rester autonome. Ajoute un {LABELS.goalLower} seulement si cela t’aide à structurer ce sujet.</div>
         {error ? <CreateHint tone="danger">{error}</CreateHint> : null}
         <CreateSelect value={choice} onChange={(e) => setChoice(e.target.value)}>
           <option value="none">Aucun</option>
-          <option value="existing">Lier à un {LABELS.goalLower} avancé existant</option>
-          <option value="new">Créer un {LABELS.goalLower} avancé</option>
+          <option value="existing">Lier à un {LABELS.goalLower} existant</option>
+          <option value="new">Créer un {LABELS.goalLower}</option>
         </CreateSelect>
       </CreateSection>
 
       {choice === "existing" ? (
-        <CreateSection title={`${LABELS.goal} avancé existant`} collapsible={false}>
+        <CreateSection title={`${LABELS.goal} existant`} collapsible={false}>
           <div className="small textMuted">{LABELS.goals} disponibles</div>
           <CreateSelect value={selectedOutcomeId} onChange={(e) => setSelectedOutcomeId(e.target.value)}>
             <option value="">{`Choisir un ${LABELS.goalLower}`}</option>
@@ -205,7 +205,7 @@ export default function CreateV2LinkOutcome({
       ) : null}
 
       {choice === "new" ? (
-        <CreateSection title={`Nouvel ${LABELS.goalLower} avancé`} collapsible={false}>
+        <CreateSection title={`Nouvel ${LABELS.goalLower}`} collapsible={false}>
           <CreateInput
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
@@ -249,7 +249,7 @@ export default function CreateV2LinkOutcome({
       headerTitle="Créer"
       headerSubtitle={
         <>
-          <span className="textMuted2">2.</span> {LABELS.goal} avancé
+          <span className="textMuted2">2.</span> {LABELS.goal}
         </>
       }
       backgroundImage={safeData?.profile?.whyImage || ""}

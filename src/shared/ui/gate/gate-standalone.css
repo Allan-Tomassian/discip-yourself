@@ -1,0 +1,57 @@
+.gateStandaloneShell {
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding:
+    calc(24px + var(--safe-top))
+    calc(var(--page-pad) + var(--safe-right))
+    calc(24px + var(--safe-bottom))
+    calc(var(--page-pad) + var(--safe-left));
+}
+
+.gateStandaloneInner {
+  width: min(100%, 460px);
+}
+
+.gateStandalonePanel {
+  width: 100%;
+}
+
+.gateStandaloneHeader {
+  padding-inline: 2px;
+}
+
+.gateStandaloneContent {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gateStandaloneFooter {
+  justify-content: flex-start;
+  padding-top: 14px;
+}
+
+.gateTextButton {
+  border: 0;
+  background: none;
+  padding: 0;
+  margin: 0;
+  color: color-mix(in srgb, var(--accent) 78%, #ffffff);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.gateTextButton:hover {
+  color: color-mix(in srgb, var(--accent) 90%, #ffffff);
+}
+
+.gateTextButton:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--accent) 48%, rgba(255, 255, 255, 0.24));
+  outline-offset: 3px;
+  border-radius: 6px;
+}

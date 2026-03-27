@@ -113,7 +113,7 @@ export default function FocusSessionView({
               Demain
             </GateButton>
             <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => onChooseReport?.("planning")}>
-              Choisir dans Planning
+              Choisir dans la planification
             </GateButton>
           </div>
         </GateSection>

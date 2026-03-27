@@ -1,22 +1,23 @@
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { GateButton, GatePanel } from "../../shared/ui/gate/Gate";
+import { SURFACE_LABELS } from "../../ui/labels";
 
 const SECTIONS = [
   {
     title: "Personnel",
     items: [
-      { id: "journal", label: "Note du jour" },
+      { id: "journal", label: SURFACE_LABELS.journal },
       { id: "micro-actions", label: "Micro-actions" },
-      { id: "history", label: "Historique" },
+      { id: "history", label: SURFACE_LABELS.history },
     ],
   },
   {
     title: "Compte",
     items: [
-      { id: "settings", label: "Réglages" },
-      { id: "account", label: "Compte" },
-      { id: "billing", label: "Abonnement" },
+      { id: "settings", label: SURFACE_LABELS.settings },
+      { id: "account", label: SURFACE_LABELS.account },
+      { id: "billing", label: SURFACE_LABELS.subscription },
     ],
   },
   {
@@ -29,8 +30,8 @@ const SECTIONS = [
   {
     title: "Légal",
     items: [
-      { id: "legal", label: "Mentions légales" },
-      { id: "privacy", label: "Confidentialité" },
+      { id: "legal", label: SURFACE_LABELS.legal },
+      { id: "privacy", label: SURFACE_LABELS.privacy },
     ],
   },
 ];

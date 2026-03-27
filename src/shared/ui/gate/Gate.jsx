@@ -7,13 +7,16 @@ export function cx(...parts) {
   return parts.filter(Boolean).join(" ");
 }
 
-export function GatePanel({ children, className = "", ...props }) {
+export const GatePanel = React.forwardRef(function GatePanel(
+  { children, className = "", ...props },
+  ref
+) {
   return (
-    <div className={cx("gatePanel", className)} {...props}>
+    <div ref={ref} className={cx("gatePanel", className)} {...props}>
       {children}
     </div>
   );
-}
+});
 
 export function GateHeader({ title, subtitle, actions = null, className = "", ...props }) {
   return (
@@ -157,7 +160,12 @@ export function GateButton({
   onClick,
   ...props
 }) {
-  const gateVariant = variant === "ghost" ? "gateButton--ghost" : "gateButton--primary";
+  const gateVariant =
+    variant === "ghost"
+      ? "gateButton--ghost"
+      : variant === "secondary"
+        ? "gateButton--secondary"
+        : "gateButton--primary";
   return (
     <button
       className={cx("gateButton", gateVariant, className)}

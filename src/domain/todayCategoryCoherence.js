@@ -180,7 +180,7 @@ function resolveContributionTarget(activeCategory, goalsById) {
   const mainGoalId = typeof activeCategory?.mainGoalId === "string" ? activeCategory.mainGoalId.trim() : "";
   const mainGoal = mainGoalId ? goalsById.get(mainGoalId) || null : null;
   return {
-    label: mainGoal?.title || activeCategory?.name || "ta priorite active",
+    label: mainGoal?.title || activeCategory?.name || "ta priorité active",
     mainGoal,
   };
 }
@@ -271,13 +271,13 @@ function buildReasonLinkLabel({ reasonLinkType, activeCategoryLabel, recommended
     if (recommendedCategoryLabel && activeCategoryLabel) {
       return `Action en ${recommendedCategoryLabel} utile pour ${activeCategoryLabel}`;
     }
-    if (recommendedCategoryLabel) return `Action reliee a ${recommendedCategoryLabel}`;
-    return "Action reliee a ta priorite active";
+    if (recommendedCategoryLabel) return `Action reliée à ${recommendedCategoryLabel}`;
+    return "Action reliée à ta priorité active";
   }
   if (reasonLinkType === TODAY_CATEGORY_REASON_LINK_TYPE.STRUCTURE_MISSING) {
-    return activeCategoryLabel ? `Structurer ${activeCategoryLabel}` : "Structurer la categorie active";
+    return activeCategoryLabel ? `Structurer ${activeCategoryLabel}` : "Structurer la catégorie active";
   }
-  return activeCategoryLabel ? `Recommande dans ${activeCategoryLabel}` : "Recommande dans la categorie active";
+  return activeCategoryLabel ? `Recommandée dans ${activeCategoryLabel}` : "Recommandée dans la catégorie active";
 }
 
 function buildDirectExplanation({ recommendedActionTitle, activeCategoryLabel, contributionTargetLabel, hasOccurrence }) {
@@ -285,26 +285,26 @@ function buildDirectExplanation({ recommendedActionTitle, activeCategoryLabel, c
     return `${recommendedActionTitle} reste l'action la plus cohérente dans ${activeCategoryLabel} maintenant.`;
   }
   if (recommendedActionTitle) {
-    return `${recommendedActionTitle} n'est pas encore planifiee aujourd'hui. Programme-la pour avancer sur ${contributionTargetLabel}.`;
+    return `${recommendedActionTitle} n’est pas encore planifiée aujourd’hui. Programme-la pour avancer sur ${contributionTargetLabel}.`;
   }
   return activeCategoryLabel
     ? `Reste sur ${activeCategoryLabel} pour garder une recommandation claire.`
-    : "Reste sur la categorie active pour garder une recommandation claire.";
+    : "Reste sur la catégorie active pour garder une recommandation claire.";
 }
 
 function buildCrossCategoryExplanation({ recommendedActionTitle, recommendedCategoryLabel, contributionTargetLabel, hasOccurrence }) {
   const categoryPart = recommendedCategoryLabel ? ` en ${recommendedCategoryLabel}` : "";
   if (hasOccurrence) {
-    return `${recommendedActionTitle}${categoryPart} contribue a ${contributionTargetLabel}.`;
+    return `${recommendedActionTitle}${categoryPart} contribue à ${contributionTargetLabel}.`;
   }
-  return `${recommendedActionTitle}${categoryPart} contribue a ${contributionTargetLabel}. Programme-la si tu veux faire avancer cet objectif.`;
+  return `${recommendedActionTitle}${categoryPart} contribue à ${contributionTargetLabel}. Programme-la si tu veux faire avancer cet objectif.`;
 }
 
 function buildStructureMissingExplanation({ activeCategoryLabel, contributionTargetLabel }) {
   if (activeCategoryLabel) {
-    return `Tu n'as pas encore defini d'action exploitable pour ${contributionTargetLabel}. Commence par clarifier l'objectif ou creer une premiere action en ${activeCategoryLabel}.`;
+    return `Tu n’as pas encore défini d’action exploitable pour ${contributionTargetLabel}. Commence par clarifier l’objectif ou créer une première action en ${activeCategoryLabel}.`;
   }
-  return `Tu n'as pas encore defini d'action exploitable pour ${contributionTargetLabel}. Commence par clarifier l'objectif ou creer une premiere action.`;
+  return `Tu n’as pas encore défini d’action exploitable pour ${contributionTargetLabel}. Commence par clarifier l’objectif ou créer une première action.`;
 }
 
 export function resolveCrossCategoryContribution({
@@ -717,7 +717,7 @@ export function computeCategoryScopedRecommendation({
     recommendedOccurrence: null,
     recommendedCategory: activeCategory,
     explanation: activeCategory?.name
-      ? `Reste dans ${activeCategory.name} pour garder un fil d'execution clair.`
-      : "Reste sur la categorie visible pour garder un fil d'execution clair.",
+      ? `Reste dans ${activeCategory.name} pour garder un fil d’exécution clair.`
+      : "Reste sur la catégorie visible pour garder un fil d’exécution clair.",
   });
 }

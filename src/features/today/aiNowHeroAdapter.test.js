@@ -461,7 +461,7 @@ describe("buildLocalTodayHeroModel", () => {
         crossCategoryCandidateCount: 0,
         candidateActionSummaries: [],
         explanation:
-          "Tu n'as pas encore defini d'action exploitable pour objectif financier. Commence par clarifier l'objectif ou creer une premiere action en Finance.",
+          "Tu n’as pas encore défini d’action exploitable pour objectif financier. Commence par clarifier l’objectif ou créer une première action en Finance.",
       },
     });
 
@@ -469,7 +469,7 @@ describe("buildLocalTodayHeroModel", () => {
     expect(result.primaryLabel).toBe("Créer une première action");
     expect(result.reasonLinkType).toBe("structure_missing");
     expect(result.reasonLinkLabel).toBe("Structurer Finance");
-    expect(result.meta).toMatch(/clarifier l'objectif/i);
+    expect(result.meta).toMatch(/clarifier l[’']objectif/i);
   });
 });
 
@@ -502,11 +502,11 @@ describe("deriveTodayHeroChrome", () => {
 
     expect(result.mode).toBe("loading");
     expect(result.showBadge).toBe(true);
-    expect(result.badgeLabel).toBe("Coach IA");
+    expect(result.badgeLabel).toBe("Coach");
     expect(result.badgeTone).toBe("ai");
     expect(result.showLiveDot).toBe(true);
     expect(result.showHint).toBe(true);
-    expect(result.hintText).toBe("Analyse du plan du jour");
+    expect(result.hintText).toBe("Analyse du jour");
   });
 
   it("affiche le badge coach quand la suggestion IA est visible", () => {
@@ -518,7 +518,7 @@ describe("deriveTodayHeroChrome", () => {
 
     expect(result.mode).toBe("coach");
     expect(result.showBadge).toBe(true);
-    expect(result.badgeLabel).toBe("Coach IA");
+    expect(result.badgeLabel).toBe("Coach");
     expect(result.badgeTone).toBe("ai");
     expect(result.showHint).toBe(false);
   });

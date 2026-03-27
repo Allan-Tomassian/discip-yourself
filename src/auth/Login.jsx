@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Button, Input } from "../components/UI";
 import AuthCardShell from "./AuthCardShell";
 import { isValidEmail } from "./loginAvailability";
+import { GateButton } from "../shared/ui/gate/Gate";
+import { GateInput, GateTextButton } from "../shared/ui/gate/GateForm";
 
 function isUnconfirmedEmailError(error) {
   const message = String(error?.message || "").toLowerCase();
@@ -57,36 +58,24 @@ export default function Login({
       title="Connexion"
       subtitle="Connecte-toi avec ton email et ton mot de passe."
       footer={(
-        <div style={{ display: "grid", gap: 8 }}>
-          <p style={{ margin: 0, opacity: 0.8 }}>
+        <div className="stack stackGap12">
+          <p className="small2" style={{ margin: 0 }}>
             Pas encore de compte ?{" "}
-            <button
-              type="button"
-              onClick={() => onNavigate("/auth/signup")}
-              style={{ background: "none", border: 0, padding: 0, color: "var(--accent)", cursor: "pointer" }}
-            >
-              Creer un compte
-            </button>
+            <GateTextButton type="button" onClick={() => onNavigate("/auth/signup")}>
+              Créer un compte
+            </GateTextButton>
           </p>
-          <button
+          <GateTextButton
             type="button"
             onClick={() => onNavigate(`/auth/forgot-password?email=${encodeURIComponent(normalizedEmail)}`)}
-            style={{
-              justifySelf: "start",
-              background: "none",
-              border: 0,
-              padding: 0,
-              color: "var(--accent)",
-              cursor: "pointer",
-            }}
           >
-            Mot de passe oublie ?
-          </button>
+            Mot de passe oublié ?
+          </GateTextButton>
         </div>
       )}
     >
       <form onSubmit={handleSubmit}>
-        <Input
+        <GateInput
           data-testid="auth-email-input"
           type="email"
           value={email}
@@ -95,8 +84,7 @@ export default function Login({
           autoComplete="email"
           required
         />
-        <div style={{ height: 10 }} />
-        <Input
+        <GateInput
           data-testid="auth-password-input"
           type="password"
           value={password}
@@ -104,21 +92,22 @@ export default function Login({
           placeholder="Mot de passe"
           autoComplete="current-password"
           required
+          style={{ marginTop: 10 }}
         />
-        <div style={{ height: 12 }} />
-        <Button data-testid="auth-submit-button" type="submit" disabled={!canSubmit}>
-          {submitting ? "Connexion..." : "Se connecter"}
-        </Button>
+        <GateButton data-testid="auth-submit-button" type="submit" disabled={!canSubmit} className="GatePressable" style={{ marginTop: 12 }}>
+          {submitting ? "Connexion…" : "Se connecter"}
+        </GateButton>
       </form>
 
       {!emailOk && normalizedEmail ? (
-        <p style={{ margin: "12px 0 0", color: "#EF4444" }}>Adresse email invalide.</p>
+        <p className="small2" style={{ margin: "12px 0 0", color: "#EF4444" }}>Adresse email invalide.</p>
       ) : null}
 
       {notice ? (
         <p
           data-testid="auth-notice"
           role="status"
+          className="small2"
           style={{ margin: "12px 0 0", color: "#10B981" }}
         >
           {notice}
@@ -129,6 +118,7 @@ export default function Login({
         <p
           data-testid="auth-status"
           role={status.type === "error" ? "alert" : "status"}
+          className="small2"
           style={{ margin: "12px 0 0", color: status.type === "error" ? "#EF4444" : "#10B981" }}
         >
           {status.message}

@@ -121,7 +121,7 @@ describe("home today canonical contract", () => {
     expect(adapter).toContain('gapSummary.selectionScope === "cross_category"');
     expect(home).toContain("computeCategoryScopedRecommendation");
     expect(home).toContain("const scopedFocusOccurrence = localGapSummary?.recommendedOccurrence || null;");
-    expect(home).toContain("const heroAnalyzeLabel = manualTodayAnalysis.isPersistedForContext ? \"Rafraîchir l’analyse\" : \"Analyser ma priorité\";");
+    expect(home).toContain("const heroAnalyzeLabel = manualTodayAnalysis.isPersistedForContext ? UI_COPY.refreshAnalysis : UI_COPY.analyzePriority;");
     expect(home).not.toContain("reasonLinkLabel={heroViewModel.reasonLinkLabel || \"\"}");
   });
 });

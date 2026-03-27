@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { Button } from "../components/UI";
 import AuthCardShell from "./AuthCardShell";
+import { GateButton } from "../shared/ui/gate/Gate";
+import { GateTextButton } from "../shared/ui/gate/GateForm";
+import { UI_COPY } from "../ui/labels";
 
 function getErrorMessage(error) {
-  return String(error?.message || "").trim() || "Impossible de renvoyer l'email.";
+  return String(error?.message || "").trim() || "Impossible de renvoyer le lien.";
 }
 
 export default function VerifyEmail({
@@ -27,7 +29,7 @@ export default function VerifyEmail({
       await onResend(normalizedEmail);
       setStatus({
         type: "success",
-        message: "Si cet email existe, un nouveau lien de validation vient d'etre envoye.",
+        message: "Si cet email existe, un nouveau lien de validation vient d’être envoyé.",
       });
     } catch (error) {
       setStatus({ type: "error", message: getErrorMessage(error) });
@@ -39,25 +41,24 @@ export default function VerifyEmail({
   return (
     <AuthCardShell
       data-testid="auth-verify-email-screen"
-      title="Validation email"
-      subtitle="Verifie ton email pour activer ton compte."
+      title="Valide ton email"
+      subtitle="Ouvre le lien reçu par email pour activer ton compte."
       footer={(
-        <button
+        <GateTextButton
           type="button"
           onClick={() => onNavigate(returnPath, { replace: true })}
-          style={{ background: "none", border: 0, padding: 0, color: "var(--accent)", cursor: "pointer" }}
         >
-          Changer email
-        </button>
+          Changer d’email
+        </GateTextButton>
       )}
     >
-      <p style={{ margin: "0 0 12px" }}>
+      <p className="small" style={{ margin: "0 0 12px" }}>
         {normalizedEmail
-          ? `Un lien de validation a ete prepare pour ${normalizedEmail}.`
-          : "Un lien de validation doit etre ouvert depuis ta boite mail."}
+          ? `Un lien de validation a été préparé pour ${normalizedEmail}.`
+          : "Ouvre le lien de validation depuis ta boîte mail."}
       </p>
       <div style={{ display: "grid", gap: 10 }}>
-        <Button
+        <GateButton
           type="button"
           onClick={() => {
             if (typeof window !== "undefined") {
@@ -67,17 +68,18 @@ export default function VerifyEmail({
             }
           }}
         >
-          Ouvrir email
-        </Button>
-        <Button type="button" variant="secondary" onClick={handleResend} disabled={!normalizedEmail || sending}>
-          {sending ? "Envoi..." : "Renvoyer email"}
-        </Button>
+          {UI_COPY.openMailbox}
+        </GateButton>
+        <GateButton type="button" variant="secondary" className="GatePressable" onClick={handleResend} disabled={!normalizedEmail || sending}>
+          {sending ? "Envoi…" : UI_COPY.resendLink}
+        </GateButton>
       </div>
 
       {status.message ? (
         <p
           data-testid="auth-status"
           role={status.type === "error" ? "alert" : "status"}
+          className="small2"
           style={{ margin: "12px 0 0", color: status.type === "error" ? "#EF4444" : "#10B981" }}
         >
           {status.message}

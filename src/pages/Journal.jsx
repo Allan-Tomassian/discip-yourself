@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import { GateButton, GateSection } from "../shared/ui/gate/Gate";
 import GatePage from "../shared/ui/gate/GatePage";
+import { SURFACE_LABELS } from "../ui/labels";
 import {
   CATEGORY_VIEW,
   getSelectedCategoryForView,
@@ -178,7 +179,7 @@ export default function Journal({ data, setData }) {
   return (
     <ScreenShell data={safeData} pageId="journal" backgroundImage={safeData?.profile?.whyImage || ""}>
       <GatePage
-        title={<span className="GatePageTitle">Note du jour</span>}
+        title={<span className="GatePageTitle">{SURFACE_LABELS.journal}</span>}
         subtitle={<span className="GatePageSubtitle">Capture le contexte du jour sans repasser par Today.</span>}
       >
         <GateSection title="Édition" collapsible={false} className="GateSurfacePremium GateCardPremium">

@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Z } from "../ui/layer/zIndex";
-import { Button, Card } from "../components/UI";
+import { GateButton, GatePanel } from "../shared/ui/gate/Gate";
 
 const VIEWPORT_PADDING = 12;
 
@@ -146,37 +146,35 @@ export default function TourOverlay({
           transition: "opacity 120ms ease",
         }}
       >
-        <Card accentBorder>
-          <div className="p18">
-            <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-              <div className="titleSm">{step.title}</div>
-              <div className="small2">{stepIndex + 1}/{totalSteps}</div>
+        <GatePanel className="GateMainSection GateSurfacePremium GateCardPremium">
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+            <div className="titleSm">{step.title}</div>
+            <div className="small2">{stepIndex + 1}/{totalSteps}</div>
+          </div>
+          <div className="small" style={{ marginTop: 6 }}>
+            {step.body}
+          </div>
+          {step.nextActionHint ? (
+            <div className="small2" style={{ marginTop: 8, opacity: 0.8 }}>
+              {step.nextActionHint}
             </div>
-            <div className="small" style={{ marginTop: 6 }}>
-              {step.body}
-            </div>
-            {step.nextActionHint ? (
-              <div className="small2" style={{ marginTop: 8, opacity: 0.8 }}>
-                {step.nextActionHint}
-              </div>
-            ) : null}
-            <div className="row" style={{ justifyContent: "space-between", marginTop: 12, gap: 8 }}>
-              <Button variant="ghost" onClick={onSkip}>
-                Ignorer
-              </Button>
-              <div className="row" style={{ gap: 8 }}>
-                {stepIndex > 0 ? (
-                  <Button variant="ghost" onClick={onPrev}>
-                    Précédent
-                  </Button>
-                ) : null}
-                <Button onClick={onNext}>
-                  {isLast ? "Terminer" : "Suivant"}
-                </Button>
-              </div>
+          ) : null}
+          <div className="row" style={{ justifyContent: "space-between", marginTop: 12, gap: 8 }}>
+            <GateButton variant="ghost" className="GatePressable" onClick={onSkip}>
+              Ignorer
+            </GateButton>
+            <div className="row" style={{ gap: 8 }}>
+              {stepIndex > 0 ? (
+                <GateButton variant="ghost" className="GatePressable" onClick={onPrev}>
+                  Précédent
+                </GateButton>
+              ) : null}
+              <GateButton className="GatePressable" onClick={onNext}>
+                {isLast ? "Terminer" : "Suivant"}
+              </GateButton>
             </div>
           </div>
-        </Card>
+        </GatePanel>
       </div>
     </div>,
     document.body

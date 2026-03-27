@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Modal } from "./UI";
 import { SYSTEM_INBOX_ID } from "../logic/state";
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
-import { GateButton, GateHeader, GatePanel, GateRow, GateSection } from "../shared/ui/gate/Gate";
+import { GateButton, GateHeader, GateRow, GateSection } from "../shared/ui/gate/Gate";
+import GateDialog from "../shared/ui/gate/GateDialog";
 import "../features/library/library.css";
 
 export default function CategoryGateModal({
@@ -147,13 +147,13 @@ export default function CategoryGateModal({
 
   return (
     <>
-    <Modal
+    <GateDialog
       open={open}
       onClose={onClose}
       className="categoryGateModal"
-      backdropClassName="categoryGateBackdrop GateOverlayBackdrop"
+      maxWidth={720}
     >
-      <GatePanel className="categoryGateShell GateSurfacePremium GateCardPremium" data-testid="category-gate-modal">
+      <div className="categoryGateShell" data-testid="category-gate-modal">
         <div className="categoryGateScroll">
           <GateHeader className="categoryGateHeader" title="Catégorie" subtitle="Active une catégorie pour continuer" />
 
@@ -290,15 +290,15 @@ export default function CategoryGateModal({
             Continuer
           </GateButton>
         </div>
-      </GatePanel>
-    </Modal>
-    <Modal
+      </div>
+    </GateDialog>
+    <GateDialog
       open={confirmOpen}
       onClose={closeConfirm}
       className="categoryGateModal"
-      backdropClassName="categoryGateBackdrop GateOverlayBackdrop"
+      maxWidth={640}
     >
-      <GatePanel className="categoryGateShell GateSurfacePremium GateCardPremium" data-testid="category-gate-confirm">
+      <div className="categoryGateShell" data-testid="category-gate-confirm">
         <div className="categoryGateScroll">
           <GateHeader
             className="categoryGateHeader"
@@ -353,8 +353,8 @@ export default function CategoryGateModal({
             Supprimer contenu
           </GateButton>
         </div>
-      </GatePanel>
-    </Modal>
+      </div>
+    </GateDialog>
     </>
   );
 }

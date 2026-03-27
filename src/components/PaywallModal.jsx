@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { GateBadge, GateButton, GateHeader, GatePanel, GateSection } from "../shared/ui/gate/Gate";
 import { getPlanLimits, getTrialDays } from "../logic/entitlements";
 import { loadProducts, PRODUCT_IDS } from "../logic/purchases";
-import { LABELS } from "../ui/labels";
+import { LABELS, MARKETING_COPY, UI_COPY } from "../ui/labels";
 import "../features/paywall/paywall.css";
 
 export default function PaywallModal({
@@ -78,8 +78,8 @@ export default function PaywallModal({
           >
             <div className="paywallBody">
           <GateHeader
-            title="Passer Premium"
-            subtitle={reason || "Débloque toutes les fonctionnalités et enlève les limites."}
+            title={UI_COPY.discoverPremium}
+            subtitle={reason || MARKETING_COPY.premiumSubtitle}
             actions={showTrial ? <GateBadge>Essai 14 jours</GateBadge> : null}
           />
           <GateSection title="Inclus" collapsible={false}>
@@ -87,12 +87,12 @@ export default function PaywallModal({
               <div className="small2">• Catégories illimitées</div>
               <div className="small2">• {LABELS.goals} illimités</div>
               <div className="small2">• Actions illimitées</div>
-              <div className="small2">• Planning & historique complets</div>
+              <div className="small2">• Planification et historique complets</div>
               <div className="small2">• Export des données</div>
             </div>
           </GateSection>
           <div className="small2 paywallLimits">
-            Limites gratuites : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} ·{" "}
+            {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} ·{" "}
             {limits.actions} {LABELS.actionsLower}
           </div>
           <div className="paywallActions">
@@ -101,7 +101,7 @@ export default function PaywallModal({
                 if (typeof onSubscribeMonthly === "function") onSubscribeMonthly(PRODUCT_IDS.monthly);
               }}
             >
-              S’abonner (Mensuel) · {monthlyLabel}
+              Choisir le mensuel · {monthlyLabel}
             </GateButton>
             <GateButton
               variant="ghost"
@@ -109,17 +109,16 @@ export default function PaywallModal({
                 if (typeof onSubscribeYearly === "function") onSubscribeYearly(PRODUCT_IDS.yearly);
               }}
             >
-              S’abonner (Annuel) · {yearlyLabel} {yearlyBadge}
+              Choisir l’annuel · {yearlyLabel} {yearlyBadge}
             </GateButton>
           </div>
           {!products.available ? (
             <div className="small2 paywallStoreNote">
-              Offres StoreKit indisponibles sur cet appareil.
+              Les offres d’achat sont indisponibles sur cet appareil.
             </div>
           ) : null}
           <div className="small2 paywallLegal">
-            Abonnement auto-renouvelable. Annulable à tout moment dans les réglages iOS. Le paiement est débité via
-            l’Apple ID.
+            L’abonnement se renouvelle automatiquement. Tu peux l’annuler à tout moment dans les réglages iOS. Le paiement passe par ton Apple ID.
           </div>
           <div className="paywallFooter">
             <div className="paywallLinks">
@@ -132,7 +131,7 @@ export default function PaywallModal({
             </div>
             <div className="paywallFooterActions">
               <GateButton variant="ghost" onClick={onRestore}>
-                Restaurer
+                {UI_COPY.restorePurchases}
               </GateButton>
               <GateButton variant="ghost" onClick={onClose}>
                 Plus tard

@@ -1095,7 +1095,7 @@ export default function Categories({
                 </div>
               </div>
               <div className="small2 textMuted">
-                Les actions héritées de <strong>Général</strong> ne remontent plus dans Today ni Planning tant qu&apos;elles ne sont pas reclassées.
+                Les actions héritées de <strong>Général</strong> ne remontent plus dans Today ni dans la planification tant qu&apos;elles ne sont pas reclassées.
               </div>
               <div className="col gap8">
                 {legacyBuckets.reclassifyCandidates.map(({ goal, inferredCategoryId }) => {

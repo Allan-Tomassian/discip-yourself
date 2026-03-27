@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
 import FocusSessionView from "../components/session/FocusSessionView";
-import { Button } from "../components/UI";
+import { GateButton } from "../shared/ui/gate/Gate";
 import { addDaysLocal, minutesToTimeStr, normalizeLocalDateKey, parseTimeToMinutes, todayLocalKey } from "../utils/datetime";
 import { resolveExecutableOccurrence } from "../logic/sessionResolver";
 import { updateOccurrence } from "../logic/occurrences";
@@ -365,8 +365,8 @@ export default function Session({
         <div className="col" style={{ gap: 12 }}>
           <div className="small2">Aucune occurrence sélectionnée.</div>
           <div className="row" style={{ gap: 8 }}>
-            <Button variant="ghost" onClick={onBack}>← Retour</Button>
-            {onOpenLibrary ? <Button variant="ghost" onClick={onOpenLibrary}>Ouvrir Bibliothèque</Button> : null}
+            <GateButton variant="ghost" className="GatePressable" onClick={onBack}>← Retour</GateButton>
+            {onOpenLibrary ? <GateButton variant="ghost" className="GatePressable" onClick={onOpenLibrary}>Ouvrir Bibliothèque</GateButton> : null}
           </div>
         </div>
       </ScreenShell>
@@ -380,10 +380,10 @@ export default function Session({
       headerTitle={<span>{goal?.title || "Session"}</span>}
       headerSubtitle={
         <div className="stack stackGap12">
-          <div>{category?.name || "Catégorie"}</div>
-          <Button variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+        <div>{category?.name || "Catégorie"}</div>
+          <GateButton variant="ghost" className="btnBackCompact backBtn GatePressable" onClick={onBack}>
             ← Retour
-          </Button>
+          </GateButton>
         </div>
       }
     >

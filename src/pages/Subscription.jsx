@@ -3,7 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { GateButton, GateSection } from "../shared/ui/gate/Gate";
 import GatePage from "../shared/ui/gate/GatePage";
 import { getPlanLimits, isPremium } from "../logic/entitlements";
-import { LABELS } from "../ui/labels";
+import { LABELS, MARKETING_COPY, UI_COPY } from "../ui/labels";
 
 export default function Subscription({ data, onOpenPaywall, onRestorePurchases }) {
   const safeData = data && typeof data === "object" ? data : {};
@@ -25,19 +25,19 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
         subtitle={<span className="GatePageSubtitle">Plan, achats et accès Premium</span>}
       >
         <GateSection
-          title={premium ? "Premium actif" : "Version gratuite"}
-          description="Gère ton plan et tes achats."
+          title={premium ? MARKETING_COPY.premiumPlan : MARKETING_COPY.essentialPlan}
+          description="Gère ton plan, tes achats et tes accès."
           collapsible={false}
           className="GateSurfacePremium GateCardPremium"
         >
           <div className="small2">
-            Limites gratuites : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} · {limits.actions}{" "}
+            {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} · {limits.actions}{" "}
             {LABELS.actionsLower}
           </div>
           <div className="small2">
-            Les accès IA Premium sont vérifiés côté serveur au moment de l’utilisation.
+            Les accès Premium sont vérifiés quand tu ouvres le Coach et les fonctions avancées.
           </div>
-          {premium && expiryLabel ? <div className="small2">Expire le {expiryLabel}</div> : null}
+          {premium && expiryLabel ? <div className="small2">Actif jusqu’au {expiryLabel}</div> : null}
           <div className="GatePrimaryCtaRow">
             <GateButton
               className="GatePressable"
@@ -47,7 +47,7 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
               }}
               disabled={premium}
             >
-              {premium ? "Premium activé" : "Passer Premium"}
+              {premium ? MARKETING_COPY.premiumPlan : UI_COPY.discoverPremium}
             </GateButton>
             <GateButton
               variant="ghost"
@@ -56,7 +56,7 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
                 if (typeof onRestorePurchases === "function") onRestorePurchases();
               }}
             >
-              Restaurer
+              {UI_COPY.restorePurchases}
             </GateButton>
           </div>
         </GateSection>

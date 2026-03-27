@@ -2,6 +2,7 @@ import React from "react";
 import ScreenShell from "./_ScreenShell";
 import { GateButton, GateSection } from "../shared/ui/gate/Gate";
 import GatePage from "../shared/ui/gate/GatePage";
+import { SURFACE_LABELS, UI_COPY } from "../ui/labels";
 
 const QUESTIONS = [
   {
@@ -14,11 +15,11 @@ const QUESTIONS = [
   },
   {
     question: "Pourquoi Today est plus simple ?",
-    answer: "Today sert uniquement à exécuter. Le calendrier détaillé reste dans Planning.",
+    answer: `Today sert uniquement à exécuter. Le calendrier détaillé reste dans ${SURFACE_LABELS.planning}.`,
   },
   {
     question: "Comment réorganiser une session ?",
-    answer: "Ouvre la session puis utilise Reporter pour la déplacer ou l’envoyer dans Planning.",
+    answer: `Ouvre la session puis utilise Reporter pour la déplacer ou l’envoyer dans ${SURFACE_LABELS.planning}.`,
   },
   {
     question: "Comment réinitialiser mon mot de passe ?",
@@ -62,7 +63,7 @@ export default function Faq({ data, setTab }) {
               withSound
               onClick={() => setTab?.("support")}
             >
-              Contacter le support
+              {UI_COPY.openSupport}
             </GateButton>
           </div>
         </GateSection>

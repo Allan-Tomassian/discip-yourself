@@ -47,12 +47,12 @@ function resolveFlowHeader({ step, choice }) {
   if (step === "outcome") {
     return {
       progress: choice === "guided" ? "Étape 1" : "Étape 1",
-      eyebrow: choice === "guided" ? "Mode guidé" : `${LABELS.goal} avancé`,
-      title: choice === "guided" ? "Structurer avant l’action" : `Créer un ${LABELS.goalLower}`,
+      eyebrow: choice === "guided" ? "Mode guidé" : LABELS.goal,
+      title: choice === "guided" ? "Poser un objectif avant l’action" : `Créer un ${LABELS.goalLower}`,
       subtitle:
         choice === "guided"
           ? `On pose d’abord un ${LABELS.goalLower} clair, puis on enchaîne sur l’action.`
-          : `Optionnel. Utilise ce mode si tu veux poser une direction avant d’agir.`,
+          : "Utilise ce mode si tu veux poser une direction avant d’agir.",
     };
   }
 
@@ -104,7 +104,7 @@ function resolveFlowHeader({ step, choice }) {
   if (step === "link-outcome") {
     return {
       progress: "Optionnel",
-      eyebrow: `${LABELS.goal} avancé`,
+      eyebrow: LABELS.goal,
       title: `Lier cette action à un ${LABELS.goalLower} ?`,
       subtitle: "Ajoute une couche de structure seulement si elle clarifie vraiment le sujet.",
     };
@@ -408,8 +408,8 @@ export default function CreateFlowModal({
                       e.stopPropagation();
                       if (canProceed) startChoice("guided");
                     }}
-                    title={`Structurer avec un ${LABELS.goalLower} avancé`}
-                    description={`Mode guidé: tu poses d’abord un ${LABELS.goalLower}, puis tu enchaînes sur l’action liée.`}
+                    title={`Structurer avec un ${LABELS.goalLower}`}
+                    description={`Mode guidé : tu poses d’abord un ${LABELS.goalLower}, puis tu crées l’action liée.`}
                   />
                   <CreateChoiceCard
                     className={`createFlowChoiceCard${!canProceed ? " isDisabled" : ""}`}
@@ -419,8 +419,8 @@ export default function CreateFlowModal({
                       e.stopPropagation();
                       if (canProceed) startChoice("project");
                     }}
-                    title={`Créer un ${LABELS.goalLower} avancé`}
-                    description={`Seulement l’objectif pour l’instant, sans action liée.`}
+                    title={`Créer un ${LABELS.goalLower}`}
+                    description="Seulement l’objectif pour l’instant, sans action liée."
                   />
                 </>
               ) : null}

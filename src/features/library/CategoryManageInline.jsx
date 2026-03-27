@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AccentItem, Button, Card, Chip, ChipRow, IconButton, Input, Textarea } from "../../components/UI";
+import AccentItem from "../../components/AccentItem";
 import { safeConfirm, safePrompt } from "../../utils/dialogs";
 import { addDays, startOfWeekKey, todayKey } from "../../utils/dates";
 import { isPrimaryCategory, isPrimaryGoal, setPrimaryCategory } from "../../logic/priority";
@@ -14,6 +14,68 @@ import {
   hasMeaningfulCategoryProfile,
   normalizeCategoryProfilesV1,
 } from "../../domain/categoryProfile";
+import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
+import { GateIconButton, GateInput, GateTextarea } from "../../shared/ui/gate/GateForm";
+
+function Button({ variant = "primary", className = "", ...props }) {
+  const gateVariant =
+    variant === "ghost"
+      ? "ghost"
+      : variant === "secondary"
+        ? "secondary"
+        : variant === "danger"
+          ? "ghost"
+          : "primary";
+  const mergedClassName = [className, "GatePressable"].filter(Boolean).join(" ");
+  return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;
+}
+
+function Card({ className = "", children, accentBorder: _accentBorder, ...props }) {
+  const mergedClassName = ["GateMainSection", "GateSurfacePremium", "GateCardPremium", className].filter(Boolean).join(" ");
+  return (
+    <GateSection className={mergedClassName} collapsible={false} {...props}>
+      {children}
+    </GateSection>
+  );
+}
+
+function Input({ className = "", ...props }) {
+  return <GateInput className={className} {...props} />;
+}
+
+function Textarea({ className = "", ...props }) {
+  return <GateTextarea className={className} {...props} />;
+}
+
+function Chip({ children, active = false, className = "", type = "button", ...props }) {
+  return (
+    <button
+      type={type}
+      className={`chip${active ? " isActive" : ""}${className ? ` ${className}` : ""}`}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ChipRow({ children, className = "", ...props }) {
+  return (
+    <div className={`chipRow${className ? ` ${className}` : ""}`} {...props}>
+      {children}
+    </div>
+  );
+}
+
+function IconButton({ icon, children, className = "", ...props }) {
+  const iconMap = { gear: "⚙︎", close: "×", back: "←", plus: "+" };
+  const content = children || iconMap[icon] || icon;
+  return (
+    <GateIconButton className={className} {...props}>
+      {content}
+    </GateIconButton>
+  );
+}
 
 function getTourId(inlineEdit, value) {
   return inlineEdit ? undefined : value;
@@ -859,7 +921,7 @@ export default function CategoryManageInline({
               </Button>
             ) : null}
           </div>
-          <div className="small2 textMuted">Les actions vivent d’abord ici. Tu peux les relier à un {LABELS.goalLower} avancé seulement si cela aide.</div>
+          <div className="small2 textMuted">Les actions vivent d’abord ici. Tu peux les relier à un {LABELS.goalLower} seulement si cela aide.</div>
           {actionSections.length ? (
             <div className="stack stackGap12">
               {actionSections.map((section) => (
@@ -946,10 +1008,10 @@ export default function CategoryManageInline({
       <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-objectives-section")}>
         <div className="p18 stack stackGap12">
           <div className="row rowBetween alignCenter">
-            <div className="titleSm">{LABELS.goals} avancés (optionnel)</div>
+            <div className="titleSm">{LABELS.goals} (optionnel)</div>
             {typeof onOpenCreateOutcome === "function" ? (
               <Button variant="ghost" onClick={() => onOpenCreateOutcome(category.id)}>
-                Créer un {LABELS.goalLower} avancé
+                Créer un {LABELS.goalLower}
               </Button>
             ) : null}
           </div>
@@ -984,7 +1046,7 @@ export default function CategoryManageInline({
             </div>
           ) : (
             <div className="stack stackGap12">
-              <div className="small2">Aucun {LABELS.goalLower} avancé dans cette catégorie.</div>
+              <div className="small2">Aucun {LABELS.goalLower} dans cette catégorie.</div>
             </div>
           )}
         </div>

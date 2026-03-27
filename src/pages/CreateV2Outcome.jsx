@@ -227,7 +227,7 @@ export default function CreateV2Outcome({
         ) : null}
       </CreateSection>
 
-      <CreateSection title={`${LABELS.goal} avancé`} description="Optionnel" collapsible={false}>
+      <CreateSection title={LABELS.goal} description="Optionnel" collapsible={false}>
         <div className="small2">Tu peux agir sans {LABELS.goalLower}. Utilise-le seulement pour structurer un sujet plus large.</div>
         <CreateInput
           value={title}
@@ -316,7 +316,7 @@ export default function CreateV2Outcome({
       headerTitle="Créer"
       headerSubtitle={
         <>
-          <span className="textMuted2">1.</span> {LABELS.goal} avancé
+          <span className="textMuted2">1.</span> {LABELS.goal}
         </>
       }
       backgroundImage={backgroundImage}

@@ -1,5 +1,6 @@
 import React from "react";
-import { Button, Card } from "./UI";
+import { GateButton, GateHeader, GatePanel } from "../shared/ui/gate/Gate";
+import "../shared/ui/gate/gate-standalone.css";
 
 function buildDiagnosticText(error, info) {
   const message = error?.message || (error ? String(error) : "Erreur inconnue");
@@ -63,51 +64,45 @@ export default class ErrorBoundary extends React.Component {
     if (!this.state.hasError) return this.props.children;
     const diagnosticText = buildDiagnosticText(this.state.error, this.state.info);
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 24,
-          background:
-            "linear-gradient(160deg, rgba(250,249,247,0.96) 0%, rgba(236,232,225,0.96) 100%)",
-        }}
-      >
-        <Card accentBorder style={{ maxWidth: 680, width: "100%" }}>
-          <div className="p18">
-            <div className="titleSm">Une erreur est survenue</div>
-            <div className="small" style={{ marginTop: 8 }}>
-              L’application a rencontré un problème inattendu. Vous pouvez recharger ou copier le diagnostic.
-            </div>
-            <div className="row" style={{ marginTop: 14, gap: 8, flexWrap: "wrap" }}>
-              <Button onClick={() => window.location.reload()}>Recharger</Button>
-              <Button variant="ghost" onClick={() => copyText(diagnosticText)}>
+      <div className="gateStandaloneShell">
+        <div className="gateStandaloneInner" style={{ width: "min(100%, 680px)" }}>
+          <GatePanel className="gateStandalonePanel GateMainSection GateSurfacePremium GateCardPremium">
+            <GateHeader
+              className="gateStandaloneHeader"
+              title="Une erreur est survenue"
+              subtitle="L’application a rencontré un problème inattendu. Tu peux recharger ou copier le diagnostic."
+            />
+            <div className="gateStandaloneContent">
+              <div className="row" style={{ marginTop: 6, gap: 8, flexWrap: "wrap" }}>
+              <GateButton onClick={() => window.location.reload()}>Recharger</GateButton>
+              <GateButton variant="secondary" onClick={() => copyText(diagnosticText)}>
                 Copier le diagnostic
-              </Button>
-            </div>
-            <details style={{ marginTop: 16 }}>
-              <summary className="small" style={{ cursor: "pointer" }}>
+              </GateButton>
+              </div>
+              <details style={{ marginTop: 10 }}>
+                <summary className="small" style={{ cursor: "pointer" }}>
                 Détails
-              </summary>
-              <pre
-                className="small2"
-                style={{
-                  marginTop: 8,
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  maxHeight: 260,
-                  overflow: "auto",
-                  background: "rgba(0,0,0,0.04)",
-                  padding: 12,
-                  borderRadius: 10,
-                }}
-              >
-                {diagnosticText}
-              </pre>
-            </details>
-          </div>
-        </Card>
+                </summary>
+                <pre
+                  className="small2"
+                  style={{
+                    marginTop: 8,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    maxHeight: 260,
+                    overflow: "auto",
+                    background: "color-mix(in srgb, var(--surface-elevated) 88%, rgba(255,255,255,0.04))",
+                    padding: 12,
+                    borderRadius: 10,
+                    border: "1px solid var(--hairline)",
+                  }}
+                >
+                  {diagnosticText}
+                </pre>
+              </details>
+            </div>
+          </GatePanel>
+        </div>
       </div>
     );
   }

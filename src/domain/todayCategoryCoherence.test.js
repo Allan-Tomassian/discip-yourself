@@ -78,7 +78,7 @@ describe("computeCategoryScopedRecommendation", () => {
     expect(result.reasonLinkType).toBe("structure_missing");
     expect(result.selectionScope).toBe("structure_missing");
     expect(result.candidateActionSummaries).toEqual([]);
-    expect(result.explanation).toMatch(/clarifier l'objectif/i);
+    expect(result.explanation).toMatch(/clarifier l[’']objectif/i);
   });
 });
 

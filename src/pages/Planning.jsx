@@ -16,6 +16,7 @@ import {
 import { collectSystemInboxBuckets } from "../domain/systemInboxMigration";
 import { getCategoryUiVars } from "../utils/categoryAccent";
 import { deriveTodayCalendarModel } from "../features/today/todayCalendarModel";
+import { SURFACE_LABELS } from "../ui/labels";
 import "../features/planning/planning.css";
 import "../components/categorySurface.css";
 
@@ -253,7 +254,7 @@ export default function Planning({
     <ScreenShell
       data={safeData}
       pageId="planning"
-      headerTitle="Planning"
+      headerTitle={SURFACE_LABELS.planning}
       headerSubtitle="Répartis, ajuste et garde une charge crédible."
     >
       <div className="col planningPage">

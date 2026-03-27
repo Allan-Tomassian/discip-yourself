@@ -4,7 +4,6 @@ import {
   applyCreateFlowDraftMeta,
   getDefaultCreationStepForMode,
   normalizeCreateFlowMode,
-  resolveLegacyCreateRouteIntent,
 } from "../creation/createFlowController";
 import { isValidCreationStep, STEP_HABIT_TYPE } from "../creation/creationSchema";
 import {
@@ -45,7 +44,6 @@ function resolveCategoryContextNamespace({ source, tab }) {
 
 export function useCreateFlowOrchestration({
   tab,
-  isCreateTab,
   setTab,
   safeData,
   categories,
@@ -234,41 +232,6 @@ export function useCreateFlowOrchestration({
     },
     [resolvePreferredCategoryId, seedCreateDraft]
   );
-
-  useEffect(() => {
-    if (!isCreateTab) return;
-    const legacyIntent = resolveLegacyCreateRouteIntent(tab);
-    if (!legacyIntent) return;
-    openCreateFlowModal({
-      source: legacyIntent.source,
-      mode: legacyIntent.mode,
-      step: legacyIntent.step,
-      preserveDraft: true,
-      habitType: legacyIntent.habitType,
-    });
-    if (tab !== legacyIntent.baseTab) setTab(legacyIntent.baseTab);
-  }, [isCreateTab, openCreateFlowModal, setTab, tab]);
-
-  useEffect(() => {
-    if (!isCreateTab) return;
-    if (typeof setData !== "function") return;
-    setData((prev) => {
-      const prevUi = prev.ui || {};
-      let nextUi = prevUi;
-      let nextDraft = prevUi.createDraft;
-      let changed = false;
-      if (!nextDraft || typeof nextDraft !== "object") {
-        nextDraft = normalizeCreationDraft(nextDraft);
-        nextUi = { ...nextUi, createDraft: nextDraft };
-        changed = true;
-      } else if (nextDraft !== prevUi.createDraft) {
-        nextUi = { ...nextUi, createDraft: nextDraft };
-        changed = true;
-      }
-      if (!changed) return prev;
-      return { ...prev, ui: nextUi };
-    });
-  }, [isCreateTab, setData, tab]);
 
   const resolveTopNavAnchor = () => {
     if (typeof document === "undefined") return { anchorRect: null, anchorEl: null };

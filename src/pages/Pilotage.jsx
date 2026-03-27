@@ -14,7 +14,7 @@ import { getCategoryPilotageCounts, getCategoryStatus } from "../logic/pilotage"
 import { getWindowBounds } from "../logic/metrics";
 import { computeWindowStats } from "../logic/progressionModel";
 import AccentCategoryRow from "../components/AccentCategoryRow";
-import { LABELS } from "../ui/labels";
+import { ANALYSIS_COPY, LABELS } from "../ui/labels";
 import {
   CATEGORY_VIEW,
   getExecutionActiveCategoryId,
@@ -823,7 +823,7 @@ export default function Pilotage({
                       ? persistenceScope === "cloud"
                         ? "Synchronisée sur tes appareils."
                         : "Enregistrée sur cet appareil."
-                      : "Lecture locale prête. Analyse IA sur demande."
+                      : `Lecture locale prête. ${ANALYSIS_COPY.coachAnalysis} sur demande.`
                   }
                   stageLabel={manualPilotageAnalysis.loadingStageLabel}
                 />

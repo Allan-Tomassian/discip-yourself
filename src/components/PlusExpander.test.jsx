@@ -20,6 +20,6 @@ describe("PlusExpander", () => {
     );
 
     expect(html).toContain("Créer une action");
-    expect(html).toContain("Créer un objectif avancé");
+    expect(html).toContain("Créer un objectif");
   });
 });

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
-import { Button, Input } from "../components/UI";
 import AuthCardShell from "./AuthCardShell";
+import { GateButton } from "../shared/ui/gate/Gate";
+import { GateInput, GateTextButton } from "../shared/ui/gate/GateForm";
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -8,12 +9,12 @@ function getErrorMessage(error) {
   const message = String(error?.message || "").trim();
   const lower = message.toLowerCase();
   if (lower.includes("expired") || lower.includes("invalid") || lower.includes("session")) {
-    return "Lien expire ou session introuvable. Redemande un email de reinitialisation.";
+    return "Lien expiré ou session introuvable. Redemande un email de réinitialisation.";
   }
   if (lower.includes("weak password") || lower.includes("password") && lower.includes("short")) {
-    return `Mot de passe trop court. Utilise au moins ${MIN_PASSWORD_LENGTH} caracteres.`;
+    return `Mot de passe trop court. Utilise au moins ${MIN_PASSWORD_LENGTH} caractères.`;
   }
-  return message || "Impossible de mettre a jour le mot de passe.";
+  return message || "Impossible de mettre à jour le mot de passe.";
 }
 
 export default function ResetPassword({ recoveryMode = false, onNavigate, onUpdatePassword }) {
@@ -55,19 +56,18 @@ export default function ResetPassword({ recoveryMode = false, onNavigate, onUpda
       <AuthCardShell
         data-testid="auth-reset-password-screen"
         title="Lien invalide"
-        subtitle="Le lien de reinitialisation est expire, invalide ou la session recovery est absente."
+        subtitle="Le lien de réinitialisation a expiré, est invalide ou la session de récupération est absente."
         footer={(
-          <button
+          <GateTextButton
             type="button"
             onClick={() => onNavigate("/auth/forgot-password", { replace: true })}
-            style={{ background: "none", border: 0, padding: 0, color: "var(--accent)", cursor: "pointer" }}
           >
             Demander un nouveau lien
-          </button>
+          </GateTextButton>
         )}
       >
-        <p style={{ margin: 0 }}>
-          Redemande un email de reinitialisation pour definir un nouveau mot de passe.
+        <p className="small" style={{ margin: 0 }}>
+          Redemande un email de réinitialisation pour définir un nouveau mot de passe.
         </p>
       </AuthCardShell>
     );
@@ -77,10 +77,10 @@ export default function ResetPassword({ recoveryMode = false, onNavigate, onUpda
     <AuthCardShell
       data-testid="auth-reset-password-screen"
       title="Nouveau mot de passe"
-      subtitle="Definis ton nouveau mot de passe puis retourne directement dans l'app."
+      subtitle="Définis ton nouveau mot de passe puis retourne directement dans l’app."
     >
       <form onSubmit={handleSubmit}>
-        <Input
+        <GateInput
           data-testid="auth-password-input"
           type="password"
           value={password}
@@ -89,8 +89,7 @@ export default function ResetPassword({ recoveryMode = false, onNavigate, onUpda
           autoComplete="new-password"
           required
         />
-        <div style={{ height: 10 }} />
-        <Input
+        <GateInput
           data-testid="auth-confirm-password-input"
           type="password"
           value={confirmPassword}
@@ -98,21 +97,21 @@ export default function ResetPassword({ recoveryMode = false, onNavigate, onUpda
           placeholder="Confirmer le mot de passe"
           autoComplete="new-password"
           required
+          style={{ marginTop: 10 }}
         />
-        <div style={{ height: 12 }} />
-        <Button data-testid="auth-submit-button" type="submit" disabled={!canSubmit}>
-          {submitting ? "Mise a jour..." : "Mettre a jour"}
-        </Button>
+        <GateButton data-testid="auth-submit-button" type="submit" disabled={!canSubmit} className="GatePressable" style={{ marginTop: 12 }}>
+          {submitting ? "Mise à jour…" : "Mettre à jour mon mot de passe"}
+        </GateButton>
       </form>
 
       {passwordTooShort ? (
-        <p style={{ margin: "12px 0 0", color: "#EF4444" }}>
-          Utilise au moins {MIN_PASSWORD_LENGTH} caracteres.
+        <p className="small2" style={{ margin: "12px 0 0", color: "#EF4444" }}>
+          Utilise au moins {MIN_PASSWORD_LENGTH} caractères.
         </p>
       ) : null}
 
       {passwordsMismatch ? (
-        <p style={{ margin: "12px 0 0", color: "#EF4444" }}>
+        <p className="small2" style={{ margin: "12px 0 0", color: "#EF4444" }}>
           Les mots de passe ne correspondent pas.
         </p>
       ) : null}
@@ -121,6 +120,7 @@ export default function ResetPassword({ recoveryMode = false, onNavigate, onUpda
         <p
           data-testid="auth-status"
           role={status.type === "error" ? "alert" : "status"}
+          className="small2"
           style={{ margin: "12px 0 0", color: status.type === "error" ? "#EF4444" : "#10B981" }}
         >
           {status.message}

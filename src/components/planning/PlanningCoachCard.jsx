@@ -13,6 +13,7 @@ import { useManualAiAnalysis } from "../../hooks/useManualAiAnalysis";
 import ManualAiStatus from "../ai/ManualAiStatus";
 import { GateButton as Button, GateSection } from "../../shared/ui/gate/Gate";
 import { getCategoryUiVars } from "../../utils/categoryAccent";
+import { ANALYSIS_COPY, UI_COPY } from "../../ui/labels";
 import "../categorySurface.css";
 
 function describeDraftChange(change, { goalsById, categoriesById }) {
@@ -196,7 +197,7 @@ export default function PlanningCoachCard({
       <div className="planningSectionBody">
         <div className="planningSectionHeader planningSectionHeader--split">
           <div className="planningSectionHeaderText">
-            <div className="titleSm">Coach Planning</div>
+            <div className="titleSm">Coach de planification</div>
             <ManualAiStatus
               statusKind={planningAnalysisState.kind}
               statusLabel={planningAnalysisState.label}
@@ -204,7 +205,7 @@ export default function PlanningCoachCard({
                 manualPlanningAnalysis.visibleAnalysis
                   ? persistenceScope === "cloud"
                     ? "Synchronisée sur tes appareils."
-                    : "Enregistrée sur cet appareil."
+                    : ANALYSIS_COPY.savedOnDevice
                   : ""
               }
               stageLabel={manualPlanningAnalysis.loadingStageLabel}
@@ -220,7 +221,7 @@ export default function PlanningCoachCard({
             </Button>
             {manualPlanningAnalysis.isPersistedForContext ? (
               <Button variant="ghost" onClick={handleDismissPlanningAnalysis}>
-                Revenir au diagnostic local
+                {UI_COPY.backToLocalDiagnostic}
               </Button>
             ) : null}
           </div>

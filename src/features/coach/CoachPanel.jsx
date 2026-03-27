@@ -4,7 +4,6 @@ import { useAuth } from "../../auth/useAuth";
 import { requestAiCoachChat } from "../../infra/aiCoachChatClient";
 import { applySessionRuntimeTransition } from "../../logic/sessionRuntime";
 import { applyChatDraftChanges } from "../../logic/chatDraftChanges";
-import { Textarea } from "../../components/UI";
 import { GateButton, GatePanel } from "../../shared/ui/gate/Gate";
 import { getManualAiLoadingStages } from "../manualAi/loadingStages";
 import { getCoachContextSnapshot } from "./coachContextAdapter";
@@ -756,7 +755,8 @@ export function CoachConversationSurface({
         </div>
 
         <div className="coachComposer">
-          <Textarea
+          <textarea
+            className="GateTextareaPremium"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder="Ex: Je suis en retard, quel est le meilleur prochain bloc ?"

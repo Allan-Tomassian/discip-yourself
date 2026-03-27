@@ -44,7 +44,7 @@ import TodayDailyState from "../components/today/TodayDailyState";
 import TodayHero from "../components/today/TodayHero";
 import TodayNextActions from "../components/today/TodayNextActions";
 import { emitTotemEvent } from "../ui/totem/totemEvents";
-import { LABELS, UI_COPY } from "../ui/labels";
+import { ANALYSIS_COPY, LABELS, UI_COPY } from "../ui/labels";
 import { useAuth } from "../auth/useAuth";
 import { buildTodayCanonicalContextSummary, resolveTodayOccurrenceStartPolicy } from "../domain/todayIntervention";
 import { computeCategoryScopedRecommendation } from "../domain/todayCategoryCoherence";
@@ -139,14 +139,14 @@ function formatRelativeCoachTimestamp(fetchedAt) {
 }
 
 function resolveTodayAnalysisModeLabel(visibleAnalysis) {
-  return visibleAnalysis ? "Analyse IA" : "Diagnostic local";
+  return visibleAnalysis ? ANALYSIS_COPY.coachAnalysis : ANALYSIS_COPY.localDiagnostic;
 }
 
 function resolveTodayAnalysisStorageLabel(visibleAnalysis, persistenceScope = "local_fallback") {
   if (!visibleAnalysis) return "";
   return persistenceScope === "cloud"
-    ? "Synchronisée sur tes appareils"
-    : "Enregistrée sur cet appareil";
+    ? ANALYSIS_COPY.syncedAcrossDevices
+    : ANALYSIS_COPY.savedOnDevice;
 }
 
 function normalizeProfileCopy(value) {
@@ -223,7 +223,7 @@ function buildTodayAnalysisHeroModel({
     primaryAction: mappedPrimaryAction,
     recommendedCategoryLabel: recommendedCategoryName || localHero.recommendedCategoryLabel || "",
     recommendedCategoryId: recommendedCategoryId || localHero.recommendedCategoryId || activeCategoryId || null,
-    contributionLabel: localHero.contributionLabel || activeCategoryName || "ta priorite active",
+    contributionLabel: localHero.contributionLabel || activeCategoryName || "ta priorité active",
     savedAt: analysis.savedAt || null,
     storageScope: analysis.storageScope || "local_fallback",
     decisionSource: analysis.decisionSource || "ai",
@@ -2083,7 +2083,7 @@ export default function Home({
       heroViewModel?.primaryAction?.kind === "open_pilotage" ||
       (heroViewModel?.primaryAction?.kind === "start_occurrence" && heroOccurrence)
   );
-  const heroAnalyzeLabel = manualTodayAnalysis.isPersistedForContext ? "Rafraîchir l’analyse" : "Analyser ma priorité";
+  const heroAnalyzeLabel = manualTodayAnalysis.isPersistedForContext ? UI_COPY.refreshAnalysis : UI_COPY.analyzePriority;
   const showHeroPlanningShortcut = heroViewModel?.primaryAction?.kind !== "open_pilotage";
 
   return (

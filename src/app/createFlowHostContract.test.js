@@ -17,13 +17,13 @@ describe("create flow host contract", () => {
     expect(source).not.toContain('tab === "create-goal" ? (');
     expect(source).not.toContain('tab === "create-habit-type" ? (');
     expect(source).not.toContain('tab === "create-link-outcome" ? (');
+    expect(source).not.toContain('tab === "create-goal" ||');
   });
 
-  it("routes legacy create tabs through the orchestration compatibility layer", () => {
+  it("does not keep legacy create-route compatibility tabs alive in orchestration", () => {
     const source = readSrc("hooks/useCreateFlowOrchestration.js");
 
-    expect(source).toContain("resolveLegacyCreateRouteIntent");
-    expect(source).toContain("openCreateFlowModal({");
-    expect(source).toContain("legacyIntent.baseTab");
+    expect(source).not.toContain("resolveLegacyCreateRouteIntent");
+    expect(source).not.toContain("legacyIntent.baseTab");
   });
 });

@@ -29,7 +29,6 @@ function getHomeSelectedCategoryId(data) {
 
 export function useCategorySelectionSync({
   tab,
-  isCreateTab,
   safeData,
   categories,
   setData,
@@ -238,7 +237,7 @@ export function useCategorySelectionSync({
             ? getExecutionActiveCategoryId(safeData) || homeSelectedCategoryId || null
           : tab === "planning"
             ? getExecutionActiveCategoryId(safeData) || homeSelectedCategoryId || null
-            : tab === "library" || tab === "edit-item" || isCreateTab
+            : tab === "library" || tab === "edit-item"
               ? libraryEntryCategoryId || null
               : getExecutionActiveCategoryId(safeData) || homeSelectedCategoryId || null,
     [
@@ -246,7 +245,6 @@ export function useCategorySelectionSync({
       categoryDetailId,
       categoryProgressId,
       safeData,
-      isCreateTab,
       libraryEntryCategoryId,
       homeSelectedCategoryId,
     ]

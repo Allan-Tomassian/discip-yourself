@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Button, Input } from "../components/UI";
 import AuthCardShell from "./AuthCardShell";
 import { isValidEmail } from "./loginAvailability";
+import { GateButton } from "../shared/ui/gate/Gate";
+import { GateInput, GateTextButton } from "../shared/ui/gate/GateForm";
 
 function getErrorMessage(error) {
-  return String(error?.message || "").trim() || "Impossible de creer le compte.";
+  return String(error?.message || "").trim() || "Impossible de créer le compte.";
 }
 
 export default function Signup({ initialEmail = "", onNavigate, onSignedUp }) {
@@ -32,7 +33,7 @@ export default function Signup({ initialEmail = "", onNavigate, onSignedUp }) {
       setStatus({
         type: "success",
         message:
-          "Compte cree. Verifie ton email pour activer l'acces, meme si cet email existe deja chez nous.",
+          "Compte créé. Vérifie ton email pour activer ton accès, même si cette adresse existe déjà.",
       });
     } catch (error) {
       setStatus({ type: "error", message: getErrorMessage(error) });
@@ -44,24 +45,19 @@ export default function Signup({ initialEmail = "", onNavigate, onSignedUp }) {
   return (
     <AuthCardShell
       data-testid="auth-signup-screen"
-      title="Creer un compte"
-      subtitle="Email, mot de passe, puis validation email obligatoire avant l'app."
+      title="Créer un compte"
+      subtitle="Crée ton accès, puis valide ton email pour ouvrir l’app."
       footer={(
-        <p style={{ margin: 0, opacity: 0.8 }}>
-          Deja inscrit ?{" "}
-          <button
-            type="button"
-            className="btnLink"
-            onClick={() => onNavigate("/auth/login")}
-            style={{ background: "none", border: 0, padding: 0, color: "var(--accent)", cursor: "pointer" }}
-          >
-            J'ai deja un compte
-          </button>
+        <p className="small2" style={{ margin: 0 }}>
+          Déjà inscrit ?{" "}
+          <GateTextButton type="button" onClick={() => onNavigate("/auth/login")}>
+            J’ai déjà un compte
+          </GateTextButton>
         </p>
       )}
     >
       <form onSubmit={handleSubmit}>
-        <Input
+        <GateInput
           data-testid="auth-email-input"
           type="email"
           value={email}
@@ -70,8 +66,7 @@ export default function Signup({ initialEmail = "", onNavigate, onSignedUp }) {
           autoComplete="email"
           required
         />
-        <div style={{ height: 10 }} />
-        <Input
+        <GateInput
           data-testid="auth-password-input"
           type="password"
           value={password}
@@ -79,21 +74,22 @@ export default function Signup({ initialEmail = "", onNavigate, onSignedUp }) {
           placeholder="Mot de passe"
           autoComplete="new-password"
           required
+          style={{ marginTop: 10 }}
         />
-        <div style={{ height: 12 }} />
-        <Button data-testid="auth-submit-button" type="submit" disabled={!canSubmit}>
-          {submitting ? "Creation..." : "Creer mon compte"}
-        </Button>
+        <GateButton data-testid="auth-submit-button" type="submit" disabled={!canSubmit} className="GatePressable" style={{ marginTop: 12 }}>
+          {submitting ? "Création…" : "Créer mon compte"}
+        </GateButton>
       </form>
 
       {!emailOk && normalizedEmail ? (
-        <p style={{ margin: "12px 0 0", color: "#EF4444" }}>Adresse email invalide.</p>
+        <p className="small2" style={{ margin: "12px 0 0", color: "#EF4444" }}>Adresse email invalide.</p>
       ) : null}
 
       {status.message ? (
         <p
           data-testid="auth-status"
           role={status.type === "error" ? "alert" : "status"}
+          className="small2"
           style={{ margin: "12px 0 0", color: status.type === "error" ? "#EF4444" : "#10B981" }}
         >
           {status.message}

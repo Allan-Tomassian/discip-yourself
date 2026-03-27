@@ -3,6 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { GateButton, GateSection } from "../shared/ui/gate/Gate";
 import GatePage from "../shared/ui/gate/GatePage";
 import { isPremium } from "../logic/entitlements";
+import { STATUS_COPY } from "../ui/labels";
 
 function downloadJsonFile(filename, payload) {
   try {
@@ -34,17 +35,17 @@ export default function Data({ data, setData, onOpenPaywall }) {
       try {
         const parsed = JSON.parse(String(reader.result || "{}"));
         if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-          setImportStatus("Import impossible: JSON invalide.");
+          setImportStatus(STATUS_COPY.importInvalid);
           return;
         }
         setData(() => parsed);
-        setImportStatus("Import terminé.");
+        setImportStatus(STATUS_COPY.importDone);
       } catch {
-        setImportStatus("Import impossible: JSON invalide.");
+        setImportStatus(STATUS_COPY.importInvalid);
       }
     };
     reader.onerror = () => {
-      setImportStatus("Import impossible: lecture du fichier.");
+      setImportStatus(STATUS_COPY.importReadError);
     };
     reader.readAsText(file);
   }
@@ -53,7 +54,7 @@ export default function Data({ data, setData, onOpenPaywall }) {
     <ScreenShell data={safeData} pageId="settings" backgroundImage={backgroundImage}>
       <GatePage
         title={<span className="GatePageTitle">Données</span>}
-        subtitle={<span className="GatePageSubtitle">Export / import JSON</span>}
+        subtitle={<span className="GatePageSubtitle">Exporter ou réimporter l’état complet de l’app.</span>}
       >
         <GateSection
           title="Sauvegarde"
@@ -94,7 +95,7 @@ export default function Data({ data, setData, onOpenPaywall }) {
                 importInputRef.current?.click();
               }}
             >
-              Importer un JSON
+              Importer un fichier JSON
             </GateButton>
           </div>
 

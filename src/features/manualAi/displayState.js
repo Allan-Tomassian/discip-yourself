@@ -1,3 +1,5 @@
+import { ANALYSIS_COPY } from "../../ui/labels";
+
 export function resolveManualAiDisplayState({
   loading = false,
   visibleAnalysis = null,
@@ -6,7 +8,7 @@ export function resolveManualAiDisplayState({
   if (!visibleAnalysis && !loading) {
     return {
       kind: "local",
-      label: "Diagnostic local",
+      label: ANALYSIS_COPY.localDiagnostic,
       isAi: false,
     };
   }
@@ -14,14 +16,14 @@ export function resolveManualAiDisplayState({
   if (visibleAnalysis && wasRefreshed) {
     return {
       kind: "ai_updated",
-      label: "Analyse IA mise à jour",
+      label: ANALYSIS_COPY.coachAnalysisUpdated,
       isAi: true,
     };
   }
 
   return {
     kind: "ai",
-    label: "Analyse IA",
+    label: ANALYSIS_COPY.coachAnalysis,
     isAi: true,
   };
 }

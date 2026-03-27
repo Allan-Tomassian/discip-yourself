@@ -5,6 +5,7 @@ import GatePage from "../shared/ui/gate/GatePage";
 import { DEFAULT_THEME } from "../theme/themeTokens";
 import { getPlanLimits, isPremium } from "../logic/entitlements";
 import { isClickSoundEnabled, setClickSoundEnabled } from "../shared/ui/sound/useClickSound";
+import { MARKETING_COPY, PLACEHOLDER_COPY, SURFACE_LABELS } from "../ui/labels";
 import "../features/preferences/preferencesGate.css";
 
 export default function Preferences({ data, setData }) {
@@ -82,13 +83,13 @@ export default function Preferences({ data, setData }) {
         >
           <div className="preferencesGateForm">
             <label className="preferencesGateField GateFormField" htmlFor="preferences-why">
-              <span className="preferencesGateFieldLabel GateFormLabel">Texte motivation</span>
+              <span className="preferencesGateFieldLabel GateFormLabel">Ton pourquoi</span>
               <textarea
                 id="preferences-why"
                 className="preferencesGateTextarea GateTextareaPremium"
                 value={whyDraft}
                 onChange={(event) => setWhyDraft(event.target.value)}
-                placeholder="Ton pourquoi"
+                placeholder={PLACEHOLDER_COPY.whyText}
                 disabled={!canEditWhy}
               />
             </label>
@@ -204,14 +205,14 @@ export default function Preferences({ data, setData }) {
         >
           <div className="preferencesGateSummary">
             <p className="preferencesGateNote preferencesGateNoteStrong">
-              {premium ? "Premium actif" : "Version gratuite"}
+              {premium ? MARKETING_COPY.premiumPlan : MARKETING_COPY.essentialPlan}
             </p>
             <p className="preferencesGateNote">
-              Limites free : {limits.categories} catégories · {limits.outcomes} objectifs · {limits.actions} actions
+              {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} objectifs · {limits.actions} actions
             </p>
             <div className="preferencesGateActions">
               <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/subscription")}>
-                Voir l’abonnement
+                Ouvrir {SURFACE_LABELS.subscription.toLowerCase()}
               </GateButton>
             </div>
           </div>
@@ -225,7 +226,7 @@ export default function Preferences({ data, setData }) {
         >
           <div className="preferencesGateActions">
             <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/data")}>
-              Ouvrir Données
+              Ouvrir les données
             </GateButton>
           </div>
         </GateSection>

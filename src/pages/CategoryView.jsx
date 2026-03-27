@@ -98,7 +98,7 @@ export default function CategoryView({
           <div className="p18">
             <div className="titleSm">Aucune catégorie</div>
             <div className="small mt6">
-              Crée d’abord une {LABELS.actionLower} dans une catégorie. Les {LABELS.goalsLower} avancés restent optionnels.
+              Crée d’abord une {LABELS.actionLower} dans une catégorie. Les {LABELS.goalsLower} restent optionnels.
             </div>
             <div className="mt12">
               <GateButton variant="ghost" className="btnBackCompact backBtn GatePressable" onClick={onBack} data-tour-id="manage-back">

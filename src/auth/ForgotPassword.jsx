@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Button, Input } from "../components/UI";
 import AuthCardShell from "./AuthCardShell";
 import { isValidEmail } from "./loginAvailability";
+import { GateButton } from "../shared/ui/gate/Gate";
+import { GateInput, GateTextButton } from "../shared/ui/gate/GateForm";
 
 function getErrorMessage(error) {
-  return String(error?.message || "").trim() || "Impossible d'envoyer l'email de reinitialisation.";
+  return String(error?.message || "").trim() || "Impossible d’envoyer le lien de réinitialisation.";
 }
 
 export default function ForgotPassword({ initialEmail = "", onNavigate, onSendReset }) {
@@ -29,7 +30,7 @@ export default function ForgotPassword({ initialEmail = "", onNavigate, onSendRe
       setStatus({
         type: "success",
         message:
-          "Si un compte existe pour cet email, un lien de reinitialisation a ete envoye.",
+          "Si un compte existe pour cet email, un lien de réinitialisation a été envoyé.",
       });
     } catch (error) {
       setStatus({ type: "error", message: getErrorMessage(error) });
@@ -41,20 +42,19 @@ export default function ForgotPassword({ initialEmail = "", onNavigate, onSendRe
   return (
     <AuthCardShell
       data-testid="auth-forgot-password-screen"
-      title="Mot de passe oublie"
-      subtitle="Entre ton email pour recevoir un lien de reinitialisation."
+      title="Mot de passe oublié"
+      subtitle="Entre ton email pour recevoir un lien de réinitialisation."
       footer={(
-        <button
+        <GateTextButton
           type="button"
           onClick={() => onNavigate(`/auth/login?email=${encodeURIComponent(normalizedEmail)}`)}
-          style={{ background: "none", border: 0, padding: 0, color: "var(--accent)", cursor: "pointer" }}
         >
-          Retour connexion
-        </button>
+          Retour à la connexion
+        </GateTextButton>
       )}
     >
       <form onSubmit={handleSubmit}>
-        <Input
+        <GateInput
           data-testid="auth-email-input"
           type="email"
           value={email}
@@ -63,16 +63,16 @@ export default function ForgotPassword({ initialEmail = "", onNavigate, onSendRe
           autoComplete="email"
           required
         />
-        <div style={{ height: 12 }} />
-        <Button data-testid="auth-submit-button" type="submit" disabled={!canSubmit}>
-          {sending ? "Envoi..." : "Envoyer le lien"}
-        </Button>
+        <GateButton data-testid="auth-submit-button" type="submit" disabled={!canSubmit} className="GatePressable" style={{ marginTop: 12 }}>
+          {sending ? "Envoi…" : "Envoyer le lien"}
+        </GateButton>
       </form>
 
       {status.message ? (
         <p
           data-testid="auth-status"
           role={status.type === "error" ? "alert" : "status"}
+          className="small2"
           style={{ margin: "12px 0 0", color: status.type === "error" ? "#EF4444" : "#10B981" }}
         >
           {status.message}
@@ -81,4 +81,3 @@ export default function ForgotPassword({ initialEmail = "", onNavigate, onSendRe
     </AuthCardShell>
   );
 }
-

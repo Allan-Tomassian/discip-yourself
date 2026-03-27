@@ -102,7 +102,7 @@ export default function PlusExpander({
                   Créer une action
                 </GateButton>
                 <GateButton variant="ghost" className="GatePressable" onClick={onChooseObjective}>
-                  Créer un {LABELS.goalLower} avancé
+                  Créer un {LABELS.goalLower}
                 </GateButton>
                 {hasDraft && typeof onResumeDraft === "function" ? (
                   <GateButton variant="ghost" className="GatePressable" onClick={onResumeDraft}>

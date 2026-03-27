@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import CategoryManageInline from "./CategoryManageInline";
 
 describe("CategoryManageInline", () => {
-  it("centers the category view on actions before advanced objectives", () => {
+  it("centers the category view on actions before optional objectives", () => {
     const html = renderToStaticMarkup(
       <CategoryManageInline
         data={{
@@ -21,10 +21,10 @@ describe("CategoryManageInline", () => {
     );
 
     expect(html).toContain("Les actions vivent d’abord ici.");
-    expect(html).toContain("Objectifs avancés (optionnel)");
+    expect(html).toContain("Objectifs (optionnel)");
     expect(html).toContain("Profil de catégorie");
     expect(html).toContain("Ex: Reprendre ma forme");
-    expect(html.indexOf(">Actions<")).toBeLessThan(html.indexOf(">Objectifs avancés (optionnel)<"));
+    expect(html.indexOf(">Actions<")).toBeLessThan(html.indexOf(">Objectifs (optionnel)<"));
     expect(html.indexOf(">Profil de catégorie<")).toBeLessThan(html.indexOf(">Actions<"));
   });
 });

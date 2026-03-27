@@ -22,13 +22,11 @@ describe("design system contract", () => {
 
   it("removes the old theme picker flow from user-facing settings", () => {
     const preferences = readSrc("pages/Preferences.jsx");
-    const themePicker = readSrc("components/ThemePicker.jsx");
 
     expect(preferences).toContain("Système visuel actif");
     expect(preferences).not.toContain("preferences-theme-select");
     expect(preferences).not.toContain("Choisis le thème de l'app");
-    expect(themePicker).toContain("Confirmer le thème global");
-    expect(themePicker).not.toContain("SelectMenu");
+    expect(preferences).not.toContain("ThemePicker");
   });
 
   it("keeps the canonical navigation labels and app-wide theme bootstrapping", () => {
@@ -36,7 +34,8 @@ describe("design system contract", () => {
     const app = readSrc("App.jsx");
     const main = readSrc("main.jsx");
 
-    expect(topNav).toContain('{ id: "today", label: "Today" }');
+    expect(topNav).toContain('{ id: "today", label: SURFACE_LABELS.today }');
+    expect(topNav).toContain('{ id: "planning", label: SURFACE_LABELS.planning }');
     expect(topNav).toContain("const [isMobileLayout, setIsMobileLayout] = useState(");
     expect(topNav).toContain("{!isMobileLayout ? (");
     expect(topNav).not.toContain("Aujourd’hui");

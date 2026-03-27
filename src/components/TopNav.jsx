@@ -1,13 +1,14 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import WalletBadge from "./WalletBadge";
 import { GatePanel } from "../shared/ui/gate/Gate";
+import { SURFACE_LABELS } from "../ui/labels";
 import "../features/navigation/topMenuGate.css";
 
 const NAV_ITEMS = [
-  { id: "today", label: "Today" },
-  { id: "planning", label: "Planning" },
-  { id: "library", label: "Bibliothèque" },
-  { id: "pilotage", label: "Pilotage" },
+  { id: "today", label: SURFACE_LABELS.today },
+  { id: "planning", label: SURFACE_LABELS.planning },
+  { id: "library", label: SURFACE_LABELS.library },
+  { id: "pilotage", label: SURFACE_LABELS.pilotage },
 ];
 
 const Z_INDEX = {

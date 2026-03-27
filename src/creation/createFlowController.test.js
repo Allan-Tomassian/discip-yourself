@@ -5,7 +5,6 @@ import {
   applyCreateFlowDraftMeta,
   getDefaultCreationStepForMode,
   resolveCreateFlowPresentation,
-  resolveLegacyCreateRouteIntent,
 } from "./createFlowController";
 import { STEP_HABITS, STEP_HABIT_TYPE, STEP_OUTCOME, STEP_OUTCOME_NEXT_ACTION } from "./creationSchema";
 
@@ -59,20 +58,5 @@ describe("createFlowController", () => {
     expect(draft.mode).toBe("guided");
     expect(draft.sourceContext).toEqual({ source: "planning", trigger: null });
     expect(draft.status).toBe("draft");
-  });
-
-  it("maps legacy create routes to modal intents instead of page flows", () => {
-    expect(resolveLegacyCreateRouteIntent("create-goal")).toMatchObject({
-      baseTab: "library",
-      mode: "project",
-      step: STEP_OUTCOME,
-    });
-
-    expect(resolveLegacyCreateRouteIntent("create-habit-recurring")).toMatchObject({
-      baseTab: "library",
-      mode: "action",
-      step: STEP_HABITS,
-      habitType: "RECURRING",
-    });
   });
 });

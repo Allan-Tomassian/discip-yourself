@@ -92,7 +92,7 @@ export default function History({ data }) {
     <ScreenShell data={safeData} pageId="history" backgroundImage={safeData?.profile?.whyImage || ""}>
       <GatePage
         title={<span className="GatePageTitle">Historique</span>}
-        subtitle={<span className="GatePageSubtitle">Historique des sessions terminées ou interrompues.</span>}
+        subtitle={<span className="GatePageSubtitle">Retrouve tes sessions terminées, reportées ou bloquées.</span>}
       >
         <GateSection title="Sessions" collapsible={false} className="GateSurfacePremium GateCardPremium">
           <div className="col" style={{ gap: 10 }}>
@@ -108,7 +108,7 @@ export default function History({ data }) {
                   </div>
                   {item.feedbackLabel ? (
                     <div className="small2" style={{ opacity: 0.9 }}>
-                      Feedback: {item.feedbackLabel}{item.feedbackText ? ` · ${item.feedbackText}` : ""}
+                      Ressenti : {item.feedbackLabel}{item.feedbackText ? ` · ${item.feedbackText}` : ""}
                     </div>
                   ) : null}
                 </div>

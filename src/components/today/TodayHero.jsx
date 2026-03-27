@@ -4,6 +4,7 @@ import "../../features/today/today.css";
 import ManualAiStatus from "../ai/ManualAiStatus";
 import CategoryPill from "../CategoryPill";
 import { getCategoryUiVars } from "../../utils/categoryAccent";
+import { ANALYSIS_COPY, UI_COPY } from "../../ui/labels";
 
 export default function TodayHero({
   title = "Aucune action prioritaire",
@@ -59,7 +60,7 @@ export default function TodayHero({
         <div className="todayHeroHeaderCluster">
           <ManualAiStatus
             statusKind={analysisStatusKind}
-            statusLabel={analysisModeLabel || "Diagnostic local"}
+            statusLabel={analysisModeLabel || ANALYSIS_COPY.localDiagnostic}
             detailLabel={[analysisStorageLabel, timestampLabel].filter(Boolean).join(" • ")}
             stageLabel={analysisStageLabel}
           />
@@ -124,7 +125,7 @@ export default function TodayHero({
               withSound
               onClick={() => onDismissAnalysis?.()}
             >
-              Revenir au diagnostic local
+              {UI_COPY.backToLocalDiagnostic}
             </GateButton>
           ) : null}
           {showPlanningShortcut ? (
@@ -135,7 +136,7 @@ export default function TodayHero({
               withSound
               onClick={() => onOpenPlanning?.()}
             >
-              Ouvrir mon planning
+              {UI_COPY.openPlanning}
             </GateButton>
           ) : null}
         </div>

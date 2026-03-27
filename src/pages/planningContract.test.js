@@ -33,7 +33,7 @@ describe("Planning primitive convergence contract", () => {
     expect(source).toContain("GateSurfacePremium");
     expect(source).toContain("GateCardPremium");
     expect(source).toContain("GateMainSection");
-    expect(source).toContain("Coach Planning");
+    expect(source).toContain("Coach de planification");
     expect(source).toContain("Voir mes progrès");
   });
 });

@@ -256,15 +256,6 @@ export default function App() {
     return () => clearInterval(id);
   }, [setData]);
 
-  const isCreateTab =
-    tab === "create-goal" ||
-    tab === "create-outcome-next" ||
-    tab === "create-habit-type" ||
-    tab === "create-habit-oneoff" ||
-    tab === "create-habit-recurring" ||
-    tab === "create-habit-anytime" ||
-    tab === "create-link-outcome" ||
-    tab === "create-pick-category";
   const currentTab = tab;
   const resolvedSessionDateKey =
     (typeof sessionDateKey === "string" && sessionDateKey) ||
@@ -366,7 +357,6 @@ export default function App() {
     detailCategoryId,
   } = useCategorySelectionSync({
     tab,
-    isCreateTab,
     safeData,
     categories: visibleCategories,
     setData,
@@ -413,7 +403,6 @@ export default function App() {
     openCreateHabitDirect,
   } = useCreateFlowOrchestration({
     tab,
-    isCreateTab,
     setTab,
     safeData,
     categories: visibleCategories,

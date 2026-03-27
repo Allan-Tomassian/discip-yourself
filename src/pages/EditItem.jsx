@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { Button, Card, Input, Textarea } from "../components/UI";
+import { GateButton, GateSection } from "../shared/ui/gate/Gate";
+import { GateInput, GateTextarea } from "../shared/ui/gate/GateForm";
 import Select from "../ui/select/Select";
 import DatePicker from "../ui/date/DatePicker";
 import ConflictResolver from "../ui/scheduling/ConflictResolver";
@@ -35,6 +36,38 @@ import { normalizeTimeFields } from "../logic/timeFields";
 import { setOccurrenceStatusById } from "../logic/occurrences";
 import { findConflicts, suggestNextSlots } from "../core/scheduling/intervals";
 import { LABELS } from "../ui/labels";
+import "../features/library/editItemPanelGate.css";
+
+function Button({ variant = "primary", className = "", ...props }) {
+  const gateVariant =
+    variant === "ghost"
+      ? "ghost"
+      : variant === "secondary"
+        ? "secondary"
+        : variant === "danger"
+          ? "ghost"
+          : "primary";
+  const dangerClass = variant === "danger" ? "editDangerButton" : "";
+  const mergedClassName = [className, dangerClass, "GatePressable"].filter(Boolean).join(" ");
+  return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;
+}
+
+function Card({ className = "", children, ...props }) {
+  const mergedClassName = ["GateMainSection", "GateSurfacePremium", "GateCardPremium", className].filter(Boolean).join(" ");
+  return (
+    <GateSection className={mergedClassName} collapsible={false} {...props}>
+      {children}
+    </GateSection>
+  );
+}
+
+function Input({ className = "", ...props }) {
+  return <GateInput className={className} {...props} />;
+}
+
+function Textarea({ className = "", ...props }) {
+  return <GateTextarea className={className} {...props} />;
+}
 
 const PRIORITY_OPTIONS = [
   { value: "prioritaire", label: "Prioritaire" },

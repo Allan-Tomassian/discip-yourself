@@ -223,6 +223,12 @@
   color: var(--ctaText);
 }
 
+.gateButton--secondary {
+  border: 1px solid color-mix(in srgb, var(--gate-border) 96%, rgba(255, 255, 255, 0.12));
+  background: color-mix(in srgb, var(--gate-surface-1) 92%, rgba(255, 255, 255, 0.04));
+  color: var(--gate-text);
+}
+
 .gateButton--ghost {
   border: 1px solid var(--gate-border);
   background: rgba(255,255,255,0.02);

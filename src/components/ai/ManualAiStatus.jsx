@@ -1,9 +1,10 @@
 import React from "react";
+import { ANALYSIS_COPY } from "../../ui/labels";
 import "./manualAiStatus.css";
 
 export default function ManualAiStatus({
   statusKind = "local",
-  statusLabel = "Diagnostic local",
+  statusLabel = ANALYSIS_COPY.localDiagnostic,
   detailLabel = "",
   stageLabel = "",
 }) {

@@ -5,6 +5,7 @@ import GatePage from "../shared/ui/gate/GatePage";
 import { useAuth } from "../auth/useAuth";
 import { useProfile } from "../profile/useProfile";
 import { normalizeUsername, validateOptionalUsername } from "../profile/username";
+import { PLACEHOLDER_COPY, STATUS_COPY, SURFACE_LABELS } from "../ui/labels";
 import "../features/account/accountGate.css";
 
 const AVAILABILITY_DEBOUNCE_MS = 450;
@@ -24,11 +25,11 @@ function getOptionalAvatarUpdate(value) {
 }
 
 function getErrorMessage(error) {
-  if (error?.code === "USERNAME_TAKEN") return "Nom d'utilisateur déjà pris.";
-  if (error?.code === "PROFILE_SCHEMA") return "Base Supabase incomplète. Applique les migrations requises.";
-  if (error?.code === "PROFILE_RLS") return "Accès refusé (RLS). Reconnecte-toi puis réessaie.";
-  if (error?.code === "PROFILE_NETWORK") return "Réseau indisponible. Vérifie ta connexion puis réessaie.";
-  return String(error?.message || "").trim() || "Impossible d'enregistrer le profil.";
+  if (error?.code === "USERNAME_TAKEN") return "Cet identifiant est déjà pris.";
+  if (error?.code === "PROFILE_SCHEMA") return "Le profil n’est pas encore prêt. Réessaie dans un instant.";
+  if (error?.code === "PROFILE_RLS") return "Ta session a expiré. Reconnecte-toi puis réessaie.";
+  if (error?.code === "PROFILE_NETWORK") return "Connexion indisponible. Vérifie ton réseau puis réessaie.";
+  return String(error?.message || "").trim() || "Impossible d’enregistrer ton profil.";
 }
 
 export default function Account({ data }) {
@@ -67,7 +68,7 @@ export default function Account({ data }) {
       return undefined;
     }
 
-    setAvailability({ state: "checking", message: "Vérification...", normalized: usernameValidation.normalized });
+    setAvailability({ state: "checking", message: STATUS_COPY.checking, normalized: usernameValidation.normalized });
 
     let active = true;
     const id = setTimeout(async () => {
@@ -86,14 +87,14 @@ export default function Account({ data }) {
 
         setAvailability({
           state: "taken",
-          message: result.reason || "Nom d'utilisateur déjà pris.",
-          normalized: result.normalized,
-        });
+            message: result.reason || "Cet identifiant est déjà pris.",
+            normalized: result.normalized,
+          });
       } catch {
         if (!active) return;
         setAvailability({
           state: "error",
-          message: "Impossible de vérifier le nom d'utilisateur.",
+          message: "Impossible de vérifier cet identifiant.",
           normalized: usernameValidation.normalized,
         });
       }
@@ -132,7 +133,7 @@ export default function Account({ data }) {
     }
 
     if (availability.state === "taken") {
-      setStatus({ type: "error", message: "Nom d'utilisateur déjà pris." });
+      setStatus({ type: "error", message: "Cet identifiant est déjà pris." });
       return;
     }
 
@@ -142,7 +143,7 @@ export default function Account({ data }) {
       const payload = { username: usernameValidation.normalized, full_name: fullName };
       if (avatarUpdate.include) payload.avatar_url = avatarUpdate.value;
       await saveProfile(payload);
-      setStatus({ type: "success", message: "Profil enregistré." });
+      setStatus({ type: "success", message: "Compte mis à jour." });
     } catch (error) {
       setStatus({ type: "error", message: getErrorMessage(error) });
     } finally {
@@ -154,12 +155,12 @@ export default function Account({ data }) {
     <ScreenShell data={safeData} pageId="settings" backgroundImage={backgroundImage}>
       <GatePage
         className="accountGatePage"
-        title={<span className="GatePageTitle">Compte / Profil</span>}
-        subtitle={<span className="GatePageSubtitle">Identité et accès</span>}
+        title={<span className="GatePageTitle">{SURFACE_LABELS.account}</span>}
+        subtitle={<span className="GatePageSubtitle">Identité, accès et profil visible.</span>}
       >
         <GateSection
           title="Profil"
-          description={profile?.username ? "Ton profil est actif." : "Username optionnel. Tu peux le definir plus tard."}
+          description={profile?.username ? "Ton profil est prêt." : "Identifiant optionnel. Tu peux le définir plus tard."}
           className="accountGateCard GateSurfacePremium GateCardPremium"
           collapsible={false}
         >
@@ -171,14 +172,14 @@ export default function Account({ data }) {
             </label>
 
             <label className="accountGateField GateFormField" htmlFor="account-username">
-              <span className="accountGateFieldLabel GateFormLabel">Username</span>
+              <span className="accountGateFieldLabel GateFormLabel">Identifiant</span>
               <input
                 id="account-username"
                 className="accountGateInput GateInputPremium"
                 data-testid="account-username-input"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                placeholder="Username (optionnel)"
+                placeholder={PLACEHOLDER_COPY.accountHandle}
                 autoComplete="username"
               />
             </label>
@@ -191,20 +192,20 @@ export default function Account({ data }) {
                 data-testid="account-full-name-input"
                 value={fullName}
                 onChange={(event) => setFullName(event.target.value)}
-                placeholder="Nom complet (optionnel)"
+                placeholder={PLACEHOLDER_COPY.fullName}
                 autoComplete="name"
               />
             </label>
 
             <label className="accountGateField GateFormField" htmlFor="account-avatar-url">
-              <span className="accountGateFieldLabel GateFormLabel">Avatar URL (optionnel)</span>
+              <span className="accountGateFieldLabel GateFormLabel">Photo de profil (URL)</span>
               <input
                 id="account-avatar-url"
                 className="accountGateInput GateInputPremium"
                 data-testid="account-avatar-url-input"
                 value={avatarUrl}
                 onChange={(event) => setAvatarUrl(event.target.value)}
-                placeholder="https://..."
+                placeholder={PLACEHOLDER_COPY.avatarUrl}
                 autoComplete="url"
               />
             </label>
@@ -230,7 +231,7 @@ export default function Account({ data }) {
 
             <div className="accountGateActions GatePrimaryCtaRow">
               <GateButton type="submit" className="GatePressable" withSound disabled={!canSave} data-testid="account-save-button">
-                {saving ? "Enregistrement..." : "Enregistrer"}
+                {saving ? STATUS_COPY.saving : "Enregistrer"}
               </GateButton>
               <GateButton
                 type="button"
@@ -241,7 +242,7 @@ export default function Account({ data }) {
                   refreshProfile().catch(() => {});
                 }}
               >
-                Recharger
+                Actualiser
               </GateButton>
             </div>
           </form>
@@ -266,7 +267,7 @@ export default function Account({ data }) {
               Déconnexion
             </GateButton>
             <GateButton type="button" variant="ghost" className="GatePressable" disabled>
-              Supprimer mon compte (bientôt)
+              Supprimer mon compte via le support
             </GateButton>
           </div>
         </GateSection>

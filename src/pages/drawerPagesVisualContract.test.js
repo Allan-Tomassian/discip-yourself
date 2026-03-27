@@ -26,7 +26,7 @@ describe("drawer pages visual contract", () => {
       "pages/History.jsx",
       "pages/Journal.jsx",
       "pages/Privacy.jsx",
-      "pages/Terms.jsx",
+      "pages/Legal.jsx",
       "pages/Data.jsx",
     ].map(readSrc);
 
