@@ -415,7 +415,11 @@ export default function App() {
     const returnTab = editItem?.returnTab || "library";
     if (returnTab === "library") {
       const nextId = editItem?.categoryId || libraryCategoryId || null;
-      if (nextId) setLibraryCategoryId(nextId);
+      if (editItem?.returnToCategoryView === true && nextId) {
+        setLibraryCategoryId(nextId);
+      } else if (editItem?.returnToCategoryView !== true) {
+        setLibraryCategoryId(null);
+      }
     }
     setEditItem(null);
     setTab(returnTab);
@@ -939,7 +943,7 @@ export default function App() {
                 ui: withLibraryActiveCategoryId(prev.ui, nextId),
               }));
             }
-            setEditItem({ id, type, categoryId: nextId, returnTab: tab });
+            setEditItem({ id, type, categoryId: nextId, returnTab: tab, returnToCategoryView: true });
             setTab("edit-item");
           }}
         />
@@ -950,6 +954,20 @@ export default function App() {
           onOpenPaywall={openPaywall}
           onOpenCreateOutcome={() => {
             openCreateOutcomeDirect({ source: "library" });
+          }}
+          onEditItem={({ id, type, categoryId }) => {
+            const nextId =
+              categoryId ||
+              resolveLibraryEntryCategoryId({ source: data, categories: data?.categories }) ||
+              null;
+            if (nextId) {
+              setData((prev) => ({
+                ...prev,
+                ui: withLibraryActiveCategoryId(prev.ui, nextId),
+              }));
+            }
+            setEditItem({ id, type, categoryId: nextId, returnTab: tab, returnToCategoryView: false });
+            setTab("edit-item");
           }}
         />
       ) : tab === "session" ? (

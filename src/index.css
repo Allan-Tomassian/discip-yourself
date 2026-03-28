@@ -1395,88 +1395,6 @@ a{ color:inherit; }
   justify-content:space-between;
   gap:10px;
 }
-.editPanel{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.editPanelBody{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  margin-top:12px;
-}
-.editSection{
-  border:1px solid var(--panelBorder, rgba(255,255,255,.12));
-  background: var(--panelBg, rgba(255,255,255,.04));
-  border-radius:14px;
-  padding:12px;
-}
-.editSectionTitle{
-  font-size:13px;
-  font-weight:700;
-  margin-bottom:8px;
-}
-.editSectionToggle{
-  width:100%;
-  border:0;
-  background:transparent;
-  color:var(--text);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  font-size:13px;
-  font-weight:700;
-  padding:0;
-  cursor:pointer;
-}
-.editSectionBody{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-  margin-top:10px;
-}
-.editPanelFooter{
-  position:sticky;
-  bottom:-1px;
-  display:flex;
-  justify-content:space-between;
-  gap:10px;
-  padding-top:12px;
-  margin-top:12px;
-  background: var(--panelFooterBg, rgba(5,6,10,.6));
-  border-top:1px solid var(--panelFooterBorder, rgba(255,255,255,.12));
-}
-.editDaysRow{
-  display:flex;
-  flex-wrap:wrap;
-  gap:6px;
-}
-.editDayOption{
-  display:flex;
-  align-items:center;
-  gap:6px;
-  border:1px solid var(--border);
-  background: var(--editDayOptionBg, rgba(255,255,255,.06));
-  border-radius:10px;
-  padding:6px 8px;
-  font-size:12px;
-}
-.editDayOption input{
-  width:14px;
-  height:14px;
-  accent-color: var(--accent);
-}
-.editTimeList{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-.editTimeRow{
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
 @media (max-width: 767px){
   .drawerPanelOuter{
     width:auto;
@@ -1719,14 +1637,12 @@ select {
 
 .modalPanel,
 .drawerPanel,
-.plusExpanderPanelContent,
-.editSection {
+.plusExpanderPanelContent {
   border-color: var(--border-subtle);
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, rgba(255,255,255,0.02)), color-mix(in srgb, var(--surface-primary) 98%, rgba(0,0,0,0.08)));
 }
 
 .drawerHeader,
-.editSectionTitle,
 .cardSectionTitle {
   color: var(--text-primary);
 }

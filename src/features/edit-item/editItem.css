@@ -1,0 +1,196 @@
+.editItemScope {
+  width: 100%;
+}
+
+.editItemPageShell {
+  width: min(100%, 760px);
+  margin: 0 auto;
+}
+
+.editItemScope .GateInputPremium,
+.editItemScope .GateTextareaPremium,
+.editItemScope .selectTrigger.GateSelectPremium {
+  width: 100%;
+}
+
+.editItemScope .selectTrigger.GateSelectPremium {
+  justify-content: space-between;
+}
+
+.editItemSectionGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.editItemField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.editItemFieldLabel {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-3, var(--muted2));
+}
+
+.editItemFieldHelper,
+.editItemInlineMeta,
+.editItemErrorText {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.editItemFieldHelper,
+.editItemInlineMeta {
+  color: var(--text-3, var(--muted2));
+}
+
+.editItemErrorText {
+  color: rgba(255, 120, 120, 0.95);
+}
+
+.editItemTwoCol,
+.editItemThreeCol {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.editItemThreeCol {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.editItemTimeModeGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.editItemInlineCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editItemInlineCardRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.editItemDaysRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.editItemDayChip {
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--gate-border);
+  background: color-mix(in srgb, var(--gate-surface-1) 92%, rgba(255, 255, 255, 0.04));
+  color: var(--gate-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.editItemDayChip:hover {
+  border-color: color-mix(in srgb, var(--accent, var(--cta)) 42%, var(--gate-border));
+}
+
+.editItemDayChip.isActive {
+  border-color: color-mix(in srgb, var(--accent, var(--cta)) 72%, var(--gate-border));
+  background: color-mix(in srgb, var(--accent, var(--cta)) 22%, var(--gate-surface-1));
+  color: var(--gate-text);
+}
+
+.editItemToggleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--gate-text);
+}
+
+.editItemToggleRow input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent, var(--cta));
+}
+
+.editItemReminderList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editItemReminderRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.editItemDangerButton {
+  border-color: color-mix(in srgb, #f7a3a3 36%, var(--gate-border));
+  color: color-mix(in srgb, #ffd9d9 74%, var(--gate-text));
+  background: color-mix(in srgb, #5d1c1c 24%, transparent);
+}
+
+.editItemDangerButton:hover {
+  border-color: color-mix(in srgb, #f7b1b1 44%, var(--gate-border));
+  background: color-mix(in srgb, #6b2424 30%, transparent);
+}
+
+.editItemFooterDock {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding-top: 6px;
+}
+
+.editItemFooterSurface {
+  padding: 16px 18px calc(16px + env(safe-area-inset-bottom, 0px));
+  background:
+    linear-gradient(
+      180deg,
+      rgba(5, 8, 15, 0),
+      color-mix(in srgb, var(--gate-surface-2) 94%, #05080f) 22%
+    );
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.editItemFooterStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editItemFooterSurface .gateFooter {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+@media (max-width: 767px) {
+  .editItemPageShell {
+    width: 100%;
+  }
+
+  .editItemTwoCol,
+  .editItemThreeCol {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .editItemFooterSurface {
+    padding-inline: 16px;
+  }
+}
