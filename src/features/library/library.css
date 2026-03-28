@@ -42,7 +42,7 @@
 
 .categoryGateList {
   display: grid;
-  gap: 9px;
+  gap: 10px;
   margin-bottom: 10px;
   min-width: 0;
 }
@@ -80,23 +80,23 @@
 }
 
 .libraryDetailStack {
-  gap: 6px;
+  gap: 10px;
 }
 
 .libraryDetailStack .mt12 {
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 .libraryDetailStack .gap10 {
-  gap: 8px;
+  gap: 10px;
 }
 
 .libraryDetailStack .gap8 {
-  gap: 6px;
+  gap: 8px;
 }
 
 .libraryDetailStack .mt6 {
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .categoryGateList.isExpanded {
@@ -111,15 +111,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--gate-border, var(--border-subtle, var(--border)));
-  background: color-mix(in srgb, var(--gate-surface-1, var(--surface-2)) 92%, #05080f);
   color: var(--text-1, var(--text));
   text-align: left;
   cursor: pointer;
   min-width: 0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .categoryGateItem:focus-visible {

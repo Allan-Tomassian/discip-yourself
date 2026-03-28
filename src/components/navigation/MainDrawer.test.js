@@ -22,11 +22,26 @@ describe("MainDrawer contract", () => {
   it("uses a dedicated drawerBody scroll container", () => {
     const source = readSrc("components/navigation/MainDrawer.jsx");
     const css = readSrc("index.css");
+    const navCss = readSrc("features/navigation/topMenuGate.css");
 
-    expect(source).toContain("className=\"drawerBody mt12 col\"");
+    expect(source).toContain("className=\"drawerBody\"");
+    expect(source).toContain("className=\"drawerMenuBody\"");
+    expect(source).toContain("GateMainSectionCard");
+    expect(source).toContain("GateInlineMetaCard GatePressable drawerMenuItem");
+    expect(source).toContain("className=\"drawerMenuGroup\"");
+    expect(source).toContain("GateIconButtonPremium GatePressable drawerMenuCloseBtn");
+    expect(source).not.toContain("style={{ gap: 18 }}");
+    expect(source).not.toContain("small2");
+    expect(source).not.toContain("GateSection");
+    expect(source).not.toContain("GateSecondarySectionCard drawerMenuSection");
     expect(css).toContain(".drawerBody{");
     expect(css).toContain("overflow-y:auto;");
     expect(css).toContain(".drawerBackdrop{");
+    expect(css).toContain("display:flex;");
     expect(css).toContain("height:100dvh;");
+    expect(navCss).toContain(".drawerMenuBody");
+    expect(navCss).toContain(".drawerMenuGroup");
+    expect(navCss).toContain(".drawerMenuItem");
+    expect(navCss).not.toContain("overflow-y: auto;");
   });
 });

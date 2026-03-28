@@ -58,17 +58,17 @@ export default function Preferences({ data, setData }) {
           title="Apparence"
           description="Le design system global est appliqué partout dans l’app."
           collapsible={false}
-          className="preferencesGateCard GateSurfacePremium GateCardPremium"
+          className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
           data-tour-id="settings-theme"
         >
           <div className="preferencesGateSummary">
-            <p className="preferencesGateNote preferencesGateNoteStrong">
+            <p className="preferencesGateNote preferencesGateNoteStrong GateRoleCardTitle">
               Système visuel actif : {visualSystemLabel}
             </p>
-            <p className="preferencesGateNote">
+            <p className="preferencesGateNote GateRoleHelperText">
               Toutes les surfaces partagent désormais le même thème sombre, calme et responsive.
             </p>
-            <p className="preferencesGateNote">
+            <p className="preferencesGateNote GateRoleHelperText">
               Les anciennes préférences visuelles sont conservées uniquement pour compatibilité technique, sans effet sur l’interface.
             </p>
           </div>
@@ -78,7 +78,7 @@ export default function Preferences({ data, setData }) {
           title="Pourquoi"
           description="Modifiable tous les 30 jours."
           collapsible={false}
-          className="preferencesGateCard GateSurfacePremium GateCardPremium"
+          className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
           data-tour-id="settings-why"
         >
           <div className="preferencesGateForm">
@@ -93,9 +93,7 @@ export default function Preferences({ data, setData }) {
                 disabled={!canEditWhy}
               />
             </label>
-            {!canEditWhy ? (
-              <p className="preferencesGateNote">Tu pourras modifier ton pourquoi dans {daysLeft} jours.</p>
-            ) : null}
+            {!canEditWhy ? <p className="preferencesGateNote GateRoleHelperText">Tu pourras modifier ton pourquoi dans {daysLeft} jours.</p> : null}
             <div className="preferencesGateActions">
                 <GateButton
                   type="button"
@@ -123,7 +121,7 @@ export default function Preferences({ data, setData }) {
           title="Introduction"
           description="Relancer onboarding et tutoriel"
           collapsible={false}
-          className="preferencesGateCard GateSurfacePremium GateCardPremium"
+          className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
           <div className="preferencesGateActions preferencesGateActionsColumn">
             <GateButton
@@ -172,7 +170,7 @@ export default function Preferences({ data, setData }) {
           title="Interactions"
           description="Animation pression + son optionnel"
           collapsible={false}
-          className="preferencesGateCard GateSurfacePremium GateCardPremium"
+          className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
           <GateRow
             className="preferencesGateRowControl GatePressable"
@@ -201,13 +199,13 @@ export default function Preferences({ data, setData }) {
           title="Abonnement"
           description="Résumé rapide de ton plan"
           collapsible={false}
-          className="preferencesGateCard GateSurfacePremium GateCardPremium"
+          className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
           <div className="preferencesGateSummary">
-            <p className="preferencesGateNote preferencesGateNoteStrong">
+            <p className="preferencesGateNote preferencesGateNoteStrong GateRoleCardTitle">
               {premium ? MARKETING_COPY.premiumPlan : MARKETING_COPY.essentialPlan}
             </p>
-            <p className="preferencesGateNote">
+            <p className="preferencesGateNote GateRoleHelperText">
               {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} objectifs · {limits.actions} actions
             </p>
             <div className="preferencesGateActions">
@@ -222,7 +220,7 @@ export default function Preferences({ data, setData }) {
           title="Données"
           description="Export, import et sauvegarde"
           collapsible={false}
-          className="preferencesGateCard GateSurfacePremium GateCardPremium"
+          className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
           <div className="preferencesGateActions">
             <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/data")}>
@@ -235,7 +233,7 @@ export default function Preferences({ data, setData }) {
           title="Légal & Support"
           description="Confidentialité, conditions et assistance"
           collapsible={false}
-          className="preferencesGateCard GateSurfacePremium GateCardPremium"
+          className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
           <div className="preferencesGateLinks">
             <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/privacy")}>

@@ -40,20 +40,25 @@ export default function Faq({ data, setTab }) {
         title={<span className="GatePageTitle">FAQ</span>}
         subtitle={<span className="GatePageSubtitle">Réponses rapides aux questions fréquentes.</span>}
       >
-        {QUESTIONS.map((item) => (
-          <GateSection
-            key={item.question}
-            title={item.question}
-            collapsible={false}
-            className="GateSurfacePremium GateCardPremium"
-          >
-            <div className="small">{item.answer}</div>
-          </GateSection>
-        ))}
+        <GateSection
+          title="Questions fréquentes"
+          description="Les réponses utiles les plus courantes"
+          collapsible={false}
+          className="GateSurfacePremium GateCardPremium GateSecondarySectionCard"
+        >
+          <div className="gatePageInlineList">
+            {QUESTIONS.map((item) => (
+              <div key={item.question} className="GateInlineMetaCard gatePageInlineText">
+                <div className="GateRoleCardTitle">{item.question}</div>
+                <div className="GateRoleHelperText">{item.answer}</div>
+              </div>
+            ))}
+          </div>
+        </GateSection>
         <GateSection
           title="Besoin d’aide supplémentaire ?"
           collapsible={false}
-          className="GateSurfacePremium GateCardPremium"
+          className="GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
           <div className="GatePrimaryCtaRow">
             <GateButton

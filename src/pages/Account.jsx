@@ -161,10 +161,10 @@ export default function Account({ data }) {
         <GateSection
           title="Profil"
           description={profile?.username ? "Ton profil est prêt." : "Identifiant optionnel. Tu peux le définir plus tard."}
-          className="accountGateCard GateSurfacePremium GateCardPremium"
+          className="accountGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
           collapsible={false}
         >
-          {loadError ? <p className="accountGateNote accountGateNoteError" role="alert">{loadError}</p> : null}
+          {loadError ? <p className="accountGateNote accountGateNoteError GateRoleHelperText" role="alert">{loadError}</p> : null}
           <form className="accountGateForm" onSubmit={handleSave}>
             <label className="accountGateField GateFormField" htmlFor="account-email">
               <span className="accountGateFieldLabel GateFormLabel">Email</span>
@@ -213,7 +213,7 @@ export default function Account({ data }) {
             {availability.message ? (
               <p
                 data-testid="account-username-feedback"
-                className={`accountGateNote ${availability.state === "available" ? "accountGateNoteSuccess" : "accountGateNoteError"}`}
+                className={`accountGateNote GateRoleHelperText ${availability.state === "available" ? "accountGateNoteSuccess" : "accountGateNoteError"}`}
               >
                 {availability.message}
               </p>
@@ -222,7 +222,7 @@ export default function Account({ data }) {
             {status.message ? (
               <p
                 data-testid="account-save-status"
-                className={`accountGateNote ${status.type === "error" ? "accountGateNoteError" : "accountGateNoteSuccess"}`}
+                className={`accountGateNote GateRoleHelperText ${status.type === "error" ? "accountGateNoteError" : "accountGateNoteSuccess"}`}
                 role={status.type === "error" ? "alert" : "status"}
               >
                 {status.message}
@@ -251,7 +251,7 @@ export default function Account({ data }) {
         <GateSection
           title="Session"
           description="Actions liées à ton compte"
-          className="accountGateCard GateSurfacePremium GateCardPremium"
+          className="accountGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
           collapsible={false}
         >
           <div className="accountGateActions GatePrimaryCtaRow">

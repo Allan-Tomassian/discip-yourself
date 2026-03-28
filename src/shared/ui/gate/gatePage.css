@@ -5,31 +5,63 @@
 
 .gatePagePanel {
   gap: 18px;
-  padding: 18px;
 }
 
 .gatePageHeader {
-  padding: 2px 2px 4px;
+  padding: 4px;
+}
+
+.gatePageHeader .gateHeaderText {
+  gap: 6px;
 }
 
 .gatePageContent {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   min-width: 0;
 }
 
-.gatePageContent > .gateSection.GateSurfacePremium {
+.gatePageContent > .gateSection.GateSecondarySectionCard {
   --gate-premium-radius: 14px;
+}
+
+.gatePageSectionStack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.gatePageInlineList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.gatePageInlineText {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gatePageSplitRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 720px) {
   .gatePagePanel {
-    padding: 16px;
-    gap: 16px;
+    gap: 18px;
   }
 
   .gatePageContent {
-    gap: 14px;
+    gap: 18px;
   }
 }

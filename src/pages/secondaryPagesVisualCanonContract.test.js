@@ -9,34 +9,8 @@ function readSrc(relPath) {
   return fs.readFileSync(path.join(SRC_ROOT, relPath), "utf8");
 }
 
-describe("drawer pages visual contract", () => {
-  it("uses the shared premium main container for drawer pages", () => {
-    const gatePageSource = readSrc("shared/ui/gate/GatePage.jsx");
-
-    expect(gatePageSource).toContain("GateMainSection GateMainSectionCard GateSurfacePremium GateCardPremium");
-  });
-
-  it("keeps the main drawer pages on the shared GatePage shell", () => {
-    const pages = [
-      "pages/Preferences.jsx",
-      "pages/Account.jsx",
-      "pages/Subscription.jsx",
-      "pages/Faq.jsx",
-      "pages/Support.jsx",
-      "pages/History.jsx",
-      "pages/Journal.jsx",
-      "pages/MicroActions.jsx",
-      "pages/Privacy.jsx",
-      "pages/Legal.jsx",
-      "pages/Data.jsx",
-    ].map(readSrc);
-
-    for (const source of pages) {
-      expect(source).toContain("<GatePage");
-    }
-  });
-
-  it("keeps drawer page sections on the shared secondary card family", () => {
+describe("secondary pages visual canon contract", () => {
+  it("keeps menu-linked pages on shared secondary surfaces", () => {
     const pages = [
       "pages/Preferences.jsx",
       "pages/Account.jsx",
@@ -54,5 +28,30 @@ describe("drawer pages visual contract", () => {
     for (const source of pages) {
       expect(source).toContain("GateSecondarySectionCard");
     }
+  });
+
+  it("uses inline meta cards for compact secondary page content", () => {
+    const pages = [
+      "pages/Subscription.jsx",
+      "pages/Support.jsx",
+      "pages/Faq.jsx",
+      "pages/Privacy.jsx",
+      "pages/Legal.jsx",
+      "pages/Data.jsx",
+      "pages/History.jsx",
+      "pages/Journal.jsx",
+    ].map(readSrc);
+
+    for (const source of pages) {
+      expect(source).toContain("GateInlineMetaCard");
+    }
+  });
+
+  it("keeps secondary page helper text on Gate roles instead of feature-level font overrides", () => {
+    const accountCss = readSrc("features/account/accountGate.css");
+    const preferencesCss = readSrc("features/preferences/preferencesGate.css");
+
+    expect(accountCss).not.toContain("font-size: 12px;");
+    expect(preferencesCss).not.toContain("font-size: 12px;");
   });
 });

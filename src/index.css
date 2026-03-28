@@ -566,7 +566,7 @@ a{ color:inherit; }
 .mainPageStack{
   display:flex;
   flex-direction:column;
-  gap:14px;
+  gap:18px;
   width:100%;
 }
 
@@ -1297,16 +1297,16 @@ a{ color:inherit; }
 .drawerBackdrop{
   position:fixed;
   inset:0;
+  display:flex;
   height:100dvh;
   justify-content:flex-end;
   align-items:stretch;
   overflow:hidden;
 }
 .drawerPanelOuter{
-  position:fixed;
-  top:0;
-  right:0;
-  bottom:0;
+  position:relative;
+  margin-left:auto;
+  flex:0 0 auto;
   width:min(360px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
   padding-top:calc(70px + var(--safe-top));
   padding-right:calc(var(--page-pad) + var(--safe-right));
@@ -1316,14 +1316,20 @@ a{ color:inherit; }
   --gate-glass-radius: 20px;
   --gate-glass-shadow: var(--shadow-lg, var(--drawerShadow, 0 24px 80px rgba(0,0,0,.4)));
   height:100dvh;
+  min-height:0;
   box-sizing: border-box;
+  display:flex;
+  flex-direction:column;
 }
 .drawerPanelClip{
   height:100%;
+  min-height:0;
   border-radius:inherit;
+  display:flex;
+  flex-direction:column;
 }
 .drawerPanel{
-  height:100%;
+  flex:1 1 auto;
   display:flex;
   flex-direction:column;
   min-height:0;
@@ -1473,8 +1479,6 @@ a{ color:inherit; }
 }
 @media (max-width: 767px){
   .drawerPanelOuter{
-    right:0;
-    left:0;
     width:auto;
     padding-top:calc(12px + var(--safe-top));
     padding-right:calc(12px + var(--safe-right));

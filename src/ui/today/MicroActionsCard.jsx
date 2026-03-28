@@ -107,7 +107,7 @@ export default function MicroActionsCard({
 
   return (
     <GateSection
-      className={`microCard GateSurfacePremium GateCardPremium${isReadOnlyDate ? " isReadOnlyDate" : ""}`}
+      className={`microCard GateSurfacePremium GateCardPremium GateSecondarySectionCard${isReadOnlyDate ? " isReadOnlyDate" : ""}`}
       collapsible={false}
       data-tour-id="today-micro-card"
     >

@@ -5,13 +5,10 @@
 .topNavGateWrap {
   padding: 0;
   position: relative;
-  z-index: var(--z-topbar, 900); /* topbar sous les overlays de menu */
+  z-index: var(--z-topbar, 900);
 }
 
-.TopNavSurfaceOuter {
-  position: relative;
-}
-
+.TopNavSurfaceOuter,
 .TopNavSurfaceClip {
   position: relative;
 }
@@ -19,7 +16,7 @@
 .topNavGateBar {
   gap: 0;
   min-height: 0;
-  padding: 10px;
+  padding: 12px;
   position: relative;
   z-index: 1;
 }
@@ -27,7 +24,7 @@
 .topNavGateBar .navRow,
 .topNavGateBar .navGrid,
 .topNavGateBar .navActions {
-  gap: 8px;
+  gap: 10px;
 }
 
 .topNavWalletBadge {
@@ -36,539 +33,106 @@
   align-self: stretch;
 }
 
-.topNavMenuSlot {
+.topNavMenuSlot,
+.topNavWalletSlot,
+.topNavWalletTrigger {
   flex: 0 0 auto;
+}
+
+.topNavWalletTrigger {
+  display: inline-flex;
+  align-items: center;
 }
 
 .topNavTabsGrid {
   min-width: 0;
 }
 
-.topNavWalletSlot {
-  flex: 0 0 auto;
+.drawerMenuPanel {
+  gap: 14px;
 }
 
-.topNavWalletTrigger {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
+.drawerMenuHeader {
+  padding: 2px 4px 0;
 }
 
-.topMenuGatePopover {
-  position: relative;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
+.drawerMenuHeader .gateHeaderText {
+  gap: 4px;
 }
 
-.topMenuScrim {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-scrim, 1200); /* scrim derrière le popover */
-  background: rgba(5, 7, 12, 0.58);
+.drawerMenuHeader .gateHeader {
+  gap: 12px;
+  align-items: flex-start;
 }
 
-.topMenuPopoverLayer {
-  --safeTop: env(safe-area-inset-top, 0px);
-  --safeBottom: env(safe-area-inset-bottom, 0px);
-  --topMenuMaxH: calc(100dvh - 120px - (16px + var(--safeBottom)));
-  position: fixed;
-  z-index: var(--z-popover, 1210); /* popover au-dessus du scrim */
-  max-width: calc(100vw - 32px);
-  box-sizing: border-box;
-  pointer-events: auto;
-  opacity: 1;
-  visibility: visible;
+.drawerMenuHeader .gateHeaderSubtitle {
+  max-width: 26ch;
 }
 
-.topMenuPopoverLayer > * {
-  max-height: var(--topMenuMaxH);
-  overflow: visible;
+.drawerMenuCloseBtn {
+  margin-top: 1px;
+  align-self: flex-start;
 }
 
-.topMenuCardOuter {
-  position: relative;
+.drawerMenuBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 4px 4px 8px;
 }
 
-.topMenuCardClip {
-  position: relative;
+.drawerMenuGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
 }
 
-.topMenuCardContent {
-  position: relative;
-  z-index: 1;
-  max-height: var(--topMenuMaxH);
-  overflow: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+.drawerMenuSectionTitle {
+  padding-inline: 4px;
 }
 
-.topMenuGate {
-  min-height: 0;
-}
-
-.topMenuGateHeader {
-  padding: 4px 2px 8px;
-}
-
-.topMenuGate .gateHeaderText {
-  padding-inline: 2px;
-}
-
-.topMenuHeaderActions {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.topMenuHeaderIconButton {
-  width: 32px;
-  height: 32px;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 90%, rgba(255, 255, 255, 0.1));
-  background: color-mix(in srgb, var(--surface-primary) 94%, #0c1016);
-  color: var(--text-primary);
-  display: inline-grid;
-  place-items: center;
-  cursor: pointer;
-  line-height: 1;
-  font-size: 16px;
-}
-
-.topMenuHeaderIconButton:hover {
-  border-color: color-mix(in srgb, var(--accent-primary) 24%, var(--border-subtle));
-  background: color-mix(in srgb, var(--surface-elevated) 90%, #101722);
-}
-
-.topMenuGateList {
+.drawerMenuItems {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 0 2px;
 }
 
-.topMenuGateItem {
-  padding: 12px 14px;
-}
-
-.topMenuGateSectionFlat {
-  border: 0;
-  background: transparent;
+.drawerMenuItem {
+  text-align: left;
+  padding: 13px 14px;
+  gap: 10px;
   box-shadow: none;
-  padding: 4px 0;
+}
+
+.drawerMenuItem .gateRowBody {
+  align-items: flex-start;
+}
+
+.drawerMenuItem .gateRowText {
   gap: 0;
 }
 
-.topMenuGateRowFlat {
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 92%, rgba(255, 255, 255, 0.08));
-  background: color-mix(in srgb, var(--surface-primary) 96%, #0c1017);
-  box-shadow: none;
-}
-
-.topMenuGateRowFlat .gateRowLabel {
-  font-size: 14px;
-  line-height: 1.34;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.topMenuGateRowFlat .gateRowMeta {
-  font-size: 12px;
-  line-height: 1.34;
-  color: color-mix(in srgb, var(--text-secondary) 88%, rgba(255, 255, 255, 0.12));
-}
-
-.topMenuGateRowFlat.isInteractive:hover {
-  border-color: color-mix(in srgb, var(--accent-primary) 22%, var(--border-subtle));
-  background: color-mix(in srgb, var(--surface-elevated) 92%, #101722);
-}
-
-.topMenuGateRowFlat.isInteractive:focus-visible {
-  outline: 1px solid color-mix(in srgb, var(--accent) 46%, transparent);
-  outline-offset: 0;
-}
-
-.topMenuGateChevron {
-  color: var(--text-muted);
-  font-size: 16px;
-  line-height: 1;
-}
-
-.topMenuGateDivider {
-  height: 1px;
-  background: color-mix(in srgb, var(--gate-border) 82%, transparent);
-  margin: 1px 2px 5px;
-}
-
-.topMenuGateFooter {
-  padding-top: 8px;
-  justify-content: stretch;
-}
-
-.topMenuGateLogout {
-  width: 100%;
-  justify-content: center;
-  border-color: color-mix(in srgb, #ff7f7f 34%, var(--gate-border));
-  color: color-mix(in srgb, #ffd0d0 76%, var(--gate-text));
-  background: color-mix(in srgb, #571616 24%, transparent);
-}
-
-.topMenuGateLogout:hover {
-  border-color: color-mix(in srgb, #ff8f8f 42%, var(--gate-border));
-  background: color-mix(in srgb, #672020 30%, transparent);
-}
-
-.topMenuGateError {
-  margin: 0;
-  font-size: 12px;
-  color: color-mix(in srgb, #ff9999 82%, var(--gate-text));
-  padding: 0 2px;
-}
-
-.topMenuSubviewSection {
-  padding-top: 8px;
-}
-
-.topMenuSubview {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 6px 2px 2px;
-}
-
-.topMenuSubviewKicker {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.3;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--accent) 56%, var(--gate-text));
-}
-
-.topMenuSubviewBody {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.42;
-  color: color-mix(in srgb, var(--gate-text) 76%, var(--gate-text-muted));
-}
-
-.topMenuSubviewActions {
-  margin-top: 2px;
-}
-
-.topMenuWalletBalance {
-  width: fit-content;
-}
-
-.topMenuWalletBalance .WalletBadgeCard {
-  min-height: 32px;
-  padding-inline: 12px;
-  opacity: 0.92;
-}
-
-.topMenuWalletStats {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding-inline: 2px;
-}
-
-.topMenuWalletTopRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding-inline: 2px;
-}
-
-.topMenuWalletTopBtn {
-  min-width: 96px;
-  justify-content: center;
-}
-
-.topMenuWalletStat {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border: 1px solid color-mix(in srgb, var(--gate-border) 86%, rgba(255, 255, 255, 0.16));
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--gate-surface-1) 94%, #050910);
-  padding: 9px 11px;
-  font-size: 12px;
-  line-height: 1.34;
-  color: color-mix(in srgb, var(--gate-text-muted) 86%, rgba(255, 255, 255, 0.18));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
-}
-
-.topMenuWalletStat > span {
-  min-width: 0;
-  line-height: 1.34;
-  padding-right: 6px;
-}
-
-.topMenuWalletStat strong {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--gate-text);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  line-height: 1.24;
-}
-
-.topMenuWalletEvents {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding-inline: 2px;
-}
-
-.topMenuWalletEventsTitle {
-  font-size: 12px;
-  line-height: 1.34;
-  font-weight: 650;
-  color: var(--gate-text);
-}
-
-.topMenuWalletEvent {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  border: 1px solid color-mix(in srgb, var(--gate-border) 86%, rgba(255, 255, 255, 0.14));
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--gate-surface-1) 94%, #050910);
-  padding: 9px 11px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
-}
-
-.topMenuWalletEventText {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.topMenuWalletEventLabel {
-  font-size: 12px;
-  line-height: 1.34;
-  color: var(--gate-text);
-}
-
-.topMenuWalletEventMeta {
-  font-size: 11px;
-  line-height: 1.3;
-  color: var(--gate-text-muted);
-}
-
-.topMenuWalletEventAmount {
-  font-size: 12px;
-  font-weight: 700;
-  color: color-mix(in srgb, #f5d59f 82%, var(--gate-text));
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  line-height: 1.24;
-  padding-left: 6px;
-}
-
-.topMenuWalletEventsEmpty {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.34;
-  color: var(--gate-text-muted);
-}
-
-.topMenuTotemPreview {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.topMenuTotemAvatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--gate-border) 86%, rgba(255, 255, 255, 0.18));
-  background: color-mix(in srgb, var(--totem-body-color) 12%, var(--gate-surface-1));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  display: inline-grid;
-  place-items: center;
-  position: relative;
-}
-
-.topMenuTotemGlyph {
-  font-size: 24px;
-  line-height: 1;
-  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.24));
-}
-
-.topMenuTotemAccessory {
-  position: absolute;
-  right: -6px;
-  bottom: -6px;
-  font-size: 14px;
-}
-
-.topMenuTotemSummary {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.topMenuTotemBalance {
-  font-size: 14px;
-  font-weight: 700;
-  color: color-mix(in srgb, #f5d59f 82%, var(--gate-text));
-  font-variant-numeric: tabular-nums;
-  line-height: 1.24;
-}
-
-.topMenuTotemMeta {
-  font-size: 12px;
-  line-height: 1.34;
-  color: var(--gate-text-muted);
-}
-
-.topMenuTotemToggleRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 12px;
-  color: var(--gate-text-muted);
-  padding-inline: 2px;
-}
-
-.topMenuTotemToggleBtn {
-  min-width: 110px;
-  justify-content: center;
-}
-
-.topMenuTotemSection {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding-inline: 2px;
-}
-
-.topMenuTotemSectionTitle {
-  font-size: 12px;
-  line-height: 1.34;
-  font-weight: 650;
-  color: var(--gate-text);
-}
-
-.topMenuTotemGrid {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.topMenuTotemCard {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid color-mix(in srgb, var(--gate-border) 86%, rgba(255, 255, 255, 0.14));
-  border-radius: 12px;
-  padding: 9px 10px;
-  background: color-mix(in srgb, var(--gate-surface-1) 94%, #050a12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
-}
-
-.topMenuTotemCard.isEquipped {
+.drawerMenuItem.isSelected {
   border-color: color-mix(in srgb, var(--accent) 32%, var(--gate-border));
+  background: color-mix(in srgb, var(--gate-surface-1) 90%, rgba(255, 255, 255, 0.04));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
-.topMenuTotemSwatch {
-  width: 18px;
-  height: 18px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  flex: 0 0 auto;
-}
-
-.topMenuTotemAccessoryBadge {
-  width: 18px;
-  height: 18px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  display: inline-grid;
-  place-items: center;
-  font-size: 12px;
-  flex: 0 0 auto;
-}
-
-.topMenuTotemCardText {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  flex: 1;
-}
-
-.topMenuTotemCardText strong {
-  font-size: 12px;
-  line-height: 1.34;
-  color: var(--gate-text);
-}
-
-.topMenuTotemCardText span {
-  font-size: 11px;
-  line-height: 1.3;
-  color: var(--gate-text-muted);
-}
-
-.topMenuTotemActionBtn {
-  min-width: 84px;
-  justify-content: center;
-}
-
-.topMenuSettingsField {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.topMenuSettingsLabel {
-  font-size: 12px;
-  line-height: 1.3;
-  color: var(--gate-text-muted);
-}
-
-.topMenuSettingsTextarea {
-  min-height: 110px;
-}
-
-.topMenuSettingsField .GateTextareaPremium {
-  border-color: color-mix(in srgb, var(--gate-border) 86%, rgba(255, 255, 255, 0.14));
-  background: color-mix(in srgb, var(--gate-surface-1) 92%, #050910);
-}
-
-.topMenuSettingsStatus {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.34;
-  color: color-mix(in srgb, var(--accent) 58%, var(--gate-text));
-}
-
-@media (max-width: 520px) {
-  .topMenuPopoverLayer {
-    max-width: calc(100vw - 32px);
-  }
+.drawerMenuItem.isInteractive:hover {
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--gate-border));
 }
 
 @media (max-width: 767px) {
   .topNavGateBar {
-    padding: 7px 8px;
+    padding: 8px 10px;
   }
 
   .topNavGateBar .navRow {
-    gap: 6px;
+    gap: 8px;
   }
 
   .topNavGateBar .navRow.is-mobile-layout {
@@ -579,11 +143,10 @@
 
   .topNavGateBar .navGrid,
   .topNavGateBar .navActions {
-    gap: 4px;
+    gap: 6px;
   }
 
   .topNavMenuSlot {
-    flex: 0 0 44px;
     width: 44px;
   }
 
@@ -595,15 +158,14 @@
 
   .topNavTabsGrid {
     flex: 1 1 auto;
-    min-width: 0;
   }
 
   .topNavTabsGrid .NavPillUnified {
     width: 100%;
     min-width: 0;
     padding-inline: 1px;
-    font-size: clamp(8.8px, 2.45vw, 10.25px);
-    letter-spacing: -0.045em;
+    font-size: clamp(8.9px, 2.45vw, 10.35px);
+    letter-spacing: -0.04em;
   }
 
   .topNavWalletSlot {
@@ -612,5 +174,14 @@
 
   .topNavTabsGrid.navGrid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .drawerMenuPanel {
+    gap: 12px;
+  }
+
+  .drawerMenuBody {
+    gap: 12px;
+    padding-bottom: 12px;
   }
 }

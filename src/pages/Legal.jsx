@@ -18,27 +18,43 @@ export default function Legal({ data, onOpenSupport }) {
           title="Utilisation"
           description="Cadre général de l’app"
           collapsible={false}
-          className="GateSurfacePremium GateCardPremium"
+          className="GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
-          <div className="small">Discip Yourself t’aide à structurer, planifier et exécuter ce qui compte.</div>
-          <div className="small">Tu restes responsable des décisions prises et de l’usage des recommandations proposées.</div>
+          <div className="gatePageInlineList">
+            <div className="GateInlineMetaCard gatePageInlineText">
+              <div className="GateRoleCardTitle">Cadre produit</div>
+              <div className="GateRoleHelperText">Discip Yourself t’aide à structurer, planifier et exécuter ce qui compte.</div>
+            </div>
+            <div className="GateInlineMetaCard gatePageInlineText">
+              <div className="GateRoleCardTitle">Responsabilité</div>
+              <div className="GateRoleHelperText">Tu restes responsable des décisions prises et de l’usage des recommandations proposées.</div>
+            </div>
+          </div>
         </GateSection>
 
         <GateSection
           title="Compte et données"
           description="Accès, abonnement et stockage"
           collapsible={false}
-          className="GateSurfacePremium GateCardPremium"
+          className="GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
-          <div className="small">Certaines fonctions nécessitent un compte actif ou un abonnement Premium.</div>
-          <div className="small">Les données utiles au fonctionnement sont stockées sur ton compte et dans le cache local de l’app.</div>
+          <div className="gatePageInlineList">
+            <div className="GateInlineMetaCard gatePageInlineText">
+              <div className="GateRoleCardTitle">Accès</div>
+              <div className="GateRoleHelperText">Certaines fonctions nécessitent un compte actif ou un abonnement Premium.</div>
+            </div>
+            <div className="GateInlineMetaCard gatePageInlineText">
+              <div className="GateRoleCardTitle">Stockage</div>
+              <div className="GateRoleHelperText">Les données utiles au fonctionnement sont stockées sur ton compte et dans le cache local de l’app.</div>
+            </div>
+          </div>
         </GateSection>
 
         <GateSection
           title="Support"
           description="Besoin d’aide produit ou juridique ?"
           collapsible={false}
-          className="GateSurfacePremium GateCardPremium"
+          className="GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
           <div className="GatePrimaryCtaRow">
             <GateButton

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
+import GatePage from "../shared/ui/gate/GatePage";
 import MicroActionsCard from "../ui/today/MicroActionsCard";
 import RewardedAdModal from "../ui/today/RewardedAdModal";
 import {
@@ -348,7 +349,10 @@ export default function MicroActions({ data, setData, isPremiumPlan = false }) {
 
   return (
     <ScreenShell data={safeData} pageId="micro-actions" backgroundImage={safeData?.profile?.whyImage || ""}>
-      <div className="stack stackGap12">
+      <GatePage
+        title={<span className="GatePageTitle">Micro-actions</span>}
+        subtitle={<span className="GatePageSubtitle">Petites actions rapides pour relancer l’élan du jour.</span>}
+      >
         <MicroActionsCard
           categoryId={selectedCategoryId}
           categoryOptions={microCategoryOptions}
@@ -369,7 +373,7 @@ export default function MicroActions({ data, setData, isPremiumPlan = false }) {
           onUseRerollCredit={(indices) => handleMicroReroll(indices, { useCredit: true })}
           onWatchAd={handleMicroWatchAd}
         />
-      </div>
+      </GatePage>
       <RewardedAdModal
         open={rewardedAdRequest.open}
         placement={rewardedAdRequest.placement}

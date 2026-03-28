@@ -182,8 +182,8 @@ export default function Journal({ data, setData }) {
         title={<span className="GatePageTitle">{SURFACE_LABELS.journal}</span>}
         subtitle={<span className="GatePageSubtitle">Capture le contexte du jour sans repasser par Today.</span>}
       >
-        <GateSection title="Édition" collapsible={false} className="GateSurfacePremium GateCardPremium">
-          <div className="col" style={{ gap: 12 }}>
+        <GateSection title="Édition" collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+          <div className="gatePageSectionStack">
             <label className="GateFormField">
               <span className="GateFormLabel">Catégorie</span>
               <select
@@ -267,8 +267,8 @@ export default function Journal({ data, setData }) {
           </div>
         </GateSection>
 
-        <GateSection title="Historique" collapsible={false} className="GateSurfacePremium GateCardPremium">
-          <div className="col" style={{ gap: 10 }}>
+        <GateSection title="Historique" collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+          <div className="gatePageInlineList">
             {historyItems.length ? (
               historyItems.map((item) => {
                 const metaParts = [];
@@ -276,9 +276,9 @@ export default function Journal({ data, setData }) {
                 if (item.meta?.humeur) metaParts.push(`Humeur: ${item.meta.humeur}`);
                 if (item.meta?.motivation) metaParts.push(`Motivation: ${item.meta.motivation}`);
                 return (
-                  <div key={item.id} className="listItem GateRowPremium" style={{ display: "grid", gap: 6 }}>
-                    <div className="row" style={{ justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                      <div className="small2" style={{ opacity: 0.75 }}>{item.dateKey || todayKey}</div>
+                  <div key={item.id} className="GateInlineMetaCard gatePageInlineText">
+                    <div className="gatePageSplitRow">
+                      <div className="GateRoleCardMeta">{item.dateKey || todayKey}</div>
                       <GateButton
                         type="button"
                         variant="ghost"
@@ -289,13 +289,15 @@ export default function Journal({ data, setData }) {
                         Supprimer
                       </GateButton>
                     </div>
-                    {metaParts.length ? <div className="small2">{metaParts.join(" · ")}</div> : null}
-                    {item.note ? <div className="small">{item.note}</div> : null}
+                    {metaParts.length ? <div className="GateRoleCardMeta">{metaParts.join(" · ")}</div> : null}
+                    {item.note ? <div className="GateRoleHelperText">{item.note}</div> : null}
                   </div>
                 );
               })
             ) : (
-              <div className="small2">Aucune note enregistrée pour cette catégorie.</div>
+              <div className="GateInlineMetaCard gatePageInlineText">
+                <div className="GateRoleHelperText">Aucune note enregistrée pour cette catégorie.</div>
+              </div>
             )}
           </div>
         </GateSection>

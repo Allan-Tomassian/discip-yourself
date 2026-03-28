@@ -60,27 +60,6 @@
     0 12px 24px rgba(0, 0, 0, 0.18);
 }
 
-.topMenuCardOuter {
-  border-radius: var(--radius-card, 16px);
-  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.42);
-}
-
-.topMenuCardClip {
-  border-radius: inherit;
-  overflow: hidden;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, #080c14 74%, transparent),
-    color-mix(in srgb, #060a12 82%, transparent)
-  );
-  backdrop-filter: blur(var(--gate-glass-blur, 8px)) saturate(var(--gate-glass-saturation, 1.02));
-  -webkit-backdrop-filter: blur(var(--gate-glass-blur, 8px)) saturate(var(--gate-glass-saturation, 1.02));
-}
-
-.topMenuGate {
-  border-radius: inherit;
-}
-
 .GateOverlayBackdrop {
   backdrop-filter: blur(var(--gate-overlay-blur, 7px)) saturate(var(--gate-overlay-saturation, 1.02));
   -webkit-backdrop-filter: blur(var(--gate-overlay-blur, 7px)) saturate(var(--gate-overlay-saturation, 1.02));
@@ -164,15 +143,16 @@
 
 .GateMainSection .gateSectionHeader,
 .GateMainSection .cardSectionTitleRow {
-  padding-inline: 2px;
+  padding-inline: 4px;
 }
 
 .GateMainSectionCard,
 .GateSecondarySectionCard {
-  --gate-card-padding: 16px;
-  --gate-card-gap: 14px;
-  --gate-section-body-gap: 14px;
-  --gate-section-header-gap: 4px;
+  --gate-card-padding: 20px;
+  --gate-card-gap: 18px;
+  --gate-section-body-gap: 18px;
+  --gate-surface-body-gap: 18px;
+  --gate-section-header-gap: 6px;
 }
 
 .GateSecondarySectionCard {
@@ -198,13 +178,13 @@
 
 .GateAnalyticsCard {
   display: grid;
-  gap: 6px;
-  padding: 12px 14px;
+  gap: 8px;
+  padding: 18px;
 }
 
 .GateInlineMetaCard {
-  gap: 8px;
-  padding: 12px 14px;
+  gap: 10px;
+  padding: 16px;
 }
 
 /* Shared text-role hierarchy inside premium surfaces. */
@@ -222,15 +202,15 @@
 .GateRoleSectionSubtitle,
 .GateRoleCardMeta,
 .GateRoleCardHint {
-  font-size: 12px;
-  line-height: 1.36;
+  font-size: 13px;
+  line-height: 1.45;
   color: color-mix(in srgb, var(--gate-text-muted) 90%, rgba(255, 255, 255, 0.16));
 }
 
 .GateRoleHelperText,
 .GateSurfacePremium .small {
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.52;
   color: color-mix(in srgb, var(--gate-text) 88%, rgba(255, 255, 255, 0.08));
 }
 
@@ -265,6 +245,17 @@
   letter-spacing: -0.02em;
 }
 
+.GateAnalyticsCard .GateRoleSectionSubtitle,
+.GateAnalyticsCard .GateRoleCardMeta,
+.GateAnalyticsCard .GateRoleHelperText,
+.GateAnalyticsCard .itemSub,
+.GateAnalyticsCard .small,
+.GateAnalyticsCard .small2,
+.GateAnalyticsCard .textMuted,
+.GateAnalyticsCard .textMuted2 {
+  line-height: 1.5;
+}
+
 .GateSurfacePremium .cardSectionTitleRow {
   align-items: center;
   gap: 10px;
@@ -272,18 +263,18 @@
 }
 
 .GateSurfacePremium .gateSectionBody {
-  gap: 16px;
+  gap: var(--gate-surface-body-gap, 16px);
   min-width: 0;
 }
 
 .GateCardPremium .gateSectionBody {
-  padding: 2px;
+  padding: 4px;
 }
 
 .GateCardPremium .gateHeader,
 .GateCardPremium .gateSectionHeader,
 .GateCardPremium .cardSectionTitleRow {
-  padding-inline: 2px;
+  padding-inline: 4px;
 }
 
 .GateCardPremium .gateHeaderText,

@@ -28,16 +28,29 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
           title={premium ? MARKETING_COPY.premiumPlan : MARKETING_COPY.essentialPlan}
           description="Gère ton plan, tes achats et tes accès."
           collapsible={false}
-          className="GateSurfacePremium GateCardPremium"
+          className="GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
-          <div className="small2">
-            {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} · {limits.actions}{" "}
-            {LABELS.actionsLower}
+          <div className="gatePageInlineList">
+            <div className="GateInlineMetaCard gatePageInlineText">
+              <div className="GateRoleCardTitle">Plan actif</div>
+              <div className="GateRoleHelperText">
+                {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} · {limits.actions}{" "}
+                {LABELS.actionsLower}
+              </div>
+            </div>
+            <div className="GateInlineMetaCard gatePageInlineText">
+              <div className="GateRoleCardTitle">Accès Premium</div>
+              <div className="GateRoleHelperText">
+                Les accès Premium sont vérifiés quand tu ouvres le Coach et les fonctions avancées.
+              </div>
+            </div>
+            {premium && expiryLabel ? (
+              <div className="GateInlineMetaCard gatePageInlineText">
+                <div className="GateRoleCardTitle">Échéance</div>
+                <div className="GateRoleCardMeta">Actif jusqu’au {expiryLabel}</div>
+              </div>
+            ) : null}
           </div>
-          <div className="small2">
-            Les accès Premium sont vérifiés quand tu ouvres le Coach et les fonctions avancées.
-          </div>
-          {premium && expiryLabel ? <div className="small2">Actif jusqu’au {expiryLabel}</div> : null}
           <div className="GatePrimaryCtaRow">
             <GateButton
               className="GatePressable"

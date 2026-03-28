@@ -20,30 +20,42 @@ export default function Support({ data }) {
           title="Contact"
           description="Réponse par email"
           collapsible={false}
-          className="GateSurfacePremium GateCardPremium"
+          className="GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
-          <div className="small">support@discip-yourself.app</div>
+          <div className="GateInlineMetaCard gatePageInlineText">
+            <div className="GateRoleCardTitle">Email</div>
+            <div className="GateRoleHelperText">support@discip-yourself.app</div>
+          </div>
         </GateSection>
 
         <GateSection
           title="Questions fréquentes"
           description="Les réponses utiles les plus courantes"
           collapsible={false}
-          className="GateSurfacePremium GateCardPremium"
+          className="GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
-          <div className="small">Comment récupérer un achat déjà payé ?</div>
-          <div className="small2">Ouvre {SURFACE_LABELS.subscription} puis appuie sur « {UI_COPY.restorePurchases} ».</div>
-          <div className="small">Comment sauvegarder tes données ?</div>
-          <div className="small2">Ouvre Données puis exporte un fichier JSON.</div>
+          <div className="gatePageInlineList">
+            <div className="GateInlineMetaCard gatePageInlineText">
+              <div className="GateRoleCardTitle">Comment récupérer un achat déjà payé ?</div>
+              <div className="GateRoleHelperText">Ouvre {SURFACE_LABELS.subscription} puis appuie sur « {UI_COPY.restorePurchases} ».</div>
+            </div>
+            <div className="GateInlineMetaCard gatePageInlineText">
+              <div className="GateRoleCardTitle">Comment sauvegarder tes données ?</div>
+              <div className="GateRoleHelperText">Ouvre Données puis exporte un fichier JSON.</div>
+            </div>
+          </div>
         </GateSection>
 
         <GateSection
           title="Version"
           description="Build actuelle"
           collapsible={false}
-          className="GateSurfacePremium GateCardPremium"
+          className="GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
-          <div className="small">{version}</div>
+          <div className="GateInlineMetaCard gatePageInlineText">
+            <div className="GateRoleCardTitle">Version installée</div>
+            <div className="GateRoleHelperText">{version}</div>
+          </div>
         </GateSection>
       </GatePage>
     </ScreenShell>

@@ -1,7 +1,8 @@
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { GateButton, GatePanel } from "../../shared/ui/gate/Gate";
+import { GateHeader, GatePanel, GateRow } from "../../shared/ui/gate/Gate";
 import { SURFACE_LABELS } from "../../ui/labels";
+import "../../features/navigation/topMenuGate.css";
 
 const SECTIONS = [
   {
@@ -89,56 +90,67 @@ export default function MainDrawer({
       <div
         className="drawerPanelOuter GateGlassOuter"
         onClick={(event) => event.stopPropagation()}
-        style={{ maxWidth: 360, width: "calc(100vw - 24px)", marginLeft: 12, marginRight: "auto" }}
       >
         <div className="drawerPanelClip GateGlassClip GateGlassBackdrop">
           <GatePanel
-            className="drawerPanel GateGlassContent GateSurfacePremium GateCardPremium"
+            className="drawerPanel drawerMenuPanel GateGlassContent GateMainSection GateMainSectionCard GateSurfacePremium GateCardPremium"
             role="dialog"
             aria-modal="true"
             aria-label="Menu principal"
-            >
-            <div className="drawerHeader">
-              <div style={{ fontWeight: 800 }}>Menu</div>
-              <GateButton
-                type="button"
-                variant="ghost"
-                className="GatePressable"
-                withSound
-                onClick={() => onClose?.()}
-                aria-label="Fermer le menu"
-              >
-                Fermer
-              </GateButton>
-            </div>
-            <div className="drawerBody mt12 col" style={{ gap: 18 }}>
+          >
+            <GateHeader
+              className="drawerHeader drawerMenuHeader"
+              title={<span className="GatePageTitle">Menu</span>}
+              subtitle={<span className="GatePageSubtitle">Accès rapides aux pages secondaires.</span>}
+              actions={
+                <button
+                  type="button"
+                  className="GateIconButtonPremium GatePressable drawerMenuCloseBtn"
+                  onClick={() => onClose?.()}
+                  aria-label="Fermer le menu"
+                  title="Fermer"
+                >
+                  ×
+                </button>
+              }
+            />
+            <div className="drawerBody">
+              <nav className="drawerMenuBody" aria-label="Navigation secondaire">
               {SECTIONS.map((section) => (
-                <section key={section.title} className="col" style={{ gap: 10 }}>
-                  <div className="small2" style={{ opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                <section
+                  key={section.title}
+                  className="drawerMenuGroup"
+                  aria-labelledby={`drawer-menu-group-${section.title}`}
+                >
+                  <div
+                    id={`drawer-menu-group-${section.title}`}
+                    className="GateRoleSectionTitle drawerMenuSectionTitle"
+                  >
                     {section.title}
                   </div>
-                  <div className="col" role="menu" aria-label={section.title} style={{ gap: 8 }}>
+                  <div className="drawerMenuItems" role="group" aria-label={section.title}>
                     {section.items.map((item) => {
                       const selected = active === item.id;
                       return (
-                        <button
+                        <GateRow
                           key={item.id}
-                          type="button"
                           role="menuitem"
-                          className={`listItem GateRowPremium GatePressable${selected ? " navBtnActive" : ""}`}
+                          label={item.label}
+                          withSound
+                          selected={selected}
+                          className="GateRowPremium GateInlineMetaCard GatePressable drawerMenuItem"
+                          aria-current={selected ? "page" : undefined}
                           onClick={() => {
                             onNavigate?.(item.id);
                             onClose?.();
                           }}
-                          style={{ textAlign: "left" }}
-                        >
-                          <div className="itemTitle">{item.label}</div>
-                        </button>
+                        />
                       );
                     })}
                   </div>
                 </section>
               ))}
+              </nav>
             </div>
           </GatePanel>
         </div>

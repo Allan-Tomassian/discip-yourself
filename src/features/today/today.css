@@ -2,7 +2,6 @@
   max-width: 720px;
   margin: 0 auto;
   width: 100%;
-  gap: 14px;
 }
 
 .todayHeroCard {
@@ -13,7 +12,6 @@
 .todayHeroCard .gateSectionBody {
   display: flex;
   flex-direction: column;
-  gap: 14px;
   position: relative;
   z-index: 1;
 }
@@ -22,7 +20,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   padding-inline: 2px;
   flex-wrap: wrap;
 }
@@ -30,7 +28,7 @@
 .todayHeroHeaderCluster {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
   flex-wrap: wrap;
 }
@@ -120,14 +118,14 @@
 .todayHeroBody {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   padding-inline: 2px;
 }
 
 .todayHeroMetaRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -151,12 +149,12 @@
 
 .todayHeroDetailList {
   display: grid;
-  gap: 10px;
+  gap: 14px;
 }
 
 .todayHeroDetailBlock {
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
 
 .todayHeroDetailLabel {
@@ -208,7 +206,7 @@
 }
 
 .todayHeroActions {
-  margin-top: 2px;
+  margin-top: 0;
   padding-inline: 2px;
 }
 
@@ -234,7 +232,7 @@
 .todayNextActionItem {
   position: relative;
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .todayNextActionItem > * {
@@ -246,7 +244,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -259,7 +257,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -272,7 +270,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
   flex-wrap: wrap;
 }
 
@@ -288,39 +286,34 @@
 .todaySectionCard .gateSectionBody {
   display: flex;
   flex-direction: column;
-  gap: 14px;
 }
 
 .todaySectionBody {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .todaySectionHeader {
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
 
 .todayDailyStateGrid {
   width: 100%;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .todayDailyStateItem {
   display: grid;
-  gap: 6px;
-  min-height: 82px;
+  gap: 8px;
+  min-height: 84px;
   align-content: start;
 }
 
 @media (max-width: 767px) {
-  .todayHeroActions {
-    margin-top: 2px;
-  }
-
   .todayHeroPrimaryBtn,
   .todayHeroSecondaryBtn {
     min-width: 0;

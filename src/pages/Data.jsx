@@ -60,7 +60,7 @@ export default function Data({ data, setData, onOpenPaywall }) {
           title="Sauvegarde"
           description="Exporte ou importe l’état complet de l’app."
           collapsible={false}
-          className="GateSurfacePremium GateCardPremium"
+          className="GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
           <div className="GatePrimaryCtaRow">
             <GateButton
@@ -99,7 +99,11 @@ export default function Data({ data, setData, onOpenPaywall }) {
             </GateButton>
           </div>
 
-          {importStatus ? <div className="small2">{importStatus}</div> : null}
+          {importStatus ? (
+            <div className="GateInlineMetaCard gatePageInlineText">
+              <div className="GateRoleHelperText">{importStatus}</div>
+            </div>
+          ) : null}
         </GateSection>
       </GatePage>
     </ScreenShell>

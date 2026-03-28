@@ -1,5 +1,4 @@
 .planningPage {
-  gap: 14px;
 }
 
 .planningSectionCard {
@@ -10,7 +9,6 @@
 .planningSectionCard .gateSectionBody {
   display: flex;
   flex-direction: column;
-  gap: 14px;
   position: relative;
   z-index: 1;
 }
@@ -18,26 +16,26 @@
 .planningSectionBody {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
 }
 
 .planningSectionHeader {
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
 
 .planningSectionHeader--split {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
   flex-wrap: wrap;
 }
 
 .planningSectionHeaderText {
   min-width: 0;
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
 
 .planningSectionMeta {
@@ -48,7 +46,7 @@
 .planningSectionFooter {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -63,16 +61,16 @@
 
 .planningDayList {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .planningItemRow {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .planningItemRow--compact {
-  gap: 7px;
+  gap: 8px;
 }
 
 .planningItemRowTop {
@@ -99,12 +97,12 @@
 .planningWeekGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .planningWeekBucket {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .planningWeekBucket.isToday {
@@ -113,7 +111,7 @@
 
 .planningWeekBucketHeader {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .planningWeekBucketHeaderMain {
@@ -129,7 +127,7 @@
 
 .planningWeekList {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .planningTodayTag {
@@ -148,17 +146,17 @@
 }
 
 .planningCoachSection .manualAiStatus {
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .planningCoachSummary {
   display: grid;
-  gap: 8px;
+  gap: 12px;
 }
 
 .planningCoachBlock {
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
 
 .planningCoachLabel {
@@ -167,13 +165,13 @@
 
 .planningDraftSection {
   display: grid;
-  gap: 6px;
-  padding-top: 10px;
+  gap: 8px;
+  padding-top: 14px;
   border-top: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.08));
 }
 
 .planningCoachFooter {
-  padding-top: 2px;
+  padding-top: 4px;
 }
 
 .planningCoachSection .planningSectionActions .gateButton,

@@ -94,27 +94,29 @@ export default function History({ data }) {
         title={<span className="GatePageTitle">Historique</span>}
         subtitle={<span className="GatePageSubtitle">Retrouve tes sessions terminées, reportées ou bloquées.</span>}
       >
-        <GateSection title="Sessions" collapsible={false} className="GateSurfacePremium GateCardPremium">
-          <div className="col" style={{ gap: 10 }}>
+        <GateSection title="Sessions" collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+          <div className="gatePageInlineList">
             {items.length ? (
               items.map((item) => (
-                <div key={item.id} className="listItem GateRowPremium" style={{ display: "grid", gap: 6 }}>
-                  <div className="small2" style={{ opacity: 0.75 }}>
+                <div key={item.id} className="GateInlineMetaCard gatePageInlineText">
+                  <div className="GateRoleCardMeta">
                     {[item.categoryName, item.dateLabel].filter(Boolean).join(" • ")}
                   </div>
-                  <div className="itemTitle">{item.title}</div>
-                  <div className="small2" style={{ opacity: 0.85 }}>
+                  <div className="GateRoleCardTitle">{item.title}</div>
+                  <div className="GateRoleHelperText">
                     Prévu: {formatMinutes(item.plannedMinutes)} · Réel: {formatMinutes(item.realMinutes)} · {item.stateLabel}
                   </div>
                   {item.feedbackLabel ? (
-                    <div className="small2" style={{ opacity: 0.9 }}>
+                    <div className="GateRoleHelperText">
                       Ressenti : {item.feedbackLabel}{item.feedbackText ? ` · ${item.feedbackText}` : ""}
                     </div>
                   ) : null}
                 </div>
               ))
             ) : (
-              <div className="small2">Aucune session enregistrée pour le moment.</div>
+              <div className="GateInlineMetaCard gatePageInlineText">
+                <div className="GateRoleHelperText">Aucune session enregistrée pour le moment.</div>
+              </div>
             )}
           </div>
         </GateSection>
