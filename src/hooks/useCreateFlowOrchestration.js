@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createEmptyDraft, normalizeCreationDraft } from "../creation/creationDraft";
 import {
-  applyCreateFlowDraftMeta,
-  getDefaultCreationStepForMode,
-  normalizeCreateFlowMode,
-} from "../creation/createFlowController";
-import { isValidCreationStep, STEP_HABIT_TYPE } from "../creation/creationSchema";
+  createEmptyCreateItemDraft,
+  hasCreateItemDraft,
+  normalizeActionDraft,
+  normalizeCreateItemDraft,
+  normalizeCreationProposal,
+  normalizeOutcomeDraft,
+  normalizeRouteOrigin,
+} from "../creation/createItemDraft";
 import {
   CATEGORY_VIEW,
   getExecutionActiveCategoryId,
@@ -42,6 +44,17 @@ function resolveCategoryContextNamespace({ source, tab }) {
   return "none";
 }
 
+function resolveMainTab(tab, source) {
+  const safeSource = typeof source === "string" ? source.trim() : "";
+  if (safeSource === "planning" || safeSource === "pilotage" || safeSource === "library" || safeSource === "today") {
+    return safeSource;
+  }
+  if (tab === "planning" || tab === "pilotage" || tab === "library" || tab === "today") return tab;
+  if (tab === "category-detail" || tab === "category-progress" || tab === "edit-item") return "library";
+  if (tab === "coach-chat") return "today";
+  return "today";
+}
+
 export function useCreateFlowOrchestration({
   tab,
   setTab,
@@ -50,19 +63,12 @@ export function useCreateFlowOrchestration({
   setData,
   dataRef,
   openPaywall,
+  onCreateTaskOpen,
 }) {
   const [plusOpen, setPlusOpen] = useState(false);
   const [plusAnchorRect, setPlusAnchorRect] = useState(null);
   const [plusContext, setPlusContext] = useState({ source: null, categoryId: null });
   const plusAnchorElRef = useRef(null);
-  const [createFlowOpen, setCreateFlowOpen] = useState(false);
-  const [createFlowCategoryId, setCreateFlowCategoryId] = useState(null);
-  const [createFlowConfig, setCreateFlowConfig] = useState({
-    source: null,
-    mode: "action",
-    step: STEP_HABIT_TYPE,
-    habitType: null,
-  });
   const [categoryGateOpen, setCategoryGateOpen] = useState(false);
   const [categoryGateContext, setCategoryGateContext] = useState({
     source: null,
@@ -72,13 +78,8 @@ export function useCreateFlowOrchestration({
     next: null,
   });
 
-  const draft = useMemo(() => normalizeCreationDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
-  const hasDraft = Boolean(
-    (draft.outcomes && draft.outcomes.length) ||
-      (draft.habits && draft.habits.length) ||
-      (draft.createdActionIds && draft.createdActionIds.length) ||
-      draft.createdOutcomeId
-  );
+  const draft = useMemo(() => normalizeCreateItemDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
+  const hasDraft = useMemo(() => hasCreateItemDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
 
   const resetCreateDraft = () => {
     if (typeof setData !== "function") return;
@@ -88,7 +89,7 @@ export function useCreateFlowOrchestration({
         ...prev,
         ui: {
           ...prevUi,
-          createDraft: createEmptyDraft(),
+          createDraft: createEmptyCreateItemDraft(),
           createDraftWasCanceled: true,
           createDraftWasCompleted: false,
         },
@@ -129,7 +130,7 @@ export function useCreateFlowOrchestration({
     });
   }, [categories, safeData, tab]);
 
-  const seedCreateDraft = useCallback(({ source, categoryId, outcomeId, step, mode, preserveDraft = false, habitType } = {}) => {
+  const seedCreateDraft = useCallback(({ source, categoryId, outcomeId, kind, preserveDraft = false, origin, proposal } = {}) => {
     if (typeof setData !== "function") return;
     setData((prev) => {
       const prevUi = prev.ui || {};
@@ -137,7 +138,7 @@ export function useCreateFlowOrchestration({
       const baseUi = shouldReset
         ? {
             ...prevUi,
-            createDraft: createEmptyDraft(),
+            createDraft: createEmptyCreateItemDraft(),
             createDraftWasCanceled: false,
             createDraftWasCompleted: false,
           }
@@ -180,14 +181,63 @@ export function useCreateFlowOrchestration({
       if (resolvedOutcomeId && !stateWithInbox.goals.some((g) => g && g.id === resolvedOutcomeId)) {
         resolvedOutcomeId = null;
       }
-      const nextMode = normalizeCreateFlowMode(mode);
-      const nextDraft = preserveDraft ? normalizeCreationDraft(baseUiWithInbox.createDraft) : createEmptyDraft();
-      if (resolvedCategoryId) nextDraft.category = { mode: "existing", id: resolvedCategoryId };
-      if (resolvedOutcomeId) nextDraft.activeOutcomeId = resolvedOutcomeId;
-      if (habitType) nextDraft.habitType = String(habitType).trim().toUpperCase();
-      if (isValidCreationStep(step)) nextDraft.step = step;
-      else nextDraft.step = getDefaultCreationStepForMode(nextMode);
-      const draftWithMeta = applyCreateFlowDraftMeta(nextDraft, { mode: nextMode, source });
+      const currentDraft = preserveDraft ? normalizeCreateItemDraft(baseUiWithInbox.createDraft) : createEmptyCreateItemDraft();
+      const nextOrigin = normalizeRouteOrigin(
+        origin || {
+          mainTab: resolveMainTab(tab, source),
+          sourceSurface: source || tab,
+          categoryId: resolvedCategoryId,
+          libraryMode: tab === "library" && safeData?.ui?.librarySelectedCategoryId ? "category-view" : tab === "library" ? "root" : null,
+        }
+      );
+      const nextKind = kind || currentDraft.kind || "action";
+      const normalizedProposal = proposal ? normalizeCreationProposal(proposal, nextOrigin) : null;
+      const nextDraft = {
+        ...currentDraft,
+        kind: nextKind,
+        origin: nextOrigin,
+        intent: {
+          kind: nextKind,
+          sourceSurface: source || nextOrigin.sourceSurface,
+          sourceCategoryId: resolvedCategoryId,
+          sourceOutcomeId: resolvedOutcomeId,
+          origin: nextOrigin,
+        },
+        proposal: normalizedProposal,
+        actionDraft: normalizedProposal?.actionDrafts?.[0]
+          ? normalizeActionDraft(
+              {
+                ...normalizedProposal.actionDrafts[0],
+                categoryId: normalizedProposal.actionDrafts[0]?.categoryId || resolvedCategoryId,
+                outcomeId: normalizedProposal.actionDrafts[0]?.outcomeId || resolvedOutcomeId,
+              },
+              resolvedCategoryId
+            )
+          : normalizeActionDraft(
+              {
+                ...currentDraft.actionDraft,
+                categoryId: currentDraft.actionDraft?.categoryId || resolvedCategoryId,
+                outcomeId: currentDraft.actionDraft?.outcomeId || resolvedOutcomeId,
+              },
+              resolvedCategoryId
+            ),
+        outcomeDraft: normalizedProposal?.outcomeDraft
+          ? normalizeOutcomeDraft(
+              {
+                ...normalizedProposal.outcomeDraft,
+                categoryId: normalizedProposal.outcomeDraft?.categoryId || resolvedCategoryId,
+              },
+              resolvedCategoryId
+            )
+          : normalizeOutcomeDraft(
+              {
+                ...currentDraft.outcomeDraft,
+                categoryId: currentDraft.outcomeDraft?.categoryId || resolvedCategoryId,
+              },
+              resolvedCategoryId
+            ),
+        status: "draft",
+      };
       let nextUi = baseUiWithInbox;
       if (resolvedCategoryId && contextNamespace === "execution") {
         nextUi = withExecutionActiveCategoryId(nextUi, resolvedCategoryId);
@@ -198,39 +248,49 @@ export function useCreateFlowOrchestration({
         ...stateWithInbox,
         ui: {
           ...nextUi,
-          createDraft: draftWithMeta,
+          createDraft: nextDraft,
           createDraftWasCanceled: shouldReset ? false : baseUiWithInbox.createDraftWasCanceled,
           createDraftWasCompleted: false,
         },
       };
     });
-  }, [categories, setData, tab]);
+  }, [categories, safeData?.ui?.librarySelectedCategoryId, setData, tab]);
 
   const openCreateFlowModal = useCallback(
-    ({ categoryId, source, mode, step, outcomeId, preserveDraft = false, habitType } = {}) => {
-      const nextMode = normalizeCreateFlowMode(mode);
+    ({ categoryId, source, kind = "action", outcomeId, preserveDraft = false, origin, proposal } = {}) => {
       const resolvedCategoryId = resolvePreferredCategoryId({ categoryId, source });
-      const nextStep = isValidCreationStep(step) ? step : getDefaultCreationStepForMode(nextMode);
+      const nextOrigin = normalizeRouteOrigin(
+        origin || {
+          mainTab: resolveMainTab(tab, source),
+          sourceSurface: source || tab,
+          categoryId: resolvedCategoryId,
+          libraryMode: tab === "library" && resolvedCategoryId ? "category-view" : tab === "library" ? "root" : null,
+        }
+      );
       setPlusOpen(false);
-      setCreateFlowCategoryId(resolvedCategoryId);
-      setCreateFlowConfig({
-        source: source || "unknown",
-        mode: nextMode,
-        step: nextStep,
-        habitType: typeof habitType === "string" ? habitType.trim().toUpperCase() : null,
-      });
       seedCreateDraft({
         source,
         categoryId: resolvedCategoryId,
         outcomeId,
-        step: nextStep,
-        mode: nextMode,
+        kind,
         preserveDraft,
-        habitType,
+        origin: nextOrigin,
+        proposal,
       });
-      setCreateFlowOpen(true);
+      onCreateTaskOpen?.({
+        origin: nextOrigin,
+        kind,
+        proposal: normalizedProposal,
+      });
+      setTab("create-item", {
+        historyState: {
+          task: "create-item",
+          origin: nextOrigin,
+          createKind: kind,
+        },
+      });
     },
-    [resolvePreferredCategoryId, seedCreateDraft]
+    [onCreateTaskOpen, resolvePreferredCategoryId, seedCreateDraft, setTab, tab]
   );
 
   const resolveTopNavAnchor = () => {
@@ -434,11 +494,11 @@ export function useCreateFlowOrchestration({
     openCreateFlowModal({
       source: nextFlow.source || categoryGateContext?.source,
       categoryId,
-      mode: nextFlow.mode,
-      step: nextFlow.step,
+      kind: nextFlow.kind,
       outcomeId: nextFlow.outcomeId,
       preserveDraft: Boolean(nextFlow.preserveDraft),
-      habitType: nextFlow.habitType,
+      origin: nextFlow.origin,
+      proposal: nextFlow.proposal,
     });
   };
 
@@ -456,47 +516,53 @@ export function useCreateFlowOrchestration({
 
   const openCreateOutcomeDirect = ({ source, categoryId, skipCategoryGate } = {}) => {
     const preferredCategoryId = resolvePreferredCategoryId({ categoryId, source });
-    if (skipCategoryGate === true || preferredCategoryId) {
-      openCreateFlowModal({
-        source,
-        categoryId: preferredCategoryId,
-        mode: "project",
-        step: getDefaultCreationStepForMode("project"),
-      });
-      return;
-    }
-    openCategoryGate({
-      source: source || "unknown",
-      intent: "project",
-      next: {
-        mode: "project",
-        step: getDefaultCreationStepForMode("project"),
-      },
+    openCreateFlowModal({
+      source,
+      categoryId: preferredCategoryId,
+      kind: "outcome",
+      preserveDraft: skipCategoryGate === true,
     });
   };
 
   const openCreateHabitDirect = ({ source, categoryId, outcomeId, skipCategoryGate } = {}) => {
     const preferredCategoryId = resolvePreferredCategoryId({ categoryId, source });
-    if (skipCategoryGate === true || preferredCategoryId) {
-      openCreateFlowModal({
-        source,
-        categoryId: preferredCategoryId,
-        outcomeId,
-        mode: "action",
-        step: getDefaultCreationStepForMode("action"),
-        preserveDraft: Boolean(outcomeId),
-      });
-      return;
-    }
-    openCategoryGate({
-      source: source || "unknown",
-      intent: "action",
-      next: {
-        mode: "action",
-        step: getDefaultCreationStepForMode("action"),
-        outcomeId: outcomeId || null,
-        preserveDraft: Boolean(outcomeId),
-      },
+    openCreateFlowModal({
+      source,
+      categoryId: preferredCategoryId,
+      outcomeId,
+      kind: "action",
+      preserveDraft: Boolean(outcomeId) || skipCategoryGate === true,
+    });
+  };
+
+  const openCreateGuidedDirect = ({ source, categoryId } = {}) => {
+    const preferredCategoryId = resolvePreferredCategoryId({ categoryId, source });
+    openCreateFlowModal({
+      source,
+      categoryId: preferredCategoryId,
+      kind: "guided",
+    });
+  };
+
+  const openCreateAssistantDirect = ({ source, categoryId, proposal, origin } = {}) => {
+    const normalizedProposal = normalizeCreationProposal(
+      proposal,
+      origin || {
+        mainTab: resolveMainTab(tab, source),
+        sourceSurface: source || tab,
+        categoryId,
+      }
+    );
+    openCreateFlowModal({
+      source,
+      categoryId:
+        categoryId ||
+        normalizedProposal?.categoryDraft?.id ||
+        normalizedProposal?.actionDrafts?.[0]?.categoryId ||
+        null,
+      kind: "assistant",
+      proposal: normalizedProposal,
+      origin,
     });
   };
 
@@ -512,16 +578,13 @@ export function useCreateFlowOrchestration({
 
   const handleResumeDraft = () => {
     openCreateFlowModal({
-      source: draft?.sourceContext?.source || "resume-draft",
-      categoryId:
-        (draft?.category?.mode === "existing" ? draft.category.id : null) ||
-        draft?.pendingCategoryId ||
-        null,
-      outcomeId: draft?.activeOutcomeId || draft?.createdOutcomeId || null,
-      mode: draft?.mode,
-      step: draft?.step,
+      source: draft?.intent?.sourceSurface || draft?.origin?.sourceSurface || "resume-draft",
+      categoryId: draft?.actionDraft?.categoryId || draft?.outcomeDraft?.categoryId || draft?.proposal?.categoryDraft?.id || null,
+      outcomeId: draft?.actionDraft?.outcomeId || null,
+      kind: draft?.kind,
       preserveDraft: true,
-      habitType: draft?.habitType,
+      origin: draft?.origin,
+      proposal: draft?.proposal,
     });
   };
 
@@ -531,10 +594,6 @@ export function useCreateFlowOrchestration({
     plusOpen,
     plusAnchorRect,
     plusAnchorElRef,
-    createFlowOpen,
-    setCreateFlowOpen,
-    createFlowCategoryId,
-    createFlowConfig,
     categoryGateOpen,
     setCategoryGateOpen,
     categoryGateContext,
@@ -552,5 +611,7 @@ export function useCreateFlowOrchestration({
     handleResumeDraft,
     openCreateOutcomeDirect,
     openCreateHabitDirect,
+    openCreateGuidedDirect,
+    openCreateAssistantDirect,
   };
 }

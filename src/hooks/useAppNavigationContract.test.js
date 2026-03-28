@@ -23,6 +23,8 @@ describe("useAppNavigation contract", () => {
     expect(source).toContain('"legal"');
     expect(source).toContain('"billing"');
     expect(source).toContain('"settings"');
+    expect(source).toContain('"create-item"');
+    expect(source).toContain('if (t === "create") return "create-item";');
   });
 
   it("supports the canonical session occurrence route and legacy aliases", () => {
@@ -30,6 +32,8 @@ describe("useAppNavigation contract", () => {
 
     expect(source).toContain('pathParts[0] === "session" && pathParts[1]');
     expect(source).toContain('`/session/${encodeURIComponent(nextSessionOccurrenceId)}`');
+    expect(source).toContain('initialPath.startsWith("/create")');
+    expect(source).toContain('nextPath = "/create";');
     expect(source).toContain('pathname === "/preferences"');
     expect(source).toContain('pathname === "/subscription"');
     expect(source).toContain('pathname === "/terms"');

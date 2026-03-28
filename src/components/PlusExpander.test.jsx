@@ -16,10 +16,12 @@ describe("PlusExpander", () => {
         onClose={() => {}}
         onChooseObjective={() => {}}
         onChooseAction={() => {}}
+        onChooseStructuring={() => {}}
       />
     );
 
     expect(html).toContain("Créer une action");
     expect(html).toContain("Créer un objectif");
+    expect(html).toContain("Structurer avec le Coach");
   });
 });

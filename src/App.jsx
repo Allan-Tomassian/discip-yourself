@@ -8,7 +8,6 @@ import {
 } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
 import PlusExpander from "./components/PlusExpander";
-import CategoryGateModal from "./components/CategoryGateModal";
 import { markIOSRootClass } from "./utils/dialogs";
 import { GateButton, GatePanel } from "./shared/ui/gate/Gate";
 import "./features/navigation/bottomCategoryBar.css";
@@ -18,7 +17,6 @@ import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
 import Planning from "./pages/Planning";
 import Categories from "./pages/Categories";
-import CreateFlowModal from "./ui/create/CreateFlowModal";
 import TotemDockLayer from "./ui/totem/TotemDockLayer";
 import Preferences from "./pages/Preferences";
 import Account from "./pages/Account";
@@ -31,6 +29,7 @@ import Legal from "./pages/Legal";
 import MicroActions from "./pages/MicroActions";
 import CategoryView from "./pages/CategoryView";
 import EditItem from "./pages/EditItem";
+import CreateItem from "./pages/CreateItem";
 import CategoryDetailView from "./pages/CategoryDetailView";
 import CategoryProgress from "./pages/CategoryProgress";
 import Session from "./pages/Session";
@@ -138,6 +137,7 @@ export default function App() {
   const {
     tab,
     setTab,
+    editItemId,
     categoryDetailId,
     setCategoryDetailId,
     categoryProgressId,
@@ -150,6 +150,8 @@ export default function App() {
     sessionOccurrenceId,
   } = useAppNavigation({ safeData, setData });
   const [editItem, setEditItem] = useState(null);
+  const [createTaskState, setCreateTaskState] = useState(null);
+  const [coachChatMode, setCoachChatMode] = useState("chat");
   const dataRef = useRef(data);
   const invariantLogRef = useRef(new Set());
   const tour = useTour({ data, setData, steps: FIRST_USE_TOUR_STEPS, tourVersion: TOUR_VERSION });
@@ -258,6 +260,14 @@ export default function App() {
   }, [setData]);
 
   const currentTab = tab;
+  const lastNonCoachTabRef = useRef(tab === "coach-chat" ? "today" : tab);
+  const coachSurfaceTab = tab === "coach-chat" ? lastNonCoachTabRef.current : tab;
+  const taskActiveTab =
+    currentTab === "create-item"
+      ? createTaskState?.origin?.mainTab || "library"
+      : currentTab === "edit-item"
+        ? editItem?.returnTab || "library"
+        : null;
   const resolvedSessionDateKey =
     (typeof sessionDateKey === "string" && sessionDateKey) ||
     (typeof safeData?.ui?.selectedDateKey === "string" && safeData.ui.selectedDateKey) ||
@@ -268,8 +278,12 @@ export default function App() {
       active={
         currentTab === "session"
           ? "today"
-          : currentTab === "coach-chat" || currentTab === "onboarding"
+          : currentTab === "coach-chat"
+            ? coachSurfaceTab
+          : currentTab === "onboarding"
             ? "today"
+          : taskActiveTab
+            ? taskActiveTab
           : currentTab === "planning"
             ? "planning"
           : currentTab === "pilotage"
@@ -285,8 +299,7 @@ export default function App() {
                 currentTab === "micro-actions" ||
                 currentTab === "history"
               ? "today"
-              : currentTab === "library" ||
-                  currentTab === "edit-item" ||
+                : currentTab === "library" ||
                   currentTab === "category-detail" ||
                   currentTab === "category-progress" ||
                   (typeof currentTab === "string" && currentTab.startsWith("create-"))
@@ -301,6 +314,7 @@ export default function App() {
         setTab(next);
       }}
       onMenuNavigate={(action) => {
+        setCoachChatMode("chat");
         setTab(action);
       }}
       onMenuOpen={() => setDrawerOpen(true)}
@@ -383,18 +397,6 @@ export default function App() {
     plusOpen,
     plusAnchorRect,
     plusAnchorElRef,
-    createFlowOpen,
-    setCreateFlowOpen,
-    createFlowCategoryId,
-    createFlowConfig,
-    categoryGateOpen,
-    setCategoryGateOpen,
-    resetCreateDraft,
-    seedCreateDraft,
-    openCategoryGate,
-    createCategoryFromGate,
-    toggleCategoryActive,
-    handleCategoryGateConfirm,
     openCreateExpander,
     closePlusExpander,
     handleChooseObjective,
@@ -402,6 +404,8 @@ export default function App() {
     handleResumeDraft,
     openCreateOutcomeDirect,
     openCreateHabitDirect,
+    openCreateGuidedDirect,
+    openCreateAssistantDirect,
   } = useCreateFlowOrchestration({
     tab,
     setTab,
@@ -410,6 +414,7 @@ export default function App() {
     setData,
     dataRef,
     openPaywall,
+    onCreateTaskOpen: setCreateTaskState,
   });
   const handleEditBack = () => {
     const returnTab = editItem?.returnTab || "library";
@@ -422,8 +427,178 @@ export default function App() {
       }
     }
     setEditItem(null);
-    setTab(returnTab);
+    setTab(returnTab, { editItemId: null });
   };
+
+  useEffect(() => {
+    if (tab !== "edit-item" || editItem || !editItemId) return;
+    const goal = (Array.isArray(safeData.goals) ? safeData.goals : []).find((entry) => entry?.id === editItemId) || null;
+    if (!goal) return;
+    setEditItem({
+      id: editItemId,
+      type: resolveGoalType(goal),
+      categoryId: goal.categoryId || null,
+      returnTab: "library",
+      returnToCategoryView: Boolean(goal.categoryId),
+    });
+  }, [editItem, editItemId, safeData.goals, tab]);
+
+  const resolveRouteOrigin = useCallback(
+    ({ sourceSurface, categoryId = null, coachConversationId = null } = {}) => {
+      const safeSource = sourceSurface || tab;
+      const mainTab =
+        safeSource === "planning" || safeSource === "pilotage" || safeSource === "library" || safeSource === "today"
+          ? safeSource
+          : safeSource === "category-detail" || safeSource === "category-progress" || safeSource === "edit-item"
+            ? "library"
+            : safeSource === "coach-chat" || safeSource === "coach-panel"
+              ? coachSurfaceTab
+              : tab === "planning" || tab === "pilotage" || tab === "library" || tab === "today"
+                ? tab
+                : "today";
+      return {
+        mainTab,
+        sourceSurface: safeSource,
+        categoryId: categoryId || selectedCategoryId || libraryCategoryId || homeActiveCategoryId || null,
+        dateKey:
+          mainTab === "today" || mainTab === "planning" || safeSource === "coach-chat" || safeSource === "coach-panel"
+            ? resolvedSessionDateKey
+            : null,
+        occurrenceId: safeSource === "session" ? sessionOccurrenceId || null : null,
+        libraryMode:
+          mainTab === "library"
+            ? safeSource === "library" && libraryCategoryId
+              ? "category-view"
+              : safeSource === "category-detail" || safeSource === "category-progress"
+                ? "category-view"
+                : "root"
+            : null,
+        coachConversationId: coachConversationId || null,
+      };
+    },
+    [
+      coachSurfaceTab,
+      homeActiveCategoryId,
+      libraryCategoryId,
+      resolvedSessionDateKey,
+      selectedCategoryId,
+      sessionOccurrenceId,
+      tab,
+    ]
+  );
+
+  const restoreTaskOriginContext = useCallback(
+    ({ origin: rawOrigin, createdCategoryId = null } = {}) => {
+      const origin = rawOrigin && typeof rawOrigin === "object" ? rawOrigin : null;
+      if (!origin) return;
+      const effectiveCategoryId = createdCategoryId || origin.categoryId || null;
+      if (origin.dateKey) {
+        setData((previous) => ({
+          ...previous,
+          ui: {
+            ...(previous.ui || {}),
+            selectedDateKey: origin.dateKey,
+            selectedDate: origin.dateKey,
+          },
+        }));
+      }
+      if (origin.mainTab === "library") {
+        setLibraryCategoryId(origin.libraryMode === "category-view" ? effectiveCategoryId : null);
+        if (effectiveCategoryId) {
+          setData((previous) => ({
+            ...previous,
+            ui: withLibraryActiveCategoryId(previous.ui, effectiveCategoryId),
+          }));
+        }
+        return;
+      }
+      if (effectiveCategoryId && (origin.mainTab === "today" || origin.mainTab === "planning" || origin.mainTab === "pilotage")) {
+        setData((previous) => ({
+          ...previous,
+          ui: withExecutionActiveCategoryId(previous.ui, effectiveCategoryId),
+        }));
+      }
+    },
+    [setData, setLibraryCategoryId]
+  );
+
+  const handleCreateTaskClose = useCallback(
+    ({ outcome = "cancel", origin: rawOrigin = null, createdCategoryId = null } = {}) => {
+      const origin = rawOrigin || createTaskState?.origin || resolveRouteOrigin({ sourceSurface: tab });
+      restoreTaskOriginContext({ origin, createdCategoryId });
+      setCreateTaskState(null);
+
+      if (origin?.sourceSurface === "coach-chat" || origin?.coachConversationId) {
+        setCoachChatMode("structure");
+        setTab("coach-chat");
+        return;
+      }
+      if (origin?.sourceSurface === "coach-panel") {
+        setTab(origin.mainTab || "today");
+        if (outcome === "saved") setCoachOpen(true);
+        return;
+      }
+      setTab(origin?.mainTab || "today");
+    },
+    [createTaskState?.origin, resolveRouteOrigin, restoreTaskOriginContext, setTab, tab]
+  );
+
+  const openCoachStructuring = useCallback(
+    ({ sourceSurface = tab, conversationId = null } = {}) => {
+      setDrawerOpen(false);
+      setCoachOpen(false);
+      setCoachChatMode("structure");
+      setCreateTaskState(null);
+      setTab("coach-chat", {
+        historyState: {
+          origin: resolveRouteOrigin({ sourceSurface, coachConversationId: conversationId }),
+          coachMode: "structure",
+        },
+      });
+    },
+    [resolveRouteOrigin, setTab, tab]
+  );
+
+  const openCoachAssistantCreate = useCallback(
+    ({ sourceSurface = "coach-chat", conversationId = null, proposal } = {}) => {
+      const origin = resolveRouteOrigin({ sourceSurface, coachConversationId: conversationId });
+      setCreateTaskState({ origin, kind: "assistant", proposal });
+      openCreateAssistantDirect({
+        source: sourceSurface,
+        categoryId: proposal?.categoryDraft?.id || null,
+        proposal,
+        origin,
+      });
+    },
+    [openCreateAssistantDirect, resolveRouteOrigin]
+  );
+
+  const launchActionCreate = useCallback(
+    ({ sourceSurface, categoryId = null, outcomeId = null } = {}) => {
+      const origin = resolveRouteOrigin({ sourceSurface, categoryId });
+      setCreateTaskState({ origin, kind: "action" });
+      openCreateHabitDirect({ source: sourceSurface, categoryId, outcomeId });
+    },
+    [openCreateHabitDirect, resolveRouteOrigin]
+  );
+
+  const launchOutcomeCreate = useCallback(
+    ({ sourceSurface, categoryId = null } = {}) => {
+      const origin = resolveRouteOrigin({ sourceSurface, categoryId });
+      setCreateTaskState({ origin, kind: "outcome" });
+      openCreateOutcomeDirect({ source: sourceSurface, categoryId });
+    },
+    [openCreateOutcomeDirect, resolveRouteOrigin]
+  );
+
+  const launchGuidedCreate = useCallback(
+    ({ sourceSurface, categoryId = null } = {}) => {
+      const origin = resolveRouteOrigin({ sourceSurface, categoryId });
+      setCreateTaskState({ origin, kind: "guided" });
+      openCreateGuidedDirect({ source: sourceSurface, categoryId });
+    },
+    [openCreateGuidedDirect, resolveRouteOrigin]
+  );
 
   // Theme reconciliation:
   // - The app now ships a single locked design system.
@@ -589,12 +764,10 @@ export default function App() {
   const showPlanStep = Boolean(safeData.ui?.showPlanStep);
   const showTourOverlay = onboardingCompleted;
   const handlePlanCategory = ({ categoryId } = {}) => {
-    openCreateOutcomeDirect({ source: "pilotage", categoryId });
+    launchGuidedCreate({ sourceSurface: "pilotage", categoryId });
   };
 
   const showBottomRail = tab === "today" || tab === "planning" || tab === "library" || tab === "pilotage";
-  const lastNonCoachTabRef = useRef(tab === "coach-chat" ? "today" : tab);
-  const coachSurfaceTab = tab === "coach-chat" ? lastNonCoachTabRef.current : tab;
   const coachFabVisibleTabs = useMemo(
     () => new Set(["today", "planning", "library", "pilotage", "category-detail", "category-progress"]),
     []
@@ -602,12 +775,11 @@ export default function App() {
   const hasCoachBlockingOverlay =
     isDrawerOpen ||
     plusOpen ||
-    createFlowOpen ||
-    categoryGateOpen ||
     paywallOpen ||
     Boolean(activeReminder) ||
     Boolean(showTourOverlay && tour.isActive) ||
-    tab === "coach-chat";
+    tab === "coach-chat" ||
+    tab === "create-item";
   const totemDockLayer = <TotemDockLayer data={safeData} setData={setData} />;
   const routeCloseSigRef = useRef("");
 
@@ -750,6 +922,7 @@ export default function App() {
           onClose={closePlusExpander}
           onChooseObjective={handleChooseObjective}
           onChooseAction={handleChooseAction}
+          onChooseStructuring={() => openCoachStructuring({ sourceSurface: tab })}
           onResumeDraft={hasDraft ? handleResumeDraft : null}
           hasDraft={hasDraft}
         />
@@ -831,10 +1004,10 @@ export default function App() {
             setTab("library");
           }}
           onOpenCreateOutcome={() => {
-            openCreateOutcomeDirect({ source: "today" });
+            launchOutcomeCreate({ sourceSurface: "today" });
           }}
           onOpenCreateHabit={() => {
-            openCreateHabitDirect({ source: "today" });
+            launchActionCreate({ sourceSurface: "today" });
           }}
           onOpenSession={({ categoryId, dateKey, occurrenceId }) =>
             setTab("session", {
@@ -913,6 +1086,19 @@ export default function App() {
           generationWindowDays={generationWindowDays}
           onOpenPaywall={openPaywall}
         />
+      ) : tab === "create-item" ? (
+        <CreateItem
+          data={data}
+          setData={setData}
+          taskOrigin={createTaskState?.origin || null}
+          onCloseTask={handleCreateTaskClose}
+          onOpenPaywall={openPaywall}
+          canCreateAction={canCreateActionNow}
+          canCreateOutcome={canCreateOutcomeNow}
+          isPremiumPlan={isPremiumPlan}
+          planLimits={planLimits}
+          generationWindowDays={generationWindowDays}
+        />
       ) : tab === "library" && libraryCategoryId ? (
         <CategoryView
           data={data}
@@ -924,10 +1110,10 @@ export default function App() {
             setTab("pilotage");
           }}
           onOpenCreateOutcome={(nextCategoryId) => {
-            openCreateOutcomeDirect({ source: "library", categoryId: nextCategoryId || libraryCategoryId });
+            launchOutcomeCreate({ sourceSurface: "library", categoryId: nextCategoryId || libraryCategoryId });
           }}
           onOpenCreateHabit={(nextCategoryId) => {
-            openCreateHabitDirect({ source: "library", categoryId: nextCategoryId || libraryCategoryId });
+            launchActionCreate({ sourceSurface: "library", categoryId: nextCategoryId || libraryCategoryId });
           }}
           onOpenProgress={(categoryIdValue) => {
             if (!categoryIdValue) return;
@@ -944,7 +1130,13 @@ export default function App() {
               }));
             }
             setEditItem({ id, type, categoryId: nextId, returnTab: tab, returnToCategoryView: true });
-            setTab("edit-item");
+            setTab("edit-item", {
+              editItemId: id,
+              historyState: {
+                origin: resolveRouteOrigin({ sourceSurface: "library", categoryId: nextId }),
+                editItemId: id,
+              },
+            });
           }}
         />
       ) : tab === "library" ? (
@@ -953,7 +1145,7 @@ export default function App() {
           setData={setData}
           onOpenPaywall={openPaywall}
           onOpenCreateOutcome={() => {
-            openCreateOutcomeDirect({ source: "library" });
+            launchOutcomeCreate({ sourceSurface: "library" });
           }}
           onEditItem={({ id, type, categoryId }) => {
             const nextId =
@@ -967,7 +1159,13 @@ export default function App() {
               }));
             }
             setEditItem({ id, type, categoryId: nextId, returnTab: tab, returnToCategoryView: false });
-            setTab("edit-item");
+            setTab("edit-item", {
+              editItemId: id,
+              historyState: {
+                origin: resolveRouteOrigin({ sourceSurface: "library", categoryId: nextId }),
+                editItemId: id,
+              },
+            });
           }}
         />
       ) : tab === "session" ? (
@@ -996,6 +1194,8 @@ export default function App() {
           setData={setData}
           setTab={setTab}
           sourceTab={coachSurfaceTab}
+          initialMode={coachChatMode}
+          onOpenAssistantCreate={openCoachAssistantCreate}
         />
       ) : tab === "account" ? (
         <Account data={data} />
@@ -1044,6 +1244,8 @@ export default function App() {
         setData={setData}
         setTab={setTab}
         surfaceTab={coachSurfaceTab}
+        onOpenStructuring={() => openCoachStructuring({ sourceSurface: "coach-panel" })}
+        onOpenAssistantCreate={openCoachAssistantCreate}
       />
 
       {activeReminder ? (
@@ -1150,53 +1352,6 @@ export default function App() {
         />
       ) : null}
       <DiagnosticOverlay data={safeData} tab={tab} />
-      <CategoryGateModal
-        open={categoryGateOpen}
-        categories={visibleCategories}
-        categoryRailOrder={safeData?.ui?.categoryRailOrder}
-        activeCategoryId={homeActiveCategoryId}
-        goals={data?.goals || []}
-        habits={data?.habits || []}
-        onClose={() => setCategoryGateOpen(false)}
-        onConfirm={handleCategoryGateConfirm}
-        onCreateCategory={createCategoryFromGate}
-        onToggleActive={toggleCategoryActive}
-      />
-      <CreateFlowModal
-        open={createFlowOpen}
-        data={data}
-        setData={setData}
-        categories={visibleCategories}
-        selectedCategoryId={createFlowCategoryId || selectedCategoryId}
-        flowSource={createFlowConfig.source}
-        flowMode={createFlowConfig.mode}
-        requestedStep={createFlowConfig.step}
-        requestedHabitType={createFlowConfig.habitType}
-        seedCreateDraft={seedCreateDraft}
-        resetCreateDraft={resetCreateDraft}
-        canCreateOutcome={canCreateOutcomeNow}
-        canCreateAction={canCreateActionNow}
-        isPremiumPlan={isPremiumPlan}
-        planLimits={planLimits}
-        generationWindowDays={generationWindowDays}
-        onOpenPaywall={openPaywall}
-        onChangeCategory={(nextFlow) => {
-          setCreateFlowOpen(false);
-          openCategoryGate({
-            source: nextFlow?.source || createFlowConfig.source || "create-flow",
-            intent: nextFlow?.mode || createFlowConfig.mode || "action",
-            next: {
-              source: nextFlow?.source || createFlowConfig.source || "create-flow",
-              mode: nextFlow?.mode || createFlowConfig.mode || "action",
-              step: nextFlow?.step || createFlowConfig.step,
-              outcomeId: nextFlow?.outcomeId || null,
-              habitType: nextFlow?.habitType || createFlowConfig.habitType || null,
-              preserveDraft: true,
-            },
-          });
-        }}
-        onClose={() => setCreateFlowOpen(false)}
-      />
       <PlusExpander
         open={plusOpen}
         anchorRect={plusAnchorRect}
@@ -1204,6 +1359,7 @@ export default function App() {
         onClose={closePlusExpander}
         onChooseObjective={handleChooseObjective}
         onChooseAction={handleChooseAction}
+        onChooseStructuring={() => openCoachStructuring({ sourceSurface: tab })}
         onResumeDraft={hasDraft ? handleResumeDraft : null}
         hasDraft={hasDraft}
       />

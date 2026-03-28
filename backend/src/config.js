@@ -9,6 +9,12 @@ function parseAllowedOrigins(raw) {
   return Array.from(new Set(entries));
 }
 
+function parseBooleanFlag(raw) {
+  if (typeof raw === "boolean") return raw;
+  const value = String(raw || "").trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "on";
+}
+
 const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   SUPABASE_URL: z.string().url(),
@@ -16,6 +22,7 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional().default(""),
   OPENAI_MODEL: z.string().optional().default("gpt-4.1-mini"),
   AI_QUOTA_MODE: z.enum(["normal", "dev_relaxed"]).default("normal"),
+  CORS_ALLOW_PRIVATE_NETWORK_DEV: z.union([z.string(), z.boolean()]).optional().default("false").transform(parseBooleanFlag),
   CORS_ALLOWED_ORIGINS: z
     .string()
     .optional()

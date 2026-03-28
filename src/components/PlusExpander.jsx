@@ -22,6 +22,7 @@ export default function PlusExpander({
   onClose,
   onChooseObjective,
   onChooseAction,
+  onChooseStructuring,
   onResumeDraft,
   hasDraft = false,
 }) {
@@ -104,6 +105,11 @@ export default function PlusExpander({
                 <GateButton variant="ghost" className="GatePressable" onClick={onChooseObjective}>
                   Créer un {LABELS.goalLower}
                 </GateButton>
+                {typeof onChooseStructuring === "function" ? (
+                  <GateButton variant="ghost" className="GatePressable" onClick={onChooseStructuring}>
+                    Structurer avec le Coach
+                  </GateButton>
+                ) : null}
                 {hasDraft && typeof onResumeDraft === "function" ? (
                   <GateButton variant="ghost" className="GatePressable" onClick={onResumeDraft}>
                     Reprendre

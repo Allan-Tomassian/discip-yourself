@@ -10,10 +10,13 @@ function readSrc(relPath) {
 }
 
 describe("create flow host contract", () => {
-  it("keeps a single modal host in App instead of rendering legacy create pages inline", () => {
+  it("keeps a single task host in App instead of rendering legacy create pages inline or in a modal", () => {
     const source = readSrc("App.jsx");
 
-    expect(source).toContain("<CreateFlowModal");
+    expect(source).toContain("<CreateItem");
+    expect(source).toContain('tab === "create-item" ? (');
+    expect(source).toContain('onCloseTask={handleCreateTaskClose}');
+    expect(source).not.toContain("<CreateFlowModal");
     expect(source).not.toContain('tab === "create-goal" ? (');
     expect(source).not.toContain('tab === "create-habit-type" ? (');
     expect(source).not.toContain('tab === "create-link-outcome" ? (');

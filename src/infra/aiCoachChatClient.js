@@ -1,4 +1,5 @@
 import { readAiBackendBaseUrl } from "./aiNowClient";
+import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const ACTION_INTENTS = new Set([
@@ -183,21 +184,42 @@ export async function requestAiCoachChat({
   fetchImpl = globalThis.fetch,
 }) {
   const resolvedBaseUrl = readAiBackendBaseUrl(baseUrl);
+  const buildTransport = (errorCode = null) => buildAiTransportMeta({ baseUrl: resolvedBaseUrl, errorCode });
   if (!resolvedBaseUrl) {
-    return { ok: false, errorCode: "DISABLED", reply: null, status: null };
+    return {
+      ok: false,
+      errorCode: "DISABLED",
+      reply: null,
+      status: null,
+      transportMeta: buildTransport("DISABLED"),
+    };
   }
   if (typeof fetchImpl !== "function") {
-    return { ok: false, errorCode: "NETWORK_ERROR", reply: null, status: null };
+    const transportMeta = buildTransport("NETWORK_ERROR");
+    logAiTransportIssue({ endpoint: "/ai/chat", errorCode: "NETWORK_ERROR", transportMeta });
+    return { ok: false, errorCode: "NETWORK_ERROR", reply: null, status: null, transportMeta };
   }
   if (!String(accessToken || "").trim()) {
-    return { ok: false, errorCode: "UNAUTHORIZED", reply: null, status: 401 };
+    return {
+      ok: false,
+      errorCode: "UNAUTHORIZED",
+      reply: null,
+      status: 401,
+      transportMeta: buildTransport("UNAUTHORIZED"),
+    };
   }
 
   let normalizedPayload;
   try {
     normalizedPayload = normalizeAiCoachChatPayload(payload);
   } catch {
-    return { ok: false, errorCode: "INVALID_RESPONSE", reply: null, status: null };
+    return {
+      ok: false,
+      errorCode: "INVALID_RESPONSE",
+      reply: null,
+      status: null,
+      transportMeta: buildTransport("INVALID_RESPONSE"),
+    };
   }
 
   let response;
@@ -211,17 +233,21 @@ export async function requestAiCoachChat({
       body: JSON.stringify(normalizedPayload),
     });
   } catch {
-    return { ok: false, errorCode: "NETWORK_ERROR", reply: null, status: null };
+    const transportMeta = buildTransport("NETWORK_ERROR");
+    logAiTransportIssue({ endpoint: "/ai/chat", errorCode: "NETWORK_ERROR", transportMeta });
+    return { ok: false, errorCode: "NETWORK_ERROR", reply: null, status: null, transportMeta };
   }
 
   const body = await safeParseJson(response);
   if (!response.ok) {
+    const errorCode = normalizeBackendErrorCode(response.status, body?.error);
     return {
       ok: false,
-      errorCode: normalizeBackendErrorCode(response.status, body?.error),
+      errorCode,
       reply: null,
       status: response.status,
       requestId: typeof body?.requestId === "string" ? body.requestId : null,
+      transportMeta: buildTransport(errorCode),
     };
   }
 
@@ -231,6 +257,7 @@ export async function requestAiCoachChat({
       errorCode: "INVALID_RESPONSE",
       reply: null,
       status: response.status,
+      transportMeta: buildTransport("INVALID_RESPONSE"),
     };
   }
 
@@ -239,5 +266,6 @@ export async function requestAiCoachChat({
     errorCode: null,
     reply: body,
     status: response.status,
+    transportMeta: buildTransport(null),
   };
 }

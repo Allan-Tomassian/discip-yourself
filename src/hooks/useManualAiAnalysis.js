@@ -6,14 +6,18 @@ import {
   upsertManualAiAnalysisEntry,
 } from "../features/manualAi/manualAiAnalysis";
 import { getManualAiLoadingStages } from "../features/manualAi/loadingStages";
+import { deriveAiUnavailableMessage } from "../infra/aiTransportDiagnostics";
 
 function deriveDefaultErrorMessage(result) {
-  const code = String(result?.errorCode || "").trim().toUpperCase();
-  if (code === "DISABLED") return "Analyse indisponible sur cet appareil.";
-  if (code === "UNAUTHORIZED") return "Connecte-toi pour lancer l’analyse.";
-  if (code === "RATE_LIMITED" || code === "QUOTA_EXCEEDED") return "Analyse indisponible pour le moment.";
-  if (code === "NETWORK_ERROR") return "Analyse indisponible hors ligne.";
-  return "Analyse indisponible.";
+  return deriveAiUnavailableMessage(result, {
+    disabled: "Analyse indisponible sur cet appareil.",
+    unauthorized: "Connecte-toi pour lancer l’analyse.",
+    rateLimited: "Analyse indisponible pour le moment.",
+    offline: "Analyse indisponible hors ligne.",
+    corsPrivateOrigin: "Analyse indisponible sur cette origine de test.",
+    networkUnknown: "Analyse indisponible pour le moment.",
+    fallback: "Analyse indisponible.",
+  });
 }
 
 export function useManualAiAnalysis({

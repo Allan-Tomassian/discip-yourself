@@ -7,4 +7,4 @@ export {
   STATUS_COPY,
   SURFACE_LABELS,
   UI_COPY,
-} from "../copy/productCopy";
+} from "../copy/productCopy.js";

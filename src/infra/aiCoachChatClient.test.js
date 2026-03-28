@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { isAiCoachChatResponse } from "./aiCoachChatClient";
+import { describe, expect, it, vi } from "vitest";
+import { isAiCoachChatResponse, requestAiCoachChat } from "./aiCoachChatClient";
 
 function buildChatResponse(overrides = {}) {
   return {
@@ -76,5 +76,44 @@ describe("aiCoachChatClient", () => {
         })
       )
     ).toBe(false);
+  });
+
+  it("retourne un diagnostic offline quand le navigateur est vraiment hors ligne", async () => {
+    vi.stubGlobal("window", {
+      location: {
+        origin: "http://192.168.1.183:5173",
+        hostname: "192.168.1.183",
+      },
+    });
+    vi.stubGlobal("navigator", { onLine: false });
+
+    try {
+      const fetchImpl = vi.fn().mockRejectedValue(new Error("Failed to fetch"));
+
+      const result = await requestAiCoachChat({
+        accessToken: "token",
+        baseUrl: "https://discip-yourself-backend.onrender.com",
+        fetchImpl,
+        payload: {
+          selectedDateKey: "2026-03-25",
+          activeCategoryId: "cat-1",
+          message: "Ajoute une action",
+          recentMessages: [],
+        },
+      });
+
+      expect(result).toMatchObject({
+        ok: false,
+        errorCode: "NETWORK_ERROR",
+        transportMeta: {
+          frontendOrigin: "http://192.168.1.183:5173",
+          backendBaseUrl: "https://discip-yourself-backend.onrender.com",
+          online: false,
+          probableCause: "offline",
+        },
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

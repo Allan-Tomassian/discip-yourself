@@ -3,6 +3,7 @@ import {
   TODAY_INTERVENTION_TYPE,
   TODAY_BACKEND_RESOLUTION_STATUS,
 } from "../domain/todayIntervention";
+import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
 
 const ENV =
   typeof import.meta !== "undefined" && import.meta.env && typeof import.meta.env === "object"
@@ -212,21 +213,42 @@ export async function requestAiNow({
   fetchImpl = globalThis.fetch,
 }) {
   const resolvedBaseUrl = readAiBackendBaseUrl(baseUrl);
+  const buildTransport = (errorCode = null) => buildAiTransportMeta({ baseUrl: resolvedBaseUrl, errorCode });
   if (!resolvedBaseUrl) {
-    return { ok: false, errorCode: "DISABLED", coach: null, status: null };
+    return {
+      ok: false,
+      errorCode: "DISABLED",
+      coach: null,
+      status: null,
+      transportMeta: buildTransport("DISABLED"),
+    };
   }
   if (typeof fetchImpl !== "function") {
-    return { ok: false, errorCode: "NETWORK_ERROR", coach: null, status: null };
+    const transportMeta = buildTransport("NETWORK_ERROR");
+    logAiTransportIssue({ endpoint: "/ai/now", errorCode: "NETWORK_ERROR", transportMeta });
+    return { ok: false, errorCode: "NETWORK_ERROR", coach: null, status: null, transportMeta };
   }
   if (!String(accessToken || "").trim()) {
-    return { ok: false, errorCode: "UNAUTHORIZED", coach: null, status: 401 };
+    return {
+      ok: false,
+      errorCode: "UNAUTHORIZED",
+      coach: null,
+      status: 401,
+      transportMeta: buildTransport("UNAUTHORIZED"),
+    };
   }
 
   let normalizedPayload;
   try {
     normalizedPayload = normalizeAiNowPayload(payload);
   } catch {
-    return { ok: false, errorCode: "INVALID_RESPONSE", coach: null, status: null };
+    return {
+      ok: false,
+      errorCode: "INVALID_RESPONSE",
+      coach: null,
+      status: null,
+      transportMeta: buildTransport("INVALID_RESPONSE"),
+    };
   }
 
   let response;
@@ -240,17 +262,21 @@ export async function requestAiNow({
       body: JSON.stringify(normalizedPayload),
     });
   } catch {
-    return { ok: false, errorCode: "NETWORK_ERROR", coach: null, status: null };
+    const transportMeta = buildTransport("NETWORK_ERROR");
+    logAiTransportIssue({ endpoint: "/ai/now", errorCode: "NETWORK_ERROR", transportMeta });
+    return { ok: false, errorCode: "NETWORK_ERROR", coach: null, status: null, transportMeta };
   }
 
   const body = await safeParseJson(response);
   if (!response.ok) {
+    const errorCode = normalizeBackendErrorCode(response.status, body?.error);
     return {
       ok: false,
-      errorCode: normalizeBackendErrorCode(response.status, body?.error),
+      errorCode,
       coach: null,
       status: response.status,
       requestId: typeof body?.requestId === "string" ? body.requestId : null,
+      transportMeta: buildTransport(errorCode),
     };
   }
 
@@ -261,6 +287,7 @@ export async function requestAiNow({
       coach: null,
       status: response.status,
       requestId: typeof body?.meta?.requestId === "string" ? body.meta.requestId : null,
+      transportMeta: buildTransport("INVALID_RESPONSE"),
     };
   }
 
@@ -270,5 +297,6 @@ export async function requestAiNow({
     coach: body,
     status: response.status,
     requestId: body.meta.requestId,
+    transportMeta: buildTransport(null),
   };
 }

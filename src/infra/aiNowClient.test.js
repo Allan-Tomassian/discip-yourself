@@ -195,6 +195,45 @@ describe("aiNowClient", () => {
     expect(result).toMatchObject({ ok: false, errorCode: "NETWORK_ERROR" });
   });
 
+  it("deduit une origine LAN privee probable quand le fetch casse depuis un iPhone de dev", async () => {
+    vi.stubGlobal("window", {
+      location: {
+        origin: "http://192.168.1.183:5173",
+        hostname: "192.168.1.183",
+      },
+    });
+    vi.stubGlobal("navigator", { onLine: true });
+
+    try {
+      const fetchImpl = vi.fn().mockRejectedValue(new Error("Failed to fetch"));
+
+      const result = await requestAiNow({
+        accessToken: "token",
+        baseUrl: "https://discip-yourself-backend.onrender.com",
+        fetchImpl,
+        payload: {
+          selectedDateKey: "2026-03-13",
+          activeCategoryId: null,
+          surface: "today",
+          trigger: "screen_open",
+        },
+      });
+
+      expect(result).toMatchObject({
+        ok: false,
+        errorCode: "NETWORK_ERROR",
+        transportMeta: {
+          frontendOrigin: "http://192.168.1.183:5173",
+          backendBaseUrl: "https://discip-yourself-backend.onrender.com",
+          online: true,
+          probableCause: "cors_private_origin",
+        },
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("rejette une reponse backend invalide", async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,

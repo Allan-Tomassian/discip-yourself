@@ -10,6 +10,7 @@ const TEST_CONFIG = {
   OPENAI_API_KEY: "",
   OPENAI_MODEL: "gpt-4.1-mini",
   AI_QUOTA_MODE: "normal",
+  CORS_ALLOW_PRIVATE_NETWORK_DEV: false,
   CORS_ALLOWED_ORIGINS: ["http://localhost:5173", "http://127.0.0.1:5173"],
   LOG_LEVEL: "silent",
 };
@@ -214,6 +215,68 @@ test("OPTIONS /ai/now responds to local frontend preflight", async () => {
   assert.equal(response.headers["access-control-allow-origin"], "http://localhost:5173");
   assert.match(String(response.headers["access-control-allow-methods"] || ""), /POST/);
   assert.match(String(response.headers["access-control-allow-headers"] || ""), /Authorization/i);
+  await app.close();
+});
+
+test("OPTIONS /ai/now accepts a private LAN origin when private network dev CORS is enabled", async () => {
+  const app = await buildApp({
+    config: {
+      ...TEST_CONFIG,
+      CORS_ALLOW_PRIVATE_NETWORK_DEV: true,
+    },
+    verifyAccessToken: async () => ({ id: "user-1" }),
+  });
+  const response = await app.inject({
+    method: "OPTIONS",
+    url: "/ai/now",
+    headers: {
+      origin: "http://192.168.1.183:5173",
+      "access-control-request-method": "POST",
+      "access-control-request-headers": "authorization,content-type",
+    },
+  });
+  assert.equal(response.statusCode, 204);
+  assert.equal(response.headers["access-control-allow-origin"], "http://192.168.1.183:5173");
+  await app.close();
+});
+
+test("OPTIONS /ai/chat accepts a private LAN origin when private network dev CORS is enabled", async () => {
+  const app = await buildApp({
+    config: {
+      ...TEST_CONFIG,
+      CORS_ALLOW_PRIVATE_NETWORK_DEV: true,
+    },
+    verifyAccessToken: async () => ({ id: "user-chat-lan" }),
+  });
+  const response = await app.inject({
+    method: "OPTIONS",
+    url: "/ai/chat",
+    headers: {
+      origin: "http://192.168.1.183:5173",
+      "access-control-request-method": "POST",
+      "access-control-request-headers": "authorization,content-type",
+    },
+  });
+  assert.equal(response.statusCode, 204);
+  assert.equal(response.headers["access-control-allow-origin"], "http://192.168.1.183:5173");
+  await app.close();
+});
+
+test("OPTIONS private LAN preflight stays blocked when private network dev CORS is disabled", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-1" }),
+  });
+  const response = await app.inject({
+    method: "OPTIONS",
+    url: "/ai/now",
+    headers: {
+      origin: "http://192.168.1.183:5173",
+      "access-control-request-method": "POST",
+      "access-control-request-headers": "authorization,content-type",
+    },
+  });
+  assert.notEqual(response.headers["access-control-allow-origin"], "http://192.168.1.183:5173");
   await app.close();
 });
 
@@ -688,8 +751,8 @@ test("POST /ai/now prioritizes structure_missing before a proven cross-category 
   assert.equal(payload.interventionType, "today_recommendation");
   assert.equal(payload.primaryAction.intent, "open_pilotage");
   assert.equal(payload.primaryAction.label, "Structurer");
-  assert.match(payload.reason, /clarifier l'objectif/i);
-  assert.match(payload.reason, /premiere action/i);
+  assert.match(payload.reason, /clarifier l['’]objectif/i);
+  assert.match(payload.reason, /premi[eè]re action/i);
   assert.match(payload.reason, /Augmenter les revenus/i);
   await app.close();
 });

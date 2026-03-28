@@ -32,6 +32,10 @@ describe("coach panel contract", () => {
     expect(coachPage).toContain("useCoachConversationController");
     expect(coachPage).toContain("<CoachConversationSurface controller={controller} mode=\"page\" />");
     expect(coachPage).toContain("sourceTab = \"today\"");
+    expect(coachPage).toContain("initialMode = \"chat\"");
+    expect(coachPanel).toContain("conversationMode");
+    expect(coachPanel).toContain("buildCreationProposalFromDraftChanges");
+    expect(coachPanel).toContain("onOpenAssistantCreate");
     expect(coachPanel).toContain("coachConversationRail");
     expect(coachPanel).toContain("setActiveConversationId");
     expect(coachPanel).toContain("archiveConversation");

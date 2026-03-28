@@ -10,18 +10,23 @@ function readSrc(relPath) {
 }
 
 describe("create flow visual contract", () => {
-  it("keeps the unified create host on Gate main-section primitives", () => {
-    const modalSource = readSrc("ui/create/CreateFlowModal.jsx");
-    const shellSource = readSrc("ui/create/FlowShell.jsx");
-    const sectionSource = readSrc("ui/create/CreateSection.jsx");
+  it("keeps the canonical create host on Gate sections instead of the modal host", () => {
+    const pageSource = readSrc("pages/CreateItem.jsx");
+    const screenSource = readSrc("features/create-item/CreateItemScreens.jsx");
 
-    expect(modalSource).toContain("GateMainSection GateSurfacePremium GateCardPremium");
-    expect(shellSource).toContain("GatePanel");
-    expect(sectionSource).toContain("createStepSection GateSurfacePremium GateCardPremium");
+    expect(pageSource).toContain('pageId="create-item"');
+    expect(pageSource).toContain("normalizeCreateItemDraft");
+    expect(screenSource).toContain("ActionCreateScreen");
+    expect(screenSource).toContain("OutcomeCreateScreen");
+    expect(screenSource).toContain("GuidedCreateScreen");
+    expect(screenSource).toContain("SectionSurface");
+    expect(screenSource).toContain("FooterBar");
+    expect(pageSource).not.toContain("CreateFlowModal");
   });
 
-  it("does not fall back to legacy UI.jsx in the Create V2 steps mounted in the host", () => {
+  it("does not fall back to legacy UI.jsx in the canonical create host or the remaining legacy steps", () => {
     const sources = [
+      "pages/CreateItem.jsx",
       "pages/CreateV2Outcome.jsx",
       "pages/CreateV2OutcomeNextAction.jsx",
       "pages/CreateV2HabitType.jsx",
@@ -35,7 +40,7 @@ describe("create flow visual contract", () => {
       expect(source).not.toContain("../components/UI");
     }
 
-    expect(readSrc("pages/Onboarding.jsx")).toContain("CreateChoiceCard");
+    expect(readSrc("pages/CreateItem.jsx")).toContain("ActionCreateScreen");
     expect(readSrc("pages/CreateV2Habits.jsx")).toContain("CreateSection");
   });
 });

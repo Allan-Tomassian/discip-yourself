@@ -14,7 +14,7 @@ import {
 } from "./editItemShared";
 import "./editItem.css";
 
-function SectionSurface({ title, description, main = false, children }) {
+export function SectionSurface({ title, description, main = false, children }) {
   const cardClassName = main
     ? "GateMainSection GateMainSectionCard GateSurfacePremium GateCardPremium"
     : "GateSurfacePremium GateCardPremium GateSecondarySectionCard";
@@ -25,7 +25,7 @@ function SectionSurface({ title, description, main = false, children }) {
   );
 }
 
-function Field({ label, helper = "", children }) {
+export function Field({ label, helper = "", children }) {
   return (
     <div className="editItemField">
       <div className="editItemFieldLabel">{label}</div>
@@ -35,7 +35,7 @@ function Field({ label, helper = "", children }) {
   );
 }
 
-function InlineCard({ title, text, action = null }) {
+export function InlineCard({ title, text, action = null }) {
   return (
     <div className="GateInlineMetaCard editItemInlineCard">
       <div className="GateRoleCardTitle">{title}</div>
@@ -47,7 +47,7 @@ function InlineCard({ title, text, action = null }) {
   );
 }
 
-function TimeModeField({
+export function TimeModeField({
   label,
   hasMultipleSlots,
   slotCount,
@@ -87,7 +87,7 @@ function TimeModeField({
   );
 }
 
-function DaysField({ value, onToggle }) {
+export function DaysField({ value, onToggle }) {
   return (
     <Field label="Jours" helper="Garde seulement les jours réellement crédibles.">
       <div className="editItemDaysRow">
@@ -106,7 +106,7 @@ function DaysField({ value, onToggle }) {
   );
 }
 
-function ReminderFields({ controller }) {
+export function ReminderFields({ controller }) {
   if (!controller.remindersEnabled) return null;
   return (
     <div className="editItemSectionGrid">
@@ -165,7 +165,13 @@ function ReminderFields({ controller }) {
   );
 }
 
-function FooterBar({ error, onCancel, onSave }) {
+export function FooterBar({
+  error,
+  onCancel,
+  onSave,
+  primaryLabel = "Enregistrer",
+  secondaryLabel = "Annuler",
+}) {
   return (
     <div className="editItemFooterDock">
       <div className="GateMainSection GateMainSectionCard GateSurfacePremium GateCardPremium editItemFooterSurface">
@@ -173,9 +179,9 @@ function FooterBar({ error, onCancel, onSave }) {
           {error ? <div className="editItemErrorText" role="alert">{error}</div> : null}
           <GateFooter>
             <GateButton variant="ghost" onClick={onCancel}>
-              Annuler
+              {secondaryLabel}
             </GateButton>
-            <GateButton onClick={onSave}>Enregistrer</GateButton>
+            <GateButton onClick={onSave}>{primaryLabel}</GateButton>
           </GateFooter>
         </div>
       </div>

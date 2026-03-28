@@ -7,12 +7,16 @@ export default function CoachChat({
   setData,
   setTab,
   sourceTab = "today",
+  initialMode = "chat",
+  onOpenAssistantCreate,
 }) {
   const controller = useCoachConversationController({
     data,
     setData,
     setTab,
     surfaceTab: sourceTab,
+    initialMode,
+    onOpenAssistantCreate,
   });
 
   return (
@@ -20,7 +24,7 @@ export default function CoachChat({
       data={data}
       pageId="coach-chat"
       headerTitle="Coach"
-      headerSubtitle="Conversation rapide, orientée action"
+      headerSubtitle={initialMode === "structure" ? "Structurer un projet avant de créer réellement." : "Conversation rapide, orientée action"}
     >
       <CoachConversationSurface controller={controller} mode="page" />
     </ScreenShell>

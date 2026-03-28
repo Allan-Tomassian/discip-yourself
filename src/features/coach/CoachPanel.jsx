@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom";
 import { useAuth } from "../../auth/useAuth";
 import { requestAiCoachChat } from "../../infra/aiCoachChatClient";
+import { deriveAiUnavailableMessage } from "../../infra/aiTransportDiagnostics";
 import { applySessionRuntimeTransition } from "../../logic/sessionRuntime";
-import { applyChatDraftChanges } from "../../logic/chatDraftChanges";
+import { applyChatDraftChanges, buildCreationProposalFromDraftChanges } from "../../logic/chatDraftChanges";
 import { GateButton, GatePanel } from "../../shared/ui/gate/Gate";
 import { getManualAiLoadingStages } from "../manualAi/loadingStages";
 import { getCoachContextSnapshot } from "./coachContextAdapter";
@@ -43,12 +44,15 @@ const COACH_QUICK_PROMPTS = [
 ];
 
 function deriveCoachErrorMessage(result) {
-  const code = String(result?.errorCode || "").trim().toUpperCase();
-  if (code === "DISABLED") return "Coach indisponible sur cet appareil.";
-  if (code === "UNAUTHORIZED") return "Connecte-toi pour utiliser le coach.";
-  if (code === "RATE_LIMITED" || code === "QUOTA_EXCEEDED") return "Coach indisponible pour le moment.";
-  if (code === "NETWORK_ERROR") return "Coach indisponible hors ligne.";
-  return "Coach indisponible.";
+  return deriveAiUnavailableMessage(result, {
+    disabled: "Coach indisponible sur cet appareil.",
+    unauthorized: "Connecte-toi pour utiliser le coach.",
+    rateLimited: "Coach indisponible pour le moment.",
+    offline: "Coach indisponible hors ligne.",
+    corsPrivateOrigin: "Coach indisponible sur cette origine de test.",
+    networkUnknown: "Coach indisponible pour le moment.",
+    fallback: "Coach indisponible.",
+  });
 }
 
 function useCoachSessionReplies(conversationId) {
@@ -94,6 +98,8 @@ export function useCoachConversationController({
   surfaceTab = "today",
   onRequestClose,
   emitBehaviorFeedback,
+  initialMode = "chat",
+  onOpenAssistantCreate,
 }) {
   const { session } = useAuth();
   const accessToken = session?.access_token || "";
@@ -101,10 +107,15 @@ export function useCoachConversationController({
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [conversationMode, setConversationMode] = useState(initialMode === "structure" ? "structure" : "chat");
   const [loadingStageIndex, setLoadingStageIndex] = useState(-1);
   const [archivedConversation, setArchivedConversation] = useState(null);
   const archiveTimeoutRef = useRef(null);
   const loadingStages = useMemo(() => getManualAiLoadingStages("coach"), []);
+
+  useEffect(() => {
+    setConversationMode(initialMode === "structure" ? "structure" : "chat");
+  }, [initialMode]);
 
   const contextSnapshot = useMemo(
     () => getCoachContextSnapshot({ data: safeData, surfaceTab }),
@@ -243,6 +254,10 @@ export function useCoachConversationController({
   const applyAction = useCallback(
     (action) => {
       if (!action || !action.intent) return;
+      if (action.intent === "continue_coach") {
+        setTab?.("coach-chat");
+        return;
+      }
       if (action.intent === "open_library") {
         setTab?.("library");
         onRequestClose?.();
@@ -308,6 +323,28 @@ export function useCoachConversationController({
         draftApplyMessage: "",
       });
 
+      const proposal = buildCreationProposalFromDraftChanges(safeData, draftChanges, {
+        sourceContext: {
+          mainTab: surfaceTab === "planning" || surfaceTab === "library" || surfaceTab === "pilotage" ? surfaceTab : "today",
+          sourceSurface: onRequestClose ? "coach-panel" : "coach-chat",
+          categoryId: contextSnapshot.activeCategoryId || null,
+          dateKey: contextSnapshot.selectedDateKey || null,
+          coachConversationId: currentConversation.id,
+        },
+      });
+      if (proposal && typeof onOpenAssistantCreate === "function") {
+        updateCoachSessionReplyDraftStatus(currentConversation.id, entry.createdAt, {
+          draftApplyStatus: "applied",
+          draftApplyMessage: "Proposition ouverte pour validation.",
+        });
+        onOpenAssistantCreate({
+          sourceSurface: onRequestClose ? "coach-panel" : "coach-chat",
+          conversationId: currentConversation.id,
+          proposal,
+        });
+        return;
+      }
+
       const result = applyChatDraftChanges(safeData, draftChanges);
       setData?.(result.state);
 
@@ -338,7 +375,7 @@ export function useCoachConversationController({
         draftApplyMessage: "Aucun changement applicable dans l'état actuel.",
       });
     },
-    [currentConversation?.id, onRequestClose, safeData, setData, setTab]
+    [contextSnapshot.activeCategoryId, contextSnapshot.selectedDateKey, currentConversation?.id, onOpenAssistantCreate, onRequestClose, safeData, setData, setTab, surfaceTab]
   );
 
   const submitMessage = useCallback(
@@ -373,7 +410,10 @@ export function useCoachConversationController({
         payload: {
           selectedDateKey: contextSnapshot.selectedDateKey,
           activeCategoryId: contextSnapshot.activeCategoryId,
-          message,
+          message:
+            conversationMode === "structure"
+              ? `Mode structuration. Aide-moi à transformer cette intention en objectif, actions, rythme et prochaines étapes concrètes, sans créer directement.\n\n${message}`
+              : message,
           recentMessages: buildRecentMessagesFromConversation(preparedConversation),
         },
       });
@@ -414,6 +454,7 @@ export function useCoachConversationController({
     },
     [
       accessToken,
+      conversationMode,
       contextSnapshot.activeCategoryId,
       contextSnapshot.selectedDateKey,
       currentConversation?.id,
@@ -435,7 +476,12 @@ export function useCoachConversationController({
     activeConversationId,
     setActiveConversationId,
     messageEntries,
-    quickPrompts: COACH_QUICK_PROMPTS,
+    quickPrompts:
+      conversationMode === "structure"
+        ? ["Structurer un projet", "Transformer une idée en système", "Créer une première version", "Clarifier mes priorités", "Organiser une catégorie"]
+        : COACH_QUICK_PROMPTS,
+    conversationMode,
+    setConversationMode,
     hasMessages: messageEntries.length > 0,
     categoriesById,
     goalsById,
@@ -456,6 +502,7 @@ export function CoachConversationSurface({
   setRailExpanded: setRailExpandedProp,
   isDesktopLayout: isDesktopLayoutProp,
   setIsDesktopLayout: setIsDesktopLayoutProp,
+  onOpenStructuring,
 }) {
   const {
     draft,
@@ -469,6 +516,8 @@ export function CoachConversationSurface({
     setActiveConversationId,
     messageEntries,
     quickPrompts,
+    conversationMode,
+    setConversationMode,
     hasMessages,
     categoriesById,
     goalsById,
@@ -647,6 +696,27 @@ export function CoachConversationSurface({
             <div />
           )}
           <div className="coachSurfaceToolbarActions">
+            <div className="row gap8">
+              <GateButton
+                variant={conversationMode === "chat" ? undefined : "ghost"}
+                className="GatePressable"
+                onClick={() => setConversationMode("chat")}
+              >
+                Discuter
+              </GateButton>
+              <GateButton
+                variant={conversationMode === "structure" ? undefined : "ghost"}
+                className="GatePressable"
+                onClick={() => setConversationMode("structure")}
+              >
+                Structurer
+              </GateButton>
+              {mode === "panel" && typeof onOpenStructuring === "function" ? (
+                <GateButton variant="ghost" className="GatePressable" onClick={onOpenStructuring}>
+                  Ouvrir le chat
+                </GateButton>
+              ) : null}
+            </div>
             {loading ? <div className="coachSurfaceStage">{loadingStageLabel || "Analyse du contexte"}</div> : null}
             {archivedConversation ? (
               <button type="button" className="coachArchiveNotice" onClick={undoArchivedConversation}>
@@ -771,7 +841,11 @@ export function CoachConversationSurface({
             className="GateTextareaPremium"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder="Ex: Je suis en retard, quel est le meilleur prochain bloc ?"
+            placeholder={
+              conversationMode === "structure"
+                ? "Ex: J’aimerais lancer un projet sport sans me disperser."
+                : "Ex: Je suis en retard, quel est le meilleur prochain bloc ?"
+            }
             rows={3}
           />
           <div className="coachComposerFooter">
@@ -800,6 +874,8 @@ export default function CoachPanel({
   setData,
   setTab,
   surfaceTab = "today",
+  onOpenStructuring,
+  onOpenAssistantCreate,
 }) {
   const { emitBehaviorFeedback } = useBehaviorFeedback();
   const controller = useCoachConversationController({
@@ -809,6 +885,7 @@ export default function CoachPanel({
     surfaceTab,
     onRequestClose: onClose,
     emitBehaviorFeedback,
+    onOpenAssistantCreate,
   });
   const [isDesktopLayout, setIsDesktopLayout] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(min-width: 901px)").matches : false
@@ -905,15 +982,16 @@ export default function CoachPanel({
                 </GateButton>
               </div>
             </div>
-            <CoachConversationSurface
-              controller={controller}
-              mode="panel"
-              railExpanded={railExpanded}
-              setRailExpanded={setRailExpanded}
-              isDesktopLayout={isDesktopLayout}
-              setIsDesktopLayout={setIsDesktopLayout}
-            />
-          </GatePanel>
+        <CoachConversationSurface
+          controller={controller}
+          mode="panel"
+          railExpanded={railExpanded}
+          setRailExpanded={setRailExpanded}
+          isDesktopLayout={isDesktopLayout}
+          setIsDesktopLayout={setIsDesktopLayout}
+          onOpenStructuring={onOpenStructuring}
+        />
+      </GatePanel>
         </div>
       </div>
     </div>,

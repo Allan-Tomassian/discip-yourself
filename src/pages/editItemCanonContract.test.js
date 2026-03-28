@@ -20,7 +20,8 @@ describe("edit item canonical contract", () => {
     expect(categories).not.toContain("editPanelGoalId");
     expect(app).toContain("returnToCategoryView: true");
     expect(app).toContain("returnToCategoryView: false");
-    expect(app).toContain('setTab("edit-item")');
+    expect(app).toContain('setTab("edit-item", {');
+    expect(app).toContain("editItemId: id");
   });
 
   it("uses the split canonical screens and removes legacy edit panel recipes", () => {

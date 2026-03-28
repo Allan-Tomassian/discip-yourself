@@ -7,6 +7,7 @@ import { updateOccurrence } from "./occurrences";
 import { getFirstVisibleCategoryId, resolveVisibleCategoryId } from "../domain/categoryVisibility";
 import { createDefaultGoalSchedule } from "./state";
 import { ensureWindowFromScheduleRules, regenerateWindowFromScheduleRules } from "./occurrencePlanner";
+import { normalizeRouteOrigin } from "../creation/createItemDraft";
 
 function normalizeRepeat(value) {
   const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -107,6 +108,58 @@ function resolveWindowRange(change) {
   return { fromKey, toKey: addDaysLocal(fromKey, 13) };
 }
 
+export function buildCreationProposalFromDraftChanges(
+  state,
+  draftChanges,
+  { sourceContext = null } = {}
+) {
+  const safeState = state && typeof state === "object" ? state : {};
+  const changes = Array.isArray(draftChanges) ? draftChanges.filter(Boolean) : [];
+  const createChanges = changes.filter((change) => String(change?.type || "") === "create_action");
+  if (!createChanges.length) return null;
+
+  const categoryFallback = getFirstVisibleCategoryId(safeState.categories);
+  const actionDrafts = createChanges.map((change) => {
+    const categoryId =
+      resolveVisibleCategoryId(change?.categoryId, safeState.categories) ||
+      categoryFallback ||
+      null;
+    const repeat = normalizeRepeat(change?.repeat) || (change?.dateKey ? "none" : "weekly");
+    const dateKey = normalizeLocalDateKey(change?.dateKey);
+    const startTime = normalizeStartTime(change?.startTime);
+    const durationMinutes = normalizeDuration(change?.durationMin);
+    const daysOfWeek = normalizeDaysOfWeek(change?.daysOfWeek);
+    return {
+      title: typeof change?.title === "string" ? change.title.trim() : "",
+      categoryId,
+      repeat: repeat || "none",
+      oneOffDate: repeat === "none" ? dateKey || todayLocalKey() : "",
+      daysOfWeek: repeat === "weekly" ? daysOfWeek : [],
+      timeMode: startTime ? "FIXED" : "NONE",
+      startTime,
+      timeSlots: startTime ? [startTime] : [],
+      durationMinutes,
+    };
+  });
+
+  const unresolvedQuestions = [];
+  if (actionDrafts.some((draft) => !draft.categoryId)) {
+    unresolvedQuestions.push("Choisir la catégorie qui doit accueillir cette création.");
+  }
+  if (actionDrafts.some((draft) => !draft.title)) {
+    unresolvedQuestions.push("Confirmer le titre de l’action avant création.");
+  }
+
+  return {
+    kind: "assistant",
+    categoryDraft: actionDrafts[0]?.categoryId ? { mode: "existing", id: actionDrafts[0].categoryId } : { mode: "unresolved" },
+    actionDrafts,
+    unresolvedQuestions,
+    sourceContext: normalizeRouteOrigin(sourceContext),
+    requiresValidation: true,
+  };
+}
+
 export function applyChatDraftChanges(state, draftChanges) {
   const safeState = state && typeof state === "object" ? state : {};
   const changes = Array.isArray(draftChanges) ? draftChanges.filter(Boolean) : [];
@@ -119,24 +172,6 @@ export function applyChatDraftChanges(state, draftChanges) {
     if (!type) continue;
 
     if (type === "create_action") {
-      const candidate = createActionModel(
-        {
-          id: uid(),
-          title: change?.title,
-          categoryId:
-            resolveVisibleCategoryId(change?.categoryId, nextState.categories) ||
-            getFirstVisibleCategoryId(nextState.categories),
-          ...buildActionSchedulingPatch(change),
-          status: "queued",
-        },
-        { categories: nextState.categories }
-      );
-      if (!candidate.ok || !candidate.value) continue;
-      nextState = createGoal(nextState, candidate.value);
-      const range = resolveWindowRange(change);
-      nextState = ensureWindowFromScheduleRules(nextState, range.fromKey, range.toKey, [candidate.value.id]);
-      appliedCount += 1;
-      needsPlanningReview = true;
       continue;
     }
 
