@@ -1,3 +1,5 @@
+import { normalizeRouteOrigin } from "../app/routeOrigin";
+
 const CREATE_ITEM_KINDS = new Set(["action", "outcome", "guided", "assistant"]);
 const REPEAT_VALUES = new Set(["none", "daily", "weekly"]);
 const PRIORITY_VALUES = new Set(["prioritaire", "secondaire", "bonus"]);
@@ -88,23 +90,6 @@ function normalizeCategoryDraft(rawValue, fallbackCategoryId = null) {
   if (mode === "unresolved") return { mode: "unresolved", id, label };
   if (id) return { mode: "existing", id, label };
   return null;
-}
-
-export function normalizeRouteOrigin(rawValue) {
-  const source = rawValue && typeof rawValue === "object" ? rawValue : {};
-  const mainTab = asString(source.mainTab);
-  return {
-    mainTab:
-      mainTab === "today" || mainTab === "planning" || mainTab === "library" || mainTab === "pilotage"
-        ? mainTab
-        : "today",
-    sourceSurface: asNullableString(source.sourceSurface) || "today",
-    categoryId: asNullableString(source.categoryId),
-    dateKey: normalizeDate(source.dateKey) || null,
-    occurrenceId: asNullableString(source.occurrenceId),
-    libraryMode: source.libraryMode === "category-view" ? "category-view" : source.libraryMode === "root" ? "root" : null,
-    coachConversationId: asNullableString(source.coachConversationId),
-  };
 }
 
 export function normalizeActionDraft(rawValue, fallbackCategoryId = null) {

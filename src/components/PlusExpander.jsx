@@ -100,10 +100,10 @@ export default function PlusExpander({
             <div className="plusExpanderPanelContent GateGlassContent" ref={panelRef} role="menu" aria-label="Créer">
               <div className="stack stackGap8">
                 <GateButton className="GatePressable" onClick={onChooseAction}>
-                  Créer une action
+                  Action rapide
                 </GateButton>
                 <GateButton variant="ghost" className="GatePressable" onClick={onChooseObjective}>
-                  Créer un {LABELS.goalLower}
+                  {LABELS.goal}
                 </GateButton>
                 {typeof onChooseStructuring === "function" ? (
                   <GateButton variant="ghost" className="GatePressable" onClick={onChooseStructuring}>

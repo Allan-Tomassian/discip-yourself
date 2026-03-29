@@ -43,9 +43,7 @@ describe("product wording contract", () => {
       "pages/Home.jsx",
       "features/manualAi/displayState.js",
       "components/planning/PlanningCoachCard.jsx",
-      "ui/create/CreateFlowModal.jsx",
-      "pages/CreateV2Outcome.jsx",
-      "pages/CreateV2LinkOutcome.jsx",
+      "pages/CreateItem.jsx",
       "components/PlusExpander.jsx",
     ];
     const legacyPatterns = [

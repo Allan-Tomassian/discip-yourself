@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/useAuth";
 import { getCategoryProfileSummary } from "../../domain/categoryProfile";
 import { requestAiCoachChat } from "../../infra/aiCoachChatClient";
-import { applyChatDraftChanges } from "../../logic/chatDraftChanges";
+import { applyChatDraftChanges, buildCreationProposalFromDraftChanges } from "../../logic/chatDraftChanges";
 import { buildPlanningCoachFallback } from "../../features/planning/planningCoachModel";
 import {
   buildPlanningManualAiContextKey,
@@ -52,6 +52,7 @@ export default function PlanningCoachCard({
   activeCategory = null,
   onOpenCoach,
   onOpenPilotage,
+  onOpenAssistantCreate,
 }) {
   const { emitBehaviorFeedback } = useBehaviorFeedback();
   const { session } = useAuth();
@@ -166,6 +167,21 @@ export default function PlanningCoachCard({
     if (!showDraft || applying) return;
     setApplying(true);
     setDraftMessage("");
+    const proposal = buildCreationProposalFromDraftChanges(data, draftChanges, {
+      sourceContext: {
+        mainTab: "planning",
+        sourceSurface: "planning",
+        categoryId: activeCategoryId || null,
+        dateKey: selectedDateKey || null,
+      },
+    });
+    if (proposal && typeof onOpenAssistantCreate === "function") {
+      onOpenAssistantCreate(proposal);
+      setDraftMessage("Proposition ouverte pour validation.");
+      setIgnoredDraftKey(draftKey);
+      setApplying(false);
+      return;
+    }
     let result = { state: data, appliedCount: 0, navigationTarget: null };
     setData((previous) => {
       result = applyChatDraftChanges(previous, draftChanges);

@@ -116,7 +116,7 @@ function getGoalSortKey(goal) {
 function hasModernActionFields(goal) {
   if (!goal || typeof goal !== "object") return false;
 
-  // New creation model fields (CreateV2*): repeat/days/timeMode/timeSlots/schedule.*
+  // Canonical creation/editing fields: repeat/days/timeMode/timeSlots/schedule.*
   if (typeof goal.repeat === "string" && goal.repeat.trim()) return true;
   if (Array.isArray(goal.daysOfWeek) && goal.daysOfWeek.length) return true;
   if (typeof goal.oneOffDate === "string" && goal.oneOffDate.trim()) return true;

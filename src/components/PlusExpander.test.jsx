@@ -8,7 +8,7 @@ vi.mock("../ui/portal/Portal", () => ({
 }));
 
 describe("PlusExpander", () => {
-  it("keeps action creation primary and demotes advanced goal creation", () => {
+  it("keeps the simplified V1 launcher labels", () => {
     const html = renderToStaticMarkup(
       <PlusExpander
         open
@@ -20,8 +20,26 @@ describe("PlusExpander", () => {
       />
     );
 
-    expect(html).toContain("Créer une action");
-    expect(html).toContain("Créer un objectif");
+    expect(html).toContain("Action rapide");
+    expect(html).toContain("Objectif");
     expect(html).toContain("Structurer avec le Coach");
+    expect(html).not.toContain("Reprendre");
+  });
+
+  it("shows resume only when a draft exists", () => {
+    const html = renderToStaticMarkup(
+      <PlusExpander
+        open
+        anchorRect={{ top: 20, left: 20, right: 60, bottom: 40, width: 40, height: 20 }}
+        onClose={() => {}}
+        onChooseObjective={() => {}}
+        onChooseAction={() => {}}
+        onChooseStructuring={() => {}}
+        onResumeDraft={() => {}}
+        hasDraft
+      />
+    );
+
+    expect(html).toContain("Reprendre");
   });
 });

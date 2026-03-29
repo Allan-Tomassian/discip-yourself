@@ -28,5 +28,8 @@ describe("create flow host contract", () => {
 
     expect(source).not.toContain("resolveLegacyCreateRouteIntent");
     expect(source).not.toContain("legacyIntent.baseTab");
+    expect(source).not.toContain("openCreateFlowModal");
+    expect(source).not.toContain("categoryGateOpen");
+    expect(source).toContain("openCreateTask");
   });
 });

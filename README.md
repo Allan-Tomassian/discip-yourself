@@ -2,6 +2,16 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## iPhone Coach / IA en LAN
+
+Pour valider le Coach et les analyses IA sur iPhone avec un backend local, suivre:
+
+- [docs/iphone-ai-local-checklist.md](/Users/allan/Desktop/discip-yourself%20code/docs/iphone-ai-local-checklist.md)
+
+Pour le front, un exemple d'override local existe dans:
+
+- [.env.local.example](/Users/allan/Desktop/discip-yourself%20code/.env.local.example)
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh

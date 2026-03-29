@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
+import { normalizeRouteOrigin } from "../app/routeOrigin";
 import { safeConfirm } from "../utils/dialogs";
 import { uid } from "../utils/helpers";
 import { GateButton } from "../shared/ui/gate/Gate";
@@ -43,7 +44,6 @@ import {
   normalizeActionDraft,
   normalizeCreateItemDraft,
   normalizeOutcomeDraft,
-  normalizeRouteOrigin,
 } from "../creation/createItemDraft";
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
 import {

@@ -33,4 +33,13 @@ describe("PlanningCoachCard contract", () => {
     expect(source).toContain("Analyser ma semaine");
     expect(source).toContain("Analyser ma journée");
   });
+
+  it("opens assistant creation for coach draft proposals instead of applying new objects directly", () => {
+    const source = readSrc("components/planning/PlanningCoachCard.jsx");
+
+    expect(source).toContain("buildCreationProposalFromDraftChanges");
+    expect(source).toContain("if (proposal && typeof onOpenAssistantCreate === \"function\") {");
+    expect(source).toContain("onOpenAssistantCreate(proposal);");
+    expect(source).toContain("setDraftMessage(\"Proposition ouverte pour validation.\");");
+  });
 });

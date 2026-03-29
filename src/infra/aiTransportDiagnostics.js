@@ -6,6 +6,7 @@ const PROCESS_ENV =
   typeof process !== "undefined" && process.env && typeof process.env === "object"
     ? process.env
     : {};
+let didLogAiBackendTarget = false;
 
 function safeParseUrl(value) {
   try {
@@ -97,6 +98,16 @@ export function logAiTransportIssue({ endpoint, errorCode = null, transportMeta 
     backendBaseUrl: meta.backendBaseUrl || "",
     online: typeof meta.online === "boolean" ? meta.online : null,
     probableCause: meta.probableCause || null,
+  });
+}
+
+export function logAiBackendTargetOnce({ backendBaseUrl } = {}) {
+  if (didLogAiBackendTarget || !shouldLogAiTransportDebug()) return;
+  didLogAiBackendTarget = true;
+  const frontendOrigin = readFrontendOrigin();
+  console.info("[ai-backend-target]", {
+    frontendOrigin: frontendOrigin || "",
+    backendBaseUrl: String(backendBaseUrl || "").trim() || "",
   });
 }
 

@@ -24,23 +24,28 @@ describe("create flow visual contract", () => {
     expect(pageSource).not.toContain("CreateFlowModal");
   });
 
-  it("does not fall back to legacy UI.jsx in the canonical create host or the remaining legacy steps", () => {
-    const sources = [
-      "pages/CreateItem.jsx",
+  it("removes the legacy modal host and step files from the repo", () => {
+    const legacyPaths = [
+      "components/CategoryGateModal.jsx",
+      "ui/create/CreateFlowModal.jsx",
+      "creation/creationDraft.js",
+      "creation/createFlowController.js",
       "pages/CreateV2Outcome.jsx",
       "pages/CreateV2OutcomeNextAction.jsx",
       "pages/CreateV2HabitType.jsx",
       "pages/CreateV2LinkOutcome.jsx",
       "pages/CreateV2PickCategory.jsx",
       "pages/CreateV2Habits.jsx",
-      "pages/Onboarding.jsx",
-    ].map(readSrc);
+      "pages/CreateV2HabitOneOff.jsx",
+      "pages/CreateV2HabitRecurring.jsx",
+      "pages/CreateV2HabitAnytime.jsx",
+    ];
 
-    for (const source of sources) {
-      expect(source).not.toContain("../components/UI");
+    for (const relPath of legacyPaths) {
+      expect(fs.existsSync(path.join(SRC_ROOT, relPath))).toBe(false);
     }
 
-    expect(readSrc("pages/CreateItem.jsx")).toContain("ActionCreateScreen");
-    expect(readSrc("pages/CreateV2Habits.jsx")).toContain("CreateSection");
+    expect(readSrc("pages/CreateItem.jsx")).not.toContain("../components/UI");
+    expect(readSrc("pages/Onboarding.jsx")).not.toContain("../components/UI");
   });
 });

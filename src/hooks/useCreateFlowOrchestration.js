@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  normalizeRouteOrigin,
+  resolveMainTabForSurface,
+  resolveRouteOriginLibraryMode,
+} from "../app/routeOrigin";
+import {
   createEmptyCreateItemDraft,
   hasCreateItemDraft,
   normalizeActionDraft,
   normalizeCreateItemDraft,
   normalizeCreationProposal,
   normalizeOutcomeDraft,
-  normalizeRouteOrigin,
 } from "../creation/createItemDraft";
 import {
   CATEGORY_VIEW,
@@ -18,10 +22,7 @@ import {
   withExecutionActiveCategoryId,
   withLibraryActiveCategoryId,
 } from "../domain/categoryVisibility";
-import { canCreateCategory } from "../logic/entitlements";
-import { ensureSystemInboxCategory, normalizeCategory } from "../logic/state";
-import { findSuggestedCategory } from "../utils/categoriesSuggested";
-import { uid } from "../utils/helpers";
+import { ensureSystemInboxCategory } from "../logic/state";
 
 function normalizeAnchorRect(rect) {
   if (!rect) return null;
@@ -44,15 +45,70 @@ function resolveCategoryContextNamespace({ source, tab }) {
   return "none";
 }
 
-function resolveMainTab(tab, source) {
-  const safeSource = typeof source === "string" ? source.trim() : "";
-  if (safeSource === "planning" || safeSource === "pilotage" || safeSource === "library" || safeSource === "today") {
-    return safeSource;
-  }
-  if (tab === "planning" || tab === "pilotage" || tab === "library" || tab === "today") return tab;
-  if (tab === "category-detail" || tab === "category-progress" || tab === "edit-item") return "library";
-  if (tab === "coach-chat") return "today";
-  return "today";
+export function dispatchOpenCreateTask({
+  request = {},
+  tab,
+  librarySelectedCategoryId = null,
+  resolvePreferredCategoryId,
+  seedCreateDraft,
+  onCreateTaskOpen,
+  setTab,
+  setPlusOpen,
+}) {
+  const {
+    categoryId,
+    source,
+    kind = "action",
+    outcomeId,
+    preserveDraft = false,
+    origin,
+    proposal,
+  } = request;
+  const resolvedCategoryId = resolvePreferredCategoryId({ categoryId, source });
+  const sourceSurface = source || tab;
+  const nextMainTab = resolveMainTabForSurface(sourceSurface, tab);
+  const nextOrigin = normalizeRouteOrigin(
+    origin || {
+      mainTab: nextMainTab,
+      sourceSurface,
+      categoryId: resolvedCategoryId,
+      libraryMode: resolveRouteOriginLibraryMode({
+        mainTab: nextMainTab,
+        sourceSurface,
+        categoryId: sourceSurface === "library" ? resolvedCategoryId : librarySelectedCategoryId,
+      }),
+    }
+  );
+  const normalizedProposal = proposal ? normalizeCreationProposal(proposal, nextOrigin) : null;
+
+  setPlusOpen?.(false);
+  seedCreateDraft?.({
+    source,
+    categoryId: resolvedCategoryId,
+    outcomeId,
+    kind,
+    preserveDraft,
+    origin: nextOrigin,
+    proposal: normalizedProposal,
+  });
+  onCreateTaskOpen?.({
+    origin: nextOrigin,
+    kind,
+    proposal: normalizedProposal,
+  });
+  setTab?.("create-item", {
+    historyState: {
+      task: "create-item",
+      origin: nextOrigin,
+      createKind: kind,
+    },
+  });
+
+  return {
+    resolvedCategoryId,
+    nextOrigin,
+    normalizedProposal,
+  };
 }
 
 export function useCreateFlowOrchestration({
@@ -61,22 +117,12 @@ export function useCreateFlowOrchestration({
   safeData,
   categories,
   setData,
-  dataRef,
-  openPaywall,
   onCreateTaskOpen,
 }) {
   const [plusOpen, setPlusOpen] = useState(false);
   const [plusAnchorRect, setPlusAnchorRect] = useState(null);
   const [plusContext, setPlusContext] = useState({ source: null, categoryId: null });
   const plusAnchorElRef = useRef(null);
-  const [categoryGateOpen, setCategoryGateOpen] = useState(false);
-  const [categoryGateContext, setCategoryGateContext] = useState({
-    source: null,
-    intent: null,
-    anchorRect: null,
-    anchorEl: null,
-    next: null,
-  });
 
   const draft = useMemo(() => normalizeCreateItemDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
   const hasDraft = useMemo(() => hasCreateItemDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
@@ -95,18 +141,6 @@ export function useCreateFlowOrchestration({
         },
       };
     });
-  };
-
-  const openCategoryGate = ({ source, intent, anchorRect, anchorEl, next } = {}) => {
-    setPlusOpen(false);
-    setCategoryGateContext({
-      source: source || "unknown",
-      intent: intent || null,
-      anchorRect: normalizeAnchorRect(anchorRect),
-      anchorEl: anchorEl || null,
-      next: next || null,
-    });
-    setCategoryGateOpen(true);
   };
 
   const resolvePreferredCategoryId = useCallback(({ categoryId: explicitCategoryId, source } = {}) => {
@@ -182,12 +216,18 @@ export function useCreateFlowOrchestration({
         resolvedOutcomeId = null;
       }
       const currentDraft = preserveDraft ? normalizeCreateItemDraft(baseUiWithInbox.createDraft) : createEmptyCreateItemDraft();
+      const sourceSurface = source || tab;
+      const nextMainTab = resolveMainTabForSurface(sourceSurface, tab);
       const nextOrigin = normalizeRouteOrigin(
         origin || {
-          mainTab: resolveMainTab(tab, source),
-          sourceSurface: source || tab,
+          mainTab: nextMainTab,
+          sourceSurface,
           categoryId: resolvedCategoryId,
-          libraryMode: tab === "library" && safeData?.ui?.librarySelectedCategoryId ? "category-view" : tab === "library" ? "root" : null,
+          libraryMode: resolveRouteOriginLibraryMode({
+            mainTab: nextMainTab,
+            sourceSurface,
+            categoryId: sourceSurface === "library" ? resolvedCategoryId : safeData?.ui?.librarySelectedCategoryId || null,
+          }),
         }
       );
       const nextKind = kind || currentDraft.kind || "action";
@@ -256,41 +296,19 @@ export function useCreateFlowOrchestration({
     });
   }, [categories, safeData?.ui?.librarySelectedCategoryId, setData, tab]);
 
-  const openCreateFlowModal = useCallback(
-    ({ categoryId, source, kind = "action", outcomeId, preserveDraft = false, origin, proposal } = {}) => {
-      const resolvedCategoryId = resolvePreferredCategoryId({ categoryId, source });
-      const nextOrigin = normalizeRouteOrigin(
-        origin || {
-          mainTab: resolveMainTab(tab, source),
-          sourceSurface: source || tab,
-          categoryId: resolvedCategoryId,
-          libraryMode: tab === "library" && resolvedCategoryId ? "category-view" : tab === "library" ? "root" : null,
-        }
-      );
-      setPlusOpen(false);
-      seedCreateDraft({
-        source,
-        categoryId: resolvedCategoryId,
-        outcomeId,
-        kind,
-        preserveDraft,
-        origin: nextOrigin,
-        proposal,
-      });
-      onCreateTaskOpen?.({
-        origin: nextOrigin,
-        kind,
-        proposal: normalizedProposal,
-      });
-      setTab("create-item", {
-        historyState: {
-          task: "create-item",
-          origin: nextOrigin,
-          createKind: kind,
-        },
-      });
-    },
-    [onCreateTaskOpen, resolvePreferredCategoryId, seedCreateDraft, setTab, tab]
+  const openCreateTask = useCallback(
+    (request = {}) =>
+      dispatchOpenCreateTask({
+        request,
+        tab,
+        librarySelectedCategoryId: safeData?.ui?.librarySelectedCategoryId || null,
+        resolvePreferredCategoryId,
+        seedCreateDraft,
+        onCreateTaskOpen,
+        setTab,
+        setPlusOpen,
+      }),
+    [onCreateTaskOpen, resolvePreferredCategoryId, safeData?.ui?.librarySelectedCategoryId, seedCreateDraft, setTab, tab]
   );
 
   const resolveTopNavAnchor = () => {
@@ -302,204 +320,6 @@ export function useCreateFlowOrchestration({
     const topEl = document.querySelector("[data-create-anchor='topnav']");
     if (!topEl) return { anchorRect: null, anchorEl: null };
     return { anchorRect: normalizeAnchorRect(topEl.getBoundingClientRect()), anchorEl: topEl };
-  };
-
-  const createCategoryFromGate = useCallback(
-    ({ name, color }) => {
-      if (!name || typeof setData !== "function") return null;
-      let createdId = null;
-      setData((prev) => {
-        const ensured = ensureSystemInboxCategory(prev);
-        const prevCategories = Array.isArray(ensured.state.categories) ? ensured.state.categories : [];
-        const exists = prevCategories.some(
-          (c) => String(c?.name || "").trim().toLowerCase() === String(name).trim().toLowerCase()
-        );
-        if (exists) return ensured.state;
-        const created = normalizeCategory(
-          { id: `cat_${uid()}`, name: String(name).trim(), color: color || "#7C3AED" },
-          prevCategories.length
-        );
-        createdId = created.id;
-        return { ...ensured.state, categories: [...prevCategories, created] };
-      });
-      return createdId;
-    },
-    [setData]
-  );
-
-  const toggleCategoryActive = useCallback(
-    (cat, nextActive, opts = {}) => {
-      const mode = opts?.mode || "migrate";
-      const debugSink = opts?.__debugSink;
-      const logDebug = typeof debugSink === "function" ? debugSink : null;
-      const catId = cat?.id || null;
-      if (!catId || typeof setData !== "function") return;
-      if (logDebug) {
-        logDebug(`IN ${cat?.name || ""}/${catId} nextActive=${nextActive} mode=${mode}`);
-      }
-      if (nextActive) {
-        const current =
-          dataRef.current && typeof dataRef.current === "object" ? dataRef.current : safeData;
-        if (!canCreateCategory(current)) {
-          openPaywall("Limite de catégories atteinte.");
-          return;
-        }
-        const suggested = findSuggestedCategory(catId);
-        const name = (typeof cat === "object" && cat?.name) || suggested?.name || "Catégorie";
-        const color = (typeof cat === "object" && cat?.color) || suggested?.color || "#F97316";
-        setData((prev) => {
-          const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
-          const exists = prevCategories.some((c) => c?.id === catId);
-          const nameConflict =
-            !exists &&
-            prevCategories.some(
-              (c) => String(c?.name || "").trim().toLowerCase() === String(name).trim().toLowerCase()
-            );
-          if (nameConflict) return prev;
-          let nextCategories = prevCategories;
-          if (!exists) {
-            const created = normalizeCategory({ id: catId, name, color }, prevCategories.length);
-            nextCategories = [...prevCategories, created];
-          }
-          const prevUi = prev.ui || {};
-          const prevOrder = Array.isArray(prevUi.categoryRailOrder) ? prevUi.categoryRailOrder : [];
-          const nextOrder = prevOrder.includes(catId) ? prevOrder : [...prevOrder, catId];
-          if (logDebug) logDebug(`AFTER activated id=${catId} railOrder=${nextOrder.length}`);
-          if (exists && nextOrder.length === prevOrder.length) return prev;
-          return { ...prev, categories: nextCategories, ui: { ...prevUi, categoryRailOrder: nextOrder } };
-        });
-        return;
-      }
-      setData((prev) => {
-        let next = prev;
-        const ensured = ensureSystemInboxCategory(next);
-        next = ensured.state;
-        const sysId = ensured.category?.id || getInboxId(ensured.state || next || {});
-        if (catId === sysId) return next;
-        const prevGoals = Array.isArray(next.goals) ? next.goals : [];
-        const prevHabits = Array.isArray(next.habits) ? next.habits : [];
-        const prevCategories = Array.isArray(next.categories) ? next.categories : [];
-        const exists = prevCategories.some((c) => c?.id === catId);
-        const nextCategories = exists ? prevCategories.filter((c) => c.id !== catId) : prevCategories;
-        const fallbackSelectedId = getFirstVisibleCategoryId(nextCategories);
-        let nextUi = { ...(next.ui || {}) };
-        if (Array.isArray(nextUi.categoryRailOrder)) {
-          nextUi.categoryRailOrder = nextUi.categoryRailOrder.filter((id) => id !== catId);
-        }
-        if (getExecutionActiveCategoryId(nextUi) === catId) {
-          nextUi = withExecutionActiveCategoryId(nextUi, fallbackSelectedId);
-        }
-        if (getStoredLibraryActiveCategoryId(nextUi) === catId) {
-          nextUi = withLibraryActiveCategoryId(nextUi, fallbackSelectedId);
-        }
-        if (!exists) {
-          if (logDebug) {
-            const orderLen = Array.isArray(nextUi.categoryRailOrder) ? nextUi.categoryRailOrder.length : 0;
-            logDebug(`MISSING category id=${catId}`);
-            logDebug(`AFTER deactivated id=${catId} railOrder=${orderLen}`);
-          }
-          return { ...next, ui: nextUi };
-        }
-        let nextGoals = prevGoals;
-        let nextHabits = prevHabits;
-        let removedIds = new Set();
-
-        if (mode === "delete") {
-          const removedGoals = prevGoals.filter((g) => g && g.categoryId === catId);
-          const keptGoals = prevGoals.filter((g) => !g || g.categoryId !== catId);
-          const removedHabits = prevHabits.filter((h) => h && h.categoryId === catId);
-          const keptHabits = prevHabits.filter((h) => !h || h.categoryId !== catId);
-          removedIds = new Set([
-            ...removedGoals.map((g) => g.id).filter(Boolean),
-            ...removedHabits.map((h) => h.id).filter(Boolean),
-          ]);
-          nextGoals = keptGoals;
-          nextHabits = keptHabits;
-          if (Array.isArray(next.occurrences) && removedIds.size) {
-            next = {
-              ...next,
-              occurrences: next.occurrences.filter((o) => !o || !removedIds.has(o.goalId)),
-            };
-          }
-          if (Array.isArray(next.reminders) && removedIds.size) {
-            next = {
-              ...next,
-              reminders: next.reminders.filter((r) => !r || !removedIds.has(r.goalId)),
-            };
-          }
-        } else {
-          nextGoals = prevGoals.map((g) => (g && g.categoryId === catId ? { ...g, categoryId: sysId } : g));
-          nextHabits = prevHabits.map((h) => (h && h.categoryId === catId ? { ...h, categoryId: sysId } : h));
-        }
-
-        if (logDebug) {
-          const orderLen = Array.isArray(nextUi.categoryRailOrder) ? nextUi.categoryRailOrder.length : 0;
-          logDebug(`AFTER deactivated id=${catId} railOrder=${orderLen}`);
-        }
-        return {
-          ...next,
-          categories: nextCategories,
-          goals: nextGoals,
-          habits: nextHabits,
-          ui: nextUi,
-        };
-      });
-    },
-    [setData, safeData, openPaywall, dataRef]
-  );
-
-  const handleCategoryGateConfirm = (categoryId) => {
-    if (!categoryId || typeof setData !== "function") return;
-    const existing = categories.find((c) => c?.id === categoryId) || null;
-    const suggestion = !existing ? findSuggestedCategory(categoryId) : null;
-    if (!existing && suggestion && !canCreateCategory(safeData)) {
-      openPaywall("Limite de catégories atteinte.");
-      return;
-    }
-    setCategoryGateOpen(false);
-    setData((prev) => {
-      let next = prev;
-      const ensured = ensureSystemInboxCategory(next);
-      next = ensured.state;
-      const prevCategories = Array.isArray(next.categories) ? next.categories : [];
-      let nextCategories = prevCategories;
-      const prevUi = next.ui || {};
-      const prevOrder = Array.isArray(prevUi.categoryRailOrder) ? prevUi.categoryRailOrder : [];
-      let nextOrder = prevOrder;
-      if (!prevCategories.some((c) => c?.id === categoryId) && suggestion) {
-        const created = normalizeCategory(
-          { id: suggestion.id, name: suggestion.name, color: suggestion.color || "#F97316" },
-          prevCategories.length
-        );
-        nextCategories = [...prevCategories, created];
-        if (!prevOrder.includes(created.id)) nextOrder = [...prevOrder, created.id];
-      }
-      const contextNamespace = resolveCategoryContextNamespace({ source: categoryGateContext?.source, tab });
-      let nextUi = prevUi;
-      if (contextNamespace === "execution") {
-        nextUi = withExecutionActiveCategoryId(nextUi, categoryId);
-      } else if (contextNamespace === "library") {
-        nextUi = withLibraryActiveCategoryId(nextUi, categoryId);
-      }
-      return {
-        ...next,
-        categories: nextCategories,
-        ui: {
-          ...nextUi,
-          categoryRailOrder: nextOrder,
-        },
-      };
-    });
-    const nextFlow = categoryGateContext?.next && typeof categoryGateContext.next === "object" ? categoryGateContext.next : {};
-    openCreateFlowModal({
-      source: nextFlow.source || categoryGateContext?.source,
-      categoryId,
-      kind: nextFlow.kind,
-      outcomeId: nextFlow.outcomeId,
-      preserveDraft: Boolean(nextFlow.preserveDraft),
-      origin: nextFlow.origin,
-      proposal: nextFlow.proposal,
-    });
   };
 
   const openCreateExpander = ({ source, categoryId, anchorRect, anchorEl } = {}) => {
@@ -514,46 +334,45 @@ export function useCreateFlowOrchestration({
 
   const closePlusExpander = () => setPlusOpen(false);
 
-  const openCreateOutcomeDirect = ({ source, categoryId, skipCategoryGate } = {}) => {
+  const openCreateOutcome = ({ source, categoryId } = {}) => {
     const preferredCategoryId = resolvePreferredCategoryId({ categoryId, source });
-    openCreateFlowModal({
+    openCreateTask({
       source,
       categoryId: preferredCategoryId,
       kind: "outcome",
-      preserveDraft: skipCategoryGate === true,
     });
   };
 
-  const openCreateHabitDirect = ({ source, categoryId, outcomeId, skipCategoryGate } = {}) => {
+  const openCreateAction = ({ source, categoryId, outcomeId } = {}) => {
     const preferredCategoryId = resolvePreferredCategoryId({ categoryId, source });
-    openCreateFlowModal({
+    openCreateTask({
       source,
       categoryId: preferredCategoryId,
       outcomeId,
       kind: "action",
-      preserveDraft: Boolean(outcomeId) || skipCategoryGate === true,
+      preserveDraft: Boolean(outcomeId),
     });
   };
 
-  const openCreateGuidedDirect = ({ source, categoryId } = {}) => {
+  const openCreateGuided = ({ source, categoryId } = {}) => {
     const preferredCategoryId = resolvePreferredCategoryId({ categoryId, source });
-    openCreateFlowModal({
+    openCreateTask({
       source,
       categoryId: preferredCategoryId,
       kind: "guided",
     });
   };
 
-  const openCreateAssistantDirect = ({ source, categoryId, proposal, origin } = {}) => {
+  const openCreateAssistant = ({ source, categoryId, proposal, origin } = {}) => {
     const normalizedProposal = normalizeCreationProposal(
       proposal,
       origin || {
-        mainTab: resolveMainTab(tab, source),
+        mainTab: resolveMainTabForSurface(source || tab, tab),
         sourceSurface: source || tab,
         categoryId,
       }
     );
-    openCreateFlowModal({
+    openCreateTask({
       source,
       categoryId:
         categoryId ||
@@ -568,16 +387,16 @@ export function useCreateFlowOrchestration({
 
   const handleChooseObjective = () => {
     const { source, categoryId } = plusContext || {};
-    openCreateOutcomeDirect({ source, categoryId });
+    openCreateOutcome({ source, categoryId });
   };
 
   const handleChooseAction = () => {
     const { source, categoryId } = plusContext || {};
-    openCreateHabitDirect({ source, categoryId });
+    openCreateAction({ source, categoryId });
   };
 
-  const handleResumeDraft = () => {
-    openCreateFlowModal({
+  const resumeCreateDraft = () => {
+    openCreateTask({
       source: draft?.intent?.sourceSurface || draft?.origin?.sourceSurface || "resume-draft",
       categoryId: draft?.actionDraft?.categoryId || draft?.outcomeDraft?.categoryId || draft?.proposal?.categoryDraft?.id || null,
       outcomeId: draft?.actionDraft?.outcomeId || null,
@@ -594,24 +413,17 @@ export function useCreateFlowOrchestration({
     plusOpen,
     plusAnchorRect,
     plusAnchorElRef,
-    categoryGateOpen,
-    setCategoryGateOpen,
-    categoryGateContext,
     resetCreateDraft,
     seedCreateDraft,
-    openCategoryGate,
-    openCreateFlowModal,
-    createCategoryFromGate,
-    toggleCategoryActive,
-    handleCategoryGateConfirm,
+    openCreateTask,
     openCreateExpander,
     closePlusExpander,
     handleChooseObjective,
     handleChooseAction,
-    handleResumeDraft,
-    openCreateOutcomeDirect,
-    openCreateHabitDirect,
-    openCreateGuidedDirect,
-    openCreateAssistantDirect,
+    resumeCreateDraft,
+    openCreateOutcome,
+    openCreateAction,
+    openCreateGuided,
+    openCreateAssistant,
   };
 }

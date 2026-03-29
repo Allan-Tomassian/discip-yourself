@@ -9,6 +9,8 @@ import {
 import { autoActivateScheduledGoals } from "./logic/goals";
 import PlusExpander from "./components/PlusExpander";
 import { markIOSRootClass } from "./utils/dialogs";
+import { readAiBackendBaseUrl } from "./infra/aiNowClient";
+import { logAiBackendTargetOnce } from "./infra/aiTransportDiagnostics";
 import { GateButton, GatePanel } from "./shared/ui/gate/Gate";
 import "./features/navigation/bottomCategoryBar.css";
 import "./features/navigation/navPillUnified.css";
@@ -56,6 +58,12 @@ import { useCreateFlowOrchestration } from "./hooks/useCreateFlowOrchestration";
 import { useCategorySelectionSync } from "./hooks/useCategorySelectionSync";
 import { getInboxId } from "./app/inbox";
 import { createHomeNavigationHandlers } from "./app/homeNavigation";
+import {
+  normalizeRouteOrigin,
+  resolveActiveTopNavTab,
+  resolveMainTabForSurface,
+  resolveRouteOriginLibraryMode,
+} from "./app/routeOrigin";
 import { useUserData } from "./data/useUserData";
 import { useProfile } from "./profile/useProfile";
 import { isProfileComplete } from "./profile/profileApi";
@@ -229,6 +237,7 @@ export default function App() {
       return next;
     });
     markIOSRootClass();
+    logAiBackendTargetOnce({ backendBaseUrl: readAiBackendBaseUrl() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -268,6 +277,12 @@ export default function App() {
       : currentTab === "edit-item"
         ? editItem?.returnTab || "library"
         : null;
+  const activeTopNavTab = resolveActiveTopNavTab({
+    currentTab,
+    coachSurfaceTab,
+    taskMainTab: taskActiveTab,
+    editReturnTab: editItem?.returnTab || null,
+  });
   const resolvedSessionDateKey =
     (typeof sessionDateKey === "string" && sessionDateKey) ||
     (typeof safeData?.ui?.selectedDateKey === "string" && safeData.ui.selectedDateKey) ||
@@ -275,37 +290,7 @@ export default function App() {
     todayLocalKey();
   const topNav = (
     <TopNav
-      active={
-        currentTab === "session"
-          ? "today"
-          : currentTab === "coach-chat"
-            ? coachSurfaceTab
-          : currentTab === "onboarding"
-            ? "today"
-          : taskActiveTab
-            ? taskActiveTab
-          : currentTab === "planning"
-            ? "planning"
-          : currentTab === "pilotage"
-            ? "pilotage"
-            : currentTab === "settings" ||
-                currentTab === "billing" ||
-                currentTab === "account" ||
-                currentTab === "support" ||
-                currentTab === "faq" ||
-                currentTab === "legal" ||
-                currentTab === "privacy" ||
-                currentTab === "journal" ||
-                currentTab === "micro-actions" ||
-                currentTab === "history"
-              ? "today"
-                : currentTab === "library" ||
-                  currentTab === "category-detail" ||
-                  currentTab === "category-progress" ||
-                  (typeof currentTab === "string" && currentTab.startsWith("create-"))
-                ? "library"
-                : currentTab
-      }
+      active={activeTopNavTab}
       setActive={(next) => {
         if (next === "library") {
           openLibraryDetail();
@@ -401,19 +386,17 @@ export default function App() {
     closePlusExpander,
     handleChooseObjective,
     handleChooseAction,
-    handleResumeDraft,
-    openCreateOutcomeDirect,
-    openCreateHabitDirect,
-    openCreateGuidedDirect,
-    openCreateAssistantDirect,
+    resumeCreateDraft,
+    openCreateOutcome,
+    openCreateAction,
+    openCreateGuided,
+    openCreateAssistant,
   } = useCreateFlowOrchestration({
     tab,
     setTab,
     safeData,
     categories: visibleCategories,
     setData,
-    dataRef,
-    openPaywall,
     onCreateTaskOpen: setCreateTaskState,
   });
   const handleEditBack = () => {
@@ -446,35 +429,25 @@ export default function App() {
   const resolveRouteOrigin = useCallback(
     ({ sourceSurface, categoryId = null, coachConversationId = null } = {}) => {
       const safeSource = sourceSurface || tab;
-      const mainTab =
-        safeSource === "planning" || safeSource === "pilotage" || safeSource === "library" || safeSource === "today"
-          ? safeSource
-          : safeSource === "category-detail" || safeSource === "category-progress" || safeSource === "edit-item"
-            ? "library"
-            : safeSource === "coach-chat" || safeSource === "coach-panel"
-              ? coachSurfaceTab
-              : tab === "planning" || tab === "pilotage" || tab === "library" || tab === "today"
-                ? tab
-                : "today";
-      return {
+      const fallbackMainTab = safeSource === "coach-chat" || safeSource === "coach-panel" ? coachSurfaceTab : tab;
+      const mainTab = resolveMainTabForSurface(safeSource, fallbackMainTab);
+      const effectiveCategoryId = categoryId || selectedCategoryId || libraryCategoryId || homeActiveCategoryId || null;
+      return normalizeRouteOrigin({
         mainTab,
         sourceSurface: safeSource,
-        categoryId: categoryId || selectedCategoryId || libraryCategoryId || homeActiveCategoryId || null,
+        categoryId: effectiveCategoryId,
         dateKey:
           mainTab === "today" || mainTab === "planning" || safeSource === "coach-chat" || safeSource === "coach-panel"
             ? resolvedSessionDateKey
             : null,
         occurrenceId: safeSource === "session" ? sessionOccurrenceId || null : null,
-        libraryMode:
-          mainTab === "library"
-            ? safeSource === "library" && libraryCategoryId
-              ? "category-view"
-              : safeSource === "category-detail" || safeSource === "category-progress"
-                ? "category-view"
-                : "root"
-            : null,
+        libraryMode: resolveRouteOriginLibraryMode({
+          mainTab,
+          sourceSurface: safeSource,
+          categoryId: safeSource === "library" ? effectiveCategoryId : libraryCategoryId || effectiveCategoryId,
+        }),
         coachConversationId: coachConversationId || null,
-      };
+      });
     },
     [
       coachSurfaceTab,
@@ -524,7 +497,7 @@ export default function App() {
 
   const handleCreateTaskClose = useCallback(
     ({ outcome = "cancel", origin: rawOrigin = null, createdCategoryId = null } = {}) => {
-      const origin = rawOrigin || createTaskState?.origin || resolveRouteOrigin({ sourceSurface: tab });
+      const origin = normalizeRouteOrigin(rawOrigin || createTaskState?.origin || resolveRouteOrigin({ sourceSurface: tab }));
       restoreTaskOriginContext({ origin, createdCategoryId });
       setCreateTaskState(null);
 
@@ -563,41 +536,41 @@ export default function App() {
     ({ sourceSurface = "coach-chat", conversationId = null, proposal } = {}) => {
       const origin = resolveRouteOrigin({ sourceSurface, coachConversationId: conversationId });
       setCreateTaskState({ origin, kind: "assistant", proposal });
-      openCreateAssistantDirect({
+      openCreateAssistant({
         source: sourceSurface,
         categoryId: proposal?.categoryDraft?.id || null,
         proposal,
         origin,
       });
     },
-    [openCreateAssistantDirect, resolveRouteOrigin]
+    [openCreateAssistant, resolveRouteOrigin]
   );
 
   const launchActionCreate = useCallback(
     ({ sourceSurface, categoryId = null, outcomeId = null } = {}) => {
       const origin = resolveRouteOrigin({ sourceSurface, categoryId });
       setCreateTaskState({ origin, kind: "action" });
-      openCreateHabitDirect({ source: sourceSurface, categoryId, outcomeId });
+      openCreateAction({ source: sourceSurface, categoryId, outcomeId });
     },
-    [openCreateHabitDirect, resolveRouteOrigin]
+    [openCreateAction, resolveRouteOrigin]
   );
 
   const launchOutcomeCreate = useCallback(
     ({ sourceSurface, categoryId = null } = {}) => {
       const origin = resolveRouteOrigin({ sourceSurface, categoryId });
       setCreateTaskState({ origin, kind: "outcome" });
-      openCreateOutcomeDirect({ source: sourceSurface, categoryId });
+      openCreateOutcome({ source: sourceSurface, categoryId });
     },
-    [openCreateOutcomeDirect, resolveRouteOrigin]
+    [openCreateOutcome, resolveRouteOrigin]
   );
 
   const launchGuidedCreate = useCallback(
     ({ sourceSurface, categoryId = null } = {}) => {
       const origin = resolveRouteOrigin({ sourceSurface, categoryId });
       setCreateTaskState({ origin, kind: "guided" });
-      openCreateGuidedDirect({ source: sourceSurface, categoryId });
+      openCreateGuided({ source: sourceSurface, categoryId });
     },
-    [openCreateGuidedDirect, resolveRouteOrigin]
+    [openCreateGuided, resolveRouteOrigin]
   );
 
   // Theme reconciliation:
@@ -923,7 +896,7 @@ export default function App() {
           onChooseObjective={handleChooseObjective}
           onChooseAction={handleChooseAction}
           onChooseStructuring={() => openCoachStructuring({ sourceSurface: tab })}
-          onResumeDraft={hasDraft ? handleResumeDraft : null}
+          onResumeDraft={hasDraft ? resumeCreateDraft : null}
           hasDraft={hasDraft}
         />
       </>
@@ -1028,6 +1001,7 @@ export default function App() {
           setData={setData}
           persistenceScope={persistenceScope}
           setTab={setTab}
+          onOpenAssistantCreate={(proposal) => openCoachAssistantCreate({ sourceSurface: "planning", proposal })}
           onOpenCoach={() => {
             setDrawerOpen(false);
             setCoachOpen(true);
@@ -1360,7 +1334,7 @@ export default function App() {
         onChooseObjective={handleChooseObjective}
         onChooseAction={handleChooseAction}
         onChooseStructuring={() => openCoachStructuring({ sourceSurface: tab })}
-        onResumeDraft={hasDraft ? handleResumeDraft : null}
+        onResumeDraft={hasDraft ? resumeCreateDraft : null}
         hasDraft={hasDraft}
       />
       <PaywallModal

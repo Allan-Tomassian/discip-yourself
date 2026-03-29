@@ -17,8 +17,12 @@ describe("create item canonical contract", () => {
 
     expect(app).toContain("<CreateItem");
     expect(app).not.toContain("<CreateFlowModal");
-    expect(orchestration).toContain('setTab("create-item"');
+    expect(orchestration).toContain("export function dispatchOpenCreateTask");
+    expect(orchestration).toContain('setTab?.("create-item"');
     expect(orchestration).toContain("createEmptyCreateItemDraft");
+    expect(orchestration).toContain(
+      "const normalizedProposal = proposal ? normalizeCreationProposal(proposal, nextOrigin) : null;"
+    );
     expect(navigation).toContain('"create-item"');
     expect(navigation).toContain('else if (initialPath.startsWith("/create")) initialTab = "create-item";');
     expect(navigation).toContain('else if (t === "create-item") {');
@@ -28,12 +32,15 @@ describe("create item canonical contract", () => {
   it("keeps creation draft-first and assistant creation proposal-based", () => {
     const createPage = readSrc("pages/CreateItem.jsx");
     const coachPanel = readSrc("features/coach/CoachPanel.jsx");
+    const planningCoachCard = readSrc("components/planning/PlanningCoachCard.jsx");
     const draftChanges = readSrc("logic/chatDraftChanges.js");
 
     expect(createPage).toContain("createEmptyCreateItemDraft");
     expect(createPage).toContain("persistCoachSummary");
     expect(coachPanel).toContain("buildCreationProposalFromDraftChanges");
     expect(coachPanel).toContain("onOpenAssistantCreate");
+    expect(planningCoachCard).toContain("buildCreationProposalFromDraftChanges");
+    expect(planningCoachCard).toContain("onOpenAssistantCreate");
     expect(draftChanges).not.toContain("nextState = createGoal(nextState, candidate.value);");
   });
 });

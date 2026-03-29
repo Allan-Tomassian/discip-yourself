@@ -1,3 +1,4 @@
+import { normalizeRouteOrigin } from "../app/routeOrigin";
 import { uid } from "../utils/helpers";
 import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { addDaysLocal, normalizeStartTime } from "../utils/datetime";
@@ -7,7 +8,6 @@ import { updateOccurrence } from "./occurrences";
 import { getFirstVisibleCategoryId, resolveVisibleCategoryId } from "../domain/categoryVisibility";
 import { createDefaultGoalSchedule } from "./state";
 import { ensureWindowFromScheduleRules, regenerateWindowFromScheduleRules } from "./occurrencePlanner";
-import { normalizeRouteOrigin } from "../creation/createItemDraft";
 
 function normalizeRepeat(value) {
   const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
