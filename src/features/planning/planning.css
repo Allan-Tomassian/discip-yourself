@@ -16,7 +16,7 @@
 .planningSectionBody {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
 }
 
 .planningSectionHeader {
@@ -97,12 +97,16 @@
 .planningWeekGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .planningWeekBucket {
   display: grid;
-  gap: 10px;
+  gap: 8px;
+  border-color: color-mix(in srgb, var(--gate-border) 94%, rgba(255, 255, 255, 0.08));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 8px 16px rgba(0, 0, 0, 0.16);
 }
 
 .planningWeekBucket.isToday {
@@ -111,7 +115,7 @@
 
 .planningWeekBucketHeader {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .planningWeekBucketHeaderMain {
@@ -127,19 +131,19 @@
 
 .planningWeekList {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .planningTodayTag {
   display: inline-flex;
   align-items: center;
-  min-height: 22px;
-  padding: 4px 9px;
+  min-height: 20px;
+  padding: 3px 8px;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 26%, var(--border-subtle));
-  background: color-mix(in srgb, var(--accent-soft) 62%, var(--surface-primary));
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 20%, var(--border-subtle));
+  background: color-mix(in srgb, var(--accent-soft) 48%, var(--surface-primary));
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1;
   font-weight: 600;
   white-space: nowrap;
@@ -151,12 +155,12 @@
 
 .planningCoachSummary {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .planningCoachBlock {
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
 .planningCoachLabel {
@@ -171,7 +175,7 @@
 }
 
 .planningCoachFooter {
-  padding-top: 4px;
+  padding-top: 2px;
 }
 
 .planningCoachSection .planningSectionActions .gateButton,
@@ -203,6 +207,25 @@
   .planningSectionFooter .gateButton {
     flex: 1 1 0;
     min-width: 0;
+  }
+
+  .planningCoachFooter {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .planningCoachFooter .gateButton {
+    flex: initial;
+    width: 100%;
+  }
+
+  .planningCoachFooter .planningCoachPrimaryAction {
+    grid-column: 1 / -1;
+  }
+
+  .planningCoachFooter .gateButton:last-child {
+    grid-column: 1 / -1;
   }
 }
 

@@ -13,10 +13,12 @@ describe("Planning primitive convergence contract", () => {
   it("uses Gate primitives instead of the generic UI wrapper in the page shell", () => {
     const source = readSrc("pages/Planning.jsx");
 
-    expect(source).toContain("import { GateButton as Button, GateSection } from \"../shared/ui/gate/Gate\";");
+    expect(source).toContain("import { GateButton as Button, GateSection, GateSectionIntro } from \"../shared/ui/gate/Gate\";");
     expect(source).not.toContain("from \"../components/UI\"");
     expect(source).toContain('headerSubtitle={MAIN_PAGE_COPY.planning.orientation}');
     expect(source).toContain('className="mainPageStack planningPage"');
+    expect(source).toContain('className="mainPageSection"');
+    expect(source).toContain("<GateSectionIntro");
     expect(source).toContain("MAIN_PAGE_COPY.planning.weekDescription");
     expect(source).toContain("MAIN_PAGE_COPY.planning.dayDescription");
     expect(source).toContain("planningCalendarSection");
@@ -45,7 +47,8 @@ describe("Planning primitive convergence contract", () => {
     expect(source).toContain("GateMainSection");
     expect(source).toContain("GateSecondarySectionCard");
     expect(source).toContain("GateAnalyticsCard");
-    expect(source).toContain("Lecture locale du rythme");
+    expect(source).not.toContain("Lecture locale du rythme");
+    expect(source).toContain("planningCoachPrimaryAction");
     expect(source).toContain("Parler au Coach");
     expect(source).toContain("Passer en Plan");
     expect(source).toContain("Relire mes progrès");

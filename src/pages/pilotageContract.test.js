@@ -68,9 +68,13 @@ describe("Pilotage contract", () => {
     expect(source).toContain("MAIN_PAGE_COPY.pilotage.summaryTitle");
     expect(source).toContain("MAIN_PAGE_COPY.pilotage.focusTitle");
     expect(source).toContain("MAIN_PAGE_COPY.pilotage.statsTitle");
+    expect(source).toContain("<GateSectionIntro");
     expect(source).toContain('headerSubtitle={MAIN_PAGE_COPY.pilotage.orientation}');
-    expect(source).toContain('className="mainPageStack"');
+    expect(source).toContain('className="mainPageStack pilotagePage"');
     expect(source).toContain("GateMainSection GateMainSectionCard");
+    expect(source).toContain("pilotageSummaryCard");
+    expect(source).toContain("pilotageFocusCard");
+    expect(source).toContain("pilotageStatsCard");
     expect(source).toContain("togglePilotageCategory");
     expect(source).toContain("pilotageInlineDetail");
     expect(source).toContain("Catégories déjà structurées");

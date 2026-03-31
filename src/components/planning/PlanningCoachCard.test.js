@@ -16,7 +16,7 @@ describe("PlanningCoachCard contract", () => {
     expect(source).toContain("function handleDismissPlanningAnalysis() {");
     expect(source).toContain("setReply(null);");
     expect(source).toContain("manualPlanningAnalysis.dismissAnalysis();");
-    expect(source).toContain("<Button variant=\"ghost\" onClick={handleDismissPlanningAnalysis}>");
+    expect(source).toContain("<Button size=\"sm\" variant=\"ghost\" onClick={handleDismissPlanningAnalysis}>");
   });
 
   it("uses the shared IA status component and surface-specific loading stages", () => {

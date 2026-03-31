@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SortableBlocks from "../components/SortableBlocks";
 import ScreenShell from "./_ScreenShell";
-import { GateButton, GateRow, GateSection } from "../shared/ui/gate/Gate";
+import { GateButton, GateRow, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import {
   addDays,
   addMonths,
@@ -2125,45 +2125,67 @@ export default function Home({
       headerRowAlign="start"
     >
       <div className="mainPageStack todayPageShell">
-        <TodayHero
-          title={typedHeroTitle || heroViewModel.title}
-          category={heroDisplayCategory}
-          activeCategory={focusCategory || null}
-          behaviorCue={todayBehaviorCue}
-          categoryName={heroDisplayCategoryName}
-          durationLabel={heroDurationLabel}
-          reason={heroReasonText}
-          contributionLabel={heroContributionLabel}
-          recommendedCategoryLabel={heroViewModel.recommendedCategoryLabel || ""}
-          impactText={heroImpactText}
-          analysisStatusKind={heroAnalysisState.kind}
-          analysisModeLabel={heroAnalysisModeLabel}
-          analysisStorageLabel={heroStorageLabel}
-          timestampLabel={heroTimestampLabel}
-          analysisStageLabel={manualTodayAnalysis.loadingStageLabel}
-          primaryLabel={heroViewModel.primaryLabel || "Démarrer"}
-          onPrimaryAction={handleHeroPrimaryAction}
-          canPrimaryAction={canTriggerHeroPrimaryAction}
-          onAnalyze={handleAnalyzeHero}
-          analyzeLabel={heroAnalyzeLabel}
-          analyzeDisabled={manualTodayAnalysis.loading}
-          analyzeError={manualTodayAnalysis.error}
-          onDismissAnalysis={manualTodayAnalysis.isPersistedForContext ? manualTodayAnalysis.dismissAnalysis : null}
-          onOpenPlanning={openPlanningForToday}
-          showPlanningShortcut={showHeroPlanningShortcut}
-          isPreparing={manualTodayAnalysis.loading}
-        />
-        <TodayNextActions
-          actions={nextActions}
-          onOpenOccurrence={handleStartSession}
-          activeCategory={focusCategory || null}
-        />
-        <TodayDailyState
-          plannedMinutes={dailyState.plannedMinutes}
-          doneMinutes={dailyState.doneMinutes}
-          remainingMinutes={dailyState.remainingMinutes}
-          activeCategory={focusCategory || null}
-        />
+        <section className="mainPageSection">
+          <div className="mainPageSectionBody">
+            <TodayHero
+              title={typedHeroTitle || heroViewModel.title}
+              category={heroDisplayCategory}
+              activeCategory={focusCategory || null}
+              behaviorCue={todayBehaviorCue}
+              categoryName={heroDisplayCategoryName}
+              durationLabel={heroDurationLabel}
+              reason={heroReasonText}
+              contributionLabel={heroContributionLabel}
+              recommendedCategoryLabel={heroViewModel.recommendedCategoryLabel || ""}
+              impactText={heroImpactText}
+              analysisStatusKind={heroAnalysisState.kind}
+              analysisModeLabel={heroAnalysisModeLabel}
+              analysisStorageLabel={heroStorageLabel}
+              timestampLabel={heroTimestampLabel}
+              analysisStageLabel={manualTodayAnalysis.loadingStageLabel}
+              primaryLabel={heroViewModel.primaryLabel || "Démarrer"}
+              onPrimaryAction={handleHeroPrimaryAction}
+              canPrimaryAction={canTriggerHeroPrimaryAction}
+              onAnalyze={handleAnalyzeHero}
+              analyzeLabel={heroAnalyzeLabel}
+              analyzeDisabled={manualTodayAnalysis.loading}
+              analyzeError={manualTodayAnalysis.error}
+              onDismissAnalysis={manualTodayAnalysis.isPersistedForContext ? manualTodayAnalysis.dismissAnalysis : null}
+              onOpenPlanning={openPlanningForToday}
+              showPlanningShortcut={showHeroPlanningShortcut}
+              isPreparing={manualTodayAnalysis.loading}
+            />
+          </div>
+        </section>
+
+        <section className="mainPageSection">
+          <GateSectionIntro
+            title="Ensuite aujourd’hui"
+            subtitle={MAIN_PAGE_COPY.today.nextActionsSubtitle}
+          />
+          <div className="mainPageSectionBody">
+            <TodayNextActions
+              actions={nextActions}
+              onOpenOccurrence={handleStartSession}
+              activeCategory={focusCategory || null}
+            />
+          </div>
+        </section>
+
+        <section className="mainPageSection">
+          <GateSectionIntro
+            title={MAIN_PAGE_COPY.today.dailyStateTitle}
+            subtitle={MAIN_PAGE_COPY.today.dailyStateSubtitle}
+          />
+          <div className="mainPageSectionBody">
+            <TodayDailyState
+              plannedMinutes={dailyState.plannedMinutes}
+              doneMinutes={dailyState.doneMinutes}
+              remainingMinutes={dailyState.remainingMinutes}
+              activeCategory={focusCategory || null}
+            />
+          </div>
+        </section>
       </div>
     </ScreenShell>
   );

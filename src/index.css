@@ -67,6 +67,7 @@ html,body{
   min-height:100dvh;
   height:100%;
   width:100%;
+  scroll-padding-top: calc(var(--topbar-bottom, var(--navOffset, 0px)) + 12px);
   background-color: var(--bg-base, var(--background, var(--bg, #05060A)));
   background-image: var(--background, var(--bg-base, none));
   background-repeat: no-repeat;
@@ -78,7 +79,7 @@ body{
   margin:0;
   background: transparent;
   color:var(--text);
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  font-family: var(--font-family-ui);
   overflow-x:hidden;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -99,7 +100,7 @@ a{ color:inherit; }
   max-width:var(--layout-max, var(--page-max));
   margin:0 auto;
   padding:
-    calc(var(--navOffset, 0px) + var(--navGap, 10px) + var(--page-top-gap))
+    calc(var(--navGap, 10px) + var(--page-top-gap))
     calc(var(--page-pad) + var(--safe-right))
     32px
     calc(var(--page-pad) + var(--safe-left));
@@ -257,10 +258,8 @@ a{ color:inherit; }
     calc(var(--page-pad) + var(--safe-left));
 }
 .stickyStack{
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
   z-index: var(--z-sticky);
   padding-top: var(--safe-top);
 }
@@ -345,6 +344,7 @@ a{ color:inherit; }
   padding:10px 8px;
   border-radius:var(--radius-16);
   font-size:var(--font-xs);
+  font-family: var(--font-family-ui);
   line-height:1;
   cursor:pointer;
 }
@@ -566,8 +566,19 @@ a{ color:inherit; }
 .mainPageStack{
   display:flex;
   flex-direction:column;
-  gap:18px;
+  gap:24px;
   width:100%;
+}
+
+.mainPageSection{
+  display:grid;
+  gap:12px;
+  width:100%;
+  min-width:0;
+}
+
+.mainPageSectionBody{
+  min-width:0;
 }
 
 @media (min-width: 900px) {
@@ -1469,7 +1480,7 @@ select {
 
 .container {
   max-width: min(var(--layout-max), calc(100vw - var(--safe-left) - var(--safe-right)));
-  padding-top: calc(var(--navOffset, 0px) + var(--navGap, 10px) + var(--page-top-gap));
+  padding-top: calc(var(--navGap, 10px) + var(--page-top-gap));
   padding-bottom: calc(40px + var(--bottomCategoryBarSpace, var(--bottomRailOffset, 120px)) + var(--safe-bottom));
 }
 

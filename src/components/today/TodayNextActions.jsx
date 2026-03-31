@@ -2,7 +2,6 @@ import React from "react";
 import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
 import CategoryPill from "../CategoryPill";
 import { getCategoryUiVars } from "../../utils/categoryAccent";
-import { MAIN_PAGE_COPY } from "../../ui/labels";
 
 export default function TodayNextActions({
   actions = [],
@@ -13,17 +12,11 @@ export default function TodayNextActions({
 
   return (
     <GateSection
-      className="GateMainSection GateSecondarySectionCard todaySectionCard GateSurfacePremium GateCardPremium"
+      className="GateMainSection GateSecondarySectionCard todaySectionCard todayNextActionsCard GateSurfacePremium GateCardPremium"
       collapsible={false}
       style={activeCategory ? getCategoryUiVars(activeCategory, { level: "surface" }) : undefined}
     >
       <div className="col todaySectionBody">
-        <div className="todaySectionHeader">
-          <div className="titleSm GateRoleSectionTitle">Ensuite aujourd’hui</div>
-          <div className="small2 GateRoleSectionSubtitle" style={{ opacity: 0.8 }}>
-            {MAIN_PAGE_COPY.today.nextActionsSubtitle}
-          </div>
-        </div>
         {safeActions.length ? (
           safeActions.map((item) => (
             <div
@@ -51,7 +44,8 @@ export default function TodayNextActions({
                 <GateButton
                   type="button"
                   variant="ghost"
-                  className="GatePressable"
+                  size="sm"
+                  className="GatePressable todayNextActionTrigger"
                   withSound
                   onClick={() => onOpenOccurrence?.(item)}
                 >
@@ -61,7 +55,10 @@ export default function TodayNextActions({
             </div>
           ))
         ) : (
-          <div className="small2">Rien d’autre d’utile n’est prévu aujourd’hui.</div>
+          <div className="todayNextActionEmpty GateInlineMetaCard">
+            <div className="small2 GateRoleCardMeta">Rien d’autre d’utile n’est prévu aujourd’hui.</div>
+            <div className="small2 textMuted2">Le reste du jour reste libre pour garder un rythme lisible.</div>
+          </div>
         )}
       </div>
     </GateSection>

@@ -80,7 +80,6 @@ const SHARED = {
   cardBg: "var(--surface-1)",
   cardBorder: "var(--border-subtle)",
   cardShadow: "var(--shadow-md)",
-  cardRadius: "20px",
   controlBg: "var(--surface-1)",
   controlBgHover: "var(--surface-2)",
   controlBgActive: "var(--surface-3)",
@@ -89,12 +88,8 @@ const SHARED = {
   controlInset: "inset 0 1px 1px rgba(255,255,255,.05)",
   controlText: "var(--text-1)",
   controlPlaceholder: "var(--text-3)",
-  controlRadius: "14px",
-  controlHeight: "44px",
 
   // Buttons + chips
-  buttonHeight: "40px",
-  buttonRadius: "14px",
   buttonDisabledOpacity: "0.55",
   buttonGhostBg: "transparent",
   buttonGhostBorder: "var(--border-subtle)",
@@ -222,49 +217,6 @@ const SHARED = {
   "bg-stripes":
     "repeating-linear-gradient(90deg, rgba(255,255,255,var(--bg-stripes-opacity, 0.12)) 0px, rgba(255,255,255,var(--bg-stripes-opacity, 0.12)) 1px, rgba(255,255,255,0) 1px, rgba(255,255,255,0) 14px)",
 
-  // Layout + spacing
-  "space-4": "4px",
-  "space-6": "6px",
-  "space-8": "8px",
-  "space-10": "10px",
-  "space-12": "12px",
-  "space-14": "14px",
-  "space-16": "16px",
-  "space-18": "18px",
-  "space-20": "20px",
-  "space-24": "24px",
-  "space-32": "32px",
-  "radius-8": "8px",
-  "radius-12": "12px",
-  "radius-16": "16px",
-  "radius-22": "20px",
-  "radius-pill": "999px",
-  "radius-card": "20px",
-  "radius-btn": "14px",
-  "radius-input": "14px",
-  "radius-chip": "14px",
-  "input-height": "44px",
-  "btn-height": "40px",
-  "page-max": "420px",
-  "page-header-gap": "12px",
-  "page-section-gap": "12px",
-  "page-top-gap": "8px",
-  pageTitleMarginTop: "6px",
-  pageTitleToSubtitle: "6px",
-  subtitleToContent: "12px",
-  cardGap: "12px",
-  navOffset: "88px",
-  navGap: "10px",
-
-  // Typography
-  "font-xs": "11px",
-  "font-sm": "12px",
-  "font-md": "14px",
-  "font-lg": "15px",
-  "font-title": "24px",
-  "font-weight-regular": "400",
-  "font-weight-semibold": "600",
-  "font-weight-bold": "700",
 };
 
 // Premium layered backgrounds:
@@ -498,13 +450,11 @@ function hexToRgba(hex, alpha) {
 const SINGLE_THEME = {
   ...SHARED,
   background:
-    "radial-gradient(1100px 700px at 12% 0%, rgba(91,140,255,.13), transparent 60%)," +
-    "radial-gradient(900px 560px at 100% 12%, rgba(124,92,255,.10), transparent 60%)," +
-    "linear-gradient(180deg, #0f1115, #151922 48%, #1b2130)",
+    "radial-gradient(1080px 680px at 12% 0%, rgba(91,140,255,.13), transparent 60%)," +
+    "linear-gradient(180deg, #0f1115, #151922 50%, #1b2130)",
   bgBase:
-    "radial-gradient(1100px 700px at 12% 0%, rgba(91,140,255,.13), transparent 60%)," +
-    "radial-gradient(900px 560px at 100% 12%, rgba(124,92,255,.10), transparent 60%)," +
-    "linear-gradient(180deg, #0f1115, #151922 48%, #1b2130)",
+    "radial-gradient(1080px 680px at 12% 0%, rgba(91,140,255,.13), transparent 60%)," +
+    "linear-gradient(180deg, #0f1115, #151922 50%, #1b2130)",
   backgroundVignette:
     "radial-gradient(1200px 900px at 50% 45%, rgba(0,0,0,0), rgba(0,0,0,.42) 74%, rgba(0,0,0,.62) 100%)",
   bgVignette:
@@ -530,12 +480,12 @@ const SINGLE_THEME = {
   text1: "rgba(255,255,255,.92)",
   text2: "rgba(255,255,255,.65)",
   text3: "rgba(255,255,255,.45)",
-  shadow: "0 16px 32px rgba(0,0,0,.22)",
-  shadowSoft: "0 12px 24px rgba(0,0,0,.18)",
-  shadowCard: "0 20px 40px rgba(0,0,0,.25)",
-  shadowSm: "0 12px 24px rgba(0,0,0,.18)",
-  shadowMd: "0 16px 32px rgba(0,0,0,.22)",
-  shadowLg: "0 20px 40px rgba(0,0,0,.25)",
+  shadow: "0 14px 28px rgba(0,0,0,.20)",
+  shadowSoft: "0 8px 18px rgba(0,0,0,.16)",
+  shadowCard: "0 18px 36px rgba(0,0,0,.22)",
+  shadowSm: "0 8px 18px rgba(0,0,0,.16)",
+  shadowMd: "0 14px 28px rgba(0,0,0,.20)",
+  shadowLg: "0 18px 36px rgba(0,0,0,.22)",
   shadowControl: "inset 0 1px 0 rgba(255,255,255,.04)",
   danger: "#ef4444",
   warning: "#f59e0b",
@@ -543,8 +493,7 @@ const SINGLE_THEME = {
   info: "#38bdf8",
   cardBg: "rgba(255,255,255,.04)",
   cardBorder: "rgba(255,255,255,.08)",
-  cardShadow: "0 16px 32px rgba(0,0,0,.22)",
-  cardRadius: "20px",
+  cardShadow: "0 14px 28px rgba(0,0,0,.20)",
   controlBg: "rgba(255,255,255,.04)",
   controlBgHover: "rgba(255,255,255,.06)",
   controlBgActive: "rgba(255,255,255,.09)",
@@ -552,10 +501,6 @@ const SINGLE_THEME = {
   controlBorderStrong: "rgba(255,255,255,.14)",
   controlText: "rgba(255,255,255,.92)",
   controlPlaceholder: "rgba(255,255,255,.45)",
-  controlRadius: "14px",
-  controlHeight: "44px",
-  buttonHeight: "44px",
-  buttonRadius: "14px",
   buttonGhostBg: "transparent",
   buttonGhostBorder: "rgba(255,255,255,.08)",
   buttonGhostText: "rgba(255,255,255,.92)",
@@ -630,20 +575,6 @@ const SINGLE_THEME = {
   backgroundVignetteOpacity: "0.54",
   backgroundGrainOpacity: "0.14",
   backgroundGrainBlend: "soft-light",
-  pageTitleMarginTop: "0px",
-  pageTitleToSubtitle: "8px",
-  subtitleToContent: "20px",
-  cardGap: "16px",
-  navOffset: "92px",
-  navGap: "12px",
-  "font-xs": "12px",
-  "font-sm": "13px",
-  "font-md": "15px",
-  "font-lg": "15px",
-  "font-title": "28px",
-  "font-weight-regular": "400",
-  "font-weight-semibold": "600",
-  "font-weight-bold": "700",
 };
 
 export function listThemes() {

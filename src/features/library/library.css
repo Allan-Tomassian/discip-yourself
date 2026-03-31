@@ -52,9 +52,51 @@
   box-sizing: border-box;
 }
 
-.libraryCardHeader {
-  padding-inline: 2px;
-  min-height: 22px;
+.libraryPage .libraryPrimaryCard {
+  border-color: color-mix(in srgb, var(--gate-border) 94%, rgba(255, 255, 255, 0.08));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 14px 24px rgba(0, 0, 0, 0.22);
+}
+
+.libraryPage .categorySurface {
+  border-color: color-mix(in srgb, var(--categoryUiBorder, var(--border-subtle)) 72%, rgba(255, 255, 255, 0.08));
+}
+
+.libraryPage .categorySurface.categorySurface--surface {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--categoryUiTint, rgba(91, 140, 255, 0.14)) 30%, transparent),
+      transparent 64%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-elevated) 95%, rgba(255, 255, 255, 0.02)),
+      color-mix(in srgb, var(--surface-primary) 98%, rgba(0, 0, 0, 0.04))
+    );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.libraryPage .categorySurface.categorySurface--surface::before {
+  left: 16px;
+  right: 16px;
+  height: 18px;
+  border-radius: 0 0 12px 12px;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--categoryUiBand, rgba(91, 140, 255, 0.16)) 28%, transparent),
+      transparent 84%
+    );
+  opacity: 0.26;
+}
+
+.libraryPage .gateRow.categorySurface.isSelected {
+  border-color: color-mix(in srgb, var(--categoryUiBorderStrong, var(--accent)) 44%, var(--gate-border));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--categoryUiGlow, var(--accent)) 12%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
 .librarySuggestionsHeader {
@@ -81,6 +123,8 @@
 
 .libraryDetailStack {
   gap: 10px;
+  padding-left: 10px;
+  border-left: 1px solid color-mix(in srgb, var(--accent) 8%, var(--gate-border));
 }
 
 .libraryDetailStack .mt12 {
@@ -287,14 +331,14 @@
 }
 
 @media (max-width: 767px) {
-  .pageNarrow {
-    max-width: none;
-    width: 100%;
-  }
-
   .librarySuggestionsList,
   .categoryGateList {
     width: 100%;
+  }
+
+  .libraryDetailStack {
+    padding-left: 0;
+    border-left: 0;
   }
 }
 

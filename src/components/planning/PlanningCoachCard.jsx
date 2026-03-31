@@ -186,7 +186,6 @@ export default function PlanningCoachCard({
       <div className="planningSectionBody">
         <div className="planningSectionHeader planningSectionHeader--split">
           <div className="planningSectionHeaderText">
-            <div className="titleSm GateRoleSectionTitle">Lecture locale du rythme</div>
             <ManualAiStatus
               statusKind={planningAnalysisState.kind}
               statusLabel={planningAnalysisState.label}
@@ -201,7 +200,7 @@ export default function PlanningCoachCard({
             />
           </div>
           <div className="planningSectionActions">
-            <Button onClick={handleAnalyzePlanning} disabled={manualPlanningAnalysis.loading}>
+            <Button size="sm" onClick={handleAnalyzePlanning} disabled={manualPlanningAnalysis.loading}>
               {manualPlanningAnalysis.loading
                 ? manualPlanningAnalysis.loadingStageLabel || "Analyse..."
                 : planningView === "week"
@@ -209,7 +208,7 @@ export default function PlanningCoachCard({
                   : "Observer ma journée"}
             </Button>
             {manualPlanningAnalysis.isPersistedForContext ? (
-              <Button variant="ghost" onClick={handleDismissPlanningAnalysis}>
+              <Button size="sm" variant="ghost" onClick={handleDismissPlanningAnalysis}>
                 {UI_COPY.backToLocalDiagnostic}
               </Button>
             ) : null}
@@ -240,16 +239,16 @@ export default function PlanningCoachCard({
         ) : null}
 
         <div className="planningSectionFooter planningCoachFooter">
-          <Button onClick={handleOpenSuggestedSurface}>
+          <Button size="sm" className="planningCoachPrimaryAction" onClick={handleOpenSuggestedSurface}>
             {resolveLocalAnalysisActionLabel(visibleReply)}
           </Button>
-          <Button variant="ghost" onClick={() => handleOpenCoach("free")}>
+          <Button size="sm" variant="ghost" onClick={() => handleOpenCoach("free")}>
             Parler au Coach
           </Button>
-          <Button variant="ghost" onClick={() => handleOpenCoach("plan")}>
+          <Button size="sm" variant="ghost" onClick={() => handleOpenCoach("plan")}>
             Passer en Plan
           </Button>
-          <Button variant="ghost" onClick={() => onOpenPilotage?.()}>
+          <Button size="sm" variant="ghost" onClick={() => onOpenPilotage?.()}>
             Relire mes progrès
           </Button>
         </div>

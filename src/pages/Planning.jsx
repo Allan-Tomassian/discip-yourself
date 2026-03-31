@@ -3,7 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import CategoryPill from "../components/CategoryPill";
 import PlanningCoachCard from "../components/planning/PlanningCoachCard";
 import DayRail from "../ui/calendar/DayRail";
-import { GateButton as Button, GateSection } from "../shared/ui/gate/Gate";
+import { GateButton as Button, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import { addDays, startOfWeekKey } from "../utils/dates";
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { resolveGoalType } from "../domain/goalType";
@@ -271,186 +271,224 @@ export default function Planning({
       headerSubtitle={MAIN_PAGE_COPY.planning.orientation}
     >
       <div className="mainPageStack planningPage">
-        <GateSection
-          className="GateMainSection GateMainSectionCard planningSectionCard planningCalendarSection GateSurfacePremium GateCardPremium"
-          collapsible={false}
-          style={activeCategorySurfaceVars || undefined}
-        >
-          <div className="planningSectionBody">
-            <div className="planningSectionHeader planningSectionHeader--split">
-              <div className="planningSectionHeaderText">
-                <div className="titleSm GateRoleCardTitle">{formatDateLabel(selectedDateKey)}</div>
-                <div className="small2 GateRoleCardMeta planningSectionMeta">
-                  {selectedDayTone} · {selectedDayLoadMinutes || 0} min planifiées
+        <section className="mainPageSection">
+          <div className="mainPageSectionBody">
+            <GateSection
+              className="GateMainSection GateMainSectionCard planningSectionCard planningCalendarSection GateSurfacePremium GateCardPremium"
+              collapsible={false}
+              style={activeCategorySurfaceVars || undefined}
+            >
+              <div className="planningSectionBody">
+                <div className="planningSectionHeader planningSectionHeader--split">
+                  <div className="planningSectionHeaderText">
+                    <div className="titleSm GateRoleCardTitle">{formatDateLabel(selectedDateKey)}</div>
+                    <div className="small2 GateRoleCardMeta planningSectionMeta">
+                      {selectedDayTone} · {selectedDayLoadMinutes || 0} min planifiées
+                    </div>
+                    {planningBehaviorCue ? <BehaviorCue cue={planningBehaviorCue} category={activeCategory} /> : null}
+                  </div>
+                  <div className="planningSectionActions">
+                    <Button
+                      size="sm"
+                      variant={planningView === "day" ? "primary" : "ghost"}
+                      onClick={() => setPlanningView("day")}
+                    >
+                      Jour
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={planningView === "week" ? "primary" : "ghost"}
+                      onClick={() => setPlanningView("week")}
+                    >
+                      Semaine
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => commitDateKey(todayLocalKey())}>
+                      Aujourd&apos;hui
+                    </Button>
+                  </div>
                 </div>
-                {planningBehaviorCue ? <BehaviorCue cue={planningBehaviorCue} category={activeCategory} /> : null}
-              </div>
-              <div className="planningSectionActions">
-                <Button variant={planningView === "day" ? "primary" : "ghost"} onClick={() => setPlanningView("day")}>
-                  Jour
-                </Button>
-                <Button variant={planningView === "week" ? "primary" : "ghost"} onClick={() => setPlanningView("week")}>
-                  Semaine
-                </Button>
-                <Button variant="ghost" onClick={() => commitDateKey(todayLocalKey())}>
-                  Aujourd&apos;hui
-                </Button>
-              </div>
-            </div>
 
-            <div className="planningCalendarRail">
-              <DayRail
-                selectedDateKey={selectedDateKey}
-                localTodayKey={todayLocalKey()}
-                plannedByDate={calendarModel.plannedByDate}
-                doneByDate={calendarModel.doneByDate}
-                accentByDate={calendarModel.accentByDate}
-                selectedAccent={calendarModel.selectedDateAccent}
-                accent={calendarModel.selectedDateAccent}
-                getDayDots={(dateKey, max = 3) => {
-                  const list = calendarModel.categoryDotsByDate.get(dateKey) || [];
-                  return { dots: list.slice(0, max), extra: Math.max(0, list.length - max) };
-                }}
-                onDayOpen={commitDateKey}
-                onCommitDateKey={commitDateKey}
-                isActive
-                windowBefore={10}
-                windowAfter={10}
-              />
-            </div>
+                <div className="planningCalendarRail">
+                  <DayRail
+                    selectedDateKey={selectedDateKey}
+                    localTodayKey={todayLocalKey()}
+                    plannedByDate={calendarModel.plannedByDate}
+                    doneByDate={calendarModel.doneByDate}
+                    accentByDate={calendarModel.accentByDate}
+                    selectedAccent={calendarModel.selectedDateAccent}
+                    accent={calendarModel.selectedDateAccent}
+                    getDayDots={(dateKey, max = 3) => {
+                      const list = calendarModel.categoryDotsByDate.get(dateKey) || [];
+                      return { dots: list.slice(0, max), extra: Math.max(0, list.length - max) };
+                    }}
+                    onDayOpen={commitDateKey}
+                    onCommitDateKey={commitDateKey}
+                    isActive
+                    windowBefore={10}
+                    windowAfter={10}
+                  />
+                </div>
+              </div>
+            </GateSection>
           </div>
-        </GateSection>
+        </section>
 
-        <GateSection
-          className={[
-            "planningSectionCard",
-            "planningContentSection",
-            "GateMainSection",
-            "GateSecondarySectionCard",
-            "GateSurfacePremium",
-            "GateCardPremium",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          title={planningSectionTitle}
-          description={planningSectionDescription}
-          collapsible={false}
-          style={activeCategorySurfaceVars || undefined}
-        >
-          {planningView === "day" ? (
-            <div className="planningDayList">
-              {dayItems.length ? (
-                dayItems.map((item) => (
-                  <div key={item.id} className="planningItemRow listItem GateRowPremium GateInlineMetaCard">
-                    <div className="planningItemRowTop">
-                      <div className="planningItemTime GateRoleCardMeta">{item.start || "Fenêtre libre"}</div>
-                      <CategoryPill category={item.category || null} label={item.category?.name || "Catégorie"} />
-                    </div>
-                    <div className="titleSm GateRoleCardTitle planningItemTitle">{item.title}</div>
-                    <div className="small2 GateRoleCardMeta planningItemDuration">
-                      {Number.isFinite(item.durationMinutes) ? `${item.durationMinutes} min` : "Durée libre"}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="small2 planningEmptyState">
-                  Aucun créneau posé sur cette journée pour la catégorie active.
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="planningWeekGrid">
-              {weekBuckets.map((bucket) => (
-                <div
-                  key={bucket.dateKey}
-                  className={`planningWeekBucket GateAnalyticsCard${bucket.isToday ? " isToday" : ""}`}
-                >
-                  <div className="planningWeekBucketHeader">
-                    <div className="planningWeekBucketHeaderMain">
-                      <div className="titleSm GateRoleCardTitle">{bucket.label}</div>
-                      {bucket.isToday ? <span className="planningTodayTag">Aujourd’hui</span> : null}
-                    </div>
-                    <div className="small2 GateRoleCardMeta planningWeekBucketMeta">
-                      {bucket.totalMinutes || 0} min · {resolveLoadTone(bucket.totalMinutes)}
-                    </div>
-                  </div>
-                  {bucket.items.length ? (
-                    <div className="planningWeekList">
-                      {bucket.items.slice(0, 3).map((item) => (
-                        <div key={item.id} className="planningItemRow planningItemRow--compact listItem GateRowPremium GateInlineMetaCard">
-                          <div className="planningItemRowTop">
-                            <div className="planningItemTime GateRoleCardMeta">{item.start || "Fenêtre libre"}</div>
-                            <CategoryPill category={item.category || null} label={item.category?.name || "Catégorie"} />
-                          </div>
-                          <div className="planningItemTitle GateRoleCardTitle">{item.title}</div>
-                          <div className="planningItemDuration GateRoleCardMeta">
-                            {Number.isFinite(item.durationMinutes) ? `${item.durationMinutes} min` : "Durée libre"}
-                          </div>
+        <section className="mainPageSection">
+          <GateSectionIntro
+            title={planningSectionTitle}
+            subtitle={planningSectionDescription}
+          />
+          <div className="mainPageSectionBody">
+            <GateSection
+              className={[
+                "planningSectionCard",
+                "planningContentSection",
+                "GateMainSection",
+                "GateSecondarySectionCard",
+                "GateSurfacePremium",
+                "GateCardPremium",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              collapsible={false}
+              style={activeCategorySurfaceVars || undefined}
+            >
+              {planningView === "day" ? (
+                <div className="planningDayList">
+                  {dayItems.length ? (
+                    dayItems.map((item) => (
+                      <div key={item.id} className="planningItemRow listItem GateRowPremium GateInlineMetaCard">
+                        <div className="planningItemRowTop">
+                          <div className="planningItemTime GateRoleCardMeta">{item.start || "Fenêtre libre"}</div>
+                          <CategoryPill category={item.category || null} label={item.category?.name || "Catégorie"} />
                         </div>
-                      ))}
-                    </div>
+                        <div className="titleSm GateRoleCardTitle planningItemTitle">{item.title}</div>
+                        <div className="small2 GateRoleCardMeta planningItemDuration">
+                          {Number.isFinite(item.durationMinutes) ? `${item.durationMinutes} min` : "Durée libre"}
+                        </div>
+                      </div>
+                    ))
                   ) : (
-                    <div className="small2 planningEmptyState">Aucun créneau posé.</div>
+                    <div className="small2 planningEmptyState">
+                      Aucun créneau posé sur cette journée pour la catégorie active.
+                    </div>
                   )}
                 </div>
-              ))}
-            </div>
-          )}
-        </GateSection>
+              ) : (
+                <div className="planningWeekGrid">
+                  {weekBuckets.map((bucket) => (
+                    <div
+                      key={bucket.dateKey}
+                      className={`planningWeekBucket GateAnalyticsCard${bucket.isToday ? " isToday" : ""}`}
+                    >
+                      <div className="planningWeekBucketHeader">
+                        <div className="planningWeekBucketHeaderMain">
+                          <div className="titleSm GateRoleCardTitle">{bucket.label}</div>
+                          {bucket.isToday ? <span className="planningTodayTag">Aujourd’hui</span> : null}
+                        </div>
+                        <div className="small2 GateRoleCardMeta planningWeekBucketMeta">
+                          {bucket.totalMinutes || 0} min · {resolveLoadTone(bucket.totalMinutes)}
+                        </div>
+                      </div>
+                      {bucket.items.length ? (
+                        <div className="planningWeekList">
+                          {bucket.items.slice(0, 3).map((item) => (
+                            <div key={item.id} className="planningItemRow planningItemRow--compact listItem GateRowPremium GateInlineMetaCard">
+                              <div className="planningItemRowTop">
+                                <div className="planningItemTime GateRoleCardMeta">{item.start || "Fenêtre libre"}</div>
+                                <CategoryPill category={item.category || null} label={item.category?.name || "Catégorie"} />
+                              </div>
+                              <div className="planningItemTitle GateRoleCardTitle">{item.title}</div>
+                              <div className="planningItemDuration GateRoleCardMeta">
+                                {Number.isFinite(item.durationMinutes) ? `${item.durationMinutes} min` : "Durée libre"}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="small2 planningEmptyState">Aucun créneau posé.</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </GateSection>
+          </div>
+        </section>
 
-        <PlanningCoachCard
-          data={safeData}
-          setData={setData}
-          setTab={setTab}
-          persistenceScope={persistenceScope}
-          selectedDateKey={selectedDateKey}
-          activeCategoryId={activeCategoryId}
-          planningView={planningView}
-          occurrences={occurrences}
-          goalsById={goalsById}
-          categoriesById={categoriesById}
-          activeCategory={activeCategory}
-          onOpenCoach={onOpenCoach}
-          onOpenPilotage={() => setTab?.("pilotage")}
-        />
+        <section className="mainPageSection">
+          <GateSectionIntro
+            title="Lecture locale du rythme"
+            subtitle="Lecture courte et contextuelle pour ajuster la charge sans quitter ton planning."
+          />
+          <div className="mainPageSectionBody">
+            <PlanningCoachCard
+              data={safeData}
+              setData={setData}
+              setTab={setTab}
+              persistenceScope={persistenceScope}
+              selectedDateKey={selectedDateKey}
+              activeCategoryId={activeCategoryId}
+              planningView={planningView}
+              occurrences={occurrences}
+              goalsById={goalsById}
+              categoriesById={categoriesById}
+              activeCategory={activeCategory}
+              onOpenCoach={onOpenCoach}
+              onOpenPilotage={() => setTab?.("pilotage")}
+            />
+          </div>
+        </section>
 
         {pendingOccurrence ? (
-          <GateSection
-            className="planningSectionCard planningSecondarySection GateSecondarySectionCard GateSurfacePremium GateCardPremium"
-            title="Action à replacer"
-            description={`${pendingGoal?.title || "Action"}${pendingCategory?.name ? ` · ${pendingCategory.name}` : ""}`}
-            collapsible={false}
-          >
-            <div className="small2 planningSectionMeta">
-              Replace cette action dans un rythme crédible, puis confirme ou annule ce brouillon.
+          <section className="mainPageSection">
+            <GateSectionIntro
+              title="Action à replacer"
+              subtitle={`${pendingGoal?.title || "Action"}${pendingCategory?.name ? ` · ${pendingCategory.name}` : ""}`}
+            />
+            <div className="mainPageSectionBody">
+              <GateSection
+                className="planningSectionCard planningSecondarySection GateSecondarySectionCard GateSurfacePremium GateCardPremium"
+                collapsible={false}
+              >
+                <div className="small2 planningSectionMeta">
+                  Replace cette action dans un rythme crédible, puis confirme ou annule ce brouillon.
+                </div>
+                <div className="planningSectionFooter">
+                  <Button size="sm" variant="ghost" onClick={clearPlanningPending}>
+                    Annuler
+                  </Button>
+                  <Button size="sm" onClick={clearPlanningPending}>
+                    J&apos;ai replanifié
+                  </Button>
+                </div>
+              </GateSection>
             </div>
-            <div className="planningSectionFooter">
-              <Button variant="ghost" onClick={clearPlanningPending}>
-                Annuler
-              </Button>
-              <Button onClick={clearPlanningPending}>
-                J&apos;ai replanifié
-              </Button>
-            </div>
-          </GateSection>
+          </section>
         ) : null}
 
         {legacyBuckets.reclassifyCandidates.length > 0 ? (
-          <GateSection
-            className="planningSectionCard planningSecondarySection GateSecondarySectionCard GateSurfacePremium GateCardPremium"
-            title="Éléments à reclasser"
-            description={`${legacyBuckets.reclassifyCandidates.length} action${legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} héritée${legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} restent hors catégorie.`}
-            collapsible={false}
-          >
-            <div className="small2 planningSectionMeta">
-              Elles ne remontent plus clairement dans Today tant qu&apos;elles restent hors catégorie stable.
+          <section className="mainPageSection">
+            <GateSectionIntro
+              title="Éléments à reclasser"
+              subtitle={`${legacyBuckets.reclassifyCandidates.length} action${legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} héritée${legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} restent hors catégorie.`}
+            />
+            <div className="mainPageSectionBody">
+              <GateSection
+                className="planningSectionCard planningSecondarySection GateSecondarySectionCard GateSurfacePremium GateCardPremium"
+                collapsible={false}
+              >
+                <div className="small2 planningSectionMeta">
+                  Elles ne remontent plus clairement dans Today tant qu&apos;elles restent hors catégorie stable.
+                </div>
+                <div className="planningSectionFooter">
+                  <Button size="sm" variant="ghost" onClick={() => setTab?.("library")}>
+                    Ouvrir la bibliothèque
+                  </Button>
+                </div>
+              </GateSection>
             </div>
-            <div className="planningSectionFooter">
-              <Button variant="ghost" onClick={() => setTab?.("library")}>
-                Ouvrir la bibliothèque
-              </Button>
-            </div>
-          </GateSection>
+          </section>
         ) : null}
       </div>
     </ScreenShell>

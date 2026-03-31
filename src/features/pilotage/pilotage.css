@@ -1,7 +1,7 @@
 .pilotageTopGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 
 .pilotageCategoryRow {
@@ -11,12 +11,12 @@
 
 .pilotageCategoryStack {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .pilotageFocusGroup {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .pilotageFocusGroup--deferred {
@@ -32,19 +32,19 @@
 }
 
 .pilotageInlineDetail {
-  margin-left: 14px;
-  padding-left: 14px;
-  border-left: 1px solid color-mix(in srgb, var(--accent) 20%, var(--gate-border));
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 1px solid color-mix(in srgb, var(--accent) 7%, var(--gate-border));
 }
 
 .pilotageInlineGrid {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .pilotageInlinePanel {
   display: grid;
-  gap: 14px;
+  gap: 10px;
   position: relative;
 }
 
@@ -67,14 +67,15 @@
 
 .pilotageCompactWindowControls .gateButton {
   min-width: 0;
-  height: 34px;
+  height: 36px;
+  min-height: 36px;
   padding-inline: 12px;
 }
 
 .pilotageMiniStatsGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .pilotageMiniStat {
@@ -90,17 +91,38 @@
 
 .pilotageReadingGrid {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
-.pilotageCardHeader {
-  padding-inline: 2px;
-  min-height: 22px;
+.pilotagePage .pilotageSummaryCard .GateAnalyticsCard,
+.pilotagePage .pilotageStatsCard .GateAnalyticsCard,
+.pilotagePage .pilotageInlinePanel .GateAnalyticsCard {
+  border-color: color-mix(in srgb, var(--gate-border) 94%, rgba(255, 255, 255, 0.08));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-.pilotageCardHeaderLeft {
-  padding-inline: 2px;
-  min-height: 22px;
+.pilotagePage .pilotageInlinePanel.categorySurface--surface,
+.pilotagePage .pilotageMiniStat.categorySurface--surface {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--categoryUiTint, rgba(91, 140, 255, 0.14)) 24%, transparent),
+      transparent 68%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-elevated) 95%, rgba(255, 255, 255, 0.02)),
+      color-mix(in srgb, var(--surface-primary) 98%, rgba(0, 0, 0, 0.04))
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 16px rgba(0, 0, 0, 0.16);
+}
+
+.pilotagePage .pilotageInlinePanel.categorySurface--surface::before,
+.pilotagePage .pilotageMiniStat.categorySurface--surface::before {
+  height: 18px;
+  opacity: 0.24;
 }
 
 .pilotageStatusBadge {

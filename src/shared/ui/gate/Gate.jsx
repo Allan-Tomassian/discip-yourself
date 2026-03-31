@@ -30,6 +30,18 @@ export function GateHeader({ title, subtitle, actions = null, className = "", ..
   );
 }
 
+export function GateSectionIntro({ title, subtitle, actions = null, className = "", ...props }) {
+  return (
+    <header className={cx("gateSectionIntro", className)} {...props}>
+      <div className="gateSectionIntroText">
+        {title ? <div className="gateSectionIntroTitle">{title}</div> : null}
+        {subtitle ? <div className="gateSectionIntroSubtitle">{subtitle}</div> : null}
+      </div>
+      {actions ? <div className="gateSectionIntroActions">{actions}</div> : null}
+    </header>
+  );
+}
+
 export function GateSection({
   title,
   description,
@@ -154,6 +166,7 @@ export function GateBadge({ children, color = "", className = "", ...props }) {
 export function GateButton({
   children,
   variant = "primary",
+  size = "md",
   className = "",
   type = "button",
   withSound = false,
@@ -166,9 +179,15 @@ export function GateButton({
       : variant === "secondary"
         ? "gateButton--secondary"
         : "gateButton--primary";
+  const gateSize =
+    size === "sm"
+      ? "gateButton--sm"
+      : size === "icon"
+        ? "gateButton--icon"
+        : "gateButton--md";
   return (
     <button
-      className={cx("gateButton", gateVariant, className)}
+      className={cx("gateButton", gateVariant, gateSize, className)}
       type={type}
       onClick={(event) => {
         if (!props.disabled && withSound) playClickSound();

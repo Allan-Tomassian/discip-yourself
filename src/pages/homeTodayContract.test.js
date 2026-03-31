@@ -37,6 +37,8 @@ describe("home today canonical contract", () => {
     expect(home).toContain("headerSubtitle={MAIN_PAGE_COPY.today.orientation}");
     expect(home).toContain('headerTitle={<span data-tour-id="today-title">{SURFACE_LABELS.today}</span>}');
     expect(home).toContain('className="mainPageStack todayPageShell"');
+    expect(home).toContain("<GateSectionIntro");
+    expect(home).toContain('title="Ensuite aujourd’hui"');
     expect(home).toContain("<TodayHero");
     expect(home).toContain("<TodayNextActions");
     expect(home).toContain("<TodayDailyState");
@@ -45,10 +47,13 @@ describe("home today canonical contract", () => {
     expect(hero).toContain("GateRoleHelperText");
     expect(nextActions).toContain("GateSecondarySectionCard");
     expect(nextActions).toContain("GateInlineMetaCard");
-    expect(nextActions).toContain("GateRoleSectionTitle");
+    expect(nextActions).toContain("todayNextActionEmpty");
+    expect(nextActions).not.toContain("GateRoleSectionTitle");
     expect(dailyState).toContain("GateSecondarySectionCard");
     expect(dailyState).toContain("GateAnalyticsCard");
+    expect(dailyState).toContain("todayDailyStateCard");
     expect(dailyState).toContain("GateRoleMetricValue");
+    expect(dailyState).not.toContain("GateRoleSectionTitle");
     expect(home).not.toContain("<SortableBlocks");
     expect(home).not.toContain("onReorder={handleVisibleReorder}");
     expect(home).not.toContain("<CalendarCard");
@@ -58,6 +63,7 @@ describe("home today canonical contract", () => {
 
   it("passes decision-oriented hero props and ai-priority next actions", () => {
     const home = readSrc("pages/Home.jsx");
+    const hero = readSrc("components/today/TodayHero.jsx");
 
     expect(home).toContain("const heroImpactText = useMemo(");
     expect(home).toContain("const heroContributionLabel =");
@@ -77,6 +83,7 @@ describe("home today canonical contract", () => {
     expect(home).toContain("analysisStageLabel={manualTodayAnalysis.loadingStageLabel}");
     expect(home).toContain("analyzeLabel={heroAnalyzeLabel}");
     expect(home).toContain("analyzeError={manualTodayAnalysis.error}");
+    expect(hero).toContain("todayHeroUtilityRow");
     expect(home).toContain("isAiPriority:");
     expect(home).not.toContain("helpText=");
     expect(home).not.toContain("reasonLinkType=");

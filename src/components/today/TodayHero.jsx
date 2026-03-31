@@ -106,6 +106,7 @@ export default function TodayHero({
         <GateButton
           type="button"
           variant="ghost"
+          size="sm"
           className="GatePressable todayHeroSecondaryBtn"
           withSound
           onClick={() => onAnalyze?.()}
@@ -120,11 +121,12 @@ export default function TodayHero({
         </div>
       ) : null}
       {showPlanningShortcut || onDismissAnalysis ? (
-        <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+        <div className="row todayHeroUtilityRow" style={{ gap: 8, flexWrap: "wrap" }}>
           {onDismissAnalysis ? (
             <GateButton
               type="button"
               variant="ghost"
+              size="sm"
               className="GatePressable"
               withSound
               onClick={() => onDismissAnalysis?.()}
@@ -136,6 +138,7 @@ export default function TodayHero({
             <GateButton
               type="button"
               variant="ghost"
+              size="sm"
               className="GatePressable"
               withSound
               onClick={() => onOpenPlanning?.()}

@@ -20,6 +20,10 @@ function walk(dir) {
   return files;
 }
 
+function readSrc(relPath) {
+  return fs.readFileSync(path.join(SRC_ROOT, relPath), "utf8");
+}
+
 describe("UI convergence contract", () => {
   it("removes active imports of the legacy UI wrapper", () => {
     const offenders = walk(SRC_ROOT)
@@ -32,5 +36,22 @@ describe("UI convergence contract", () => {
       .map((file) => path.relative(SRC_ROOT, file));
 
     expect(offenders).toEqual([]);
+  });
+
+  it("locks Gate button density and premium icon button sizing", () => {
+    const gate = readSrc("shared/ui/gate/Gate.jsx");
+    const gateCss = readSrc("shared/ui/gate/gate.css");
+    const premiumCss = readSrc("shared/ui/gate/gate-premium.css");
+
+    expect(gate).toContain('size = "md"');
+    expect(gate).toContain('size === "sm"');
+    expect(gate).toContain('"gateButton--icon"');
+    expect(gateCss).toContain(".gateButton--sm");
+    expect(gateCss).toContain(".gateButton--md");
+    expect(gateCss).toContain(".gateButton--icon");
+    expect(gateCss).toContain("width: 40px;");
+    expect(premiumCss).toContain(".GateIconButtonPremium");
+    expect(premiumCss).toContain("width: 40px;");
+    expect(premiumCss).toContain("height: 40px;");
   });
 });

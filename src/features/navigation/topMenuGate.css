@@ -1,5 +1,6 @@
 .TopNavShell {
   overflow-x: hidden;
+  padding-bottom: 4px;
 }
 
 .topNavGateWrap {
@@ -16,7 +17,7 @@
 .topNavGateBar {
   gap: 0;
   min-height: 0;
-  padding: 12px;
+  padding: 10px 12px;
   position: relative;
   z-index: 1;
 }
@@ -24,7 +25,7 @@
 .topNavGateBar .navRow,
 .topNavGateBar .navGrid,
 .topNavGateBar .navActions {
-  gap: 10px;
+  gap: 8px;
 }
 
 .topNavWalletBadge {
@@ -46,6 +47,10 @@
 
 .topNavTabsGrid {
   min-width: 0;
+}
+
+.topNavTabsGrid.navGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .drawerMenuPanel {
@@ -126,17 +131,22 @@
 }
 
 @media (max-width: 767px) {
+  .TopNavShell {
+    padding-bottom: 6px;
+  }
+
   .topNavGateBar {
-    padding: 8px 10px;
+    padding: 7px 8px 8px;
   }
 
   .topNavGateBar .navRow {
     gap: 8px;
+    min-width: 0;
   }
 
   .topNavGateBar .navRow.is-mobile-layout {
     display: grid;
-    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-columns: 40px minmax(0, 1fr);
     align-items: center;
   }
 
@@ -146,12 +156,12 @@
   }
 
   .topNavMenuSlot {
-    width: 44px;
+    width: 40px;
   }
 
   .topNavMenuSlot .NavPillUnified {
-    width: 44px;
-    min-width: 44px;
+    width: 40px;
+    min-width: 40px;
     padding-inline: 0;
   }
 
@@ -162,9 +172,7 @@
   .topNavTabsGrid .NavPillUnified {
     width: 100%;
     min-width: 0;
-    padding-inline: 1px;
-    font-size: clamp(8.9px, 2.45vw, 10.35px);
-    letter-spacing: -0.04em;
+    padding-inline: 0;
   }
 
   .topNavWalletSlot {

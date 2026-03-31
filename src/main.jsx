@@ -6,6 +6,7 @@ import AuthProvider from "./auth/AuthProvider.jsx";
 import AuthGate from "./auth/AuthGate.jsx";
 import ProfileProvider from "./profile/ProfileProvider.jsx";
 import ProfileGate from "./profile/ProfileGate.jsx";
+import "@fontsource-variable/geist";
 import "./index.css";
 
 // Theme bootstrap: apply the single canonical design system before first paint.

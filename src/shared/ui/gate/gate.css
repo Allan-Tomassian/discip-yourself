@@ -3,10 +3,10 @@
   --gate-space-3: 8px;
   --gate-space-4: 12px;
   --gate-space-5: 16px;
-  --gate-space-6: 20px;
+  --gate-space-6: 24px;
   --gate-radius-sm: 8px;
-  --gate-radius-md: 14px;
-  --gate-radius-lg: 20px;
+  --gate-radius-md: 12px;
+  --gate-radius-lg: 16px;
   --gate-surface-1: var(--surface-1, var(--surface));
   --gate-surface-2: var(--surface-2, var(--surface));
   --gate-border: var(--border-subtle, var(--border));
@@ -47,6 +47,42 @@
 
 .gateHeaderActions {
   flex: 0 0 auto;
+}
+
+.gateSectionIntro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--gate-space-4);
+  flex-wrap: wrap;
+}
+
+.gateSectionIntroText {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.gateSectionIntroTitle {
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.01em;
+  color: var(--gate-text);
+}
+
+.gateSectionIntroSubtitle {
+  font-size: var(--font-sm);
+  line-height: 1.45;
+  color: var(--gate-text-muted);
+}
+
+.gateSectionIntroActions {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex-wrap: wrap;
 }
 
 .gateSection {
@@ -126,7 +162,7 @@
   border: 1px solid var(--gate-border);
   background: var(--gate-surface-1);
   border-radius: var(--gate-radius-md);
-  padding: 14px 16px;
+  padding: 12px 16px;
   color: var(--gate-text);
   display: flex;
   align-items: center;
@@ -203,11 +239,20 @@
 }
 
 .gateButton {
+  --gate-button-height: var(--btn-height);
+  --gate-button-inline: 16px;
   border-radius: var(--radius-btn);
-  height: var(--btn-height);
-  padding: 0 16px;
+  height: var(--gate-button-height);
+  min-height: var(--gate-button-height);
+  padding: 0 var(--gate-button-inline);
   font-size: var(--font-md);
   font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-ui, inherit);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
   cursor: pointer;
   transition:
     transform 150ms ease,
@@ -215,6 +260,25 @@
     filter 150ms ease,
     background 150ms ease,
     border-color 150ms ease;
+}
+
+.gateButton--sm {
+  --gate-button-height: 36px;
+  --gate-button-inline: 14px;
+  font-size: var(--font-sm);
+}
+
+.gateButton--md {
+  --gate-button-height: 40px;
+  --gate-button-inline: 16px;
+}
+
+.gateButton--icon {
+  --gate-button-height: 40px;
+  --gate-button-inline: 0px;
+  width: 40px;
+  min-width: 40px;
+  padding: 0;
 }
 
 .gateButton--primary {

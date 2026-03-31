@@ -1,14 +1,15 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { BookOpen, Calendar, Compass, Home, Menu } from "lucide-react";
 import WalletBadge from "./WalletBadge";
 import { GatePanel } from "../shared/ui/gate/Gate";
 import { SURFACE_LABELS } from "../ui/labels";
 import "../features/navigation/topMenuGate.css";
 
 const NAV_ITEMS = [
-  { id: "today", label: SURFACE_LABELS.today },
-  { id: "planning", label: SURFACE_LABELS.planning },
-  { id: "library", label: SURFACE_LABELS.library },
-  { id: "pilotage", label: SURFACE_LABELS.pilotage },
+  { id: "today", label: SURFACE_LABELS.today, icon: Home },
+  { id: "planning", label: SURFACE_LABELS.planning, icon: Calendar },
+  { id: "library", label: SURFACE_LABELS.library, icon: BookOpen },
+  { id: "pilotage", label: SURFACE_LABELS.pilotage, icon: Compass },
 ];
 
 const Z_INDEX = {
@@ -82,7 +83,8 @@ export default function TopNav({
     };
 
     const updateTopbarBottom = () => {
-      const measureNode = topbarSurfaceRef.current || navBarRef.current || topbarRef.current;
+      const measureNode =
+        navTopRef.current || topbarSurfaceRef.current || navBarRef.current || topbarRef.current;
       if (!measureNode || typeof measureNode.getBoundingClientRect !== "function") {
         setFallback();
         return;
@@ -102,8 +104,13 @@ export default function TopNav({
     let ro;
     if (window.ResizeObserver) {
       ro = new ResizeObserver(updateTopbarBottom);
+      if (navTopRef.current) ro.observe(navTopRef.current);
       if (topbarSurfaceRef.current) ro.observe(topbarSurfaceRef.current);
-      if (navBarRef.current && navBarRef.current !== topbarSurfaceRef.current) {
+      if (
+        navBarRef.current &&
+        navBarRef.current !== topbarSurfaceRef.current &&
+        navBarRef.current !== navTopRef.current
+      ) {
         ro.observe(navBarRef.current);
       }
     }
@@ -138,28 +145,33 @@ export default function TopNav({
                 <div className="navActions topNavMenuSlot" style={{ justifyContent: "flex-start" }}>
                   <button
                     type="button"
-                    className="navBtn NavPillUnified GatePressable"
+                    className="navBtn NavPillUnified NavPillUnified--iconOnly GatePressable"
                     aria-label="Ouvrir le menu"
                     title="Menu"
                     onClick={() => onMenuOpen?.()}
                     data-tour-id="topnav-settings"
                   >
-                    ☰
+                    <Menu className="NavPillUnifiedIcon" aria-hidden="true" />
                   </button>
                 </div>
                 <div className="navGrid topNavTabsGrid" data-tour-id="topnav-tabs">
-                  {NAV_ITEMS.map((it) => (
-                    <button
-                      key={it.id}
-                      type="button"
-                      onClick={() => setActive(it.id)}
-                      className={`navBtn NavPillUnified ${active === it.id ? "navBtnActive" : ""}`}
-                      aria-current={active === it.id ? "page" : undefined}
-                      data-tour-id={`topnav-tab-${it.id}`}
-                    >
-                      {it.label}
-                    </button>
-                  ))}
+                  {NAV_ITEMS.map((it) => {
+                    const Icon = it.icon;
+                    return (
+                      <button
+                        key={it.id}
+                        type="button"
+                        onClick={() => setActive(it.id)}
+                        className={`navBtn NavPillUnified ${isMobileLayout ? "NavPillUnified--iconOnly" : ""} ${active === it.id ? "navBtnActive" : ""}`}
+                        aria-label={it.label}
+                        aria-current={active === it.id ? "page" : undefined}
+                        data-tour-id={`topnav-tab-${it.id}`}
+                      >
+                        <Icon className="NavPillUnifiedIcon" aria-hidden="true" />
+                        {!isMobileLayout ? <span className="NavPillUnifiedLabel">{it.label}</span> : null}
+                      </button>
+                    );
+                  })}
                 </div>
                 {!isMobileLayout ? (
                   <div className="navActions topNavWalletSlot">

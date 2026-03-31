@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { GateBadge, GateButton, GateSection } from "../shared/ui/gate/Gate";
+import { GateBadge, GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import { useAuth } from "../auth/useAuth";
 import { getCategoryProfileSummary } from "../domain/categoryProfile";
 import { requestAiLocalAnalysis } from "../infra/aiLocalAnalysisClient";
@@ -76,10 +76,10 @@ function resolveExpectedRatio(done, expected) {
   return clamp01((Number.isFinite(done) ? done : 0) / expected);
 }
 
-function Button({ variant = "primary", className = "", ...props }) {
+function Button({ variant = "primary", size = "sm", className = "", ...props }) {
   const gateVariant = variant === "ghost" ? "ghost" : "primary";
   const mergedClassName = [className, "GatePressable"].filter(Boolean).join(" ");
-  return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;
+  return <GateButton variant={gateVariant} size={size} className={mergedClassName} {...props} />;
 }
 
 function Card({ className = "", children, ...props }) {
@@ -892,99 +892,71 @@ export default function Pilotage({
       headerSubtitle={MAIN_PAGE_COPY.pilotage.orientation}
       backgroundImage={safeData?.profile?.whyImage || ""}
     >
-      <div className="mainPageStack">
-        <Card
-          className="GateMainSection GateMainSectionCard"
-          style={
-            activePilotageSurfaceVars || undefined
-          }
-        >
-          <div className="col" style={{ gap: 12 }}>
-            <div>
-              <div className="sectionTitle GateRoleSectionTitle">{MAIN_PAGE_COPY.pilotage.summaryTitle}</div>
-              <div className="small2 GateRoleSectionSubtitle textMuted">Lis rapidement où ton système progresse vraiment.</div>
-            </div>
-            <div className="pilotageInsights">
-              <div className="pilotageInsightItem GateAnalyticsCard">
-                <div className="small2 GateRoleCardMeta textMuted">Signal principal</div>
-                <div>{globalPilotageSummary.summary}</div>
-              </div>
-              {globalPilotageSummary.strongestSignal ? (
-                <div className="pilotageInsightItem GateAnalyticsCard">
-                  <div className="small2 GateRoleCardMeta textMuted">Zone la plus exploitable</div>
-                  <div>{globalPilotageSummary.strongestSignal}</div>
-                </div>
-              ) : null}
-              {globalPilotageSummary.frictionSignal ? (
-                <div className="pilotageInsightItem GateAnalyticsCard">
-                  <div className="small2 GateRoleCardMeta textMuted">Point de friction</div>
-                  <div>{globalPilotageSummary.frictionSignal}</div>
-                </div>
-              ) : null}
-              {globalPilotageSummary.dormantSignal ? (
-                <div className="pilotageInsightItem GateAnalyticsCard">
-                  <div className="small2 GateRoleCardMeta textMuted">Zone stagnante</div>
-                  <div>{globalPilotageSummary.dormantSignal}</div>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </Card>
-
-        <Card
-          className="GateMainSection GateMainSectionCard"
-          style={
-            activePilotageSurfaceVars || undefined
-          }
-        >
-          <div className="col" style={{ gap: 12 }}>
-            <div className="sectionTitle GateRoleSectionTitle">{MAIN_PAGE_COPY.pilotage.focusTitle}</div>
-            {pilotageBehaviorCue ? (
-              <div>
-                <BehaviorCue cue={pilotageBehaviorCue} category={detailCategory || selectedCategory || null} />
-              </div>
-            ) : null}
-            <div className="col" role="list" style={{ gap: 12 }}>
-              <div className="pilotageFocusGroup">
-                <div className="pilotageFocusGroupHeader">
-                  <div className="small2 GateRoleCardMeta textMuted">Catégories déjà structurées</div>
-                  <div className="small2 GateRoleCardMeta textMuted">{structuredFocusCategories.length}</div>
-                </div>
-                <div className="col" style={{ gap: 10 }}>
-                  {structuredFocusCategories.length ? structuredFocusCategories.map(({ category, status, summary }) => (
-                    <div key={category.id} className="pilotageCategoryStack">
-                      <PilotageCategoryRow
-                        category={category}
-                        color={getCategoryColor(category)}
-                        selected={openCategoryId === category.id}
-                        onClick={() => togglePilotageCategory(category.id)}
-                        summary={summary}
-                        statusLabel={STATUS_LABELS[status] || "Active"}
-                        statusStyle={STATUS_STYLES[status] || STATUS_STYLES.ACTIVE}
-                      >
-                        {category.name || "Catégorie"}
-                      </PilotageCategoryRow>
-                      {renderInlineCategoryDetail(category)}
-                    </div>
-                  )) : (
-                    <div className="small2 textMuted">Aucune catégorie n’a encore une base assez solide.</div>
-                  )}
-                </div>
-              </div>
-
-              {deferredFocusCategories.length ? (
-                <div className="pilotageFocusGroup pilotageFocusGroup--deferred">
-                  <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <div className="small2 GateRoleCardMeta textMuted">
-                      {deferredFocusCategories.length} catégorie{deferredFocusCategories.length > 1 ? "s" : ""} à structurer
-                    </div>
-                    <Button variant="ghost" onClick={() => setShowDeferredCategories((value) => !value)}>
-                      {isDeferredGroupOpen ? "Masquer" : `Voir ${deferredFocusCategories.length} catégorie${deferredFocusCategories.length > 1 ? "s" : ""}`}
-                    </Button>
+      <div className="mainPageStack pilotagePage">
+        <section className="mainPageSection">
+          <GateSectionIntro
+            title={MAIN_PAGE_COPY.pilotage.summaryTitle}
+            subtitle="Lis rapidement où ton système progresse vraiment."
+          />
+          <div className="mainPageSectionBody">
+            <Card
+              className="GateMainSection GateMainSectionCard pilotageSummaryCard"
+              style={activePilotageSurfaceVars || undefined}
+            >
+              <div className="col" style={{ gap: 12 }}>
+                <div className="pilotageInsights">
+                  <div className="pilotageInsightItem GateAnalyticsCard">
+                    <div className="small2 GateRoleCardMeta textMuted">Signal principal</div>
+                    <div>{globalPilotageSummary.summary}</div>
                   </div>
-                  {isDeferredGroupOpen ? (
+                  {globalPilotageSummary.strongestSignal ? (
+                    <div className="pilotageInsightItem GateAnalyticsCard">
+                      <div className="small2 GateRoleCardMeta textMuted">Zone la plus exploitable</div>
+                      <div>{globalPilotageSummary.strongestSignal}</div>
+                    </div>
+                  ) : null}
+                  {globalPilotageSummary.frictionSignal ? (
+                    <div className="pilotageInsightItem GateAnalyticsCard">
+                      <div className="small2 GateRoleCardMeta textMuted">Point de friction</div>
+                      <div>{globalPilotageSummary.frictionSignal}</div>
+                    </div>
+                  ) : null}
+                  {globalPilotageSummary.dormantSignal ? (
+                    <div className="pilotageInsightItem GateAnalyticsCard">
+                      <div className="small2 GateRoleCardMeta textMuted">Zone stagnante</div>
+                      <div>{globalPilotageSummary.dormantSignal}</div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </Card>
+          </div>
+        </section>
+
+        <section className="mainPageSection">
+          <GateSectionIntro
+            title={MAIN_PAGE_COPY.pilotage.focusTitle}
+            subtitle="Ouvre une catégorie pour lire ses signaux utiles, son rythme récent et son prochain pas crédible."
+          />
+          <div className="mainPageSectionBody">
+            <Card
+              className="GateMainSection GateMainSectionCard pilotageFocusCard"
+              style={activePilotageSurfaceVars || undefined}
+            >
+              <div className="col" style={{ gap: 12 }}>
+                {pilotageBehaviorCue ? (
+                  <div>
+                    <BehaviorCue cue={pilotageBehaviorCue} category={detailCategory || selectedCategory || null} />
+                  </div>
+                ) : null}
+                <div className="col" role="list" style={{ gap: 12 }}>
+                  <div className="pilotageFocusGroup">
+                    <div className="pilotageFocusGroupHeader">
+                      <div className="small2 GateRoleCardMeta textMuted">Catégories déjà structurées</div>
+                      <div className="small2 GateRoleCardMeta textMuted">{structuredFocusCategories.length}</div>
+                    </div>
                     <div className="col" style={{ gap: 10 }}>
-                      {deferredFocusCategories.map(({ category, status, summary }) => (
+                      {structuredFocusCategories.length ? structuredFocusCategories.map(({ category, status, summary }) => (
                         <div key={category.id} className="pilotageCategoryStack">
                           <PilotageCategoryRow
                             category={category}
@@ -999,86 +971,125 @@ export default function Pilotage({
                           </PilotageCategoryRow>
                           {renderInlineCategoryDetail(category)}
                         </div>
-                      ))}
+                      )) : (
+                        <div className="small2 textMuted">Aucune catégorie n’a encore une base assez solide.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {deferredFocusCategories.length ? (
+                    <div className="pilotageFocusGroup pilotageFocusGroup--deferred">
+                      <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <div className="small2 GateRoleCardMeta textMuted">
+                          {deferredFocusCategories.length} catégorie{deferredFocusCategories.length > 1 ? "s" : ""} à structurer
+                        </div>
+                        <Button variant="ghost" onClick={() => setShowDeferredCategories((value) => !value)}>
+                          {isDeferredGroupOpen ? "Masquer" : `Voir ${deferredFocusCategories.length} catégorie${deferredFocusCategories.length > 1 ? "s" : ""}`}
+                        </Button>
+                      </div>
+                      {isDeferredGroupOpen ? (
+                        <div className="col" style={{ gap: 10 }}>
+                          {deferredFocusCategories.map(({ category, status, summary }) => (
+                            <div key={category.id} className="pilotageCategoryStack">
+                              <PilotageCategoryRow
+                                category={category}
+                                color={getCategoryColor(category)}
+                                selected={openCategoryId === category.id}
+                                onClick={() => togglePilotageCategory(category.id)}
+                                summary={summary}
+                                statusLabel={STATUS_LABELS[status] || "Active"}
+                                statusStyle={STATUS_STYLES[status] || STATUS_STYLES.ACTIVE}
+                              >
+                                {category.name || "Catégorie"}
+                              </PilotageCategoryRow>
+                              {renderInlineCategoryDetail(category)}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
-              ) : null}
-            </div>
+              </div>
+            </Card>
           </div>
-        </Card>
+        </section>
 
-        <Card
-          className="GateMainSection GateMainSectionCard"
-          style={
-            activePilotageSurfaceVars || undefined
-          }
-        >
-          <div className="col" style={{ gap: 12 }}>
-            <div>
-              <div className="sectionTitle GateRoleSectionTitle">{MAIN_PAGE_COPY.pilotage.statsTitle}</div>
-              <div className="small2 GateRoleSectionSubtitle textMuted">Lis le rythme récent avant d’ouvrir une catégorie.</div>
-            </div>
-            <div className="pilotageTopGrid">
-              <div className="listItem GateRowPremium GateAnalyticsCard">
-                <div className="small2 GateRoleMetricLabel">Niveau global</div>
-                <div className="titleSm GateRoleMetricValue">{globalPilotageStats.globalScore}%</div>
-              </div>
-              <div className="listItem GateRowPremium GateAnalyticsCard">
-                <div className="small2 GateRoleMetricLabel">Actions faites / attendues</div>
-                <div className="titleSm GateRoleMetricValue">
-                  {globalPilotageStats.doneCount} / {globalPilotageStats.expectedCount}
+        <section className="mainPageSection">
+          <GateSectionIntro
+            title={MAIN_PAGE_COPY.pilotage.statsTitle}
+            subtitle="Lis le rythme récent avant d’ouvrir une catégorie."
+          />
+          <div className="mainPageSectionBody">
+            <Card
+              className="GateMainSection GateMainSectionCard pilotageStatsCard"
+              style={activePilotageSurfaceVars || undefined}
+            >
+              <div className="col" style={{ gap: 12 }}>
+                <div className="pilotageTopGrid">
+                  <div className="listItem GateRowPremium GateAnalyticsCard">
+                    <div className="small2 GateRoleMetricLabel">Niveau global</div>
+                    <div className="titleSm GateRoleMetricValue">{globalPilotageStats.globalScore}%</div>
+                  </div>
+                  <div className="listItem GateRowPremium GateAnalyticsCard">
+                    <div className="small2 GateRoleMetricLabel">Actions faites / attendues</div>
+                    <div className="titleSm GateRoleMetricValue">
+                      {globalPilotageStats.doneCount} / {globalPilotageStats.expectedCount}
+                    </div>
+                  </div>
+                  <div className="listItem GateRowPremium GateAnalyticsCard">
+                    <div className="small2 GateRoleMetricLabel">Temps investi réel</div>
+                    <div className="titleSm GateRoleMetricValue">{formatMinutes(globalPilotageStats.realMinutes7)}</div>
+                  </div>
+                  <div className="listItem GateRowPremium GateAnalyticsCard">
+                    <div className="small2 GateRoleMetricLabel">Catégories actives</div>
+                    <div className="titleSm GateRoleMetricValue">
+                      {globalPilotageStats.activeCategories} / {Math.max(categories.length, 1)}
+                    </div>
+                  </div>
+                </div>
+                <div className="pilotageInsights">
+                  <div className="pilotageInsightItem GateAnalyticsCard">
+                    <div className="small2 GateRoleCardMeta textMuted">Lecture du rythme</div>
+                    <div>
+                      {globalPilotageStats.structuredCategories} catégorie
+                      {globalPilotageStats.structuredCategories > 1 ? "s" : ""} ont déjà une base exploitable, avec{" "}
+                      {globalPilotageStats.activeDays7} jour{globalPilotageStats.activeDays7 > 1 ? "s" : ""} utile
+                      {globalPilotageStats.activeDays7 > 1 ? "s" : ""} sur 7.
+                    </div>
+                  </div>
+                  <div className="pilotageInsightItem GateAnalyticsCard">
+                    <div className="small2 GateRoleCardMeta textMuted">Points de friction</div>
+                    <div>
+                      {globalPilotageStats.missedCount > 0
+                        ? `${globalPilotageStats.missedCount} occurrence${globalPilotageStats.missedCount > 1 ? "s" : ""} manquée${globalPilotageStats.missedCount > 1 ? "s" : ""} sur la fenêtre récente.`
+                        : "Aucune occurrence manquée sur la fenêtre récente."}
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="listItem GateRowPremium GateAnalyticsCard">
-                <div className="small2 GateRoleMetricLabel">Temps investi réel</div>
-                <div className="titleSm GateRoleMetricValue">{formatMinutes(globalPilotageStats.realMinutes7)}</div>
-              </div>
-              <div className="listItem GateRowPremium GateAnalyticsCard">
-                <div className="small2 GateRoleMetricLabel">Catégories actives</div>
-                <div className="titleSm GateRoleMetricValue">
-                  {globalPilotageStats.activeCategories} / {Math.max(categories.length, 1)}
-                </div>
-              </div>
-            </div>
-            <div className="pilotageInsights">
-              <div className="pilotageInsightItem GateAnalyticsCard">
-                <div className="small2 GateRoleCardMeta textMuted">Lecture du rythme</div>
-                <div>
-                  {globalPilotageStats.structuredCategories} catégorie
-                  {globalPilotageStats.structuredCategories > 1 ? "s" : ""} ont déjà une base exploitable, avec{" "}
-                  {globalPilotageStats.activeDays7} jour{globalPilotageStats.activeDays7 > 1 ? "s" : ""} utile
-                  {globalPilotageStats.activeDays7 > 1 ? "s" : ""} sur 7.
-                </div>
-              </div>
-              <div className="pilotageInsightItem GateAnalyticsCard">
-                <div className="small2 GateRoleCardMeta textMuted">Points de friction</div>
-                <div>
-                  {globalPilotageStats.missedCount > 0
-                    ? `${globalPilotageStats.missedCount} occurrence${globalPilotageStats.missedCount > 1 ? "s" : ""} manquée${globalPilotageStats.missedCount > 1 ? "s" : ""} sur la fenêtre récente.`
-                    : "Aucune occurrence manquée sur la fenêtre récente."}
-                </div>
-              </div>
-            </div>
+            </Card>
           </div>
-        </Card>
+        </section>
 
         {legacyBuckets.pilotageRituals.length ? (
-          <Card className="GateSecondarySectionCard">
-            <div className="col" style={{ gap: 8 }}>
-              <div className="sectionTitle GateRoleSectionTitle">Rituels hérités</div>
-              <div className="small">
-                {legacyBuckets.pilotageRituals.length} élément{legacyBuckets.pilotageRituals.length > 1 ? "s" : ""} d’organisation ou de revue a été retiré{legacyBuckets.pilotageRituals.length > 1 ? "s" : ""} du flux d’exécution.
-              </div>
-              <div className="col" style={{ gap: 6 }}>
-                {legacyBuckets.pilotageRituals.slice(0, 4).map((goal) => (
-                  <div key={goal.id} className="small2 textMuted">
-                    {goal.title || "Rituel"}
-                  </div>
-                ))}
-              </div>
+          <section className="mainPageSection">
+            <GateSectionIntro
+              title="Rituels hérités"
+              subtitle={`${legacyBuckets.pilotageRituals.length} élément${legacyBuckets.pilotageRituals.length > 1 ? "s" : ""} d’organisation ou de revue a été retiré${legacyBuckets.pilotageRituals.length > 1 ? "s" : ""} du flux d’exécution.`}
+            />
+            <div className="mainPageSectionBody">
+              <Card className="GateSecondarySectionCard">
+                <div className="col" style={{ gap: 6 }}>
+                  {legacyBuckets.pilotageRituals.slice(0, 4).map((goal) => (
+                    <div key={goal.id} className="small2 textMuted">
+                      {goal.title || "Rituel"}
+                    </div>
+                  ))}
+                </div>
+              </Card>
             </div>
-          </Card>
+          </section>
         ) : null}
       </div>
     </ScreenShell>

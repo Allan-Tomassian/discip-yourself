@@ -33,14 +33,21 @@ describe("design system contract", () => {
     const topNav = readSrc("components/TopNav.jsx");
     const app = readSrc("App.jsx");
     const main = readSrc("main.jsx");
+    const tokens = readSrc("styles/tokens.css");
+    const themeTokens = readSrc("theme/themeTokens.js");
 
-    expect(topNav).toContain('{ id: "today", label: SURFACE_LABELS.today }');
-    expect(topNav).toContain('{ id: "planning", label: SURFACE_LABELS.planning }');
+    expect(topNav).toContain("SURFACE_LABELS.today");
+    expect(topNav).toContain("SURFACE_LABELS.planning");
     expect(topNav).toContain("const [isMobileLayout, setIsMobileLayout] = useState(");
     expect(topNav).toContain("{!isMobileLayout ? (");
     expect(topNav).not.toContain("Aujourd’hui");
     expect(app).toContain("theme: DEFAULT_THEME");
+    expect(main).toContain('import "@fontsource-variable/geist";');
     expect(app).toContain("applyThemeTokens(DEFAULT_THEME, BRAND_ACCENT);");
     expect(main).toContain("applyThemeTokens(DEFAULT_THEME, BRAND_ACCENT);");
+    expect(tokens).toContain('--font-family-ui: "Geist Variable"');
+    expect(themeTokens).not.toContain('"page-max"');
+    expect(themeTokens).not.toContain('"font-title"');
+    expect(themeTokens).not.toContain("buttonHeight");
   });
 });
