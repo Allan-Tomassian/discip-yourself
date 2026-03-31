@@ -2,6 +2,12 @@
 
 ## Cible recommandée
 
+Pour le correctif prioritaire Coach:
+
+- validation par défaut = **front local + backend local**
+- le chemin `front local/LAN -> backend public` n'est pas la voie de debug recommandée
+- si tu gardes un backend public avec une origine privée/LAN, il faut autoriser explicitement cette origine côté backend public
+
 - Front iPhone: `http://192.168.1.183:5173`
 - Backend local: `http://192.168.1.183:3001`
 

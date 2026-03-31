@@ -5,6 +5,7 @@ import { requestAiCoachChat } from "../../infra/aiCoachChatClient";
 import { deriveAiUnavailableMessage } from "../../infra/aiTransportDiagnostics";
 import { applySessionRuntimeTransition } from "../../logic/sessionRuntime";
 import { applyChatDraftChanges, buildCreationProposalFromDraftChanges } from "../../logic/chatDraftChanges";
+import { commitPreparedCreatePlan, prepareCreateCommit } from "../create-item/createItemCommit";
 import { GateButton, GatePanel } from "../../shared/ui/gate/Gate";
 import { getManualAiLoadingStages } from "../manualAi/loadingStages";
 import { getCoachContextSnapshot } from "./coachContextAdapter";
@@ -19,28 +20,26 @@ import {
   buildAssistantTranscriptText,
   buildCoachConversationMessage,
   buildRecentMessagesFromConversation,
-  clearCoachSessionReplies,
   createCoachConversation,
   ensureCoachConversationsState,
   getCoachConversationById,
-  getCoachSessionReplies,
   getLatestCoachConversation,
   removeCoachConversation,
-  setCoachSessionReply,
-  subscribeCoachSessionReplies,
-  updateCoachSessionReplyDraftStatus,
+  updateCoachConversationMessage,
+  updateCoachConversationMode,
   upsertCoachConversation,
 } from "./coachStorage";
 import { useBehaviorFeedback } from "../../feedback/BehaviorFeedbackContext";
 import { deriveBehaviorFeedbackSignal } from "../../feedback/feedbackDerivers";
+import { resolveMainTabForSurface } from "../../app/routeOrigin";
 import "./coach.css";
 
 const COACH_QUICK_PROMPTS = [
-  "Ajouter une action",
-  "Structurer une catégorie",
-  "Clarifier une catégorie",
-  "Clarifier mon prochain pas",
-  "Transformer une intention",
+  "J’hésite sur mon prochain pas",
+  "Je bloque sur une catégorie",
+  "Aide-moi à arbitrer",
+  "Clarifie ce qui compte aujourd’hui",
+  "Je manque de discipline en ce moment",
 ];
 
 function deriveCoachErrorMessage(result) {
@@ -53,19 +52,6 @@ function deriveCoachErrorMessage(result) {
     networkUnknown: "Coach indisponible pour le moment.",
     fallback: "Coach indisponible.",
   });
-}
-
-function useCoachSessionReplies(conversationId) {
-  const [revision, setRevision] = useState(0);
-
-  useEffect(() => {
-    return subscribeCoachSessionReplies((changedConversationId) => {
-      if (!conversationId || changedConversationId !== conversationId) return;
-      setRevision((value) => value + 1);
-    });
-  }, [conversationId]);
-
-  return useMemo(() => getCoachSessionReplies(conversationId), [conversationId, revision]);
 }
 
 function formatConversationTimestamp(updatedAt) {
@@ -91,15 +77,71 @@ function buildConversationPreview(conversation) {
   return text.length > 72 ? `${text.slice(0, 72)}…` : text;
 }
 
+export function normalizeCoachRequestedMode(value) {
+  return value === "plan" ? "plan" : "free";
+}
+
+export function toggleCoachPlanMode(currentMode) {
+  return normalizeCoachRequestedMode(currentMode) === "plan" ? "free" : "plan";
+}
+
+export function buildCoachRequestedModeIntentKey({
+  openCycle = 0,
+  requestedConversationId = null,
+  requestedMode = "free",
+} = {}) {
+  const safeCycle = Number.isInteger(openCycle) && openCycle > 0 ? openCycle : 0;
+  if (!safeCycle) return "";
+  return `${safeCycle}:${requestedConversationId || ""}:${normalizeCoachRequestedMode(requestedMode)}`;
+}
+
+export function shouldApplyCoachRequestedMode({
+  open = false,
+  openCycle = 0,
+  requestedConversationId = null,
+  currentConversationId = null,
+  requestedMode = "free",
+  lastAppliedIntentKey = "",
+} = {}) {
+  const normalizedMode = normalizeCoachRequestedMode(requestedMode);
+  if (!open) {
+    return { shouldApply: false, intentKey: "", normalizedMode };
+  }
+  const intentKey = buildCoachRequestedModeIntentKey({
+    openCycle,
+    requestedConversationId,
+    requestedMode: normalizedMode,
+  });
+  if (!intentKey) {
+    return { shouldApply: false, intentKey, normalizedMode };
+  }
+  if (requestedConversationId && currentConversationId !== requestedConversationId) {
+    return { shouldApply: false, intentKey, normalizedMode };
+  }
+  if (intentKey === lastAppliedIntentKey) {
+    return { shouldApply: false, intentKey, normalizedMode };
+  }
+  return { shouldApply: true, intentKey, normalizedMode };
+}
+
 export function useCoachConversationController({
+  open = false,
   data,
   setData,
   setTab,
   surfaceTab = "today",
   onRequestClose,
   emitBehaviorFeedback,
-  initialMode = "chat",
+  requestedMode = "free",
+  requestedConversationId = null,
   onOpenAssistantCreate,
+  onOpenCreatedView,
+  onOpenPaywall,
+  canCreateAction = true,
+  canCreateOutcome = true,
+  isPremiumPlan = false,
+  planLimits = null,
+  generationWindowDays = null,
 }) {
   const { session } = useAuth();
   const accessToken = session?.access_token || "";
@@ -107,15 +149,14 @@ export function useCoachConversationController({
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [conversationMode, setConversationMode] = useState(initialMode === "structure" ? "structure" : "chat");
+  const [conversationMode, setConversationMode] = useState(normalizeCoachRequestedMode(requestedMode));
   const [loadingStageIndex, setLoadingStageIndex] = useState(-1);
   const [archivedConversation, setArchivedConversation] = useState(null);
   const archiveTimeoutRef = useRef(null);
+  const lastAppliedRequestedModeIntentRef = useRef("");
+  const wasOpenRef = useRef(Boolean(open));
+  const [openCycle, setOpenCycle] = useState(() => (open ? 1 : 0));
   const loadingStages = useMemo(() => getManualAiLoadingStages("coach"), []);
-
-  useEffect(() => {
-    setConversationMode(initialMode === "structure" ? "structure" : "chat");
-  }, [initialMode]);
 
   const contextSnapshot = useMemo(
     () => getCoachContextSnapshot({ data: safeData, surfaceTab }),
@@ -144,11 +185,7 @@ export function useCoachConversationController({
       getLatestCoachConversation(safeData?.coach_conversations_v1),
     [activeConversationId, latestConversation, safeData?.coach_conversations_v1]
   );
-  const sessionReplies = useCoachSessionReplies(currentConversation?.id || "");
-  const messageEntries = useMemo(
-    () => deriveCoachMessageEntries(currentConversation, sessionReplies),
-    [currentConversation, sessionReplies]
-  );
+  const messageEntries = useMemo(() => deriveCoachMessageEntries(currentConversation), [currentConversation]);
   const categoriesById = useMemo(
     () => new Map((Array.isArray(safeData.categories) ? safeData.categories : []).map((category) => [category?.id, category])),
     [safeData.categories]
@@ -157,6 +194,54 @@ export function useCoachConversationController({
     () => new Map((Array.isArray(safeData.goals) ? safeData.goals : []).map((goal) => [goal?.id, goal])),
     [safeData.goals]
   );
+
+  useEffect(() => {
+    const nextMode = currentConversation?.mode || normalizeCoachRequestedMode(requestedMode);
+    setConversationMode(nextMode);
+  }, [currentConversation?.id, currentConversation?.mode, requestedMode]);
+
+  useEffect(() => {
+    if (!requestedConversationId) return;
+    if (!conversations.some((conversation) => conversation.id === requestedConversationId)) return;
+    if (activeConversationId === requestedConversationId) return;
+    setActiveConversationId(requestedConversationId);
+  }, [activeConversationId, conversations, requestedConversationId]);
+
+  useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      setOpenCycle((current) => current + 1);
+    }
+    if (!open && wasOpenRef.current) {
+      lastAppliedRequestedModeIntentRef.current = "";
+    }
+    wasOpenRef.current = Boolean(open);
+  }, [open]);
+
+  useEffect(() => {
+    const modeSync = shouldApplyCoachRequestedMode({
+      open,
+      openCycle,
+      requestedConversationId,
+      currentConversationId: currentConversation?.id || null,
+      requestedMode,
+      lastAppliedIntentKey: lastAppliedRequestedModeIntentRef.current,
+    });
+    if (!modeSync.shouldApply) return;
+    setConversationMode(modeSync.normalizedMode);
+    if (!currentConversation?.id) return;
+    lastAppliedRequestedModeIntentRef.current = modeSync.intentKey;
+    if (typeof setData !== "function" || currentConversation.mode === modeSync.normalizedMode) return;
+    setData((previous) => {
+      const safePrevious = previous && typeof previous === "object" ? previous : {};
+      return {
+        ...safePrevious,
+        coach_conversations_v1: updateCoachConversationMode(safePrevious.coach_conversations_v1, {
+          conversationId: currentConversation.id,
+          mode: modeSync.normalizedMode,
+        }),
+      };
+    });
+  }, [currentConversation?.id, currentConversation?.mode, open, openCycle, requestedConversationId, requestedMode, setData]);
 
   useEffect(() => {
     if (!loading) {
@@ -180,11 +265,31 @@ export function useCoachConversationController({
       ? loadingStages[Math.max(0, Math.min(loadingStageIndex, loadingStages.length - 1))]
       : "";
 
+  const handleConversationModeChange = useCallback(
+    (nextMode) => {
+      const normalizedMode = nextMode === "plan" ? "plan" : "free";
+      setConversationMode(normalizedMode);
+      if (!currentConversation?.id || typeof setData !== "function") return;
+      setData((previous) => {
+        const safePrevious = previous && typeof previous === "object" ? previous : {};
+        return {
+          ...safePrevious,
+          coach_conversations_v1: updateCoachConversationMode(safePrevious.coach_conversations_v1, {
+            conversationId: currentConversation.id,
+            mode: normalizedMode,
+          }),
+        };
+      });
+    },
+    [currentConversation?.id, setData]
+  );
+
   const handleNewChat = useCallback(() => {
     setError("");
     setDraft("");
     if (typeof setData !== "function") return;
     const nextConversation = createCoachConversation({
+      mode: conversationMode,
       contextSnapshot: {
         activeCategoryId: contextSnapshot.activeCategoryId,
         dateKey: contextSnapshot.selectedDateKey,
@@ -198,8 +303,7 @@ export function useCoachConversationController({
       };
     });
     setActiveConversationId(nextConversation.id);
-    clearCoachSessionReplies(nextConversation.id);
-  }, [contextSnapshot.activeCategoryId, contextSnapshot.selectedDateKey, setData]);
+  }, [contextSnapshot.activeCategoryId, contextSnapshot.selectedDateKey, conversationMode, setData]);
 
   useEffect(() => {
     return () => {
@@ -222,7 +326,6 @@ export function useCoachConversationController({
           coach_conversations_v1: removeCoachConversation(safePrevious.coach_conversations_v1, conversationId),
         };
       });
-      clearCoachSessionReplies(conversationId);
       setArchivedConversation({
         conversation: archived,
         label: buildConversationPreview(archived),
@@ -255,7 +358,19 @@ export function useCoachConversationController({
     (action) => {
       if (!action || !action.intent) return;
       if (action.intent === "continue_coach") {
-        setTab?.("coach-chat");
+        setConversationMode("plan");
+        return;
+      }
+      if (action.intent === "open_created_view") {
+        if (action.viewTarget) {
+          onOpenCreatedView?.(action.viewTarget);
+          onRequestClose?.();
+          return;
+        }
+        if (action.categoryId) {
+          setTab?.("library");
+          onRequestClose?.();
+        }
         return;
       }
       if (action.intent === "open_library") {
@@ -270,6 +385,11 @@ export function useCoachConversationController({
       }
       if (action.intent === "open_today") {
         setTab?.("today");
+        onRequestClose?.();
+        return;
+      }
+      if (action.intent === "open_support") {
+        setTab?.("support");
         onRequestClose?.();
         return;
       }
@@ -307,9 +427,171 @@ export function useCoachConversationController({
       contextSnapshot.activeCategoryId,
       contextSnapshot.selectedDateKey,
       onRequestClose,
+      onOpenCreatedView,
       safeData,
       setData,
+      setConversationMode,
       setTab,
+    ]
+  );
+
+  const openAssistantReview = useCallback(
+    (entry) => {
+      if (!entry?.reply?.proposal || typeof onOpenAssistantCreate !== "function" || !currentConversation?.id) return;
+      onOpenAssistantCreate({
+        sourceSurface: "coach",
+        conversationId: currentConversation.id,
+        proposal: entry.reply.proposal,
+      });
+    },
+    [currentConversation?.id, onOpenAssistantCreate]
+  );
+
+  const createFromPlanReply = useCallback(
+    async (entry) => {
+      if (!entry?.id || !entry?.createdAt || !entry?.reply?.proposal || !currentConversation?.id || typeof setData !== "function") {
+        return;
+      }
+
+      const preparedCommit = prepareCreateCommit({
+        state: safeData,
+        kind: entry.reply.proposal.kind || "assistant",
+        actionDraft: entry.reply.proposal.actionDrafts?.[0] || null,
+        outcomeDraft: entry.reply.proposal.outcomeDraft || null,
+        additionalActionDrafts: entry.reply.proposal.actionDrafts?.slice(1) || [],
+        canCreateAction,
+        canCreateOutcome,
+        isPremiumPlan,
+        planLimits,
+      });
+
+      if (!preparedCommit.ok) {
+        if (preparedCommit.kind === "paywall") onOpenPaywall?.(preparedCommit.message);
+        setData((previous) => {
+          const safePrevious = previous && typeof previous === "object" ? previous : {};
+          return {
+            ...safePrevious,
+            coach_conversations_v1: updateCoachConversationMessage(safePrevious.coach_conversations_v1, {
+              conversationId: currentConversation.id,
+              messageCreatedAt: entry.createdAt,
+              update: (message) => ({
+                ...message,
+                coachReply: {
+                  ...(message?.coachReply || entry.reply),
+                  createStatus: "error",
+                  createMessage: preparedCommit.message || "Création indisponible pour le moment.",
+                },
+              }),
+            }),
+          };
+        });
+        return;
+      }
+
+      setData((previous) => {
+        const safePrevious = previous && typeof previous === "object" ? previous : {};
+        return {
+          ...safePrevious,
+          coach_conversations_v1: updateCoachConversationMessage(safePrevious.coach_conversations_v1, {
+            conversationId: currentConversation.id,
+            messageCreatedAt: entry.createdAt,
+            update: (message) => ({
+              ...message,
+              coachReply: {
+                ...(message?.coachReply || entry.reply),
+                createStatus: "creating",
+                createMessage: "",
+              },
+            }),
+          }),
+        };
+      });
+
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+      setData((previous) => {
+        const safePrevious = previous && typeof previous === "object" ? previous : {};
+        const commitResult = commitPreparedCreatePlan(safePrevious, preparedCommit.plan, {
+          generationWindowDays,
+          isPremiumPlan,
+        });
+        const categoryLabel =
+          (Array.isArray(commitResult.state?.categories)
+            ? commitResult.state.categories.find((category) => category?.id === commitResult.createdCategoryId)?.name
+            : null) ||
+          "ta catégorie";
+        const summaryBits = [];
+        if (commitResult.createdOutcomeId) summaryBits.push("1 objectif");
+        if (commitResult.createdActionIds.length) {
+          summaryBits.push(
+            `${commitResult.createdActionIds.length} action${commitResult.createdActionIds.length > 1 ? "s" : ""}`
+          );
+        }
+        const summaryText = `Créé dans ${categoryLabel}.\n${summaryBits.join(" · ") || "Structure créée."}`;
+        const createdAt = new Date().toISOString();
+        const coachWithStatus = updateCoachConversationMessage(commitResult.state.coach_conversations_v1, {
+          conversationId: currentConversation.id,
+          messageCreatedAt: entry.createdAt,
+          update: (message) => ({
+            ...message,
+            coachReply: {
+              ...(message?.coachReply || entry.reply),
+              createStatus: "created",
+              createMessage: "Créé dans l’app.",
+              viewTarget: commitResult.viewTarget,
+            },
+          }),
+        });
+        const successMessage = buildCoachConversationMessage("assistant", summaryText, createdAt, {
+          kind: "conversation",
+          mode: "plan",
+          message: summaryText,
+          primaryAction: {
+            intent: "open_created_view",
+            label: "Voir",
+            categoryId: commitResult.createdCategoryId || null,
+            actionId:
+              commitResult.createdActionIds.length === 1 && !commitResult.createdOutcomeId
+                ? commitResult.createdActionIds[0]
+                : commitResult.createdOutcomeId || null,
+            viewTarget: commitResult.viewTarget,
+          },
+          secondaryAction: {
+            intent: "continue_coach",
+            label: "Continuer",
+          },
+          proposal: null,
+          createStatus: "created",
+          createMessage: "",
+          viewTarget: commitResult.viewTarget,
+        });
+        const appendedConversation = appendCoachConversationMessages(coachWithStatus, {
+          conversationId: currentConversation.id,
+          messages: successMessage ? [successMessage] : [],
+          contextSnapshot: {
+            activeCategoryId: commitResult.createdCategoryId || contextSnapshot.activeCategoryId,
+            dateKey: contextSnapshot.selectedDateKey,
+          },
+          mode: "plan",
+        });
+        return {
+          ...commitResult.state,
+          coach_conversations_v1: appendedConversation.state,
+        };
+      });
+    },
+    [
+      canCreateAction,
+      canCreateOutcome,
+      contextSnapshot.activeCategoryId,
+      contextSnapshot.selectedDateKey,
+      currentConversation?.id,
+      generationWindowDays,
+      isPremiumPlan,
+      onOpenPaywall,
+      planLimits,
+      safeData,
+      setData,
     ]
   );
 
@@ -318,27 +600,55 @@ export function useCoachConversationController({
       if (!entry?.id || !entry?.reply) return;
       const draftChanges = Array.isArray(entry.reply?.draftChanges) ? entry.reply.draftChanges : [];
       if (!draftChanges.length || !currentConversation?.id) return;
-      updateCoachSessionReplyDraftStatus(currentConversation.id, entry.createdAt, {
-        draftApplyStatus: "applying",
-        draftApplyMessage: "",
+      setData?.((previous) => {
+        const safePrevious = previous && typeof previous === "object" ? previous : {};
+        return {
+          ...safePrevious,
+          coach_conversations_v1: updateCoachConversationMessage(safePrevious.coach_conversations_v1, {
+            conversationId: currentConversation.id,
+            messageCreatedAt: entry.createdAt,
+            update: (message) => ({
+              ...message,
+              coachReply: {
+                ...(message?.coachReply || entry.reply),
+                createStatus: "creating",
+                createMessage: "",
+              },
+            }),
+          }),
+        };
       });
 
       const proposal = buildCreationProposalFromDraftChanges(safeData, draftChanges, {
         sourceContext: {
-          mainTab: surfaceTab === "planning" || surfaceTab === "library" || surfaceTab === "pilotage" ? surfaceTab : "today",
-          sourceSurface: onRequestClose ? "coach-panel" : "coach-chat",
+          mainTab: resolveMainTabForSurface(surfaceTab, "today"),
+          sourceSurface: "coach",
           categoryId: contextSnapshot.activeCategoryId || null,
           dateKey: contextSnapshot.selectedDateKey || null,
           coachConversationId: currentConversation.id,
         },
       });
       if (proposal && typeof onOpenAssistantCreate === "function") {
-        updateCoachSessionReplyDraftStatus(currentConversation.id, entry.createdAt, {
-          draftApplyStatus: "applied",
-          draftApplyMessage: "Proposition ouverte pour validation.",
+        setData?.((previous) => {
+          const safePrevious = previous && typeof previous === "object" ? previous : {};
+          return {
+            ...safePrevious,
+            coach_conversations_v1: updateCoachConversationMessage(safePrevious.coach_conversations_v1, {
+              conversationId: currentConversation.id,
+              messageCreatedAt: entry.createdAt,
+              update: (message) => ({
+                ...message,
+                coachReply: {
+                  ...(message?.coachReply || entry.reply),
+                  createStatus: "created",
+                  createMessage: "Proposition ouverte pour validation.",
+                },
+              }),
+            }),
+          };
         });
         onOpenAssistantCreate({
-          sourceSurface: onRequestClose ? "coach-panel" : "coach-chat",
+          sourceSurface: "coach",
           conversationId: currentConversation.id,
           proposal,
         });
@@ -349,10 +659,24 @@ export function useCoachConversationController({
       setData?.(result.state);
 
       if (result.appliedCount > 0) {
-        updateCoachSessionReplyDraftStatus(currentConversation.id, entry.createdAt, {
-          draftApplyStatus: "applied",
-          draftApplyMessage:
-            result.appliedCount > 1 ? `${result.appliedCount} changements appliqués.` : "Brouillon appliqué.",
+        setData?.((previous) => {
+          const safePrevious = previous && typeof previous === "object" ? previous : {};
+          return {
+            ...safePrevious,
+            coach_conversations_v1: updateCoachConversationMessage(safePrevious.coach_conversations_v1, {
+              conversationId: currentConversation.id,
+              messageCreatedAt: entry.createdAt,
+              update: (message) => ({
+                ...message,
+                coachReply: {
+                  ...(message?.coachReply || entry.reply),
+                  createStatus: "created",
+                  createMessage:
+                    result.appliedCount > 1 ? `${result.appliedCount} changements appliqués.` : "Brouillon appliqué.",
+                },
+              }),
+            }),
+          };
         });
         emitBehaviorFeedback?.(
           deriveBehaviorFeedbackSignal({
@@ -370,12 +694,26 @@ export function useCoachConversationController({
         return;
       }
 
-      updateCoachSessionReplyDraftStatus(currentConversation.id, entry.createdAt, {
-        draftApplyStatus: "error",
-        draftApplyMessage: "Aucun changement applicable dans l'état actuel.",
+      setData?.((previous) => {
+        const safePrevious = previous && typeof previous === "object" ? previous : {};
+        return {
+          ...safePrevious,
+          coach_conversations_v1: updateCoachConversationMessage(safePrevious.coach_conversations_v1, {
+            conversationId: currentConversation.id,
+            messageCreatedAt: entry.createdAt,
+            update: (message) => ({
+              ...message,
+              coachReply: {
+                ...(message?.coachReply || entry.reply),
+                createStatus: "error",
+                createMessage: "Aucun changement applicable dans l'état actuel.",
+              },
+            }),
+          }),
+        };
       });
     },
-    [contextSnapshot.activeCategoryId, contextSnapshot.selectedDateKey, currentConversation?.id, onOpenAssistantCreate, onRequestClose, safeData, setData, setTab, surfaceTab]
+    [contextSnapshot.activeCategoryId, contextSnapshot.selectedDateKey, currentConversation?.id, onOpenAssistantCreate, safeData, setData, setTab, surfaceTab]
   );
 
   const submitMessage = useCallback(
@@ -393,6 +731,7 @@ export function useCoachConversationController({
           activeCategoryId: contextSnapshot.activeCategoryId,
           dateKey: contextSnapshot.selectedDateKey,
         },
+        mode: conversationMode,
       });
       const preparedConversation = preparedResult.conversation;
       setActiveConversationId(preparedConversation?.id || "");
@@ -410,10 +749,8 @@ export function useCoachConversationController({
         payload: {
           selectedDateKey: contextSnapshot.selectedDateKey,
           activeCategoryId: contextSnapshot.activeCategoryId,
-          message:
-            conversationMode === "structure"
-              ? `Mode structuration. Aide-moi à transformer cette intention en objectif, actions, rythme et prochaines étapes concrètes, sans créer directement.\n\n${message}`
-              : message,
+          mode: conversationMode === "plan" ? "plan" : "free",
+          message,
           recentMessages: buildRecentMessagesFromConversation(preparedConversation),
         },
       });
@@ -428,7 +765,8 @@ export function useCoachConversationController({
       const assistantMessage = buildCoachConversationMessage(
         "assistant",
         buildAssistantTranscriptText(result.reply),
-        assistantCreatedAt
+        assistantCreatedAt,
+        result.reply
       );
       if (assistantMessage) {
         setData((previous) => {
@@ -440,13 +778,13 @@ export function useCoachConversationController({
               activeCategoryId: contextSnapshot.activeCategoryId,
               dateKey: contextSnapshot.selectedDateKey,
             },
+            mode: result.reply?.kind === "conversation" ? result.reply.mode : conversationMode,
           });
           return {
             ...safePrevious,
             coach_conversations_v1: nextResult.state,
           };
         });
-        setCoachSessionReply(preparedConversation.id, assistantCreatedAt, result.reply);
       }
 
       setLoading(false);
@@ -477,17 +815,19 @@ export function useCoachConversationController({
     setActiveConversationId,
     messageEntries,
     quickPrompts:
-      conversationMode === "structure"
-        ? ["Structurer une catégorie", "Transformer une idée en direction", "Créer une première action", "Clarifier mes priorités", "Organiser un chantier"]
+      conversationMode === "plan"
+        ? ["Transformer une idée en plan", "Créer une première action", "Clarifier mes priorités", "Organiser un chantier", "Structurer un projet flou"]
         : COACH_QUICK_PROMPTS,
     conversationMode,
-    setConversationMode,
+    setConversationMode: handleConversationModeChange,
     hasMessages: messageEntries.length > 0,
     categoriesById,
     goalsById,
     submitMessage,
     handleNewChat,
     applyAction,
+    openAssistantReview,
+    createFromPlanReply,
     applyDraftProposal,
     archiveConversation,
     archivedConversation,
@@ -497,12 +837,10 @@ export function useCoachConversationController({
 
 export function CoachConversationSurface({
   controller,
-  mode = "panel",
   railExpanded: railExpandedProp,
   setRailExpanded: setRailExpandedProp,
   isDesktopLayout: isDesktopLayoutProp,
   setIsDesktopLayout: setIsDesktopLayoutProp,
-  onOpenStructuring,
 }) {
   const {
     draft,
@@ -524,6 +862,8 @@ export function CoachConversationSurface({
     submitMessage,
     handleNewChat,
     applyAction,
+    openAssistantReview,
+    createFromPlanReply,
     applyDraftProposal,
     archiveConversation,
     archivedConversation,
@@ -619,7 +959,7 @@ export function CoachConversationSurface({
   return (
     <div
       className={[
-        `coachSurface coachSurface--${mode}`,
+        "coachSurface coachSurface--panel",
         railExpanded ? "is-rail-open" : "is-rail-closed",
         isDesktopLayout ? "is-desktop" : "is-mobile",
       ]
@@ -681,41 +1021,23 @@ export function CoachConversationSurface({
       </aside>
       <div className="coachSurfaceMain">
         <div className="coachSurfaceToolbar">
-          {mode === "page" ? (
-            <button
-              type="button"
-              className="coachRailHandle"
-              aria-label={railExpanded ? "Masquer les conversations" : "Ouvrir les conversations"}
-              onClick={() => setRailExpanded((current) => !current)}
-            >
-              <span />
-              <span />
-              <span />
-            </button>
-          ) : (
-            <div />
-          )}
+          <div />
           <div className="coachSurfaceToolbarActions">
             <div className="row gap8">
               <GateButton
-                variant={conversationMode === "chat" ? undefined : "ghost"}
+                variant={conversationMode === "free" ? undefined : "ghost"}
                 className="GatePressable"
-                onClick={() => setConversationMode("chat")}
+                onClick={() => setConversationMode("free")}
               >
                 Discuter
               </GateButton>
               <GateButton
-                variant={conversationMode === "structure" ? undefined : "ghost"}
+                variant={conversationMode === "plan" ? undefined : "ghost"}
                 className="GatePressable"
-                onClick={() => setConversationMode("structure")}
+                onClick={() => setConversationMode(toggleCoachPlanMode(conversationMode))}
               >
-                Structurer
+                Plan
               </GateButton>
-              {mode === "panel" && typeof onOpenStructuring === "function" ? (
-              <GateButton variant="ghost" className="GatePressable" onClick={onOpenStructuring}>
-                  Ouvrir le Coach
-                </GateButton>
-              ) : null}
             </div>
             {loading ? <div className="coachSurfaceStage">{loadingStageLabel || "Analyse du contexte"}</div> : null}
             {archivedConversation ? (
@@ -725,17 +1047,22 @@ export function CoachConversationSurface({
             ) : null}
           </div>
         </div>
+        {conversationMode === "plan" ? (
+          <div className="coachModeBadgeRow">
+            <span className="coachModeBadge">Plan</span>
+          </div>
+        ) : null}
 
         <div ref={scrollRef} className="coachConversationScroll">
           {!hasMessages ? (
             <div className="coachConversationEmpty">
               <div className="coachConversationEmptyTitle">
-                {conversationMode === "structure" ? "Décris ce que tu veux structurer." : "Pose une question courte."}
+                {conversationMode === "plan" ? "Décris ce que tu veux construire." : "Parle naturellement au Coach."}
               </div>
               <div className="coachConversationEmptyText">
-                {conversationMode === "structure"
-                  ? "Le Coach aide à clarifier une intention, poser une catégorie, une direction ou une première action."
-                  : "Le Coach aide à clarifier un prochain pas ou à expliquer une recommandation."}
+                {conversationMode === "plan"
+                  ? "Le Coach aide à transformer une intention en plan exploitable, puis à valider avant création."
+                  : "Le Coach aide à clarifier un blocage, un arbitrage, un prochain pas ou une difficulté de discipline."}
               </div>
             </div>
           ) : null}
@@ -756,66 +1083,178 @@ export function CoachConversationSurface({
             </div>
           ) : null}
 
-          {messageEntries.map((entry) =>
-            entry.role === "assistant" && entry.reply ? (
-              <div key={entry.id} className="coachMessage coachMessage--assistant">
-                <div className="coachMessageCard">
-                  <div className="coachMessageEyebrow">Coach</div>
-                  <div className="coachMessageTitle">{entry.reply?.headline || "Action"}</div>
-                  <div className="coachMessageText">{entry.reply?.reason || entry.text}</div>
-                  <div className="coachMessageActions">
-                    {entry.reply?.primaryAction ? (
-                      <GateButton
-                        className="GatePressable"
-                        onClick={() =>
-                          applyAction({
-                            ...entry.reply.primaryAction,
-                            suggestedDurationMin: entry.reply.suggestedDurationMin,
-                          })
-                        }
-                      >
-                        {renderCoachActionButtonLabel(entry.reply.primaryAction, entry.reply.suggestedDurationMin)}
-                      </GateButton>
+          {messageEntries.map((entry) => {
+            const reply = entry.reply || null;
+            const isConversationReply = entry.role === "assistant" && reply?.kind === "conversation";
+            const isLegacyReply = entry.role === "assistant" && reply?.kind === "chat";
+
+            if (isConversationReply) {
+              const planProposal = reply?.proposal || null;
+              const proposalActions = Array.isArray(planProposal?.actionDrafts) ? planProposal.actionDrafts : [];
+              const unresolvedQuestions = Array.isArray(planProposal?.unresolvedQuestions)
+                ? planProposal.unresolvedQuestions
+                : [];
+              const hasProposal = Boolean(planProposal && (planProposal?.outcomeDraft?.title || proposalActions.length));
+              const createLabel =
+                reply?.createStatus === "creating"
+                  ? "Création..."
+                  : reply?.createStatus === "created"
+                    ? "Créé"
+                    : "Créer";
+              return (
+                <div key={entry.id} className="coachMessage coachMessage--assistantTranscript">
+                  <div className="coachMessageBubble">
+                    <div className="coachMessageEyebrow">{reply.mode === "plan" ? "Coach · Plan" : "Coach"}</div>
+                    <div className="coachMessageText" style={{ whiteSpace: "pre-line" }}>
+                      {reply.message || entry.text}
+                    </div>
+                    {reply?.primaryAction || reply?.secondaryAction ? (
+                      <div className="coachMessageActions">
+                        {reply.primaryAction ? (
+                          <GateButton className="GatePressable" onClick={() => applyAction(reply.primaryAction)}>
+                            {reply.primaryAction.label}
+                          </GateButton>
+                        ) : null}
+                        {reply.secondaryAction ? (
+                          <GateButton variant="ghost" className="GatePressable" onClick={() => applyAction(reply.secondaryAction)}>
+                            {reply.secondaryAction.label}
+                          </GateButton>
+                        ) : null}
+                      </div>
                     ) : null}
-                    {entry.reply?.secondaryAction ? (
-                      <GateButton variant="ghost" className="GatePressable" onClick={() => applyAction(entry.reply.secondaryAction)}>
-                        {entry.reply.secondaryAction.label}
-                      </GateButton>
+                    {hasProposal ? (
+                      <div className="coachDraftBlock">
+                        <div className="coachDraftTitle">Plan proposé</div>
+                        <div className="coachDraftList">
+                          {planProposal?.categoryDraft?.label || planProposal?.categoryDraft?.id ? (
+                            <div className="coachDraftItem">
+                              {`Catégorie · ${planProposal.categoryDraft.label || planProposal.categoryDraft.id}`}
+                            </div>
+                          ) : null}
+                          {planProposal?.outcomeDraft?.title ? (
+                            <div className="coachDraftItem">
+                              {`Direction · ${planProposal.outcomeDraft.title}`}
+                            </div>
+                          ) : null}
+                          {proposalActions.map((draftItem, index) => (
+                            <div key={`${entry.id}_plan_${index}`} className="coachDraftItem">
+                              {[
+                                draftItem?.title || "Action",
+                                draftItem?.categoryId ? categoriesById.get(draftItem.categoryId)?.name || draftItem.categoryId : null,
+                                draftItem?.oneOffDate || null,
+                                draftItem?.startTime || null,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </div>
+                          ))}
+                        </div>
+                        {unresolvedQuestions.length ? (
+                          <>
+                            <div className="coachDraftTitle">À confirmer</div>
+                            <div className="coachDraftList">
+                              {unresolvedQuestions.map((question, index) => (
+                                <div key={`${entry.id}_question_${index}`} className="coachDraftItem">
+                                  {question}
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        ) : null}
+                        <div className="coachMessageActions">
+                          <GateButton
+                            className="GatePressable"
+                            onClick={() => createFromPlanReply(entry)}
+                            disabled={reply?.createStatus === "creating" || reply?.createStatus === "created"}
+                          >
+                            {createLabel}
+                          </GateButton>
+                          {typeof openAssistantReview === "function" ? (
+                            <GateButton
+                              variant="ghost"
+                              className="GatePressable"
+                              onClick={() => openAssistantReview(entry)}
+                              disabled={reply?.createStatus === "creating"}
+                            >
+                              Revoir dans l’app
+                            </GateButton>
+                          ) : null}
+                        </div>
+                        {entry.draftApplyMessage ? (
+                          <div className={`coachDraftMessage${entry.draftApplyStatus === "error" ? " is-error" : ""}`}>
+                            {entry.draftApplyMessage}
+                          </div>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
-                  {Array.isArray(entry.reply?.draftChanges) && entry.reply.draftChanges.length ? (
-                    <div className="coachDraftBlock">
-                      <div className="coachDraftTitle">Brouillon proposé</div>
-                      <div className="coachDraftList">
-                        {entry.reply.draftChanges.map((change, index) => (
-                          <div key={`${entry.id}_draft_${index}`} className="coachDraftItem">
-                            {describeCoachDraftChange(change, { goalsById, categoriesById })}
-                          </div>
-                        ))}
-                      </div>
-                      <div className="coachMessageActions">
+                </div>
+              );
+            }
+
+            if (isLegacyReply) {
+              return (
+                <div key={entry.id} className="coachMessage coachMessage--assistant">
+                  <div className="coachMessageCard">
+                    <div className="coachMessageEyebrow">Coach</div>
+                    <div className="coachMessageTitle">{reply?.headline || "Action"}</div>
+                    <div className="coachMessageText">{reply?.reason || entry.text}</div>
+                    <div className="coachMessageActions">
+                      {reply?.primaryAction ? (
                         <GateButton
                           className="GatePressable"
-                          onClick={() => applyDraftProposal(entry)}
-                          disabled={entry.draftApplyStatus === "applying" || entry.draftApplyStatus === "applied"}
+                          onClick={() =>
+                            applyAction({
+                              ...reply.primaryAction,
+                              suggestedDurationMin: reply.suggestedDurationMin,
+                            })
+                          }
                         >
-                          {entry.draftApplyStatus === "applying"
-                            ? "Application..."
-                            : entry.draftApplyStatus === "applied"
-                              ? "Appliqué"
-                              : "Appliquer le brouillon"}
+                          {renderCoachActionButtonLabel(reply.primaryAction, reply.suggestedDurationMin)}
                         </GateButton>
-                      </div>
-                      {entry.draftApplyMessage ? (
-                        <div className={`coachDraftMessage${entry.draftApplyStatus === "error" ? " is-error" : ""}`}>
-                          {entry.draftApplyMessage}
-                        </div>
+                      ) : null}
+                      {reply?.secondaryAction ? (
+                        <GateButton variant="ghost" className="GatePressable" onClick={() => applyAction(reply.secondaryAction)}>
+                          {reply.secondaryAction.label}
+                        </GateButton>
                       ) : null}
                     </div>
-                  ) : null}
+                    {Array.isArray(reply?.draftChanges) && reply.draftChanges.length ? (
+                      <div className="coachDraftBlock">
+                        <div className="coachDraftTitle">Brouillon proposé</div>
+                        <div className="coachDraftList">
+                          {reply.draftChanges.map((change, index) => (
+                            <div key={`${entry.id}_draft_${index}`} className="coachDraftItem">
+                              {describeCoachDraftChange(change, { goalsById, categoriesById })}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="coachMessageActions">
+                          <GateButton
+                            className="GatePressable"
+                            onClick={() => applyDraftProposal(entry)}
+                            disabled={entry.draftApplyStatus === "creating" || entry.draftApplyStatus === "created"}
+                          >
+                            {entry.draftApplyStatus === "creating"
+                              ? "Application..."
+                              : entry.draftApplyStatus === "created"
+                                ? "Appliqué"
+                                : "Appliquer le brouillon"}
+                          </GateButton>
+                        </div>
+                        {entry.draftApplyMessage ? (
+                          <div className={`coachDraftMessage${entry.draftApplyStatus === "error" ? " is-error" : ""}`}>
+                            {entry.draftApplyMessage}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            ) : (
+              );
+            }
+
+            return (
               <div
                 key={entry.id}
                 className={`coachMessage ${entry.role === "assistant" ? "coachMessage--assistantTranscript" : "coachMessage--user"}`}
@@ -827,8 +1266,8 @@ export function CoachConversationSurface({
                   </div>
                 </div>
               </div>
-            )
-          )}
+            );
+          })}
 
           {loading ? (
             <div className="coachMessage coachMessage--assistantTranscript">
@@ -846,9 +1285,9 @@ export function CoachConversationSurface({
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder={
-              conversationMode === "structure"
-                ? "Ex: J’aimerais transformer ce domaine en catégorie claire avec une première action."
-                : "Ex: Aide-moi à clarifier le prochain pas utile aujourd’hui."
+              conversationMode === "plan"
+                ? "Ex: Je veux structurer ce projet en direction, actions et rythme crédible."
+                : "Ex: J’hésite sur mon prochain pas utile aujourd’hui."
             }
             rows={3}
           />
@@ -878,18 +1317,36 @@ export default function CoachPanel({
   setData,
   setTab,
   surfaceTab = "today",
-  onOpenStructuring,
+  requestedMode = "free",
+  requestedConversationId = null,
   onOpenAssistantCreate,
+  onOpenCreatedView,
+  onOpenPaywall,
+  canCreateAction = true,
+  canCreateOutcome = true,
+  isPremiumPlan = false,
+  planLimits = null,
+  generationWindowDays = null,
 }) {
   const { emitBehaviorFeedback } = useBehaviorFeedback();
   const controller = useCoachConversationController({
+    open,
     data,
     setData,
     setTab,
     surfaceTab,
     onRequestClose: onClose,
     emitBehaviorFeedback,
+    requestedMode,
+    requestedConversationId,
     onOpenAssistantCreate,
+    onOpenCreatedView,
+    onOpenPaywall,
+    canCreateAction,
+    canCreateOutcome,
+    isPremiumPlan,
+    planLimits,
+    generationWindowDays,
   });
   const [isDesktopLayout, setIsDesktopLayout] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(min-width: 901px)").matches : false
@@ -969,7 +1426,7 @@ export default function CoachPanel({
             <div className="coachPanelHeader">
               <div className="coachPanelHeaderText">
                 <div className="coachPanelTitle">Coach</div>
-                <div className="coachPanelSubtitle">Clarifier, structurer, transformer une intention.</div>
+                <div className="coachPanelSubtitle">Discuter librement, puis passer en mode Plan quand tu veux construire.</div>
               </div>
               <div className="coachPanelHeaderActions">
                 <button
@@ -989,12 +1446,10 @@ export default function CoachPanel({
             </div>
         <CoachConversationSurface
           controller={controller}
-          mode="panel"
           railExpanded={railExpanded}
           setRailExpanded={setRailExpanded}
           isDesktopLayout={isDesktopLayout}
           setIsDesktopLayout={setIsDesktopLayout}
-          onOpenStructuring={onOpenStructuring}
         />
       </GatePanel>
         </div>

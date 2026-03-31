@@ -65,22 +65,20 @@ export function describeCoachDraftChange(change, { goalsById, categoriesById }) 
   return goalTitle;
 }
 
-export function deriveCoachMessageEntries(conversation, sessionRepliesByCreatedAt) {
+export function deriveCoachMessageEntries(conversation) {
   const messages = Array.isArray(conversation?.messages) ? conversation.messages : [];
-  const replies = isPlainObject(sessionRepliesByCreatedAt) ? sessionRepliesByCreatedAt : {};
   return messages.map((message, index) => {
     const createdAt =
       trimString(message?.createdAt) ||
       `${trimString(conversation?.id) || "conversation"}:${index}`;
-    const sessionReply = replies[createdAt] || null;
     return {
       id: createdAt,
       role: message?.role === "assistant" ? "assistant" : "user",
       text: trimString(message?.text),
       createdAt,
-      reply: sessionReply?.reply || null,
-      draftApplyStatus: sessionReply?.draftApplyStatus || null,
-      draftApplyMessage: sessionReply?.draftApplyMessage || "",
+      reply: isPlainObject(message?.coachReply) ? message.coachReply : null,
+      draftApplyStatus: trimString(message?.coachReply?.createStatus) || null,
+      draftApplyMessage: trimString(message?.coachReply?.createMessage) || "",
     };
   });
 }

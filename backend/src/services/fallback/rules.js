@@ -407,6 +407,30 @@ export function buildRecoveryFallback(context) {
 }
 
 export function buildChatFallback(context) {
+  if (context.chatMode === "free") {
+    return {
+      kind: "conversation",
+      mode: "free",
+      message:
+        "Je peux t’aider à clarifier un bloc, arbitrer une hésitation ou recadrer un prochain pas. Si tu veux construire quelque chose dans l’app, active Plan.",
+      primaryAction: null,
+      secondaryAction: null,
+      proposal: null,
+    };
+  }
+
+  if (context.chatMode === "plan") {
+    return {
+      kind: "conversation",
+      mode: "plan",
+      message:
+        "Je peux structurer ce projet avec toi, mais j’ai encore besoin d’un peu plus de précision. Donne-moi la catégorie visée, la direction recherchée, ou la première action que tu imagines.",
+      primaryAction: null,
+      secondaryAction: null,
+      proposal: null,
+    };
+  }
+
   const categoryCoherence = resolveCategoryCoherence(context);
   const focusStartPolicy = resolveTodayOccurrenceStartPolicy({
     activeDate: context.activeDate,

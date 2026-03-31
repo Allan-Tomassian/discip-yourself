@@ -8,7 +8,9 @@ const ACTION_INTENTS = new Set([
   "open_library",
   "open_pilotage",
   "open_today",
+  "open_support",
 ]);
+const CHAT_MODES = new Set(["card", "free", "plan"]);
 const DRAFT_CHANGE_TYPES = new Set([
   "create_action",
   "update_action",
@@ -89,8 +91,48 @@ function isDraftChange(value) {
   return true;
 }
 
+function summarizeBodyShape(body) {
+  const source = isPlainObject(body) ? body : {};
+  return {
+    responseKind: typeof source.kind === "string" ? source.kind : null,
+    responseMode: typeof source.mode === "string" ? source.mode : null,
+    requestId:
+      typeof source.requestId === "string"
+        ? source.requestId
+        : typeof source.meta?.requestId === "string"
+          ? source.meta.requestId
+          : null,
+    bodyKeys: Object.keys(source),
+  };
+}
+
+function logCoachChatIssue({
+  errorCode,
+  status = null,
+  transportMeta = null,
+  requestId = null,
+  mode = null,
+  backendErrorCode = null,
+  responseKind = null,
+  responseMode = null,
+  bodyKeys = null,
+} = {}) {
+  logAiTransportIssue({
+    endpoint: "/ai/chat",
+    errorCode,
+    status,
+    requestId,
+    mode,
+    backendErrorCode,
+    responseKind,
+    responseMode,
+    bodyKeys,
+    transportMeta,
+  });
+}
+
 export function isAiCoachChatResponse(value) {
-  return (
+  const isCardResponse =
     isPlainObject(value) &&
     value.kind === "chat" &&
     DECISION_SOURCES.has(value.decisionSource) &&
@@ -115,7 +157,29 @@ export function isAiCoachChatResponse(value) {
     (value.meta.quotaRemaining === null || Number.isInteger(value.meta.quotaRemaining)) &&
     META_FALLBACK_REASONS.has(value.meta.fallbackReason) &&
     isNullableString(value.meta.messagePreview)
-  );
+  ;
+
+  const isConversationResponse =
+    isPlainObject(value) &&
+    value.kind === "conversation" &&
+    (value.mode === "free" || value.mode === "plan") &&
+    DECISION_SOURCES.has(value.decisionSource) &&
+    typeof value.message === "string" &&
+    value.message.length > 0 &&
+    value.message.length <= 1200 &&
+    (value.primaryAction === null || isChatAction(value.primaryAction)) &&
+    (value.secondaryAction === null || isChatAction(value.secondaryAction)) &&
+    (value.proposal === null || isPlainObject(value.proposal)) &&
+    isPlainObject(value.meta) &&
+    value.meta.coachVersion === "v1" &&
+    typeof value.meta.requestId === "string" &&
+    isDateKey(value.meta.selectedDateKey) &&
+    isNullableString(value.meta.activeCategoryId) &&
+    (value.meta.quotaRemaining === null || Number.isInteger(value.meta.quotaRemaining)) &&
+    META_FALLBACK_REASONS.has(value.meta.fallbackReason) &&
+    isNullableString(value.meta.messagePreview);
+
+  return isCardResponse || isConversationResponse;
 }
 
 export function normalizeAiCoachChatPayload(input) {
@@ -124,6 +188,7 @@ export function normalizeAiCoachChatPayload(input) {
   const activeCategoryId = source.activeCategoryId ?? null;
   const message = typeof source.message === "string" ? source.message.trim() : "";
   const recentMessages = Array.isArray(source.recentMessages) ? source.recentMessages : [];
+  const mode = CHAT_MODES.has(source.mode) ? source.mode : "card";
 
   if (!isDateKey(selectedDateKey)) {
     const error = new Error("selectedDateKey must be YYYY-MM-DD");
@@ -145,6 +210,7 @@ export function normalizeAiCoachChatPayload(input) {
     selectedDateKey,
     activeCategoryId,
     message,
+    mode,
     recentMessages: recentMessages
       .filter((entry) => isPlainObject(entry) && CHAT_ROLES.has(entry.role))
       .map((entry) => ({
@@ -186,26 +252,48 @@ export async function requestAiCoachChat({
   const resolvedBaseUrl = readAiBackendBaseUrl(baseUrl);
   const buildTransport = (errorCode = null) => buildAiTransportMeta({ baseUrl: resolvedBaseUrl, errorCode });
   if (!resolvedBaseUrl) {
+    const transportMeta = buildTransport("DISABLED");
+    logCoachChatIssue({ errorCode: "DISABLED", transportMeta, mode: payload?.mode || null });
     return {
       ok: false,
       errorCode: "DISABLED",
       reply: null,
       status: null,
-      transportMeta: buildTransport("DISABLED"),
+      requestId: null,
+      backendErrorCode: null,
+      responseKind: null,
+      responseMode: null,
+      transportMeta,
     };
   }
   if (typeof fetchImpl !== "function") {
     const transportMeta = buildTransport("NETWORK_ERROR");
-    logAiTransportIssue({ endpoint: "/ai/chat", errorCode: "NETWORK_ERROR", transportMeta });
-    return { ok: false, errorCode: "NETWORK_ERROR", reply: null, status: null, transportMeta };
+    logCoachChatIssue({ errorCode: "NETWORK_ERROR", transportMeta, mode: payload?.mode || null });
+    return {
+      ok: false,
+      errorCode: "NETWORK_ERROR",
+      reply: null,
+      status: null,
+      requestId: null,
+      backendErrorCode: null,
+      responseKind: null,
+      responseMode: null,
+      transportMeta,
+    };
   }
   if (!String(accessToken || "").trim()) {
+    const transportMeta = buildTransport("UNAUTHORIZED");
+    logCoachChatIssue({ errorCode: "UNAUTHORIZED", status: 401, transportMeta, mode: payload?.mode || null });
     return {
       ok: false,
       errorCode: "UNAUTHORIZED",
       reply: null,
       status: 401,
-      transportMeta: buildTransport("UNAUTHORIZED"),
+      requestId: null,
+      backendErrorCode: "UNAUTHORIZED",
+      responseKind: null,
+      responseMode: null,
+      transportMeta,
     };
   }
 
@@ -213,12 +301,18 @@ export async function requestAiCoachChat({
   try {
     normalizedPayload = normalizeAiCoachChatPayload(payload);
   } catch {
+    const transportMeta = buildTransport("INVALID_RESPONSE");
+    logCoachChatIssue({ errorCode: "INVALID_RESPONSE", transportMeta, mode: payload?.mode || null });
     return {
       ok: false,
       errorCode: "INVALID_RESPONSE",
       reply: null,
       status: null,
-      transportMeta: buildTransport("INVALID_RESPONSE"),
+      requestId: null,
+      backendErrorCode: null,
+      responseKind: null,
+      responseMode: null,
+      transportMeta,
     };
   }
 
@@ -234,30 +328,71 @@ export async function requestAiCoachChat({
     });
   } catch {
     const transportMeta = buildTransport("NETWORK_ERROR");
-    logAiTransportIssue({ endpoint: "/ai/chat", errorCode: "NETWORK_ERROR", transportMeta });
-    return { ok: false, errorCode: "NETWORK_ERROR", reply: null, status: null, transportMeta };
+    logCoachChatIssue({ errorCode: "NETWORK_ERROR", transportMeta, mode: normalizedPayload.mode });
+    return {
+      ok: false,
+      errorCode: "NETWORK_ERROR",
+      reply: null,
+      status: null,
+      requestId: null,
+      backendErrorCode: null,
+      responseKind: null,
+      responseMode: null,
+      transportMeta,
+    };
   }
 
   const body = await safeParseJson(response);
+  const bodySummary = summarizeBodyShape(body);
   if (!response.ok) {
     const errorCode = normalizeBackendErrorCode(response.status, body?.error);
+    const transportMeta = buildTransport(errorCode);
+    logCoachChatIssue({
+      errorCode,
+      status: response.status,
+      requestId: bodySummary.requestId,
+      mode: normalizedPayload.mode,
+      backendErrorCode: body?.error || null,
+      responseKind: bodySummary.responseKind,
+      responseMode: bodySummary.responseMode,
+      bodyKeys: bodySummary.bodyKeys,
+      transportMeta,
+    });
     return {
       ok: false,
       errorCode,
       reply: null,
       status: response.status,
-      requestId: typeof body?.requestId === "string" ? body.requestId : null,
-      transportMeta: buildTransport(errorCode),
+      requestId: bodySummary.requestId,
+      backendErrorCode: typeof body?.error === "string" ? body.error : null,
+      responseKind: bodySummary.responseKind,
+      responseMode: bodySummary.responseMode,
+      transportMeta,
     };
   }
 
   if (!isAiCoachChatResponse(body)) {
+    const transportMeta = buildTransport("INVALID_RESPONSE");
+    logCoachChatIssue({
+      errorCode: "INVALID_RESPONSE",
+      status: response.status,
+      requestId: bodySummary.requestId,
+      mode: normalizedPayload.mode,
+      responseKind: bodySummary.responseKind,
+      responseMode: bodySummary.responseMode,
+      bodyKeys: bodySummary.bodyKeys,
+      transportMeta,
+    });
     return {
       ok: false,
       errorCode: "INVALID_RESPONSE",
       reply: null,
       status: response.status,
-      transportMeta: buildTransport("INVALID_RESPONSE"),
+      requestId: bodySummary.requestId,
+      backendErrorCode: null,
+      responseKind: bodySummary.responseKind,
+      responseMode: bodySummary.responseMode,
+      transportMeta,
     };
   }
 
@@ -266,6 +401,10 @@ export async function requestAiCoachChat({
     errorCode: null,
     reply: body,
     status: response.status,
+    requestId: bodySummary.requestId,
+    backendErrorCode: null,
+    responseKind: bodySummary.responseKind,
+    responseMode: bodySummary.responseMode,
     transportMeta: buildTransport(null),
   };
 }

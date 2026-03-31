@@ -718,6 +718,7 @@ export default function Pilotage({
           payload: {
             selectedDateKey,
             activeCategoryId: detailCategory.id,
+            mode: "card",
             message: "Analyse cette catégorie et donne un résumé court, un problème majeur et une recommandation concrète.",
             recentMessages: [],
           },

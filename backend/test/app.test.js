@@ -4,6 +4,7 @@ import { buildApp } from "../src/app.js";
 import { coachChatResponseSchema, coachResponseSchema } from "../src/schemas/coach.js";
 
 const TEST_CONFIG = {
+  APP_ENV: "test",
   PORT: 3001,
   SUPABASE_URL: "https://example.supabase.co",
   SUPABASE_SERVICE_ROLE_KEY: "service-role-test",
@@ -262,6 +263,28 @@ test("OPTIONS /ai/chat accepts a private LAN origin when private network dev COR
   await app.close();
 });
 
+test("OPTIONS /ai/chat accepts an explicit public staging frontend origin", async () => {
+  const app = await buildApp({
+    config: {
+      ...TEST_CONFIG,
+      CORS_ALLOWED_ORIGINS: [...TEST_CONFIG.CORS_ALLOWED_ORIGINS, "https://staging-discip-yourself.netlify.app"],
+    },
+    verifyAccessToken: async () => ({ id: "user-chat-staging" }),
+  });
+  const response = await app.inject({
+    method: "OPTIONS",
+    url: "/ai/chat",
+    headers: {
+      origin: "https://staging-discip-yourself.netlify.app",
+      "access-control-request-method": "POST",
+      "access-control-request-headers": "authorization,content-type",
+    },
+  });
+  assert.equal(response.statusCode, 204);
+  assert.equal(response.headers["access-control-allow-origin"], "https://staging-discip-yourself.netlify.app");
+  await app.close();
+});
+
 test("OPTIONS private LAN preflight stays blocked when private network dev CORS is disabled", async () => {
   const app = await buildApp({
     config: TEST_CONFIG,
@@ -355,6 +378,74 @@ test("POST /ai/chat returns a structured rules fallback", async () => {
   assert.equal(payload.meta.messagePreview, "Je suis en retard, quel est le meilleur prochain bloc ?");
   assert.deepEqual(payload.draftChanges, []);
   assert.match(payload.primaryAction.intent, /start_occurrence|open_today|open_pilotage|resume_session|open_library/);
+  await app.close();
+});
+
+test("POST /ai/chat returns a free conversation fallback when mode is free", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-chat-free" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/chat",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.23" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      mode: "free",
+      message: "Je doute de mon prochain pas.",
+      recentMessages: [{ role: "user", content: "Je doute." }],
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachChatResponseSchema.parse(response.json());
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "free");
+  assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.meta.selectedDateKey, TODAY_KEY);
+  await app.close();
+});
+
+test("POST /ai/chat returns a plan conversation fallback when mode is plan", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-chat-plan" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/chat",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.24" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      mode: "plan",
+      message: "Aide-moi à structurer ce projet.",
+      recentMessages: [{ role: "user", content: "J’ai un projet flou." }],
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachChatResponseSchema.parse(response.json());
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "plan");
+  assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.meta.selectedDateKey, TODAY_KEY);
   await app.close();
 });
 

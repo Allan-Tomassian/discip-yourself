@@ -1,13 +1,19 @@
 import { zodResponseFormat } from "openai/helpers/zod";
 import { ZodError } from "zod";
-import { coachChatPayloadSchema, coachPayloadSchema } from "../../schemas/coach.js";
+import {
+  coachChatCardPayloadSchema,
+  coachConversationPayloadSchema,
+  coachPayloadSchema,
+} from "../../schemas/coach.js";
 
 const DEFAULT_OUTPUT_LOCALE = "fr-FR";
 const TEXT_LIMITS = Object.freeze({
   headline: 72,
   reason: 160,
+  message: 1200,
   actionLabel: 32,
   draftTitle: 96,
+  question: 160,
 });
 
 export const MODEL_OUTPUT_ISSUE_CODE = Object.freeze({
@@ -137,6 +143,83 @@ function normalizeChatPayloadCandidate(candidate) {
     normalized.draftChanges = [];
   } else {
     normalized.draftChanges = normalized.draftChanges.map(normalizeDraftChangeCandidate).filter(isPlainObject).slice(0, 4);
+  }
+
+  return normalized;
+}
+
+function normalizeConversationPayloadCandidate(candidate) {
+  if (!isPlainObject(candidate)) return candidate;
+  const normalized = { ...candidate };
+  normalized.message = truncateText(normalized.message, TEXT_LIMITS.message);
+
+  if (!("primaryAction" in normalized) || normalized.primaryAction === undefined) {
+    normalized.primaryAction = null;
+  } else if (normalized.primaryAction !== null) {
+    normalized.primaryAction = normalizeActionCandidate(normalized.primaryAction);
+  }
+
+  if (!("secondaryAction" in normalized) || normalized.secondaryAction === undefined) {
+    normalized.secondaryAction = null;
+  } else if (normalized.secondaryAction !== null) {
+    normalized.secondaryAction = normalizeActionCandidate(normalized.secondaryAction);
+  }
+
+  if (!("proposal" in normalized) || !isPlainObject(normalized.proposal)) {
+    normalized.proposal = null;
+  } else {
+    const proposal = { ...normalized.proposal };
+    if (!Array.isArray(proposal.actionDrafts)) proposal.actionDrafts = [];
+    proposal.actionDrafts = proposal.actionDrafts
+      .filter(isPlainObject)
+      .map((draft) => ({
+        ...draft,
+        title: truncateText(draft.title, TEXT_LIMITS.draftTitle),
+        categoryId: draft.categoryId ?? null,
+        outcomeId: draft.outcomeId ?? null,
+        priority: draft.priority ?? null,
+        repeat: draft.repeat ?? null,
+        oneOffDate: draft.oneOffDate ?? null,
+        daysOfWeek: Array.isArray(draft.daysOfWeek)
+          ? draft.daysOfWeek
+              .map((day) => Number(day))
+              .filter((day) => Number.isInteger(day) && day >= 1 && day <= 7)
+              .slice(0, 7)
+          : [],
+        timeMode: draft.timeMode ?? null,
+        startTime: draft.startTime ?? null,
+        durationMinutes: Number.isInteger(draft.durationMinutes) ? draft.durationMinutes : null,
+        notes: draft.notes == null ? null : truncateText(draft.notes, 280),
+      }))
+      .slice(0, 6);
+    proposal.categoryDraft = isPlainObject(proposal.categoryDraft)
+      ? {
+          mode: proposal.categoryDraft.mode || "unresolved",
+          id: proposal.categoryDraft.id ?? null,
+          label: proposal.categoryDraft.label == null ? null : truncateText(proposal.categoryDraft.label, TEXT_LIMITS.draftTitle),
+        }
+      : null;
+    proposal.outcomeDraft = isPlainObject(proposal.outcomeDraft)
+      ? {
+          ...proposal.outcomeDraft,
+          title: truncateText(proposal.outcomeDraft.title, TEXT_LIMITS.draftTitle),
+          categoryId: proposal.outcomeDraft.categoryId ?? null,
+          priority: proposal.outcomeDraft.priority ?? null,
+          startDate: proposal.outcomeDraft.startDate ?? null,
+          deadline: proposal.outcomeDraft.deadline ?? null,
+          measureType: proposal.outcomeDraft.measureType ?? null,
+          targetValue: Number.isFinite(proposal.outcomeDraft.targetValue) ? proposal.outcomeDraft.targetValue : null,
+          notes: proposal.outcomeDraft.notes == null ? null : truncateText(proposal.outcomeDraft.notes, 280),
+        }
+      : null;
+    proposal.unresolvedQuestions = Array.isArray(proposal.unresolvedQuestions)
+      ? proposal.unresolvedQuestions
+          .filter((entry) => typeof entry === "string")
+          .map((entry) => truncateText(entry, TEXT_LIMITS.question))
+          .slice(0, 4)
+      : [];
+    proposal.requiresValidation = true;
+    normalized.proposal = proposal;
   }
 
   return normalized;
@@ -399,7 +482,7 @@ function buildRecoveryPrompt(context) {
   ].join("\n");
 }
 
-function buildChatPrompt(context) {
+function buildChatCardPrompt(context) {
   const gapCandidate = Array.isArray(context.gapSummary?.candidateActionSummaries)
     ? context.gapSummary.candidateActionSummaries[0] || null
     : null;
@@ -542,32 +625,204 @@ function buildChatPrompt(context) {
   ].join("\n");
 }
 
+function buildFreeConversationPrompt(context) {
+  const validExample = {
+    kind: "conversation",
+    mode: "free",
+    message:
+      "Tu peux repartir avec une version plus légère: choisis un seul bloc utile aujourd’hui, puis laisse le reste en attente.",
+    primaryAction: {
+      label: "Voir Today",
+      intent: "open_today",
+      categoryId: context.activeCategoryId || "cat-1",
+      actionId: null,
+      occurrenceId: null,
+      dateKey: context.activeDate,
+    },
+    secondaryAction: null,
+    proposal: null,
+  };
+
+  return [
+    "You are the conversational Coach for Discip-Yourself.",
+    "The user is talking freely and may not want to create anything yet.",
+    "Reply like a real product coach, not like a generic chatbot and not like a form.",
+    "Answer in natural French, short and calm, with one concrete next step when useful.",
+    "Do not force creation, planning, or a CTA when the user only wants to reflect.",
+    "You may suggest activating plan mode only when the user is clearly trying to structure something in the app.",
+    "If the topic is outside the product scope or too sensitive, answer prudently and redirect to support or a more appropriate external help path.",
+    "Use primaryAction only when a product CTA is clearly useful. Otherwise return null.",
+    "Allowed product intents are open_today, open_library, open_pilotage, and open_support.",
+    "Never create or modify data. Never return a proposal in free mode.",
+    "No markdown. No prose outside JSON.",
+    `Valid JSON example: ${JSON.stringify(validExample)}`,
+    `Context: ${JSON.stringify({
+      kind: "conversation",
+      mode: "free",
+      activeDate: context.activeDate,
+      activeCategory: context.category
+        ? {
+            id: context.category.id || null,
+            name: context.category.name || null,
+          }
+        : null,
+      activeCategoryProfileSummary: context.activeCategoryProfileSummary || null,
+      relatedCategoryProfileSummaries: Array.isArray(context.relatedCategoryProfileSummaries)
+        ? context.relatedCategoryProfileSummaries
+        : [],
+      userAiProfile: context.userAiProfile
+        ? {
+            goals: context.userAiProfile.goals || [],
+            time_budget_daily_min: context.userAiProfile.time_budget_daily_min || null,
+            intensity_preference:
+              context.userAiProfile.adaptation?.implicit_intensity || context.userAiProfile.intensity_preference || null,
+            preferred_time_blocks: context.userAiProfile.preferred_time_blocks || [],
+            structure_preference: context.userAiProfile.structure_preference || null,
+          }
+        : null,
+      recentMessages: Array.isArray(context.recentMessages) ? context.recentMessages : [],
+      latestUserMessage: context.message || "",
+      planningSummary: context.planningSummary || null,
+      pilotageSummary: context.pilotageSummary || null,
+      quotaRemaining: context.quotaRemaining,
+    })}`,
+  ].join("\n");
+}
+
+function buildPlanConversationPrompt(context) {
+  const categoryId = context.activeCategoryId || "cat-1";
+  const validExample = {
+    kind: "conversation",
+    mode: "plan",
+    message:
+      "Je te propose une structure simple: une direction claire, puis une première action crédible cette semaine.",
+    primaryAction: null,
+    secondaryAction: null,
+    proposal: {
+      kind: "guided",
+      categoryDraft: {
+        mode: categoryId ? "existing" : "unresolved",
+        id: categoryId,
+        label: context.activeCategoryLabel || "Catégorie active",
+      },
+      outcomeDraft: {
+        title: "Retrouver un rythme de travail stable",
+        categoryId,
+        priority: "prioritaire",
+        startDate: context.activeDate,
+        deadline: null,
+        measureType: null,
+        targetValue: null,
+        notes: null,
+      },
+      actionDrafts: [
+        {
+          title: "Bloquer 25 min de deep work",
+          categoryId,
+          outcomeId: null,
+          priority: "prioritaire",
+          repeat: "weekly",
+          oneOffDate: null,
+          daysOfWeek: [1, 3, 5],
+          timeMode: "FIXED",
+          startTime: "09:00",
+          durationMinutes: 25,
+          notes: null,
+        },
+      ],
+      unresolvedQuestions: [],
+      requiresValidation: true,
+    },
+  };
+
+  return [
+    "You are the plan mode Coach for Discip-Yourself.",
+    "The user explicitly wants to structure something that can become real objects in the app.",
+    "Reply in natural French, but converge to an actionable proposal instead of staying in pure discussion.",
+    "Return a proposal only for things that fit the app: category, direction, actions, rhythm, next step.",
+    "Do not create or modify data. Proposal only. The user will validate explicitly later.",
+    "When something important is missing, keep the proposal conservative and list the missing point in unresolvedQuestions.",
+    "Use one category. Prefer the active category when it fits. If it does not fit and you are unsure, mark categoryDraft as unresolved.",
+    "Keep the proposal simple. One direction and one to three actions is enough.",
+    "Use kind=action for one standalone action, kind=outcome for one standalone direction, kind=guided when there is one direction plus at least one action.",
+    "No markdown. No prose outside JSON.",
+    `Valid JSON example: ${JSON.stringify(validExample)}`,
+    `Context: ${JSON.stringify({
+      kind: "conversation",
+      mode: "plan",
+      activeDate: context.activeDate,
+      activeCategory: context.category
+        ? {
+            id: context.category.id || null,
+            name: context.category.name || null,
+          }
+        : null,
+      availableCategories: Array.isArray(context.availableCategories) ? context.availableCategories : [],
+      actionSummaries: Array.isArray(context.actionSummaries) ? context.actionSummaries : [],
+      activeCategoryProfileSummary: context.activeCategoryProfileSummary || null,
+      relatedCategoryProfileSummaries: Array.isArray(context.relatedCategoryProfileSummaries)
+        ? context.relatedCategoryProfileSummaries
+        : [],
+      userAiProfile: context.userAiProfile
+        ? {
+            goals: context.userAiProfile.goals || [],
+            time_budget_daily_min: context.userAiProfile.time_budget_daily_min || null,
+            intensity_preference:
+              context.userAiProfile.adaptation?.implicit_intensity || context.userAiProfile.intensity_preference || null,
+            preferred_time_blocks: context.userAiProfile.preferred_time_blocks || [],
+            structure_preference: context.userAiProfile.structure_preference || null,
+          }
+        : null,
+      recentMessages: Array.isArray(context.recentMessages) ? context.recentMessages : [],
+      latestUserMessage: context.message || "",
+      planningSummary: context.planningSummary || null,
+      pilotageSummary: context.pilotageSummary || null,
+      quotaRemaining: context.quotaRemaining,
+    })}`,
+  ].join("\n");
+}
+
 function resolvePrompt(kind, context) {
   if (kind === "recovery") return buildRecoveryPrompt(context);
-  if (kind === "chat") return buildChatPrompt(context);
+  if (kind === "chat") {
+    if (context.chatMode === "free") return buildFreeConversationPrompt(context);
+    if (context.chatMode === "plan") return buildPlanConversationPrompt(context);
+    return buildChatCardPrompt(context);
+  }
   return buildNowPrompt(context);
 }
 
-function resolveSchema(kind) {
-  return kind === "chat" ? coachChatPayloadSchema : coachPayloadSchema;
+function resolveSchema(kind, context) {
+  if (kind !== "chat") return coachPayloadSchema;
+  if (context.chatMode === "free" || context.chatMode === "plan") {
+    return coachConversationPayloadSchema;
+  }
+  return coachChatCardPayloadSchema;
 }
 
-function resolveSchemaName(kind) {
-  return kind === "chat" ? "coach_chat_payload" : "coach_payload";
+function resolveSchemaName(kind, context) {
+  if (kind !== "chat") return "coach_payload";
+  if (context.chatMode === "free") return "coach_conversation_free_payload";
+  if (context.chatMode === "plan") return "coach_conversation_plan_payload";
+  return "coach_chat_payload";
 }
 
-function normalizePayloadCandidateForKind(kind, candidate) {
-  return kind === "chat" ? normalizeChatPayloadCandidate(candidate) : normalizeCoachPayloadCandidate(candidate);
+function normalizePayloadCandidateForKind(kind, context, candidate) {
+  if (kind !== "chat") return normalizeCoachPayloadCandidate(candidate);
+  if (context.chatMode === "free" || context.chatMode === "plan") {
+    return normalizeConversationPayloadCandidate(candidate);
+  }
+  return normalizeChatPayloadCandidate(candidate);
 }
 
 export async function runOpenAiCoach({ app, kind, context }) {
   if (!app.openai || !app.config?.OPENAI_API_KEY) return null;
   const prompt = resolvePrompt(kind, context);
-  const responseSchema = resolveSchema(kind);
+  const responseSchema = resolveSchema(kind, context);
   const completion = await app.openai.chat.completions.parse({
     model: app.config.OPENAI_MODEL,
     temperature: 0.2,
-    response_format: zodResponseFormat(responseSchema, resolveSchemaName(kind)),
+    response_format: zodResponseFormat(responseSchema, resolveSchemaName(kind, context)),
     messages: [
       {
         role: "system",
@@ -592,7 +847,7 @@ export async function runOpenAiCoach({ app, kind, context }) {
     throw new OpenAiModelOutputError(MODEL_OUTPUT_ISSUE_CODE.MISSING_PARSED_PAYLOAD);
   }
 
-  const normalizedCandidate = normalizePayloadCandidateForKind(kind, candidate);
+  const normalizedCandidate = normalizePayloadCandidateForKind(kind, context, candidate);
   try {
     return responseSchema.parse(normalizedCandidate);
   } catch (error) {

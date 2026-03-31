@@ -41,7 +41,7 @@ export function resolveMainTabForSurface(surface, fallbackMainTab = "today") {
   if (safeSurface === "session" || safeSurface === "onboarding" || DRAWER_TABS.has(safeSurface)) {
     return "today";
   }
-  if (safeSurface === "coach-chat" || safeSurface === "coach-panel" || safeSurface === "create-item") {
+  if (safeSurface === "coach" || safeSurface === "create-item") {
     return normalizeMainTab(fallbackMainTab, "today");
   }
   return normalizeMainTab(fallbackMainTab, "today");
@@ -79,17 +79,14 @@ export function normalizeRouteOrigin(rawValue) {
 
 export function resolveActiveTopNavTab({
   currentTab,
-  coachSurfaceTab = "today",
   taskMainTab = null,
   editReturnTab = null,
 } = {}) {
   const safeCurrentTab = asString(currentTab);
   if (safeCurrentTab === "session" || safeCurrentTab === "onboarding") return "today";
-  if (safeCurrentTab === "coach-chat") return resolveMainTabForSurface(coachSurfaceTab, "today");
   if (safeCurrentTab === "create-item") return normalizeMainTab(taskMainTab, "library");
   if (safeCurrentTab === "edit-item") return resolveMainTabForSurface(editReturnTab, "library");
   if (safeCurrentTab === "category-detail" || safeCurrentTab === "category-progress") return "library";
   if (DRAWER_TABS.has(safeCurrentTab)) return "today";
   return resolveMainTabForSurface(safeCurrentTab, "today");
 }
-

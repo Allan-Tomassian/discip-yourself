@@ -25,15 +25,21 @@ describe("useAppNavigation contract", () => {
     expect(source).toContain('"settings"');
     expect(source).toContain('"create-item"');
     expect(source).toContain('if (t === "create") return "create-item";');
+    expect(source).not.toContain('"coach-chat"');
   });
 
-  it("supports the canonical session occurrence route and legacy aliases", () => {
+  it("supports the canonical session occurrence route and rewires the legacy coach path as an alias", () => {
     const source = readSrc("hooks/useAppNavigation.js");
 
     expect(source).toContain('pathParts[0] === "session" && pathParts[1]');
-    expect(source).toContain('`/session/${encodeURIComponent(nextSessionOccurrenceId)}`');
+    expect(source).toContain('`/session/${encodeURIComponent(sessionOccurrenceId)}`');
+    expect(source).toContain("function buildPathForTab({");
     expect(source).toContain('initialPath.startsWith("/create")');
-    expect(source).toContain('nextPath = "/create";');
+    expect(source).toContain('if (tab === "create-item") return "/create";');
+    expect(source).toContain('initialPath.startsWith("/coach/chat")');
+    expect(source).toContain("initialCoachAliasRequest");
+    expect(source).toContain("consumeCoachAliasRequest");
+    expect(source).not.toContain('else if (t === "coach-chat") nextPath = "/coach/chat";');
     expect(source).toContain('pathname === "/preferences"');
     expect(source).toContain('pathname === "/subscription"');
     expect(source).toContain('pathname === "/terms"');

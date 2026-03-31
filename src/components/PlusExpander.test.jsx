@@ -22,7 +22,7 @@ describe("PlusExpander", () => {
 
     expect(html).toContain("Action rapide");
     expect(html).toContain("Objectif");
-    expect(html).toContain("Structurer une intention");
+    expect(html).toContain("Structurer avec le Coach");
     expect(html).not.toContain("Reprendre");
   });
 

@@ -21,8 +21,8 @@ import { LABELS } from "../ui/labels";
 import {
   appendCoachConversationMessages,
   buildCoachConversationMessage,
-  setCoachSessionReply,
 } from "../features/coach/coachStorage";
+import { commitPreparedCreatePlan, prepareCreateCommit } from "../features/create-item/createItemCommit";
 import {
   DEFAULT_CONFLICT_DURATION,
   normalizeDays,
@@ -617,10 +617,63 @@ export default function CreateItem({
     if (createdOutcomeId) summaryBits.push("1 objectif");
     if (createdActionIds.length) summaryBits.push(`${createdActionIds.length} action${createdActionIds.length > 1 ? "s" : ""}`);
     const createdAt = new Date().toISOString();
+    const summaryText = `Créé dans ${categoryLabel}.\n${summaryBits.join(" · ") || "Structure créée."}`;
     const message = buildCoachConversationMessage(
       "assistant",
-      `Créé dans ${categoryLabel}.\n${summaryBits.join(" · ") || "Structure créée."}`,
-      createdAt
+      summaryText,
+      createdAt,
+      {
+        kind: "conversation",
+        mode: "plan",
+        message: summaryText,
+        primaryAction: {
+          intent: "open_created_view",
+          label: "Voir",
+          categoryId: createdCategoryId,
+          actionId: createdActionIds.length === 1 && !createdOutcomeId ? createdActionIds[0] : createdOutcomeId || null,
+          viewTarget:
+            createdOutcomeId && !createdActionIds.length
+              ? {
+                  type: "edit-item",
+                  itemId: createdOutcomeId,
+                  categoryId: createdCategoryId || null,
+                }
+              : createdActionIds.length === 1 && !createdOutcomeId
+                ? {
+                    type: "edit-item",
+                    itemId: createdActionIds[0],
+                    categoryId: createdCategoryId || null,
+                  }
+                : {
+                    type: "library-category",
+                    categoryId: createdCategoryId || null,
+                  },
+        },
+        secondaryAction: {
+          intent: "continue_coach",
+          label: "Continuer",
+        },
+        proposal: null,
+        createStatus: "created",
+        createMessage: "",
+        viewTarget:
+          createdOutcomeId && !createdActionIds.length
+            ? {
+                type: "edit-item",
+                itemId: createdOutcomeId,
+                categoryId: createdCategoryId || null,
+              }
+            : createdActionIds.length === 1 && !createdOutcomeId
+              ? {
+                  type: "edit-item",
+                  itemId: createdActionIds[0],
+                  categoryId: createdCategoryId || null,
+                }
+              : {
+                  type: "library-category",
+                  categoryId: createdCategoryId || null,
+                },
+      }
     );
     setData((previous) => {
       const safePrevious = previous && typeof previous === "object" ? previous : {};
@@ -631,24 +684,12 @@ export default function CreateItem({
           activeCategoryId: createdCategoryId,
           dateKey: origin.dateKey,
         },
+        mode: "plan",
       });
       return {
         ...safePrevious,
         coach_conversations_v1: result.state,
       };
-    });
-    setCoachSessionReply(origin.coachConversationId, createdAt, {
-      headline: "Création validée",
-      reason: `Créé dans ${categoryLabel}. ${summaryBits.join(" · ") || ""}`.trim(),
-      primaryAction: {
-        intent: createdActionIds.length === 1 && !createdOutcomeId ? "open_library" : "open_library",
-        label: "Voir",
-        categoryId: createdCategoryId,
-      },
-      secondaryAction: {
-        intent: "continue_coach",
-        label: "Continuer",
-      },
     });
   };
 
@@ -660,139 +701,42 @@ export default function CreateItem({
         : null;
     const pendingAction = effectiveKind !== "outcome" ? actionController.draftValue : null;
 
-    if ((effectiveKind === "outcome" || effectiveKind === "guided") && !pendingOutcome?.title) {
-      setError(`Le titre de l’${LABELS.goalLower} est requis.`);
-      return;
-    }
-    if (pendingAction && !pendingAction.title) {
-      setError("Le titre de l’action est requis.");
-      return;
-    }
-
-    const actionsToCreate = [
-      ...(pendingAction ? [pendingAction] : []),
-      ...additionalProposalActionDrafts.map((entry) => normalizeActionDraft(entry)),
-    ];
-    const actionCountToCreate = actionsToCreate.filter((entry) => entry?.title).length;
-    const outcomeCountToCreate = pendingOutcome?.title ? 1 : 0;
-    const actionLimit = Number(planLimits?.actions) || 0;
-    const outcomeLimit = Number(planLimits?.outcomes) || 0;
-    if ((!canCreateAction || (!isPremiumPlan && actionLimit > 0 && existingActionCount + actionCountToCreate > actionLimit)) && actionCountToCreate) {
-      onOpenPaywall?.("Limite d’actions atteinte.");
-      return;
-    }
-    if ((!canCreateOutcome || (!isPremiumPlan && outcomeLimit > 0 && existingOutcomeCount + outcomeCountToCreate > outcomeLimit)) && outcomeCountToCreate) {
-      onOpenPaywall?.(`Limite de ${LABELS.goalsLower} atteinte.`);
-      return;
-    }
-
-    const primaryCategoryId =
-      resolveVisibleCategoryId(
-        pendingOutcome?.categoryId || pendingAction?.categoryId || assistantProposal?.categoryDraft?.id,
-        categories
-      ) || getFirstVisibleCategoryId(categories);
-    if (!primaryCategoryId) {
-      setError("Choisis une catégorie valide.");
-      return;
-    }
-
-    const chosenSuggestion =
-      suggestedCategories.find((category) => category.id === (pendingOutcome?.categoryId || pendingAction?.categoryId)) || null;
-    if (chosenSuggestion && !canCreateCategory(safeData)) {
-      onOpenPaywall?.("Limite de catégories atteinte.");
-      return;
-    }
-
-    let createdOutcomeId = null;
-    const createdActionIds = [];
-    let createdCategoryId = primaryCategoryId;
-
-    setData?.((previous) => {
-      let nextState = previous && typeof previous === "object" ? previous : {};
-      if (chosenSuggestion) {
-        nextState = ensureSuggestedCategory(nextState, chosenSuggestion);
-        createdCategoryId = chosenSuggestion.id;
-      }
-      const availableCategories = getVisibleCategories(nextState.categories);
-      const resolvedPrimaryCategoryId = resolveVisibleCategoryId(createdCategoryId, availableCategories) || getFirstVisibleCategoryId(availableCategories);
-      createdCategoryId = resolvedPrimaryCategoryId || createdCategoryId;
-
-      if (pendingOutcome?.title) {
-        createdOutcomeId = uid();
-        nextState = createGoal(nextState, {
-          id: createdOutcomeId,
-          categoryId: resolveVisibleCategoryId(pendingOutcome.categoryId || createdCategoryId, availableCategories) || createdCategoryId,
-          title: pendingOutcome.title,
-          type: "OUTCOME",
-          planType: "STATE",
-          startDate: pendingOutcome.startDate || todayLocalKey(),
-          deadline: pendingOutcome.deadline || buildMinDeadlineKey(pendingOutcome.startDate || todayLocalKey()),
-          priority: pendingOutcome.priority || "secondaire",
-          measureType: pendingOutcome.measureType || null,
-          targetValue: pendingOutcome.targetValue || null,
-          notes: pendingOutcome.notes || "",
-        });
-      }
-
-      const availableAfterOutcome = getVisibleCategories(nextState.categories);
-      for (const actionDraft of actionsToCreate) {
-        if (!actionDraft?.title) continue;
-        const resolvedCategoryId =
-          resolveVisibleCategoryId(actionDraft.categoryId || createdCategoryId, availableAfterOutcome) || createdCategoryId;
-        const actionId = uid();
-        const candidate = buildActionCandidateFromDraft(actionDraft, {
-          actionId,
-          categoryId: resolvedCategoryId,
-          resolvedOutcomeId: createdOutcomeId || actionDraft.outcomeId || null,
-        });
-        if (!candidate.ok || !candidate.value) continue;
-        nextState = createGoal(nextState, candidate.value);
-        nextState = {
-          ...nextState,
-          reminders: updateRemindersForGoal(
-            nextState,
-            actionId,
-            {
-              enabled: Boolean(actionDraft.remindersEnabled),
-              times: normalizeReminderTimes(actionDraft.reminderTimes),
-              channel: actionDraft.reminderChannel,
-              windowStart: actionDraft.windowStart,
-              windowEnd: actionDraft.windowEnd,
-              label: actionDraft.title,
-            },
-            actionDraft.title
-          ),
-        };
-        createdActionIds.push(actionId);
-      }
-
-      if (createdActionIds.length) {
-        const days =
-          Number.isFinite(generationWindowDays) && generationWindowDays > 0
-            ? Math.floor(generationWindowDays)
-            : isPremiumPlan
-              ? 90
-              : 14;
-        const fromKey = todayLocalKey();
-        const baseDate = fromLocalDateKey(fromKey);
-        const toKey = baseDate ? toLocalDateKey(new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() + Math.max(0, days - 1))) : fromKey;
-        nextState = ensureWindowFromScheduleRules(nextState, fromKey, toKey, createdActionIds);
-      }
-
-      return nextState;
+    const preparedCommit = prepareCreateCommit({
+      state: safeData,
+      kind: effectiveKind === "assistant" ? assistantProposal?.kind || "assistant" : effectiveKind,
+      actionDraft: pendingAction,
+      outcomeDraft: pendingOutcome,
+      additionalActionDrafts: additionalProposalActionDrafts,
+      canCreateAction,
+      canCreateOutcome,
+      isPremiumPlan,
+      planLimits,
     });
+    if (!preparedCommit.ok) {
+      if (preparedCommit.kind === "paywall") {
+        onOpenPaywall?.(preparedCommit.message);
+        return;
+      }
+      setError(preparedCommit.message || "Création indisponible pour le moment.");
+      return;
+    }
 
+    const commitResult = commitPreparedCreatePlan(safeData, preparedCommit.plan, {
+      generationWindowDays,
+      isPremiumPlan,
+    });
+    setData?.(commitResult.state);
     persistCoachSummary({
-      createdCategoryId,
-      createdActionIds,
-      createdOutcomeId,
+      createdCategoryId: commitResult.createdCategoryId,
+      createdActionIds: commitResult.createdActionIds,
+      createdOutcomeId: commitResult.createdOutcomeId,
     });
     finalizeAndClose({
       outcome: "saved",
-      createdCategoryId,
+      createdCategoryId: commitResult.createdCategoryId,
       createdIds: {
-        outcomeId: createdOutcomeId,
-        actionIds: createdActionIds,
+        outcomeId: commitResult.createdOutcomeId,
+        actionIds: commitResult.createdActionIds,
       },
     });
   };

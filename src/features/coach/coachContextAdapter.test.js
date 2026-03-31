@@ -32,8 +32,8 @@ describe("coachContextAdapter", () => {
     });
   });
 
-  it("falls back to the today category for the dedicated coach route", () => {
-    expect(getCoachContextSnapshot({ data, surfaceTab: "coach-chat" })).toMatchObject({
+  it("falls back to the today category for the shared coach surface", () => {
+    expect(getCoachContextSnapshot({ data, surfaceTab: "coach" })).toMatchObject({
       activeCategoryId: "cat_exec",
       categoryView: "today",
     });

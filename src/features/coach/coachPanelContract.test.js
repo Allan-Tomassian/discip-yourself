@@ -10,36 +10,39 @@ function readSrc(relPath) {
 }
 
 describe("coach panel contract", () => {
-  it("mounts the global coach trigger and panel from App", () => {
+  it("mounts the global coach trigger and keeps the panel as the only active coach surface", () => {
     const app = readSrc("App.jsx");
 
-    expect(app).toContain("const [coachOpen, setCoachOpen] = useState(false);");
-    expect(app).toContain("const coachSurfaceTab = tab === \"coach-chat\" ? lastNonCoachTabRef.current : tab;");
+    expect(app).toContain("const [coachState, setCoachState] = useState({");
     expect(app).toContain("className={`coachFab${showBottomRail ? \" has-rail\" : \"\"}${coachOpen ? \" is-open\" : \"\"}`}");
     expect(app).toContain("data-testid=\"coach-fab\"");
     expect(app).toContain("<span>Coach</span>");
     expect(app).toContain("aria-label=\"Coach\"");
     expect(app).toContain("onPointerDown={handleCoachFabPointerDown}");
     expect(app).toContain("<CoachPanel");
-    expect(app).toContain("surfaceTab={coachSurfaceTab}");
-    expect(app).toContain("sourceTab={coachSurfaceTab}");
+    expect(app).toContain("surfaceTab={tab}");
+    expect(app).toContain("requestedMode={coachState.mode}");
+    expect(app).not.toContain("<CoachChat");
+    expect(app).not.toContain('tab === "coach-chat"');
   });
 
-  it("keeps the dedicated coach route on the shared conversation surface", () => {
-    const coachPage = readSrc("pages/CoachChat.jsx");
+  it("keeps a single shared coach conversation surface without panel/page divergence", () => {
     const coachPanel = readSrc("features/coach/CoachPanel.jsx");
 
-    expect(coachPage).toContain("useCoachConversationController");
-    expect(coachPage).toContain("<CoachConversationSurface controller={controller} mode=\"page\" />");
-    expect(coachPage).toContain("sourceTab = \"today\"");
-    expect(coachPage).toContain("initialMode = \"chat\"");
     expect(coachPanel).toContain("conversationMode");
-    expect(coachPanel).toContain("buildCreationProposalFromDraftChanges");
     expect(coachPanel).toContain("onOpenAssistantCreate");
+    expect(coachPanel).toContain("onOpenCreatedView");
+    expect(coachPanel).toContain("mode: conversationMode === \"plan\" ? \"plan\" : \"free\"");
     expect(coachPanel).toContain("coachConversationRail");
     expect(coachPanel).toContain("setActiveConversationId");
     expect(coachPanel).toContain("archiveConversation");
-    expect(coachPanel).toContain("Clarifier, structurer, transformer une intention.");
+    expect(coachPanel).toContain("Discuter librement, puis passer en mode Plan quand tu veux construire.");
+    expect(coachPanel).toContain("toggleCoachPlanMode");
+    expect(coachPanel).toContain("coachModeBadge");
+    expect(coachPanel).toContain('sourceSurface: "coach"');
+    expect(coachPanel).not.toContain("onOpenStructuring");
+    expect(coachPanel).not.toContain("Ouvrir le Coach");
+    expect(coachPanel).not.toContain('setTab?.("coach-chat")');
     expect(coachPanel).not.toContain("Coach prêt");
     expect(coachPanel).not.toContain(">Conversations<");
   });

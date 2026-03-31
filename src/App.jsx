@@ -38,7 +38,6 @@ import Session from "./pages/Session";
 import Pilotage from "./pages/Pilotage";
 import Privacy from "./pages/Privacy";
 import Support from "./pages/Support";
-import CoachChat from "./pages/CoachChat";
 import CoachPanel from "./features/coach/CoachPanel";
 import { applyThemeTokens, BRAND_ACCENT, DEFAULT_THEME } from "./theme/themeTokens";
 import { todayLocalKey } from "./utils/dateKey";
@@ -156,10 +155,16 @@ export default function App() {
     setSessionCategoryId,
     sessionDateKey,
     sessionOccurrenceId,
+    coachAliasRequest,
+    consumeCoachAliasRequest,
   } = useAppNavigation({ safeData, setData });
   const [editItem, setEditItem] = useState(null);
   const [createTaskState, setCreateTaskState] = useState(null);
-  const [coachChatMode, setCoachChatMode] = useState("chat");
+  const [coachState, setCoachState] = useState({
+    open: false,
+    mode: "free",
+    conversationId: null,
+  });
   const dataRef = useRef(data);
   const invariantLogRef = useRef(new Set());
   const tour = useTour({ data, setData, steps: FIRST_USE_TOUR_STEPS, tourVersion: TOUR_VERSION });
@@ -207,7 +212,7 @@ export default function App() {
     [safeData?.ui?.walletV1]
   );
   const isDrawerOpen = Boolean(safeData?.ui?.isDrawerOpen);
-  const [coachOpen, setCoachOpen] = useState(false);
+  const coachOpen = Boolean(coachState.open);
   const [coachFabOffsetY, setCoachFabOffsetY] = useState(() => loadCoachFabOffset());
   const coachFabOffsetRef = useRef(coachFabOffsetY);
   const coachFabDraggedRef = useRef(false);
@@ -269,8 +274,6 @@ export default function App() {
   }, [setData]);
 
   const currentTab = tab;
-  const lastNonCoachTabRef = useRef(tab === "coach-chat" ? "today" : tab);
-  const coachSurfaceTab = tab === "coach-chat" ? lastNonCoachTabRef.current : tab;
   const taskActiveTab =
     currentTab === "create-item"
       ? createTaskState?.origin?.mainTab || "library"
@@ -279,7 +282,6 @@ export default function App() {
         : null;
   const activeTopNavTab = resolveActiveTopNavTab({
     currentTab,
-    coachSurfaceTab,
     taskMainTab: taskActiveTab,
     editReturnTab: editItem?.returnTab || null,
   });
@@ -299,7 +301,11 @@ export default function App() {
         setTab(next);
       }}
       onMenuNavigate={(action) => {
-        setCoachChatMode("chat");
+        setCoachState((previous) =>
+          previous.open || previous.mode !== "free" || previous.conversationId
+            ? { open: false, mode: "free", conversationId: null }
+            : previous
+        );
         setTab(action);
       }}
       onMenuOpen={() => setDrawerOpen(true)}
@@ -429,28 +435,28 @@ export default function App() {
   const resolveRouteOrigin = useCallback(
     ({ sourceSurface, categoryId = null, coachConversationId = null } = {}) => {
       const safeSource = sourceSurface || tab;
-      const fallbackMainTab = safeSource === "coach-chat" || safeSource === "coach-panel" ? coachSurfaceTab : tab;
-      const mainTab = resolveMainTabForSurface(safeSource, fallbackMainTab);
+      const contextSurface = safeSource === "coach" ? tab : safeSource;
+      const fallbackMainTab = safeSource === "coach" ? resolveMainTabForSurface(tab, "today") : tab;
+      const mainTab = resolveMainTabForSurface(contextSurface, fallbackMainTab);
       const effectiveCategoryId = categoryId || selectedCategoryId || libraryCategoryId || homeActiveCategoryId || null;
       return normalizeRouteOrigin({
         mainTab,
         sourceSurface: safeSource,
         categoryId: effectiveCategoryId,
         dateKey:
-          mainTab === "today" || mainTab === "planning" || safeSource === "coach-chat" || safeSource === "coach-panel"
+          mainTab === "today" || mainTab === "planning" || contextSurface === "today" || contextSurface === "planning"
             ? resolvedSessionDateKey
             : null,
-        occurrenceId: safeSource === "session" ? sessionOccurrenceId || null : null,
+        occurrenceId: contextSurface === "session" ? sessionOccurrenceId || null : null,
         libraryMode: resolveRouteOriginLibraryMode({
           mainTab,
-          sourceSurface: safeSource,
-          categoryId: safeSource === "library" ? effectiveCategoryId : libraryCategoryId || effectiveCategoryId,
+          sourceSurface: contextSurface,
+          categoryId: contextSurface === "library" ? effectiveCategoryId : libraryCategoryId || effectiveCategoryId,
         }),
         coachConversationId: coachConversationId || null,
       });
     },
     [
-      coachSurfaceTab,
       homeActiveCategoryId,
       libraryCategoryId,
       resolvedSessionDateKey,
@@ -501,14 +507,13 @@ export default function App() {
       restoreTaskOriginContext({ origin, createdCategoryId });
       setCreateTaskState(null);
 
-      if (origin?.sourceSurface === "coach-chat" || origin?.coachConversationId) {
-        setCoachChatMode("structure");
-        setTab("coach-chat");
-        return;
-      }
-      if (origin?.sourceSurface === "coach-panel") {
+      if (origin?.sourceSurface === "coach" || origin?.coachConversationId) {
         setTab(origin.mainTab || "today");
-        if (outcome === "saved") setCoachOpen(true);
+        setCoachState({
+          open: true,
+          mode: "plan",
+          conversationId: origin?.coachConversationId || null,
+        });
         return;
       }
       setTab(origin?.mainTab || "today");
@@ -516,24 +521,28 @@ export default function App() {
     [createTaskState?.origin, resolveRouteOrigin, restoreTaskOriginContext, setTab, tab]
   );
 
-  const openCoachStructuring = useCallback(
-    ({ sourceSurface = tab, conversationId = null } = {}) => {
+  const openCoach = useCallback(
+    ({ mode = "free", conversationId = null } = {}) => {
       setDrawerOpen(false);
-      setCoachOpen(false);
-      setCoachChatMode("structure");
-      setCreateTaskState(null);
-      setTab("coach-chat", {
-        historyState: {
-          origin: resolveRouteOrigin({ sourceSurface, coachConversationId: conversationId }),
-          coachMode: "structure",
-        },
+      closePlusExpander?.();
+      setCoachState({
+        open: true,
+        mode: mode === "plan" ? "plan" : "free",
+        conversationId: conversationId || null,
       });
     },
-    [resolveRouteOrigin, setTab, tab]
+    [closePlusExpander]
+  );
+
+  const openCoachStructuring = useCallback(
+    ({ conversationId = null } = {}) => {
+      openCoach({ mode: "plan", conversationId });
+    },
+    [openCoach]
   );
 
   const openCoachAssistantCreate = useCallback(
-    ({ sourceSurface = "coach-chat", conversationId = null, proposal } = {}) => {
+    ({ sourceSurface = "coach", conversationId = null, proposal } = {}) => {
       const origin = resolveRouteOrigin({ sourceSurface, coachConversationId: conversationId });
       setCreateTaskState({ origin, kind: "assistant", proposal });
       openCreateAssistant({
@@ -544,6 +553,47 @@ export default function App() {
       });
     },
     [openCreateAssistant, resolveRouteOrigin]
+  );
+
+  const openCoachCreatedView = useCallback(
+    (target) => {
+      const safeTarget = target && typeof target === "object" ? target : null;
+      if (!safeTarget) return;
+
+      if (safeTarget.type === "edit-item" && safeTarget.itemId) {
+        const goal = (Array.isArray(safeData.goals) ? safeData.goals : []).find((entry) => entry?.id === safeTarget.itemId) || null;
+        const categoryId = goal?.categoryId || safeTarget.categoryId || null;
+        if (!goal) {
+          if (categoryId) setLibraryCategoryId(categoryId);
+          setTab("library");
+          return;
+        }
+        setEditItem({
+          id: goal.id,
+          type: resolveGoalType(goal),
+          categoryId,
+          returnTab: "library",
+          returnToCategoryView: Boolean(categoryId),
+        });
+        if (categoryId) setLibraryCategoryId(categoryId);
+        setTab("edit-item", {
+          historyState: {
+            task: "edit-item",
+            editItemId: goal.id,
+          },
+        });
+        return;
+      }
+
+      if (safeTarget.type === "library-category") {
+        if (safeTarget.categoryId) setLibraryCategoryId(safeTarget.categoryId);
+        setTab("library");
+        return;
+      }
+
+      setTab("library");
+    },
+    [safeData.goals, setLibraryCategoryId, setTab]
   );
 
   const launchActionCreate = useCallback(
@@ -751,15 +801,9 @@ export default function App() {
     paywallOpen ||
     Boolean(activeReminder) ||
     Boolean(showTourOverlay && tour.isActive) ||
-    tab === "coach-chat" ||
     tab === "create-item";
   const totemDockLayer = <TotemDockLayer data={safeData} setData={setData} />;
   const routeCloseSigRef = useRef("");
-
-  useEffect(() => {
-    if (tab === "coach-chat") return;
-    lastNonCoachTabRef.current = tab;
-  }, [tab]);
 
   useEffect(() => {
     const nextSig = [
@@ -789,9 +833,20 @@ export default function App() {
   useEffect(() => {
     if (!coachOpen) return;
     if (!coachFabVisibleTabs.has(tab) || hasCoachBlockingOverlay) {
-      setCoachOpen(false);
+      setCoachState((previous) => ({ ...previous, open: false }));
     }
   }, [coachFabVisibleTabs, coachOpen, hasCoachBlockingOverlay, tab]);
+
+  useEffect(() => {
+    if (!coachAliasRequest) return;
+    setTab(coachAliasRequest.mainTab || "today", { replace: true });
+    setCoachState({
+      open: true,
+      mode: coachAliasRequest.mode === "plan" ? "plan" : "free",
+      conversationId: coachAliasRequest.conversationId || null,
+    });
+    consumeCoachAliasRequest();
+  }, [coachAliasRequest, consumeCoachAliasRequest, setTab]);
 
   const handleCoachFabPointerDown = useCallback(
     (event) => {
@@ -895,7 +950,7 @@ export default function App() {
           onClose={closePlusExpander}
           onChooseObjective={handleChooseObjective}
           onChooseAction={handleChooseAction}
-          onChooseStructuring={() => openCoachStructuring({ sourceSurface: tab })}
+          onChooseStructuring={() => openCoachStructuring()}
           onResumeDraft={hasDraft ? resumeCreateDraft : null}
           hasDraft={hasDraft}
         />
@@ -1002,10 +1057,7 @@ export default function App() {
           persistenceScope={persistenceScope}
           setTab={setTab}
           onOpenAssistantCreate={(proposal) => openCoachAssistantCreate({ sourceSurface: "planning", proposal })}
-          onOpenCoach={() => {
-            setDrawerOpen(false);
-            setCoachOpen(true);
-          }}
+          onOpenCoach={() => openCoach({ mode: "free" })}
         />
       ) : tab === "category-detail" ? (
         <CategoryDetailView
@@ -1162,15 +1214,6 @@ export default function App() {
         <MicroActions data={data} setData={setData} isPremiumPlan={isPremiumPlan} />
       ) : tab === "history" ? (
         <History data={data} />
-      ) : tab === "coach-chat" ? (
-        <CoachChat
-          data={data}
-          setData={setData}
-          setTab={setTab}
-          sourceTab={coachSurfaceTab}
-          initialMode={coachChatMode}
-          onOpenAssistantCreate={openCoachAssistantCreate}
-        />
       ) : tab === "account" ? (
         <Account data={data} />
       ) : tab === "billing" ? (
@@ -1202,8 +1245,11 @@ export default function App() {
               coachFabDraggedRef.current = false;
               return;
             }
-            setDrawerOpen(false);
-            setCoachOpen((current) => !current);
+            if (coachOpen) {
+              setCoachState((previous) => ({ ...previous, open: false }));
+              return;
+            }
+            openCoach({ mode: "free" });
           }}
           aria-label="Coach"
         >
@@ -1213,13 +1259,21 @@ export default function App() {
       ) : null}
       <CoachPanel
         open={coachOpen}
-        onClose={() => setCoachOpen(false)}
+        onClose={() => setCoachState((previous) => ({ ...previous, open: false }))}
         data={data}
         setData={setData}
         setTab={setTab}
-        surfaceTab={coachSurfaceTab}
-        onOpenStructuring={() => openCoachStructuring({ sourceSurface: "coach-panel" })}
+        surfaceTab={tab}
+        requestedMode={coachState.mode}
+        requestedConversationId={coachState.conversationId}
         onOpenAssistantCreate={openCoachAssistantCreate}
+        onOpenCreatedView={openCoachCreatedView}
+        onOpenPaywall={openPaywall}
+        canCreateAction={canCreateActionNow}
+        canCreateOutcome={canCreateOutcomeNow}
+        isPremiumPlan={isPremiumPlan}
+        planLimits={planLimits}
+        generationWindowDays={generationWindowDays}
       />
 
       {activeReminder ? (
@@ -1326,17 +1380,17 @@ export default function App() {
         />
       ) : null}
       <DiagnosticOverlay data={safeData} tab={tab} />
-      <PlusExpander
-        open={plusOpen}
-        anchorRect={plusAnchorRect}
-        anchorEl={plusAnchorElRef.current}
-        onClose={closePlusExpander}
-        onChooseObjective={handleChooseObjective}
-        onChooseAction={handleChooseAction}
-        onChooseStructuring={() => openCoachStructuring({ sourceSurface: tab })}
-        onResumeDraft={hasDraft ? resumeCreateDraft : null}
-        hasDraft={hasDraft}
-      />
+        <PlusExpander
+          open={plusOpen}
+          anchorRect={plusAnchorRect}
+          anchorEl={plusAnchorElRef.current}
+          onClose={closePlusExpander}
+          onChooseObjective={handleChooseObjective}
+          onChooseAction={handleChooseAction}
+          onChooseStructuring={() => openCoachStructuring()}
+          onResumeDraft={hasDraft ? resumeCreateDraft : null}
+          hasDraft={hasDraft}
+        />
       <PaywallModal
         open={paywallOpen}
         reason={paywallReason}

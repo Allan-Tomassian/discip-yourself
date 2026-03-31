@@ -240,6 +240,27 @@
   flex-wrap: wrap;
 }
 
+.coachModeBadgeRow {
+  padding: 0 18px 8px;
+}
+
+.coachModeBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 22%, var(--border-subtle));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0)),
+    color-mix(in srgb, var(--accent-soft) 64%, var(--surface-primary));
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .coachSurfaceStage {
   display: inline-flex;
   align-items: center;
@@ -533,6 +554,10 @@
 
   .coachConversationScroll {
     padding: 14px;
+  }
+
+  .coachModeBadgeRow {
+    padding: 0 14px 8px;
   }
 
   .coachComposer {

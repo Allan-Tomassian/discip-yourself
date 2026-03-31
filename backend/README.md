@@ -9,6 +9,7 @@ Do not derive AI quota or access from frontend `profile.plan` / `profile.entitle
 
 Required:
 
+- `APP_ENV`
 - `PORT`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
@@ -27,13 +28,15 @@ Client integration:
 - frontend should call this service with the user's Supabase bearer token
 - set `VITE_AI_BACKEND_URL` in the app to the backend base URL
 - `CORS_ALLOWED_ORIGINS` should include local dev and deployed frontend origins
-- for iPhone/LAN dev, use `npm run dev:lan` on the frontend and set `CORS_ALLOW_PRIVATE_NETWORK_DEV=true` on the backend used for device tests
+- for public staging, keep `CORS_ALLOW_PRIVATE_NETWORK_DEV=false` and whitelist the staging frontend origin explicitly
+- for iPhone/LAN dev fallback only, use `npm run dev:lan` on the frontend and set `CORS_ALLOW_PRIVATE_NETWORK_DEV=true` on the backend used for device tests
 
 ## Run locally
 
 ```bash
 cd backend
 npm install
+APP_ENV=local \
 PORT=3001 \
 SUPABASE_URL=https://your-project.supabase.co \
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key \
@@ -45,13 +48,36 @@ LOG_LEVEL=info \
 npm run dev
 ```
 
+## Public staging target
+
+Recommended stack:
+
+- frontend staging: Netlify
+- backend staging: Render
+- Supabase staging: separate project
+
+Backend staging env:
+
+```bash
+APP_ENV=staging
+PORT=3001
+SUPABASE_URL=https://your-staging-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-staging-service-role-key
+OPENAI_API_KEY=your-server-only-openai-key
+OPENAI_MODEL=gpt-4.1-mini
+AI_QUOTA_MODE=normal
+CORS_ALLOW_PRIVATE_NETWORK_DEV=false
+CORS_ALLOWED_ORIGINS=https://staging-discip-yourself.netlify.app,http://localhost:5173,http://127.0.0.1:5173
+LOG_LEVEL=info
+```
+
 Example Render value:
 
 ```bash
 CORS_ALLOWED_ORIGINS=http://localhost:5173,https://your-frontend-domain.example
 ```
 
-`CORS_ALLOW_PRIVATE_NETWORK_DEV` doit rester désactivé sur le backend de prod public. Utilise-le uniquement pour un backend de test/dev quand le frontend est ouvert depuis une IP privée du type `http://192.168.x.x:5173`.
+`CORS_ALLOW_PRIVATE_NETWORK_DEV` doit rester désactivé sur les backends publics staging/prod. Utilise-le uniquement pour un backend de test/dev quand le frontend est ouvert depuis une IP privée du type `http://192.168.x.x:5173`.
 
 Quota mode:
 

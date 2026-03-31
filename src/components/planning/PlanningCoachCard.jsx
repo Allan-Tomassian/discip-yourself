@@ -136,6 +136,7 @@ export default function PlanningCoachCard({
           payload: {
             selectedDateKey,
             activeCategoryId,
+            mode: "card",
             message:
               planningView === "week"
                 ? "Analyse ce planning hebdomadaire et propose un ajustement prioritaire concret."

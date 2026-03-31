@@ -323,11 +323,18 @@ export function buildChatContext({
   });
   const message = typeof body?.message === "string" ? body.message.trim().slice(0, 500) : "";
   const resolvedActiveCategoryId = baseContext.activeCategoryId || null;
+  const chatMode =
+    body?.mode === "plan"
+      ? "plan"
+      : body?.mode === "free"
+        ? "free"
+        : "card";
   const actionSummaries = buildActionSummaries(data, resolvedActiveCategoryId);
   const planningSummary = buildPlanningSummary(data, selectedDateKey);
 
   return {
     ...baseContext,
+    chatMode,
     activeCategoryLabel: baseContext.category?.name || null,
     message,
     messagePreview: message ? message.slice(0, 120) : null,

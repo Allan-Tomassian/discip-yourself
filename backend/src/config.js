@@ -16,6 +16,7 @@ function parseBooleanFlag(raw) {
 }
 
 const envSchema = z.object({
+  APP_ENV: z.enum(["local", "staging", "prod", "test"]).default("local"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),

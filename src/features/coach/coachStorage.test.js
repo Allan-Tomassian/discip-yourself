@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   appendCoachConversationMessages,
+  buildCoachConversationMessage,
   removeCoachConversation,
+  updateCoachConversationMessage,
   upsertCoachConversation,
 } from "./coachStorage";
 
@@ -35,5 +37,79 @@ describe("coachStorage", () => {
 
     expect(result.conversation.messages).toHaveLength(50);
     expect(result.state.conversations[0].messages[0].text).toBe("message 10");
+  });
+
+  it("persists coach reply metadata inside assistant messages", () => {
+    const message = buildCoachConversationMessage(
+      "assistant",
+      "Je peux te proposer un plan simple.",
+      "2026-03-26T09:00:00.000Z",
+      {
+        kind: "conversation",
+        mode: "plan",
+        message: "Je peux te proposer un plan simple.",
+        proposal: {
+          kind: "action",
+          categoryDraft: { mode: "existing", id: "cat_1", label: "Focus" },
+          actionDrafts: [{ title: "Bloquer 20 min", categoryId: "cat_1" }],
+          unresolvedQuestions: [],
+          requiresValidation: true,
+        },
+      }
+    );
+
+    const result = appendCoachConversationMessages(null, {
+      messages: [message],
+      contextSnapshot: { activeCategoryId: "cat_1", dateKey: "2026-03-26" },
+      mode: "plan",
+    });
+
+    expect(result.state.conversations[0].mode).toBe("plan");
+    expect(result.state.conversations[0].messages[0].coachReply).toMatchObject({
+      kind: "conversation",
+      mode: "plan",
+      proposal: {
+        kind: "action",
+      },
+    });
+  });
+
+  it("updates a persisted assistant reply state in place", () => {
+    const baseState = appendCoachConversationMessages(null, {
+      messages: [
+        buildCoachConversationMessage("assistant", "Plan prêt", "2026-03-26T09:00:00.000Z", {
+          kind: "conversation",
+          mode: "plan",
+          message: "Plan prêt",
+          proposal: {
+            kind: "action",
+            actionDrafts: [{ title: "Bloquer 20 min", categoryId: "cat_1" }],
+            unresolvedQuestions: [],
+            requiresValidation: true,
+          },
+        }),
+      ],
+      contextSnapshot: { activeCategoryId: "cat_1", dateKey: "2026-03-26" },
+      mode: "plan",
+    }).state;
+
+    const conversationId = baseState.conversations[0].id;
+    const nextState = updateCoachConversationMessage(baseState, {
+      conversationId,
+      messageCreatedAt: "2026-03-26T09:00:00.000Z",
+      update: (message) => ({
+        ...message,
+        coachReply: {
+          ...message.coachReply,
+          createStatus: "created",
+          createMessage: "Créé dans l’app.",
+        },
+      }),
+    });
+
+    expect(nextState.conversations[0].messages[0].coachReply).toMatchObject({
+      createStatus: "created",
+      createMessage: "Créé dans l’app.",
+    });
   });
 });

@@ -10,6 +10,7 @@ const app = await buildApp({
 try {
   await app.listen({ host: "0.0.0.0", port: config.PORT });
   app.log.info({
+    appEnv: config.APP_ENV,
     port: config.PORT,
     allowPrivateNetworkDev: Boolean(config.CORS_ALLOW_PRIVATE_NETWORK_DEV),
     allowedOrigins: Array.isArray(config.CORS_ALLOWED_ORIGINS) ? config.CORS_ALLOWED_ORIGINS : [],

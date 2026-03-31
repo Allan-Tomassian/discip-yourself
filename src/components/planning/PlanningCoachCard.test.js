@@ -38,6 +38,7 @@ describe("PlanningCoachCard contract", () => {
     const source = readSrc("components/planning/PlanningCoachCard.jsx");
 
     expect(source).toContain("buildCreationProposalFromDraftChanges");
+    expect(source).toContain("mode: \"card\"");
     expect(source).toContain("if (proposal && typeof onOpenAssistantCreate === \"function\") {");
     expect(source).toContain("onOpenAssistantCreate(proposal);");
     expect(source).toContain("setDraftMessage(\"Proposition ouverte pour validation.\");");

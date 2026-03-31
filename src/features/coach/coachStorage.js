@@ -1,3 +1,4 @@
+import { normalizeCreationProposal } from "../../creation/createItemDraft";
 import { uid } from "../../utils/helpers";
 
 export const COACH_CONVERSATIONS_VERSION = 1;
@@ -5,8 +6,18 @@ export const COACH_MAX_CONVERSATIONS = 20;
 export const COACH_MAX_MESSAGES = 50;
 export const COACH_RECENT_MESSAGES_LIMIT = 6;
 
-const SESSION_REPLY_STORE = new Map();
-const SESSION_REPLY_LISTENERS = new Set();
+const COACH_CONVERSATION_MODES = new Set(["free", "plan"]);
+const COACH_REPLY_INTENTS = new Set([
+  "start_occurrence",
+  "resume_session",
+  "open_library",
+  "open_pilotage",
+  "open_today",
+  "open_support",
+  "continue_coach",
+  "open_created_view",
+]);
+const COACH_REPLY_CREATE_STATUSES = new Set(["idle", "creating", "created", "error"]);
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -33,6 +44,92 @@ function normalizeContextSnapshot(rawValue) {
   };
 }
 
+function normalizeConversationMode(value, fallback = "free") {
+  const next = trimString(value, 24).toLowerCase();
+  return COACH_CONVERSATION_MODES.has(next) ? next : fallback;
+}
+
+function normalizeViewTarget(rawValue) {
+  const source = isPlainObject(rawValue) ? rawValue : {};
+  const type = trimString(source.type, 40);
+  if (type === "edit-item") {
+    const itemId = trimString(source.itemId, 200);
+    if (!itemId) return null;
+    return {
+      type: "edit-item",
+      itemId,
+      categoryId: trimString(source.categoryId, 200) || null,
+    };
+  }
+  if (type === "library-category") {
+    return {
+      type: "library-category",
+      categoryId: trimString(source.categoryId, 200) || null,
+    };
+  }
+  return null;
+}
+
+function normalizeReplyAction(rawValue) {
+  const source = isPlainObject(rawValue) ? rawValue : {};
+  const label = trimString(source.label, 64);
+  const intent = trimString(source.intent, 40);
+  if (!label || !COACH_REPLY_INTENTS.has(intent)) return null;
+  return {
+    label,
+    intent,
+    categoryId: trimString(source.categoryId, 200) || null,
+    actionId: trimString(source.actionId, 200) || null,
+    occurrenceId: trimString(source.occurrenceId, 200) || null,
+    dateKey: trimString(source.dateKey, 32) || null,
+    viewTarget: normalizeViewTarget(source.viewTarget),
+  };
+}
+
+function normalizeCreateStatus(value) {
+  const next = trimString(value, 24).toLowerCase();
+  return COACH_REPLY_CREATE_STATUSES.has(next) ? next : null;
+}
+
+function normalizeCoachReply(rawValue) {
+  const source = isPlainObject(rawValue) ? rawValue : {};
+  if (source.kind === "conversation" || COACH_CONVERSATION_MODES.has(trimString(source.mode, 24).toLowerCase())) {
+    const message = trimString(source.message, 1200);
+    if (!message) return null;
+    return {
+      kind: "conversation",
+      mode: normalizeConversationMode(source.mode, "free"),
+      message,
+      primaryAction: normalizeReplyAction(source.primaryAction),
+      secondaryAction: normalizeReplyAction(source.secondaryAction),
+      proposal: source.proposal ? normalizeCreationProposal(source.proposal) : null,
+      createStatus: normalizeCreateStatus(source.createStatus),
+      createMessage: trimString(source.createMessage, 220),
+      viewTarget: normalizeViewTarget(source.viewTarget),
+    };
+  }
+
+  const headline = trimString(source.headline, 120);
+  const reason = trimString(source.reason, 320);
+  if (!headline && !reason) return null;
+  const suggestedDurationMin = Number(source.suggestedDurationMin);
+  return {
+    kind: "chat",
+    headline: headline || "Action",
+    reason,
+    primaryAction: normalizeReplyAction(source.primaryAction),
+    secondaryAction: normalizeReplyAction(source.secondaryAction),
+    suggestedDurationMin: Number.isFinite(suggestedDurationMin) ? Math.max(1, Math.round(suggestedDurationMin)) : null,
+    draftChanges: (Array.isArray(source.draftChanges) ? source.draftChanges : [])
+      .filter(isPlainObject)
+      .slice(0, 4)
+      .map((change) => ({ ...change })),
+    createStatus: normalizeCreateStatus(source.createStatus),
+    createMessage: trimString(source.createMessage, 220),
+    viewTarget: normalizeViewTarget(source.viewTarget),
+  };
+}
+
 function normalizeMessage(rawMessage, fallbackCreatedAt = null) {
   const source = isPlainObject(rawMessage) ? rawMessage : {};
   const role = source.role === "assistant" ? "assistant" : source.role === "user" ? "user" : "";
@@ -42,6 +139,7 @@ function normalizeMessage(rawMessage, fallbackCreatedAt = null) {
     role,
     text,
     createdAt: normalizeIsoString(source.createdAt, fallbackCreatedAt || new Date().toISOString()),
+    coachReply: normalizeCoachReply(source.coachReply || source.reply || null),
   };
 }
 
@@ -67,14 +165,9 @@ function normalizeConversation(rawConversation) {
     createdAt,
     updatedAt: normalizeIsoString(source.updatedAt, latestMessageCreatedAt || createdAt),
     messages,
+    mode: normalizeConversationMode(source.mode, "free"),
     contextSnapshot: normalizeContextSnapshot(source.contextSnapshot),
   };
-}
-
-function emitSessionReplyChange(conversationId) {
-  for (const listener of SESSION_REPLY_LISTENERS) {
-    listener(conversationId);
-  }
 }
 
 export function ensureCoachConversationsState(rawValue) {
@@ -88,13 +181,14 @@ export function ensureCoachConversationsState(rawValue) {
   };
 }
 
-export function createCoachConversation({ contextSnapshot = null, now = new Date() } = {}) {
+export function createCoachConversation({ contextSnapshot = null, now = new Date(), mode = "free" } = {}) {
   const createdAt = now instanceof Date ? now.toISOString() : new Date().toISOString();
   return {
     id: uid(),
     createdAt,
     updatedAt: createdAt,
     messages: [],
+    mode: normalizeConversationMode(mode, "free"),
     contextSnapshot: normalizeContextSnapshot(contextSnapshot),
   };
 }
@@ -131,7 +225,10 @@ export function removeCoachConversation(rawValue, conversationId) {
   });
 }
 
-export function appendCoachConversationMessages(rawValue, { conversationId = null, messages = [], contextSnapshot = null } = {}) {
+export function appendCoachConversationMessages(
+  rawValue,
+  { conversationId = null, messages = [], contextSnapshot = null, mode = null } = {}
+) {
   const state = ensureCoachConversationsState(rawValue);
   const normalizedMessages = (Array.isArray(messages) ? messages : [])
     .map((message) => normalizeMessage(message))
@@ -139,13 +236,14 @@ export function appendCoachConversationMessages(rawValue, { conversationId = nul
 
   const existingConversation =
     (conversationId ? state.conversations.find((entry) => entry.id === conversationId) : null) || null;
-  const baseConversation = existingConversation || createCoachConversation({ contextSnapshot });
+  const baseConversation = existingConversation || createCoachConversation({ contextSnapshot, mode });
   const nextMessages = [...baseConversation.messages, ...normalizedMessages].slice(-COACH_MAX_MESSAGES);
   const updatedAt = normalizedMessages[normalizedMessages.length - 1]?.createdAt || new Date().toISOString();
   const nextConversation = {
     ...baseConversation,
     updatedAt,
     messages: nextMessages,
+    mode: normalizeConversationMode(mode, baseConversation.mode),
     contextSnapshot: normalizeContextSnapshot(contextSnapshot || baseConversation.contextSnapshot),
   };
 
@@ -155,12 +253,15 @@ export function appendCoachConversationMessages(rawValue, { conversationId = nul
   };
 }
 
-export function buildCoachConversationMessage(role, text, createdAt = new Date().toISOString()) {
-  return normalizeMessage({ role, text, createdAt });
+export function buildCoachConversationMessage(role, text, createdAt = new Date().toISOString(), coachReply = null) {
+  return normalizeMessage({ role, text, createdAt, coachReply });
 }
 
 export function buildAssistantTranscriptText(reply) {
   if (!isPlainObject(reply)) return "";
+  if (reply.kind === "conversation") {
+    return trimString(reply.message, 1200);
+  }
   const headline = trimString(reply.headline);
   const reason = trimString(reply.reason);
   return [headline, reason].filter(Boolean).join("\n");
@@ -178,60 +279,59 @@ export function buildRecentMessagesFromConversation(conversation) {
     }));
 }
 
-function getSessionReplyBucket(conversationId) {
-  const safeConversationId = trimString(conversationId, 120);
-  if (!safeConversationId) return {};
-  return SESSION_REPLY_STORE.get(safeConversationId) || {};
-}
-
-export function getCoachSessionReplies(conversationId) {
-  return getSessionReplyBucket(conversationId);
-}
-
-export function subscribeCoachSessionReplies(listener) {
-  if (typeof listener !== "function") return () => {};
-  SESSION_REPLY_LISTENERS.add(listener);
-  return () => {
-    SESSION_REPLY_LISTENERS.delete(listener);
-  };
-}
-
-export function setCoachSessionReply(conversationId, messageCreatedAt, reply) {
+export function updateCoachConversationMessage(rawValue, { conversationId, messageCreatedAt, update, now = new Date() } = {}) {
   const safeConversationId = trimString(conversationId, 120);
   const safeMessageCreatedAt = normalizeIsoString(messageCreatedAt, null);
-  if (!safeConversationId || !safeMessageCreatedAt || !isPlainObject(reply)) return;
-  const currentBucket = getSessionReplyBucket(safeConversationId);
-  SESSION_REPLY_STORE.set(safeConversationId, {
-    ...currentBucket,
-    [safeMessageCreatedAt]: {
-      reply,
-      draftApplyStatus: Array.isArray(reply?.draftChanges) && reply.draftChanges.length ? "idle" : null,
-      draftApplyMessage: "",
-    },
+  if (!safeConversationId || !safeMessageCreatedAt) return ensureCoachConversationsState(rawValue);
+  const state = ensureCoachConversationsState(rawValue);
+  const conversation = state.conversations.find((entry) => entry.id === safeConversationId) || null;
+  if (!conversation) return state;
+
+  let didUpdate = false;
+  const nextMessages = conversation.messages.map((message) => {
+    if (message?.createdAt !== safeMessageCreatedAt) return message;
+    const nextMessage =
+      typeof update === "function"
+        ? update(message)
+        : isPlainObject(update)
+          ? { ...message, ...update }
+          : message;
+    const normalized = normalizeMessage(nextMessage, safeMessageCreatedAt);
+    if (!normalized) return message;
+    didUpdate = true;
+    return normalized;
   });
-  emitSessionReplyChange(safeConversationId);
+  if (!didUpdate) return state;
+
+  return upsertCoachConversation(state, {
+    ...conversation,
+    updatedAt: now instanceof Date ? now.toISOString() : new Date().toISOString(),
+    messages: nextMessages,
+  });
 }
 
-export function updateCoachSessionReplyDraftStatus(conversationId, messageCreatedAt, nextPatch) {
+export function updateCoachConversationMode(rawValue, { conversationId, mode } = {}) {
   const safeConversationId = trimString(conversationId, 120);
-  const safeMessageCreatedAt = normalizeIsoString(messageCreatedAt, null);
-  if (!safeConversationId || !safeMessageCreatedAt || !isPlainObject(nextPatch)) return;
-  const currentBucket = getSessionReplyBucket(safeConversationId);
-  const currentEntry = isPlainObject(currentBucket[safeMessageCreatedAt]) ? currentBucket[safeMessageCreatedAt] : null;
-  if (!currentEntry) return;
-  SESSION_REPLY_STORE.set(safeConversationId, {
-    ...currentBucket,
-    [safeMessageCreatedAt]: {
-      ...currentEntry,
-      ...nextPatch,
-    },
+  if (!safeConversationId) return ensureCoachConversationsState(rawValue);
+  const state = ensureCoachConversationsState(rawValue);
+  const conversation = state.conversations.find((entry) => entry.id === safeConversationId) || null;
+  if (!conversation) return state;
+  return upsertCoachConversation(state, {
+    ...conversation,
+    mode: normalizeConversationMode(mode, conversation.mode),
   });
-  emitSessionReplyChange(safeConversationId);
 }
 
-export function clearCoachSessionReplies(conversationId) {
-  const safeConversationId = trimString(conversationId, 120);
-  if (!safeConversationId || !SESSION_REPLY_STORE.has(safeConversationId)) return;
-  SESSION_REPLY_STORE.delete(safeConversationId);
-  emitSessionReplyChange(safeConversationId);
+export function getCoachSessionReplies() {
+  return {};
 }
+
+export function subscribeCoachSessionReplies() {
+  return () => {};
+}
+
+export function setCoachSessionReply() {}
+
+export function updateCoachSessionReplyDraftStatus() {}
+
+export function clearCoachSessionReplies() {}

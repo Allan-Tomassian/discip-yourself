@@ -2,15 +2,23 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## iPhone Coach / IA en LAN
+## Staging public multi-device
 
-Pour valider le Coach et les analyses IA sur iPhone avec un backend local, suivre:
+La voie canonique de validation multi-device n'est plus le LAN local.
 
-- [docs/iphone-ai-local-checklist.md](/Users/allan/Desktop/discip-yourself%20code/docs/iphone-ai-local-checklist.md)
+Utiliser:
 
-Pour le front, un exemple d'override local existe dans:
+- [docs/staging-public-checklist.md](/Users/allan/Desktop/discip-yourself%20code/docs/staging-public-checklist.md)
+
+Exemples d'env front:
 
 - [.env.local.example](/Users/allan/Desktop/discip-yourself%20code/.env.local.example)
+- [.env.staging.example](/Users/allan/Desktop/discip-yourself%20code/.env.staging.example)
+- [.env.production.example](/Users/allan/Desktop/discip-yourself%20code/.env.production.example)
+
+Le guide iPhone LAN reste disponible comme fallback local:
+
+- [docs/iphone-ai-local-checklist.md](/Users/allan/Desktop/discip-yourself%20code/docs/iphone-ai-local-checklist.md)
 
 Currently, two official plugins are available:
 
@@ -34,6 +42,7 @@ This project can be wrapped as an iOS app using Capacitor.
 Web dev:
 - `npm install`
 - `npm run dev`
+- `npm run check:env:public`
 
 iOS build/sync:
 - `npm run build`

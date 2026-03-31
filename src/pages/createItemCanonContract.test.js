@@ -25,22 +25,28 @@ describe("create item canonical contract", () => {
     );
     expect(navigation).toContain('"create-item"');
     expect(navigation).toContain('else if (initialPath.startsWith("/create")) initialTab = "create-item";');
-    expect(navigation).toContain('else if (t === "create-item") {');
-    expect(navigation).toContain('nextPath = "/create";');
+    expect(navigation).toContain("function buildPathForTab({");
+    expect(navigation).toContain('if (tab === "create-item") return "/create";');
   });
 
   it("keeps creation draft-first and assistant creation proposal-based", () => {
     const createPage = readSrc("pages/CreateItem.jsx");
     const coachPanel = readSrc("features/coach/CoachPanel.jsx");
     const planningCoachCard = readSrc("components/planning/PlanningCoachCard.jsx");
-    const draftChanges = readSrc("logic/chatDraftChanges.js");
+    const commitService = readSrc("features/create-item/createItemCommit.js");
 
     expect(createPage).toContain("createEmptyCreateItemDraft");
+    expect(createPage).toContain("prepareCreateCommit");
+    expect(createPage).toContain("commitPreparedCreatePlan");
     expect(createPage).toContain("persistCoachSummary");
-    expect(coachPanel).toContain("buildCreationProposalFromDraftChanges");
+    expect(coachPanel).toContain("createFromPlanReply");
+    expect(coachPanel).toContain("openAssistantReview");
     expect(coachPanel).toContain("onOpenAssistantCreate");
+    expect(coachPanel).toContain('sourceSurface: "coach"');
+    expect(coachPanel).not.toContain('sourceSurface: "coach-chat"');
+    expect(coachPanel).not.toContain('sourceSurface: "coach-panel"');
     expect(planningCoachCard).toContain("buildCreationProposalFromDraftChanges");
     expect(planningCoachCard).toContain("onOpenAssistantCreate");
-    expect(draftChanges).not.toContain("nextState = createGoal(nextState, candidate.value);");
+    expect(commitService).toContain("buildCreationViewTarget");
   });
 });

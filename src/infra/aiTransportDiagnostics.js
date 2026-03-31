@@ -40,6 +40,10 @@ function readFrontendOrigin() {
   return String(window.location.origin || "").trim();
 }
 
+function readAppEnv() {
+  return String(ENV.VITE_APP_ENV || PROCESS_ENV.VITE_APP_ENV || "").trim().toLowerCase() || "local";
+}
+
 function isCrossOrigin(frontendOrigin, backendBaseUrl) {
   const frontend = safeParseUrl(frontendOrigin);
   const backend = safeParseUrl(backendBaseUrl);
@@ -87,13 +91,32 @@ export function buildAiTransportMeta({ baseUrl, errorCode = null } = {}) {
   };
 }
 
-export function logAiTransportIssue({ endpoint, errorCode = null, transportMeta = null } = {}) {
+export function logAiTransportIssue({
+  endpoint,
+  errorCode = null,
+  transportMeta = null,
+  status = null,
+  requestId = null,
+  mode = null,
+  backendErrorCode = null,
+  responseKind = null,
+  responseMode = null,
+  bodyKeys = null,
+} = {}) {
   if (!shouldLogAiTransportDebug()) return;
   const meta = transportMeta && typeof transportMeta === "object" ? transportMeta : {};
   // Dev-only network diagnostics for real-device debugging.
   console.warn("[ai-transport]", {
+    appEnv: readAppEnv(),
     endpoint: String(endpoint || "").trim() || null,
     errorCode: String(errorCode || "").trim().toUpperCase() || null,
+    backendErrorCode: String(backendErrorCode || "").trim().toUpperCase() || null,
+    status: Number.isInteger(status) ? status : null,
+    requestId: String(requestId || "").trim() || null,
+    mode: String(mode || "").trim() || null,
+    responseKind: String(responseKind || "").trim() || null,
+    responseMode: String(responseMode || "").trim() || null,
+    bodyKeys: Array.isArray(bodyKeys) ? bodyKeys : null,
     frontendOrigin: meta.frontendOrigin || "",
     backendBaseUrl: meta.backendBaseUrl || "",
     online: typeof meta.online === "boolean" ? meta.online : null,
@@ -106,6 +129,7 @@ export function logAiBackendTargetOnce({ backendBaseUrl } = {}) {
   didLogAiBackendTarget = true;
   const frontendOrigin = readFrontendOrigin();
   console.info("[ai-backend-target]", {
+    appEnv: readAppEnv(),
     frontendOrigin: frontendOrigin || "",
     backendBaseUrl: String(backendBaseUrl || "").trim() || "",
   });
