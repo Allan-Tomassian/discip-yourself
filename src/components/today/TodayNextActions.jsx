@@ -19,7 +19,7 @@ export default function TodayNextActions({
     >
       <div className="col todaySectionBody">
         <div className="todaySectionHeader">
-          <div className="titleSm GateRoleSectionTitle">À venir aujourd’hui</div>
+          <div className="titleSm GateRoleSectionTitle">Ensuite aujourd’hui</div>
           <div className="small2 GateRoleSectionSubtitle" style={{ opacity: 0.8 }}>
             {MAIN_PAGE_COPY.today.nextActionsSubtitle}
           </div>
@@ -61,7 +61,7 @@ export default function TodayNextActions({
             </div>
           ))
         ) : (
-          <div className="small2">Aucune autre occurrence restante aujourd’hui.</div>
+          <div className="small2">Rien d’autre d’utile n’est prévu aujourd’hui.</div>
         )}
       </div>
     </GateSection>

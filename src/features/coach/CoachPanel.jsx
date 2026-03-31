@@ -37,10 +37,10 @@ import "./coach.css";
 
 const COACH_QUICK_PROMPTS = [
   "Ajouter une action",
-  "Structurer ma semaine",
+  "Structurer une catégorie",
   "Clarifier une catégorie",
-  "Pourquoi cette recommandation ?",
-  "Améliorer ma discipline",
+  "Clarifier mon prochain pas",
+  "Transformer une intention",
 ];
 
 function deriveCoachErrorMessage(result) {
@@ -478,7 +478,7 @@ export function useCoachConversationController({
     messageEntries,
     quickPrompts:
       conversationMode === "structure"
-        ? ["Structurer un projet", "Transformer une idée en système", "Créer une première version", "Clarifier mes priorités", "Organiser une catégorie"]
+        ? ["Structurer une catégorie", "Transformer une idée en direction", "Créer une première action", "Clarifier mes priorités", "Organiser un chantier"]
         : COACH_QUICK_PROMPTS,
     conversationMode,
     setConversationMode,
@@ -712,8 +712,8 @@ export function CoachConversationSurface({
                 Structurer
               </GateButton>
               {mode === "panel" && typeof onOpenStructuring === "function" ? (
-                <GateButton variant="ghost" className="GatePressable" onClick={onOpenStructuring}>
-                  Ouvrir le chat
+              <GateButton variant="ghost" className="GatePressable" onClick={onOpenStructuring}>
+                  Ouvrir le Coach
                 </GateButton>
               ) : null}
             </div>
@@ -729,9 +729,13 @@ export function CoachConversationSurface({
         <div ref={scrollRef} className="coachConversationScroll">
           {!hasMessages ? (
             <div className="coachConversationEmpty">
-              <div className="coachConversationEmptyTitle">Pose une question courte.</div>
+              <div className="coachConversationEmptyTitle">
+                {conversationMode === "structure" ? "Décris ce que tu veux structurer." : "Pose une question courte."}
+              </div>
               <div className="coachConversationEmptyText">
-                Le coach répond avec une action concrète, une explication brève ou une proposition structurée.
+                {conversationMode === "structure"
+                  ? "Le Coach aide à clarifier une intention, poser une catégorie, une direction ou une première action."
+                  : "Le Coach aide à clarifier un prochain pas ou à expliquer une recommandation."}
               </div>
             </div>
           ) : null}
@@ -843,8 +847,8 @@ export function CoachConversationSurface({
             onChange={(event) => setDraft(event.target.value)}
             placeholder={
               conversationMode === "structure"
-                ? "Ex: J’aimerais lancer un projet sport sans me disperser."
-                : "Ex: Je suis en retard, quel est le meilleur prochain bloc ?"
+                ? "Ex: J’aimerais transformer ce domaine en catégorie claire avec une première action."
+                : "Ex: Aide-moi à clarifier le prochain pas utile aujourd’hui."
             }
             rows={3}
           />
@@ -965,6 +969,7 @@ export default function CoachPanel({
             <div className="coachPanelHeader">
               <div className="coachPanelHeaderText">
                 <div className="coachPanelTitle">Coach</div>
+                <div className="coachPanelSubtitle">Clarifier, structurer, transformer une intention.</div>
               </div>
               <div className="coachPanelHeaderActions">
                 <button

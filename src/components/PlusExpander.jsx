@@ -107,7 +107,7 @@ export default function PlusExpander({
                 </GateButton>
                 {typeof onChooseStructuring === "function" ? (
                   <GateButton variant="ghost" className="GatePressable" onClick={onChooseStructuring}>
-                    Structurer avec le Coach
+                    Structurer une intention
                   </GateButton>
                 ) : null}
                 {hasDraft && typeof onResumeDraft === "function" ? (

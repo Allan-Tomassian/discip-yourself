@@ -1,7 +1,7 @@
 .preferencesGateForm {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
 }
 
 .preferencesGateNote {
@@ -20,7 +20,7 @@
 .preferencesGateSummary {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .preferencesGateLinks {

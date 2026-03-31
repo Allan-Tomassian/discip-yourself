@@ -184,85 +184,89 @@ export default function Journal({ data, setData }) {
       >
         <GateSection title="Édition" collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="gatePageSectionStack">
-            <label className="GateFormField">
-              <span className="GateFormLabel">Catégorie</span>
-              <select
-                className="GateSelectPremium"
-                value={categoryId || ""}
-                onChange={(event) => setCategoryId(event.target.value)}
-              >
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="GateFormField">
-              <span className="GateFormLabel">Note</span>
-              <textarea
-                className="GateTextareaPremium"
-                rows={5}
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
-                placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
-              />
-            </label>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                gap: 10,
-              }}
-            >
+            <div className="GateInlineMetaCard gatePageInlineText">
               <label className="GateFormField">
-                <span className="GateFormLabel">Forme</span>
+                <span className="GateFormLabel">Catégorie</span>
                 <select
                   className="GateSelectPremium"
-                  value={meta.forme || ""}
-                  onChange={(event) => setMeta((prev) => ({ ...prev, forme: event.target.value }))}
+                  value={categoryId || ""}
+                  onChange={(event) => setCategoryId(event.target.value)}
                 >
-                  <option value="">Choisir</option>
-                  <option value="Excellente">Excellente</option>
-                  <option value="Bonne">Bonne</option>
-                  <option value="Moyenne">Moyenne</option>
-                  <option value="Faible">Faible</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="GateFormField">
-                <span className="GateFormLabel">Humeur</span>
-                <select
-                  className="GateSelectPremium"
-                  value={meta.humeur || ""}
-                  onChange={(event) => setMeta((prev) => ({ ...prev, humeur: event.target.value }))}
-                >
-                  <option value="">Choisir</option>
-                  <option value="Calme">Calme</option>
-                  <option value="Motivé">Motivé</option>
-                  <option value="Fatigué">Fatigué</option>
-                  <option value="Tendu">Tendu</option>
-                </select>
-              </label>
-              <label className="GateFormField">
-                <span className="GateFormLabel">Motivation</span>
-                <input
-                  className="GateInputPremium"
-                  type="number"
-                  min="0"
-                  max="10"
-                  value={meta.motivation || ""}
-                  onChange={(event) => setMeta((prev) => ({ ...prev, motivation: event.target.value }))}
-                  placeholder="0 à 10"
+                <span className="GateFormLabel">Note</span>
+                <textarea
+                  className="GateTextareaPremium"
+                  rows={5}
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
                 />
               </label>
             </div>
-            <div className="GatePrimaryCtaRow">
-              <GateButton type="button" className="GatePressable" withSound onClick={archiveCurrentNote}>
-                Archiver la note
-              </GateButton>
-              <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={clearCurrentNote}>
-                Vider
-              </GateButton>
+            <div className="GateInlineMetaCard gatePageInlineText">
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                  gap: 12,
+                }}
+              >
+                <label className="GateFormField">
+                  <span className="GateFormLabel">Forme</span>
+                  <select
+                    className="GateSelectPremium"
+                    value={meta.forme || ""}
+                    onChange={(event) => setMeta((prev) => ({ ...prev, forme: event.target.value }))}
+                  >
+                    <option value="">Choisir</option>
+                    <option value="Excellente">Excellente</option>
+                    <option value="Bonne">Bonne</option>
+                    <option value="Moyenne">Moyenne</option>
+                    <option value="Faible">Faible</option>
+                  </select>
+                </label>
+                <label className="GateFormField">
+                  <span className="GateFormLabel">Humeur</span>
+                  <select
+                    className="GateSelectPremium"
+                    value={meta.humeur || ""}
+                    onChange={(event) => setMeta((prev) => ({ ...prev, humeur: event.target.value }))}
+                  >
+                    <option value="">Choisir</option>
+                    <option value="Calme">Calme</option>
+                    <option value="Motivé">Motivé</option>
+                    <option value="Fatigué">Fatigué</option>
+                    <option value="Tendu">Tendu</option>
+                  </select>
+                </label>
+                <label className="GateFormField">
+                  <span className="GateFormLabel">Motivation</span>
+                  <input
+                    className="GateInputPremium"
+                    type="number"
+                    min="0"
+                    max="10"
+                    value={meta.motivation || ""}
+                    onChange={(event) => setMeta((prev) => ({ ...prev, motivation: event.target.value }))}
+                    placeholder="0 à 10"
+                  />
+                </label>
+              </div>
+              <div className="GatePrimaryCtaRow">
+                <GateButton type="button" className="GatePressable" withSound onClick={archiveCurrentNote}>
+                  Archiver la note
+                </GateButton>
+                <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={clearCurrentNote}>
+                  Vider
+                </GateButton>
+              </div>
             </div>
           </div>
         </GateSection>

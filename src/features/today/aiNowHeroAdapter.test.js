@@ -506,7 +506,7 @@ describe("deriveTodayHeroChrome", () => {
     expect(result.badgeTone).toBe("ai");
     expect(result.showLiveDot).toBe(true);
     expect(result.showHint).toBe(true);
-    expect(result.hintText).toBe("Analyse du jour");
+    expect(result.hintText).toBe("Lecture en cours");
   });
 
   it("affiche le badge coach quand la suggestion IA est visible", () => {

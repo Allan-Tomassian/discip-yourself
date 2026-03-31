@@ -76,7 +76,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
       {
         key: "goals",
         title: "Choisis tes priorités",
-        subtitle: "Maximum 3 domaines. L’ordre de sélection guide la suite.",
+        subtitle: "Maximum 3 domaines. Ils deviendront tes premières catégories stables.",
         valid: selectedGoals.length > 0,
         content: (
           <div className="onboardingOptionGrid">
@@ -87,7 +87,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
                 <OptionCard
                   key={goalMeta.id}
                   title={goalMeta.label}
-                  description="Servira de base pour tes premières catégories et actions."
+                  description="Servira de base pour un premier chantier clair, avec une direction et des actions."
                   selected={selected}
                   badge={selected ? `#${selectionIndex + 1}` : ""}
                   disabled={!selected && selectedGoals.length >= 3}
@@ -103,7 +103,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
       {
         key: "budget",
         title: "Temps quotidien",
-        subtitle: "Choisis une base crédible pour démarrer.",
+        subtitle: "Choisis une base crédible pour démarrer simplement.",
         valid: USER_AI_TIME_BUDGETS.includes(Number(budgetMinutes)),
         content: (
           <div className="onboardingOptionGrid">
@@ -122,7 +122,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
       {
         key: "intensity",
         title: "Intensité souhaitée",
-        subtitle: "On règle la charge de départ, pas un engagement figé.",
+        subtitle: "On règle le rythme de départ, pas un engagement figé.",
         valid: USER_AI_INTENSITIES.includes(intensityPreference),
         content: (
           <div className="onboardingOptionGrid">
@@ -150,7 +150,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
       {
         key: "time-blocks",
         title: "Moments préférés",
-        subtitle: "Choisis un à trois moments. L’ordre aide au placement.",
+        subtitle: "Choisis un à trois moments. Ils aideront surtout à poser un rythme simple.",
         valid: preferredTimeBlocks.length > 0,
         content: (
           <div className="onboardingOptionGrid">
@@ -176,7 +176,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
       {
         key: "structure",
         title: "Niveau de structure",
-        subtitle: "Plus c’est structuré, plus Today arrive prêt dès l’ouverture.",
+        subtitle: "On prépare Today, pas une configuration complète du système.",
         valid: USER_AI_STRUCTURES.includes(structurePreference),
         content: (
           <div className="onboardingOptionGrid">

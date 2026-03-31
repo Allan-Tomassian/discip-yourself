@@ -35,6 +35,7 @@ describe("main pages visual canon contract", () => {
     expect(gatePageCss).toContain(".gatePagePanel");
     expect(gatePageCss).toContain(".gatePageContent");
     expect(gatePageCss).toContain("gap: 18px;");
+    expect(gatePageCss).not.toContain("--gate-premium-radius: 14px;");
     expect(premiumCss).not.toContain(".topMenuCardOuter");
   });
 

@@ -24,7 +24,11 @@ export default function CoachChat({
       data={data}
       pageId="coach-chat"
       headerTitle="Coach"
-      headerSubtitle={initialMode === "structure" ? "Structurer un projet avant de créer réellement." : "Conversation rapide, orientée action"}
+      headerSubtitle={
+        initialMode === "structure"
+          ? "Transformer une intention en catégorie, direction ou action avant de créer."
+          : "Clarifier une intention ou un prochain pas avec le Coach."
+      }
     >
       <CoachConversationSurface controller={controller} mode="page" />
     </ScreenShell>

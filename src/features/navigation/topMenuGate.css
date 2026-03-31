@@ -49,19 +49,19 @@
 }
 
 .drawerMenuPanel {
-  gap: 14px;
+  gap: 18px;
 }
 
 .drawerMenuHeader {
-  padding: 2px 4px 0;
+  padding: 4px;
 }
 
 .drawerMenuHeader .gateHeaderText {
-  gap: 4px;
+  gap: 6px;
 }
 
 .drawerMenuHeader .gateHeader {
-  gap: 12px;
+  gap: 16px;
   align-items: flex-start;
 }
 
@@ -77,15 +77,15 @@
 .drawerMenuBody {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
   min-width: 0;
-  padding: 4px 4px 8px;
+  padding: 0 4px 8px;
 }
 
 .drawerMenuGroup {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -96,14 +96,13 @@
 .drawerMenuItems {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .drawerMenuItem {
   text-align: left;
-  padding: 13px 14px;
+  padding: 14px 16px;
   gap: 10px;
-  box-shadow: none;
 }
 
 .drawerMenuItem .gateRowBody {
@@ -111,7 +110,7 @@
 }
 
 .drawerMenuItem .gateRowText {
-  gap: 0;
+  gap: 2px;
 }
 
 .drawerMenuItem.isSelected {
@@ -177,11 +176,11 @@
   }
 
   .drawerMenuPanel {
-    gap: 12px;
+    gap: 16px;
   }
 
   .drawerMenuBody {
-    gap: 12px;
+    gap: 16px;
     padding-bottom: 12px;
   }
 }

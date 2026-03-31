@@ -39,6 +39,7 @@ describe("coach panel contract", () => {
     expect(coachPanel).toContain("coachConversationRail");
     expect(coachPanel).toContain("setActiveConversationId");
     expect(coachPanel).toContain("archiveConversation");
+    expect(coachPanel).toContain("Clarifier, structurer, transformer une intention.");
     expect(coachPanel).not.toContain("Coach prêt");
     expect(coachPanel).not.toContain(">Conversations<");
   });

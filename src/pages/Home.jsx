@@ -252,8 +252,8 @@ function resolveImpactText({ heroGoal, heroCategory, goalsById }) {
 function resolveOccurrenceHeroCopy({ occurrence, goalsById, categoriesById }) {
   if (!occurrence) {
     return {
-      title: "Aucune action planifiée pour cette date.",
-      meta: "Crée ou planifie une action depuis Bibliothèque.",
+      title: "Aucune action prête pour cette date.",
+      meta: "Commence dans Bibliothèque par une catégorie claire puis une première action.",
     };
   }
   const goal = goalsById.get(occurrence.goalId || "") || null;
@@ -266,7 +266,7 @@ function resolveOccurrenceHeroCopy({ occurrence, goalsById, categoriesById }) {
   const meta = [timeLabel, category?.name || ""].filter(Boolean).join(" • ");
   return {
     title,
-    meta: meta || "C'est l'action la plus exécutable maintenant.",
+    meta: meta || "C’est le prochain pas le plus simple à lancer maintenant.",
   };
 }
 

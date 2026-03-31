@@ -29,11 +29,11 @@ export default function TodayDailyState({
         </div>
         <div className="todayDailyStateGrid">
           <div className="listItem GateRowPremium GateAnalyticsCard todayDailyStateItem">
-            <div className="small2 GateRoleMetricLabel">Planifié</div>
+            <div className="small2 GateRoleMetricLabel">Prévu</div>
             <div className="titleSm GateRoleMetricValue">{formatMinutes(plannedMinutes)}</div>
           </div>
           <div className="listItem GateRowPremium GateAnalyticsCard todayDailyStateItem">
-            <div className="small2 GateRoleMetricLabel">Réalisé</div>
+            <div className="small2 GateRoleMetricLabel">Fait</div>
             <div className="titleSm GateRoleMetricValue">{formatMinutes(doneMinutes)}</div>
           </div>
           <div className="listItem GateRowPremium GateAnalyticsCard todayDailyStateItem">

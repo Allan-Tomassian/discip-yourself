@@ -16,27 +16,27 @@ export const SURFACE_LABELS = Object.freeze({
 
 export const MAIN_PAGE_COPY = Object.freeze({
   today: Object.freeze({
-    orientation: "Avance sur ce qui compte aujourd’hui.",
-    nextActionsSubtitle: "Trois créneaux max, pour garder une lecture simple.",
-    dailyStateTitle: "Charge du jour",
-    dailyStateSubtitle: "Prévu, réalisé, restant.",
+    orientation: "Commence par le prochain pas utile aujourd’hui.",
+    nextActionsSubtitle: "Le reste du jour, pour garder un rythme lisible.",
+    dailyStateTitle: "Repères du jour",
+    dailyStateSubtitle: "Prévu, fait, restant.",
   }),
   planning: Object.freeze({
-    orientation: "Répartis l’effort sans casser ton rythme.",
-    weekDescription: "Répartis l’effort jour par jour, sans surcharge.",
-    dayDescription: "Ajuste la journée sans casser ta charge.",
+    orientation: "Règle le rythme avant de charger la journée.",
+    weekDescription: "Répartis les créneaux sur la semaine pour garder une cadence tenable.",
+    dayDescription: "Ajuste le jour sans perdre le rythme.",
   }),
   library: Object.freeze({
-    orientation: "Clarifie ce que tu veux construire.",
-    primaryTitle: "Structure active",
-    reclassifyTitle: "À clarifier",
-    suggestionsTitle: "Suggestions à activer",
+    orientation: "Lis ton système par catégories stables.",
+    primaryTitle: "Carte active",
+    reclassifyTitle: "À reclasser",
+    suggestionsTitle: "Catégories suggérées",
   }),
   pilotage: Object.freeze({
-    orientation: "Observe ce qui progresse réellement.",
-    summaryTitle: "Progression actuelle",
-    focusTitle: "Lecture par catégorie",
-    statsTitle: "Rythme récent",
+    orientation: "Relis la cohérence quand assez de signal existe.",
+    summaryTitle: "Lecture d’ensemble",
+    focusTitle: "Catégories suivies",
+    statsTitle: "Signaux récents",
   }),
 });
 
@@ -58,10 +58,10 @@ export const UI_COPY = Object.freeze({
   continue: "Continuer",
   done: "Fait",
   watchAd: "Regarder une vidéo",
-  openPlanning: "Ouvrir la planification",
-  refreshAnalysis: "Relancer l’analyse",
-  analyzePriority: "Analyser ma priorité",
-  backToLocalDiagnostic: "Revenir au diagnostic local",
+  openPlanning: "Régler le rythme",
+  refreshAnalysis: "Relire la situation",
+  analyzePriority: "Observer ma situation",
+  backToLocalDiagnostic: "Revenir à la lecture locale",
   openSupport: "Contacter le support",
   restorePurchases: "Restaurer mes achats",
   discoverPremium: "Découvrir Premium",
@@ -70,12 +70,12 @@ export const UI_COPY = Object.freeze({
 });
 
 export const ANALYSIS_COPY = Object.freeze({
-  localDiagnostic: "Diagnostic local",
-  coachAnalysis: "Analyse du Coach",
-  coachAnalysisUpdated: "Analyse du Coach mise à jour",
+  localDiagnostic: "Lecture locale",
+  coachAnalysis: "Lecture du Coach",
+  coachAnalysisUpdated: "Lecture du Coach mise à jour",
   coachBadge: "Coach",
-  coachLoadingHint: "Analyse du jour",
-  guardedRecommendation: "Recommandation sécurisée",
+  coachLoadingHint: "Lecture en cours",
+  guardedRecommendation: "Repère prioritaire",
   savedOnDevice: "Enregistrée sur cet appareil",
   syncedAcrossDevices: "Synchronisée sur tes appareils",
 });

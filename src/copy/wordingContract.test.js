@@ -19,11 +19,12 @@ describe("product wording contract", () => {
     expect(SURFACE_LABELS.coach).toBe("Coach");
     expect(SURFACE_LABELS.journal).toBe("Journal");
     expect(MARKETING_COPY.essentialPlan).toBe("Accès essentiel");
-    expect(ANALYSIS_COPY.coachAnalysis).toBe("Analyse du Coach");
-    expect(MAIN_PAGE_COPY.today.orientation).toBe("Avance sur ce qui compte aujourd’hui.");
-    expect(MAIN_PAGE_COPY.planning.orientation).toBe("Répartis l’effort sans casser ton rythme.");
-    expect(MAIN_PAGE_COPY.library.orientation).toBe("Clarifie ce que tu veux construire.");
-    expect(MAIN_PAGE_COPY.pilotage.orientation).toBe("Observe ce qui progresse réellement.");
+    expect(ANALYSIS_COPY.localDiagnostic).toBe("Lecture locale");
+    expect(ANALYSIS_COPY.coachAnalysis).toBe("Lecture du Coach");
+    expect(MAIN_PAGE_COPY.today.orientation).toBe("Commence par le prochain pas utile aujourd’hui.");
+    expect(MAIN_PAGE_COPY.planning.orientation).toBe("Règle le rythme avant de charger la journée.");
+    expect(MAIN_PAGE_COPY.library.orientation).toBe("Lis ton système par catégories stables.");
+    expect(MAIN_PAGE_COPY.pilotage.orientation).toBe("Relis la cohérence quand assez de signal existe.");
   });
 
   it("removes legacy wording from critical user-facing surfaces", () => {

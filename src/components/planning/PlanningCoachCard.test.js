@@ -30,8 +30,8 @@ describe("PlanningCoachCard contract", () => {
     expect(source).toContain("statusLabel={planningAnalysisState.label}");
     expect(source).toContain("stageLabel={manualPlanningAnalysis.loadingStageLabel}");
     expect(source).toContain("manualPlanningAnalysis.loadingStageLabel || \"Analyse...\"");
-    expect(source).toContain("Analyser ma semaine");
-    expect(source).toContain("Analyser ma journée");
+    expect(source).toContain("Observer ma semaine");
+    expect(source).toContain("Observer ma journée");
   });
 
   it("opens assistant creation for coach draft proposals instead of applying new objects directly", () => {

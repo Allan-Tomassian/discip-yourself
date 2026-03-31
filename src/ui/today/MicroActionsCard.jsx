@@ -153,7 +153,7 @@ export default function MicroActionsCard({
           </div>
         </div>
         {isReadOnlyDate ? (
-          <div className="microTodayHintRow" data-testid="micro-actions-today-hint">
+          <div className="microTodayHintRow GateInlineMetaCard" data-testid="micro-actions-today-hint">
             <span className="microTodayHintText">Micro-actions disponibles uniquement aujourd’hui.</span>
             <MicroButton
               variant="ghost"
@@ -172,7 +172,7 @@ export default function MicroActionsCard({
             const isSelected = selectedIndices.includes(index);
             const isDone = item.status === "done";
             return (
-              <div key={item.id || `${item.title}-${index}`} className="microItem" data-tour-id="today-micro-item">
+              <div key={item.id || `${item.title}-${index}`} className="microItem GateInlineMetaCard" data-tour-id="today-micro-item">
                 <label className="microPick" aria-label={`Sélectionner ${item.title} pour reroll`}>
                   <input
                     type="checkbox"

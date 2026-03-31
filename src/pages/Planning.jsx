@@ -258,7 +258,7 @@ export default function Planning({
     }));
   };
 
-  const planningSectionTitle = planningView === "week" ? "Semaine planifiée" : "Créneaux du jour";
+  const planningSectionTitle = planningView === "week" ? "Rythme de la semaine" : "Rythme du jour";
   const planningSectionDescription =
     planningView === "week"
       ? MAIN_PAGE_COPY.planning.weekDescription
@@ -355,7 +355,7 @@ export default function Planning({
                 ))
               ) : (
                 <div className="small2 planningEmptyState">
-                  Aucun créneau planifié sur cette journée pour la catégorie active.
+                  Aucun créneau posé sur cette journée pour la catégorie active.
                 </div>
               )}
             </div>
@@ -391,7 +391,7 @@ export default function Planning({
                       ))}
                     </div>
                   ) : (
-                    <div className="small2 planningEmptyState">Aucun créneau.</div>
+                    <div className="small2 planningEmptyState">Aucun créneau posé.</div>
                   )}
                 </div>
               ))}
@@ -419,12 +419,12 @@ export default function Planning({
         {pendingOccurrence ? (
           <GateSection
             className="planningSectionCard planningSecondarySection GateSecondarySectionCard GateSurfacePremium GateCardPremium"
-            title="Occurrence à replanifier"
+            title="Action à replacer"
             description={`${pendingGoal?.title || "Action"}${pendingCategory?.name ? ` · ${pendingCategory.name}` : ""}`}
             collapsible={false}
           >
             <div className="small2 planningSectionMeta">
-              Déplace cette occurrence puis confirme ou annule ce brouillon de replanification.
+              Replace cette action dans un rythme crédible, puis confirme ou annule ce brouillon.
             </div>
             <div className="planningSectionFooter">
               <Button variant="ghost" onClick={clearPlanningPending}>
@@ -445,7 +445,7 @@ export default function Planning({
             collapsible={false}
           >
             <div className="small2 planningSectionMeta">
-              Elles ne remontent plus dans Today tant qu&apos;elles restent hors catégorie.
+              Elles ne remontent plus clairement dans Today tant qu&apos;elles restent hors catégorie stable.
             </div>
             <div className="planningSectionFooter">
               <Button variant="ghost" onClick={() => setTab?.("library")}>

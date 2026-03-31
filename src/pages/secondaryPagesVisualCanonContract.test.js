@@ -32,6 +32,8 @@ describe("secondary pages visual canon contract", () => {
 
   it("uses inline meta cards for compact secondary page content", () => {
     const pages = [
+      "pages/Preferences.jsx",
+      "pages/Account.jsx",
       "pages/Subscription.jsx",
       "pages/Support.jsx",
       "pages/Faq.jsx",
@@ -50,8 +52,10 @@ describe("secondary pages visual canon contract", () => {
   it("keeps secondary page helper text on Gate roles instead of feature-level font overrides", () => {
     const accountCss = readSrc("features/account/accountGate.css");
     const preferencesCss = readSrc("features/preferences/preferencesGate.css");
+    const todayCss = readSrc("features/today/today.css");
 
     expect(accountCss).not.toContain("font-size: 12px;");
     expect(preferencesCss).not.toContain("font-size: 12px;");
+    expect(todayCss).not.toContain(".microCard,\n.calendarCard");
   });
 });

@@ -942,11 +942,11 @@ export default function Categories({
               <div className="row rowBetween alignCenter libraryCardHeader">
                 <div className="sectionTitle GateRoleSectionTitle">{MAIN_PAGE_COPY.library.reclassifyTitle}</div>
                 <div className="small2 GateRoleCardMeta textMuted2">
-                  {legacyBuckets.reclassifyCandidates.length} action{legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} hors structure visible
+                  {legacyBuckets.reclassifyCandidates.length} action{legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} hors catégorie stable
                 </div>
               </div>
               <div className="small2 GateRoleSectionSubtitle textMuted">
-                Les actions héritées de <strong>Général</strong> restent hors de la structure active tant qu&apos;elles ne sont pas reclassées.
+                Les actions héritées de <strong>Général</strong> restent hors de ta carte active tant qu&apos;elles ne sont pas rattachées à une catégorie stable.
               </div>
               <div className="col gap8">
                 {legacyBuckets.reclassifyCandidates.map(({ goal, inferredCategoryId }) => {
@@ -962,8 +962,8 @@ export default function Categories({
                           <div className="itemTitle">{goal.title || "Action"}</div>
                           <div className="itemSub">
                             {inferredCategory
-                              ? `Suggestion: ${inferredCategory.name}`
-                              : "Choisis une catégorie avant de la réutiliser."}
+                              ? `À rattacher à ${inferredCategory.name}`
+                              : "Choisis une catégorie stable avant de la réutiliser."}
                           </div>
                         </div>
                         <div className="row gap8 alignCenter">
@@ -1001,7 +1001,7 @@ export default function Categories({
             </div>
 
             <div className="col gap10" data-tour-id="library-category-list">
-              {isEmpty ? <div className="small2 textMuted">Aucune catégorie active.</div> : null}
+              {isEmpty ? <div className="small2 textMuted">Aucune catégorie active. Commence par poser un premier chantier durable.</div> : null}
               {orderedUserCategories.length ? (
                 <SortableBlocks
                   items={orderedUserCategories}

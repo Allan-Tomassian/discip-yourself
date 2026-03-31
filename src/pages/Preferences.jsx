@@ -61,7 +61,7 @@ export default function Preferences({ data, setData }) {
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
           data-tour-id="settings-theme"
         >
-          <div className="preferencesGateSummary">
+          <div className="GateInlineMetaCard gatePageInlineText">
             <p className="preferencesGateNote preferencesGateNoteStrong GateRoleCardTitle">
               Système visuel actif : {visualSystemLabel}
             </p>
@@ -82,18 +82,20 @@ export default function Preferences({ data, setData }) {
           data-tour-id="settings-why"
         >
           <div className="preferencesGateForm">
-            <label className="preferencesGateField GateFormField" htmlFor="preferences-why">
-              <span className="preferencesGateFieldLabel GateFormLabel">Ton pourquoi</span>
-              <textarea
-                id="preferences-why"
-                className="preferencesGateTextarea GateTextareaPremium"
-                value={whyDraft}
-                onChange={(event) => setWhyDraft(event.target.value)}
-                placeholder={PLACEHOLDER_COPY.whyText}
-                disabled={!canEditWhy}
-              />
-            </label>
-            {!canEditWhy ? <p className="preferencesGateNote GateRoleHelperText">Tu pourras modifier ton pourquoi dans {daysLeft} jours.</p> : null}
+            <div className="GateInlineMetaCard gatePageInlineText">
+              <label className="preferencesGateField GateFormField" htmlFor="preferences-why">
+                <span className="preferencesGateFieldLabel GateFormLabel">Ton pourquoi</span>
+                <textarea
+                  id="preferences-why"
+                  className="preferencesGateTextarea GateTextareaPremium"
+                  value={whyDraft}
+                  onChange={(event) => setWhyDraft(event.target.value)}
+                  placeholder={PLACEHOLDER_COPY.whyText}
+                  disabled={!canEditWhy}
+                />
+              </label>
+              {!canEditWhy ? <p className="preferencesGateNote GateRoleHelperText">Tu pourras modifier ton pourquoi dans {daysLeft} jours.</p> : null}
+            </div>
             <div className="preferencesGateActions">
                 <GateButton
                   type="button"
@@ -123,46 +125,48 @@ export default function Preferences({ data, setData }) {
           collapsible={false}
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
-          <div className="preferencesGateActions preferencesGateActionsColumn">
-            <GateButton
-              type="button"
-              className="GatePressable"
-              withSound
-              onClick={() =>
-                setData((prev) => ({
-                  ...prev,
-                  ui: {
-                    ...(prev.ui || {}),
-                    onboardingSeenVersion: 0,
-                    onboardingCompleted: false,
-                  },
-                }))
-              }
-              data-tour-id="settings-replay-onboarding"
-            >
-              Revoir l’introduction
-            </GateButton>
-            <GateButton
-              type="button"
-              variant="ghost"
-              className="GatePressable"
-              withSound
-              onClick={() =>
-                setData((prev) => ({
-                  ...prev,
-                  ui: {
-                    ...(prev.ui || {}),
-                    tutorialEnabled: true,
-                    tutorialStep: 0,
-                    tourForceStart: true,
-                    tourStepIndex: 0,
-                  },
-                }))
-              }
-              data-tour-id="settings-restart-tutorial"
-            >
-              Relancer le tutoriel
-            </GateButton>
+          <div className="GateInlineMetaCard gatePageInlineText">
+            <div className="preferencesGateActions preferencesGateActionsColumn">
+              <GateButton
+                type="button"
+                className="GatePressable"
+                withSound
+                onClick={() =>
+                  setData((prev) => ({
+                    ...prev,
+                    ui: {
+                      ...(prev.ui || {}),
+                      onboardingSeenVersion: 0,
+                      onboardingCompleted: false,
+                    },
+                  }))
+                }
+                data-tour-id="settings-replay-onboarding"
+              >
+                Revoir l’introduction
+              </GateButton>
+              <GateButton
+                type="button"
+                variant="ghost"
+                className="GatePressable"
+                withSound
+                onClick={() =>
+                  setData((prev) => ({
+                    ...prev,
+                    ui: {
+                      ...(prev.ui || {}),
+                      tutorialEnabled: true,
+                      tutorialStep: 0,
+                      tourForceStart: true,
+                      tourStepIndex: 0,
+                    },
+                  }))
+                }
+                data-tour-id="settings-restart-tutorial"
+              >
+                Relancer le tutoriel
+              </GateButton>
+            </div>
           </div>
         </GateSection>
 
@@ -201,7 +205,7 @@ export default function Preferences({ data, setData }) {
           collapsible={false}
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
-          <div className="preferencesGateSummary">
+          <div className="GateInlineMetaCard gatePageInlineText">
             <p className="preferencesGateNote preferencesGateNoteStrong GateRoleCardTitle">
               {premium ? MARKETING_COPY.premiumPlan : MARKETING_COPY.essentialPlan}
             </p>
@@ -222,10 +226,12 @@ export default function Preferences({ data, setData }) {
           collapsible={false}
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
-          <div className="preferencesGateActions">
-            <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/data")}>
-              Ouvrir les données
-            </GateButton>
+          <div className="GateInlineMetaCard gatePageInlineText">
+            <div className="preferencesGateActions">
+              <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/data")}>
+                Ouvrir les données
+              </GateButton>
+            </div>
           </div>
         </GateSection>
 
@@ -235,16 +241,18 @@ export default function Preferences({ data, setData }) {
           collapsible={false}
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
-          <div className="preferencesGateLinks">
-            <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/privacy")}>
-              Confidentialité
-            </GateButton>
-            <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/terms")}>
-              Conditions
-            </GateButton>
-            <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/support")}>
-              Support
-            </GateButton>
+          <div className="GateInlineMetaCard gatePageInlineText">
+            <div className="preferencesGateLinks">
+              <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/privacy")}>
+                Confidentialité
+              </GateButton>
+              <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/terms")}>
+                Conditions
+              </GateButton>
+              <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/support")}>
+                Support
+              </GateButton>
+            </div>
           </div>
         </GateSection>
       </GatePage>

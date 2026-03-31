@@ -45,7 +45,8 @@ describe("Planning primitive convergence contract", () => {
     expect(source).toContain("GateMainSection");
     expect(source).toContain("GateSecondarySectionCard");
     expect(source).toContain("GateAnalyticsCard");
-    expect(source).toContain("Coach de planification");
-    expect(source).toContain("Voir mes progrès");
+    expect(source).toContain("Lecture locale du rythme");
+    expect(source).toContain("Structurer avec le Coach");
+    expect(source).toContain("Relire mes progrès");
   });
 });

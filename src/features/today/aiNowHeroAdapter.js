@@ -142,13 +142,13 @@ export function buildLocalTodayHeroModel({
     return withCategoryCoherence({
       interventionType,
       title: "Reprendre la session en cours",
-      meta: "La session active reste le prochain levier utile.",
+      meta: "La session active reste le prochain pas utile.",
       primaryLabel: "Reprendre",
       primaryAction: {
         kind: "resume_session",
         categoryId: activeCategoryId,
       },
-      secondaryLabel: "Voir progression",
+      secondaryLabel: "Voir mes progrès",
     }, { activeCategoryId, activeCategoryName, coherence });
   }
 
@@ -159,13 +159,13 @@ export function buildLocalTodayHeroModel({
       meta:
         coherence.reasonLinkType === "cross_category"
           ? coherence.explanation || "Cette action contribue à ta priorité active."
-          : focusMeta || "C’est l’action la plus exécutable maintenant.",
+          : focusMeta || "C’est le prochain pas le plus simple à lancer maintenant.",
       primaryLabel: "Démarrer",
       primaryAction: {
         kind: "start_occurrence",
         occurrence: focusOccurrenceForActiveDate,
       },
-      secondaryLabel: "Voir progression",
+      secondaryLabel: "Voir mes progrès",
     }, { activeCategoryId, activeCategoryName, coherence });
   }
 
@@ -176,11 +176,11 @@ export function buildLocalTodayHeroModel({
       meta: openSessionOutsideActiveDate?.dateKey
         ? `La session ouverte reste liée au ${openSessionOutsideActiveDate.dateKey}. Vérifie le planning avant de reprendre.`
         : "Vérifie le planning avant de reprendre.",
-      primaryLabel: "Voir pilotage",
+      primaryLabel: "Voir mes progrès",
       primaryAction: {
         kind: "open_pilotage",
       },
-      secondaryLabel: "Voir progression",
+      secondaryLabel: "Voir mes progrès",
     }, { activeCategoryId, activeCategoryName, coherence });
   }
 
@@ -202,7 +202,7 @@ export function buildLocalTodayHeroModel({
       primaryAction: {
         kind: "open_pilotage",
       },
-      secondaryLabel: "Voir progression",
+      secondaryLabel: "Voir mes progrès",
     }, { activeCategoryId, activeCategoryName, coherence });
   }
 
@@ -210,14 +210,14 @@ export function buildLocalTodayHeroModel({
     let title = "Aucune action prévue aujourd’hui";
     const candidateCategoryName = gapCandidate?.categoryName || null;
     let meta = gapCandidate
-      ? `Tu peux planifier ${candidateWithDuration || gapCandidate.title} aujourd'hui pour maintenir la continuité.`
-      : "Planifie une action simple aujourd'hui pour maintenir la continuité.";
+      ? `Tu peux poser ${candidateWithDuration || gapCandidate.title} aujourd'hui pour garder un rythme lisible.`
+      : "Pose une action simple aujourd'hui pour garder le rythme.";
 
     if (gapSummary.selectionScope === "structure_missing") {
       title = activeCategoryName ? `Structurer ${activeCategoryName}` : "Structurer la catégorie active";
       meta =
         coherence.explanation ||
-        "Clarifie l’objectif de la catégorie active ou crée une première action exploitable.";
+        "Clarifie la direction de cette catégorie ou pose une première action exploitable.";
     } else if (gapSummary.gapReason === TODAY_GAP_REASON.EMPTY_ACTIVE_CATEGORY && activeCategoryName) {
       title = `Rien de prévu en ${activeCategoryName} aujourd’hui`;
       meta =
@@ -225,8 +225,8 @@ export function buildLocalTodayHeroModel({
           ? coherence.explanation ||
             `Rien de crédible n’est prévu en ${activeCategoryName} aujourd’hui. ${gapCandidate.title}${candidateCategoryName ? ` en ${candidateCategoryName}` : ""} contribue à ${coherence.contributionTargetLabel || activeCategoryName}.`
           : gapCandidate
-            ? `${gapCandidate.title} n’est pas encore planifiée aujourd’hui. Une courte action suffit pour maintenir l’élan.`
-            : "Une courte action suffit pour maintenir l’élan aujourd’hui.";
+            ? `${gapCandidate.title} n’est pas encore planifiée aujourd’hui. Une courte action suffit pour garder l’élan.`
+            : "Une courte action suffit pour garder l’élan aujourd’hui.";
     } else if (gapSummary.gapReason === TODAY_GAP_REASON.LOW_LOAD_DAY) {
       title = gapCandidate ? `Ajoute ${gapCandidate.title} aujourd’hui` : "Le plan du jour reste léger";
       meta =
@@ -255,17 +255,17 @@ export function buildLocalTodayHeroModel({
       primaryAction: {
         kind: gapSummary.selectionScope === "structure_missing" ? "open_library" : "open_pilotage",
       },
-      secondaryLabel: "Voir progression",
+      secondaryLabel: "Voir mes progrès",
     }, { activeCategoryId, activeCategoryName, coherence });
   }
 
   return withCategoryCoherence({
     interventionType: TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
-    title: focusTitle || "Aucune action planifiée pour cette date.",
+    title: focusTitle || "Aucune action prête pour cette date.",
     meta:
       activeDate === systemTodayKey
         ? focusMeta || "Planifie une action simple pour garder le rythme."
-        : focusMeta || "Crée ou planifie une action depuis Bibliothèque.",
+        : focusMeta || "Commence dans Bibliothèque par une catégorie claire puis une première action.",
     primaryLabel: activeDate === systemTodayKey ? "Planifier aujourd’hui" : "Aucune action active",
     primaryAction:
       activeDate === systemTodayKey
@@ -273,7 +273,7 @@ export function buildLocalTodayHeroModel({
             kind: "open_pilotage",
           }
         : null,
-    secondaryLabel: "Voir progression",
+    secondaryLabel: "Voir mes progrès",
   }, { activeCategoryId, activeCategoryName, coherence });
 }
 

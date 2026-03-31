@@ -22,10 +22,6 @@
   min-width: 0;
 }
 
-.gatePageContent > .gateSection.GateSecondarySectionCard {
-  --gate-premium-radius: 14px;
-}
-
 .gatePageSectionStack {
   display: flex;
   flex-direction: column;

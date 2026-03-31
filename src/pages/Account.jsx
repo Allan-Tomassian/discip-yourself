@@ -166,67 +166,73 @@ export default function Account({ data }) {
         >
           {loadError ? <p className="accountGateNote accountGateNoteError GateRoleHelperText" role="alert">{loadError}</p> : null}
           <form className="accountGateForm" onSubmit={handleSave}>
-            <label className="accountGateField GateFormField" htmlFor="account-email">
-              <span className="accountGateFieldLabel GateFormLabel">Email</span>
-              <input id="account-email" className="accountGateInput GateInputPremium isReadonly" value={String(user?.email || profile?.email || "")} readOnly disabled />
-            </label>
+            <div className="GateInlineMetaCard gatePageInlineText">
+              <label className="accountGateField GateFormField" htmlFor="account-email">
+                <span className="accountGateFieldLabel GateFormLabel">Email</span>
+                <input id="account-email" className="accountGateInput GateInputPremium isReadonly" value={String(user?.email || profile?.email || "")} readOnly disabled />
+              </label>
 
-            <label className="accountGateField GateFormField" htmlFor="account-username">
-              <span className="accountGateFieldLabel GateFormLabel">Identifiant</span>
-              <input
-                id="account-username"
-                className="accountGateInput GateInputPremium"
-                data-testid="account-username-input"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                placeholder={PLACEHOLDER_COPY.accountHandle}
-                autoComplete="username"
-              />
-            </label>
+              <label className="accountGateField GateFormField" htmlFor="account-username">
+                <span className="accountGateFieldLabel GateFormLabel">Identifiant</span>
+                <input
+                  id="account-username"
+                  className="accountGateInput GateInputPremium"
+                  data-testid="account-username-input"
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  placeholder={PLACEHOLDER_COPY.accountHandle}
+                  autoComplete="username"
+                />
+              </label>
 
-            <label className="accountGateField GateFormField" htmlFor="account-full-name">
-              <span className="accountGateFieldLabel GateFormLabel">Nom complet</span>
-              <input
-                id="account-full-name"
-                className="accountGateInput GateInputPremium"
-                data-testid="account-full-name-input"
-                value={fullName}
-                onChange={(event) => setFullName(event.target.value)}
-                placeholder={PLACEHOLDER_COPY.fullName}
-                autoComplete="name"
-              />
-            </label>
+              <label className="accountGateField GateFormField" htmlFor="account-full-name">
+                <span className="accountGateFieldLabel GateFormLabel">Nom complet</span>
+                <input
+                  id="account-full-name"
+                  className="accountGateInput GateInputPremium"
+                  data-testid="account-full-name-input"
+                  value={fullName}
+                  onChange={(event) => setFullName(event.target.value)}
+                  placeholder={PLACEHOLDER_COPY.fullName}
+                  autoComplete="name"
+                />
+              </label>
 
-            <label className="accountGateField GateFormField" htmlFor="account-avatar-url">
-              <span className="accountGateFieldLabel GateFormLabel">Photo de profil (URL)</span>
-              <input
-                id="account-avatar-url"
-                className="accountGateInput GateInputPremium"
-                data-testid="account-avatar-url-input"
-                value={avatarUrl}
-                onChange={(event) => setAvatarUrl(event.target.value)}
-                placeholder={PLACEHOLDER_COPY.avatarUrl}
-                autoComplete="url"
-              />
-            </label>
+              <label className="accountGateField GateFormField" htmlFor="account-avatar-url">
+                <span className="accountGateFieldLabel GateFormLabel">Photo de profil (URL)</span>
+                <input
+                  id="account-avatar-url"
+                  className="accountGateInput GateInputPremium"
+                  data-testid="account-avatar-url-input"
+                  value={avatarUrl}
+                  onChange={(event) => setAvatarUrl(event.target.value)}
+                  placeholder={PLACEHOLDER_COPY.avatarUrl}
+                  autoComplete="url"
+                />
+              </label>
+            </div>
 
             {availability.message ? (
-              <p
-                data-testid="account-username-feedback"
-                className={`accountGateNote GateRoleHelperText ${availability.state === "available" ? "accountGateNoteSuccess" : "accountGateNoteError"}`}
-              >
-                {availability.message}
-              </p>
+              <div className="GateInlineMetaCard gatePageInlineText">
+                <p
+                  data-testid="account-username-feedback"
+                  className={`accountGateNote GateRoleHelperText ${availability.state === "available" ? "accountGateNoteSuccess" : "accountGateNoteError"}`}
+                >
+                  {availability.message}
+                </p>
+              </div>
             ) : null}
 
             {status.message ? (
-              <p
-                data-testid="account-save-status"
-                className={`accountGateNote GateRoleHelperText ${status.type === "error" ? "accountGateNoteError" : "accountGateNoteSuccess"}`}
-                role={status.type === "error" ? "alert" : "status"}
-              >
-                {status.message}
-              </p>
+              <div className="GateInlineMetaCard gatePageInlineText">
+                <p
+                  data-testid="account-save-status"
+                  className={`accountGateNote GateRoleHelperText ${status.type === "error" ? "accountGateNoteError" : "accountGateNoteSuccess"}`}
+                  role={status.type === "error" ? "alert" : "status"}
+                >
+                  {status.message}
+                </p>
+              </div>
             ) : null}
 
             <div className="accountGateActions GatePrimaryCtaRow">
@@ -254,21 +260,23 @@ export default function Account({ data }) {
           className="accountGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
           collapsible={false}
         >
-          <div className="accountGateActions GatePrimaryCtaRow">
-            <GateButton
-              type="button"
-              variant="ghost"
-              className="accountGateDangerButton GatePressable"
-              withSound
-              onClick={() => {
-                signOut().catch(() => {});
-              }}
-            >
-              Déconnexion
-            </GateButton>
-            <GateButton type="button" variant="ghost" className="GatePressable" disabled>
-              Supprimer mon compte via le support
-            </GateButton>
+          <div className="GateInlineMetaCard gatePageInlineText">
+            <div className="accountGateActions GatePrimaryCtaRow">
+              <GateButton
+                type="button"
+                variant="ghost"
+                className="accountGateDangerButton GatePressable"
+                withSound
+                onClick={() => {
+                  signOut().catch(() => {});
+                }}
+              >
+                Déconnexion
+              </GateButton>
+              <GateButton type="button" variant="ghost" className="GatePressable" disabled>
+                Supprimer mon compte via le support
+              </GateButton>
+            </div>
           </div>
         </GateSection>
       </GatePage>

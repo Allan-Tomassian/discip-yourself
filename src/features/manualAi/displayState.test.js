@@ -5,7 +5,7 @@ describe("resolveManualAiDisplayState", () => {
   it("returns local when no analysis is visible and no request is loading", () => {
     expect(resolveManualAiDisplayState()).toEqual({
       kind: "local",
-      label: "Diagnostic local",
+      label: "Lecture locale",
       isAi: false,
     });
   });
@@ -13,7 +13,7 @@ describe("resolveManualAiDisplayState", () => {
   it("returns ai while a first manual analysis is loading", () => {
     expect(resolveManualAiDisplayState({ loading: true })).toEqual({
       kind: "ai",
-      label: "Analyse du Coach",
+      label: "Lecture du Coach",
       isAi: true,
     });
   });
@@ -26,7 +26,7 @@ describe("resolveManualAiDisplayState", () => {
       })
     ).toEqual({
       kind: "ai_updated",
-      label: "Analyse du Coach mise à jour",
+      label: "Lecture du Coach mise à jour",
       isAi: true,
     });
   });

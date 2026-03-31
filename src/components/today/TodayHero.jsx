@@ -39,8 +39,8 @@ export default function TodayHero({
     () => (activeCategory ? getCategoryUiVars(activeCategory, { level: "surface" }) : null),
     [activeCategory]
   );
-  const displayTitle = title || (isPreparing ? "Préparation de la recommandation" : "Aucune action prioritaire");
-  const displayReason = reason || (isPreparing ? "Analyse en cours." : "Aucune raison disponible.");
+  const displayTitle = title || (isPreparing ? "Préparation du prochain pas" : "Aucune action prioritaire");
+  const displayReason = reason || (isPreparing ? "Lecture en cours." : "Aucun repère disponible.");
   const displayContribution = contributionLabel || "Maintenir l’élan sur ta priorité active.";
   const displayImpact = impactText || "";
   const displayCategory = recommendedCategoryLabel || categoryName || "À préciser";
@@ -78,16 +78,16 @@ export default function TodayHero({
         </div>
         <div className="todayHeroDetailList">
           <div className="todayHeroDetailBlock">
-            <div className="todayHeroDetailLabel GateRoleCardMeta">Pourquoi</div>
+            <div className="todayHeroDetailLabel GateRoleCardMeta">Pourquoi maintenant</div>
             <div className="todayHeroDetailText GateRoleHelperText">{displayReason}</div>
           </div>
           <div className="todayHeroDetailBlock">
-            <div className="todayHeroDetailLabel GateRoleCardMeta">Contribue à</div>
+            <div className="todayHeroDetailLabel GateRoleCardMeta">Direction</div>
             <div className="todayHeroDetailText GateRoleHelperText">{displayContribution}</div>
           </div>
           {displayImpact ? (
             <div className="todayHeroDetailBlock">
-              <div className="todayHeroDetailLabel GateRoleCardMeta">Impact attendu</div>
+              <div className="todayHeroDetailLabel GateRoleCardMeta">Effet visé</div>
               <div className="todayHeroDetailText GateRoleHelperText">{displayImpact}</div>
             </div>
           ) : null}

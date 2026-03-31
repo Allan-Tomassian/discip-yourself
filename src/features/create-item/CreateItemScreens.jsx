@@ -69,7 +69,7 @@ function ReviewSection({ items = [], unresolvedQuestions = [], title = "Review",
 function ActionIdentitySection({
   controller,
   title = "Identité et rattachement",
-  description = "Titre, catégorie, priorité et lien éventuel.",
+  description = "Titre, catégorie stable, priorité et lien éventuel.",
   showOutcomeLink = true,
 }) {
   return (
@@ -106,13 +106,13 @@ function ActionIdentitySection({
 
       <SuggestedCategoryCard
         controller={controller}
-        text="Cette catégorie n’est pas encore active. Active-la avant de l’utiliser durablement."
+        text="Cette catégorie n’est pas encore active. Active-la pour en faire un chantier durable."
       />
 
       {showOutcomeLink ? (
         <Field
           label={`${LABELS.goal} lié`}
-          helper={`Optionnel. Lie cette ${LABELS.actionLower} à un ${LABELS.goalLower} seulement si cela clarifie vraiment sa place.`}
+          helper={`Optionnel. Lie cette ${LABELS.actionLower} à un ${LABELS.goalLower} seulement si cela éclaire mieux sa direction.`}
         >
           <Select value={controller.effectiveSelectedOutcomeId} onChange={(event) => controller.setSelectedOutcomeId(event.target.value)}>
             <option value="">{`Sans ${LABELS.goalLower}`}</option>
@@ -128,10 +128,10 @@ function ActionIdentitySection({
   );
 }
 
-function ActionPlanningSection({ controller, title = "Planification", description = "Quand l’action existe, comment elle revient et combien de temps elle prend." }) {
+function ActionPlanningSection({ controller, title = "Planification", description = "Quand l’action revient et quel rythme elle suit." }) {
   return (
     <SectionSurface title={title} description={description}>
-      <Field label="Cadence" helper="Choisis le format le plus crédible pour cette action.">
+      <Field label="Cadence" helper="Choisis le rythme le plus crédible pour cette action.">
         <Select value={controller.repeat} onChange={(event) => controller.setRepeat(event.target.value)}>
           {REPEAT_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -205,7 +205,7 @@ function ActionReminderSection({ controller }) {
   return (
     <SectionSurface
       title="Rappels"
-      description="Un signal simple, seulement si cette action possède déjà un cadre planifiable."
+      description="Un rappel léger, seulement si cette action a déjà un rythme clair."
     >
       <label className="editItemToggleRow">
         <input
@@ -230,7 +230,7 @@ function ActionQuantitySection({ controller }) {
   return (
     <SectionSurface
       title="Quantification"
-      description="Optionnel. Utile seulement si cette action gagne à être suivie comme un volume."
+      description="Optionnel. Utile seulement si cette action se suit mieux comme un volume."
     >
       <div className="editItemThreeCol">
         <Field label="Quantité">
@@ -267,7 +267,7 @@ function ActionContextSection({ controller }) {
   return (
     <SectionSurface
       title="Contexte"
-      description="Garde seulement les notes qui aident vraiment à agir ou à reprendre."
+      description="Garde seulement le contexte qui aide vraiment à agir ou à reprendre."
     >
       <Field label="Notes">
         <GateTextarea
@@ -294,8 +294,8 @@ export function ActionCreateScreen({
       <ActionQuantitySection controller={controller} />
       <ActionContextSection controller={controller} />
       <ReviewSection
-        title="Review"
-        description="Vérifie rapidement ce qui va vraiment être créé."
+        title="Avant de créer"
+        description="Vérifie la catégorie, la direction éventuelle et le rythme."
         unresolvedQuestions={unresolvedQuestions}
         items={[...controller.reviewCards, ...additionalReviewCards]}
       />
@@ -309,7 +309,7 @@ export function ActionCreateScreen({
   );
 }
 
-function OutcomeIdentitySection({ controller, title = "Identité et catégorie", description = "Titre, catégorie et niveau de priorité." }) {
+function OutcomeIdentitySection({ controller, title = "Identité et catégorie", description = "Titre, catégorie stable et niveau de priorité." }) {
   return (
     <SectionSurface main title={title} description={description}>
       <Field label="Titre">
@@ -344,7 +344,7 @@ function OutcomeIdentitySection({ controller, title = "Identité et catégorie",
 
       <SuggestedCategoryCard
         controller={controller}
-        text="Cette catégorie n’est pas encore active. Active-la avant d’y rattacher durablement cet objectif."
+        text="Cette catégorie n’est pas encore active. Active-la pour y rattacher durablement cette direction."
       />
     </SectionSurface>
   );
@@ -352,7 +352,7 @@ function OutcomeIdentitySection({ controller, title = "Identité et catégorie",
 
 function OutcomeHorizonSection({ controller }) {
   return (
-    <SectionSurface title="Horizon" description="Définis une fenêtre crédible pour cet objectif.">
+    <SectionSurface title="Horizon" description="Donne à cet objectif un horizon crédible.">
       <div className="editItemTwoCol">
         <Field label="Date de début">
           <DatePicker value={controller.startDate} onChange={controller.handleOutcomeStartDateChange} />
@@ -404,7 +404,7 @@ function OutcomeContextSection({ controller }) {
   return (
     <SectionSurface
       title="Contexte"
-      description="Garde une note utile pour préciser ce que cet objectif doit vraiment produire."
+      description="Garde une note utile pour préciser ce cap."
     >
       <Field label="Notes">
         <GateTextarea
@@ -430,8 +430,8 @@ export function OutcomeCreateScreen({
       <OutcomeMeasureSection controller={controller} />
       <OutcomeContextSection controller={controller} />
       <ReviewSection
-        title="Review"
-        description="Vérifie rapidement la structure que tu vas poser."
+        title="Avant de créer"
+        description="Vérifie la catégorie, la direction et les mesures utiles."
         unresolvedQuestions={unresolvedQuestions}
         items={[...controller.reviewCards, ...additionalReviewCards]}
       />
@@ -460,14 +460,14 @@ export function GuidedCreateScreen({
       <OutcomeIdentitySection
         controller={outcomeController}
         title="Direction et catégorie"
-        description={`Pose d’abord la direction, puis rattache une première ${LABELS.actionLower} crédible.`}
+        description={`Pose d’abord la direction dans une catégorie stable, puis rattache une première ${LABELS.actionLower} crédible.`}
       />
       <OutcomeHorizonSection controller={outcomeController} />
       <OutcomeMeasureSection controller={outcomeController} />
       <ActionIdentitySection
         controller={actionController}
         title="Première action"
-        description="La première action doit déjà être crédible, planifiable et simple à relancer."
+        description="La première action doit déjà être crédible, simple à exécuter et facile à relancer."
         showOutcomeLink={false}
       />
       <ActionPlanningSection
@@ -478,8 +478,8 @@ export function GuidedCreateScreen({
       <ActionReminderSection controller={actionController} />
       <ActionContextSection controller={actionController} />
       <ReviewSection
-        title="Review"
-        description="Tu vas créer un objectif puis sa première action liée."
+        title="Avant de créer"
+        description="Tu vas créer une direction puis sa première action liée."
         unresolvedQuestions={unresolvedQuestions}
         items={[...outcomeController.reviewCards, ...actionController.reviewCards, ...additionalReviewCards]}
       />

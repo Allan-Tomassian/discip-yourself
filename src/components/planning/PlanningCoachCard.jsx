@@ -33,7 +33,7 @@ function describeDraftChange(change, { goalsById, categoriesById }) {
 }
 
 function renderSuggestion(reply) {
-  const label = reply?.primaryAction?.label || "Ajuster le planning";
+  const label = reply?.primaryAction?.label || "Ajuster le rythme";
   const duration = Number.isFinite(reply?.suggestedDurationMin) ? `${reply.suggestedDurationMin} min` : "";
   return [label, duration].filter(Boolean).join(" • ");
 }
@@ -226,7 +226,7 @@ export default function PlanningCoachCard({
       <div className="planningSectionBody">
         <div className="planningSectionHeader planningSectionHeader--split">
           <div className="planningSectionHeaderText">
-            <div className="titleSm GateRoleSectionTitle">Coach de planification</div>
+            <div className="titleSm GateRoleSectionTitle">Lecture locale du rythme</div>
             <ManualAiStatus
               statusKind={planningAnalysisState.kind}
               statusLabel={planningAnalysisState.label}
@@ -245,8 +245,8 @@ export default function PlanningCoachCard({
               {manualPlanningAnalysis.loading
                 ? manualPlanningAnalysis.loadingStageLabel || "Analyse..."
                 : planningView === "week"
-                  ? "Analyser ma semaine"
-                  : "Analyser ma journée"}
+                  ? "Observer ma semaine"
+                  : "Observer ma journée"}
             </Button>
             {manualPlanningAnalysis.isPersistedForContext ? (
               <Button variant="ghost" onClick={handleDismissPlanningAnalysis}>
@@ -258,17 +258,17 @@ export default function PlanningCoachCard({
 
         <div className="planningCoachSummary">
           <div className="planningCoachBlock GateAnalyticsCard">
-            <div className="small2 GateRoleCardMeta planningCoachLabel">Ajustement proposé</div>
-            <div className="titleSm GateRoleCardTitle">{visibleReply?.headline || "Ajustement du planning"}</div>
+            <div className="small2 GateRoleCardMeta planningCoachLabel">Repère principal</div>
+            <div className="titleSm GateRoleCardTitle">{visibleReply?.headline || "Ajustement du rythme"}</div>
           </div>
           <div className="planningCoachBlock GateAnalyticsCard">
-            <div className="small2 GateRoleCardMeta planningCoachLabel">Ce qui compte</div>
+            <div className="small2 GateRoleCardMeta planningCoachLabel">Ce que cela signale</div>
             <div className="small GateRoleHelperText">
-              {visibleReply?.reason || "Le planning a besoin d’un ajustement simple et crédible."}
+              {visibleReply?.reason || "Le rythme a besoin d’un ajustement simple et crédible."}
             </div>
           </div>
           <div className="planningCoachBlock GateAnalyticsCard">
-            <div className="small2 GateRoleCardMeta planningCoachLabel">Prochain pas</div>
+            <div className="small2 GateRoleCardMeta planningCoachLabel">Ajustement simple</div>
             <div className="small GateRoleHelperText">{renderSuggestion(visibleReply)}</div>
           </div>
         </div>
@@ -308,10 +308,10 @@ export default function PlanningCoachCard({
 
         <div className="planningSectionFooter planningCoachFooter">
           <Button variant="ghost" onClick={() => onOpenCoach?.()}>
-            Ouvrir le coach
+            Structurer avec le Coach
           </Button>
           <Button variant="ghost" onClick={() => onOpenPilotage?.()}>
-            Voir mes progrès
+            Relire mes progrès
           </Button>
         </div>
       </div>

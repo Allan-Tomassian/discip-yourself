@@ -799,7 +799,7 @@ export default function CreateItem({
 
   const headerTitle =
     effectiveKind === "guided"
-      ? "Créer une structure"
+      ? "Créer une direction puis une action"
       : effectiveKind === "outcome"
         ? `Créer un ${LABELS.goalLower}`
         : effectiveKind === "assistant"
@@ -807,12 +807,12 @@ export default function CreateItem({
           : "Créer une action";
   const headerSubtitle =
     effectiveKind === "guided"
-      ? "Pose une direction, puis une première action immédiatement exploitable."
+      ? "Choisis une catégorie stable, pose une direction, puis une première action exécutable."
       : effectiveKind === "outcome"
-        ? "Clarifie une direction avant de l’inscrire dans la bibliothèque."
+        ? "Pose une direction dans une catégorie avant d’y rattacher des actions."
         : effectiveKind === "assistant"
-          ? "Le Coach propose une structure. Tu valides seulement ce qui doit vraiment exister."
-          : "Crée une action simple, lisible et directement planifiable.";
+          ? "Le Coach clarifie une structure. Tu valides seulement la catégorie, la direction et les actions utiles."
+          : "Ajoute une action dans une catégorie, puis donne-lui un rythme simple.";
 
   const headerRight = (
     <div className="createItemHeaderMeta">
@@ -822,7 +822,7 @@ export default function CreateItem({
           : effectiveKind === "guided"
             ? "Guidé"
             : effectiveKind === "outcome"
-              ? LABELS.goal
+              ? "Direction"
               : LABELS.action}
       </div>
       <div className="createItemHeaderText">Retour vers {resolveMainTabLabel(origin.mainTab)}</div>
