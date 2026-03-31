@@ -25,6 +25,7 @@ import {
 } from "../domain/categoryVisibility";
 import { collectSystemInboxBuckets } from "../domain/systemInboxMigration";
 import { getCategoryUiVars, resolveCategoryStateTone } from "../utils/categoryAccent";
+import { resolveCategoryColor } from "../utils/categoryPalette";
 import DisciplineTrendChart from "../features/pilotage/DisciplineTrendChart";
 import { buildPilotageDisciplineTrend, PILOTAGE_DISCIPLINE_WINDOWS } from "../features/pilotage/disciplineTrendModel";
 import ManualAiStatus from "../components/ai/ManualAiStatus";
@@ -734,7 +735,7 @@ export default function Pilotage({
   }, [accessToken, detailCategory, manualPilotageAnalysis, persistenceScope, pilotageAnalysisContextKey, selectedDateKey]);
 
   const getCategoryColor = useCallback(
-    (category) => category?.color || category?.accentColor || category?.hex || category?.themeColor || "#6EE7FF",
+    (category) => resolveCategoryColor(category, "#4F7CFF"),
     []
   );
   const renderInlineCategoryDetail = (category) => {

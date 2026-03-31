@@ -3,6 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import Gauge from "../components/Gauge";
 import { getAccentForPage } from "../utils/_theme";
+import { resolveCategoryColor } from "../utils/categoryPalette";
 import { resolveGoalType } from "../domain/goalType";
 import { LABELS } from "../ui/labels";
 import CategoryManageInline from "../features/library/CategoryManageInline";
@@ -153,7 +154,7 @@ export default function CategoryView({
     );
   }
 
-  const accent = category?.color || getAccentForPage(safeData, "home");
+  const accent = resolveCategoryColor(category, getAccentForPage(safeData, "home"));
   const backgroundImage = category.wallpaper || safeData.profile?.whyImage || "";
   const headerRight = (
     <div className="manageHeaderRightWrap">
@@ -177,7 +178,7 @@ export default function CategoryView({
                 currentValue={g.currentValue}
                 targetValue={g.targetValue}
                 unit={MEASURE_UNITS[g.measureType] || ""}
-                accentColor={category.color || accent}
+                accentColor={resolveCategoryColor(category, accent)}
               />
             ))}
             {typeof onOpenProgress === "function" ? (

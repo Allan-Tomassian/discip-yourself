@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DEFAULT_CATEGORY_ID, ensureCategoryId, initialData, migrate } from "./state";
+import { DEFAULT_CATEGORY_ID, ensureCategoryId, initialData, migrate, normalizeCategory } from "./state";
 import { buildScheduleRuleSourceKey, buildScheduleRulesFromAction } from "./scheduleRules";
 import { DEFAULT_THEME } from "../theme/themeTokens";
 
@@ -76,6 +76,21 @@ describe("ensureCategoryId", () => {
   it("trims and preserves a provided categoryId", () => {
     const ensured = ensureCategoryId({ id: "g1", categoryId: "  cat_1 " });
     expect(ensured.categoryId).toBe("cat_1");
+  });
+
+  it("normalizes known category names onto the canonical palette", () => {
+    const business = normalizeCategory({ id: "cat_business", name: "Business", color: "#0EA5E9" }, 0);
+    const finance = normalizeCategory({ id: "cat_finance", name: "Finance", color: "#10B981" }, 1);
+
+    expect(business.color).toBe("#4F7CFF");
+    expect(finance.color).toBe("#90A63B");
+  });
+
+  it("assigns distinct fallback colors to unnamed custom categories", () => {
+    const first = normalizeCategory({ id: "cat_custom_1", name: "Cuisine" }, 0);
+    const second = normalizeCategory({ id: "cat_custom_2", name: "Lecture" }, 1);
+
+    expect(first.color).not.toBe(second.color);
   });
 });
 

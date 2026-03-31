@@ -18,6 +18,7 @@ import { GateButton, GateSection, GateSectionIntro } from "../../shared/ui/gate/
 import { GateIconButton, GateInput, GateTextarea } from "../../shared/ui/gate/GateForm";
 import { BehaviorCue, useBehaviorFeedback } from "../../feedback/BehaviorFeedbackContext";
 import { deriveBehaviorFeedbackSignal, deriveLibraryBehaviorCue } from "../../feedback/feedbackDerivers";
+import { resolveCategoryColor } from "../../utils/categoryPalette";
 
 function Button({ variant = "primary", size = "sm", className = "", ...props }) {
   const gateVariant =
@@ -498,7 +499,7 @@ export default function CategoryManageInline({
 
   function recolorCategory() {
     if (!category?.id || typeof setData !== "function") return;
-    const nextColor = safePrompt("Couleur (hex) :", category.color || "#7C3AED");
+    const nextColor = safePrompt("Couleur (hex) :", resolveCategoryColor(category, "#4F7CFF"));
     if (!nextColor || !nextColor.trim()) return;
     setData((prev) => ({
       ...prev,
@@ -686,7 +687,7 @@ export default function CategoryManageInline({
   const whyDisplay = whyText || "Aucun mini-why pour cette catégorie.";
 
   return (
-    <div className="libraryManageStack stack stackGap16" style={{ "--catColor": category.color || "#7C3AED" }}>
+    <div className="libraryManageStack stack stackGap16" style={{ "--catColor": resolveCategoryColor(category, "#4F7CFF") }}>
       <section className="mainPageSection">
         <GateSectionIntro title="Réglages" subtitle="Nom, priorité et paramètres de la catégorie." />
         <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-category-card")}>
@@ -1027,7 +1028,7 @@ export default function CategoryManageInline({
                           goal.outcomeId === selectedOutcome.id);
                       const showLink = linkedToSelected || Boolean(selectedOutcome?.id);
                       return (
-                        <AccentItem key={goal.id} color={category.color || "#7C3AED"}>
+                        <AccentItem key={goal.id} color={resolveCategoryColor(category, "#4F7CFF")}>
                           <div className="stack gap6 minW0 wFull">
                             <div className="row rowBetween alignCenter gap12">
                               <div className="itemTitle">{goal.title || "Action"}</div>
@@ -1118,7 +1119,7 @@ export default function CategoryManageInline({
             {outcomeGoals.length ? (
               <div className="stack stackGap12">
                 {outcomeGoals.map((g) => (
-                  <AccentItem key={g.id} color={category.color || "#7C3AED"}>
+                  <AccentItem key={g.id} color={resolveCategoryColor(category, "#4F7CFF")}>
                     <div className="minW0">
                       <div className="itemTitle">
                         {g.title || LABELS.goal}

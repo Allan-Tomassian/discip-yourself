@@ -13,6 +13,7 @@ import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
 import { canCreateCategory } from "../logic/entitlements";
 import { LABELS, MAIN_PAGE_COPY, SURFACE_LABELS } from "../ui/labels";
 import { getCategoryUiVars } from "../utils/categoryAccent";
+import { resolveCategoryColor } from "../utils/categoryPalette";
 import { resolveGoalType } from "../domain/goalType";
 import { isProcessLinkedToOutcome, linkProcessToOutcome } from "../logic/linking";
 import { buildPlanningSections } from "../utils/librarySections";
@@ -676,7 +677,7 @@ export default function Categories({
     return (
       <div key={category.id} className="col gap8">
         <AccentCategoryRow
-          color={category.color}
+          category={category}
           selected={isSelected}
           rightSlot={
             <span className="row gap8">
@@ -1158,7 +1159,7 @@ export default function Categories({
                       <div className="categoryGateList isCollapsed librarySuggestionsList">
                         {remainingSuggestions.map((cat) => (
                           <div key={cat.id} className="categoryGateItem GateRowPremium GateInlineMetaCard">
-                            <span className="categoryGateSwatch" style={{ background: cat.color || "#F97316" }} />
+                            <span className="categoryGateSwatch" style={{ background: resolveCategoryColor(cat, "#4F7CFF") }} />
                             <span className="categoryGateName">{cat.name || "Catégorie"}</span>
                             <button
                               type="button"

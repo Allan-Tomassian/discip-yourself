@@ -1,3 +1,5 @@
+import { resolveCategoryColor } from "../../utils/categoryPalette";
+
 export const SYSTEM_INBOX_ID = "sys_inbox";
 export const DEFAULT_CATEGORY_ID = SYSTEM_INBOX_ID;
 
@@ -9,7 +11,7 @@ function normalizeInboxCategory(rawCat, index = 0) {
     c.system = true;
   }
   if (typeof c.name !== "string" || !c.name.trim()) c.name = `Catégorie ${index + 1}`;
-  if (typeof c.color !== "string" || !c.color.trim()) c.color = "#7C3AED";
+  c.color = resolveCategoryColor({ id: c.id, name: c.name, color: c.color || "" }, "#6F7C91");
   if (typeof c.wallpaper !== "string") c.wallpaper = "";
   if (typeof c.whyText !== "string") c.whyText = "";
   if (typeof c.templateId !== "string" || !c.templateId.trim()) c.templateId = null;
@@ -29,7 +31,7 @@ export function ensureSystemInboxCategory(state) {
     {
       id: SYSTEM_INBOX_ID,
       name: "Général",
-      color: "#64748B",
+      color: resolveCategoryColor({ id: SYSTEM_INBOX_ID, name: "Général" }, "#6F7C91"),
       system: true,
       createdAt,
     },

@@ -218,7 +218,7 @@ export default function PlanningCoachCard({
         <div className="planningCoachSummary">
           <div className="planningCoachBlock GateAnalyticsCard">
             <div className="small2 GateRoleCardMeta planningCoachLabel">Repère principal</div>
-            <div className="titleSm GateRoleCardTitle">{visibleReply?.headline || "Ajustement du rythme"}</div>
+            <div className="small GateRoleHelperText">{visibleReply?.headline || "Ajustement du rythme"}</div>
           </div>
           <div className="planningCoachBlock GateAnalyticsCard">
             <div className="small2 GateRoleCardMeta planningCoachLabel">Ce que cela signale</div>

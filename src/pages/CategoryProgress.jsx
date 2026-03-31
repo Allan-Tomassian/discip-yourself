@@ -2,6 +2,7 @@ import React from "react";
 import ScreenShell from "./_ScreenShell";
 import Gauge from "../components/Gauge";
 import { getAccentForPage } from "../utils/_theme";
+import { resolveCategoryColor } from "../utils/categoryPalette";
 import { resolveGoalType } from "../domain/goalType";
 import { LABELS } from "../ui/labels";
 import { GateButton, GateSection } from "../shared/ui/gate/Gate";
@@ -61,7 +62,7 @@ export default function CategoryProgress({ data, categoryId, onBack }) {
     );
   }
 
-  const accent = category.color || getAccentForPage(safeData, "home");
+  const accent = resolveCategoryColor(category, getAccentForPage(safeData, "home"));
 
   return (
     <ScreenShell

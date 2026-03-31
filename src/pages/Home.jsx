@@ -16,6 +16,7 @@ import { applySessionRuntimeTransition, isRuntimeSessionOpen } from "../logic/se
 import { emitSessionRuntimeNotificationHook } from "../logic/sessionRuntimeNotifications";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
+import { resolveCategoryColor } from "../utils/categoryPalette";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
 import { getCategoryProfileSummary } from "../domain/categoryProfile";
 import {
@@ -1035,7 +1036,7 @@ export default function Home({
         goalIdSet,
         selectedDateKey,
         selectedCategoryId: executionCategoryId,
-        fallbackAccent: focusCategory?.color || getAccentForPage(safeData, "home"),
+        fallbackAccent: resolveCategoryColor(focusCategory, getAccentForPage(safeData, "home")),
         defaultActionId: focusOccurrence?.goalId || sessionHabit?.id || ensureProcessIds[0] || null,
       }),
     [

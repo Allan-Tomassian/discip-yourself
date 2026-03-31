@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { createPortal } from "react-dom";
 import { GateBadge, GatePanel } from "../shared/ui/gate/Gate";
 import { getCategoryUiVars } from "../utils/categoryAccent";
+import { resolveCategoryColor } from "../utils/categoryPalette";
 import {
   BEHAVIOR_FEEDBACK_MOTION,
   createBehaviorFeedbackSignal,
@@ -160,7 +161,7 @@ export function BehaviorCue({ cue, category = null, className = "" }) {
   return (
     <GateBadge
       className={`behaviorCue behaviorCue--${cue?.cueKind || "structure"}${className ? ` ${className}` : ""}`}
-      style={category?.color ? { "--behaviorCueAccent": category.color } : undefined}
+      style={category ? { "--behaviorCueAccent": resolveCategoryColor(category, "#4F7CFF") } : undefined}
     >
       <span className="behaviorCueDot" aria-hidden="true" />
       <span>{message}</span>

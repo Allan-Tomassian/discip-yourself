@@ -9,6 +9,7 @@ import { applySessionRuntimeTransition, isRuntimeSessionOpen } from "../logic/se
 import { emitSessionRuntimeNotificationHook } from "../logic/sessionRuntimeNotifications";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryUiVars } from "../utils/categoryAccent";
+import { resolveCategoryColor } from "../utils/categoryPalette";
 import { resolveConflictNearest } from "../logic/occurrencePlanner";
 import { normalizeActiveSessionForUI, normalizeOccurrenceForUI } from "../logic/compat";
 import { withExecutionActiveCategoryId } from "../domain/categoryVisibility";
@@ -122,7 +123,7 @@ export default function Session({
     return goals.find((item) => item?.id === selectedGoalId) || null;
   }, [goals, selectedOccurrence?.goalId, session?.habitIds]);
   const category = categories.find((item) => item?.id === goal?.categoryId) || null;
-  const accent = category?.color || getAccentForPage(safeData, "home");
+  const accent = resolveCategoryColor(category, getAccentForPage(safeData, "home"));
   const catAccentVars = getCategoryUiVars(category || accent, { level: "focus" });
 
   useEffect(() => {

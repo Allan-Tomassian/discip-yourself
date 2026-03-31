@@ -6,6 +6,7 @@ import {
   updateOccurrence,
 } from "./occurrences";
 import { normalizeLocalDateKey } from "../utils/dateKey";
+import { resolveCategoryColor } from "../utils/categoryPalette";
 
 function resolveOccurrences(source) {
   if (Array.isArray(source)) return source;
@@ -174,7 +175,7 @@ export function getCategoryColorForGoalId(goalId, goals, categories) {
   const goal = goalsById[goalId];
   if (!goal || typeof goal.categoryId !== "string") return null;
   const cat = catsById[goal.categoryId];
-  const color = cat && typeof cat.color === "string" ? cat.color : null;
+  const color = cat ? resolveCategoryColor(cat, null) : null;
   return color;
 }
 

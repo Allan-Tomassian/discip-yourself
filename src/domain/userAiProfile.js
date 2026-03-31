@@ -1,4 +1,5 @@
 import { addDaysLocal, fromLocalDateKey, normalizeLocalDateKey, parseTimeToMinutes, toLocalDateKey } from "../utils/datetime.js";
+import { resolveCategoryColor } from "../utils/categoryPalette";
 
 export const USER_AI_GOAL_IDS = Object.freeze([
   "health",
@@ -21,32 +22,32 @@ export const USER_AI_CATEGORY_META = Object.freeze({
   health: {
     id: "health",
     label: "Santé",
-    color: "#22C55E",
+    color: resolveCategoryColor({ id: "health", label: "Santé" }),
   },
   business: {
     id: "business",
     label: "Business",
-    color: "#0EA5E9",
+    color: resolveCategoryColor({ id: "business", label: "Business" }),
   },
   learning: {
     id: "learning",
     label: "Apprentissage",
-    color: "#EAB308",
+    color: resolveCategoryColor({ id: "learning", label: "Apprentissage" }),
   },
   productivity: {
     id: "productivity",
     label: "Productivité",
-    color: "#6366F1",
+    color: resolveCategoryColor({ id: "productivity", label: "Productivité" }),
   },
   personal: {
     id: "personal",
     label: "Personnel",
-    color: "#F97316",
+    color: resolveCategoryColor({ id: "personal", label: "Personnel" }),
   },
   finance: {
     id: "finance",
     label: "Finance",
-    color: "#10B981",
+    color: resolveCategoryColor({ id: "finance", label: "Finance" }),
   },
 });
 

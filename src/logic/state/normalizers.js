@@ -8,6 +8,7 @@ import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "../blocks/registr
 import { BRAND_ACCENT, DEFAULT_THEME } from "../../theme/themeTokens";
 import { createDefaultUserAiProfile } from "../../domain/userAiProfile";
 import { createEmptyCategoryProfilesState } from "../../domain/categoryProfile";
+import { DEFAULT_CATEGORY_COLOR, pickCategoryPaletteColor, resolveCategoryColor } from "../../utils/categoryPalette";
 import { DEFAULT_CATEGORY_ID, SYSTEM_INBOX_ID } from "./inbox";
 import {
   SCHEMA_VERSION,
@@ -35,9 +36,9 @@ import {
 export const THEME_PRESETS = ["aurora", "midnight", "sunset", "ocean", "forest"];
 
 export const DEFAULT_CATEGORIES = [
-  { id: "cat_sport", name: "Sport", color: "#7C3AED", wallpaper: "", mainGoalId: null },
-  { id: "cat_work", name: "Travail", color: "#06B6D4", wallpaper: "", mainGoalId: null },
-  { id: "cat_health", name: "Santé", color: "#22C55E", wallpaper: "", mainGoalId: null },
+  { id: "cat_sport", name: "Sport", color: resolveCategoryColor({ id: "cat_sport", name: "Sport" }), wallpaper: "", mainGoalId: null },
+  { id: "cat_work", name: "Travail", color: resolveCategoryColor({ id: "cat_work", name: "Travail" }), wallpaper: "", mainGoalId: null },
+  { id: "cat_health", name: "Santé", color: resolveCategoryColor({ id: "cat_health", name: "Santé" }), wallpaper: "", mainGoalId: null },
 ];
 
 export const DEFAULT_BLOCKS = [
@@ -78,7 +79,11 @@ export function normalizeCategory(rawCat, index = 0) {
     c.system = true;
   }
   if (typeof c.name !== "string" || !c.name.trim()) c.name = `Catégorie ${index + 1}`;
-  if (typeof c.color !== "string" || !c.color.trim()) c.color = "#7C3AED";
+  const fallbackColor = pickCategoryPaletteColor(index);
+  c.color = resolveCategoryColor(
+    { id: c.id, name: c.name, label: c.label, color: typeof c.color === "string" ? c.color : "" },
+    fallbackColor || DEFAULT_CATEGORY_COLOR
+  );
   if (typeof c.wallpaper !== "string") c.wallpaper = "";
   if (typeof c.whyText !== "string") c.whyText = "";
   if (typeof c.templateId !== "string" || !c.templateId.trim()) c.templateId = null;
@@ -605,9 +610,9 @@ export function initialData() {
 
 export function demoData() {
   const categories = [
-    { id: "demo_cat_1", name: "Catégorie 1", color: "#7C3AED", wallpaper: "", mainGoalId: null },
-    { id: "demo_cat_2", name: "Catégorie 2", color: "#06B6D4", wallpaper: "", mainGoalId: null },
-    { id: "demo_cat_3", name: "Catégorie 3", color: "#22C55E", wallpaper: "", mainGoalId: null },
+    { id: "demo_cat_1", name: "Catégorie 1", color: pickCategoryPaletteColor(0), wallpaper: "", mainGoalId: null },
+    { id: "demo_cat_2", name: "Catégorie 2", color: pickCategoryPaletteColor(1), wallpaper: "", mainGoalId: null },
+    { id: "demo_cat_3", name: "Catégorie 3", color: pickCategoryPaletteColor(2), wallpaper: "", mainGoalId: null },
   ];
   const outcomeId = uid();
   const processId = uid();

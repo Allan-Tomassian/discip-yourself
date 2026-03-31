@@ -30,6 +30,8 @@ describe("PlanningCoachCard contract", () => {
     expect(source).toContain("manualPlanningAnalysis.loadingStageLabel || \"Analyse...\"");
     expect(source).toContain("Observer ma semaine");
     expect(source).toContain("Observer ma journée");
+    expect(source).not.toContain("titleSm GateRoleCardTitle");
+    expect(source).toContain('<div className="small GateRoleHelperText">{visibleReply?.headline || "Ajustement du rythme"}</div>');
   });
 
   it("keeps planning analysis local and routes toward the canonical Coach instead of draft application", () => {

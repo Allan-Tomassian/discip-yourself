@@ -1,4 +1,5 @@
 import { normalizeLocalDateKey } from "../../utils/dateKey";
+import { resolveCategoryColor } from "../../utils/categoryPalette";
 
 function safeArray(value) {
   return Array.isArray(value) ? value : [];
@@ -57,7 +58,7 @@ export function deriveTodayCalendarModel({
     const categoryId = typeof goal.categoryId === "string" ? goal.categoryId : "";
     if (!categoryId) continue;
     const category = categoriesMap.get(categoryId);
-    const color = category?.color || goal?.color || "";
+    const color = resolveCategoryColor(category || goal, "");
     if (!color) continue;
     const dayMap = rawDots.get(entry.dateKey) || new Map();
     if (!dayMap.has(categoryId)) dayMap.set(categoryId, { categoryId, color });
@@ -77,7 +78,7 @@ export function deriveTodayCalendarModel({
 
   const selectedDateAccent =
     accentByDate.get(selectedDateKey) ||
-    categoriesMap.get(selectedCategoryId || "")?.color ||
+    resolveCategoryColor(categoriesMap.get(selectedCategoryId || ""), "") ||
     fallbackAccent ||
     "";
 

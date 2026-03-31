@@ -3,6 +3,7 @@ import ScreenShell from "./_ScreenShell";
 import AccentItem from "../components/AccentItem";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryUiVars } from "../utils/categoryAccent";
+import { resolveCategoryColor } from "../utils/categoryPalette";
 import { resolveGoalType } from "../domain/goalType";
 import { isProcessLinkedToOutcome } from "../logic/linking";
 import { LABELS } from "../ui/labels";
@@ -66,7 +67,7 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
     );
   }
 
-  const accent = category.color || getAccentForPage(safeData, "home");
+  const accent = resolveCategoryColor(category, getAccentForPage(safeData, "home"));
   const catAccentVars = getCategoryUiVars(category || accent, { level: "surface" });
   const whyText = (category.whyText || "").trim();
 

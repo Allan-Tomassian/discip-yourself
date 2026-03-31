@@ -6,12 +6,12 @@ describe("getCategoryAccentVars", () => {
     const finance = getCategoryAccentVars({ name: "Finance", color: "#111111" });
     const mental = getCategoryAccentVars({ name: "Mental", color: "#222222" });
 
-    expect(finance["--category-gradient"]).toContain("#22c55e");
-    expect(finance["--category-gradient"]).toContain("#3aa0ff");
-    expect(finance["--accent"]).toBe("#22c55e");
+    expect(finance["--category-gradient"]).toContain("#90A63B");
+    expect(finance["--category-gradient"]).toContain("#6F8732");
+    expect(finance["--accent"]).toBe("#90A63B");
 
-    expect(mental["--category-gradient"]).toContain("#8b5cf6");
-    expect(mental["--category-gradient"]).toContain("#ec4899");
+    expect(mental["--category-gradient"]).toContain("#8665E8");
+    expect(mental["--category-gradient"]).toContain("#5F5FCF");
   });
 
   it("derives a fallback gradient from the category color when no preset exists", () => {
@@ -31,9 +31,9 @@ describe("getCategoryAccentVars", () => {
   });
 
   it("derives stable UI vars for pill, surface and focus levels", () => {
-    const pill = getCategoryUiVars({ name: "Sport", color: "#3aa0ff" }, { level: "pill" });
-    const surface = getCategoryUiVars({ name: "Sport", color: "#3aa0ff" }, { level: "surface" });
-    const focus = getCategoryUiVars({ name: "Sport", color: "#3aa0ff" }, { level: "focus" });
+    const pill = getCategoryUiVars({ name: "Sport", color: "#D85E74" }, { level: "pill" });
+    const surface = getCategoryUiVars({ name: "Sport", color: "#D85E74" }, { level: "surface" });
+    const focus = getCategoryUiVars({ name: "Sport", color: "#D85E74" }, { level: "focus" });
 
     expect(pill["--categoryUiLevel"]).toBe("pill");
     expect(surface["--categoryUiLevel"]).toBe("surface");
@@ -44,16 +44,16 @@ describe("getCategoryAccentVars", () => {
   });
 
   it("attenuates weak states and nudges critical states without losing category context", () => {
-    const weak = getCategoryUiVars({ name: "Finance", color: "#22c55e" }, { level: "surface", stateTone: "weak" });
+    const weak = getCategoryUiVars({ name: "Finance", color: "#90A63B" }, { level: "surface", stateTone: "weak" });
     const critical = getCategoryUiVars(
-      { name: "Finance", color: "#22c55e" },
+      { name: "Finance", color: "#90A63B" },
       { level: "surface", stateTone: "critical" }
     );
 
     expect(weak["--categoryUiStateTone"]).toBe("weak");
     expect(critical["--categoryUiStateTone"]).toBe("critical");
-    expect(weak["--accent"]).not.toBe("#22c55e");
-    expect(critical["--accent"]).not.toBe("#22c55e");
+    expect(weak["--accent"]).not.toBe("#90A63B");
+    expect(critical["--accent"]).not.toBe("#90A63B");
     expect(critical["--category-gradient"]).toContain("linear-gradient");
   });
 });

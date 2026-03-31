@@ -22,7 +22,7 @@ describe("deriveTodayCalendarModel", () => {
     });
 
     expect(result.addActionContext).toEqual({ categoryId: "c1", actionId: "a1" });
-    expect(result.selectedDateAccent).toBe("#abcdef");
+    expect(result.selectedDateAccent).toBe("#ABCDEF");
     expect(result.plannedByDate.get("2026-03-13")).toBe(1);
   });
 });

@@ -1,6 +1,7 @@
 import React from "react";
 import { GateRow } from "../shared/ui/gate/Gate";
 import { getCategoryUiVars } from "../utils/categoryAccent";
+import { resolveCategoryColor } from "../utils/categoryPalette";
 import "./categorySurface.css";
 
 export default function AccentCategoryRow({
@@ -37,7 +38,7 @@ export default function AccentCategoryRow({
       right={rightSlot}
       style={{
         ...getCategoryUiVars(category || color || "#6EE7FF", { level: "surface" }),
-        "--libraryAccent": color || category?.color || "#6EE7FF",
+        "--libraryAccent": resolveCategoryColor(category || color || "#6EE7FF"),
         ...style,
       }}
       {...props}
