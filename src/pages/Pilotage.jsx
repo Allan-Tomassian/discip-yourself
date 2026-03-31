@@ -3,10 +3,10 @@ import ScreenShell from "./_ScreenShell";
 import { GateBadge, GateButton, GateSection } from "../shared/ui/gate/Gate";
 import { useAuth } from "../auth/useAuth";
 import { getCategoryProfileSummary } from "../domain/categoryProfile";
-import { requestAiCoachChat } from "../infra/aiCoachChatClient";
+import { requestAiLocalAnalysis } from "../infra/aiLocalAnalysisClient";
 import {
   buildPilotageManualAiContextKey,
-  createPersistedChatAnalysisEntry,
+  createPersistedLocalAnalysisEntry,
 } from "../features/manualAi/manualAiAnalysis";
 import { resolveManualAiDisplayState } from "../features/manualAi/displayState";
 import { useManualAiAnalysis } from "../hooks/useManualAiAnalysis";
@@ -400,6 +400,7 @@ export default function Pilotage({
   persistenceScope = "local_fallback",
   generationWindowDays = null,
   isPlanningUnlimited = false,
+  onOpenCoach,
 }) {
   void generationWindowDays;
   void isPlanningUnlimited;
@@ -713,18 +714,17 @@ export default function Pilotage({
     if (!detailCategory) return;
     await manualPilotageAnalysis.runAnalysis({
       execute: () =>
-        requestAiCoachChat({
+        requestAiLocalAnalysis({
           accessToken,
           payload: {
             selectedDateKey,
             activeCategoryId: detailCategory.id,
-            mode: "card",
+            surface: "pilotage",
             message: "Analyse cette catégorie et donne un résumé court, un problème majeur et une recommandation concrète.",
-            recentMessages: [],
           },
         }),
       serializeSuccess: (result) =>
-        createPersistedChatAnalysisEntry({
+        createPersistedLocalAnalysisEntry({
           contextKey: pilotageAnalysisContextKey,
           surface: "pilotage",
           storageScope: persistenceScope,
@@ -843,6 +843,9 @@ export default function Pilotage({
               <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
                 <Button onClick={handleAnalyzeCategory} disabled={!detailCategory || manualPilotageAnalysis.loading}>
                   {manualPilotageAnalysis.loading ? manualPilotageAnalysis.loadingStageLabel || "Analyse..." : "Analyser cette catégorie"}
+                </Button>
+                <Button variant="ghost" onClick={() => onOpenCoach?.({ mode: "free" })}>
+                  Ouvrir le Coach
                 </Button>
                 {manualPilotageAnalysis.isPersistedForContext ? (
                   <Button variant="ghost" onClick={manualPilotageAnalysis.dismissAnalysis}>

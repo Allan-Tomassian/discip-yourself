@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/useAuth";
 import { getCategoryProfileSummary } from "../../domain/categoryProfile";
-import { requestAiCoachChat } from "../../infra/aiCoachChatClient";
-import { applyChatDraftChanges, buildCreationProposalFromDraftChanges } from "../../logic/chatDraftChanges";
+import { requestAiLocalAnalysis } from "../../infra/aiLocalAnalysisClient";
 import { buildPlanningCoachFallback } from "../../features/planning/planningCoachModel";
 import {
   buildPlanningManualAiContextKey,
-  createPersistedChatAnalysisEntry,
+  createPersistedLocalAnalysisEntry,
 } from "../../features/manualAi/manualAiAnalysis";
 import { resolveManualAiDisplayState } from "../../features/manualAi/displayState";
 import { useManualAiAnalysis } from "../../hooks/useManualAiAnalysis";
@@ -18,24 +17,17 @@ import { useBehaviorFeedback } from "../../feedback/BehaviorFeedbackContext";
 import { deriveBehaviorFeedbackSignal } from "../../feedback/feedbackDerivers";
 import "../categorySurface.css";
 
-function describeDraftChange(change, { goalsById, categoriesById }) {
-  if (!change || typeof change !== "object") return "";
-  const goalTitle =
-    (typeof change.title === "string" && change.title.trim()) ||
-    goalsById.get(change.actionId || "")?.title ||
-    "Action";
-  const categoryName = categoriesById.get(change.categoryId || "")?.name || null;
-  const timingBits = [];
-  if (change.dateKey) timingBits.push(change.dateKey);
-  if (change.startTime) timingBits.push(change.startTime);
-  if (Number.isFinite(change.durationMin)) timingBits.push(`${change.durationMin} min`);
-  return [goalTitle, categoryName, ...timingBits].filter(Boolean).join(" · ");
-}
-
 function renderSuggestion(reply) {
   const label = reply?.primaryAction?.label || "Ajuster le rythme";
   const duration = Number.isFinite(reply?.suggestedDurationMin) ? `${reply.suggestedDurationMin} min` : "";
   return [label, duration].filter(Boolean).join(" • ");
+}
+
+function resolveLocalAnalysisActionLabel(reply) {
+  const intent = reply?.primaryAction?.intent || "";
+  if (intent === "open_library") return "Ouvrir la bibliothèque";
+  if (intent === "open_pilotage") return "Ouvrir Pilotage";
+  return "Voir Today";
 }
 
 export default function PlanningCoachCard({
@@ -52,7 +44,6 @@ export default function PlanningCoachCard({
   activeCategory = null,
   onOpenCoach,
   onOpenPilotage,
-  onOpenAssistantCreate,
 }) {
   const { emitBehaviorFeedback } = useBehaviorFeedback();
   const { session } = useAuth();
@@ -100,13 +91,8 @@ export default function PlanningCoachCard({
     [manualPlanningAnalysis.loading, manualPlanningAnalysis.visibleAnalysis, manualPlanningAnalysis.wasRefreshed]
   );
   const [reply, setReply] = useState(null);
-  const [ignoredDraftKey, setIgnoredDraftKey] = useState("");
-  const [applying, setApplying] = useState(false);
-  const [draftMessage, setDraftMessage] = useState("");
   useEffect(() => {
     setReply(null);
-    setIgnoredDraftKey("");
-    setDraftMessage("");
   }, [planningAnalysisContextKey]);
 
   const persistedReply = manualPlanningAnalysis.visibleAnalysis
@@ -118,34 +104,27 @@ export default function PlanningCoachCard({
         primaryAction: manualPlanningAnalysis.visibleAnalysis.primaryAction,
         secondaryAction: manualPlanningAnalysis.visibleAnalysis.secondaryAction,
         suggestedDurationMin: manualPlanningAnalysis.visibleAnalysis.suggestedDurationMin,
-        draftChanges: [],
       }
     : null;
   const visibleReply = reply || persistedReply || fallbackReply;
-  const draftChanges = Array.isArray(reply?.draftChanges) ? reply.draftChanges : [];
-  const draftKey = draftChanges.length ? JSON.stringify(draftChanges) : "";
-  const showDraft = Boolean(draftChanges.length && draftKey !== ignoredDraftKey);
 
   async function handleAnalyzePlanning() {
-    setDraftMessage("");
-    setIgnoredDraftKey("");
     const result = await manualPlanningAnalysis.runAnalysis({
       execute: () =>
-        requestAiCoachChat({
+        requestAiLocalAnalysis({
           accessToken,
           payload: {
             selectedDateKey,
             activeCategoryId,
-            mode: "card",
+            surface: "planning",
             message:
               planningView === "week"
                 ? "Analyse ce planning hebdomadaire et propose un ajustement prioritaire concret."
                 : "Analyse ce planning du jour et propose un ajustement prioritaire concret.",
-            recentMessages: [],
           },
         }),
       serializeSuccess: (success) =>
-        createPersistedChatAnalysisEntry({
+        createPersistedLocalAnalysisEntry({
           contextKey: planningAnalysisContextKey,
           surface: "planning",
           storageScope: persistenceScope,
@@ -159,54 +138,34 @@ export default function PlanningCoachCard({
 
   function handleDismissPlanningAnalysis() {
     setReply(null);
-    setIgnoredDraftKey("");
-    setDraftMessage("");
     manualPlanningAnalysis.dismissAnalysis();
   }
 
-  function applyDraft() {
-    if (!showDraft || applying) return;
-    setApplying(true);
-    setDraftMessage("");
-    const proposal = buildCreationProposalFromDraftChanges(data, draftChanges, {
-      sourceContext: {
-        mainTab: "planning",
-        sourceSurface: "planning",
-        categoryId: activeCategoryId || null,
-        dateKey: selectedDateKey || null,
-      },
-    });
-    if (proposal && typeof onOpenAssistantCreate === "function") {
-      onOpenAssistantCreate(proposal);
-      setDraftMessage("Proposition ouverte pour validation.");
-      setIgnoredDraftKey(draftKey);
-      setApplying(false);
+  function handleOpenSuggestedSurface() {
+    const action = visibleReply?.primaryAction || null;
+    if (!action) return;
+    if (action.intent === "open_pilotage") {
+      onOpenPilotage?.();
       return;
     }
-    let result = { state: data, appliedCount: 0, navigationTarget: null };
-    setData((previous) => {
-      result = applyChatDraftChanges(previous, draftChanges);
-      return result.state;
-    });
-    if (result.appliedCount > 0) {
-      setDraftMessage(
-        result.appliedCount > 1 ? `${result.appliedCount} changements appliqués.` : "Brouillon appliqué."
-      );
-      emitBehaviorFeedback(
-        deriveBehaviorFeedbackSignal({
-          intent: draftChanges.some((change) => change?.dateKey || change?.startTime) ? "reschedule_action" : "apply_coach_draft",
-          payload: {
-            surface: "planning",
-            categoryId: activeCategoryId || null,
-          },
-        })
-      );
-      if (result.navigationTarget) setTab?.(result.navigationTarget);
-      setIgnoredDraftKey(draftKey);
-    } else {
-      setDraftMessage("Aucun changement applicable dans l’état actuel.");
+    if (action.intent === "open_library") {
+      setTab?.("library");
+      return;
     }
-    setApplying(false);
+    setTab?.("today");
+  }
+
+  function handleOpenCoach(mode = "free") {
+    onOpenCoach?.({ mode });
+    emitBehaviorFeedback(
+      deriveBehaviorFeedbackSignal({
+        intent: mode === "plan" ? "open_structuring_coach" : "open_coach",
+        payload: {
+          surface: "planning",
+          categoryId: activeCategoryId || null,
+        },
+      })
+    );
   }
 
   return (
@@ -280,36 +239,15 @@ export default function PlanningCoachCard({
           </div>
         ) : null}
 
-        {showDraft ? (
-          <div className="planningDraftSection">
-            <div className="small2 planningCoachLabel">Brouillon proposé</div>
-            <div className="col" style={{ gap: 6 }}>
-              {draftChanges.map((change, index) => (
-                <div key={`planning-draft-${index}`} className="small2">
-                  {describeDraftChange(change, { goalsById, categoriesById })}
-                </div>
-              ))}
-            </div>
-            <div className="planningSectionFooter">
-              <Button onClick={applyDraft} disabled={applying}>
-                {applying ? "Application..." : "Appliquer"}
-              </Button>
-              <Button variant="ghost" onClick={() => setIgnoredDraftKey(draftKey)}>
-                Ignorer
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
-        {draftMessage ? (
-          <div className="small2 planningSectionMeta">
-            {draftMessage}
-          </div>
-        ) : null}
-
         <div className="planningSectionFooter planningCoachFooter">
-          <Button variant="ghost" onClick={() => onOpenCoach?.()}>
-            Structurer avec le Coach
+          <Button onClick={handleOpenSuggestedSurface}>
+            {resolveLocalAnalysisActionLabel(visibleReply)}
+          </Button>
+          <Button variant="ghost" onClick={() => handleOpenCoach("free")}>
+            Parler au Coach
+          </Button>
+          <Button variant="ghost" onClick={() => handleOpenCoach("plan")}>
+            Passer en Plan
           </Button>
           <Button variant="ghost" onClick={() => onOpenPilotage?.()}>
             Relire mes progrès

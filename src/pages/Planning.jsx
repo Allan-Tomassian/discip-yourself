@@ -63,7 +63,6 @@ export default function Planning({
   setTab,
   persistenceScope = "local_fallback",
   onOpenCoach,
-  onOpenAssistantCreate,
 }) {
   const safeData = data && typeof data === "object" ? data : {};
   const safeUi = safeData?.ui && typeof safeData.ui === "object" ? safeData.ui : {};
@@ -413,7 +412,6 @@ export default function Planning({
           activeCategory={activeCategory}
           onOpenCoach={onOpenCoach}
           onOpenPilotage={() => setTab?.("pilotage")}
-          onOpenAssistantCreate={onOpenAssistantCreate}
         />
 
         {pendingOccurrence ? (

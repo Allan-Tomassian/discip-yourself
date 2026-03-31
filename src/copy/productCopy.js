@@ -71,10 +71,10 @@ export const UI_COPY = Object.freeze({
 
 export const ANALYSIS_COPY = Object.freeze({
   localDiagnostic: "Lecture locale",
-  coachAnalysis: "Lecture du Coach",
-  coachAnalysisUpdated: "Lecture du Coach mise à jour",
-  coachBadge: "Coach",
-  coachLoadingHint: "Lecture en cours",
+  coachAnalysis: "Lecture IA locale",
+  coachAnalysisUpdated: "Lecture IA locale mise à jour",
+  coachBadge: "IA locale",
+  coachLoadingHint: "Lecture IA locale en cours",
   guardedRecommendation: "Repère prioritaire",
   savedOnDevice: "Enregistrée sur cet appareil",
   syncedAcrossDevices: "Synchronisée sur tes appareils",

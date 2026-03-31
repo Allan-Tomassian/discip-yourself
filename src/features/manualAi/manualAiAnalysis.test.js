@@ -80,7 +80,7 @@ describe("manualAiAnalysis store", () => {
     expect(getManualAiAnalysisEntry(next, entry.contextKey)).toBeNull();
   });
 
-  it("persists chat summaries without draftChanges", () => {
+  it("persists chat summaries without mutation payloads", () => {
     const entry = createPersistedChatAnalysisEntry({
       contextKey: "planning:day:user-1:2026-03-25:cat-1",
       surface: "planning",
@@ -100,7 +100,6 @@ describe("manualAiAnalysis store", () => {
         },
         secondaryAction: null,
         suggestedDurationMin: 15,
-        draftChanges: [{ type: "create_action" }],
         meta: {
           requestId: "req-2",
           selectedDateKey: "2026-03-25",

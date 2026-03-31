@@ -25,46 +25,6 @@ export function findCoachOccurrence(state, action, selectedDateKey) {
   return occurrences.find((occurrence) => occurrence?.id === resolved.occurrenceId) || null;
 }
 
-export function renderCoachActionButtonLabel(action, suggestedDurationMin = null) {
-  if (!action) return "";
-  const durationLabel = Number.isFinite(suggestedDurationMin)
-    ? `${suggestedDurationMin} min`
-    : Number.isFinite(action.suggestedDurationMin)
-      ? `${action.suggestedDurationMin} min`
-      : "";
-  return [trimString(action.label), durationLabel].filter(Boolean).join(" • ");
-}
-
-export function describeCoachDraftChange(change, { goalsById, categoriesById }) {
-  if (!isPlainObject(change)) return "";
-  const goalTitle =
-    trimString(change.title) ||
-    goalsById.get(change.actionId || "")?.title ||
-    "Action";
-  const categoryName = categoriesById.get(change.categoryId || "")?.name || null;
-  const timingBits = [];
-  if (change.dateKey) timingBits.push(change.dateKey);
-  if (change.startTime) timingBits.push(change.startTime);
-  if (Number.isFinite(change.durationMin)) timingBits.push(`${change.durationMin} min`);
-
-  if (change.type === "create_action") {
-    return ["Créer", goalTitle, categoryName, ...timingBits].filter(Boolean).join(" · ");
-  }
-  if (change.type === "update_action") {
-    return ["Mettre à jour", goalTitle, categoryName].filter(Boolean).join(" · ");
-  }
-  if (change.type === "schedule_action") {
-    return ["Planifier", goalTitle, ...timingBits].filter(Boolean).join(" · ");
-  }
-  if (change.type === "reschedule_occurrence") {
-    return ["Replanifier", goalTitle, ...timingBits].filter(Boolean).join(" · ");
-  }
-  if (change.type === "archive_action") {
-    return ["Archiver", goalTitle].filter(Boolean).join(" · ");
-  }
-  return goalTitle;
-}
-
 export function deriveCoachMessageEntries(conversation) {
   const messages = Array.isArray(conversation?.messages) ? conversation.messages : [];
   return messages.map((message, index) => {

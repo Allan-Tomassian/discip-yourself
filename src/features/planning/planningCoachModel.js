@@ -119,7 +119,6 @@ export function buildPlanningCoachFallback({
       },
       secondaryAction: null,
       suggestedDurationMin: 20,
-      draftChanges: [],
     };
   }
 
@@ -140,7 +139,6 @@ export function buildPlanningCoachFallback({
       },
       secondaryAction: null,
       suggestedDurationMin: 20,
-      draftChanges: [],
     };
   }
 
@@ -159,7 +157,6 @@ export function buildPlanningCoachFallback({
       },
       secondaryAction: null,
       suggestedDurationMin: 15,
-      draftChanges: [],
     };
   }
 
@@ -178,7 +175,6 @@ export function buildPlanningCoachFallback({
       },
       secondaryAction: null,
       suggestedDurationMin: 20,
-      draftChanges: [],
     };
   }
 
@@ -197,7 +193,6 @@ export function buildPlanningCoachFallback({
       },
       secondaryAction: null,
       suggestedDurationMin: 15,
-      draftChanges: [],
     };
   }
 
@@ -215,6 +210,5 @@ export function buildPlanningCoachFallback({
     },
     secondaryAction: null,
     suggestedDurationMin: dayEntries[0]?.durationMinutes || 20,
-    draftChanges: [],
   };
 }

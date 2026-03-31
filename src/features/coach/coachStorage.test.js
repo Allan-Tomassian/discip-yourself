@@ -127,9 +127,9 @@ describe("coachStorage", () => {
           label: "Voir",
           categoryId: "cat_sport",
           viewTarget: {
-            type: "library-category",
+            type: "library-focus",
             categoryId: "cat_sport",
-            focusSection: "actions",
+            section: "actions",
             outcomeId: "goal_1",
             actionIds: ["action_1"],
           },
@@ -144,11 +144,50 @@ describe("coachStorage", () => {
     });
 
     expect(result.state.conversations[0].messages[0].coachReply?.primaryAction?.viewTarget).toEqual({
-      type: "library-category",
+      type: "library-focus",
       categoryId: "cat_sport",
-      focusSection: "actions",
+      section: "actions",
       outcomeId: "goal_1",
       actionIds: ["action_1"],
+    });
+  });
+
+  it("normalizes legacy library-category targets into canonical library-focus targets", () => {
+    const message = buildCoachConversationMessage(
+      "assistant",
+      "Créé dans Sport.",
+      "2026-03-26T09:00:00.000Z",
+      {
+        kind: "conversation",
+        mode: "plan",
+        message: "Créé dans Sport.",
+        primaryAction: {
+          intent: "open_created_view",
+          label: "Voir",
+          categoryId: "cat_sport",
+          viewTarget: {
+            type: "library-category",
+            categoryId: "cat_sport",
+            focusSection: "objectives",
+            outcomeId: "goal_1",
+            actionIds: [],
+          },
+        },
+      }
+    );
+
+    const result = appendCoachConversationMessages(null, {
+      messages: [message],
+      contextSnapshot: { activeCategoryId: "cat_sport", dateKey: "2026-03-26" },
+      mode: "plan",
+    });
+
+    expect(result.state.conversations[0].messages[0].coachReply?.primaryAction?.viewTarget).toEqual({
+      type: "library-focus",
+      categoryId: "cat_sport",
+      section: "objectives",
+      outcomeId: "goal_1",
+      actionIds: [],
     });
   });
 });

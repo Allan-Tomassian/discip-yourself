@@ -4,18 +4,16 @@ import {
   TODAY_DIAGNOSTIC_REJECTION_REASON,
   TODAY_INTERVENTION_TYPE,
 } from "../../../src/domain/todayIntervention.js";
+import { COACH_CHAT_MODES, LOCAL_ANALYSIS_SURFACES } from "../../../src/domain/aiPolicy.js";
 
 const isoDateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const hhmmSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/);
 const fallbackReasonSchema = z.enum(["none", "quota", "timeout", "invalid_model_output", "backend_error"]);
 const decisionSourceSchema = z.enum(["ai", "rules"]);
-const chatModeSchema = z.enum(["card", "free", "plan"]);
-const draftChangeTypeSchema = z.enum([
-  "create_action",
-  "update_action",
-  "schedule_action",
-  "reschedule_occurrence",
-  "archive_action",
+const chatModeSchema = z.enum([COACH_CHAT_MODES.CARD, COACH_CHAT_MODES.FREE, COACH_CHAT_MODES.PLAN]);
+const localAnalysisSurfaceSchema = z.enum([
+  LOCAL_ANALYSIS_SURFACES.PLANNING,
+  LOCAL_ANALYSIS_SURFACES.PILOTAGE,
 ]);
 const repeatSchema = z.enum(["none", "daily", "weekly"]);
 const interventionTypeSchema = z.enum([
@@ -134,49 +132,6 @@ const chatMessageSchema = z
   })
   .strict();
 
-const chatDraftChangeSchema = z
-  .object({
-    type: draftChangeTypeSchema,
-    title: z.string().trim().min(1).max(96).nullable().optional().default(null),
-    categoryId: z.string().nullable().optional().default(null),
-    actionId: z.string().nullable().optional().default(null),
-    occurrenceId: z.string().nullable().optional().default(null),
-    repeat: repeatSchema.nullable().optional().default(null),
-    daysOfWeek: z.array(z.number().int().min(1).max(7)).max(7).optional().default([]),
-    startTime: hhmmSchema.nullable().optional().default(null),
-    durationMin: z.number().int().min(1).max(240).nullable().optional().default(null),
-    dateKey: isoDateKey.nullable().optional().default(null),
-  })
-  .strict()
-  .superRefine((value, ctx) => {
-    if (value.type === "create_action" && !value.title) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["title"],
-        message: "title is required for create_action",
-      });
-    }
-    if (
-      (value.type === "update_action" ||
-        value.type === "schedule_action" ||
-        value.type === "archive_action") &&
-      !value.actionId
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["actionId"],
-        message: "actionId is required for this draft change",
-      });
-    }
-    if (value.type === "reschedule_occurrence" && !value.occurrenceId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["occurrenceId"],
-        message: "occurrenceId is required for reschedule_occurrence",
-      });
-    }
-  });
-
 export const coachPayloadSchema = z
   .object({
     kind: z.enum(["now", "recovery"]),
@@ -212,20 +167,35 @@ export const coachChatCardPayloadSchema = z
     primaryAction: actionSchema,
     secondaryAction: actionSchema.nullable(),
     suggestedDurationMin: z.number().int().min(1).max(240).nullable(),
-    draftChanges: z.array(chatDraftChangeSchema).max(4).optional().default([]),
   })
   .strict();
 
-export const coachConversationPayloadSchema = z
+const coachFreeConversationPayloadSchema = z
   .object({
     kind: z.literal("conversation"),
-    mode: z.enum(["free", "plan"]),
+    mode: z.literal(COACH_CHAT_MODES.FREE),
+    message: z.string().trim().min(1).max(1200),
+    primaryAction: actionSchema.nullable().optional().default(null),
+    secondaryAction: actionSchema.nullable().optional().default(null),
+    proposal: z.null().optional().default(null),
+  })
+  .strict();
+
+const coachPlanConversationPayloadSchema = z
+  .object({
+    kind: z.literal("conversation"),
+    mode: z.literal(COACH_CHAT_MODES.PLAN),
     message: z.string().trim().min(1).max(1200),
     primaryAction: actionSchema.nullable().optional().default(null),
     secondaryAction: actionSchema.nullable().optional().default(null),
     proposal: creationProposalSchema.nullable().optional().default(null),
   })
   .strict();
+
+export const coachConversationPayloadSchema = z.discriminatedUnion("mode", [
+  coachFreeConversationPayloadSchema,
+  coachPlanConversationPayloadSchema,
+]);
 
 export const coachChatPayloadSchema = z.union([coachChatCardPayloadSchema, coachConversationPayloadSchema]);
 
@@ -252,7 +222,16 @@ export const chatRequestSchema = z
     activeCategoryId: z.string().nullable().optional().default(null),
     message: z.string().trim().min(1).max(500),
     recentMessages: z.array(chatMessageSchema).max(6).optional().default([]),
-    mode: chatModeSchema.optional().default("card"),
+    mode: chatModeSchema.optional().default(COACH_CHAT_MODES.CARD),
+  })
+  .strict();
+
+export const localAnalysisRequestSchema = z
+  .object({
+    selectedDateKey: isoDateKey,
+    activeCategoryId: z.string().nullable().optional().default(null),
+    surface: localAnalysisSurfaceSchema,
+    message: z.string().trim().min(1).max(500),
   })
   .strict();
 
@@ -308,7 +287,6 @@ export const coachChatCardResponseSchema = z
     primaryAction: actionSchema,
     secondaryAction: actionSchema.nullable(),
     suggestedDurationMin: z.number().int().min(1).max(240).nullable(),
-    draftChanges: z.array(chatDraftChangeSchema).max(4).optional().default([]),
     meta: z
       .object({
         coachVersion: z.literal("v1"),
@@ -323,27 +301,49 @@ export const coachChatCardResponseSchema = z
   })
   .strict();
 
-export const coachConversationResponseSchema = z
+export const coachLocalAnalysisResponseSchema = coachChatCardResponseSchema;
+
+const conversationResponseMetaSchema = z
+  .object({
+    coachVersion: z.literal("v1"),
+    requestId: z.string(),
+    selectedDateKey: isoDateKey,
+    activeCategoryId: z.string().nullable(),
+    quotaRemaining: z.number().int().nullable(),
+    fallbackReason: fallbackReasonSchema,
+    messagePreview: z.string().max(120).nullable(),
+  })
+  .strict();
+
+const coachFreeConversationResponseSchema = z
   .object({
     kind: z.literal("conversation"),
-    mode: z.enum(["free", "plan"]),
+    mode: z.literal(COACH_CHAT_MODES.FREE),
+    decisionSource: decisionSourceSchema,
+    message: z.string().trim().min(1).max(1200),
+    primaryAction: actionSchema.nullable(),
+    secondaryAction: actionSchema.nullable(),
+    proposal: z.null().optional().default(null),
+    meta: conversationResponseMetaSchema,
+  })
+  .strict();
+
+const coachPlanConversationResponseSchema = z
+  .object({
+    kind: z.literal("conversation"),
+    mode: z.literal(COACH_CHAT_MODES.PLAN),
     decisionSource: decisionSourceSchema,
     message: z.string().trim().min(1).max(1200),
     primaryAction: actionSchema.nullable(),
     secondaryAction: actionSchema.nullable(),
     proposal: creationProposalSchema.nullable().optional().default(null),
-    meta: z
-      .object({
-        coachVersion: z.literal("v1"),
-        requestId: z.string(),
-        selectedDateKey: isoDateKey,
-        activeCategoryId: z.string().nullable(),
-        quotaRemaining: z.number().int().nullable(),
-        fallbackReason: fallbackReasonSchema,
-        messagePreview: z.string().max(120).nullable(),
-      })
-      .strict(),
+    meta: conversationResponseMetaSchema,
   })
   .strict();
+
+export const coachConversationResponseSchema = z.discriminatedUnion("mode", [
+  coachFreeConversationResponseSchema,
+  coachPlanConversationResponseSchema,
+]);
 
 export const coachChatResponseSchema = z.union([coachChatCardResponseSchema, coachConversationResponseSchema]);

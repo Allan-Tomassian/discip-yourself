@@ -502,11 +502,11 @@ describe("deriveTodayHeroChrome", () => {
 
     expect(result.mode).toBe("loading");
     expect(result.showBadge).toBe(true);
-    expect(result.badgeLabel).toBe("Coach");
+    expect(result.badgeLabel).toBe("IA locale");
     expect(result.badgeTone).toBe("ai");
     expect(result.showLiveDot).toBe(true);
     expect(result.showHint).toBe(true);
-    expect(result.hintText).toBe("Lecture en cours");
+    expect(result.hintText).toBe("Lecture IA locale en cours");
   });
 
   it("affiche le badge coach quand la suggestion IA est visible", () => {
@@ -518,7 +518,7 @@ describe("deriveTodayHeroChrome", () => {
 
     expect(result.mode).toBe("coach");
     expect(result.showBadge).toBe(true);
-    expect(result.badgeLabel).toBe("Coach");
+    expect(result.badgeLabel).toBe("IA locale");
     expect(result.badgeTone).toBe("ai");
     expect(result.showHint).toBe(false);
   });
@@ -532,7 +532,7 @@ describe("deriveTodayHeroChrome", () => {
 
     expect(result.mode).toBe("guarded");
     expect(result.showBadge).toBe(true);
-    expect(result.badgeLabel).toBe("Coach");
+    expect(result.badgeLabel).toBe("IA locale");
     expect(result.badgeTone).toBe("guarded");
   });
 });

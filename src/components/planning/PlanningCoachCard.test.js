@@ -15,8 +15,6 @@ describe("PlanningCoachCard contract", () => {
 
     expect(source).toContain("function handleDismissPlanningAnalysis() {");
     expect(source).toContain("setReply(null);");
-    expect(source).toContain("setIgnoredDraftKey(\"\");");
-    expect(source).toContain("setDraftMessage(\"\");");
     expect(source).toContain("manualPlanningAnalysis.dismissAnalysis();");
     expect(source).toContain("<Button variant=\"ghost\" onClick={handleDismissPlanningAnalysis}>");
   });
@@ -34,13 +32,17 @@ describe("PlanningCoachCard contract", () => {
     expect(source).toContain("Observer ma journée");
   });
 
-  it("opens assistant creation for coach draft proposals instead of applying new objects directly", () => {
+  it("keeps planning analysis local and routes toward the canonical Coach instead of draft application", () => {
     const source = readSrc("components/planning/PlanningCoachCard.jsx");
 
-    expect(source).toContain("buildCreationProposalFromDraftChanges");
-    expect(source).toContain("mode: \"card\"");
-    expect(source).toContain("if (proposal && typeof onOpenAssistantCreate === \"function\") {");
-    expect(source).toContain("onOpenAssistantCreate(proposal);");
-    expect(source).toContain("setDraftMessage(\"Proposition ouverte pour validation.\");");
+    expect(source).toContain("requestAiLocalAnalysis");
+    expect(source).toContain("surface: \"planning\"");
+    expect(source).not.toContain("requestAiCoachChat");
+    expect(source).toContain("handleOpenCoach(\"free\")");
+    expect(source).toContain("handleOpenCoach(\"plan\")");
+    expect(source).toContain("resolveLocalAnalysisActionLabel");
+    expect(source).not.toContain("buildCreationProposalFromDraftChanges");
+    expect(source).not.toContain("applyChatDraftChanges");
+    expect(source).not.toContain("onOpenAssistantCreate");
   });
 });

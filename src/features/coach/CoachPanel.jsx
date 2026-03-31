@@ -4,16 +4,13 @@ import { useAuth } from "../../auth/useAuth";
 import { requestAiCoachChat } from "../../infra/aiCoachChatClient";
 import { deriveAiUnavailableMessage } from "../../infra/aiTransportDiagnostics";
 import { applySessionRuntimeTransition } from "../../logic/sessionRuntime";
-import { applyChatDraftChanges, buildCreationProposalFromDraftChanges } from "../../logic/chatDraftChanges";
 import { commitPreparedCreatePlan, prepareCreateCommit } from "../create-item/createItemCommit";
 import { GateButton, GatePanel } from "../../shared/ui/gate/Gate";
 import { getManualAiLoadingStages } from "../manualAi/loadingStages";
 import { getCoachContextSnapshot } from "./coachContextAdapter";
 import {
-  describeCoachDraftChange,
   deriveCoachMessageEntries,
   findCoachOccurrence,
-  renderCoachActionButtonLabel,
 } from "./coachConversationModel";
 import {
   appendCoachConversationMessages,
@@ -30,8 +27,6 @@ import {
   upsertCoachConversation,
 } from "./coachStorage";
 import { useBehaviorFeedback } from "../../feedback/BehaviorFeedbackContext";
-import { deriveBehaviorFeedbackSignal } from "../../feedback/feedbackDerivers";
-import { resolveMainTabForSurface } from "../../app/routeOrigin";
 import "./coach.css";
 
 const COACH_QUICK_PROMPTS = [
@@ -189,10 +184,6 @@ export function useCoachConversationController({
   const categoriesById = useMemo(
     () => new Map((Array.isArray(safeData.categories) ? safeData.categories : []).map((category) => [category?.id, category])),
     [safeData.categories]
-  );
-  const goalsById = useMemo(
-    () => new Map((Array.isArray(safeData.goals) ? safeData.goals : []).map((goal) => [goal?.id, goal])),
-    [safeData.goals]
   );
 
   useEffect(() => {
@@ -595,127 +586,6 @@ export function useCoachConversationController({
     ]
   );
 
-  const applyDraftProposal = useCallback(
-    (entry) => {
-      if (!entry?.id || !entry?.reply) return;
-      const draftChanges = Array.isArray(entry.reply?.draftChanges) ? entry.reply.draftChanges : [];
-      if (!draftChanges.length || !currentConversation?.id) return;
-      setData?.((previous) => {
-        const safePrevious = previous && typeof previous === "object" ? previous : {};
-        return {
-          ...safePrevious,
-          coach_conversations_v1: updateCoachConversationMessage(safePrevious.coach_conversations_v1, {
-            conversationId: currentConversation.id,
-            messageCreatedAt: entry.createdAt,
-            update: (message) => ({
-              ...message,
-              coachReply: {
-                ...(message?.coachReply || entry.reply),
-                createStatus: "creating",
-                createMessage: "",
-              },
-            }),
-          }),
-        };
-      });
-
-      const proposal = buildCreationProposalFromDraftChanges(safeData, draftChanges, {
-        sourceContext: {
-          mainTab: resolveMainTabForSurface(surfaceTab, "today"),
-          sourceSurface: "coach",
-          categoryId: contextSnapshot.activeCategoryId || null,
-          dateKey: contextSnapshot.selectedDateKey || null,
-          coachConversationId: currentConversation.id,
-        },
-      });
-      if (proposal && typeof onOpenAssistantCreate === "function") {
-        setData?.((previous) => {
-          const safePrevious = previous && typeof previous === "object" ? previous : {};
-          return {
-            ...safePrevious,
-            coach_conversations_v1: updateCoachConversationMessage(safePrevious.coach_conversations_v1, {
-              conversationId: currentConversation.id,
-              messageCreatedAt: entry.createdAt,
-              update: (message) => ({
-                ...message,
-                coachReply: {
-                  ...(message?.coachReply || entry.reply),
-                  createStatus: "created",
-                  createMessage: "Proposition ouverte pour validation.",
-                },
-              }),
-            }),
-          };
-        });
-        onOpenAssistantCreate({
-          sourceSurface: "coach",
-          conversationId: currentConversation.id,
-          proposal,
-        });
-        return;
-      }
-
-      const result = applyChatDraftChanges(safeData, draftChanges);
-      setData?.(result.state);
-
-      if (result.appliedCount > 0) {
-        setData?.((previous) => {
-          const safePrevious = previous && typeof previous === "object" ? previous : {};
-          return {
-            ...safePrevious,
-            coach_conversations_v1: updateCoachConversationMessage(safePrevious.coach_conversations_v1, {
-              conversationId: currentConversation.id,
-              messageCreatedAt: entry.createdAt,
-              update: (message) => ({
-                ...message,
-                coachReply: {
-                  ...(message?.coachReply || entry.reply),
-                  createStatus: "created",
-                  createMessage:
-                    result.appliedCount > 1 ? `${result.appliedCount} changements appliqués.` : "Brouillon appliqué.",
-                },
-              }),
-            }),
-          };
-        });
-        emitBehaviorFeedback?.(
-          deriveBehaviorFeedbackSignal({
-            intent: "apply_coach_draft",
-            payload: {
-              surface: "coach",
-              categoryId: contextSnapshot.activeCategoryId || null,
-            },
-          })
-        );
-        if (result.navigationTarget) {
-          setTab?.(result.navigationTarget);
-          onRequestClose?.();
-        }
-        return;
-      }
-
-      setData?.((previous) => {
-        const safePrevious = previous && typeof previous === "object" ? previous : {};
-        return {
-          ...safePrevious,
-          coach_conversations_v1: updateCoachConversationMessage(safePrevious.coach_conversations_v1, {
-            conversationId: currentConversation.id,
-            messageCreatedAt: entry.createdAt,
-            update: (message) => ({
-              ...message,
-              coachReply: {
-                ...(message?.coachReply || entry.reply),
-                createStatus: "error",
-                createMessage: "Aucun changement applicable dans l'état actuel.",
-              },
-            }),
-          }),
-        };
-      });
-    },
-    [contextSnapshot.activeCategoryId, contextSnapshot.selectedDateKey, currentConversation?.id, onOpenAssistantCreate, safeData, setData, setTab, surfaceTab]
-  );
-
   const submitMessage = useCallback(
     async (nextValue = null) => {
       const message = typeof nextValue === "string" ? nextValue.trim() : draft.trim();
@@ -822,13 +692,11 @@ export function useCoachConversationController({
     setConversationMode: handleConversationModeChange,
     hasMessages: messageEntries.length > 0,
     categoriesById,
-    goalsById,
     submitMessage,
     handleNewChat,
     applyAction,
     openAssistantReview,
     createFromPlanReply,
-    applyDraftProposal,
     archiveConversation,
     archivedConversation,
     undoArchivedConversation,
@@ -858,13 +726,11 @@ export function CoachConversationSurface({
     setConversationMode,
     hasMessages,
     categoriesById,
-    goalsById,
     submitMessage,
     handleNewChat,
     applyAction,
     openAssistantReview,
     createFromPlanReply,
-    applyDraftProposal,
     archiveConversation,
     archivedConversation,
     undoArchivedConversation,
@@ -1086,7 +952,6 @@ export function CoachConversationSurface({
           {messageEntries.map((entry) => {
             const reply = entry.reply || null;
             const isConversationReply = entry.role === "assistant" && reply?.kind === "conversation";
-            const isLegacyReply = entry.role === "assistant" && reply?.kind === "chat";
 
             if (isConversationReply) {
               const planProposal = reply?.proposal || null;
@@ -1179,68 +1044,6 @@ export function CoachConversationSurface({
                               Revoir dans l’app
                             </GateButton>
                           ) : null}
-                        </div>
-                        {entry.draftApplyMessage ? (
-                          <div className={`coachDraftMessage${entry.draftApplyStatus === "error" ? " is-error" : ""}`}>
-                            {entry.draftApplyMessage}
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            }
-
-            if (isLegacyReply) {
-              return (
-                <div key={entry.id} className="coachMessage coachMessage--assistant">
-                  <div className="coachMessageCard">
-                    <div className="coachMessageEyebrow">Coach</div>
-                    <div className="coachMessageTitle">{reply?.headline || "Action"}</div>
-                    <div className="coachMessageText">{reply?.reason || entry.text}</div>
-                    <div className="coachMessageActions">
-                      {reply?.primaryAction ? (
-                        <GateButton
-                          className="GatePressable"
-                          onClick={() =>
-                            applyAction({
-                              ...reply.primaryAction,
-                              suggestedDurationMin: reply.suggestedDurationMin,
-                            })
-                          }
-                        >
-                          {renderCoachActionButtonLabel(reply.primaryAction, reply.suggestedDurationMin)}
-                        </GateButton>
-                      ) : null}
-                      {reply?.secondaryAction ? (
-                        <GateButton variant="ghost" className="GatePressable" onClick={() => applyAction(reply.secondaryAction)}>
-                          {reply.secondaryAction.label}
-                        </GateButton>
-                      ) : null}
-                    </div>
-                    {Array.isArray(reply?.draftChanges) && reply.draftChanges.length ? (
-                      <div className="coachDraftBlock">
-                        <div className="coachDraftTitle">Brouillon proposé</div>
-                        <div className="coachDraftList">
-                          {reply.draftChanges.map((change, index) => (
-                            <div key={`${entry.id}_draft_${index}`} className="coachDraftItem">
-                              {describeCoachDraftChange(change, { goalsById, categoriesById })}
-                            </div>
-                          ))}
-                        </div>
-                        <div className="coachMessageActions">
-                          <GateButton
-                            className="GatePressable"
-                            onClick={() => applyDraftProposal(entry)}
-                            disabled={entry.draftApplyStatus === "creating" || entry.draftApplyStatus === "created"}
-                          >
-                            {entry.draftApplyStatus === "creating"
-                              ? "Application..."
-                              : entry.draftApplyStatus === "created"
-                                ? "Appliqué"
-                                : "Appliquer le brouillon"}
-                          </GateButton>
                         </div>
                         {entry.draftApplyMessage ? (
                           <div className={`coachDraftMessage${entry.draftApplyStatus === "error" ? " is-error" : ""}`}>

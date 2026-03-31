@@ -2,8 +2,10 @@ import { loadUserSnapshot } from "../lib/supabase.js";
 import { buildSchemaErrorReply, isSupabaseSchemaError } from "../lib/supabaseErrors.js";
 import {
   chatRequestSchema,
+  coachLocalAnalysisResponseSchema,
   coachChatResponseSchema,
   coachResponseSchema,
+  localAnalysisRequestSchema,
   nowRequestSchema,
   recoveryRequestSchema,
 } from "../schemas/coach.js";
@@ -14,6 +16,7 @@ import { buildChatContext } from "../services/context/chatContext.js";
 import { buildRecoveryContext } from "../services/context/recoveryContext.js";
 import { runNowCoach } from "../services/coach/nowCoach.js";
 import { runChatCoach } from "../services/coach/chatCoach.js";
+import { runLocalAnalysisCoach } from "../services/coach/localAnalysisCoach.js";
 import { runRecoveryCoach } from "../services/coach/recoveryCoach.js";
 
 function getClientIp(request) {
@@ -58,6 +61,26 @@ export async function aiRoutes(app) {
       responseSchema: coachChatResponseSchema,
       contextBuilder: buildChatContext,
       runner: runChatCoach,
+    });
+  });
+
+  app.post("/local-analysis", { preHandler: [app.authenticate] }, async (request, reply) => {
+    return handleCoachRoute({
+      app,
+      request,
+      reply,
+      coachKind: "local-analysis",
+      bodySchema: localAnalysisRequestSchema,
+      responseSchema: coachLocalAnalysisResponseSchema,
+      contextBuilder: ({ body, ...rest }) =>
+        buildChatContext({
+          ...rest,
+          body: {
+            ...body,
+            mode: "card",
+          },
+        }),
+      runner: runLocalAnalysisCoach,
     });
   });
 }

@@ -17,7 +17,6 @@ function buildChatResponse(overrides = {}) {
     },
     secondaryAction: null,
     suggestedDurationMin: 20,
-    draftChanges: [],
     meta: {
       coachVersion: "v1",
       requestId: "req_123",
@@ -74,47 +73,15 @@ function buildConversationResponse(overrides = {}) {
 }
 
 describe("aiCoachChatClient", () => {
-  it("valide une reponse chat avec draftChanges", () => {
-    expect(
-      isAiCoachChatResponse(
-        buildChatResponse({
-          draftChanges: [
-            {
-              type: "create_action",
-              title: "Marcher 20 min",
-              categoryId: "cat-1",
-              actionId: null,
-              occurrenceId: null,
-              repeat: "none",
-              daysOfWeek: [],
-              startTime: null,
-              durationMin: 20,
-              dateKey: "2026-03-25",
-            },
-          ],
-        })
-      )
-    ).toBe(true);
+  it("valide une reponse chat locale sans draftChanges", () => {
+    expect(isAiCoachChatResponse(buildChatResponse())).toBe(true);
   });
 
-  it("rejette un draft change invalide", () => {
+  it("rejette une reponse conversationnelle avec un mode invalide", () => {
     expect(
       isAiCoachChatResponse(
-        buildChatResponse({
-          draftChanges: [
-            {
-              type: "schedule_action",
-              title: null,
-              categoryId: "cat-1",
-              actionId: null,
-              occurrenceId: null,
-              repeat: null,
-              daysOfWeek: [],
-              startTime: null,
-              durationMin: 20,
-              dateKey: "2026-03-25",
-            },
-          ],
+        buildConversationResponse({
+          mode: "card",
         })
       )
     ).toBe(false);
@@ -122,6 +89,24 @@ describe("aiCoachChatClient", () => {
 
   it("valide une reponse conversationnelle en mode plan", () => {
     expect(isAiCoachChatResponse(buildConversationResponse())).toBe(true);
+  });
+
+  it("rejette une reponse free qui embarque une proposal", () => {
+    expect(
+      isAiCoachChatResponse(
+        buildConversationResponse({
+          mode: "free",
+          proposal: {
+            kind: "guided",
+            categoryDraft: { mode: "existing", id: "cat-1", label: "Focus" },
+            outcomeDraft: null,
+            actionDrafts: [],
+            unresolvedQuestions: [],
+            requiresValidation: true,
+          },
+        })
+      )
+    ).toBe(false);
   });
 
   it("retourne un diagnostic offline quand le navigateur est vraiment hors ligne", async () => {

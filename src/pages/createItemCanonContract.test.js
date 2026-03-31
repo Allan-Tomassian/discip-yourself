@@ -45,8 +45,9 @@ describe("create item canonical contract", () => {
     expect(coachPanel).toContain('sourceSurface: "coach"');
     expect(coachPanel).not.toContain('sourceSurface: "coach-chat"');
     expect(coachPanel).not.toContain('sourceSurface: "coach-panel"');
-    expect(planningCoachCard).toContain("buildCreationProposalFromDraftChanges");
-    expect(planningCoachCard).toContain("onOpenAssistantCreate");
+    expect(planningCoachCard).toContain("handleOpenCoach(\"plan\")");
+    expect(planningCoachCard).not.toContain("buildCreationProposalFromDraftChanges");
+    expect(planningCoachCard).not.toContain("onOpenAssistantCreate");
     expect(commitService).toContain("buildCreationViewTarget");
   });
 });

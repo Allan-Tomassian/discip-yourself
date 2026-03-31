@@ -61,14 +61,17 @@ function normalizeViewTarget(rawValue) {
       categoryId: trimString(source.categoryId, 200) || null,
     };
   }
-  if (type === "library-category") {
+  if (type === "library-focus" || type === "library-category") {
     const actionIds = Array.isArray(source.actionIds)
       ? source.actionIds.map((entry) => trimString(entry, 200)).filter(Boolean).slice(0, 6)
       : [];
     return {
-      type: "library-category",
+      type: "library-focus",
       categoryId: trimString(source.categoryId, 200) || null,
-      focusSection: source.focusSection === "objectives" ? "objectives" : "actions",
+      section:
+        source.section === "objectives" || source.focusSection === "objectives"
+          ? "objectives"
+          : "actions",
       outcomeId: trimString(source.outcomeId, 200) || null,
       actionIds,
     };

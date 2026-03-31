@@ -4,6 +4,7 @@ import {
   resolveTodayOccurrenceStartPolicy,
   resolveTodayInterventionType,
 } from "../../../../src/domain/todayIntervention.js";
+import { LOCAL_ANALYSIS_SURFACES } from "../../../../src/domain/aiPolicy.js";
 
 function buildAction({ label, intent, categoryId = null, actionId = null, occurrenceId = null, dateKey = null }) {
   return { label, intent, categoryId, actionId, occurrenceId, dateKey };
@@ -41,6 +42,234 @@ function resolveProfileContributionLabel(context) {
 
 function resolveProfilePriorityLabel(context) {
   return context?.activeCategoryProfileSummary?.currentPriority || null;
+}
+
+function buildPlanningLocalAnalysisFallback(context) {
+  const planningSummary = context?.planningSummary || {};
+  const activeCategoryId = context?.activeCategoryId || null;
+  const activePriority = resolveProfilePriorityLabel(context);
+
+  if (planningSummary?.emptyWeek) {
+    return {
+      kind: "chat",
+      headline: "Semaine vide",
+      reason: activePriority
+        ? `Aucun créneau n’est posé cette semaine pour ${activePriority}. Sans premier bloc visible, le rythme ne tient pas.`
+        : "Aucun créneau n’est posé cette semaine. Sans premier bloc visible, le rythme ne tient pas.",
+      primaryAction: buildAction({
+        label: "Ouvrir Pilotage",
+        intent: "open_pilotage",
+        categoryId: activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      secondaryAction: buildAction({
+        label: "Voir Today",
+        intent: "open_today",
+        categoryId: activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      suggestedDurationMin: 20,
+    };
+  }
+
+  if (planningSummary?.emptyDay) {
+    return {
+      kind: "chat",
+      headline: "Journée vide",
+      reason: activePriority
+        ? `Aucune occurrence n’est prévue aujourd’hui pour ${activePriority}. Pose un bloc court crédible.`
+        : "Aucune occurrence n’est prévue aujourd’hui. Pose un bloc court crédible.",
+      primaryAction: buildAction({
+        label: "Voir Today",
+        intent: "open_today",
+        categoryId: activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      secondaryAction: buildAction({
+        label: "Ouvrir Pilotage",
+        intent: "open_pilotage",
+        categoryId: activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      suggestedDurationMin: 20,
+    };
+  }
+
+  if (Number(planningSummary?.selectedDayCount || 0) > 6) {
+    return {
+      kind: "chat",
+      headline: "Charge trop dense",
+      reason: "La journée contient trop de blocs. Le risque principal est la fragmentation de l’attention.",
+      primaryAction: buildAction({
+        label: "Ouvrir Pilotage",
+        intent: "open_pilotage",
+        categoryId: activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      secondaryAction: buildAction({
+        label: "Voir Today",
+        intent: "open_today",
+        categoryId: activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      suggestedDurationMin: 15,
+    };
+  }
+
+  if (Number(planningSummary?.dominantCategoryShare || 0) >= 0.8 && planningSummary?.dominantCategoryName) {
+    return {
+      kind: "chat",
+      headline: `Déséquilibre ${planningSummary.dominantCategoryName}`.slice(0, 72),
+      reason: `${planningSummary.dominantCategoryName} concentre ${Math.round(
+        planningSummary.dominantCategoryShare * 100,
+      )}% du temps prévu. Rééquilibre avant d’ajouter de la charge.`,
+      primaryAction: buildAction({
+        label: "Ouvrir bibliothèque",
+        intent: "open_library",
+        categoryId: activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      secondaryAction: buildAction({
+        label: "Ouvrir Pilotage",
+        intent: "open_pilotage",
+        categoryId: activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      suggestedDurationMin: 20,
+    };
+  }
+
+  return {
+    kind: "chat",
+    headline: "Charge crédible",
+    reason: `${planningSummary?.selectedDayCount || 0} bloc${
+      Number(planningSummary?.selectedDayCount || 0) > 1 ? "s" : ""
+    } prévu${Number(planningSummary?.selectedDayCount || 0) > 1 ? "s" : ""} aujourd’hui. Protège surtout le prochain bloc utile.`,
+    primaryAction: buildAction({
+      label: "Voir Today",
+      intent: "open_today",
+      categoryId: activeCategoryId,
+      dateKey: context.activeDate,
+    }),
+    secondaryAction: buildAction({
+      label: "Ouvrir Pilotage",
+      intent: "open_pilotage",
+      categoryId: activeCategoryId,
+      dateKey: context.activeDate,
+    }),
+    suggestedDurationMin: 20,
+  };
+}
+
+function buildPilotageLocalAnalysisFallback(context) {
+  const pilotageSummary = context?.pilotageSummary || {};
+  const activeCategoryId = context?.activeCategoryId || null;
+  const activePriority = resolveProfilePriorityLabel(context);
+
+  if (!activeCategoryId) {
+    return {
+      kind: "chat",
+      headline: "Choisis une catégorie",
+      reason: "Le pilotage local a besoin d’une catégorie active pour lire les signaux avec précision.",
+      primaryAction: buildAction({
+        label: "Ouvrir bibliothèque",
+        intent: "open_library",
+        categoryId: null,
+        dateKey: context.activeDate,
+      }),
+      secondaryAction: buildAction({
+        label: "Ouvrir Pilotage",
+        intent: "open_pilotage",
+        categoryId: null,
+        dateKey: context.activeDate,
+      }),
+      suggestedDurationMin: null,
+    };
+  }
+
+  if (Number(pilotageSummary?.expected7 || 0) === 0) {
+    return {
+      kind: "chat",
+      headline: "Aucun rythme visible",
+      reason: activePriority
+        ? `Aucun bloc attendu n’alimente ${activePriority} sur la fenêtre récente.`
+        : "Aucun bloc attendu n’alimente cette catégorie sur la fenêtre récente.",
+      primaryAction: buildAction({
+        label: "Ouvrir Pilotage",
+        intent: "open_pilotage",
+        categoryId: activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      secondaryAction: buildAction({
+        label: "Ouvrir bibliothèque",
+        intent: "open_library",
+        categoryId: activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      suggestedDurationMin: 15,
+    };
+  }
+
+  if (pilotageSummary?.disciplineTrend14d?.trendLabel === "baisse") {
+    return {
+      kind: "chat",
+      headline: "Discipline en baisse",
+      reason: "Le score récent recule. Réduis la charge ou replannifie un bloc plus tenable.",
+      primaryAction: buildAction({
+        label: "Ouvrir Pilotage",
+        intent: "open_pilotage",
+        categoryId: activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      secondaryAction: buildAction({
+        label: "Voir Today",
+        intent: "open_today",
+        categoryId: activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      suggestedDurationMin: 15,
+    };
+  }
+
+  if (pilotageSummary?.disciplineTrend14d?.trendLabel === "irrégularité") {
+    return {
+      kind: "chat",
+      headline: "Rythme irrégulier",
+      reason: "Le signal varie trop d’un jour à l’autre. Protège un bloc simple avant d’ajouter de la charge.",
+      primaryAction: buildAction({
+        label: "Voir Today",
+        intent: "open_today",
+        categoryId: activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      secondaryAction: buildAction({
+        label: "Ouvrir Pilotage",
+        intent: "open_pilotage",
+        categoryId: activeCategoryId,
+        dateKey: context.activeDate,
+      }),
+      suggestedDurationMin: 15,
+    };
+  }
+
+  return {
+    kind: "chat",
+    headline: "Consolide l’élan",
+    reason: "Le signal est exploitable, mais il reste à consolider avec un prochain bloc clair et tenable.",
+    primaryAction: buildAction({
+      label: "Voir Today",
+      intent: "open_today",
+      categoryId: activeCategoryId,
+      dateKey: context.activeDate,
+    }),
+    secondaryAction: buildAction({
+      label: "Ouvrir bibliothèque",
+      intent: "open_library",
+      categoryId: activeCategoryId,
+      dateKey: context.activeDate,
+    }),
+    suggestedDurationMin: 20,
+  };
 }
 
 export function buildNowFallback(context) {
@@ -457,7 +686,6 @@ export function buildChatFallback(context) {
         dateKey: context.activeDate,
       }),
       suggestedDurationMin: 10,
-      draftChanges: [],
     };
   }
 
@@ -494,7 +722,6 @@ export function buildChatFallback(context) {
         dateKey: context.activeDate,
       }),
       suggestedDurationMin: duration,
-      draftChanges: [],
     };
   }
 
@@ -521,7 +748,6 @@ export function buildChatFallback(context) {
         dateKey: context.activeDate,
       }),
       suggestedDurationMin: null,
-      draftChanges: [],
     };
   }
 
@@ -561,7 +787,6 @@ export function buildChatFallback(context) {
         dateKey: context.activeDate,
       }),
       suggestedDurationMin: gapCandidate?.durationMin || null,
-      draftChanges: [],
     };
   }
 
@@ -582,6 +807,15 @@ export function buildChatFallback(context) {
       dateKey: context.activeDate,
     }),
     suggestedDurationMin: 10,
-    draftChanges: [],
   };
+}
+
+export function buildLocalAnalysisFallback(context) {
+  if (context?.analysisSurface === LOCAL_ANALYSIS_SURFACES.PLANNING) {
+    return buildPlanningLocalAnalysisFallback(context);
+  }
+  if (context?.analysisSurface === LOCAL_ANALYSIS_SURFACES.PILOTAGE) {
+    return buildPilotageLocalAnalysisFallback(context);
+  }
+  return buildChatFallback(context);
 }

@@ -5,6 +5,12 @@ import {
   coachConversationPayloadSchema,
   coachPayloadSchema,
 } from "../../schemas/coach.js";
+import {
+  COACH_CHAT_MODES,
+  isConversationCoachMode,
+  LOCAL_ANALYSIS_SURFACES,
+  LOCAL_ANALYSIS_SURFACE_POLICY,
+} from "../../../../src/domain/aiPolicy.js";
 
 const DEFAULT_OUTPUT_LOCALE = "fr-FR";
 const TEXT_LIMITS = Object.freeze({
@@ -68,26 +74,6 @@ function normalizeActionCandidate(action) {
   return normalized;
 }
 
-function normalizeDraftChangeCandidate(change) {
-  if (!isPlainObject(change)) return change;
-  const normalized = { ...change };
-  normalized.title = typeof normalized.title === "string" ? normalized.title.slice(0, TEXT_LIMITS.draftTitle) : normalized.title;
-  normalizeNullableField(normalized, "title");
-  normalizeNullableField(normalized, "categoryId");
-  normalizeNullableField(normalized, "actionId");
-  normalizeNullableField(normalized, "occurrenceId");
-  normalizeNullableField(normalized, "repeat");
-  normalizeNullableField(normalized, "startTime");
-  normalizeNullableField(normalized, "durationMin");
-  normalizeNullableField(normalized, "dateKey");
-  if (!Array.isArray(normalized.daysOfWeek)) normalized.daysOfWeek = [];
-  normalized.daysOfWeek = normalized.daysOfWeek
-    .map((day) => Number(day))
-    .filter((day) => Number.isInteger(day) && day >= 1 && day <= 7)
-    .slice(0, 7);
-  return normalized;
-}
-
 export function normalizeCoachPayloadCandidate(candidate) {
   if (!isPlainObject(candidate)) return candidate;
   const normalized = { ...candidate };
@@ -137,12 +123,6 @@ function normalizeChatPayloadCandidate(candidate) {
 
   if (!("suggestedDurationMin" in normalized) || normalized.suggestedDurationMin === undefined) {
     normalized.suggestedDurationMin = null;
-  }
-
-  if (!Array.isArray(normalized.draftChanges)) {
-    normalized.draftChanges = [];
-  } else {
-    normalized.draftChanges = normalized.draftChanges.map(normalizeDraftChangeCandidate).filter(isPlainObject).slice(0, 4);
   }
 
   return normalized;
@@ -483,6 +463,16 @@ function buildRecoveryPrompt(context) {
 }
 
 function buildChatCardPrompt(context) {
+  const analysisSurface =
+    context.analysisSurface === LOCAL_ANALYSIS_SURFACES.PLANNING ||
+    context.analysisSurface === LOCAL_ANALYSIS_SURFACES.PILOTAGE
+      ? context.analysisSurface
+      : LOCAL_ANALYSIS_SURFACES.GENERIC;
+  const analysisPolicy =
+    LOCAL_ANALYSIS_SURFACE_POLICY[analysisSurface] || LOCAL_ANALYSIS_SURFACE_POLICY[LOCAL_ANALYSIS_SURFACES.GENERIC];
+  const allowedIntents = Array.isArray(analysisPolicy.allowedIntents)
+    ? analysisPolicy.allowedIntents
+    : ["open_today", "open_library", "open_pilotage"];
   const gapCandidate = Array.isArray(context.gapSummary?.candidateActionSummaries)
     ? context.gapSummary.candidateActionSummaries[0] || null
     : null;
@@ -490,10 +480,10 @@ function buildChatCardPrompt(context) {
     context.gapSummary?.hasGapToday && context.gapSummary?.selectionScope === "structure_missing"
   );
   const validExample = {
-    kind: "chat",
-    headline: shouldUseStructureExample
-      ? "Structure la categorie active"
-      : gapCandidate
+      kind: "chat",
+      headline: shouldUseStructureExample
+        ? "Structure la categorie active"
+        : gapCandidate
         ? `Ajoute ${gapCandidate.title}`
         : "Clarifie le prochain bloc",
     reason: shouldUseStructureExample
@@ -529,42 +519,26 @@ function buildChatCardPrompt(context) {
     },
     secondaryAction: null,
     suggestedDurationMin: shouldUseStructureExample ? null : gapCandidate?.durationMin || 10,
-    draftChanges: gapCandidate?.actionId
-      ? [
-          {
-            type: "schedule_action",
-            title: null,
-            categoryId: context.activeCategoryId || "cat-1",
-            actionId: gapCandidate.actionId || "goal-1",
-            occurrenceId: null,
-            repeat: "none",
-            daysOfWeek: [],
-            startTime: null,
-            durationMin: gapCandidate?.durationMin || 20,
-            dateKey: context.activeDate,
-          },
-        ]
-      : [],
   };
 
   return [
-    "You are the structured coach chat for Discip-Yourself.",
-    "Answer the user's latest message with one very short action-oriented recommendation.",
+    `You are the local analysis layer for Discip-Yourself on ${analysisSurface}.`,
+    "Answer the user's latest message with one very short contextual recommendation.",
     "No markdown. No prose outside JSON.",
     "Never invent actions or occurrences that are not in the context.",
-    "The coach is opened manually by the user from anywhere in the app.",
-    "You may answer with a concise explanation when the user asks why a recommendation exists or how the app should be used, but still finish with one concrete next step.",
-    "If missing information blocks a credible recommendation, you may ask one short clarification question inside reason while keeping the response actionable.",
-    "Use only start_occurrence, resume_session, open_library, open_pilotage, or open_today intents.",
-    "You may include draftChanges only when the user explicitly asks to create, update, schedule, reschedule, or archive something in the app.",
-    "draftChanges are proposals only. They are never applied automatically.",
-    "When draftChanges is not needed, return an empty array.",
+    "This layer is secondary to the Coach and must stay local, concise, and non-conversational.",
+    `Surface focus: ${analysisPolicy.focus || "lecture contextuelle"}.`,
+    "You may answer with a concise explanation of what the local situation suggests, but still finish with one concrete next step.",
+    `Use only ${allowedIntents.join(", ")} intents.`,
+    "Never create or modify data.",
+    "Never return draft changes, proposals, or mutation instructions.",
     "Never invent actionId or occurrenceId values. Only use ids present in the context.",
-    "For create_action, choose a categoryId from availableCategories or use the active category when present.",
-    "For update_action, schedule_action, or archive_action, use one actionId from actionSummaries.",
-    "For reschedule_occurrence, use one occurrenceId from focusOccurrenceSummary or alternativeOccurrenceSummaries.",
-    "Prefer resume_session when a session is already open today.",
-    "Prefer start_occurrence when a credible occurrence can start now.",
+    analysisSurface === LOCAL_ANALYSIS_SURFACES.GENERIC
+      ? "Prefer resume_session when a session is already open today."
+      : "Prefer open_pilotage or open_today over execution shortcuts.",
+    analysisSurface === LOCAL_ANALYSIS_SURFACES.GENERIC
+      ? "Prefer start_occurrence when a credible occurrence can start now."
+      : "Do not behave like the Coach and do not start a workflow on behalf of the user.",
     "Use open_pilotage when the best next step is to plan or replan.",
     "The active category governs the recommendation.",
     "When categoryCoherence.selectionScope is cross_category, recommend only the proven cross-category action and explicitly name the contribution to categoryCoherence.contributionTargetLabel.",
@@ -617,6 +591,7 @@ function buildChatCardPrompt(context) {
       dayLoadSummary: context.dayLoadSummary || null,
       planningSummary: context.planningSummary || null,
       pilotageSummary: context.pilotageSummary || null,
+      analysisSurface,
       focusSelectionReason: context.focusSelectionReason || null,
       recentMessages: Array.isArray(context.recentMessages) ? context.recentMessages : [],
       latestUserMessage: context.message || "",
@@ -785,8 +760,8 @@ function buildPlanConversationPrompt(context) {
 function resolvePrompt(kind, context) {
   if (kind === "recovery") return buildRecoveryPrompt(context);
   if (kind === "chat") {
-    if (context.chatMode === "free") return buildFreeConversationPrompt(context);
-    if (context.chatMode === "plan") return buildPlanConversationPrompt(context);
+    if (context.chatMode === COACH_CHAT_MODES.FREE) return buildFreeConversationPrompt(context);
+    if (context.chatMode === COACH_CHAT_MODES.PLAN) return buildPlanConversationPrompt(context);
     return buildChatCardPrompt(context);
   }
   return buildNowPrompt(context);
@@ -794,7 +769,7 @@ function resolvePrompt(kind, context) {
 
 function resolveSchema(kind, context) {
   if (kind !== "chat") return coachPayloadSchema;
-  if (context.chatMode === "free" || context.chatMode === "plan") {
+  if (isConversationCoachMode(context.chatMode)) {
     return coachConversationPayloadSchema;
   }
   return coachChatCardPayloadSchema;
@@ -802,14 +777,14 @@ function resolveSchema(kind, context) {
 
 function resolveSchemaName(kind, context) {
   if (kind !== "chat") return "coach_payload";
-  if (context.chatMode === "free") return "coach_conversation_free_payload";
-  if (context.chatMode === "plan") return "coach_conversation_plan_payload";
-  return "coach_chat_payload";
+  if (context.chatMode === COACH_CHAT_MODES.FREE) return "coach_conversation_free_payload";
+  if (context.chatMode === COACH_CHAT_MODES.PLAN) return "coach_conversation_plan_payload";
+  return "coach_local_analysis_payload";
 }
 
 function normalizePayloadCandidateForKind(kind, context, candidate) {
   if (kind !== "chat") return normalizeCoachPayloadCandidate(candidate);
-  if (context.chatMode === "free" || context.chatMode === "plan") {
+  if (isConversationCoachMode(context.chatMode)) {
     return normalizeConversationPayloadCandidate(candidate);
   }
   return normalizeChatPayloadCandidate(candidate);

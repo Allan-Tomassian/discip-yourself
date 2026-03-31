@@ -9,9 +9,12 @@ const RULES_PATH = path.resolve(process.cwd(), "src/services/fallback/rules.js")
 test("coach prompts keep the global coach guidance concrete and explanatory", () => {
   const source = fs.readFileSync(OPENAI_RUNNER_PATH, "utf8");
 
-  assert.match(source, /The coach is opened manually by the user from anywhere in the app\./);
-  assert.match(source, /You may answer with a concise explanation when the user asks why a recommendation exists or how the app should be used/);
-  assert.match(source, /If missing information blocks a credible recommendation, you may ask one short clarification question/);
+  assert.match(source, /You are the conversational Coach for Discip-Yourself\./);
+  assert.match(source, /The user is talking freely and may not want to create anything yet\./);
+  assert.match(source, /You may suggest activating plan mode only when the user is clearly trying to structure something in the app\./);
+  assert.match(source, /You are the local analysis layer for Discip-Yourself on/);
+  assert.match(source, /This layer is secondary to the Coach and must stay local, concise, and non-conversational\./);
+  assert.match(source, /Do not behave like the Coach and do not start a workflow on behalf of the user\./);
 });
 
 test("chat fallback keeps a concrete planning fallback", () => {

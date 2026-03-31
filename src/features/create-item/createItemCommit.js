@@ -128,9 +128,9 @@ function resolveSuggestedCategories(state) {
 
 export function buildCreationViewTarget({ createdCategoryId = null, createdActionIds = [], createdOutcomeId = null } = {}) {
   return {
-    type: "library-category",
+    type: "library-focus",
     categoryId: createdCategoryId || null,
-    focusSection: createdActionIds.length ? "actions" : createdOutcomeId ? "objectives" : "actions",
+    section: createdActionIds.length ? "actions" : createdOutcomeId ? "objectives" : "actions",
     outcomeId: createdOutcomeId || null,
     actionIds: Array.isArray(createdActionIds) ? createdActionIds.filter(Boolean).slice(0, 6) : [],
   };

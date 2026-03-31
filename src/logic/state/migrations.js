@@ -436,6 +436,7 @@ export function migrate(prev) {
   if (!next.ui.selectedGoalByCategory || typeof next.ui.selectedGoalByCategory !== "object") {
     next.ui.selectedGoalByCategory = {};
   }
+  if (typeof next.ui.libraryFocusTarget === "undefined") next.ui.libraryFocusTarget = null;
   if (!Array.isArray(next.ui.categoryRailOrder)) next.ui.categoryRailOrder = [];
 
   next.ui.selectedCategoryByView = normalizeSelectedCategoryByView(next.ui.selectedCategoryByView);

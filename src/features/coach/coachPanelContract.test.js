@@ -42,6 +42,8 @@ describe("coach panel contract", () => {
     expect(coachPanel).toContain("Objectif ·");
     expect(coachPanel).not.toContain("Direction ·");
     expect(coachPanel).toContain('sourceSurface: "coach"');
+    expect(coachPanel).not.toContain("Appliquer le brouillon");
+    expect(coachPanel).not.toContain("Brouillon proposé");
     expect(coachPanel).not.toContain("onOpenStructuring");
     expect(coachPanel).not.toContain("Ouvrir le Coach");
     expect(coachPanel).not.toContain('setTab?.("coach-chat")');

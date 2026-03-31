@@ -7,7 +7,7 @@ import {
   normalizeCoachPayloadCandidate,
   runOpenAiCoach,
 } from "../src/services/coach/openaiRunner.js";
-import { coachPayloadSchema } from "../src/schemas/coach.js";
+import { coachConversationResponseSchema, coachPayloadSchema } from "../src/schemas/coach.js";
 
 function createRunnerApp(message) {
   return {
@@ -239,4 +239,34 @@ test("classifyCoachPayloadIssue reports invalid_reward_suggestion for invalid re
 
   const parsedResult = coachPayloadSchema.safeParse(invalidPayload);
   assert.equal(classifyCoachPayloadIssue(parsedResult.error), MODEL_OUTPUT_ISSUE_CODE.INVALID_REWARD_SUGGESTION);
+});
+
+test("coach conversation schema rejects a free reply carrying a proposal", () => {
+  const parsedResult = coachConversationResponseSchema.safeParse({
+    kind: "conversation",
+    mode: "free",
+    decisionSource: "rules",
+    message: "On peut clarifier sans créer tout de suite.",
+    primaryAction: null,
+    secondaryAction: null,
+    proposal: {
+      kind: "guided",
+      categoryDraft: null,
+      outcomeDraft: null,
+      actionDrafts: [],
+      unresolvedQuestions: [],
+      requiresValidation: true,
+    },
+    meta: {
+      coachVersion: "v1",
+      requestId: "req_free_invalid",
+      selectedDateKey: "2026-03-06",
+      activeCategoryId: null,
+      quotaRemaining: 3,
+      fallbackReason: "none",
+      messagePreview: "Clarifie ma situation",
+    },
+  });
+
+  assert.equal(parsedResult.success, false);
 });

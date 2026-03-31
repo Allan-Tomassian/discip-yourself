@@ -2,6 +2,7 @@ import { buildNowContext } from "./nowContext.js";
 import { safeArray } from "./shared.js";
 import { buildPilotageDisciplineTrend } from "../../../../src/features/pilotage/disciplineTrendModel.js";
 import { getCategoryProfileSummary } from "../../../../src/domain/categoryProfile.js";
+import { LOCAL_ANALYSIS_SURFACES, normalizeLocalAnalysisSurface } from "../../../../src/domain/aiPolicy.js";
 
 const AI_FOUNDATION_PLANNING_TEMPLATE_ID = "ai_onboarding_planning";
 
@@ -329,12 +330,17 @@ export function buildChatContext({
       : body?.mode === "free"
         ? "free"
         : "card";
+  const analysisSurface =
+    chatMode === "card"
+      ? normalizeLocalAnalysisSurface(body?.surface, LOCAL_ANALYSIS_SURFACES.GENERIC)
+      : null;
   const actionSummaries = buildActionSummaries(data, resolvedActiveCategoryId);
   const planningSummary = buildPlanningSummary(data, selectedDateKey);
 
   return {
     ...baseContext,
     chatMode,
+    analysisSurface,
     activeCategoryLabel: baseContext.category?.name || null,
     message,
     messagePreview: message ? message.slice(0, 120) : null,

@@ -193,7 +193,7 @@ export function createPersistedNowAnalysisEntry({
   });
 }
 
-export function createPersistedChatAnalysisEntry({
+export function createPersistedLocalAnalysisEntry({
   contextKey,
   surface,
   storageScope,
@@ -224,4 +224,8 @@ export function createPersistedChatAnalysisEntry({
     activeCategoryId: safeNullableString(reply?.meta?.activeCategoryId),
     fallbackReason: safeNullableString(reply?.meta?.fallbackReason),
   });
+}
+
+export function createPersistedChatAnalysisEntry(args) {
+  return createPersistedLocalAnalysisEntry(args);
 }

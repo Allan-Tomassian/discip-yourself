@@ -20,7 +20,7 @@ describe("product wording contract", () => {
     expect(SURFACE_LABELS.journal).toBe("Journal");
     expect(MARKETING_COPY.essentialPlan).toBe("Accès essentiel");
     expect(ANALYSIS_COPY.localDiagnostic).toBe("Lecture locale");
-    expect(ANALYSIS_COPY.coachAnalysis).toBe("Lecture du Coach");
+    expect(ANALYSIS_COPY.coachAnalysis).toBe("Lecture IA locale");
     expect(MAIN_PAGE_COPY.today.orientation).toBe("Commence par le prochain pas utile aujourd’hui.");
     expect(MAIN_PAGE_COPY.planning.orientation).toBe("Règle le rythme avant de charger la journée.");
     expect(MAIN_PAGE_COPY.library.orientation).toBe("Lis ton système par catégories stables.");

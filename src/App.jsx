@@ -57,6 +57,7 @@ import { useCreateFlowOrchestration } from "./hooks/useCreateFlowOrchestration";
 import { useCategorySelectionSync } from "./hooks/useCategorySelectionSync";
 import { getInboxId } from "./app/inbox";
 import { createHomeNavigationHandlers } from "./app/homeNavigation";
+import { resolveCoachCreatedViewTarget } from "./app/coachCreatedViewTarget";
 import {
   normalizeRouteOrigin,
   resolveActiveTopNavTab,
@@ -557,49 +558,29 @@ export default function App() {
 
   const openCoachCreatedView = useCallback(
     (target) => {
-      const rawTarget = target && typeof target === "object" ? target : null;
-      if (!rawTarget) return;
-
-      let safeTarget = rawTarget;
-      if (rawTarget.type === "edit-item" && rawTarget.itemId) {
-        const goal = (Array.isArray(safeData.goals) ? safeData.goals : []).find((entry) => entry?.id === rawTarget.itemId) || null;
-        const goalType = goal ? resolveGoalType(goal) : null;
-        safeTarget = {
-          type: "library-category",
-          categoryId: goal?.categoryId || rawTarget.categoryId || null,
-          focusSection: goalType === "OUTCOME" ? "objectives" : "actions",
-          outcomeId: goalType === "OUTCOME" ? goal?.id || rawTarget.itemId : null,
-          actionIds: goalType === "PROCESS" ? [goal?.id || rawTarget.itemId].filter(Boolean) : [],
+      const safeTarget = resolveCoachCreatedViewTarget(target, safeData.goals);
+      setLibraryCategoryId(null);
+      setData((previous) => {
+        const safePrevious = previous && typeof previous === "object" ? previous : {};
+        const previousUi = safePrevious.ui && typeof safePrevious.ui === "object" ? safePrevious.ui : {};
+        const categoryId = safeTarget?.categoryId || null;
+        const baseUi = categoryId ? withLibraryActiveCategoryId(previousUi, categoryId) : previousUi;
+        return {
+          ...safePrevious,
+          ui: {
+            ...baseUi,
+            manageScrollTo: null,
+            libraryFocusTarget: safeTarget,
+            selectedGoalByCategory:
+              safeTarget?.outcomeId && categoryId
+                ? {
+                    ...(baseUi.selectedGoalByCategory || {}),
+                    [categoryId]: safeTarget.outcomeId,
+                  }
+                : baseUi.selectedGoalByCategory || {},
+          },
         };
-      }
-
-      if (safeTarget.type === "library-category") {
-        const categoryId = safeTarget.categoryId || null;
-        if (categoryId) {
-          setLibraryCategoryId(categoryId);
-          setData((previous) => {
-            const safePrevious = previous && typeof previous === "object" ? previous : {};
-            const previousUi = safePrevious.ui && typeof safePrevious.ui === "object" ? safePrevious.ui : {};
-            return {
-              ...safePrevious,
-              ui: {
-                ...previousUi,
-                manageScrollTo: safeTarget.focusSection === "objectives" ? "objectives" : "actions",
-                selectedGoalByCategory:
-                  safeTarget.outcomeId
-                    ? {
-                        ...(previousUi.selectedGoalByCategory || {}),
-                        [categoryId]: safeTarget.outcomeId,
-                      }
-                    : previousUi.selectedGoalByCategory || {},
-              },
-            };
-          });
-        }
-        setTab("library");
-        return;
-      }
-
+      });
       setTab("library");
     },
     [safeData.goals, setData, setLibraryCategoryId, setTab]
@@ -1065,8 +1046,7 @@ export default function App() {
           setData={setData}
           persistenceScope={persistenceScope}
           setTab={setTab}
-          onOpenAssistantCreate={(proposal) => openCoachAssistantCreate({ sourceSurface: "planning", proposal })}
-          onOpenCoach={() => openCoach({ mode: "free" })}
+          onOpenCoach={openCoach}
         />
       ) : tab === "category-detail" ? (
         <CategoryDetailView
@@ -1111,6 +1091,7 @@ export default function App() {
           onPlanCategory={handlePlanCategory}
           generationWindowDays={generationWindowDays}
           isPlanningUnlimited={planningUnlimited}
+          onOpenCoach={openCoach}
         />
       ) : tab === "edit-item" ? (
         <EditItem

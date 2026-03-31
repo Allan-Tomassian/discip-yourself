@@ -13,7 +13,7 @@ describe("resolveManualAiDisplayState", () => {
   it("returns ai while a first manual analysis is loading", () => {
     expect(resolveManualAiDisplayState({ loading: true })).toEqual({
       kind: "ai",
-      label: "Lecture du Coach",
+      label: "Lecture IA locale",
       isAi: true,
     });
   });
@@ -26,7 +26,7 @@ describe("resolveManualAiDisplayState", () => {
       })
     ).toEqual({
       kind: "ai_updated",
-      label: "Lecture du Coach mise à jour",
+      label: "Lecture IA locale mise à jour",
       isAi: true,
     });
   });

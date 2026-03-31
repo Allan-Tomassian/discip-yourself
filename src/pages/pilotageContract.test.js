@@ -45,6 +45,8 @@ describe("Pilotage contract", () => {
     const source = readSrc("pages/Pilotage.jsx");
 
     expect(source).toContain("surface: \"pilotage\"");
+    expect(source).toContain("requestAiLocalAnalysis");
+    expect(source).not.toContain("requestAiCoachChat");
     expect(source).toContain("resolveManualAiDisplayState");
     expect(source).toContain("<ManualAiStatus");
     expect(source).toContain("manualPilotageAnalysis.loadingStageLabel");

@@ -1,10 +1,6 @@
-import { readAiBackendBaseUrl } from "./aiNowClient";
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
-import {
-  COACH_CHAT_MODES,
-  isConversationCoachMode,
-  normalizeCoachChatMode,
-} from "../domain/aiPolicy";
+import { readAiBackendBaseUrl } from "./aiNowClient";
+import { LOCAL_ANALYSIS_SURFACES, normalizeLocalAnalysisSurface } from "../domain/aiPolicy";
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const ACTION_INTENTS = new Set([
@@ -17,7 +13,6 @@ const ACTION_INTENTS = new Set([
 ]);
 const DECISION_SOURCES = new Set(["ai", "rules"]);
 const META_FALLBACK_REASONS = new Set(["none", "quota", "timeout", "invalid_model_output", "backend_error"]);
-const CHAT_ROLES = new Set(["user", "assistant"]);
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -31,7 +26,7 @@ function isNullableString(value) {
   return value === null || typeof value === "string";
 }
 
-function isChatAction(value) {
+function isLocalAnalysisAction(value) {
   return (
     isPlainObject(value) &&
     typeof value.label === "string" &&
@@ -48,7 +43,6 @@ function summarizeBodyShape(body) {
   const source = isPlainObject(body) ? body : {};
   return {
     responseKind: typeof source.kind === "string" ? source.kind : null,
-    responseMode: typeof source.mode === "string" ? source.mode : null,
     requestId:
       typeof source.requestId === "string"
         ? source.requestId
@@ -56,128 +50,6 @@ function summarizeBodyShape(body) {
           ? source.meta.requestId
           : null,
     bodyKeys: Object.keys(source),
-  };
-}
-
-function logCoachChatIssue({
-  errorCode,
-  status = null,
-  transportMeta = null,
-  requestId = null,
-  mode = null,
-  backendErrorCode = null,
-  responseKind = null,
-  responseMode = null,
-  bodyKeys = null,
-} = {}) {
-  logAiTransportIssue({
-    endpoint: "/ai/chat",
-    errorCode,
-    status,
-    requestId,
-    mode,
-    backendErrorCode,
-    responseKind,
-    responseMode,
-    bodyKeys,
-    transportMeta,
-  });
-}
-
-export function isAiCoachChatResponse(value) {
-  const isCardResponse =
-    isPlainObject(value) &&
-    value.kind === "chat" &&
-    DECISION_SOURCES.has(value.decisionSource) &&
-    typeof value.headline === "string" &&
-    value.headline.length <= 72 &&
-    typeof value.reason === "string" &&
-    value.reason.length <= 160 &&
-    isChatAction(value.primaryAction) &&
-    (value.secondaryAction === null || isChatAction(value.secondaryAction)) &&
-    (value.suggestedDurationMin === null ||
-      (Number.isInteger(value.suggestedDurationMin) &&
-        value.suggestedDurationMin >= 1 &&
-        value.suggestedDurationMin <= 240)) &&
-    isPlainObject(value.meta) &&
-    value.meta.coachVersion === "v1" &&
-    typeof value.meta.requestId === "string" &&
-    isDateKey(value.meta.selectedDateKey) &&
-    isNullableString(value.meta.activeCategoryId) &&
-    (value.meta.quotaRemaining === null || Number.isInteger(value.meta.quotaRemaining)) &&
-    META_FALLBACK_REASONS.has(value.meta.fallbackReason) &&
-    isNullableString(value.meta.messagePreview)
-  ;
-
-  const hasValidConversationProposal =
-    isPlainObject(value) &&
-    value.kind === "conversation" &&
-    (value.mode === COACH_CHAT_MODES.FREE
-      ? (value.proposal ?? null) === null
-      : value.mode === COACH_CHAT_MODES.PLAN
-        ? value.proposal === null || isPlainObject(value.proposal)
-        : false);
-
-  const isConversationResponse =
-    isPlainObject(value) &&
-    value.kind === "conversation" &&
-    isConversationCoachMode(value.mode) &&
-    DECISION_SOURCES.has(value.decisionSource) &&
-    typeof value.message === "string" &&
-    value.message.length > 0 &&
-    value.message.length <= 1200 &&
-    (value.primaryAction === null || isChatAction(value.primaryAction)) &&
-    (value.secondaryAction === null || isChatAction(value.secondaryAction)) &&
-    hasValidConversationProposal &&
-    isPlainObject(value.meta) &&
-    value.meta.coachVersion === "v1" &&
-    typeof value.meta.requestId === "string" &&
-    isDateKey(value.meta.selectedDateKey) &&
-    isNullableString(value.meta.activeCategoryId) &&
-    (value.meta.quotaRemaining === null || Number.isInteger(value.meta.quotaRemaining)) &&
-    META_FALLBACK_REASONS.has(value.meta.fallbackReason) &&
-    isNullableString(value.meta.messagePreview);
-
-  return isCardResponse || isConversationResponse;
-}
-
-export function normalizeAiCoachChatPayload(input) {
-  const source = isPlainObject(input) ? input : {};
-  const selectedDateKey = source.selectedDateKey;
-  const activeCategoryId = source.activeCategoryId ?? null;
-  const message = typeof source.message === "string" ? source.message.trim() : "";
-  const recentMessages = Array.isArray(source.recentMessages) ? source.recentMessages : [];
-  const mode = normalizeCoachChatMode(source.mode, COACH_CHAT_MODES.CARD);
-
-  if (!isDateKey(selectedDateKey)) {
-    const error = new Error("selectedDateKey must be YYYY-MM-DD");
-    error.code = "INVALID_REQUEST";
-    throw error;
-  }
-  if (!isNullableString(activeCategoryId)) {
-    const error = new Error("activeCategoryId must be a string or null");
-    error.code = "INVALID_REQUEST";
-    throw error;
-  }
-  if (!message || message.length > 500) {
-    const error = new Error("message must be 1..500 chars");
-    error.code = "INVALID_REQUEST";
-    throw error;
-  }
-
-  return {
-    selectedDateKey,
-    activeCategoryId,
-    message,
-    mode,
-    recentMessages: recentMessages
-      .filter((entry) => isPlainObject(entry) && CHAT_ROLES.has(entry.role))
-      .map((entry) => ({
-        role: entry.role,
-        content: typeof entry.content === "string" ? entry.content.slice(0, 500) : "",
-      }))
-      .filter((entry) => entry.content)
-      .slice(-6),
   };
 }
 
@@ -202,7 +74,93 @@ async function safeParseJson(response) {
   }
 }
 
-export async function requestAiCoachChat({
+function logLocalAnalysisIssue({
+  errorCode,
+  status = null,
+  transportMeta = null,
+  requestId = null,
+  surface = null,
+  backendErrorCode = null,
+  responseKind = null,
+  bodyKeys = null,
+} = {}) {
+  logAiTransportIssue({
+    endpoint: "/ai/local-analysis",
+    errorCode,
+    status,
+    requestId,
+    mode: surface,
+    backendErrorCode,
+    responseKind,
+    responseMode: null,
+    bodyKeys,
+    transportMeta,
+  });
+}
+
+export function isAiLocalAnalysisResponse(value) {
+  return (
+    isPlainObject(value) &&
+    value.kind === "chat" &&
+    DECISION_SOURCES.has(value.decisionSource) &&
+    typeof value.headline === "string" &&
+    value.headline.length <= 72 &&
+    typeof value.reason === "string" &&
+    value.reason.length <= 160 &&
+    isLocalAnalysisAction(value.primaryAction) &&
+    (value.secondaryAction === null || isLocalAnalysisAction(value.secondaryAction)) &&
+    (value.suggestedDurationMin === null ||
+      (Number.isInteger(value.suggestedDurationMin) &&
+        value.suggestedDurationMin >= 1 &&
+        value.suggestedDurationMin <= 240)) &&
+    isPlainObject(value.meta) &&
+    value.meta.coachVersion === "v1" &&
+    typeof value.meta.requestId === "string" &&
+    isDateKey(value.meta.selectedDateKey) &&
+    isNullableString(value.meta.activeCategoryId) &&
+    (value.meta.quotaRemaining === null || Number.isInteger(value.meta.quotaRemaining)) &&
+    META_FALLBACK_REASONS.has(value.meta.fallbackReason) &&
+    isNullableString(value.meta.messagePreview)
+  );
+}
+
+export function normalizeAiLocalAnalysisPayload(input) {
+  const source = isPlainObject(input) ? input : {};
+  const selectedDateKey = source.selectedDateKey;
+  const activeCategoryId = source.activeCategoryId ?? null;
+  const message = typeof source.message === "string" ? source.message.trim() : "";
+  const surface = normalizeLocalAnalysisSurface(source.surface, LOCAL_ANALYSIS_SURFACES.GENERIC);
+
+  if (!isDateKey(selectedDateKey)) {
+    const error = new Error("selectedDateKey must be YYYY-MM-DD");
+    error.code = "INVALID_REQUEST";
+    throw error;
+  }
+  if (!isNullableString(activeCategoryId)) {
+    const error = new Error("activeCategoryId must be a string or null");
+    error.code = "INVALID_REQUEST";
+    throw error;
+  }
+  if (!message || message.length > 500) {
+    const error = new Error("message must be 1..500 chars");
+    error.code = "INVALID_REQUEST";
+    throw error;
+  }
+  if (surface !== LOCAL_ANALYSIS_SURFACES.PLANNING && surface !== LOCAL_ANALYSIS_SURFACES.PILOTAGE) {
+    const error = new Error("surface must be planning or pilotage");
+    error.code = "INVALID_REQUEST";
+    throw error;
+  }
+
+  return {
+    selectedDateKey,
+    activeCategoryId,
+    surface,
+    message,
+  };
+}
+
+export async function requestAiLocalAnalysis({
   accessToken,
   payload,
   baseUrl,
@@ -212,7 +170,7 @@ export async function requestAiCoachChat({
   const buildTransport = (errorCode = null) => buildAiTransportMeta({ baseUrl: resolvedBaseUrl, errorCode });
   if (!resolvedBaseUrl) {
     const transportMeta = buildTransport("DISABLED");
-    logCoachChatIssue({ errorCode: "DISABLED", transportMeta, mode: payload?.mode || null });
+    logLocalAnalysisIssue({ errorCode: "DISABLED", transportMeta, surface: payload?.surface || null });
     return {
       ok: false,
       errorCode: "DISABLED",
@@ -221,13 +179,12 @@ export async function requestAiCoachChat({
       requestId: null,
       backendErrorCode: null,
       responseKind: null,
-      responseMode: null,
       transportMeta,
     };
   }
   if (typeof fetchImpl !== "function") {
     const transportMeta = buildTransport("NETWORK_ERROR");
-    logCoachChatIssue({ errorCode: "NETWORK_ERROR", transportMeta, mode: payload?.mode || null });
+    logLocalAnalysisIssue({ errorCode: "NETWORK_ERROR", transportMeta, surface: payload?.surface || null });
     return {
       ok: false,
       errorCode: "NETWORK_ERROR",
@@ -236,13 +193,12 @@ export async function requestAiCoachChat({
       requestId: null,
       backendErrorCode: null,
       responseKind: null,
-      responseMode: null,
       transportMeta,
     };
   }
   if (!String(accessToken || "").trim()) {
     const transportMeta = buildTransport("UNAUTHORIZED");
-    logCoachChatIssue({ errorCode: "UNAUTHORIZED", status: 401, transportMeta, mode: payload?.mode || null });
+    logLocalAnalysisIssue({ errorCode: "UNAUTHORIZED", status: 401, transportMeta, surface: payload?.surface || null });
     return {
       ok: false,
       errorCode: "UNAUTHORIZED",
@@ -251,17 +207,16 @@ export async function requestAiCoachChat({
       requestId: null,
       backendErrorCode: "UNAUTHORIZED",
       responseKind: null,
-      responseMode: null,
       transportMeta,
     };
   }
 
   let normalizedPayload;
   try {
-    normalizedPayload = normalizeAiCoachChatPayload(payload);
+    normalizedPayload = normalizeAiLocalAnalysisPayload(payload);
   } catch {
     const transportMeta = buildTransport("INVALID_RESPONSE");
-    logCoachChatIssue({ errorCode: "INVALID_RESPONSE", transportMeta, mode: payload?.mode || null });
+    logLocalAnalysisIssue({ errorCode: "INVALID_RESPONSE", transportMeta, surface: payload?.surface || null });
     return {
       ok: false,
       errorCode: "INVALID_RESPONSE",
@@ -270,14 +225,13 @@ export async function requestAiCoachChat({
       requestId: null,
       backendErrorCode: null,
       responseKind: null,
-      responseMode: null,
       transportMeta,
     };
   }
 
   let response;
   try {
-    response = await fetchImpl(`${resolvedBaseUrl}/ai/chat`, {
+    response = await fetchImpl(`${resolvedBaseUrl}/ai/local-analysis`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -287,7 +241,7 @@ export async function requestAiCoachChat({
     });
   } catch {
     const transportMeta = buildTransport("NETWORK_ERROR");
-    logCoachChatIssue({ errorCode: "NETWORK_ERROR", transportMeta, mode: normalizedPayload.mode });
+    logLocalAnalysisIssue({ errorCode: "NETWORK_ERROR", transportMeta, surface: normalizedPayload.surface });
     return {
       ok: false,
       errorCode: "NETWORK_ERROR",
@@ -296,7 +250,6 @@ export async function requestAiCoachChat({
       requestId: null,
       backendErrorCode: null,
       responseKind: null,
-      responseMode: null,
       transportMeta,
     };
   }
@@ -306,14 +259,13 @@ export async function requestAiCoachChat({
   if (!response.ok) {
     const errorCode = normalizeBackendErrorCode(response.status, body?.error);
     const transportMeta = buildTransport(errorCode);
-    logCoachChatIssue({
+    logLocalAnalysisIssue({
       errorCode,
       status: response.status,
       requestId: bodySummary.requestId,
-      mode: normalizedPayload.mode,
+      surface: normalizedPayload.surface,
       backendErrorCode: body?.error || null,
       responseKind: bodySummary.responseKind,
-      responseMode: bodySummary.responseMode,
       bodyKeys: bodySummary.bodyKeys,
       transportMeta,
     });
@@ -325,20 +277,18 @@ export async function requestAiCoachChat({
       requestId: bodySummary.requestId,
       backendErrorCode: typeof body?.error === "string" ? body.error : null,
       responseKind: bodySummary.responseKind,
-      responseMode: bodySummary.responseMode,
       transportMeta,
     };
   }
 
-  if (!isAiCoachChatResponse(body)) {
+  if (!isAiLocalAnalysisResponse(body)) {
     const transportMeta = buildTransport("INVALID_RESPONSE");
-    logCoachChatIssue({
+    logLocalAnalysisIssue({
       errorCode: "INVALID_RESPONSE",
       status: response.status,
       requestId: bodySummary.requestId,
-      mode: normalizedPayload.mode,
+      surface: normalizedPayload.surface,
       responseKind: bodySummary.responseKind,
-      responseMode: bodySummary.responseMode,
       bodyKeys: bodySummary.bodyKeys,
       transportMeta,
     });
@@ -350,7 +300,6 @@ export async function requestAiCoachChat({
       requestId: bodySummary.requestId,
       backendErrorCode: null,
       responseKind: bodySummary.responseKind,
-      responseMode: bodySummary.responseMode,
       transportMeta,
     };
   }
@@ -363,7 +312,6 @@ export async function requestAiCoachChat({
     requestId: bodySummary.requestId,
     backendErrorCode: null,
     responseKind: bodySummary.responseKind,
-    responseMode: bodySummary.responseMode,
     transportMeta: buildTransport(null),
   };
 }

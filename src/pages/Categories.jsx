@@ -1,6 +1,7 @@
 // src/pages/Categories.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
+import { normalizeLibraryFocusTarget } from "../app/coachCreatedViewTarget";
 import { GateButton, GateSection } from "../shared/ui/gate/Gate";
 import SortableBlocks from "../components/SortableBlocks";
 import AccentCategoryRow from "../components/AccentCategoryRow";
@@ -45,6 +46,10 @@ function parseScopeKey(scopeKey) {
   const idx = raw.indexOf(":");
   if (idx <= 0) return { kind: "", id: "" };
   return { kind: raw.slice(0, idx), id: raw.slice(idx + 1) };
+}
+
+function escapeSelectorValue(value) {
+  return String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 function Button({ variant = "primary", className = "", ...props }) {
@@ -453,6 +458,7 @@ export default function Categories({
   const librarySelectedCategoryId = getStoredLibraryActiveCategoryId(safeData) || null;
   const homeSelectedCategoryId = getExecutionActiveCategoryId(safeData) || null;
   const libraryDetailExpandedId = safeData?.ui?.libraryDetailExpandedId || null;
+  const libraryFocusTarget = normalizeLibraryFocusTarget(safeData?.ui?.libraryFocusTarget);
   const libraryViewSelectedId = librarySelectedCategoryId || homeSelectedCategoryId || null;
   const activeLibraryCategory = activeCategories.find((category) => category.id === libraryViewSelectedId) || null;
 
@@ -489,6 +495,21 @@ export default function Categories({
     });
   }
 
+  const clearLibraryFocusTarget = useCallback(() => {
+    if (typeof setData !== "function") return;
+    setData((prev) => {
+      const prevUi = prev.ui || {};
+      if (!prevUi.libraryFocusTarget) return prev;
+      return {
+        ...prev,
+        ui: {
+          ...prevUi,
+          libraryFocusTarget: null,
+        },
+      };
+    });
+  }, [setData]);
+
   function handleOpenDetail(categoryId) {
     if (!categoryId) return;
     if (libraryDetailExpandedId === categoryId) {
@@ -508,6 +529,72 @@ export default function Categories({
     setLibraryCategory(categoryId);
     setLibraryDetailExpanded(categoryId);
   }
+
+  useEffect(() => {
+    const target = libraryFocusTarget;
+    const categoryId = target?.categoryId || null;
+    if (!categoryId || typeof setData !== "function") return;
+
+    if (libraryViewSelectedId !== categoryId || libraryDetailExpandedId !== categoryId) {
+      setData((prev) => {
+        const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
+        const nextUi = withLibraryActiveCategoryId(prevUi, categoryId);
+        const nextSelectedGoalByCategory =
+          target.outcomeId && prevUi.selectedGoalByCategory?.[categoryId] !== target.outcomeId
+            ? {
+                ...(nextUi.selectedGoalByCategory || {}),
+                [categoryId]: target.outcomeId,
+              }
+            : nextUi.selectedGoalByCategory || {};
+        const nextLibraryDetailExpandedId =
+          prevUi.libraryDetailExpandedId === categoryId ? prevUi.libraryDetailExpandedId : categoryId;
+        return {
+          ...prev,
+          ui: {
+            ...nextUi,
+            libraryDetailExpandedId: nextLibraryDetailExpandedId,
+            selectedGoalByCategory: nextSelectedGoalByCategory,
+          },
+        };
+      });
+      return;
+    }
+
+    if (typeof document === "undefined" || typeof window === "undefined") return;
+    const categorySelector = `[data-library-focus-category="${escapeSelectorValue(categoryId)}"]`;
+    const targetSection = target.section === "objectives" ? "objectives" : "actions";
+    const targetRowId =
+      targetSection === "objectives" && target.outcomeId
+        ? `outcome:${target.outcomeId}`
+        : targetSection === "actions" && target.actionIds.length === 1
+        ? `action:${target.actionIds[0]}`
+        : "";
+
+    let timeoutId = 0;
+    const frameId = window.requestAnimationFrame(() => {
+      const container = document.querySelector(categorySelector);
+      if (!container) return;
+      const sectionNode = container.querySelector(
+        `[data-library-focus-section="${escapeSelectorValue(targetSection)}"]`
+      );
+      const rowNode = targetRowId
+        ? container.querySelector(`[data-library-focus-row="${escapeSelectorValue(targetRowId)}"]`)
+        : null;
+      const focusNode = rowNode || sectionNode;
+      if (!focusNode || typeof focusNode.scrollIntoView !== "function") return;
+      focusNode.scrollIntoView({ behavior: "smooth", block: rowNode ? "center" : "start" });
+      focusNode.classList.add("flashPulse");
+      clearLibraryFocusTarget();
+      timeoutId = window.setTimeout(() => {
+        focusNode.classList.remove("flashPulse");
+      }, 1600);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, [clearLibraryFocusTarget, libraryDetailExpandedId, libraryFocusTarget, libraryViewSelectedId, setData]);
 
   const categoryRailOrder = useMemo(
     () => (Array.isArray(safeData?.ui?.categoryRailOrder) ? safeData.ui.categoryRailOrder : []),
@@ -645,7 +732,11 @@ export default function Categories({
           </div>
         </AccentCategoryRow>
         {isExpanded ? (
-          <div className="col gap8 pl10 libraryDetailStack" style={detailAccentVars}>
+          <div
+            className="col gap8 pl10 libraryDetailStack"
+            style={detailAccentVars}
+            data-library-focus-category={category.id}
+          >
             <div className="row rowBetween alignCenter">
               <div className="small2 textMuted2">
                 Détails
@@ -712,7 +803,7 @@ export default function Categories({
                 </div>
               )}
             </AccentCategoryRow>
-            <div className="col gap8">
+            <div className="col gap8" data-library-focus-section="objectives">
               <div className="small2 textMuted">
                 {LABELS.goals}
               </div>
@@ -724,7 +815,12 @@ export default function Categories({
                     const goalDraft = isEditingGoalTitle ? draftStore.getDraft(getGoalScopeKey(g.id)) : null;
                     const draftTitle = goalDraft?.working?.title ?? g.title ?? "";
                     return (
-                      <AccentCategoryRow key={g.id} className="listItem" style={detailAccentVars}>
+                      <AccentCategoryRow
+                        key={g.id}
+                        className="listItem"
+                        style={detailAccentVars}
+                        data-library-focus-row={`outcome:${g.id}`}
+                      >
                         <div className="row rowBetween gap8">
                           <div className="col gap6 minW0">
                             {isEditingGoalTitle ? (
@@ -803,7 +899,7 @@ export default function Categories({
               )}
             </div>
             {actionSections.length ? (
-              <div className="col gap8">
+              <div className="col gap8" data-library-focus-section="actions">
                 <div className="small2 textMuted">Actions</div>
                 <div className="col gap8">
                   {actionSections.map((section) => (
@@ -816,7 +912,12 @@ export default function Categories({
                           const goalDraft = isEditingGoalTitle ? draftStore.getDraft(getGoalScopeKey(goal.id)) : null;
                           const draftTitle = goalDraft?.working?.title ?? goal.title ?? "";
                           return (
-                            <AccentCategoryRow key={goal.id} className="listItem" style={detailAccentVars}>
+                            <AccentCategoryRow
+                              key={goal.id}
+                              className="listItem"
+                              style={detailAccentVars}
+                              data-library-focus-row={`action:${goal.id}`}
+                            >
                               <div className="row rowBetween gap8">
                                 <div className="col gap6 minW0">
                                   {isEditingGoalTitle ? (

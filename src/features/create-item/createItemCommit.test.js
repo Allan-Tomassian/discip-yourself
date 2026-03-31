@@ -10,9 +10,9 @@ describe("createItemCommit view target", () => {
         createdActionIds: [],
       })
     ).toEqual({
-      type: "library-category",
+      type: "library-focus",
       categoryId: "cat_sport",
-      focusSection: "objectives",
+      section: "objectives",
       outcomeId: "goal_1",
       actionIds: [],
     });
@@ -26,9 +26,9 @@ describe("createItemCommit view target", () => {
         createdActionIds: ["action_1"],
       })
     ).toEqual({
-      type: "library-category",
+      type: "library-focus",
       categoryId: "cat_sport",
-      focusSection: "actions",
+      section: "actions",
       outcomeId: null,
       actionIds: ["action_1"],
     });
@@ -42,9 +42,9 @@ describe("createItemCommit view target", () => {
         createdActionIds: ["action_1", "action_2"],
       })
     ).toEqual({
-      type: "library-category",
+      type: "library-focus",
       categoryId: "cat_sport",
-      focusSection: "actions",
+      section: "actions",
       outcomeId: "goal_1",
       actionIds: ["action_1", "action_2"],
     });

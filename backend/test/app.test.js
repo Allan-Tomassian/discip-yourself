@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildApp } from "../src/app.js";
-import { coachChatResponseSchema, coachResponseSchema } from "../src/schemas/coach.js";
+import {
+  coachChatResponseSchema,
+  coachLocalAnalysisResponseSchema,
+  coachResponseSchema,
+} from "../src/schemas/coach.js";
 
 const TEST_CONFIG = {
   APP_ENV: "test",
@@ -285,6 +289,28 @@ test("OPTIONS /ai/chat accepts an explicit public staging frontend origin", asyn
   await app.close();
 });
 
+test("OPTIONS /ai/local-analysis accepts a private LAN origin when private network dev CORS is enabled", async () => {
+  const app = await buildApp({
+    config: {
+      ...TEST_CONFIG,
+      CORS_ALLOW_PRIVATE_NETWORK_DEV: true,
+    },
+    verifyAccessToken: async () => ({ id: "user-local-analysis-lan" }),
+  });
+  const response = await app.inject({
+    method: "OPTIONS",
+    url: "/ai/local-analysis",
+    headers: {
+      origin: "http://192.168.1.183:5173",
+      "access-control-request-method": "POST",
+      "access-control-request-headers": "authorization,content-type",
+    },
+  });
+  assert.equal(response.statusCode, 204);
+  assert.equal(response.headers["access-control-allow-origin"], "http://192.168.1.183:5173");
+  await app.close();
+});
+
 test("OPTIONS private LAN preflight stays blocked when private network dev CORS is disabled", async () => {
   const app = await buildApp({
     config: TEST_CONFIG,
@@ -376,7 +402,7 @@ test("POST /ai/chat returns a structured rules fallback", async () => {
   assert.equal(payload.decisionSource, "rules");
   assert.equal(payload.meta.selectedDateKey, TODAY_KEY);
   assert.equal(payload.meta.messagePreview, "Je suis en retard, quel est le meilleur prochain bloc ?");
-  assert.deepEqual(payload.draftChanges, []);
+  assert.equal("draftChanges" in payload, false);
   assert.match(payload.primaryAction.intent, /start_occurrence|open_today|open_pilotage|resume_session|open_library/);
   await app.close();
 });
@@ -446,6 +472,72 @@ test("POST /ai/chat returns a plan conversation fallback when mode is plan", asy
   assert.equal(payload.mode, "plan");
   assert.equal(payload.decisionSource, "rules");
   assert.equal(payload.meta.selectedDateKey, TODAY_KEY);
+  await app.close();
+});
+
+test("POST /ai/local-analysis returns a planning fallback without using the Coach conversation contract", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-local-analysis-planning" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/local-analysis",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.25" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      surface: "planning",
+      message: "Relis mon rythme cette semaine.",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachLocalAnalysisResponseSchema.parse(response.json());
+  assert.equal(payload.kind, "chat");
+  assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.meta.selectedDateKey, TODAY_KEY);
+  assert.match(payload.primaryAction.intent, /open_today|open_library|open_pilotage/);
+  await app.close();
+});
+
+test("POST /ai/local-analysis returns a pilotage fallback scoped to pilotage guidance", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-local-analysis-pilotage" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/local-analysis",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.26" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      surface: "pilotage",
+      message: "Lis mon équilibre récent.",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachLocalAnalysisResponseSchema.parse(response.json());
+  assert.equal(payload.kind, "chat");
+  assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.meta.selectedDateKey, TODAY_KEY);
+  assert.match(payload.primaryAction.intent, /open_today|open_pilotage|open_library/);
   await app.close();
 });
 
