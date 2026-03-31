@@ -127,23 +127,12 @@ function resolveSuggestedCategories(state) {
 }
 
 export function buildCreationViewTarget({ createdCategoryId = null, createdActionIds = [], createdOutcomeId = null } = {}) {
-  if (createdOutcomeId && !createdActionIds.length) {
-    return {
-      type: "edit-item",
-      itemId: createdOutcomeId,
-      categoryId: createdCategoryId || null,
-    };
-  }
-  if (createdActionIds.length === 1 && !createdOutcomeId) {
-    return {
-      type: "edit-item",
-      itemId: createdActionIds[0],
-      categoryId: createdCategoryId || null,
-    };
-  }
   return {
     type: "library-category",
     categoryId: createdCategoryId || null,
+    focusSection: createdActionIds.length ? "actions" : createdOutcomeId ? "objectives" : "actions",
+    outcomeId: createdOutcomeId || null,
+    actionIds: Array.isArray(createdActionIds) ? createdActionIds.filter(Boolean).slice(0, 6) : [],
   };
 }
 

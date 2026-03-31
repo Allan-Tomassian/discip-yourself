@@ -50,10 +50,15 @@ export default function CategoryView({
   const category = categories.find((c) => c.id === resolvedCategoryId) || null;
 
   useEffect(() => {
-    if (safeData?.ui?.manageScrollTo !== "actions") return;
+    const targetSection = safeData?.ui?.manageScrollTo === "objectives" ? "objectives" : safeData?.ui?.manageScrollTo === "actions" ? "actions" : null;
+    if (!targetSection) return;
     if (typeof document === "undefined") return;
-    const section = document.querySelector('[data-tour-id="manage-actions-section"]');
-    const cta = document.querySelector('[data-tour-id="manage-actions-create"]');
+    const section = document.querySelector(
+      targetSection === "objectives" ? '[data-tour-id="manage-objectives-section"]' : '[data-tour-id="manage-actions-section"]'
+    );
+    const cta = document.querySelector(
+      targetSection === "objectives" ? '[data-tour-id="manage-objectives-create"]' : '[data-tour-id="manage-actions-create"]'
+    );
     if (section && typeof section.scrollIntoView === "function") {
       section.scrollIntoView({ behavior: "smooth", block: "start" });
       section.classList.add("flashPulse");

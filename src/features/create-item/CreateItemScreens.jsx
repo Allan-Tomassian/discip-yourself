@@ -112,7 +112,7 @@ function ActionIdentitySection({
       {showOutcomeLink ? (
         <Field
           label={`${LABELS.goal} lié`}
-          helper={`Optionnel. Lie cette ${LABELS.actionLower} à un ${LABELS.goalLower} seulement si cela éclaire mieux sa direction.`}
+          helper={`Optionnel. Lie cette ${LABELS.actionLower} à un ${LABELS.goalLower} seulement si cela éclaire mieux son objectif.`}
         >
           <Select value={controller.effectiveSelectedOutcomeId} onChange={(event) => controller.setSelectedOutcomeId(event.target.value)}>
             <option value="">{`Sans ${LABELS.goalLower}`}</option>
@@ -295,7 +295,7 @@ export function ActionCreateScreen({
       <ActionContextSection controller={controller} />
       <ReviewSection
         title="Avant de créer"
-        description="Vérifie la catégorie, la direction éventuelle et le rythme."
+        description="Vérifie la catégorie, l’objectif éventuel et le rythme."
         unresolvedQuestions={unresolvedQuestions}
         items={[...controller.reviewCards, ...additionalReviewCards]}
       />
@@ -344,7 +344,7 @@ function OutcomeIdentitySection({ controller, title = "Identité et catégorie",
 
       <SuggestedCategoryCard
         controller={controller}
-        text="Cette catégorie n’est pas encore active. Active-la pour y rattacher durablement cette direction."
+        text="Cette catégorie n’est pas encore active. Active-la pour y rattacher durablement cet objectif."
       />
     </SectionSurface>
   );
@@ -431,7 +431,7 @@ export function OutcomeCreateScreen({
       <OutcomeContextSection controller={controller} />
       <ReviewSection
         title="Avant de créer"
-        description="Vérifie la catégorie, la direction et les mesures utiles."
+        description="Vérifie la catégorie, l’objectif et les mesures utiles."
         unresolvedQuestions={unresolvedQuestions}
         items={[...controller.reviewCards, ...additionalReviewCards]}
       />
@@ -459,8 +459,8 @@ export function GuidedCreateScreen({
     <>
       <OutcomeIdentitySection
         controller={outcomeController}
-        title="Direction et catégorie"
-        description={`Pose d’abord la direction dans une catégorie stable, puis rattache une première ${LABELS.actionLower} crédible.`}
+        title="Objectif et catégorie"
+        description={`Pose d’abord l’objectif dans une catégorie stable, puis rattache une première ${LABELS.actionLower} crédible.`}
       />
       <OutcomeHorizonSection controller={outcomeController} />
       <OutcomeMeasureSection controller={outcomeController} />
@@ -479,7 +479,7 @@ export function GuidedCreateScreen({
       <ActionContextSection controller={actionController} />
       <ReviewSection
         title="Avant de créer"
-        description="Tu vas créer une direction puis sa première action liée."
+        description="Tu vas créer un objectif puis sa première action liée."
         unresolvedQuestions={unresolvedQuestions}
         items={[...outcomeController.reviewCards, ...actionController.reviewCards, ...additionalReviewCards]}
       />

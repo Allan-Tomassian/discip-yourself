@@ -22,7 +22,11 @@ import {
   appendCoachConversationMessages,
   buildCoachConversationMessage,
 } from "../features/coach/coachStorage";
-import { commitPreparedCreatePlan, prepareCreateCommit } from "../features/create-item/createItemCommit";
+import {
+  buildCreationViewTarget,
+  commitPreparedCreatePlan,
+  prepareCreateCommit,
+} from "../features/create-item/createItemCommit";
 import {
   DEFAULT_CONFLICT_DURATION,
   normalizeDays,
@@ -618,6 +622,11 @@ export default function CreateItem({
     if (createdActionIds.length) summaryBits.push(`${createdActionIds.length} action${createdActionIds.length > 1 ? "s" : ""}`);
     const createdAt = new Date().toISOString();
     const summaryText = `Créé dans ${categoryLabel}.\n${summaryBits.join(" · ") || "Structure créée."}`;
+    const viewTarget = buildCreationViewTarget({
+      createdCategoryId,
+      createdActionIds,
+      createdOutcomeId,
+    });
     const message = buildCoachConversationMessage(
       "assistant",
       summaryText,
@@ -631,23 +640,7 @@ export default function CreateItem({
           label: "Voir",
           categoryId: createdCategoryId,
           actionId: createdActionIds.length === 1 && !createdOutcomeId ? createdActionIds[0] : createdOutcomeId || null,
-          viewTarget:
-            createdOutcomeId && !createdActionIds.length
-              ? {
-                  type: "edit-item",
-                  itemId: createdOutcomeId,
-                  categoryId: createdCategoryId || null,
-                }
-              : createdActionIds.length === 1 && !createdOutcomeId
-                ? {
-                    type: "edit-item",
-                    itemId: createdActionIds[0],
-                    categoryId: createdCategoryId || null,
-                  }
-                : {
-                    type: "library-category",
-                    categoryId: createdCategoryId || null,
-                  },
+          viewTarget,
         },
         secondaryAction: {
           intent: "continue_coach",
@@ -656,23 +649,7 @@ export default function CreateItem({
         proposal: null,
         createStatus: "created",
         createMessage: "",
-        viewTarget:
-          createdOutcomeId && !createdActionIds.length
-            ? {
-                type: "edit-item",
-                itemId: createdOutcomeId,
-                categoryId: createdCategoryId || null,
-              }
-            : createdActionIds.length === 1 && !createdOutcomeId
-              ? {
-                  type: "edit-item",
-                  itemId: createdActionIds[0],
-                  categoryId: createdCategoryId || null,
-                }
-              : {
-                  type: "library-category",
-                  categoryId: createdCategoryId || null,
-                },
+        viewTarget,
       }
     );
     setData((previous) => {
@@ -743,7 +720,7 @@ export default function CreateItem({
 
   const headerTitle =
     effectiveKind === "guided"
-      ? "Créer une direction puis une action"
+      ? "Créer un objectif puis une action"
       : effectiveKind === "outcome"
         ? `Créer un ${LABELS.goalLower}`
         : effectiveKind === "assistant"
@@ -751,11 +728,11 @@ export default function CreateItem({
           : "Créer une action";
   const headerSubtitle =
     effectiveKind === "guided"
-      ? "Choisis une catégorie stable, pose une direction, puis une première action exécutable."
+      ? "Choisis une catégorie stable, pose un objectif, puis une première action exécutable."
       : effectiveKind === "outcome"
-        ? "Pose une direction dans une catégorie avant d’y rattacher des actions."
+        ? "Pose un objectif dans une catégorie avant d’y rattacher des actions."
         : effectiveKind === "assistant"
-          ? "Le Coach clarifie une structure. Tu valides seulement la catégorie, la direction et les actions utiles."
+          ? "Le Coach clarifie une structure. Tu valides seulement la catégorie, l’objectif et les actions utiles."
           : "Ajoute une action dans une catégorie, puis donne-lui un rythme simple.";
 
   const headerRight = (
@@ -766,7 +743,7 @@ export default function CreateItem({
           : effectiveKind === "guided"
             ? "Guidé"
             : effectiveKind === "outcome"
-              ? "Direction"
+              ? "Objectif"
               : LABELS.action}
       </div>
       <div className="createItemHeaderText">Retour vers {resolveMainTabLabel(origin.mainTab)}</div>

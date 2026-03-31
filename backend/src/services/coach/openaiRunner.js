@@ -695,7 +695,7 @@ function buildPlanConversationPrompt(context) {
     kind: "conversation",
     mode: "plan",
     message:
-      "Je te propose une structure simple: une direction claire, puis une première action crédible cette semaine.",
+      "Je te propose une structure simple: un objectif clair, puis une première action crédible cette semaine.",
     primaryAction: null,
     secondaryAction: null,
     proposal: {
@@ -739,12 +739,12 @@ function buildPlanConversationPrompt(context) {
     "You are the plan mode Coach for Discip-Yourself.",
     "The user explicitly wants to structure something that can become real objects in the app.",
     "Reply in natural French, but converge to an actionable proposal instead of staying in pure discussion.",
-    "Return a proposal only for things that fit the app: category, direction, actions, rhythm, next step.",
+    "Return a proposal only for things that fit the app: category, objective, actions, rhythm, next step.",
     "Do not create or modify data. Proposal only. The user will validate explicitly later.",
     "When something important is missing, keep the proposal conservative and list the missing point in unresolvedQuestions.",
     "Use one category. Prefer the active category when it fits. If it does not fit and you are unsure, mark categoryDraft as unresolved.",
-    "Keep the proposal simple. One direction and one to three actions is enough.",
-    "Use kind=action for one standalone action, kind=outcome for one standalone direction, kind=guided when there is one direction plus at least one action.",
+    "Keep the proposal simple. One objective and one to three actions is enough.",
+    "Use kind=action for one standalone action, kind=outcome for one standalone objective, kind=guided when there is one objective plus at least one action.",
     "No markdown. No prose outside JSON.",
     `Valid JSON example: ${JSON.stringify(validExample)}`,
     `Context: ${JSON.stringify({

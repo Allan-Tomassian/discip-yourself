@@ -424,7 +424,7 @@ export function buildChatFallback(context) {
       kind: "conversation",
       mode: "plan",
       message:
-        "Je peux structurer ce projet avec toi, mais j’ai encore besoin d’un peu plus de précision. Donne-moi la catégorie visée, la direction recherchée, ou la première action que tu imagines.",
+        "Je peux structurer ce projet avec toi, mais j’ai encore besoin d’un peu plus de précision. Donne-moi la catégorie visée, l’objectif recherché, ou la première action que tu imagines.",
       primaryAction: null,
       secondaryAction: null,
       proposal: null,

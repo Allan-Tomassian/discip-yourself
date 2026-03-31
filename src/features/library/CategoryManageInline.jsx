@@ -243,15 +243,21 @@ export default function CategoryManageInline({
       setSelectedOutcomeId(null);
       return;
     }
+    const preferredId =
+      safeData?.ui?.selectedGoalByCategory &&
+      typeof safeData.ui.selectedGoalByCategory === "object" &&
+      outcomeGoals.some((goal) => goal?.id === safeData.ui.selectedGoalByCategory[category.id])
+        ? safeData.ui.selectedGoalByCategory[category.id]
+        : null;
     const mainId = category.mainGoalId && outcomeGoals.some((g) => g.id === category.mainGoalId)
       ? category.mainGoalId
       : null;
     const fallback = outcomeGoals[0]?.id || null;
     setSelectedOutcomeId((prev) => {
       if (prev && outcomeGoals.some((g) => g.id === prev)) return prev;
-      return mainId || fallback;
+      return preferredId || mainId || fallback;
     });
-  }, [category?.id, category?.mainGoalId, outcomeGoals]);
+  }, [category?.id, category?.mainGoalId, outcomeGoals, safeData?.ui?.selectedGoalByCategory]);
 
   const selectedOutcome = selectedOutcomeId
     ? outcomeGoals.find((g) => g.id === selectedOutcomeId) || null
@@ -1080,7 +1086,7 @@ export default function CategoryManageInline({
           <div className="row rowBetween alignCenter">
             <div className="titleSm">{LABELS.goals} (optionnel)</div>
             {typeof onOpenCreateOutcome === "function" ? (
-              <Button variant="ghost" onClick={() => onOpenCreateOutcome(category.id)}>
+              <Button variant="ghost" onClick={() => onOpenCreateOutcome(category.id)} data-tour-id={getTourId(inlineEdit, "manage-objectives-create")}>
                 Créer un {LABELS.goalLower}
               </Button>
             ) : null}

@@ -1133,7 +1133,7 @@ export function CoachConversationSurface({
                           ) : null}
                           {planProposal?.outcomeDraft?.title ? (
                             <div className="coachDraftItem">
-                              {`Direction · ${planProposal.outcomeDraft.title}`}
+                              {`Objectif · ${planProposal.outcomeDraft.title}`}
                             </div>
                           ) : null}
                           {proposalActions.map((draftItem, index) => (
@@ -1286,7 +1286,7 @@ export function CoachConversationSurface({
             onChange={(event) => setDraft(event.target.value)}
             placeholder={
               conversationMode === "plan"
-                ? "Ex: Je veux structurer ce projet en direction, actions et rythme crédible."
+                ? "Ex: Je veux structurer ce projet en objectif, actions et rythme crédible."
                 : "Ex: J’hésite sur mon prochain pas utile aujourd’hui."
             }
             rows={3}

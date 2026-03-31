@@ -62,9 +62,15 @@ function normalizeViewTarget(rawValue) {
     };
   }
   if (type === "library-category") {
+    const actionIds = Array.isArray(source.actionIds)
+      ? source.actionIds.map((entry) => trimString(entry, 200)).filter(Boolean).slice(0, 6)
+      : [];
     return {
       type: "library-category",
       categoryId: trimString(source.categoryId, 200) || null,
+      focusSection: source.focusSection === "objectives" ? "objectives" : "actions",
+      outcomeId: trimString(source.outcomeId, 200) || null,
+      actionIds,
     };
   }
   return null;

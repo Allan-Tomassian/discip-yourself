@@ -39,6 +39,8 @@ describe("coach panel contract", () => {
     expect(coachPanel).toContain("Discuter librement, puis passer en mode Plan quand tu veux construire.");
     expect(coachPanel).toContain("toggleCoachPlanMode");
     expect(coachPanel).toContain("coachModeBadge");
+    expect(coachPanel).toContain("Objectif ·");
+    expect(coachPanel).not.toContain("Direction ·");
     expect(coachPanel).toContain('sourceSurface: "coach"');
     expect(coachPanel).not.toContain("onOpenStructuring");
     expect(coachPanel).not.toContain("Ouvrir le Coach");

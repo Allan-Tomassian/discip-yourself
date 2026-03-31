@@ -112,4 +112,43 @@ describe("coachStorage", () => {
       createMessage: "Créé dans l’app.",
     });
   });
+
+  it("persists canonical library view targets for created plans", () => {
+    const message = buildCoachConversationMessage(
+      "assistant",
+      "Créé dans Sport.",
+      "2026-03-26T09:00:00.000Z",
+      {
+        kind: "conversation",
+        mode: "plan",
+        message: "Créé dans Sport.",
+        primaryAction: {
+          intent: "open_created_view",
+          label: "Voir",
+          categoryId: "cat_sport",
+          viewTarget: {
+            type: "library-category",
+            categoryId: "cat_sport",
+            focusSection: "actions",
+            outcomeId: "goal_1",
+            actionIds: ["action_1"],
+          },
+        },
+      }
+    );
+
+    const result = appendCoachConversationMessages(null, {
+      messages: [message],
+      contextSnapshot: { activeCategoryId: "cat_sport", dateKey: "2026-03-26" },
+      mode: "plan",
+    });
+
+    expect(result.state.conversations[0].messages[0].coachReply?.primaryAction?.viewTarget).toEqual({
+      type: "library-category",
+      categoryId: "cat_sport",
+      focusSection: "actions",
+      outcomeId: "goal_1",
+      actionIds: ["action_1"],
+    });
+  });
 });

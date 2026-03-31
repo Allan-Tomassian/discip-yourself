@@ -557,43 +557,52 @@ export default function App() {
 
   const openCoachCreatedView = useCallback(
     (target) => {
-      const safeTarget = target && typeof target === "object" ? target : null;
-      if (!safeTarget) return;
+      const rawTarget = target && typeof target === "object" ? target : null;
+      if (!rawTarget) return;
 
-      if (safeTarget.type === "edit-item" && safeTarget.itemId) {
-        const goal = (Array.isArray(safeData.goals) ? safeData.goals : []).find((entry) => entry?.id === safeTarget.itemId) || null;
-        const categoryId = goal?.categoryId || safeTarget.categoryId || null;
-        if (!goal) {
-          if (categoryId) setLibraryCategoryId(categoryId);
-          setTab("library");
-          return;
-        }
-        setEditItem({
-          id: goal.id,
-          type: resolveGoalType(goal),
-          categoryId,
-          returnTab: "library",
-          returnToCategoryView: Boolean(categoryId),
-        });
-        if (categoryId) setLibraryCategoryId(categoryId);
-        setTab("edit-item", {
-          historyState: {
-            task: "edit-item",
-            editItemId: goal.id,
-          },
-        });
-        return;
+      let safeTarget = rawTarget;
+      if (rawTarget.type === "edit-item" && rawTarget.itemId) {
+        const goal = (Array.isArray(safeData.goals) ? safeData.goals : []).find((entry) => entry?.id === rawTarget.itemId) || null;
+        const goalType = goal ? resolveGoalType(goal) : null;
+        safeTarget = {
+          type: "library-category",
+          categoryId: goal?.categoryId || rawTarget.categoryId || null,
+          focusSection: goalType === "OUTCOME" ? "objectives" : "actions",
+          outcomeId: goalType === "OUTCOME" ? goal?.id || rawTarget.itemId : null,
+          actionIds: goalType === "PROCESS" ? [goal?.id || rawTarget.itemId].filter(Boolean) : [],
+        };
       }
 
       if (safeTarget.type === "library-category") {
-        if (safeTarget.categoryId) setLibraryCategoryId(safeTarget.categoryId);
+        const categoryId = safeTarget.categoryId || null;
+        if (categoryId) {
+          setLibraryCategoryId(categoryId);
+          setData((previous) => {
+            const safePrevious = previous && typeof previous === "object" ? previous : {};
+            const previousUi = safePrevious.ui && typeof safePrevious.ui === "object" ? safePrevious.ui : {};
+            return {
+              ...safePrevious,
+              ui: {
+                ...previousUi,
+                manageScrollTo: safeTarget.focusSection === "objectives" ? "objectives" : "actions",
+                selectedGoalByCategory:
+                  safeTarget.outcomeId
+                    ? {
+                        ...(previousUi.selectedGoalByCategory || {}),
+                        [categoryId]: safeTarget.outcomeId,
+                      }
+                    : previousUi.selectedGoalByCategory || {},
+              },
+            };
+          });
+        }
         setTab("library");
         return;
       }
 
       setTab("library");
     },
-    [safeData.goals, setLibraryCategoryId, setTab]
+    [safeData.goals, setData, setLibraryCategoryId, setTab]
   );
 
   const launchActionCreate = useCallback(
