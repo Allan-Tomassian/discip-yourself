@@ -2,7 +2,7 @@
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(10px + env(safe-area-inset-bottom));
+  bottom: calc(10px + var(--safe-bottom));
   z-index: 46;
   width: min(960px, calc(100vw - 24px));
   max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 24px);
@@ -76,7 +76,7 @@
   .bottomCategoryBar {
     width: min(960px, calc(100vw - 24px));
     max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 24px);
-    bottom: calc(8px + env(safe-area-inset-bottom));
+    bottom: calc(8px + var(--safe-bottom));
   }
 
   .bottomCategoryBarPanel {

@@ -8,7 +8,8 @@ export default function ProfileGate({ children }) {
     return (
       <div
         data-testid="profile-loading-screen"
-        style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}
+        className="appViewportFill"
+        style={{ display: "grid", placeItems: "center", padding: 24 }}
       >
         <p>Chargement...</p>
       </div>

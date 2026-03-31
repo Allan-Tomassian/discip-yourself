@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { GateButton, GateSection } from "../shared/ui/gate/Gate";
-import GatePage from "../shared/ui/gate/GatePage";
+import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import { SURFACE_LABELS } from "../ui/labels";
 import {
   CATEGORY_VIEW,
@@ -177,14 +176,18 @@ export default function Journal({ data, setData }) {
   };
 
   return (
-    <ScreenShell data={safeData} pageId="journal" backgroundImage={safeData?.profile?.whyImage || ""}>
-      <GatePage
-        title={<span className="GatePageTitle">{SURFACE_LABELS.journal}</span>}
-        subtitle={<span className="GatePageSubtitle">Capture le contexte du jour sans repasser par Today.</span>}
-      >
-        <GateSection title="Édition" collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
-          <div className="gatePageSectionStack">
-            <div className="GateInlineMetaCard gatePageInlineText">
+    <ScreenShell
+      data={safeData}
+      pageId="journal"
+      backgroundImage={safeData?.profile?.whyImage || ""}
+      headerTitle={SURFACE_LABELS.journal}
+      headerSubtitle="Capture le contexte du jour sans repasser par Today."
+    >
+      <section className="mainPageSection">
+        <GateSectionIntro title="Édition" subtitle="Écriture rapide, contexte et niveau d’énergie." />
+        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+          <div className="col gap12">
+            <div className="GateInlineMetaCard col gap8">
               <label className="GateFormField">
                 <span className="GateFormLabel">Catégorie</span>
                 <select
@@ -210,7 +213,7 @@ export default function Journal({ data, setData }) {
                 />
               </label>
             </div>
-            <div className="GateInlineMetaCard gatePageInlineText">
+            <div className="GateInlineMetaCard col gap8">
               <div
                 style={{
                   display: "grid",
@@ -263,16 +266,26 @@ export default function Journal({ data, setData }) {
                 <GateButton type="button" className="GatePressable" withSound onClick={archiveCurrentNote}>
                   Archiver la note
                 </GateButton>
-                <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={clearCurrentNote}>
+                <GateButton
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="GatePressable"
+                  withSound
+                  onClick={clearCurrentNote}
+                >
                   Vider
                 </GateButton>
               </div>
             </div>
           </div>
         </GateSection>
+      </section>
 
-        <GateSection title="Historique" collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
-          <div className="gatePageInlineList">
+      <section className="mainPageSection">
+        <GateSectionIntro title="Historique" subtitle="Notes archivées pour cette catégorie." />
+        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+          <div className="col gap12">
             {historyItems.length ? (
               historyItems.map((item) => {
                 const metaParts = [];
@@ -280,12 +293,13 @@ export default function Journal({ data, setData }) {
                 if (item.meta?.humeur) metaParts.push(`Humeur: ${item.meta.humeur}`);
                 if (item.meta?.motivation) metaParts.push(`Motivation: ${item.meta.motivation}`);
                 return (
-                  <div key={item.id} className="GateInlineMetaCard gatePageInlineText">
-                    <div className="gatePageSplitRow">
+                  <div key={item.id} className="GateInlineMetaCard col gap8">
+                    <div className="row rowBetween gap12 wrap">
                       <div className="GateRoleCardMeta">{item.dateKey || todayKey}</div>
                       <GateButton
                         type="button"
                         variant="ghost"
+                        size="sm"
                         className="GatePressable"
                         withSound
                         onClick={() => deleteHistoryItem(item.id)}
@@ -299,13 +313,13 @@ export default function Journal({ data, setData }) {
                 );
               })
             ) : (
-              <div className="GateInlineMetaCard gatePageInlineText">
+              <div className="GateInlineMetaCard col gap8">
                 <div className="GateRoleHelperText">Aucune note enregistrée pour cette catégorie.</div>
               </div>
             )}
           </div>
         </GateSection>
-      </GatePage>
+      </section>
     </ScreenShell>
   );
 }

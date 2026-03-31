@@ -100,8 +100,8 @@ export default function MainDrawer({
           >
             <GateHeader
               className="drawerHeader drawerMenuHeader"
-              title={<span className="GatePageTitle">Menu</span>}
-              subtitle={<span className="GatePageSubtitle">Accès rapides aux pages secondaires.</span>}
+              title="Menu"
+              subtitle="Pages secondaires et surfaces utilitaires."
               actions={
                 <button
                   type="button"

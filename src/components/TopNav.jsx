@@ -76,28 +76,26 @@ export default function TopNav({
     if (typeof window === "undefined" || typeof document === "undefined") return undefined;
 
     const rootStyle = document.documentElement.style;
-    const fallbackTopbarBottom = "calc(env(safe-area-inset-top) + 74px)";
-
-    const setFallback = () => {
-      rootStyle.setProperty("--topbar-bottom", fallbackTopbarBottom);
+    const clearTopbarBottom = () => {
+      rootStyle.removeProperty("--topbar-bottom");
     };
 
     const updateTopbarBottom = () => {
       const measureNode =
         navTopRef.current || topbarSurfaceRef.current || navBarRef.current || topbarRef.current;
       if (!measureNode || typeof measureNode.getBoundingClientRect !== "function") {
-        setFallback();
+        clearTopbarBottom();
         return;
       }
       const rect = measureNode.getBoundingClientRect();
       if (!Number.isFinite(rect.bottom)) {
-        setFallback();
+        clearTopbarBottom();
         return;
       }
       rootStyle.setProperty("--topbar-bottom", `${Math.max(0, Math.round(rect.bottom))}px`);
     };
 
-    setFallback();
+    clearTopbarBottom();
     updateTopbarBottom();
     const raf = window.requestAnimationFrame(updateTopbarBottom);
 
@@ -127,7 +125,7 @@ export default function TopNav({
       window.removeEventListener("orientationchange", updateTopbarBottom);
       window.visualViewport?.removeEventListener("resize", updateTopbarBottom);
       window.visualViewport?.removeEventListener("scroll", updateTopbarBottom);
-      setFallback();
+      clearTopbarBottom();
     };
   }, []);
 

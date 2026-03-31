@@ -42,7 +42,7 @@ describe("MainDrawer contract", () => {
     expect(navCss).toContain(".drawerMenuBody");
     expect(navCss).toContain(".drawerMenuGroup");
     expect(navCss).toContain(".drawerMenuItem");
-    expect(navCss).toContain("padding: 14px 16px;");
+    expect(navCss).toContain("padding: 13px 14px;");
     expect(navCss).not.toContain("box-shadow: none;");
     expect(navCss).not.toContain("overflow-y: auto;");
   });

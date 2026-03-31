@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { GateButton, GateRow, GateSection } from "../shared/ui/gate/Gate";
-import GatePage from "../shared/ui/gate/GatePage";
+import { GateButton, GateRow, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import { DEFAULT_THEME } from "../theme/themeTokens";
 import { getPlanLimits, isPremium } from "../logic/entitlements";
 import { isClickSoundEnabled, setClickSoundEnabled } from "../shared/ui/sound/useClickSound";
@@ -43,25 +42,29 @@ export default function Preferences({ data, setData }) {
 
   function toggleSound() {
     const next = !soundEnabled;
-    setSoundEnabled(next);
+    setClickSoundEnabled(next);
     setSoundEnabledState(next);
   }
 
   return (
-    <ScreenShell data={safeData} pageId="settings" backgroundImage={backgroundImage}>
-      <GatePage
-        className="preferencesGatePage"
-        title={<span className="GatePageTitle" data-tour-id="settings-title">Réglages</span>}
-        subtitle={<span className="GatePageSubtitle">App, apparence et préférences</span>}
-      >
-        <GateSection
+    <ScreenShell
+      data={safeData}
+      pageId="settings"
+      backgroundImage={backgroundImage}
+      headerTitle={<span data-tour-id="settings-title">Réglages</span>}
+      headerSubtitle="App, apparence et préférences"
+    >
+      <section className="mainPageSection">
+        <GateSectionIntro
           title="Apparence"
-          description="Le design system global est appliqué partout dans l’app."
+          subtitle="Le design system global est appliqué partout dans l’app."
+        />
+        <GateSection
           collapsible={false}
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
           data-tour-id="settings-theme"
         >
-          <div className="GateInlineMetaCard gatePageInlineText">
+          <div className="GateInlineMetaCard col gap8">
             <p className="preferencesGateNote preferencesGateNoteStrong GateRoleCardTitle">
               Système visuel actif : {visualSystemLabel}
             </p>
@@ -73,16 +76,20 @@ export default function Preferences({ data, setData }) {
             </p>
           </div>
         </GateSection>
+      </section>
 
-        <GateSection
+      <section className="mainPageSection">
+        <GateSectionIntro
           title="Pourquoi"
-          description="Modifiable tous les 30 jours."
+          subtitle="Modifiable tous les 30 jours."
+        />
+        <GateSection
           collapsible={false}
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
           data-tour-id="settings-why"
         >
           <div className="preferencesGateForm">
-            <div className="GateInlineMetaCard gatePageInlineText">
+            <div className="GateInlineMetaCard col gap8">
               <label className="preferencesGateField GateFormField" htmlFor="preferences-why">
                 <span className="preferencesGateFieldLabel GateFormLabel">Ton pourquoi</span>
                 <textarea
@@ -94,16 +101,20 @@ export default function Preferences({ data, setData }) {
                   disabled={!canEditWhy}
                 />
               </label>
-              {!canEditWhy ? <p className="preferencesGateNote GateRoleHelperText">Tu pourras modifier ton pourquoi dans {daysLeft} jours.</p> : null}
+              {!canEditWhy ? (
+                <p className="preferencesGateNote GateRoleHelperText">
+                  Tu pourras modifier ton pourquoi dans {daysLeft} jours.
+                </p>
+              ) : null}
             </div>
             <div className="preferencesGateActions">
-                <GateButton
-                  type="button"
-                  className="GatePressable"
-                  withSound
-                  disabled={!canEditWhy || !cleanWhy || !whyChanged}
-                  onClick={() =>
-                    setData((prev) => ({
+              <GateButton
+                type="button"
+                className="GatePressable"
+                withSound
+                disabled={!canEditWhy || !cleanWhy || !whyChanged}
+                onClick={() =>
+                  setData((prev) => ({
                     ...prev,
                     profile: {
                       ...prev.profile,
@@ -118,17 +129,22 @@ export default function Preferences({ data, setData }) {
             </div>
           </div>
         </GateSection>
+      </section>
 
-        <GateSection
+      <section className="mainPageSection">
+        <GateSectionIntro
           title="Introduction"
-          description="Relancer onboarding et tutoriel"
+          subtitle="Relancer l’introduction ou le tutoriel produit."
+        />
+        <GateSection
           collapsible={false}
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
-          <div className="GateInlineMetaCard gatePageInlineText">
+          <div className="GateInlineMetaCard">
             <div className="preferencesGateActions preferencesGateActionsColumn">
               <GateButton
                 type="button"
+                size="sm"
                 className="GatePressable"
                 withSound
                 onClick={() =>
@@ -148,6 +164,7 @@ export default function Preferences({ data, setData }) {
               <GateButton
                 type="button"
                 variant="ghost"
+                size="sm"
                 className="GatePressable"
                 withSound
                 onClick={() =>
@@ -169,10 +186,14 @@ export default function Preferences({ data, setData }) {
             </div>
           </div>
         </GateSection>
+      </section>
 
-        <GateSection
+      <section className="mainPageSection">
+        <GateSectionIntro
           title="Interactions"
-          description="Animation pression + son optionnel"
+          subtitle="Animation de pression et son optionnel."
+        />
+        <GateSection
           collapsible={false}
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
@@ -186,6 +207,7 @@ export default function Preferences({ data, setData }) {
               <GateButton
                 type="button"
                 variant="ghost"
+                size="sm"
                 className="preferencesGateToggleButton GatePressable"
                 withSound
                 onClick={(event) => {
@@ -198,14 +220,18 @@ export default function Preferences({ data, setData }) {
             }
           />
         </GateSection>
+      </section>
 
-        <GateSection
+      <section className="mainPageSection">
+        <GateSectionIntro
           title="Abonnement"
-          description="Résumé rapide de ton plan"
+          subtitle="Résumé rapide de ton plan."
+        />
+        <GateSection
           collapsible={false}
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
-          <div className="GateInlineMetaCard gatePageInlineText">
+          <div className="GateInlineMetaCard col gap8">
             <p className="preferencesGateNote preferencesGateNoteStrong GateRoleCardTitle">
               {premium ? MARKETING_COPY.premiumPlan : MARKETING_COPY.essentialPlan}
             </p>
@@ -213,49 +239,92 @@ export default function Preferences({ data, setData }) {
               {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} objectifs · {limits.actions} actions
             </p>
             <div className="preferencesGateActions">
-              <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/subscription")}>
+              <GateButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="GatePressable"
+                withSound
+                onClick={() => navigateTo("/subscription")}
+              >
                 Ouvrir {SURFACE_LABELS.subscription.toLowerCase()}
               </GateButton>
             </div>
           </div>
         </GateSection>
+      </section>
 
-        <GateSection
+      <section className="mainPageSection">
+        <GateSectionIntro
           title="Données"
-          description="Export, import et sauvegarde"
+          subtitle="Export, import et sauvegarde."
+        />
+        <GateSection
           collapsible={false}
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
-          <div className="GateInlineMetaCard gatePageInlineText">
+          <div className="GateInlineMetaCard">
             <div className="preferencesGateActions">
-              <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/data")}>
+              <GateButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="GatePressable"
+                withSound
+                onClick={() => navigateTo("/data")}
+              >
                 Ouvrir les données
               </GateButton>
             </div>
           </div>
         </GateSection>
+      </section>
 
+      <section className="mainPageSection">
+        <GateSectionIntro
+          title="Légal et support"
+          subtitle="Confidentialité, conditions et assistance."
+        />
         <GateSection
-          title="Légal & Support"
-          description="Confidentialité, conditions et assistance"
           collapsible={false}
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
-          <div className="GateInlineMetaCard gatePageInlineText">
+          <div className="GateInlineMetaCard">
             <div className="preferencesGateLinks">
-              <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/privacy")}>
+              <GateButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="GatePressable"
+                withSound
+                onClick={() => navigateTo("/privacy")}
+              >
                 Confidentialité
               </GateButton>
-              <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/terms")}>
+              <GateButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="GatePressable"
+                withSound
+                onClick={() => navigateTo("/terms")}
+              >
                 Conditions
               </GateButton>
-              <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => navigateTo("/support")}>
+              <GateButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="GatePressable"
+                withSound
+                onClick={() => navigateTo("/support")}
+              >
                 Support
               </GateButton>
             </div>
           </div>
         </GateSection>
-      </GatePage>
+      </section>
     </ScreenShell>
   );
 }

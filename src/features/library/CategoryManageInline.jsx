@@ -14,26 +14,28 @@ import {
   hasMeaningfulCategoryProfile,
   normalizeCategoryProfilesV1,
 } from "../../domain/categoryProfile";
-import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
+import { GateButton, GateSection, GateSectionIntro } from "../../shared/ui/gate/Gate";
 import { GateIconButton, GateInput, GateTextarea } from "../../shared/ui/gate/GateForm";
 import { BehaviorCue, useBehaviorFeedback } from "../../feedback/BehaviorFeedbackContext";
 import { deriveBehaviorFeedbackSignal, deriveLibraryBehaviorCue } from "../../feedback/feedbackDerivers";
 
-function Button({ variant = "primary", className = "", ...props }) {
+function Button({ variant = "primary", size = "sm", className = "", ...props }) {
   const gateVariant =
     variant === "ghost"
       ? "ghost"
       : variant === "secondary"
-        ? "secondary"
+      ? "secondary"
         : variant === "danger"
           ? "ghost"
           : "primary";
   const mergedClassName = [className, "GatePressable"].filter(Boolean).join(" ");
-  return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;
+  return <GateButton variant={gateVariant} size={size} className={mergedClassName} {...props} />;
 }
 
 function Card({ className = "", children, accentBorder: _accentBorder, ...props }) {
-  const mergedClassName = ["GateMainSection", "GateSurfacePremium", "GateCardPremium", className].filter(Boolean).join(" ");
+  const mergedClassName = ["GateSurfacePremium", "GateCardPremium", "GateSecondarySectionCard", "libraryManageCard", className]
+    .filter(Boolean)
+    .join(" ");
   return (
     <GateSection className={mergedClassName} collapsible={false} {...props}>
       {children}
@@ -669,12 +671,14 @@ export default function CategoryManageInline({
 
   if (!category) {
     return (
-      <Card accentBorder>
-        <div className="p18">
-          <div className="titleSm">Catégorie introuvable</div>
-          <div className="small2 mt6">Cette catégorie n’existe plus.</div>
-        </div>
-      </Card>
+      <section className="mainPageSection">
+        <GateSectionIntro title="Catégorie introuvable" subtitle="Cette catégorie n’existe plus." />
+        <Card accentBorder>
+          <div className="GateInlineMetaCard col gap8">
+            <div className="GateRoleHelperText">Reviens à la bibliothèque pour ouvrir une autre catégorie.</div>
+          </div>
+        </Card>
+      </section>
     );
   }
 
@@ -682,461 +686,488 @@ export default function CategoryManageInline({
   const whyDisplay = whyText || "Aucun mini-why pour cette catégorie.";
 
   return (
-    <div className="stack stackGap12" style={{ "--catColor": category.color || "#7C3AED" }}>
-      <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-category-card")}>
-        <div className="p18 stack stackGap12">
-          <div className="row rowBetween alignCenter">
-            <div>
-              <div className="titleSm">Catégorie</div>
-              {inlineEdit ? (
-                <div className="row gap8 alignCenter mt8">
-                  <Input
-                    value={nameDraft}
-                    onChange={(event) => setNameDraft(event.target.value)}
-                    onBlur={commitName}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        commitName();
-                        event.currentTarget.blur();
-                      }
-                    }}
-                    aria-label="Nom de la catégorie"
-                    data-testid={`library-manage-name-${category.id}`}
-                  />
-                  {isPrimaryCategory(category) ? (
-                    <span className="badge badgeAccent">Prioritaire</span>
-                  ) : null}
-                </div>
-              ) : (
-                <div className="stack stackGap12">
-                  <div className="small2">
-                    {category.name || "Catégorie"}
+    <div className="libraryManageStack stack stackGap16" style={{ "--catColor": category.color || "#7C3AED" }}>
+      <section className="mainPageSection">
+        <GateSectionIntro title="Réglages" subtitle="Nom, priorité et paramètres de la catégorie." />
+        <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-category-card")}>
+          <div className="libraryManageCardBody stack stackGap12">
+            <div className="row rowBetween alignCenter gap12">
+              <div className="stack stackGap12 minW0">
+                {inlineEdit ? (
+                  <div className="row gap8 alignCenter wrap">
+                    <Input
+                      value={nameDraft}
+                      onChange={(event) => setNameDraft(event.target.value)}
+                      onBlur={commitName}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          commitName();
+                          event.currentTarget.blur();
+                        }
+                      }}
+                      aria-label="Nom de la catégorie"
+                      data-testid={`library-manage-name-${category.id}`}
+                    />
                     {isPrimaryCategory(category) ? (
-                      <span className="badge badgeAccent ml8">Prioritaire</span>
+                      <span className="badge badgeAccent">Prioritaire</span>
                     ) : null}
                   </div>
-                  {categoryBehaviorCue ? <BehaviorCue cue={categoryBehaviorCue} category={category} /> : null}
-                </div>
-              )}
+                ) : (
+                  <div className="stack stackGap12">
+                    <div className="GateRoleCardTitle">
+                      {category.name || "Catégorie"}
+                      {isPrimaryCategory(category) ? (
+                        <span className="badge badgeAccent ml8">Prioritaire</span>
+                      ) : null}
+                    </div>
+                    {categoryBehaviorCue ? <BehaviorCue cue={categoryBehaviorCue} category={category} /> : null}
+                  </div>
+                )}
+              </div>
+              <div className="row gap8">
+                <IconButton
+                  icon="gear"
+                  aria-label="Paramètres catégorie"
+                  onClick={() => {
+                    setCategoryMenuOpen((prev) => !prev);
+                  }}
+                  data-tour-id={getTourId(inlineEdit, "manage-category-settings")}
+                />
+                <IconButton
+                  icon="close"
+                  className="iconBtnDanger"
+                  aria-label="Supprimer la catégorie"
+                  onClick={deleteCategory}
+                  data-tour-id={getTourId(inlineEdit, "manage-category-delete")}
+                />
+              </div>
             </div>
-            <div className="row gap8">
-              <IconButton
-                icon="gear"
-                aria-label="Paramètres catégorie"
-                onClick={() => {
-                  setCategoryMenuOpen((prev) => !prev);
-                }}
-                data-tour-id={getTourId(inlineEdit, "manage-category-settings")}
-              />
-              <IconButton
-                icon="close"
-                className="iconBtnDanger"
-                aria-label="Supprimer la catégorie"
-                onClick={deleteCategory}
-                data-tour-id={getTourId(inlineEdit, "manage-category-delete")}
-              />
-            </div>
-          </div>
-          {categoryMenuOpen ? (
-            <div className="stack stackGap12">
-              {!inlineEdit ? (
+            {categoryMenuOpen ? (
+              <div className="stack stackGap12">
+                {!inlineEdit ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      renameCategory();
+                      setCategoryMenuOpen(false);
+                    }}
+                    data-tour-id={getTourId(inlineEdit, "manage-category-rename")}
+                  >
+                    Renommer
+                  </Button>
+                ) : null}
                 <Button
                   variant="ghost"
                   onClick={() => {
-                    renameCategory();
+                    recolorCategory();
                     setCategoryMenuOpen(false);
                   }}
-                  data-tour-id={getTourId(inlineEdit, "manage-category-rename")}
                 >
-                  Renommer
+                  Modifier la couleur
                 </Button>
-              ) : null}
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  recolorCategory();
-                  setCategoryMenuOpen(false);
-                }}
-              >
-                Modifier la couleur
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setCategoryPriority();
-                  setCategoryMenuOpen(false);
-                }}
-                disabled={isPrimaryCategory(category)}
-                data-tour-id={getTourId(inlineEdit, "manage-category-priority")}
-              >
-                {isPrimaryCategory(category) ? "Prioritaire" : "Définir comme prioritaire"}
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      </Card>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setCategoryPriority();
+                    setCategoryMenuOpen(false);
+                  }}
+                  disabled={isPrimaryCategory(category)}
+                  data-tour-id={getTourId(inlineEdit, "manage-category-priority")}
+                >
+                  {isPrimaryCategory(category) ? "Prioritaire" : "Définir comme prioritaire"}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        </Card>
+      </section>
 
-      <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-mini-why")}>
-        <div className="p18 stack stackGap12">
-          <div className="row rowBetween alignCenter">
-            <div>
-              <div className="titleSm">Mini-why</div>
-              <div className="small2">Visible pour cette catégorie</div>
-            </div>
+      <section className="mainPageSection">
+        <GateSectionIntro
+          title="Mini-why"
+          subtitle="Visible pour cette catégorie."
+          actions={
             <button
               className="linkBtn"
-              onClick={() => setShowWhy((v) => !v)}
+              type="button"
+              onClick={() => setShowWhy((value) => !value)}
               data-tour-id={getTourId(inlineEdit, "manage-mini-why-toggle")}
             >
               {showWhy ? "Masquer" : "Afficher"}
             </button>
+          }
+        />
+        <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-mini-why")}>
+          <div className="libraryManageCardBody stack stackGap12">
+            {showWhy ? (
+              inlineEdit ? (
+                <textarea
+                  className="input"
+                  rows={3}
+                  value={whyDraft}
+                  onChange={(event) => setWhyDraft(event.target.value)}
+                  onBlur={commitWhy}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                      event.preventDefault();
+                      commitWhy();
+                      event.currentTarget.blur();
+                    }
+                  }}
+                  aria-label="Mini-why"
+                  data-testid={`library-manage-why-${category.id}`}
+                />
+              ) : (
+                <div className="GateInlineMetaCard">
+                  <div className="GateRoleHelperText">{whyDisplay}</div>
+                </div>
+              )
+            ) : null}
+            <div className="row rowEnd">
+              {inlineEdit ? (
+                <Button variant="ghost" onClick={commitWhy}>
+                  Sauver
+                </Button>
+              ) : (
+                <Button variant="ghost" onClick={editMiniWhy}>
+                  Éditer
+                </Button>
+              )}
+            </div>
           </div>
-          {showWhy ? (
-            inlineEdit ? (
-              <textarea
-                className="input"
-                rows={3}
-                value={whyDraft}
-                onChange={(event) => setWhyDraft(event.target.value)}
-                onBlur={commitWhy}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-                    event.preventDefault();
-                    commitWhy();
-                    event.currentTarget.blur();
+        </Card>
+      </section>
+
+      <section className="mainPageSection">
+        <GateSectionIntro
+          title="Profil de catégorie"
+          subtitle="Contexte stratégique optionnel pour guider les recommandations."
+        />
+        <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-category-profile")}>
+          <div className="libraryManageCardBody stack stackGap12">
+            <div className="stack stackGap12">
+              <div className="col" style={{ gap: 6 }}>
+                <div className="small2 textMuted">Sujet principal</div>
+                <Input
+                  value={profileDraft.subject}
+                  onChange={(event) =>
+                    setProfileDraft((previous) => ({ ...previous, subject: event.target.value }))
                   }
-                }}
-                aria-label="Mini-why"
-                data-testid={`library-manage-why-${category.id}`}
-              />
-            ) : (
-              <div className="small2">{whyDisplay}</div>
-            )
-          ) : null}
-          <div className="row rowEnd">
-            {inlineEdit ? (
-              <Button variant="ghost" onClick={commitWhy}>
-                Sauver
-              </Button>
-            ) : (
-              <Button variant="ghost" onClick={editMiniWhy}>
-                Éditer
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-category-profile")}>
-        <div className="p18 stack stackGap12">
-          <div>
-            <div className="titleSm">Profil de catégorie</div>
-            <div className="small2 textMuted">Contexte stratégique optionnel pour guider les recommandations.</div>
-          </div>
-
-          <div className="stack stackGap12">
-            <div className="col" style={{ gap: 6 }}>
-              <div className="small2 textMuted">Sujet principal</div>
-              <Input
-                value={profileDraft.subject}
-                onChange={(event) =>
-                  setProfileDraft((previous) => ({ ...previous, subject: event.target.value }))
-                }
-                onBlur={() => commitCategoryProfilePatch({ subject: profileDraft.subject })}
-                placeholder="Ex: Reprendre ma forme"
-                aria-label="Sujet principal"
-                data-testid={`library-manage-profile-subject-${category.id}`}
-              />
-            </div>
-
-            <div className="col" style={{ gap: 6 }}>
-              <div className="small2 textMuted">Objectif principal</div>
-              <Input
-                value={profileDraft.mainGoal}
-                onChange={(event) =>
-                  setProfileDraft((previous) => ({ ...previous, mainGoal: event.target.value }))
-                }
-                onBlur={() => commitCategoryProfilePatch({ mainGoal: profileDraft.mainGoal })}
-                placeholder="Ex: Retrouver de l’énergie"
-                aria-label="Objectif principal"
-                data-testid={`library-manage-profile-main-goal-${category.id}`}
-              />
-            </div>
-
-            <div className="col" style={{ gap: 6 }}>
-              <div className="small2 textMuted">Priorité actuelle</div>
-              <Input
-                value={profileDraft.currentPriority}
-                onChange={(event) =>
-                  setProfileDraft((previous) => ({ ...previous, currentPriority: event.target.value }))
-                }
-                onBlur={() => commitCategoryProfilePatch({ currentPriority: profileDraft.currentPriority })}
-                placeholder="Ex: Dormir plus régulièrement"
-                aria-label="Priorité actuelle"
-                data-testid={`library-manage-profile-priority-${category.id}`}
-              />
-            </div>
-
-            <div className="col" style={{ gap: 8 }}>
-              <div className="small2 textMuted">Points à surveiller</div>
-              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                <Input
-                  value={watchpointInput}
-                  onChange={(event) => setWatchpointInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter") return;
-                    event.preventDefault();
-                    addProfileListItem("watchpoints");
-                  }}
-                  placeholder="Ex: Sommeil"
-                  aria-label="Ajouter un point à surveiller"
+                  onBlur={() => commitCategoryProfilePatch({ subject: profileDraft.subject })}
+                  placeholder="Ex: Reprendre ma forme"
+                  aria-label="Sujet principal"
+                  data-testid={`library-manage-profile-subject-${category.id}`}
                 />
-                <Button variant="ghost" onClick={() => addProfileListItem("watchpoints")}>
-                  Ajouter
-                </Button>
               </div>
-              {profileDraft.watchpoints.length ? (
-                <ChipRow>
-                  {profileDraft.watchpoints.map((item) => (
-                    <Chip
-                      key={`watchpoint-${item}`}
-                      active
-                      onClick={() => removeProfileListItem("watchpoints", item)}
-                      aria-label={`Retirer ${item}`}
-                    >
-                      {item} ×
-                    </Chip>
-                  ))}
-                </ChipRow>
-              ) : null}
-            </div>
 
-            <div className="col" style={{ gap: 8 }}>
-              <div className="small2 textMuted">Contraintes</div>
-              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+              <div className="col" style={{ gap: 6 }}>
+                <div className="small2 textMuted">Objectif principal</div>
                 <Input
-                  value={constraintInput}
-                  onChange={(event) => setConstraintInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter") return;
-                    event.preventDefault();
-                    addProfileListItem("constraints");
-                  }}
-                  placeholder="Ex: Horaires irréguliers"
-                  aria-label="Ajouter une contrainte"
+                  value={profileDraft.mainGoal}
+                  onChange={(event) =>
+                    setProfileDraft((previous) => ({ ...previous, mainGoal: event.target.value }))
+                  }
+                  onBlur={() => commitCategoryProfilePatch({ mainGoal: profileDraft.mainGoal })}
+                  placeholder="Ex: Retrouver de l’énergie"
+                  aria-label="Objectif principal"
+                  data-testid={`library-manage-profile-main-goal-${category.id}`}
                 />
-                <Button variant="ghost" onClick={() => addProfileListItem("constraints")}>
-                  Ajouter
-                </Button>
               </div>
-              {profileDraft.constraints.length ? (
-                <ChipRow>
-                  {profileDraft.constraints.map((item) => (
-                    <Chip
-                      key={`constraint-${item}`}
-                      active
-                      onClick={() => removeProfileListItem("constraints", item)}
-                      aria-label={`Retirer ${item}`}
-                    >
-                      {item} ×
-                    </Chip>
-                  ))}
-                </ChipRow>
-              ) : null}
-            </div>
 
-            <div className="col" style={{ gap: 8 }}>
-              <div className="small2 textMuted">Niveau actuel</div>
-              <ChipRow>
-                {[1, 2, 3, 4, 5].map((level) => (
-                  <Chip
-                    key={`level-${level}`}
-                    active={profileDraft.currentLevel === level}
-                    onClick={() => {
-                      const nextLevel = profileDraft.currentLevel === level ? null : level;
-                      setProfileDraft((previous) => ({ ...previous, currentLevel: nextLevel }));
-                      commitCategoryProfilePatch({ currentLevel: nextLevel });
+              <div className="col" style={{ gap: 6 }}>
+                <div className="small2 textMuted">Priorité actuelle</div>
+                <Input
+                  value={profileDraft.currentPriority}
+                  onChange={(event) =>
+                    setProfileDraft((previous) => ({ ...previous, currentPriority: event.target.value }))
+                  }
+                  onBlur={() => commitCategoryProfilePatch({ currentPriority: profileDraft.currentPriority })}
+                  placeholder="Ex: Dormir plus régulièrement"
+                  aria-label="Priorité actuelle"
+                  data-testid={`library-manage-profile-priority-${category.id}`}
+                />
+              </div>
+
+              <div className="col" style={{ gap: 8 }}>
+                <div className="small2 textMuted">Points à surveiller</div>
+                <div className="row wrap gap8">
+                  <Input
+                    value={watchpointInput}
+                    onChange={(event) => setWatchpointInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter") return;
+                      event.preventDefault();
+                      addProfileListItem("watchpoints");
                     }}
-                    aria-pressed={profileDraft.currentLevel === level}
-                  >
-                    {level}
-                  </Chip>
-                ))}
-              </ChipRow>
-            </div>
+                    placeholder="Ex: Sommeil"
+                    aria-label="Ajouter un point à surveiller"
+                  />
+                  <Button variant="ghost" onClick={() => addProfileListItem("watchpoints")}>
+                    Ajouter
+                  </Button>
+                </div>
+                {profileDraft.watchpoints.length ? (
+                  <ChipRow>
+                    {profileDraft.watchpoints.map((item) => (
+                      <Chip
+                        key={`watchpoint-${item}`}
+                        active
+                        onClick={() => removeProfileListItem("watchpoints", item)}
+                        aria-label={`Retirer ${item}`}
+                      >
+                        {item} ×
+                      </Chip>
+                    ))}
+                  </ChipRow>
+                ) : null}
+              </div>
 
-            <div className="col" style={{ gap: 6 }}>
-              <div className="small2 textMuted">Notes</div>
-              <Textarea
-                rows={4}
-                value={profileDraft.notes}
-                onChange={(event) =>
-                  setProfileDraft((previous) => ({ ...previous, notes: event.target.value }))
-                }
-                onBlur={() => commitCategoryProfilePatch({ notes: profileDraft.notes })}
-                placeholder="Ajoute un contexte utile si nécessaire."
-                aria-label="Notes du profil catégorie"
-                data-testid={`library-manage-profile-notes-${category.id}`}
-              />
+              <div className="col" style={{ gap: 8 }}>
+                <div className="small2 textMuted">Contraintes</div>
+                <div className="row wrap gap8">
+                  <Input
+                    value={constraintInput}
+                    onChange={(event) => setConstraintInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter") return;
+                      event.preventDefault();
+                      addProfileListItem("constraints");
+                    }}
+                    placeholder="Ex: Horaires irréguliers"
+                    aria-label="Ajouter une contrainte"
+                  />
+                  <Button variant="ghost" onClick={() => addProfileListItem("constraints")}>
+                    Ajouter
+                  </Button>
+                </div>
+                {profileDraft.constraints.length ? (
+                  <ChipRow>
+                    {profileDraft.constraints.map((item) => (
+                      <Chip
+                        key={`constraint-${item}`}
+                        active
+                        onClick={() => removeProfileListItem("constraints", item)}
+                        aria-label={`Retirer ${item}`}
+                      >
+                        {item} ×
+                      </Chip>
+                    ))}
+                  </ChipRow>
+                ) : null}
+              </div>
+
+              <div className="col" style={{ gap: 8 }}>
+                <div className="small2 textMuted">Niveau actuel</div>
+                <ChipRow>
+                  {[1, 2, 3, 4, 5].map((level) => (
+                    <Chip
+                      key={`level-${level}`}
+                      active={profileDraft.currentLevel === level}
+                      onClick={() => {
+                        const nextLevel = profileDraft.currentLevel === level ? null : level;
+                        setProfileDraft((previous) => ({ ...previous, currentLevel: nextLevel }));
+                        commitCategoryProfilePatch({ currentLevel: nextLevel });
+                      }}
+                      aria-pressed={profileDraft.currentLevel === level}
+                    >
+                      {level}
+                    </Chip>
+                  ))}
+                </ChipRow>
+              </div>
+
+              <div className="col" style={{ gap: 6 }}>
+                <div className="small2 textMuted">Notes</div>
+                <Textarea
+                  rows={4}
+                  value={profileDraft.notes}
+                  onChange={(event) =>
+                    setProfileDraft((previous) => ({ ...previous, notes: event.target.value }))
+                  }
+                  onBlur={() => commitCategoryProfilePatch({ notes: profileDraft.notes })}
+                  placeholder="Ajoute un contexte utile si nécessaire."
+                  aria-label="Notes du profil catégorie"
+                  data-testid={`library-manage-profile-notes-${category.id}`}
+                />
+              </div>
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </section>
 
-      <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-actions-section")}>
-        <div className="p18 stack stackGap12">
-          <div className="row rowBetween alignCenter">
-            <div className="titleSm">Actions</div>
-            {typeof onOpenCreateHabit === "function" ? (
+      <section className="mainPageSection">
+        <GateSectionIntro
+          title="Actions"
+          subtitle={`Les actions vivent d’abord ici. Tu peux les relier à un ${LABELS.goalLower} seulement si cela aide.`}
+          actions={
+            typeof onOpenCreateHabit === "function" ? (
               <Button
                 onClick={() => onOpenCreateHabit(category.id)}
                 data-tour-id={getTourId(inlineEdit, "manage-actions-create")}
               >
                 Créer une action
               </Button>
-            ) : null}
+            ) : null
+          }
+        />
+        <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-actions-section")}>
+          <div className="libraryManageCardBody stack stackGap12">
+            {actionSections.length ? (
+              <div className="stack stackGap12">
+                {actionSections.map((section) => (
+                  <div key={section.key} className="stack stackGap12">
+                    <div className="small2 textMuted">{section.title}</div>
+                    {section.items.map(({ goal, badges }) => {
+                      const stat = habitWeekStats.get(goal.id) || { planned: 0, done: 0, ratio: 0 };
+                      const linkedToSelected =
+                        selectedOutcome?.id &&
+                        (goal.parentId === selectedOutcome.id ||
+                          goal.primaryGoalId === selectedOutcome.id ||
+                          goal.outcomeId === selectedOutcome.id);
+                      const showLink = linkedToSelected || Boolean(selectedOutcome?.id);
+                      return (
+                        <AccentItem key={goal.id} color={category.color || "#7C3AED"}>
+                          <div className="stack gap6 minW0 wFull">
+                            <div className="row rowBetween alignCenter gap12">
+                              <div className="itemTitle">{goal.title || "Action"}</div>
+                              <div className="row gap8 wrap">
+                                <IconButton
+                                  icon="gear"
+                                  aria-label="Paramètres action"
+                                  onClick={() => openEditItem(goal)}
+                                />
+                                {showLink ? (
+                                  linkedToSelected ? (
+                                    <Button
+                                      variant="ghost"
+                                      onClick={() => unlinkAction(goal.id)}
+                                      disabled={!goal.parentId && !goal.outcomeId}
+                                    >
+                                      Délier
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="ghost"
+                                      onClick={() => linkHabitToSelectedOutcome(goal.id)}
+                                      disabled={!selectedOutcome?.id || typeof setData !== "function"}
+                                    >
+                                      Lier
+                                    </Button>
+                                  )
+                                ) : null}
+                                <IconButton
+                                  icon="close"
+                                  aria-label="Supprimer l’action"
+                                  onClick={() => deleteAction(goal)}
+                                />
+                              </div>
+                            </div>
+                            {badges.length ? (
+                              <div className="row wrap" style={{ gap: 6 }}>
+                                {badges.map((label, idx) => (
+                                  <span key={`${goal.id}-badge-${idx}`} className="badge">
+                                    {label}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                            <div className="itemSub">{`Cette semaine : ${stat.done} terminées · ${stat.done}/${stat.planned}`}</div>
+                            <div className="progressTrack">
+                              <div
+                                className="progressFill"
+                                style={{
+                                  width: `${Math.round(stat.ratio * 100)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </AccentItem>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="GateInlineMetaCard">
+                <div className="GateRoleHelperText">Aucune action dans cette catégorie.</div>
+              </div>
+            )}
           </div>
-          <div className="small2 textMuted">Les actions vivent d’abord ici. Tu peux les relier à un {LABELS.goalLower} seulement si cela aide.</div>
-          {actionSections.length ? (
-            <div className="stack stackGap12">
-              {actionSections.map((section) => (
-                <div key={section.key} className="stack stackGap12">
-                  <div className="small2 textMuted">{section.title}</div>
-                  {section.items.map(({ goal, badges }) => {
-                    const stat = habitWeekStats.get(goal.id) || { planned: 0, done: 0, ratio: 0 };
-                    const linkedToSelected =
-                      selectedOutcome?.id &&
-                      (goal.parentId === selectedOutcome.id ||
-                        goal.primaryGoalId === selectedOutcome.id ||
-                        goal.outcomeId === selectedOutcome.id);
-                    const showLink = linkedToSelected || Boolean(selectedOutcome?.id);
-                    return (
-                      <AccentItem key={goal.id} color={category.color || "#7C3AED"}>
-                        <div className="stack gap6 minW0 wFull">
-                          <div className="row rowBetween alignCenter">
-                            <div className="itemTitle">{goal.title || "Action"}</div>
-                            <div className="row gap8">
-                              <IconButton
-                                icon="gear"
-                                aria-label="Paramètres action"
-                                onClick={() => openEditItem(goal)}
-                              />
-                              {showLink ? (
-                                linkedToSelected ? (
-                                  <Button
-                                    variant="ghost"
-                                    onClick={() => unlinkAction(goal.id)}
-                                    disabled={!goal.parentId && !goal.outcomeId}
-                                  >
-                                    Délier
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    variant="ghost"
-                                    onClick={() => linkHabitToSelectedOutcome(goal.id)}
-                                    disabled={!selectedOutcome?.id || typeof setData !== "function"}
-                                  >
-                                    Lier
-                                  </Button>
-                                )
-                              ) : null}
-                              <IconButton
-                                icon="close"
-                                aria-label="Supprimer l’action"
-                                onClick={() => deleteAction(goal)}
-                              />
-                            </div>
-                          </div>
-                          {badges.length ? (
-                            <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-                              {badges.map((label, idx) => (
-                                <span key={`${goal.id}-badge-${idx}`} className="badge">
-                                  {label}
-                                </span>
-                              ))}
-                            </div>
-                          ) : null}
-                          <div className="itemSub">{`Cette semaine : ${stat.done} terminées · ${stat.done}/${stat.planned}`}</div>
-                          <div className="progressTrack">
-                            <div
-                              className="progressFill"
-                              style={{
-                                width: `${Math.round(stat.ratio * 100)}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </AccentItem>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="stack stackGap12">
-              <div className="small2">Aucune action dans cette catégorie.</div>
-            </div>
-          )}
-        </div>
-      </Card>
+        </Card>
+      </section>
 
-      <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-objectives-section")}>
-        <div className="p18 stack stackGap12">
-          <div className="row rowBetween alignCenter">
-            <div className="titleSm">{LABELS.goals} (optionnel)</div>
-            {typeof onOpenCreateOutcome === "function" ? (
-              <Button variant="ghost" onClick={() => onOpenCreateOutcome(category.id)} data-tour-id={getTourId(inlineEdit, "manage-objectives-create")}>
+      <section className="mainPageSection">
+        <GateSectionIntro
+          title={`${LABELS.goals} (optionnel)`}
+          subtitle="Utile pour structurer certaines actions, pas pour agir au quotidien."
+          actions={
+            typeof onOpenCreateOutcome === "function" ? (
+              <Button
+                variant="ghost"
+                onClick={() => onOpenCreateOutcome(category.id)}
+                data-tour-id={getTourId(inlineEdit, "manage-objectives-create")}
+              >
                 Créer un {LABELS.goalLower}
               </Button>
-            ) : null}
-          </div>
-          <div className="small2 textMuted">Utile pour structurer certaines actions, pas pour agir au quotidien.</div>
-          {outcomeGoals.length ? (
-            <div className="stack stackGap12">
-              {outcomeGoals.map((g) => (
-                <AccentItem key={g.id} color={category.color || "#7C3AED"}>
-                  <div className="minW0">
-                    <div className="itemTitle">
-                      {g.title || LABELS.goal}
-                      {isPrimaryGoal(g) ? (
-                        <span className="badge badgeAccent ml8">Prioritaire</span>
-                      ) : null}
+            ) : null
+          }
+        />
+        <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-objectives-section")}>
+          <div className="libraryManageCardBody stack stackGap12">
+            {outcomeGoals.length ? (
+              <div className="stack stackGap12">
+                {outcomeGoals.map((g) => (
+                  <AccentItem key={g.id} color={category.color || "#7C3AED"}>
+                    <div className="minW0">
+                      <div className="itemTitle">
+                        {g.title || LABELS.goal}
+                        {isPrimaryGoal(g) ? (
+                          <span className="badge badgeAccent ml8">Prioritaire</span>
+                        ) : null}
+                      </div>
+                      <div className="itemSub">{g.id === category.mainGoalId ? "Objectif principal" : "Objectif secondaire"}</div>
                     </div>
-                    <div className="itemSub">{g.id === category.mainGoalId ? "Objectif principal" : "Objectif secondaire"}</div>
-                  </div>
-                  <div className="row gap8">
-                    <IconButton
-                      icon="gear"
-                      aria-label={`Paramètres ${LABELS.goalLower}`}
-                      onClick={() => openEditItem(g)}
-                    />
-                    <IconButton
-                      icon="close"
-                      aria-label={`Supprimer le ${LABELS.goalLower}`}
-                      onClick={() => deleteOutcome(g)}
-                    />
-                  </div>
-                </AccentItem>
-              ))}
-            </div>
-          ) : (
-            <div className="stack stackGap12">
-              <div className="small2">Aucun {LABELS.goalLower} dans cette catégorie.</div>
-            </div>
-          )}
-        </div>
-      </Card>
+                    <div className="row gap8">
+                      <IconButton
+                        icon="gear"
+                        aria-label={`Paramètres ${LABELS.goalLower}`}
+                        onClick={() => openEditItem(g)}
+                      />
+                      <IconButton
+                        icon="close"
+                        aria-label={`Supprimer le ${LABELS.goalLower}`}
+                        onClick={() => deleteOutcome(g)}
+                      />
+                    </div>
+                  </AccentItem>
+                ))}
+              </div>
+            ) : (
+              <div className="GateInlineMetaCard">
+                <div className="GateRoleHelperText">Aucun {LABELS.goalLower} dans cette catégorie.</div>
+              </div>
+            )}
+          </div>
+        </Card>
+      </section>
 
-      <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-pilotage-section")}>
-        <div className="p18 stack stackGap12">
-          <div className="titleSm">Pilotage</div>
-          <div className="small2">Etat, charge et discipline (lecture seule).</div>
-          <Button variant="ghost" onClick={openPilotage} data-tour-id={getTourId(inlineEdit, "manage-open-pilotage")}>
-            Ouvrir le pilotage
-          </Button>
-        </div>
-      </Card>
+      <section className="mainPageSection">
+        <GateSectionIntro
+          title="Pilotage"
+          subtitle="État, charge et discipline."
+          actions={
+            <Button variant="ghost" onClick={openPilotage} data-tour-id={getTourId(inlineEdit, "manage-open-pilotage")}>
+              Ouvrir le pilotage
+            </Button>
+          }
+        />
+        <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-pilotage-section")}>
+          <div className="GateInlineMetaCard">
+            <div className="GateRoleHelperText">Lecture seule depuis cette catégorie.</div>
+          </div>
+        </Card>
+      </section>
     </div>
   );
 }

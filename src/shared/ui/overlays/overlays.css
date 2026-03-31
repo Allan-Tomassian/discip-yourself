@@ -35,7 +35,3 @@
 .modalPanelClip {
   border-radius: inherit;
 }
-
-.ios .modalBackdrop {
-  position: absolute;
-}

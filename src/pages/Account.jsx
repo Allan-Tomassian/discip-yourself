@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { GateButton, GateSection } from "../shared/ui/gate/Gate";
-import GatePage from "../shared/ui/gate/GatePage";
+import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import { useAuth } from "../auth/useAuth";
 import { useProfile } from "../profile/useProfile";
 import { normalizeUsername, validateOptionalUsername } from "../profile/username";
@@ -68,7 +67,11 @@ export default function Account({ data }) {
       return undefined;
     }
 
-    setAvailability({ state: "checking", message: STATUS_COPY.checking, normalized: usernameValidation.normalized });
+    setAvailability({
+      state: "checking",
+      message: STATUS_COPY.checking,
+      normalized: usernameValidation.normalized,
+    });
 
     let active = true;
     const id = setTimeout(async () => {
@@ -87,9 +90,9 @@ export default function Account({ data }) {
 
         setAvailability({
           state: "taken",
-            message: result.reason || "Cet identifiant est déjà pris.",
-            normalized: result.normalized,
-          });
+          message: result.reason || "Cet identifiant est déjà pris.",
+          normalized: result.normalized,
+        });
       } catch {
         if (!active) return;
         setAvailability({
@@ -152,24 +155,40 @@ export default function Account({ data }) {
   }
 
   return (
-    <ScreenShell data={safeData} pageId="settings" backgroundImage={backgroundImage}>
-      <GatePage
-        className="accountGatePage"
-        title={<span className="GatePageTitle">{SURFACE_LABELS.account}</span>}
-        subtitle={<span className="GatePageSubtitle">Identité, accès et profil visible.</span>}
-      >
-        <GateSection
+    <ScreenShell
+      data={safeData}
+      pageId="settings"
+      backgroundImage={backgroundImage}
+      headerTitle={<span>{SURFACE_LABELS.account}</span>}
+      headerSubtitle="Identité, accès et profil visible."
+    >
+      <section className="mainPageSection">
+        <GateSectionIntro
           title="Profil"
-          description={profile?.username ? "Ton profil est prêt." : "Identifiant optionnel. Tu peux le définir plus tard."}
+          subtitle={profile?.username ? "Ton profil est prêt." : "Identifiant optionnel. Tu peux le définir plus tard."}
+        />
+        <GateSection
           className="accountGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
           collapsible={false}
         >
-          {loadError ? <p className="accountGateNote accountGateNoteError GateRoleHelperText" role="alert">{loadError}</p> : null}
+          {loadError ? (
+            <div className="GateInlineMetaCard col gap8">
+              <p className="accountGateNote accountGateNoteError GateRoleHelperText" role="alert">
+                {loadError}
+              </p>
+            </div>
+          ) : null}
           <form className="accountGateForm" onSubmit={handleSave}>
-            <div className="GateInlineMetaCard gatePageInlineText">
+            <div className="GateInlineMetaCard col gap8">
               <label className="accountGateField GateFormField" htmlFor="account-email">
                 <span className="accountGateFieldLabel GateFormLabel">Email</span>
-                <input id="account-email" className="accountGateInput GateInputPremium isReadonly" value={String(user?.email || profile?.email || "")} readOnly disabled />
+                <input
+                  id="account-email"
+                  className="accountGateInput GateInputPremium isReadonly"
+                  value={String(user?.email || profile?.email || "")}
+                  readOnly
+                  disabled
+                />
               </label>
 
               <label className="accountGateField GateFormField" htmlFor="account-username">
@@ -213,7 +232,7 @@ export default function Account({ data }) {
             </div>
 
             {availability.message ? (
-              <div className="GateInlineMetaCard gatePageInlineText">
+              <div className="GateInlineMetaCard">
                 <p
                   data-testid="account-username-feedback"
                   className={`accountGateNote GateRoleHelperText ${availability.state === "available" ? "accountGateNoteSuccess" : "accountGateNoteError"}`}
@@ -224,7 +243,7 @@ export default function Account({ data }) {
             ) : null}
 
             {status.message ? (
-              <div className="GateInlineMetaCard gatePageInlineText">
+              <div className="GateInlineMetaCard">
                 <p
                   data-testid="account-save-status"
                   className={`accountGateNote GateRoleHelperText ${status.type === "error" ? "accountGateNoteError" : "accountGateNoteSuccess"}`}
@@ -236,12 +255,19 @@ export default function Account({ data }) {
             ) : null}
 
             <div className="accountGateActions GatePrimaryCtaRow">
-              <GateButton type="submit" className="GatePressable" withSound disabled={!canSave} data-testid="account-save-button">
+              <GateButton
+                type="submit"
+                className="GatePressable"
+                withSound
+                disabled={!canSave}
+                data-testid="account-save-button"
+              >
                 {saving ? STATUS_COPY.saving : "Enregistrer"}
               </GateButton>
               <GateButton
                 type="button"
                 variant="ghost"
+                size="sm"
                 className="GatePressable"
                 withSound
                 onClick={() => {
@@ -253,18 +279,23 @@ export default function Account({ data }) {
             </div>
           </form>
         </GateSection>
+      </section>
 
-        <GateSection
+      <section className="mainPageSection">
+        <GateSectionIntro
           title="Session"
-          description="Actions liées à ton compte"
+          subtitle="Actions liées à ton compte."
+        />
+        <GateSection
           className="accountGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
           collapsible={false}
         >
-          <div className="GateInlineMetaCard gatePageInlineText">
+          <div className="GateInlineMetaCard">
             <div className="accountGateActions GatePrimaryCtaRow">
               <GateButton
                 type="button"
                 variant="ghost"
+                size="sm"
                 className="accountGateDangerButton GatePressable"
                 withSound
                 onClick={() => {
@@ -273,13 +304,13 @@ export default function Account({ data }) {
               >
                 Déconnexion
               </GateButton>
-              <GateButton type="button" variant="ghost" className="GatePressable" disabled>
+              <GateButton type="button" variant="ghost" size="sm" className="GatePressable" disabled>
                 Supprimer mon compte via le support
               </GateButton>
             </div>
           </div>
         </GateSection>
-      </GatePage>
+      </section>
     </ScreenShell>
   );
 }

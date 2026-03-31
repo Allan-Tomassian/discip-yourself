@@ -439,6 +439,14 @@
   border-color: color-mix(in srgb, var(--accent) 22%, var(--gate-border));
 }
 
+@media (hover: none) and (pointer: coarse) {
+  .GateInputPremium,
+  .GateTextareaPremium,
+  .GateSelectPremium {
+    font-size: 16px;
+  }
+}
+
 .GatePrimaryCtaRow {
   display: flex;
   flex-wrap: wrap;

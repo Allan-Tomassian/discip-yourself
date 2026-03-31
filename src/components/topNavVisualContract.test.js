@@ -18,6 +18,7 @@ describe("top nav visual contract", () => {
 
     expect(topNav).toContain('import { BookOpen, Calendar, Compass, Home, Menu } from "lucide-react";');
     expect(topNav).toContain("navTopRef.current || topbarSurfaceRef.current || navBarRef.current || topbarRef.current");
+    expect(topNav).toContain('rootStyle.removeProperty("--topbar-bottom");');
     expect(topNav).toContain('{ id: "today", label: SURFACE_LABELS.today, icon: Home }');
     expect(topNav).toContain('{ id: "planning", label: SURFACE_LABELS.planning, icon: Calendar }');
     expect(topNav).toContain('{ id: "library", label: SURFACE_LABELS.library, icon: BookOpen }');
@@ -30,6 +31,7 @@ describe("top nav visual contract", () => {
     expect(navPills).toContain(".NavPillUnified--iconOnly");
     expect(topMenuCss).toContain(".TopNavShell");
     expect(topMenuCss).toContain("padding-bottom: 4px;");
+    expect(indexCss).toContain("--topbar-bottom: calc(var(--safe-top) + 74px);");
     expect(indexCss).toContain(".stickyStack{");
     expect(indexCss).toContain("position: sticky;");
     expect(indexCss).toContain("scroll-padding-top: calc(var(--topbar-bottom, var(--navOffset, 0px)) + 12px);");

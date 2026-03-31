@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
-import { GateSection } from "../shared/ui/gate/Gate";
-import GatePage from "../shared/ui/gate/GatePage";
+import { GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 
 function sortHistory(left, right) {
   const leftTs = Date.parse(left?.endAt || left?.startAt || "") || 0;
@@ -89,16 +88,20 @@ export default function History({ data }) {
   );
 
   return (
-    <ScreenShell data={safeData} pageId="history" backgroundImage={safeData?.profile?.whyImage || ""}>
-      <GatePage
-        title={<span className="GatePageTitle">Historique</span>}
-        subtitle={<span className="GatePageSubtitle">Retrouve tes sessions terminées, reportées ou bloquées.</span>}
-      >
-        <GateSection title="Sessions" collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
-          <div className="gatePageInlineList">
+    <ScreenShell
+      data={safeData}
+      pageId="history"
+      backgroundImage={safeData?.profile?.whyImage || ""}
+      headerTitle="Historique"
+      headerSubtitle="Retrouve tes sessions terminées, reportées ou bloquées."
+    >
+      <section className="mainPageSection">
+        <GateSectionIntro title="Sessions" subtitle="Lecture chronologique de tes sessions récentes." />
+        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+          <div className="col gap12">
             {items.length ? (
               items.map((item) => (
-                <div key={item.id} className="GateInlineMetaCard gatePageInlineText">
+                <div key={item.id} className="GateInlineMetaCard col gap8">
                   <div className="GateRoleCardMeta">
                     {[item.categoryName, item.dateLabel].filter(Boolean).join(" • ")}
                   </div>
@@ -114,13 +117,13 @@ export default function History({ data }) {
                 </div>
               ))
             ) : (
-              <div className="GateInlineMetaCard gatePageInlineText">
+              <div className="GateInlineMetaCard col gap8">
                 <div className="GateRoleHelperText">Aucune session enregistrée pour le moment.</div>
               </div>
             )}
           </div>
         </GateSection>
-      </GatePage>
+      </section>
     </ScreenShell>
   );
 }

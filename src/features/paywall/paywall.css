@@ -29,36 +29,52 @@
   padding: 18px;
   display: flex;
   flex-direction: column;
+  gap: 18px;
+}
+
+.paywallSection {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
-.paywallReason,
-.paywallTrial,
-.paywallLimits,
-.paywallStoreNote,
-.paywallLegal {
-  opacity: 0.8;
+.paywallSectionTight {
+  gap: 10px;
 }
 
-.paywallLimits,
-.paywallStoreNote {
-  opacity: 0.65;
-}
-
-.paywallLegal {
-  opacity: 0.75;
+.paywallSummaryCard {
+  gap: 8px;
 }
 
 .paywallFeatures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.paywallFeatureCard {
+  min-height: 48px;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--gate-text-muted);
 }
 
 .paywallActions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+}
+
+.paywallLimits,
+.paywallStoreNote,
+.paywallLegal {
+  color: var(--gate-text-muted);
+}
+
+.paywallStoreNote {
+  opacity: 0.74;
 }
 
 .paywallFooter {
@@ -74,4 +90,29 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.paywallFooterActions {
+  justify-content: flex-end;
+}
+
+.paywallLegal {
+  font-size: 13px;
+  line-height: 1.45;
+  opacity: 0.76;
+}
+
+@media (max-width: 720px) {
+  .paywallBody {
+    gap: 16px;
+  }
+
+  .paywallFeatures {
+    grid-template-columns: 1fr;
+  }
+
+  .paywallFooter {
+    align-items: flex-start;
+  }
 }

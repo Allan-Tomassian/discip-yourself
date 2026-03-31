@@ -3,10 +3,11 @@ import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
 import { UI_COPY } from "../labels";
 import "../../features/today/today.css";
 
-function MicroButton({ variant = "primary", className = "", ...props }) {
-  const gateVariant = variant === "ghost" ? "ghost" : "primary";
+function MicroButton({ variant = "primary", size = "sm", className = "", ...props }) {
+  const gateVariant =
+    variant === "ghost" ? "ghost" : variant === "secondary" ? "secondary" : "primary";
   const mergedClassName = [className, "GatePressable"].filter(Boolean).join(" ");
-  return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;
+  return <GateButton variant={gateVariant} size={size} className={mergedClassName} {...props} />;
 }
 
 function normalizeItems(items) {
@@ -113,7 +114,7 @@ export default function MicroActionsCard({
     >
       <div className="microCardBody">
         <div className="microHeader">
-          <div className="cardSectionTitleRow">
+          <div className="microHeaderMain">
             {drag ? (
               <button
                 ref={setActivatorNodeRef}
@@ -125,17 +126,21 @@ export default function MicroActionsCard({
                 ⋮⋮
               </button>
             ) : null}
-            <div className="cardSectionTitle">Micro-actions</div>
+            <div className="microHeaderText">
+              <div className="GateRoleCardTitle">Pour {selectedCategoryName}</div>
+              <div className="GateRoleCardMeta">3 actions rapides à valider ou reroll.</div>
+            </div>
           </div>
           <div className="microHeaderStats">
             <span className="microDoneStat" aria-label="Micro-actions validées aujourd’hui">
               {microDoneToday}/3
             </span>
+            <span className="microDoneMeta">{rerollCounterLabel}</span>
           </div>
         </div>
 
         <div className="microToolbar">
-          <div className="microContext">Pour ta catégorie • {selectedCategoryName}</div>
+          <div className="microContext GateRoleCardMeta">Choisis la catégorie à nourrir maintenant.</div>
           <div className="GateSelectWrap microCategorySelectWrap">
             <select
               value={categoryId}
@@ -185,8 +190,8 @@ export default function MicroActionsCard({
                   <span className="microPickMark" aria-hidden="true">✓</span>
                 </label>
                 <div className="microItemMain">
-                  <div className="microItemTitle">{item.title}</div>
-                  {item.subtitle ? <div className="microItemSub">{item.subtitle}</div> : null}
+                  <div className="microItemTitle GateRoleCardTitle">{item.title}</div>
+                  {item.subtitle ? <div className="microItemSub GateRoleCardMeta">{item.subtitle}</div> : null}
                 </div>
                 <span className="microBadge">{item.durationMin || 2} min</span>
                 <MicroButton
@@ -207,7 +212,7 @@ export default function MicroActionsCard({
 
         <div className="microRerollRow">
           <MicroButton
-            variant="ghost"
+            variant="secondary"
             className="microRerollBtn"
             onClick={handleReroll}
             disabled={!canReroll}
@@ -240,7 +245,6 @@ export default function MicroActionsCard({
               {adLoading ? "Vidéo..." : UI_COPY.watchAd}
             </MicroButton>
           ) : null}
-          <span className="microRerollMeta">{rerollCounterLabel}</span>
         </div>
 
         {rerollBlocked ? <div className="microRerollLimit">Limite atteinte aujourd’hui.</div> : null}

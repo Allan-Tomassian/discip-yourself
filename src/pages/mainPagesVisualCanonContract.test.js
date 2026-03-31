@@ -41,9 +41,9 @@ describe("main pages visual canon contract", () => {
     expect(indexCss).toContain(".mainPageSectionBody");
     expect(indexCss).toContain("padding-top: calc(var(--navGap, 10px) + var(--page-top-gap));");
     expect(indexCss).toContain("position: sticky;");
-    expect(gatePageCss).toContain(".gatePagePanel");
+    expect(gatePageCss).toContain(".gatePageRoot");
     expect(gatePageCss).toContain(".gatePageContent");
-    expect(gatePageCss).toContain("gap: 18px;");
+    expect(gatePageCss).toContain("gap: 24px;");
     expect(gatePageCss).not.toContain("--gate-premium-radius: 14px;");
     expect(premiumCss).not.toContain(".topMenuCardOuter");
   });

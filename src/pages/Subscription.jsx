@@ -1,7 +1,6 @@
 import React from "react";
 import ScreenShell from "./_ScreenShell";
-import { GateButton, GateSection } from "../shared/ui/gate/Gate";
-import GatePage from "../shared/ui/gate/GatePage";
+import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import { getPlanLimits, isPremium } from "../logic/entitlements";
 import { LABELS, MARKETING_COPY, UI_COPY } from "../ui/labels";
 
@@ -19,33 +18,38 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
   const expiryLabel = Number.isFinite(expiryMs) ? new Date(expiryMs).toLocaleDateString() : "";
 
   return (
-    <ScreenShell data={safeData} pageId="settings" backgroundImage={backgroundImage}>
-      <GatePage
-        title={<span className="GatePageTitle">Abonnement</span>}
-        subtitle={<span className="GatePageSubtitle">Plan, achats et accès Premium</span>}
-      >
-        <GateSection
+    <ScreenShell
+      data={safeData}
+      pageId="settings"
+      backgroundImage={backgroundImage}
+      headerTitle="Abonnement"
+      headerSubtitle="Plan, achats et accès Premium"
+    >
+      <section className="mainPageSection">
+        <GateSectionIntro
           title={premium ? MARKETING_COPY.premiumPlan : MARKETING_COPY.essentialPlan}
-          description="Gère ton plan, tes achats et tes accès."
+          subtitle="Gère ton plan, tes achats et tes accès."
+        />
+        <GateSection
           collapsible={false}
           className="GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
-          <div className="gatePageInlineList">
-            <div className="GateInlineMetaCard gatePageInlineText">
+          <div className="col gap12">
+            <div className="GateInlineMetaCard col gap8">
               <div className="GateRoleCardTitle">Plan actif</div>
               <div className="GateRoleHelperText">
                 {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} · {limits.actions}{" "}
                 {LABELS.actionsLower}
               </div>
             </div>
-            <div className="GateInlineMetaCard gatePageInlineText">
+            <div className="GateInlineMetaCard col gap8">
               <div className="GateRoleCardTitle">Accès Premium</div>
               <div className="GateRoleHelperText">
                 Les accès Premium sont vérifiés quand tu ouvres le Coach et les fonctions avancées.
               </div>
             </div>
             {premium && expiryLabel ? (
-              <div className="GateInlineMetaCard gatePageInlineText">
+              <div className="GateInlineMetaCard col gap8">
                 <div className="GateRoleCardTitle">Échéance</div>
                 <div className="GateRoleCardMeta">Actif jusqu’au {expiryLabel}</div>
               </div>
@@ -64,6 +68,7 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
             </GateButton>
             <GateButton
               variant="ghost"
+              size="sm"
               className="GatePressable"
               onClick={() => {
                 if (typeof onRestorePurchases === "function") onRestorePurchases();
@@ -73,7 +78,7 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
             </GateButton>
           </div>
         </GateSection>
-      </GatePage>
+      </section>
     </ScreenShell>
   );
 }

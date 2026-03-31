@@ -102,7 +102,8 @@ export default function AuthGate({ children }) {
     return (
       <div
         data-testid="auth-loading-screen"
-        style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}
+        className="appViewportFill"
+        style={{ display: "grid", placeItems: "center", padding: 24 }}
       >
         <p>Chargement...</p>
       </div>
@@ -113,7 +114,8 @@ export default function AuthGate({ children }) {
     return (
       <div
         data-testid="auth-redirecting-screen"
-        style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}
+        className="appViewportFill"
+        style={{ display: "grid", placeItems: "center", padding: 24 }}
       >
         <p>Redirection...</p>
       </div>

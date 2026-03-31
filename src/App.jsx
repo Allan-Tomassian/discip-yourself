@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import TopNav from "./components/TopNav";
 import CategoryRail from "./components/CategoryRail";
 import MainDrawer from "./components/navigation/MainDrawer";
@@ -217,6 +217,7 @@ export default function App() {
   const [coachFabOffsetY, setCoachFabOffsetY] = useState(() => loadCoachFabOffset());
   const coachFabOffsetRef = useRef(coachFabOffsetY);
   const coachFabDraggedRef = useRef(false);
+  const bottomRailRef = useRef(null);
 
   useEffect(() => {
     coachFabOffsetRef.current = coachFabOffsetY;
@@ -795,6 +796,63 @@ export default function App() {
   const totemDockLayer = <TotemDockLayer data={safeData} setData={setData} />;
   const routeCloseSigRef = useRef("");
 
+  useLayoutEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return undefined;
+
+    const root = document.documentElement;
+    const rootStyle = root.style;
+
+    const resetBottomFixedStackSpace = () => {
+      rootStyle.setProperty("--bottom-fixed-stack-space", "0px");
+    };
+
+    const updateBottomFixedStackSpace = () => {
+      const rail = bottomRailRef.current;
+      const visualViewport = window.visualViewport;
+      const visibleViewportHeight = visualViewport?.height || window.innerHeight || 0;
+      const visibleViewportBottom = visualViewport
+        ? visualViewport.height + visualViewport.offsetTop
+        : window.innerHeight || 0;
+      const keyboardOpen =
+        Boolean(visualViewport) && (window.innerHeight || visibleViewportHeight) - visibleViewportHeight > 140;
+      if (!showBottomRail || !rail || keyboardOpen || root.classList.contains("keyboardOpen")) {
+        resetBottomFixedStackSpace();
+        return;
+      }
+      const rect = rail.getBoundingClientRect?.();
+      if (!rect || !Number.isFinite(rect.top) || !Number.isFinite(visibleViewportBottom)) {
+        resetBottomFixedStackSpace();
+        return;
+      }
+      const clearSpace = Math.max(0, Math.round(visibleViewportBottom - rect.top));
+      rootStyle.setProperty("--bottom-fixed-stack-space", `${clearSpace}px`);
+    };
+
+    updateBottomFixedStackSpace();
+    const raf = window.requestAnimationFrame(updateBottomFixedStackSpace);
+
+    let ro;
+    if (window.ResizeObserver && bottomRailRef.current) {
+      ro = new ResizeObserver(updateBottomFixedStackSpace);
+      ro.observe(bottomRailRef.current);
+    }
+
+    window.addEventListener("resize", updateBottomFixedStackSpace);
+    window.addEventListener("orientationchange", updateBottomFixedStackSpace);
+    window.visualViewport?.addEventListener("resize", updateBottomFixedStackSpace);
+    window.visualViewport?.addEventListener("scroll", updateBottomFixedStackSpace);
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      ro?.disconnect();
+      window.removeEventListener("resize", updateBottomFixedStackSpace);
+      window.removeEventListener("orientationchange", updateBottomFixedStackSpace);
+      window.visualViewport?.removeEventListener("resize", updateBottomFixedStackSpace);
+      window.visualViewport?.removeEventListener("scroll", updateBottomFixedStackSpace);
+      resetBottomFixedStackSpace();
+    };
+  }, [showBottomRail]);
+
   useEffect(() => {
     const nextSig = [
       tab,
@@ -917,7 +975,8 @@ export default function App() {
     return renderWithBehaviorFeedback(
       <div
         data-testid="user-data-loading-screen"
-        style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}
+        className="appViewportFill"
+        style={{ display: "grid", placeItems: "center", padding: 24 }}
       >
         <p>Chargement...</p>
       </div>
@@ -964,7 +1023,7 @@ export default function App() {
       <MainDrawer open={isDrawerOpen} active={tab} onClose={() => setDrawerOpen(false)} onNavigate={setTab} />
       {profileReminder}
       {showBottomRail ? (
-        <div className="bottomCategoryBar" data-tour-id="topnav-rail">
+        <div ref={bottomRailRef} className="bottomCategoryBar" data-tour-id="topnav-rail">
           <div className="BottomBarSurfaceOuter GateGlassOuter">
             <div className="BottomBarSurfaceClip BottomBarBackdrop GateGlassClip GateGlassBackdrop">
               <GatePanel className="bottomCategoryBarPanel GateSurfacePremium GateCardPremium GateGlassContent">

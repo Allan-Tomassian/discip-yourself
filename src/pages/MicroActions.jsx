@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import GatePage from "../shared/ui/gate/GatePage";
+import { GateSectionIntro } from "../shared/ui/gate/Gate";
 import MicroActionsCard from "../ui/today/MicroActionsCard";
 import RewardedAdModal from "../ui/today/RewardedAdModal";
 import {
@@ -348,11 +348,18 @@ export default function MicroActions({ data, setData, isPremiumPlan = false }) {
   }
 
   return (
-    <ScreenShell data={safeData} pageId="micro-actions" backgroundImage={safeData?.profile?.whyImage || ""}>
-      <GatePage
-        title={<span className="GatePageTitle">Micro-actions</span>}
-        subtitle={<span className="GatePageSubtitle">Petites actions rapides pour relancer l’élan du jour.</span>}
-      >
+    <ScreenShell
+      data={safeData}
+      pageId="micro-actions"
+      backgroundImage={safeData?.profile?.whyImage || ""}
+      headerTitle="Micro-actions"
+      headerSubtitle="Petites actions rapides pour relancer l’élan du jour."
+    >
+      <section className="mainPageSection">
+        <GateSectionIntro
+          title="Micro-actions du jour"
+          subtitle="Trois leviers courts pour relancer l’élan sans repasser par Today."
+        />
         <MicroActionsCard
           categoryId={selectedCategoryId}
           categoryOptions={microCategoryOptions}
@@ -373,7 +380,7 @@ export default function MicroActions({ data, setData, isPremiumPlan = false }) {
           onUseRerollCredit={(indices) => handleMicroReroll(indices, { useCredit: true })}
           onWatchAd={handleMicroWatchAd}
         />
-      </GatePage>
+      </section>
       <RewardedAdModal
         open={rewardedAdRequest.open}
         placement={rewardedAdRequest.placement}

@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo } from "react";
 import ScreenShell from "./_ScreenShell";
-import { GateButton, GateSection } from "../shared/ui/gate/Gate";
+import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import Gauge from "../components/Gauge";
 import { getAccentForPage } from "../utils/_theme";
 import { resolveGoalType } from "../domain/goalType";
 import { LABELS } from "../ui/labels";
 import CategoryManageInline from "../features/library/CategoryManageInline";
+import "../features/library/library.css";
 
 // TOUR MAP:
 // - primary_action: manage actions and advanced objectives in a category
@@ -95,23 +96,29 @@ export default function CategoryView({
   if (!categories.length) {
     return (
       <ScreenShell
-        headerTitle={<span data-tour-id="manage-title">Gérer</span>}
+        headerTitle="Gestion de catégorie"
         headerSubtitle="Aucune catégorie"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
-        <GateSection className="GateSurfacePremium GateCardPremium">
-          <div className="p18">
-            <div className="titleSm">Aucune catégorie</div>
-            <div className="small mt6">
-              Commence par poser une catégorie claire puis une première {LABELS.actionLower}. Les {LABELS.goalsLower} servent ensuite à donner une direction.
-            </div>
-            <div className="mt12">
-              <GateButton variant="ghost" className="btnBackCompact backBtn GatePressable" onClick={onBack} data-tour-id="manage-back">
+        <section className="mainPageSection">
+          <GateSectionIntro
+            title="Aucune catégorie"
+            subtitle={`Commence par poser une catégorie claire puis une première ${LABELS.actionLower}. Les ${LABELS.goalsLower} servent ensuite à donner une direction.`}
+          />
+          <GateSection className="GateSurfacePremium GateCardPremium GateSecondarySectionCard" collapsible={false}>
+            <div className="GatePrimaryCtaRow">
+              <GateButton
+                variant="ghost"
+                size="sm"
+                className="btnBackCompact backBtn GatePressable"
+                onClick={onBack}
+                data-tour-id="manage-back"
+              >
                 ← Retour
               </GateButton>
             </div>
-          </div>
-        </GateSection>
+          </GateSection>
+        </section>
       </ScreenShell>
     );
   }
@@ -119,23 +126,29 @@ export default function CategoryView({
   if (!category) {
     return (
       <ScreenShell
-        headerTitle={<span data-tour-id="manage-title">Gérer</span>}
+        headerTitle="Gestion de catégorie"
         headerSubtitle="Catégorie introuvable"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
-        <GateSection className="GateSurfacePremium GateCardPremium">
-          <div className="p18">
-            <div className="titleSm">Catégorie introuvable</div>
-            <div className="small mt6">
-              Cette catégorie n’existe plus.
-            </div>
-            <div className="mt12">
-              <GateButton variant="ghost" className="btnBackCompact backBtn GatePressable" onClick={onBack} data-tour-id="manage-back">
+        <section className="mainPageSection">
+          <GateSectionIntro
+            title="Catégorie introuvable"
+            subtitle="Cette catégorie n’existe plus."
+          />
+          <GateSection className="GateSurfacePremium GateCardPremium GateSecondarySectionCard" collapsible={false}>
+            <div className="GatePrimaryCtaRow">
+              <GateButton
+                variant="ghost"
+                size="sm"
+                className="btnBackCompact backBtn GatePressable"
+                onClick={onBack}
+                data-tour-id="manage-back"
+              >
                 ← Retour
               </GateButton>
             </div>
-          </div>
-        </GateSection>
+          </GateSection>
+        </section>
       </ScreenShell>
     );
   }
@@ -143,8 +156,17 @@ export default function CategoryView({
   const accent = category?.color || getAccentForPage(safeData, "home");
   const backgroundImage = category.wallpaper || safeData.profile?.whyImage || "";
   const headerRight = (
-    <div className="panelNarrow">
-      <div className="col gap8 alignEnd">
+    <div className="manageHeaderRightWrap">
+      <div className="manageHeaderRight">
+        <GateButton
+          variant="ghost"
+          size="sm"
+          className="btnBackCompact backBtn GatePressable"
+          onClick={onBack}
+          data-tour-id="manage-back"
+        >
+          ← Retour
+        </GateButton>
         {outcomeGoals.length ? (
           <div className="col gap8 alignEnd wFull">
             {gaugeSlice.map((g) => (
@@ -158,14 +180,16 @@ export default function CategoryView({
                 accentColor={category.color || accent}
               />
             ))}
-            <button
-              className="linkBtn"
-              type="button"
-              onClick={() => (typeof onOpenProgress === "function" ? onOpenProgress(category.id) : null)}
-              aria-label="Voir la progression"
-            >
-              →
-            </button>
+            {typeof onOpenProgress === "function" ? (
+              <button
+                className="linkBtn"
+                type="button"
+                onClick={() => onOpenProgress(category.id)}
+                aria-label="Voir la progression"
+              >
+                →
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -176,15 +200,12 @@ export default function CategoryView({
     <ScreenShell
       accent={accent}
       backgroundImage={backgroundImage}
-      headerTitle={<span data-tour-id="manage-title">Gérer</span>}
-      headerSubtitle={
-        <div className="stack stackGap12">
-          <div data-tour-id="manage-category-name">{category.name || "Catégorie"}</div>
-          <GateButton variant="ghost" className="btnBackCompact backBtn GatePressable" onClick={onBack} data-tour-id="manage-back">
-            ← Retour
-          </GateButton>
+      headerTitle={
+        <div data-tour-id="manage-title">
+          <span data-tour-id="manage-category-name">{category.name || "Catégorie"}</span>
         </div>
       }
+      headerSubtitle="Gestion de la catégorie"
       headerRight={headerRight}
       headerRowAlign="start"
     >

@@ -1,7 +1,6 @@
 import React, { useRef, useState } from "react";
 import ScreenShell from "./_ScreenShell";
-import { GateButton, GateSection } from "../shared/ui/gate/Gate";
-import GatePage from "../shared/ui/gate/GatePage";
+import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import { isPremium } from "../logic/entitlements";
 import { STATUS_COPY } from "../ui/labels";
 
@@ -51,17 +50,16 @@ export default function Data({ data, setData, onOpenPaywall }) {
   }
 
   return (
-    <ScreenShell data={safeData} pageId="settings" backgroundImage={backgroundImage}>
-      <GatePage
-        title={<span className="GatePageTitle">Données</span>}
-        subtitle={<span className="GatePageSubtitle">Exporter ou réimporter l’état complet de l’app.</span>}
-      >
-        <GateSection
-          title="Sauvegarde"
-          description="Exporte ou importe l’état complet de l’app."
-          collapsible={false}
-          className="GateSurfacePremium GateCardPremium GateSecondarySectionCard"
-        >
+    <ScreenShell
+      data={safeData}
+      pageId="settings"
+      backgroundImage={backgroundImage}
+      headerTitle="Données"
+      headerSubtitle="Exporter ou réimporter l’état complet de l’app."
+    >
+      <section className="mainPageSection">
+        <GateSectionIntro title="Sauvegarde" subtitle="Exporte ou importe l’état complet de l’app." />
+        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="GatePrimaryCtaRow">
             <GateButton
               className="GatePressable"
@@ -90,6 +88,7 @@ export default function Data({ data, setData, onOpenPaywall }) {
 
             <GateButton
               variant="ghost"
+              size="sm"
               className="GatePressable"
               onClick={() => {
                 importInputRef.current?.click();
@@ -100,12 +99,12 @@ export default function Data({ data, setData, onOpenPaywall }) {
           </div>
 
           {importStatus ? (
-            <div className="GateInlineMetaCard gatePageInlineText">
+            <div className="GateInlineMetaCard col gap8">
               <div className="GateRoleHelperText">{importStatus}</div>
             </div>
           ) : null}
         </GateSection>
-      </GatePage>
+      </section>
     </ScreenShell>
   );
 }

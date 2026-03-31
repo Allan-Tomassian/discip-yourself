@@ -28,7 +28,7 @@
 }
 
 .coachFab.has-rail {
-  bottom: calc(var(--bottomCategoryBarSpace, 112px) + var(--safe-bottom) + 8px);
+  bottom: calc(var(--bottom-fixed-stack-space, 0px) + 8px);
 }
 
 .coachFab:hover {

@@ -1,8 +1,7 @@
 import React from "react";
 import ScreenShell from "./_ScreenShell";
-import { GateButton, GateSection } from "../shared/ui/gate/Gate";
-import GatePage from "../shared/ui/gate/GatePage";
-import { SURFACE_LABELS, UI_COPY } from "../ui/labels";
+import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
+import { UI_COPY } from "../ui/labels";
 
 const QUESTIONS = [
   {
@@ -15,11 +14,11 @@ const QUESTIONS = [
   },
   {
     question: "Pourquoi Today est plus simple ?",
-    answer: `Today sert uniquement à exécuter. Le calendrier détaillé reste dans ${SURFACE_LABELS.planning}.`,
+    answer: "Today sert uniquement à exécuter. Le calendrier détaillé reste dans Planification.",
   },
   {
     question: "Comment réorganiser une session ?",
-    answer: `Ouvre la session puis utilise Reporter pour la déplacer ou l’envoyer dans ${SURFACE_LABELS.planning}.`,
+    answer: "Ouvre la session puis utilise Reporter pour la déplacer ou l’envoyer dans Planification.",
   },
   {
     question: "Comment réinitialiser mon mot de passe ?",
@@ -35,35 +34,35 @@ export default function Faq({ data, setTab }) {
   const safeData = data && typeof data === "object" ? data : {};
 
   return (
-    <ScreenShell data={safeData} pageId="faq" backgroundImage={safeData?.profile?.whyImage || ""}>
-      <GatePage
-        title={<span className="GatePageTitle">FAQ</span>}
-        subtitle={<span className="GatePageSubtitle">Réponses rapides aux questions fréquentes.</span>}
-      >
-        <GateSection
-          title="Questions fréquentes"
-          description="Les réponses utiles les plus courantes"
-          collapsible={false}
-          className="GateSurfacePremium GateCardPremium GateSecondarySectionCard"
-        >
-          <div className="gatePageInlineList">
+    <ScreenShell
+      data={safeData}
+      pageId="faq"
+      backgroundImage={safeData?.profile?.whyImage || ""}
+      headerTitle="FAQ"
+      headerSubtitle="Réponses rapides aux questions fréquentes."
+    >
+      <section className="mainPageSection">
+        <GateSectionIntro title="Questions fréquentes" subtitle="Les réponses utiles les plus courantes." />
+        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+          <div className="col gap12">
             {QUESTIONS.map((item) => (
-              <div key={item.question} className="GateInlineMetaCard gatePageInlineText">
+              <div key={item.question} className="GateInlineMetaCard col gap8">
                 <div className="GateRoleCardTitle">{item.question}</div>
                 <div className="GateRoleHelperText">{item.answer}</div>
               </div>
             ))}
           </div>
         </GateSection>
-        <GateSection
-          title="Besoin d’aide supplémentaire ?"
-          collapsible={false}
-          className="GateSurfacePremium GateCardPremium GateSecondarySectionCard"
-        >
+      </section>
+
+      <section className="mainPageSection">
+        <GateSectionIntro title="Besoin d’aide supplémentaire ?" subtitle="Ouvre le support si la réponse n’est pas ici." />
+        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="GatePrimaryCtaRow">
             <GateButton
               type="button"
               variant="ghost"
+              size="sm"
               className="GatePressable"
               withSound
               onClick={() => setTab?.("support")}
@@ -72,7 +71,7 @@ export default function Faq({ data, setTab }) {
             </GateButton>
           </div>
         </GateSection>
-      </GatePage>
+      </section>
     </ScreenShell>
   );
 }

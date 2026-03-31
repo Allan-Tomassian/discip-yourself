@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { GateBadge, GateButton, GateHeader, GatePanel, GateSection } from "../shared/ui/gate/Gate";
+import { GateBadge, GateButton, GateHeader, GatePanel, GateSectionIntro } from "../shared/ui/gate/Gate";
 import { getPlanLimits, getTrialDays } from "../logic/entitlements";
 import { loadProducts, PRODUCT_IDS } from "../logic/purchases";
 import { LABELS, MARKETING_COPY, UI_COPY } from "../ui/labels";
@@ -77,67 +77,81 @@ export default function PaywallModal({
             onPointerDown={(e) => e.stopPropagation()}
           >
             <div className="paywallBody">
-          <GateHeader
-            title={UI_COPY.discoverPremium}
-            subtitle={reason || MARKETING_COPY.premiumSubtitle}
-            actions={showTrial ? <GateBadge>Essai 14 jours</GateBadge> : null}
-          />
-          <GateSection title="Inclus" collapsible={false}>
-            <div className="paywallFeatures">
-              <div className="small2">• Catégories illimitées</div>
-              <div className="small2">• {LABELS.goals} illimités</div>
-              <div className="small2">• Actions illimitées</div>
-              <div className="small2">• Planification et historique complets</div>
-              <div className="small2">• Export des données</div>
-            </div>
-          </GateSection>
-          <div className="small2 paywallLimits">
-            {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} ·{" "}
-            {limits.actions} {LABELS.actionsLower}
-          </div>
-          <div className="paywallActions">
-            <GateButton
-              onClick={() => {
-                if (typeof onSubscribeMonthly === "function") onSubscribeMonthly(PRODUCT_IDS.monthly);
-              }}
-            >
-              Choisir le mensuel · {monthlyLabel}
-            </GateButton>
-            <GateButton
-              variant="ghost"
-              onClick={() => {
-                if (typeof onSubscribeYearly === "function") onSubscribeYearly(PRODUCT_IDS.yearly);
-              }}
-            >
-              Choisir l’annuel · {yearlyLabel} {yearlyBadge}
-            </GateButton>
-          </div>
-          {!products.available ? (
-            <div className="small2 paywallStoreNote">
-              Les offres d’achat sont indisponibles sur cet appareil.
-            </div>
-          ) : null}
-          <div className="small2 paywallLegal">
-            L’abonnement se renouvelle automatiquement. Tu peux l’annuler à tout moment dans les réglages iOS. Le paiement passe par ton Apple ID.
-          </div>
-          <div className="paywallFooter">
-            <div className="paywallLinks">
-              <button className="linkBtn" type="button" onClick={() => (onOpenTerms ? onOpenTerms() : null)}>
-                Conditions
-              </button>
-              <button className="linkBtn" type="button" onClick={() => (onOpenPrivacy ? onOpenPrivacy() : null)}>
-                Confidentialité
-              </button>
-            </div>
-            <div className="paywallFooterActions">
-              <GateButton variant="ghost" onClick={onRestore}>
-                {UI_COPY.restorePurchases}
-              </GateButton>
-              <GateButton variant="ghost" onClick={onClose}>
-                Plus tard
-              </GateButton>
-            </div>
-          </div>
+              <GateHeader
+                title={UI_COPY.discoverPremium}
+                subtitle={reason || MARKETING_COPY.premiumSubtitle}
+                actions={showTrial ? <GateBadge>Essai 14 jours</GateBadge> : null}
+              />
+
+              <div className="GateInlineMetaCard paywallSummaryCard">
+                <div className="GateRoleCardTitle">Version complète</div>
+                <div className="GateRoleHelperText paywallLimits">
+                  {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} ·{" "}
+                  {limits.actions} {LABELS.actionsLower}
+                </div>
+              </div>
+
+              <section className="paywallSection">
+                <GateSectionIntro title="Inclus" subtitle="Tout le système complet, sans limites basses." />
+                <div className="paywallFeatures">
+                  <div className="GateInlineMetaCard paywallFeatureCard">Catégories illimitées</div>
+                  <div className="GateInlineMetaCard paywallFeatureCard">{LABELS.goals} illimités</div>
+                  <div className="GateInlineMetaCard paywallFeatureCard">Actions illimitées</div>
+                  <div className="GateInlineMetaCard paywallFeatureCard">Planification et historique complets</div>
+                  <div className="GateInlineMetaCard paywallFeatureCard">Export des données</div>
+                </div>
+              </section>
+
+              <section className="paywallSection">
+                <GateSectionIntro title="Choisir une offre" subtitle="Mensuel pour démarrer, annuel pour réduire le coût." />
+                <div className="paywallActions">
+                  <GateButton
+                    onClick={() => {
+                      if (typeof onSubscribeMonthly === "function") onSubscribeMonthly(PRODUCT_IDS.monthly);
+                    }}
+                  >
+                    Choisir le mensuel · {monthlyLabel}
+                  </GateButton>
+                  <GateButton
+                    variant="secondary"
+                    onClick={() => {
+                      if (typeof onSubscribeYearly === "function") onSubscribeYearly(PRODUCT_IDS.yearly);
+                    }}
+                  >
+                    Choisir l’annuel · {yearlyLabel} {yearlyBadge}
+                  </GateButton>
+                </div>
+                {!products.available ? (
+                  <div className="GateInlineMetaCard paywallStoreNote">
+                    Les offres d’achat sont indisponibles sur cet appareil.
+                  </div>
+                ) : null}
+              </section>
+
+              <section className="paywallSection paywallSectionTight">
+                <GateSectionIntro title="Restauration et mentions" subtitle="Paiement Apple ID, renouvellement automatique, annulation à tout moment." />
+                <div className="paywallFooter">
+                  <div className="paywallLinks">
+                    <button className="linkBtn" type="button" onClick={() => (onOpenTerms ? onOpenTerms() : null)}>
+                      Conditions
+                    </button>
+                    <button className="linkBtn" type="button" onClick={() => (onOpenPrivacy ? onOpenPrivacy() : null)}>
+                      Confidentialité
+                    </button>
+                  </div>
+                  <div className="paywallFooterActions">
+                    <GateButton variant="ghost" size="sm" onClick={onRestore}>
+                      {UI_COPY.restorePurchases}
+                    </GateButton>
+                    <GateButton variant="ghost" size="sm" onClick={onClose}>
+                      Plus tard
+                    </GateButton>
+                  </div>
+                </div>
+                <div className="paywallLegal">
+                  L’abonnement se renouvelle automatiquement. Tu peux l’annuler à tout moment dans les réglages iOS. Le paiement passe par ton Apple ID.
+                </div>
+              </section>
             </div>
           </GatePanel>
         </div>

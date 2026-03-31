@@ -54,60 +54,60 @@
 }
 
 .drawerMenuPanel {
-  gap: 18px;
+  gap: 16px;
 }
 
 .drawerMenuHeader {
-  padding: 4px;
+  padding: 2px 2px 0;
 }
 
 .drawerMenuHeader .gateHeaderText {
-  gap: 6px;
+  gap: 4px;
 }
 
 .drawerMenuHeader .gateHeader {
-  gap: 16px;
+  gap: 14px;
   align-items: flex-start;
 }
 
 .drawerMenuHeader .gateHeaderSubtitle {
-  max-width: 26ch;
+  max-width: 22ch;
 }
 
 .drawerMenuCloseBtn {
-  margin-top: 1px;
+  margin-top: 0;
   align-self: flex-start;
 }
 
 .drawerMenuBody {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   min-width: 0;
-  padding: 0 4px 8px;
+  padding: 0 2px 8px;
 }
 
 .drawerMenuGroup {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
 .drawerMenuSectionTitle {
-  padding-inline: 4px;
+  padding-inline: 6px;
 }
 
 .drawerMenuItems {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .drawerMenuItem {
   text-align: left;
-  padding: 14px 16px;
-  gap: 10px;
+  padding: 13px 14px;
+  gap: 8px;
 }
 
 .drawerMenuItem .gateRowBody {
@@ -188,7 +188,7 @@
   }
 
   .drawerMenuBody {
-    gap: 16px;
+    gap: 14px;
     padding-bottom: 12px;
   }
 }

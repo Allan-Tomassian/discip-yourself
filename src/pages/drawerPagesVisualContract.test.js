@@ -10,13 +10,14 @@ function readSrc(relPath) {
 }
 
 describe("drawer pages visual contract", () => {
-  it("uses the shared premium main container for drawer pages", () => {
+  it("declasses GatePage into a neutral compatibility wrapper", () => {
     const gatePageSource = readSrc("shared/ui/gate/GatePage.jsx");
 
-    expect(gatePageSource).toContain("GateMainSection GateMainSectionCard GateSurfacePremium GateCardPremium");
+    expect(gatePageSource).not.toContain("GateHeader");
+    expect(gatePageSource).not.toContain("GateMainSectionCard");
   });
 
-  it("keeps the main drawer pages on the shared GatePage shell", () => {
+  it("keeps drawer-linked pages on ScreenShell headers instead of GatePage shells", () => {
     const pages = [
       "pages/Preferences.jsx",
       "pages/Account.jsx",
@@ -32,11 +33,12 @@ describe("drawer pages visual contract", () => {
     ].map(readSrc);
 
     for (const source of pages) {
-      expect(source).toContain("<GatePage");
+      expect(source).toContain("headerTitle");
+      expect(source).not.toContain("<GatePage");
     }
   });
 
-  it("keeps drawer page sections on the shared secondary card family", () => {
+  it("keeps drawer and secondary pages on the shared premium surface family", () => {
     const pages = [
       "pages/Preferences.jsx",
       "pages/Account.jsx",
@@ -48,11 +50,38 @@ describe("drawer pages visual contract", () => {
       "pages/Privacy.jsx",
       "pages/Legal.jsx",
       "pages/Data.jsx",
-      "ui/today/MicroActionsCard.jsx",
     ].map(readSrc);
+    const microActions = readSrc("pages/MicroActions.jsx");
+    const drawer = readSrc("components/navigation/MainDrawer.jsx");
 
     for (const source of pages) {
       expect(source).toContain("GateSecondarySectionCard");
+    }
+
+    expect(microActions).toContain("headerTitle");
+    expect(microActions).toContain("GateSectionIntro");
+    expect(microActions).not.toContain("<GatePage");
+    expect(drawer).toContain("drawerMenuPanel");
+    expect(drawer).toContain('title="Menu"');
+    expect(drawer).toContain("GateHeader");
+  });
+
+  it("keeps section intros on the drawer-linked simple pages", () => {
+    const pages = [
+      "pages/Preferences.jsx",
+      "pages/Account.jsx",
+      "pages/Subscription.jsx",
+      "pages/Faq.jsx",
+      "pages/Support.jsx",
+      "pages/History.jsx",
+      "pages/Journal.jsx",
+      "pages/Privacy.jsx",
+      "pages/Legal.jsx",
+      "pages/Data.jsx",
+    ].map(readSrc);
+
+    for (const source of pages) {
+      expect(source).toContain("GateSectionIntro");
     }
   });
 });

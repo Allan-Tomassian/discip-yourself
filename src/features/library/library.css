@@ -121,6 +121,24 @@
   z-index: 1;
 }
 
+.libraryManageStack {
+  width: 100%;
+  min-width: 0;
+}
+
+.libraryManageCard {
+  border-color: color-mix(in srgb, var(--gate-border) 92%, rgba(255, 255, 255, 0.08));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 22px rgba(0, 0, 0, 0.16);
+}
+
+.libraryManageCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .libraryDetailStack {
   gap: 10px;
   padding-left: 10px;
