@@ -13,8 +13,9 @@ describe("main pages visual canon contract", () => {
   it("keeps the visual canon in Gate premium styles instead of feature-level recipes", () => {
     const gateCss = readSrc("shared/ui/gate/gate.css");
     const premiumCss = readSrc("shared/ui/gate/gate-premium.css");
+    const appUi = readSrc("shared/ui/app/AppUI.jsx");
+    const appCss = readSrc("shared/ui/app/app.css");
     const indexCss = readSrc("index.css");
-    const gatePageCss = readSrc("shared/ui/gate/gatePage.css");
 
     expect(gateCss).toContain(".gateSectionIntro");
     expect(gateCss).toContain(".gateSectionIntroTitle");
@@ -34,17 +35,23 @@ describe("main pages visual canon contract", () => {
     expect(premiumCss).toContain("font-size: 13px;");
     expect(premiumCss).toContain("line-height: 1.45;");
     expect(premiumCss).toContain("line-height: 1.52;");
-    expect(premiumCss).toContain(".gateSectionIntro");
+    expect(appUi).toContain("export function AppScreen");
+    expect(appUi).toContain("export function ScreenHeader");
+    expect(appUi).toContain("export function SectionHeader");
+    expect(appUi).toContain("export function AppCard");
+    expect(appUi).toContain("GateSectionIntro");
+    expect(appUi).toContain("GateSecondarySectionCard");
+    expect(appUi).toContain("GateMainSection GateMainSectionCard");
+    expect(appCss).toContain(".appFieldGroup");
+    expect(appCss).toContain(".appStatusBadge");
+    expect(appCss).toContain(".appDrawerPanel");
     expect(indexCss).toContain(".mainPageStack");
     expect(indexCss).toContain("gap:24px;");
     expect(indexCss).toContain(".mainPageSection");
     expect(indexCss).toContain(".mainPageSectionBody");
     expect(indexCss).toContain("padding-top: calc(var(--navGap, 10px) + var(--page-top-gap));");
     expect(indexCss).toContain("position: sticky;");
-    expect(gatePageCss).toContain(".gatePageRoot");
-    expect(gatePageCss).toContain(".gatePageContent");
-    expect(gatePageCss).toContain("gap: 24px;");
-    expect(gatePageCss).not.toContain("--gate-premium-radius: 14px;");
+    expect(fs.existsSync(path.join(SRC_ROOT, "shared/ui/gate/gatePage.css"))).toBe(false);
     expect(premiumCss).not.toContain(".topMenuCardOuter");
   });
 

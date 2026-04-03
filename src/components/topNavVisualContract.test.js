@@ -26,11 +26,16 @@ describe("top nav visual contract", () => {
     expect(topNav).toContain('aria-label={it.label}');
     expect(topNav).toContain('{!isMobileLayout ? <span className="NavPillUnifiedLabel">{it.label}</span> : null}');
     expect(topNav).toContain('NavPillUnified--iconOnly');
+    expect(topNav).toContain('className="navActions topNavMenuSlot topNavMenuActions"');
+    expect(topNav).not.toContain("style={{ zIndex: Z_INDEX.topbar }}");
+    expect(topNav).not.toContain('style={{ justifyContent: "flex-start" }}');
     expect(navPills).toContain(".NavPillUnifiedIcon");
     expect(navPills).toContain(".NavPillUnifiedLabel");
     expect(navPills).toContain(".NavPillUnified--iconOnly");
+    expect(navPills).toContain("var(--motion-standard) var(--ease-standard)");
     expect(topMenuCss).toContain(".TopNavShell");
-    expect(topMenuCss).toContain("padding-bottom: 4px;");
+    expect(topMenuCss).toContain("padding-bottom: var(--space-4);");
+    expect(topMenuCss).toContain(".topNavMenuActions");
     expect(indexCss).toContain("--topbar-bottom: calc(var(--safe-top) + 74px);");
     expect(indexCss).toContain(".stickyStack{");
     expect(indexCss).toContain("position: sticky;");

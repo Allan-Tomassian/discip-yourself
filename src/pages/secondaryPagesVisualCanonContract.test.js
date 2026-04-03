@@ -44,7 +44,7 @@ describe("secondary pages visual canon contract", () => {
     expect(card).not.toContain('<div className="cardSectionTitle">Micro-actions</div>');
   });
 
-  it("uses external section intros on simple secondary pages", () => {
+  it("uses shared section header primitives on simple secondary pages", () => {
     const pages = [
       "pages/Preferences.jsx",
       "pages/Account.jsx",
@@ -59,7 +59,7 @@ describe("secondary pages visual canon contract", () => {
     ].map(readSrc);
 
     for (const source of pages) {
-      expect(source).toContain("GateSectionIntro");
+      expect(source.includes("SectionHeader") || source.includes("GateSectionIntro")).toBe(true);
       expect(source).toContain("GateSecondarySectionCard");
     }
   });

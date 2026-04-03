@@ -39,8 +39,8 @@ describe("mobile viewport contract", () => {
     expect(authGate).not.toContain('minHeight: "100vh"');
     expect(profileGate).not.toContain('minHeight: "100vh"');
 
-    expect(bottomRailCss).toContain("bottom: calc(10px + var(--safe-bottom));");
-    expect(bottomRailCss).toContain("bottom: calc(8px + var(--safe-bottom));");
+    expect(bottomRailCss).toContain("bottom: calc(var(--space-12) + var(--safe-bottom));");
+    expect(bottomRailCss).toContain("bottom: calc(var(--space-8) + var(--safe-bottom));");
     expect(coachCss).toContain("bottom: calc(var(--bottom-fixed-stack-space, 0px) + 8px);");
     expect(overlaysCss).not.toContain(".ios .modalBackdrop");
     expect(gatePremiumCss).toContain("@media (hover: none) and (pointer: coarse)");

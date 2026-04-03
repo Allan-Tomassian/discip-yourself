@@ -365,20 +365,6 @@
   outline-offset: 0;
 }
 
-.GatePageTitle {
-  font-size: var(--font-lg);
-  line-height: 1.24;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--text-1, var(--text));
-}
-
-.GatePageSubtitle {
-  font-size: var(--font-sm);
-  line-height: 1.45;
-  color: var(--text-3, var(--muted2));
-}
-
 .GateFormField {
   display: flex;
   flex-direction: column;

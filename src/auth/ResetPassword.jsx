@@ -1,7 +1,12 @@
 import React, { useMemo, useState } from "react";
 import AuthCardShell from "./AuthCardShell";
-import { GateButton } from "../shared/ui/gate/Gate";
-import { GateInput, GateTextButton } from "../shared/ui/gate/GateForm";
+import {
+  AppInput,
+  AppTextButton,
+  FeedbackMessage,
+  FieldGroup,
+  PrimaryButton,
+} from "../shared/ui/app";
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -58,17 +63,17 @@ export default function ResetPassword({ recoveryMode = false, onNavigate, onUpda
         title="Lien invalide"
         subtitle="Le lien de réinitialisation a expiré, est invalide ou la session de récupération est absente."
         footer={(
-          <GateTextButton
+          <AppTextButton
             type="button"
             onClick={() => onNavigate("/auth/forgot-password", { replace: true })}
           >
             Demander un nouveau lien
-          </GateTextButton>
+          </AppTextButton>
         )}
       >
-        <p className="small" style={{ margin: 0 }}>
+        <FeedbackMessage>
           Redemande un email de réinitialisation pour définir un nouveau mot de passe.
-        </p>
+        </FeedbackMessage>
       </AuthCardShell>
     );
   }
@@ -79,52 +84,52 @@ export default function ResetPassword({ recoveryMode = false, onNavigate, onUpda
       title="Nouveau mot de passe"
       subtitle="Définis ton nouveau mot de passe puis retourne directement dans l’app."
     >
-      <form onSubmit={handleSubmit}>
-        <GateInput
-          data-testid="auth-password-input"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          placeholder="Nouveau mot de passe"
-          autoComplete="new-password"
-          required
-        />
-        <GateInput
-          data-testid="auth-confirm-password-input"
-          type="password"
-          value={confirmPassword}
-          onChange={(event) => setConfirmPassword(event.target.value)}
-          placeholder="Confirmer le mot de passe"
-          autoComplete="new-password"
-          required
-          style={{ marginTop: 10 }}
-        />
-        <GateButton data-testid="auth-submit-button" type="submit" disabled={!canSubmit} className="GatePressable" style={{ marginTop: 12 }}>
+      <form onSubmit={handleSubmit} className="appSimpleStack">
+        <FieldGroup
+          label="Nouveau mot de passe"
+          htmlFor="auth-reset-password"
+          error={passwordTooShort ? `Utilise au moins ${MIN_PASSWORD_LENGTH} caractères.` : ""}
+        >
+          <AppInput
+            id="auth-reset-password"
+            data-testid="auth-password-input"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Nouveau mot de passe"
+            autoComplete="new-password"
+            required
+          />
+        </FieldGroup>
+        <FieldGroup
+          label="Confirmer le mot de passe"
+          htmlFor="auth-reset-password-confirm"
+          error={passwordsMismatch ? "Les mots de passe ne correspondent pas." : ""}
+        >
+          <AppInput
+            id="auth-reset-password-confirm"
+            data-testid="auth-confirm-password-input"
+            type="password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            placeholder="Confirmer le mot de passe"
+            autoComplete="new-password"
+            required
+          />
+        </FieldGroup>
+        <PrimaryButton data-testid="auth-submit-button" type="submit" disabled={!canSubmit}>
           {submitting ? "Mise à jour…" : "Mettre à jour mon mot de passe"}
-        </GateButton>
+        </PrimaryButton>
       </form>
 
-      {passwordTooShort ? (
-        <p className="small2" style={{ margin: "12px 0 0", color: "#EF4444" }}>
-          Utilise au moins {MIN_PASSWORD_LENGTH} caractères.
-        </p>
-      ) : null}
-
-      {passwordsMismatch ? (
-        <p className="small2" style={{ margin: "12px 0 0", color: "#EF4444" }}>
-          Les mots de passe ne correspondent pas.
-        </p>
-      ) : null}
-
       {status.message ? (
-        <p
+        <FeedbackMessage
           data-testid="auth-status"
           role={status.type === "error" ? "alert" : "status"}
-          className="small2"
-          style={{ margin: "12px 0 0", color: status.type === "error" ? "#EF4444" : "#10B981" }}
+          tone={status.type === "error" ? "error" : "success"}
         >
           {status.message}
-        </p>
+        </FeedbackMessage>
       ) : null}
     </AuthCardShell>
   );

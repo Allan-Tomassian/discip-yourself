@@ -1,10 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
-import ScreenShell from "./_ScreenShell";
-import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import { useAuth } from "../auth/useAuth";
 import { useProfile } from "../profile/useProfile";
 import { normalizeUsername, validateOptionalUsername } from "../profile/username";
 import { PLACEHOLDER_COPY, STATUS_COPY, SURFACE_LABELS } from "../ui/labels";
+import {
+  AppCard,
+  AppInput,
+  AppScreen,
+  FeedbackMessage,
+  GhostButton,
+  PrimaryButton,
+  SectionHeader,
+} from "../shared/ui/app";
 import "../features/account/accountGate.css";
 
 const AVAILABILITY_DEBOUNCE_MS = 450;
@@ -155,7 +162,7 @@ export default function Account({ data }) {
   }
 
   return (
-    <ScreenShell
+    <AppScreen
       data={safeData}
       pageId="settings"
       backgroundImage={backgroundImage}
@@ -163,13 +170,12 @@ export default function Account({ data }) {
       headerSubtitle="Identité, accès et profil visible."
     >
       <section className="mainPageSection">
-        <GateSectionIntro
+        <SectionHeader
           title="Profil"
           subtitle={profile?.username ? "Ton profil est prêt." : "Identifiant optionnel. Tu peux le définir plus tard."}
         />
-        <GateSection
+        <AppCard
           className="accountGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
-          collapsible={false}
         >
           {loadError ? (
             <div className="GateInlineMetaCard col gap8">
@@ -182,7 +188,7 @@ export default function Account({ data }) {
             <div className="GateInlineMetaCard col gap8">
               <label className="accountGateField GateFormField" htmlFor="account-email">
                 <span className="accountGateFieldLabel GateFormLabel">Email</span>
-                <input
+                <AppInput
                   id="account-email"
                   className="accountGateInput GateInputPremium isReadonly"
                   value={String(user?.email || profile?.email || "")}
@@ -193,7 +199,7 @@ export default function Account({ data }) {
 
               <label className="accountGateField GateFormField" htmlFor="account-username">
                 <span className="accountGateFieldLabel GateFormLabel">Identifiant</span>
-                <input
+                <AppInput
                   id="account-username"
                   className="accountGateInput GateInputPremium"
                   data-testid="account-username-input"
@@ -206,7 +212,7 @@ export default function Account({ data }) {
 
               <label className="accountGateField GateFormField" htmlFor="account-full-name">
                 <span className="accountGateFieldLabel GateFormLabel">Nom complet</span>
-                <input
+                <AppInput
                   id="account-full-name"
                   className="accountGateInput GateInputPremium"
                   data-testid="account-full-name-input"
@@ -219,7 +225,7 @@ export default function Account({ data }) {
 
               <label className="accountGateField GateFormField" htmlFor="account-avatar-url">
                 <span className="accountGateFieldLabel GateFormLabel">Photo de profil (URL)</span>
-                <input
+                <AppInput
                   id="account-avatar-url"
                   className="accountGateInput GateInputPremium"
                   data-testid="account-avatar-url-input"
@@ -233,84 +239,78 @@ export default function Account({ data }) {
 
             {availability.message ? (
               <div className="GateInlineMetaCard">
-                <p
+                <FeedbackMessage
                   data-testid="account-username-feedback"
+                  tone={availability.state === "available" ? "success" : "error"}
                   className={`accountGateNote GateRoleHelperText ${availability.state === "available" ? "accountGateNoteSuccess" : "accountGateNoteError"}`}
                 >
                   {availability.message}
-                </p>
+                </FeedbackMessage>
               </div>
             ) : null}
 
             {status.message ? (
               <div className="GateInlineMetaCard">
-                <p
+                <FeedbackMessage
                   data-testid="account-save-status"
                   className={`accountGateNote GateRoleHelperText ${status.type === "error" ? "accountGateNoteError" : "accountGateNoteSuccess"}`}
                   role={status.type === "error" ? "alert" : "status"}
+                  tone={status.type === "error" ? "error" : "success"}
                 >
                   {status.message}
-                </p>
+                </FeedbackMessage>
               </div>
             ) : null}
 
             <div className="accountGateActions GatePrimaryCtaRow">
-              <GateButton
+              <PrimaryButton
                 type="submit"
-                className="GatePressable"
-                withSound
                 disabled={!canSave}
                 data-testid="account-save-button"
               >
                 {saving ? STATUS_COPY.saving : "Enregistrer"}
-              </GateButton>
-              <GateButton
+              </PrimaryButton>
+              <GhostButton
                 type="button"
-                variant="ghost"
                 size="sm"
-                className="GatePressable"
-                withSound
                 onClick={() => {
                   refreshProfile().catch(() => {});
                 }}
               >
                 Actualiser
-              </GateButton>
+              </GhostButton>
             </div>
           </form>
-        </GateSection>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro
+        <SectionHeader
           title="Session"
           subtitle="Actions liées à ton compte."
         />
-        <GateSection
+        <AppCard
           className="accountGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
-          collapsible={false}
         >
           <div className="GateInlineMetaCard">
             <div className="accountGateActions GatePrimaryCtaRow">
-              <GateButton
+              <GhostButton
                 type="button"
-                variant="ghost"
                 size="sm"
-                className="accountGateDangerButton GatePressable"
-                withSound
+                className="accountGateDangerButton"
                 onClick={() => {
                   signOut().catch(() => {});
                 }}
               >
                 Déconnexion
-              </GateButton>
-              <GateButton type="button" variant="ghost" size="sm" className="GatePressable" disabled>
+              </GhostButton>
+              <GhostButton type="button" size="sm" disabled>
                 Supprimer mon compte via le support
-              </GateButton>
+              </GhostButton>
             </div>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
-    </ScreenShell>
+    </AppScreen>
   );
 }

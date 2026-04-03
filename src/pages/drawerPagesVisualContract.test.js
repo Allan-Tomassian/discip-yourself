@@ -10,11 +10,8 @@ function readSrc(relPath) {
 }
 
 describe("drawer pages visual contract", () => {
-  it("declasses GatePage into a neutral compatibility wrapper", () => {
-    const gatePageSource = readSrc("shared/ui/gate/GatePage.jsx");
-
-    expect(gatePageSource).not.toContain("GateHeader");
-    expect(gatePageSource).not.toContain("GateMainSectionCard");
+  it("removes GatePage once drawer-linked pages converge on ScreenShell", () => {
+    expect(fs.existsSync(path.join(SRC_ROOT, "shared/ui/gate/GatePage.jsx"))).toBe(false);
   });
 
   it("keeps drawer-linked pages on ScreenShell headers instead of GatePage shells", () => {
@@ -61,12 +58,13 @@ describe("drawer pages visual contract", () => {
     expect(microActions).toContain("headerTitle");
     expect(microActions).toContain("GateSectionIntro");
     expect(microActions).not.toContain("<GatePage");
+    expect(drawer).toContain("<AppDrawer");
     expect(drawer).toContain("drawerMenuPanel");
     expect(drawer).toContain('title="Menu"');
     expect(drawer).toContain("GateHeader");
   });
 
-  it("keeps section intros on the drawer-linked simple pages", () => {
+  it("keeps drawer-linked simple pages on shared section header primitives", () => {
     const pages = [
       "pages/Preferences.jsx",
       "pages/Account.jsx",
@@ -81,7 +79,7 @@ describe("drawer pages visual contract", () => {
     ].map(readSrc);
 
     for (const source of pages) {
-      expect(source).toContain("GateSectionIntro");
+      expect(source.includes("SectionHeader") || source.includes("GateSectionIntro")).toBe(true);
     }
   });
 });

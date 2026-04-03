@@ -1,0 +1,253 @@
+.appFieldGroup {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.appFieldLabel {
+  font-size: var(--font-meta);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+
+.appFieldMessage {
+  font-size: var(--font-meta);
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.appFieldMessage.is-error {
+  color: var(--danger);
+}
+
+.appChoiceCard {
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.appChoiceCardText {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.appChoiceCardTitle {
+  font-size: var(--font-body-strong);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.appChoiceCardDescription {
+  font-size: var(--font-body);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.appChoiceCardBadge {
+  flex: 0 0 auto;
+}
+
+.appChoiceCard.is-disabled {
+  opacity: var(--buttonDisabledOpacity);
+  cursor: default;
+}
+
+.appEmptyState {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.appEmptyStateTitle {
+  font-size: var(--font-section-title);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.appEmptyStateSubtitle {
+  font-size: var(--font-body);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.appEmptyStateActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.appMetricRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.appMetricRowText {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.appMetricRowLabel {
+  font-size: var(--font-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.appMetricRowMeta {
+  font-size: var(--font-meta);
+  color: var(--text-secondary);
+}
+
+.appMetricRowValueCluster {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.appMetricRowValue {
+  font-size: var(--font-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.appProgressBar {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.appProgressBarLabel {
+  font-size: var(--font-meta);
+  color: var(--text-secondary);
+}
+
+.appProgressBarTrack {
+  width: 100%;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--progressTrackBg);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+.appProgressBarFill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--info);
+  transition: width var(--motion-standard) var(--ease-standard);
+}
+
+.appProgressBarFill.is-success {
+  background: var(--success);
+}
+
+.appProgressBarFill.is-warning {
+  background: var(--warning);
+}
+
+.appProgressBarFill.is-error {
+  background: var(--danger);
+}
+
+.appFeedbackMessage {
+  margin: 0;
+  font-size: var(--font-meta);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.appFeedbackMessage.is-success {
+  color: var(--success);
+}
+
+.appFeedbackMessage.is-warning {
+  color: var(--warning);
+}
+
+.appFeedbackMessage.is-error {
+  color: var(--danger);
+}
+
+.appFeedbackMessage.is-info {
+  color: var(--text-secondary);
+}
+
+.appMetaText {
+  margin: 0;
+  font-size: var(--font-meta);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.appStatusBadge {
+  min-height: 24px;
+  padding-inline: var(--space-8);
+  border-color: var(--border-subtle);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+}
+
+.appStatusBadge.is-success {
+  border-color: color-mix(in srgb, var(--success) 34%, var(--border-subtle));
+  background: color-mix(in srgb, var(--success) 16%, var(--surface-elevated));
+  color: color-mix(in srgb, var(--success) 58%, var(--text-primary));
+}
+
+.appStatusBadge.is-warning {
+  border-color: color-mix(in srgb, var(--warning) 34%, var(--border-subtle));
+  background: color-mix(in srgb, var(--warning) 16%, var(--surface-elevated));
+  color: color-mix(in srgb, var(--warning) 58%, var(--text-primary));
+}
+
+.appStatusBadge.is-error {
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--border-subtle));
+  background: color-mix(in srgb, var(--danger) 16%, var(--surface-elevated));
+  color: color-mix(in srgb, var(--danger) 58%, var(--text-primary));
+}
+
+.appDrawerBackdrop {
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.appDrawerOuter {
+  width: min(420px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
+  margin-top: max(var(--space-12), var(--safe-top));
+}
+
+.appDrawerClip {
+  border-radius: var(--radius-24);
+}
+
+.appDrawerPanel {
+  gap: var(--space-16);
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - var(--space-24));
+  overflow: auto;
+}
+
+.appSheet.modalPanel {
+  width: min(560px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
+}
+
+.appLoadingScreen {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  padding: var(--space-24);
+}
+
+.appSimpleStack {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.appFieldGrid {
+  display: grid;
+  gap: var(--space-12);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}

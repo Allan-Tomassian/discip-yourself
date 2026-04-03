@@ -12,10 +12,6 @@ const NAV_ITEMS = [
   { id: "pilotage", label: SURFACE_LABELS.pilotage, icon: Compass },
 ];
 
-const Z_INDEX = {
-  topbar: 900,
-};
-
 export default function TopNav({
   active,
   setActive,
@@ -131,16 +127,12 @@ export default function TopNav({
 
   return (
     <div className="navTop stickyStack TopNavShell" ref={navTopRef} data-tour-id="topnav">
-      <div
-        className="navWrap topNavGateWrap"
-        ref={navBarRef}
-        style={{ zIndex: Z_INDEX.topbar }}
-      >
+      <div className="navWrap topNavGateWrap" ref={navBarRef}>
         <div className="TopNavSurfaceOuter" ref={topbarSurfaceRef}>
           <div className="TopNavSurfaceClip TopNavBackdrop GateGlassClip GateGlassBackdrop">
             <GatePanel className="topNavGateBar GateGlassContent GateSurfacePremium GateCardPremium" data-tour-id="topnav-row">
               <div ref={topbarRef} className={`navRow${isMobileLayout ? " is-mobile-layout" : ""}`}>
-                <div className="navActions topNavMenuSlot" style={{ justifyContent: "flex-start" }}>
+                <div className="navActions topNavMenuSlot topNavMenuActions">
                   <button
                     type="button"
                     className="navBtn NavPillUnified NavPillUnified--iconOnly GatePressable"

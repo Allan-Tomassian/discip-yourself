@@ -45,7 +45,7 @@ describe("design system contract", () => {
     expect(main).toContain('import "@fontsource-variable/geist";');
     expect(app).toContain("applyThemeTokens(DEFAULT_THEME, BRAND_ACCENT);");
     expect(main).toContain("applyThemeTokens(DEFAULT_THEME, BRAND_ACCENT);");
-    expect(tokens).toContain('--font-family-ui: "Geist Variable"');
+    expect(tokens).toContain('--font-family-ui: "Inter"');
     expect(themeTokens).not.toContain('"page-max"');
     expect(themeTokens).not.toContain('"font-title"');
     expect(themeTokens).not.toContain("buttonHeight");

@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from "react";
-import ScreenShell from "./_ScreenShell";
-import { GateButton, GateRow, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
+import { GateRow } from "../shared/ui/gate/Gate";
 import { DEFAULT_THEME } from "../theme/themeTokens";
 import { getPlanLimits, isPremium } from "../logic/entitlements";
 import { isClickSoundEnabled, setClickSoundEnabled } from "../shared/ui/sound/useClickSound";
 import { MARKETING_COPY, PLACEHOLDER_COPY, SURFACE_LABELS } from "../ui/labels";
+import {
+  AppCard,
+  AppScreen,
+  AppTextarea,
+  GhostButton,
+  PrimaryButton,
+  SectionHeader,
+} from "../shared/ui/app";
 import "../features/preferences/preferencesGate.css";
 
 export default function Preferences({ data, setData }) {
@@ -47,7 +54,7 @@ export default function Preferences({ data, setData }) {
   }
 
   return (
-    <ScreenShell
+    <AppScreen
       data={safeData}
       pageId="settings"
       backgroundImage={backgroundImage}
@@ -55,12 +62,11 @@ export default function Preferences({ data, setData }) {
       headerSubtitle="App, apparence et préférences"
     >
       <section className="mainPageSection">
-        <GateSectionIntro
+        <SectionHeader
           title="Apparence"
           subtitle="Le design system global est appliqué partout dans l’app."
         />
-        <GateSection
-          collapsible={false}
+        <AppCard
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
           data-tour-id="settings-theme"
         >
@@ -75,16 +81,15 @@ export default function Preferences({ data, setData }) {
               Les anciennes préférences visuelles sont conservées uniquement pour compatibilité technique, sans effet sur l’interface.
             </p>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro
+        <SectionHeader
           title="Pourquoi"
           subtitle="Modifiable tous les 30 jours."
         />
-        <GateSection
-          collapsible={false}
+        <AppCard
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
           data-tour-id="settings-why"
         >
@@ -92,9 +97,9 @@ export default function Preferences({ data, setData }) {
             <div className="GateInlineMetaCard col gap8">
               <label className="preferencesGateField GateFormField" htmlFor="preferences-why">
                 <span className="preferencesGateFieldLabel GateFormLabel">Ton pourquoi</span>
-                <textarea
+                <AppTextarea
                   id="preferences-why"
-                  className="preferencesGateTextarea GateTextareaPremium"
+                  className="preferencesGateTextarea"
                   value={whyDraft}
                   onChange={(event) => setWhyDraft(event.target.value)}
                   placeholder={PLACEHOLDER_COPY.whyText}
@@ -108,10 +113,8 @@ export default function Preferences({ data, setData }) {
               ) : null}
             </div>
             <div className="preferencesGateActions">
-              <GateButton
+              <PrimaryButton
                 type="button"
-                className="GatePressable"
-                withSound
                 disabled={!canEditWhy || !cleanWhy || !whyChanged}
                 onClick={() =>
                   setData((prev) => ({
@@ -125,28 +128,25 @@ export default function Preferences({ data, setData }) {
                 }
               >
                 Enregistrer
-              </GateButton>
+              </PrimaryButton>
             </div>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro
+        <SectionHeader
           title="Introduction"
           subtitle="Relancer l’introduction ou le tutoriel produit."
         />
-        <GateSection
-          collapsible={false}
+        <AppCard
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
           <div className="GateInlineMetaCard">
             <div className="preferencesGateActions preferencesGateActionsColumn">
-              <GateButton
+              <PrimaryButton
                 type="button"
                 size="sm"
-                className="GatePressable"
-                withSound
                 onClick={() =>
                   setData((prev) => ({
                     ...prev,
@@ -160,13 +160,10 @@ export default function Preferences({ data, setData }) {
                 data-tour-id="settings-replay-onboarding"
               >
                 Revoir l’introduction
-              </GateButton>
-              <GateButton
+              </PrimaryButton>
+              <GhostButton
                 type="button"
-                variant="ghost"
                 size="sm"
-                className="GatePressable"
-                withSound
                 onClick={() =>
                   setData((prev) => ({
                     ...prev,
@@ -182,19 +179,18 @@ export default function Preferences({ data, setData }) {
                 data-tour-id="settings-restart-tutorial"
               >
                 Relancer le tutoriel
-              </GateButton>
+              </GhostButton>
             </div>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro
+        <SectionHeader
           title="Interactions"
           subtitle="Animation de pression et son optionnel."
         />
-        <GateSection
-          collapsible={false}
+        <AppCard
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
           <GateRow
@@ -204,31 +200,28 @@ export default function Preferences({ data, setData }) {
             withSound
             onClick={toggleSound}
             right={
-              <GateButton
+              <GhostButton
                 type="button"
-                variant="ghost"
                 size="sm"
-                className="preferencesGateToggleButton GatePressable"
-                withSound
+                className="preferencesGateToggleButton"
                 onClick={(event) => {
                   event.stopPropagation();
                   toggleSound();
                 }}
               >
                 {soundEnabled ? "ON" : "OFF"}
-              </GateButton>
+              </GhostButton>
             }
           />
-        </GateSection>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro
+        <SectionHeader
           title="Abonnement"
           subtitle="Résumé rapide de ton plan."
         />
-        <GateSection
-          collapsible={false}
+        <AppCard
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
           <div className="GateInlineMetaCard col gap8">
@@ -239,92 +232,75 @@ export default function Preferences({ data, setData }) {
               {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} objectifs · {limits.actions} actions
             </p>
             <div className="preferencesGateActions">
-              <GateButton
+              <GhostButton
                 type="button"
-                variant="ghost"
                 size="sm"
-                className="GatePressable"
-                withSound
                 onClick={() => navigateTo("/subscription")}
               >
                 Ouvrir {SURFACE_LABELS.subscription.toLowerCase()}
-              </GateButton>
+              </GhostButton>
             </div>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro
+        <SectionHeader
           title="Données"
           subtitle="Export, import et sauvegarde."
         />
-        <GateSection
-          collapsible={false}
+        <AppCard
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
           <div className="GateInlineMetaCard">
             <div className="preferencesGateActions">
-              <GateButton
+              <GhostButton
                 type="button"
-                variant="ghost"
                 size="sm"
-                className="GatePressable"
-                withSound
                 onClick={() => navigateTo("/data")}
               >
                 Ouvrir les données
-              </GateButton>
+              </GhostButton>
             </div>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro
+        <SectionHeader
           title="Légal et support"
           subtitle="Confidentialité, conditions et assistance."
         />
-        <GateSection
-          collapsible={false}
+        <AppCard
           className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
         >
           <div className="GateInlineMetaCard">
             <div className="preferencesGateLinks">
-              <GateButton
+              <GhostButton
                 type="button"
-                variant="ghost"
                 size="sm"
-                className="GatePressable"
-                withSound
                 onClick={() => navigateTo("/privacy")}
               >
                 Confidentialité
-              </GateButton>
-              <GateButton
+              </GhostButton>
+              <GhostButton
                 type="button"
-                variant="ghost"
                 size="sm"
-                className="GatePressable"
-                withSound
                 onClick={() => navigateTo("/terms")}
               >
                 Conditions
-              </GateButton>
-              <GateButton
+              </GhostButton>
+              <GhostButton
                 type="button"
-                variant="ghost"
                 size="sm"
-                className="GatePressable"
-                withSound
                 onClick={() => navigateTo("/support")}
               >
                 Support
-              </GateButton>
+              </GhostButton>
             </div>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
-    </ScreenShell>
+    </AppScreen>
   );
 }

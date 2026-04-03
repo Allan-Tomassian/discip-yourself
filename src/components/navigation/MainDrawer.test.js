@@ -10,23 +10,26 @@ function readSrc(relPath) {
 }
 
 describe("MainDrawer contract", () => {
-  it("locks the document scroll and restores the previous position", () => {
+  it("delegates document scroll locking and restore behavior to AppDrawer", () => {
     const source = readSrc("components/navigation/MainDrawer.jsx");
+    const appUi = readSrc("shared/ui/app/AppUI.jsx");
 
-    expect(source).toContain("const scrollY = typeof window !== \"undefined\" ? window.scrollY || 0 : 0;");
-    expect(source).toContain("body.style.position = \"fixed\";");
-    expect(source).toContain("body.style.top = `-${scrollY}px`;");
-    expect(source).toContain("window.scrollTo(0, scrollY);");
+    expect(source).toContain("<AppDrawer");
+    expect(appUi).toContain("const scrollY = typeof window !== \"undefined\" ? window.scrollY || 0 : 0;");
+    expect(appUi).toContain("body.style.position = \"fixed\";");
+    expect(appUi).toContain("body.style.top = `-${scrollY}px`;");
+    expect(appUi).toContain("window.scrollTo(0, scrollY);");
   });
 
-  it("uses a dedicated drawerBody scroll container", () => {
+  it("uses a dedicated drawerBody scroll container inside the shared drawer shell", () => {
     const source = readSrc("components/navigation/MainDrawer.jsx");
+    const appUi = readSrc("shared/ui/app/AppUI.jsx");
     const css = readSrc("index.css");
     const navCss = readSrc("features/navigation/topMenuGate.css");
 
     expect(source).toContain("className=\"drawerBody\"");
     expect(source).toContain("className=\"drawerMenuBody\"");
-    expect(source).toContain("GateMainSectionCard");
+    expect(appUi).toContain("GateMainSectionCard");
     expect(source).toContain("GateInlineMetaCard GatePressable drawerMenuItem");
     expect(source).toContain("className=\"drawerMenuGroup\"");
     expect(source).toContain("GateIconButtonPremium GatePressable drawerMenuCloseBtn");
@@ -42,7 +45,7 @@ describe("MainDrawer contract", () => {
     expect(navCss).toContain(".drawerMenuBody");
     expect(navCss).toContain(".drawerMenuGroup");
     expect(navCss).toContain(".drawerMenuItem");
-    expect(navCss).toContain("padding: 13px 14px;");
+    expect(navCss).toContain("padding: var(--space-12) var(--space-16);");
     expect(navCss).not.toContain("box-shadow: none;");
     expect(navCss).not.toContain("overflow-y: auto;");
   });

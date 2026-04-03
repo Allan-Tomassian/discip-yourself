@@ -1,7 +1,11 @@
 import React, { useMemo, useState } from "react";
 import AuthCardShell from "./AuthCardShell";
-import { GateButton } from "../shared/ui/gate/Gate";
-import { GateTextButton } from "../shared/ui/gate/GateForm";
+import {
+  AppTextButton,
+  FeedbackMessage,
+  PrimaryButton,
+  SecondaryButton,
+} from "../shared/ui/app";
 import { UI_COPY } from "../ui/labels";
 
 function getErrorMessage(error) {
@@ -44,21 +48,21 @@ export default function VerifyEmail({
       title="Valide ton email"
       subtitle="Ouvre le lien reçu par email pour activer ton compte."
       footer={(
-        <GateTextButton
+        <AppTextButton
           type="button"
           onClick={() => onNavigate(returnPath, { replace: true })}
         >
           Changer d’email
-        </GateTextButton>
+        </AppTextButton>
       )}
     >
-      <p className="small" style={{ margin: "0 0 12px" }}>
+      <FeedbackMessage className="authVerifyIntro">
         {normalizedEmail
           ? `Un lien de validation a été préparé pour ${normalizedEmail}.`
           : "Ouvre le lien de validation depuis ta boîte mail."}
-      </p>
-      <div style={{ display: "grid", gap: 10 }}>
-        <GateButton
+      </FeedbackMessage>
+      <div className="appSimpleStack">
+        <PrimaryButton
           type="button"
           onClick={() => {
             if (typeof window !== "undefined") {
@@ -69,21 +73,20 @@ export default function VerifyEmail({
           }}
         >
           {UI_COPY.openMailbox}
-        </GateButton>
-        <GateButton type="button" variant="secondary" className="GatePressable" onClick={handleResend} disabled={!normalizedEmail || sending}>
+        </PrimaryButton>
+        <SecondaryButton type="button" onClick={handleResend} disabled={!normalizedEmail || sending}>
           {sending ? "Envoi…" : UI_COPY.resendLink}
-        </GateButton>
+        </SecondaryButton>
       </div>
 
       {status.message ? (
-        <p
+        <FeedbackMessage
           data-testid="auth-status"
           role={status.type === "error" ? "alert" : "status"}
-          className="small2"
-          style={{ margin: "12px 0 0", color: status.type === "error" ? "#EF4444" : "#10B981" }}
+          tone={status.type === "error" ? "error" : "success"}
         >
           {status.message}
-        </p>
+        </FeedbackMessage>
       ) : null}
     </AuthCardShell>
   );

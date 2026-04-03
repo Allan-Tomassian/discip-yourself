@@ -32,16 +32,13 @@ describe("computeSelectPosition", () => {
 
   it("keeps portal-backed dropdown logic centralized", () => {
     const root = process.cwd();
-    const candidates = [
-      path.resolve(root, "src/ui/select/Select.jsx"),
-      path.resolve(root, "src/components/UI.jsx"),
-    ];
+    const candidates = [path.resolve(root, "src/ui/select/Select.jsx")];
 
     const portalFiles = candidates.filter((file) => {
       const content = fs.readFileSync(file, "utf8");
       return /\bcreatePortal\b|\bPortal\b/.test(content);
     });
 
-    expect(portalFiles).toEqual([path.resolve(root, "src/ui/select/Select.jsx")]);
+    expect(portalFiles).toEqual(candidates);
   });
 });

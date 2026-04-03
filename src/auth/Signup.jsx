@@ -1,8 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import AuthCardShell from "./AuthCardShell";
 import { isValidEmail } from "./loginAvailability";
-import { GateButton } from "../shared/ui/gate/Gate";
-import { GateInput, GateTextButton } from "../shared/ui/gate/GateForm";
+import {
+  AppInput,
+  AppTextButton,
+  FeedbackMessage,
+  FieldGroup,
+  PrimaryButton,
+} from "../shared/ui/app";
 
 function getErrorMessage(error) {
   return String(error?.message || "").trim() || "Impossible de créer le compte.";
@@ -48,52 +53,56 @@ export default function Signup({ initialEmail = "", onNavigate, onSignedUp }) {
       title="Créer un compte"
       subtitle="Crée ton accès, puis valide ton email pour ouvrir l’app."
       footer={(
-        <p className="small2" style={{ margin: 0 }}>
+        <p className="appMetaText">
           Déjà inscrit ?{" "}
-          <GateTextButton type="button" onClick={() => onNavigate("/auth/login")}>
+          <AppTextButton type="button" onClick={() => onNavigate("/auth/login")}>
             J’ai déjà un compte
-          </GateTextButton>
+          </AppTextButton>
         </p>
       )}
     >
-      <form onSubmit={handleSubmit}>
-        <GateInput
-          data-testid="auth-email-input"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder="email@exemple.com"
-          autoComplete="email"
-          required
-        />
-        <GateInput
-          data-testid="auth-password-input"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          placeholder="Mot de passe"
-          autoComplete="new-password"
-          required
-          style={{ marginTop: 10 }}
-        />
-        <GateButton data-testid="auth-submit-button" type="submit" disabled={!canSubmit} className="GatePressable" style={{ marginTop: 12 }}>
+      <form onSubmit={handleSubmit} className="appSimpleStack">
+        <FieldGroup
+          label="Email"
+          htmlFor="auth-signup-email"
+          error={!emailOk && normalizedEmail ? "Adresse email invalide." : ""}
+        >
+          <AppInput
+            id="auth-signup-email"
+            data-testid="auth-email-input"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="email@exemple.com"
+            autoComplete="email"
+            required
+          />
+        </FieldGroup>
+        <FieldGroup label="Mot de passe" htmlFor="auth-signup-password">
+          <AppInput
+            id="auth-signup-password"
+            data-testid="auth-password-input"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Mot de passe"
+            autoComplete="new-password"
+            required
+          />
+        </FieldGroup>
+        <PrimaryButton data-testid="auth-submit-button" type="submit" disabled={!canSubmit}>
           {submitting ? "Création…" : "Créer mon compte"}
-        </GateButton>
+        </PrimaryButton>
       </form>
 
-      {!emailOk && normalizedEmail ? (
-        <p className="small2" style={{ margin: "12px 0 0", color: "#EF4444" }}>Adresse email invalide.</p>
-      ) : null}
-
       {status.message ? (
-        <p
+        <FeedbackMessage
           data-testid="auth-status"
           role={status.type === "error" ? "alert" : "status"}
-          className="small2"
-          style={{ margin: "12px 0 0", color: status.type === "error" ? "#EF4444" : "#10B981" }}
+          tone={status.type === "error" ? "error" : "success"}
         >
           {status.message}
-        </p>
+        </FeedbackMessage>
       ) : null}
     </AuthCardShell>
   );

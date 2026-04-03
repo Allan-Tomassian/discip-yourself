@@ -9,7 +9,7 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --topbar-bottom: calc(var(--safe-top) + 74px);
   --bottom-fixed-stack-space: 0px;
-  --page-pad: 16px;
+  --page-pad: 20px;
   --layout-max: 720px;
   --floating-max: 720px;
 
@@ -25,21 +25,10 @@
   --shadow-soft: var(--shadowSoft);
   --app-modal-max: 720px;
   --shadow-card: var(--shadowCard);
-
-  /* Z-index scale */
-  --z-base: 0;
-  --z-sticky: 40;
-  --z-dropdown: 60;
-  --z-topbar: 900;
-  --z-scrim: 1200;
-  --z-popover: 1210;
-  --z-modal: 2000;
-  --z-toast: 3000;
 }
 
 @media (min-width: 481px) and (max-width: 900px) {
   :root {
-    --page-pad: 20px;
     --layout-max: 860px;
     --floating-max: 780px;
   }
@@ -47,7 +36,6 @@
 
 @media (min-width: 901px) {
   :root {
-    --page-pad: 30px;
     --layout-max: 1220px;
     --floating-max: 1040px;
   }
@@ -55,7 +43,6 @@
 
 @media (min-width: 1200px) {
   :root {
-    --page-pad: 40px;
     --layout-max: 1360px;
     --floating-max: 1180px;
   }
@@ -150,7 +137,7 @@ a{ color:inherit; }
   margin:0;
   margin-top:var(--pageTitleMarginTop);
   font-size:var(--font-title);
-  font-weight:var(--font-weight-bold);
+  font-weight:var(--font-weight-semibold);
   letter-spacing:-.02em;
 }
 .pageSubtitle{
@@ -414,7 +401,7 @@ a{ color:inherit; }
   opacity:1;
 }
 .sectionSub{ font-size:var(--font-sm); color:var(--text-3, var(--muted2)); }
-.itemTitle{ font-size:var(--font-md); font-weight:700; color:var(--text-1, var(--text)); }
+.itemTitle{ font-size:var(--font-md); font-weight:var(--font-weight-semibold); color:var(--text-1, var(--text)); }
 .itemSub{ font-size:var(--font-sm); color:var(--text-2, var(--muted)); }
 
 .manageHeader{
@@ -501,29 +488,6 @@ a{ color:inherit; }
   background: linear-gradient(180deg, var(--surface-2, var(--surface)), var(--surface-1, var(--surface)));
   border-radius:var(--cardRadius, var(--radius-card));
   box-shadow: var(--shadow-md, var(--cardShadow, var(--shadow-card)));
-}
-.accentSurface{
-  position:relative;
-  border-color: var(--border-subtle, var(--border));
-  background:
-    linear-gradient(90deg, var(--accent-soft, var(--accentTint, rgba(255,255,255,.08))), rgba(0,0,0,0) 60%),
-    var(--surface-1, var(--surface));
-}
-.accentRail{
-  position:relative;
-  --accentRailWidth: 3px;
-  --accentRailInset: 12px;
-  --accentRailRadius: 4px;
-}
-.accentRail::before{
-  content:"";
-  position:absolute;
-  left:0;
-  top:var(--accentRailInset);
-  bottom:var(--accentRailInset);
-  width:var(--accentRailWidth);
-  border-radius:var(--accentRailRadius);
-  background: var(--accent, rgba(255,255,255,.6));
 }
 .accentItem{
   display:flex;
@@ -748,7 +712,7 @@ a{ color:inherit; }
 }
 .textarea{ resize:none; min-height:120px; height:auto; padding:var(--space-12) var(--space-14); }
 
-/* --- iOS overflow/clipping fix for native date/time inputs (wrapper added in UI.jsx) --- */
+/* --- iOS overflow/clipping fix for native date/time inputs (shared field wrapper) --- */
 .controlClip{
   width:100%;
   max-width:100%;
@@ -1524,7 +1488,6 @@ select {
 .pageContent > .col,
 .pageContent > .card,
 .pageContent > .GatePanel,
-.pageContent > .GatePageSection,
 .pageContent > section {
   min-width: 0;
 }
@@ -1556,18 +1519,6 @@ select {
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, rgba(255,255,255,0.02)), color-mix(in srgb, var(--surface-primary) 98%, rgba(0,0,0,0.08)));
   border-radius: var(--radius-medium);
   box-shadow: var(--shadow-md);
-}
-
-.accentSurface {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
-    linear-gradient(90deg, color-mix(in srgb, var(--accentTint, rgba(91,140,255,0.15)) 100%, transparent), transparent 60%),
-    color-mix(in srgb, var(--surface-primary) 98%, #0d1118);
-}
-
-.accentRail::before {
-  background-image: var(--category-gradient, linear-gradient(180deg, var(--accent-primary), var(--accent-secondary)));
-  background-color: transparent;
 }
 
 .badge {

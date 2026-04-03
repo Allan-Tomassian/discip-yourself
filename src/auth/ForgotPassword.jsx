@@ -1,8 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import AuthCardShell from "./AuthCardShell";
 import { isValidEmail } from "./loginAvailability";
-import { GateButton } from "../shared/ui/gate/Gate";
-import { GateInput, GateTextButton } from "../shared/ui/gate/GateForm";
+import {
+  AppInput,
+  AppTextButton,
+  FeedbackMessage,
+  FieldGroup,
+  PrimaryButton,
+} from "../shared/ui/app";
 
 function getErrorMessage(error) {
   return String(error?.message || "").trim() || "Impossible d’envoyer le lien de réinitialisation.";
@@ -45,38 +50,40 @@ export default function ForgotPassword({ initialEmail = "", onNavigate, onSendRe
       title="Mot de passe oublié"
       subtitle="Entre ton email pour recevoir un lien de réinitialisation."
       footer={(
-        <GateTextButton
+        <AppTextButton
           type="button"
           onClick={() => onNavigate(`/auth/login?email=${encodeURIComponent(normalizedEmail)}`)}
         >
           Retour à la connexion
-        </GateTextButton>
+        </AppTextButton>
       )}
     >
-      <form onSubmit={handleSubmit}>
-        <GateInput
-          data-testid="auth-email-input"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder="email@exemple.com"
-          autoComplete="email"
-          required
-        />
-        <GateButton data-testid="auth-submit-button" type="submit" disabled={!canSubmit} className="GatePressable" style={{ marginTop: 12 }}>
+      <form onSubmit={handleSubmit} className="appSimpleStack">
+        <FieldGroup label="Email" htmlFor="auth-forgot-email">
+          <AppInput
+            id="auth-forgot-email"
+            data-testid="auth-email-input"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="email@exemple.com"
+            autoComplete="email"
+            required
+          />
+        </FieldGroup>
+        <PrimaryButton data-testid="auth-submit-button" type="submit" disabled={!canSubmit}>
           {sending ? "Envoi…" : "Envoyer le lien"}
-        </GateButton>
+        </PrimaryButton>
       </form>
 
       {status.message ? (
-        <p
+        <FeedbackMessage
           data-testid="auth-status"
           role={status.type === "error" ? "alert" : "status"}
-          className="small2"
-          style={{ margin: "12px 0 0", color: status.type === "error" ? "#EF4444" : "#10B981" }}
+          tone={status.type === "error" ? "error" : "success"}
         >
           {status.message}
-        </p>
+        </FeedbackMessage>
       ) : null}
     </AuthCardShell>
   );

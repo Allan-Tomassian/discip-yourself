@@ -18,11 +18,8 @@ describe("session runtime wiring (SSoT)", () => {
     expect(app).toContain("<Session");
   });
 
-  it("keeps SessionMVP as a thin compatibility wrapper", () => {
-    const wrapper = readSrc("pages/SessionMVP.jsx");
-    expect(wrapper).toContain('import Session from "./Session";');
-    expect(wrapper).toContain("return <Session {...props} />;");
-    expect(wrapper).not.toContain("setOccurrenceStatusById");
+  it("removes SessionMVP once Session becomes the only runtime session screen", () => {
+    expect(fs.existsSync(path.join(SRC_ROOT, "pages/SessionMVP.jsx"))).toBe(false);
   });
 
   it("uses activeSession/sessionHistory model and avoids legacy activeSessionId/sessions writes", () => {

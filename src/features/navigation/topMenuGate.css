@@ -1,6 +1,6 @@
 .TopNavShell {
   overflow-x: hidden;
-  padding-bottom: 4px;
+  padding-bottom: var(--space-4);
 }
 
 .topNavGateWrap {
@@ -17,7 +17,7 @@
 .topNavGateBar {
   gap: 0;
   min-height: 0;
-  padding: 10px 12px;
+  padding: var(--space-12);
   position: relative;
   z-index: 1;
 }
@@ -25,7 +25,7 @@
 .topNavGateBar .navRow,
 .topNavGateBar .navGrid,
 .topNavGateBar .navActions {
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .topNavWalletBadge {
@@ -38,6 +38,10 @@
 .topNavWalletSlot,
 .topNavWalletTrigger {
   flex: 0 0 auto;
+}
+
+.topNavMenuActions {
+  justify-content: flex-start;
 }
 
 .topNavWalletTrigger {
@@ -54,19 +58,19 @@
 }
 
 .drawerMenuPanel {
-  gap: 16px;
+  gap: var(--space-16);
 }
 
 .drawerMenuHeader {
-  padding: 2px 2px 0;
+  padding: 0;
 }
 
 .drawerMenuHeader .gateHeaderText {
-  gap: 4px;
+  gap: var(--space-4);
 }
 
 .drawerMenuHeader .gateHeader {
-  gap: 14px;
+  gap: var(--space-16);
   align-items: flex-start;
 }
 
@@ -82,32 +86,32 @@
 .drawerMenuBody {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-16);
   min-width: 0;
-  padding: 0 2px 8px;
+  padding: 0 0 var(--space-8);
 }
 
 .drawerMenuGroup {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-12);
   min-width: 0;
 }
 
 .drawerMenuSectionTitle {
-  padding-inline: 6px;
+  padding-inline: var(--space-8);
 }
 
 .drawerMenuItems {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .drawerMenuItem {
   text-align: left;
-  padding: 13px 14px;
-  gap: 8px;
+  padding: var(--space-12) var(--space-16);
+  gap: var(--space-8);
 }
 
 .drawerMenuItem .gateRowBody {
@@ -132,15 +136,15 @@
 
 @media (max-width: 767px) {
   .TopNavShell {
-    padding-bottom: 6px;
+    padding-bottom: var(--space-8);
   }
 
   .topNavGateBar {
-    padding: 7px 8px 8px;
+    padding: var(--space-8);
   }
 
   .topNavGateBar .navRow {
-    gap: 8px;
+    gap: var(--space-8);
     min-width: 0;
   }
 
@@ -152,7 +156,7 @@
 
   .topNavGateBar .navGrid,
   .topNavGateBar .navActions {
-    gap: 6px;
+    gap: var(--space-8);
   }
 
   .topNavMenuSlot {
@@ -184,11 +188,11 @@
   }
 
   .drawerMenuPanel {
-    gap: 16px;
+    gap: var(--space-16);
   }
 
   .drawerMenuBody {
-    gap: 14px;
-    padding-bottom: 12px;
+    gap: var(--space-12);
+    padding-bottom: var(--space-12);
   }
 }

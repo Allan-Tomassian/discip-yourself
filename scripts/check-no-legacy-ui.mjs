@@ -6,10 +6,7 @@ const ROOT = process.cwd();
 const SRC_DIR = path.join(ROOT, "src");
 const EXTENSIONS = new Set([".js", ".jsx", ".ts", ".tsx", ".css"]);
 
-const ALLOWED_CLASS_PATTERNS = [
-  /^src\/components\/UI\.jsx$/,
-  /^src\/ui\/liquidGlassSurface\.css$/,
-];
+const ALLOWED_CLASS_PATTERNS = [];
 
 function toPosix(value) {
   return value.split(path.sep).join("/");
@@ -156,17 +153,6 @@ function collectTokenViolations(text, relPath) {
       file: relPath,
       line: lineAt(text, idx),
       detail: "forbidden component usage: <LiquidGlassSurface>",
-    });
-  }
-
-  for (const match of text.matchAll(/\b(accentRail|accentBorder)\b/g)) {
-    const idx = match.index ?? 0;
-    out.push({
-      type: "legacy-accent-prop",
-      rule: "no-accent-rail-border",
-      file: relPath,
-      line: lineAt(text, idx),
-      detail: `forbidden token: ${match[1]}`,
     });
   }
 

@@ -25,9 +25,27 @@ function readSrc(relPath) {
 }
 
 describe("UI convergence contract", () => {
+  it("keeps the canonical app wrapper layer and removes deleted compatibility files", () => {
+    const appUi = readSrc("shared/ui/app/AppUI.jsx");
+    const appIndex = readSrc("shared/ui/app/index.js");
+
+    expect(fs.existsSync(path.join(SRC_ROOT, "shared", "ui", "app", "AppUI.jsx"))).toBe(true);
+    expect(fs.existsSync(path.join(SRC_ROOT, "shared", "ui", "app", "index.js"))).toBe(true);
+    expect(fs.existsSync(path.join(SRC_ROOT, "components", "UI.jsx"))).toBe(false);
+    expect(fs.existsSync(path.join(SRC_ROOT, "ui", "LiquidGlassSurface.jsx"))).toBe(false);
+    expect(fs.existsSync(path.join(SRC_ROOT, "shared", "ui", "gate", "GatePage.jsx"))).toBe(false);
+    expect(appUi).toContain("export function AppScreen");
+    expect(appUi).toContain("export function AppCard");
+    expect(appUi).toContain("export function PrimaryButton");
+    expect(appUi).toContain("export function AppInput");
+    expect(appUi).toContain("export function AppDrawer");
+    expect(appIndex).toContain("AppScreen");
+    expect(appIndex).toContain("AppCard");
+    expect(appIndex).toContain("PrimaryButton");
+  });
+
   it("removes active imports of the legacy UI wrapper", () => {
     const offenders = walk(SRC_ROOT)
-      .filter((file) => !file.endsWith(path.join("src", "components", "UI.jsx")))
       .filter((file) => /src[\\/](auth|pages|features|ui|components|profile)[\\/]/.test(file))
       .filter((file) => {
         const source = fs.readFileSync(file, "utf8");

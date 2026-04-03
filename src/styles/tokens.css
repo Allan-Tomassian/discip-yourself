@@ -4,83 +4,129 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
 
-  --background-primary: #0f1115;
-  --background-secondary: #151922;
-  --background-tertiary: #1b2130;
-  --surface-primary: rgba(255,255,255,0.04);
-  --surface-elevated: rgba(255,255,255,0.06);
-  --surface-strong: rgba(255,255,255,0.09);
+  /* Foundations palette */
+  --background-primary: #0B1020;
+  --background-secondary: #11182A;
+  --background-tertiary: #12192B;
+  --surface-primary: #12192B;
+  --surface-elevated: #182235;
+  --surface-strong: #1D2940;
+
+  --text-primary: #F5F7FB;
+  --text-secondary: #9AA6BF;
+  --text-muted: #6F7B95;
+
+  --accent-primary: #4C7DFF;
+  --accent-secondary: #3558D8;
+  --accent-soft: rgba(76,125,255,0.18);
+  --success: #17B26A;
+  --warning: #F79009;
+  --danger: #F04438;
+  --info: #4C7DFF;
+
   --border-subtle: rgba(255,255,255,0.08);
-  --border-strong: rgba(255,255,255,0.14);
-  --text-primary: rgba(255,255,255,0.92);
-  --text-secondary: rgba(255,255,255,0.65);
-  --text-muted: rgba(255,255,255,0.45);
+  --border-medium: rgba(255,255,255,0.12);
+  --border-strong: rgba(255,255,255,0.18);
 
-  --accent-primary: #5b8cff;
-  --accent-secondary: #7c5cff;
-  --accent-soft: rgba(91,140,255,0.15);
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --info: #38bdf8;
+  --overlay-backdrop-soft: rgba(5, 8, 18, 0.42);
+  --overlay-backdrop-medium: rgba(5, 8, 18, 0.56);
+  --overlay-backdrop-strong: rgba(5, 8, 18, 0.72);
 
+  /* Foundations spacing scale */
   --space-4: 4px;
-  --space-6: 6px;
   --space-8: 8px;
-  --space-10: 10px;
   --space-12: 12px;
-  --space-14: 14px;
   --space-16: 16px;
-  --space-18: 18px;
   --space-20: 20px;
   --space-24: 24px;
   --space-32: 32px;
   --space-40: 40px;
+
+  /* Legacy compat aliases: do not use in new code */
+  --space-6: var(--space-8);
+  --space-10: var(--space-12);
+  --space-14: var(--space-16);
+  --space-18: var(--space-20);
   --space-48: 48px;
   --space-64: 64px;
-  --space-6-compat: var(--space-6);
-  --space-10-compat: var(--space-10);
-  --space-14-compat: var(--space-14);
-  --space-18-compat: var(--space-18);
+  --space-6-compat: var(--space-8);
+  --space-10-compat: var(--space-12);
+  --space-14-compat: var(--space-16);
+  --space-18-compat: var(--space-20);
   --space-20-compat: var(--space-20);
 
-  --radius-8: 8px;
+  /* Foundations radius scale */
+  --radius-8: 10px;
+  --radius-10: 10px;
   --radius-12: 12px;
   --radius-14: 14px;
   --radius-16: 16px;
   --radius-20: 20px;
+  --radius-24: 24px;
   --radius-pill: 999px;
-  --radius-card: var(--radius-16);
-  --radius-btn: var(--radius-12);
-  --radius-input: var(--radius-12);
+  --radius-card: var(--radius-20);
+  --radius-btn: var(--radius-16);
+  --radius-input: var(--radius-14);
   --radius-chip: var(--radius-pill);
+  --radius-medium: var(--radius-card);
 
-  --font-family-ui: "Geist Variable", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-xs: 12px;
+  /* Foundations typography */
+  --font-family-ui: "Inter", "Geist Variable", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-micro: 11px;
+  --font-meta: 12px;
+  --font-body: 14px;
+  --font-body-strong: 16px;
+  --font-section-title: 18px;
+  --font-screen-title: 24px;
+  --font-display: 28px;
+  --font-xs: var(--font-micro);
   --font-sm: 13px;
-  --font-md: 15px;
-  --font-lg: 17px;
-  --font-h3: 20px;
-  --font-h2: 24px;
-  --font-title: clamp(30px, 4vw, 36px);
+  --font-md: var(--font-body);
+  --font-lg: var(--font-body-strong);
+  --font-h3: var(--font-section-title);
+  --font-h2: var(--font-screen-title);
+  --font-title: clamp(22px, 4vw, 24px);
   --font-weight-regular: 400;
+  --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
   --line-height-body: 1.5;
 
-  --input-height: 44px;
-  --btn-height: 40px;
-  --page-max: 1200px;
-  --page-header-gap: 24px;
-  --page-section-gap: 24px;
-  --page-top-gap: 16px;
-  --pageTitleMarginTop: 0px;
-  --pageTitleToSubtitle: 8px;
-  --subtitleToContent: 24px;
-  --cardGap: 16px;
-  --navOffset: 92px;
-  --navGap: 16px;
+  /* Foundations motion */
+  --motion-fast: 120ms;
+  --motion-standard: 160ms;
+  --motion-enter: 220ms;
+  --motion-panel: 280ms;
+  --motion-atmosphere-fast: 8s;
+  --motion-atmosphere-slow: 16s;
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
 
+  /* Layout */
+  --input-height: 48px;
+  --btn-height: 48px;
+  --page-max: 1200px;
+  --page-header-gap: var(--space-24);
+  --page-section-gap: var(--space-24);
+  --page-top-gap: var(--space-16);
+  --pageTitleMarginTop: 0px;
+  --pageTitleToSubtitle: var(--space-8);
+  --subtitleToContent: var(--space-24);
+  --cardGap: var(--space-16);
+  --navOffset: 92px;
+  --navGap: var(--space-16);
+
+  /* Z-index scale */
+  --z-base: 0;
+  --z-sticky: 40;
+  --z-dropdown: 60;
+  --z-topbar: 900;
+  --z-scrim: 1200;
+  --z-popover: 1210;
+  --z-modal: 2000;
+  --z-toast: 3000;
+
+  /* Semantic aliases */
   --surface: var(--surface-primary);
   --surface1: var(--surface-primary);
   --surface2: var(--surface-elevated);
@@ -100,130 +146,152 @@
   --accent: var(--accent-primary);
   --accentPrimary: var(--accent-primary);
   --accentSecondary: var(--accent-secondary);
-  --accentTint: var(--accent-soft);
-  --accentTintSoft: rgba(91,140,255,0.11);
-  --accentTintStrong: rgba(91,140,255,0.18);
-  --accentTintStrongest: rgba(91,140,255,0.24);
-  --accentBorder: rgba(91,140,255,0.32);
-  --accentBorderStrong: rgba(91,140,255,0.46);
+  --accentTintSoft: rgba(76,125,255,0.12);
+  --accentTint: rgba(76,125,255,0.18);
+  --accentTintStrong: rgba(76,125,255,0.24);
+  --accentTintStrongest: rgba(76,125,255,0.30);
+  --accentBorder: rgba(76,125,255,0.34);
+  --accentBorderStrong: rgba(76,125,255,0.46);
   --focus: var(--accent-primary);
   --ring: var(--accent-primary);
   --cta: var(--accent-primary);
-  --ctaText: #ffffff;
-  --accentText: #ffffff;
-  --textOnLight: #ffffff;
+  --ctaText: #FFFFFF;
+  --accentText: #FFFFFF;
+  --textOnLight: #FFFFFF;
 
+  /* Background system */
   --background:
-    radial-gradient(1080px 680px at 12% 0%, rgba(91,140,255,0.13), transparent 60%),
-    linear-gradient(180deg, var(--background-primary), var(--background-secondary) 50%, var(--background-tertiary));
+    radial-gradient(960px 620px at 14% 0%, rgba(76,125,255,0.12), transparent 58%),
+    radial-gradient(760px 520px at 86% 12%, rgba(76,125,255,0.06), transparent 64%),
+    linear-gradient(180deg, var(--background-primary), var(--background-secondary) 46%, var(--background-tertiary));
   --bg-base: var(--background);
-  --backgroundVignette: radial-gradient(1200px 900px at 50% 45%, rgba(0,0,0,0), rgba(0,0,0,0.42) 74%, rgba(0,0,0,0.62) 100%);
-  --backgroundGrain: repeating-linear-gradient(135deg, rgba(255,255,255,0.007) 0px, rgba(255,255,255,0.007) 1px, rgba(255,255,255,0) 2px, rgba(255,255,255,0) 10px);
+  --backgroundVignette: radial-gradient(1200px 900px at 50% 45%, rgba(0,0,0,0), rgba(0,0,0,0.28) 72%, rgba(0,0,0,0.48) 100%);
+  --backgroundGrain: repeating-linear-gradient(135deg, rgba(255,255,255,0.006) 0px, rgba(255,255,255,0.006) 1px, rgba(255,255,255,0) 2px, rgba(255,255,255,0) 10px);
   --background-size: 100% 100%;
   --background-position: 50% 50%;
 
-  --shadowSoft: 0 8px 18px rgba(0,0,0,0.16);
-  --shadow: 0 14px 28px rgba(0,0,0,0.20);
-  --shadowCard: 0 18px 36px rgba(0,0,0,0.22);
+  /* Shadows, glows, blur */
+  --shadowSoft: 0 10px 24px rgba(0,0,0,0.24);
+  --shadow: 0 16px 34px rgba(0,0,0,0.28);
+  --shadowCard: 0 20px 42px rgba(0,0,0,0.32);
   --shadow-sm: var(--shadowSoft);
   --shadow-md: var(--shadow);
   --shadow-lg: var(--shadowCard);
   --shadowControl: inset 0 1px 0 rgba(255,255,255,0.04);
-
-  --badgeBg: rgba(255,255,255,0.05);
+  --badgeBg: color-mix(in srgb, var(--surface-elevated) 88%, transparent);
   --badgeBorder: var(--border-subtle);
   --badgeText: var(--text-secondary);
-  --chipBg: rgba(255,255,255,0.05);
-  --chipHoverBg: rgba(255,255,255,0.08);
-  --hintBg: rgba(255,255,255,0.03);
+  --chipBg: color-mix(in srgb, var(--surface-elevated) 88%, transparent);
+  --chipHoverBg: color-mix(in srgb, var(--surface-strong) 92%, transparent);
+  --hintBg: color-mix(in srgb, var(--surface-primary) 92%, transparent);
   --hintBorder: var(--border-subtle);
-  --divider: rgba(255,255,255,0.08);
-  --kpiBg: rgba(255,255,255,0.03);
+  --divider: var(--border-subtle);
+  --kpiBg: color-mix(in srgb, var(--surface-primary) 92%, transparent);
   --kpiBorder: var(--border-subtle);
   --textSubtle: var(--text-muted);
   --linkBtnText: var(--text-primary);
-  --dragHandleBg: rgba(255,255,255,0.04);
+  --dragHandleBg: color-mix(in srgb, var(--surface-elevated) 84%, transparent);
   --dragHandleText: var(--text-secondary);
-  --progressTrackBg: rgba(255,255,255,0.08);
+  --progressTrackBg: rgba(255,255,255,0.10);
   --progressFillBg: var(--accent-primary);
-  --checkRowBorder: rgba(255,255,255,0.08);
-  --checkRowBg: rgba(255,255,255,0.03);
-  --checkRowHoverBg: rgba(255,255,255,0.05);
-  --panelBorder: rgba(255,255,255,0.08);
-  --panelBg: rgba(255,255,255,0.03);
-  --panelFooterBg: rgba(15,17,21,0.86);
-  --panelFooterBorder: rgba(255,255,255,0.08);
-  --editDayOptionBg: rgba(255,255,255,0.04);
-  --overlayBackdrop: rgba(3,5,10,0.58);
-  --overlaySheetBackdrop: rgba(3,5,10,0.46);
+  --checkRowBorder: var(--border-subtle);
+  --checkRowBg: color-mix(in srgb, var(--surface-primary) 92%, transparent);
+  --checkRowHoverBg: color-mix(in srgb, var(--surface-elevated) 92%, transparent);
+  --panelBorder: var(--border-subtle);
+  --panelBg: color-mix(in srgb, var(--surface-primary) 94%, transparent);
+  --panelFooterBg: rgba(11,16,32,0.88);
+  --panelFooterBorder: var(--border-subtle);
+  --editDayOptionBg: color-mix(in srgb, var(--surface-primary) 92%, transparent);
+  --overlayBackdrop: var(--overlay-backdrop-medium);
+  --overlaySheetBackdrop: var(--overlay-backdrop-soft);
   --overlayTransparent: rgba(0,0,0,0);
-  --overlayBlur: 12px;
-  --panelFooterBlur: 20px;
-  --pulseBorder: rgba(255,255,255,0.18);
-  --drawerShadow: 0 24px 60px rgba(0,0,0,0.32);
+  --overlayBlur: 14px;
+  --panelFooterBlur: 18px;
+  --pulseBorder: var(--border-strong);
+  --drawerShadow: 0 24px 56px rgba(0,0,0,0.38);
 
+  /* Buttons */
   --buttonBg: var(--accent-primary);
-  --buttonBorder: rgba(91,140,255,0.58);
-  --buttonText: #ffffff;
-  --buttonShadow: 0 12px 24px rgba(91,140,255,0.2);
+  --buttonBorder: rgba(76,125,255,0.52);
+  --buttonText: #FFFFFF;
+  --buttonShadow: 0 12px 24px rgba(76,125,255,0.22);
   --buttonHoverFilter: brightness(1.03);
   --buttonActiveFilter: brightness(0.98);
   --buttonGhostBg: transparent;
   --buttonGhostBorder: var(--border-subtle);
   --buttonGhostText: var(--text-primary);
-  --buttonSecondaryBg: rgba(255,255,255,0.04);
+  --buttonSecondaryBg: color-mix(in srgb, var(--surface-elevated) 92%, transparent);
   --buttonSecondaryBorder: var(--border-subtle);
   --buttonSecondaryText: var(--text-primary);
-  --buttonDangerBg: rgba(239,68,68,0.92);
-  --buttonDangerBorder: rgba(239,68,68,0.48);
-  --buttonDangerText: #ffffff;
+  --buttonDangerBg: var(--danger);
+  --buttonDangerBorder: rgba(240,68,56,0.48);
+  --buttonDangerText: #FFFFFF;
   --buttonDisabledOpacity: 0.55;
 
-  --controlBg: rgba(255,255,255,0.04);
+  /* Controls */
+  --controlBg: color-mix(in srgb, var(--surface-primary) 94%, transparent);
   --controlBorder: var(--border-subtle);
-  --controlBorderStrong: var(--border-strong);
-  --controlBorderFocus: rgba(91,140,255,0.52);
-  --controlFocusRing: 0 0 0 1px rgba(91,140,255,0.34);
+  --controlBorderStrong: var(--border-medium);
+  --controlBorderFocus: rgba(76,125,255,0.52);
+  --controlFocusRing: 0 0 0 1px rgba(76,125,255,0.34);
   --controlText: var(--text-primary);
   --controlPlaceholder: var(--text-muted);
   --controlRadius: var(--radius-input);
   --controlHeight: var(--input-height);
 
-  --iconBtnBg: rgba(255,255,255,0.04);
+  /* Menus / nav / overlays */
+  --iconBtnBg: color-mix(in srgb, var(--surface-elevated) 90%, transparent);
   --iconBtnBorder: var(--border-subtle);
   --iconBtnText: var(--text-secondary);
-  --iconBtnHoverBg: rgba(255,255,255,0.08);
-
-  --menuBg: rgba(21,25,34,0.94);
+  --iconBtnHoverBg: color-mix(in srgb, var(--surface-strong) 92%, transparent);
+  --menuBg: rgba(17,24,42,0.94);
   --menuBorder: var(--border-subtle);
   --menuShadow: var(--shadowSoft);
-  --menuOptionHover: rgba(255,255,255,0.05);
-  --menuOptionSelected: rgba(91,140,255,0.14);
-  --menuOptionSelectedStrong: rgba(91,140,255,0.18);
-  --menuOptionSelectedBorder: rgba(91,140,255,0.3);
-
+  --menuOptionHover: color-mix(in srgb, var(--surface-elevated) 88%, transparent);
+  --menuOptionSelected: rgba(76,125,255,0.14);
+  --menuOptionSelectedStrong: rgba(76,125,255,0.18);
+  --menuOptionSelectedBorder: rgba(76,125,255,0.28);
   --navBtnBorder: var(--border-subtle);
   --navBtnText: var(--text-secondary);
-  --navBtnHoverBg: rgba(255,255,255,0.06);
-  --navBtnActiveBg: rgba(255,255,255,0.08);
+  --navBtnHoverBg: color-mix(in srgb, var(--surface-elevated) 90%, transparent);
+  --navBtnActiveBg: rgba(76,125,255,0.14);
   --navBtnActiveText: var(--text-primary);
-  --navBtnActiveShadow: inset 0 0 0 1px rgba(91,140,255,0.18);
-  --navGearBg: rgba(255,255,255,0.04);
+  --navBtnActiveShadow: inset 0 0 0 1px rgba(76,125,255,0.18);
+  --navGearBg: color-mix(in srgb, var(--surface-elevated) 90%, transparent);
   --navGearText: var(--text-secondary);
-  --navGearHoverBg: rgba(255,255,255,0.08);
-  --navGearActiveBg: rgba(255,255,255,0.08);
+  --navGearHoverBg: color-mix(in srgb, var(--surface-strong) 92%, transparent);
+  --navGearActiveBg: rgba(76,125,255,0.14);
   --navGearActiveText: var(--text-primary);
-  --navGearActiveShadow: inset 0 0 0 1px rgba(91,140,255,0.18);
-  --railAddBg: rgba(255,255,255,0.04);
+  --navGearActiveShadow: inset 0 0 0 1px rgba(76,125,255,0.18);
+  --railAddBg: color-mix(in srgb, var(--surface-elevated) 90%, transparent);
   --railAddShadow: var(--shadowSoft);
+  --nav-pill-radius: var(--radius-12);
+  --nav-pill-height: 40px;
+  --nav-pill-px: var(--space-12);
+  --nav-pill-py: var(--space-8);
+  --nav-pill-gap: var(--space-8);
+  --nav-pill-icon-size: 16px;
+  --nav-pill-border: color-mix(in srgb, var(--border-subtle) 92%, rgba(255, 255, 255, 0.08));
+  --nav-pill-bg: color-mix(in srgb, var(--surface-primary) 96%, #0c1017);
+  --nav-pill-text: var(--text-secondary);
+  --nav-pill-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --nav-pill-hover-border: color-mix(in srgb, var(--accent-primary) 24%, var(--border-subtle));
+  --nav-pill-hover-bg: color-mix(in srgb, var(--surface-elevated) 90%, #0f1520);
+  --nav-pill-hover-text: var(--text-primary);
+  --nav-pill-active-border: color-mix(in srgb, var(--accent-primary) 38%, var(--border-strong));
+  --nav-pill-active-bg: color-mix(in srgb, var(--accent-soft) 78%, var(--surface-elevated));
+  --nav-pill-active-text: var(--text-primary);
+  --nav-pill-active-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(91, 140, 255, 0.12);
 
-  --dangerTint: rgba(239,68,68,0.1);
-  --dangerBorder: rgba(239,68,68,0.28);
+  /* State / misc */
+  --dangerTint: rgba(240,68,56,0.10);
+  --dangerBorder: rgba(240,68,56,0.28);
   --hintAccentText: var(--text-primary);
   --hintDangerText: var(--text-primary);
-
-  --bg-vignette-opacity: 0.54;
-  --bg-noise-opacity: 0.14;
+  --bg-vignette-opacity: 0.52;
+  --bg-noise-opacity: 0.10;
   --bg-noise-blend: soft-light;
   --bg-stripes: none;
 }

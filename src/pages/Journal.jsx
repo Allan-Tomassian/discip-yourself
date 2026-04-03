@@ -1,6 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import ScreenShell from "./_ScreenShell";
-import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import { SURFACE_LABELS } from "../ui/labels";
 import {
   CATEGORY_VIEW,
@@ -10,6 +8,18 @@ import {
   withSelectedCategoryByView,
 } from "../domain/categoryVisibility";
 import { todayLocalKey } from "../utils/dateKey";
+import {
+  AppCard,
+  AppInput,
+  AppScreen,
+  AppSelect,
+  AppTextarea,
+  EmptyState,
+  FieldGroup,
+  GhostButton,
+  PrimaryButton,
+  SectionHeader,
+} from "../shared/ui/app";
 
 function parseJson(raw, fallback) {
   try {
@@ -176,7 +186,7 @@ export default function Journal({ data, setData }) {
   };
 
   return (
-    <ScreenShell
+    <AppScreen
       data={safeData}
       pageId="journal"
       backgroundImage={safeData?.profile?.whyImage || ""}
@@ -184,14 +194,13 @@ export default function Journal({ data, setData }) {
       headerSubtitle="Capture le contexte du jour sans repasser par Today."
     >
       <section className="mainPageSection">
-        <GateSectionIntro title="Édition" subtitle="Écriture rapide, contexte et niveau d’énergie." />
-        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <SectionHeader title="Édition" subtitle="Écriture rapide, contexte et niveau d’énergie." />
+        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="col gap12">
             <div className="GateInlineMetaCard col gap8">
-              <label className="GateFormField">
-                <span className="GateFormLabel">Catégorie</span>
-                <select
-                  className="GateSelectPremium"
+              <FieldGroup label="Catégorie" htmlFor="journal-category">
+                <AppSelect
+                  id="journal-category"
                   value={categoryId || ""}
                   onChange={(event) => setCategoryId(event.target.value)}
                 >
@@ -200,31 +209,23 @@ export default function Journal({ data, setData }) {
                       {category.name}
                     </option>
                   ))}
-                </select>
-              </label>
-              <label className="GateFormField">
-                <span className="GateFormLabel">Note</span>
-                <textarea
-                  className="GateTextareaPremium"
+                </AppSelect>
+              </FieldGroup>
+              <FieldGroup label="Note" htmlFor="journal-note">
+                <AppTextarea
+                  id="journal-note"
                   rows={5}
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
                   placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
                 />
-              </label>
+              </FieldGroup>
             </div>
             <div className="GateInlineMetaCard col gap8">
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                  gap: 12,
-                }}
-              >
-                <label className="GateFormField">
-                  <span className="GateFormLabel">Forme</span>
-                  <select
-                    className="GateSelectPremium"
+              <div className="appFieldGrid">
+                <FieldGroup label="Forme" htmlFor="journal-forme">
+                  <AppSelect
+                    id="journal-forme"
                     value={meta.forme || ""}
                     onChange={(event) => setMeta((prev) => ({ ...prev, forme: event.target.value }))}
                   >
@@ -233,12 +234,11 @@ export default function Journal({ data, setData }) {
                     <option value="Bonne">Bonne</option>
                     <option value="Moyenne">Moyenne</option>
                     <option value="Faible">Faible</option>
-                  </select>
-                </label>
-                <label className="GateFormField">
-                  <span className="GateFormLabel">Humeur</span>
-                  <select
-                    className="GateSelectPremium"
+                  </AppSelect>
+                </FieldGroup>
+                <FieldGroup label="Humeur" htmlFor="journal-humeur">
+                  <AppSelect
+                    id="journal-humeur"
                     value={meta.humeur || ""}
                     onChange={(event) => setMeta((prev) => ({ ...prev, humeur: event.target.value }))}
                   >
@@ -247,12 +247,11 @@ export default function Journal({ data, setData }) {
                     <option value="Motivé">Motivé</option>
                     <option value="Fatigué">Fatigué</option>
                     <option value="Tendu">Tendu</option>
-                  </select>
-                </label>
-                <label className="GateFormField">
-                  <span className="GateFormLabel">Motivation</span>
-                  <input
-                    className="GateInputPremium"
+                  </AppSelect>
+                </FieldGroup>
+                <FieldGroup label="Motivation" htmlFor="journal-motivation">
+                  <AppInput
+                    id="journal-motivation"
                     type="number"
                     min="0"
                     max="10"
@@ -260,31 +259,28 @@ export default function Journal({ data, setData }) {
                     onChange={(event) => setMeta((prev) => ({ ...prev, motivation: event.target.value }))}
                     placeholder="0 à 10"
                   />
-                </label>
+                </FieldGroup>
               </div>
               <div className="GatePrimaryCtaRow">
-                <GateButton type="button" className="GatePressable" withSound onClick={archiveCurrentNote}>
+                <PrimaryButton type="button" onClick={archiveCurrentNote}>
                   Archiver la note
-                </GateButton>
-                <GateButton
+                </PrimaryButton>
+                <GhostButton
                   type="button"
-                  variant="ghost"
                   size="sm"
-                  className="GatePressable"
-                  withSound
                   onClick={clearCurrentNote}
                 >
                   Vider
-                </GateButton>
+                </GhostButton>
               </div>
             </div>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro title="Historique" subtitle="Notes archivées pour cette catégorie." />
-        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <SectionHeader title="Historique" subtitle="Notes archivées pour cette catégorie." />
+        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="col gap12">
             {historyItems.length ? (
               historyItems.map((item) => {
@@ -296,16 +292,13 @@ export default function Journal({ data, setData }) {
                   <div key={item.id} className="GateInlineMetaCard col gap8">
                     <div className="row rowBetween gap12 wrap">
                       <div className="GateRoleCardMeta">{item.dateKey || todayKey}</div>
-                      <GateButton
+                      <GhostButton
                         type="button"
-                        variant="ghost"
                         size="sm"
-                        className="GatePressable"
-                        withSound
                         onClick={() => deleteHistoryItem(item.id)}
                       >
                         Supprimer
-                      </GateButton>
+                      </GhostButton>
                     </div>
                     {metaParts.length ? <div className="GateRoleCardMeta">{metaParts.join(" · ")}</div> : null}
                     {item.note ? <div className="GateRoleHelperText">{item.note}</div> : null}
@@ -313,13 +306,11 @@ export default function Journal({ data, setData }) {
                 );
               })
             ) : (
-              <div className="GateInlineMetaCard col gap8">
-                <div className="GateRoleHelperText">Aucune note enregistrée pour cette catégorie.</div>
-              </div>
+              <EmptyState title="Aucune note" subtitle="Aucune note enregistrée pour cette catégorie." />
             )}
           </div>
-        </GateSection>
+        </AppCard>
       </section>
-    </ScreenShell>
+    </AppScreen>
   );
 }

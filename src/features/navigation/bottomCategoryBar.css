@@ -2,17 +2,17 @@
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(10px + var(--safe-bottom));
-  z-index: 46;
-  width: min(960px, calc(100vw - 24px));
-  max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 24px);
+  bottom: calc(var(--space-12) + var(--safe-bottom));
+  z-index: var(--z-sticky);
+  width: min(960px, calc(100vw - (2 * var(--page-pad))));
+  max-width: calc(100vw - var(--safe-left) - var(--safe-right) - (2 * var(--page-pad)));
   pointer-events: none;
   box-sizing: border-box;
 }
 
 .BottomBarSurfaceOuter {
-  --gate-glass-radius: 20px;
-  --gate-glass-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
+  --gate-glass-radius: var(--radius-20);
+  --gate-glass-shadow: var(--drawerShadow);
 }
 
 .BottomBarSurfaceClip {
@@ -20,17 +20,17 @@
 }
 
 .BottomBarBackdrop::before {
-  background: color-mix(in srgb, #0a0f18 46%, transparent);
+  background: color-mix(in srgb, var(--overlay-backdrop-soft) 92%, transparent);
 }
 
 .bottomCategoryBarPanel {
   pointer-events: auto;
-  padding: 10px;
+  padding: var(--space-12);
   border-radius: inherit;
   position: relative;
   z-index: 1;
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 92%, transparent), color-mix(in srgb, var(--surface-primary) 96%, transparent));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 var(--border-subtle);
   overflow-x: hidden;
   box-sizing: border-box;
 }
@@ -38,7 +38,7 @@
 .bottomCategoryBarRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   min-width: 0;
 }
 
@@ -46,10 +46,10 @@
   display: flex;
   flex: 1 1 auto;
   min-width: 0;
-  gap: 10px;
+  gap: var(--space-12);
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 2px 0;
+  padding: var(--space-4) 0;
   scroll-snap-type: x mandatory;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
@@ -64,23 +64,23 @@
 
 .bottomCategoryPlus {
   flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
-  min-width: 38px;
+  width: var(--nav-pill-height);
+  height: var(--nav-pill-height);
+  min-width: var(--nav-pill-height);
   padding: 0;
-  font-size: 18px;
+  font-size: var(--font-section-title);
   line-height: 1;
 }
 
 @media (max-width: 560px) {
   .bottomCategoryBar {
-    width: min(960px, calc(100vw - 24px));
-    max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 24px);
-    bottom: calc(8px + var(--safe-bottom));
+    width: min(960px, calc(100vw - (2 * var(--page-pad))));
+    max-width: calc(100vw - var(--safe-left) - var(--safe-right) - (2 * var(--page-pad)));
+    bottom: calc(var(--space-8) + var(--safe-bottom));
   }
 
   .bottomCategoryBarPanel {
-    padding: 8px;
+    padding: var(--space-8);
   }
 
 }
