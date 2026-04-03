@@ -59,6 +59,7 @@ export default function MainDrawer({ open = false, active = "", onClose, onNavig
             onClick={() => onClose?.()}
             aria-label="Fermer le menu"
             title="Fermer"
+            data-testid="drawer-close-button"
           >
             ×
           </button>

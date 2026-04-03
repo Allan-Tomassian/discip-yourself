@@ -688,21 +688,21 @@
 .microCardBody {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-16);
 }
 
 .microHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-12);
   padding-inline: 2px;
 }
 
 .microHeaderMain {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--space-12);
   min-width: 0;
 }
 
@@ -717,16 +717,16 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
+  gap: var(--space-8);
   min-width: max-content;
 }
 
 .microDoneStat {
-  font-size: 12px;
+  font-size: var(--font-meta);
   color: color-mix(in srgb, var(--text-3, var(--muted2)) 86%, rgba(255, 255, 255, 0.2));
   border: 1px solid color-mix(in srgb, var(--gate-border) 86%, rgba(255, 255, 255, 0.16));
-  border-radius: 999px;
-  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  padding: 2px var(--space-8);
   white-space: nowrap;
   background: color-mix(in srgb, var(--gate-surface-1) 86%, #05080f);
   display: inline-flex;
@@ -735,7 +735,7 @@
 }
 
 .microDoneMeta {
-  font-size: 11px;
+  font-size: var(--font-micro);
   line-height: 1.38;
   color: color-mix(in srgb, var(--text-3, var(--muted2)) 84%, rgba(255, 255, 255, 0.2));
   text-align: right;
@@ -745,7 +745,7 @@
 .microToolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(136px, 208px);
-  gap: 8px;
+  gap: var(--space-8);
   align-items: center;
   padding-inline: 2px;
 }
@@ -767,13 +767,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-12);
   flex-wrap: wrap;
   margin-inline: 2px;
 }
 
 .microTodayHintText {
-  font-size: 12px;
+  font-size: var(--font-meta);
   line-height: 1.36;
   color: var(--text-3, var(--muted2));
 }
@@ -795,7 +795,7 @@
 .microList {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-8);
   padding-inline: 2px;
 }
 
@@ -803,7 +803,7 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   border-color: color-mix(in srgb, var(--gate-border) 94%, rgba(255, 255, 255, 0.08));
   background: color-mix(in srgb, var(--gate-surface-1) 94%, #070b12);
 }
@@ -815,7 +815,7 @@
   width: 20px;
   height: 20px;
   border: 1px solid color-mix(in srgb, var(--gate-border) 84%, rgba(255, 255, 255, 0.18));
-  border-radius: 6px;
+  border-radius: var(--radius-8);
   background: color-mix(in srgb, var(--gate-surface-2) 92%, #05080f);
   position: relative;
   cursor: pointer;
@@ -830,11 +830,11 @@
 }
 
 .microPickMark {
-  font-size: 11px;
+  font-size: var(--font-micro);
   color: color-mix(in srgb, var(--accent) 75%, #ffffff);
   opacity: 0;
   transform: scale(0.8);
-  transition: opacity 120ms ease, transform 120ms ease;
+  transition: opacity var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
   pointer-events: none;
 }
 
@@ -847,7 +847,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: var(--space-4);
   min-width: 0;
 }
 
@@ -867,10 +867,10 @@
 }
 
 .microBadge {
-  font-size: 10px;
+  font-size: var(--font-micro);
   color: var(--text-3, var(--muted2));
   border: 1px solid var(--gate-border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 2px 6px;
   white-space: nowrap;
   display: inline-flex;
@@ -887,7 +887,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: var(--space-8);
   flex-wrap: wrap;
   padding-inline: 2px;
 }
@@ -904,22 +904,18 @@
 }
 
 .microRerollMeta {
-  font-size: 12px;
+  font-size: var(--font-meta);
   line-height: 1.32;
   color: color-mix(in srgb, var(--text-3, var(--muted2)) 84%, rgba(255, 255, 255, 0.2));
 }
 
 .microRerollLimit {
-  font-size: 12px;
   line-height: 1.32;
-  color: color-mix(in srgb, #ffd2d2 72%, var(--text-3, var(--muted2)));
   padding-inline: 2px;
 }
 
 .microRewardStatus {
-  font-size: 12px;
   line-height: 1.34;
-  color: color-mix(in srgb, #d6f7d6 80%, var(--text));
   padding-inline: 2px;
 }
 
@@ -955,33 +951,15 @@
   padding-inline: 2px;
 }
 
-.microAdBackdrop {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: calc(16px + var(--safe-top)) var(--page-pad) calc(16px + var(--safe-bottom));
-  background: rgba(0, 0, 0, 0.4);
-  z-index: var(--z-modal, 2000);
-  box-sizing: border-box;
-}
-
-.microAdPanelOuter {
+.microAdSheet {
   width: min(420px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
-  border-radius: 18px;
-  --gate-glass-radius: 18px;
-}
-
-.microAdPanelClip {
-  border-radius: inherit;
 }
 
 .microAdPanel {
-  border-radius: inherit;
-  padding: 16px;
+  padding: var(--space-16);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .microAdHeader {
@@ -990,7 +968,7 @@
 
 .microAdText {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--font-body);
   color: var(--text-2, var(--text));
 }
 

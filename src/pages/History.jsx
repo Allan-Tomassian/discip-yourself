@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
-import ScreenShell from "./_ScreenShell";
-import { GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
+import { AppCard, AppScreen, EmptyState, SectionHeader } from "../shared/ui/app";
 
 function sortHistory(left, right) {
   const leftTs = Date.parse(left?.endAt || left?.startAt || "") || 0;
@@ -88,7 +87,7 @@ export default function History({ data }) {
   );
 
   return (
-    <ScreenShell
+    <AppScreen
       data={safeData}
       pageId="history"
       backgroundImage={safeData?.profile?.whyImage || ""}
@@ -96,8 +95,8 @@ export default function History({ data }) {
       headerSubtitle="Retrouve tes sessions terminées, reportées ou bloquées."
     >
       <section className="mainPageSection">
-        <GateSectionIntro title="Sessions" subtitle="Lecture chronologique de tes sessions récentes." />
-        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <SectionHeader title="Sessions" subtitle="Lecture chronologique de tes sessions récentes." />
+        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="col gap12">
             {items.length ? (
               items.map((item) => (
@@ -111,19 +110,22 @@ export default function History({ data }) {
                   </div>
                   {item.feedbackLabel ? (
                     <div className="GateRoleHelperText">
-                      Ressenti : {item.feedbackLabel}{item.feedbackText ? ` · ${item.feedbackText}` : ""}
+                      Ressenti : {item.feedbackLabel}
+                      {item.feedbackText ? ` · ${item.feedbackText}` : ""}
                     </div>
                   ) : null}
                 </div>
               ))
             ) : (
-              <div className="GateInlineMetaCard col gap8">
-                <div className="GateRoleHelperText">Aucune session enregistrée pour le moment.</div>
-              </div>
+              <EmptyState
+                className="GateInlineMetaCard"
+                title="Aucune session enregistrée"
+                subtitle="L’historique se remplira dès que tu termines, reportes ou bloques une session."
+              />
             )}
           </div>
-        </GateSection>
+        </AppCard>
       </section>
-    </ScreenShell>
+    </AppScreen>
   );
 }

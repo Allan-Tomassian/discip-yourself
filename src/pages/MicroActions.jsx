@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import ScreenShell from "./_ScreenShell";
 import { GateSectionIntro } from "../shared/ui/gate/Gate";
 import MicroActionsCard from "../ui/today/MicroActionsCard";
 import RewardedAdModal from "../ui/today/RewardedAdModal";
@@ -24,6 +23,7 @@ import { ensureTotemV1 } from "../logic/totemV1";
 import { emitTotemEvent } from "../ui/totem/totemEvents";
 import { getVisibleCategories } from "../domain/categoryVisibility";
 import { todayLocalKey } from "../utils/dateKey";
+import { AppScreen } from "../shared/ui/app";
 
 function normalizeMicroItemForCompare(item) {
   if (!item || typeof item !== "object") return null;
@@ -348,7 +348,7 @@ export default function MicroActions({ data, setData, isPremiumPlan = false }) {
   }
 
   return (
-    <ScreenShell
+    <AppScreen
       data={safeData}
       pageId="micro-actions"
       backgroundImage={safeData?.profile?.whyImage || ""}
@@ -387,6 +387,6 @@ export default function MicroActions({ data, setData, isPremiumPlan = false }) {
         onDismiss={() => resolveRewardedAd({ ok: false, reason: "dismissed" })}
         onComplete={() => resolveRewardedAd({ ok: true })}
       />
-    </ScreenShell>
+    </AppScreen>
   );
 }

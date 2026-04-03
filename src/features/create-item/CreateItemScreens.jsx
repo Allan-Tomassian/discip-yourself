@@ -1,9 +1,12 @@
 import React from "react";
-import Select from "../../ui/select/Select";
 import DatePicker from "../../ui/date/DatePicker";
-import { GateButton } from "../../shared/ui/gate/Gate";
-import { GateInput, GateTextarea } from "../../shared/ui/gate/GateForm";
 import { LABELS } from "../../ui/labels";
+import {
+  AppInput,
+  AppSelect,
+  AppTextarea,
+  GhostButton,
+} from "../../shared/ui/app";
 import {
   DAY_OPTIONS,
   MEASURE_OPTIONS,
@@ -30,9 +33,9 @@ function SuggestedCategoryCard({ controller, text }) {
       title="Catégorie suggérée"
       text={text}
       action={
-        <GateButton variant="ghost" onClick={() => controller.activateSuggestedCategory(controller.selectedSuggestion)}>
+        <GhostButton size="sm" onClick={() => controller.activateSuggestedCategory(controller.selectedSuggestion)}>
           Activer
-        </GateButton>
+        </GhostButton>
       }
     />
   );
@@ -75,7 +78,7 @@ function ActionIdentitySection({
   return (
     <SectionSurface main title={title} description={description}>
       <Field label="Titre">
-        <GateInput
+        <AppInput
           value={controller.title}
           onChange={(event) => controller.setTitle(event.target.value)}
           placeholder="Nom de l’action"
@@ -84,23 +87,23 @@ function ActionIdentitySection({
 
       <div className="editItemTwoCol">
         <Field label="Catégorie">
-          <Select value={controller.selectedCategoryId} onChange={(event) => controller.setSelectedCategoryId(event.target.value)}>
+          <AppSelect value={controller.selectedCategoryId} onChange={(event) => controller.setSelectedCategoryId(event.target.value)}>
             {controller.categoryOptions.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.name}
                 {cat.suggested ? " (suggestion)" : ""}
               </option>
             ))}
-          </Select>
+          </AppSelect>
         </Field>
         <Field label="Priorité">
-          <Select value={controller.priority} onChange={(event) => controller.setPriority(event.target.value)}>
+          <AppSelect value={controller.priority} onChange={(event) => controller.setPriority(event.target.value)}>
             {PRIORITY_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
-          </Select>
+          </AppSelect>
         </Field>
       </div>
 
@@ -114,14 +117,14 @@ function ActionIdentitySection({
           label={`${LABELS.goal} lié`}
           helper={`Optionnel. Lie cette ${LABELS.actionLower} à un ${LABELS.goalLower} seulement si cela éclaire mieux son objectif.`}
         >
-          <Select value={controller.effectiveSelectedOutcomeId} onChange={(event) => controller.setSelectedOutcomeId(event.target.value)}>
+          <AppSelect value={controller.effectiveSelectedOutcomeId} onChange={(event) => controller.setSelectedOutcomeId(event.target.value)}>
             <option value="">{`Sans ${LABELS.goalLower}`}</option>
             {controller.outcomes.map((outcome) => (
               <option key={outcome.id} value={outcome.id}>
                 {outcome.title || LABELS.goal}
               </option>
             ))}
-          </Select>
+          </AppSelect>
         </Field>
       ) : null}
     </SectionSurface>
@@ -132,13 +135,13 @@ function ActionPlanningSection({ controller, title = "Planification", descriptio
   return (
     <SectionSurface title={title} description={description}>
       <Field label="Cadence" helper="Choisis le rythme le plus crédible pour cette action.">
-        <Select value={controller.repeat} onChange={(event) => controller.setRepeat(event.target.value)}>
+        <AppSelect value={controller.repeat} onChange={(event) => controller.setRepeat(event.target.value)}>
           {REPEAT_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
-        </Select>
+        </AppSelect>
       </Field>
 
       {controller.repeat === "none" ? (
@@ -158,7 +161,7 @@ function ActionPlanningSection({ controller, title = "Planification", descriptio
             />
           </div>
           <Field label="Durée" helper="Optionnel. Laisse vide si la durée reste libre.">
-            <GateInput
+            <AppInput
               type="number"
               min="1"
               value={controller.sessionMinutes}
@@ -182,7 +185,7 @@ function ActionPlanningSection({ controller, title = "Planification", descriptio
               onTimeChange={controller.setStartTime}
             />
             <Field label="Durée" helper="Optionnel. Laisse vide si la durée reste souple.">
-              <GateInput
+              <AppInput
                 type="number"
                 min="1"
                 value={controller.sessionMinutes}
@@ -234,7 +237,7 @@ function ActionQuantitySection({ controller }) {
     >
       <div className="editItemThreeCol">
         <Field label="Quantité">
-          <GateInput
+          <AppInput
             type="number"
             min="1"
             value={controller.quantityValue}
@@ -243,20 +246,20 @@ function ActionQuantitySection({ controller }) {
           />
         </Field>
         <Field label="Unité">
-          <GateInput
+          <AppInput
             value={controller.quantityUnit}
             onChange={(event) => controller.setQuantityUnit(event.target.value)}
             placeholder="Unité"
           />
         </Field>
         <Field label="Période">
-          <Select value={controller.quantityPeriod} onChange={(event) => controller.setQuantityPeriod(event.target.value)}>
+          <AppSelect value={controller.quantityPeriod} onChange={(event) => controller.setQuantityPeriod(event.target.value)}>
             {QUANTITY_PERIODS.map((period) => (
               <option key={period.id} value={period.id}>
                 {period.label}
               </option>
             ))}
-          </Select>
+          </AppSelect>
         </Field>
       </div>
     </SectionSurface>
@@ -270,7 +273,7 @@ function ActionContextSection({ controller }) {
       description="Garde seulement le contexte qui aide vraiment à agir ou à reprendre."
     >
       <Field label="Notes">
-        <GateTextarea
+        <AppTextarea
           value={controller.notes}
           onChange={(event) => controller.setNotes(event.target.value)}
           placeholder="Ajoute un contexte utile, sans te noyer dans les détails."
@@ -313,7 +316,7 @@ function OutcomeIdentitySection({ controller, title = "Identité et catégorie",
   return (
     <SectionSurface main title={title} description={description}>
       <Field label="Titre">
-        <GateInput
+        <AppInput
           value={controller.title}
           onChange={(event) => controller.setTitle(event.target.value)}
           placeholder={`Nom du ${LABELS.goalLower}`}
@@ -322,23 +325,23 @@ function OutcomeIdentitySection({ controller, title = "Identité et catégorie",
 
       <div className="editItemTwoCol">
         <Field label="Catégorie">
-          <Select value={controller.selectedCategoryId} onChange={(event) => controller.setSelectedCategoryId(event.target.value)}>
+          <AppSelect value={controller.selectedCategoryId} onChange={(event) => controller.setSelectedCategoryId(event.target.value)}>
             {controller.categoryOptions.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.name}
                 {cat.suggested ? " (suggestion)" : ""}
               </option>
             ))}
-          </Select>
+          </AppSelect>
         </Field>
         <Field label="Priorité">
-          <Select value={controller.priority} onChange={(event) => controller.setPriority(event.target.value)}>
+          <AppSelect value={controller.priority} onChange={(event) => controller.setPriority(event.target.value)}>
             {PRIORITY_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
-          </Select>
+          </AppSelect>
         </Field>
       </div>
 
@@ -373,20 +376,20 @@ function OutcomeMeasureSection({ controller }) {
     >
       <div className="editItemTwoCol">
         <Field label="Type de mesure">
-          <Select value={controller.measureType} onChange={(event) => controller.setMeasureType(event.target.value)}>
+          <AppSelect value={controller.measureType} onChange={(event) => controller.setMeasureType(event.target.value)}>
             <option value="">Aucune mesure</option>
             {MEASURE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
-          </Select>
+          </AppSelect>
         </Field>
         <Field
           label="Cible"
           helper={controller.measureType ? "La cible doit rester simple à lire et à mettre à jour." : "Choisis d’abord un type de mesure si tu veux suivre une cible."}
         >
-          <GateInput
+          <AppInput
             type="number"
             min="1"
             value={controller.targetValue}
@@ -407,7 +410,7 @@ function OutcomeContextSection({ controller }) {
       description="Garde une note utile pour préciser ce cap."
     >
       <Field label="Notes">
-        <GateTextarea
+        <AppTextarea
           value={controller.notes}
           onChange={(event) => controller.setNotes(event.target.value)}
           placeholder={`Ce qui rend ce ${LABELS.goalLower} utile, concret ou prioritaire.`}

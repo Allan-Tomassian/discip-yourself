@@ -287,13 +287,7 @@ a{ color:inherit; }
 .categoryRailItem{
   min-width:max-content;
   white-space:nowrap;
-  display:flex;
-  align-items:center;
-  gap:8px;
   scroll-snap-align:center;
-}
-.categoryRailItem .itemTitle{
-  color: inherit;
 }
 .categoryRailAdd{
   border:0;
@@ -333,23 +327,16 @@ a{ color:inherit; }
   gap:6px;
 }
 .navBtn{
-  border:1px solid var(--navBtnBorder, rgba(255,255,255,.12));
-  background:transparent;
-  color:var(--navBtnText, rgba(255,255,255,.7));
-  padding:10px 8px;
-  border-radius:var(--radius-16);
-  font-size:var(--font-xs);
-  font-family: var(--font-family-ui);
-  line-height:1;
+  appearance:none;
+  border:0;
+  background:none;
+  color:inherit;
+  padding:0;
+  font:inherit;
+  line-height:inherit;
   cursor:pointer;
 }
-.navBtn:hover{ background: var(--navBtnHoverBg, rgba(255,255,255,.08)); }
-.navBtnActive{
-  background: var(--navBtnActiveBg, var(--accent-soft, rgba(255,125,0,.18)));
-  color:var(--navBtnActiveText, var(--text, #fff));
-  border-color: var(--accentBorder, rgba(255,125,0,.35));
-  box-shadow: var(--navBtnActiveShadow, inset 0 0 0 1px rgba(255,255,255,.04));
-}
+.navBtn:hover{ background: none; }
 .bottomBar{
   position: fixed;
   left: 50%;
@@ -1336,36 +1323,49 @@ a{ color:inherit; }
 }
 .plusExpander{
   position:fixed;
-  z-index:var(--z-dropdown);
-  transform: translateY(6px) scale(.98);
+  z-index:var(--z-popover);
+  transform: translateY(var(--space-8)) scale(.98);
   opacity:0;
   pointer-events:none;
-  transition: none;
+  transition:
+    transform var(--motion-enter) var(--ease-enter),
+    opacity var(--motion-standard) var(--ease-standard);
 }
 .plusExpander.isOpen{
-  transform: translateY(0) scale(1.02);
+  transform: translateY(0) scale(1);
   opacity:1;
   pointer-events:auto;
 }
 .plusExpanderPanel{
-  border-radius:16px;
-  --gate-glass-radius: 16px;
-  --gate-glass-shadow: var(--shadow-sm, var(--shadow-soft));
+  border-radius:var(--radius-16);
+  --gate-glass-radius: var(--radius-16);
+  --gate-glass-shadow: var(--drawerShadow);
   max-width:calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right));
-  max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
+  max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - var(--space-24));
   box-sizing: border-box;
 }
 .plusExpanderPanelClip{
   border-radius:inherit;
 }
 .plusExpanderPanelContent{
-  border:1px solid var(--border-subtle, var(--border));
-  background: linear-gradient(180deg, var(--surface-2, var(--glass2)), var(--surface-1, var(--glass)));
+  border:1px solid var(--menuBorder, var(--border-subtle, var(--border)));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, rgba(255,255,255,0.02)), color-mix(in srgb, var(--surface-primary) 98%, rgba(0,0,0,0.08)));
   border-radius:inherit;
-  padding:10px;
+  padding:var(--space-8);
+  display:grid;
+  gap:var(--space-8);
   overflow:auto;
   overflow-x: hidden;
   box-sizing: border-box;
+}
+
+.plusExpanderActions{
+  display:grid;
+  gap:var(--space-8);
+}
+
+.plusExpanderAction{
+  width:100%;
 }
 
 .keyboardOpen .bottomCategoryBar {

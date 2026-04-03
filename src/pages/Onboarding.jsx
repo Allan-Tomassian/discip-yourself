@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
-import ScreenShell from "./_ScreenShell";
-import { GateBadge, GateFooter, GateHeader, GatePanel } from "../shared/ui/gate/Gate";
+import { AppCard, AppScreen, GateFooter, GateHeader, StatusBadge } from "../shared/ui/app";
 import {
   CreateButton,
   CreateChoiceCard,
@@ -252,8 +251,8 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
 
   if (planOnly) {
     return (
-      <ScreenShell data={safeData} pageId="onboarding" backgroundImage={backgroundImage}>
-        <GatePanel className="onboardingShell createFlowScope GateMainSection GateSurfacePremium GateCardPremium">
+      <AppScreen data={safeData} pageId="onboarding" backgroundImage={backgroundImage}>
+        <AppCard variant="elevated" className="onboardingShell createFlowScope">
           <GateHeader
             title={
               <span className="createFlowHeaderTitleBlock">
@@ -262,7 +261,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
               </span>
             }
             subtitle="Aucune facturation ici. Tu pourras ajuster ce choix plus tard."
-            actions={<GateBadge>Plan</GateBadge>}
+            actions={<StatusBadge>Plan</StatusBadge>}
           />
 
           <div className="onboardingBody">
@@ -314,14 +313,14 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
               Accéder à l’app
             </CreateButton>
           </GateFooter>
-        </GatePanel>
-      </ScreenShell>
+        </AppCard>
+      </AppScreen>
     );
   }
 
   return (
-    <ScreenShell data={safeData} pageId="onboarding" backgroundImage={backgroundImage}>
-      <GatePanel className="onboardingShell createFlowScope GateMainSection GateSurfacePremium GateCardPremium">
+    <AppScreen data={safeData} pageId="onboarding" backgroundImage={backgroundImage}>
+      <AppCard variant="elevated" className="onboardingShell createFlowScope">
         <GateHeader
           title={
             <span className="createFlowHeaderTitleBlock">
@@ -330,7 +329,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
             </span>
           }
           subtitle={currentScreen?.subtitle || ""}
-          actions={<GateBadge>{step + 1}/{questionScreens.length}</GateBadge>}
+          actions={<StatusBadge>{step + 1}/{questionScreens.length}</StatusBadge>}
         />
 
         <div className="onboardingBody">{currentScreen?.content}</div>
@@ -360,7 +359,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
             {step === questionScreens.length - 1 ? "Créer mon plan" : "Continuer"}
           </CreateButton>
         </GateFooter>
-      </GatePanel>
-    </ScreenShell>
+      </AppCard>
+    </AppScreen>
   );
 }

@@ -302,14 +302,6 @@ export default function App() {
         }
         setTab(next);
       }}
-      onMenuNavigate={(action) => {
-        setCoachState((previous) =>
-          previous.open || previous.mode !== "free" || previous.conversationId
-            ? { open: false, mode: "free", conversationId: null }
-            : previous
-        );
-        setTab(action);
-      }}
       onMenuOpen={() => setDrawerOpen(true)}
       coinsBalance={topWalletPreview.balance}
       coinDeltaAmount={topWalletPreview.deltaAmount}
@@ -1033,10 +1025,9 @@ export default function App() {
                     selectedCategoryId={railSelectedId}
                     onSelect={handleSelectCategory}
                   />
-                  <GateButton
+                  <button
                     type="button"
-                    variant="ghost"
-                    className="bottomCategoryPlus GateIconButtonPremium GatePressable"
+                    className="bottomCategoryPlus NavPillUnified NavPillUnified--iconOnly GatePressable"
                     aria-label="Créer"
                     title="Créer"
                     data-create-anchor="bottomrail"
@@ -1053,7 +1044,7 @@ export default function App() {
                     }}
                   >
                     +
-                  </GateButton>
+                  </button>
                 </div>
               </GatePanel>
             </div>

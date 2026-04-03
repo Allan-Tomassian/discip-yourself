@@ -1,23 +1,22 @@
 import React from "react";
-import ScreenShell from "./_ScreenShell";
-import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import { UI_COPY } from "../ui/labels";
+import { AppCard, AppScreen, GhostButton, SectionHeader } from "../shared/ui/app";
 
 export default function Privacy({ data, onOpenSupport }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
 
   return (
-    <ScreenShell
+    <AppScreen
       data={safeData}
-      pageId="legal"
+      pageId="privacy"
       backgroundImage={backgroundImage}
       headerTitle="Confidentialité"
       headerSubtitle="Comment tes données sont utilisées dans l’app."
     >
       <section className="mainPageSection">
-        <GateSectionIntro title="Données collectées" subtitle="Données utiles au fonctionnement." />
-        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <SectionHeader title="Données collectées" subtitle="Données utiles au fonctionnement." />
+        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="col gap12">
             <div className="GateInlineMetaCard col gap8">
               <div className="GateRoleCardTitle">Utilisation produit</div>
@@ -32,30 +31,28 @@ export default function Privacy({ data, onOpenSupport }) {
               </div>
             </div>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro title="Contact" subtitle="Questions RGPD ou données." />
-        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <SectionHeader title="Contact" subtitle="Questions RGPD ou données." />
+        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="col gap12">
             <div className="GateInlineMetaCard col gap8">
               <div className="GateRoleCardTitle">Email</div>
               <div className="GateRoleHelperText">support@discip-yourself.app</div>
             </div>
             <div className="GatePrimaryCtaRow">
-              <GateButton
-                variant="ghost"
+              <GhostButton
                 size="sm"
-                className="GatePressable"
                 onClick={() => (typeof onOpenSupport === "function" ? onOpenSupport() : null)}
               >
                 {UI_COPY.openSupport}
-              </GateButton>
+              </GhostButton>
             </div>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
-    </ScreenShell>
+    </AppScreen>
   );
 }

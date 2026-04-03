@@ -1,8 +1,14 @@
 import React, { useRef, useState } from "react";
-import ScreenShell from "./_ScreenShell";
-import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import { isPremium } from "../logic/entitlements";
 import { STATUS_COPY } from "../ui/labels";
+import {
+  AppCard,
+  AppScreen,
+  FeedbackMessage,
+  GhostButton,
+  PrimaryButton,
+  SectionHeader,
+} from "../shared/ui/app";
 
 function downloadJsonFile(filename, payload) {
   try {
@@ -50,19 +56,18 @@ export default function Data({ data, setData, onOpenPaywall }) {
   }
 
   return (
-    <ScreenShell
+    <AppScreen
       data={safeData}
-      pageId="settings"
+      pageId="data"
       backgroundImage={backgroundImage}
       headerTitle="Données"
       headerSubtitle="Exporter ou réimporter l’état complet de l’app."
     >
       <section className="mainPageSection">
-        <GateSectionIntro title="Sauvegarde" subtitle="Exporte ou importe l’état complet de l’app." />
-        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <SectionHeader title="Sauvegarde" subtitle="Exporte ou importe l’état complet de l’app." />
+        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="GatePrimaryCtaRow">
-            <GateButton
-              className="GatePressable"
+            <PrimaryButton
               onClick={() => {
                 if (!premium) {
                   if (typeof onOpenPaywall === "function") onOpenPaywall("Export des données");
@@ -72,13 +77,13 @@ export default function Data({ data, setData, onOpenPaywall }) {
               }}
             >
               Exporter mes données (JSON)
-            </GateButton>
+            </PrimaryButton>
 
             <input
               ref={importInputRef}
               type="file"
               accept="application/json"
-              style={{ display: "none" }}
+              hidden
               onChange={(event) => {
                 const file = event.target.files && event.target.files[0] ? event.target.files[0] : null;
                 handleImportFile(file);
@@ -86,25 +91,25 @@ export default function Data({ data, setData, onOpenPaywall }) {
               }}
             />
 
-            <GateButton
-              variant="ghost"
+            <GhostButton
               size="sm"
-              className="GatePressable"
               onClick={() => {
                 importInputRef.current?.click();
               }}
             >
               Importer un fichier JSON
-            </GateButton>
+            </GhostButton>
           </div>
 
           {importStatus ? (
             <div className="GateInlineMetaCard col gap8">
-              <div className="GateRoleHelperText">{importStatus}</div>
+              <FeedbackMessage className="GateRoleHelperText" tone={importStatus === STATUS_COPY.importDone ? "success" : "error"}>
+                {importStatus}
+              </FeedbackMessage>
             </div>
           ) : null}
-        </GateSection>
+        </AppCard>
       </section>
-    </ScreenShell>
+    </AppScreen>
   );
 }

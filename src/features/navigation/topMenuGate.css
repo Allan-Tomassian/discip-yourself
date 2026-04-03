@@ -81,6 +81,9 @@
 .drawerMenuCloseBtn {
   margin-top: 0;
   align-self: flex-start;
+  width: var(--nav-pill-height);
+  height: var(--nav-pill-height);
+  border-radius: var(--nav-pill-radius);
 }
 
 .drawerMenuBody {

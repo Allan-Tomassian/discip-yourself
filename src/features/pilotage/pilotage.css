@@ -1,26 +1,26 @@
 .pilotageTopGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .pilotageCategoryRow {
-  gap: 10px;
+  gap: var(--space-12);
   align-items: flex-start;
 }
 
 .pilotageCategoryStack {
   display: grid;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .pilotageFocusGroup {
   display: grid;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .pilotageFocusGroup--deferred {
-  padding-top: 8px;
+  padding-top: var(--space-8);
   border-top: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.08));
 }
 
@@ -28,23 +28,23 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-12);
 }
 
 .pilotageInlineDetail {
-  margin-left: 8px;
-  padding-left: 8px;
+  margin-left: var(--space-8);
+  padding-left: var(--space-8);
   border-left: 1px solid color-mix(in srgb, var(--accent) 7%, var(--gate-border));
 }
 
 .pilotageInlineGrid {
   display: grid;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .pilotageInlinePanel {
   display: grid;
-  gap: 10px;
+  gap: var(--space-12);
   position: relative;
 }
 
@@ -55,13 +55,13 @@
 
 .pilotageInlineAiPanel {
   display: grid;
-  gap: 8px;
-  padding-top: 14px;
+  gap: var(--space-8);
+  padding-top: var(--space-16);
   border-top: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.08));
 }
 
 .pilotageCompactWindowControls {
-  gap: 8px;
+  gap: var(--space-8);
   flex-wrap: wrap;
 }
 
@@ -75,12 +75,12 @@
 .pilotageMiniStatsGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .pilotageMiniStat {
   display: grid;
-  gap: 6px;
+  gap: var(--space-6);
   position: relative;
 }
 
@@ -91,7 +91,7 @@
 
 .pilotageReadingGrid {
   display: grid;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .pilotagePage .pilotageSummaryCard .GateAnalyticsCard,
@@ -134,40 +134,15 @@
   line-height: 1.1;
 }
 
-.pilotageMetricMain {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.pilotageMetricValue {
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.pilotageTrendValue {
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.pilotageTrendValue.is-up {
-  color: #a6f4c5;
-}
-
-.pilotageTrendValue.is-down {
-  color: #ffb4b4;
-}
-
 .pilotageInsights {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
   min-width: 0;
 }
 
 .pilotageInsightItem {
-  font-size: 13px;
+  font-size: var(--font-body);
   line-height: 1.45;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -176,7 +151,7 @@
 
 .pilotageTrendChart {
   display: grid;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .pilotageTrendChart svg {
@@ -186,7 +161,7 @@
 }
 
 .pilotageTrendChart--compact {
-  gap: 6px;
+  gap: var(--space-6);
 }
 
 .pilotageTrendChart--compact svg {
@@ -263,41 +238,41 @@
 
 .pilotageTrendSingleLabel {
   fill: rgba(255, 255, 255, 0.72);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--font-micro);
+  font-weight: var(--font-weight-semibold);
 }
 
 .pilotageTrendSummary {
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 12px;
+  color: var(--text-secondary);
+  font-size: var(--font-meta);
   line-height: 1.35;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   min-height: 17px;
 }
 
 .pilotageTrendChart--compact .pilotageTrendSummary {
-  font-size: 11px;
+  font-size: var(--font-micro);
   min-height: 15px;
 }
 
 .pilotageTrendTooltip {
   display: inline-grid;
-  gap: 2px;
+  gap: var(--space-4);
   justify-self: start;
-  padding: 10px 12px;
-  border-radius: 12px;
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-12);
   border: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.06));
   background: color-mix(in srgb, var(--surface-elevated) 94%, #0d1118);
 }
 
 .pilotageTrendTooltipTitle {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-meta);
+  font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
 }
 
 .pilotageTrendTooltipText {
-  font-size: 12px;
+  font-size: var(--font-meta);
   line-height: 1.45;
   color: var(--text-secondary);
 }
@@ -305,17 +280,17 @@
 .pilotageTrendAxisFooter {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-12);
   color: rgba(255, 255, 255, 0.58);
-  font-size: 11px;
+  font-size: var(--font-micro);
 }
 
 .pilotageTrendChart--compact .pilotageTrendTooltip {
-  padding: 8px 10px;
+  padding: var(--space-8) var(--space-12);
 }
 
 .pilotageTrendChart--compact .pilotageTrendAxisFooter {
-  font-size: 10px;
+  font-size: var(--font-micro);
 }
 
 .pilotageTrendChart.is-animated .pilotageTrendLine {

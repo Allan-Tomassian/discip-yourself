@@ -1,7 +1,6 @@
 import React from "react";
-import ScreenShell from "./_ScreenShell";
-import { GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import { SURFACE_LABELS, UI_COPY } from "../ui/labels";
+import { AppCard, AppScreen, SectionHeader } from "../shared/ui/app";
 import pkg from "../../package.json";
 
 export default function Support({ data }) {
@@ -10,7 +9,7 @@ export default function Support({ data }) {
   const version = pkg?.version || "0.0.0";
 
   return (
-    <ScreenShell
+    <AppScreen
       data={safeData}
       pageId="support"
       backgroundImage={backgroundImage}
@@ -18,18 +17,18 @@ export default function Support({ data }) {
       headerSubtitle="Aide, contact et réponses rapides."
     >
       <section className="mainPageSection">
-        <GateSectionIntro title="Contact" subtitle="Réponse par email." />
-        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <SectionHeader title="Contact" subtitle="Réponse par email." />
+        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="GateInlineMetaCard col gap8">
             <div className="GateRoleCardTitle">Email</div>
             <div className="GateRoleHelperText">support@discip-yourself.app</div>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro title="Questions fréquentes" subtitle="Les réponses utiles les plus courantes." />
-        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <SectionHeader title="Questions fréquentes" subtitle="Les réponses utiles les plus courantes." />
+        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="col gap12">
             <div className="GateInlineMetaCard col gap8">
               <div className="GateRoleCardTitle">Comment récupérer un achat déjà payé ?</div>
@@ -42,18 +41,18 @@ export default function Support({ data }) {
               <div className="GateRoleHelperText">Ouvre Données puis exporte un fichier JSON.</div>
             </div>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro title="Version" subtitle="Build actuelle." />
-        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <SectionHeader title="Version" subtitle="Build actuelle." />
+        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="GateInlineMetaCard col gap8">
             <div className="GateRoleCardTitle">Version installée</div>
             <div className="GateRoleHelperText">{version}</div>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
-    </ScreenShell>
+    </AppScreen>
   );
 }

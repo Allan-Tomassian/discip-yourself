@@ -1,15 +1,15 @@
 .createFlowBackdrop {
-  background: var(--overlayBackdrop, rgba(0, 0, 0, 0.6));
+  background: var(--overlayBackdrop);
 }
 
 .createFlowModal {
   width: min(var(--app-modal-max, 720px), calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
   max-width: min(var(--app-modal-max, 720px), calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
   max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
-  padding: 16px;
+  padding: var(--space-16);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
   overflow: hidden;
   align-self: center;
   box-sizing: border-box;
@@ -20,7 +20,7 @@
   flex-direction: column;
   min-height: 0;
   height: 100%;
-  gap: 12px;
+  gap: var(--space-12);
   min-width: 0;
   box-sizing: border-box;
 }
@@ -32,12 +32,12 @@
 .createFlowHeaderTitleBlock {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-4);
   min-width: 0;
 }
 
 .createFlowHeaderEyebrow {
-  font-size: 11px;
+  font-size: var(--font-micro);
   line-height: 1.2;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -59,7 +59,7 @@
   gap: 10px;
   align-items: center;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-12);
   border: 1px solid var(--gate-border, var(--border-subtle, var(--border)));
   background: color-mix(in srgb, var(--gate-surface-1, var(--surface-2)) 92%, #05080f);
   cursor: default;
@@ -87,10 +87,10 @@
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   padding-right: 2px;
-  padding-bottom: 4px;
+  padding-bottom: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
   scroll-behavior: smooth;
@@ -112,7 +112,7 @@
 .createFlowChoiceGrid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .createFlowChoiceCard {
@@ -129,7 +129,7 @@
 .createChoiceText {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-4);
 }
 
 .createChoiceCard {
@@ -146,14 +146,14 @@
 }
 
 .createChoiceTitle {
-  font-size: 14px;
+  font-size: var(--font-body);
   line-height: 1.35;
   font-weight: 650;
   color: color-mix(in srgb, var(--gate-text) 96%, #ffffff);
 }
 
 .createChoiceDescription {
-  font-size: 12px;
+  font-size: var(--font-meta);
   line-height: 1.42;
   color: color-mix(in srgb, var(--gate-text-muted) 90%, rgba(255, 255, 255, 0.14));
 }
@@ -161,24 +161,24 @@
 .createFlowStep {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .flowShell {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
   min-height: 0;
 }
 
 .flowShellPanel {
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .flowShellBody {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
   min-height: 0;
 }
 
@@ -194,7 +194,7 @@
 }
 
 .createStepSection {
-  --gate-premium-radius: 14px;
+  --gate-premium-radius: var(--radius-14);
 }
 
 .createStepSection.gateSection,
@@ -237,7 +237,7 @@
 
 .createFieldRow {
   display: flex;
-  gap: 8px;
+  gap: var(--space-8);
   align-items: center;
   flex-wrap: wrap;
 }
@@ -245,11 +245,11 @@
 .createFieldGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .createHelper {
-  font-size: 12px;
+  font-size: var(--font-meta);
   line-height: 1.4;
   color: var(--text-3, var(--muted2));
 }
@@ -271,10 +271,10 @@
 .createLockedCategory {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   margin-top: 2px;
   padding: 8px 10px;
-  border-radius: 12px;
+  border-radius: var(--radius-12);
   border: 1px solid color-mix(in srgb, var(--gate-border, var(--border-subtle, var(--border))) 84%, transparent);
   background: color-mix(in srgb, var(--surface-2, #0f172a) 90%, #05080f);
 }
@@ -285,11 +285,11 @@
 }
 
 .createHint {
-  font-size: 12px;
+  font-size: var(--font-meta);
 }
 
 .createChipRow {
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .createChip {
@@ -337,14 +337,14 @@
 .onboardingShell {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
   min-height: min(620px, calc(100dvh - var(--safe-top) - var(--safe-bottom) - 84px));
 }
 
 .onboardingBody {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
   min-height: 0;
 }
 
@@ -354,7 +354,7 @@
 
 .onboardingOptionGrid {
   display: grid;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .onboardingPlanGrid {

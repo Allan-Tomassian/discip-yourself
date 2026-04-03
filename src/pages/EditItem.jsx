@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import ScreenShell from "./_ScreenShell";
-import { GateButton, GateSection } from "../shared/ui/gate/Gate";
+import { AppCard, AppScreen, GhostButton } from "../shared/ui/app";
 import ConflictResolver from "../ui/scheduling/ConflictResolver";
 import { safeConfirm } from "../utils/dialogs";
 import {
@@ -866,38 +865,35 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
 
   if (!item) {
     return (
-      <ScreenShell
+      <AppScreen
         pageId="edit-item"
         headerTitle={<span className="textAccent">Modifier</span>}
         headerSubtitle="Élément introuvable"
         headerRight={
-          <GateButton variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+          <GhostButton className="btnBackCompact backBtn" onClick={onBack}>
             Retour
-          </GateButton>
+          </GhostButton>
         }
         backgroundImage={backgroundImage}
       >
         <div className="mainPageStack editItemPageShell">
-          <GateSection
-            className="GateMainSection GateMainSectionCard GateSurfacePremium GateCardPremium"
-            collapsible={false}
-          >
+          <AppCard variant="elevated">
             <div className="GateRoleHelperText">Impossible de retrouver cet élément.</div>
-          </GateSection>
+          </AppCard>
         </div>
-      </ScreenShell>
+      </AppScreen>
     );
   }
 
   return (
-    <ScreenShell
+    <AppScreen
       pageId="edit-item"
       headerTitle={<span className="textAccent">Modifier</span>}
       headerSubtitle={item.title || (isProcess ? LABELS.action : LABELS.goal)}
       headerRight={
-        <GateButton variant="ghost" className="btnBackCompact backBtn" onClick={onBack}>
+        <GhostButton className="btnBackCompact backBtn" onClick={onBack}>
           Retour
-        </GateButton>
+        </GhostButton>
       }
       headerRowAlign="start"
       backgroundImage={backgroundImage}
@@ -916,6 +912,6 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
         onShift={applyConflictShift}
         onUnset={applyConflictNoTime}
       />
-    </ScreenShell>
+    </AppScreen>
   );
 }

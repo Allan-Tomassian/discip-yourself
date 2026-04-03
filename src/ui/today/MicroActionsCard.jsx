@@ -1,14 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
 import { UI_COPY } from "../labels";
+import {
+  AppCard,
+  AppSelect,
+  FeedbackMessage,
+  GhostButton,
+  SecondaryButton,
+} from "../../shared/ui/app";
 import "../../features/today/today.css";
-
-function MicroButton({ variant = "primary", size = "sm", className = "", ...props }) {
-  const gateVariant =
-    variant === "ghost" ? "ghost" : variant === "secondary" ? "secondary" : "primary";
-  const mergedClassName = [className, "GatePressable"].filter(Boolean).join(" ");
-  return <GateButton variant={gateVariant} size={size} className={mergedClassName} {...props} />;
-}
 
 function normalizeItems(items) {
   const list = Array.isArray(items) ? items : [];
@@ -107,9 +106,8 @@ export default function MicroActionsCard({
   }, [canUseCreditReroll, onUseRerollCredit, selectedIndices]);
 
   return (
-    <GateSection
+    <AppCard
       className={`microCard GateSurfacePremium GateCardPremium GateSecondarySectionCard${isReadOnlyDate ? " isReadOnlyDate" : ""}`}
-      collapsible={false}
       data-tour-id="today-micro-card"
     >
       <div className="microCardBody">
@@ -142,7 +140,7 @@ export default function MicroActionsCard({
         <div className="microToolbar">
           <div className="microContext GateRoleCardMeta">Choisis la catégorie à nourrir maintenant.</div>
           <div className="GateSelectWrap microCategorySelectWrap">
-            <select
+            <AppSelect
               value={categoryId}
               className="GateSelectPremium microCategorySelect"
               onChange={(event) => onCategoryChange?.(event.target.value)}
@@ -154,21 +152,21 @@ export default function MicroActionsCard({
                   {option.label}
                 </option>
               ))}
-            </select>
+            </AppSelect>
           </div>
         </div>
         {isReadOnlyDate ? (
           <div className="microTodayHintRow GateInlineMetaCard" data-testid="micro-actions-today-hint">
             <span className="microTodayHintText">Micro-actions disponibles uniquement aujourd’hui.</span>
-            <MicroButton
-              variant="ghost"
+            <GhostButton
+              size="sm"
               className="microGoTodayBtn"
               onClick={() => onGoToToday?.()}
               data-testid="micro-actions-go-today"
               aria-label="Revenir à aujourd’hui"
             >
               Revenir à aujourd’hui
-            </MicroButton>
+            </GhostButton>
           </div>
         ) : null}
 
@@ -194,8 +192,8 @@ export default function MicroActionsCard({
                   {item.subtitle ? <div className="microItemSub GateRoleCardMeta">{item.subtitle}</div> : null}
                 </div>
                 <span className="microBadge">{item.durationMin || 2} min</span>
-                <MicroButton
-                  variant="ghost"
+                <GhostButton
+                  size="sm"
                   className="microActionBtn"
                   onClick={() => onDone?.(index)}
                   disabled={!canValidate || isDone}
@@ -204,15 +202,15 @@ export default function MicroActionsCard({
                   aria-disabled={!canValidate || isDone}
                 >
                   {UI_COPY.done}
-                </MicroButton>
+                </GhostButton>
               </div>
             );
           })}
         </div>
 
         <div className="microRerollRow">
-          <MicroButton
-            variant="secondary"
+          <SecondaryButton
+            size="sm"
             className="microRerollBtn"
             onClick={handleReroll}
             disabled={!canReroll}
@@ -220,21 +218,21 @@ export default function MicroActionsCard({
             data-tour-id="today-micro-toggle"
           >
             Reroll
-          </MicroButton>
+          </SecondaryButton>
           {canUseCreditReroll ? (
-            <MicroButton
-              variant="ghost"
+            <GhostButton
+              size="sm"
               className="microUseCreditBtn"
               onClick={handleUseRerollCredit}
               aria-label="Utiliser un crédit reroll"
               data-testid="micro-use-reroll-credit"
             >
               Utiliser 1 reroll
-            </MicroButton>
+            </GhostButton>
           ) : null}
           {!isPremiumPlan && rerollBlocked && safeCredits <= 0 ? (
-            <MicroButton
-              variant="ghost"
+            <GhostButton
+              size="sm"
               className="microWatchAdBtn"
               onClick={() => onWatchAd?.()}
               disabled={!canWatchRewardedAd || adLoading}
@@ -243,17 +241,21 @@ export default function MicroActionsCard({
               aria-disabled={!canWatchRewardedAd || adLoading}
             >
               {adLoading ? "Vidéo..." : UI_COPY.watchAd}
-            </MicroButton>
+            </GhostButton>
           ) : null}
         </div>
 
-        {rerollBlocked ? <div className="microRerollLimit">Limite atteinte aujourd’hui.</div> : null}
+        {rerollBlocked ? (
+          <FeedbackMessage className="microRerollLimit" tone="warning">
+            Limite atteinte aujourd’hui.
+          </FeedbackMessage>
+        ) : null}
         {adFeedback ? (
-          <div className="microRewardStatus" role="status">
+          <FeedbackMessage className="microRewardStatus" tone="success" role="status">
             {adFeedback}
-          </div>
+          </FeedbackMessage>
         ) : null}
       </div>
-    </GateSection>
+    </AppCard>
   );
 }

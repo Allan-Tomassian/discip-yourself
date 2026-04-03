@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import ScreenShell from "./_ScreenShell";
-import { GateBadge, GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
+import { GateSectionIntro } from "../shared/ui/gate/Gate";
 import { useAuth } from "../auth/useAuth";
 import { getCategoryProfileSummary } from "../domain/categoryProfile";
 import { requestAiLocalAnalysis } from "../infra/aiLocalAnalysisClient";
@@ -31,6 +30,13 @@ import { buildPilotageDisciplineTrend, PILOTAGE_DISCIPLINE_WINDOWS } from "../fe
 import ManualAiStatus from "../components/ai/ManualAiStatus";
 import { BehaviorCue } from "../feedback/BehaviorFeedbackContext";
 import { derivePilotageBehaviorCue } from "../feedback/feedbackDerivers";
+import {
+  AppCard,
+  AppScreen,
+  GhostButton,
+  PrimaryButton,
+  StatusBadge,
+} from "../shared/ui/app";
 import "../features/pilotage/pilotage.css";
 import "../components/categorySurface.css";
 
@@ -40,22 +46,10 @@ const STATUS_LABELS = {
   ACTIVE: "Active",
 };
 
-const STATUS_STYLES = {
-  ACTIVE: {
-    backgroundColor: "rgba(76, 175, 80, 0.14)",
-    borderColor: "rgba(76, 175, 80, 0.8)",
-    color: "#EAF7ED",
-  },
-  DONE: {
-    backgroundColor: "rgba(158, 158, 158, 0.14)",
-    borderColor: "rgba(158, 158, 158, 0.7)",
-    color: "#F0F0F0",
-  },
-  EMPTY: {
-    backgroundColor: "rgba(255, 152, 0, 0.14)",
-    borderColor: "rgba(255, 152, 0, 0.8)",
-    color: "#FFF4E5",
-  },
+const STATUS_TONES = {
+  ACTIVE: "success",
+  DONE: "info",
+  EMPTY: "warning",
 };
 
 const DISCIPLINE_TREND_LABELS = {
@@ -77,75 +71,6 @@ function resolveExpectedRatio(done, expected) {
   return clamp01((Number.isFinite(done) ? done : 0) / expected);
 }
 
-function Button({ variant = "primary", size = "sm", className = "", ...props }) {
-  const gateVariant = variant === "ghost" ? "ghost" : "primary";
-  const mergedClassName = [className, "GatePressable"].filter(Boolean).join(" ");
-  return <GateButton variant={gateVariant} size={size} className={mergedClassName} {...props} />;
-}
-
-function Card({ className = "", children, ...props }) {
-  const mergedClassName = ["GateSurfacePremium", "GateCardPremium", className].filter(Boolean).join(" ");
-  return (
-    <GateSection className={mergedClassName} collapsible={false} {...props}>
-      {children}
-    </GateSection>
-  );
-}
-
-function StatRow({ label, value, right = null }) {
-  return (
-    <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-      <div className="itemTitle" style={{ minWidth: 0 }}>
-        {label}
-      </div>
-      <div className="row" style={{ alignItems: "center", gap: 10, minWidth: 0 }}>
-        {right}
-        <div className="itemSub" style={{ textAlign: "right" }}>
-          {value}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Meter({ value01 = 0, label = "", tone = "accent" }) {
-  const v = clamp01(value01);
-  const track = "rgba(255,255,255,0.10)";
-  const fill =
-    tone === "good"
-      ? "rgba(76, 175, 80, 0.75)"
-      : tone === "warn"
-        ? "rgba(255, 152, 0, 0.80)"
-        : tone === "bad"
-          ? "rgba(244, 67, 54, 0.78)"
-          : "rgba(124, 58, 237, 0.78)";
-  return (
-    <div className="col" style={{ gap: 8 }}>
-      {label ? <div className="small2 textMuted">{label}</div> : null}
-      <div
-        aria-hidden="true"
-        style={{
-          width: "100%",
-          height: 10,
-          borderRadius: 999,
-          background: track,
-          overflow: "hidden",
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
-        }}
-      >
-        <div
-          style={{
-            width: `${Math.round(v * 100)}%`,
-            height: "100%",
-            borderRadius: 999,
-            background: fill,
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
 function PilotageCategoryRow({
   category,
   color,
@@ -153,7 +78,7 @@ function PilotageCategoryRow({
   onClick,
   summary,
   statusLabel,
-  statusStyle,
+  statusTone,
   children,
   ...props
 }) {
@@ -165,9 +90,9 @@ function PilotageCategoryRow({
       selected={selected}
       onClick={onClick}
       rightSlot={
-        <GateBadge className="pilotageStatusBadge" style={{ ...statusStyle, borderWidth: 1, borderStyle: "solid" }}>
+        <StatusBadge className="pilotageStatusBadge" tone={statusTone}>
           {statusLabel}
-        </GateBadge>
+        </StatusBadge>
       }
       {...props}
     >
@@ -760,26 +685,36 @@ export default function Pilotage({
           : "default";
     return (
       <div className="pilotageInlineDetail" style={sharedSurfaceVars}>
-          <div className="pilotageInlineGrid">
-          <div
+        <div className="pilotageInlineGrid">
+          <AppCard
             className="pilotageInlinePanel pilotageInlinePanel--metrics GateSecondarySectionCard categorySurface categorySurface--surface"
             data-tour-id="pilotage-discipline"
             style={sharedSurfaceVars}
           >
-            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <div className="row rowBetween alignCenter wrap gap10">
               <div>
                 <div className="sectionTitle GateRoleSectionTitle">Pilotage rapide</div>
                 <div className="small2 GateRoleSectionSubtitle textMuted">4 signaux utiles et une mini courbe de lecture.</div>
               </div>
               <div className="row pilotageCompactWindowControls">
                 {PILOTAGE_DISCIPLINE_WINDOWS.map((windowDays) => (
-                  <Button
+                  disciplineWindowDays === windowDays ? (
+                    <PrimaryButton
+                      key={windowDays}
+                      size="sm"
+                      onClick={() => setDisciplineWindowDays(windowDays)}
+                    >
+                      {windowDays} j
+                    </PrimaryButton>
+                  ) : (
+                    <GhostButton
                     key={windowDays}
-                    variant={disciplineWindowDays === windowDays ? "primary" : "ghost"}
+                    size="sm"
                     onClick={() => setDisciplineWindowDays(windowDays)}
                   >
                     {windowDays} j
-                  </Button>
+                    </GhostButton>
+                  )
                 ))}
               </div>
             </div>
@@ -822,10 +757,13 @@ export default function Pilotage({
               animated
               variant="compact"
             />
-          </div>
+          </AppCard>
 
-          <div className="pilotageInlinePanel GateSecondarySectionCard categorySurface categorySurface--surface" style={sharedSurfaceVars}>
-            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <AppCard
+            className="pilotageInlinePanel GateSecondarySectionCard categorySurface categorySurface--surface"
+            style={sharedSurfaceVars}
+          >
+            <div className="row rowBetween alignCenter wrap gap10">
               <div>
                 <div className="sectionTitle GateRoleSectionTitle">Lecture locale</div>
                 <ManualAiStatus
@@ -841,17 +779,21 @@ export default function Pilotage({
                   stageLabel={manualPilotageAnalysis.loadingStageLabel}
                 />
               </div>
-              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                <Button onClick={handleAnalyzeCategory} disabled={!detailCategory || manualPilotageAnalysis.loading}>
+              <div className="row gap8 wrap">
+                <PrimaryButton
+                  size="sm"
+                  onClick={handleAnalyzeCategory}
+                  disabled={!detailCategory || manualPilotageAnalysis.loading}
+                >
                   {manualPilotageAnalysis.loading ? manualPilotageAnalysis.loadingStageLabel || "Analyse..." : "Analyser cette catégorie"}
-                </Button>
-                <Button variant="ghost" onClick={() => onOpenCoach?.({ mode: "free" })}>
+                </PrimaryButton>
+                <GhostButton size="sm" onClick={() => onOpenCoach?.({ mode: "free" })}>
                   Ouvrir le Coach
-                </Button>
+                </GhostButton>
                 {manualPilotageAnalysis.isPersistedForContext ? (
-                  <Button variant="ghost" onClick={manualPilotageAnalysis.dismissAnalysis}>
+                  <GhostButton size="sm" onClick={manualPilotageAnalysis.dismissAnalysis}>
                     Revenir au diagnostic local
-                  </Button>
+                  </GhostButton>
                 ) : null}
               </div>
             </div>
@@ -880,14 +822,14 @@ export default function Pilotage({
                 <div className="small2 textMuted">{manualPilotageAnalysis.error}</div>
               </div>
             ) : null}
-          </div>
+          </AppCard>
         </div>
       </div>
     );
   };
 
   return (
-    <ScreenShell
+    <AppScreen
       pageId="pilotage"
       headerTitle={<span data-tour-id="pilotage-title">{SURFACE_LABELS.pilotage}</span>}
       headerSubtitle={MAIN_PAGE_COPY.pilotage.orientation}
@@ -900,11 +842,8 @@ export default function Pilotage({
             subtitle="Lis rapidement où ton système progresse vraiment."
           />
           <div className="mainPageSectionBody">
-            <Card
-              className="GateMainSection GateMainSectionCard pilotageSummaryCard"
-              style={activePilotageSurfaceVars || undefined}
-            >
-              <div className="col" style={{ gap: 12 }}>
+            <AppCard className="GateSecondarySectionCard pilotageSummaryCard">
+              <div className="col gap12">
                 <div className="pilotageInsights">
                   <div className="pilotageInsightItem GateAnalyticsCard">
                     <div className="small2 GateRoleCardMeta textMuted">Signal principal</div>
@@ -930,7 +869,7 @@ export default function Pilotage({
                   ) : null}
                 </div>
               </div>
-            </Card>
+            </AppCard>
           </div>
         </section>
 
@@ -940,23 +879,23 @@ export default function Pilotage({
             subtitle="Ouvre une catégorie pour lire ses signaux utiles, son rythme récent et son prochain pas crédible."
           />
           <div className="mainPageSectionBody">
-            <Card
+            <AppCard
               className="GateMainSection GateMainSectionCard pilotageFocusCard"
               style={activePilotageSurfaceVars || undefined}
             >
-              <div className="col" style={{ gap: 12 }}>
+              <div className="col gap12">
                 {pilotageBehaviorCue ? (
                   <div>
                     <BehaviorCue cue={pilotageBehaviorCue} category={detailCategory || selectedCategory || null} />
                   </div>
                 ) : null}
-                <div className="col" role="list" style={{ gap: 12 }}>
+                <div className="col gap12" role="list">
                   <div className="pilotageFocusGroup">
                     <div className="pilotageFocusGroupHeader">
                       <div className="small2 GateRoleCardMeta textMuted">Catégories déjà structurées</div>
                       <div className="small2 GateRoleCardMeta textMuted">{structuredFocusCategories.length}</div>
                     </div>
-                    <div className="col" style={{ gap: 10 }}>
+                    <div className="col gap10">
                       {structuredFocusCategories.length ? structuredFocusCategories.map(({ category, status, summary }) => (
                         <div key={category.id} className="pilotageCategoryStack">
                           <PilotageCategoryRow
@@ -966,7 +905,7 @@ export default function Pilotage({
                             onClick={() => togglePilotageCategory(category.id)}
                             summary={summary}
                             statusLabel={STATUS_LABELS[status] || "Active"}
-                            statusStyle={STATUS_STYLES[status] || STATUS_STYLES.ACTIVE}
+                            statusTone={STATUS_TONES[status] || "info"}
                           >
                             {category.name || "Catégorie"}
                           </PilotageCategoryRow>
@@ -980,16 +919,16 @@ export default function Pilotage({
 
                   {deferredFocusCategories.length ? (
                     <div className="pilotageFocusGroup pilotageFocusGroup--deferred">
-                      <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <div className="row rowBetween alignCenter wrap gap10">
                         <div className="small2 GateRoleCardMeta textMuted">
                           {deferredFocusCategories.length} catégorie{deferredFocusCategories.length > 1 ? "s" : ""} à structurer
                         </div>
-                        <Button variant="ghost" onClick={() => setShowDeferredCategories((value) => !value)}>
+                        <GhostButton size="sm" onClick={() => setShowDeferredCategories((value) => !value)}>
                           {isDeferredGroupOpen ? "Masquer" : `Voir ${deferredFocusCategories.length} catégorie${deferredFocusCategories.length > 1 ? "s" : ""}`}
-                        </Button>
+                        </GhostButton>
                       </div>
                       {isDeferredGroupOpen ? (
-                        <div className="col" style={{ gap: 10 }}>
+                        <div className="col gap10">
                           {deferredFocusCategories.map(({ category, status, summary }) => (
                             <div key={category.id} className="pilotageCategoryStack">
                               <PilotageCategoryRow
@@ -999,7 +938,7 @@ export default function Pilotage({
                                 onClick={() => togglePilotageCategory(category.id)}
                                 summary={summary}
                                 statusLabel={STATUS_LABELS[status] || "Active"}
-                                statusStyle={STATUS_STYLES[status] || STATUS_STYLES.ACTIVE}
+                                statusTone={STATUS_TONES[status] || "info"}
                               >
                                 {category.name || "Catégorie"}
                               </PilotageCategoryRow>
@@ -1012,7 +951,7 @@ export default function Pilotage({
                   ) : null}
                 </div>
               </div>
-            </Card>
+            </AppCard>
           </div>
         </section>
 
@@ -1022,11 +961,8 @@ export default function Pilotage({
             subtitle="Lis le rythme récent avant d’ouvrir une catégorie."
           />
           <div className="mainPageSectionBody">
-            <Card
-              className="GateMainSection GateMainSectionCard pilotageStatsCard"
-              style={activePilotageSurfaceVars || undefined}
-            >
-              <div className="col" style={{ gap: 12 }}>
+            <AppCard className="GateSecondarySectionCard pilotageStatsCard">
+              <div className="col gap12">
                 <div className="pilotageTopGrid">
                   <div className="listItem GateRowPremium GateAnalyticsCard">
                     <div className="small2 GateRoleMetricLabel">Niveau global</div>
@@ -1069,7 +1005,7 @@ export default function Pilotage({
                   </div>
                 </div>
               </div>
-            </Card>
+            </AppCard>
           </div>
         </section>
 
@@ -1080,19 +1016,19 @@ export default function Pilotage({
               subtitle={`${legacyBuckets.pilotageRituals.length} élément${legacyBuckets.pilotageRituals.length > 1 ? "s" : ""} d’organisation ou de revue a été retiré${legacyBuckets.pilotageRituals.length > 1 ? "s" : ""} du flux d’exécution.`}
             />
             <div className="mainPageSectionBody">
-              <Card className="GateSecondarySectionCard">
-                <div className="col" style={{ gap: 6 }}>
+              <AppCard className="GateSecondarySectionCard">
+                <div className="col gap6">
                   {legacyBuckets.pilotageRituals.slice(0, 4).map((goal) => (
                     <div key={goal.id} className="small2 textMuted">
                       {goal.title || "Rituel"}
                     </div>
                   ))}
                 </div>
-              </Card>
+              </AppCard>
             </div>
           </section>
         ) : null}
       </div>
-    </ScreenShell>
+    </AppScreen>
   );
 }

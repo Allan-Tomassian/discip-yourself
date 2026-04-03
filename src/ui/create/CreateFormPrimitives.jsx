@@ -1,6 +1,14 @@
 import React from "react";
-import { GateBadge, GateButton, GateCard } from "../../shared/ui/gate/Gate";
-import Select from "../select/Select";
+import {
+  AppInput,
+  AppSelect,
+  AppTextarea,
+  ChoiceCard,
+  GhostButton,
+  PrimaryButton,
+  SecondaryButton,
+  StatusBadge,
+} from "../../shared/ui/app";
 import "../../features/create-flow/createFlow.css";
 
 function cx(...parts) {
@@ -19,15 +27,16 @@ export function CreateButton({
   withSound = true,
   ...props
 }) {
+  const ButtonComponent =
+    variant === "ghost" ? GhostButton : variant === "secondary" ? SecondaryButton : PrimaryButton;
   return (
-    <GateButton
-      variant={variant}
-      className={cx("GatePressable", "createActionButton", className)}
+    <ButtonComponent
+      className={cx("createActionButton", className)}
       withSound={withSound}
       {...props}
     >
       {children}
-    </GateButton>
+    </ButtonComponent>
   );
 }
 
@@ -43,52 +52,40 @@ export function CreateChoiceCard({
   ...props
 }) {
   return (
-    <GateCard
+    <ChoiceCard
+      title={title}
+      description={description}
+      badge={badge ? <StatusBadge className="createChoiceBadge">{badge}</StatusBadge> : null}
       className={cx(
         "createChoiceCard",
-        "GateRowPremium",
-        "GatePressable",
         disabled && "isDisabled",
         className
       )}
       selected={selected}
       onClick={disabled ? undefined : onClick}
-      withSound
+      disabled={disabled}
       {...props}
     >
       <div className="createChoiceText">
-        {title ? <div className="createChoiceTitle">{title}</div> : null}
-        {description ? <div className="createChoiceDescription">{description}</div> : null}
         {children}
       </div>
-      {badge ? <GateBadge className="createChoiceBadge">{badge}</GateBadge> : null}
-    </GateCard>
+    </ChoiceCard>
   );
 }
 
 export function CreateInput({ className = "", style, ...props }) {
-  const input = (
-    <input
-      className={cx("GateInputPremium", "createInputControl", className)}
-      style={{ maxWidth: "100%", minWidth: 0, ...(style || {}) }}
-      {...props}
-    />
-  );
+  const input = <AppInput className={cx("createInputControl", className)} style={style} {...props} />;
   return wrapDateLikeControl(props?.type, input);
 }
 
 export function CreateTextarea({ className = "", style, ...props }) {
   return (
-    <textarea
-      className={cx("GateTextareaPremium", "createTextareaControl", className)}
-      style={{ maxWidth: "100%", minWidth: 0, ...(style || {}) }}
-      {...props}
-    />
+    <AppTextarea className={cx("createTextareaControl", className)} style={style} {...props} />
   );
 }
 
 export function CreateSelect({ className = "", ...props }) {
-  return <Select className={cx("GateSelectPremium", "createSelectControl", className)} {...props} />;
+  return <AppSelect className={cx("createSelectControl", className)} {...props} />;
 }
 
 export function CreateChip({

@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Portal from "../ui/portal/Portal";
 import { LABELS } from "../ui/labels";
-import { GateButton } from "../shared/ui/gate/Gate";
+import { GhostButton, PrimaryButton } from "../shared/ui/app";
 
 function toAnchorRect(rect) {
   if (!rect) return null;
@@ -98,22 +98,22 @@ export default function PlusExpander({
         <div className="plusExpanderPanel GateGlassOuter">
           <div className="plusExpanderPanelClip GateGlassClip GateGlassBackdrop">
             <div className="plusExpanderPanelContent GateGlassContent" ref={panelRef} role="menu" aria-label="Créer">
-              <div className="stack stackGap8">
-                <GateButton className="GatePressable" onClick={onChooseAction}>
+              <div className="plusExpanderActions">
+                <PrimaryButton className="plusExpanderAction" onClick={onChooseAction}>
                   Action rapide
-                </GateButton>
-                <GateButton variant="ghost" className="GatePressable" onClick={onChooseObjective}>
+                </PrimaryButton>
+                <GhostButton className="plusExpanderAction" onClick={onChooseObjective}>
                   {LABELS.goal}
-                </GateButton>
+                </GhostButton>
                 {typeof onChooseStructuring === "function" ? (
-                  <GateButton variant="ghost" className="GatePressable" onClick={onChooseStructuring}>
+                  <GhostButton className="plusExpanderAction" onClick={onChooseStructuring}>
                     Structurer avec le Coach
-                  </GateButton>
+                  </GhostButton>
                 ) : null}
                 {hasDraft && typeof onResumeDraft === "function" ? (
-                  <GateButton variant="ghost" className="GatePressable" onClick={onResumeDraft}>
+                  <GhostButton className="plusExpanderAction" onClick={onResumeDraft}>
                     Reprendre
-                  </GateButton>
+                  </GhostButton>
                 ) : null}
               </div>
             </div>

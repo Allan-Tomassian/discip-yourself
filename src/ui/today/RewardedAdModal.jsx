@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { GateButton, GateHeader, GatePanel } from "../../shared/ui/gate/Gate";
+import { GateHeader } from "../../shared/ui/gate/Gate";
+import { AppSheet, GhostButton, PrimaryButton } from "../../shared/ui/app";
 
 const REWARDED_AD_DURATION_MS = 3000;
 
@@ -52,64 +52,43 @@ export default function RewardedAdModal({ open, placement = "micro-actions", onC
     onDismiss?.({ reason });
   };
 
-  return createPortal(
-    <div
-      className="microAdBackdrop"
-      onClick={(event) => {
-        if (event.target !== event.currentTarget) return;
-        close("backdrop");
-      }}
-      role="presentation"
+  return (
+    <AppSheet
+      open={open}
+      onClose={({ reason }) => close(reason || "backdrop")}
+      className="microAdSheet"
+      maxWidth={420}
     >
-      <div
-        className="microAdPanelOuter GateGlassOuter"
-        onClick={(event) => event.stopPropagation()}
-        onMouseDown={(event) => event.stopPropagation()}
-        onPointerDown={(event) => event.stopPropagation()}
-      >
-        <div className="microAdPanelClip GateGlassClip GateGlassBackdrop">
-          <GatePanel
-            className="microAdPanel GateGlassContent GateSurfacePremium GateCardPremium"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Vidéo sponsorisée"
-            data-testid="rewarded-ad-modal"
+      <div className="microAdPanel" data-testid="rewarded-ad-modal">
+        <GateHeader
+          title="Vidéo sponsorisée"
+          subtitle={`Placement: ${placement}`}
+          className="microAdHeader"
+        />
+        <p className="microAdText">
+          Simule une vidéo courte pour recevoir ta récompense.
+        </p>
+        <div className="microAdActions GatePrimaryCtaRow">
+          <PrimaryButton
+            type="button"
+            withSound
+            onClick={startVideo}
+            disabled={running}
+            data-testid="rewarded-ad-complete"
           >
-            <GateHeader
-              title="Vidéo sponsorisée"
-              subtitle={`Placement: ${placement}`}
-              className="microAdHeader"
-            />
-            <p className="microAdText">
-              Simule une vidéo courte pour recevoir ta récompense.
-            </p>
-            <div className="microAdActions GatePrimaryCtaRow">
-              <GateButton
-                type="button"
-                className="GatePressable"
-                withSound
-                onClick={startVideo}
-                disabled={running}
-                data-testid="rewarded-ad-complete"
-              >
-                {running ? "Lecture..." : "Simuler fin de vidéo (3s)"}
-              </GateButton>
-              <GateButton
-                type="button"
-                variant="ghost"
-                className="GatePressable"
-                withSound
-                onClick={() => close("dismissed")}
-                disabled={running}
-                data-testid="rewarded-ad-close"
-              >
-                Fermer
-              </GateButton>
-            </div>
-          </GatePanel>
+            {running ? "Lecture..." : "Simuler fin de vidéo (3s)"}
+          </PrimaryButton>
+          <GhostButton
+            type="button"
+            withSound
+            onClick={() => close("dismissed")}
+            disabled={running}
+            data-testid="rewarded-ad-close"
+          >
+            Fermer
+          </GhostButton>
         </div>
       </div>
-    </div>,
-    document.body
+    </AppSheet>
   );
 }

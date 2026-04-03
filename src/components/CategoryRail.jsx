@@ -73,12 +73,13 @@ export default function CategoryRail({
             type="button"
             className={`categoryRailItem bottomCategoryChip NavPillUnified GatePressable${isSelected ? " navBtnActive bottomCategoryChipActive" : ""}`}
             aria-pressed={isSelected}
+            title={c.name || "Catégorie"}
             style={isSelected ? accentVars : undefined}
             onClick={() => {
               if (typeof onSelect === "function") onSelect(c.id);
             }}
           >
-            <span className="itemTitle">
+            <span className="NavPillUnifiedLabel bottomCategoryChipLabel">
               {c.name || "Catégorie"}
             </span>
           </button>

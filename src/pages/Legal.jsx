@@ -1,14 +1,13 @@
 import React from "react";
-import ScreenShell from "./_ScreenShell";
-import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import { UI_COPY } from "../ui/labels";
+import { AppCard, AppScreen, GhostButton, SectionHeader } from "../shared/ui/app";
 
 export default function Legal({ data, onOpenSupport }) {
   const safeData = data && typeof data === "object" ? data : {};
   const backgroundImage = safeData?.profile?.whyImage || "";
 
   return (
-    <ScreenShell
+    <AppScreen
       data={safeData}
       pageId="legal"
       backgroundImage={backgroundImage}
@@ -16,8 +15,8 @@ export default function Legal({ data, onOpenSupport }) {
       headerSubtitle="Conditions d’utilisation"
     >
       <section className="mainPageSection">
-        <GateSectionIntro title="Utilisation" subtitle="Cadre général de l’app." />
-        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <SectionHeader title="Utilisation" subtitle="Cadre général de l’app." />
+        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="col gap12">
             <div className="GateInlineMetaCard col gap8">
               <div className="GateRoleCardTitle">Cadre produit</div>
@@ -32,12 +31,12 @@ export default function Legal({ data, onOpenSupport }) {
               </div>
             </div>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro title="Compte et données" subtitle="Accès, abonnement et stockage." />
-        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <SectionHeader title="Compte et données" subtitle="Accès, abonnement et stockage." />
+        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="col gap12">
             <div className="GateInlineMetaCard col gap8">
               <div className="GateRoleCardTitle">Accès</div>
@@ -52,24 +51,22 @@ export default function Legal({ data, onOpenSupport }) {
               </div>
             </div>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro title="Support" subtitle="Besoin d’aide produit ou juridique ?" />
-        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <SectionHeader title="Support" subtitle="Besoin d’aide produit ou juridique ?" />
+        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="GatePrimaryCtaRow">
-            <GateButton
-              variant="ghost"
+            <GhostButton
               size="sm"
-              className="GatePressable"
               onClick={() => (typeof onOpenSupport === "function" ? onOpenSupport() : null)}
             >
               {UI_COPY.openSupport}
-            </GateButton>
+            </GhostButton>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
-    </ScreenShell>
+    </AppScreen>
   );
 }

@@ -1,7 +1,6 @@
 import React from "react";
-import ScreenShell from "./_ScreenShell";
-import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import { UI_COPY } from "../ui/labels";
+import { AppCard, AppScreen, GhostButton, SectionHeader } from "../shared/ui/app";
 
 const QUESTIONS = [
   {
@@ -34,7 +33,7 @@ export default function Faq({ data, setTab }) {
   const safeData = data && typeof data === "object" ? data : {};
 
   return (
-    <ScreenShell
+    <AppScreen
       data={safeData}
       pageId="faq"
       backgroundImage={safeData?.profile?.whyImage || ""}
@@ -42,8 +41,8 @@ export default function Faq({ data, setTab }) {
       headerSubtitle="Réponses rapides aux questions fréquentes."
     >
       <section className="mainPageSection">
-        <GateSectionIntro title="Questions fréquentes" subtitle="Les réponses utiles les plus courantes." />
-        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <SectionHeader title="Questions fréquentes" subtitle="Les réponses utiles les plus courantes." />
+        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="col gap12">
             {QUESTIONS.map((item) => (
               <div key={item.question} className="GateInlineMetaCard col gap8">
@@ -52,26 +51,24 @@ export default function Faq({ data, setTab }) {
               </div>
             ))}
           </div>
-        </GateSection>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro title="Besoin d’aide supplémentaire ?" subtitle="Ouvre le support si la réponse n’est pas ici." />
-        <GateSection collapsible={false} className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <SectionHeader title="Besoin d’aide supplémentaire ?" subtitle="Ouvre le support si la réponse n’est pas ici." />
+        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="GatePrimaryCtaRow">
-            <GateButton
+            <GhostButton
               type="button"
-              variant="ghost"
               size="sm"
-              className="GatePressable"
               withSound
               onClick={() => setTab?.("support")}
             >
               {UI_COPY.openSupport}
-            </GateButton>
+            </GhostButton>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
-    </ScreenShell>
+    </AppScreen>
   );
 }

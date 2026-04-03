@@ -62,13 +62,18 @@
   scroll-snap-align: center;
 }
 
+.bottomCategoryChipLabel {
+  color: inherit;
+}
+
 .bottomCategoryPlus {
   flex: 0 0 auto;
   width: var(--nav-pill-height);
   height: var(--nav-pill-height);
   min-width: var(--nav-pill-height);
   padding: 0;
-  font-size: var(--font-section-title);
+  font-size: var(--font-body-strong);
+  font-weight: var(--font-weight-semibold);
   line-height: 1;
 }
 

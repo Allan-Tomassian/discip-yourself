@@ -1,8 +1,13 @@
 import React from "react";
-import ScreenShell from "./_ScreenShell";
-import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import { getPlanLimits, isPremium } from "../logic/entitlements";
 import { LABELS, MARKETING_COPY, UI_COPY } from "../ui/labels";
+import {
+  AppCard,
+  AppScreen,
+  GhostButton,
+  PrimaryButton,
+  SectionHeader,
+} from "../shared/ui/app";
 
 export default function Subscription({ data, onOpenPaywall, onRestorePurchases }) {
   const safeData = data && typeof data === "object" ? data : {};
@@ -18,22 +23,19 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
   const expiryLabel = Number.isFinite(expiryMs) ? new Date(expiryMs).toLocaleDateString() : "";
 
   return (
-    <ScreenShell
+    <AppScreen
       data={safeData}
-      pageId="settings"
+      pageId="billing"
       backgroundImage={backgroundImage}
       headerTitle="Abonnement"
       headerSubtitle="Plan, achats et accès Premium"
     >
       <section className="mainPageSection">
-        <GateSectionIntro
+        <SectionHeader
           title={premium ? MARKETING_COPY.premiumPlan : MARKETING_COPY.essentialPlan}
           subtitle="Gère ton plan, tes achats et tes accès."
         />
-        <GateSection
-          collapsible={false}
-          className="GateSurfacePremium GateCardPremium GateSecondarySectionCard"
-        >
+        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
           <div className="col gap12">
             <div className="GateInlineMetaCard col gap8">
               <div className="GateRoleCardTitle">Plan actif</div>
@@ -56,8 +58,7 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
             ) : null}
           </div>
           <div className="GatePrimaryCtaRow">
-            <GateButton
-              className="GatePressable"
+            <PrimaryButton
               onClick={() => {
                 if (premium) return;
                 if (typeof onOpenPaywall === "function") onOpenPaywall("Abonnement");
@@ -65,20 +66,18 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
               disabled={premium}
             >
               {premium ? MARKETING_COPY.premiumPlan : UI_COPY.discoverPremium}
-            </GateButton>
-            <GateButton
-              variant="ghost"
+            </PrimaryButton>
+            <GhostButton
               size="sm"
-              className="GatePressable"
               onClick={() => {
                 if (typeof onRestorePurchases === "function") onRestorePurchases();
               }}
             >
               {UI_COPY.restorePurchases}
-            </GateButton>
+            </GhostButton>
           </div>
-        </GateSection>
+        </AppCard>
       </section>
-    </ScreenShell>
+    </AppScreen>
   );
 }

@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import ScreenShell from "./_ScreenShell";
 import { normalizeRouteOrigin } from "../app/routeOrigin";
 import { safeConfirm } from "../utils/dialogs";
 import { uid } from "../utils/helpers";
-import { GateButton } from "../shared/ui/gate/Gate";
+import { AppScreen } from "../shared/ui/app";
 import {
   createActionModel,
 } from "../domain/actionModel";
@@ -764,7 +763,7 @@ export default function CreateItem({
   };
 
   return (
-    <ScreenShell
+    <AppScreen
       data={data}
       pageId="create-item"
       headerTitle={headerTitle}
@@ -799,6 +798,6 @@ export default function CreateItem({
           <ActionCreateScreen controller={actionScreenController} />
         )}
       </div>
-    </ScreenShell>
+    </AppScreen>
   );
 }
