@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import AuthCardShell from "./AuthCardShell";
 import { isValidEmail } from "./loginAvailability";
 import {
   AppInput,
+  AppStandaloneScreen,
   AppTextButton,
   FeedbackMessage,
   FieldGroup,
@@ -58,7 +58,7 @@ export default function Login({
   }
 
   return (
-    <AuthCardShell
+    <AppStandaloneScreen
       data-testid="auth-login-screen"
       title="Connexion"
       subtitle="Connecte-toi avec ton email et ton mot de passe."
@@ -132,6 +132,6 @@ export default function Login({
           {status.message}
         </FeedbackMessage>
       ) : null}
-    </AuthCardShell>
+    </AppStandaloneScreen>
   );
 }

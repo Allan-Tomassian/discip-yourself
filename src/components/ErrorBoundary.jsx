@@ -1,6 +1,6 @@
 import React from "react";
-import { GateButton, GateHeader, GatePanel } from "../shared/ui/gate/Gate";
-import "../shared/ui/gate/gate-standalone.css";
+import { AppCard, EmptyState, GhostButton, PrimaryButton } from "../shared/ui/app";
+import "./errorBoundary.css";
 
 function buildDiagnosticText(error, info) {
   const message = error?.message || (error ? String(error) : "Erreur inconnue");
@@ -64,44 +64,30 @@ export default class ErrorBoundary extends React.Component {
     if (!this.state.hasError) return this.props.children;
     const diagnosticText = buildDiagnosticText(this.state.error, this.state.info);
     return (
-      <div className="gateStandaloneShell">
-        <div className="gateStandaloneInner" style={{ width: "min(100%, 680px)" }}>
-          <GatePanel className="gateStandalonePanel GateMainSection GateSurfacePremium GateCardPremium">
-            <GateHeader
-              className="gateStandaloneHeader"
+      <div className="errorBoundaryShell">
+        <div className="errorBoundaryInner">
+          <AppCard variant="elevated" className="errorBoundaryCard">
+            <EmptyState
               title="Une erreur est survenue"
               subtitle="L’application a rencontré un problème inattendu. Tu peux recharger ou copier le diagnostic."
+              actions={
+                <div className="errorBoundaryActions">
+                  <PrimaryButton onClick={() => window.location.reload()}>Recharger</PrimaryButton>
+                  <GhostButton onClick={() => copyText(diagnosticText)}>
+                    Copier le diagnostic
+                  </GhostButton>
+                </div>
+              }
             />
-            <div className="gateStandaloneContent">
-              <div className="row" style={{ marginTop: 6, gap: 8, flexWrap: "wrap" }}>
-              <GateButton onClick={() => window.location.reload()}>Recharger</GateButton>
-              <GateButton variant="secondary" onClick={() => copyText(diagnosticText)}>
-                Copier le diagnostic
-              </GateButton>
-              </div>
-              <details style={{ marginTop: 10 }}>
-                <summary className="small" style={{ cursor: "pointer" }}>
+            <details className="errorBoundaryDetails">
+              <summary className="errorBoundarySummary">
                 Détails
-                </summary>
-                <pre
-                  className="small2"
-                  style={{
-                    marginTop: 8,
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    maxHeight: 260,
-                    overflow: "auto",
-                    background: "color-mix(in srgb, var(--surface-elevated) 88%, rgba(255,255,255,0.04))",
-                    padding: 12,
-                    borderRadius: 10,
-                    border: "1px solid var(--hairline)",
-                  }}
-                >
-                  {diagnosticText}
-                </pre>
-              </details>
-            </div>
-          </GatePanel>
+              </summary>
+              <pre className="errorBoundaryDiagnostic">
+                {diagnosticText}
+              </pre>
+            </details>
+          </AppCard>
         </div>
       </div>
     );

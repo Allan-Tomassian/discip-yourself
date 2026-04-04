@@ -33,9 +33,12 @@ export function GateTextButton({ className = "", type = "button", ...props }) {
   return <button type={type} className={cx("gateTextButton", className)} {...props} />;
 }
 
-export function GateIconButton({ className = "", type = "button", ...props }) {
-  return <button type={type} className={cx("GateIconButtonPremium", className)} {...props} />;
-}
+export const GateIconButton = React.forwardRef(function GateIconButton(
+  { className = "", type = "button", ...props },
+  ref
+) {
+  return <button ref={ref} type={type} className={cx("GateIconButtonPremium", className)} {...props} />;
+});
 
 export function GateStandaloneScreen({
   title,

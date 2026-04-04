@@ -1,0 +1,292 @@
+.microCard {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.microCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.microHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding-inline: 2px;
+}
+
+.microHeaderMain {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.microHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.microHeaderTitle,
+.microItemTitle {
+  color: var(--text);
+  font-size: var(--font-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.35;
+}
+
+.microItemTitle {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.microHeaderMeta,
+.microContext,
+.microDoneMeta,
+.microItemSub,
+.microAdText {
+  color: var(--text-2);
+  font-size: var(--font-meta);
+  line-height: 1.45;
+}
+
+.microHeaderStats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-8);
+  min-width: max-content;
+}
+
+.microDoneStat {
+  white-space: nowrap;
+}
+
+.microDoneMeta {
+  text-align: right;
+  max-width: 168px;
+}
+
+.microToolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(136px, 208px);
+  gap: var(--space-8);
+  align-items: center;
+  padding-inline: 2px;
+}
+
+.microCategorySelectWrap,
+.microCategorySelect {
+  width: 100%;
+}
+
+.microTodayHintRow {
+  margin-inline: 2px;
+}
+
+.microTodayHintText {
+  color: var(--text-2);
+  font-size: var(--font-meta);
+  line-height: 1.45;
+}
+
+.microGoTodayBtn {
+  min-width: 150px;
+  justify-content: center;
+}
+
+.microCard.isReadOnlyDate .microList,
+.microCard.isReadOnlyDate .microRerollRow {
+  opacity: 0.9;
+}
+
+.microCard.isReadOnlyDate .microPick {
+  cursor: not-allowed;
+}
+
+.microList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-inline: 2px;
+}
+
+.microItemRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.microPick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--checkRowBorder);
+  border-radius: var(--radius-10);
+  background: var(--checkRowBg);
+  position: relative;
+  cursor: pointer;
+}
+
+.microPickInput {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.microPickMark {
+  font-size: var(--font-micro);
+  color: var(--accent);
+  opacity: 0;
+  transform: scale(0.8);
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+  pointer-events: none;
+}
+
+.microPickInput:checked + .microPickMark {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.microItemMain {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.microItemSub {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.microBadge {
+  white-space: nowrap;
+  min-height: auto;
+}
+
+.microActionBtn {
+  min-width: 64px;
+  justify-content: center;
+}
+
+.microRerollRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+  padding-inline: 2px;
+}
+
+.microRerollBtn {
+  min-width: 84px;
+  justify-content: center;
+}
+
+.microWatchAdBtn,
+.microUseCreditBtn {
+  min-width: 128px;
+  justify-content: center;
+}
+
+.microRerollLimit,
+.microRewardStatus {
+  line-height: 1.34;
+  padding-inline: 2px;
+}
+
+.microAdSheet {
+  width: min(420px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
+}
+
+.microAdPanelBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.microAdText {
+  margin: 0;
+}
+
+.microAdActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .microToolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .microHeaderStats {
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  .microItemRow {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto auto;
+    align-items: start;
+    gap: var(--space-8);
+  }
+
+  .microPick {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .microItemMain {
+    grid-column: 1 / span 2;
+    grid-row: 2;
+  }
+
+  .microBadge {
+    grid-row: 1;
+    grid-column: 2;
+    justify-self: end;
+  }
+
+  .microActionBtn {
+    grid-row: 3;
+    grid-column: 2;
+    justify-self: end;
+  }
+
+  .microHeader {
+    flex-direction: column;
+  }
+
+  .microHeaderMain,
+  .microHeaderText {
+    width: 100%;
+  }
+
+  .microAdActions {
+    width: 100%;
+  }
+
+  .microAdActions > * {
+    flex: 1 1 auto;
+  }
+}

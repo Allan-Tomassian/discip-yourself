@@ -1,8 +1,6 @@
 // src/pages/Categories.jsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import ScreenShell from "./_ScreenShell";
 import { normalizeLibraryFocusTarget } from "../app/coachCreatedViewTarget";
-import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import SortableBlocks from "../components/SortableBlocks";
 import AccentCategoryRow from "../components/AccentCategoryRow";
 import { getCategoryCounts } from "../logic/pilotage";
@@ -30,6 +28,17 @@ import {
 import { collectSystemInboxBuckets } from "../domain/systemInboxMigration";
 import { useBehaviorFeedback } from "../feedback/BehaviorFeedbackContext";
 import { deriveBehaviorFeedbackSignal } from "../feedback/feedbackDerivers";
+import {
+  AppCard,
+  AppChip,
+  AppIconButton,
+  AppInput,
+  AppScreen,
+  AppTextarea,
+  GhostButton,
+  SectionHeader,
+  StatusBadge,
+} from "../shared/ui/app";
 import "../features/library/library.css";
 
 // TOUR MAP:
@@ -51,31 +60,6 @@ function parseScopeKey(scopeKey) {
 
 function escapeSelectorValue(value) {
   return String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-}
-
-function Button({ variant = "primary", size = "sm", className = "", ...props }) {
-  const gateVariant = variant === "ghost" ? "ghost" : "primary";
-  const mergedClassName = [className, "GatePressable"].filter(Boolean).join(" ");
-  return <GateButton variant={gateVariant} size={size} className={mergedClassName} {...props} />;
-}
-
-function Card({ className = "", children, ...props }) {
-  const mergedClassName = ["GateSurfacePremium", "GateCardPremium", className].filter(Boolean).join(" ");
-  return (
-    <GateSection className={mergedClassName} collapsible={false} {...props}>
-      {children}
-    </GateSection>
-  );
-}
-
-function Input({ className = "", ...props }) {
-  const mergedClassName = ["GateInputPremium", className].filter(Boolean).join(" ");
-  return <input className={mergedClassName} {...props} />;
-}
-
-function Textarea({ className = "", ...props }) {
-  const mergedClassName = ["GateTextareaPremium", className].filter(Boolean).join(" ");
-  return <textarea className={mergedClassName} {...props} />;
 }
 
 export default function Categories({
@@ -685,15 +669,15 @@ export default function Categories({
                 {isExpanded ? "−" : "+"}
               </span>
               {allowDrag && drag ? (
-                <button
+                <AppIconButton
                   ref={setActivatorNodeRef}
                   {...listeners}
                   {...attributes}
-                  className="dragHandle"
+                  className="libraryDragHandle"
                   aria-label="Réorganiser"
                 >
                   ⋮⋮
-                </button>
+                </AppIconButton>
               ) : null}
             </span>
           }
@@ -709,7 +693,7 @@ export default function Categories({
         >
           <div>
             {isEditing ? (
-              <Input
+              <AppInput
                 value={draftCategoryName}
                 onChange={(event) =>
                   draftStore.patchDraft(getCategoryScopeKey(category.id), { name: event.target.value })
@@ -743,8 +727,9 @@ export default function Categories({
                 Détails
               </div>
               <div className="row gap8">
-                <Button
-                  variant="ghost"
+                <GhostButton
+                  type="button"
+                  size="sm"
                   onClick={() => {
                     if (isEditing) {
                       saveGoalTitleEditing();
@@ -762,15 +747,16 @@ export default function Categories({
                   aria-pressed={isEditing}
                 >
                   {isEditing ? "Terminer" : "Gérer"}
-                </Button>
+                </GhostButton>
                 {isSuggested && category.id !== SYSTEM_INBOX_ID ? (
-                  <Button
-                    variant="ghost"
+                  <GhostButton
+                    type="button"
+                    size="sm"
                     onClick={() => deactivateSuggestedCategory(category)}
                     disabled={hasContent}
                   >
                     Désactiver
-                  </Button>
+                  </GhostButton>
                 ) : null}
               </div>
             </div>
@@ -780,7 +766,7 @@ export default function Categories({
               </div>
               {isEditing ? (
                 <div className="mt6">
-                  <Textarea
+                  <AppTextarea
                     value={draftCategoryWhy}
                     onChange={(event) =>
                       draftStore.patchDraft(getCategoryScopeKey(category.id), { whyText: event.target.value })
@@ -825,7 +811,7 @@ export default function Categories({
                         <div className="row rowBetween gap8">
                           <div className="col gap6 minW0">
                             {isEditingGoalTitle ? (
-                              <Input
+                              <AppInput
                                 value={draftTitle}
                                 onChange={(event) =>
                                   draftStore.patchDraft(getGoalScopeKey(g.id), { title: event.target.value })
@@ -861,14 +847,15 @@ export default function Categories({
                           </div>
                           <div className="row gap8 alignCenter">
                             {isPrimaryGoal ? (
-                              <span className="badge badgeAccent">
+                              <StatusBadge tone="info">
                                 Prioritaire
-                              </span>
+                              </StatusBadge>
                             ) : null}
                             {isEditing ? (
                               <>
-                                <Button
-                                  variant="ghost"
+                                <GhostButton
+                                  type="button"
+                                  size="sm"
                                   onClick={() => {
                                     if (isEditingGoalTitle) {
                                       saveGoalTitleEditing(g.id);
@@ -879,14 +866,15 @@ export default function Categories({
                                   data-testid={`library-project-rename-${g.id}`}
                                 >
                                   {isEditingGoalTitle ? "OK" : "Renommer"}
-                                </Button>
-                                <Button
-                                  variant="ghost"
+                                </GhostButton>
+                                <GhostButton
+                                  type="button"
+                                  size="sm"
                                   onClick={() => deleteOutcome(g)}
                                   data-testid={`library-project-delete-${g.id}`}
                                 >
                                   ✕
-                                </Button>
+                                </GhostButton>
                               </>
                             ) : null}
                           </div>
@@ -922,7 +910,7 @@ export default function Categories({
                               <div className="row rowBetween gap8">
                                 <div className="col gap6 minW0">
                                   {isEditingGoalTitle ? (
-                                    <Input
+                                    <AppInput
                                       value={draftTitle}
                                       onChange={(event) =>
                                         draftStore.patchDraft(getGoalScopeKey(goal.id), { title: event.target.value })
@@ -956,30 +944,32 @@ export default function Categories({
                                     </div>
                                   )}
                                   {badges.length ? (
-                                    <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-                                      {badges.map((label, idx) => (
-                                        <span key={`${goal.id}-b-${idx}`} className="badge">
+                                      <div className="row wrap libraryBadgeRow">
+                                        {badges.map((label, idx) => (
+                                        <StatusBadge key={`${goal.id}-b-${idx}`} className="libraryBadge">
                                           {label}
-                                        </span>
+                                        </StatusBadge>
                                       ))}
-                                    </div>
+                                      </div>
                                   ) : null}
                                 </div>
                                 {canLink ? (
-                                  <Button
-                                    variant="ghost"
+                                  <GhostButton
+                                    type="button"
+                                    size="sm"
                                     onClick={() => {
                                       if (!linkTargetId || typeof setData !== "function") return;
                                       setData((prev) => linkProcessToOutcome(prev, goal.id, linkTargetId));
                                     }}
                                   >
                                     Lier
-                                  </Button>
+                                  </GhostButton>
                                 ) : null}
                                 {isEditing ? (
                                   <>
-                                    <Button
-                                      variant="ghost"
+                                    <GhostButton
+                                      type="button"
+                                      size="sm"
                                       onClick={() => {
                                         if (isEditingGoalTitle) {
                                           saveGoalTitleEditing(goal.id);
@@ -990,21 +980,23 @@ export default function Categories({
                                       data-testid={`library-action-rename-${goal.id}`}
                                     >
                                       {isEditingGoalTitle ? "OK" : "Renommer"}
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
+                                    </GhostButton>
+                                    <GhostButton
+                                      type="button"
+                                      size="sm"
                                       onClick={() => openEditItemRoute(goal)}
                                       data-testid={`library-action-edit-${goal.id}`}
                                     >
                                       Éditer
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
+                                    </GhostButton>
+                                    <GhostButton
+                                      type="button"
+                                      size="sm"
                                       onClick={() => deleteAction(goal)}
                                       data-testid={`library-action-delete-${goal.id}`}
                                     >
                                       ✕
-                                    </Button>
+                                    </GhostButton>
                                   </>
                                 ) : null}
                               </div>
@@ -1031,27 +1023,27 @@ export default function Categories({
   }
 
   return (
-      <ScreenShell
-        pageId="library"
-        headerTitle={<span data-tour-id="library-title">{SURFACE_LABELS.library}</span>}
-        headerSubtitle={MAIN_PAGE_COPY.library.orientation}
-        backgroundImage={safeData?.profile?.whyImage || ""}
-      >
+    <AppScreen
+      pageId="library"
+      headerTitle={<span data-tour-id="library-title">{SURFACE_LABELS.library}</span>}
+      headerSubtitle={MAIN_PAGE_COPY.library.orientation}
+      backgroundImage={safeData?.profile?.whyImage || ""}
+    >
       <div className="mainPageStack libraryPage">
         {legacyBuckets.reclassifyCandidates.length ? (
           <section className="mainPageSection">
-            <GateSectionIntro
+            <SectionHeader
               title={MAIN_PAGE_COPY.library.reclassifyTitle}
               actions={
-                <div className="small2 GateRoleCardMeta textMuted2">
+                <div className="small2 textMuted2">
                   {legacyBuckets.reclassifyCandidates.length} action{legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} hors catégorie stable
                 </div>
               }
             />
             <div className="mainPageSectionBody">
-              <Card className="GateSecondarySectionCard">
+              <AppCard>
                 <div className="col gap10">
-                  <div className="small2 GateRoleSectionSubtitle textMuted">
+                  <div className="small2 textMuted">
                     Les actions héritées de <strong>Général</strong> restent hors de ta carte active tant qu&apos;elles ne sont pas rattachées à une catégorie stable.
                   </div>
                   <div className="col gap8">
@@ -1074,19 +1066,21 @@ export default function Categories({
                             </div>
                             <div className="row gap8 alignCenter">
                               {inferredCategory ? (
-                                <Button
-                                  variant="ghost"
+                                <GhostButton
+                                  type="button"
+                                  size="sm"
                                   onClick={() => handleReclassifyLegacyGoal(goal, inferredCategory.id)}
                                 >
                                   Classer
-                                </Button>
+                                </GhostButton>
                               ) : null}
-                              <Button
-                                variant="ghost"
+                              <GhostButton
+                                type="button"
+                                size="sm"
                                 onClick={() => openEditItemRoute(goal)}
                               >
                                 Éditer
-                              </Button>
+                              </GhostButton>
                             </div>
                           </div>
                         </AccentCategoryRow>
@@ -1094,25 +1088,26 @@ export default function Categories({
                     })}
                   </div>
                 </div>
-              </Card>
+              </AppCard>
             </div>
           </section>
         ) : null}
 
         <section className="mainPageSection">
-          <GateSectionIntro
+          <SectionHeader
             title={MAIN_PAGE_COPY.library.primaryTitle}
             actions={
               !isEmpty ? (
-                <div className="small2 GateRoleCardMeta textMuted2">
+                <div className="small2 textMuted2">
                   {orderedUserCategories.length} catégorie{orderedUserCategories.length > 1 ? "s" : ""} active{orderedUserCategories.length > 1 ? "s" : ""}
                 </div>
               ) : null
             }
           />
           <div className="mainPageSectionBody">
-            <Card
-              className="GateMainSection GateMainSectionCard libraryPrimaryCard"
+            <AppCard
+              variant="elevated"
+              className="libraryPrimaryCard"
               style={activeLibraryCategory ? getCategoryUiVars(activeLibraryCategory, { level: "surface" }) : undefined}
             >
               <div className="col gap10" data-tour-id="library-category-list">
@@ -1135,35 +1130,30 @@ export default function Categories({
                 ) : null}
                 {remainingSuggestions.length ? (
                   <div className="col gap8">
-                    <div
-                      className="row rowBetween alignCenter librarySuggestionsHeader"
-                      role="button"
-                      tabIndex={0}
-                      onClick={toggleSuggestionsOpen}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          toggleSuggestionsOpen();
-                        }
-                      }}
-                    >
-                      <div className="small2 GateRoleSectionSubtitle">
+                    <div className="row rowBetween alignCenter librarySuggestionsHeader">
+                      <div className="small2 textMuted">
                         {MAIN_PAGE_COPY.library.suggestionsTitle}
                         <span className="textMuted2"> ({remainingSuggestions.length})</span>
                       </div>
-                      <span className="small2 textMuted2">
+                      <GhostButton
+                        type="button"
+                        size="sm"
+                        className="librarySuggestionsToggle"
+                        aria-expanded={suggestionsOpen}
+                        onClick={toggleSuggestionsOpen}
+                      >
                         {suggestionsOpen ? "Réduire" : "Afficher"}
-                      </span>
+                      </GhostButton>
                     </div>
                     {suggestionsOpen ? (
                       <div className="categoryGateList isCollapsed librarySuggestionsList">
                         {remainingSuggestions.map((cat) => (
-                          <div key={cat.id} className="categoryGateItem GateRowPremium GateInlineMetaCard">
+                          <div key={cat.id} className="categoryGateItem">
                             <span className="categoryGateSwatch" style={{ background: resolveCategoryColor(cat, "#4F7CFF") }} />
                             <span className="categoryGateName">{cat.name || "Catégorie"}</span>
-                            <button
-                              type="button"
-                              className={`categoryGateSwitch${activeCategoryIds.has(cat.id) ? " isActive" : ""}`}
+                            <AppChip
+                              active={activeCategoryIds.has(cat.id)}
+                              className="categoryGateSwitch"
                               onClick={(event) => {
                                 event.preventDefault();
                                 event.stopPropagation();
@@ -1184,13 +1174,8 @@ export default function Categories({
                               aria-pressed={activeCategoryIds.has(cat.id)}
                               title="Active pour l’utiliser et créer du contenu."
                             >
-                              <span className="categoryGateSwitchLabel">
-                                {activeCategoryIds.has(cat.id) ? "Activée" : "Activer"}
-                              </span>
-                              <span className="categoryGateSwitchThumb" aria-hidden="true">
-                                {activeCategoryIds.has(cat.id) ? "✓" : ""}
-                              </span>
-                            </button>
+                              {activeCategoryIds.has(cat.id) ? "Activée" : "Activer"}
+                            </AppChip>
                           </div>
                         ))}
                       </div>
@@ -1198,10 +1183,10 @@ export default function Categories({
                   </div>
                 ) : null}
               </div>
-            </Card>
+            </AppCard>
           </div>
         </section>
       </div>
-    </ScreenShell>
+    </AppScreen>
   );
 }

@@ -71,9 +71,13 @@ describe("main pages visual canon contract", () => {
 
     expect(pilotageCss).not.toContain(".pilotageCardHeader");
     expect(pilotageCss).not.toContain(".pilotageCardHeaderLeft");
-    expect(pilotageCss).toContain(".pilotagePage .pilotageSummaryCard .GateAnalyticsCard");
+    expect(pilotageCss).toContain(".pilotageMetricCard");
+    expect(pilotageCss).toContain(".pilotageInsightCard");
+    expect(pilotageCss).not.toContain("GateAnalyticsCard");
     expect(todayCss).not.toContain(".todaySectionHeader");
     expect(planningCss).not.toContain("gap: 18px;");
+    expect(planningCss).toContain(".planningItemCard");
+    expect(planningCss).not.toContain("GateInlineMetaCard");
   });
 
   it("avoids double-padding wrappers on library and pilotage main cards", () => {
@@ -84,13 +88,13 @@ describe("main pages visual canon contract", () => {
     expect(pilotage).not.toContain('className="p18');
     expect(library).not.toContain("pageNarrow");
     expect(library).toContain('className="mainPageStack libraryPage"');
-    expect(library).toContain("<GateSectionIntro");
-    expect(pilotage).toContain("<GateSectionIntro");
+    expect(library).toContain("<SectionHeader");
+    expect(pilotage).toContain("<SectionHeader");
     expect(pilotage).toContain('className="mainPageStack pilotagePage"');
-    expect(library).toContain("GateMainSection GateMainSectionCard libraryPrimaryCard");
-    expect(library).toContain("GateSecondarySectionCard");
-    expect(pilotage).toContain("GateMainSection GateMainSectionCard");
-    expect(pilotage).toContain("GateSecondarySectionCard");
-    expect(pilotage).toContain("GateAnalyticsCard");
+    expect(library).toContain("libraryPrimaryCard");
+    expect(library).toContain("<AppCard");
+    expect(pilotage).toContain("pilotageFocusCard");
+    expect(pilotage).toContain("PilotageMetricCard");
+    expect(pilotage).toContain("PilotageInsightCard");
   });
 });

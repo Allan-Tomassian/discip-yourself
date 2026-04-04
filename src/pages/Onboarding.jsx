@@ -1,10 +1,15 @@
 import React, { useMemo, useState } from "react";
-import { AppCard, AppScreen, GateFooter, GateHeader, StatusBadge } from "../shared/ui/app";
 import {
-  CreateButton,
-  CreateChoiceCard,
-  CreateHint,
-} from "../ui/create/CreateFormPrimitives";
+  AppCard,
+  AppScreen,
+  AppStickyFooter,
+  ChoiceCard,
+  FeedbackMessage,
+  GhostButton,
+  PrimaryButton,
+  ScreenHeader,
+  StatusBadge,
+} from "../shared/ui/app";
 import "../features/create-flow/createFlow.css";
 import { buildInitialAiFoundationState } from "../logic/aiFoundation";
 import { migrate } from "../logic/state";
@@ -31,12 +36,12 @@ function hasExistingPlanningData(state) {
 
 function OptionCard({ title, description, selected, disabled = false, onClick, badge = "" }) {
   return (
-    <CreateChoiceCard
+    <ChoiceCard
       title={title}
       description={description}
       selected={selected}
       disabled={disabled}
-      badge={badge}
+      badge={badge || null}
       className="onboardingOptionCard"
       onClick={onClick}
     />
@@ -253,7 +258,8 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
     return (
       <AppScreen data={safeData} pageId="onboarding" backgroundImage={backgroundImage}>
         <AppCard variant="elevated" className="onboardingShell createFlowScope">
-          <GateHeader
+          <ScreenHeader
+            className="createFlowHeader"
             title={
               <span className="createFlowHeaderTitleBlock">
                 <span className="createFlowHeaderEyebrow">Abonnement</span>
@@ -265,32 +271,36 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
           />
 
           <div className="onboardingBody">
-            <CreateHint className="onboardingHint">
+            <FeedbackMessage tone="info" className="onboardingHint">
               L’accès IA Premium reste vérifié côté serveur au moment de l’utilisation.
-            </CreateHint>
+            </FeedbackMessage>
 
             <div className="onboardingPlanGrid">
-              <CreateChoiceCard
+              <ChoiceCard
                 className="onboardingPlanCard"
                 title="Gratuit"
                 description="L’essentiel pour démarrer avec un cadre simple."
                 selected={planChoice === "free"}
-                badge={planChoice === "free" ? "Actuel" : ""}
+                badge={planChoice === "free" ? "Actuel" : null}
                 onClick={() => setPlanChoice("free")}
               />
-              <CreateChoiceCard
+              <ChoiceCard
                 className="onboardingPlanCard"
                 title="Premium"
                 description="Plus de liberté, plus de profondeur, plus d’IA quand tu en as besoin."
                 selected={planChoice === "premium"}
-                badge={planChoice === "premium" ? "Actuel" : ""}
+                badge={planChoice === "premium" ? "Actuel" : null}
                 onClick={() => setPlanChoice("premium")}
               />
             </div>
           </div>
 
-          <GateFooter className="createFlowFooter">
-            <CreateButton
+          <AppStickyFooter
+            className="onboardingFooter"
+            surfaceClassName="onboardingFooterSurface"
+            actionsClassName="onboardingFooterActions"
+          >
+            <PrimaryButton
               onClick={() => {
                 setData((previous) =>
                   migrate({
@@ -311,8 +321,8 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
               }}
             >
               Accéder à l’app
-            </CreateButton>
-          </GateFooter>
+            </PrimaryButton>
+          </AppStickyFooter>
         </AppCard>
       </AppScreen>
     );
@@ -321,7 +331,8 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
   return (
     <AppScreen data={safeData} pageId="onboarding" backgroundImage={backgroundImage}>
       <AppCard variant="elevated" className="onboardingShell createFlowScope">
-        <GateHeader
+        <ScreenHeader
+          className="createFlowHeader"
           title={
             <span className="createFlowHeaderTitleBlock">
               <span className="createFlowHeaderEyebrow">Setup initial</span>
@@ -334,9 +345,12 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
 
         <div className="onboardingBody">{currentScreen?.content}</div>
 
-        <GateFooter className="createFlowFooter">
-          <CreateButton
-            variant="ghost"
+          <AppStickyFooter
+            className="onboardingFooter"
+            surfaceClassName="onboardingFooterSurface"
+            actionsClassName="onboardingFooterActions"
+          >
+          <GhostButton
             disabled={step === 0}
             onClick={() => {
               if (step === 0) return;
@@ -344,8 +358,8 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
             }}
           >
             Retour
-          </CreateButton>
-          <CreateButton
+          </GhostButton>
+          <PrimaryButton
             disabled={!canContinue}
             onClick={() => {
               if (!canContinue) return;
@@ -357,8 +371,8 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
             }}
           >
             {step === questionScreens.length - 1 ? "Créer mon plan" : "Continuer"}
-          </CreateButton>
-        </GateFooter>
+          </PrimaryButton>
+        </AppStickyFooter>
       </AppCard>
     </AppScreen>
   );

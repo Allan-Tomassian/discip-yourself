@@ -3,24 +3,24 @@
 }
 
 .editItemPageShell {
-  width: min(100%, 760px);
+  width: min(100%, 48rem);
   margin: 0 auto;
 }
 
-.editItemScope .GateInputPremium,
-.editItemScope .GateTextareaPremium,
-.editItemScope .selectTrigger.GateSelectPremium {
+.editItemScope .AppInput,
+.editItemScope .AppTextarea,
+.editItemScope .selectTrigger.AppSelect {
   width: 100%;
 }
 
-.editItemScope .selectTrigger.GateSelectPremium {
+.editItemScope .selectTrigger.AppSelect {
   justify-content: space-between;
 }
 
 .editItemSectionGrid {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-16);
 }
 
 .editItemField {
@@ -31,7 +31,7 @@
 }
 
 .editItemFieldLabel {
-  font-size: 12px;
+  font-size: var(--font-meta);
   line-height: 1.45;
   color: var(--text-3, var(--muted2));
 }
@@ -39,8 +39,8 @@
 .editItemFieldHelper,
 .editItemInlineMeta,
 .editItemErrorText {
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: var(--font-sm);
+  line-height: var(--line-height-body);
 }
 
 .editItemFieldHelper,
@@ -49,14 +49,20 @@
 }
 
 .editItemErrorText {
-  color: rgba(255, 120, 120, 0.95);
+  color: var(--danger);
+}
+
+.editItemMissingText {
+  font-size: var(--font-body);
+  line-height: 1.5;
+  color: var(--text-secondary);
 }
 
 .editItemTwoCol,
 .editItemThreeCol {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .editItemThreeCol {
@@ -66,40 +72,44 @@
 .editItemTimeModeGroup {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .editItemInlineCard {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-12);
 }
 
 .editItemInlineCardRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-12);
   flex-wrap: wrap;
 }
 
 .editItemDaysRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .editItemDayChip {
-  min-height: 38px;
-  padding: 8px 12px;
-  border-radius: 12px;
+  min-height: var(--input-height);
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-12);
   border: 1px solid var(--gate-border);
-  background: color-mix(in srgb, var(--gate-surface-1) 92%, rgba(255, 255, 255, 0.04));
+  background: var(--editDayOptionBg);
   color: var(--gate-text);
-  font-size: 13px;
+  font-size: var(--font-sm);
   font-weight: 600;
   line-height: 1.2;
-  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+  transition:
+    background var(--motion-standard) var(--ease-standard),
+    border-color var(--motion-standard) var(--ease-standard),
+    color var(--motion-standard) var(--ease-standard),
+    transform var(--motion-standard) var(--ease-standard);
 }
 
 .editItemDayChip:hover {
@@ -115,7 +125,7 @@
 .editItemToggleRow {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-12);
   color: var(--gate-text);
 }
 
@@ -128,56 +138,25 @@
 .editItemReminderList {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-12);
 }
 
 .editItemReminderRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: var(--space-12);
   align-items: end;
 }
 
 .editItemDangerButton {
-  border-color: color-mix(in srgb, #f7a3a3 36%, var(--gate-border));
-  color: color-mix(in srgb, #ffd9d9 74%, var(--gate-text));
-  background: color-mix(in srgb, #5d1c1c 24%, transparent);
+  border-color: color-mix(in srgb, var(--buttonDangerBorder) 80%, var(--gate-border));
+  color: var(--buttonDangerText);
+  background: color-mix(in srgb, var(--buttonDangerBg) 20%, transparent);
 }
 
 .editItemDangerButton:hover {
-  border-color: color-mix(in srgb, #f7b1b1 44%, var(--gate-border));
-  background: color-mix(in srgb, #6b2424 30%, transparent);
-}
-
-.editItemFooterDock {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  padding-top: 6px;
-}
-
-.editItemFooterSurface {
-  padding: 16px 18px calc(16px + env(safe-area-inset-bottom, 0px));
-  background:
-    linear-gradient(
-      180deg,
-      rgba(5, 8, 15, 0),
-      color-mix(in srgb, var(--gate-surface-2) 94%, #05080f) 22%
-    );
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-.editItemFooterStack {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.editItemFooterSurface .gateFooter {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: 0;
+  border-color: color-mix(in srgb, var(--buttonDangerBorder) 96%, var(--gate-border));
+  background: color-mix(in srgb, var(--buttonDangerBg) 28%, transparent);
 }
 
 @media (max-width: 767px) {
@@ -190,7 +169,4 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .editItemFooterSurface {
-    padding-inline: 16px;
-  }
 }

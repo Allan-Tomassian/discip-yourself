@@ -1,11 +1,11 @@
 .calendarCard {
   width: 100%;
-  box-sizing: border-box;
 }
 
 .calendarCardBody {
-  padding: 18px;
-  padding-inline: calc(16px + env(safe-area-inset-left, 0px)) calc(16px + env(safe-area-inset-right, 0px));
+  padding: var(--space-20);
+  padding-inline: calc(var(--space-16) + env(safe-area-inset-left, 0px))
+    calc(var(--space-16) + env(safe-area-inset-right, 0px));
   box-sizing: border-box;
 }
 
@@ -13,14 +13,14 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-16);
   min-height: 52px;
 }
 
 .calendarTitleRow {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--space-12);
   min-width: 0;
 }
 
@@ -30,11 +30,11 @@
 
 .calendarSubtitle {
   display: block;
-  margin-top: 6px;
-  font-size: 12px;
+  margin-top: var(--space-4);
+  font-size: var(--font-meta);
   line-height: 1.25;
   min-height: 1.25em;
-  color: var(--text-3, var(--muted2));
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
@@ -46,7 +46,7 @@
   grid-auto-flow: column;
   grid-auto-columns: max-content;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-12);
   justify-content: end;
   justify-self: end;
   min-width: 240px;
@@ -56,69 +56,41 @@
 .calendarTodayBtn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  border-radius: 999px;
-  border: 1px solid var(--gate-border);
-  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
-  color: var(--gate-text, var(--text));
-  padding: 6px 12px;
-  font-size: 12px;
+  gap: var(--space-8);
   min-width: 112px;
   justify-content: center;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
 .calendarTodayBtn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.calendarTodayBtn:not(:disabled):hover {
-  border-color: var(--border-strong, var(--border));
-  box-shadow: var(--shadowControl, 0 8px 20px rgba(0, 0, 0, 0.12));
-  transform: translateY(-1px);
+  opacity: var(--buttonDisabledOpacity);
 }
 
 .calendarTodayIcon {
-  font-size: 14px;
+  font-size: var(--font-body);
 }
 
 .calendarSeg {
   display: inline-flex;
   align-items: center;
-  padding: 2px;
-  border-radius: 999px;
-  border: 1px solid var(--gate-border);
-  background: color-mix(in srgb, var(--gate-surface-1) 92%, #05080f);
+  gap: var(--space-8);
 }
 
 .calendarSegBtn {
-  border: 0;
-  background: transparent;
-  color: var(--text-2, var(--muted2));
-  padding: 6px 12px;
-  border-radius: 999px;
   min-width: 58px;
-  font-size: 12px;
+  font-size: var(--font-meta);
   line-height: 1;
   text-align: center;
   font-variant-numeric: tabular-nums;
-  cursor: pointer;
-}
-
-.calendarSegBtn.is-active {
-  background: color-mix(in srgb, var(--gate-surface-1) 84%, #0a1220);
-  color: var(--gate-text, var(--text));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 6px 14px rgba(0, 0, 0, 0.22);
 }
 
 .calendarPane {
-  margin-top: 12px;
+  margin-top: var(--space-12);
   will-change: transform, opacity;
-  transition: transform 200ms ease, opacity 200ms ease;
+  transition:
+    transform var(--motion-enter) var(--ease-enter),
+    opacity var(--motion-enter) var(--ease-enter);
 }
 
 .calendarPane.enter {
@@ -138,15 +110,15 @@
 .calendarRail {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-12);
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
   scroll-behavior: auto;
   height: 80px;
-  padding: 6px 0;
-  padding-inline: max(var(--rail-pad, 12px), env(safe-area-inset-left, 0px))
-    max(var(--rail-pad, 12px), env(safe-area-inset-right, 0px));
+  padding: var(--space-8) 0;
+  padding-inline: max(var(--rail-pad, var(--space-12)), env(safe-area-inset-left, 0px))
+    max(var(--rail-pad, var(--space-12)), env(safe-area-inset-right, 0px));
   --dayrail-item-half: 28px;
   scroll-padding-inline: calc(50% - var(--dayrail-item-half));
   touch-action: pan-x;
@@ -165,19 +137,23 @@
   width: 56px;
   min-width: 56px;
   height: 56px;
-  border-radius: 999px;
-  border: 1px solid var(--gate-border);
-  background: color-mix(in srgb, var(--gate-surface-1) 88%, #05080f);
-  color: var(--gate-text, var(--text));
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-primary) 92%, transparent);
+  color: var(--text-primary);
   display: grid;
   grid-template-rows: 10px 16px 10px;
   align-content: center;
   justify-items: center;
   gap: 2px;
-  padding: 6px 0 10px;
+  padding: var(--space-8) 0 var(--space-12);
   box-sizing: border-box;
   cursor: pointer;
-  transition: transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+  transition:
+    transform var(--motion-standard) var(--ease-standard),
+    opacity var(--motion-standard) var(--ease-standard),
+    box-shadow var(--motion-standard) var(--ease-standard),
+    filter var(--motion-standard) var(--ease-standard);
   font-variant-numeric: tabular-nums;
   overflow: hidden;
 }
@@ -188,7 +164,7 @@
   text-transform: uppercase;
   font-variant-caps: all-small-caps;
   letter-spacing: 0.6px;
-  color: var(--text-3, var(--muted2));
+  color: var(--text-muted);
   width: 100%;
   text-align: center;
   white-space: nowrap;
@@ -198,7 +174,7 @@
 
 .calendarPillDay {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   line-height: 1;
   font-variant-numeric: tabular-nums;
   width: 100%;
@@ -209,8 +185,8 @@
 }
 
 .calendarPillMonth {
-  font-size: 11px;
-  color: var(--text-3, var(--muted2));
+  font-size: var(--font-micro);
+  color: var(--text-muted);
   line-height: 1;
   font-variant-numeric: tabular-nums;
   width: 100%;
@@ -240,10 +216,8 @@
 }
 
 .calendarDayPill.is-today {
-  border-color: color-mix(in srgb, var(--accent) 52%, var(--border-subtle));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent);
+  border-color: color-mix(in srgb, var(--accent-primary) 52%, var(--border-subtle));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 24%, transparent);
 }
 
 .calendarItem.is-past,
@@ -258,7 +232,7 @@
   transform: translateX(-50%);
   width: 6px;
   height: 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   opacity: 0.9;
 }
 
@@ -269,9 +243,9 @@
   transform: translateX(-50%);
   width: 6px;
   height: 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   opacity: 0.95;
-  box-shadow: 0 0 0 4px rgba(255, 138, 61, 0.15);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-primary) 16%, transparent);
   pointer-events: none;
 }
 
@@ -279,28 +253,28 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-4);
 }
 
 .calendarDotsMore {
   font-size: 10px;
-  color: var(--text-3, var(--muted2));
+  color: var(--text-muted);
 }
 
 .calendarMonthWrap {
-  margin-top: 12px;
+  margin-top: var(--space-12);
 }
 
 .calendarMonthHeader {
   display: grid;
   grid-template-columns: 48px 1fr 48px;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .calendarMonthTitle {
   text-align: center;
-  font-weight: 600;
+  font-weight: var(--font-weight-medium);
   min-width: 0;
   min-height: 20px;
   line-height: 20px;
@@ -312,21 +286,21 @@
 .calendarMonthActions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 6px;
+  margin-top: var(--space-8);
 }
 
 .calendarMonthGrid {
-  margin-top: 10px;
+  margin-top: var(--space-12);
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-8);
   text-align: center;
   contain: content;
 }
 
 .calendarWeekday {
-  font-size: 11px;
-  color: var(--text-3, var(--muted2));
+  font-size: var(--font-micro);
+  color: var(--text-muted);
   min-height: 14px;
   line-height: 14px;
 }
@@ -343,11 +317,11 @@
   height: calc(
     var(--month-cell-pad-y) * 2 + var(--month-day-line) + var(--month-cell-gap) + var(--month-meta-height)
   );
-  border-radius: 12px;
+  border-radius: var(--radius-12);
   padding: var(--month-cell-pad-y) var(--month-cell-pad-x);
-  border: 1px solid var(--gate-border);
-  background: color-mix(in srgb, var(--gate-surface-1) 88%, #05080f);
-  color: var(--gate-text, var(--text));
+  border: 1px solid var(--calendarMonthCellBorder, var(--border-subtle));
+  background: color-mix(in srgb, var(--surface-primary) 92%, transparent);
+  color: var(--text-primary);
   display: grid;
   grid-template-rows: var(--month-day-line) var(--month-meta-height);
   align-content: start;
@@ -356,14 +330,19 @@
   cursor: pointer;
   overflow: hidden;
   box-sizing: border-box;
+  box-shadow: 0 0 0 2px var(--calendarMonthCellRing, transparent);
+  transition:
+    border-color var(--motion-standard) var(--ease-standard),
+    box-shadow var(--motion-standard) var(--ease-standard),
+    transform var(--motion-standard) var(--ease-standard);
 }
 
 .calendarMonthCell.is-selected {
-  box-shadow: var(--accent-ring, 0 0 0 2px rgba(255, 255, 255, 0.18));
+  transform: translateY(-1px);
 }
 
 .calendarMonthCell.is-today {
-  border-color: var(--accent, #ff8a3d);
+  border-color: color-mix(in srgb, var(--accent-primary) 42%, var(--calendarMonthCellBorder, var(--border-subtle)));
 }
 
 .calendarMonthNavBtn,
@@ -380,8 +359,8 @@
 }
 
 .calendarMonthDay {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-bold);
   min-height: var(--month-day-line);
   line-height: var(--month-day-line);
   width: 100%;
@@ -395,7 +374,7 @@
   line-height: var(--month-meta-line);
   min-height: var(--month-meta-height);
   height: var(--month-meta-height);
-  color: var(--text-3, var(--muted2));
+  color: var(--text-muted);
   width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -407,14 +386,15 @@
 
 @media (max-width: 600px) {
   .calendarCardBody {
-    padding: 16px;
-    padding-inline: calc(14px + env(safe-area-inset-left, 0px)) calc(14px + env(safe-area-inset-right, 0px));
+    padding: var(--space-16);
+    padding-inline: calc(var(--space-16) + env(safe-area-inset-left, 0px))
+      calc(var(--space-16) + env(safe-area-inset-right, 0px));
   }
 
   .calendarHeader {
     grid-template-columns: 1fr;
     align-items: stretch;
-    gap: 10px;
+    gap: var(--space-12);
     min-height: 0;
   }
 
@@ -440,14 +420,5 @@
 
   .calendarPillDay {
     font-size: 15px;
-  }
-
-  .calendarPillWeekday {
-    font-size: 9px;
-  }
-
-  .calendarSubtitle {
-    font-size: 11px;
-    min-height: 1.25em;
   }
 }

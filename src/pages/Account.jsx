@@ -4,10 +4,13 @@ import { useProfile } from "../profile/useProfile";
 import { normalizeUsername, validateOptionalUsername } from "../profile/username";
 import { PLACEHOLDER_COPY, STATUS_COPY, SURFACE_LABELS } from "../ui/labels";
 import {
+  AppActionRow,
   AppCard,
+  AppInlineMetaCard,
   AppInput,
   AppScreen,
   FeedbackMessage,
+  FieldGroup,
   GhostButton,
   PrimaryButton,
   SectionHeader,
@@ -174,95 +177,89 @@ export default function Account({ data }) {
           title="Profil"
           subtitle={profile?.username ? "Ton profil est prêt." : "Identifiant optionnel. Tu peux le définir plus tard."}
         />
-        <AppCard
-          className="accountGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
-        >
+        <AppCard className="accountGateCard">
           {loadError ? (
-            <div className="GateInlineMetaCard col gap8">
-              <p className="accountGateNote accountGateNoteError GateRoleHelperText" role="alert">
+            <AppInlineMetaCard className="accountGateSummary">
+              <p className="accountGateNote accountGateNoteError" role="alert">
                 {loadError}
               </p>
-            </div>
+            </AppInlineMetaCard>
           ) : null}
           <form className="accountGateForm" onSubmit={handleSave}>
-            <div className="GateInlineMetaCard col gap8">
-              <label className="accountGateField GateFormField" htmlFor="account-email">
-                <span className="accountGateFieldLabel GateFormLabel">Email</span>
+            <AppInlineMetaCard className="accountGateSummary">
+              <FieldGroup label="Email" htmlFor="account-email">
                 <AppInput
                   id="account-email"
-                  className="accountGateInput GateInputPremium isReadonly"
+                  className="accountGateInput isReadonly"
                   value={String(user?.email || profile?.email || "")}
                   readOnly
                   disabled
                 />
-              </label>
+              </FieldGroup>
 
-              <label className="accountGateField GateFormField" htmlFor="account-username">
-                <span className="accountGateFieldLabel GateFormLabel">Identifiant</span>
+              <FieldGroup label="Identifiant" htmlFor="account-username">
                 <AppInput
                   id="account-username"
-                  className="accountGateInput GateInputPremium"
+                  className="accountGateInput"
                   data-testid="account-username-input"
                   value={username}
                   onChange={(event) => setUsername(event.target.value)}
                   placeholder={PLACEHOLDER_COPY.accountHandle}
                   autoComplete="username"
                 />
-              </label>
+              </FieldGroup>
 
-              <label className="accountGateField GateFormField" htmlFor="account-full-name">
-                <span className="accountGateFieldLabel GateFormLabel">Nom complet</span>
+              <FieldGroup label="Nom complet" htmlFor="account-full-name">
                 <AppInput
                   id="account-full-name"
-                  className="accountGateInput GateInputPremium"
+                  className="accountGateInput"
                   data-testid="account-full-name-input"
                   value={fullName}
                   onChange={(event) => setFullName(event.target.value)}
                   placeholder={PLACEHOLDER_COPY.fullName}
                   autoComplete="name"
                 />
-              </label>
+              </FieldGroup>
 
-              <label className="accountGateField GateFormField" htmlFor="account-avatar-url">
-                <span className="accountGateFieldLabel GateFormLabel">Photo de profil (URL)</span>
+              <FieldGroup label="Photo de profil (URL)" htmlFor="account-avatar-url">
                 <AppInput
                   id="account-avatar-url"
-                  className="accountGateInput GateInputPremium"
+                  className="accountGateInput"
                   data-testid="account-avatar-url-input"
                   value={avatarUrl}
                   onChange={(event) => setAvatarUrl(event.target.value)}
                   placeholder={PLACEHOLDER_COPY.avatarUrl}
                   autoComplete="url"
                 />
-              </label>
-            </div>
+              </FieldGroup>
+            </AppInlineMetaCard>
 
             {availability.message ? (
-              <div className="GateInlineMetaCard">
+              <AppInlineMetaCard>
                 <FeedbackMessage
                   data-testid="account-username-feedback"
                   tone={availability.state === "available" ? "success" : "error"}
-                  className={`accountGateNote GateRoleHelperText ${availability.state === "available" ? "accountGateNoteSuccess" : "accountGateNoteError"}`}
+                  className={`accountGateNote ${availability.state === "available" ? "accountGateNoteSuccess" : "accountGateNoteError"}`}
                 >
                   {availability.message}
                 </FeedbackMessage>
-              </div>
+              </AppInlineMetaCard>
             ) : null}
 
             {status.message ? (
-              <div className="GateInlineMetaCard">
+              <AppInlineMetaCard>
                 <FeedbackMessage
                   data-testid="account-save-status"
-                  className={`accountGateNote GateRoleHelperText ${status.type === "error" ? "accountGateNoteError" : "accountGateNoteSuccess"}`}
+                  className={`accountGateNote ${status.type === "error" ? "accountGateNoteError" : "accountGateNoteSuccess"}`}
                   role={status.type === "error" ? "alert" : "status"}
                   tone={status.type === "error" ? "error" : "success"}
                 >
                   {status.message}
                 </FeedbackMessage>
-              </div>
+              </AppInlineMetaCard>
             ) : null}
 
-            <div className="accountGateActions GatePrimaryCtaRow">
+            <AppActionRow className="accountGateActions">
               <PrimaryButton
                 type="submit"
                 disabled={!canSave}
@@ -279,7 +276,7 @@ export default function Account({ data }) {
               >
                 Actualiser
               </GhostButton>
-            </div>
+            </AppActionRow>
           </form>
         </AppCard>
       </section>
@@ -289,11 +286,9 @@ export default function Account({ data }) {
           title="Session"
           subtitle="Actions liées à ton compte."
         />
-        <AppCard
-          className="accountGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
-        >
-          <div className="GateInlineMetaCard">
-            <div className="accountGateActions GatePrimaryCtaRow">
+        <AppCard className="accountGateCard">
+          <AppInlineMetaCard>
+            <AppActionRow className="accountGateActions">
               <GhostButton
                 type="button"
                 size="sm"
@@ -307,8 +302,8 @@ export default function Account({ data }) {
               <GhostButton type="button" size="sm" disabled>
                 Supprimer mon compte via le support
               </GhostButton>
-            </div>
-          </div>
+            </AppActionRow>
+          </AppInlineMetaCard>
         </AppCard>
       </section>
     </AppScreen>

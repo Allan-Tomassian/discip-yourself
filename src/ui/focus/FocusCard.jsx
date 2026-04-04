@@ -1,12 +1,6 @@
 import React, { useState } from "react";
-import { GateBadge, GateButton, GateRow, GateSection } from "../../shared/ui/gate/Gate";
-import "../../features/today/today.css";
-
-function FocusButton({ variant = "primary", className = "", ...props }) {
-  const gateVariant = variant === "ghost" ? "ghost" : "primary";
-  const mergedClassName = [className, "GatePressable"].filter(Boolean).join(" ");
-  return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;
-}
+import { AppCard, GhostButton, StatusBadge } from "../../shared/ui/app";
+import "./focusCard.css";
 
 export default function FocusCard({
   drag = false,
@@ -51,6 +45,14 @@ export default function FocusCard({
             : "Planifiée"
     : "Rien de prévu";
   const hasAlternatives = Array.isArray(alternativeCandidates) && alternativeCandidates.length > 0;
+  const statusTone =
+    statusText === "En cours"
+      ? "info"
+      : statusText === "Fait"
+        ? "success"
+        : statusText === "Reportée" || statusText === "Annulée"
+          ? "warning"
+          : "info";
 
   const [showAlternatives, setShowAlternatives] = useState(false);
   const focusSummary = displayOccurrence
@@ -63,11 +65,7 @@ export default function FocusCard({
     : "Aucun focus secondaire sélectionné";
 
   return (
-    <GateSection
-      className="focusCard focusCardCompact GateSurfacePremium GateCardPremium"
-      collapsible={false}
-      data-tour-id="today-focus-card"
-    >
+    <AppCard className="focusCard focusCardCompact" data-tour-id="today-focus-card">
       <div className="focusCardBody">
         <div className="focusHeader">
           <div className="focusHeaderLeft">
@@ -88,21 +86,25 @@ export default function FocusCard({
           </div>
           <div className="focusHeaderActions">
             {hasAlternatives ? (
-              <FocusButton variant="ghost" className="focusManageBtn" onClick={() => setShowAlternatives((v) => !v)}>
+              <GhostButton type="button" size="sm" className="focusManageBtn" onClick={() => setShowAlternatives((v) => !v)}>
                 {showAlternatives ? "Fermer" : "Changer"}
-              </FocusButton>
+              </GhostButton>
             ) : null}
             {isOverride ? (
-              <FocusButton variant="ghost" className="focusManageBtn" onClick={onResetOverride}>
+              <GhostButton type="button" size="sm" className="focusManageBtn" onClick={onResetOverride}>
                 Revenir au plan
-              </FocusButton>
+              </GhostButton>
             ) : null}
           </div>
         </div>
         <div className="focusBody">
           <div className="focusLine">
-            <GateBadge className="focusCategoryBadge">Focus actuel · {displayCategoryName}</GateBadge>
-            <span className="focusStatusBadge">{statusText}</span>
+            <StatusBadge className="focusCategoryBadge" tone="info">
+              Focus actuel · {displayCategoryName}
+            </StatusBadge>
+            <StatusBadge className="focusStatusBadge" tone={statusTone}>
+              {statusText}
+            </StatusBadge>
           </div>
           <div className="focusNextRow">
             <span className="focusNextValue">{focusSummary}</span>
@@ -111,24 +113,21 @@ export default function FocusCard({
           {hasAlternatives && showAlternatives && typeof onSelectAlternative === "function" ? (
             <div className="focusAltList">
               {alternativeCandidates.map((item) => (
-                <GateRow
+                <button
                   key={item.occ.id}
-                  className="focusAltItem GateRowPremium GatePressable"
+                  type="button"
+                  className="focusAltItem"
                   onClick={() => {
                     onSelectAlternative(item);
                     setShowAlternatives(false);
                   }}
-                  right={
-                    <span className="focusAltMeta">
-                      {item.occ.start && item.occ.start !== "00:00" ? item.occ.start : "Journée"}
-                      {item.warning ? " · déviation" : ""}
-                    </span>
-                  }
                 >
-                  <span className="focusAltTitle">
-                    {goalsById.get(item.occ.goalId)?.title || "Action"}
+                  <span className="focusAltTitle">{goalsById.get(item.occ.goalId)?.title || "Action"}</span>
+                  <span className="focusAltMeta">
+                    {item.occ.start && item.occ.start !== "00:00" ? item.occ.start : "Journée"}
+                    {item.warning ? " · déviation" : ""}
                   </span>
-                </GateRow>
+                </button>
               ))}
               {baseOccurrence && isOverride ? (
                 <div className="focusAltNote">Plan initial: {goalsById.get(baseOccurrence.goalId)?.title || "Action"}</div>
@@ -137,6 +136,6 @@ export default function FocusCard({
           ) : null}
         </div>
       </div>
-    </GateSection>
+    </AppCard>
   );
 }

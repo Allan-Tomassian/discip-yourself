@@ -1,7 +1,11 @@
 .accountGateForm {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  gap: var(--space-16);
+}
+
+.accountGateSummary {
+  display: grid;
+  gap: var(--space-8);
 }
 
 .accountGateInput.isReadonly {
@@ -10,14 +14,14 @@
 }
 
 .accountGateDangerButton {
-  border-color: color-mix(in srgb, #f7a3a3 36%, var(--gate-border));
-  color: color-mix(in srgb, #ffd9d9 74%, var(--gate-text));
-  background: color-mix(in srgb, #5d1c1c 24%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 36%, var(--border-subtle));
+  color: color-mix(in srgb, var(--danger) 74%, var(--text-primary));
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
 }
 
 .accountGateDangerButton:hover {
-  border-color: color-mix(in srgb, #f7b1b1 44%, var(--gate-border));
-  background: color-mix(in srgb, #6b2424 30%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 44%, var(--border-subtle));
+  background: color-mix(in srgb, var(--danger) 24%, transparent);
 }
 
 .accountGateNote {
@@ -25,9 +29,9 @@
 }
 
 .accountGateNoteSuccess {
-  color: color-mix(in srgb, #8af0bd 78%, var(--gate-text));
+  color: var(--success);
 }
 
 .accountGateNoteError {
-  color: color-mix(in srgb, #ff9a9a 80%, var(--gate-text));
+  color: var(--danger);
 }

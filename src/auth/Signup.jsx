@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import AuthCardShell from "./AuthCardShell";
 import { isValidEmail } from "./loginAvailability";
 import {
   AppInput,
+  AppStandaloneScreen,
   AppTextButton,
   FeedbackMessage,
   FieldGroup,
@@ -48,7 +48,7 @@ export default function Signup({ initialEmail = "", onNavigate, onSignedUp }) {
   }
 
   return (
-    <AuthCardShell
+    <AppStandaloneScreen
       data-testid="auth-signup-screen"
       title="Créer un compte"
       subtitle="Crée ton accès, puis valide ton email pour ouvrir l’app."
@@ -104,6 +104,6 @@ export default function Signup({ initialEmail = "", onNavigate, onSignedUp }) {
           {status.message}
         </FeedbackMessage>
       ) : null}
-    </AuthCardShell>
+    </AppStandaloneScreen>
   );
 }

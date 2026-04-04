@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
-import AuthCardShell from "./AuthCardShell";
 import {
   AppInput,
+  AppStandaloneScreen,
   AppTextButton,
   FeedbackMessage,
   FieldGroup,
@@ -58,7 +58,7 @@ export default function ResetPassword({ recoveryMode = false, onNavigate, onUpda
 
   if (!recoveryMode) {
     return (
-      <AuthCardShell
+      <AppStandaloneScreen
         data-testid="auth-reset-password-screen"
         title="Lien invalide"
         subtitle="Le lien de réinitialisation a expiré, est invalide ou la session de récupération est absente."
@@ -74,12 +74,12 @@ export default function ResetPassword({ recoveryMode = false, onNavigate, onUpda
         <FeedbackMessage>
           Redemande un email de réinitialisation pour définir un nouveau mot de passe.
         </FeedbackMessage>
-      </AuthCardShell>
+      </AppStandaloneScreen>
     );
   }
 
   return (
-    <AuthCardShell
+    <AppStandaloneScreen
       data-testid="auth-reset-password-screen"
       title="Nouveau mot de passe"
       subtitle="Définis ton nouveau mot de passe puis retourne directement dans l’app."
@@ -131,6 +131,6 @@ export default function ResetPassword({ recoveryMode = false, onNavigate, onUpda
           {status.message}
         </FeedbackMessage>
       ) : null}
-    </AuthCardShell>
+    </AppStandaloneScreen>
   );
 }

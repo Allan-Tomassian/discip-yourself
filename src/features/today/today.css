@@ -1,136 +1,105 @@
 .todayPageShell {
+  width: 100%;
   max-width: 720px;
   margin: 0 auto;
+}
+
+.todayHeroCard,
+.todaySectionCard {
   width: 100%;
 }
 
-.todayHeroCard {
-  width: 100%;
-  box-sizing: border-box;
-  border-color: color-mix(in srgb, var(--gate-border) 92%, rgba(255, 255, 255, 0.12));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.09),
-    0 18px 30px rgba(0, 0, 0, 0.24);
-}
-
-.todayHeroCard .gateSectionBody {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  z-index: 1;
+.todayHeroContent,
+.todaySectionBody {
+  display: grid;
+  gap: var(--space-12);
 }
 
 .todayHeroHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding-inline: 2px;
   flex-wrap: wrap;
+  gap: var(--space-12);
 }
 
 .todayHeroHeaderCluster {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  min-width: 0;
   flex-wrap: wrap;
-}
-
-.todayHeroHeader > *,
-.todayProgressHeader > * {
+  gap: var(--space-12);
   min-width: 0;
 }
 
-.todayHeroKicker {
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.26;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--accent) 82%, var(--text-3, var(--muted2)));
-  display: inline-flex;
-  align-items: center;
-  min-height: 18px;
+.todayHeaderSessionBadge {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 180px;
 }
 
 .todayHeroCoachBadge {
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-height: 22px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, rgba(255, 255, 255, 0.18) 72%, var(--gate-border));
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02)),
-    color-mix(in srgb, var(--gate-surface-1) 88%, #081018);
-  color: color-mix(in srgb, var(--text) 90%, #eff7ff);
-  font-size: 10px;
-  font-weight: 700;
+  gap: var(--space-8);
+  min-height: 24px;
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-elevated) 90%, transparent);
+  color: var(--text-primary);
+  font-size: var(--font-micro);
+  font-weight: var(--font-weight-bold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
-  overflow: hidden;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    0 8px 16px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadowControl);
 }
 
 .todayHeroCoachBadge.is-ai {
-  border-color: color-mix(in srgb, #8dc7e8 50%, rgba(255, 255, 255, 0.16));
-  background:
-    linear-gradient(135deg, rgba(132, 187, 221, 0.22), rgba(73, 115, 151, 0.12)),
-    color-mix(in srgb, #3e6787 30%, rgba(255, 255, 255, 0.05));
-  color: color-mix(in srgb, #e8f6ff 84%, var(--text));
+  border-color: color-mix(in srgb, var(--accent-primary) 36%, var(--border-subtle));
+  background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface-elevated));
 }
 
 .todayHeroCoachBadge.is-guarded {
-  border-color: color-mix(in srgb, rgba(210, 219, 230, 0.52) 70%, rgba(255, 255, 255, 0.14));
-  background:
-    linear-gradient(135deg, rgba(155, 171, 187, 0.18), rgba(85, 98, 116, 0.12)),
-    color-mix(in srgb, var(--gate-surface-2) 88%, #091019);
-  color: color-mix(in srgb, #edf3f8 78%, var(--text));
+  border-color: color-mix(in srgb, var(--border-medium) 76%, var(--border-subtle));
+  background: color-mix(in srgb, var(--surface-strong) 90%, transparent);
 }
 
 .todayHeroCoachBadgeDot {
   width: 7px;
   height: 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: currentColor;
   box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 14%, transparent);
 }
 
 .todayHeroCoachBadge.isLoading {
   background-size: 180% 100%;
-  animation: todayHeroCoachShimmer 2.8s linear infinite;
+  animation: todayHeroCoachShimmer var(--motion-atmosphere-slow) linear infinite;
 }
 
 .todayHeroCoachBadge.isLoading .todayHeroCoachBadgeDot {
-  animation: todayHeroCoachPulse 1.5s ease-in-out infinite;
-}
-
-.todayHeroDate {
-  font-size: 12px;
-  line-height: 1.26;
-  color: var(--text-3, var(--muted2));
-  font-variant-numeric: tabular-nums;
+  animation: todayHeroCoachPulse var(--motion-panel) var(--ease-enter) infinite;
 }
 
 .todayHeroBody {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding-inline: 2px;
+  display: grid;
+  gap: var(--space-16);
+}
+
+.todayHeroTitle {
+  font-size: var(--font-section-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.25;
+  color: var(--text-primary);
 }
 
 .todayHeroMetaRow {
   display: flex;
   align-items: center;
-  gap: 10px;
   flex-wrap: wrap;
+  gap: var(--space-12);
 }
 
 .todayHeroCategoryPill {
@@ -141,118 +110,81 @@
   display: inline-flex;
   align-items: center;
   min-height: 26px;
-  padding: 5px 9px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 94%, rgba(255, 255, 255, 0.06));
-  background: color-mix(in srgb, var(--surface-primary) 96%, #0d1118);
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-primary) 96%, transparent);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-meta);
   line-height: 1;
   white-space: nowrap;
 }
 
 .todayHeroDetailList {
   display: grid;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .todayHeroDetailBlock {
   display: grid;
-  gap: 4px;
+  gap: var(--space-4);
 }
 
 .todayHeroDetailLabel {
+  font-size: var(--font-meta);
   color: var(--text-muted);
 }
 
 .todayHeroDetailText {
+  font-size: var(--font-body);
+  line-height: 1.5;
   color: var(--text-primary);
 }
 
-.todayHeroCoachHint {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  line-height: 1.3;
-  color: color-mix(in srgb, #c3dcee 72%, var(--text-3, var(--muted2)));
-}
-
-.todayHeroCoachHint.is-guarded {
-  color: color-mix(in srgb, #d4e0ea 62%, var(--text-3, var(--muted2)));
-}
-
-.todayHeroCoachHint.isLoading::after {
-  content: "";
-  width: 18px;
-  height: 6px;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at 3px 3px, currentColor 0 1.4px, transparent 1.6px),
-    radial-gradient(circle at 9px 3px, currentColor 0 1.4px, transparent 1.6px),
-    radial-gradient(circle at 15px 3px, currentColor 0 1.4px, transparent 1.6px);
-  opacity: 0.62;
-  animation: todayHeroHintDots 1.35s ease-in-out infinite;
-}
-
-.todayHeroTitle {
-  color: color-mix(in srgb, var(--text) 94%, #ffffff);
-}
-
-.todayHeroMeta {
-  font-size: 12px;
-  line-height: 1.38;
-  color: color-mix(in srgb, var(--text-3, var(--muted2)) 88%, rgba(255, 255, 255, 0.2));
-}
-
-.todayHeroMeta.isRevealed {
-  animation: todayHeroMetaFade 260ms ease-out;
-}
-
 .todayHeroActions {
-  margin-top: 0;
-  padding-inline: 2px;
-  gap: 8px;
-}
-
-.todayHeaderSessionBadge {
   display: flex;
-  justify-content: flex-end;
-  min-width: 180px;
+  flex-wrap: wrap;
+  gap: var(--space-8);
 }
 
 .todayHeroPrimaryBtn {
   min-width: 156px;
   justify-content: center;
-  font-weight: 700;
 }
 
 .todayHeroSecondaryBtn {
   min-width: 112px;
   justify-content: center;
-  font-size: 13px;
+  font-size: var(--font-sm);
+}
+
+.todayHeroError {
+  margin-top: calc(var(--space-4) * -1);
+}
+
+.todayHeroUtilityRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  padding-top: var(--space-4);
 }
 
 .todayNextActionItem {
-  position: relative;
   display: grid;
-  gap: 8px;
-}
-
-.todayNextActionItem > * {
-  position: relative;
-  z-index: 1;
+  gap: var(--space-8);
 }
 
 .todayNextActionTop {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
   flex-wrap: wrap;
+  gap: var(--space-12);
 }
 
-.todayNextActionTime {
+.todayNextActionTime,
+.todayNextActionDuration {
+  font-size: var(--font-meta);
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
@@ -261,12 +193,14 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
   flex-wrap: wrap;
+  gap: var(--space-12);
 }
 
 .todayNextActionTitle {
   min-width: 0;
+  font-size: var(--font-body-strong);
+  font-weight: var(--font-weight-medium);
   color: var(--text-primary);
 }
 
@@ -274,99 +208,35 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
   flex-wrap: wrap;
-}
-
-.todayNextActionDuration {
-  color: var(--text-secondary);
-}
-
-.todaySectionCard {
-  width: 100%;
-  box-sizing: border-box;
-  border-color: color-mix(in srgb, var(--gate-border) 94%, rgba(255, 255, 255, 0.08));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 12px 22px rgba(0, 0, 0, 0.2);
-}
-
-.todaySectionCard .gateSectionBody {
-  display: flex;
-  flex-direction: column;
-}
-
-.todaySectionBody {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .todayNextActionEmpty {
   display: grid;
-  gap: 4px;
-  padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--gate-border) 94%, rgba(255, 255, 255, 0.08));
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--gate-surface-1) 88%, #060a11);
+  gap: var(--space-4);
 }
 
 .todayDailyStateGrid {
   width: 100%;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px;
+  gap: var(--space-12);
 }
 
 .todayDailyStateItem {
-  display: grid;
-  gap: 6px;
-  min-height: 72px;
-  align-content: start;
+  min-height: 96px;
 }
 
-.todayDailyStateCard {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 10px 20px rgba(0, 0, 0, 0.18);
+.todayDailyStateMetricRow {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-8);
 }
 
-.todayDailyStateMetric {
-  border-color: color-mix(in srgb, var(--gate-border) 92%, rgba(255, 255, 255, 0.08));
-  background: color-mix(in srgb, var(--gate-surface-1) 92%, #060a10);
-}
-
-.todayHeroUtilityRow {
-  padding-top: 2px;
-}
-
-@media (max-width: 767px) {
-  .todayHeroBody {
-    gap: 12px;
-  }
-
-  .todayHeroMetaRow {
-    gap: 8px;
-  }
-
-  .todayHeroActions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .todayHeroPrimaryBtn,
-  .todayHeroSecondaryBtn {
-    min-width: 0;
-    flex: 1 1 0;
-  }
-
-  .todayNextActionTitleRow {
-    align-items: flex-start;
-  }
-
-  .todayNextActionFooter {
-    align-items: flex-start;
-  }
+.todayDailyStateMetricRow .appMetricRowValue {
+  font-size: var(--font-body-strong);
+  text-align: left;
 }
 
 @keyframes todayHeroCoachPulse {
@@ -390,616 +260,18 @@
   }
 }
 
-@keyframes todayHeroHintDots {
-  0%,
-  100% {
-    opacity: 0.35;
-    transform: translateY(0);
-  }
-  50% {
-    opacity: 0.8;
-    transform: translateY(-1px);
-  }
-}
-
-@keyframes todayHeroMetaFade {
-  0% {
-    opacity: 0;
-    transform: translateY(3px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.todayProgressCard {
-  width: 100%;
-  box-sizing: border-box;
-  border-color: color-mix(in srgb, var(--gate-border) 92%, rgba(255, 255, 255, 0.14));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.11),
-    0 14px 26px rgba(0, 0, 0, 0.28);
-}
-
-.todayProgressCard .gateSectionBody {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.todayProgressHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding-inline: 2px;
-}
-
-.todayProgressTitle {
-  font-size: 14px;
-  font-weight: 700;
-  color: color-mix(in srgb, var(--text) 94%, #fff);
-}
-
-.todayProgressCaption {
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--text-3, var(--muted2)) 84%, rgba(255, 255, 255, 0.14));
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  min-height: 18px;
-  white-space: nowrap;
-  padding-left: 8px;
-}
-
-.todayProgressMetrics {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-inline: 2px;
-}
-
-.todayProgressMetric {
-  width: 100%;
-  border: 1px solid color-mix(in srgb, var(--gate-border) 88%, rgba(255, 255, 255, 0.14));
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
-  padding: 10px 12px;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  cursor: pointer;
-}
-
-.todayProgressMetricHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.todayProgressMetricLabel {
-  font-size: 12px;
-  color: color-mix(in srgb, var(--text-3, var(--muted2)) 84%, rgba(255, 255, 255, 0.2));
-}
-
-.todayProgressMetricValue {
-  font-size: 12px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: color-mix(in srgb, var(--text) 92%, #fff);
-}
-
-.todayProgressBarTrack {
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.11);
-  overflow: hidden;
-}
-
-.todayProgressBarFill {
-  height: 100%;
-  border-radius: inherit;
-  transition: width 180ms ease-out;
-}
-
-.todayWhyRow {
-  align-items: center;
-  gap: 10px;
-  padding: 2px 2px 0;
-}
-
-.todayWhyText {
-  flex: 1;
-  min-width: 0;
-  white-space: normal;
-  color: color-mix(in srgb, var(--text-3, var(--muted2)) 82%, transparent);
-}
-
-.focusCard,
-.calendarCard {
-  border-color: color-mix(in srgb, var(--gate-border) 84%, rgba(255, 255, 255, 0.2));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 14px 28px rgba(0, 0, 0, 0.3);
-}
-
-.todaySecondaryCard {
-  border-color: color-mix(in srgb, var(--gate-border) 92%, rgba(255, 255, 255, 0.08));
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--gate-surface-1) 90%, #050910),
-    color-mix(in srgb, var(--gate-surface-2) 94%, #04070e)
-  );
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 12px 24px rgba(0, 0, 0, 0.26);
-}
-
-.focusCard {
-  width: 100%;
-  box-sizing: border-box;
-  font-variant-numeric: tabular-nums;
-}
-
-.focusCardBody {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.focusHeader {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-  padding-inline: 2px;
-}
-
-.focusHeaderLeft {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.focusCategoryBadge {
-  background: color-mix(in srgb, var(--gate-surface-1) 92%, #060b12);
-  border: 1px solid var(--gate-border);
-}
-
-.focusHeaderActions {
-  display: flex;
-  justify-content: flex-end;
-  min-width: 72px;
-  gap: 8px;
-}
-
-.focusManageBtn {
-  min-width: 78px;
-  justify-content: center;
-}
-
-.focusBody {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-inline: 2px;
-}
-
-.focusLine {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.focusNextRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--gate-border) 90%, rgba(255, 255, 255, 0.12));
-  background: color-mix(in srgb, var(--gate-surface-1) 88%, #05080f);
-  min-height: 34px;
-}
-
-.focusNextLabel {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-3, var(--muted2));
-}
-
-.focusNextValue {
-  font-size: 12px;
-  color: var(--text);
-  min-width: 0;
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.focusStatusBadge {
-  font-size: 11px;
-  color: color-mix(in srgb, var(--text-3, var(--muted2)) 84%, rgba(255, 255, 255, 0.18));
-  border: 1px solid color-mix(in srgb, var(--gate-border) 86%, rgba(255, 255, 255, 0.14));
-  border-radius: 999px;
-  padding: 2px 8px;
-  white-space: nowrap;
-  background: color-mix(in srgb, var(--gate-surface-2) 90%, #050910);
-  display: inline-flex;
-  align-items: center;
-  min-height: 20px;
-}
-
-.focusHeroHint {
-  font-size: 11px;
-  color: color-mix(in srgb, var(--text-3, var(--muted2)) 78%, rgba(255, 255, 255, 0.12));
-  line-height: 1.35;
-}
-
-.focusAltList {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--gate-border);
-  background: color-mix(in srgb, var(--gate-surface-1) 90%, #05080f);
-}
-
-.focusAltItem {
-  padding: 8px 10px;
-}
-
-.focusAltTitle {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.focusAltMeta {
-  font-size: 12px;
-  color: var(--text-3, var(--muted2));
-  white-space: nowrap;
-}
-
-.focusAltNote {
-  font-size: 12px;
-  color: var(--text-3, var(--muted2));
-}
-
-.microCard {
-  width: 100%;
-  box-sizing: border-box;
-  border-color: color-mix(in srgb, var(--gate-border) 94%, rgba(255, 255, 255, 0.08));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 10px 18px rgba(0, 0, 0, 0.16);
-}
-
-.microCardBody {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-16);
-}
-
-.microHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-12);
-  padding-inline: 2px;
-}
-
-.microHeaderMain {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-12);
-  min-width: 0;
-}
-
-.microHeaderText {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.microHeaderStats {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-8);
-  min-width: max-content;
-}
-
-.microDoneStat {
-  font-size: var(--font-meta);
-  color: color-mix(in srgb, var(--text-3, var(--muted2)) 86%, rgba(255, 255, 255, 0.2));
-  border: 1px solid color-mix(in srgb, var(--gate-border) 86%, rgba(255, 255, 255, 0.16));
-  border-radius: var(--radius-pill);
-  padding: 2px var(--space-8);
-  white-space: nowrap;
-  background: color-mix(in srgb, var(--gate-surface-1) 86%, #05080f);
-  display: inline-flex;
-  align-items: center;
-  min-height: 20px;
-}
-
-.microDoneMeta {
-  font-size: var(--font-micro);
-  line-height: 1.38;
-  color: color-mix(in srgb, var(--text-3, var(--muted2)) 84%, rgba(255, 255, 255, 0.2));
-  text-align: right;
-  max-width: 168px;
-}
-
-.microToolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(136px, 208px);
-  gap: var(--space-8);
-  align-items: center;
-  padding-inline: 2px;
-}
-
-.microContext {
-  line-height: 1.42;
-  color: var(--text-3, var(--muted2));
-}
-
-.microCategorySelectWrap {
-  width: 100%;
-}
-
-.microCategorySelect {
-  width: 100%;
-}
-
-.microTodayHintRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-12);
-  flex-wrap: wrap;
-  margin-inline: 2px;
-}
-
-.microTodayHintText {
-  font-size: var(--font-meta);
-  line-height: 1.36;
-  color: var(--text-3, var(--muted2));
-}
-
-.microGoTodayBtn {
-  min-width: 150px;
-  justify-content: center;
-}
-
-.microCard.isReadOnlyDate .microList,
-.microCard.isReadOnlyDate .microRerollRow {
-  opacity: 0.9;
-}
-
-.microCard.isReadOnlyDate .microPick {
-  cursor: not-allowed;
-}
-
-.microList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  padding-inline: 2px;
-}
-
-.microItem {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: var(--space-8);
-  border-color: color-mix(in srgb, var(--gate-border) 94%, rgba(255, 255, 255, 0.08));
-  background: color-mix(in srgb, var(--gate-surface-1) 94%, #070b12);
-}
-
-.microPick {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: 1px solid color-mix(in srgb, var(--gate-border) 84%, rgba(255, 255, 255, 0.18));
-  border-radius: var(--radius-8);
-  background: color-mix(in srgb, var(--gate-surface-2) 92%, #05080f);
-  position: relative;
-  cursor: pointer;
-}
-
-.microPickInput {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.microPickMark {
-  font-size: var(--font-micro);
-  color: color-mix(in srgb, var(--accent) 75%, #ffffff);
-  opacity: 0;
-  transform: scale(0.8);
-  transition: opacity var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
-  pointer-events: none;
-}
-
-.microPickInput:checked + .microPickMark {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.microItemMain {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-4);
-  min-width: 0;
-}
-
-.microItemTitle {
-  color: var(--text);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.microItemSub {
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.microBadge {
-  font-size: var(--font-micro);
-  color: var(--text-3, var(--muted2));
-  border: 1px solid var(--gate-border);
-  border-radius: var(--radius-pill);
-  padding: 2px 6px;
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-  min-height: 18px;
-}
-
-.microActionBtn {
-  min-width: 64px;
-  justify-content: center;
-}
-
-.microRerollRow {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: var(--space-8);
-  flex-wrap: wrap;
-  padding-inline: 2px;
-}
-
-.microRerollBtn {
-  min-width: 84px;
-  justify-content: center;
-}
-
-.microWatchAdBtn,
-.microUseCreditBtn {
-  min-width: 128px;
-  justify-content: center;
-}
-
-.microRerollMeta {
-  font-size: var(--font-meta);
-  line-height: 1.32;
-  color: color-mix(in srgb, var(--text-3, var(--muted2)) 84%, rgba(255, 255, 255, 0.2));
-}
-
-.microRerollLimit {
-  line-height: 1.32;
-  padding-inline: 2px;
-}
-
-.microRewardStatus {
-  line-height: 1.34;
-  padding-inline: 2px;
-}
-
-.todaySecondaryCard .p18 {
-  padding: 16px;
-}
-
-.todaySecondaryCard .cardSectionTitleRow {
-  padding-inline: 2px;
-}
-
-.todayNotesHeader {
-  align-items: center;
-  min-height: 24px;
-  padding-inline: 2px;
-}
-
-.todayNotesHeaderActions {
-  align-items: center;
-}
-
-.todayNotesKicker {
-  padding-inline: 2px;
-  line-height: 1.34;
-}
-
-.todayNotesLabel {
-  line-height: 1.32;
-  padding-inline: 2px;
-}
-
-.todayNotesFooter {
-  padding-inline: 2px;
-}
-
-.microAdSheet {
-  width: min(420px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
-}
-
-.microAdPanel {
-  padding: var(--space-16);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-}
-
-.microAdHeader {
-  margin: 0;
-}
-
-.microAdText {
-  margin: 0;
-  font-size: var(--font-body);
-  color: var(--text-2, var(--text));
-}
-
-.microAdActions {
-  justify-content: flex-end;
-}
-
-.todayDangerButton {
-  border-color: color-mix(in srgb, #f7a3a3 36%, var(--gate-border));
-  color: color-mix(in srgb, #ffd9d9 74%, var(--gate-text));
-  background: color-mix(in srgb, #5d1c1c 24%, transparent);
-}
-
-.todayDangerButton:hover {
-  border-color: color-mix(in srgb, #f7b1b1 44%, var(--gate-border));
-  background: color-mix(in srgb, #6b2424 30%, transparent);
-}
-
-@media (max-width: 600px) {
-  .todayHeroHeader {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+@media (max-width: 767px) {
+  .todayHeroBody {
+    gap: var(--space-12);
   }
 
-  .todayHeroHeaderCluster {
-    width: 100%;
+  .todayHeroMetaRow {
+    gap: var(--space-8);
   }
 
   .todayHeroActions {
-    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .todayHeroPrimaryBtn,
@@ -1007,79 +279,26 @@
     min-width: 0;
     width: 100%;
   }
+}
 
-  .todayHeaderSessionBadge {
-    min-width: 0;
-  }
-
-  .focusCardBody,
-  .microCardBody {
-    padding: 16px;
-  }
-
-  .focusHeader {
-    grid-template-columns: 1fr;
-  }
-
-  .focusHeaderActions {
-    justify-content: flex-start;
-  }
-
-  .microToolbar {
-    grid-template-columns: 1fr;
-  }
-
-  .microHeaderStats {
-    align-items: flex-start;
-    min-width: 0;
-  }
-
-  .microItem {
-    grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto auto;
-    align-items: start;
-    gap: 8px;
-  }
-
-  .microPick {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .microItemMain {
-    grid-column: 1 / span 2;
-    grid-row: 2;
-  }
-
-  .microBadge {
-    grid-row: 1;
-    grid-column: 2;
-    justify-self: end;
-  }
-
-  .microActionBtn {
-    grid-row: 3;
-    grid-column: 2;
-    justify-self: end;
-  }
-
-  .microHeader {
+@media (max-width: 600px) {
+  .todayHeroHeader {
     flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-8);
   }
 
-  .microHeaderMain,
-  .microHeaderText {
+  .todayHeroHeaderCluster,
+  .todayHeroActions,
+  .todayHeaderSessionBadge {
     width: 100%;
+    min-width: 0;
   }
 }
 
 @media (min-width: 900px) {
   .todayPageShell {
     max-width: 1040px;
-  }
-
-  .todayHeroCard .gateSectionBody {
-    gap: 12px;
   }
 }
 

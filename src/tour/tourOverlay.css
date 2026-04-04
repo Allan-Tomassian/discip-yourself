@@ -1,0 +1,65 @@
+.tourOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-toast, 3000);
+  background: var(--overlayScrim);
+  pointer-events: auto;
+}
+
+.tourOverlayTooltip {
+  position: fixed;
+  width: min(92vw, 320px);
+  max-width: 320px;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+
+.tourOverlayCard {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.tourOverlayHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.tourOverlayBody {
+  margin-top: var(--space-4);
+}
+
+.tourOverlayHint {
+  margin-top: var(--space-8);
+  opacity: 0.8;
+}
+
+.tourOverlayActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  margin-top: var(--space-12);
+}
+
+.tourOverlayTrailingActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+
+@media (max-width: 767px) {
+  .tourOverlayActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tourOverlayTrailingActions {
+    width: 100%;
+  }
+
+  .tourOverlayTrailingActions > * {
+    flex: 1 1 auto;
+  }
+}

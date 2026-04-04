@@ -16,7 +16,8 @@ describe("PlanningCoachCard contract", () => {
     expect(source).toContain("function handleDismissPlanningAnalysis() {");
     expect(source).toContain("setReply(null);");
     expect(source).toContain("manualPlanningAnalysis.dismissAnalysis();");
-    expect(source).toContain("<Button size=\"sm\" variant=\"ghost\" onClick={handleDismissPlanningAnalysis}>");
+    expect(source).toContain("onClick={handleDismissPlanningAnalysis}");
+    expect(source).toContain("<GhostButton");
   });
 
   it("uses the shared IA status component and surface-specific loading stages", () => {
@@ -31,7 +32,7 @@ describe("PlanningCoachCard contract", () => {
     expect(source).toContain("Observer ma semaine");
     expect(source).toContain("Observer ma journée");
     expect(source).not.toContain("titleSm GateRoleCardTitle");
-    expect(source).toContain('<div className="small GateRoleHelperText">{visibleReply?.headline || "Ajustement du rythme"}</div>');
+    expect(source).toContain('className="planningCoachValue"');
   });
 
   it("keeps planning analysis local and routes toward the canonical Coach instead of draft application", () => {

@@ -10,28 +10,35 @@ function readSrc(relPath) {
 }
 
 describe("category secondary visual contract", () => {
-  it("keeps CategoryView on ScreenShell headers and category-focused management content", () => {
+  it("keeps CategoryView on AppScreen headers and category-focused management content", () => {
     const source = readSrc("pages/CategoryView.jsx");
 
-    expect(source).toContain("headerTitle");
+    expect(source).toContain("AppScreen");
+    expect(source).toContain("SectionHeader");
+    expect(source).toContain("GhostButton");
     expect(source).toContain("manage-category-name");
-    expect(source).not.toContain("<GatePage");
+    expect(source).not.toContain("GateSectionIntro");
   });
 
-  it("uses GateSectionIntro for category management sections instead of title-in-card shells", () => {
+  it("uses AppUI section and form primitives for category management sections", () => {
     const manage = readSrc("features/library/CategoryManageInline.jsx");
 
-    expect(manage).toContain("GateSectionIntro");
-    expect(manage).not.toContain("titleSm\">");
-    expect(manage).not.toContain("sectionTitle");
+    expect(manage).toContain("SectionHeader");
+    expect(manage).toContain("AppCard");
+    expect(manage).toContain("AppInput");
+    expect(manage).toContain("AppTextarea");
+    expect(manage).toContain("GhostButton");
+    expect(manage).toContain("StatusBadge");
+    expect(manage).not.toContain("GateSectionIntro");
   });
 
-  it("keeps CategoryDetailView in the same intro-outside card-inside language", () => {
+  it("keeps CategoryDetailView on the same AppUI header and card language", () => {
     const detail = readSrc("pages/CategoryDetailView.jsx");
 
-    expect(detail).toContain("GateSectionIntro");
+    expect(detail).toContain("SectionHeader");
+    expect(detail).toContain("AppCard");
+    expect(detail).toContain("StatusBadge");
     expect(detail).toContain("headerTitle={category.name");
-    expect(detail).not.toContain("titleSm");
-    expect(detail).not.toContain("sectionTitle");
+    expect(detail).not.toContain("GateSectionIntro");
   });
 });

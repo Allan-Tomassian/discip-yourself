@@ -1,11 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useAuth } from "../../auth/useAuth";
 import { requestAiCoachChat } from "../../infra/aiCoachChatClient";
 import { deriveAiUnavailableMessage } from "../../infra/aiTransportDiagnostics";
 import { applySessionRuntimeTransition } from "../../logic/sessionRuntime";
 import { commitPreparedCreatePlan, prepareCreateCommit } from "../create-item/createItemCommit";
-import { GateButton, GatePanel } from "../../shared/ui/gate/Gate";
 import { getManualAiLoadingStages } from "../manualAi/loadingStages";
 import { getCoachContextSnapshot } from "./coachContextAdapter";
 import {
@@ -27,6 +25,20 @@ import {
   upsertCoachConversation,
 } from "./coachStorage";
 import { useBehaviorFeedback } from "../../feedback/BehaviorFeedbackContext";
+import {
+  AppCard,
+  AppChip,
+  AppIconButton,
+  AppSheet,
+  AppSheetContent,
+  AppTextButton,
+  AppTextarea,
+  EmptyState,
+  FeedbackMessage,
+  GhostButton,
+  PrimaryButton,
+  StatusBadge,
+} from "../../shared/ui/app";
 import "./coach.css";
 
 const COACH_QUICK_PROMPTS = [
@@ -833,12 +845,7 @@ export function CoachConversationSurface({
         .join(" ")}
     >
       {!isDesktopLayout && railExpanded ? (
-        <button
-          type="button"
-          className="coachConversationRailScrim"
-          aria-label="Fermer la liste des conversations"
-          onClick={() => setRailExpanded(false)}
-        />
+        <div className="coachConversationRailScrim" role="presentation" onClick={() => setRailExpanded(false)} />
       ) : null}
       <aside
         className={`coachConversationRail${railExpanded ? " is-open" : ""}`}
@@ -849,9 +856,9 @@ export function CoachConversationSurface({
           <div className="coachConversationRailMeta">
             {conversations.length ? `${conversations.length} conversation${conversations.length > 1 ? "s" : ""}` : "Aucun échange"}
           </div>
-          <GateButton variant="ghost" className="GatePressable" onClick={handleNewChat}>
+          <GhostButton size="sm" onClick={handleNewChat}>
             Nouveau chat
-          </GateButton>
+          </GhostButton>
         </div>
         <div className="coachConversationList">
           {conversations.map((conversation) => (
@@ -859,8 +866,9 @@ export function CoachConversationSurface({
               key={conversation.id}
               className={`coachConversationItemShell${revealedArchiveId === conversation.id ? " is-archive-revealed" : ""}`}
             >
-              <button
-                type="button"
+              <AppCard
+                interactive
+                selected={activeConversationId === conversation.id}
                 className={`coachConversationItem${activeConversationId === conversation.id ? " is-active" : ""}`}
                 onClick={() => handleSelectConversation(conversation.id)}
                 onPointerDown={(event) => handleConversationPointerStart(conversation.id, event)}
@@ -873,14 +881,10 @@ export function CoachConversationSurface({
                   <div className="coachConversationItemMeta">{formatConversationTimestamp(conversation.updatedAt)}</div>
                 </div>
                 <div className="coachConversationItemPreview">{buildConversationPreview(conversation)}</div>
-              </button>
-              <GateButton
-                variant="ghost"
-                className="GatePressable coachConversationArchiveButton"
-                onClick={() => archiveConversation(conversation.id)}
-              >
+              </AppCard>
+              <GhostButton size="sm" className="coachConversationArchiveButton" onClick={() => archiveConversation(conversation.id)}>
                 Archiver
-              </GateButton>
+              </GhostButton>
             </div>
           ))}
         </div>
@@ -890,61 +894,58 @@ export function CoachConversationSurface({
           <div />
           <div className="coachSurfaceToolbarActions">
             <div className="row gap8">
-              <GateButton
-                variant={conversationMode === "free" ? undefined : "ghost"}
-                className="GatePressable"
+              <PrimaryButton
+                className="coachModeToggle"
+                disabled={conversationMode === "free"}
                 onClick={() => setConversationMode("free")}
               >
                 Discuter
-              </GateButton>
-              <GateButton
-                variant={conversationMode === "plan" ? undefined : "ghost"}
-                className="GatePressable"
+              </PrimaryButton>
+              <GhostButton
+                className="coachModeToggle"
                 onClick={() => setConversationMode(toggleCoachPlanMode(conversationMode))}
               >
                 Plan
-              </GateButton>
+              </GhostButton>
             </div>
-            {loading ? <div className="coachSurfaceStage">{loadingStageLabel || "Analyse du contexte"}</div> : null}
+            {loading ? <StatusBadge className="coachSurfaceStage">{loadingStageLabel || "Analyse du contexte"}</StatusBadge> : null}
             {archivedConversation ? (
-              <button type="button" className="coachArchiveNotice" onClick={undoArchivedConversation}>
+              <AppTextButton className="coachArchiveNotice" onClick={undoArchivedConversation}>
                 Conversation archivée · Annuler
-              </button>
+              </AppTextButton>
             ) : null}
           </div>
         </div>
         {conversationMode === "plan" ? (
           <div className="coachModeBadgeRow">
-            <span className="coachModeBadge">Plan</span>
+            <StatusBadge className="coachModeBadge">Plan</StatusBadge>
           </div>
         ) : null}
 
         <div ref={scrollRef} className="coachConversationScroll">
           {!hasMessages ? (
-            <div className="coachConversationEmpty">
-              <div className="coachConversationEmptyTitle">
-                {conversationMode === "plan" ? "Décris ce que tu veux construire." : "Parle naturellement au Coach."}
-              </div>
-              <div className="coachConversationEmptyText">
-                {conversationMode === "plan"
+            <EmptyState
+              className="coachConversationEmpty"
+              title={conversationMode === "plan" ? "Décris ce que tu veux construire." : "Parle naturellement au Coach."}
+              subtitle={
+                conversationMode === "plan"
                   ? "Le Coach aide à transformer une intention en plan exploitable, puis à valider avant création."
-                  : "Le Coach aide à clarifier un blocage, un arbitrage, un prochain pas ou une difficulté de discipline."}
-              </div>
-            </div>
+                  : "Le Coach aide à clarifier un blocage, un arbitrage, un prochain pas ou une difficulté de discipline."
+              }
+            />
           ) : null}
 
           {!hasMessages ? (
             <div className="coachQuickPrompts">
               {quickPrompts.map((prompt) => (
-                <button
+                <AppChip
                   key={prompt}
-                  type="button"
                   className="coachQuickPrompt"
                   onClick={() => submitMessage(prompt)}
                   disabled={loading}
                 >
                   {prompt}
-                </button>
+                </AppChip>
               ))}
             </div>
           ) : null}
@@ -968,22 +969,22 @@ export function CoachConversationSurface({
                     : "Créer";
               return (
                 <div key={entry.id} className="coachMessage coachMessage--assistantTranscript">
-                  <div className="coachMessageBubble">
+                  <AppCard className="coachMessageBubble">
                     <div className="coachMessageEyebrow">{reply.mode === "plan" ? "Coach · Plan" : "Coach"}</div>
-                    <div className="coachMessageText" style={{ whiteSpace: "pre-line" }}>
+                    <div className="coachMessageText coachMessageText--preline">
                       {reply.message || entry.text}
                     </div>
                     {reply?.primaryAction || reply?.secondaryAction ? (
                       <div className="coachMessageActions">
                         {reply.primaryAction ? (
-                          <GateButton className="GatePressable" onClick={() => applyAction(reply.primaryAction)}>
+                          <PrimaryButton onClick={() => applyAction(reply.primaryAction)}>
                             {reply.primaryAction.label}
-                          </GateButton>
+                          </PrimaryButton>
                         ) : null}
                         {reply.secondaryAction ? (
-                          <GateButton variant="ghost" className="GatePressable" onClick={() => applyAction(reply.secondaryAction)}>
+                          <GhostButton onClick={() => applyAction(reply.secondaryAction)}>
                             {reply.secondaryAction.label}
-                          </GateButton>
+                          </GhostButton>
                         ) : null}
                       </div>
                     ) : null}
@@ -1027,32 +1028,26 @@ export function CoachConversationSurface({
                           </>
                         ) : null}
                         <div className="coachMessageActions">
-                          <GateButton
-                            className="GatePressable"
-                            onClick={() => createFromPlanReply(entry)}
-                            disabled={reply?.createStatus === "creating" || reply?.createStatus === "created"}
-                          >
+                          <PrimaryButton onClick={() => createFromPlanReply(entry)} disabled={reply?.createStatus === "creating" || reply?.createStatus === "created"}>
                             {createLabel}
-                          </GateButton>
+                          </PrimaryButton>
                           {typeof openAssistantReview === "function" ? (
-                            <GateButton
-                              variant="ghost"
-                              className="GatePressable"
+                            <GhostButton
                               onClick={() => openAssistantReview(entry)}
                               disabled={reply?.createStatus === "creating"}
                             >
                               Revoir dans l’app
-                            </GateButton>
+                            </GhostButton>
                           ) : null}
                         </div>
                         {entry.draftApplyMessage ? (
-                          <div className={`coachDraftMessage${entry.draftApplyStatus === "error" ? " is-error" : ""}`}>
+                          <FeedbackMessage tone={entry.draftApplyStatus === "error" ? "error" : "info"} className="coachDraftMessage">
                             {entry.draftApplyMessage}
-                          </div>
+                          </FeedbackMessage>
                         ) : null}
                       </div>
                     ) : null}
-                  </div>
+                  </AppCard>
                 </div>
               );
             }
@@ -1062,29 +1057,28 @@ export function CoachConversationSurface({
                 key={entry.id}
                 className={`coachMessage ${entry.role === "assistant" ? "coachMessage--assistantTranscript" : "coachMessage--user"}`}
               >
-                <div className="coachMessageBubble">
+                <AppCard className="coachMessageBubble">
                   <div className="coachMessageEyebrow">{entry.role === "assistant" ? "Coach" : "Toi"}</div>
-                  <div className="coachMessageText" style={{ whiteSpace: "pre-line" }}>
+                  <div className="coachMessageText coachMessageText--preline">
                     {entry.text}
                   </div>
-                </div>
+                </AppCard>
               </div>
             );
           })}
 
           {loading ? (
             <div className="coachMessage coachMessage--assistantTranscript">
-              <div className="coachMessageBubble coachMessageBubble--loading">
+              <AppCard className="coachMessageBubble coachMessageBubble--loading">
                 <div className="coachMessageEyebrow">Coach</div>
                 <div className="coachMessageText">{loadingStageLabel || "Analyse du contexte"}</div>
-              </div>
+              </AppCard>
             </div>
           ) : null}
         </div>
 
         <div className="coachComposer">
-          <textarea
-            className="GateTextareaPremium"
+          <AppTextarea
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder={
@@ -1101,12 +1095,12 @@ export function CoachConversationSurface({
                 : "Pas d’historique pour l’instant"}
             </div>
             <div className="coachComposerActions">
-              <GateButton className="GatePressable" onClick={() => submitMessage()} disabled={loading || !draft.trim()}>
+              <PrimaryButton onClick={() => submitMessage()} disabled={loading || !draft.trim()}>
                 {loading ? "Analyse..." : "Envoyer"}
-              </GateButton>
+              </PrimaryButton>
             </div>
           </div>
-          {error ? <div className="coachComposerError">{error}</div> : null}
+          {error ? <FeedbackMessage tone="error" className="coachComposerError">{error}</FeedbackMessage> : null}
         </div>
       </div>
     </div>
@@ -1159,41 +1153,6 @@ export default function CoachPanel({
   );
 
   useEffect(() => {
-    if (!open) return undefined;
-    const onKeyDown = (event) => {
-      if (event.key === "Escape") onClose?.();
-    };
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [onClose, open]);
-
-  useEffect(() => {
-    if (!open || typeof document === "undefined") return undefined;
-    const { body, documentElement } = document;
-    const scrollY = typeof window !== "undefined" ? window.scrollY || 0 : 0;
-    const previousBodyOverflow = body.style.overflow;
-    const previousBodyPosition = body.style.position;
-    const previousBodyTop = body.style.top;
-    const previousBodyWidth = body.style.width;
-    const previousHtmlOverflow = documentElement.style.overflow;
-    body.style.overflow = "hidden";
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.width = "100%";
-    documentElement.style.overflow = "hidden";
-    return () => {
-      body.style.overflow = previousBodyOverflow;
-      body.style.position = previousBodyPosition;
-      body.style.top = previousBodyTop;
-      body.style.width = previousBodyWidth;
-      documentElement.style.overflow = previousHtmlOverflow;
-      if (typeof window !== "undefined") {
-        window.scrollTo(0, scrollY);
-      }
-    };
-  }, [open]);
-
-  useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
     const mediaQuery = window.matchMedia("(min-width: 901px)");
     const syncLayout = (matches) => {
@@ -1206,47 +1165,31 @@ export default function CoachPanel({
     return () => mediaQuery.removeEventListener?.("change", handleChange);
   }, []);
 
-  if (!open || typeof document === "undefined") return null;
-
-  return createPortal(
-    <div
-      className="modalBackdrop coachPanelBackdrop"
-      onClick={() => onClose?.()}
-      role="presentation"
-      style={{ zIndex: 1800 }}
-    >
-      <div
-        className="coachPanelOuter GateGlassOuter"
-        onClick={(event) => event.stopPropagation()}
+  return (
+    <AppSheet open={open} onClose={onClose} className="coachPanelSheet" maxWidth={430}>
+      <AppSheetContent
+        title="Coach"
+        subtitle="Discuter librement, puis passer en mode Plan quand tu veux construire."
+        actions={(
+          <div className="coachPanelHeaderActions">
+            <AppIconButton
+              className="coachRailHandle"
+              aria-label={railExpanded ? "Masquer les conversations" : "Ouvrir les conversations"}
+              onClick={() => setRailExpanded((current) => !current)}
+            >
+              <span />
+              <span />
+              <span />
+            </AppIconButton>
+            <GhostButton size="sm" onClick={() => onClose?.()}>
+              Fermer
+            </GhostButton>
+          </div>
+        )}
+        className="coachPanelContent"
+        headerClassName="coachPanelHeader"
+        bodyClassName="coachPanelBody"
       >
-        <div className="coachPanelClip GateGlassClip GateGlassBackdrop">
-          <GatePanel
-            className="coachPanel GateGlassContent GateSurfacePremium GateCardPremium"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Coach"
-          >
-            <div className="coachPanelHeader">
-              <div className="coachPanelHeaderText">
-                <div className="coachPanelTitle">Coach</div>
-                <div className="coachPanelSubtitle">Discuter librement, puis passer en mode Plan quand tu veux construire.</div>
-              </div>
-              <div className="coachPanelHeaderActions">
-                <button
-                  type="button"
-                  className="coachRailHandle"
-                  aria-label={railExpanded ? "Masquer les conversations" : "Ouvrir les conversations"}
-                  onClick={() => setRailExpanded((current) => !current)}
-                >
-                  <span />
-                  <span />
-                  <span />
-                </button>
-                <GateButton variant="ghost" className="GatePressable" onClick={() => onClose?.()}>
-                  Fermer
-                </GateButton>
-              </div>
-            </div>
         <CoachConversationSurface
           controller={controller}
           railExpanded={railExpanded}
@@ -1254,10 +1197,7 @@ export default function CoachPanel({
           isDesktopLayout={isDesktopLayout}
           setIsDesktopLayout={setIsDesktopLayout}
         />
-      </GatePanel>
-        </div>
-      </div>
-    </div>,
-    document.body
+      </AppSheetContent>
+    </AppSheet>
   );
 }

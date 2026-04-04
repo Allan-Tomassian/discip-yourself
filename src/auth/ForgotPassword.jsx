@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import AuthCardShell from "./AuthCardShell";
 import { isValidEmail } from "./loginAvailability";
 import {
   AppInput,
+  AppStandaloneScreen,
   AppTextButton,
   FeedbackMessage,
   FieldGroup,
@@ -45,7 +45,7 @@ export default function ForgotPassword({ initialEmail = "", onNavigate, onSendRe
   }
 
   return (
-    <AuthCardShell
+    <AppStandaloneScreen
       data-testid="auth-forgot-password-screen"
       title="Mot de passe oublié"
       subtitle="Entre ton email pour recevoir un lien de réinitialisation."
@@ -85,6 +85,6 @@ export default function ForgotPassword({ initialEmail = "", onNavigate, onSendRe
           {status.message}
         </FeedbackMessage>
       ) : null}
-    </AuthCardShell>
+    </AppStandaloneScreen>
   );
 }

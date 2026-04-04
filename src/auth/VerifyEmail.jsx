@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
-import AuthCardShell from "./AuthCardShell";
 import {
+  AppStandaloneScreen,
   AppTextButton,
   FeedbackMessage,
   PrimaryButton,
@@ -43,7 +43,7 @@ export default function VerifyEmail({
   }
 
   return (
-    <AuthCardShell
+    <AppStandaloneScreen
       data-testid="auth-verify-email-screen"
       title="Valide ton email"
       subtitle="Ouvre le lien reçu par email pour activer ton compte."
@@ -88,6 +88,6 @@ export default function VerifyEmail({
           {status.message}
         </FeedbackMessage>
       ) : null}
-    </AuthCardShell>
+    </AppStandaloneScreen>
   );
 }

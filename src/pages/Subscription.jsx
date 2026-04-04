@@ -2,7 +2,9 @@ import React from "react";
 import { getPlanLimits, isPremium } from "../logic/entitlements";
 import { LABELS, MARKETING_COPY, UI_COPY } from "../ui/labels";
 import {
+  AppActionRow,
   AppCard,
+  AppInlineMetaCard,
   AppScreen,
   GhostButton,
   PrimaryButton,
@@ -35,29 +37,24 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
           title={premium ? MARKETING_COPY.premiumPlan : MARKETING_COPY.essentialPlan}
           subtitle="Gère ton plan, tes achats et tes accès."
         />
-        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <AppCard>
           <div className="col gap12">
-            <div className="GateInlineMetaCard col gap8">
-              <div className="GateRoleCardTitle">Plan actif</div>
-              <div className="GateRoleHelperText">
+            <AppInlineMetaCard title="Plan actif">
+              <div className="appMetaText">
                 {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} · {limits.actions}{" "}
                 {LABELS.actionsLower}
               </div>
-            </div>
-            <div className="GateInlineMetaCard col gap8">
-              <div className="GateRoleCardTitle">Accès Premium</div>
-              <div className="GateRoleHelperText">
+            </AppInlineMetaCard>
+            <AppInlineMetaCard title="Accès Premium">
+              <div className="appMetaText">
                 Les accès Premium sont vérifiés quand tu ouvres le Coach et les fonctions avancées.
               </div>
-            </div>
+            </AppInlineMetaCard>
             {premium && expiryLabel ? (
-              <div className="GateInlineMetaCard col gap8">
-                <div className="GateRoleCardTitle">Échéance</div>
-                <div className="GateRoleCardMeta">Actif jusqu’au {expiryLabel}</div>
-              </div>
+              <AppInlineMetaCard title="Échéance" meta={`Actif jusqu’au ${expiryLabel}`} />
             ) : null}
           </div>
-          <div className="GatePrimaryCtaRow">
+          <AppActionRow>
             <PrimaryButton
               onClick={() => {
                 if (premium) return;
@@ -75,7 +72,7 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
             >
               {UI_COPY.restorePurchases}
             </GhostButton>
-          </div>
+          </AppActionRow>
         </AppCard>
       </section>
     </AppScreen>

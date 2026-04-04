@@ -1,0 +1,50 @@
+.errorBoundaryShell {
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-24);
+  box-sizing: border-box;
+}
+
+.errorBoundaryInner {
+  width: min(100%, 680px);
+}
+
+.errorBoundaryCard {
+  display: grid;
+  gap: var(--space-16);
+}
+
+.errorBoundaryActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.errorBoundaryDetails {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.errorBoundarySummary {
+  cursor: pointer;
+  font-size: var(--font-body);
+  color: var(--text-secondary);
+}
+
+.errorBoundaryDiagnostic {
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: var(--space-12);
+  border-radius: var(--radius-12);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-elevated) 88%, transparent);
+  color: var(--text-secondary);
+  font-size: var(--font-meta);
+  line-height: 1.45;
+}

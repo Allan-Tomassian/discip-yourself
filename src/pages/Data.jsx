@@ -2,7 +2,9 @@ import React, { useRef, useState } from "react";
 import { isPremium } from "../logic/entitlements";
 import { STATUS_COPY } from "../ui/labels";
 import {
+  AppActionRow,
   AppCard,
+  AppInlineMetaCard,
   AppScreen,
   FeedbackMessage,
   GhostButton,
@@ -65,8 +67,8 @@ export default function Data({ data, setData, onOpenPaywall }) {
     >
       <section className="mainPageSection">
         <SectionHeader title="Sauvegarde" subtitle="Exporte ou importe l’état complet de l’app." />
-        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
-          <div className="GatePrimaryCtaRow">
+        <AppCard>
+          <AppActionRow>
             <PrimaryButton
               onClick={() => {
                 if (!premium) {
@@ -99,14 +101,14 @@ export default function Data({ data, setData, onOpenPaywall }) {
             >
               Importer un fichier JSON
             </GhostButton>
-          </div>
+          </AppActionRow>
 
           {importStatus ? (
-            <div className="GateInlineMetaCard col gap8">
-              <FeedbackMessage className="GateRoleHelperText" tone={importStatus === STATUS_COPY.importDone ? "success" : "error"}>
+            <AppInlineMetaCard>
+              <FeedbackMessage tone={importStatus === STATUS_COPY.importDone ? "success" : "error"}>
                 {importStatus}
               </FeedbackMessage>
-            </div>
+            </AppInlineMetaCard>
           ) : null}
         </AppCard>
       </section>

@@ -36,11 +36,11 @@ describe("secondary pages visual canon contract", () => {
     const card = readSrc("ui/today/MicroActionsCard.jsx");
 
     expect(page).toContain("headerTitle");
-    expect(page).toContain("GateSectionIntro");
+    expect(page).toContain("SectionHeader");
     expect(page).not.toContain("<GatePage");
-    expect(card).toContain("GateSecondarySectionCard");
-    expect(card).toContain("GateRoleCardTitle");
-    expect(card).toContain("GateRoleCardMeta");
+    expect(card).toContain("AppCard");
+    expect(card).toContain("StatusBadge");
+    expect(card).toContain("AppInlineMetaCard");
     expect(card).not.toContain('<div className="cardSectionTitle">Micro-actions</div>');
   });
 
@@ -59,12 +59,13 @@ describe("secondary pages visual canon contract", () => {
     ].map(readSrc);
 
     for (const source of pages) {
-      expect(source.includes("SectionHeader") || source.includes("GateSectionIntro")).toBe(true);
-      expect(source).toContain("GateSecondarySectionCard");
+      expect(source).toContain("SectionHeader");
+      expect(source).toContain("AppCard");
+      expect(source).not.toContain("GateSecondarySectionCard");
     }
   });
 
-  it("keeps compact content on shared meta cards and premium helper roles", () => {
+  it("keeps compact content on shared AppUI meta cards instead of Gate helper grammar", () => {
     const pages = [
       "pages/Preferences.jsx",
       "pages/Account.jsx",
@@ -82,7 +83,8 @@ describe("secondary pages visual canon contract", () => {
     const todayCss = readSrc("features/today/today.css");
 
     for (const source of pages) {
-      expect(source).toContain("GateInlineMetaCard");
+      expect(source).toContain("AppInlineMetaCard");
+      expect(source).not.toContain("GateInlineMetaCard");
     }
 
     expect(accountCss).not.toContain("font-size: 12px;");

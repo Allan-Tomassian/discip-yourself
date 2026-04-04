@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Z } from "../ui/layer/zIndex";
-import { GateButton, GatePanel } from "../shared/ui/gate/Gate";
+import { AppCard, GhostButton, PrimaryButton } from "../shared/ui/app";
+import "./tourOverlay.css";
 
 const VIEWPORT_PADDING = 12;
 
@@ -125,56 +125,37 @@ export default function TourOverlay({
   const isLast = stepIndex >= totalSteps - 1;
 
   return createPortal(
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: Z.toast,
-        background: "rgba(0,0,0,0.45)",
-        pointerEvents: "auto",
-      }}
-    >
+    <div className="tourOverlay">
       <div
         ref={tooltipRef}
-        style={{
-          position: "fixed",
-          top: style.top,
-          left: style.left,
-          width: "min(92vw, 320px)",
-          maxWidth: 320,
-          opacity: style.opacity,
-          transition: "opacity 120ms ease",
-        }}
+        className="tourOverlayTooltip"
+        style={{ top: style.top, left: style.left, opacity: style.opacity }}
       >
-        <GatePanel className="GateMainSection GateSurfacePremium GateCardPremium">
-          <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <AppCard variant="elevated" className="tourOverlayCard">
+          <div className="tourOverlayHeader">
             <div className="titleSm">{step.title}</div>
             <div className="small2">{stepIndex + 1}/{totalSteps}</div>
           </div>
-          <div className="small" style={{ marginTop: 6 }}>
-            {step.body}
-          </div>
+          <div className="small tourOverlayBody">{step.body}</div>
           {step.nextActionHint ? (
-            <div className="small2" style={{ marginTop: 8, opacity: 0.8 }}>
-              {step.nextActionHint}
-            </div>
+            <div className="small2 tourOverlayHint">{step.nextActionHint}</div>
           ) : null}
-          <div className="row" style={{ justifyContent: "space-between", marginTop: 12, gap: 8 }}>
-            <GateButton variant="ghost" className="GatePressable" onClick={onSkip}>
+          <div className="tourOverlayActions">
+            <GhostButton onClick={onSkip}>
               Ignorer
-            </GateButton>
-            <div className="row" style={{ gap: 8 }}>
+            </GhostButton>
+            <div className="tourOverlayTrailingActions">
               {stepIndex > 0 ? (
-                <GateButton variant="ghost" className="GatePressable" onClick={onPrev}>
+                <GhostButton onClick={onPrev}>
                   Précédent
-                </GateButton>
+                </GhostButton>
               ) : null}
-              <GateButton className="GatePressable" onClick={onNext}>
+              <PrimaryButton onClick={onNext}>
                 {isLast ? "Terminer" : "Suivant"}
-              </GateButton>
+              </PrimaryButton>
             </div>
           </div>
-        </GatePanel>
+        </AppCard>
       </div>
     </div>,
     document.body

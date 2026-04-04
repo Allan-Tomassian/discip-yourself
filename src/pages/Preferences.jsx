@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { GateRow } from "../shared/ui/gate/Gate";
 import { DEFAULT_THEME } from "../theme/themeTokens";
 import { getPlanLimits, isPremium } from "../logic/entitlements";
 import { isClickSoundEnabled, setClickSoundEnabled } from "../shared/ui/sound/useClickSound";
 import { MARKETING_COPY, PLACEHOLDER_COPY, SURFACE_LABELS } from "../ui/labels";
 import {
+  AppActionRow,
   AppCard,
+  AppInlineMetaCard,
   AppScreen,
+  AppSettingRow,
   AppTextarea,
   GhostButton,
+  FieldGroup,
   PrimaryButton,
   SectionHeader,
 } from "../shared/ui/app";
@@ -66,21 +69,18 @@ export default function Preferences({ data, setData }) {
           title="Apparence"
           subtitle="Le design system global est appliqué partout dans l’app."
         />
-        <AppCard
-          className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
-          data-tour-id="settings-theme"
-        >
-          <div className="GateInlineMetaCard col gap8">
-            <p className="preferencesGateNote preferencesGateNoteStrong GateRoleCardTitle">
+        <AppCard className="preferencesGateCard" data-tour-id="settings-theme">
+          <AppInlineMetaCard className="preferencesGateSummary" titleClassName="preferencesGateNoteStrong">
+            <p className="preferencesGateNote">
               Système visuel actif : {visualSystemLabel}
             </p>
-            <p className="preferencesGateNote GateRoleHelperText">
+            <p className="preferencesGateNote">
               Toutes les surfaces partagent désormais le même thème sombre, calme et responsive.
             </p>
-            <p className="preferencesGateNote GateRoleHelperText">
+            <p className="preferencesGateNote">
               Les anciennes préférences visuelles sont conservées uniquement pour compatibilité technique, sans effet sur l’interface.
             </p>
-          </div>
+          </AppInlineMetaCard>
         </AppCard>
       </section>
 
@@ -89,14 +89,10 @@ export default function Preferences({ data, setData }) {
           title="Pourquoi"
           subtitle="Modifiable tous les 30 jours."
         />
-        <AppCard
-          className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
-          data-tour-id="settings-why"
-        >
+        <AppCard className="preferencesGateCard" data-tour-id="settings-why">
           <div className="preferencesGateForm">
-            <div className="GateInlineMetaCard col gap8">
-              <label className="preferencesGateField GateFormField" htmlFor="preferences-why">
-                <span className="preferencesGateFieldLabel GateFormLabel">Ton pourquoi</span>
+            <AppInlineMetaCard className="preferencesGateSummary">
+              <FieldGroup label="Ton pourquoi" htmlFor="preferences-why">
                 <AppTextarea
                   id="preferences-why"
                   className="preferencesGateTextarea"
@@ -105,14 +101,14 @@ export default function Preferences({ data, setData }) {
                   placeholder={PLACEHOLDER_COPY.whyText}
                   disabled={!canEditWhy}
                 />
-              </label>
+              </FieldGroup>
               {!canEditWhy ? (
-                <p className="preferencesGateNote GateRoleHelperText">
+                <p className="preferencesGateNote">
                   Tu pourras modifier ton pourquoi dans {daysLeft} jours.
                 </p>
               ) : null}
-            </div>
-            <div className="preferencesGateActions">
+            </AppInlineMetaCard>
+            <AppActionRow className="preferencesGateActions">
               <PrimaryButton
                 type="button"
                 disabled={!canEditWhy || !cleanWhy || !whyChanged}
@@ -129,7 +125,7 @@ export default function Preferences({ data, setData }) {
               >
                 Enregistrer
               </PrimaryButton>
-            </div>
+            </AppActionRow>
           </div>
         </AppCard>
       </section>
@@ -139,11 +135,9 @@ export default function Preferences({ data, setData }) {
           title="Introduction"
           subtitle="Relancer l’introduction ou le tutoriel produit."
         />
-        <AppCard
-          className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
-        >
-          <div className="GateInlineMetaCard">
-            <div className="preferencesGateActions preferencesGateActionsColumn">
+        <AppCard className="preferencesGateCard">
+          <AppInlineMetaCard>
+            <AppActionRow align="start" className="preferencesGateActions preferencesGateActionsColumn">
               <PrimaryButton
                 type="button"
                 size="sm"
@@ -180,8 +174,8 @@ export default function Preferences({ data, setData }) {
               >
                 Relancer le tutoriel
               </GhostButton>
-            </div>
-          </div>
+            </AppActionRow>
+          </AppInlineMetaCard>
         </AppCard>
       </section>
 
@@ -190,11 +184,9 @@ export default function Preferences({ data, setData }) {
           title="Interactions"
           subtitle="Animation de pression et son optionnel."
         />
-        <AppCard
-          className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
-        >
-          <GateRow
-            className="preferencesGateRowControl GatePressable"
+        <AppCard className="preferencesGateCard">
+          <AppSettingRow
+            className="preferencesGateRowControl"
             label="Son des interactions"
             meta={soundEnabled ? "Activé" : "Désactivé"}
             withSound
@@ -221,17 +213,15 @@ export default function Preferences({ data, setData }) {
           title="Abonnement"
           subtitle="Résumé rapide de ton plan."
         />
-        <AppCard
-          className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
-        >
-          <div className="GateInlineMetaCard col gap8">
-            <p className="preferencesGateNote preferencesGateNoteStrong GateRoleCardTitle">
+        <AppCard className="preferencesGateCard">
+          <AppInlineMetaCard className="preferencesGateSummary" titleClassName="preferencesGateNoteStrong">
+            <p className="preferencesGateNote">
               {premium ? MARKETING_COPY.premiumPlan : MARKETING_COPY.essentialPlan}
             </p>
-            <p className="preferencesGateNote GateRoleHelperText">
+            <p className="preferencesGateNote">
               {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} objectifs · {limits.actions} actions
             </p>
-            <div className="preferencesGateActions">
+            <AppActionRow align="start" className="preferencesGateActions">
               <GhostButton
                 type="button"
                 size="sm"
@@ -239,8 +229,8 @@ export default function Preferences({ data, setData }) {
               >
                 Ouvrir {SURFACE_LABELS.subscription.toLowerCase()}
               </GhostButton>
-            </div>
-          </div>
+            </AppActionRow>
+          </AppInlineMetaCard>
         </AppCard>
       </section>
 
@@ -249,11 +239,9 @@ export default function Preferences({ data, setData }) {
           title="Données"
           subtitle="Export, import et sauvegarde."
         />
-        <AppCard
-          className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
-        >
-          <div className="GateInlineMetaCard">
-            <div className="preferencesGateActions">
+        <AppCard className="preferencesGateCard">
+          <AppInlineMetaCard>
+            <AppActionRow align="start" className="preferencesGateActions">
               <GhostButton
                 type="button"
                 size="sm"
@@ -261,8 +249,8 @@ export default function Preferences({ data, setData }) {
               >
                 Ouvrir les données
               </GhostButton>
-            </div>
-          </div>
+            </AppActionRow>
+          </AppInlineMetaCard>
         </AppCard>
       </section>
 
@@ -271,10 +259,8 @@ export default function Preferences({ data, setData }) {
           title="Légal et support"
           subtitle="Confidentialité, conditions et assistance."
         />
-        <AppCard
-          className="preferencesGateCard GateSurfacePremium GateCardPremium GateSecondarySectionCard"
-        >
-          <div className="GateInlineMetaCard">
+        <AppCard className="preferencesGateCard">
+          <AppInlineMetaCard>
             <div className="preferencesGateLinks">
               <GhostButton
                 type="button"
@@ -298,7 +284,7 @@ export default function Preferences({ data, setData }) {
                 Support
               </GhostButton>
             </div>
-          </div>
+          </AppInlineMetaCard>
         </AppCard>
       </section>
     </AppScreen>

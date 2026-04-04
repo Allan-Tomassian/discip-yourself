@@ -1,5 +1,4 @@
 import React from "react";
-import ScreenShell from "./_ScreenShell";
 import AccentItem from "../components/AccentItem";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryUiVars } from "../utils/categoryAccent";
@@ -7,17 +6,8 @@ import { resolveCategoryColor } from "../utils/categoryPalette";
 import { resolveGoalType } from "../domain/goalType";
 import { isProcessLinkedToOutcome } from "../logic/linking";
 import { LABELS } from "../ui/labels";
-import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
+import { AppCard, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader, StatusBadge } from "../shared/ui/app";
 import "../features/library/library.css";
-
-function DetailCard({ children, className = "", ...props }) {
-  const mergedClassName = ["GateSurfacePremium", "GateCardPremium", "GateSecondarySectionCard", className].filter(Boolean).join(" ");
-  return (
-    <GateSection className={mergedClassName} collapsible={false} {...props}>
-      {children}
-    </GateSection>
-  );
-}
 
 export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
   const safeData = data && typeof data === "object" ? data : {};
@@ -50,20 +40,18 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
 
   if (!category) {
     return (
-      <ScreenShell
+      <AppScreen
         accent={getAccentForPage(safeData, "home")}
         headerTitle="Catégorie"
         headerSubtitle="Introuvable"
       >
         <section className="mainPageSection">
-          <GateSectionIntro title="Catégorie introuvable" subtitle="Cette catégorie n’existe plus." />
-          <DetailCard>
-            <div className="GateInlineMetaCard col gap8">
-              <div className="GateRoleHelperText">Reviens à la bibliothèque pour choisir une autre catégorie.</div>
-            </div>
-          </DetailCard>
+          <SectionHeader title="Catégorie introuvable" subtitle="Cette catégorie n’existe plus." />
+          <AppCard>
+            <AppInlineMetaCard text="Reviens à la bibliothèque pour choisir une autre catégorie." />
+          </AppCard>
         </section>
-      </ScreenShell>
+      </AppScreen>
     );
   }
 
@@ -72,31 +60,29 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
   const whyText = (category.whyText || "").trim();
 
   return (
-    <ScreenShell
+    <AppScreen
       accent={accent}
       backgroundImage={category.wallpaper || safeData.profile?.whyImage || ""}
       headerTitle={category.name || "Catégorie"}
       headerSubtitle="Détail catégorie"
       headerRight={
         typeof onOpenManage === "function" ? (
-          <GateButton variant="ghost" size="sm" className="GatePressable" onClick={onOpenManage}>
+          <GhostButton type="button" size="sm" onClick={onOpenManage}>
             Gérer
-          </GateButton>
+          </GhostButton>
         ) : null
       }
     >
       <section className="mainPageSection">
-        <GateSectionIntro title="Mini-why" subtitle="Contexte visible pour cette catégorie." />
-        <DetailCard>
-          <div className="GateInlineMetaCard col gap8">
-            <div className="GateRoleHelperText">{whyText || "Aucun mini-why pour cette catégorie."}</div>
-          </div>
-        </DetailCard>
+        <SectionHeader title="Mini-why" subtitle="Contexte visible pour cette catégorie." />
+        <AppCard>
+          <AppInlineMetaCard text={whyText || "Aucun mini-why pour cette catégorie."} />
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro title={LABELS.goals} subtitle="Objectifs et actions déjà reliées." />
-        <DetailCard>
+        <SectionHeader title={LABELS.goals} subtitle="Objectifs et actions déjà reliées." />
+        <AppCard>
           {outcomeGoals.length ? (
             <div className="col gap12">
               {outcomeGoals.map((g) => {
@@ -105,22 +91,22 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
                   <AccentItem key={g.id} className="listItem" style={catAccentVars}>
                     <div className="col gap8 minW0 wFull">
                       <div className="row rowBetween gap8 alignCenter">
-                        <div className="GateRoleCardTitle">{g.title || LABELS.goal}</div>
+                        <div className="itemTitle">{g.title || LABELS.goal}</div>
                         {category?.mainGoalId && g.id === category.mainGoalId ? (
-                          <span className="badge badgeAccent">Prioritaire</span>
+                          <StatusBadge tone="info">Prioritaire</StatusBadge>
                         ) : null}
                       </div>
                       {linkedHabits.length ? (
                         <div className="col gap8">
-                          <div className="GateRoleCardMeta">Actions liées</div>
+                          <div className="small2 textMuted">Actions liées</div>
                           {linkedHabits.map((h) => (
                             <AccentItem key={h.id} className="listItem" style={catAccentVars}>
-                              <div className="GateRoleHelperText">{h.title || "Action"}</div>
+                              <div className="itemSub">{h.title || "Action"}</div>
                             </AccentItem>
                           ))}
                         </div>
                       ) : (
-                        <div className="GateRoleHelperText">Aucune action liée.</div>
+                        <div className="itemSub">Aucune action liée.</div>
                       )}
                     </div>
                   </AccentItem>
@@ -128,27 +114,25 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
               })}
             </div>
           ) : (
-            <div className="GateInlineMetaCard col gap8">
-              <div className="GateRoleHelperText">Aucun {LABELS.goalLower} dans cette catégorie.</div>
-            </div>
+            <AppInlineMetaCard text={`Aucun ${LABELS.goalLower} dans cette catégorie.`} />
           )}
-        </DetailCard>
+        </AppCard>
       </section>
 
       {unlinkedHabits.length ? (
         <section className="mainPageSection">
-          <GateSectionIntro title="Actions non liées" subtitle="Actions présentes mais non rattachées à un objectif." />
-          <DetailCard>
+          <SectionHeader title="Actions non liées" subtitle="Actions présentes mais non rattachées à un objectif." />
+          <AppCard>
             <div className="col gap10">
               {unlinkedHabits.map((h) => (
                 <AccentItem key={h.id} className="listItem" style={catAccentVars}>
-                  <div className="GateRoleHelperText">{h.title || "Action"}</div>
+                  <div className="itemSub">{h.title || "Action"}</div>
                 </AccentItem>
               ))}
             </div>
-          </DetailCard>
+          </AppCard>
         </section>
       ) : null}
-    </ScreenShell>
+    </AppScreen>
   );
 }

@@ -1,34 +1,32 @@
 .coachFab {
   position: fixed;
   right: calc(var(--page-pad) + var(--safe-right));
-  bottom: calc(var(--safe-bottom) + 14px);
+  bottom: calc(var(--safe-bottom) + var(--space-14));
   z-index: 1350;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   min-height: 50px;
-  padding: 0 18px;
-  border-radius: 999px;
+  padding: 0 var(--space-18);
+  border-radius: var(--radius-pill);
   border: 1px solid color-mix(in srgb, var(--accent-primary) 24%, var(--border-subtle));
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, rgba(255, 255, 255, 0.05)), color-mix(in srgb, var(--surface-primary) 98%, rgba(0, 0, 0, 0.12)));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, transparent), color-mix(in srgb, var(--surface-primary) 98%, transparent));
   color: var(--text-primary);
-  box-shadow:
-    0 18px 34px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  font-size: 13px;
-  font-weight: 600;
+  box-shadow: var(--shadow-lg);
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: 0.01em;
   cursor: pointer;
   transition:
-    transform 140ms ease,
-    opacity 140ms ease,
-    box-shadow 140ms ease;
+    transform var(--motion-fast) var(--ease-standard),
+    opacity var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
   transform: translateY(var(--coach-fab-offset-y, 0px));
   touch-action: none;
 }
 
 .coachFab.has-rail {
-  bottom: calc(var(--bottom-fixed-stack-space, 0px) + 8px);
+  bottom: calc(var(--bottom-fixed-stack-space, 0px) + var(--space-8));
 }
 
 .coachFab:hover {
@@ -45,65 +43,46 @@
 }
 
 .coachFabDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent-primary) 80%, white);
+  width: var(--space-8);
+  height: var(--space-8);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--accent-primary) 80%, var(--text-primary));
   box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-primary) 12%, transparent);
 }
 
-.coachPanelBackdrop {
-  align-items: flex-end;
-  justify-content: flex-end;
-  padding:
-    max(12px, var(--safe-top))
-    calc(var(--page-pad) + var(--safe-right))
-    max(12px, calc(var(--safe-bottom) + 12px))
-    calc(var(--page-pad) + var(--safe-left));
+.coachPanelSheet.modalPanel {
+  width: min(430px, calc(100vw - var(--space-24) - var(--safe-left) - var(--safe-right)));
+  max-height: min(760px, calc(100dvh - var(--space-24) - var(--safe-top) - var(--safe-bottom)));
+  margin-top: auto;
+  margin-left: auto;
 }
 
-.coachPanelOuter {
-  width: min(430px, calc(100vw - 24px - var(--safe-left) - var(--safe-right)));
-  max-height: min(760px, calc(100dvh - 24px - var(--safe-top) - var(--safe-bottom)));
-}
-
-.coachPanelClip {
-  height: 100%;
-}
-
-.coachPanel {
+.coachPanelContent {
   gap: 0;
   height: 100%;
   min-height: 560px;
   overflow: hidden;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, rgba(255,255,255,0.03)), color-mix(in srgb, var(--surface-primary) 98%, rgba(0,0,0,0.08)));
+  padding: 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, transparent), color-mix(in srgb, var(--surface-primary) 98%, transparent));
 }
 
 .coachPanelHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 18px 14px;
+  padding: var(--space-16) var(--space-18) var(--space-14);
   border-bottom: 1px solid var(--border-subtle);
-}
-
-.coachPanelHeaderText {
-  min-width: 0;
-}
-
-.coachPanelTitle {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--text-primary);
 }
 
 .coachPanelHeaderActions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-8);
   align-items: center;
   justify-content: flex-end;
+}
+
+.coachPanelBody {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
 }
 
 .coachSurface {
@@ -122,7 +101,7 @@
 
 .coachConversationRail {
   border-right: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--surface-primary) 94%, #0d1118);
+  background: color-mix(in srgb, var(--surface-primary) 94%, transparent);
   min-width: 0;
 }
 
@@ -130,20 +109,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 14px 14px 10px;
+  gap: var(--space-10);
+  padding: var(--space-14) var(--space-14) var(--space-10);
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .coachConversationRailMeta {
-  font-size: 12px;
+  font-size: var(--font-meta);
   color: var(--text-secondary);
 }
 
 .coachConversationList {
   display: grid;
-  gap: 8px;
-  padding: 12px;
+  gap: var(--space-8);
+  padding: var(--space-12);
 }
 
 .coachConversationItemShell {
@@ -153,22 +132,25 @@
 .coachConversationItem {
   width: 100%;
   border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--surface-primary) 96%, #0d1118);
+  border-radius: var(--radius-14);
+  background: color-mix(in srgb, var(--surface-primary) 96%, transparent);
   color: var(--text-primary);
   text-align: left;
-  padding: 12px;
+  padding: var(--space-12);
   display: grid;
-  gap: 6px;
+  gap: var(--space-6);
   cursor: pointer;
-  transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
+  transition:
+    transform var(--motion-standard) var(--ease-standard),
+    border-color var(--motion-standard) var(--ease-standard),
+    background-color var(--motion-standard) var(--ease-standard);
 }
 
 .coachConversationItem.is-active {
   border-color: color-mix(in srgb, var(--accent-primary) 28%, var(--border-subtle));
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 56%, transparent), transparent 72%),
-    color-mix(in srgb, var(--surface-elevated) 94%, #111824);
+    color-mix(in srgb, var(--surface-elevated) 94%, transparent);
 }
 
 .coachConversationItemShell.is-archive-revealed .coachConversationItem {
@@ -179,18 +161,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-10);
 }
 
 .coachConversationItemTitle {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-meta);
+  font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
 }
 
 .coachConversationItemMeta,
 .coachConversationItemPreview {
-  font-size: 12px;
+  font-size: var(--font-meta);
   line-height: 1.45;
   color: var(--text-secondary);
 }
@@ -204,7 +186,7 @@
 .coachConversationArchiveButton {
   position: absolute;
   top: 50%;
-  right: 8px;
+  right: var(--space-8);
   transform: translateY(-50%);
   min-width: 64px;
   opacity: 0;
@@ -220,117 +202,68 @@
   position: absolute;
   inset: 0;
   z-index: 2;
-  border: 0;
-  background: rgba(5, 7, 12, 0.62);
-  cursor: pointer;
+  background: color-mix(in srgb, var(--background-primary) 62%, transparent);
 }
 
 .coachSurfaceToolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 18px 8px;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-18) var(--space-8);
 }
 
 .coachSurfaceToolbarActions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   flex-wrap: wrap;
 }
 
 .coachModeBadgeRow {
-  padding: 0 18px 8px;
+  padding: 0 var(--space-18) var(--space-8);
 }
 
 .coachModeBadge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 26px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 22%, var(--border-subtle));
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0)),
-    color-mix(in srgb, var(--accent-soft) 64%, var(--surface-primary));
-  color: var(--text-primary);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .coachSurfaceStage {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 18%, var(--border-subtle));
-  background: color-mix(in srgb, var(--accent-soft) 56%, var(--surface-primary));
-  font-size: 12px;
-  color: var(--text-primary);
+  font-size: var(--font-meta);
 }
 
 .coachArchiveNotice {
-  border: 0;
-  background: transparent;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-meta);
   line-height: 1.4;
-  cursor: pointer;
 }
 
 .coachConversationScroll {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 18px;
+  padding: var(--space-18);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .coachConversationEmpty {
-  display: grid;
-  gap: 6px;
-  padding: 12px 0 2px;
-}
-
-.coachConversationEmptyTitle {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.coachConversationEmptyText {
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--text-secondary);
+  margin-bottom: var(--space-8);
 }
 
 .coachQuickPrompts {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .coachQuickPrompt {
-  border: 1px solid var(--border-subtle);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--surface-primary) 96%, #0d1118);
-  color: var(--text-secondary);
-  padding: 9px 12px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
-}
-
-.coachQuickPrompt:hover {
-  border-color: color-mix(in srgb, var(--accent-primary) 22%, var(--border-subtle));
-  background: color-mix(in srgb, var(--surface-elevated) 90%, #101722);
-  color: var(--text-primary);
+  min-height: 34px;
+  font-size: var(--font-meta);
 }
 
 .coachMessage {
@@ -349,19 +282,17 @@
 .coachMessageBubble,
 .coachMessageCard {
   width: min(100%, 100%);
-  border-radius: 16px;
+  border-radius: var(--radius-16);
   border: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--surface-primary) 96%, #0d1118);
-  padding: 14px 16px;
+  background: color-mix(in srgb, var(--surface-primary) 96%, transparent);
+  padding: var(--space-14) var(--space-16);
   display: grid;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .coachMessage--user .coachMessageBubble {
   max-width: min(88%, 520px);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0)),
-    color-mix(in srgb, var(--accent-soft) 76%, var(--surface-elevated));
+  background: color-mix(in srgb, var(--accent-soft) 76%, var(--surface-elevated));
   border-color: color-mix(in srgb, var(--accent-primary) 22%, var(--border-subtle));
 }
 
@@ -375,7 +306,7 @@
 
 .coachMessageEyebrow {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -383,77 +314,76 @@
 
 .coachMessageTitle {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
 }
 
 .coachMessageText {
-  font-size: 14px;
+  font-size: var(--font-body);
   line-height: 1.5;
   color: var(--text-primary);
+}
+
+.coachMessageText--preline {
+  white-space: pre-line;
 }
 
 .coachMessageActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .coachDraftBlock {
   border-top: 1px solid var(--border-subtle);
-  padding-top: 12px;
+  padding-top: var(--space-12);
   display: grid;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .coachDraftTitle {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.64);
+  color: var(--text-secondary);
 }
 
 .coachDraftList {
   display: grid;
-  gap: 6px;
+  gap: var(--space-6);
 }
 
 .coachDraftItem,
 .coachDraftMessage {
-  font-size: 12px;
+  font-size: var(--font-meta);
   line-height: 1.45;
-  color: rgba(255, 255, 255, 0.78);
-}
-
-.coachDraftMessage.is-error,
-.coachComposerError {
-  color: #ffb4b4;
+  color: var(--text-secondary);
 }
 
 .coachComposer {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 14px 16px calc(16px + var(--safe-bottom));
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 88%, transparent);
+  padding: var(--space-14) var(--space-16) calc(var(--space-16) + var(--safe-bottom));
   display: grid;
-  gap: 10px;
+  gap: var(--space-10);
 }
 
 .coachComposerFooter {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .coachComposerMeta {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.62);
+  font-size: var(--font-meta);
+  color: var(--text-secondary);
 }
 
 .coachComposerActions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -461,24 +391,21 @@
 .coachRailHandle {
   width: 34px;
   height: 34px;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 94%, rgba(255, 255, 255, 0.08));
-  background: color-mix(in srgb, var(--surface-primary) 96%, #0d1118);
+  border-radius: var(--radius-12);
   display: inline-grid;
   place-items: center;
   gap: 3px;
-  cursor: pointer;
 }
 
 .coachRailHandle span {
   width: 14px;
   height: 1.5px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--text-secondary);
 }
 
 .coachComposerError {
-  font-size: 12px;
+  margin: 0;
 }
 
 .keyboardOpen .coachFab {
@@ -489,11 +416,11 @@
 
 @media (min-width: 901px) {
   .coachFab {
-    bottom: calc(var(--safe-bottom) + 18px);
+    bottom: calc(var(--safe-bottom) + var(--space-18));
   }
 
   .coachFab.has-rail {
-    bottom: calc(var(--safe-bottom) + 18px);
+    bottom: calc(var(--safe-bottom) + var(--space-18));
   }
 
   .coachSurface {
@@ -522,9 +449,9 @@
     width: min(288px, calc(100% - 56px));
     max-width: calc(100% - 56px);
     transform: translateX(-100%);
-    transition: transform 180ms ease;
+    transition: transform var(--motion-standard) var(--ease-standard);
     z-index: 3;
-    box-shadow: 16px 0 34px rgba(0, 0, 0, 0.28);
+    box-shadow: var(--shadow-lg);
   }
 
   .coachConversationRail.is-open {
@@ -533,35 +460,32 @@
 }
 
 @media (max-width: 640px) {
-  .coachPanelBackdrop {
-    padding: 0;
-  }
-
-  .coachPanelOuter {
+  .coachPanelSheet.modalPanel {
     width: 100vw;
     max-height: 100dvh;
     height: 100dvh;
+    margin: 0;
   }
 
-  .coachPanel {
+  .coachPanelContent {
     min-height: 100dvh;
     border-radius: 0;
   }
 
   .coachPanelHeader {
-    padding-top: calc(14px + var(--safe-top));
+    padding-top: calc(var(--space-14) + var(--safe-top));
   }
 
   .coachConversationScroll {
-    padding: 14px;
+    padding: var(--space-14);
   }
 
   .coachModeBadgeRow {
-    padding: 0 14px 8px;
+    padding: 0 var(--space-14) var(--space-8);
   }
 
   .coachComposer {
-    padding: 12px 14px calc(14px + var(--safe-bottom));
+    padding: var(--space-12) var(--space-14) calc(var(--space-14) + var(--safe-bottom));
   }
 
   .coachComposerFooter {
@@ -574,11 +498,11 @@
     justify-content: stretch;
   }
 
-  .coachComposerActions .gateButton {
+  .coachComposerActions > * {
     flex: 1 1 0;
   }
 
   .coachConversationRailHeader {
-    padding-top: 18px;
+    padding-top: var(--space-18);
   }
 }

@@ -29,7 +29,7 @@ describe("mobile viewport contract", () => {
     expect(indexCss).toContain(".appViewportFill{");
     expect(indexCss).toContain("padding-bottom:calc(32px + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px)));");
     expect(indexCss).toContain("padding-bottom: calc(40px + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px)));");
-    expect(indexCss).toContain("padding-top:calc(var(--topbar-bottom, calc(var(--safe-top) + 74px)) + 8px);");
+    expect(indexCss).toContain("padding-top: calc(var(--navGap, 10px) + var(--page-top-gap));");
 
     expect(app).toContain("const bottomRailRef = useRef(null);");
     expect(app).toContain('rootStyle.setProperty("--bottom-fixed-stack-space", "0px");');
@@ -41,7 +41,7 @@ describe("mobile viewport contract", () => {
 
     expect(bottomRailCss).toContain("bottom: calc(var(--space-12) + var(--safe-bottom));");
     expect(bottomRailCss).toContain("bottom: calc(var(--space-8) + var(--safe-bottom));");
-    expect(coachCss).toContain("bottom: calc(var(--bottom-fixed-stack-space, 0px) + 8px);");
+    expect(coachCss).toContain("bottom: calc(var(--bottom-fixed-stack-space, 0px) + var(--space-8));");
     expect(overlaysCss).not.toContain(".ios .modalBackdrop");
     expect(gatePremiumCss).toContain("@media (hover: none) and (pointer: coarse)");
     expect(gatePremiumCss).toContain("font-size: 16px;");

@@ -1,15 +1,18 @@
 import React from "react";
-import { GateSection } from "../../shared/ui/gate/Gate";
-import DatePicker from "../../ui/date/DatePicker";
 import { LABELS } from "../../ui/labels";
 import {
+  AppChip,
+  AppDateField,
+  AppFormSection,
+  AppInlineMetaCard,
   AppInput,
   AppSelect,
+  AppStickyFooter,
   AppTextarea,
+  AppToggleRow,
   FieldGroup,
   GhostButton,
   PrimaryButton,
-  GateFooter,
 } from "../../shared/ui/app";
 import {
   DAY_OPTIONS,
@@ -21,39 +24,24 @@ import {
 } from "./editItemShared";
 import "./editItem.css";
 
-export function SectionSurface({ title, description, main = false, children }) {
-  const cardClassName = main
-    ? "GateMainSection GateMainSectionCard GateSurfacePremium GateCardPremium"
-    : "GateSurfacePremium GateCardPremium GateSecondarySectionCard";
+function SuggestionNotice({ controller, text }) {
+  if (!controller.selectedSuggestion) return null;
   return (
-    <GateSection title={title} description={description} collapsible={false} className={cardClassName}>
-      <div className="editItemSectionGrid">{children}</div>
-    </GateSection>
+    <AppInlineMetaCard
+      title="Catégorie suggérée"
+      text={text}
+      action={(
+        <GhostButton size="sm" onClick={() => controller.activateSuggestedCategory(controller.selectedSuggestion)}>
+          Activer
+        </GhostButton>
+      )}
+    />
   );
 }
 
-export function Field({ label, helper = "", children }) {
-  return (
-    <FieldGroup label={label} helper={helper} className="editItemField">
-      {children}
-    </FieldGroup>
-  );
-}
-
-export function InlineCard({ title, text, action = null }) {
-  return (
-    <div className="GateInlineMetaCard editItemInlineCard">
-      <div className="GateRoleCardTitle">{title}</div>
-      <div className="editItemInlineCardRow">
-        <div className="editItemInlineMeta">{text}</div>
-        {action}
-      </div>
-    </div>
-  );
-}
-
-export function TimeModeField({
+function ActionTimeModeField({
   label,
+  helper = "",
   hasMultipleSlots,
   slotCount,
   timeMode,
@@ -63,20 +51,21 @@ export function TimeModeField({
 }) {
   if (hasMultipleSlots) {
     return (
-      <Field
+      <FieldGroup
         label={label}
         helper="Ce plan utilise plusieurs créneaux hérités. Ajuste-les depuis la structure de planification si nécessaire."
+        className="editItemField"
       >
-        <InlineCard
+        <AppInlineMetaCard
           title="Créneaux existants"
           text={`${slotCount} créneau${slotCount > 1 ? "x" : ""} restent déjà associés à cette action.`}
         />
-      </Field>
+      </FieldGroup>
     );
   }
 
   return (
-    <Field label={label}>
+    <FieldGroup label={label} helper={helper} className="editItemField">
       <div className="editItemTimeModeGroup">
         <AppSelect value={timeMode} onChange={(event) => onTimeModeChange(event.target.value)}>
           <option value="NONE">Dans la journée</option>
@@ -88,43 +77,46 @@ export function TimeModeField({
           <div className="editItemFieldHelper">Sans heure fixe. L’action garde juste une place dans la journée.</div>
         )}
       </div>
-    </Field>
+    </FieldGroup>
   );
 }
 
-export function DaysField({ value, onToggle }) {
+function DaysSelectorField({ value, onToggle }) {
   return (
-    <Field label="Jours" helper="Garde seulement les jours réellement crédibles.">
+    <FieldGroup label="Jours" helper="Garde seulement les jours réellement crédibles." className="editItemField">
       <div className="editItemDaysRow">
         {DAY_OPTIONS.map((day) => (
-          <button
+          <AppChip
             key={day.value}
-            type="button"
-            className={`editItemDayChip${value.includes(day.value) ? " isActive" : ""}`}
+            active={value.includes(day.value)}
             onClick={() => onToggle(day.value)}
+            aria-pressed={value.includes(day.value)}
           >
             {day.label}
-          </button>
+          </AppChip>
         ))}
       </div>
-    </Field>
+    </FieldGroup>
   );
 }
 
-export function ReminderFields({ controller }) {
+function ReminderSettingsBlock({ controller }) {
   if (!controller.remindersEnabled) return null;
   return (
-    <div className="editItemSectionGrid">
+    <div className="appFormSectionBody">
       <div className="editItemReminderList">
         {controller.reminderTimes.map((time, index) => (
           <div key={`${time || "reminder"}-${index}`} className="editItemReminderRow">
-            <Field label={index === 0 ? "Heure de rappel" : "Heure supplémentaire"}>
+            <FieldGroup
+              label={index === 0 ? "Heure de rappel" : "Heure supplémentaire"}
+              className="editItemField"
+            >
               <AppInput
                 type="time"
                 value={time}
                 onChange={(event) => controller.updateReminderTime(index, event.target.value)}
               />
-            </Field>
+            </FieldGroup>
             {controller.reminderTimes.length > 1 ? (
               <GhostButton size="sm" onClick={() => controller.removeReminderTime(index)}>
                 Retirer
@@ -141,89 +133,54 @@ export function ReminderFields({ controller }) {
       </div>
 
       <div className="editItemTwoCol">
-        <Field label="Canal">
+        <FieldGroup label="Canal" className="editItemField">
           <AppSelect value={controller.reminderChannel} onChange={(event) => controller.setReminderChannel(event.target.value)}>
             <option value="IN_APP">Dans l’app</option>
             <option value="NOTIFICATION">Notification</option>
           </AppSelect>
-        </Field>
+        </FieldGroup>
         <div />
       </div>
 
       <div className="editItemTwoCol">
-        <Field label="Fenêtre début" helper="Optionnel. Pour éviter un rappel trop tôt.">
-          <AppInput
-            type="time"
-            value={controller.windowStart}
-            onChange={(event) => controller.setWindowStart(event.target.value)}
-          />
-        </Field>
-        <Field label="Fenêtre fin" helper="Optionnel. Pour couper le rappel après un certain moment.">
-          <AppInput
-            type="time"
-            value={controller.windowEnd}
-            onChange={(event) => controller.setWindowEnd(event.target.value)}
-          />
-        </Field>
+        <FieldGroup label="Fenêtre début" helper="Optionnel. Pour éviter un rappel trop tôt." className="editItemField">
+          <AppInput type="time" value={controller.windowStart} onChange={(event) => controller.setWindowStart(event.target.value)} />
+        </FieldGroup>
+        <FieldGroup label="Fenêtre fin" helper="Optionnel. Pour couper le rappel après un certain moment." className="editItemField">
+          <AppInput type="time" value={controller.windowEnd} onChange={(event) => controller.setWindowEnd(event.target.value)} />
+        </FieldGroup>
       </div>
     </div>
   );
 }
 
-export function FooterBar({
-  error,
-  onCancel,
-  onSave,
-  primaryLabel = "Enregistrer",
-  secondaryLabel = "Annuler",
-}) {
+function FooterActions({ error, onCancel, onSave, primaryLabel = "Enregistrer", secondaryLabel = "Annuler" }) {
   return (
-    <div className="editItemFooterDock">
-      <div className="GateMainSection GateMainSectionCard GateSurfacePremium GateCardPremium editItemFooterSurface">
-        <div className="editItemFooterStack">
-          {error ? <div className="editItemErrorText" role="alert">{error}</div> : null}
-          <GateFooter>
-            <GhostButton onClick={onCancel}>
-              {secondaryLabel}
-            </GhostButton>
-            <PrimaryButton onClick={onSave}>{primaryLabel}</PrimaryButton>
-          </GateFooter>
-        </div>
-      </div>
-    </div>
+    <AppStickyFooter error={error}>
+      <GhostButton onClick={onCancel}>{secondaryLabel}</GhostButton>
+      <PrimaryButton onClick={onSave}>{primaryLabel}</PrimaryButton>
+    </AppStickyFooter>
   );
 }
 
 export function ActionEditScreen({ controller }) {
-  const selectedSuggestionCard = controller.selectedSuggestion ? (
-    <InlineCard
-      title="Catégorie suggérée"
-      text="Cette catégorie n’est pas encore active. Active-la avant de l’utiliser durablement."
-      action={
-        <GhostButton size="sm" onClick={() => controller.activateSuggestedCategory(controller.selectedSuggestion)}>
-          Activer
-        </GhostButton>
-      }
-    />
-  ) : null;
-
   return (
     <>
-      <SectionSurface
+      <AppFormSection
         main
         title="Identité et rattachement"
         description="Titre, catégorie, priorité et lien éventuel."
       >
-        <Field label="Titre">
+        <FieldGroup label="Titre" className="editItemField">
           <AppInput
             value={controller.title}
             onChange={(event) => controller.setTitle(event.target.value)}
             placeholder="Nom de l’action"
           />
-        </Field>
+        </FieldGroup>
 
         <div className="editItemTwoCol">
-          <Field label="Catégorie">
+          <FieldGroup label="Catégorie" className="editItemField">
             <AppSelect value={controller.selectedCategoryId} onChange={(event) => controller.setSelectedCategoryId(event.target.value)}>
               {controller.categoryOptions.map((cat) => (
                 <option key={cat.id} value={cat.id}>
@@ -232,8 +189,8 @@ export function ActionEditScreen({ controller }) {
                 </option>
               ))}
             </AppSelect>
-          </Field>
-          <Field label="Priorité">
+          </FieldGroup>
+          <FieldGroup label="Priorité" className="editItemField">
             <AppSelect value={controller.priority} onChange={(event) => controller.setPriority(event.target.value)}>
               {PRIORITY_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -241,14 +198,18 @@ export function ActionEditScreen({ controller }) {
                 </option>
               ))}
             </AppSelect>
-          </Field>
+          </FieldGroup>
         </div>
 
-        {selectedSuggestionCard}
+        <SuggestionNotice
+          controller={controller}
+          text="Cette catégorie n’est pas encore active. Active-la avant de l’utiliser durablement."
+        />
 
-        <Field
+        <FieldGroup
           label={`${LABELS.goal} lié`}
           helper={`Optionnel. Lie cette ${LABELS.actionLower} à un ${LABELS.goalLower} seulement si cela clarifie vraiment sa place.`}
+          className="editItemField"
         >
           <AppSelect value={controller.effectiveSelectedOutcomeId} onChange={(event) => controller.setSelectedOutcomeId(event.target.value)}>
             <option value="">{`Sans ${LABELS.goalLower}`}</option>
@@ -258,14 +219,14 @@ export function ActionEditScreen({ controller }) {
               </option>
             ))}
           </AppSelect>
-        </Field>
-      </SectionSurface>
+        </FieldGroup>
+      </AppFormSection>
 
-      <SectionSurface
+      <AppFormSection
         title="Planification"
         description="Quand l’action existe, comment elle revient et combien de temps elle prend."
       >
-        <Field label="Cadence" helper="Choisis le format le plus crédible pour cette action.">
+        <FieldGroup label="Cadence" helper="Choisis le format le plus crédible pour cette action." className="editItemField">
           <AppSelect value={controller.repeat} onChange={(event) => controller.setRepeat(event.target.value)}>
             {REPEAT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -273,15 +234,15 @@ export function ActionEditScreen({ controller }) {
               </option>
             ))}
           </AppSelect>
-        </Field>
+        </FieldGroup>
 
         {controller.repeat === "none" ? (
           <>
             <div className="editItemTwoCol">
-              <Field label="Date">
-                <DatePicker value={controller.oneOffDate} onChange={(event) => controller.setOneOffDate(event.target.value)} />
-              </Field>
-              <TimeModeField
+              <FieldGroup label="Date" className="editItemField">
+                <AppDateField value={controller.oneOffDate} onChange={(event) => controller.setOneOffDate(event.target.value)} />
+              </FieldGroup>
+              <ActionTimeModeField
                 label="Moment"
                 hasMultipleSlots={controller.hasMultipleSlots}
                 slotCount={controller.timeSlots.length}
@@ -291,7 +252,7 @@ export function ActionEditScreen({ controller }) {
                 onTimeChange={controller.setOneOffTime}
               />
             </div>
-            <Field label="Durée" helper="Optionnel. Laisse vide si la durée reste libre.">
+            <FieldGroup label="Durée" helper="Optionnel. Laisse vide si la durée reste libre." className="editItemField">
               <AppInput
                 type="number"
                 min="1"
@@ -299,14 +260,14 @@ export function ActionEditScreen({ controller }) {
                 onChange={(event) => controller.setSessionMinutes(event.target.value)}
                 placeholder="Minutes"
               />
-            </Field>
+            </FieldGroup>
           </>
         ) : (
           <>
-            {controller.repeat === "weekly" ? <DaysField value={controller.daysOfWeek} onToggle={controller.toggleDay} /> : null}
+            {controller.repeat === "weekly" ? <DaysSelectorField value={controller.daysOfWeek} onToggle={controller.toggleDay} /> : null}
 
             <div className="editItemTwoCol">
-              <TimeModeField
+              <ActionTimeModeField
                 label="Moment"
                 hasMultipleSlots={controller.hasMultipleSlots}
                 slotCount={controller.timeSlots.length}
@@ -315,7 +276,7 @@ export function ActionEditScreen({ controller }) {
                 timeValue={controller.startTime}
                 onTimeChange={controller.setStartTime}
               />
-              <Field label="Durée" helper="Optionnel. Laisse vide si la durée reste souple.">
+              <FieldGroup label="Durée" helper="Optionnel. Laisse vide si la durée reste souple." className="editItemField">
                 <AppInput
                   type="number"
                   min="1"
@@ -323,7 +284,7 @@ export function ActionEditScreen({ controller }) {
                   onChange={(event) => controller.setSessionMinutes(event.target.value)}
                   placeholder="Minutes"
                 />
-              </Field>
+              </FieldGroup>
             </div>
           </>
         )}
@@ -331,35 +292,32 @@ export function ActionEditScreen({ controller }) {
         {controller.showFixedTimeHint ? (
           <div className="editItemErrorText">Choisis une heure pour garder ce cadre à heure fixe.</div>
         ) : null}
-      </SectionSurface>
+      </AppFormSection>
 
-      <SectionSurface
+      <AppFormSection
         title="Rappels"
         description="Un signal simple, seulement si cette action possède déjà un cadre planifiable."
       >
-        <label className="editItemToggleRow">
-          <input
-            type="checkbox"
-            checked={controller.remindersEnabled}
-            onChange={(event) => controller.setRemindersEnabled(event.target.checked)}
-            disabled={!controller.canUseReminders}
-          />
-          <span>Activer les rappels</span>
-        </label>
+        <AppToggleRow
+          checked={controller.remindersEnabled}
+          onChange={(event) => controller.setRemindersEnabled(event.target.checked)}
+          disabled={!controller.canUseReminders}
+          label="Activer les rappels"
+        />
 
         {!controller.canUseReminders ? (
           <div className="editItemFieldHelper">Ajoute d’abord un cadre horaire ou une occurrence planifiable pour utiliser les rappels.</div>
         ) : null}
 
-        <ReminderFields controller={controller} />
-      </SectionSurface>
+        <ReminderSettingsBlock controller={controller} />
+      </AppFormSection>
 
-      <SectionSurface
+      <AppFormSection
         title="Quantification"
         description="Optionnel. Utile seulement si cette action gagne à être suivie comme un volume."
       >
         <div className="editItemThreeCol">
-          <Field label="Quantité">
+          <FieldGroup label="Quantité" className="editItemField">
             <AppInput
               type="number"
               min="1"
@@ -367,15 +325,15 @@ export function ActionEditScreen({ controller }) {
               onChange={(event) => controller.setQuantityValue(event.target.value)}
               placeholder="Quantité"
             />
-          </Field>
-          <Field label="Unité">
+          </FieldGroup>
+          <FieldGroup label="Unité" className="editItemField">
             <AppInput
               value={controller.quantityUnit}
               onChange={(event) => controller.setQuantityUnit(event.target.value)}
               placeholder="Unité"
             />
-          </Field>
-          <Field label="Période">
+          </FieldGroup>
+          <FieldGroup label="Période" className="editItemField">
             <AppSelect value={controller.quantityPeriod} onChange={(event) => controller.setQuantityPeriod(event.target.value)}>
               {QUANTITY_PERIODS.map((period) => (
                 <option key={period.id} value={period.id}>
@@ -383,70 +341,60 @@ export function ActionEditScreen({ controller }) {
                 </option>
               ))}
             </AppSelect>
-          </Field>
+          </FieldGroup>
         </div>
-      </SectionSurface>
+      </AppFormSection>
 
-      <SectionSurface
+      <AppFormSection
         title="Contexte"
         description="Garde seulement les notes qui aident vraiment à agir ou à reprendre."
       >
-        <Field label="Notes">
+        <FieldGroup label="Notes" className="editItemField">
           <AppTextarea
             value={controller.notes}
             onChange={(event) => controller.setNotes(event.target.value)}
             placeholder="Ajoute un contexte utile, pas un journal technique."
           />
-        </Field>
-      </SectionSurface>
+        </FieldGroup>
+      </AppFormSection>
 
-      <SectionSurface
+      <AppFormSection
         title="Zone sensible"
         description="Supprime cette action seulement si sa structure n’a plus lieu d’exister."
       >
-        <div className="editItemInlineCardRow">
-          <div className="editItemInlineMeta">La suppression retire aussi les occurrences et les rappels associés.</div>
-          <GhostButton className="editItemDangerButton" onClick={controller.handleDelete}>
-            Supprimer
-          </GhostButton>
-        </div>
-      </SectionSurface>
+        <AppInlineMetaCard
+          text="La suppression retire aussi les occurrences et les rappels associés."
+          action={(
+            <GhostButton className="editItemDangerButton" onClick={controller.handleDelete}>
+              Supprimer
+            </GhostButton>
+          )}
+        />
+      </AppFormSection>
 
-      <FooterBar error={controller.error} onCancel={controller.onBack} onSave={controller.handleSave} />
+      <FooterActions error={controller.error} onCancel={controller.onBack} onSave={controller.handleSave} />
     </>
   );
 }
 
 export function OutcomeEditScreen({ controller }) {
-  const selectedSuggestionCard = controller.selectedSuggestion ? (
-    <InlineCard
-      title="Catégorie suggérée"
-      text="Cette catégorie n’est pas encore active. Active-la avant d’y rattacher durablement cet objectif."
-      action={
-        <GhostButton size="sm" onClick={() => controller.activateSuggestedCategory(controller.selectedSuggestion)}>
-          Activer
-        </GhostButton>
-      }
-    />
-  ) : null;
-
   return (
     <>
-      <SectionSurface
+      <AppFormSection
         main
         title="Identité et catégorie"
         description="Titre, catégorie et niveau de priorité."
       >
-        <Field label="Titre">
+        <FieldGroup label="Titre" className="editItemField">
           <AppInput
             value={controller.title}
             onChange={(event) => controller.setTitle(event.target.value)}
             placeholder={`Nom du ${LABELS.goalLower}`}
           />
-        </Field>
+        </FieldGroup>
 
         <div className="editItemTwoCol">
-          <Field label="Catégorie">
+          <FieldGroup label="Catégorie" className="editItemField">
             <AppSelect value={controller.selectedCategoryId} onChange={(event) => controller.setSelectedCategoryId(event.target.value)}>
               {controller.categoryOptions.map((cat) => (
                 <option key={cat.id} value={cat.id}>
@@ -455,8 +403,8 @@ export function OutcomeEditScreen({ controller }) {
                 </option>
               ))}
             </AppSelect>
-          </Field>
-          <Field label="Priorité">
+          </FieldGroup>
+          <FieldGroup label="Priorité" className="editItemField">
             <AppSelect value={controller.priority} onChange={(event) => controller.setPriority(event.target.value)}>
               {PRIORITY_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -464,32 +412,35 @@ export function OutcomeEditScreen({ controller }) {
                 </option>
               ))}
             </AppSelect>
-          </Field>
+          </FieldGroup>
         </div>
 
-        {selectedSuggestionCard}
-      </SectionSurface>
+        <SuggestionNotice
+          controller={controller}
+          text="Cette catégorie n’est pas encore active. Active-la avant d’y rattacher durablement cet objectif."
+        />
+      </AppFormSection>
 
-      <SectionSurface
+      <AppFormSection
         title="Horizon"
         description="Définis une fenêtre crédible pour cet objectif."
       >
         <div className="editItemTwoCol">
-          <Field label="Date de début">
-            <DatePicker value={controller.startDate} onChange={controller.handleOutcomeStartDateChange} />
-          </Field>
-          <Field label={`Date cible`} helper={`Min. ${controller.minDeadlineKey || "le lendemain de la date de début"}.`}>
-            <DatePicker value={controller.deadline} onChange={controller.handleDeadlineChange} />
-          </Field>
+          <FieldGroup label="Date de début" className="editItemField">
+            <AppDateField value={controller.startDate} onChange={controller.handleOutcomeStartDateChange} />
+          </FieldGroup>
+          <FieldGroup label="Date cible" helper={`Min. ${controller.minDeadlineKey || "le lendemain de la date de début"}.`} className="editItemField">
+            <AppDateField value={controller.deadline} onChange={controller.handleDeadlineChange} />
+          </FieldGroup>
         </div>
-      </SectionSurface>
+      </AppFormSection>
 
-      <SectionSurface
+      <AppFormSection
         title="Mesure"
         description="Comment lire la progression sans ambiguïté."
       >
         <div className="editItemTwoCol">
-          <Field label="Type de mesure">
+          <FieldGroup label="Type de mesure" className="editItemField">
             <AppSelect value={controller.measureType} onChange={(event) => controller.setMeasureType(event.target.value)}>
               <option value="">Aucune mesure</option>
               {MEASURE_OPTIONS.map((option) => (
@@ -498,10 +449,11 @@ export function OutcomeEditScreen({ controller }) {
                 </option>
               ))}
             </AppSelect>
-          </Field>
-          <Field
+          </FieldGroup>
+          <FieldGroup
             label="Cible"
             helper={controller.measureType ? "La cible doit rester simple à lire et à mettre à jour." : "Choisis d’abord un type de mesure si tu veux suivre une cible."}
+            className="editItemField"
           >
             <AppInput
               type="number"
@@ -511,36 +463,38 @@ export function OutcomeEditScreen({ controller }) {
               placeholder={controller.measureType ? getMeasurePlaceholder(controller.measureType) : "Valeur"}
               disabled={!controller.measureType}
             />
-          </Field>
+          </FieldGroup>
         </div>
-      </SectionSurface>
+      </AppFormSection>
 
-      <SectionSurface
+      <AppFormSection
         title="Contexte"
         description="Garde une note utile pour préciser ce que cet objectif doit vraiment produire."
       >
-        <Field label="Notes">
+        <FieldGroup label="Notes" className="editItemField">
           <AppTextarea
             value={controller.notes}
             onChange={(event) => controller.setNotes(event.target.value)}
             placeholder={`Ce qui rend ce ${LABELS.goalLower} utile, concret ou prioritaire.`}
           />
-        </Field>
-      </SectionSurface>
+        </FieldGroup>
+      </AppFormSection>
 
-      <SectionSurface
+      <AppFormSection
         title="Zone sensible"
         description={`Supprime ce ${LABELS.goalLower} seulement s’il n’a plus de rôle dans la structure.`}
       >
-        <div className="editItemInlineCardRow">
-          <div className="editItemInlineMeta">La suppression retire l’objectif et détache les actions qui y sont liées.</div>
-          <GhostButton className="editItemDangerButton" onClick={controller.handleDelete}>
-            Supprimer
-          </GhostButton>
-        </div>
-      </SectionSurface>
+        <AppInlineMetaCard
+          text="La suppression retire l’objectif et détache les actions qui y sont liées."
+          action={(
+            <GhostButton className="editItemDangerButton" onClick={controller.handleDelete}>
+              Supprimer
+            </GhostButton>
+          )}
+        />
+      </AppFormSection>
 
-      <FooterBar error={controller.error} onCancel={controller.onBack} onSave={controller.handleSave} />
+      <FooterActions error={controller.error} onCancel={controller.onBack} onSave={controller.handleSave} />
     </>
   );
 }

@@ -1,49 +1,7 @@
-.categoryGateBackdrop {
-  background: var(--overlayBackdrop, rgba(0, 0, 0, 0.6));
-}
-
-.categoryGateModal {
-  width: min(var(--app-modal-max, 720px), calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
-  max-width: min(var(--app-modal-max, 720px), calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
-  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  overflow: hidden;
-  align-self: center;
-  box-sizing: border-box;
-}
-
-.categoryGateShell {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  height: 100%;
-  gap: 12px;
-  min-width: 0;
-  box-sizing: border-box;
-}
-
-.categoryGateScroll {
-  min-height: 0;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-right: 2px;
-  min-width: 0;
-}
-
-.categoryGateHeader {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  margin-bottom: 8px;
-}
-
 .categoryGateList {
   display: grid;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: var(--space-12);
+  margin-bottom: var(--space-12);
   min-width: 0;
 }
 
@@ -53,59 +11,59 @@
 }
 
 .libraryPage .libraryPrimaryCard {
-  border-color: color-mix(in srgb, var(--gate-border) 94%, rgba(255, 255, 255, 0.08));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 14px 24px rgba(0, 0, 0, 0.22);
+  border-color: var(--border-subtle);
+  box-shadow: var(--shadow-md);
 }
 
 .libraryPage .categorySurface {
-  border-color: color-mix(in srgb, var(--categoryUiBorder, var(--border-subtle)) 72%, rgba(255, 255, 255, 0.08));
+  border-color: color-mix(in srgb, var(--categoryUiBorder, var(--border-subtle)) 72%, transparent);
 }
 
 .libraryPage .categorySurface.categorySurface--surface {
   background:
     linear-gradient(
       90deg,
-      color-mix(in srgb, var(--categoryUiTint, rgba(91, 140, 255, 0.14)) 30%, transparent),
+      color-mix(in srgb, var(--categoryUiTint, var(--accent-soft)) 30%, transparent),
       transparent 64%
     ),
     linear-gradient(
       180deg,
-      color-mix(in srgb, var(--surface-elevated) 95%, rgba(255, 255, 255, 0.02)),
-      color-mix(in srgb, var(--surface-primary) 98%, rgba(0, 0, 0, 0.04))
+      color-mix(in srgb, var(--surface-elevated) 95%, transparent),
+      color-mix(in srgb, var(--surface-primary) 98%, transparent)
     );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: var(--shadowControl);
 }
 
 .libraryPage .categorySurface.categorySurface--surface::before {
-  left: 16px;
-  right: 16px;
-  height: 18px;
-  border-radius: 0 0 12px 12px;
+  left: var(--space-16);
+  right: var(--space-16);
+  height: var(--space-18);
+  border-radius: 0 0 var(--radius-12) var(--radius-12);
   background:
     linear-gradient(
       90deg,
-      color-mix(in srgb, var(--categoryUiBand, rgba(91, 140, 255, 0.16)) 28%, transparent),
+      color-mix(in srgb, var(--categoryUiBand, var(--accent-soft)) 28%, transparent),
       transparent 84%
     );
   opacity: 0.26;
 }
 
-.libraryPage .gateRow.categorySurface.isSelected {
-  border-color: color-mix(in srgb, var(--categoryUiBorderStrong, var(--accent)) 44%, var(--gate-border));
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--categoryUiGlow, var(--accent)) 12%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+.libraryPage .categorySurface.isSelected {
+  border-color: color-mix(in srgb, var(--categoryUiBorderStrong, var(--accent-primary)) 44%, var(--border-subtle));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--categoryUiGlow, var(--accent-primary)) 12%, transparent);
 }
 
 .librarySuggestionsHeader {
-  padding-inline: 2px;
-  min-height: 22px;
+  padding-inline: var(--space-4);
+  min-height: var(--space-24);
 }
 
 .librarySuggestionsList {
-  padding-inline: 2px;
+  padding-inline: var(--space-4);
+}
+
+.librarySuggestionsToggle {
+  align-self: flex-start;
 }
 
 .libraryAccentItem {
@@ -127,38 +85,79 @@
 }
 
 .libraryManageCard {
-  border-color: color-mix(in srgb, var(--gate-border) 92%, rgba(255, 255, 255, 0.08));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 12px 22px rgba(0, 0, 0, 0.16);
+  border-color: var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+.libraryActionRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  flex-wrap: wrap;
 }
 
 .libraryManageCardBody {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .libraryDetailStack {
-  gap: 10px;
-  padding-left: 10px;
-  border-left: 1px solid color-mix(in srgb, var(--accent) 8%, var(--gate-border));
+  gap: var(--space-12);
+  padding-left: var(--space-12);
+  border-left: 1px solid color-mix(in srgb, var(--categoryUiBorder, var(--border-subtle)) 36%, transparent);
 }
 
 .libraryDetailStack .mt12 {
-  margin-top: 12px;
+  margin-top: var(--space-12);
 }
 
 .libraryDetailStack .gap10 {
-  gap: 10px;
+  gap: var(--space-12);
 }
 
 .libraryDetailStack .gap8 {
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .libraryDetailStack .mt6 {
-  margin-top: 6px;
+  margin-top: var(--space-8);
+}
+
+.libraryFieldStack {
+  gap: var(--space-8);
+}
+
+.libraryFilterStack {
+  gap: var(--space-8);
+}
+
+.libraryChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.libraryBadgeRow {
+  gap: var(--space-8);
+}
+
+.libraryBadge {
+  flex: 0 0 auto;
+}
+
+.libraryDragHandle {
+  cursor: grab;
+}
+
+.libraryDragHandle:active {
+  cursor: grabbing;
+}
+
+.libraryProgressButton,
+.librarySectionToggle {
+  align-self: flex-start;
 }
 
 .categoryGateList.isExpanded {
@@ -172,37 +171,40 @@
 .categoryGateItem {
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: var(--text-1, var(--text));
+  gap: var(--space-12);
+  padding: var(--space-12);
+  border-radius: var(--radius-12);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-primary) 94%, transparent);
+  color: var(--text-primary);
   text-align: left;
   cursor: pointer;
   min-width: 0;
+  box-shadow: var(--shadowControl);
 }
 
 .categoryGateItem:focus-visible {
-  outline: 1px solid color-mix(in srgb, var(--accent) 46%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--accent-primary) 46%, transparent);
   outline-offset: 0;
 }
 
 .categoryGateItem.isSelected {
-  border-color: color-mix(in srgb, var(--accent) 62%, var(--gate-border, var(--border)));
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--accent) 36%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border-color: color-mix(in srgb, var(--accent-primary) 62%, var(--border-subtle));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 36%, transparent);
 }
 
 .categoryGateSwatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  width: var(--space-14);
+  height: var(--space-14);
+  border-radius: var(--radius-pill);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 25%, transparent);
   flex: 0 0 auto;
 }
 
 .categoryGateName {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-8);
   align-items: baseline;
   font-weight: 600;
   min-width: 0;
@@ -213,139 +215,12 @@
   line-height: 1.32;
 }
 
-.categoryGateHint {
-  font-size: 12px;
-  line-height: 1.3;
-  opacity: 0.64;
-  font-weight: 500;
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-}
-
 .categoryGateSwitch {
-  border: 1px solid color-mix(in srgb, var(--gate-border, var(--border-subtle, var(--border))) 90%, rgba(255, 255, 255, 0.16));
-  background: color-mix(in srgb, var(--gate-surface-2, var(--surface-3)) 88%, #070b12);
-  color: var(--gate-text-muted, var(--text-2, var(--text)));
-  border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   flex: 0 0 auto;
-  min-height: 26px;
-  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
-}
-
-.categoryGateSwitch.isActive {
-  background: color-mix(in srgb, var(--accent) 22%, var(--gate-surface-1, var(--surface-2)));
-  color: var(--gate-text, var(--text));
-  border-color: color-mix(in srgb, var(--accent) 62%, var(--gate-border, var(--border)));
-}
-
-.categoryGateSwitch.isAttention {
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
-}
-
-.categoryGateSwitch:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.categoryGateSwitchLabel {
-  line-height: 1;
-}
-
-.categoryGateSwitchThumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  font-size: 12px;
-  font-weight: 800;
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--text);
-}
-
-.categoryGateSwitch.isActive .categoryGateSwitchThumb {
-  background: color-mix(in srgb, var(--accent) 68%, #fff);
-  color: #111;
-}
-
-.categoryGateHelper {
-  margin-top: 6px;
-}
-
-.categoryGateDebug {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.categoryGateDebugLog {
-  max-height: 160px;
-  overflow: auto;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 8px;
-  border-radius: 8px;
-  white-space: pre-wrap;
-}
-
-.categoryGateExpand {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 12px;
-}
-
-.categoryGateCreate {
-  padding: 13px;
-  border-radius: 12px;
-  border: 1px dashed color-mix(in srgb, var(--gate-border, var(--border-subtle, var(--border))) 84%, rgba(255, 255, 255, 0.1));
-  background: color-mix(in srgb, var(--gate-surface-2, var(--surface-3)) 84%, #05080f);
-  margin-bottom: 16px;
-}
-
-.categoryGateCreateRow {
-  display: flex;
-  gap: 8px;
-  align-items: flex-end;
-  margin-top: 8px;
-  flex-wrap: wrap;
-}
-
-.categoryGateCreateName {
-  min-width: 220px;
-  flex: 1 1 220px;
-}
-
-.categoryGateColor {
-  width: 52px;
-  min-width: 52px;
-  height: 40px;
-  padding: 4px;
-  border-radius: 10px;
-  border: 1px solid var(--gate-border, var(--border-subtle, var(--border)));
-  background: color-mix(in srgb, var(--gate-surface-1, var(--surface-2)) 88%, #05080f);
-}
-
-.categoryGateFooter {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  padding-top: 10px;
-  border-top: 1px solid color-mix(in srgb, var(--gate-border, var(--border-subtle, var(--border))) 88%, transparent);
-}
-
-.categoryGateSectionFlat {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  padding: 0;
-  gap: 0;
+  justify-content: center;
+  min-width: max-content;
 }
 
 @media (max-width: 767px) {
@@ -358,16 +233,7 @@
     padding-left: 0;
     border-left: 0;
   }
-}
-
-@media (max-width: 720px) {
-  .categoryGateModal {
-    width: min(var(--app-modal-max, 720px), calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
-    max-width: min(var(--app-modal-max, 720px), calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
-    max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 16px);
-    padding: 16px;
-  }
-
+ 
   .categoryGateList.isExpanded {
     grid-template-columns: 1fr;
   }

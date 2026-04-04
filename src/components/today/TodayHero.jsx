@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
-import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
-import "../../features/today/today.css";
+import { AppCard, FeedbackMessage, GhostButton, PrimaryButton } from "../../shared/ui/app";
 import ManualAiStatus from "../ai/ManualAiStatus";
 import CategoryPill from "../CategoryPill";
 import { getCategoryUiVars } from "../../utils/categoryAccent";
@@ -46,108 +45,95 @@ export default function TodayHero({
   const displayCategory = recommendedCategoryLabel || categoryName || "À préciser";
 
   return (
-    <GateSection
-      className={[
-        "GateMainSection",
-        "GateMainSectionCard",
-        "todayHeroCard",
-        "GateSurfacePremium",
-        "GateCardPremium",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-      collapsible={false}
-      style={heroAccentVars || undefined}
-    >
-      <div className="todayHeroHeader">
-        <div className="todayHeroHeaderCluster">
-          <ManualAiStatus
-            statusKind={analysisStatusKind}
-            statusLabel={analysisModeLabel || ANALYSIS_COPY.localDiagnostic}
-            detailLabel={[analysisStorageLabel, timestampLabel].filter(Boolean).join(" • ")}
-            stageLabel={analysisStageLabel}
-          />
-          {behaviorCue ? <BehaviorCue cue={behaviorCue} category={activeCategory || category || null} /> : null}
-        </div>
-      </div>
-      <div className="todayHeroBody">
-        <div className="todayHeroTitle GateRoleCardTitle">{displayTitle}</div>
-        <div className="todayHeroMetaRow">
-          <CategoryPill category={category} label={displayCategory} className="todayHeroCategoryPill" />
-          <div className="todayHeroDurationChip">{durationLabel || "Durée libre"}</div>
-        </div>
-        <div className="todayHeroDetailList">
-          <div className="todayHeroDetailBlock">
-            <div className="todayHeroDetailLabel GateRoleCardMeta">Pourquoi maintenant</div>
-            <div className="todayHeroDetailText GateRoleHelperText">{displayReason}</div>
+    <AppCard variant="elevated" className="todayHeroCard" style={heroAccentVars || undefined}>
+      <div className="todayHeroContent">
+        <div className="todayHeroHeader">
+          <div className="todayHeroHeaderCluster">
+            <ManualAiStatus
+              statusKind={analysisStatusKind}
+              statusLabel={analysisModeLabel || ANALYSIS_COPY.localDiagnostic}
+              detailLabel={[analysisStorageLabel, timestampLabel].filter(Boolean).join(" • ")}
+              stageLabel={analysisStageLabel}
+            />
+            {behaviorCue ? <BehaviorCue cue={behaviorCue} category={activeCategory || category || null} /> : null}
           </div>
-          <div className="todayHeroDetailBlock">
-            <div className="todayHeroDetailLabel GateRoleCardMeta">Direction</div>
-            <div className="todayHeroDetailText GateRoleHelperText">{displayContribution}</div>
+        </div>
+
+        <div className="todayHeroBody">
+          <div className="todayHeroTitle">{displayTitle}</div>
+          <div className="todayHeroMetaRow">
+            <CategoryPill category={category} label={displayCategory} className="todayHeroCategoryPill" />
+            <div className="todayHeroDurationChip">{durationLabel || "Durée libre"}</div>
           </div>
-          {displayImpact ? (
+          <div className="todayHeroDetailList">
             <div className="todayHeroDetailBlock">
-              <div className="todayHeroDetailLabel GateRoleCardMeta">Effet visé</div>
-              <div className="todayHeroDetailText GateRoleHelperText">{displayImpact}</div>
+              <div className="todayHeroDetailLabel">Pourquoi maintenant</div>
+              <div className="todayHeroDetailText">{displayReason}</div>
             </div>
-          ) : null}
+            <div className="todayHeroDetailBlock">
+              <div className="todayHeroDetailLabel">Direction</div>
+              <div className="todayHeroDetailText">{displayContribution}</div>
+            </div>
+            {displayImpact ? (
+              <div className="todayHeroDetailBlock">
+                <div className="todayHeroDetailLabel">Effet visé</div>
+                <div className="todayHeroDetailText">{displayImpact}</div>
+              </div>
+            ) : null}
+          </div>
         </div>
+
+        <div className="todayHeroActions">
+          <PrimaryButton
+            type="button"
+            className="todayHeroPrimaryBtn"
+            onClick={() => onPrimaryAction?.()}
+            disabled={!canPrimaryAction}
+          >
+            {primaryLabel}
+          </PrimaryButton>
+          <GhostButton
+            type="button"
+            size="sm"
+            className="todayHeroSecondaryBtn"
+            onClick={() => onAnalyze?.()}
+            disabled={analyzeDisabled}
+          >
+            {analyzeDisabled && analysisStageLabel ? analysisStageLabel : analyzeLabel}
+          </GhostButton>
+        </div>
+
+        {analyzeError ? (
+          <FeedbackMessage tone="error" className="todayHeroError" role="alert">
+            {analyzeError}
+          </FeedbackMessage>
+        ) : null}
+
+        {showPlanningShortcut || onDismissAnalysis ? (
+          <div className="todayHeroUtilityRow">
+            {onDismissAnalysis ? (
+              <GhostButton
+                type="button"
+                size="sm"
+                className="todayHeroUtilityButton"
+                onClick={() => onDismissAnalysis?.()}
+              >
+                {UI_COPY.backToLocalDiagnostic}
+              </GhostButton>
+            ) : null}
+            {showPlanningShortcut ? (
+              <GhostButton
+                type="button"
+                size="sm"
+                className="todayHeroUtilityButton"
+                onClick={() => onOpenPlanning?.()}
+              >
+                {UI_COPY.openPlanning}
+              </GhostButton>
+            ) : null}
+          </div>
+        ) : null}
       </div>
-      <div className="todayHeroActions GatePrimaryCtaRow">
-        <GateButton
-          type="button"
-          className="GatePressable todayHeroPrimaryBtn"
-          withSound
-          onClick={() => onPrimaryAction?.()}
-          disabled={!canPrimaryAction}
-        >
-          {primaryLabel}
-        </GateButton>
-        <GateButton
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="GatePressable todayHeroSecondaryBtn"
-          withSound
-          onClick={() => onAnalyze?.()}
-          disabled={analyzeDisabled}
-        >
-          {analyzeDisabled && analysisStageLabel ? analysisStageLabel : analyzeLabel}
-        </GateButton>
-      </div>
-      {analyzeError ? (
-        <div className="small2 GateRoleCardMeta" style={{ opacity: 0.88 }}>
-          {analyzeError}
-        </div>
-      ) : null}
-      {showPlanningShortcut || onDismissAnalysis ? (
-        <div className="row todayHeroUtilityRow" style={{ gap: 8, flexWrap: "wrap" }}>
-          {onDismissAnalysis ? (
-            <GateButton
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="GatePressable"
-              withSound
-              onClick={() => onDismissAnalysis?.()}
-            >
-              {UI_COPY.backToLocalDiagnostic}
-            </GateButton>
-          ) : null}
-          {showPlanningShortcut ? (
-            <GateButton
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="GatePressable"
-              withSound
-              onClick={() => onOpenPlanning?.()}
-            >
-              {UI_COPY.openPlanning}
-            </GateButton>
-          ) : null}
-        </div>
-      ) : null}
-    </GateSection>
+    </AppCard>
   );
 }

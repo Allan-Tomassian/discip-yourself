@@ -10,11 +10,17 @@ import {
 import { resolveManualAiDisplayState } from "../../features/manualAi/displayState";
 import { useManualAiAnalysis } from "../../hooks/useManualAiAnalysis";
 import ManualAiStatus from "../ai/ManualAiStatus";
-import { GateButton as Button, GateSection } from "../../shared/ui/gate/Gate";
 import { getCategoryUiVars } from "../../utils/categoryAccent";
 import { ANALYSIS_COPY, UI_COPY } from "../../ui/labels";
 import { useBehaviorFeedback } from "../../feedback/BehaviorFeedbackContext";
 import { deriveBehaviorFeedbackSignal } from "../../feedback/feedbackDerivers";
+import {
+  AppCard,
+  AppInlineMetaCard,
+  FeedbackMessage,
+  GhostButton,
+  PrimaryButton,
+} from "../../shared/ui/app";
 import "../categorySurface.css";
 
 function renderSuggestion(reply) {
@@ -169,18 +175,8 @@ export default function PlanningCoachCard({
   }
 
   return (
-    <GateSection
-      className={[
-        "GateMainSection",
-        "GateSecondarySectionCard",
-        "planningSectionCard",
-        "planningCoachSection",
-        "GateSurfacePremium",
-        "GateCardPremium",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-      collapsible={false}
+    <AppCard
+      className="planningSectionCard planningCoachSection"
       style={activeCategory ? getCategoryUiVars(activeCategory, { level: "surface" }) : undefined}
     >
       <div className="planningSectionBody">
@@ -200,59 +196,85 @@ export default function PlanningCoachCard({
             />
           </div>
           <div className="planningSectionActions">
-            <Button size="sm" onClick={handleAnalyzePlanning} disabled={manualPlanningAnalysis.loading}>
+            <PrimaryButton
+              size="sm"
+              className="planningSectionButton planningCoachActionButton"
+              onClick={handleAnalyzePlanning}
+              disabled={manualPlanningAnalysis.loading}
+            >
               {manualPlanningAnalysis.loading
                 ? manualPlanningAnalysis.loadingStageLabel || "Analyse..."
                 : planningView === "week"
                   ? "Observer ma semaine"
                   : "Observer ma journée"}
-            </Button>
+            </PrimaryButton>
             {manualPlanningAnalysis.isPersistedForContext ? (
-              <Button size="sm" variant="ghost" onClick={handleDismissPlanningAnalysis}>
+              <GhostButton
+                size="sm"
+                className="planningSectionButton planningCoachActionButton"
+                onClick={handleDismissPlanningAnalysis}
+              >
                 {UI_COPY.backToLocalDiagnostic}
-              </Button>
+              </GhostButton>
             ) : null}
           </div>
         </div>
 
         <div className="planningCoachSummary">
-          <div className="planningCoachBlock GateAnalyticsCard">
-            <div className="small2 GateRoleCardMeta planningCoachLabel">Repère principal</div>
-            <div className="small GateRoleHelperText">{visibleReply?.headline || "Ajustement du rythme"}</div>
-          </div>
-          <div className="planningCoachBlock GateAnalyticsCard">
-            <div className="small2 GateRoleCardMeta planningCoachLabel">Ce que cela signale</div>
-            <div className="small GateRoleHelperText">
+          <AppCard className="planningCoachBlock" variant="metric">
+            <div className="planningCoachLabel">Repère principal</div>
+            <div className="planningCoachValue">{visibleReply?.headline || "Ajustement du rythme"}</div>
+          </AppCard>
+          <AppCard className="planningCoachBlock" variant="metric">
+            <div className="planningCoachLabel">Ce que cela signale</div>
+            <div className="planningCoachValue">
               {visibleReply?.reason || "Le rythme a besoin d’un ajustement simple et crédible."}
             </div>
-          </div>
-          <div className="planningCoachBlock GateAnalyticsCard">
-            <div className="small2 GateRoleCardMeta planningCoachLabel">Ajustement simple</div>
-            <div className="small GateRoleHelperText">{renderSuggestion(visibleReply)}</div>
-          </div>
+          </AppCard>
+          <AppInlineMetaCard
+            className="planningCoachBlock planningCoachBlock--summary"
+            title="Ajustement simple"
+            text={renderSuggestion(visibleReply)}
+          />
         </div>
 
         {manualPlanningAnalysis.error ? (
-          <div className="small2 planningSectionMeta">
+          <FeedbackMessage tone="warning" className="planningSectionMeta">
             {manualPlanningAnalysis.error}
-          </div>
+          </FeedbackMessage>
         ) : null}
 
         <div className="planningSectionFooter planningCoachFooter">
-          <Button size="sm" className="planningCoachPrimaryAction" onClick={handleOpenSuggestedSurface}>
+          <PrimaryButton
+            size="sm"
+            className="planningSectionButton planningCoachActionButton planningCoachPrimaryAction"
+            onClick={handleOpenSuggestedSurface}
+          >
             {resolveLocalAnalysisActionLabel(visibleReply)}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => handleOpenCoach("free")}>
+          </PrimaryButton>
+          <GhostButton
+            size="sm"
+            className="planningSectionButton planningCoachActionButton"
+            onClick={() => handleOpenCoach("free")}
+          >
             Parler au Coach
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => handleOpenCoach("plan")}>
+          </GhostButton>
+          <GhostButton
+            size="sm"
+            className="planningSectionButton planningCoachActionButton"
+            onClick={() => handleOpenCoach("plan")}
+          >
             Passer en Plan
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => onOpenPilotage?.()}>
+          </GhostButton>
+          <GhostButton
+            size="sm"
+            className="planningSectionButton planningCoachActionButton planningCoachLastAction"
+            onClick={() => onOpenPilotage?.()}
+          >
             Relire mes progrès
-          </Button>
+          </GhostButton>
         </div>
       </div>
-    </GateSection>
+    </AppCard>
   );
 }

@@ -6,39 +6,39 @@
   box-sizing: border-box;
 }
 
-.planningSectionCard .gateSectionBody {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  z-index: 1;
-}
-
 .planningSectionBody {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-16);
 }
 
 .planningSectionHeader {
   display: grid;
-  gap: 6px;
+  gap: var(--space-8);
 }
 
 .planningSectionHeader--split {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
+  gap: var(--space-16);
   flex-wrap: wrap;
 }
 
 .planningSectionHeaderText {
   min-width: 0;
   display: grid;
-  gap: 6px;
+  gap: var(--space-8);
+}
+
+.planningSectionTitle {
+  font-size: var(--font-body-strong);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
 }
 
 .planningSectionMeta {
+  font-size: var(--font-meta);
   color: var(--text-secondary);
 }
 
@@ -46,7 +46,7 @@
 .planningSectionFooter {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   flex-wrap: wrap;
 }
 
@@ -54,59 +54,53 @@
   justify-content: flex-end;
 }
 
+.planningSectionButton {
+  min-height: 36px;
+}
+
 .planningCalendarRail {
-  margin-inline: -2px;
-  padding-inline: 2px;
+  margin-inline: calc(-1 * var(--space-4));
+  padding-inline: var(--space-4);
 }
 
 .planningDayList {
   display: grid;
-  gap: 10px;
+  gap: var(--space-12);
 }
 
-.planningItemRow {
+.planningItemCard {
   display: grid;
-  gap: 10px;
+  gap: var(--space-8);
 }
 
-.planningItemRow--compact {
-  gap: 8px;
+.planningItemCardBody {
+  gap: var(--space-8);
 }
 
-.planningItemRowTop {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
+.planningItemCardBody--compact {
+  gap: var(--space-4);
 }
 
-.planningItemTime {
+.planningItemMeta {
+  font-size: var(--font-meta);
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
-.planningItemTitle {
-  color: var(--text-primary);
-}
-
 .planningItemDuration {
+  font-size: var(--font-meta);
   color: var(--text-secondary);
 }
 
 .planningWeekGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .planningWeekBucket {
   display: grid;
-  gap: 8px;
-  border-color: color-mix(in srgb, var(--gate-border) 94%, rgba(255, 255, 255, 0.08));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 8px 16px rgba(0, 0, 0, 0.16);
+  gap: var(--space-8);
 }
 
 .planningWeekBucket.isToday {
@@ -115,75 +109,72 @@
 
 .planningWeekBucketHeader {
   display: grid;
-  gap: 6px;
+  gap: var(--space-8);
 }
 
 .planningWeekBucketHeaderMain {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
+}
+
+.planningWeekBucketTitle {
+  font-size: var(--font-body-strong);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
 }
 
 .planningWeekBucketMeta {
+  font-size: var(--font-meta);
   color: var(--text-secondary);
 }
 
 .planningWeekList {
   display: grid;
-  gap: 6px;
+  gap: var(--space-8);
 }
 
 .planningTodayTag {
-  display: inline-flex;
-  align-items: center;
   min-height: 20px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 20%, var(--border-subtle));
-  background: color-mix(in srgb, var(--accent-soft) 48%, var(--surface-primary));
-  color: var(--text-primary);
-  font-size: 10px;
+  padding-inline: var(--space-8);
+  font-size: var(--font-micro);
   line-height: 1;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   white-space: nowrap;
 }
 
 .planningCoachSection .manualAiStatus {
-  margin-top: 4px;
+  margin-top: var(--space-4);
 }
 
 .planningCoachSummary {
   display: grid;
-  gap: 10px;
+  gap: var(--space-12);
 }
 
 .planningCoachBlock {
   display: grid;
-  gap: 5px;
+  gap: var(--space-8);
 }
 
 .planningCoachLabel {
+  font-size: var(--font-meta);
   color: var(--text-muted);
 }
 
-.planningDraftSection {
-  display: grid;
-  gap: 8px;
-  padding-top: 14px;
-  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.08));
+.planningCoachValue {
+  font-size: var(--font-body);
+  line-height: 1.45;
+  color: var(--text-primary);
 }
 
 .planningCoachFooter {
-  padding-top: 2px;
-}
-
-.planningCoachSection .planningSectionActions .gateButton,
-.planningCoachSection .planningSectionFooter .gateButton {
-  min-height: 36px;
+  padding-top: var(--space-4);
 }
 
 .planningEmptyState {
+  font-size: var(--font-meta);
   color: var(--text-secondary);
 }
 
@@ -203,8 +194,8 @@
     width: 100%;
   }
 
-  .planningSectionActions .gateButton,
-  .planningSectionFooter .gateButton {
+  .planningSectionButton,
+  .planningCoachActionButton {
     flex: 1 1 0;
     min-width: 0;
   }
@@ -215,7 +206,7 @@
     align-items: stretch;
   }
 
-  .planningCoachFooter .gateButton {
+  .planningCoachFooter .planningCoachActionButton {
     flex: initial;
     width: 100%;
   }
@@ -224,7 +215,7 @@
     grid-column: 1 / -1;
   }
 
-  .planningCoachFooter .gateButton:last-child {
+  .planningCoachFooter .planningCoachLastAction {
     grid-column: 1 / -1;
   }
 }

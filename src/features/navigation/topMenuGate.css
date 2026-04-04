@@ -57,12 +57,27 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.drawerBackdrop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  height: 100dvh;
+}
+
 .drawerMenuPanel {
   gap: var(--space-16);
+  border-color: var(--border-subtle);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-elevated) 96%, rgba(255, 255, 255, 0.02)),
+      color-mix(in srgb, var(--surface-primary) 98%, rgba(0, 0, 0, 0.08))
+    );
 }
 
 .drawerMenuHeader {
   padding: 0;
+  color: var(--text-primary);
 }
 
 .drawerMenuHeader .gateHeaderText {
@@ -76,6 +91,15 @@
 
 .drawerMenuHeader .gateHeaderSubtitle {
   max-width: 22ch;
+}
+
+.drawerBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .drawerMenuCloseBtn {
@@ -103,6 +127,11 @@
 
 .drawerMenuSectionTitle {
   padding-inline: var(--space-8);
+  color: var(--text-2);
+  font-size: var(--font-meta);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .drawerMenuItems {
@@ -121,8 +150,11 @@
   align-items: flex-start;
 }
 
-.drawerMenuItem .gateRowText {
-  gap: 2px;
+.drawerMenuItemLabel {
+  color: var(--text-primary);
+  font-size: var(--font-body);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.35;
 }
 
 .drawerMenuItem.isSelected {
@@ -135,6 +167,29 @@
 
 .drawerMenuItem.isInteractive:hover {
   border-color: color-mix(in srgb, var(--accent) 24%, var(--gate-border));
+}
+
+.plusExpanderPanelContent {
+  min-width: 220px;
+  max-width: calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right));
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - var(--space-24));
+  border-color: var(--border-subtle);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-elevated) 96%, rgba(255, 255, 255, 0.02)),
+      color-mix(in srgb, var(--surface-primary) 98%, rgba(0, 0, 0, 0.08))
+    );
+  box-sizing: border-box;
+}
+
+.plusExpanderActions {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.plusExpanderAction {
+  width: 100%;
 }
 
 @media (max-width: 767px) {

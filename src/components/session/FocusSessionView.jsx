@@ -1,6 +1,12 @@
 import React from "react";
-import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
 import { BehaviorCue } from "../../feedback/BehaviorFeedbackContext";
+import {
+  AppCard,
+  AppTextarea,
+  GhostButton,
+  PrimaryButton,
+  StatusBadge,
+} from "../../shared/ui/app";
 
 function labelForState(viewState) {
   if (viewState === "running") return "En cours";
@@ -9,6 +15,14 @@ function labelForState(viewState) {
   if (viewState === "blocked") return "Bloquée";
   if (viewState === "reported") return "Reportée";
   return "Prête";
+}
+
+function toneForState(viewState) {
+  if (viewState === "running" || viewState === "paused") return "info";
+  if (viewState === "completed") return "success";
+  if (viewState === "blocked") return "warning";
+  if (viewState === "reported") return "info";
+  return "info";
 }
 
 export default function FocusSessionView({
@@ -39,126 +53,167 @@ export default function FocusSessionView({
   const isFinal = viewState === "completed" || viewState === "blocked" || viewState === "reported";
 
   return (
-    <div className="col" style={{ gap: 12 }}>
-      <GateSection title={title} collapsible={false} className="GateSurfacePremium GateCardPremium">
-        <div className="col" style={{ gap: 8 }}>
-          <div className="small2" style={{ opacity: 0.78 }}>{categoryName}</div>
+    <div className="sessionViewStack">
+      <AppCard className="sessionCard" variant="elevated">
+        <div className="sessionCardBody">
+          <div className="sessionHeaderRow">
+            <div className="sessionHeaderText">
+              <div className="sessionMeta">{categoryName}</div>
+              <div className="sessionTitle">{title}</div>
+            </div>
+            <StatusBadge tone={toneForState(viewState)}>{labelForState(viewState)}</StatusBadge>
+          </div>
           {behaviorCue ? <BehaviorCue cue={behaviorCue} /> : null}
-          <div className="titleSm">{labelForState(viewState)}</div>
-          {plannedDurationLabel ? <div className="small2">Prévu: {plannedDurationLabel}</div> : null}
-          {elapsedLabel ? <div className="small2">Écoulé: {elapsedLabel}</div> : null}
-          {remainingLabel ? <div className="small2">Reste: {remainingLabel}</div> : null}
+          <div className="sessionMetrics">
+            {plannedDurationLabel ? (
+              <div className="sessionMetric">
+                <div className="sessionMetricLabel">Prévu</div>
+                <div className="sessionMetricValue">{plannedDurationLabel}</div>
+              </div>
+            ) : null}
+            {elapsedLabel ? (
+              <div className="sessionMetric">
+                <div className="sessionMetricLabel">Écoulé</div>
+                <div className="sessionMetricValue">{elapsedLabel}</div>
+              </div>
+            ) : null}
+            {remainingLabel ? (
+              <div className="sessionMetric">
+                <div className="sessionMetricLabel">Reste</div>
+                <div className="sessionMetricValue">{remainingLabel}</div>
+              </div>
+            ) : null}
+          </div>
         </div>
-      </GateSection>
+      </AppCard>
 
       {!isFinal ? (
-        <GateSection title="Actions" collapsible={false} className="GateSurfacePremium GateCardPremium">
-          <div className="GatePrimaryCtaRow" style={{ flexWrap: "wrap" }}>
-            <GateButton
+        <AppCard className="sessionCard">
+          <div className="sessionActionSection">
+            <div className="sessionSectionTitle">Actions</div>
+            <div className="sessionActions">
+              <PrimaryButton
               type="button"
-              className="GatePressable"
-              withSound
+              className="sessionActionButton"
               onClick={() => onStart?.()}
               disabled={!canStart}
             >
               {viewState === "paused" ? "Reprendre" : "Démarrer"}
-            </GateButton>
-            <GateButton
+              </PrimaryButton>
+              <GhostButton
               type="button"
-              variant="ghost"
-              className="GatePressable"
-              withSound
+              className="sessionActionButton"
               onClick={() => onPause?.()}
               disabled={!canPause}
             >
               Pause
-            </GateButton>
-            <GateButton
+              </GhostButton>
+              <GhostButton
               type="button"
-              variant="ghost"
-              className="GatePressable"
-              withSound
+              className="sessionActionButton"
               onClick={() => onBlock?.()}
               disabled={!canComplete}
             >
               Bloqué
-            </GateButton>
-            <GateButton
+              </GhostButton>
+              <GhostButton
               type="button"
-              variant="ghost"
-              className="GatePressable"
-              withSound
+              className="sessionActionButton"
               onClick={() => onOpenReport?.()}
               disabled={!canComplete}
             >
               Reporter
-            </GateButton>
-            <GateButton
+              </GhostButton>
+              <PrimaryButton
               type="button"
-              className="GatePressable"
-              withSound
+              className="sessionActionButton"
               onClick={() => onComplete?.()}
               disabled={!canComplete}
             >
               Terminé
-            </GateButton>
+              </PrimaryButton>
+            </div>
           </div>
-        </GateSection>
+        </AppCard>
       ) : null}
 
       {reportMode ? (
-        <GateSection title="Reporter" collapsible={false} className="GateSurfacePremium GateCardPremium">
-          <div className="GatePrimaryCtaRow" style={{ flexWrap: "wrap" }}>
-            <GateButton type="button" className="GatePressable" withSound onClick={() => onChooseReport?.("later_today")}>
+        <AppCard className="sessionCard">
+          <div className="sessionActionSection">
+            <div className="sessionSectionTitle">Reporter</div>
+            <div className="sessionActions">
+              <PrimaryButton
+                type="button"
+                className="sessionActionButton"
+                onClick={() => onChooseReport?.("later_today")}
+              >
               Plus tard aujourd’hui
-            </GateButton>
-            <GateButton type="button" className="GatePressable" withSound onClick={() => onChooseReport?.("tomorrow")}>
+              </PrimaryButton>
+              <PrimaryButton
+                type="button"
+                className="sessionActionButton"
+                onClick={() => onChooseReport?.("tomorrow")}
+              >
               Demain
-            </GateButton>
-            <GateButton type="button" variant="ghost" className="GatePressable" withSound onClick={() => onChooseReport?.("planning")}>
+              </PrimaryButton>
+              <GhostButton
+                type="button"
+                className="sessionActionButton"
+                onClick={() => onChooseReport?.("planning")}
+              >
               Choisir dans la planification
-            </GateButton>
+              </GhostButton>
+            </div>
           </div>
-        </GateSection>
+        </AppCard>
       ) : null}
 
       {showFeedback ? (
-        <GateSection title="Feedback de fin" collapsible={false} className="GateSurfacePremium GateCardPremium">
-          <div className="col" style={{ gap: 12 }}>
-            <div className="GatePrimaryCtaRow" style={{ flexWrap: "wrap" }}>
+        <AppCard className="sessionCard">
+          <div className="sessionActionSection">
+            <div className="sessionSectionTitle">Feedback de fin</div>
+            <div className="sessionActions">
               {["facile", "normal", "difficile"].map((level) => (
-                <GateButton
+                feedbackLevel === level ? (
+                  <PrimaryButton
+                    key={level}
+                    type="button"
+                    className="sessionActionButton"
+                    onClick={() => onFeedbackLevelChange?.(level)}
+                  >
+                    {level}
+                  </PrimaryButton>
+                ) : (
+                  <GhostButton
                   key={level}
                   type="button"
-                  variant={feedbackLevel === level ? "primary" : "ghost"}
-                  className="GatePressable"
-                  withSound
+                  className="sessionActionButton"
                   onClick={() => onFeedbackLevelChange?.(level)}
                 >
                   {level}
-                </GateButton>
+                  </GhostButton>
+                )
               ))}
             </div>
-            <textarea
-              className="GateTextareaPremium"
+            <AppTextarea
+              className="sessionFeedbackInput"
               rows={3}
               value={feedbackText}
               onChange={(event) => onFeedbackTextChange?.(event.target.value)}
               placeholder="Ajoute un retour rapide si utile…"
             />
-            <div className="GatePrimaryCtaRow">
-              <GateButton
+            <div className="sessionFooterActions">
+              <PrimaryButton
                 type="button"
-                className="GatePressable"
-                withSound
+                className="sessionActionButton"
                 onClick={() => onFeedbackSubmit?.()}
                 disabled={!feedbackLevel}
               >
                 Enregistrer
-              </GateButton>
+              </PrimaryButton>
             </div>
           </div>
-        </GateSection>
+        </AppCard>
       ) : null}
     </div>
   );

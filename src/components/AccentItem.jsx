@@ -1,5 +1,5 @@
 import React from "react";
-import { GateCard } from "../shared/ui/gate/Gate";
+import { AppCard } from "../shared/ui/app";
 import { getCategoryUiVars } from "../utils/categoryAccent";
 import "./categorySurface.css";
 
@@ -16,10 +16,9 @@ export default function AccentItem({
   "aria-label": ariaLabel,
 }) {
   const isNeutral = tone === "neutral";
+  const interactive = typeof onClick === "function";
   const mergedClassName = [
     "accentItem",
-    "GateRowPremium",
-    !compact ? "GateInlineMetaCard" : "",
     !isNeutral ? "categorySurface categorySurface--surface" : "",
     className,
   ]
@@ -27,18 +26,21 @@ export default function AccentItem({
     .join(" ");
 
   return (
-    <GateCard
+    <AppCard
+      interactive={interactive}
       className={mergedClassName}
       selected={selected}
       onClick={onClick}
-      right={rightSlot}
       aria-label={ariaLabel}
       style={{
         ...(isNeutral ? { background: "var(--surface-primary)" } : getCategoryUiVars(color, { level: selected ? "focus" : "surface" })),
         ...style,
       }}
     >
-      <div className="categorySurfaceBody">{children}</div>
-    </GateCard>
+      <div className="libraryAccentItemFrame">
+        <div className="categorySurfaceBody">{children}</div>
+        {rightSlot ? <div className="libraryAccentItemRight">{rightSlot}</div> : null}
+      </div>
+    </AppCard>
   );
 }

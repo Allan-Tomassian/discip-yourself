@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { AppCard, AppScreen, EmptyState, SectionHeader } from "../shared/ui/app";
+import { AppCard, AppInlineMetaCard, AppScreen, EmptyState, SectionHeader } from "../shared/ui/app";
 
 function sortHistory(left, right) {
   const leftTs = Date.parse(left?.endAt || left?.startAt || "") || 0;
@@ -96,32 +96,26 @@ export default function History({ data }) {
     >
       <section className="mainPageSection">
         <SectionHeader title="Sessions" subtitle="Lecture chronologique de tes sessions récentes." />
-        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <AppCard>
           <div className="col gap12">
             {items.length ? (
               items.map((item) => (
-                <div key={item.id} className="GateInlineMetaCard col gap8">
-                  <div className="GateRoleCardMeta">
-                    {[item.categoryName, item.dateLabel].filter(Boolean).join(" • ")}
-                  </div>
-                  <div className="GateRoleCardTitle">{item.title}</div>
-                  <div className="GateRoleHelperText">
-                    Prévu: {formatMinutes(item.plannedMinutes)} · Réel: {formatMinutes(item.realMinutes)} · {item.stateLabel}
-                  </div>
+                <AppInlineMetaCard
+                  key={item.id}
+                  title={item.title}
+                  meta={[item.categoryName, item.dateLabel].filter(Boolean).join(" • ")}
+                  text={`Prévu: ${formatMinutes(item.plannedMinutes)} · Réel: ${formatMinutes(item.realMinutes)} · ${item.stateLabel}`}
+                >
                   {item.feedbackLabel ? (
-                    <div className="GateRoleHelperText">
+                    <div className="appMetaText">
                       Ressenti : {item.feedbackLabel}
                       {item.feedbackText ? ` · ${item.feedbackText}` : ""}
                     </div>
                   ) : null}
-                </div>
+                </AppInlineMetaCard>
               ))
             ) : (
-              <EmptyState
-                className="GateInlineMetaCard"
-                title="Aucune session enregistrée"
-                subtitle="L’historique se remplira dès que tu termines, reportes ou bloques une session."
-              />
+              <EmptyState title="Aucune session enregistrée" subtitle="L’historique se remplira dès que tu termines, reportes ou bloques une session." />
             )}
           </div>
         </AppCard>

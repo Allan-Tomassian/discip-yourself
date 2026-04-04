@@ -11,7 +11,15 @@ import PlusExpander from "./components/PlusExpander";
 import { markIOSRootClass } from "./utils/dialogs";
 import { readAiBackendBaseUrl } from "./infra/aiNowClient";
 import { logAiBackendTargetOnce } from "./infra/aiTransportDiagnostics";
-import { GateButton, GatePanel } from "./shared/ui/gate/Gate";
+import {
+  AppActionRow,
+  AppCard,
+  AppDialog,
+  AppSurface,
+  GhostButton,
+  PrimaryButton,
+} from "./shared/ui/app";
+import "./app/appShell.css";
 import "./features/navigation/bottomCategoryBar.css";
 import "./features/navigation/navPillUnified.css";
 
@@ -926,31 +934,18 @@ export default function App() {
   }, [dataLoading, onboardingCompleted]);
 
   const profileReminder = profileNeedsCompletion && onboardingCompleted && tab !== "account" ? (
-    <div style={{ padding: "0 16px 12px" }}>
-      <GatePanel className="GateSurfacePremium GateCardPremium">
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            padding: 14,
-          }}
-        >
-          <div>
+    <div className="profileReminderShell">
+      <AppCard className="profileReminderCard">
+        <div className="profileReminderContent">
+          <div className="profileReminderText">
             <div className="titleSm">Complète ton compte</div>
             <div className="small">Ajoute ton username pour finaliser ton profil public.</div>
           </div>
-          <GateButton
-            type="button"
-            className="GatePressable"
-            withSound
-            onClick={() => setTab("account")}
-          >
+          <PrimaryButton type="button" onClick={() => setTab("account")}>
             Ouvrir
-          </GateButton>
+          </PrimaryButton>
         </div>
-      </GatePanel>
+      </AppCard>
     </div>
   ) : null;
 
@@ -1018,7 +1013,7 @@ export default function App() {
         <div ref={bottomRailRef} className="bottomCategoryBar" data-tour-id="topnav-rail">
           <div className="BottomBarSurfaceOuter GateGlassOuter">
             <div className="BottomBarSurfaceClip BottomBarBackdrop GateGlassClip GateGlassBackdrop">
-              <GatePanel className="bottomCategoryBarPanel GateSurfacePremium GateCardPremium GateGlassContent">
+              <AppSurface className="bottomCategoryBarPanel GateGlassContent">
                 <div className="bottomCategoryBarRow">
                   <CategoryRail
                     categories={railCategories}
@@ -1027,7 +1022,7 @@ export default function App() {
                   />
                   <button
                     type="button"
-                    className="bottomCategoryPlus NavPillUnified NavPillUnified--iconOnly GatePressable"
+                    className="bottomCategoryPlus NavPillUnified NavPillUnified--iconOnly"
                     aria-label="Créer"
                     title="Créer"
                     data-create-anchor="bottomrail"
@@ -1046,7 +1041,7 @@ export default function App() {
                     +
                   </button>
                 </div>
-              </GatePanel>
+              </AppSurface>
             </div>
           </div>
         </div>
@@ -1317,18 +1312,19 @@ export default function App() {
       />
 
       {activeReminder ? (
-        <div className="modalBackdrop reminderOverlay" onClick={() => setActiveReminder(null)}>
-          <GatePanel
-            className="reminderCard reminderPulse GateSurfacePremium GateCardPremium"
-            style={{ maxWidth: 420, width: "100%" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p18">
+        <AppDialog
+          open
+          onClose={() => setActiveReminder(null)}
+          className="activeReminderDialog reminderPulse"
+          maxWidth={420}
+        >
+          <div className="activeReminderBody">
+            <div className="activeReminderText">
               <div className="titleSm">{activeReminder.reminder?.label || "Rappel"}</div>
-              <div className="small2" style={{ marginTop: 6 }}>
+              <div className="small2">
                 {activeReminder.goal?.title || activeReminder.habit?.title || "Action"}
               </div>
-              <div className="small2" style={{ marginTop: 4 }}>
+              <div className="small2">
                 {(() => {
                   const target = activeReminder.goal || activeReminder.habit;
                   const catId = target?.categoryId || null;
@@ -1336,75 +1332,72 @@ export default function App() {
                   return cat?.name ? `Catégorie : ${cat.name}` : "Catégorie : —";
                 })()}
               </div>
-              <div className="row" style={{ marginTop: 12, justifyContent: "flex-end" }}>
-                <GateButton variant="ghost" className="GatePressable" onClick={() => setActiveReminder(null)}>
-                  Plus tard
-                </GateButton>
-                <GateButton
-                  className="GatePressable"
-                  onClick={() => {
-                    const target = activeReminder.goal || activeReminder.habit;
-                    const isProcess =
-                      target &&
-                      (target.type || target.kind || target.planType || "").toString().toUpperCase() !== "OUTCOME";
-                    if (isProcess && target?.id) {
-                      const todayKey = todayLocalKey();
-                      const preview = ensureWindowFromScheduleRules(data, todayKey, todayKey, [target.id]);
-                      const resolved = resolveExecutableOccurrence(preview, {
+            </div>
+            <AppActionRow className="activeReminderActions">
+              <GhostButton onClick={() => setActiveReminder(null)}>Plus tard</GhostButton>
+              <PrimaryButton
+                onClick={() => {
+                  const target = activeReminder.goal || activeReminder.habit;
+                  const isProcess =
+                    target &&
+                    (target.type || target.kind || target.planType || "").toString().toUpperCase() !== "OUTCOME";
+                  if (isProcess && target?.id) {
+                    const todayKey = todayLocalKey();
+                    const preview = ensureWindowFromScheduleRules(data, todayKey, todayKey, [target.id]);
+                    const resolved = resolveExecutableOccurrence(preview, {
+                      dateKey: todayKey,
+                      goalIds: [target.id],
+                    });
+                    if (resolved.kind !== "ok" || !resolved.occurrenceId) {
+                      setActiveReminder(null);
+                      return;
+                    }
+                    setData((prev) => {
+                      const ensured = ensureWindowFromScheduleRules(prev, todayKey, todayKey, [target.id]);
+                      const prevUi = ensured.ui || {};
+                      const existing =
+                        prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+                      if (existing && isRuntimeSessionOpen(existing)) return ensured;
+
+                      const resolvedNow = resolveExecutableOccurrence(ensured, {
                         dateKey: todayKey,
                         goalIds: [target.id],
                       });
-                      if (resolved.kind !== "ok" || !resolved.occurrenceId) {
-                        setActiveReminder(null);
-                        return;
-                      }
-                      setData((prev) => {
-                        const ensured = ensureWindowFromScheduleRules(prev, todayKey, todayKey, [target.id]);
-                        const prevUi = ensured.ui || {};
-                        const existing =
-                          prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
-                        if (existing && isRuntimeSessionOpen(existing)) return ensured;
+                      if (resolvedNow.kind !== "ok" || !resolvedNow.occurrenceId) return ensured;
+                      const occ =
+                        (ensured.occurrences || []).find((o) => o && o.id === resolvedNow.occurrenceId) || null;
+                      if (!occ) return ensured;
 
-                        const resolvedNow = resolveExecutableOccurrence(ensured, {
-                          dateKey: todayKey,
-                          goalIds: [target.id],
-                        });
-                        if (resolvedNow.kind !== "ok" || !resolvedNow.occurrenceId) return ensured;
-                        const occ =
-                          (ensured.occurrences || []).find((o) => o && o.id === resolvedNow.occurrenceId) || null;
-                        if (!occ) return ensured;
-
-                        return applySessionRuntimeTransition(ensured, {
-                          type: "start",
-                          occurrenceId: occ.id,
-                          dateKey: todayLocalKey(),
-                          objectiveId: typeof target.parentId === "string" ? target.parentId : null,
-                          habitIds: [occ.goalId || target.id],
-                        });
+                      return applySessionRuntimeTransition(ensured, {
+                        type: "start",
+                        occurrenceId: occ.id,
+                        dateKey: todayLocalKey(),
+                        objectiveId: typeof target.parentId === "string" ? target.parentId : null,
+                        habitIds: [occ.goalId || target.id],
                       });
-                      emitSessionRuntimeNotificationHook("start", {
-                        occurrenceId: resolved.occurrenceId,
-                        dateKey: todayKey,
-                        runtimePhase: "in_progress",
-                        source: "reminder_start",
-                      });
-                    }
-                    if (target?.categoryId) {
-                      setData((prev) => ({
-                        ...prev,
-                        ui: withExecutionActiveCategoryId(prev.ui, target.categoryId),
-                      }));
-                      setTab("pilotage");
-                    }
-                    setActiveReminder(null);
-                  }}
-                >
-                  Commencer
-                </GateButton>
-              </div>
-            </div>
-          </GatePanel>
-        </div>
+                    });
+                    emitSessionRuntimeNotificationHook("start", {
+                      occurrenceId: resolved.occurrenceId,
+                      dateKey: todayKey,
+                      runtimePhase: "in_progress",
+                      source: "reminder_start",
+                    });
+                  }
+                  if (target?.categoryId) {
+                    setData((prev) => ({
+                      ...prev,
+                      ui: withExecutionActiveCategoryId(prev.ui, target.categoryId),
+                    }));
+                    setTab("pilotage");
+                  }
+                  setActiveReminder(null);
+                }}
+              >
+                Commencer
+              </PrimaryButton>
+            </AppActionRow>
+          </div>
+        </AppDialog>
       ) : null}
       {showTourOverlay ? (
         <TourOverlay

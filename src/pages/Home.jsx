@@ -1,8 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import SortableBlocks from "../components/SortableBlocks";
-import ScreenShell from "./_ScreenShell";
-import { GateButton, GateRow, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
+import { AppScreen, SectionHeader } from "../shared/ui/app";
+import "../features/today/today.css";
 import {
   addDays,
   addMonths,
@@ -37,10 +36,6 @@ import {
   ensureWallet,
 } from "../logic/walletV1";
 import { ensureTotemV1 } from "../logic/totemV1";
-import CalendarCard from "../ui/calendar/CalendarCard";
-import FocusCard from "../ui/focus/FocusCard";
-import MicroActionsCard from "../ui/today/MicroActionsCard";
-import RewardedAdModal from "../ui/today/RewardedAdModal";
 import TodayDailyState from "../components/today/TodayDailyState";
 import TodayHero from "../components/today/TodayHero";
 import TodayNextActions from "../components/today/TodayNextActions";
@@ -399,56 +394,6 @@ function loadLegacyBlockOrder() {
     return null;
   }
 }
-
-function Button({ variant = "primary", className = "", ...props }) {
-  const gateVariant = variant === "ghost" || variant === "danger" ? "ghost" : "primary";
-  const dangerClass = variant === "danger" ? "todayDangerButton" : "";
-  const mergedClassName = [className, dangerClass, "GatePressable"].filter(Boolean).join(" ");
-  return <GateButton variant={gateVariant} className={mergedClassName} {...props} />;
-}
-
-function HomeCard({ className = "", children, ...props }) {
-  const mergedClassName = ["GateSurfacePremium", "GateCardPremium", className].filter(Boolean).join(" ");
-  return (
-    <GateSection className={mergedClassName} collapsible={false} {...props}>
-      {children}
-    </GateSection>
-  );
-}
-
-function IconButton({ className = "", children, ...props }) {
-  const mergedClassName = ["GateIconButtonPremium", "GatePressable", className].filter(Boolean).join(" ");
-  return (
-    <button type="button" className={mergedClassName} {...props}>
-      {children}
-    </button>
-  );
-}
-
-function SelectMenu({ value, onChange, options = [], placeholder = "", className = "", style }) {
-  const mergedClassName = ["GateSelectPremium", className].filter(Boolean).join(" ");
-  return (
-    <select
-      value={value}
-      className={mergedClassName}
-      style={style}
-      onChange={(event) => onChange?.(event.target.value)}
-    >
-      {placeholder ? <option value="">{placeholder}</option> : null}
-      {(Array.isArray(options) ? options : []).map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function Textarea({ className = "", ...props }) {
-  const mergedClassName = ["GateTextareaPremium", className].filter(Boolean).join(" ");
-  return <textarea className={mergedClassName} {...props} />;
-}
-
 
 export default function Home({
   data,
@@ -2116,7 +2061,7 @@ export default function Home({
   const showHeroPlanningShortcut = heroViewModel?.primaryAction?.kind !== "open_pilotage";
 
   return (
-    <ScreenShell
+    <AppScreen
       accent={accent}
       backgroundImage={backgroundImage}
       pageId="today"
@@ -2160,7 +2105,7 @@ export default function Home({
         </section>
 
         <section className="mainPageSection">
-          <GateSectionIntro
+          <SectionHeader
             title="Ensuite aujourd’hui"
             subtitle={MAIN_PAGE_COPY.today.nextActionsSubtitle}
           />
@@ -2174,7 +2119,7 @@ export default function Home({
         </section>
 
         <section className="mainPageSection">
-          <GateSectionIntro
+          <SectionHeader
             title={MAIN_PAGE_COPY.today.dailyStateTitle}
             subtitle={MAIN_PAGE_COPY.today.dailyStateSubtitle}
           />
@@ -2188,7 +2133,7 @@ export default function Home({
           </div>
         </section>
       </div>
-    </ScreenShell>
+    </AppScreen>
   );
 }
 

@@ -1,5 +1,5 @@
 import React, { useMemo, useRef } from "react";
-import { GateButton, GateSection } from "../../shared/ui/gate/Gate";
+import { AppCard, AppChip, GhostButton } from "../../shared/ui/app";
 import DayRail from "./DayRail";
 import { getMonthLabelFR, WEEKDAY_LABELS_FR } from "../../utils/dates";
 import { toLocalDateKey } from "../../utils/dateKey";
@@ -60,7 +60,7 @@ export default function CalendarCard({
   }, [monthCursor]);
 
   return (
-    <GateSection className="calendarCard GateSurfacePremium GateCardPremium" collapsible={false} data-tour-id="today-calendar-card">
+    <AppCard className="calendarCard" data-tour-id="today-calendar-card">
       <div className="calendarCardBody">
         <div className="calendarHeader">
           <div className="calendarTitleRow">
@@ -83,7 +83,7 @@ export default function CalendarCard({
             </div>
           </div>
           <div className="calendarActions">
-            <button
+            <GhostButton
               className="calendarTodayBtn"
               onClick={() => {
                 onDayOpen(localTodayKey);
@@ -100,26 +100,28 @@ export default function CalendarCard({
                 ⟳
               </span>
               Aujourd’hui
-            </button>
+            </GhostButton>
             <div className="calendarSeg" role="tablist" aria-label="Affichage du calendrier">
-              <button
-                className={`calendarSegBtn${calendarView === "day" ? " is-active" : ""}`}
+              <AppChip
+                className="calendarSegBtn"
+                active={calendarView === "day"}
                 onClick={() => onSetCalendarView("day")}
                 aria-pressed={calendarView === "day"}
                 data-tour-id="today-calendar-day"
                 type="button"
               >
                 Jour
-              </button>
-              <button
-                className={`calendarSegBtn${calendarView === "month" ? " is-active" : ""}`}
+              </AppChip>
+              <AppChip
+                className="calendarSegBtn"
+                active={calendarView === "month"}
                 onClick={() => onSetCalendarView("month")}
                 aria-pressed={calendarView === "month"}
                 data-tour-id="today-calendar-month"
                 type="button"
               >
                 Mois
-              </button>
+              </AppChip>
             </div>
           </div>
         </div>
@@ -142,25 +144,26 @@ export default function CalendarCard({
             />
           ) : (
             <div className="calendarMonthWrap">
-            <div className="calendarMonthHeader">
-                <GateButton variant="ghost" className="calendarMonthNavBtn" onClick={onPrevMonth} aria-label="Mois précédent">
+              <div className="calendarMonthHeader">
+                <GhostButton type="button" size="sm" className="calendarMonthNavBtn" onClick={onPrevMonth} aria-label="Mois précédent">
                   ←
-                </GateButton>
+                </GhostButton>
                 <div className="calendarMonthTitle">{monthLabel}</div>
-                <GateButton variant="ghost" className="calendarMonthNavBtn" onClick={onNextMonth} aria-label="Mois suivant">
+                <GhostButton type="button" size="sm" className="calendarMonthNavBtn" onClick={onNextMonth} aria-label="Mois suivant">
                   →
-                </GateButton>
+                </GhostButton>
               </div>
               {typeof onAddOccurrence === "function" ? (
                 <div className="calendarMonthActions">
-                  <GateButton
-                    variant="ghost"
+                  <GhostButton
+                    type="button"
+                    size="sm"
                     className="calendarMonthAddBtn"
                     onClick={() => onAddOccurrence(selectedDateKey, addActionContext?.actionId || null)}
                     data-tour-id="today-calendar-add-occurrence"
                   >
                     Ajouter
-                  </GateButton>
+                  </GhostButton>
                 </div>
               ) : null}
               <div className="calendarMonthGrid" data-tour-id="today-calendar-month-grid">
@@ -202,10 +205,9 @@ export default function CalendarCard({
                       aria-current={isToday ? "date" : undefined}
                       onClick={() => onDayOpen(dayKey)}
                       style={{
-                        borderColor: isSelected
-                          ? selectedDayAccent
-                          : accentByDate.get(dayKey) || "rgba(255,255,255,.14)",
-                        boxShadow: isSelected ? `0 0 0 2px ${selectedDayAccent}33` : undefined,
+                        "--calendarMonthCellBorder":
+                          isSelected ? selectedDayAccent : accentByDate.get(dayKey) || "var(--border-subtle)",
+                        "--calendarMonthCellRing": isSelected ? `${selectedDayAccent}33` : "transparent",
                       }}
                     >
                       <div className="calendarMonthDay">{cell.dayNumber || ""}</div>
@@ -222,6 +224,6 @@ export default function CalendarCard({
           )}
         </div>
       </div>
-    </GateSection>
+    </AppCard>
   );
 }

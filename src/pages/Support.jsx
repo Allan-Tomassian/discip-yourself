@@ -1,6 +1,6 @@
 import React from "react";
 import { SURFACE_LABELS, UI_COPY } from "../ui/labels";
-import { AppCard, AppScreen, SectionHeader } from "../shared/ui/app";
+import { AppCard, AppInlineMetaCard, AppScreen, SectionHeader } from "../shared/ui/app";
 import pkg from "../../package.json";
 
 export default function Support({ data }) {
@@ -18,39 +18,29 @@ export default function Support({ data }) {
     >
       <section className="mainPageSection">
         <SectionHeader title="Contact" subtitle="Réponse par email." />
-        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
-          <div className="GateInlineMetaCard col gap8">
-            <div className="GateRoleCardTitle">Email</div>
-            <div className="GateRoleHelperText">support@discip-yourself.app</div>
-          </div>
+        <AppCard>
+          <AppInlineMetaCard title="Email" text="support@discip-yourself.app" />
         </AppCard>
       </section>
 
       <section className="mainPageSection">
         <SectionHeader title="Questions fréquentes" subtitle="Les réponses utiles les plus courantes." />
-        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <AppCard>
           <div className="col gap12">
-            <div className="GateInlineMetaCard col gap8">
-              <div className="GateRoleCardTitle">Comment récupérer un achat déjà payé ?</div>
-              <div className="GateRoleHelperText">
+            <AppInlineMetaCard title="Comment récupérer un achat déjà payé ?">
+              <div className="appMetaText">
                 Ouvre {SURFACE_LABELS.subscription} puis appuie sur « {UI_COPY.restorePurchases} ».
               </div>
-            </div>
-            <div className="GateInlineMetaCard col gap8">
-              <div className="GateRoleCardTitle">Comment sauvegarder tes données ?</div>
-              <div className="GateRoleHelperText">Ouvre Données puis exporte un fichier JSON.</div>
-            </div>
+            </AppInlineMetaCard>
+            <AppInlineMetaCard title="Comment sauvegarder tes données ?" text="Ouvre Données puis exporte un fichier JSON." />
           </div>
         </AppCard>
       </section>
 
       <section className="mainPageSection">
         <SectionHeader title="Version" subtitle="Build actuelle." />
-        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
-          <div className="GateInlineMetaCard col gap8">
-            <div className="GateRoleCardTitle">Version installée</div>
-            <div className="GateRoleHelperText">{version}</div>
-          </div>
+        <AppCard>
+          <AppInlineMetaCard title="Version installée" text={version} />
         </AppCard>
       </section>
     </AppScreen>

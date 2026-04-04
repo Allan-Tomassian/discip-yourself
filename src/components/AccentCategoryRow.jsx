@@ -1,5 +1,5 @@
 import React from "react";
-import { GateRow } from "../shared/ui/gate/Gate";
+import { AppCard } from "../shared/ui/app";
 import { getCategoryUiVars } from "../utils/categoryAccent";
 import { resolveCategoryColor } from "../utils/categoryPalette";
 import "./categorySurface.css";
@@ -16,34 +16,35 @@ export default function AccentCategoryRow({
   onKeyDown,
   ...props
 }) {
+  const interactive = typeof onClick === "function";
   const mergedClassName = [
     "accentItem",
     "libraryAccentItem",
     "categorySurface",
     "categorySurface--surface",
-    "GateRowPremium",
-    "GateInlineMetaCard",
-    onClick ? "GatePressable" : "",
     className,
   ]
     .filter(Boolean)
     .join(" ");
 
   return (
-    <GateRow
+    <AppCard
+      interactive={interactive}
       className={mergedClassName}
       selected={selected}
       onClick={onClick}
-      onKeyDown={onKeyDown}
-      right={rightSlot}
       style={{
         ...getCategoryUiVars(category || color || "#6EE7FF", { level: "surface" }),
         "--libraryAccent": resolveCategoryColor(category || color || "#6EE7FF"),
         ...style,
       }}
+      onKeyDown={onKeyDown}
       {...props}
     >
-      <div className="libraryAccentItemBody categorySurfaceBody">{children}</div>
-    </GateRow>
+      <div className="libraryAccentItemFrame">
+        <div className="libraryAccentItemBody categorySurfaceBody">{children}</div>
+        {rightSlot ? <div className="libraryAccentItemRight">{rightSlot}</div> : null}
+      </div>
+    </AppCard>
   );
 }

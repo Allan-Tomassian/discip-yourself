@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { GateBadge, GatePanel } from "../shared/ui/gate/Gate";
+import { AppToast, StatusBadge } from "../shared/ui/app";
 import { getCategoryUiVars } from "../utils/categoryAccent";
 import { resolveCategoryColor } from "../utils/categoryPalette";
 import {
@@ -138,8 +138,8 @@ export function BehaviorFeedbackHost({ categories = [] }) {
 
   return createPortal(
     <div className="behaviorFeedbackViewport" aria-live="polite" aria-atomic="true">
-      <GatePanel
-        className={`behaviorFeedbackToast GateSurfacePremium GateCardPremium is-${phase}${category ? " hasCategory" : ""}`}
+      <AppToast
+        className={`behaviorFeedbackToast is-${phase}${category ? " hasCategory" : ""}`}
         role="status"
         style={accentVars || undefined}
       >
@@ -149,7 +149,7 @@ export function BehaviorFeedbackHost({ categories = [] }) {
           </span>
           <span className="behaviorFeedbackMessage">{currentSignal.message}</span>
         </div>
-      </GatePanel>
+      </AppToast>
     </div>,
     document.body
   );
@@ -159,12 +159,13 @@ export function BehaviorCue({ cue, category = null, className = "" }) {
   const message = typeof cue === "string" ? cue.trim() : cue?.message || "";
   if (!message) return null;
   return (
-    <GateBadge
+    <StatusBadge
+      tone="info"
       className={`behaviorCue behaviorCue--${cue?.cueKind || "structure"}${className ? ` ${className}` : ""}`}
       style={category ? { "--behaviorCueAccent": resolveCategoryColor(category, "#4F7CFF") } : undefined}
     >
       <span className="behaviorCueDot" aria-hidden="true" />
       <span>{message}</span>
-    </GateBadge>
+    </StatusBadge>
   );
 }

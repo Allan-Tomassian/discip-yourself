@@ -1,36 +1,36 @@
 .preferencesGateForm {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  gap: var(--space-16);
 }
 
 .preferencesGateNote {
   margin: 0;
-  color: var(--gate-text-muted);
+  color: var(--text-secondary);
 }
 
 .preferencesGateNoteStrong {
-  color: var(--gate-text);
+  color: var(--text-primary);
 }
 
 .preferencesGateActionsColumn {
   flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
 }
 
 .preferencesGateSummary {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  gap: var(--space-8);
 }
 
 .preferencesGateLinks {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--space-10);
 }
 
 .preferencesGateRowControl {
-  border-color: color-mix(in srgb, var(--gate-border) 94%, rgba(255, 255, 255, 0.16));
+  border-color: var(--border-subtle);
 }
 
 .preferencesGateToggleButton {

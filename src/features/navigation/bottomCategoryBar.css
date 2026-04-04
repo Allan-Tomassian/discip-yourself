@@ -55,8 +55,24 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.categoryRailScroll {
+  display: flex;
+  gap: var(--space-8);
+  overflow-x: auto;
+  padding-bottom: var(--space-4);
+  flex: 1;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+}
+
 .bottomCategoryChip {
   flex: 0 0 auto;
+  min-width: max-content;
+  white-space: nowrap;
+  scroll-snap-align: center;
+}
+
+.categoryRailItem {
   min-width: max-content;
   white-space: nowrap;
   scroll-snap-align: center;

@@ -1,6 +1,5 @@
 import React from "react";
-import { GateHeader, GateRow } from "../../shared/ui/gate/Gate";
-import { AppDrawer } from "../../shared/ui/app";
+import { AppCard, AppDrawer, AppHeader, AppIconButton } from "../../shared/ui/app";
 import { SURFACE_LABELS } from "../../ui/labels";
 import "../../features/navigation/topMenuGate.css";
 
@@ -46,23 +45,22 @@ export default function MainDrawer({ open = false, active = "", onClose, onNavig
       onClose={onClose}
       ariaLabel="Menu principal"
       className="drawerBackdrop"
-      panelClassName="drawerPanel drawerMenuPanel"
+      panelClassName="drawerMenuPanel"
     >
-      <GateHeader
-        className="drawerHeader drawerMenuHeader"
+      <AppHeader
+        className="drawerMenuHeader"
         title="Menu"
         subtitle="Pages secondaires et surfaces utilitaires."
         actions={
-          <button
-            type="button"
-            className="GateIconButtonPremium GatePressable drawerMenuCloseBtn"
+          <AppIconButton
+            className="drawerMenuCloseBtn"
             onClick={() => onClose?.()}
             aria-label="Fermer le menu"
             title="Fermer"
             data-testid="drawer-close-button"
           >
             ×
-          </button>
+          </AppIconButton>
         }
       />
       <div className="drawerBody">
@@ -75,7 +73,7 @@ export default function MainDrawer({ open = false, active = "", onClose, onNavig
             >
               <div
                 id={`drawer-menu-group-${section.title}`}
-                className="GateRoleSectionTitle drawerMenuSectionTitle"
+                className="drawerMenuSectionTitle"
               >
                 {section.title}
               </div>
@@ -83,19 +81,20 @@ export default function MainDrawer({ open = false, active = "", onClose, onNavig
                 {section.items.map((item) => {
                   const selected = active === item.id;
                   return (
-                    <GateRow
+                    <AppCard
                       key={item.id}
-                      role="menuitem"
-                      label={item.label}
-                      withSound
+                      interactive
                       selected={selected}
-                      className="GateRowPremium GateInlineMetaCard GatePressable drawerMenuItem"
+                      role="menuitem"
+                      className="drawerMenuItem"
                       aria-current={selected ? "page" : undefined}
                       onClick={() => {
                         onNavigate?.(item.id);
                         onClose?.();
                       }}
-                    />
+                    >
+                      <div className="drawerMenuItemLabel">{item.label}</div>
+                    </AppCard>
                   );
                 })}
               </div>

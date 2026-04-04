@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BookOpen, Calendar, Compass, Home, Menu } from "lucide-react";
 import WalletBadge from "./WalletBadge";
-import { GatePanel } from "../shared/ui/gate/Gate";
+import { AppSurface } from "../shared/ui/app";
 import { SURFACE_LABELS } from "../ui/labels";
 import "../features/navigation/topMenuGate.css";
 
@@ -130,12 +130,12 @@ export default function TopNav({
       <div className="navWrap topNavGateWrap" ref={navBarRef}>
         <div className="TopNavSurfaceOuter" ref={topbarSurfaceRef}>
           <div className="TopNavSurfaceClip TopNavBackdrop GateGlassClip GateGlassBackdrop">
-            <GatePanel className="topNavGateBar GateGlassContent GateSurfacePremium GateCardPremium" data-tour-id="topnav-row">
+            <AppSurface className="topNavGateBar GateGlassContent" data-tour-id="topnav-row">
               <div ref={topbarRef} className={`navRow${isMobileLayout ? " is-mobile-layout" : ""}`}>
                 <div className="navActions topNavMenuSlot topNavMenuActions">
                   <button
                     type="button"
-                    className="navBtn NavPillUnified NavPillUnified--iconOnly GatePressable"
+                    className="navBtn NavPillUnified NavPillUnified--iconOnly"
                     aria-label="Ouvrir le menu"
                     title="Menu"
                     onClick={() => onMenuOpen?.()}
@@ -176,7 +176,7 @@ export default function TopNav({
                   </div>
                 ) : null}
               </div>
-            </GatePanel>
+            </AppSurface>
           </div>
         </div>
       </div>

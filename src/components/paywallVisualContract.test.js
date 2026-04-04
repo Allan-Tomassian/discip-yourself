@@ -10,11 +10,12 @@ function readSrc(relPath) {
 }
 
 describe("paywall visual contract", () => {
-  it("keeps the paywall on an overlay shell with internal premium section intros", () => {
+  it("keeps the paywall on the shared AppUI sheet shell with canonical section headers", () => {
     const paywall = readSrc("components/PaywallModal.jsx");
 
-    expect(paywall).toContain("GateHeader");
-    expect(paywall).toContain("GateSectionIntro");
+    expect(paywall).toContain("AppSheet");
+    expect(paywall).toContain("AppSheetContent");
+    expect(paywall).toContain("SectionHeader");
     expect(paywall).toContain("paywallSection");
     expect(paywall).not.toContain("small2");
   });

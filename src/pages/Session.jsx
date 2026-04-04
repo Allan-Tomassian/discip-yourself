@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import ScreenShell from "./_ScreenShell";
 import FocusSessionView from "../components/session/FocusSessionView";
-import { GateButton } from "../shared/ui/gate/Gate";
 import { addDaysLocal, minutesToTimeStr, normalizeLocalDateKey, parseTimeToMinutes, todayLocalKey } from "../utils/datetime";
 import { resolveExecutableOccurrence } from "../logic/sessionResolver";
 import { updateOccurrence } from "../logic/occurrences";
@@ -16,6 +14,7 @@ import { withExecutionActiveCategoryId } from "../domain/categoryVisibility";
 import { computeStreakDays } from "../logic/habits";
 import { useBehaviorFeedback } from "../feedback/BehaviorFeedbackContext";
 import { deriveBehaviorFeedbackSignal, deriveSessionBehaviorCue } from "../feedback/feedbackDerivers";
+import { AppCard, AppScreen, GhostButton } from "../shared/ui/app";
 import "../features/session/session.css";
 
 function formatElapsed(ms) {
@@ -402,34 +401,40 @@ export default function Session({
 
   if (!selectedOccurrence && !session) {
     return (
-      <ScreenShell
+      <AppScreen
         accent={getAccentForPage(safeData, "home")}
+        pageId="session"
         headerTitle={<span>Session</span>}
         headerSubtitle={<span>Exécution</span>}
       >
-        <div className="col" style={{ gap: 12 }}>
-          <div className="small2">Aucune occurrence sélectionnée.</div>
-          <div className="row" style={{ gap: 8 }}>
-            <GateButton variant="ghost" className="GatePressable" onClick={onBack}>← Retour</GateButton>
-            {onOpenLibrary ? <GateButton variant="ghost" className="GatePressable" onClick={onOpenLibrary}>Ouvrir Bibliothèque</GateButton> : null}
+        <AppCard className="sessionFallbackCard">
+          <div className="sessionFallbackBody">
+            <div className="sessionMeta">Aucune occurrence sélectionnée.</div>
+            <div className="sessionActions">
+              <GhostButton className="sessionActionButton" onClick={onBack}>← Retour</GhostButton>
+              {onOpenLibrary ? (
+                <GhostButton className="sessionActionButton" onClick={onOpenLibrary}>
+                  Ouvrir Bibliothèque
+                </GhostButton>
+              ) : null}
+            </div>
           </div>
-        </div>
-      </ScreenShell>
+        </AppCard>
+      </AppScreen>
     );
   }
 
   return (
-    <ScreenShell
+    <AppScreen
       accent={accent}
+      pageId="session"
       backgroundImage={category?.wallpaper || safeData?.profile?.whyImage || ""}
       headerTitle={<span>{goal?.title || "Session"}</span>}
-      headerSubtitle={
-        <div className="stack stackGap12">
-        <div>{category?.name || "Catégorie"}</div>
-          <GateButton variant="ghost" className="btnBackCompact backBtn GatePressable" onClick={onBack}>
-            ← Retour
-          </GateButton>
-        </div>
+      headerSubtitle={category?.name || "Catégorie"}
+      headerRight={
+        <GhostButton className="sessionBackButton" onClick={onBack}>
+          ← Retour
+        </GhostButton>
       }
     >
       <div style={catAccentVars}>
@@ -459,6 +464,6 @@ export default function Session({
           onChooseReport={applyQuickReport}
         />
       </div>
-    </ScreenShell>
+    </AppScreen>
   );
 }

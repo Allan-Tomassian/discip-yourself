@@ -71,7 +71,7 @@ export default function CategoryRail({
               if (node) itemRefs.current[c.id] = node;
             }}
             type="button"
-            className={`categoryRailItem bottomCategoryChip NavPillUnified GatePressable${isSelected ? " navBtnActive bottomCategoryChipActive" : ""}`}
+            className={`categoryRailItem bottomCategoryChip NavPillUnified${isSelected ? " navBtnActive bottomCategoryChipActive" : ""}`}
             aria-pressed={isSelected}
             title={c.name || "Catégorie"}
             style={isSelected ? accentVars : undefined}

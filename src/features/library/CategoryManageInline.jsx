@@ -14,73 +14,21 @@ import {
   hasMeaningfulCategoryProfile,
   normalizeCategoryProfilesV1,
 } from "../../domain/categoryProfile";
-import { GateButton, GateSection, GateSectionIntro } from "../../shared/ui/gate/Gate";
-import { GateIconButton, GateInput, GateTextarea } from "../../shared/ui/gate/GateForm";
 import { BehaviorCue, useBehaviorFeedback } from "../../feedback/BehaviorFeedbackContext";
 import { deriveBehaviorFeedbackSignal, deriveLibraryBehaviorCue } from "../../feedback/feedbackDerivers";
 import { resolveCategoryColor } from "../../utils/categoryPalette";
-
-function Button({ variant = "primary", size = "sm", className = "", ...props }) {
-  const gateVariant =
-    variant === "ghost"
-      ? "ghost"
-      : variant === "secondary"
-      ? "secondary"
-        : variant === "danger"
-          ? "ghost"
-          : "primary";
-  const mergedClassName = [className, "GatePressable"].filter(Boolean).join(" ");
-  return <GateButton variant={gateVariant} size={size} className={mergedClassName} {...props} />;
-}
-
-function Card({ className = "", children, accentBorder: _accentBorder, ...props }) {
-  const mergedClassName = ["GateSurfacePremium", "GateCardPremium", "GateSecondarySectionCard", "libraryManageCard", className]
-    .filter(Boolean)
-    .join(" ");
-  return (
-    <GateSection className={mergedClassName} collapsible={false} {...props}>
-      {children}
-    </GateSection>
-  );
-}
-
-function Input({ className = "", ...props }) {
-  return <GateInput className={className} {...props} />;
-}
-
-function Textarea({ className = "", ...props }) {
-  return <GateTextarea className={className} {...props} />;
-}
-
-function Chip({ children, active = false, className = "", type = "button", ...props }) {
-  return (
-    <button
-      type={type}
-      className={`chip${active ? " isActive" : ""}${className ? ` ${className}` : ""}`}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-}
-
-function ChipRow({ children, className = "", ...props }) {
-  return (
-    <div className={`chipRow${className ? ` ${className}` : ""}`} {...props}>
-      {children}
-    </div>
-  );
-}
-
-function IconButton({ icon, children, className = "", ...props }) {
-  const iconMap = { gear: "⚙︎", close: "×", back: "←", plus: "+" };
-  const content = children || iconMap[icon] || icon;
-  return (
-    <GateIconButton className={className} {...props}>
-      {content}
-    </GateIconButton>
-  );
-}
+import {
+  AppCard,
+  AppChip,
+  AppIconButton,
+  AppInlineMetaCard,
+  AppInput,
+  AppTextarea,
+  GhostButton,
+  ProgressBar,
+  SectionHeader,
+  StatusBadge,
+} from "../../shared/ui/app";
 
 function getTourId(inlineEdit, value) {
   return inlineEdit ? undefined : value;
@@ -673,12 +621,10 @@ export default function CategoryManageInline({
   if (!category) {
     return (
       <section className="mainPageSection">
-        <GateSectionIntro title="Catégorie introuvable" subtitle="Cette catégorie n’existe plus." />
-        <Card accentBorder>
-          <div className="GateInlineMetaCard col gap8">
-            <div className="GateRoleHelperText">Reviens à la bibliothèque pour ouvrir une autre catégorie.</div>
-          </div>
-        </Card>
+        <SectionHeader title="Catégorie introuvable" subtitle="Cette catégorie n’existe plus." />
+        <AppCard className="libraryManageCard">
+          <AppInlineMetaCard text="Reviens à la bibliothèque pour ouvrir une autre catégorie." />
+        </AppCard>
       </section>
     );
   }
@@ -689,14 +635,14 @@ export default function CategoryManageInline({
   return (
     <div className="libraryManageStack stack stackGap16" style={{ "--catColor": resolveCategoryColor(category, "#4F7CFF") }}>
       <section className="mainPageSection">
-        <GateSectionIntro title="Réglages" subtitle="Nom, priorité et paramètres de la catégorie." />
-        <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-category-card")}>
+        <SectionHeader title="Réglages" subtitle="Nom, priorité et paramètres de la catégorie." />
+        <AppCard className="libraryManageCard" data-tour-id={getTourId(inlineEdit, "manage-category-card")}>
           <div className="libraryManageCardBody stack stackGap12">
             <div className="row rowBetween alignCenter gap12">
               <div className="stack stackGap12 minW0">
                 {inlineEdit ? (
                   <div className="row gap8 alignCenter wrap">
-                    <Input
+                    <AppInput
                       value={nameDraft}
                       onChange={(event) => setNameDraft(event.target.value)}
                       onBlur={commitName}
@@ -711,15 +657,15 @@ export default function CategoryManageInline({
                       data-testid={`library-manage-name-${category.id}`}
                     />
                     {isPrimaryCategory(category) ? (
-                      <span className="badge badgeAccent">Prioritaire</span>
+                      <StatusBadge tone="info">Prioritaire</StatusBadge>
                     ) : null}
                   </div>
                 ) : (
                   <div className="stack stackGap12">
-                    <div className="GateRoleCardTitle">
+                    <div className="itemTitle">
                       {category.name || "Catégorie"}
                       {isPrimaryCategory(category) ? (
-                        <span className="badge badgeAccent ml8">Prioritaire</span>
+                        <StatusBadge tone="info" className="ml8">Prioritaire</StatusBadge>
                       ) : null}
                     </div>
                     {categoryBehaviorCue ? <BehaviorCue cue={categoryBehaviorCue} category={category} /> : null}
@@ -727,28 +673,31 @@ export default function CategoryManageInline({
                 )}
               </div>
               <div className="row gap8">
-                <IconButton
-                  icon="gear"
+                <AppIconButton
                   aria-label="Paramètres catégorie"
                   onClick={() => {
                     setCategoryMenuOpen((prev) => !prev);
                   }}
                   data-tour-id={getTourId(inlineEdit, "manage-category-settings")}
-                />
-                <IconButton
-                  icon="close"
+                >
+                  ⚙︎
+                </AppIconButton>
+                <AppIconButton
                   className="iconBtnDanger"
                   aria-label="Supprimer la catégorie"
                   onClick={deleteCategory}
                   data-tour-id={getTourId(inlineEdit, "manage-category-delete")}
-                />
+                >
+                  ×
+                </AppIconButton>
               </div>
             </div>
             {categoryMenuOpen ? (
               <div className="stack stackGap12">
                 {!inlineEdit ? (
-                  <Button
-                    variant="ghost"
+                  <GhostButton
+                    type="button"
+                    size="sm"
                     onClick={() => {
                       renameCategory();
                       setCategoryMenuOpen(false);
@@ -756,19 +705,21 @@ export default function CategoryManageInline({
                     data-tour-id={getTourId(inlineEdit, "manage-category-rename")}
                   >
                     Renommer
-                  </Button>
+                  </GhostButton>
                 ) : null}
-                <Button
-                  variant="ghost"
+                <GhostButton
+                  type="button"
+                  size="sm"
                   onClick={() => {
                     recolorCategory();
                     setCategoryMenuOpen(false);
                   }}
                 >
                   Modifier la couleur
-                </Button>
-                <Button
-                  variant="ghost"
+                </GhostButton>
+                <GhostButton
+                  type="button"
+                  size="sm"
                   onClick={() => {
                     setCategoryPriority();
                     setCategoryMenuOpen(false);
@@ -777,34 +728,35 @@ export default function CategoryManageInline({
                   data-tour-id={getTourId(inlineEdit, "manage-category-priority")}
                 >
                   {isPrimaryCategory(category) ? "Prioritaire" : "Définir comme prioritaire"}
-                </Button>
+                </GhostButton>
               </div>
             ) : null}
           </div>
-        </Card>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro
+        <SectionHeader
           title="Mini-why"
           subtitle="Visible pour cette catégorie."
           actions={
-            <button
-              className="linkBtn"
+            <GhostButton
               type="button"
+              size="sm"
+              className="librarySectionToggle"
               onClick={() => setShowWhy((value) => !value)}
+              aria-pressed={showWhy}
               data-tour-id={getTourId(inlineEdit, "manage-mini-why-toggle")}
             >
               {showWhy ? "Masquer" : "Afficher"}
-            </button>
+            </GhostButton>
           }
         />
-        <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-mini-why")}>
+        <AppCard className="libraryManageCard" data-tour-id={getTourId(inlineEdit, "manage-mini-why")}>
           <div className="libraryManageCardBody stack stackGap12">
             {showWhy ? (
               inlineEdit ? (
-                <textarea
-                  className="input"
+                <AppTextarea
                   rows={3}
                   value={whyDraft}
                   onChange={(event) => setWhyDraft(event.target.value)}
@@ -820,37 +772,35 @@ export default function CategoryManageInline({
                   data-testid={`library-manage-why-${category.id}`}
                 />
               ) : (
-                <div className="GateInlineMetaCard">
-                  <div className="GateRoleHelperText">{whyDisplay}</div>
-                </div>
+                <AppInlineMetaCard text={whyDisplay} />
               )
             ) : null}
             <div className="row rowEnd">
               {inlineEdit ? (
-                <Button variant="ghost" onClick={commitWhy}>
+                <GhostButton type="button" size="sm" onClick={commitWhy}>
                   Sauver
-                </Button>
+                </GhostButton>
               ) : (
-                <Button variant="ghost" onClick={editMiniWhy}>
+                <GhostButton type="button" size="sm" onClick={editMiniWhy}>
                   Éditer
-                </Button>
+                </GhostButton>
               )}
             </div>
           </div>
-        </Card>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro
+        <SectionHeader
           title="Profil de catégorie"
           subtitle="Contexte stratégique optionnel pour guider les recommandations."
         />
-        <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-category-profile")}>
+        <AppCard className="libraryManageCard" data-tour-id={getTourId(inlineEdit, "manage-category-profile")}>
           <div className="libraryManageCardBody stack stackGap12">
             <div className="stack stackGap12">
-              <div className="col" style={{ gap: 6 }}>
+              <div className="col libraryFieldStack">
                 <div className="small2 textMuted">Sujet principal</div>
-                <Input
+                <AppInput
                   value={profileDraft.subject}
                   onChange={(event) =>
                     setProfileDraft((previous) => ({ ...previous, subject: event.target.value }))
@@ -862,9 +812,9 @@ export default function CategoryManageInline({
                 />
               </div>
 
-              <div className="col" style={{ gap: 6 }}>
+              <div className="col libraryFieldStack">
                 <div className="small2 textMuted">Objectif principal</div>
-                <Input
+                <AppInput
                   value={profileDraft.mainGoal}
                   onChange={(event) =>
                     setProfileDraft((previous) => ({ ...previous, mainGoal: event.target.value }))
@@ -876,9 +826,9 @@ export default function CategoryManageInline({
                 />
               </div>
 
-              <div className="col" style={{ gap: 6 }}>
+              <div className="col libraryFieldStack">
                 <div className="small2 textMuted">Priorité actuelle</div>
-                <Input
+                <AppInput
                   value={profileDraft.currentPriority}
                   onChange={(event) =>
                     setProfileDraft((previous) => ({ ...previous, currentPriority: event.target.value }))
@@ -890,10 +840,10 @@ export default function CategoryManageInline({
                 />
               </div>
 
-              <div className="col" style={{ gap: 8 }}>
+              <div className="col libraryFilterStack">
                 <div className="small2 textMuted">Points à surveiller</div>
                 <div className="row wrap gap8">
-                  <Input
+                  <AppInput
                     value={watchpointInput}
                     onChange={(event) => setWatchpointInput(event.target.value)}
                     onKeyDown={(event) => {
@@ -904,30 +854,31 @@ export default function CategoryManageInline({
                     placeholder="Ex: Sommeil"
                     aria-label="Ajouter un point à surveiller"
                   />
-                  <Button variant="ghost" onClick={() => addProfileListItem("watchpoints")}>
+                  <GhostButton type="button" size="sm" onClick={() => addProfileListItem("watchpoints")}>
                     Ajouter
-                  </Button>
+                  </GhostButton>
                 </div>
                 {profileDraft.watchpoints.length ? (
-                  <ChipRow>
+                  <div className="libraryChipRow">
                     {profileDraft.watchpoints.map((item) => (
-                      <Chip
+                      <AppChip
                         key={`watchpoint-${item}`}
                         active
+                        type="button"
                         onClick={() => removeProfileListItem("watchpoints", item)}
                         aria-label={`Retirer ${item}`}
                       >
                         {item} ×
-                      </Chip>
+                      </AppChip>
                     ))}
-                  </ChipRow>
+                  </div>
                 ) : null}
               </div>
 
-              <div className="col" style={{ gap: 8 }}>
+              <div className="col libraryFilterStack">
                 <div className="small2 textMuted">Contraintes</div>
                 <div className="row wrap gap8">
-                  <Input
+                  <AppInput
                     value={constraintInput}
                     onChange={(event) => setConstraintInput(event.target.value)}
                     onKeyDown={(event) => {
@@ -938,33 +889,35 @@ export default function CategoryManageInline({
                     placeholder="Ex: Horaires irréguliers"
                     aria-label="Ajouter une contrainte"
                   />
-                  <Button variant="ghost" onClick={() => addProfileListItem("constraints")}>
+                  <GhostButton type="button" size="sm" onClick={() => addProfileListItem("constraints")}>
                     Ajouter
-                  </Button>
+                  </GhostButton>
                 </div>
                 {profileDraft.constraints.length ? (
-                  <ChipRow>
+                  <div className="libraryChipRow">
                     {profileDraft.constraints.map((item) => (
-                      <Chip
+                      <AppChip
                         key={`constraint-${item}`}
                         active
+                        type="button"
                         onClick={() => removeProfileListItem("constraints", item)}
                         aria-label={`Retirer ${item}`}
                       >
                         {item} ×
-                      </Chip>
+                      </AppChip>
                     ))}
-                  </ChipRow>
+                  </div>
                 ) : null}
               </div>
 
-              <div className="col" style={{ gap: 8 }}>
+              <div className="col libraryFilterStack">
                 <div className="small2 textMuted">Niveau actuel</div>
-                <ChipRow>
+                <div className="libraryChipRow">
                   {[1, 2, 3, 4, 5].map((level) => (
-                    <Chip
+                    <AppChip
                       key={`level-${level}`}
                       active={profileDraft.currentLevel === level}
+                      type="button"
                       onClick={() => {
                         const nextLevel = profileDraft.currentLevel === level ? null : level;
                         setProfileDraft((previous) => ({ ...previous, currentLevel: nextLevel }));
@@ -973,14 +926,14 @@ export default function CategoryManageInline({
                       aria-pressed={profileDraft.currentLevel === level}
                     >
                       {level}
-                    </Chip>
+                    </AppChip>
                   ))}
-                </ChipRow>
+                </div>
               </div>
 
-              <div className="col" style={{ gap: 6 }}>
+              <div className="col libraryFieldStack">
                 <div className="small2 textMuted">Notes</div>
-                <Textarea
+                <AppTextarea
                   rows={4}
                   value={profileDraft.notes}
                   onChange={(event) =>
@@ -994,25 +947,27 @@ export default function CategoryManageInline({
               </div>
             </div>
           </div>
-        </Card>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro
+        <SectionHeader
           title="Actions"
           subtitle={`Les actions vivent d’abord ici. Tu peux les relier à un ${LABELS.goalLower} seulement si cela aide.`}
           actions={
             typeof onOpenCreateHabit === "function" ? (
-              <Button
+              <GhostButton
+                type="button"
+                size="sm"
                 onClick={() => onOpenCreateHabit(category.id)}
                 data-tour-id={getTourId(inlineEdit, "manage-actions-create")}
               >
                 Créer une action
-              </Button>
+              </GhostButton>
             ) : null
           }
         />
-        <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-actions-section")}>
+        <AppCard className="libraryManageCard" data-tour-id={getTourId(inlineEdit, "manage-actions-section")}>
           <div className="libraryManageCardBody stack stackGap12">
             {actionSections.length ? (
               <div className="stack stackGap12">
@@ -1033,55 +988,52 @@ export default function CategoryManageInline({
                             <div className="row rowBetween alignCenter gap12">
                               <div className="itemTitle">{goal.title || "Action"}</div>
                               <div className="row gap8 wrap">
-                                <IconButton
-                                  icon="gear"
+                                <AppIconButton
                                   aria-label="Paramètres action"
                                   onClick={() => openEditItem(goal)}
-                                />
+                                >
+                                  ⚙︎
+                                </AppIconButton>
                                 {showLink ? (
                                   linkedToSelected ? (
-                                    <Button
-                                      variant="ghost"
+                                    <GhostButton
+                                      type="button"
+                                      size="sm"
                                       onClick={() => unlinkAction(goal.id)}
                                       disabled={!goal.parentId && !goal.outcomeId}
                                     >
                                       Délier
-                                    </Button>
+                                    </GhostButton>
                                   ) : (
-                                    <Button
-                                      variant="ghost"
+                                    <GhostButton
+                                      type="button"
+                                      size="sm"
                                       onClick={() => linkHabitToSelectedOutcome(goal.id)}
                                       disabled={!selectedOutcome?.id || typeof setData !== "function"}
                                     >
                                       Lier
-                                    </Button>
+                                    </GhostButton>
                                   )
                                 ) : null}
-                                <IconButton
-                                  icon="close"
+                                <AppIconButton
                                   aria-label="Supprimer l’action"
                                   onClick={() => deleteAction(goal)}
-                                />
+                                >
+                                  ×
+                                </AppIconButton>
                               </div>
                             </div>
                             {badges.length ? (
-                              <div className="row wrap" style={{ gap: 6 }}>
+                              <div className="row wrap libraryBadgeRow">
                                 {badges.map((label, idx) => (
-                                  <span key={`${goal.id}-badge-${idx}`} className="badge">
+                                  <StatusBadge key={`${goal.id}-badge-${idx}`} className="libraryBadge">
                                     {label}
-                                  </span>
+                                  </StatusBadge>
                                 ))}
                               </div>
                             ) : null}
                             <div className="itemSub">{`Cette semaine : ${stat.done} terminées · ${stat.done}/${stat.planned}`}</div>
-                            <div className="progressTrack">
-                              <div
-                                className="progressFill"
-                                style={{
-                                  width: `${Math.round(stat.ratio * 100)}%`,
-                                }}
-                              />
-                            </div>
+                            <ProgressBar value01={stat.ratio} />
                           </div>
                         </AccentItem>
                       );
@@ -1090,31 +1042,30 @@ export default function CategoryManageInline({
                 ))}
               </div>
             ) : (
-              <div className="GateInlineMetaCard">
-                <div className="GateRoleHelperText">Aucune action dans cette catégorie.</div>
-              </div>
+              <AppInlineMetaCard text="Aucune action dans cette catégorie." />
             )}
           </div>
-        </Card>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro
+        <SectionHeader
           title={`${LABELS.goals} (optionnel)`}
           subtitle="Utile pour structurer certaines actions, pas pour agir au quotidien."
           actions={
             typeof onOpenCreateOutcome === "function" ? (
-              <Button
-                variant="ghost"
+              <GhostButton
+                type="button"
+                size="sm"
                 onClick={() => onOpenCreateOutcome(category.id)}
                 data-tour-id={getTourId(inlineEdit, "manage-objectives-create")}
               >
                 Créer un {LABELS.goalLower}
-              </Button>
+              </GhostButton>
             ) : null
           }
         />
-        <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-objectives-section")}>
+        <AppCard className="libraryManageCard" data-tour-id={getTourId(inlineEdit, "manage-objectives-section")}>
           <div className="libraryManageCardBody stack stackGap12">
             {outcomeGoals.length ? (
               <div className="stack stackGap12">
@@ -1124,50 +1075,48 @@ export default function CategoryManageInline({
                       <div className="itemTitle">
                         {g.title || LABELS.goal}
                         {isPrimaryGoal(g) ? (
-                          <span className="badge badgeAccent ml8">Prioritaire</span>
+                          <StatusBadge tone="info" className="ml8">Prioritaire</StatusBadge>
                         ) : null}
                       </div>
                       <div className="itemSub">{g.id === category.mainGoalId ? "Objectif principal" : "Objectif secondaire"}</div>
                     </div>
                     <div className="row gap8">
-                      <IconButton
-                        icon="gear"
+                      <AppIconButton
                         aria-label={`Paramètres ${LABELS.goalLower}`}
                         onClick={() => openEditItem(g)}
-                      />
-                      <IconButton
-                        icon="close"
+                      >
+                        ⚙︎
+                      </AppIconButton>
+                      <AppIconButton
                         aria-label={`Supprimer le ${LABELS.goalLower}`}
                         onClick={() => deleteOutcome(g)}
-                      />
+                      >
+                        ×
+                      </AppIconButton>
                     </div>
                   </AccentItem>
                 ))}
               </div>
             ) : (
-              <div className="GateInlineMetaCard">
-                <div className="GateRoleHelperText">Aucun {LABELS.goalLower} dans cette catégorie.</div>
-              </div>
+              <AppInlineMetaCard text={`Aucun ${LABELS.goalLower} dans cette catégorie.`} />
             )}
           </div>
-        </Card>
+        </AppCard>
       </section>
 
       <section className="mainPageSection">
-        <GateSectionIntro
+        <SectionHeader
           title="Pilotage"
           subtitle="État, charge et discipline."
           actions={
-            <Button variant="ghost" onClick={openPilotage} data-tour-id={getTourId(inlineEdit, "manage-open-pilotage")}>
+            <GhostButton type="button" size="sm" onClick={openPilotage} data-tour-id={getTourId(inlineEdit, "manage-open-pilotage")}>
               Ouvrir le pilotage
-            </Button>
+            </GhostButton>
           }
         />
-        <Card accentBorder data-tour-id={getTourId(inlineEdit, "manage-pilotage-section")}>
-          <div className="GateInlineMetaCard">
-            <div className="GateRoleHelperText">Lecture seule depuis cette catégorie.</div>
-          </div>
-        </Card>
+        <AppCard className="libraryManageCard" data-tour-id={getTourId(inlineEdit, "manage-pilotage-section")}>
+          <AppInlineMetaCard text="Lecture seule depuis cette catégorie." />
+        </AppCard>
       </section>
     </div>
   );

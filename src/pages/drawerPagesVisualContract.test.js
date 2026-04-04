@@ -52,16 +52,17 @@ describe("drawer pages visual contract", () => {
     const drawer = readSrc("components/navigation/MainDrawer.jsx");
 
     for (const source of pages) {
-      expect(source).toContain("GateSecondarySectionCard");
+      expect(source).toContain("AppCard");
+      expect(source).not.toContain("GateSecondarySectionCard");
     }
 
     expect(microActions).toContain("headerTitle");
-    expect(microActions).toContain("GateSectionIntro");
+    expect(microActions).toContain("SectionHeader");
     expect(microActions).not.toContain("<GatePage");
     expect(drawer).toContain("<AppDrawer");
     expect(drawer).toContain("drawerMenuPanel");
     expect(drawer).toContain('title="Menu"');
-    expect(drawer).toContain("GateHeader");
+    expect(drawer).toContain("AppHeader");
   });
 
   it("keeps drawer-linked simple pages on shared section header primitives", () => {

@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo } from "react";
-import ScreenShell from "./_ScreenShell";
-import { GateButton, GateSection, GateSectionIntro } from "../shared/ui/gate/Gate";
 import Gauge from "../components/Gauge";
 import { getAccentForPage } from "../utils/_theme";
 import { resolveCategoryColor } from "../utils/categoryPalette";
 import { resolveGoalType } from "../domain/goalType";
 import { LABELS } from "../ui/labels";
 import CategoryManageInline from "../features/library/CategoryManageInline";
+import { AppCard, AppScreen, GhostButton, SectionHeader } from "../shared/ui/app";
 import "../features/library/library.css";
 
 // TOUR MAP:
@@ -96,61 +95,49 @@ export default function CategoryView({
 
   if (!categories.length) {
     return (
-      <ScreenShell
+      <AppScreen
         headerTitle="Gestion de catégorie"
         headerSubtitle="Aucune catégorie"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
         <section className="mainPageSection">
-          <GateSectionIntro
+          <SectionHeader
             title="Aucune catégorie"
             subtitle={`Commence par poser une catégorie claire puis une première ${LABELS.actionLower}. Les ${LABELS.goalsLower} servent ensuite à donner une direction.`}
           />
-          <GateSection className="GateSurfacePremium GateCardPremium GateSecondarySectionCard" collapsible={false}>
-            <div className="GatePrimaryCtaRow">
-              <GateButton
-                variant="ghost"
-                size="sm"
-                className="btnBackCompact backBtn GatePressable"
-                onClick={onBack}
-                data-tour-id="manage-back"
-              >
+          <AppCard>
+            <div className="libraryActionRow">
+              <GhostButton type="button" size="sm" className="btnBackCompact backBtn" onClick={onBack} data-tour-id="manage-back">
                 ← Retour
-              </GateButton>
+              </GhostButton>
             </div>
-          </GateSection>
+          </AppCard>
         </section>
-      </ScreenShell>
+      </AppScreen>
     );
   }
 
   if (!category) {
     return (
-      <ScreenShell
+      <AppScreen
         headerTitle="Gestion de catégorie"
         headerSubtitle="Catégorie introuvable"
         backgroundImage={safeData?.profile?.whyImage || ""}
       >
         <section className="mainPageSection">
-          <GateSectionIntro
+          <SectionHeader
             title="Catégorie introuvable"
             subtitle="Cette catégorie n’existe plus."
           />
-          <GateSection className="GateSurfacePremium GateCardPremium GateSecondarySectionCard" collapsible={false}>
-            <div className="GatePrimaryCtaRow">
-              <GateButton
-                variant="ghost"
-                size="sm"
-                className="btnBackCompact backBtn GatePressable"
-                onClick={onBack}
-                data-tour-id="manage-back"
-              >
+          <AppCard>
+            <div className="libraryActionRow">
+              <GhostButton type="button" size="sm" className="btnBackCompact backBtn" onClick={onBack} data-tour-id="manage-back">
                 ← Retour
-              </GateButton>
+              </GhostButton>
             </div>
-          </GateSection>
+          </AppCard>
         </section>
-      </ScreenShell>
+      </AppScreen>
     );
   }
 
@@ -159,15 +146,9 @@ export default function CategoryView({
   const headerRight = (
     <div className="manageHeaderRightWrap">
       <div className="manageHeaderRight">
-        <GateButton
-          variant="ghost"
-          size="sm"
-          className="btnBackCompact backBtn GatePressable"
-          onClick={onBack}
-          data-tour-id="manage-back"
-        >
+        <GhostButton type="button" size="sm" className="btnBackCompact backBtn" onClick={onBack} data-tour-id="manage-back">
           ← Retour
-        </GateButton>
+        </GhostButton>
         {outcomeGoals.length ? (
           <div className="col gap8 alignEnd wFull">
             {gaugeSlice.map((g) => (
@@ -182,14 +163,9 @@ export default function CategoryView({
               />
             ))}
             {typeof onOpenProgress === "function" ? (
-              <button
-                className="linkBtn"
-                type="button"
-                onClick={() => onOpenProgress(category.id)}
-                aria-label="Voir la progression"
-              >
+              <GhostButton type="button" size="sm" className="libraryProgressButton" onClick={() => onOpenProgress(category.id)} aria-label="Voir la progression">
                 →
-              </button>
+              </GhostButton>
             ) : null}
           </div>
         ) : null}
@@ -198,7 +174,7 @@ export default function CategoryView({
   );
 
   return (
-    <ScreenShell
+    <AppScreen
       accent={accent}
       backgroundImage={backgroundImage}
       headerTitle={
@@ -220,6 +196,6 @@ export default function CategoryView({
         onEditItem={onEditItem}
         onClose={onBack}
       />
-    </ScreenShell>
+    </AppScreen>
   );
 }

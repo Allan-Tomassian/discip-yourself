@@ -9,44 +9,44 @@ function readSrc(relPath) {
   return fs.readFileSync(path.join(SRC_ROOT, relPath), "utf8");
 }
 
-describe("Planning primitive convergence contract", () => {
-  it("uses Gate primitives instead of the generic UI wrapper in the page shell", () => {
+describe("Planning AppUI convergence contract", () => {
+  it("uses AppUI primitives instead of raw Gate primitives in the page shell", () => {
     const source = readSrc("pages/Planning.jsx");
 
-    expect(source).toContain("import { GateButton as Button, GateSection, GateSectionIntro } from \"../shared/ui/gate/Gate\";");
+    expect(source).toContain("AppScreen");
+    expect(source).toContain("SectionHeader");
+    expect(source).toContain("AppCard");
+    expect(source).toContain("AppInlineMetaCard");
     expect(source).not.toContain("from \"../components/UI\"");
+    expect(source).not.toContain("from \"../shared/ui/gate/Gate\"");
     expect(source).toContain('headerSubtitle={MAIN_PAGE_COPY.planning.orientation}');
     expect(source).toContain('className="mainPageStack planningPage"');
     expect(source).toContain('className="mainPageSection"');
-    expect(source).toContain("<GateSectionIntro");
+    expect(source).toContain("<SectionHeader");
     expect(source).toContain("MAIN_PAGE_COPY.planning.weekDescription");
     expect(source).toContain("MAIN_PAGE_COPY.planning.dayDescription");
     expect(source).toContain("planningCalendarSection");
     expect(source).toContain("planningContentSection");
-    expect(source).toContain("GateSurfacePremium");
-    expect(source).toContain("GateCardPremium");
-    expect(source).toContain("GateMainSection");
-    expect(source).toContain("GateMainSectionCard");
-    expect(source).toContain("GateSecondarySectionCard");
-    expect(source).toContain("GateAnalyticsCard");
-    expect(source).toContain("GateInlineMetaCard");
+    expect(source).toContain("planningSectionButton");
+    expect(source).toContain("planningItemCard");
     expect(source).not.toContain("planningSupportSection");
     expect(source).not.toContain("Ajustements intelligents");
     expect(source).not.toContain("sans effet tableau de bord");
     expect(source).not.toContain("avec la même densité que Today");
   });
 
-  it("keeps the coach card on Gate primitives too", () => {
+  it("keeps the coach card on AppUI primitives too", () => {
     const source = readSrc("components/planning/PlanningCoachCard.jsx");
 
-    expect(source).toContain("import { GateButton as Button, GateSection } from \"../../shared/ui/gate/Gate\";");
+    expect(source).toContain("AppCard");
+    expect(source).toContain("AppInlineMetaCard");
+    expect(source).toContain("PrimaryButton");
+    expect(source).toContain("GhostButton");
     expect(source).not.toContain("from \"../UI\"");
+    expect(source).not.toContain("from \"../../shared/ui/gate/Gate\"");
     expect(source).toContain("planningCoachSection");
-    expect(source).toContain("GateSurfacePremium");
-    expect(source).toContain("GateCardPremium");
-    expect(source).toContain("GateMainSection");
-    expect(source).toContain("GateSecondarySectionCard");
-    expect(source).toContain("GateAnalyticsCard");
+    expect(source).toContain("planningCoachBlock");
+    expect(source).toContain("planningCoachValue");
     expect(source).not.toContain("Lecture locale du rythme");
     expect(source).toContain("planningCoachPrimaryAction");
     expect(source).toContain("Parler au Coach");

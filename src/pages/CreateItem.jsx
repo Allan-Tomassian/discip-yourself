@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { normalizeRouteOrigin } from "../app/routeOrigin";
 import { safeConfirm } from "../utils/dialogs";
 import { uid } from "../utils/helpers";
-import { AppScreen } from "../shared/ui/app";
+import { AppScreen, StatusBadge } from "../shared/ui/app";
 import {
   createActionModel,
 } from "../domain/actionModel";
@@ -736,7 +736,7 @@ export default function CreateItem({
 
   const headerRight = (
     <div className="createItemHeaderMeta">
-      <div className="createItemHeaderBadge">
+      <StatusBadge className="createItemHeaderBadge">
         {effectiveKind === "assistant"
           ? "Assistant"
           : effectiveKind === "guided"
@@ -744,7 +744,7 @@ export default function CreateItem({
             : effectiveKind === "outcome"
               ? "Objectif"
               : LABELS.action}
-      </div>
+      </StatusBadge>
       <div className="createItemHeaderText">Retour vers {resolveMainTabLabel(origin.mainTab)}</div>
     </div>
   );

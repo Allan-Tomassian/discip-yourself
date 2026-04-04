@@ -1,87 +1,56 @@
-.paywallBackdrop {
-  z-index: 10000;
-}
-
-.paywallPanelOuter {
-  --gate-glass-radius: var(--radius-card, 16px);
-  --gate-glass-shadow: 0 18px 36px rgba(0, 0, 0, 0.36);
+.paywallSheet.modalPanel {
   width: min(520px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
-  max-width: calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right));
-}
-
-.paywallPanelClip {
-  border-radius: inherit;
-}
-
-.paywallPanel {
-  position: relative;
-  z-index: 10001;
-  width: 100%;
-  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
-  overflow: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  box-sizing: border-box;
 }
 
 .paywallBody {
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  gap: var(--space-18);
 }
 
 .paywallSection {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  gap: var(--space-12);
 }
 
 .paywallSectionTight {
-  gap: 10px;
+  gap: var(--space-10);
 }
 
 .paywallSummaryCard {
-  gap: 8px;
+  align-items: flex-start;
 }
 
 .paywallFeatures {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
+  gap: var(--space-10);
 }
 
 .paywallFeatureCard {
   min-height: 48px;
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--gate-text-muted);
+  align-items: flex-start;
 }
 
 .paywallActions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-10);
 }
 
 .paywallLimits,
 .paywallStoreNote,
 .paywallLegal {
-  color: var(--gate-text-muted);
+  color: var(--text-secondary);
 }
 
 .paywallStoreNote {
-  opacity: 0.74;
+  margin: 0;
 }
 
 .paywallFooter {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-10);
   flex-wrap: wrap;
 }
 
@@ -89,7 +58,7 @@
 .paywallFooterActions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   flex-wrap: wrap;
 }
 
@@ -98,14 +67,14 @@
 }
 
 .paywallLegal {
-  font-size: 13px;
+  font-size: var(--font-body);
   line-height: 1.45;
   opacity: 0.76;
 }
 
 @media (max-width: 720px) {
   .paywallBody {
-    gap: 16px;
+    gap: var(--space-16);
   }
 
   .paywallFeatures {

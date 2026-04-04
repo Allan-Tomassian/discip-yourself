@@ -1,32 +1,9 @@
-.createFlowBackdrop {
-  background: var(--overlayBackdrop);
-}
-
-.createFlowModal {
-  width: min(var(--app-modal-max, 720px), calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
-  max-width: min(var(--app-modal-max, 720px), calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
-  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
-  padding: var(--space-16);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-  overflow: hidden;
-  align-self: center;
-  box-sizing: border-box;
-}
-
-.createFlowShell {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  height: 100%;
-  gap: var(--space-12);
-  min-width: 0;
-  box-sizing: border-box;
+.createFlowScope {
+  width: 100%;
 }
 
 .createFlowHeader {
-  padding-bottom: 2px;
+  padding-bottom: var(--space-4);
 }
 
 .createFlowHeaderTitleBlock {
@@ -44,296 +21,6 @@
   color: color-mix(in srgb, var(--gate-text-muted) 92%, rgba(255, 255, 255, 0.18));
 }
 
-.createFlowHeaderSubtitle {
-  display: block;
-  max-width: 44ch;
-}
-
-.createFlowProgressBadge {
-  white-space: nowrap;
-}
-
-.createFlowCategoryRow {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 10px;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: var(--radius-12);
-  border: 1px solid var(--gate-border, var(--border-subtle, var(--border)));
-  background: color-mix(in srgb, var(--gate-surface-1, var(--surface-2)) 92%, #05080f);
-  cursor: default;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-
-.createFlowCategoryName {
-  font-weight: 600;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.createFlowSwatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
-  flex: 0 0 auto;
-}
-
-.createFlowBody {
-  min-height: 0;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-right: 2px;
-  padding-bottom: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-  scrollbar-gutter: stable;
-  overscroll-behavior: contain;
-  scroll-behavior: smooth;
-}
-
-.createFlowBody::-webkit-scrollbar {
-  width: 8px;
-}
-
-.createFlowBody::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--gate-border) 88%, rgba(255, 255, 255, 0.12));
-}
-
-.createFlowBody::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.createFlowChoiceGrid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-8);
-}
-
-.createFlowChoiceCard {
-  cursor: pointer;
-}
-
-.createFlowChoiceCard.isDisabled,
-.createChoiceCard.isDisabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.createFlowChoiceText,
-.createChoiceText {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.createChoiceCard {
-  padding: 14px 15px;
-  min-height: 0;
-}
-
-.createChoiceCard .gateRowBody {
-  align-items: flex-start;
-}
-
-.createChoiceCard .gateRowRight {
-  align-self: flex-start;
-}
-
-.createChoiceTitle {
-  font-size: var(--font-body);
-  line-height: 1.35;
-  font-weight: 650;
-  color: color-mix(in srgb, var(--gate-text) 96%, #ffffff);
-}
-
-.createChoiceDescription {
-  font-size: var(--font-meta);
-  line-height: 1.42;
-  color: color-mix(in srgb, var(--gate-text-muted) 90%, rgba(255, 255, 255, 0.14));
-}
-
-.createFlowStep {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-}
-
-.flowShell {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-  min-height: 0;
-}
-
-.flowShellPanel {
-  gap: var(--space-12);
-}
-
-.flowShellBody {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-  min-height: 0;
-}
-
-.flowShell .screenShellEmbedded {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  min-height: 0;
-}
-
-.flowShell .pageContent {
-  margin-top: 0;
-}
-
-.createStepSection {
-  --gate-premium-radius: var(--radius-14);
-}
-
-.createStepSection.gateSection,
-.createStepSection.gatePanel,
-.createStepSection.gateRow {
-  padding: 14px;
-}
-
-.createStepSection .gateSectionBody {
-  gap: 10px;
-}
-
-.createStepSection .gateSectionHeader {
-  align-items: flex-start;
-}
-
-.createStepSection .gateSectionTitle {
-  font-size: 13px;
-}
-
-.createStepSection .gateSectionDescription {
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.createFlowScope .GateInputPremium,
-.createFlowScope .GateTextareaPremium,
-.createFlowScope .selectTrigger.GateSelectPremium {
-  width: 100%;
-}
-
-.createFlowScope .selectTrigger.GateSelectPremium {
-  justify-content: space-between;
-}
-
-.createActionButton {
-  min-width: 0;
-  min-height: 42px;
-}
-
-.createFieldRow {
-  display: flex;
-  gap: var(--space-8);
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.createFieldGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-8);
-}
-
-.createHelper {
-  font-size: var(--font-meta);
-  line-height: 1.4;
-  color: var(--text-3, var(--muted2));
-}
-
-.createError {
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--accent, #ff8a3d);
-}
-
-.createFlowScope .p18 {
-  padding: 0;
-}
-
-.createFlowScope .gateFooter {
-  border-top-color: color-mix(in srgb, var(--gate-border, var(--border-subtle, var(--border))) 88%, transparent);
-}
-
-.createLockedCategory {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-8);
-  margin-top: 2px;
-  padding: 8px 10px;
-  border-radius: var(--radius-12);
-  border: 1px solid color-mix(in srgb, var(--gate-border, var(--border-subtle, var(--border))) 84%, transparent);
-  background: color-mix(in srgb, var(--surface-2, #0f172a) 90%, #05080f);
-}
-
-.createAdvancedToggleRow {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.createHint {
-  font-size: var(--font-meta);
-}
-
-.createChipRow {
-  gap: var(--space-8);
-}
-
-.createChip {
-  min-height: 36px;
-}
-
-.createCheckRow {
-  border-radius: 14px;
-}
-
-.createFlowFooter,
-.createInlineActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-}
-
-.createInlineActions {
-  justify-content: space-between;
-}
-
-.createFlowFooter {
-  justify-content: flex-end;
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  margin-top: 2px;
-  padding-top: 12px;
-  padding-bottom: max(2px, calc(var(--safe-bottom) * 0.2));
-  background: linear-gradient(180deg, rgba(5, 8, 15, 0), color-mix(in srgb, var(--gate-surface-2) 94%, #05080f) 28%);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-.createFlowScope .gateFooter {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  margin-top: auto;
-  padding-top: 12px;
-  background: linear-gradient(180deg, rgba(5, 8, 15, 0), color-mix(in srgb, var(--gate-surface-2) 94%, #05080f) 28%);
-}
-
 .onboardingShell {
   display: flex;
   flex-direction: column;
@@ -349,7 +36,7 @@
 }
 
 .onboardingHint {
-  margin-bottom: 2px;
+  margin-bottom: var(--space-4);
 }
 
 .onboardingOptionGrid {
@@ -360,108 +47,54 @@
 .onboardingPlanGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--space-12);
 }
 
-.onboardingPlanCard {
-  align-items: stretch;
-}
-
-.onboardingPlanCard .gateRowBody {
-  align-items: flex-start;
-}
-
-.onboardingPlanContent {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-}
-
+.onboardingPlanCard,
 .onboardingOptionCard {
   min-height: 0;
 }
 
-.onboardingOptionCard .createChoiceDescription {
+.onboardingPlanCard .appChoiceCardText,
+.onboardingOptionCard .appChoiceCardText {
+  align-items: flex-start;
+}
+
+.onboardingOptionCard .appChoiceCardDescription {
   max-width: 50ch;
 }
 
+.onboardingFooterActions {
+  justify-content: flex-end;
+}
+
+.onboardingFooterSurface {
+  background:
+    linear-gradient(
+      180deg,
+      var(--overlayTransparent),
+      color-mix(in srgb, var(--gate-surface-2) 94%, var(--background-primary)) 28%
+    );
+  backdrop-filter: blur(var(--panelFooterBlur));
+  -webkit-backdrop-filter: blur(var(--panelFooterBlur));
+}
+
 @media (max-width: 720px) {
-  .createFlowBackdrop {
-    align-items: stretch;
-    justify-content: stretch;
-    padding: 0;
-  }
-
-  .createFlowPanelOuter {
-    width: 100%;
-    max-width: 100%;
-    height: 100%;
-  }
-
-  .createFlowPanelClip {
-    border-radius: 0;
-    height: 100%;
-  }
-
-  .createFlowModal {
-    width: 100vw;
-    max-width: 100vw;
-    min-height: 100dvh;
-    max-height: 100dvh;
-    padding:
-      calc(10px + var(--safe-top))
-      calc(12px + var(--safe-right))
-      calc(10px + var(--safe-bottom))
-      calc(12px + var(--safe-left));
-    border-radius: 0;
-  }
-
-  .createFlowShell {
-    gap: 10px;
-  }
-
-  .createFlowBody {
-    gap: 10px;
-    padding-right: 0;
-    padding-bottom: 2px;
-  }
-
-  .createStepSection.gateSection,
-  .createStepSection.gatePanel,
-  .createStepSection.gateRow {
-    padding: 12px;
-  }
-
-  .createChoiceCard {
-    padding: 13px 14px;
-  }
-
-  .createActionButton {
-    min-height: 44px;
-  }
-
   .onboardingShell {
     min-height: 0;
   }
 }
 
 @media (max-width: 600px) {
-  .createFieldGrid {
+  .onboardingPlanGrid {
     grid-template-columns: 1fr;
   }
 
-  .createInlineActions,
-  .createFlowFooter {
+  .onboardingFooterActions {
     width: 100%;
   }
 
-  .createInlineActions > *,
-  .createFlowFooter > * {
+  .onboardingFooterActions > * {
     flex: 1 1 auto;
-  }
-
-  .onboardingPlanGrid {
-    grid-template-columns: 1fr;
   }
 }

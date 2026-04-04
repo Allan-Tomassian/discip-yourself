@@ -2,12 +2,14 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { UI_COPY } from "../labels";
 import {
   AppCard,
+  AppInlineMetaCard,
   AppSelect,
   FeedbackMessage,
   GhostButton,
   SecondaryButton,
+  StatusBadge,
 } from "../../shared/ui/app";
-import "../../features/today/today.css";
+import "../../features/microActions.css";
 
 function normalizeItems(items) {
   const list = Array.isArray(items) ? items : [];
@@ -107,7 +109,7 @@ export default function MicroActionsCard({
 
   return (
     <AppCard
-      className={`microCard GateSurfacePremium GateCardPremium GateSecondarySectionCard${isReadOnlyDate ? " isReadOnlyDate" : ""}`}
+      className={`microCard${isReadOnlyDate ? " isReadOnlyDate" : ""}`}
       data-tour-id="today-micro-card"
     >
       <div className="microCardBody">
@@ -125,24 +127,24 @@ export default function MicroActionsCard({
               </button>
             ) : null}
             <div className="microHeaderText">
-              <div className="GateRoleCardTitle">Pour {selectedCategoryName}</div>
-              <div className="GateRoleCardMeta">3 actions rapides à valider ou reroll.</div>
+              <div className="microHeaderTitle">Pour {selectedCategoryName}</div>
+              <div className="microHeaderMeta">3 actions rapides à valider ou reroll.</div>
             </div>
           </div>
           <div className="microHeaderStats">
-            <span className="microDoneStat" aria-label="Micro-actions validées aujourd’hui">
+            <StatusBadge className="microDoneStat" aria-label="Micro-actions validées aujourd’hui">
               {microDoneToday}/3
-            </span>
+            </StatusBadge>
             <span className="microDoneMeta">{rerollCounterLabel}</span>
           </div>
         </div>
 
         <div className="microToolbar">
-          <div className="microContext GateRoleCardMeta">Choisis la catégorie à nourrir maintenant.</div>
-          <div className="GateSelectWrap microCategorySelectWrap">
+          <div className="microContext">Choisis la catégorie à nourrir maintenant.</div>
+          <div className="microCategorySelectWrap">
             <AppSelect
               value={categoryId}
-              className="GateSelectPremium microCategorySelect"
+              className="microCategorySelect"
               onChange={(event) => onCategoryChange?.(event.target.value)}
               aria-label="Catégorie des micro-actions"
               disabled={isReadOnlyDate}
@@ -156,18 +158,23 @@ export default function MicroActionsCard({
           </div>
         </div>
         {isReadOnlyDate ? (
-          <div className="microTodayHintRow GateInlineMetaCard" data-testid="micro-actions-today-hint">
-            <span className="microTodayHintText">Micro-actions disponibles uniquement aujourd’hui.</span>
-            <GhostButton
-              size="sm"
-              className="microGoTodayBtn"
-              onClick={() => onGoToToday?.()}
-              data-testid="micro-actions-go-today"
-              aria-label="Revenir à aujourd’hui"
-            >
-              Revenir à aujourd’hui
-            </GhostButton>
-          </div>
+          <AppInlineMetaCard
+            className="microTodayHintRow"
+            textClassName="microTodayHintText"
+            data-testid="micro-actions-today-hint"
+            text="Micro-actions disponibles uniquement aujourd’hui."
+            action={(
+              <GhostButton
+                size="sm"
+                className="microGoTodayBtn"
+                onClick={() => onGoToToday?.()}
+                data-testid="micro-actions-go-today"
+                aria-label="Revenir à aujourd’hui"
+              >
+                Revenir à aujourd’hui
+              </GhostButton>
+            )}
+          />
         ) : null}
 
         <div className="microList">
@@ -175,35 +182,37 @@ export default function MicroActionsCard({
             const isSelected = selectedIndices.includes(index);
             const isDone = item.status === "done";
             return (
-              <div key={item.id || `${item.title}-${index}`} className="microItem GateInlineMetaCard" data-tour-id="today-micro-item">
-                <label className="microPick" aria-label={`Sélectionner ${item.title} pour reroll`}>
-                  <input
-                    type="checkbox"
-                    className="microPickInput"
-                    checked={isSelected}
-                    onChange={() => toggleSlot(index)}
-                    disabled={!(canReroll || canUseCreditReroll)}
-                    data-tour-id="today-micro-select"
-                  />
-                  <span className="microPickMark" aria-hidden="true">✓</span>
-                </label>
-                <div className="microItemMain">
-                  <div className="microItemTitle GateRoleCardTitle">{item.title}</div>
-                  {item.subtitle ? <div className="microItemSub GateRoleCardMeta">{item.subtitle}</div> : null}
+              <AppCard key={item.id || `${item.title}-${index}`} className="microItem" data-tour-id="today-micro-item">
+                <div className="microItemRow">
+                  <label className="microPick" aria-label={`Sélectionner ${item.title} pour reroll`}>
+                    <input
+                      type="checkbox"
+                      className="microPickInput"
+                      checked={isSelected}
+                      onChange={() => toggleSlot(index)}
+                      disabled={!(canReroll || canUseCreditReroll)}
+                      data-tour-id="today-micro-select"
+                    />
+                    <span className="microPickMark" aria-hidden="true">✓</span>
+                  </label>
+                  <div className="microItemMain">
+                    <div className="microItemTitle">{item.title}</div>
+                    {item.subtitle ? <div className="microItemSub">{item.subtitle}</div> : null}
+                  </div>
+                  <StatusBadge className="microBadge">{item.durationMin || 2} min</StatusBadge>
+                  <GhostButton
+                    size="sm"
+                    className="microActionBtn"
+                    onClick={() => onDone?.(index)}
+                    disabled={!canValidate || isDone}
+                    aria-label={isDone ? "Déjà fait" : `${UI_COPY.done}: ${item.title}`}
+                    data-tour-id="today-micro-done"
+                    aria-disabled={!canValidate || isDone}
+                  >
+                    {UI_COPY.done}
+                  </GhostButton>
                 </div>
-                <span className="microBadge">{item.durationMin || 2} min</span>
-                <GhostButton
-                  size="sm"
-                  className="microActionBtn"
-                  onClick={() => onDone?.(index)}
-                  disabled={!canValidate || isDone}
-                  aria-label={isDone ? "Déjà fait" : `${UI_COPY.done}: ${item.title}`}
-                  data-tour-id="today-micro-done"
-                  aria-disabled={!canValidate || isDone}
-                >
-                  {UI_COPY.done}
-                </GhostButton>
-              </div>
+              </AppCard>
             );
           })}
         </div>

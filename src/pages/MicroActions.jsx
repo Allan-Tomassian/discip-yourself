@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { GateSectionIntro } from "../shared/ui/gate/Gate";
 import MicroActionsCard from "../ui/today/MicroActionsCard";
 import RewardedAdModal from "../ui/today/RewardedAdModal";
 import {
@@ -23,7 +22,7 @@ import { ensureTotemV1 } from "../logic/totemV1";
 import { emitTotemEvent } from "../ui/totem/totemEvents";
 import { getVisibleCategories } from "../domain/categoryVisibility";
 import { todayLocalKey } from "../utils/dateKey";
-import { AppScreen } from "../shared/ui/app";
+import { AppScreen, SectionHeader } from "../shared/ui/app";
 
 function normalizeMicroItemForCompare(item) {
   if (!item || typeof item !== "object") return null;
@@ -355,8 +354,8 @@ export default function MicroActions({ data, setData, isPremiumPlan = false }) {
       headerTitle="Micro-actions"
       headerSubtitle="Petites actions rapides pour relancer l’élan du jour."
     >
-      <section className="mainPageSection">
-        <GateSectionIntro
+      <div className="mainPageStack">
+        <SectionHeader
           title="Micro-actions du jour"
           subtitle="Trois leviers courts pour relancer l’élan sans repasser par Today."
         />
@@ -380,7 +379,7 @@ export default function MicroActions({ data, setData, isPremiumPlan = false }) {
           onUseRerollCredit={(indices) => handleMicroReroll(indices, { useCredit: true })}
           onWatchAd={handleMicroWatchAd}
         />
-      </section>
+      </div>
       <RewardedAdModal
         open={rewardedAdRequest.open}
         placement={rewardedAdRequest.placement}

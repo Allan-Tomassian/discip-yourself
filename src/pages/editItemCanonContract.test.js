@@ -35,9 +35,9 @@ describe("edit item canonical contract", () => {
     expect(page).toContain("OutcomeEditScreen");
     expect(page).toContain("buildPlanSignature");
     expect(page).toContain("updateActionModel");
-    expect(screens).toContain("GateMainSectionCard");
-    expect(screens).toContain("GateSecondarySectionCard");
-    expect(screens).toContain("GateFooter");
+    expect(screens).toContain("AppFormSection");
+    expect(screens).toContain("AppStickyFooter");
+    expect(screens).toContain("AppInlineMetaCard");
     expect(shared).toContain("updateRemindersForGoal");
     expect(shared).toContain("MEASURE_OPTIONS");
     expect(index).not.toContain(".editPanel{");

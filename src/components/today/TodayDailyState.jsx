@@ -1,5 +1,5 @@
 import React from "react";
-import { GateSection } from "../../shared/ui/gate/Gate";
+import { AppCard, MetricRow } from "../../shared/ui/app";
 import { getCategoryUiVars } from "../../utils/categoryAccent";
 
 function formatMinutes(value) {
@@ -14,27 +14,23 @@ export default function TodayDailyState({
   activeCategory = null,
 }) {
   return (
-    <GateSection
-      className="GateMainSection GateSecondarySectionCard todaySectionCard todayDailyStateCard GateSurfacePremium GateCardPremium"
-      collapsible={false}
+    <AppCard
+      className="todaySectionCard todayDailyStateCard"
       style={activeCategory ? getCategoryUiVars(activeCategory, { level: "surface" }) : undefined}
     >
       <div className="col todaySectionBody">
         <div className="todayDailyStateGrid">
-          <div className="listItem GateRowPremium GateAnalyticsCard todayDailyStateItem todayDailyStateMetric">
-            <div className="small2 GateRoleMetricLabel">Prévu</div>
-            <div className="titleSm GateRoleMetricValue">{formatMinutes(plannedMinutes)}</div>
-          </div>
-          <div className="listItem GateRowPremium GateAnalyticsCard todayDailyStateItem todayDailyStateMetric">
-            <div className="small2 GateRoleMetricLabel">Fait</div>
-            <div className="titleSm GateRoleMetricValue">{formatMinutes(doneMinutes)}</div>
-          </div>
-          <div className="listItem GateRowPremium GateAnalyticsCard todayDailyStateItem todayDailyStateMetric">
-            <div className="small2 GateRoleMetricLabel">Restant</div>
-            <div className="titleSm GateRoleMetricValue">{formatMinutes(remainingMinutes)}</div>
-          </div>
+          <AppCard className="todayDailyStateItem todayDailyStateMetric">
+            <MetricRow className="todayDailyStateMetricRow" label="Prévu" value={formatMinutes(plannedMinutes)} />
+          </AppCard>
+          <AppCard className="todayDailyStateItem todayDailyStateMetric">
+            <MetricRow className="todayDailyStateMetricRow" label="Fait" value={formatMinutes(doneMinutes)} />
+          </AppCard>
+          <AppCard className="todayDailyStateItem todayDailyStateMetric">
+            <MetricRow className="todayDailyStateMetricRow" label="Restant" value={formatMinutes(remainingMinutes)} />
+          </AppCard>
         </div>
       </div>
-    </GateSection>
+    </AppCard>
   );
 }

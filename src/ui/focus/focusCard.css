@@ -1,0 +1,144 @@
+.focusCard {
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.focusCardBody {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.focusHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.focusHeaderLeft {
+  display: grid;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.focusHeaderActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+
+.focusManageBtn {
+  min-width: 84px;
+  justify-content: center;
+}
+
+.focusBody {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.focusLine {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.focusCategoryBadge {
+  background: color-mix(in srgb, var(--surface-elevated) 88%, transparent);
+}
+
+.focusStatusBadge {
+  white-space: nowrap;
+}
+
+.focusNextRow {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-12);
+  border: 1px solid var(--border-subtle);
+  background: var(--hintBg);
+}
+
+.focusNextValue {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-meta);
+  color: var(--text-primary);
+}
+
+.focusHeroHint {
+  font-size: var(--font-micro);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.focusAltList {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.focusAltItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  width: 100%;
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-12);
+  border: 1px solid var(--checkRowBorder);
+  background: var(--checkRowBg);
+  color: var(--text-primary);
+  text-align: left;
+  transition:
+    background var(--motion-standard) var(--ease-standard),
+    border-color var(--motion-standard) var(--ease-standard),
+    transform var(--motion-standard) var(--ease-standard);
+}
+
+.focusAltItem:hover,
+.focusAltItem:focus-visible {
+  border-color: var(--border-medium);
+  background: var(--checkRowHoverBg);
+  transform: translateY(-1px);
+}
+
+.focusAltTitle {
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.focusAltMeta,
+.focusAltNote {
+  font-size: var(--font-meta);
+  color: var(--text-secondary);
+}
+
+.focusAltMeta {
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .focusHeader {
+    grid-template-columns: 1fr;
+  }
+
+  .focusHeaderActions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .focusAltItem {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .focusAltMeta {
+    white-space: normal;
+  }
+}

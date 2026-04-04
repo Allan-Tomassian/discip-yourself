@@ -10,24 +10,33 @@ function readSrc(relPath) {
 }
 
 describe("create flow visual contract", () => {
-  it("keeps the canonical create host on Gate sections instead of the modal host", () => {
+  it("keeps the canonical create host on AppUI form sections instead of the modal host", () => {
     const pageSource = readSrc("pages/CreateItem.jsx");
     const screenSource = readSrc("features/create-item/CreateItemScreens.jsx");
+    const onboardingSource = readSrc("pages/Onboarding.jsx");
 
     expect(pageSource).toContain('pageId="create-item"');
     expect(pageSource).toContain("normalizeCreateItemDraft");
     expect(screenSource).toContain("ActionCreateScreen");
     expect(screenSource).toContain("OutcomeCreateScreen");
     expect(screenSource).toContain("GuidedCreateScreen");
-    expect(screenSource).toContain("SectionSurface");
-    expect(screenSource).toContain("FooterBar");
+    expect(screenSource).toContain("AppFormSection");
+    expect(screenSource).toContain("AppStickyFooter");
+    expect(screenSource).toContain("AppInlineMetaCard");
+    expect(onboardingSource).toContain("ChoiceCard");
+    expect(onboardingSource).toContain("AppStickyFooter");
+    expect(onboardingSource).not.toContain("CreateChoiceCard");
+    expect(onboardingSource).not.toContain("CreateButton");
     expect(pageSource).not.toContain("CreateFlowModal");
   });
 
-  it("removes the legacy modal host and step files from the repo", () => {
+  it("removes the legacy modal host and duplicate create primitives from the repo", () => {
     const legacyPaths = [
       "components/CategoryGateModal.jsx",
       "ui/create/CreateFlowModal.jsx",
+      "ui/create/CreateFormPrimitives.jsx",
+      "ui/create/FlowShell.jsx",
+      "ui/create/CreateSection.jsx",
       "creation/creationDraft.js",
       "creation/createFlowController.js",
       "pages/CreateV2Outcome.jsx",
@@ -47,5 +56,6 @@ describe("create flow visual contract", () => {
 
     expect(readSrc("pages/CreateItem.jsx")).not.toContain("../components/UI");
     expect(readSrc("pages/Onboarding.jsx")).not.toContain("../components/UI");
+    expect(readSrc("pages/Onboarding.jsx")).not.toContain("../ui/create/CreateFormPrimitives");
   });
 });

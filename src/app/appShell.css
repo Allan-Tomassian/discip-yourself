@@ -1,0 +1,56 @@
+.profileReminderShell {
+  padding: 0 var(--space-16) var(--space-12);
+}
+
+.profileReminderContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.profileReminderText {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.activeReminderDialog {
+  width: min(420px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
+}
+
+.activeReminderBody {
+  display: grid;
+  gap: var(--space-12);
+  padding: var(--space-18);
+}
+
+.activeReminderText {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.activeReminderActions {
+  margin-top: var(--space-4);
+}
+
+.reminderPulse {
+  position: relative;
+}
+
+.reminderPulse::after {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--space-10));
+  border-radius: var(--radius-24);
+  border: 1px solid var(--pulseBorder, rgba(255, 255, 255, 0.25));
+  animation: none;
+  pointer-events: none;
+}
+
+@media (max-width: 767px) {
+  .profileReminderContent {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

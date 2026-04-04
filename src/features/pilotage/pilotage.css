@@ -21,7 +21,7 @@
 
 .pilotageFocusGroup--deferred {
   padding-top: var(--space-8);
-  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 96%, transparent);
 }
 
 .pilotageFocusGroupHeader {
@@ -31,10 +31,23 @@
   gap: var(--space-12);
 }
 
+.pilotageGroupMeta {
+  font-size: var(--font-meta);
+  color: var(--text-secondary);
+}
+
+.pilotageDeferredRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+}
+
 .pilotageInlineDetail {
   margin-left: var(--space-8);
   padding-left: var(--space-8);
-  border-left: 1px solid color-mix(in srgb, var(--accent) 7%, var(--gate-border));
+  border-left: 1px solid color-mix(in srgb, var(--accent) 7%, var(--border-subtle));
 }
 
 .pilotageInlineGrid {
@@ -57,19 +70,20 @@
   display: grid;
   gap: var(--space-8);
   padding-top: var(--space-16);
-  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 96%, transparent);
 }
 
 .pilotageCompactWindowControls {
+  display: flex;
   gap: var(--space-8);
   flex-wrap: wrap;
 }
 
-.pilotageCompactWindowControls .gateButton {
+.pilotageCompactWindowControls > * {
   min-width: 0;
   height: 36px;
   min-height: 36px;
-  padding-inline: 12px;
+  padding-inline: var(--space-12);
 }
 
 .pilotageMiniStatsGrid {
@@ -80,7 +94,7 @@
 
 .pilotageMiniStat {
   display: grid;
-  gap: var(--space-6);
+  gap: var(--space-8);
   position: relative;
 }
 
@@ -94,11 +108,47 @@
   gap: var(--space-8);
 }
 
-.pilotagePage .pilotageSummaryCard .GateAnalyticsCard,
-.pilotagePage .pilotageStatsCard .GateAnalyticsCard,
-.pilotagePage .pilotageInlinePanel .GateAnalyticsCard {
-  border-color: color-mix(in srgb, var(--gate-border) 94%, rgba(255, 255, 255, 0.08));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+.pilotagePanelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+}
+
+.pilotagePanelHeaderText {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.pilotagePanelTitle {
+  font-size: var(--font-body-strong);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.pilotagePanelSubtitle {
+  font-size: var(--font-meta);
+  color: var(--text-secondary);
+}
+
+.pilotagePanelActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+}
+
+.pilotageEmptyHint {
+  font-size: var(--font-meta);
+  color: var(--text-secondary);
+}
+
+.pilotageMetricCard,
+.pilotageInsightCard {
+  border-color: color-mix(in srgb, var(--border-subtle) 94%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 4%, transparent);
 }
 
 .pilotagePage .pilotageInlinePanel.categorySurface--surface,
@@ -106,17 +156,17 @@
   background:
     linear-gradient(
       90deg,
-      color-mix(in srgb, var(--categoryUiTint, rgba(91, 140, 255, 0.14)) 24%, transparent),
+      color-mix(in srgb, var(--categoryUiTint, var(--accentTintSoft)) 24%, transparent),
       transparent 68%
     ),
     linear-gradient(
       180deg,
-      color-mix(in srgb, var(--surface-elevated) 95%, rgba(255, 255, 255, 0.02)),
-      color-mix(in srgb, var(--surface-primary) 98%, rgba(0, 0, 0, 0.04))
+      color-mix(in srgb, var(--surface-elevated) 95%, transparent),
+      color-mix(in srgb, var(--surface-primary) 98%, transparent)
     );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 8px 16px rgba(0, 0, 0, 0.16);
+    inset 0 1px 0 color-mix(in srgb, var(--text-primary) 5%, transparent),
+    var(--shadowSoft);
 }
 
 .pilotagePage .pilotageInlinePanel.categorySurface--surface::before,
@@ -141,7 +191,17 @@
   min-width: 0;
 }
 
-.pilotageInsightItem {
+.pilotageInsightCard {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.pilotageInsightLabel {
+  font-size: var(--font-meta);
+  color: var(--text-secondary);
+}
+
+.pilotageInsightCopy {
   font-size: var(--font-body);
   line-height: 1.45;
   min-width: 0;
@@ -178,24 +238,24 @@
 }
 
 .pilotageTrendAxis {
-  stroke: rgba(255, 255, 255, 0.16);
+  stroke: color-mix(in srgb, var(--text-primary) 16%, transparent);
   stroke-width: 1;
 }
 
 .pilotageTrendBaseline {
-  stroke: rgba(255, 255, 255, 0.22);
+  stroke: color-mix(in srgb, var(--text-primary) 22%, transparent);
   stroke-width: 1.5;
 }
 
 .pilotageTrendGuide {
-  stroke: rgba(255, 255, 255, 0.1);
+  stroke: color-mix(in srgb, var(--text-primary) 10%, transparent);
   stroke-width: 1;
   stroke-dasharray: 3 5;
 }
 
 .pilotageTrendAxisLabel {
-  fill: rgba(255, 255, 255, 0.58);
-  font-size: 10px;
+  fill: color-mix(in srgb, var(--text-primary) 58%, transparent);
+  font-size: var(--font-micro);
 }
 
 .pilotageTrendArea {
@@ -226,18 +286,18 @@
 }
 
 .pilotageTrendNeutralPoint {
-  fill: rgba(255, 255, 255, 0.22);
-  stroke: rgba(255, 255, 255, 0.38);
+  fill: color-mix(in srgb, var(--text-primary) 22%, transparent);
+  stroke: color-mix(in srgb, var(--text-primary) 38%, transparent);
   stroke-width: 1;
 }
 
 .pilotageTrendPoint.is-selected {
-  stroke: rgba(255, 255, 255, 0.92);
+  stroke: color-mix(in srgb, var(--text-primary) 92%, transparent);
   stroke-width: 2;
 }
 
 .pilotageTrendSingleLabel {
-  fill: rgba(255, 255, 255, 0.72);
+  fill: color-mix(in srgb, var(--text-primary) 72%, transparent);
   font-size: var(--font-micro);
   font-weight: var(--font-weight-semibold);
 }
@@ -261,8 +321,8 @@
   justify-self: start;
   padding: var(--space-8) var(--space-12);
   border-radius: var(--radius-12);
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 96%, rgba(255, 255, 255, 0.06));
-  background: color-mix(in srgb, var(--surface-elevated) 94%, #0d1118);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 96%, transparent);
+  background: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
 }
 
 .pilotageTrendTooltipTitle {
@@ -281,7 +341,7 @@
   display: flex;
   justify-content: space-between;
   gap: var(--space-12);
-  color: rgba(255, 255, 255, 0.58);
+  color: color-mix(in srgb, var(--text-primary) 58%, transparent);
   font-size: var(--font-micro);
 }
 
@@ -294,15 +354,15 @@
 }
 
 .pilotageTrendChart.is-animated .pilotageTrendLine {
-  animation: pilotageTrendReveal 780ms cubic-bezier(0.2, 0.65, 0.25, 1) forwards;
+  animation: pilotageTrendReveal calc(var(--motion-panel) + var(--motion-standard)) var(--ease-enter) forwards;
 }
 
 .pilotageTrendChart.is-animated .pilotageTrendArea {
-  animation: pilotageTrendAreaFade 720ms ease-out 120ms forwards;
+  animation: pilotageTrendAreaFade var(--motion-panel) var(--ease-standard) var(--motion-fast) forwards;
 }
 
 .pilotageTrendChart.is-animated .pilotageTrendPointGroup {
-  animation: pilotageTrendPointFade 320ms ease-out forwards;
+  animation: pilotageTrendPointFade calc(var(--motion-enter) + var(--motion-fast)) var(--ease-standard) forwards;
   animation-delay: var(--pilotage-point-delay, 0ms);
 }
 

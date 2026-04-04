@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { GateHeader } from "../../shared/ui/gate/Gate";
-import { AppSheet, GhostButton, PrimaryButton } from "../../shared/ui/app";
+import { AppSheet, AppSheetContent, GhostButton, PrimaryButton } from "../../shared/ui/app";
+import "../../features/microActions.css";
 
 const REWARDED_AD_DURATION_MS = 3000;
 
@@ -59,36 +59,39 @@ export default function RewardedAdModal({ open, placement = "micro-actions", onC
       className="microAdSheet"
       maxWidth={420}
     >
-      <div className="microAdPanel" data-testid="rewarded-ad-modal">
-        <GateHeader
-          title="Vidéo sponsorisée"
-          subtitle={`Placement: ${placement}`}
-          className="microAdHeader"
-        />
+      <AppSheetContent
+        className="microAdPanel"
+        bodyClassName="microAdPanelBody"
+        data-testid="rewarded-ad-modal"
+        title="Vidéo sponsorisée"
+        subtitle={`Placement: ${placement}`}
+        footer={(
+          <div className="microAdActions">
+            <PrimaryButton
+              type="button"
+              withSound
+              onClick={startVideo}
+              disabled={running}
+              data-testid="rewarded-ad-complete"
+            >
+              {running ? "Lecture..." : "Simuler fin de vidéo (3s)"}
+            </PrimaryButton>
+            <GhostButton
+              type="button"
+              withSound
+              onClick={() => close("dismissed")}
+              disabled={running}
+              data-testid="rewarded-ad-close"
+            >
+              Fermer
+            </GhostButton>
+          </div>
+        )}
+      >
         <p className="microAdText">
           Simule une vidéo courte pour recevoir ta récompense.
         </p>
-        <div className="microAdActions GatePrimaryCtaRow">
-          <PrimaryButton
-            type="button"
-            withSound
-            onClick={startVideo}
-            disabled={running}
-            data-testid="rewarded-ad-complete"
-          >
-            {running ? "Lecture..." : "Simuler fin de vidéo (3s)"}
-          </PrimaryButton>
-          <GhostButton
-            type="button"
-            withSound
-            onClick={() => close("dismissed")}
-            disabled={running}
-            data-testid="rewarded-ad-close"
-          >
-            Fermer
-          </GhostButton>
-        </div>
-      </div>
+      </AppSheetContent>
     </AppSheet>
   );
 }

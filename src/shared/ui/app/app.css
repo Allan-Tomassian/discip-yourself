@@ -1,3 +1,7 @@
+.appStandaloneScreenPanel {
+  width: min(560px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
+}
+
 .appFieldGroup {
   display: grid;
   gap: var(--space-8);
@@ -51,6 +55,30 @@
 .appChoiceCard.is-disabled {
   opacity: var(--buttonDisabledOpacity);
   cursor: default;
+}
+
+.appActionRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-12);
+}
+
+.appActionRow--start {
+  justify-content: flex-start;
+}
+
+.appActionRow--between {
+  justify-content: space-between;
+}
+
+.appSettingRow {
+  border-color: var(--border-subtle);
+}
+
+.appToast {
+  display: grid;
+  gap: var(--space-8);
 }
 
 .appEmptyState {
@@ -232,6 +260,10 @@
   width: min(560px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
 }
 
+.appDialog.modalPanel {
+  width: min(520px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
+}
+
 .appLoadingScreen {
   display: grid;
   place-items: center;
@@ -250,4 +282,202 @@
   display: grid;
   gap: var(--space-12);
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.appFormSectionBody {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.appInlineMetaCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.appInlineMetaCardBody {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.appInlineMetaCardTitle {
+  font-size: var(--font-body-strong);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.appInlineMetaCardText {
+  font-size: var(--font-body);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.appInlineMetaCardMeta {
+  font-size: var(--font-meta);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.appInlineMetaCardAction {
+  flex: 0 0 auto;
+}
+
+.appStickyFooterDock {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-sticky);
+  padding-top: var(--space-8);
+}
+
+.appStickyFooterSurface {
+  display: grid;
+  gap: var(--space-12);
+  padding: var(--space-16) var(--space-20) calc(var(--space-16) + var(--safe-bottom));
+  border-radius: var(--radius-20);
+  border: 1px solid var(--panelFooterBorder);
+  background:
+    linear-gradient(180deg, var(--overlayTransparent), color-mix(in srgb, var(--panelFooterBg) 96%, transparent) 24%);
+  backdrop-filter: blur(var(--panelFooterBlur));
+  -webkit-backdrop-filter: blur(var(--panelFooterBlur));
+  box-shadow: var(--shadow-sm);
+}
+
+.appStickyFooterStack {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.appStickyFooterActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-12);
+}
+
+.appToggleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  color: var(--text-primary);
+}
+
+.appToggleRow.is-disabled {
+  opacity: var(--buttonDisabledOpacity);
+}
+
+.appToggleRow input {
+  width: var(--space-16);
+  height: var(--space-16);
+  accent-color: var(--accent-primary);
+}
+
+.appToggleRowText {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.appToggleRowLabel {
+  font-size: var(--font-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.appToggleRowDescription {
+  font-size: var(--font-meta);
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.appChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: var(--chipBg);
+  color: var(--text-primary);
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.2;
+  transition:
+    background var(--motion-standard) var(--ease-standard),
+    border-color var(--motion-standard) var(--ease-standard),
+    color var(--motion-standard) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+.appChip:hover {
+  background: var(--chipHoverBg);
+}
+
+.appChip.is-active {
+  border-color: var(--accentBorderStrong);
+  background: color-mix(in srgb, var(--accent-primary) 18%, var(--chipBg));
+}
+
+.appSheetContent {
+  display: grid;
+  gap: var(--space-12);
+  padding: var(--space-16);
+}
+
+.appSheetContentBody {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.appSheetContentFooter {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-12);
+}
+
+.appPopoverMenu {
+  position: fixed;
+  z-index: var(--z-popover);
+}
+
+.appPopoverMenuPanel {
+  display: grid;
+  gap: var(--space-8);
+  min-width: 220px;
+  padding: var(--space-12);
+  border-radius: var(--radius-20);
+  border: 1px solid var(--menuBorder);
+  background: var(--menuBg);
+  box-shadow: var(--menuShadow);
+  backdrop-filter: blur(var(--overlayBlur));
+  -webkit-backdrop-filter: blur(var(--overlayBlur));
+}
+
+@media (max-width: 767px) {
+  .appStickyFooterSurface {
+    padding-inline: var(--space-16);
+  }
+
+  .appStickyFooterActions {
+    width: 100%;
+  }
+
+  .appStickyFooterActions > * {
+    flex: 1 1 auto;
+  }
+
+  .appInlineMetaCard {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .appActionRow {
+    width: 100%;
+  }
+
+  .appActionRow > * {
+    flex: 1 1 auto;
+  }
 }

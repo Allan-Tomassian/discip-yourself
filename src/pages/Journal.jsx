@@ -9,8 +9,10 @@ import {
 } from "../domain/categoryVisibility";
 import { todayLocalKey } from "../utils/dateKey";
 import {
+  AppActionRow,
   AppCard,
   AppInput,
+  AppInlineMetaCard,
   AppScreen,
   AppSelect,
   AppTextarea,
@@ -195,9 +197,9 @@ export default function Journal({ data, setData }) {
     >
       <section className="mainPageSection">
         <SectionHeader title="Édition" subtitle="Écriture rapide, contexte et niveau d’énergie." />
-        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <AppCard>
           <div className="col gap12">
-            <div className="GateInlineMetaCard col gap8">
+            <AppInlineMetaCard className="journalFormBlock">
               <FieldGroup label="Catégorie" htmlFor="journal-category">
                 <AppSelect
                   id="journal-category"
@@ -220,8 +222,8 @@ export default function Journal({ data, setData }) {
                   placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
                 />
               </FieldGroup>
-            </div>
-            <div className="GateInlineMetaCard col gap8">
+            </AppInlineMetaCard>
+            <AppInlineMetaCard className="journalFormBlock">
               <div className="appFieldGrid">
                 <FieldGroup label="Forme" htmlFor="journal-forme">
                   <AppSelect
@@ -261,7 +263,7 @@ export default function Journal({ data, setData }) {
                   />
                 </FieldGroup>
               </div>
-              <div className="GatePrimaryCtaRow">
+              <AppActionRow>
                 <PrimaryButton type="button" onClick={archiveCurrentNote}>
                   Archiver la note
                 </PrimaryButton>
@@ -272,15 +274,15 @@ export default function Journal({ data, setData }) {
                 >
                   Vider
                 </GhostButton>
-              </div>
-            </div>
+              </AppActionRow>
+            </AppInlineMetaCard>
           </div>
         </AppCard>
       </section>
 
       <section className="mainPageSection">
         <SectionHeader title="Historique" subtitle="Notes archivées pour cette catégorie." />
-        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <AppCard>
           <div className="col gap12">
             {historyItems.length ? (
               historyItems.map((item) => {
@@ -289,9 +291,9 @@ export default function Journal({ data, setData }) {
                 if (item.meta?.humeur) metaParts.push(`Humeur: ${item.meta.humeur}`);
                 if (item.meta?.motivation) metaParts.push(`Motivation: ${item.meta.motivation}`);
                 return (
-                  <div key={item.id} className="GateInlineMetaCard col gap8">
+                  <AppInlineMetaCard key={item.id} className="journalHistoryItem">
                     <div className="row rowBetween gap12 wrap">
-                      <div className="GateRoleCardMeta">{item.dateKey || todayKey}</div>
+                      <div className="appInlineMetaCardMeta">{item.dateKey || todayKey}</div>
                       <GhostButton
                         type="button"
                         size="sm"
@@ -300,9 +302,9 @@ export default function Journal({ data, setData }) {
                         Supprimer
                       </GhostButton>
                     </div>
-                    {metaParts.length ? <div className="GateRoleCardMeta">{metaParts.join(" · ")}</div> : null}
-                    {item.note ? <div className="GateRoleHelperText">{item.note}</div> : null}
-                  </div>
+                    {metaParts.length ? <div className="appInlineMetaCardMeta">{metaParts.join(" · ")}</div> : null}
+                    {item.note ? <div className="appInlineMetaCardText">{item.note}</div> : null}
+                  </AppInlineMetaCard>
                 );
               })
             ) : (

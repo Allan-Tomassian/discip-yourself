@@ -1,6 +1,6 @@
 import React from "react";
 import { UI_COPY } from "../ui/labels";
-import { AppCard, AppScreen, GhostButton, SectionHeader } from "../shared/ui/app";
+import { AppActionRow, AppCard, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader } from "../shared/ui/app";
 
 const QUESTIONS = [
   {
@@ -42,13 +42,10 @@ export default function Faq({ data, setTab }) {
     >
       <section className="mainPageSection">
         <SectionHeader title="Questions fréquentes" subtitle="Les réponses utiles les plus courantes." />
-        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
+        <AppCard>
           <div className="col gap12">
             {QUESTIONS.map((item) => (
-              <div key={item.question} className="GateInlineMetaCard col gap8">
-                <div className="GateRoleCardTitle">{item.question}</div>
-                <div className="GateRoleHelperText">{item.answer}</div>
-              </div>
+              <AppInlineMetaCard key={item.question} title={item.question} text={item.answer} />
             ))}
           </div>
         </AppCard>
@@ -56,8 +53,8 @@ export default function Faq({ data, setTab }) {
 
       <section className="mainPageSection">
         <SectionHeader title="Besoin d’aide supplémentaire ?" subtitle="Ouvre le support si la réponse n’est pas ici." />
-        <AppCard className="GateSurfacePremium GateCardPremium GateSecondarySectionCard">
-          <div className="GatePrimaryCtaRow">
+        <AppCard>
+          <AppActionRow>
             <GhostButton
               type="button"
               size="sm"
@@ -66,7 +63,7 @@ export default function Faq({ data, setTab }) {
             >
               {UI_COPY.openSupport}
             </GhostButton>
-          </div>
+          </AppActionRow>
         </AppCard>
       </section>
     </AppScreen>

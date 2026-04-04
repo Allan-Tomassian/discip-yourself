@@ -878,7 +878,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       >
         <div className="mainPageStack editItemPageShell">
           <AppCard variant="elevated">
-            <div className="GateRoleHelperText">Impossible de retrouver cet élément.</div>
+            <div className="editItemMissingText">Impossible de retrouver cet élément.</div>
           </AppCard>
         </div>
       </AppScreen>
