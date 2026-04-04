@@ -4,7 +4,6 @@ import { STATUS_COPY } from "../ui/labels";
 import {
   AppActionRow,
   AppCard,
-  AppInlineMetaCard,
   AppScreen,
   FeedbackMessage,
   GhostButton,
@@ -67,50 +66,52 @@ export default function Data({ data, setData, onOpenPaywall }) {
     >
       <section className="mainPageSection">
         <SectionHeader title="Sauvegarde" subtitle="Exporte ou importe l’état complet de l’app." />
-        <AppCard>
-          <AppActionRow>
-            <PrimaryButton
-              onClick={() => {
-                if (!premium) {
-                  if (typeof onOpenPaywall === "function") onOpenPaywall("Export des données");
-                  return;
-                }
-                downloadJsonFile("discip-yourself-data.json", safeData);
-              }}
-            >
-              Exporter mes données (JSON)
-            </PrimaryButton>
+        <div className="mainPageSectionBody">
+          <AppCard>
+            <div className="col gap12">
+              <AppActionRow>
+                <PrimaryButton
+                  onClick={() => {
+                    if (!premium) {
+                      if (typeof onOpenPaywall === "function") onOpenPaywall("Export des données");
+                      return;
+                    }
+                    downloadJsonFile("discip-yourself-data.json", safeData);
+                  }}
+                >
+                  Exporter mes données (JSON)
+                </PrimaryButton>
 
-            <input
-              ref={importInputRef}
-              type="file"
-              accept="application/json"
-              hidden
-              onChange={(event) => {
-                const file = event.target.files && event.target.files[0] ? event.target.files[0] : null;
-                handleImportFile(file);
-                event.target.value = "";
-              }}
-            />
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept="application/json"
+                  hidden
+                  onChange={(event) => {
+                    const file = event.target.files && event.target.files[0] ? event.target.files[0] : null;
+                    handleImportFile(file);
+                    event.target.value = "";
+                  }}
+                />
 
-            <GhostButton
-              size="sm"
-              onClick={() => {
-                importInputRef.current?.click();
-              }}
-            >
-              Importer un fichier JSON
-            </GhostButton>
-          </AppActionRow>
+                <GhostButton
+                  size="sm"
+                  onClick={() => {
+                    importInputRef.current?.click();
+                  }}
+                >
+                  Importer un fichier JSON
+                </GhostButton>
+              </AppActionRow>
 
-          {importStatus ? (
-            <AppInlineMetaCard>
-              <FeedbackMessage tone={importStatus === STATUS_COPY.importDone ? "success" : "error"}>
-                {importStatus}
-              </FeedbackMessage>
-            </AppInlineMetaCard>
-          ) : null}
-        </AppCard>
+              {importStatus ? (
+                <FeedbackMessage tone={importStatus === STATUS_COPY.importDone ? "success" : "error"}>
+                  {importStatus}
+                </FeedbackMessage>
+              ) : null}
+            </div>
+          </AppCard>
+        </div>
       </section>
     </AppScreen>
   );

@@ -47,11 +47,12 @@ describe("home today canonical contract", () => {
     expect(hero).toContain("PrimaryButton");
     expect(hero).toContain("GhostButton");
     expect(nextActions).toContain("AppCard");
-    expect(nextActions).toContain("AppInlineMetaCard");
     expect(nextActions).toContain("todayNextActionEmpty");
-    expect(dailyState).toContain("AppCard");
+    expect(nextActions).toContain("todayNextActionEmptyTitle");
+    expect(nextActions).toContain("todayNextActionEmptyMeta");
+    expect(dailyState).not.toContain("AppCard");
     expect(dailyState).toContain("MetricRow");
-    expect(dailyState).toContain("todayDailyStateCard");
+    expect(dailyState).toContain("todayDailyState");
     expect(dailyState).toContain("todayDailyStateMetricRow");
     expect(home).not.toContain("<SortableBlocks");
     expect(home).not.toContain("onReorder={handleVisibleReorder}");

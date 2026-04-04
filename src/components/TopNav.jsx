@@ -19,6 +19,7 @@ export default function TopNav({
   coinsBalance = 0,
   coinDeltaAmount = 0,
   coinDeltaKey = "",
+  mode = "full",
 }) {
   const navTopRef = useRef(null);
   const navBarRef = useRef(null);
@@ -29,16 +30,20 @@ export default function TopNav({
       ? window.matchMedia("(max-width: 767px)").matches
       : false
   );
+  const navMode = mode === "reduced" ? "reduced" : "full";
+  const useIconOnlyTabs = isMobileLayout || navMode === "reduced";
+  const showWallet = navMode === "full" && !isMobileLayout;
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
+    const rootStyle = document.documentElement.style;
     const updateOffset = () => {
       const topEl = navTopRef.current;
       if (topEl) {
         const h = Math.ceil(topEl.getBoundingClientRect().height);
-        document.documentElement.style.setProperty("--navOffset", `${h}px`);
+        rootStyle.setProperty("--navOffset", `${h}px`);
       } else {
-        document.documentElement.style.setProperty("--navOffset", "0px");
+        rootStyle.setProperty("--navOffset", "0px");
       }
     };
     updateOffset();
@@ -55,6 +60,7 @@ export default function TopNav({
     return () => {
       if (ro) ro.disconnect();
       else window.removeEventListener("resize", updateOffset);
+      rootStyle.removeProperty("--navOffset");
     };
   }, []);
 
@@ -126,12 +132,23 @@ export default function TopNav({
   }, []);
 
   return (
-    <div className="navTop stickyStack TopNavShell" ref={navTopRef} data-tour-id="topnav">
+    <div
+      className={`navTop stickyStack TopNavShell${navMode === "reduced" ? " TopNavShell--reduced" : ""}`}
+      ref={navTopRef}
+      data-tour-id="topnav"
+      data-nav-mode={navMode}
+    >
       <div className="navWrap topNavGateWrap" ref={navBarRef}>
         <div className="TopNavSurfaceOuter" ref={topbarSurfaceRef}>
           <div className="TopNavSurfaceClip TopNavBackdrop GateGlassClip GateGlassBackdrop">
-            <AppSurface className="topNavGateBar GateGlassContent" data-tour-id="topnav-row">
-              <div ref={topbarRef} className={`navRow${isMobileLayout ? " is-mobile-layout" : ""}`}>
+            <AppSurface
+              className={`topNavGateBar GateGlassContent${navMode === "reduced" ? " topNavGateBar--reduced" : ""}`}
+              data-tour-id="topnav-row"
+            >
+              <div
+                ref={topbarRef}
+                className={`navRow${isMobileLayout ? " is-mobile-layout" : ""}${navMode === "reduced" ? " is-reduced-layout" : ""}`}
+              >
                 <div className="navActions topNavMenuSlot topNavMenuActions">
                   <button
                     type="button"
@@ -152,18 +169,18 @@ export default function TopNav({
                         key={it.id}
                         type="button"
                         onClick={() => setActive(it.id)}
-                        className={`navBtn NavPillUnified ${isMobileLayout ? "NavPillUnified--iconOnly" : ""} ${active === it.id ? "navBtnActive" : ""}`}
+                        className={`navBtn NavPillUnified ${useIconOnlyTabs ? "NavPillUnified--iconOnly" : ""} ${active === it.id ? "navBtnActive" : ""}`}
                         aria-label={it.label}
                         aria-current={active === it.id ? "page" : undefined}
                         data-tour-id={`topnav-tab-${it.id}`}
                       >
                         <Icon className="NavPillUnifiedIcon" aria-hidden="true" />
-                        {!isMobileLayout ? <span className="NavPillUnifiedLabel">{it.label}</span> : null}
+                        {!useIconOnlyTabs ? <span className="NavPillUnifiedLabel">{it.label}</span> : null}
                       </button>
                     );
                   })}
                 </div>
-                {!isMobileLayout ? (
+                {showWallet ? (
                   <div className="navActions topNavWalletSlot">
                     <WalletBadge
                       className="topNavWalletBadge"

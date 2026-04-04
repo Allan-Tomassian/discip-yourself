@@ -60,7 +60,6 @@ describe("secondary pages visual canon contract", () => {
 
     for (const source of pages) {
       expect(source).toContain("SectionHeader");
-      expect(source).toContain("AppCard");
       expect(source).not.toContain("GateSecondarySectionCard");
     }
   });
@@ -83,7 +82,6 @@ describe("secondary pages visual canon contract", () => {
     const todayCss = readSrc("features/today/today.css");
 
     for (const source of pages) {
-      expect(source).toContain("AppInlineMetaCard");
       expect(source).not.toContain("GateInlineMetaCard");
     }
 

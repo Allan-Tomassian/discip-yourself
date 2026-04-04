@@ -70,20 +70,49 @@
 
 .planningDayList {
   display: grid;
+  gap: 0;
+}
+
+.planningItemRow {
+  display: grid;
+  gap: var(--space-8);
+  padding-block: var(--space-16);
+}
+
+.planningItemRow + .planningItemRow {
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
+}
+
+.planningItemRow--compact {
+  padding-block: var(--space-12);
+}
+
+.planningItemRowHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--space-12);
 }
 
-.planningItemCard {
-  display: grid;
-  gap: var(--space-8);
+.planningItemRowTitle {
+  min-width: 0;
+  font-size: var(--font-body);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.45;
+  color: var(--text-primary);
 }
 
-.planningItemCardBody {
-  gap: var(--space-8);
+.planningItemMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-12);
 }
 
-.planningItemCardBody--compact {
-  gap: var(--space-4);
+.planningItemMetaRow--compact {
+  gap: var(--space-8);
 }
 
 .planningItemMeta {
@@ -100,16 +129,30 @@
 .planningWeekGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-8);
+  gap: var(--space-12);
 }
 
 .planningWeekBucket {
   display: grid;
-  gap: var(--space-8);
+  gap: var(--space-12);
+  padding: var(--space-16);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
+  border-radius: var(--radius-16);
+  background: transparent;
+}
+
+.planningWeekBucket.hasItems,
+.planningWeekBucket.isToday {
+  border-color: color-mix(in srgb, var(--accent-primary) 18%, var(--border-subtle));
+  background: color-mix(in srgb, var(--surface-primary) 34%, transparent);
+}
+
+.planningWeekBucket.isEmpty {
+  border-color: color-mix(in srgb, var(--border-subtle) 78%, transparent);
 }
 
 .planningWeekBucket.isToday {
-  border-color: color-mix(in srgb, var(--accent-primary) 22%, var(--border-subtle));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent-primary) 10%, transparent);
 }
 
 .planningWeekBucketHeader {
@@ -137,7 +180,7 @@
 
 .planningWeekList {
   display: grid;
-  gap: var(--space-8);
+  gap: 0;
 }
 
 .planningTodayTag {
@@ -194,6 +237,40 @@
 .planningEmptyState {
   font-size: var(--font-meta);
   color: var(--text-secondary);
+}
+
+.planningSecondaryBlock {
+  display: grid;
+  gap: var(--space-16);
+  padding-top: var(--space-16);
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
+}
+
+.planningCalendarRail .calendarDayPill {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--border-subtle) 74%, transparent);
+}
+
+.planningCalendarRail .calendarItem {
+  opacity: 0.54;
+  filter: none;
+}
+
+.planningCalendarRail .calendarDayPill[data-planned="0"][data-done="0"] {
+  border-color: color-mix(in srgb, var(--border-subtle) 58%, transparent);
+}
+
+.planningCalendarRail .calendarItem.is-current,
+.planningCalendarRail .calendarDayPill.is-today,
+.planningCalendarRail .calendarDayPill[data-planned]:not([data-planned="0"]),
+.planningCalendarRail .calendarDayPill[data-done]:not([data-done="0"]) {
+  opacity: 0.94;
+}
+
+.planningCalendarRail .calendarDayPill.is-today,
+.planningCalendarRail .calendarDayPill[data-planned]:not([data-planned="0"]),
+.planningCalendarRail .calendarDayPill[data-done]:not([data-done="0"]) {
+  background: color-mix(in srgb, var(--surface-primary) 52%, transparent);
 }
 
 @media (max-width: 389px) {

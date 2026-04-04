@@ -278,7 +278,10 @@
 }
 
 .totemDockWalletStat {
-  box-shadow: var(--shadow-sm);
+  padding: var(--space-12);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
+  border-radius: var(--radius-14);
+  background: transparent;
 }
 
 .totemDockWalletStat strong {
@@ -355,7 +358,10 @@
 
 .totemDockOwnedRow,
 .totemDockSettingsRow {
-  box-shadow: var(--shadow-sm);
+  padding: var(--space-12);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
+  border-radius: var(--radius-14);
+  background: transparent;
 }
 
 .totemDockShopGroup {

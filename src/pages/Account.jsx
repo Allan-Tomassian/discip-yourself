@@ -6,7 +6,6 @@ import { PLACEHOLDER_COPY, STATUS_COPY, SURFACE_LABELS } from "../ui/labels";
 import {
   AppActionRow,
   AppCard,
-  AppInlineMetaCard,
   AppInput,
   AppScreen,
   FeedbackMessage,
@@ -177,65 +176,63 @@ export default function Account({ data }) {
           title="Profil"
           subtitle={profile?.username ? "Ton profil est prêt." : "Identifiant optionnel. Tu peux le définir plus tard."}
         />
-        <AppCard className="accountGateCard">
-          {loadError ? (
-            <AppInlineMetaCard className="accountGateSummary">
-              <p className="accountGateNote accountGateNoteError" role="alert">
+        <div className="mainPageSectionBody">
+          <AppCard className="accountGateCard">
+            {loadError ? (
+              <FeedbackMessage tone="error" className="accountGateNote accountGateNoteError" role="alert">
                 {loadError}
-              </p>
-            </AppInlineMetaCard>
-          ) : null}
-          <form className="accountGateForm" onSubmit={handleSave}>
-            <AppInlineMetaCard className="accountGateSummary">
-              <FieldGroup label="Email" htmlFor="account-email">
-                <AppInput
-                  id="account-email"
-                  className="accountGateInput isReadonly"
-                  value={String(user?.email || profile?.email || "")}
-                  readOnly
-                  disabled
-                />
-              </FieldGroup>
+              </FeedbackMessage>
+            ) : null}
+            <form className="accountGateForm" onSubmit={handleSave}>
+              <div className="accountGateSummary">
+                <FieldGroup label="Email" htmlFor="account-email">
+                  <AppInput
+                    id="account-email"
+                    className="accountGateInput isReadonly"
+                    value={String(user?.email || profile?.email || "")}
+                    readOnly
+                    disabled
+                  />
+                </FieldGroup>
 
-              <FieldGroup label="Identifiant" htmlFor="account-username">
-                <AppInput
-                  id="account-username"
-                  className="accountGateInput"
-                  data-testid="account-username-input"
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                  placeholder={PLACEHOLDER_COPY.accountHandle}
-                  autoComplete="username"
-                />
-              </FieldGroup>
+                <FieldGroup label="Identifiant" htmlFor="account-username">
+                  <AppInput
+                    id="account-username"
+                    className="accountGateInput"
+                    data-testid="account-username-input"
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                    placeholder={PLACEHOLDER_COPY.accountHandle}
+                    autoComplete="username"
+                  />
+                </FieldGroup>
 
-              <FieldGroup label="Nom complet" htmlFor="account-full-name">
-                <AppInput
-                  id="account-full-name"
-                  className="accountGateInput"
-                  data-testid="account-full-name-input"
-                  value={fullName}
-                  onChange={(event) => setFullName(event.target.value)}
-                  placeholder={PLACEHOLDER_COPY.fullName}
-                  autoComplete="name"
-                />
-              </FieldGroup>
+                <FieldGroup label="Nom complet" htmlFor="account-full-name">
+                  <AppInput
+                    id="account-full-name"
+                    className="accountGateInput"
+                    data-testid="account-full-name-input"
+                    value={fullName}
+                    onChange={(event) => setFullName(event.target.value)}
+                    placeholder={PLACEHOLDER_COPY.fullName}
+                    autoComplete="name"
+                  />
+                </FieldGroup>
 
-              <FieldGroup label="Photo de profil (URL)" htmlFor="account-avatar-url">
-                <AppInput
-                  id="account-avatar-url"
-                  className="accountGateInput"
-                  data-testid="account-avatar-url-input"
-                  value={avatarUrl}
-                  onChange={(event) => setAvatarUrl(event.target.value)}
-                  placeholder={PLACEHOLDER_COPY.avatarUrl}
-                  autoComplete="url"
-                />
-              </FieldGroup>
-            </AppInlineMetaCard>
+                <FieldGroup label="Photo de profil (URL)" htmlFor="account-avatar-url">
+                  <AppInput
+                    id="account-avatar-url"
+                    className="accountGateInput"
+                    data-testid="account-avatar-url-input"
+                    value={avatarUrl}
+                    onChange={(event) => setAvatarUrl(event.target.value)}
+                    placeholder={PLACEHOLDER_COPY.avatarUrl}
+                    autoComplete="url"
+                  />
+                </FieldGroup>
+              </div>
 
-            {availability.message ? (
-              <AppInlineMetaCard>
+              {availability.message ? (
                 <FeedbackMessage
                   data-testid="account-username-feedback"
                   tone={availability.state === "available" ? "success" : "error"}
@@ -243,11 +240,9 @@ export default function Account({ data }) {
                 >
                   {availability.message}
                 </FeedbackMessage>
-              </AppInlineMetaCard>
-            ) : null}
+              ) : null}
 
-            {status.message ? (
-              <AppInlineMetaCard>
+              {status.message ? (
                 <FeedbackMessage
                   data-testid="account-save-status"
                   className={`accountGateNote ${status.type === "error" ? "accountGateNoteError" : "accountGateNoteSuccess"}`}
@@ -256,29 +251,29 @@ export default function Account({ data }) {
                 >
                   {status.message}
                 </FeedbackMessage>
-              </AppInlineMetaCard>
-            ) : null}
+              ) : null}
 
-            <AppActionRow className="accountGateActions">
-              <PrimaryButton
-                type="submit"
-                disabled={!canSave}
-                data-testid="account-save-button"
-              >
-                {saving ? STATUS_COPY.saving : "Enregistrer"}
-              </PrimaryButton>
-              <GhostButton
-                type="button"
-                size="sm"
-                onClick={() => {
-                  refreshProfile().catch(() => {});
-                }}
-              >
-                Actualiser
-              </GhostButton>
-            </AppActionRow>
-          </form>
-        </AppCard>
+              <AppActionRow className="accountGateActions">
+                <PrimaryButton
+                  type="submit"
+                  disabled={!canSave}
+                  data-testid="account-save-button"
+                >
+                  {saving ? STATUS_COPY.saving : "Enregistrer"}
+                </PrimaryButton>
+                <GhostButton
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    refreshProfile().catch(() => {});
+                  }}
+                >
+                  Actualiser
+                </GhostButton>
+              </AppActionRow>
+            </form>
+          </AppCard>
+        </div>
       </section>
 
       <section className="mainPageSection">
@@ -286,25 +281,23 @@ export default function Account({ data }) {
           title="Session"
           subtitle="Actions liées à ton compte."
         />
-        <AppCard className="accountGateCard">
-          <AppInlineMetaCard>
-            <AppActionRow className="accountGateActions">
-              <GhostButton
-                type="button"
-                size="sm"
-                className="accountGateDangerButton"
-                onClick={() => {
-                  signOut().catch(() => {});
-                }}
-              >
-                Déconnexion
-              </GhostButton>
-              <GhostButton type="button" size="sm" disabled>
-                Supprimer mon compte via le support
-              </GhostButton>
-            </AppActionRow>
-          </AppInlineMetaCard>
-        </AppCard>
+        <div className="mainPageSectionBody">
+          <AppActionRow className="accountGateActions">
+            <GhostButton
+              type="button"
+              size="sm"
+              className="accountGateDangerButton"
+              onClick={() => {
+                signOut().catch(() => {});
+              }}
+            >
+              Déconnexion
+            </GhostButton>
+            <GhostButton type="button" size="sm" disabled>
+              Supprimer mon compte via le support
+            </GhostButton>
+          </AppActionRow>
+        </div>
       </section>
     </AppScreen>
   );

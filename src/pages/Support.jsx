@@ -1,6 +1,6 @@
 import React from "react";
 import { SURFACE_LABELS, UI_COPY } from "../ui/labels";
-import { AppCard, AppInlineMetaCard, AppScreen, SectionHeader } from "../shared/ui/app";
+import { AppInlineMetaCard, AppScreen, SectionHeader } from "../shared/ui/app";
 import pkg from "../../package.json";
 
 export default function Support({ data }) {
@@ -18,14 +18,14 @@ export default function Support({ data }) {
     >
       <section className="mainPageSection">
         <SectionHeader title="Contact" subtitle="Réponse par email." />
-        <AppCard>
+        <div className="mainPageSectionBody">
           <AppInlineMetaCard title="Email" text="support@discip-yourself.app" />
-        </AppCard>
+        </div>
       </section>
 
       <section className="mainPageSection">
         <SectionHeader title="Questions fréquentes" subtitle="Les réponses utiles les plus courantes." />
-        <AppCard>
+        <div className="mainPageSectionBody">
           <div className="col gap12">
             <AppInlineMetaCard title="Comment récupérer un achat déjà payé ?">
               <div className="appMetaText">
@@ -34,14 +34,14 @@ export default function Support({ data }) {
             </AppInlineMetaCard>
             <AppInlineMetaCard title="Comment sauvegarder tes données ?" text="Ouvre Données puis exporte un fichier JSON." />
           </div>
-        </AppCard>
+        </div>
       </section>
 
       <section className="mainPageSection">
         <SectionHeader title="Version" subtitle="Build actuelle." />
-        <AppCard>
+        <div className="mainPageSectionBody">
           <AppInlineMetaCard title="Version installée" text={version} />
-        </AppCard>
+        </div>
       </section>
     </AppScreen>
   );

@@ -1,6 +1,6 @@
 import React from "react";
 import { UI_COPY } from "../ui/labels";
-import { AppActionRow, AppCard, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader } from "../shared/ui/app";
+import { AppActionRow, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader } from "../shared/ui/app";
 
 export default function Privacy({ data, onOpenSupport }) {
   const safeData = data && typeof data === "object" ? data : {};
@@ -16,7 +16,7 @@ export default function Privacy({ data, onOpenSupport }) {
     >
       <section className="mainPageSection">
         <SectionHeader title="Données collectées" subtitle="Données utiles au fonctionnement." />
-        <AppCard>
+        <div className="mainPageSectionBody">
           <div className="col gap12">
             <AppInlineMetaCard title="Utilisation produit">
               <div className="appMetaText">
@@ -29,12 +29,12 @@ export default function Privacy({ data, onOpenSupport }) {
               </div>
             </AppInlineMetaCard>
           </div>
-        </AppCard>
+        </div>
       </section>
 
       <section className="mainPageSection">
         <SectionHeader title="Contact" subtitle="Questions RGPD ou données." />
-        <AppCard>
+        <div className="mainPageSectionBody">
           <div className="col gap12">
             <AppInlineMetaCard title="Email" text="support@discip-yourself.app" />
             <AppActionRow align="start">
@@ -46,7 +46,7 @@ export default function Privacy({ data, onOpenSupport }) {
               </GhostButton>
             </AppActionRow>
           </div>
-        </AppCard>
+        </div>
       </section>
     </AppScreen>
   );

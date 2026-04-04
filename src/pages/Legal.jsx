@@ -1,6 +1,6 @@
 import React from "react";
 import { UI_COPY } from "../ui/labels";
-import { AppActionRow, AppCard, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader } from "../shared/ui/app";
+import { AppActionRow, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader } from "../shared/ui/app";
 
 export default function Legal({ data, onOpenSupport }) {
   const safeData = data && typeof data === "object" ? data : {};
@@ -16,7 +16,7 @@ export default function Legal({ data, onOpenSupport }) {
     >
       <section className="mainPageSection">
         <SectionHeader title="Utilisation" subtitle="Cadre général de l’app." />
-        <AppCard>
+        <div className="mainPageSectionBody">
           <div className="col gap12">
             <AppInlineMetaCard title="Cadre produit">
               <div className="appMetaText">
@@ -29,12 +29,12 @@ export default function Legal({ data, onOpenSupport }) {
               </div>
             </AppInlineMetaCard>
           </div>
-        </AppCard>
+        </div>
       </section>
 
       <section className="mainPageSection">
         <SectionHeader title="Compte et données" subtitle="Accès, abonnement et stockage." />
-        <AppCard>
+        <div className="mainPageSectionBody">
           <div className="col gap12">
             <AppInlineMetaCard title="Accès">
               <div className="appMetaText">
@@ -47,12 +47,12 @@ export default function Legal({ data, onOpenSupport }) {
               </div>
             </AppInlineMetaCard>
           </div>
-        </AppCard>
+        </div>
       </section>
 
       <section className="mainPageSection">
         <SectionHeader title="Support" subtitle="Besoin d’aide produit ou juridique ?" />
-        <AppCard>
+        <div className="mainPageSectionBody">
           <AppActionRow>
             <GhostButton
               size="sm"
@@ -61,7 +61,7 @@ export default function Legal({ data, onOpenSupport }) {
               {UI_COPY.openSupport}
             </GhostButton>
           </AppActionRow>
-        </AppCard>
+        </div>
       </section>
     </AppScreen>
   );

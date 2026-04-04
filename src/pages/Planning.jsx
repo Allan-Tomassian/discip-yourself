@@ -20,7 +20,6 @@ import { derivePlanningBehaviorCue } from "../feedback/feedbackDerivers";
 import {
   AppCard,
   AppChip,
-  AppInlineMetaCard,
   AppScreen,
   GhostButton,
   PrimaryButton,
@@ -62,6 +61,26 @@ function resolveLoadTone(totalMinutes) {
   if (totalMinutes > 90) return "Charge soutenue";
   if (totalMinutes >= 30) return "Charge crédible";
   return "Charge légère";
+}
+
+function PlanningItemRow({ item, compact = false }) {
+  return (
+    <div className={`planningItemRow${compact ? " planningItemRow--compact" : ""}`}>
+      <div className="planningItemRowHeader">
+        <div className="planningItemRowTitle">{item.title}</div>
+        <CategoryPill
+          category={item.category || null}
+          label={item.category?.name || "Catégorie"}
+        />
+      </div>
+      <div className={`planningItemMetaRow${compact ? " planningItemMetaRow--compact" : ""}`}>
+        <div className="planningItemMeta">{item.start || "Fenêtre libre"}</div>
+        <div className="planningItemDuration">
+          {Number.isFinite(item.durationMinutes) ? `${item.durationMinutes} min` : "Durée libre"}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function Planning({
@@ -378,23 +397,7 @@ export default function Planning({
                 <div className="planningDayList">
                   {dayItems.length ? (
                     dayItems.map((item) => (
-                      <AppInlineMetaCard
-                        key={item.id}
-                        className="planningItemCard"
-                        bodyClassName="planningItemCardBody"
-                        title={item.title}
-                        action={
-                          <CategoryPill
-                            category={item.category || null}
-                            label={item.category?.name || "Catégorie"}
-                          />
-                        }
-                      >
-                        <div className="planningItemMeta">{item.start || "Fenêtre libre"}</div>
-                        <div className="planningItemDuration">
-                          {Number.isFinite(item.durationMinutes) ? `${item.durationMinutes} min` : "Durée libre"}
-                        </div>
-                      </AppInlineMetaCard>
+                      <PlanningItemRow key={item.id} item={item} />
                     ))
                   ) : (
                     <div className="planningEmptyState">
@@ -405,9 +408,9 @@ export default function Planning({
               ) : (
                 <div className="planningWeekGrid">
                   {weekBuckets.map((bucket) => (
-                    <AppCard
+                    <div
                       key={bucket.dateKey}
-                      className={`planningWeekBucket${bucket.isToday ? " isToday" : ""}`}
+                      className={`planningWeekBucket${bucket.isToday ? " isToday" : ""}${bucket.items.length ? " hasItems" : " isEmpty"}`}
                     >
                       <div className="planningWeekBucketHeader">
                         <div className="planningWeekBucketHeaderMain">
@@ -425,29 +428,13 @@ export default function Planning({
                       {bucket.items.length ? (
                         <div className="planningWeekList">
                           {bucket.items.slice(0, 3).map((item) => (
-                            <AppInlineMetaCard
-                              key={item.id}
-                              className="planningItemCard planningItemCard--compact"
-                              bodyClassName="planningItemCardBody planningItemCardBody--compact"
-                              title={item.title}
-                              action={
-                                <CategoryPill
-                                  category={item.category || null}
-                                  label={item.category?.name || "Catégorie"}
-                                />
-                              }
-                            >
-                              <div className="planningItemMeta">{item.start || "Fenêtre libre"}</div>
-                              <div className="planningItemDuration">
-                                {Number.isFinite(item.durationMinutes) ? `${item.durationMinutes} min` : "Durée libre"}
-                              </div>
-                            </AppInlineMetaCard>
+                            <PlanningItemRow key={item.id} item={item} compact />
                           ))}
                         </div>
                       ) : (
                         <div className="planningEmptyState">Aucun créneau posé.</div>
                       )}
-                    </AppCard>
+                    </div>
                   ))}
                 </div>
               )}
@@ -486,7 +473,7 @@ export default function Planning({
               subtitle={`${pendingGoal?.title || "Action"}${pendingCategory?.name ? ` · ${pendingCategory.name}` : ""}`}
             />
             <div className="mainPageSectionBody">
-              <AppCard className="planningSectionCard planningSecondarySection">
+              <div className="planningSecondaryBlock">
                 <div className="planningSectionMeta">
                   Replace cette action dans un rythme crédible, puis confirme ou annule ce brouillon.
                 </div>
@@ -498,7 +485,7 @@ export default function Planning({
                     J&apos;ai replanifié
                   </PrimaryButton>
                 </div>
-              </AppCard>
+              </div>
             </div>
           </section>
         ) : null}
@@ -510,7 +497,7 @@ export default function Planning({
               subtitle={`${legacyBuckets.reclassifyCandidates.length} action${legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} héritée${legacyBuckets.reclassifyCandidates.length > 1 ? "s" : ""} restent hors catégorie.`}
             />
             <div className="mainPageSectionBody">
-              <AppCard className="planningSectionCard planningSecondarySection">
+              <div className="planningSecondaryBlock">
                 <div className="planningSectionMeta">
                   Elles ne remontent plus clairement dans Today tant qu&apos;elles restent hors catégorie stable.
                 </div>
@@ -523,7 +510,7 @@ export default function Planning({
                     Ouvrir la bibliothèque
                   </GhostButton>
                 </div>
-              </AppCard>
+              </div>
             </div>
           </section>
         ) : null}

@@ -622,9 +622,9 @@ export default function CategoryManageInline({
     return (
       <section className="mainPageSection">
         <SectionHeader title="Catégorie introuvable" subtitle="Cette catégorie n’existe plus." />
-        <AppCard className="libraryManageCard">
+        <div className="mainPageSectionBody">
           <AppInlineMetaCard text="Reviens à la bibliothèque pour ouvrir une autre catégorie." />
-        </AppCard>
+        </div>
       </section>
     );
   }
@@ -636,103 +636,105 @@ export default function CategoryManageInline({
     <div className="libraryManageStack stack stackGap16" style={{ "--catColor": resolveCategoryColor(category, "#4F7CFF") }}>
       <section className="mainPageSection">
         <SectionHeader title="Réglages" subtitle="Nom, priorité et paramètres de la catégorie." />
-        <AppCard className="libraryManageCard" data-tour-id={getTourId(inlineEdit, "manage-category-card")}>
-          <div className="libraryManageCardBody stack stackGap12">
-            <div className="row rowBetween alignCenter gap12">
-              <div className="stack stackGap12 minW0">
-                {inlineEdit ? (
-                  <div className="row gap8 alignCenter wrap">
-                    <AppInput
-                      value={nameDraft}
-                      onChange={(event) => setNameDraft(event.target.value)}
-                      onBlur={commitName}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          commitName();
-                          event.currentTarget.blur();
-                        }
-                      }}
-                      aria-label="Nom de la catégorie"
-                      data-testid={`library-manage-name-${category.id}`}
-                    />
-                    {isPrimaryCategory(category) ? (
-                      <StatusBadge tone="info">Prioritaire</StatusBadge>
-                    ) : null}
-                  </div>
-                ) : (
-                  <div className="stack stackGap12">
-                    <div className="itemTitle">
-                      {category.name || "Catégorie"}
+        <div className="mainPageSectionBody">
+          <AppCard className="libraryManageCard" data-tour-id={getTourId(inlineEdit, "manage-category-card")}>
+            <div className="libraryManageCardBody stack stackGap12">
+              <div className="row rowBetween alignCenter gap12">
+                <div className="stack stackGap12 minW0">
+                  {inlineEdit ? (
+                    <div className="row gap8 alignCenter wrap">
+                      <AppInput
+                        value={nameDraft}
+                        onChange={(event) => setNameDraft(event.target.value)}
+                        onBlur={commitName}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            commitName();
+                            event.currentTarget.blur();
+                          }
+                        }}
+                        aria-label="Nom de la catégorie"
+                        data-testid={`library-manage-name-${category.id}`}
+                      />
                       {isPrimaryCategory(category) ? (
-                        <StatusBadge tone="info" className="ml8">Prioritaire</StatusBadge>
+                        <StatusBadge tone="info">Prioritaire</StatusBadge>
                       ) : null}
                     </div>
-                    {categoryBehaviorCue ? <BehaviorCue cue={categoryBehaviorCue} category={category} /> : null}
-                  </div>
-                )}
+                  ) : (
+                    <div className="stack stackGap12">
+                      <div className="itemTitle">
+                        {category.name || "Catégorie"}
+                        {isPrimaryCategory(category) ? (
+                          <StatusBadge tone="info" className="ml8">Prioritaire</StatusBadge>
+                        ) : null}
+                      </div>
+                      {categoryBehaviorCue ? <BehaviorCue cue={categoryBehaviorCue} category={category} /> : null}
+                    </div>
+                  )}
+                </div>
+                <div className="row gap8">
+                  <AppIconButton
+                    aria-label="Paramètres catégorie"
+                    onClick={() => {
+                      setCategoryMenuOpen((prev) => !prev);
+                    }}
+                    data-tour-id={getTourId(inlineEdit, "manage-category-settings")}
+                  >
+                    ⚙︎
+                  </AppIconButton>
+                  <AppIconButton
+                    className="iconBtnDanger"
+                    aria-label="Supprimer la catégorie"
+                    onClick={deleteCategory}
+                    data-tour-id={getTourId(inlineEdit, "manage-category-delete")}
+                  >
+                    ×
+                  </AppIconButton>
+                </div>
               </div>
-              <div className="row gap8">
-                <AppIconButton
-                  aria-label="Paramètres catégorie"
-                  onClick={() => {
-                    setCategoryMenuOpen((prev) => !prev);
-                  }}
-                  data-tour-id={getTourId(inlineEdit, "manage-category-settings")}
-                >
-                  ⚙︎
-                </AppIconButton>
-                <AppIconButton
-                  className="iconBtnDanger"
-                  aria-label="Supprimer la catégorie"
-                  onClick={deleteCategory}
-                  data-tour-id={getTourId(inlineEdit, "manage-category-delete")}
-                >
-                  ×
-                </AppIconButton>
-              </div>
-            </div>
-            {categoryMenuOpen ? (
-              <div className="stack stackGap12">
-                {!inlineEdit ? (
+              {categoryMenuOpen ? (
+                <div className="stack stackGap12">
+                  {!inlineEdit ? (
+                    <GhostButton
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        renameCategory();
+                        setCategoryMenuOpen(false);
+                      }}
+                      data-tour-id={getTourId(inlineEdit, "manage-category-rename")}
+                    >
+                      Renommer
+                    </GhostButton>
+                  ) : null}
                   <GhostButton
                     type="button"
                     size="sm"
                     onClick={() => {
-                      renameCategory();
+                      recolorCategory();
                       setCategoryMenuOpen(false);
                     }}
-                    data-tour-id={getTourId(inlineEdit, "manage-category-rename")}
                   >
-                    Renommer
+                    Modifier la couleur
                   </GhostButton>
-                ) : null}
-                <GhostButton
-                  type="button"
-                  size="sm"
-                  onClick={() => {
-                    recolorCategory();
-                    setCategoryMenuOpen(false);
-                  }}
-                >
-                  Modifier la couleur
-                </GhostButton>
-                <GhostButton
-                  type="button"
-                  size="sm"
-                  onClick={() => {
-                    setCategoryPriority();
-                    setCategoryMenuOpen(false);
-                  }}
-                  disabled={isPrimaryCategory(category)}
-                  data-tour-id={getTourId(inlineEdit, "manage-category-priority")}
-                >
-                  {isPrimaryCategory(category) ? "Prioritaire" : "Définir comme prioritaire"}
-                </GhostButton>
-              </div>
-            ) : null}
-          </div>
-        </AppCard>
+                  <GhostButton
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      setCategoryPriority();
+                      setCategoryMenuOpen(false);
+                    }}
+                    disabled={isPrimaryCategory(category)}
+                    data-tour-id={getTourId(inlineEdit, "manage-category-priority")}
+                  >
+                    {isPrimaryCategory(category) ? "Prioritaire" : "Définir comme prioritaire"}
+                  </GhostButton>
+                </div>
+              ) : null}
+            </div>
+          </AppCard>
+        </div>
       </section>
 
       <section className="mainPageSection">
@@ -752,8 +754,11 @@ export default function CategoryManageInline({
             </GhostButton>
           }
         />
-        <AppCard className="libraryManageCard" data-tour-id={getTourId(inlineEdit, "manage-mini-why")}>
-          <div className="libraryManageCardBody stack stackGap12">
+        <div className="mainPageSectionBody">
+          <div
+            className="libraryManageSectionFlat stack stackGap12"
+            data-tour-id={getTourId(inlineEdit, "manage-mini-why")}
+          >
             {showWhy ? (
               inlineEdit ? (
                 <AppTextarea
@@ -772,7 +777,7 @@ export default function CategoryManageInline({
                   data-testid={`library-manage-why-${category.id}`}
                 />
               ) : (
-                <AppInlineMetaCard text={whyDisplay} />
+                <div className="appMetaText">{whyDisplay}</div>
               )
             ) : null}
             <div className="row rowEnd">
@@ -787,7 +792,7 @@ export default function CategoryManageInline({
               )}
             </div>
           </div>
-        </AppCard>
+        </div>
       </section>
 
       <section className="mainPageSection">
@@ -795,36 +800,37 @@ export default function CategoryManageInline({
           title="Profil de catégorie"
           subtitle="Contexte stratégique optionnel pour guider les recommandations."
         />
-        <AppCard className="libraryManageCard" data-tour-id={getTourId(inlineEdit, "manage-category-profile")}>
-          <div className="libraryManageCardBody stack stackGap12">
-            <div className="stack stackGap12">
-              <div className="col libraryFieldStack">
-                <div className="small2 textMuted">Sujet principal</div>
-                <AppInput
-                  value={profileDraft.subject}
-                  onChange={(event) =>
-                    setProfileDraft((previous) => ({ ...previous, subject: event.target.value }))
-                  }
-                  onBlur={() => commitCategoryProfilePatch({ subject: profileDraft.subject })}
-                  placeholder="Ex: Reprendre ma forme"
-                  aria-label="Sujet principal"
-                  data-testid={`library-manage-profile-subject-${category.id}`}
-                />
-              </div>
+        <div className="mainPageSectionBody">
+          <AppCard className="libraryManageCard" data-tour-id={getTourId(inlineEdit, "manage-category-profile")}>
+            <div className="libraryManageCardBody stack stackGap12">
+              <div className="stack stackGap12">
+                <div className="col libraryFieldStack">
+                  <div className="small2 textMuted">Sujet principal</div>
+                  <AppInput
+                    value={profileDraft.subject}
+                    onChange={(event) =>
+                      setProfileDraft((previous) => ({ ...previous, subject: event.target.value }))
+                    }
+                    onBlur={() => commitCategoryProfilePatch({ subject: profileDraft.subject })}
+                    placeholder="Ex: Reprendre ma forme"
+                    aria-label="Sujet principal"
+                    data-testid={`library-manage-profile-subject-${category.id}`}
+                  />
+                </div>
 
-              <div className="col libraryFieldStack">
-                <div className="small2 textMuted">Objectif principal</div>
-                <AppInput
-                  value={profileDraft.mainGoal}
-                  onChange={(event) =>
-                    setProfileDraft((previous) => ({ ...previous, mainGoal: event.target.value }))
-                  }
-                  onBlur={() => commitCategoryProfilePatch({ mainGoal: profileDraft.mainGoal })}
-                  placeholder="Ex: Retrouver de l’énergie"
-                  aria-label="Objectif principal"
-                  data-testid={`library-manage-profile-main-goal-${category.id}`}
-                />
-              </div>
+                <div className="col libraryFieldStack">
+                  <div className="small2 textMuted">Objectif principal</div>
+                  <AppInput
+                    value={profileDraft.mainGoal}
+                    onChange={(event) =>
+                      setProfileDraft((previous) => ({ ...previous, mainGoal: event.target.value }))
+                    }
+                    onBlur={() => commitCategoryProfilePatch({ mainGoal: profileDraft.mainGoal })}
+                    placeholder="Ex: Retrouver de l’énergie"
+                    aria-label="Objectif principal"
+                    data-testid={`library-manage-profile-main-goal-${category.id}`}
+                  />
+                </div>
 
               <div className="col libraryFieldStack">
                 <div className="small2 textMuted">Priorité actuelle</div>
@@ -945,9 +951,10 @@ export default function CategoryManageInline({
                   data-testid={`library-manage-profile-notes-${category.id}`}
                 />
               </div>
+              </div>
             </div>
-          </div>
-        </AppCard>
+          </AppCard>
+        </div>
       </section>
 
       <section className="mainPageSection">
@@ -967,8 +974,11 @@ export default function CategoryManageInline({
             ) : null
           }
         />
-        <AppCard className="libraryManageCard" data-tour-id={getTourId(inlineEdit, "manage-actions-section")}>
-          <div className="libraryManageCardBody stack stackGap12">
+        <div className="mainPageSectionBody">
+          <div
+            className="libraryManageSectionFlat stack stackGap12"
+            data-tour-id={getTourId(inlineEdit, "manage-actions-section")}
+          >
             {actionSections.length ? (
               <div className="stack stackGap12">
                 {actionSections.map((section) => (
@@ -1045,7 +1055,7 @@ export default function CategoryManageInline({
               <AppInlineMetaCard text="Aucune action dans cette catégorie." />
             )}
           </div>
-        </AppCard>
+        </div>
       </section>
 
       <section className="mainPageSection">
@@ -1065,8 +1075,11 @@ export default function CategoryManageInline({
             ) : null
           }
         />
-        <AppCard className="libraryManageCard" data-tour-id={getTourId(inlineEdit, "manage-objectives-section")}>
-          <div className="libraryManageCardBody stack stackGap12">
+        <div className="mainPageSectionBody">
+          <div
+            className="libraryManageSectionFlat stack stackGap12"
+            data-tour-id={getTourId(inlineEdit, "manage-objectives-section")}
+          >
             {outcomeGoals.length ? (
               <div className="stack stackGap12">
                 {outcomeGoals.map((g) => (
@@ -1101,7 +1114,7 @@ export default function CategoryManageInline({
               <AppInlineMetaCard text={`Aucun ${LABELS.goalLower} dans cette catégorie.`} />
             )}
           </div>
-        </AppCard>
+        </div>
       </section>
 
       <section className="mainPageSection">
@@ -1114,9 +1127,14 @@ export default function CategoryManageInline({
             </GhostButton>
           }
         />
-        <AppCard className="libraryManageCard" data-tour-id={getTourId(inlineEdit, "manage-pilotage-section")}>
-          <AppInlineMetaCard text="Lecture seule depuis cette catégorie." />
-        </AppCard>
+        <div className="mainPageSectionBody">
+          <div
+            className="libraryManageSectionFlat"
+            data-tour-id={getTourId(inlineEdit, "manage-pilotage-section")}
+          >
+            <div className="appMetaText">Lecture seule depuis cette catégorie.</div>
+          </div>
+        </div>
       </section>
     </div>
   );

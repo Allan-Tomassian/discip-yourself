@@ -7,6 +7,7 @@ export default function CategoryRail({
   categories = [],
   selectedCategoryId = null,
   onSelect,
+  mode = "full",
 }) {
   // Keep a ref per category button so we can center it on selection.
   const itemRefs = useRef({});
@@ -44,7 +45,7 @@ export default function CategoryRail({
 
   return (
     <div
-      className="categoryRailScroll bottomCategoryRailScroll scrollNoBar"
+      className={`categoryRailScroll bottomCategoryRailScroll scrollNoBar${mode === "reduced" ? " bottomCategoryRailScroll--reduced" : ""}`}
       data-totem-target="categoryRail"
       onTouchStart={(event) => {
         const point = event.touches?.[0];
@@ -71,7 +72,7 @@ export default function CategoryRail({
               if (node) itemRefs.current[c.id] = node;
             }}
             type="button"
-            className={`categoryRailItem bottomCategoryChip NavPillUnified${isSelected ? " navBtnActive bottomCategoryChipActive" : ""}`}
+            className={`categoryRailItem bottomCategoryChip NavPillUnified${mode === "reduced" ? " bottomCategoryChip--reduced" : ""}${isSelected ? " navBtnActive bottomCategoryChipActive" : ""}`}
             aria-pressed={isSelected}
             title={c.name || "Catégorie"}
             style={isSelected ? accentVars : undefined}

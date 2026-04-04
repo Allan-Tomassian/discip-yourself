@@ -4,6 +4,8 @@ import path from "node:path";
 
 const ROOT = process.cwd();
 const SRC_DIR = path.join(ROOT, "src");
+const UI_FOUNDATIONS = path.join(ROOT, "UI_FOUNDATIONS.md");
+const COMPOSITION_FOUNDATIONS = path.join(ROOT, "COMPOSITION_FOUNDATIONS.md");
 const EXTENSIONS = new Set([".js", ".jsx", ".ts", ".tsx", ".css"]);
 
 const ALLOWED_CLASS_PATTERNS = [];
@@ -175,6 +177,23 @@ function collectTokenViolations(text, relPath) {
 }
 
 async function main() {
+  const compositionDocExists = await fs
+    .access(COMPOSITION_FOUNDATIONS)
+    .then(() => true)
+    .catch(() => false);
+  if (!compositionDocExists) {
+    console.error("[ui:check] Composition foundations document is missing.");
+    process.exitCode = 1;
+    return;
+  }
+
+  const uiFoundationsText = await fs.readFile(UI_FOUNDATIONS, "utf8");
+  if (!uiFoundationsText.includes("COMPOSITION_FOUNDATIONS.md")) {
+    console.error("[ui:check] UI_FOUNDATIONS.md must link to COMPOSITION_FOUNDATIONS.md.");
+    process.exitCode = 1;
+    return;
+  }
+
   const { scopes } = parseArgs(process.argv);
   const files = await walk(SRC_DIR);
   const scopedFiles = files

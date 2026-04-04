@@ -197,121 +197,125 @@ export default function Journal({ data, setData }) {
     >
       <section className="mainPageSection">
         <SectionHeader title="Édition" subtitle="Écriture rapide, contexte et niveau d’énergie." />
-        <AppCard>
-          <div className="col gap12">
-            <AppInlineMetaCard className="journalFormBlock">
-              <FieldGroup label="Catégorie" htmlFor="journal-category">
-                <AppSelect
-                  id="journal-category"
-                  value={categoryId || ""}
-                  onChange={(event) => setCategoryId(event.target.value)}
-                >
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </AppSelect>
-              </FieldGroup>
-              <FieldGroup label="Note" htmlFor="journal-note">
-                <AppTextarea
-                  id="journal-note"
-                  rows={5}
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
-                />
-              </FieldGroup>
-            </AppInlineMetaCard>
-            <AppInlineMetaCard className="journalFormBlock">
-              <div className="appFieldGrid">
-                <FieldGroup label="Forme" htmlFor="journal-forme">
+        <div className="mainPageSectionBody">
+          <AppCard>
+            <div className="col gap16">
+              <div className="col gap12">
+                <FieldGroup label="Catégorie" htmlFor="journal-category">
                   <AppSelect
-                    id="journal-forme"
-                    value={meta.forme || ""}
-                    onChange={(event) => setMeta((prev) => ({ ...prev, forme: event.target.value }))}
+                    id="journal-category"
+                    value={categoryId || ""}
+                    onChange={(event) => setCategoryId(event.target.value)}
                   >
-                    <option value="">Choisir</option>
-                    <option value="Excellente">Excellente</option>
-                    <option value="Bonne">Bonne</option>
-                    <option value="Moyenne">Moyenne</option>
-                    <option value="Faible">Faible</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
                   </AppSelect>
                 </FieldGroup>
-                <FieldGroup label="Humeur" htmlFor="journal-humeur">
-                  <AppSelect
-                    id="journal-humeur"
-                    value={meta.humeur || ""}
-                    onChange={(event) => setMeta((prev) => ({ ...prev, humeur: event.target.value }))}
-                  >
-                    <option value="">Choisir</option>
-                    <option value="Calme">Calme</option>
-                    <option value="Motivé">Motivé</option>
-                    <option value="Fatigué">Fatigué</option>
-                    <option value="Tendu">Tendu</option>
-                  </AppSelect>
-                </FieldGroup>
-                <FieldGroup label="Motivation" htmlFor="journal-motivation">
-                  <AppInput
-                    id="journal-motivation"
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={meta.motivation || ""}
-                    onChange={(event) => setMeta((prev) => ({ ...prev, motivation: event.target.value }))}
-                    placeholder="0 à 10"
+                <FieldGroup label="Note" htmlFor="journal-note">
+                  <AppTextarea
+                    id="journal-note"
+                    rows={5}
+                    value={note}
+                    onChange={(event) => setNote(event.target.value)}
+                    placeholder="Écris une remarque, une idée ou un ressenti pour aujourd’hui…"
                   />
                 </FieldGroup>
               </div>
-              <AppActionRow>
-                <PrimaryButton type="button" onClick={archiveCurrentNote}>
-                  Archiver la note
-                </PrimaryButton>
-                <GhostButton
-                  type="button"
-                  size="sm"
-                  onClick={clearCurrentNote}
-                >
-                  Vider
-                </GhostButton>
-              </AppActionRow>
-            </AppInlineMetaCard>
-          </div>
-        </AppCard>
+              <div className="col gap12">
+                <div className="appFieldGrid">
+                  <FieldGroup label="Forme" htmlFor="journal-forme">
+                    <AppSelect
+                      id="journal-forme"
+                      value={meta.forme || ""}
+                      onChange={(event) => setMeta((prev) => ({ ...prev, forme: event.target.value }))}
+                    >
+                      <option value="">Choisir</option>
+                      <option value="Excellente">Excellente</option>
+                      <option value="Bonne">Bonne</option>
+                      <option value="Moyenne">Moyenne</option>
+                      <option value="Faible">Faible</option>
+                    </AppSelect>
+                  </FieldGroup>
+                  <FieldGroup label="Humeur" htmlFor="journal-humeur">
+                    <AppSelect
+                      id="journal-humeur"
+                      value={meta.humeur || ""}
+                      onChange={(event) => setMeta((prev) => ({ ...prev, humeur: event.target.value }))}
+                    >
+                      <option value="">Choisir</option>
+                      <option value="Calme">Calme</option>
+                      <option value="Motivé">Motivé</option>
+                      <option value="Fatigué">Fatigué</option>
+                      <option value="Tendu">Tendu</option>
+                    </AppSelect>
+                  </FieldGroup>
+                  <FieldGroup label="Motivation" htmlFor="journal-motivation">
+                    <AppInput
+                      id="journal-motivation"
+                      type="number"
+                      min="0"
+                      max="10"
+                      value={meta.motivation || ""}
+                      onChange={(event) => setMeta((prev) => ({ ...prev, motivation: event.target.value }))}
+                      placeholder="0 à 10"
+                    />
+                  </FieldGroup>
+                </div>
+                <AppActionRow>
+                  <PrimaryButton type="button" onClick={archiveCurrentNote}>
+                    Archiver la note
+                  </PrimaryButton>
+                  <GhostButton
+                    type="button"
+                    size="sm"
+                    onClick={clearCurrentNote}
+                  >
+                    Vider
+                  </GhostButton>
+                </AppActionRow>
+              </div>
+            </div>
+          </AppCard>
+        </div>
       </section>
 
       <section className="mainPageSection">
         <SectionHeader title="Historique" subtitle="Notes archivées pour cette catégorie." />
-        <AppCard>
-          <div className="col gap12">
-            {historyItems.length ? (
-              historyItems.map((item) => {
-                const metaParts = [];
-                if (item.meta?.forme) metaParts.push(`Forme: ${item.meta.forme}`);
-                if (item.meta?.humeur) metaParts.push(`Humeur: ${item.meta.humeur}`);
-                if (item.meta?.motivation) metaParts.push(`Motivation: ${item.meta.motivation}`);
-                return (
-                  <AppInlineMetaCard key={item.id} className="journalHistoryItem">
-                    <div className="row rowBetween gap12 wrap">
-                      <div className="appInlineMetaCardMeta">{item.dateKey || todayKey}</div>
-                      <GhostButton
-                        type="button"
-                        size="sm"
-                        onClick={() => deleteHistoryItem(item.id)}
-                      >
-                        Supprimer
-                      </GhostButton>
-                    </div>
-                    {metaParts.length ? <div className="appInlineMetaCardMeta">{metaParts.join(" · ")}</div> : null}
-                    {item.note ? <div className="appInlineMetaCardText">{item.note}</div> : null}
-                  </AppInlineMetaCard>
-                );
-              })
-            ) : (
-              <EmptyState title="Aucune note" subtitle="Aucune note enregistrée pour cette catégorie." />
-            )}
-          </div>
-        </AppCard>
+        <div className="mainPageSectionBody">
+          <AppCard>
+            <div className="col gap12">
+              {historyItems.length ? (
+                historyItems.map((item) => {
+                  const metaParts = [];
+                  if (item.meta?.forme) metaParts.push(`Forme: ${item.meta.forme}`);
+                  if (item.meta?.humeur) metaParts.push(`Humeur: ${item.meta.humeur}`);
+                  if (item.meta?.motivation) metaParts.push(`Motivation: ${item.meta.motivation}`);
+                  return (
+                    <AppInlineMetaCard key={item.id} className="journalHistoryItem">
+                      <div className="row rowBetween gap12 wrap">
+                        <div className="appInlineMetaCardMeta">{item.dateKey || todayKey}</div>
+                        <GhostButton
+                          type="button"
+                          size="sm"
+                          onClick={() => deleteHistoryItem(item.id)}
+                        >
+                          Supprimer
+                        </GhostButton>
+                      </div>
+                      {metaParts.length ? <div className="appInlineMetaCardMeta">{metaParts.join(" · ")}</div> : null}
+                      {item.note ? <div className="appInlineMetaCardText">{item.note}</div> : null}
+                    </AppInlineMetaCard>
+                  );
+                })
+              ) : (
+                <EmptyState title="Aucune note" subtitle="Aucune note enregistrée pour cette catégorie." />
+              )}
+            </div>
+          </AppCard>
+        </div>
       </section>
     </AppScreen>
   );

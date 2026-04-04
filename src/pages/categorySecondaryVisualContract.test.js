@@ -25,6 +25,7 @@ describe("category secondary visual contract", () => {
 
     expect(manage).toContain("SectionHeader");
     expect(manage).toContain("AppCard");
+    expect(manage).toContain("libraryManageSectionFlat");
     expect(manage).toContain("AppInput");
     expect(manage).toContain("AppTextarea");
     expect(manage).toContain("GhostButton");
@@ -36,7 +37,7 @@ describe("category secondary visual contract", () => {
     const detail = readSrc("pages/CategoryDetailView.jsx");
 
     expect(detail).toContain("SectionHeader");
-    expect(detail).toContain("AppCard");
+    expect(detail).toContain("AppInlineMetaCard");
     expect(detail).toContain("StatusBadge");
     expect(detail).toContain("headerTitle={category.name");
     expect(detail).not.toContain("GateSectionIntro");

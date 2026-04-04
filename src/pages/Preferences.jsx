@@ -6,7 +6,6 @@ import { MARKETING_COPY, PLACEHOLDER_COPY, SURFACE_LABELS } from "../ui/labels";
 import {
   AppActionRow,
   AppCard,
-  AppInlineMetaCard,
   AppScreen,
   AppSettingRow,
   AppTextarea,
@@ -69,19 +68,17 @@ export default function Preferences({ data, setData }) {
           title="Apparence"
           subtitle="Le design system global est appliqué partout dans l’app."
         />
-        <AppCard className="preferencesGateCard" data-tour-id="settings-theme">
-          <AppInlineMetaCard className="preferencesGateSummary" titleClassName="preferencesGateNoteStrong">
-            <p className="preferencesGateNote">
-              Système visuel actif : {visualSystemLabel}
-            </p>
-            <p className="preferencesGateNote">
-              Toutes les surfaces partagent désormais le même thème sombre, calme et responsive.
-            </p>
-            <p className="preferencesGateNote">
-              Les anciennes préférences visuelles sont conservées uniquement pour compatibilité technique, sans effet sur l’interface.
-            </p>
-          </AppInlineMetaCard>
-        </AppCard>
+        <div className="mainPageSectionBody preferencesGateSummary" data-tour-id="settings-theme">
+          <p className="preferencesGateNote preferencesGateNoteStrong">
+            Système visuel actif : {visualSystemLabel}
+          </p>
+          <p className="preferencesGateNote">
+            Toutes les surfaces partagent désormais le même thème sombre, calme et responsive.
+          </p>
+          <p className="preferencesGateNote">
+            Les anciennes préférences visuelles sont conservées uniquement pour compatibilité technique, sans effet sur l’interface.
+          </p>
+        </div>
       </section>
 
       <section className="mainPageSection">
@@ -89,45 +86,47 @@ export default function Preferences({ data, setData }) {
           title="Pourquoi"
           subtitle="Modifiable tous les 30 jours."
         />
-        <AppCard className="preferencesGateCard" data-tour-id="settings-why">
-          <div className="preferencesGateForm">
-            <AppInlineMetaCard className="preferencesGateSummary">
-              <FieldGroup label="Ton pourquoi" htmlFor="preferences-why">
-                <AppTextarea
-                  id="preferences-why"
-                  className="preferencesGateTextarea"
-                  value={whyDraft}
-                  onChange={(event) => setWhyDraft(event.target.value)}
-                  placeholder={PLACEHOLDER_COPY.whyText}
-                  disabled={!canEditWhy}
-                />
-              </FieldGroup>
-              {!canEditWhy ? (
-                <p className="preferencesGateNote">
-                  Tu pourras modifier ton pourquoi dans {daysLeft} jours.
-                </p>
-              ) : null}
-            </AppInlineMetaCard>
-            <AppActionRow className="preferencesGateActions">
-              <PrimaryButton
-                type="button"
-                disabled={!canEditWhy || !cleanWhy || !whyChanged}
-                onClick={() =>
-                  setData((prev) => ({
-                    ...prev,
-                    profile: {
-                      ...prev.profile,
-                      whyText: cleanWhy,
-                      whyUpdatedAt: new Date().toISOString(),
-                    },
-                  }))
-                }
-              >
-                Enregistrer
-              </PrimaryButton>
-            </AppActionRow>
-          </div>
-        </AppCard>
+        <div className="mainPageSectionBody">
+          <AppCard className="preferencesGateCard" data-tour-id="settings-why">
+            <div className="preferencesGateForm">
+              <div className="preferencesGateSummary">
+                <FieldGroup label="Ton pourquoi" htmlFor="preferences-why">
+                  <AppTextarea
+                    id="preferences-why"
+                    className="preferencesGateTextarea"
+                    value={whyDraft}
+                    onChange={(event) => setWhyDraft(event.target.value)}
+                    placeholder={PLACEHOLDER_COPY.whyText}
+                    disabled={!canEditWhy}
+                  />
+                </FieldGroup>
+                {!canEditWhy ? (
+                  <p className="preferencesGateNote">
+                    Tu pourras modifier ton pourquoi dans {daysLeft} jours.
+                  </p>
+                ) : null}
+              </div>
+              <AppActionRow className="preferencesGateActions">
+                <PrimaryButton
+                  type="button"
+                  disabled={!canEditWhy || !cleanWhy || !whyChanged}
+                  onClick={() =>
+                    setData((prev) => ({
+                      ...prev,
+                      profile: {
+                        ...prev.profile,
+                        whyText: cleanWhy,
+                        whyUpdatedAt: new Date().toISOString(),
+                      },
+                    }))
+                  }
+                >
+                  Enregistrer
+                </PrimaryButton>
+              </AppActionRow>
+            </div>
+          </AppCard>
+        </div>
       </section>
 
       <section className="mainPageSection">
@@ -135,48 +134,46 @@ export default function Preferences({ data, setData }) {
           title="Introduction"
           subtitle="Relancer l’introduction ou le tutoriel produit."
         />
-        <AppCard className="preferencesGateCard">
-          <AppInlineMetaCard>
-            <AppActionRow align="start" className="preferencesGateActions preferencesGateActionsColumn">
-              <PrimaryButton
-                type="button"
-                size="sm"
-                onClick={() =>
-                  setData((prev) => ({
-                    ...prev,
-                    ui: {
-                      ...(prev.ui || {}),
-                      onboardingSeenVersion: 0,
-                      onboardingCompleted: false,
-                    },
-                  }))
-                }
-                data-tour-id="settings-replay-onboarding"
-              >
-                Revoir l’introduction
-              </PrimaryButton>
-              <GhostButton
-                type="button"
-                size="sm"
-                onClick={() =>
-                  setData((prev) => ({
-                    ...prev,
-                    ui: {
-                      ...(prev.ui || {}),
-                      tutorialEnabled: true,
-                      tutorialStep: 0,
-                      tourForceStart: true,
-                      tourStepIndex: 0,
-                    },
-                  }))
-                }
-                data-tour-id="settings-restart-tutorial"
-              >
-                Relancer le tutoriel
-              </GhostButton>
-            </AppActionRow>
-          </AppInlineMetaCard>
-        </AppCard>
+        <div className="mainPageSectionBody">
+          <AppActionRow align="start" className="preferencesGateActions preferencesGateActionsColumn">
+            <PrimaryButton
+              type="button"
+              size="sm"
+              onClick={() =>
+                setData((prev) => ({
+                  ...prev,
+                  ui: {
+                    ...(prev.ui || {}),
+                    onboardingSeenVersion: 0,
+                    onboardingCompleted: false,
+                  },
+                }))
+              }
+              data-tour-id="settings-replay-onboarding"
+            >
+              Revoir l’introduction
+            </PrimaryButton>
+            <GhostButton
+              type="button"
+              size="sm"
+              onClick={() =>
+                setData((prev) => ({
+                  ...prev,
+                  ui: {
+                    ...(prev.ui || {}),
+                    tutorialEnabled: true,
+                    tutorialStep: 0,
+                    tourForceStart: true,
+                    tourStepIndex: 0,
+                  },
+                }))
+              }
+              data-tour-id="settings-restart-tutorial"
+            >
+              Relancer le tutoriel
+            </GhostButton>
+          </AppActionRow>
+        </div>
       </section>
 
       <section className="mainPageSection">
@@ -184,7 +181,7 @@ export default function Preferences({ data, setData }) {
           title="Interactions"
           subtitle="Animation de pression et son optionnel."
         />
-        <AppCard className="preferencesGateCard">
+        <div className="mainPageSectionBody">
           <AppSettingRow
             className="preferencesGateRowControl"
             label="Son des interactions"
@@ -205,7 +202,7 @@ export default function Preferences({ data, setData }) {
               </GhostButton>
             }
           />
-        </AppCard>
+        </div>
       </section>
 
       <section className="mainPageSection">
@@ -213,25 +210,23 @@ export default function Preferences({ data, setData }) {
           title="Abonnement"
           subtitle="Résumé rapide de ton plan."
         />
-        <AppCard className="preferencesGateCard">
-          <AppInlineMetaCard className="preferencesGateSummary" titleClassName="preferencesGateNoteStrong">
-            <p className="preferencesGateNote">
-              {premium ? MARKETING_COPY.premiumPlan : MARKETING_COPY.essentialPlan}
-            </p>
-            <p className="preferencesGateNote">
-              {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} objectifs · {limits.actions} actions
-            </p>
-            <AppActionRow align="start" className="preferencesGateActions">
-              <GhostButton
-                type="button"
-                size="sm"
-                onClick={() => navigateTo("/subscription")}
-              >
-                Ouvrir {SURFACE_LABELS.subscription.toLowerCase()}
-              </GhostButton>
-            </AppActionRow>
-          </AppInlineMetaCard>
-        </AppCard>
+        <div className="mainPageSectionBody preferencesGateSummary">
+          <p className="preferencesGateNote preferencesGateNoteStrong">
+            {premium ? MARKETING_COPY.premiumPlan : MARKETING_COPY.essentialPlan}
+          </p>
+          <p className="preferencesGateNote">
+            {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} objectifs · {limits.actions} actions
+          </p>
+          <AppActionRow align="start" className="preferencesGateActions">
+            <GhostButton
+              type="button"
+              size="sm"
+              onClick={() => navigateTo("/subscription")}
+            >
+              Ouvrir {SURFACE_LABELS.subscription.toLowerCase()}
+            </GhostButton>
+          </AppActionRow>
+        </div>
       </section>
 
       <section className="mainPageSection">
@@ -239,19 +234,17 @@ export default function Preferences({ data, setData }) {
           title="Données"
           subtitle="Export, import et sauvegarde."
         />
-        <AppCard className="preferencesGateCard">
-          <AppInlineMetaCard>
-            <AppActionRow align="start" className="preferencesGateActions">
-              <GhostButton
-                type="button"
-                size="sm"
-                onClick={() => navigateTo("/data")}
-              >
-                Ouvrir les données
-              </GhostButton>
-            </AppActionRow>
-          </AppInlineMetaCard>
-        </AppCard>
+        <div className="mainPageSectionBody">
+          <AppActionRow align="start" className="preferencesGateActions">
+            <GhostButton
+              type="button"
+              size="sm"
+              onClick={() => navigateTo("/data")}
+            >
+              Ouvrir les données
+            </GhostButton>
+          </AppActionRow>
+        </div>
       </section>
 
       <section className="mainPageSection">
@@ -259,33 +252,31 @@ export default function Preferences({ data, setData }) {
           title="Légal et support"
           subtitle="Confidentialité, conditions et assistance."
         />
-        <AppCard className="preferencesGateCard">
-          <AppInlineMetaCard>
-            <div className="preferencesGateLinks">
-              <GhostButton
-                type="button"
-                size="sm"
-                onClick={() => navigateTo("/privacy")}
-              >
-                Confidentialité
-              </GhostButton>
-              <GhostButton
-                type="button"
-                size="sm"
-                onClick={() => navigateTo("/terms")}
-              >
-                Conditions
-              </GhostButton>
-              <GhostButton
-                type="button"
-                size="sm"
-                onClick={() => navigateTo("/support")}
-              >
-                Support
-              </GhostButton>
-            </div>
-          </AppInlineMetaCard>
-        </AppCard>
+        <div className="mainPageSectionBody">
+          <div className="preferencesGateLinks">
+            <GhostButton
+              type="button"
+              size="sm"
+              onClick={() => navigateTo("/privacy")}
+            >
+              Confidentialité
+            </GhostButton>
+            <GhostButton
+              type="button"
+              size="sm"
+              onClick={() => navigateTo("/terms")}
+            >
+              Conditions
+            </GhostButton>
+            <GhostButton
+              type="button"
+              size="sm"
+              onClick={() => navigateTo("/support")}
+            >
+              Support
+            </GhostButton>
+          </div>
+        </div>
       </section>
     </AppScreen>
   );

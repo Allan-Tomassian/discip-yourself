@@ -1,5 +1,5 @@
 import React from "react";
-import { AppCard, AppInlineMetaCard, GhostButton, StatusBadge } from "../../shared/ui/app";
+import { AppCard, GhostButton, StatusBadge } from "../../shared/ui/app";
 import CategoryPill from "../CategoryPill";
 import { getCategoryUiVars } from "../../utils/categoryAccent";
 
@@ -53,11 +53,12 @@ export default function TodayNextActions({
             ))}
           </div>
         ) : (
-          <AppInlineMetaCard
-            className="todayNextActionEmpty"
-            text="Rien d’autre d’utile n’est prévu aujourd’hui."
-            meta="Le reste du jour reste libre pour garder un rythme lisible."
-          />
+          <div className="todayNextActionEmpty">
+            <div className="todayNextActionEmptyTitle">Rien d’autre d’utile n’est prévu aujourd’hui.</div>
+            <div className="todayNextActionEmptyMeta">
+              Le reste du jour reste libre pour garder un rythme lisible.
+            </div>
+          </div>
         )}
       </div>
     </AppCard>

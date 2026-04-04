@@ -4,7 +4,6 @@ import { LABELS, MARKETING_COPY, UI_COPY } from "../ui/labels";
 import {
   AppActionRow,
   AppCard,
-  AppInlineMetaCard,
   AppScreen,
   GhostButton,
   PrimaryButton,
@@ -37,43 +36,50 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
           title={premium ? MARKETING_COPY.premiumPlan : MARKETING_COPY.essentialPlan}
           subtitle="Gère ton plan, tes achats et tes accès."
         />
-        <AppCard>
-          <div className="col gap12">
-            <AppInlineMetaCard title="Plan actif">
-              <div className="appMetaText">
-                {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} · {limits.actions}{" "}
-                {LABELS.actionsLower}
+        <div className="mainPageSectionBody">
+          <AppCard>
+            <div className="col gap16">
+              <div className="col gap6">
+                <div className="small2 textMuted">Plan actif</div>
+                <div className="appMetaText">
+                  {MARKETING_COPY.premiumLimitsPrefix} : {limits.categories} catégories · {limits.outcomes} {LABELS.goalsLower} · {limits.actions}{" "}
+                  {LABELS.actionsLower}
+                </div>
               </div>
-            </AppInlineMetaCard>
-            <AppInlineMetaCard title="Accès Premium">
-              <div className="appMetaText">
-                Les accès Premium sont vérifiés quand tu ouvres le Coach et les fonctions avancées.
+              <div className="col gap6">
+                <div className="small2 textMuted">Accès Premium</div>
+                <div className="appMetaText">
+                  Les accès Premium sont vérifiés quand tu ouvres le Coach et les fonctions avancées.
+                </div>
               </div>
-            </AppInlineMetaCard>
-            {premium && expiryLabel ? (
-              <AppInlineMetaCard title="Échéance" meta={`Actif jusqu’au ${expiryLabel}`} />
-            ) : null}
-          </div>
-          <AppActionRow>
-            <PrimaryButton
-              onClick={() => {
-                if (premium) return;
-                if (typeof onOpenPaywall === "function") onOpenPaywall("Abonnement");
-              }}
-              disabled={premium}
-            >
-              {premium ? MARKETING_COPY.premiumPlan : UI_COPY.discoverPremium}
-            </PrimaryButton>
-            <GhostButton
-              size="sm"
-              onClick={() => {
-                if (typeof onRestorePurchases === "function") onRestorePurchases();
-              }}
-            >
-              {UI_COPY.restorePurchases}
-            </GhostButton>
-          </AppActionRow>
-        </AppCard>
+              {premium && expiryLabel ? (
+                <div className="col gap6">
+                  <div className="small2 textMuted">Échéance</div>
+                  <div className="appMetaText">Actif jusqu’au {expiryLabel}</div>
+                </div>
+              ) : null}
+              <AppActionRow>
+                <PrimaryButton
+                  onClick={() => {
+                    if (premium) return;
+                    if (typeof onOpenPaywall === "function") onOpenPaywall("Abonnement");
+                  }}
+                  disabled={premium}
+                >
+                  {premium ? MARKETING_COPY.premiumPlan : UI_COPY.discoverPremium}
+                </PrimaryButton>
+                <GhostButton
+                  size="sm"
+                  onClick={() => {
+                    if (typeof onRestorePurchases === "function") onRestorePurchases();
+                  }}
+                >
+                  {UI_COPY.restorePurchases}
+                </GhostButton>
+              </AppActionRow>
+            </div>
+          </AppCard>
+        </div>
       </section>
     </AppScreen>
   );

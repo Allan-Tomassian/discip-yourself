@@ -5,14 +5,18 @@
   min-width: 0;
 }
 
-.libraryPrimaryCard {
+.libraryPrimaryStack {
   width: 100%;
   box-sizing: border-box;
+  display: grid;
+  gap: var(--space-10);
+  min-width: 0;
 }
 
-.libraryPage .libraryPrimaryCard {
-  border-color: var(--border-subtle);
-  box-shadow: var(--shadow-md);
+.librarySectionFlat {
+  display: grid;
+  gap: var(--space-10);
+  min-width: 0;
 }
 
 .libraryPage .categorySurface {
@@ -101,6 +105,13 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-12);
+}
+
+.libraryManageSectionFlat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
 }
 
 .libraryDetailStack {

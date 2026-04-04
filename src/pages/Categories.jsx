@@ -29,7 +29,6 @@ import { collectSystemInboxBuckets } from "../domain/systemInboxMigration";
 import { useBehaviorFeedback } from "../feedback/BehaviorFeedbackContext";
 import { deriveBehaviorFeedbackSignal } from "../feedback/feedbackDerivers";
 import {
-  AppCard,
   AppChip,
   AppIconButton,
   AppInput,
@@ -1041,54 +1040,52 @@ export default function Categories({
               }
             />
             <div className="mainPageSectionBody">
-              <AppCard>
-                <div className="col gap10">
-                  <div className="small2 textMuted">
-                    Les actions héritées de <strong>Général</strong> restent hors de ta carte active tant qu&apos;elles ne sont pas rattachées à une catégorie stable.
-                  </div>
-                  <div className="col gap8">
-                    {legacyBuckets.reclassifyCandidates.map(({ goal, inferredCategoryId }) => {
-                      const inferredCategory = activeCategories.find((category) => category.id === inferredCategoryId) || null;
-                      return (
-                        <AccentCategoryRow
-                          key={goal.id}
-                          color={inferredCategory?.color || "#64748B"}
-                          className="listItem"
-                        >
-                          <div className="row rowBetween gap8">
-                            <div className="col gap6 minW0">
-                              <div className="itemTitle">{goal.title || "Action"}</div>
-                              <div className="itemSub">
-                                {inferredCategory
-                                  ? `À rattacher à ${inferredCategory.name}`
-                                  : "Choisis une catégorie stable avant de la réutiliser."}
-                              </div>
+              <div className="librarySectionFlat col gap10">
+                <div className="small2 textMuted">
+                  Les actions héritées de <strong>Général</strong> restent hors de ta carte active tant qu&apos;elles ne sont pas rattachées à une catégorie stable.
+                </div>
+                <div className="col gap8">
+                  {legacyBuckets.reclassifyCandidates.map(({ goal, inferredCategoryId }) => {
+                    const inferredCategory = activeCategories.find((category) => category.id === inferredCategoryId) || null;
+                    return (
+                      <AccentCategoryRow
+                        key={goal.id}
+                        color={inferredCategory?.color || "#64748B"}
+                        className="listItem"
+                      >
+                        <div className="row rowBetween gap8">
+                          <div className="col gap6 minW0">
+                            <div className="itemTitle">{goal.title || "Action"}</div>
+                            <div className="itemSub">
+                              {inferredCategory
+                                ? `À rattacher à ${inferredCategory.name}`
+                                : "Choisis une catégorie stable avant de la réutiliser."}
                             </div>
-                            <div className="row gap8 alignCenter">
-                              {inferredCategory ? (
-                                <GhostButton
-                                  type="button"
-                                  size="sm"
-                                  onClick={() => handleReclassifyLegacyGoal(goal, inferredCategory.id)}
-                                >
-                                  Classer
-                                </GhostButton>
-                              ) : null}
+                          </div>
+                          <div className="row gap8 alignCenter">
+                            {inferredCategory ? (
                               <GhostButton
                                 type="button"
                                 size="sm"
-                                onClick={() => openEditItemRoute(goal)}
+                                onClick={() => handleReclassifyLegacyGoal(goal, inferredCategory.id)}
                               >
-                                Éditer
+                                Classer
                               </GhostButton>
-                            </div>
+                            ) : null}
+                            <GhostButton
+                              type="button"
+                              size="sm"
+                              onClick={() => openEditItemRoute(goal)}
+                            >
+                              Éditer
+                            </GhostButton>
                           </div>
-                        </AccentCategoryRow>
-                      );
-                    })}
-                  </div>
+                        </div>
+                      </AccentCategoryRow>
+                    );
+                  })}
                 </div>
-              </AppCard>
+              </div>
             </div>
           </section>
         ) : null}
@@ -1105,85 +1102,83 @@ export default function Categories({
             }
           />
           <div className="mainPageSectionBody">
-            <AppCard
-              variant="elevated"
-              className="libraryPrimaryCard"
+            <div
+              className="libraryPrimaryStack"
               style={activeLibraryCategory ? getCategoryUiVars(activeLibraryCategory, { level: "surface" }) : undefined}
+              data-tour-id="library-category-list"
             >
-              <div className="col gap10" data-tour-id="library-category-list">
-                {isEmpty ? <div className="small2 textMuted">Aucune catégorie active. Commence par poser un premier chantier durable.</div> : null}
-                {orderedUserCategories.length ? (
-                  <SortableBlocks
-                    items={orderedUserCategories}
-                    getId={(item) => item.id}
-                    onReorder={(nextItems) => {
-                      if (typeof setData !== "function") return;
-                      const nextIds = nextItems.map((item) => item.id).filter(Boolean);
-                      setData((prev) => ({
-                        ...prev,
-                        ui: { ...(prev.ui || {}), categoryRailOrder: nextIds },
-                      }));
-                    }}
-                    className="col"
-                    renderItem={(category, drag) => renderCategoryItem(category, drag, true)}
-                  />
-                ) : null}
-                {remainingSuggestions.length ? (
-                  <div className="col gap8">
-                    <div className="row rowBetween alignCenter librarySuggestionsHeader">
-                      <div className="small2 textMuted">
-                        {MAIN_PAGE_COPY.library.suggestionsTitle}
-                        <span className="textMuted2"> ({remainingSuggestions.length})</span>
-                      </div>
-                      <GhostButton
-                        type="button"
-                        size="sm"
-                        className="librarySuggestionsToggle"
-                        aria-expanded={suggestionsOpen}
-                        onClick={toggleSuggestionsOpen}
-                      >
-                        {suggestionsOpen ? "Réduire" : "Afficher"}
-                      </GhostButton>
+              {isEmpty ? <div className="small2 textMuted">Aucune catégorie active. Commence par poser un premier chantier durable.</div> : null}
+              {orderedUserCategories.length ? (
+                <SortableBlocks
+                  items={orderedUserCategories}
+                  getId={(item) => item.id}
+                  onReorder={(nextItems) => {
+                    if (typeof setData !== "function") return;
+                    const nextIds = nextItems.map((item) => item.id).filter(Boolean);
+                    setData((prev) => ({
+                      ...prev,
+                      ui: { ...(prev.ui || {}), categoryRailOrder: nextIds },
+                    }));
+                  }}
+                  className="col"
+                  renderItem={(category, drag) => renderCategoryItem(category, drag, true)}
+                />
+              ) : null}
+              {remainingSuggestions.length ? (
+                <div className="col gap8">
+                  <div className="row rowBetween alignCenter librarySuggestionsHeader">
+                    <div className="small2 textMuted">
+                      {MAIN_PAGE_COPY.library.suggestionsTitle}
+                      <span className="textMuted2"> ({remainingSuggestions.length})</span>
                     </div>
-                    {suggestionsOpen ? (
-                      <div className="categoryGateList isCollapsed librarySuggestionsList">
-                        {remainingSuggestions.map((cat) => (
-                          <div key={cat.id} className="categoryGateItem">
-                            <span className="categoryGateSwatch" style={{ background: resolveCategoryColor(cat, "#4F7CFF") }} />
-                            <span className="categoryGateName">{cat.name || "Catégorie"}</span>
-                            <AppChip
-                              active={activeCategoryIds.has(cat.id)}
-                              className="categoryGateSwitch"
-                              onClick={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                if (activeCategoryIds.has(cat.id)) {
-                                  deactivateSuggestedCategory(cat);
-                                } else {
-                                  activateSuggestedCategory(cat);
-                                }
-                              }}
-                              onPointerDown={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                              }}
-                              onMouseDown={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                              }}
-                              aria-pressed={activeCategoryIds.has(cat.id)}
-                              title="Active pour l’utiliser et créer du contenu."
-                            >
-                              {activeCategoryIds.has(cat.id) ? "Activée" : "Activer"}
-                            </AppChip>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
+                    <GhostButton
+                      type="button"
+                      size="sm"
+                      className="librarySuggestionsToggle"
+                      aria-expanded={suggestionsOpen}
+                      onClick={toggleSuggestionsOpen}
+                    >
+                      {suggestionsOpen ? "Réduire" : "Afficher"}
+                    </GhostButton>
                   </div>
-                ) : null}
-              </div>
-            </AppCard>
+                  {suggestionsOpen ? (
+                    <div className="categoryGateList isCollapsed librarySuggestionsList">
+                      {remainingSuggestions.map((cat) => (
+                        <div key={cat.id} className="categoryGateItem">
+                          <span className="categoryGateSwatch" style={{ background: resolveCategoryColor(cat, "#4F7CFF") }} />
+                          <span className="categoryGateName">{cat.name || "Catégorie"}</span>
+                          <AppChip
+                            active={activeCategoryIds.has(cat.id)}
+                            className="categoryGateSwitch"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              if (activeCategoryIds.has(cat.id)) {
+                                deactivateSuggestedCategory(cat);
+                              } else {
+                                activateSuggestedCategory(cat);
+                              }
+                            }}
+                            onPointerDown={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                            }}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                            }}
+                            aria-pressed={activeCategoryIds.has(cat.id)}
+                            title="Active pour l’utiliser et créer du contenu."
+                          >
+                            {activeCategoryIds.has(cat.id) ? "Activée" : "Activer"}
+                          </AppChip>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
           </div>
         </section>
       </div>

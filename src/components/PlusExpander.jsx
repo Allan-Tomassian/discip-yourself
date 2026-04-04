@@ -9,7 +9,6 @@ export default function PlusExpander({
   onClose,
   onChooseObjective,
   onChooseAction,
-  onChooseStructuring,
   onResumeDraft,
   hasDraft = false,
 }) {
@@ -30,11 +29,6 @@ export default function PlusExpander({
         <GhostButton className="plusExpanderAction" onClick={onChooseObjective}>
           {LABELS.goal}
         </GhostButton>
-        {typeof onChooseStructuring === "function" ? (
-          <GhostButton className="plusExpanderAction" onClick={onChooseStructuring}>
-            Structurer avec le Coach
-          </GhostButton>
-        ) : null}
         {hasDraft && typeof onResumeDraft === "function" ? (
           <GhostButton className="plusExpanderAction" onClick={onResumeDraft}>
             Reprendre

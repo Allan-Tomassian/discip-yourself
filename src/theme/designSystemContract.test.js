@@ -39,7 +39,8 @@ describe("design system contract", () => {
     expect(topNav).toContain("SURFACE_LABELS.today");
     expect(topNav).toContain("SURFACE_LABELS.planning");
     expect(topNav).toContain("const [isMobileLayout, setIsMobileLayout] = useState(");
-    expect(topNav).toContain("{!isMobileLayout ? (");
+    expect(topNav).toContain('const useIconOnlyTabs = isMobileLayout || navMode === "reduced";');
+    expect(topNav).toContain('{!useIconOnlyTabs ? <span className="NavPillUnifiedLabel">{it.label}</span> : null}');
     expect(topNav).not.toContain("Aujourd’hui");
     expect(app).toContain("theme: DEFAULT_THEME");
     expect(main).toContain('import "@fontsource-variable/geist";');

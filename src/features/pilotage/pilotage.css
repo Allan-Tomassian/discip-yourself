@@ -60,13 +60,19 @@
 
 .pilotageInlineGrid {
   display: grid;
-  gap: var(--space-8);
+  gap: var(--space-16);
 }
 
 .pilotageInlinePanel {
   display: grid;
   gap: var(--space-12);
-  position: relative;
+  padding-top: var(--space-16);
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
+}
+
+.pilotageInlinePanel:first-child {
+  padding-top: 0;
+  border-top: 0;
 }
 
 .pilotageInlinePanel > * {
@@ -113,7 +119,7 @@
 
 .pilotageReadingGrid {
   display: grid;
-  gap: var(--space-8);
+  gap: var(--space-16);
 }
 
 .pilotagePanelHeader {
@@ -155,8 +161,9 @@
 
 .pilotageMetricCard,
 .pilotageInsightCard {
-  border-color: color-mix(in srgb, var(--border-subtle) 94%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 4%, transparent);
+  border: 0;
+  box-shadow: none;
+  background: transparent;
 }
 
 .pilotageSummaryStack {
@@ -193,30 +200,6 @@
   border-top: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
 }
 
-.pilotagePage .pilotageInlinePanel.categorySurface--surface,
-.pilotagePage .pilotageMiniStat.categorySurface--surface {
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--categoryUiTint, var(--accentTintSoft)) 24%, transparent),
-      transparent 68%
-    ),
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--surface-elevated) 95%, transparent),
-      color-mix(in srgb, var(--surface-primary) 98%, transparent)
-    );
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--text-primary) 5%, transparent),
-    var(--shadowSoft);
-}
-
-.pilotagePage .pilotageInlinePanel.categorySurface--surface::before,
-.pilotagePage .pilotageMiniStat.categorySurface--surface::before {
-  height: 18px;
-  opacity: 0.24;
-}
-
 .pilotageStatusBadge {
   min-width: 72px;
   justify-content: center;
@@ -236,6 +219,13 @@
 .pilotageInsightCard {
   display: grid;
   gap: var(--space-8);
+  padding-top: var(--space-16);
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
+}
+
+.pilotageInsightCard:first-child {
+  padding-top: 0;
+  border-top: 0;
 }
 
 .pilotageInsightLabel {
@@ -249,6 +239,33 @@
   min-width: 0;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.pilotageMiniStat {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-16);
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
+}
+
+.pilotageMiniStat:nth-child(even) {
+  border-left: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
+}
+
+.pilotageMiniStat:nth-child(-n + 2) {
+  border-top: 0;
+}
+
+.pilotageLegacyList {
+  display: grid;
+  gap: var(--space-12);
+  padding-top: var(--space-16);
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
+}
+
+.pilotageLegacyItem + .pilotageLegacyItem {
+  padding-top: var(--space-8);
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 86%, transparent);
 }
 
 .pilotageTrendChart {
@@ -460,6 +477,10 @@
     grid-template-columns: 1fr 1fr;
   }
 
+  .pilotageMiniStat:nth-child(even) {
+    border-left: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
+  }
+
   .pilotageMetricBlock {
     padding: 0;
   }
@@ -468,6 +489,14 @@
   .pilotageMetricBlock:nth-child(even) {
     border-top: 0;
     border-left: 0;
+  }
+
+  .pilotageMiniStat:nth-child(n) {
+    border-top: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
+  }
+
+  .pilotageMiniStat:nth-child(-n + 2) {
+    border-top: 0;
   }
 
   .pilotageInlineDetail {

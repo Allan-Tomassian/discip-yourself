@@ -16,7 +16,7 @@ describe("Planning AppUI convergence contract", () => {
     expect(source).toContain("AppScreen");
     expect(source).toContain("SectionHeader");
     expect(source).toContain("AppCard");
-    expect(source).toContain("AppInlineMetaCard");
+    expect(source).toContain("PlanningItemRow");
     expect(source).not.toContain("from \"../components/UI\"");
     expect(source).not.toContain("from \"../shared/ui/gate/Gate\"");
     expect(source).toContain('headerSubtitle={MAIN_PAGE_COPY.planning.orientation}');
@@ -28,7 +28,8 @@ describe("Planning AppUI convergence contract", () => {
     expect(source).toContain("planningCalendarSection");
     expect(source).toContain("planningContentSection");
     expect(source).toContain("planningSectionButton");
-    expect(source).toContain("planningItemCard");
+    expect(source).toContain("planningItemRow");
+    expect(source).toContain("planningSecondaryBlock");
     expect(source).not.toContain("planningSupportSection");
     expect(source).not.toContain("Ajustements intelligents");
     expect(source).not.toContain("sans effet tableau de bord");

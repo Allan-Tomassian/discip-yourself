@@ -1,5 +1,5 @@
 import React from "react";
-import { AppCard, MetricRow } from "../../shared/ui/app";
+import { MetricRow } from "../../shared/ui/app";
 import { getCategoryUiVars } from "../../utils/categoryAccent";
 
 function formatMinutes(value) {
@@ -14,23 +14,21 @@ export default function TodayDailyState({
   activeCategory = null,
 }) {
   return (
-    <AppCard
-      className="todaySectionCard todayDailyStateCard"
+    <div
+      className="todayDailyState"
       style={activeCategory ? getCategoryUiVars(activeCategory, { level: "surface" }) : undefined}
     >
-      <div className="todaySectionBody">
-        <div className="todayDailyStateGrid">
-          <div className="todayDailyStateMetricCell">
-            <MetricRow className="todayDailyStateMetricRow" label="Prévu" value={formatMinutes(plannedMinutes)} />
-          </div>
-          <div className="todayDailyStateMetricCell">
-            <MetricRow className="todayDailyStateMetricRow" label="Fait" value={formatMinutes(doneMinutes)} />
-          </div>
-          <div className="todayDailyStateMetricCell">
-            <MetricRow className="todayDailyStateMetricRow" label="Restant" value={formatMinutes(remainingMinutes)} />
-          </div>
+      <div className="todayDailyStateGrid">
+        <div className="todayDailyStateMetricCell">
+          <MetricRow className="todayDailyStateMetricRow" label="Prévu" value={formatMinutes(plannedMinutes)} />
+        </div>
+        <div className="todayDailyStateMetricCell">
+          <MetricRow className="todayDailyStateMetricRow" label="Fait" value={formatMinutes(doneMinutes)} />
+        </div>
+        <div className="todayDailyStateMetricCell">
+          <MetricRow className="todayDailyStateMetricRow" label="Restant" value={formatMinutes(remainingMinutes)} />
         </div>
       </div>
-    </AppCard>
+    </div>
   );
 }

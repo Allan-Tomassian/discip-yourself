@@ -1,5 +1,8 @@
 # UI FOUNDATIONS — DISCIP YOURSELF
 
+Companion document:
+- [COMPOSITION_FOUNDATIONS.md](./COMPOSITION_FOUNDATIONS.md)
+
 ## 1. Product visual intent
 
 Discip Yourself is not a playful habit tracker, not a gaming app, and not a generic productivity dashboard.

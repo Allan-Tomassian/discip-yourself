@@ -3,6 +3,10 @@
   padding-bottom: var(--space-4);
 }
 
+.TopNavShell--reduced {
+  padding-bottom: 0;
+}
+
 .topNavGateWrap {
   padding: 0;
   position: relative;
@@ -22,10 +26,33 @@
   z-index: 1;
 }
 
+.topNavGateBar--reduced {
+  padding: var(--space-8);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-primary) 94%, transparent),
+      color-mix(in srgb, var(--surface-primary) 96%, transparent)
+    );
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--border-subtle) 78%, transparent);
+}
+
 .topNavGateBar .navRow,
 .topNavGateBar .navGrid,
 .topNavGateBar .navActions {
   gap: var(--space-8);
+}
+
+.topNavGateBar--reduced .navGrid {
+  gap: var(--space-6-compat);
+}
+
+.topNavGateBar--reduced .NavPillUnified {
+  opacity: 0.9;
+}
+
+.topNavGateBar--reduced .NavPillUnified.navBtnActive {
+  opacity: 1;
 }
 
 .topNavWalletBadge {
@@ -195,6 +222,10 @@
 @media (max-width: 767px) {
   .TopNavShell {
     padding-bottom: var(--space-8);
+  }
+
+  .TopNavShell--reduced {
+    padding-bottom: var(--space-4);
   }
 
   .topNavGateBar {

@@ -5,7 +5,7 @@ import { resolveCategoryColor } from "../utils/categoryPalette";
 import { resolveGoalType } from "../domain/goalType";
 import { LABELS } from "../ui/labels";
 import CategoryManageInline from "../features/library/CategoryManageInline";
-import { AppCard, AppScreen, GhostButton, SectionHeader } from "../shared/ui/app";
+import { AppScreen, GhostButton, SectionHeader } from "../shared/ui/app";
 import "../features/library/library.css";
 
 // TOUR MAP:
@@ -105,13 +105,13 @@ export default function CategoryView({
             title="Aucune catégorie"
             subtitle={`Commence par poser une catégorie claire puis une première ${LABELS.actionLower}. Les ${LABELS.goalsLower} servent ensuite à donner une direction.`}
           />
-          <AppCard>
+          <div className="mainPageSectionBody">
             <div className="libraryActionRow">
               <GhostButton type="button" size="sm" className="btnBackCompact backBtn" onClick={onBack} data-tour-id="manage-back">
                 ← Retour
               </GhostButton>
             </div>
-          </AppCard>
+          </div>
         </section>
       </AppScreen>
     );
@@ -129,17 +129,17 @@ export default function CategoryView({
             title="Catégorie introuvable"
             subtitle="Cette catégorie n’existe plus."
           />
-          <AppCard>
+          <div className="mainPageSectionBody">
             <div className="libraryActionRow">
               <GhostButton type="button" size="sm" className="btnBackCompact backBtn" onClick={onBack} data-tour-id="manage-back">
                 ← Retour
               </GhostButton>
             </div>
-          </AppCard>
+          </div>
         </section>
       </AppScreen>
     );
-  }
+}
 
   const accent = resolveCategoryColor(category, getAccentForPage(safeData, "home"));
   const backgroundImage = category.wallpaper || safeData.profile?.whyImage || "";

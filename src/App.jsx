@@ -220,6 +220,8 @@ export default function App() {
     () => normalizeWalletPreview(safeData?.ui?.walletV1),
     [safeData?.ui?.walletV1]
   );
+  const onboardingCompleted = Boolean(safeData.ui?.onboardingCompleted);
+  const showPlanStep = Boolean(safeData.ui?.showPlanStep);
   const isDrawerOpen = Boolean(safeData?.ui?.isDrawerOpen);
   const coachOpen = Boolean(coachState.open);
   const [coachFabOffsetY, setCoachFabOffsetY] = useState(() => loadCoachFabOffset());
@@ -300,8 +302,57 @@ export default function App() {
     (typeof safeData?.ui?.selectedDateKey === "string" && safeData.ui.selectedDateKey) ||
     (typeof safeData?.ui?.selectedDate === "string" && safeData.ui.selectedDate) ||
     todayLocalKey();
+  const isLibraryWorkspace =
+    (currentTab === "library" && Boolean(libraryCategoryId)) ||
+    currentTab === "category-detail" ||
+    currentTab === "category-progress";
+  const utilityTabs = new Set([
+    "settings",
+    "account",
+    "billing",
+    "data",
+    "privacy",
+    "legal",
+    "support",
+    "faq",
+    "journal",
+    "micro-actions",
+    "history",
+  ]);
+  const hideNavigationChrome =
+    Boolean(showPlanStep) ||
+    currentTab === "create-item" ||
+    currentTab === "edit-item" ||
+    currentTab === "session" ||
+    currentTab === "onboarding";
+  const topNavMode = hideNavigationChrome
+    ? "hidden"
+    : currentTab === "today" ||
+        currentTab === "planning" ||
+        currentTab === "pilotage" ||
+        (currentTab === "library" && !libraryCategoryId)
+      ? "full"
+      : isLibraryWorkspace || utilityTabs.has(currentTab)
+        ? "reduced"
+        : "full";
+  const bottomRailMode =
+    currentTab === "today" || currentTab === "planning" || currentTab === "pilotage"
+      ? "full"
+      : currentTab === "library" && !libraryCategoryId
+        ? "reduced"
+        : "hidden";
+  const coachEntryMode =
+    currentTab === "today" || currentTab === "planning" || currentTab === "pilotage"
+      ? "full"
+      : currentTab === "library" || isLibraryWorkspace
+        ? "reduced"
+        : "hidden";
+  const showTopNav = topNavMode !== "hidden";
+  const showBottomRail = bottomRailMode !== "hidden";
+  const showCoachEntry = coachEntryMode !== "hidden";
   const topNav = (
     <TopNav
+      mode={topNavMode}
       active={activeTopNavTab}
       setActive={(next) => {
         if (next === "library") {
@@ -536,13 +587,6 @@ export default function App() {
     [closePlusExpander]
   );
 
-  const openCoachStructuring = useCallback(
-    ({ conversationId = null } = {}) => {
-      openCoach({ mode: "plan", conversationId });
-    },
-    [openCoach]
-  );
-
   const openCoachAssistantCreate = useCallback(
     ({ sourceSurface = "coach", conversationId = null, proposal } = {}) => {
       const origin = resolveRouteOrigin({ sourceSurface, coachConversationId: conversationId });
@@ -774,18 +818,10 @@ export default function App() {
       // dev guard must never throw
     }
   }, [isDevEnv, safeData, setData]);
-  const onboardingCompleted = Boolean(safeData.ui?.onboardingCompleted);
-  const showPlanStep = Boolean(safeData.ui?.showPlanStep);
   const showTourOverlay = onboardingCompleted;
   const handlePlanCategory = ({ categoryId } = {}) => {
     launchGuidedCreate({ sourceSurface: "pilotage", categoryId });
   };
-
-  const showBottomRail = tab === "today" || tab === "planning" || tab === "library" || tab === "pilotage";
-  const coachFabVisibleTabs = useMemo(
-    () => new Set(["today", "planning", "library", "pilotage", "category-detail", "category-progress"]),
-    []
-  );
   const hasCoachBlockingOverlay =
     isDrawerOpen ||
     plusOpen ||
@@ -854,6 +890,11 @@ export default function App() {
   }, [showBottomRail]);
 
   useEffect(() => {
+    if (showTopNav || !isDrawerOpen) return;
+    setDrawerOpen(false);
+  }, [isDrawerOpen, showTopNav]);
+
+  useEffect(() => {
     const nextSig = [
       tab,
       categoryDetailId || "",
@@ -880,10 +921,10 @@ export default function App() {
 
   useEffect(() => {
     if (!coachOpen) return;
-    if (!coachFabVisibleTabs.has(tab) || hasCoachBlockingOverlay) {
+    if (!showCoachEntry || hasCoachBlockingOverlay) {
       setCoachState((previous) => ({ ...previous, open: false }));
     }
-  }, [coachFabVisibleTabs, coachOpen, hasCoachBlockingOverlay, tab]);
+  }, [coachOpen, hasCoachBlockingOverlay, showCoachEntry]);
 
   useEffect(() => {
     if (!coachAliasRequest) return;
@@ -933,7 +974,7 @@ export default function App() {
     }
   }, [dataLoading, onboardingCompleted]);
 
-  const profileReminder = profileNeedsCompletion && onboardingCompleted && tab !== "account" ? (
+  const profileReminder = showTopNav && profileNeedsCompletion && onboardingCompleted && tab !== "account" ? (
     <div className="profileReminderShell">
       <AppCard className="profileReminderCard">
         <div className="profileReminderContent">
@@ -973,23 +1014,9 @@ export default function App() {
   if (showPlanStep && onboardingCompleted) {
     return renderWithBehaviorFeedback(
       <>
-        {headerStack}
-        {headerSpacer}
-        <MainDrawer open={isDrawerOpen} active={tab} onClose={() => setDrawerOpen(false)} onNavigate={setTab} />
         <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />
         <DiagnosticOverlay data={safeData} tab={tab} />
         {totemDockLayer}
-        <PlusExpander
-          open={plusOpen}
-          anchorRect={plusAnchorRect}
-          anchorEl={plusAnchorElRef.current}
-          onClose={closePlusExpander}
-          onChooseObjective={handleChooseObjective}
-          onChooseAction={handleChooseAction}
-          onChooseStructuring={() => openCoachStructuring()}
-          onResumeDraft={hasDraft ? resumeCreateDraft : null}
-          hasDraft={hasDraft}
-        />
       </>
     );
   }
@@ -1005,24 +1032,33 @@ export default function App() {
 
   return renderWithBehaviorFeedback(
     <>
-      {headerStack}
-      {headerSpacer}
-      <MainDrawer open={isDrawerOpen} active={tab} onClose={() => setDrawerOpen(false)} onNavigate={setTab} />
+      {showTopNav ? headerStack : null}
+      {showTopNav ? headerSpacer : null}
+      {showTopNav ? (
+        <MainDrawer open={isDrawerOpen} active={tab} onClose={() => setDrawerOpen(false)} onNavigate={setTab} />
+      ) : null}
       {profileReminder}
       {showBottomRail ? (
-        <div ref={bottomRailRef} className="bottomCategoryBar" data-tour-id="topnav-rail">
+        <div
+          ref={bottomRailRef}
+          className={`bottomCategoryBar${bottomRailMode === "reduced" ? " bottomCategoryBar--reduced" : ""}`}
+          data-tour-id="topnav-rail"
+        >
           <div className="BottomBarSurfaceOuter GateGlassOuter">
             <div className="BottomBarSurfaceClip BottomBarBackdrop GateGlassClip GateGlassBackdrop">
-              <AppSurface className="bottomCategoryBarPanel GateGlassContent">
+              <AppSurface
+                className={`bottomCategoryBarPanel GateGlassContent${bottomRailMode === "reduced" ? " bottomCategoryBarPanel--reduced" : ""}`}
+              >
                 <div className="bottomCategoryBarRow">
                   <CategoryRail
                     categories={railCategories}
                     selectedCategoryId={railSelectedId}
                     onSelect={handleSelectCategory}
+                    mode={bottomRailMode}
                   />
                   <button
                     type="button"
-                    className="bottomCategoryPlus NavPillUnified NavPillUnified--iconOnly"
+                    className={`bottomCategoryPlus NavPillUnified NavPillUnified--iconOnly${bottomRailMode === "reduced" ? " bottomCategoryPlus--reduced" : ""}`}
                     aria-label="Créer"
                     title="Créer"
                     data-create-anchor="bottomrail"
@@ -1268,10 +1304,10 @@ export default function App() {
       ) : (
         <Preferences data={data} setData={setData} />
       )}
-      {coachFabVisibleTabs.has(tab) && !hasCoachBlockingOverlay ? (
+      {showCoachEntry && !hasCoachBlockingOverlay ? (
         <button
           type="button"
-          className={`coachFab${showBottomRail ? " has-rail" : ""}${coachOpen ? " is-open" : ""}`}
+          className={`coachFab${showBottomRail ? " has-rail" : ""}${coachOpen ? " is-open" : ""}${coachEntryMode === "reduced" ? " is-reduced" : ""}`}
           data-testid="coach-fab"
           style={{ "--coach-fab-offset-y": `${coachFabOffsetY}px` }}
           onPointerDown={handleCoachFabPointerDown}
@@ -1413,17 +1449,16 @@ export default function App() {
         />
       ) : null}
       <DiagnosticOverlay data={safeData} tab={tab} />
-        <PlusExpander
-          open={plusOpen}
-          anchorRect={plusAnchorRect}
-          anchorEl={plusAnchorElRef.current}
-          onClose={closePlusExpander}
-          onChooseObjective={handleChooseObjective}
-          onChooseAction={handleChooseAction}
-          onChooseStructuring={() => openCoachStructuring()}
-          onResumeDraft={hasDraft ? resumeCreateDraft : null}
-          hasDraft={hasDraft}
-        />
+      <PlusExpander
+        open={plusOpen}
+        anchorRect={plusAnchorRect}
+        anchorEl={plusAnchorElRef.current}
+        onClose={closePlusExpander}
+        onChooseObjective={handleChooseObjective}
+        onChooseAction={handleChooseAction}
+        onResumeDraft={hasDraft ? resumeCreateDraft : null}
+        hasDraft={hasDraft}
+      />
       <PaywallModal
         open={paywallOpen}
         reason={paywallReason}

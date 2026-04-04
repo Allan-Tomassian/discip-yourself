@@ -24,8 +24,10 @@ describe("top nav visual contract", () => {
     expect(topNav).toContain('{ id: "library", label: SURFACE_LABELS.library, icon: BookOpen }');
     expect(topNav).toContain('{ id: "pilotage", label: SURFACE_LABELS.pilotage, icon: Compass }');
     expect(topNav).toContain('aria-label={it.label}');
-    expect(topNav).toContain('{!isMobileLayout ? <span className="NavPillUnifiedLabel">{it.label}</span> : null}');
+    expect(topNav).toContain('const useIconOnlyTabs = isMobileLayout || navMode === "reduced";');
+    expect(topNav).toContain('{!useIconOnlyTabs ? <span className="NavPillUnifiedLabel">{it.label}</span> : null}');
     expect(topNav).toContain('NavPillUnified--iconOnly');
+    expect(topNav).toContain('data-nav-mode={navMode}');
     expect(topNav).toContain('className="navActions topNavMenuSlot topNavMenuActions"');
     expect(topNav).not.toContain("style={{ zIndex: Z_INDEX.topbar }}");
     expect(topNav).not.toContain('style={{ justifyContent: "flex-start" }}');
@@ -34,7 +36,9 @@ describe("top nav visual contract", () => {
     expect(navPills).toContain(".NavPillUnified--iconOnly");
     expect(navPills).toContain("var(--motion-standard) var(--ease-standard)");
     expect(topMenuCss).toContain(".TopNavShell");
+    expect(topMenuCss).toContain(".TopNavShell--reduced");
     expect(topMenuCss).toContain("padding-bottom: var(--space-4);");
+    expect(topMenuCss).toContain(".topNavGateBar--reduced");
     expect(topMenuCss).toContain(".topNavMenuActions");
     expect(indexCss).toContain("--topbar-bottom: calc(var(--safe-top) + 74px);");
     expect(indexCss).toContain(".stickyStack{");

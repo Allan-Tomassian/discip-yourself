@@ -106,18 +106,18 @@ function PilotageCategoryRow({
 
 function PilotageMetricCard({ label, value, style, className = "" }) {
   return (
-    <AppCard className={`pilotageMetricCard ${className}`.trim()} style={style}>
+    <div className={`pilotageMetricCard ${className}`.trim()} style={style}>
       <MetricRow label={label} value={value} />
-    </AppCard>
+    </div>
   );
 }
 
 function PilotageInsightCard({ label, children, className = "" }) {
   return (
-    <AppCard className={`pilotageInsightCard ${className}`.trim()}>
+    <div className={`pilotageInsightCard ${className}`.trim()}>
       <div className="pilotageInsightLabel">{label}</div>
       <div className="pilotageInsightCopy">{children}</div>
-    </AppCard>
+    </div>
   );
 }
 
@@ -717,13 +717,13 @@ export default function Pilotage({
       disciplineTrend.summary.trendLabel === "baisse"
         ? "critical"
         : disciplineTrend.summary.trendLabel === "irrégularité"
-          ? "weak"
-          : "default";
+        ? "weak"
+        : "default";
     return (
       <div className="pilotageInlineDetail" style={sharedSurfaceVars}>
         <div className="pilotageInlineGrid">
-          <AppCard
-            className="pilotageInlinePanel pilotageInlinePanel--metrics categorySurface categorySurface--surface"
+          <div
+            className="pilotageInlinePanel pilotageInlinePanel--metrics"
             data-tour-id="pilotage-discipline"
             style={sharedSurfaceVars}
           >
@@ -756,25 +756,25 @@ export default function Pilotage({
             </div>
             <div className="pilotageMiniStatsGrid">
               <PilotageMetricCard
-                className="pilotageMiniStat categorySurface categorySurface--surface"
+                className="pilotageMiniStat"
                 style={getCategoryUiVars(detailCategory, { level: "surface", stateTone: completionTone })}
                 label="Fait / attendu"
                 value={detailWeek ? `${detailWeek.done || 0} / ${detailWeek.expected || 0}` : "—"}
               />
               <PilotageMetricCard
-                className="pilotageMiniStat categorySurface categorySurface--surface"
+                className="pilotageMiniStat"
                 style={getCategoryUiVars(detailCategory, { level: "surface", stateTone: scoreTone })}
                 label="Niveau actuel"
                 value={Number.isFinite(disciplineTrend.summary.currentScore) ? `${disciplineTrend.summary.currentScore}%` : "—"}
               />
               <PilotageMetricCard
-                className="pilotageMiniStat categorySurface categorySurface--surface"
+                className="pilotageMiniStat"
                 style={getCategoryUiVars(detailCategory, { level: "surface", stateTone: trendTone })}
                 label="Rythme"
                 value={formatDisciplineTrendLabel(disciplineTrend.summary.trendLabel)}
               />
               <PilotageMetricCard
-                className="pilotageMiniStat categorySurface categorySurface--surface"
+                className="pilotageMiniStat"
                 style={getCategoryUiVars(detailCategory, { level: "surface", stateTone: activeDaysTone })}
                 label="Jours actifs"
                 value={`${constanceSummary.activeDays7}/7`}
@@ -787,10 +787,10 @@ export default function Pilotage({
               animated
               variant="compact"
             />
-          </AppCard>
+          </div>
 
-          <AppCard
-            className="pilotageInlinePanel categorySurface categorySurface--surface"
+          <div
+            className="pilotageInlinePanel pilotageInlinePanel--reading"
             style={sharedSurfaceVars}
           >
             <div className="pilotagePanelHeader">
@@ -849,7 +849,7 @@ export default function Pilotage({
                 <FeedbackMessage tone="warning">{manualPilotageAnalysis.error}</FeedbackMessage>
               </div>
             ) : null}
-          </AppCard>
+          </div>
         </div>
       </div>
     );
@@ -1029,15 +1029,13 @@ export default function Pilotage({
               subtitle={`${legacyBuckets.pilotageRituals.length} élément${legacyBuckets.pilotageRituals.length > 1 ? "s" : ""} d’organisation ou de revue a été retiré${legacyBuckets.pilotageRituals.length > 1 ? "s" : ""} du flux d’exécution.`}
             />
             <div className="mainPageSectionBody">
-              <AppCard>
-                <div className="col gap6">
-                  {legacyBuckets.pilotageRituals.slice(0, 4).map((goal) => (
-                    <div key={goal.id} className="small2 textMuted">
-                      {goal.title || "Rituel"}
-                    </div>
-                  ))}
-                </div>
-              </AppCard>
+              <div className="pilotageLegacyList">
+                {legacyBuckets.pilotageRituals.slice(0, 4).map((goal) => (
+                  <div key={goal.id} className="small2 textMuted pilotageLegacyItem">
+                    {goal.title || "Rituel"}
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
         ) : null}

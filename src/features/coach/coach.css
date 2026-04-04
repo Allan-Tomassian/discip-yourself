@@ -37,6 +37,18 @@
   z-index: 1850;
 }
 
+.coachFab.is-reduced {
+  min-height: 42px;
+  padding: 0 var(--space-12);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-meta);
+  opacity: 0.92;
+}
+
+.coachFab.is-reduced .coachFabDot {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-primary) 10%, transparent);
+}
+
 .coachFab:disabled {
   opacity: 0.6;
   cursor: default;

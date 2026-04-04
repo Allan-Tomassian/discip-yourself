@@ -16,13 +16,12 @@ describe("PlusExpander", () => {
         onClose={() => {}}
         onChooseObjective={() => {}}
         onChooseAction={() => {}}
-        onChooseStructuring={() => {}}
       />
     );
 
     expect(html).toContain("Action rapide");
     expect(html).toContain("Objectif");
-    expect(html).toContain("Structurer avec le Coach");
+    expect(html).not.toContain("Structurer avec le Coach");
     expect(html).not.toContain("Reprendre");
   });
 
@@ -34,7 +33,6 @@ describe("PlusExpander", () => {
         onClose={() => {}}
         onChooseObjective={() => {}}
         onChooseAction={() => {}}
-        onChooseStructuring={() => {}}
         onResumeDraft={() => {}}
         hasDraft
       />

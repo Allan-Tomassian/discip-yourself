@@ -35,7 +35,7 @@ describe("drawer pages visual contract", () => {
     }
   });
 
-  it("keeps drawer and secondary pages on the shared premium surface family", () => {
+  it("keeps drawer and secondary pages on shared AppUI composition primitives", () => {
     const pages = [
       "pages/Preferences.jsx",
       "pages/Account.jsx",
@@ -52,8 +52,11 @@ describe("drawer pages visual contract", () => {
     const drawer = readSrc("components/navigation/MainDrawer.jsx");
 
     for (const source of pages) {
-      expect(source).toContain("AppCard");
+      expect(source).toContain("SectionHeader");
       expect(source).not.toContain("GateSecondarySectionCard");
+      expect(
+        source.includes("AppCard") || source.includes("AppInlineMetaCard") || source.includes("AppActionRow")
+      ).toBe(true);
     }
 
     expect(microActions).toContain("headerTitle");

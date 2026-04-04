@@ -14,7 +14,10 @@ describe("coach panel contract", () => {
     const app = readSrc("App.jsx");
 
     expect(app).toContain("const [coachState, setCoachState] = useState({");
-    expect(app).toContain("className={`coachFab${showBottomRail ? \" has-rail\" : \"\"}${coachOpen ? \" is-open\" : \"\"}`}");
+    expect(app).toContain("showCoachEntry && !hasCoachBlockingOverlay ? (");
+    expect(app).toContain(
+      "className={`coachFab${showBottomRail ? \" has-rail\" : \"\"}${coachOpen ? \" is-open\" : \"\"}${coachEntryMode === \"reduced\" ? \" is-reduced\" : \"\"}`}"
+    );
     expect(app).toContain("data-testid=\"coach-fab\"");
     expect(app).toContain("<span>Coach</span>");
     expect(app).toContain("aria-label=\"Coach\"");

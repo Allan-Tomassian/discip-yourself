@@ -6,7 +6,7 @@ import { resolveCategoryColor } from "../utils/categoryPalette";
 import { resolveGoalType } from "../domain/goalType";
 import { isProcessLinkedToOutcome } from "../logic/linking";
 import { LABELS } from "../ui/labels";
-import { AppCard, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader, StatusBadge } from "../shared/ui/app";
+import { AppInlineMetaCard, AppScreen, GhostButton, SectionHeader, StatusBadge } from "../shared/ui/app";
 import "../features/library/library.css";
 
 export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
@@ -47,9 +47,9 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
       >
         <section className="mainPageSection">
           <SectionHeader title="Catégorie introuvable" subtitle="Cette catégorie n’existe plus." />
-          <AppCard>
+          <div className="mainPageSectionBody">
             <AppInlineMetaCard text="Reviens à la bibliothèque pour choisir une autre catégorie." />
-          </AppCard>
+          </div>
         </section>
       </AppScreen>
     );
@@ -75,14 +75,14 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
     >
       <section className="mainPageSection">
         <SectionHeader title="Mini-why" subtitle="Contexte visible pour cette catégorie." />
-        <AppCard>
+        <div className="mainPageSectionBody">
           <AppInlineMetaCard text={whyText || "Aucun mini-why pour cette catégorie."} />
-        </AppCard>
+        </div>
       </section>
 
       <section className="mainPageSection">
         <SectionHeader title={LABELS.goals} subtitle="Objectifs et actions déjà reliées." />
-        <AppCard>
+        <div className="mainPageSectionBody">
           {outcomeGoals.length ? (
             <div className="col gap12">
               {outcomeGoals.map((g) => {
@@ -99,11 +99,13 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
                       {linkedHabits.length ? (
                         <div className="col gap8">
                           <div className="small2 textMuted">Actions liées</div>
-                          {linkedHabits.map((h) => (
-                            <AccentItem key={h.id} className="listItem" style={catAccentVars}>
-                              <div className="itemSub">{h.title || "Action"}</div>
-                            </AccentItem>
-                          ))}
+                          <div className="col gap8 pl12">
+                            {linkedHabits.map((h) => (
+                              <div key={h.id} className="itemSub">
+                                {h.title || "Action"}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       ) : (
                         <div className="itemSub">Aucune action liée.</div>
@@ -116,13 +118,13 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
           ) : (
             <AppInlineMetaCard text={`Aucun ${LABELS.goalLower} dans cette catégorie.`} />
           )}
-        </AppCard>
+        </div>
       </section>
 
       {unlinkedHabits.length ? (
         <section className="mainPageSection">
           <SectionHeader title="Actions non liées" subtitle="Actions présentes mais non rattachées à un objectif." />
-          <AppCard>
+          <div className="mainPageSectionBody">
             <div className="col gap10">
               {unlinkedHabits.map((h) => (
                 <AccentItem key={h.id} className="listItem" style={catAccentVars}>
@@ -130,7 +132,7 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
                 </AccentItem>
               ))}
             </div>
-          </AppCard>
+          </div>
         </section>
       ) : null}
     </AppScreen>

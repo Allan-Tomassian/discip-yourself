@@ -124,15 +124,15 @@ export default function TotemDockPanel({
                   dataTestId="totem-wallet-balance"
                 />
                 <div className="totemDockWalletStats">
-                  <AppCard className="totemDockWalletStat">
+                  <div className="totemDockWalletStat">
                     <MetricRow label="Gagné aujourd’hui" value={formatCoins(walletData.earnedToday)} />
-                  </AppCard>
-                  <AppCard className="totemDockWalletStat">
+                  </div>
+                  <div className="totemDockWalletStat">
                     <MetricRow
                       label="Vidéos aujourd’hui"
                       value={`${walletData.adsToday}/${BASIC_REWARDED_ADS_DAILY_LIMIT}`}
                     />
-                  </AppCard>
+                  </div>
                 </div>
                 <div className="totemDockWalletEvents">
                   <SectionHeader title="Dernières récompenses" />
@@ -166,12 +166,12 @@ export default function TotemDockPanel({
                   </div>
                 </div>
                 <div className="totemDockOwned">
-                  <AppCard className="totemDockOwnedRow">
+                  <div className="totemDockOwnedRow">
                     <MetricRow label="Couleurs possédées" value={totemData.owned.colors.length} />
-                  </AppCard>
-                  <AppCard className="totemDockOwnedRow">
+                  </div>
+                  <div className="totemDockOwnedRow">
                     <MetricRow label="Accessoires possédés" value={totemData.owned.accessories.length} />
-                  </AppCard>
+                  </div>
                 </div>
                 <div className="totemDockHint">Utilise l’onglet Boutique pour acheter ou équiper.</div>
               </div>
@@ -258,17 +258,17 @@ export default function TotemDockPanel({
 
             {view === "settings" ? (
               <div className="totemDockSettingsView">
-                <AppCard className="totemDockSettingsRow">
+                <div className="totemDockSettingsRow">
                   <AppToggleRow
                     checked={totemData.animationEnabled}
                     onChange={onToggleAnimations}
                     label="Animations"
                     description="Active ou coupe les animations du totem sans modifier le scoring."
                   />
-                </AppCard>
-                <AppCard className="totemDockSettingsRow">
+                </div>
+                <div className="totemDockSettingsRow">
                   <MetricRow label="Comportement" value="Variant B" />
-                </AppCard>
+                </div>
                 <p className="totemDockHint">
                   Ce réglage prépare les variantes de comportement du totem, sans changer le scoring.
                 </p>

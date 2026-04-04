@@ -76,7 +76,8 @@ describe("main pages visual canon contract", () => {
     expect(pilotageCss).not.toContain("GateAnalyticsCard");
     expect(todayCss).not.toContain(".todaySectionHeader");
     expect(planningCss).not.toContain("gap: 18px;");
-    expect(planningCss).toContain(".planningItemCard");
+    expect(planningCss).toContain(".planningItemRow");
+    expect(planningCss).toContain(".planningSecondaryBlock");
     expect(planningCss).not.toContain("GateInlineMetaCard");
   });
 
@@ -91,8 +92,8 @@ describe("main pages visual canon contract", () => {
     expect(library).toContain("<SectionHeader");
     expect(pilotage).toContain("<SectionHeader");
     expect(pilotage).toContain('className="mainPageStack pilotagePage"');
-    expect(library).toContain("libraryPrimaryCard");
-    expect(library).toContain("<AppCard");
+    expect(library).toContain("libraryPrimaryStack");
+    expect(library).not.toContain("libraryPrimaryCard");
     expect(pilotage).toContain("pilotageFocusCard");
     expect(pilotage).toContain("PilotageMetricCard");
     expect(pilotage).toContain("PilotageInsightCard");
