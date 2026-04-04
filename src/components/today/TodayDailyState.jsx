@@ -18,17 +18,17 @@ export default function TodayDailyState({
       className="todaySectionCard todayDailyStateCard"
       style={activeCategory ? getCategoryUiVars(activeCategory, { level: "surface" }) : undefined}
     >
-      <div className="col todaySectionBody">
+      <div className="todaySectionBody">
         <div className="todayDailyStateGrid">
-          <AppCard className="todayDailyStateItem todayDailyStateMetric">
+          <div className="todayDailyStateMetricCell">
             <MetricRow className="todayDailyStateMetricRow" label="Prévu" value={formatMinutes(plannedMinutes)} />
-          </AppCard>
-          <AppCard className="todayDailyStateItem todayDailyStateMetric">
+          </div>
+          <div className="todayDailyStateMetricCell">
             <MetricRow className="todayDailyStateMetricRow" label="Fait" value={formatMinutes(doneMinutes)} />
-          </AppCard>
-          <AppCard className="todayDailyStateItem todayDailyStateMetric">
+          </div>
+          <div className="todayDailyStateMetricCell">
             <MetricRow className="todayDailyStateMetricRow" label="Restant" value={formatMinutes(remainingMinutes)} />
-          </AppCard>
+          </div>
         </div>
       </div>
     </AppCard>

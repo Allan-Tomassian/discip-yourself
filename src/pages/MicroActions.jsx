@@ -354,31 +354,35 @@ export default function MicroActions({ data, setData, isPremiumPlan = false }) {
       headerTitle="Micro-actions"
       headerSubtitle="Petites actions rapides pour relancer l’élan du jour."
     >
-      <div className="mainPageStack">
-        <SectionHeader
-          title="Micro-actions du jour"
-          subtitle="Trois leviers courts pour relancer l’élan sans repasser par Today."
-        />
-        <MicroActionsCard
-          categoryId={selectedCategoryId}
-          categoryOptions={microCategoryOptions}
-          items={microActionsV1.items}
-          microDoneToday={microDoneToday}
-          rerollsUsed={Math.max(0, Number(microActionsV1?.rerollsUsed) || 0)}
-          rerollCredits={Math.max(0, Number(microActionsV1?.rerollCredits) || 0)}
-          rerollLimit={isPremiumPlan ? Number.POSITIVE_INFINITY : BASIC_MICRO_REROLL_LIMIT}
-          canWatchAd={microCanWatchAd}
-          adLoading={microWatchAdLoading}
-          adFeedback={microRewardFeedback}
-          isPremiumPlan={isPremiumPlan}
-          canValidate
-          isMicroToday
-          onCategoryChange={handleMicroCategoryChange}
-          onDone={handleMicroActionDone}
-          onReroll={(indices) => handleMicroReroll(indices, { useCredit: false })}
-          onUseRerollCredit={(indices) => handleMicroReroll(indices, { useCredit: true })}
-          onWatchAd={handleMicroWatchAd}
-        />
+      <div className="mainPageStack microActionsPage">
+        <section className="mainPageSection">
+          <SectionHeader
+            title="Micro-actions du jour"
+            subtitle="Trois leviers courts pour relancer l’élan sans repasser par Today."
+          />
+          <div className="mainPageSectionBody">
+            <MicroActionsCard
+              categoryId={selectedCategoryId}
+              categoryOptions={microCategoryOptions}
+              items={microActionsV1.items}
+              microDoneToday={microDoneToday}
+              rerollsUsed={Math.max(0, Number(microActionsV1?.rerollsUsed) || 0)}
+              rerollCredits={Math.max(0, Number(microActionsV1?.rerollCredits) || 0)}
+              rerollLimit={isPremiumPlan ? Number.POSITIVE_INFINITY : BASIC_MICRO_REROLL_LIMIT}
+              canWatchAd={microCanWatchAd}
+              adLoading={microWatchAdLoading}
+              adFeedback={microRewardFeedback}
+              isPremiumPlan={isPremiumPlan}
+              canValidate
+              isMicroToday
+              onCategoryChange={handleMicroCategoryChange}
+              onDone={handleMicroActionDone}
+              onReroll={(indices) => handleMicroReroll(indices, { useCredit: false })}
+              onUseRerollCredit={(indices) => handleMicroReroll(indices, { useCredit: true })}
+              onWatchAd={handleMicroWatchAd}
+            />
+          </div>
+        </section>
       </div>
       <RewardedAdModal
         open={rewardedAdRequest.open}

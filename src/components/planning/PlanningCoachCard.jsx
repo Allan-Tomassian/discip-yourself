@@ -221,16 +221,16 @@ export default function PlanningCoachCard({
         </div>
 
         <div className="planningCoachSummary">
-          <AppCard className="planningCoachBlock" variant="metric">
+          <div className="planningCoachSummaryBlock">
             <div className="planningCoachLabel">Repère principal</div>
             <div className="planningCoachValue">{visibleReply?.headline || "Ajustement du rythme"}</div>
-          </AppCard>
-          <AppCard className="planningCoachBlock" variant="metric">
+          </div>
+          <div className="planningCoachSummaryBlock">
             <div className="planningCoachLabel">Ce que cela signale</div>
             <div className="planningCoachValue">
               {visibleReply?.reason || "Le rythme a besoin d’un ajustement simple et crédible."}
             </div>
-          </AppCard>
+          </div>
           <AppInlineMetaCard
             className="planningCoachBlock planningCoachBlock--summary"
             title="Ajustement simple"

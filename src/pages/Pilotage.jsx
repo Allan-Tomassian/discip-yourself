@@ -121,6 +121,23 @@ function PilotageInsightCard({ label, children, className = "" }) {
   );
 }
 
+function PilotageSummaryBlock({ label, children, className = "" }) {
+  return (
+    <div className={`pilotageSummaryBlock ${className}`.trim()}>
+      <div className="pilotageInsightLabel">{label}</div>
+      <div className="pilotageInsightCopy">{children}</div>
+    </div>
+  );
+}
+
+function PilotageMetricBlock({ label, value, className = "" }) {
+  return (
+    <div className={`pilotageMetricBlock ${className}`.trim()}>
+      <MetricRow label={label} value={value} />
+    </div>
+  );
+}
+
 function buildConstanceSummary({ occurrences, sessionHistoryByOccurrenceId }) {
   const activeDays = new Set();
   let realMinutes = 0;
@@ -853,27 +870,25 @@ export default function Pilotage({
           />
           <div className="mainPageSectionBody">
             <AppCard className="pilotageSummaryCard">
-              <div className="col gap12">
-                <div className="pilotageInsights">
-                  <PilotageInsightCard label="Signal principal">
+              <div className="pilotageSummaryStack">
+                  <PilotageSummaryBlock label="Signal principal">
                     {globalPilotageSummary.summary}
-                  </PilotageInsightCard>
+                  </PilotageSummaryBlock>
                   {globalPilotageSummary.strongestSignal ? (
-                    <PilotageInsightCard label="Zone la plus exploitable">
+                    <PilotageSummaryBlock label="Zone la plus exploitable">
                       {globalPilotageSummary.strongestSignal}
-                    </PilotageInsightCard>
+                    </PilotageSummaryBlock>
                   ) : null}
                   {globalPilotageSummary.frictionSignal ? (
-                    <PilotageInsightCard label="Point de friction">
+                    <PilotageSummaryBlock label="Point de friction">
                       {globalPilotageSummary.frictionSignal}
-                    </PilotageInsightCard>
+                    </PilotageSummaryBlock>
                   ) : null}
                   {globalPilotageSummary.dormantSignal ? (
-                    <PilotageInsightCard label="Zone stagnante">
+                    <PilotageSummaryBlock label="Zone stagnante">
                       {globalPilotageSummary.dormantSignal}
-                    </PilotageInsightCard>
+                    </PilotageSummaryBlock>
                   ) : null}
-                </div>
               </div>
             </AppCard>
           </div>
@@ -969,38 +984,38 @@ export default function Pilotage({
           />
           <div className="mainPageSectionBody">
             <AppCard className="pilotageStatsCard">
-              <div className="col gap12">
+              <div className="pilotageStatsStack">
                 <div className="pilotageTopGrid">
-                  <PilotageMetricCard label="Niveau global" value={`${globalPilotageStats.globalScore}%`} />
-                  <PilotageMetricCard
+                  <PilotageMetricBlock label="Niveau global" value={`${globalPilotageStats.globalScore}%`} />
+                  <PilotageMetricBlock
                     label="Actions faites / attendues"
                     value={`${globalPilotageStats.doneCount} / ${globalPilotageStats.expectedCount}`}
                   />
-                  <PilotageMetricCard
+                  <PilotageMetricBlock
                     label="Temps investi réel"
                     value={formatMinutes(globalPilotageStats.realMinutes7)}
                   />
-                  <PilotageMetricCard
+                  <PilotageMetricBlock
                     label="Catégories actives"
                     value={`${globalPilotageStats.activeCategories} / ${Math.max(categories.length, 1)}`}
                   />
                 </div>
-                <div className="pilotageInsights">
-                  <PilotageInsightCard label="Lecture du rythme">
+                <div className="pilotageStatsNarratives">
+                  <PilotageSummaryBlock label="Lecture du rythme">
                     <div>
                       {globalPilotageStats.structuredCategories} catégorie
                       {globalPilotageStats.structuredCategories > 1 ? "s" : ""} ont déjà une base exploitable, avec{" "}
                       {globalPilotageStats.activeDays7} jour{globalPilotageStats.activeDays7 > 1 ? "s" : ""} utile
                       {globalPilotageStats.activeDays7 > 1 ? "s" : ""} sur 7.
                     </div>
-                  </PilotageInsightCard>
-                  <PilotageInsightCard label="Points de friction">
+                  </PilotageSummaryBlock>
+                  <PilotageSummaryBlock label="Points de friction">
                     <div>
                       {globalPilotageStats.missedCount > 0
                         ? `${globalPilotageStats.missedCount} occurrence${globalPilotageStats.missedCount > 1 ? "s" : ""} manquée${globalPilotageStats.missedCount > 1 ? "s" : ""} sur la fenêtre récente.`
                         : "Aucune occurrence manquée sur la fenêtre récente."}
                     </div>
-                  </PilotageInsightCard>
+                  </PilotageSummaryBlock>
                 </div>
               </div>
             </AppCard>

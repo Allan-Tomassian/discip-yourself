@@ -1,7 +1,15 @@
+.pilotagePage {
+  gap: var(--space-40);
+}
+
+.pilotagePage .mainPageSection {
+  gap: var(--space-16);
+}
+
 .pilotageTopGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-12);
+  gap: 0;
 }
 
 .pilotageCategoryRow {
@@ -149,6 +157,40 @@
 .pilotageInsightCard {
   border-color: color-mix(in srgb, var(--border-subtle) 94%, transparent);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 4%, transparent);
+}
+
+.pilotageSummaryStack {
+  display: grid;
+  gap: var(--space-32);
+}
+
+.pilotageStatsStack {
+  display: grid;
+  gap: var(--space-32);
+}
+
+.pilotageSummaryBlock {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.pilotageMetricBlock {
+  padding: var(--space-16);
+}
+
+.pilotageMetricBlock:nth-child(n + 3) {
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
+}
+
+.pilotageMetricBlock:nth-child(even) {
+  border-left: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
+}
+
+.pilotageStatsNarratives {
+  display: grid;
+  gap: var(--space-24);
+  padding-top: var(--space-32);
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
 }
 
 .pilotagePage .pilotageInlinePanel.categorySurface--surface,
@@ -411,15 +453,32 @@
 @media (max-width: 900px) {
   .pilotageTopGrid {
     grid-template-columns: 1fr;
+    gap: var(--space-16);
   }
 
   .pilotageMiniStatsGrid {
     grid-template-columns: 1fr 1fr;
   }
 
+  .pilotageMetricBlock {
+    padding: 0;
+  }
+
+  .pilotageMetricBlock:nth-child(n + 3),
+  .pilotageMetricBlock:nth-child(even) {
+    border-top: 0;
+    border-left: 0;
+  }
+
   .pilotageInlineDetail {
     margin-left: 0;
     padding-left: 0;
     border-left: 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .pilotagePage {
+    gap: var(--space-48);
   }
 }

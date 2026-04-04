@@ -15,10 +15,11 @@ export default function TodayNextActions({
       className="todaySectionCard todayNextActionsCard"
       style={activeCategory ? getCategoryUiVars(activeCategory, { level: "surface" }) : undefined}
     >
-      <div className="col todaySectionBody">
+      <div className="todaySectionBody">
         {safeActions.length ? (
-          safeActions.map((item) => (
-            <AppCard key={item.id} className="todayNextActionItem">
+          <div className="todayNextActionsList">
+            {safeActions.map((item) => (
+              <div key={item.id} className="todayNextActionRow">
               <div className="todayNextActionTop">
                 <div className="todayNextActionTime">{item.start || "Fenêtre libre"}</div>
                 <CategoryPill
@@ -48,8 +49,9 @@ export default function TodayNextActions({
                   Démarrer
                 </GhostButton>
               </div>
-            </AppCard>
-          ))
+              </div>
+            ))}
+          </div>
         ) : (
           <AppInlineMetaCard
             className="todayNextActionEmpty"

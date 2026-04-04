@@ -182,7 +182,7 @@ export default function MicroActionsCard({
             const isSelected = selectedIndices.includes(index);
             const isDone = item.status === "done";
             return (
-              <AppCard key={item.id || `${item.title}-${index}`} className="microItem" data-tour-id="today-micro-item">
+              <div key={item.id || `${item.title}-${index}`} className="microItemRowFlat" data-tour-id="today-micro-item">
                 <div className="microItemRow">
                   <label className="microPick" aria-label={`Sélectionner ${item.title} pour reroll`}>
                     <input
@@ -212,7 +212,7 @@ export default function MicroActionsCard({
                     {UI_COPY.done}
                   </GhostButton>
                 </div>
-              </AppCard>
+              </div>
             );
           })}
         </div>

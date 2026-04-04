@@ -1,3 +1,11 @@
+.microActionsPage {
+  gap: var(--space-40);
+}
+
+.microActionsPage .mainPageSection {
+  gap: var(--space-16);
+}
+
 .microCard {
   width: 100%;
   box-sizing: border-box;
@@ -111,17 +119,32 @@
 }
 
 .microList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
+  display: grid;
+  gap: var(--space-16);
   padding-inline: 2px;
+}
+
+.microItemRowFlat {
+  padding-block: var(--space-16);
+}
+
+.microItemRowFlat:first-child {
+  padding-top: 0;
+}
+
+.microItemRowFlat:last-child {
+  padding-bottom: 0;
+}
+
+.microItemRowFlat + .microItemRowFlat {
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
 }
 
 .microItemRow {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-12);
 }
 
 .microPick {
@@ -288,5 +311,11 @@
 
   .microAdActions > * {
     flex: 1 1 auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  .microActionsPage {
+    gap: var(--space-48);
   }
 }

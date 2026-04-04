@@ -1,4 +1,9 @@
 .planningPage {
+  gap: var(--space-40);
+}
+
+.planningPage .mainPageSection {
+  gap: var(--space-16);
 }
 
 .planningSectionCard {
@@ -148,14 +153,27 @@
   margin-top: var(--space-4);
 }
 
+.planningCoachSection .planningSectionBody {
+  gap: var(--space-24);
+}
+
 .planningCoachSummary {
   display: grid;
-  gap: var(--space-12);
+  gap: var(--space-16);
+}
+
+.planningCoachSummaryBlock {
+  display: grid;
+  gap: var(--space-8);
 }
 
 .planningCoachBlock {
   display: grid;
   gap: var(--space-8);
+}
+
+.planningCoachBlock--summary {
+  margin-top: var(--space-8);
 }
 
 .planningCoachLabel {
@@ -227,6 +245,10 @@
 }
 
 @media (min-width: 1024px) {
+  .planningPage {
+    gap: var(--space-48);
+  }
+
   .planningWeekGrid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }

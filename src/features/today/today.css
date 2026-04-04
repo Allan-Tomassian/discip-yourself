@@ -2,6 +2,11 @@
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
+  gap: var(--space-40);
+}
+
+.todayPageShell .mainPageSection {
+  gap: var(--space-16);
 }
 
 .todayHeroCard,
@@ -9,10 +14,14 @@
   width: 100%;
 }
 
-.todayHeroContent,
+.todayHeroContent {
+  display: grid;
+  gap: var(--space-16);
+}
+
 .todaySectionBody {
   display: grid;
-  gap: var(--space-12);
+  gap: var(--space-24);
 }
 
 .todayHeroHeader {
@@ -169,9 +178,27 @@
   padding-top: var(--space-4);
 }
 
-.todayNextActionItem {
+.todayNextActionsList {
   display: grid;
-  gap: var(--space-8);
+  gap: var(--space-16);
+}
+
+.todayNextActionRow {
+  display: grid;
+  gap: var(--space-12);
+  padding-block: var(--space-16);
+}
+
+.todayNextActionRow:first-child {
+  padding-top: 0;
+}
+
+.todayNextActionRow:last-child {
+  padding-bottom: 0;
+}
+
+.todayNextActionRow + .todayNextActionRow {
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 92%, transparent);
 }
 
 .todayNextActionTop {
@@ -221,22 +248,40 @@
   width: 100%;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: var(--space-12);
+  gap: var(--space-16);
 }
 
-.todayDailyStateItem {
+.todayDailyStateMetricCell {
+  display: grid;
+  align-content: start;
   min-height: 96px;
+  padding: var(--space-16);
+}
+
+.todayDailyStateMetricCell .appMetricRowLabel {
+  color: var(--text-secondary);
+}
+
+.todayDailyStateMetricCell .appMetricRowValueCluster {
+  align-items: flex-start;
 }
 
 .todayDailyStateMetricRow {
+  min-height: 96px;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-8);
 }
 
-.todayDailyStateMetricRow .appMetricRowValue {
+  .todayDailyStateMetricRow .appMetricRowValue {
   font-size: var(--font-body-strong);
   text-align: left;
+}
+
+@media (min-width: 1024px) {
+  .todayPageShell {
+    gap: var(--space-48);
+  }
 }
 
 @keyframes todayHeroCoachPulse {
