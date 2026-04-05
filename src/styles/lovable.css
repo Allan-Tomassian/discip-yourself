@@ -49,6 +49,12 @@
   gap: 20px;
 }
 
+.lovableFilterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .lovableSectionLabel {
   margin: 0 0 12px;
   font-size: 12px;
@@ -286,13 +292,19 @@
 .lovableCoachEyebrow,
 .lovableInsightCardEyebrow,
 .lovablePriorityEyebrow,
-.lovableObjectiveCategory {
+.lovableObjectiveCategory,
+.lovableTimelineCategory {
   margin: 0 0 8px;
   font-size: 12px;
   line-height: 1;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.lovableObjectiveCategory,
+.lovableTimelineCategory {
+  color: var(--text-muted);
 }
 
 .lovableTodayInsightTitle,

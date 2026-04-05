@@ -89,6 +89,18 @@
   flex-wrap: wrap;
 }
 
+.editItemCategoryCreate {
+  display: grid;
+  gap: var(--space-10);
+}
+
+.editItemCategoryCreateActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+
 .editItemDaysRow {
   display: flex;
   flex-wrap: wrap;

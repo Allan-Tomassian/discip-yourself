@@ -16,7 +16,7 @@ import { createGoal } from "../logic/goals";
 import { ensureWindowFromScheduleRules } from "../logic/occurrencePlanner";
 import { canCreateCategory } from "../logic/entitlements";
 import { createDefaultGoalSchedule, normalizeCategory } from "../logic/state";
-import { LABELS } from "../ui/labels";
+import { CATEGORY_UI_COPY, LABELS } from "../ui/labels";
 import {
   appendCoachConversationMessages,
   buildCoachConversationMessage,
@@ -118,6 +118,14 @@ function ensureSuggestedCategory(state, selectedSuggestion) {
   return { ...state, categories: [...prevCategories, created] };
 }
 
+function normalizeCategoryName(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function buildActionCandidateFromDraft(actionDraft, { actionId, categoryId, resolvedOutcomeId = null }) {
   const repeat = normalizeRepeat(actionDraft.repeat);
   const startTime = normalizeStartTime(actionDraft.timeMode === "FIXED" ? actionDraft.startTime : "");
@@ -182,6 +190,7 @@ function useActionDraftController({
   categoryOptions,
   suggestedCategories,
   onActivateSuggestedCategory,
+  onCreateCategory,
   linkedOutcomeRequired = false,
 }) {
   const initialDraft = useMemo(() => normalizeActionDraft(actionDraft), [actionDraft]);
@@ -213,6 +222,9 @@ function useActionDraftController({
   const [quantityUnit, setQuantityUnit] = useState(initialDraft.quantityUnit || "");
   const [quantityPeriod, setQuantityPeriod] = useState(initialDraft.quantityPeriod || "DAY");
   const [notes, setNotes] = useState(initialDraft.notes || "");
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryCreationError, setCategoryCreationError] = useState("");
 
   useEffect(() => {
     if (linkedOutcomeRequired) setSelectedOutcomeId("");
@@ -296,6 +308,30 @@ function useActionDraftController({
     },
     selectedSuggestion,
     activateSuggestedCategory: onActivateSuggestedCategory,
+    isCreatingCategory,
+    openCategoryCreator: () => {
+      setIsCreatingCategory(true);
+      setCategoryCreationError("");
+    },
+    cancelCategoryCreator: () => {
+      setIsCreatingCategory(false);
+      setNewCategoryName("");
+      setCategoryCreationError("");
+    },
+    newCategoryName,
+    setNewCategoryName,
+    categoryCreationError,
+    createInlineCategory: () => {
+      const result = onCreateCategory?.(newCategoryName);
+      if (!result?.ok || !result.category) {
+        setCategoryCreationError(result?.error || CATEGORY_UI_COPY.emptyNameError);
+        return;
+      }
+      setSelectedCategoryId(result.category.id);
+      setIsCreatingCategory(false);
+      setNewCategoryName("");
+      setCategoryCreationError("");
+    },
     showFixedTimeHint,
   };
 
@@ -334,7 +370,14 @@ function useActionDraftController({
   return controller;
 }
 
-function useOutcomeDraftController({ categories, outcomeDraft, categoryOptions, suggestedCategories, onActivateSuggestedCategory }) {
+function useOutcomeDraftController({
+  categories,
+  outcomeDraft,
+  categoryOptions,
+  suggestedCategories,
+  onActivateSuggestedCategory,
+  onCreateCategory,
+}) {
   const initialDraft = useMemo(() => normalizeOutcomeDraft(outcomeDraft), [outcomeDraft]);
   const [title, setTitle] = useState(initialDraft.title || "");
   const [selectedCategoryId, setSelectedCategoryId] = useState(initialDraft.categoryId || "");
@@ -346,6 +389,9 @@ function useOutcomeDraftController({ categories, outcomeDraft, categoryOptions, 
     initialDraft.targetValue != null ? String(initialDraft.targetValue) : ""
   );
   const [notes, setNotes] = useState(initialDraft.notes || "");
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryCreationError, setCategoryCreationError] = useState("");
   const minDeadlineKey = useMemo(() => buildMinDeadlineKey(startDate), [startDate]);
   const selectedSuggestion = suggestedCategories.find((category) => category.id === selectedCategoryId) || null;
 
@@ -368,6 +414,30 @@ function useOutcomeDraftController({ categories, outcomeDraft, categoryOptions, 
     categoryOptions,
     selectedSuggestion,
     activateSuggestedCategory: onActivateSuggestedCategory,
+    isCreatingCategory,
+    openCategoryCreator: () => {
+      setIsCreatingCategory(true);
+      setCategoryCreationError("");
+    },
+    cancelCategoryCreator: () => {
+      setIsCreatingCategory(false);
+      setNewCategoryName("");
+      setCategoryCreationError("");
+    },
+    newCategoryName,
+    setNewCategoryName,
+    categoryCreationError,
+    createInlineCategory: () => {
+      const result = onCreateCategory?.(newCategoryName);
+      if (!result?.ok || !result.category) {
+        setCategoryCreationError(result?.error || CATEGORY_UI_COPY.emptyNameError);
+        return;
+      }
+      setSelectedCategoryId(result.category.id);
+      setIsCreatingCategory(false);
+      setNewCategoryName("");
+      setCategoryCreationError("");
+    },
     minDeadlineKey,
     handleOutcomeStartDateChange: (event) => {
       const nextValue = event?.target?.value || event || "";
@@ -454,6 +524,45 @@ export default function CreateItem({
     }
     setData((previous) => ensureSuggestedCategory(previous, category));
   };
+  const createInlineCategory = (rawName) => {
+    const cleanName = String(rawName || "").trim();
+    if (!cleanName) {
+      return { ok: false, error: CATEGORY_UI_COPY.emptyNameError };
+    }
+    const normalizedName = normalizeCategoryName(cleanName);
+    const duplicate = categories.find((category) => normalizeCategoryName(category?.name) === normalizedName) || null;
+    if (duplicate) {
+      return { ok: false, error: CATEGORY_UI_COPY.duplicateNameError };
+    }
+    if (!canCreateCategory(safeData)) {
+      onOpenPaywall?.("Limite de catégories atteinte.");
+      return { ok: false, error: "Limite de catégories atteinte." };
+    }
+    const created = normalizeCategory(
+      {
+        id: `cat_${uid()}`,
+        name: cleanName,
+      },
+      categories.length
+    );
+    if (typeof setData === "function") {
+      setData((previous) => {
+        const previousCategories = Array.isArray(previous?.categories) ? previous.categories : [];
+        if (
+          previousCategories.some(
+            (category) => normalizeCategoryName(category?.name) === normalizedName || category?.id === created.id
+          )
+        ) {
+          return previous;
+        }
+        return {
+          ...previous,
+          categories: [...previousCategories, created],
+        };
+      });
+    }
+    return { ok: true, category: created };
+  };
 
   const assistantProposal = draft.kind === "assistant" ? draft.proposal : null;
   const effectiveKind = draft.kind || "action";
@@ -475,6 +584,7 @@ export default function CreateItem({
     categoryOptions,
     suggestedCategories,
     onActivateSuggestedCategory: activateSuggestedCategory,
+    onCreateCategory: createInlineCategory,
     linkedOutcomeRequired: effectiveKind === "guided" || (effectiveKind === "assistant" && Boolean(outcomeDraftSource)),
   });
   const outcomeController = useOutcomeDraftController({
@@ -483,6 +593,7 @@ export default function CreateItem({
     categoryOptions,
     suggestedCategories,
     onActivateSuggestedCategory: activateSuggestedCategory,
+    onCreateCategory: createInlineCategory,
   });
 
   const [error, setError] = useState("");

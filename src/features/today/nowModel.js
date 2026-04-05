@@ -88,6 +88,16 @@ export function deriveTodayNowModel({
       ? plannedList.find((occurrence) => occurrence?.id === focusOverride?.occurrenceId) || null
       : null;
   const focusOccurrence = focusOverrideOccurrence || focusBaseOccurrence;
+  const sessionCategory =
+    sessionHabit?.categoryId
+      ? categoryList.find((category) => category?.id === sessionHabit.categoryId) || null
+      : null;
+  const focusOccurrenceCategory = (() => {
+    const goalId = typeof focusOccurrence?.goalId === "string" ? focusOccurrence.goalId : "";
+    const goal = goalId ? goalList.find((candidate) => candidate?.id === goalId) || null : null;
+    return goal?.categoryId ? categoryList.find((category) => category?.id === goal.categoryId) || null : null;
+  })();
+  const resolvedFocusCategory = sessionCategory || focusOccurrenceCategory || focusCategory;
   const focusStartPolicy = resolveTodayOccurrenceStartPolicy({
     activeDate: todayContext.activeDate,
     systemToday: todayContext.systemToday,
@@ -124,8 +134,8 @@ export function deriveTodayNowModel({
     systemToday: todayContext.systemToday,
     isToday: todayContext.isToday,
     datePhase: todayContext.datePhase,
-    focusCategory,
-    selectedCategoryId: focusCategory?.id || null,
+    focusCategory: resolvedFocusCategory,
+    selectedCategoryId: resolvedFocusCategory?.id || null,
     activeHabits,
     ensureProcessIds,
     activeSessionForActiveDate: todayContext.activeSessionForActiveDate,

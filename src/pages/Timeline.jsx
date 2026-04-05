@@ -3,6 +3,7 @@ import { getVisibleCategories } from "../domain/categoryVisibility";
 import { resolveGoalType } from "../domain/goalType";
 import { getOpenRuntimeSession, resolveRuntimeSessionGate } from "../logic/sessionRuntime";
 import {
+  AppChip,
   AppDateField,
   AppDialog,
   AppScreen,
@@ -140,6 +141,7 @@ export default function Timeline({ data, setData, setTab, onEditItem }) {
   const safeData = data && typeof data === "object" ? data : {};
   const [expandedEntryId, setExpandedEntryId] = useState("");
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [categoryFilterId, setCategoryFilterId] = useState("all");
   const categories = useMemo(() => getVisibleCategories(safeData.categories), [safeData.categories]);
   const categoriesById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
@@ -190,9 +192,14 @@ export default function Timeline({ data, setData, setTab, onEditItem }) {
     return buildWindowEntries(mapped, selectedDateKey);
   }, [categoriesById, goalsById, processGoalsById, safeData.occurrences, selectedDateKey]);
 
+  const filteredOccurrenceEntries = useMemo(() => {
+    if (categoryFilterId === "all") return occurrenceEntries;
+    return occurrenceEntries.filter((entry) => entry.category?.id === categoryFilterId);
+  }, [categoryFilterId, occurrenceEntries]);
+
   const displayEntries = useMemo(() => {
     const groupedByGoal = new Map();
-    for (const entry of occurrenceEntries) {
+    for (const entry of filteredOccurrenceEntries) {
       if (!groupedByGoal.has(entry.goalId)) groupedByGoal.set(entry.goalId, []);
       groupedByGoal.get(entry.goalId).push(entry);
     }
@@ -200,7 +207,7 @@ export default function Timeline({ data, setData, setTab, onEditItem }) {
     const seenGoalIds = new Set();
     const nextEntries = [];
 
-    for (const entry of occurrenceEntries) {
+    for (const entry of filteredOccurrenceEntries) {
       if (seenGoalIds.has(entry.goalId)) continue;
       const groupedOccurrences = groupedByGoal.get(entry.goalId) || [];
       if (canGroupGoal(entry.goal, groupedOccurrences)) {
@@ -230,8 +237,9 @@ export default function Timeline({ data, setData, setTab, onEditItem }) {
             String(entry.goal?.notes || "").trim() ||
             "",
           groupedOccurrences: sortedGrouped,
+          categoryLabel: entry.category?.name || "",
           title: entry.goal?.title || TIMELINE_SCREEN_COPY.entryFallbackTitle,
-          subtitle: [entry.category?.name || "", summary.frequencyLabel, summary.weekdayLabel].filter(Boolean).join(" • "),
+          subtitle: [summary.frequencyLabel, summary.weekdayLabel].filter(Boolean).join(" • "),
           targetOccurrence: representative?.occurrence || null,
         });
         continue;
@@ -254,9 +262,9 @@ export default function Timeline({ data, setData, setTab, onEditItem }) {
           String(entry.goal?.notes || "").trim() ||
           "",
         groupedOccurrences: [entry],
+        categoryLabel: entry.category?.name || "",
         title: entry.goal?.title || entry.occurrence?.title || TIMELINE_SCREEN_COPY.entryFallbackTitle,
         subtitle: [
-          entry.category?.name || "",
           Number.isFinite(entry.occurrence?.durationMinutes) ? `${entry.occurrence.durationMinutes} min` : "",
           statusLabel(resolveCurrentStatus({ occurrence: entry.occurrence, activeOccurrenceId })),
         ]
@@ -267,7 +275,7 @@ export default function Timeline({ data, setData, setTab, onEditItem }) {
     }
 
     return nextEntries;
-  }, [activeOccurrenceId, occurrenceEntries, selectedDateKey]);
+  }, [activeOccurrenceId, filteredOccurrenceEntries, selectedDateKey]);
 
   const currentEntryId = useMemo(() => {
     const upcoming = displayEntries.find((entry) => String(entry?.dateKey || "") >= selectedDateKey && entry?.status !== "done");
@@ -341,6 +349,23 @@ export default function Timeline({ data, setData, setTab, onEditItem }) {
       }
     >
       <div className="lovablePage">
+        {categories.length ? (
+          <div className="lovableFilterRow" aria-label={TIMELINE_SCREEN_COPY.categoryFilterLabel}>
+            <AppChip active={categoryFilterId === "all"} onClick={() => setCategoryFilterId("all")}>
+              {TIMELINE_SCREEN_COPY.allCategories}
+            </AppChip>
+            {categories.map((category) => (
+              <AppChip
+                key={category.id}
+                active={categoryFilterId === category.id}
+                onClick={() => setCategoryFilterId(category.id)}
+              >
+                {category.name}
+              </AppChip>
+            ))}
+          </div>
+        ) : null}
+
         {displayEntries.length ? (
           <div className="lovableTimelineList">
             {displayEntries.map((entry) => {
@@ -363,6 +388,7 @@ export default function Timeline({ data, setData, setTab, onEditItem }) {
                       aria-label={`${expanded ? TIMELINE_SCREEN_COPY.collapse : TIMELINE_SCREEN_COPY.expand} ${entry.title}`}
                     >
                       <div className="lovableTimelineDate">{formatDateLabel(entry.dateKey)}</div>
+                      {entry.categoryLabel ? <div className="lovableTimelineCategory">{entry.categoryLabel}</div> : null}
                       <div className="lovableTimelineTitle">{entry.title}</div>
                       <div className="lovableTimelineSubtitle">{entry.subtitle}</div>
                     </button>
@@ -380,13 +406,17 @@ export default function Timeline({ data, setData, setTab, onEditItem }) {
                             <strong>{statusLabel(entry.status)}</strong>
                           </div>
                           <div className="lovableTimelineExpandItem">
+                            <span>{TIMELINE_SCREEN_COPY.inlineCategory}</span>
+                            <strong>{entry.categoryLabel || TIMELINE_SCREEN_COPY.inlineNoCategory}</strong>
+                          </div>
+                          <div className="lovableTimelineExpandItem">
                             <span>{TIMELINE_SCREEN_COPY.inlineObjective}</span>
                             <strong>{entry.outcome?.title || TIMELINE_SCREEN_COPY.inlineNoObjective}</strong>
                           </div>
-                          <div className="lovableTimelineExpandItem">
-                            <span>{TIMELINE_SCREEN_COPY.inlineNotes}</span>
-                            <strong>{entry.notes || TIMELINE_SCREEN_COPY.inlineNoNotes}</strong>
-                          </div>
+                        </div>
+                        <div className="lovableTimelineExpandItem">
+                          <span>{TIMELINE_SCREEN_COPY.inlineNotes}</span>
+                          <strong>{entry.notes || TIMELINE_SCREEN_COPY.inlineNoNotes}</strong>
                         </div>
 
                         {entry.kind === "group" ? (

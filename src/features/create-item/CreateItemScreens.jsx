@@ -1,5 +1,5 @@
 import React from "react";
-import { LABELS } from "../../ui/labels";
+import { CATEGORY_UI_COPY, LABELS } from "../../ui/labels";
 import {
   AppChip,
   AppDateField,
@@ -57,6 +57,48 @@ function SuggestedCategoryCard({ controller, text }) {
         </GhostButton>
       )}
     />
+  );
+}
+
+function CategorySelectField({ controller }) {
+  return (
+    <FieldGroup label={CATEGORY_UI_COPY.fieldLabel} className="editItemField">
+      <AppSelect value={controller.selectedCategoryId} onChange={(event) => controller.setSelectedCategoryId(event.target.value)}>
+        {controller.categoryOptions.map((cat) => (
+          <option key={cat.id} value={cat.id}>
+            {cat.name}
+            {cat.suggested ? " (suggestion)" : ""}
+          </option>
+        ))}
+      </AppSelect>
+
+      {!controller.isCreatingCategory ? (
+        <div className="editItemInlineCardRow">
+          <GhostButton size="sm" onClick={controller.openCategoryCreator}>
+            {CATEGORY_UI_COPY.newCategory}
+          </GhostButton>
+        </div>
+      ) : (
+        <div className="editItemCategoryCreate">
+          <AppInput
+            value={controller.newCategoryName}
+            onChange={(event) => controller.setNewCategoryName(event.target.value)}
+            placeholder={CATEGORY_UI_COPY.newCategoryPlaceholder}
+          />
+          <div className="editItemCategoryCreateActions">
+            <GhostButton size="sm" onClick={controller.cancelCategoryCreator}>
+              {CATEGORY_UI_COPY.cancelCreateCategory}
+            </GhostButton>
+            <PrimaryButton size="sm" onClick={controller.createInlineCategory}>
+              {CATEGORY_UI_COPY.createCategory}
+            </PrimaryButton>
+          </div>
+          {controller.categoryCreationError ? (
+            <div className="editItemErrorText">{controller.categoryCreationError}</div>
+          ) : null}
+        </div>
+      )}
+    </FieldGroup>
   );
 }
 
@@ -233,16 +275,7 @@ function ActionIdentitySection({
       </FieldGroup>
 
       <div className="editItemTwoCol">
-        <FieldGroup label="Categorie" className="editItemField">
-          <AppSelect value={controller.selectedCategoryId} onChange={(event) => controller.setSelectedCategoryId(event.target.value)}>
-            {controller.categoryOptions.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-                {cat.suggested ? " (suggestion)" : ""}
-              </option>
-            ))}
-          </AppSelect>
-        </FieldGroup>
+        <CategorySelectField controller={controller} />
         <FieldGroup label="Priorite" className="editItemField">
           <AppSelect value={controller.priority} onChange={(event) => controller.setPriority(event.target.value)}>
             {PRIORITY_OPTIONS.map((option) => (
@@ -482,16 +515,7 @@ function OutcomeIdentitySection({
       </FieldGroup>
 
       <div className="editItemTwoCol">
-        <FieldGroup label="Categorie" className="editItemField">
-          <AppSelect value={controller.selectedCategoryId} onChange={(event) => controller.setSelectedCategoryId(event.target.value)}>
-            {controller.categoryOptions.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-                {cat.suggested ? " (suggestion)" : ""}
-              </option>
-            ))}
-          </AppSelect>
-        </FieldGroup>
+        <CategorySelectField controller={controller} />
         <FieldGroup label="Priorite" className="editItemField">
           <AppSelect value={controller.priority} onChange={(event) => controller.setPriority(event.target.value)}>
             {PRIORITY_OPTIONS.map((option) => (

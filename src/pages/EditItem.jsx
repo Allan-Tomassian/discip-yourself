@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { AppCard, AppScreen, GhostButton } from "../shared/ui/app";
 import ConflictResolver from "../ui/scheduling/ConflictResolver";
 import { safeConfirm } from "../utils/dialogs";
+import { uid } from "../utils/helpers";
 import {
   appDowFromDate,
   buildDateRangeLocalKeys,
@@ -30,7 +31,7 @@ import { canCreateCategory } from "../logic/entitlements";
 import { normalizeTimeFields } from "../logic/timeFields";
 import { setOccurrenceStatusById } from "../logic/occurrences";
 import { findConflicts, suggestNextSlots } from "../core/scheduling/intervals";
-import { LABELS } from "../ui/labels";
+import { CATEGORY_UI_COPY, LABELS } from "../ui/labels";
 import { useBehaviorFeedback } from "../feedback/BehaviorFeedbackContext";
 import { deriveBehaviorFeedbackSignal } from "../feedback/feedbackDerivers";
 import { ActionEditScreen, OutcomeEditScreen } from "../features/edit-item/EditItemScreens";
@@ -127,6 +128,9 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   const [deadlineTouched, setDeadlineTouched] = useState(false);
   const [error, setError] = useState("");
   const [conflictState, setConflictState] = useState(null);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryCreationError, setCategoryCreationError] = useState("");
 
   const effectiveSelectedOutcomeId =
     isProcess && selectedOutcomeId && outcomes.some((outcome) => outcome.id === selectedOutcomeId) ? selectedOutcomeId : "";
@@ -146,6 +150,14 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   const hasMultipleSlots = isProcess && Array.isArray(timeSlots) && timeSlots.length > 1;
   const timeInputValue = repeat === "none" ? oneOffTime : startTime;
   const showFixedTimeHint = isProcess && !hasMultipleSlots && timeMode === "FIXED" && !normalizeStartTime(timeInputValue);
+
+  function normalizeCategoryName(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
 
   const fixedOccurrencesByDate = useMemo(() => {
     const map = new Map();
@@ -351,6 +363,57 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
       return { ...prev, categories: [...prevCategories, created] };
     });
     setSelectedCategoryId(category.id);
+  }
+
+  function createInlineCategory(rawName) {
+    const cleanName = String(rawName || "").trim();
+    if (!cleanName) {
+      setCategoryCreationError(CATEGORY_UI_COPY.emptyNameError);
+      return { ok: false, error: CATEGORY_UI_COPY.emptyNameError };
+    }
+    const normalizedName = normalizeCategoryName(cleanName);
+    const duplicate = categories.find((category) => normalizeCategoryName(category?.name) === normalizedName) || null;
+    if (duplicate) {
+      setCategoryCreationError(CATEGORY_UI_COPY.duplicateNameError);
+      return { ok: false, error: CATEGORY_UI_COPY.duplicateNameError };
+    }
+    if (!canCreateCategory(safeData)) {
+      if (typeof onOpenPaywall === "function") {
+        onOpenPaywall("Limite de catégories atteinte.");
+      } else {
+        setError("Limite de catégories atteinte.");
+      }
+      return { ok: false, error: "Limite de catégories atteinte." };
+    }
+
+    const created = normalizeCategory(
+      {
+        id: `cat_${uid()}`,
+        name: cleanName,
+      },
+      categories.length
+    );
+    if (typeof setData === "function") {
+      setData((prev) => {
+        const prevCategories = Array.isArray(prev?.categories) ? prev.categories : [];
+        if (
+          prevCategories.some(
+            (category) => normalizeCategoryName(category?.name) === normalizedName || category?.id === created.id
+          )
+        ) {
+          return prev;
+        }
+        return {
+          ...prev,
+          categories: [...prevCategories, created],
+        };
+      });
+    }
+    setSelectedCategoryId(created.id);
+    setIsCreatingCategory(false);
+    setNewCategoryName("");
+    setCategoryCreationError("");
+    return { ok: true, category: created };
   }
 
   function updateReminderTime(index, value) {
@@ -846,6 +909,20 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     effectiveSelectedOutcomeId,
     selectedSuggestion,
     activateSuggestedCategory,
+    isCreatingCategory,
+    openCategoryCreator: () => {
+      setIsCreatingCategory(true);
+      setCategoryCreationError("");
+    },
+    cancelCategoryCreator: () => {
+      setIsCreatingCategory(false);
+      setNewCategoryName("");
+      setCategoryCreationError("");
+    },
+    newCategoryName,
+    setNewCategoryName,
+    categoryCreationError,
+    createInlineCategory: () => createInlineCategory(newCategoryName),
     categoryOptions,
     outcomes,
     minDeadlineKey,

@@ -92,6 +92,8 @@ export const TODAY_SCREEN_COPY = Object.freeze({
 export const OBJECTIVES_SCREEN_COPY = Object.freeze({
   title: SURFACE_LABELS.library,
   createAriaLabel: "Créer",
+  allCategories: "Toutes",
+  categoryFilterLabel: "Filtrer par catégorie",
   untitledObjective: "Objectif sans titre",
   untitledAction: "Action sans titre",
   fallbackSubtitle: "Exécution liée juste en dessous.",
@@ -115,6 +117,8 @@ export const OBJECTIVES_SCREEN_COPY = Object.freeze({
 export const TIMELINE_SCREEN_COPY = Object.freeze({
   title: SURFACE_LABELS.planning,
   subtitle: MAIN_PAGE_COPY.planning.orientation,
+  allCategories: "Toutes",
+  categoryFilterLabel: "Filtrer par catégorie",
   entryFallbackTitle: "Bloc d'exécution",
   completed: "Terminée",
   upcoming: "À venir",
@@ -122,9 +126,11 @@ export const TIMELINE_SCREEN_COPY = Object.freeze({
   selectDate: "Choisir une date",
   selectedDateLabel: "Jour affiché",
   inlineDuration: "Durée",
+  inlineCategory: "Catégorie",
   inlineObjective: "Objectif lié",
   inlineNotes: "Notes",
   inlineStatus: "Statut",
+  inlineNoCategory: "Aucune catégorie liée.",
   inlineNoNotes: "Aucune note pour ce bloc.",
   inlineNoObjective: "Aucun objectif lié.",
   inlineEditAction: "Modifier l'action",
@@ -201,6 +207,19 @@ export const COACH_SCREEN_COPY = Object.freeze({
   sendAriaLabel: "Envoyer",
   concisePlanTitle: "Plan proposé",
   unresolvedTitle: "À confirmer",
+  categoryClarificationPrompt: "Dans quelle catégorie veux-tu avancer ?",
+});
+
+export const CATEGORY_UI_COPY = Object.freeze({
+  fieldLabel: "Catégorie",
+  currentTitle: "Catégorie actuelle",
+  suggestedTitle: "Catégorie suggérée",
+  newCategory: "Nouvelle catégorie",
+  newCategoryPlaceholder: "Nom de la catégorie",
+  createCategory: "Créer",
+  cancelCreateCategory: "Annuler",
+  duplicateNameError: "Une catégorie avec ce nom existe déjà.",
+  emptyNameError: "Donne un nom à la catégorie.",
 });
 
 export const LABELS = Object.freeze({

@@ -29,3 +29,15 @@
   font-size: var(--font-sm);
   line-height: var(--line-height-body);
 }
+
+.editItemCategoryCreate {
+  display: grid;
+  gap: var(--space-10);
+}
+
+.editItemCategoryCreateActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}

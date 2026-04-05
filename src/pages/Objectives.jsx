@@ -4,7 +4,7 @@ import { resolveGoalType } from "../domain/goalType";
 import { getVisibleCategories } from "../domain/categoryVisibility";
 import { computeAggregateProgress, getGoalProgress } from "../logic/goals";
 import { splitProcessByLink } from "../logic/linking";
-import { AppScreen } from "../shared/ui/app";
+import { AppChip, AppScreen } from "../shared/ui/app";
 import { OBJECTIVES_SCREEN_COPY } from "../ui/labels";
 import { resolveCategoryColor } from "../utils/categoryPalette";
 import { normalizeLocalDateKey, todayLocalKey } from "../utils/datetime";
@@ -17,7 +17,6 @@ function formatSubtitle(goal, category) {
   const notes = typeof goal?.notes === "string" ? goal.notes.trim() : "";
   if (notes) return notes;
   if (goal?.deadline) return `${OBJECTIVES_SCREEN_COPY.deadlinePrefix} : ${goal.deadline}`;
-  if (category?.name) return category.name;
   return OBJECTIVES_SCREEN_COPY.fallbackSubtitle;
 }
 
@@ -231,8 +230,14 @@ export default function Objectives({
   }, [categoriesById, goalProgressById, outcomes, processGoals, standaloneActions]);
 
   const [expandedCards, setExpandedCards] = useState({});
+  const [categoryFilterId, setCategoryFilterId] = useState("all");
   const focusTarget = normalizeLibraryFocusTarget(safeData?.ui?.libraryFocusTarget);
   const focusTargetRef = useRef("");
+
+  const filteredCards = useMemo(() => {
+    if (categoryFilterId === "all") return cards;
+    return cards.filter((card) => card.category?.id === categoryFilterId);
+  }, [cards, categoryFilterId]);
 
   useEffect(() => {
     const firstActionId = focusTarget?.actionIds?.[0] || null;
@@ -298,9 +303,26 @@ export default function Objectives({
       }
     >
       <div className="lovablePage">
-        {cards.length ? (
+        {categories.length ? (
+          <div className="lovableFilterRow" aria-label={OBJECTIVES_SCREEN_COPY.categoryFilterLabel}>
+            <AppChip active={categoryFilterId === "all"} onClick={() => setCategoryFilterId("all")}>
+              {OBJECTIVES_SCREEN_COPY.allCategories}
+            </AppChip>
+            {categories.map((category) => (
+              <AppChip
+                key={category.id}
+                active={categoryFilterId === category.id}
+                onClick={() => setCategoryFilterId(category.id)}
+              >
+                {category.name}
+              </AppChip>
+            ))}
+          </div>
+        ) : null}
+
+        {filteredCards.length ? (
           <div className="lovableObjectivesList">
-            {cards.map((card) => {
+            {filteredCards.map((card) => {
               const expanded = Boolean(expandedCards[card.id]);
               const color = resolveCategoryColor(card.category, "#8b78ff");
               return (
@@ -314,6 +336,9 @@ export default function Objectives({
                   >
                     <ObjectiveRing progress={card.progress} color={color} />
                     <div>
+                      {card.category?.name ? (
+                        <div className="lovableObjectiveCategory">{card.category.name}</div>
+                      ) : null}
                       <div className="lovableObjectiveTitle">{card.title}</div>
                       <div className="lovableObjectiveSubtitle">{card.subtitle}</div>
                     </div>
@@ -321,9 +346,6 @@ export default function Objectives({
                   </button>
                   {expanded ? (
                     <div className="lovableObjectiveBody">
-                      {card.category?.name ? (
-                        <div className="lovableObjectiveCategory">{card.category.name}</div>
-                      ) : null}
                       <div className="lovableObjectiveSections">
                         {buildObjectiveSections({
                           actions: card.actions,
