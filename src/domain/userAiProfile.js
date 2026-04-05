@@ -1,5 +1,5 @@
 import { addDaysLocal, fromLocalDateKey, normalizeLocalDateKey, parseTimeToMinutes, toLocalDateKey } from "../utils/datetime.js";
-import { resolveCategoryColor } from "../utils/categoryPalette";
+import { resolveCategoryColor } from "../utils/categoryPalette.js";
 
 export const USER_AI_GOAL_IDS = Object.freeze([
   "health",
