@@ -1456,4 +1456,28 @@ select {
     width: 100%;
     max-width: none;
   }
+
+  [data-page-id="today"] .pageHeader,
+  [data-page-id="objectives"] .pageHeader,
+  [data-page-id="timeline"] .pageHeader {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  [data-page-id="today"] .pageHeaderLeft,
+  [data-page-id="objectives"] .pageHeaderLeft,
+  [data-page-id="timeline"] .pageHeaderLeft {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  [data-page-id="today"] .pageHeaderRight,
+  [data-page-id="objectives"] .pageHeaderRight,
+  [data-page-id="timeline"] .pageHeaderRight {
+    width: auto;
+    flex: 0 0 auto;
+    max-width: none;
+  }
 }

@@ -3,8 +3,8 @@ import { getVisibleCategories } from "../domain/categoryVisibility";
 import { resolveGoalType } from "../domain/goalType";
 import { getOpenRuntimeSession, resolveRuntimeSessionGate } from "../logic/sessionRuntime";
 import {
+  AppDateField,
   AppDialog,
-  AppInlineMetaCard,
   AppScreen,
   GhostButton,
   PrimaryButton,
@@ -12,8 +12,8 @@ import {
 import { TIMELINE_SCREEN_COPY } from "../ui/labels";
 import { addDaysLocal, fromLocalDateKey, getWeekdayShortLabel, normalizeLocalDateKey, todayLocalKey } from "../utils/datetime";
 
-const WINDOW_PAST_DAYS = 7;
-const WINDOW_FUTURE_DAYS = 28;
+const WINDOW_PAST_DAYS = 5;
+const WINDOW_FUTURE_DAYS = 14;
 
 function formatDateLabel(dateKey) {
   if (!dateKey) return "";
@@ -53,28 +53,32 @@ function sortOccurrences(left, right) {
   return String(left?.id || "").localeCompare(String(right?.id || ""));
 }
 
-function buildWindowEntries(entries, todayKey) {
-  const lowerBound = addDaysLocal(todayKey, -WINDOW_PAST_DAYS);
-  const upperBound = addDaysLocal(todayKey, WINDOW_FUTURE_DAYS);
+function buildWindowEntries(entries, anchorDateKey) {
+  const lowerBound = addDaysLocal(anchorDateKey, -WINDOW_PAST_DAYS);
+  const upperBound = addDaysLocal(anchorDateKey, WINDOW_FUTURE_DAYS);
   const visible = entries.filter((entry) => {
     const dateKey = String(entry?.dateKey || "");
     return dateKey && dateKey >= lowerBound && dateKey <= upperBound;
   });
-  if (visible.length) return visible.sort(sortOccurrences);
+  const inOrder = visible.sort(sortOccurrences);
+  const sameDay = inOrder.filter((entry) => entry.dateKey === anchorDateKey);
+  const future = inOrder.filter((entry) => entry.dateKey > anchorDateKey);
+  const past = inOrder.filter((entry) => entry.dateKey < anchorDateKey).reverse();
+  const prioritized = [...sameDay, ...future, ...past];
+  if (prioritized.length) return prioritized;
 
-  const todayDate = fromLocalDateKey(todayKey);
-  const todayMs = todayDate.getTime();
+  const anchorDate = fromLocalDateKey(anchorDateKey);
+  const anchorMs = anchorDate.getTime();
   return [...entries]
     .sort((left, right) => {
       const leftMs = fromLocalDateKey(left?.dateKey).getTime();
       const rightMs = fromLocalDateKey(right?.dateKey).getTime();
-      const leftDelta = Math.abs(leftMs - todayMs);
-      const rightDelta = Math.abs(rightMs - todayMs);
+      const leftDelta = Math.abs(leftMs - anchorMs);
+      const rightDelta = Math.abs(rightMs - anchorMs);
       if (leftDelta !== rightDelta) return leftDelta - rightDelta;
       return sortOccurrences(left, right);
     })
-    .slice(0, 12)
-    .sort(sortOccurrences);
+    .slice(0, 10);
 }
 
 function statusLabel(status) {
@@ -123,41 +127,6 @@ function buildRecurringSummary(occurrences, todayKey) {
   };
 }
 
-function deriveWorkloadClarity(weeklyDensity) {
-  const totalMinutes = weeklyDensity.reduce((sum, day) => sum + day.minutes, 0);
-  const activeDays = weeklyDensity.filter((day) => day.count > 0).length;
-  const maxMinutes = weeklyDensity.reduce((max, day) => Math.max(max, day.minutes), 0);
-
-  if (!totalMinutes) {
-    return {
-      label: TIMELINE_SCREEN_COPY.clarityLight,
-      description: "Le planning reste très léger sur les jours à venir.",
-    };
-  }
-  if (maxMinutes >= 180) {
-    return {
-      label: TIMELINE_SCREEN_COPY.clarityHeavy,
-      description: "Au moins une journée porte une charge dense qui mérite une vérification.",
-    };
-  }
-  if (activeDays <= 2) {
-    return {
-      label: TIMELINE_SCREEN_COPY.clarityConcentrated,
-      description: "La charge se concentre sur peu de jours. La lisibilité est bonne, mais la pression peut monter.",
-    };
-  }
-  if (activeDays >= 5) {
-    return {
-      label: TIMELINE_SCREEN_COPY.claritySpread,
-      description: "La charge est étalée sur la semaine. Vérifie que le rythme reste tenable.",
-    };
-  }
-  return {
-    label: TIMELINE_SCREEN_COPY.clarityBalanced,
-    description: "La charge reste répartie de façon crédible sur les prochains jours.",
-  };
-}
-
 function CalendarIcon() {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
@@ -167,7 +136,7 @@ function CalendarIcon() {
   );
 }
 
-export default function Timeline({ data, setTab, onEditItem }) {
+export default function Timeline({ data, setData, setTab, onEditItem }) {
   const safeData = data && typeof data === "object" ? data : {};
   const [expandedEntryId, setExpandedEntryId] = useState("");
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -185,6 +154,8 @@ export default function Timeline({ data, setTab, onEditItem }) {
     [categoriesById, goals]
   );
   const todayKey = useMemo(() => todayLocalKey(), []);
+  const selectedDateKey =
+    normalizeLocalDateKey(safeData?.ui?.selectedDateKey || safeData?.ui?.selectedDate) || todayKey;
   const openRuntimeSession = useMemo(() => getOpenRuntimeSession(safeData), [safeData]);
   const activeOccurrenceId =
     typeof openRuntimeSession?.occurrenceId === "string" && openRuntimeSession.occurrenceId.trim()
@@ -216,8 +187,8 @@ export default function Timeline({ data, setTab, onEditItem }) {
         };
       })
       .filter(Boolean);
-    return buildWindowEntries(mapped, todayKey);
-  }, [categoriesById, goalsById, processGoalsById, safeData.occurrences, todayKey]);
+    return buildWindowEntries(mapped, selectedDateKey);
+  }, [categoriesById, goalsById, processGoalsById, safeData.occurrences, selectedDateKey]);
 
   const displayEntries = useMemo(() => {
     const groupedByGoal = new Map();
@@ -236,10 +207,10 @@ export default function Timeline({ data, setTab, onEditItem }) {
         seenGoalIds.add(entry.goalId);
         const sortedGrouped = [...groupedOccurrences].sort(sortOccurrences);
         const representative =
-          sortedGrouped.find((item) => item.dateKey >= todayKey && item.occurrence?.status !== "done") ||
-          sortedGrouped.find((item) => item.dateKey >= todayKey) ||
+          sortedGrouped.find((item) => item.dateKey >= selectedDateKey && item.occurrence?.status !== "done") ||
+          sortedGrouped.find((item) => item.dateKey >= selectedDateKey) ||
           sortedGrouped[sortedGrouped.length - 1];
-        const summary = buildRecurringSummary(sortedGrouped, todayKey);
+        const summary = buildRecurringSummary(sortedGrouped, selectedDateKey);
         nextEntries.push({
           id: `group:${entry.goalId}`,
           kind: "group",
@@ -295,43 +266,32 @@ export default function Timeline({ data, setTab, onEditItem }) {
       });
     }
 
-    return nextEntries.sort(sortOccurrences);
-  }, [activeOccurrenceId, occurrenceEntries, todayKey]);
+    return nextEntries;
+  }, [activeOccurrenceId, occurrenceEntries, selectedDateKey]);
 
   const currentEntryId = useMemo(() => {
-    const upcoming = displayEntries.find((entry) => String(entry?.dateKey || "") >= todayKey && entry?.status !== "done");
+    const upcoming = displayEntries.find((entry) => String(entry?.dateKey || "") >= selectedDateKey && entry?.status !== "done");
     return upcoming?.id || displayEntries[displayEntries.length - 1]?.id || "";
-  }, [displayEntries, todayKey]);
+  }, [displayEntries, selectedDateKey]);
 
-  const weeklyDensity = useMemo(() => {
-    return Array.from({ length: 7 }, (_, index) => {
-      const dateKey = addDaysLocal(todayKey, index);
-      const items = occurrenceEntries.filter((entry) => entry.dateKey === dateKey && entry.occurrence?.status !== "done");
-      const minutes = items.reduce((sum, item) => sum + (Number.isFinite(item.occurrence?.durationMinutes) ? item.occurrence.durationMinutes : 0), 0);
-      return {
-        dateKey,
-        label: getWeekdayShortLabel(fromLocalDateKey(dateKey), "fr-FR"),
-        count: items.length,
-        minutes,
-      };
-    });
-  }, [occurrenceEntries, todayKey]);
-
-  const monthlyDistribution = useMemo(() => {
-    return Array.from({ length: 4 }, (_, index) => {
-      const weekStart = addDaysLocal(todayKey, index * 7);
-      const weekEnd = addDaysLocal(weekStart, 6);
-      const items = occurrenceEntries.filter((entry) => entry.dateKey >= weekStart && entry.dateKey <= weekEnd && entry.occurrence?.status !== "done");
-      return {
-        id: `${weekStart}:${weekEnd}`,
-        label: `Semaine ${index + 1}`,
-        count: items.length,
-        minutes: items.reduce((sum, item) => sum + (Number.isFinite(item.occurrence?.durationMinutes) ? item.occurrence.durationMinutes : 0), 0),
-      };
-    });
-  }, [occurrenceEntries, todayKey]);
-
-  const workloadClarity = useMemo(() => deriveWorkloadClarity(weeklyDensity), [weeklyDensity]);
+  const selectedDateLabel = useMemo(() => formatExpandedDateLabel(selectedDateKey), [selectedDateKey]);
+  const commitSelectedDate = useCallback(
+    (nextDateKey) => {
+      const normalized = normalizeLocalDateKey(nextDateKey);
+      if (!normalized || typeof setData !== "function") return;
+      setData((previous) => ({
+        ...previous,
+        ui: {
+          ...(previous?.ui || {}),
+          selectedDateKey: normalized,
+          selectedDate: normalized,
+        },
+      }));
+      setExpandedEntryId("");
+      setCalendarOpen(false);
+    },
+    [setData]
+  );
 
   const openSessionForOccurrence = useCallback(
     (occurrence, categoryId = null) => {
@@ -434,7 +394,7 @@ export default function Timeline({ data, setTab, onEditItem }) {
                             <div className="lovableSectionLabel">{TIMELINE_SCREEN_COPY.recurringOccurrences}</div>
                             <div className="lovableTimelineUpcomingList">
                               {entry.groupedOccurrences
-                                .filter((occurrenceEntry) => String(occurrenceEntry?.dateKey || "") >= todayKey)
+                                .filter((occurrenceEntry) => String(occurrenceEntry?.dateKey || "") >= selectedDateKey)
                                 .slice(0, 3)
                                 .map((occurrenceEntry) => (
                                   <div key={occurrenceEntry.id} className="lovableTimelineUpcomingItem">
@@ -442,7 +402,7 @@ export default function Timeline({ data, setTab, onEditItem }) {
                                     <strong>{occurrenceEntry.startTime || "Heure libre"}</strong>
                                   </div>
                                 ))}
-                              {!entry.groupedOccurrences.some((occurrenceEntry) => String(occurrenceEntry?.dateKey || "") >= todayKey) ? (
+                              {!entry.groupedOccurrences.some((occurrenceEntry) => String(occurrenceEntry?.dateKey || "") >= selectedDateKey) ? (
                                 <div className="lovableMuted">{TIMELINE_SCREEN_COPY.recurringNoUpcoming}</div>
                               ) : null}
                             </div>
@@ -522,41 +482,26 @@ export default function Timeline({ data, setTab, onEditItem }) {
           </div>
 
           <div className="lovableTimelineCalendarSection">
-            <div className="lovableSectionLabel">{TIMELINE_SCREEN_COPY.weeklyDensity}</div>
-            <div className="lovableTimelineDensityGrid">
-              {weeklyDensity.map((day) => (
-                <AppInlineMetaCard
-                  key={day.dateKey}
-                  className="lovableTimelineDensityCard"
-                  title={day.label}
-                  text={`${day.count} bloc${day.count > 1 ? "s" : ""}`}
-                  meta={`${day.minutes} min`}
-                />
-              ))}
-            </div>
+            <div className="lovableSectionLabel">{TIMELINE_SCREEN_COPY.selectedDateLabel}</div>
+            <div className="lovableTimelineSelectedDate">{selectedDateLabel}</div>
           </div>
 
           <div className="lovableTimelineCalendarSection">
-            <div className="lovableSectionLabel">{TIMELINE_SCREEN_COPY.monthlyDistribution}</div>
-            <div className="lovableTimelineMonthGrid">
-              {monthlyDistribution.map((bucket) => (
-                <AppInlineMetaCard
-                  key={bucket.id}
-                  className="lovableTimelineMonthCard"
-                  title={bucket.label}
-                  text={`${bucket.count} bloc${bucket.count > 1 ? "s" : ""}`}
-                  meta={`${bucket.minutes} min`}
-                />
-              ))}
-            </div>
+            <div className="lovableSectionLabel">{TIMELINE_SCREEN_COPY.selectDate}</div>
+            <AppDateField
+              value={selectedDateKey}
+              onChange={(event) => commitSelectedDate(event.target.value)}
+            />
           </div>
 
-          <div className="lovableTimelineCalendarSection">
-            <div className="lovableSectionLabel">{TIMELINE_SCREEN_COPY.workloadClarity}</div>
-            <div className="lovableCard lovableInsightTextCard">
-              <div className="lovableInsightCardEyebrow">{workloadClarity.label}</div>
-              <p className="lovableInsightCopy">{workloadClarity.description}</p>
-            </div>
+          <div className="lovableTimelineCalendarActions">
+            <GhostButton
+              type="button"
+              onClick={() => commitSelectedDate(todayKey)}
+              disabled={selectedDateKey === todayKey}
+            >
+              {TIMELINE_SCREEN_COPY.backToToday}
+            </GhostButton>
           </div>
         </div>
       </AppDialog>

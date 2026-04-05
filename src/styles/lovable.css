@@ -467,12 +467,16 @@
 }
 
 .lovableObjectiveTask {
+  appearance: none;
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
   width: 100%;
   padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
   color: var(--text);
   cursor: pointer;
   text-align: left;
@@ -742,6 +746,17 @@
   gap: 12px;
 }
 
+.lovableTimelineSelectedDate {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.lovableTimelineCalendarActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .lovableTimelineDensityGrid,
 .lovableTimelineMonthGrid {
   display: grid;
@@ -903,6 +918,7 @@
   min-height: var(--coach-page-height, auto);
   min-height: 0;
   gap: 12px;
+  overflow: hidden;
 }
 
 .lovableCoachIntro,
@@ -957,7 +973,7 @@
   min-height: 0;
   overflow-y: auto;
   padding-right: 2px;
-  padding-bottom: calc(var(--coach-composer-height, 92px) * 0.2);
+  padding-bottom: calc(var(--coach-composer-height, 92px) + 12px);
 }
 
 .lovableCoachActions,

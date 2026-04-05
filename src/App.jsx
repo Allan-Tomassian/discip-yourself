@@ -779,6 +779,17 @@ export default function App() {
           setData={setData}
           persistenceScope={persistenceScope}
           onOpenLibrary={homeNavigationHandlers.onOpenLibrary}
+          onOpenCoachGuided={() => {
+            setCoachState({
+              mode: "plan",
+              conversationId: null,
+            });
+            setTab("coach");
+          }}
+          onOpenSecondaryRoute={(route) => {
+            if (!route) return;
+            setTab(route);
+          }}
           onOpenPlanning={() => setTab("timeline")}
           onOpenPilotage={homeNavigationHandlers.onOpenPilotage}
           onOpenManageCategory={(categoryId) => {
@@ -812,6 +823,7 @@ export default function App() {
       ) : tab === "timeline" ? (
         <Timeline
           data={data}
+          setData={setData}
           setTab={setTab}
           onEditItem={({ id, type, categoryId }) => {
             const nextId = categoryId || libraryCategoryId || null;

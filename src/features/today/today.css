@@ -46,6 +46,28 @@
   min-width: 180px;
 }
 
+.todayHeaderRightCluster {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-10);
+  width: 100%;
+}
+
+.todayProfileButton {
+  flex: 0 0 auto;
+}
+
+.todayProfileSheetActions {
+  display: grid;
+  gap: var(--space-10);
+}
+
+.todayProfileSheetAction {
+  justify-content: flex-start;
+  width: 100%;
+}
+
 .todayHeroCoachBadge {
   display: inline-flex;
   align-items: center;
@@ -355,6 +377,10 @@
   .todayHeaderSessionBadge {
     width: 100%;
     min-width: 0;
+  }
+
+  .todayHeaderRightCluster {
+    justify-content: space-between;
   }
 }
 

@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AppScreen, SectionHeader } from "../shared/ui/app";
+import { AppScreen, AppSheet, AppSheetContent, GhostButton, SectionHeader } from "../shared/ui/app";
 import "../features/today/today.css";
 import {
   addDays,
@@ -475,6 +475,8 @@ export default function Home({
   setData,
   persistenceScope = "local_fallback",
   onOpenLibrary,
+  onOpenCoachGuided,
+  onOpenSecondaryRoute,
   onOpenPlanning,
   onOpenPilotage,
   onOpenSession,
@@ -512,6 +514,7 @@ export default function Home({
   const [noteDeleteMode, setNoteDeleteMode] = useState(false);
   const [noteDeleteTargetId, setNoteDeleteTargetId] = useState(null);
   const [noteHistoryVersion, setNoteHistoryVersion] = useState(0);
+  const [profileSheetOpen, setProfileSheetOpen] = useState(false);
   const { session } = useAuth();
   const legacyOrder = useMemo(() => loadLegacyBlockOrder(), []);
   const blockOrder = useMemo(() => {
@@ -1760,11 +1763,7 @@ export default function Home({
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
 
   const headerRight = sessionBadgeLabel ? (
-    <div className="todayHeaderSessionBadge" style={accentVars}>
-      <span className="badge badgeAccent">
-        {sessionBadgeLabel}
-      </span>
-    </div>
+    null
   ) : null;
   const localGapSummary = useMemo(
     () =>
@@ -1875,14 +1874,39 @@ export default function Home({
       occurrencesForSelectedDay,
     ]
   );
-  const heroViewModel = useMemo(
+  const baseHeroViewModel = useMemo(
     () => aiHeroViewModel || localHeroModel,
     [aiHeroViewModel, localHeroModel]
   );
+  const hasPlannedOccurrencesToday = useMemo(
+    () =>
+      occurrencesForSelectedDay.some((occurrence) => {
+        const status = typeof occurrence?.status === "string" ? occurrence.status : "";
+        return status !== "canceled" && status !== "skipped" && status !== "missed";
+      }),
+    [occurrencesForSelectedDay]
+  );
+  const heroViewModel = useMemo(() => {
+    if (
+      selectedDateKey === localTodayKey &&
+      !hasPlannedOccurrencesToday &&
+      (baseHeroViewModel?.primaryAction?.kind === "open_pilotage" ||
+        baseHeroViewModel?.primaryAction?.kind === "open_library")
+    ) {
+      return {
+        ...baseHeroViewModel,
+        primaryLabel: TODAY_SCREEN_COPY.createWithCoach,
+        primaryAction: {
+          kind: "open_coach_plan",
+        },
+      };
+    }
+    return baseHeroViewModel;
+  }, [baseHeroViewModel, hasPlannedOccurrencesToday, localTodayKey, selectedDateKey]);
   const todayDecisionDiagnostics = useMemo(
     () =>
       ({
-        mode: heroViewModel?.source === "ai" ? "manual_ai" : "local",
+        mode: baseHeroViewModel?.source === "ai" ? "manual_ai" : "local",
         contextKey: todayAnalysisContextKey,
         storageScope: manualTodayAnalysis.visibleAnalysis?.storageScope || null,
         requestState: manualTodayAnalysis.loading ? "loading" : manualTodayAnalysis.visibleAnalysis ? "visible" : "local",
@@ -1890,7 +1914,7 @@ export default function Home({
       }),
     [
       canonicalContextSummary,
-      heroViewModel?.source,
+      baseHeroViewModel?.source,
       manualTodayAnalysis.loading,
       manualTodayAnalysis.visibleAnalysis,
       todayAnalysisContextKey,
@@ -2132,6 +2156,7 @@ export default function Home({
     heroViewModel?.primaryAction?.kind === "resume_session" ||
       heroViewModel?.primaryAction?.kind === "open_library" ||
       heroViewModel?.primaryAction?.kind === "open_pilotage" ||
+      heroViewModel?.primaryAction?.kind === "open_coach_plan" ||
       (heroViewModel?.primaryAction?.kind === "start_occurrence" && heroOccurrence)
   );
   const greetingName =
@@ -2158,51 +2183,111 @@ export default function Home({
   ]
     .filter(Boolean)
     .join(" ");
+  const todayHeaderRight = (
+    <div className="todayHeaderRightCluster">
+      {sessionBadgeLabel ? (
+        <div className="todayHeaderSessionBadge" style={accentVars}>
+          <span className="badge badgeAccent">
+            {sessionBadgeLabel}
+          </span>
+        </div>
+      ) : null}
+      <button
+        type="button"
+        className="lovableIconButton todayProfileButton"
+        aria-label={TODAY_SCREEN_COPY.profileAriaLabel}
+        onClick={() => setProfileSheetOpen(true)}
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+          <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M5 20a7 7 0 0 1 14 0" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+    </div>
+  );
 
   return (
-    <AppScreen
-      accent={accent}
-      backgroundImage={backgroundImage}
-      pageId="today"
-      headerTitle={<span data-tour-id="today-title">{`${greetingPeriod}, ${greetingName}`}</span>}
-      headerSubtitle={headerDateLabel}
-      headerRowAlign="start"
-    >
-      <div className="lovablePage">
-        <div className="lovableCard lovableTodayInsight">
-          <div className="lovableTodayInsightIcon" aria-hidden="true">IA</div>
-          <div className="lovableTodayInsightText">
-            <div className="lovableTodayInsightTitle">{TODAY_SCREEN_COPY.insightTitle}</div>
-            <p className="lovableTodayInsightCopy">{insightCopy || MAIN_PAGE_COPY.today.orientation}</p>
+    <>
+      <AppScreen
+        accent={accent}
+        backgroundImage={backgroundImage}
+        pageId="today"
+        headerTitle={<span data-tour-id="today-title">{`${greetingPeriod}, ${greetingName}`}</span>}
+        headerSubtitle={headerDateLabel}
+        headerRight={todayHeaderRight}
+        headerRowAlign="start"
+      >
+        <div className="lovablePage">
+          <div className="lovableCard lovableTodayInsight">
+            <div className="lovableTodayInsightIcon" aria-hidden="true">IA</div>
+            <div className="lovableTodayInsightText">
+              <div className="lovableTodayInsightTitle">{TODAY_SCREEN_COPY.insightTitle}</div>
+              <p className="lovableTodayInsightCopy">{insightCopy || MAIN_PAGE_COPY.today.orientation}</p>
+            </div>
           </div>
-        </div>
 
-        <div>
-          <div className="lovableSectionLabel">{TODAY_SCREEN_COPY.priorityTitle}</div>
-          <TodayHero
-            title={typedHeroTitle || heroViewModel.title}
-            reason={heroImpactText || heroReasonText}
-            contributionLabel={heroContributionLabel}
-            recommendedCategoryLabel={heroViewModel.recommendedCategoryLabel || heroDisplayCategoryName}
-            primaryLabel={heroViewModel.primaryLabel || TODAY_SCREEN_COPY.primaryAction}
-            onPrimaryAction={handleHeroPrimaryAction}
-            canPrimaryAction={canTriggerHeroPrimaryAction}
-            isPreparing={manualTodayAnalysis.loading}
-          />
-        </div>
+          <div>
+            <div className="lovableSectionLabel">{TODAY_SCREEN_COPY.priorityTitle}</div>
+            <TodayHero
+              title={typedHeroTitle || heroViewModel.title}
+              reason={heroImpactText || heroReasonText}
+              contributionLabel={heroContributionLabel}
+              recommendedCategoryLabel={heroViewModel.recommendedCategoryLabel || heroDisplayCategoryName}
+              primaryLabel={heroViewModel.primaryLabel || TODAY_SCREEN_COPY.primaryAction}
+              onPrimaryAction={() => {
+                if (heroViewModel?.primaryAction?.kind === "open_coach_plan") {
+                  onOpenCoachGuided?.();
+                  return;
+                }
+                handleHeroPrimaryAction();
+              }}
+              canPrimaryAction={canTriggerHeroPrimaryAction}
+              isPreparing={manualTodayAnalysis.loading}
+            />
+          </div>
 
-        <div>
-          <div className="lovableSectionLabel">{TODAY_SCREEN_COPY.actionsTitle}</div>
-          <TodayNextActions
-            actions={nextActions}
-            onOpenOccurrence={handleStartSession}
-            activeCategory={focusCategory || null}
-          />
-        </div>
+          <div>
+            <div className="lovableSectionLabel">{TODAY_SCREEN_COPY.actionsTitle}</div>
+            <TodayNextActions
+              actions={nextActions}
+              onOpenOccurrence={handleStartSession}
+              activeCategory={focusCategory || null}
+            />
+          </div>
 
-        <p className="lovableTodayQuote">“{TODAY_SCREEN_COPY.quote}”</p>
-      </div>
-    </AppScreen>
+          <p className="lovableTodayQuote">“{TODAY_SCREEN_COPY.quote}”</p>
+        </div>
+      </AppScreen>
+
+      <AppSheet open={profileSheetOpen} onClose={() => setProfileSheetOpen(false)} maxWidth={420}>
+        <AppSheetContent
+          title={TODAY_SCREEN_COPY.profileMenuTitle}
+          subtitle={TODAY_SCREEN_COPY.profileMenuSubtitle}
+        >
+          <div className="todayProfileSheetActions">
+            {[
+              { id: "account", label: TODAY_SCREEN_COPY.profileRouteAccount },
+              { id: "billing", label: TODAY_SCREEN_COPY.profileRouteBilling },
+              { id: "settings", label: TODAY_SCREEN_COPY.profileRouteSettings },
+              { id: "faq", label: TODAY_SCREEN_COPY.profileRouteFaq },
+              { id: "legal", label: TODAY_SCREEN_COPY.profileRouteLegal },
+            ].map((item) => (
+              <GhostButton
+                key={item.id}
+                type="button"
+                className="todayProfileSheetAction"
+                onClick={() => {
+                  setProfileSheetOpen(false);
+                  onOpenSecondaryRoute?.(item.id);
+                }}
+              >
+                {item.label}
+              </GhostButton>
+            ))}
+          </div>
+        </AppSheetContent>
+      </AppSheet>
+    </>
   );
 }
 
