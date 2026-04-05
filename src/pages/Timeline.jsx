@@ -3,10 +3,10 @@ import { getVisibleCategories } from "../domain/categoryVisibility";
 import { resolveGoalType } from "../domain/goalType";
 import { getOpenRuntimeSession, resolveRuntimeSessionGate } from "../logic/sessionRuntime";
 import {
-  AppChip,
   AppDateField,
   AppDialog,
   AppScreen,
+  CompactCategoryFilter,
   GhostButton,
   PrimaryButton,
 } from "../shared/ui/app";
@@ -128,6 +128,56 @@ function buildRecurringSummary(occurrences, todayKey) {
   };
 }
 
+function toDateDistance(dateKey, anchorDateKey) {
+  if (!dateKey || !anchorDateKey) return Number.MAX_SAFE_INTEGER;
+  return Math.abs(fromLocalDateKey(dateKey).getTime() - fromLocalDateKey(anchorDateKey).getTime());
+}
+
+function buildTimelineCategoryOptions({ categories, occurrenceEntries, anchorDateKey }) {
+  const stableOrder = new Map(categories.map((category, index) => [category.id, index]));
+  const metricsByCategoryId = new Map();
+
+  for (const entry of occurrenceEntries) {
+    const categoryId = entry.category?.id || "";
+    if (!categoryId) continue;
+    if (!metricsByCategoryId.has(categoryId)) {
+      metricsByCategoryId.set(categoryId, {
+        openCount: 0,
+        totalCount: 0,
+        nearestDistance: Number.MAX_SAFE_INTEGER,
+      });
+    }
+    const metrics = metricsByCategoryId.get(categoryId);
+    metrics.totalCount += 1;
+    if (entry.occurrence?.status !== "done") metrics.openCount += 1;
+    metrics.nearestDistance = Math.min(metrics.nearestDistance, toDateDistance(entry.dateKey, anchorDateKey));
+  }
+
+  return categories
+    .map((category) => {
+      const metrics = metricsByCategoryId.get(category.id) || {
+        openCount: 0,
+        totalCount: 0,
+        nearestDistance: Number.MAX_SAFE_INTEGER,
+      };
+      return {
+        id: category.id,
+        label: category.name,
+        openCount: metrics.openCount,
+        totalCount: metrics.totalCount,
+        nearestDistance: metrics.nearestDistance,
+        stableIndex: stableOrder.get(category.id) ?? Number.MAX_SAFE_INTEGER,
+      };
+    })
+    .sort((left, right) => {
+      if (right.openCount !== left.openCount) return right.openCount - left.openCount;
+      if (right.totalCount !== left.totalCount) return right.totalCount - left.totalCount;
+      if (left.nearestDistance !== right.nearestDistance) return left.nearestDistance - right.nearestDistance;
+      return left.stableIndex - right.stableIndex;
+    })
+    .map(({ id, label }) => ({ id, label }));
+}
+
 function CalendarIcon() {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
@@ -196,6 +246,10 @@ export default function Timeline({ data, setData, setTab, onEditItem }) {
     if (categoryFilterId === "all") return occurrenceEntries;
     return occurrenceEntries.filter((entry) => entry.category?.id === categoryFilterId);
   }, [categoryFilterId, occurrenceEntries]);
+  const categoryOptions = useMemo(
+    () => buildTimelineCategoryOptions({ categories, occurrenceEntries, anchorDateKey: selectedDateKey }),
+    [categories, occurrenceEntries, selectedDateKey]
+  );
 
   const displayEntries = useMemo(() => {
     const groupedByGoal = new Map();
@@ -350,20 +404,13 @@ export default function Timeline({ data, setData, setTab, onEditItem }) {
     >
       <div className="lovablePage">
         {categories.length ? (
-          <div className="lovableFilterRow" aria-label={TIMELINE_SCREEN_COPY.categoryFilterLabel}>
-            <AppChip active={categoryFilterId === "all"} onClick={() => setCategoryFilterId("all")}>
-              {TIMELINE_SCREEN_COPY.allCategories}
-            </AppChip>
-            {categories.map((category) => (
-              <AppChip
-                key={category.id}
-                active={categoryFilterId === category.id}
-                onClick={() => setCategoryFilterId(category.id)}
-              >
-                {category.name}
-              </AppChip>
-            ))}
-          </div>
+          <CompactCategoryFilter
+            label={TIMELINE_SCREEN_COPY.categoryFilterLabel}
+            options={categoryOptions}
+            value={categoryFilterId}
+            onChange={setCategoryFilterId}
+            allLabel={TIMELINE_SCREEN_COPY.allCategories}
+          />
         ) : null}
 
         {displayEntries.length ? (

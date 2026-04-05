@@ -36,3 +36,5 @@ export {
   SecondaryButton,
   StatusBadge,
 } from "./AppUI";
+
+export { default as CompactCategoryFilter } from "./CompactCategoryFilter";

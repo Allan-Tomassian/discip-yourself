@@ -4,7 +4,7 @@ import { resolveGoalType } from "../domain/goalType";
 import { getVisibleCategories } from "../domain/categoryVisibility";
 import { computeAggregateProgress, getGoalProgress } from "../logic/goals";
 import { splitProcessByLink } from "../logic/linking";
-import { AppChip, AppScreen } from "../shared/ui/app";
+import { AppScreen, CompactCategoryFilter } from "../shared/ui/app";
 import { OBJECTIVES_SCREEN_COPY } from "../ui/labels";
 import { resolveCategoryColor } from "../utils/categoryPalette";
 import { normalizeLocalDateKey, todayLocalKey } from "../utils/datetime";
@@ -155,6 +155,50 @@ function escapeSelectorValue(value) {
   return String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
+function buildObjectiveCategoryOptions({ categories, cards, occurrencesByGoalId, todayKey }) {
+  const stableOrder = new Map(categories.map((category, index) => [category.id, index]));
+
+  return categories
+    .map((category) => {
+      const categoryCards = cards.filter((card) => card.category?.id === category.id);
+      let nearbyItems = 0;
+      let latestDateKey = "";
+
+      for (const card of categoryCards) {
+        const sections = buildObjectiveSections({
+          actions: Array.isArray(card.actions) ? card.actions : [],
+          occurrencesByGoalId,
+          todayKey,
+        });
+        nearbyItems += sections.reduce((sum, section) => sum + section.items.length, 0);
+
+        for (const action of Array.isArray(card.actions) ? card.actions : []) {
+          const occurrences = occurrencesByGoalId.get(action.id) || [];
+          for (const occurrence of occurrences) {
+            const dateKey = normalizeLocalDateKey(occurrence?.date) || "";
+            if (dateKey && dateKey > latestDateKey) latestDateKey = dateKey;
+          }
+        }
+      }
+
+      return {
+        id: category.id,
+        label: category.name,
+        cardCount: categoryCards.length,
+        nearbyItems,
+        latestDateKey,
+        stableIndex: stableOrder.get(category.id) ?? Number.MAX_SAFE_INTEGER,
+      };
+    })
+    .sort((left, right) => {
+      if (right.cardCount !== left.cardCount) return right.cardCount - left.cardCount;
+      if (right.nearbyItems !== left.nearbyItems) return right.nearbyItems - left.nearbyItems;
+      if (left.latestDateKey !== right.latestDateKey) return String(right.latestDateKey).localeCompare(String(left.latestDateKey));
+      return left.stableIndex - right.stableIndex;
+    })
+    .map(({ id, label }) => ({ id, label }));
+}
+
 export default function Objectives({
   data,
   setData,
@@ -238,6 +282,10 @@ export default function Objectives({
     if (categoryFilterId === "all") return cards;
     return cards.filter((card) => card.category?.id === categoryFilterId);
   }, [cards, categoryFilterId]);
+  const categoryOptions = useMemo(
+    () => buildObjectiveCategoryOptions({ categories, cards, occurrencesByGoalId, todayKey }),
+    [cards, categories, occurrencesByGoalId, todayKey]
+  );
 
   useEffect(() => {
     const firstActionId = focusTarget?.actionIds?.[0] || null;
@@ -304,20 +352,13 @@ export default function Objectives({
     >
       <div className="lovablePage">
         {categories.length ? (
-          <div className="lovableFilterRow" aria-label={OBJECTIVES_SCREEN_COPY.categoryFilterLabel}>
-            <AppChip active={categoryFilterId === "all"} onClick={() => setCategoryFilterId("all")}>
-              {OBJECTIVES_SCREEN_COPY.allCategories}
-            </AppChip>
-            {categories.map((category) => (
-              <AppChip
-                key={category.id}
-                active={categoryFilterId === category.id}
-                onClick={() => setCategoryFilterId(category.id)}
-              >
-                {category.name}
-              </AppChip>
-            ))}
-          </div>
+          <CompactCategoryFilter
+            label={OBJECTIVES_SCREEN_COPY.categoryFilterLabel}
+            options={categoryOptions}
+            value={categoryFilterId}
+            onChange={setCategoryFilterId}
+            allLabel={OBJECTIVES_SCREEN_COPY.allCategories}
+          />
         ) : null}
 
         {filteredCards.length ? (
