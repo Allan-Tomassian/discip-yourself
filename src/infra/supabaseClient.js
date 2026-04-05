@@ -17,14 +17,21 @@ const PROCESS_ENV =
 export const SUPABASE_URL = String(
   ENV.VITE_SUPABASE_URL || PROCESS_ENV.VITE_SUPABASE_URL || PROCESS_ENV.E2E_SUPABASE_URL || ""
 ).trim();
-export const SUPABASE_ANON_KEY = String(
-  ENV.VITE_SUPABASE_ANON_KEY || PROCESS_ENV.VITE_SUPABASE_ANON_KEY || PROCESS_ENV.E2E_SUPABASE_ANON_KEY || ""
+export const SUPABASE_PUBLISHABLE_KEY = String(
+  ENV.VITE_SUPABASE_PUBLISHABLE_KEY
+  || PROCESS_ENV.VITE_SUPABASE_PUBLISHABLE_KEY
+  || PROCESS_ENV.E2E_SUPABASE_PUBLISHABLE_KEY
+  || ENV.VITE_SUPABASE_ANON_KEY
+  || PROCESS_ENV.VITE_SUPABASE_ANON_KEY
+  || PROCESS_ENV.E2E_SUPABASE_ANON_KEY
+  || ""
 ).trim();
+export const SUPABASE_ANON_KEY = SUPABASE_PUBLISHABLE_KEY;
 
 const SUPABASE_URL_RE = /^https:\/\/([a-z0-9-]+)\.supabase\.co$/i;
 const SUPABASE_PUBLISHABLE_KEY_RE = /^sb_publishable_[a-z0-9._-]+$/i;
 export const SUPABASE_ENV_ERROR_MESSAGE =
-  "Supabase env invalid: configure .env with Project URL + anon/publishable key";
+  "Supabase env invalid: configure .env with Project URL + publishable key";
 
 export function validateSupabaseUrl(rawUrl) {
   const value = String(rawUrl || "").trim();
@@ -38,7 +45,7 @@ export function validateSupabaseUrl(rawUrl) {
   return value;
 }
 
-export function validateSupabaseAnonKey(rawKey) {
+export function validateSupabasePublishableKey(rawKey) {
   const value = String(rawKey || "").trim();
   const lower = value.toLowerCase();
   const isPlaceholder = lower.startsWith("your-") || lower.includes("replace") || lower.includes("insert");
@@ -47,16 +54,18 @@ export function validateSupabaseAnonKey(rawKey) {
 
   if (!value || isPlaceholder || (!isPublishable && !isJwt)) {
     const error = new Error(SUPABASE_ENV_ERROR_MESSAGE);
-    error.code = "SUPABASE_ANON_KEY_INVALID";
+    error.code = "SUPABASE_PUBLISHABLE_KEY_INVALID";
     throw error;
   }
   return value;
 }
 
-export function validateSupabaseEnv(rawUrl, rawAnonKey) {
+export const validateSupabaseAnonKey = validateSupabasePublishableKey;
+
+export function validateSupabaseEnv(rawUrl, rawPublishableKey) {
   const url = validateSupabaseUrl(rawUrl);
-  const anonKey = validateSupabaseAnonKey(rawAnonKey);
-  return { url, anonKey };
+  const publishableKey = validateSupabasePublishableKey(rawPublishableKey);
+  return { url, publishableKey, anonKey: publishableKey };
 }
 
 export function getSupabaseProjectRef(rawUrl) {
@@ -74,7 +83,7 @@ export function getSupabaseProjectRef(rawUrl) {
 let validatedEnv = null;
 let supabaseConfigError = "";
 try {
-  validatedEnv = validateSupabaseEnv(SUPABASE_URL, SUPABASE_ANON_KEY);
+  validatedEnv = validateSupabaseEnv(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 } catch (error) {
   supabaseConfigError = error?.message || SUPABASE_ENV_ERROR_MESSAGE;
 }

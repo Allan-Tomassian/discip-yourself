@@ -12,7 +12,7 @@ export function getLoginAvailability({ supabaseReady, email, sending, supabaseCo
   const canSend = ready && emailOk && !busy;
   const configMessage =
     String(supabaseConfigError || "").trim()
-    || "Configuration Supabase manquante. Renseigne VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.";
+    || "Configuration Supabase manquante. Renseigne VITE_SUPABASE_URL et VITE_SUPABASE_PUBLISHABLE_KEY.";
 
   if (!ready) {
     return {

@@ -20,6 +20,7 @@
     "test:e2e": "playwright test",
     "check:da": "node scripts/check-da.js",
     "check:env:public": "node scripts/check-no-public-secrets.mjs",
+    "check:env:secrets": "node scripts/check-no-secrets.mjs",
     "ui:audit": "node scripts/ui-audit-scan.mjs && node scripts/ui-audit-report.mjs",
     "ui:audit:uniformity": "node scripts/ui-uniformity-scan.mjs && node scripts/ui-uniformity-report.mjs",
     "ui:audit:text": "node scripts/text-audit-scan.mjs && node scripts/text-audit-report.mjs",
@@ -29,7 +30,7 @@
     "ui:check:menu": "node scripts/check-no-legacy-ui.mjs --scope src/components/TopNav.jsx,src/components/TopMenuPopover.jsx,src/features/navigation/topMenuGate.css",
     "ui:check:pages": "node scripts/check-no-legacy-ui.mjs --scope src/pages/Account.jsx,src/pages/Preferences.jsx,src/pages/Subscription.jsx,src/pages/Data.jsx,src/pages/Privacy.jsx,src/pages/Terms.jsx,src/pages/Support.jsx",
     "ui:check:strict": "node scripts/check-no-legacy-ui.mjs --scope src/pages/Home.jsx,src/pages/Categories.jsx,src/pages/Pilotage.jsx,src/ui/focus/FocusCard.jsx,src/ui/today/MicroActionsCard.jsx,src/ui/calendar/CalendarCard.jsx,src/pages/CategoryView.jsx,src/components/EditItemPanel.jsx,src/App.jsx",
-    "check": "npm run check:env:public && npm run lint && npm run build && npm run test"
+    "check": "npm run check:env:public && npm run check:env:secrets && npm run lint && npm run build && npm run test"
   },
   "dependencies": {
     "@capacitor/cli": "^6.1.0",

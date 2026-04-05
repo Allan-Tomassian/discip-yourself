@@ -12,7 +12,7 @@ Required:
 - `APP_ENV`
 - `PORT`
 - `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_SECRET_KEY`
 
 Optional for AI calls:
 
@@ -38,8 +38,8 @@ cd backend
 npm install
 APP_ENV=local \
 PORT=3001 \
-SUPABASE_URL=https://your-project.supabase.co \
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key \
+SUPABASE_URL=https://<project-ref>.supabase.co \
+SUPABASE_SECRET_KEY= \
 OPENAI_API_KEY= \
 AI_QUOTA_MODE=dev_relaxed \
 CORS_ALLOW_PRIVATE_NETWORK_DEV=true \
@@ -61,9 +61,9 @@ Backend staging env:
 ```bash
 APP_ENV=staging
 PORT=3001
-SUPABASE_URL=https://your-staging-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-staging-service-role-key
-OPENAI_API_KEY=your-server-only-openai-key
+SUPABASE_URL=https://<staging-ref>.supabase.co
+SUPABASE_SECRET_KEY=
+OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4.1-mini
 AI_QUOTA_MODE=normal
 CORS_ALLOW_PRIVATE_NETWORK_DEV=false
@@ -98,8 +98,8 @@ npm test
 ```bash
 cd backend
 PORT=3001 \
-SUPABASE_URL=https://your-project.supabase.co \
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key \
+SUPABASE_URL=https://<project-ref>.supabase.co \
+SUPABASE_SECRET_KEY= \
 npm run check:schema
 ```
 

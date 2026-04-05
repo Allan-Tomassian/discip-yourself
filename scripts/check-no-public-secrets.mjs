@@ -3,7 +3,9 @@ import path from "node:path";
 
 const ROOT = process.cwd();
 const FILES_TO_SCAN = [
+  ".env.example",
   ".env",
+  ".env.local",
   ".env.local.example",
   ".env.staging.example",
   ".env.production.example",
@@ -17,6 +19,10 @@ const FORBIDDEN_VITE_NAME_PATTERNS = [
   /^VITE_.*SECRET/i,
   /^VITE_.*PRIVATE(_KEY)?/i,
 ];
+const LEGACY_PUBLIC_ENV_NAMES = new Set([
+  "VITE_SUPABASE_ANON_KEY",
+  "E2E_SUPABASE_ANON_KEY",
+]);
 
 const violations = [];
 
@@ -32,6 +38,15 @@ for (const relPath of FILES_TO_SCAN) {
     const match = trimmed.match(/^([A-Z0-9_]+)\s*=\s*(.*)$/);
     if (!match) return;
     const [, name, rawValue] = match;
+    if (LEGACY_PUBLIC_ENV_NAMES.has(name)) {
+      violations.push({
+        file: relPath,
+        line: index + 1,
+        name,
+        reason: "legacy-public-name",
+      });
+      return;
+    }
     if (!name.startsWith("VITE_")) return;
 
     const value = String(rawValue || "").trim();
@@ -46,6 +61,7 @@ for (const relPath of FILES_TO_SCAN) {
         file: relPath,
         line: index + 1,
         name,
+        reason: hasForbiddenName ? "forbidden-public-name" : "server-secret-value",
       });
     }
   });
@@ -54,7 +70,7 @@ for (const relPath of FILES_TO_SCAN) {
 if (violations.length) {
   console.error("Forbidden public env variables detected:");
   for (const violation of violations) {
-    console.error(`- ${violation.file}:${violation.line} -> ${violation.name}`);
+    console.error(`- ${violation.file}:${violation.line} -> ${violation.name} (${violation.reason})`);
   }
   process.exit(1);
 }

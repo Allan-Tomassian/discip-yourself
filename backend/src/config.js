@@ -19,7 +19,7 @@ const envSchema = z.object({
   APP_ENV: z.enum(["local", "staging", "prod", "test"]).default("local"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   SUPABASE_URL: z.string().url(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  SUPABASE_SECRET_KEY: z.string().min(1),
   OPENAI_API_KEY: z.string().optional().default(""),
   OPENAI_MODEL: z.string().optional().default("gpt-4.1-mini"),
   AI_QUOTA_MODE: z.enum(["normal", "dev_relaxed"]).default("normal"),
@@ -32,6 +32,14 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 });
 
+function normalizeServerEnv(source = {}) {
+  const env = source && typeof source === "object" ? source : {};
+  return {
+    ...env,
+    SUPABASE_SECRET_KEY: String(env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY || "").trim(),
+  };
+}
+
 export function loadConfig(env = process.env) {
-  return envSchema.parse(env);
+  return envSchema.parse(normalizeServerEnv(env));
 }

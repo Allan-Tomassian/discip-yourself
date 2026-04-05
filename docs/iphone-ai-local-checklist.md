@@ -44,9 +44,9 @@ Commande de référence:
 cd "/Users/allan/Desktop/discip-yourself code/backend"
 
 PORT=3001 \
-SUPABASE_URL="https://humfatlgvwafmbohrdip.supabase.co" \
-SUPABASE_SERVICE_ROLE_KEY="TON_SERVICE_ROLE_KEY" \
-OPENAI_API_KEY="TON_OPENAI_API_KEY" \
+SUPABASE_URL="https://<project-ref>.supabase.co" \
+SUPABASE_SECRET_KEY="<backend-secret-key>" \
+OPENAI_API_KEY="<server-only>" \
 AI_QUOTA_MODE=dev_relaxed \
 CORS_ALLOW_PRIVATE_NETWORK_DEV=true \
 CORS_ALLOWED_ORIGINS="http://localhost:5173,http://127.0.0.1:5173" \

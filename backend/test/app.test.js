@@ -11,7 +11,7 @@ const TEST_CONFIG = {
   APP_ENV: "test",
   PORT: 3001,
   SUPABASE_URL: "https://example.supabase.co",
-  SUPABASE_SERVICE_ROLE_KEY: "service-role-test",
+  SUPABASE_SECRET_KEY: "service-role-test",
   OPENAI_API_KEY: "",
   OPENAI_MODEL: "gpt-4.1-mini",
   AI_QUOTA_MODE: "normal",

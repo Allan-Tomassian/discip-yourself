@@ -12,9 +12,14 @@ Utiliser:
 
 Exemples d'env front:
 
+- [.env.example](/Users/allan/Desktop/discip-yourself%20code/.env.example)
 - [.env.local.example](/Users/allan/Desktop/discip-yourself%20code/.env.local.example)
 - [.env.staging.example](/Users/allan/Desktop/discip-yourself%20code/.env.staging.example)
 - [.env.production.example](/Users/allan/Desktop/discip-yourself%20code/.env.production.example)
+
+Rotation / hygiène des secrets:
+
+- [docs/secret-rotation.md](/Users/allan/Desktop/discip-yourself%20code/docs/secret-rotation.md)
 
 Le guide iPhone LAN reste disponible comme fallback local:
 
@@ -43,6 +48,7 @@ Web dev:
 - `npm install`
 - `npm run dev`
 - `npm run check:env:public`
+- `npm run check:env:secrets`
 
 iOS build/sync:
 - `npm run build`
@@ -63,7 +69,7 @@ Commands:
 
 Configuration env requise:
 - `VITE_SUPABASE_URL` au format strict `https://<ref>.supabase.co`
-- `VITE_SUPABASE_ANON_KEY`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
 
 Checklist Supabase Dashboard:
 - `Authentication` > `Providers` > `Email`

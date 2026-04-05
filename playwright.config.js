@@ -4,9 +4,15 @@ import { existsSync } from "node:fs";
 const PORT = process.env.E2E_PORT || "5173";
 const BASE_URL = process.env.E2E_BASE_URL || `http://127.0.0.1:${PORT}`;
 const E2E_SUPABASE_URL = process.env.E2E_SUPABASE_URL || "https://e2e-project-ref.supabase.co";
-const E2E_SUPABASE_ANON_KEY = process.env.E2E_SUPABASE_ANON_KEY || "sb_publishable_e2e-key";
+const E2E_SUPABASE_PUBLISHABLE_KEY =
+  process.env.E2E_SUPABASE_PUBLISHABLE_KEY
+  || process.env.E2E_SUPABASE_ANON_KEY
+  || "sb_publishable_e2e-key";
 process.env.VITE_SUPABASE_URL = process.env.VITE_SUPABASE_URL || E2E_SUPABASE_URL;
-process.env.VITE_SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || E2E_SUPABASE_ANON_KEY;
+process.env.VITE_SUPABASE_PUBLISHABLE_KEY =
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY || E2E_SUPABASE_PUBLISHABLE_KEY;
+process.env.VITE_SUPABASE_ANON_KEY =
+  process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const webkitExecutablePath = (() => {
   try {
     return webkit.executablePath();
@@ -37,7 +43,7 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: `VITE_SUPABASE_URL=${E2E_SUPABASE_URL} VITE_SUPABASE_ANON_KEY=${E2E_SUPABASE_ANON_KEY} npm run dev -- --host 127.0.0.1 --port ${PORT}`,
+    command: `VITE_SUPABASE_URL=${E2E_SUPABASE_URL} VITE_SUPABASE_PUBLISHABLE_KEY=${E2E_SUPABASE_PUBLISHABLE_KEY} npm run dev -- --host 127.0.0.1 --port ${PORT}`,
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

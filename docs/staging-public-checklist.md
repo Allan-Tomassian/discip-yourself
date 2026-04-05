@@ -19,13 +19,13 @@ Variables Netlify:
 
 - `VITE_APP_ENV=staging`
 - `VITE_SUPABASE_URL=https://<staging-ref>.supabase.co`
-- `VITE_SUPABASE_ANON_KEY=<staging-anon-key>`
+- `VITE_SUPABASE_PUBLISHABLE_KEY=`
 - `VITE_AI_BACKEND_URL=https://discip-yourself-backend-staging.onrender.com`
 
 Notes:
 
 - ne jamais exposer `OPENAI_API_KEY`
-- ne jamais exposer `SUPABASE_SERVICE_ROLE_KEY`
+- ne jamais exposer `SUPABASE_SECRET_KEY`
 - utiliser `netlify.toml` pour le build Vite et le fallback SPA
 
 ## Backend staging
@@ -35,7 +35,7 @@ Variables Render:
 - `APP_ENV=staging`
 - `PORT=3001`
 - `SUPABASE_URL=https://<staging-ref>.supabase.co`
-- `SUPABASE_SERVICE_ROLE_KEY=<staging-service-role-key>`
+- `SUPABASE_SECRET_KEY=`
 - `OPENAI_API_KEY=<server-only>`
 - `OPENAI_MODEL=gpt-4.1-mini`
 - `AI_QUOTA_MODE=normal`
@@ -99,6 +99,7 @@ Backend staging:
 ## Commandes utiles repo
 
 - `npm run check:env:public`
+- `npm run check:env:secrets`
 - `cd backend && npm test`
 - `npm run test:unit`
 - `npm run build`

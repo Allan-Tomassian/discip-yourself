@@ -8,7 +8,7 @@ export const REQUIRED_AI_TABLES = [
 ];
 
 export function createSupabaseAdminClient(config) {
-  return createClient(config.SUPABASE_URL, config.SUPABASE_SERVICE_ROLE_KEY, {
+  return createClient(config.SUPABASE_URL, config.SUPABASE_SECRET_KEY, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
