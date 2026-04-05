@@ -82,7 +82,7 @@ describe("dispatchOpenCreateTask", () => {
 
     expect(result.nextOrigin).toEqual(
       expect.objectContaining({
-        mainTab: "library",
+        mainTab: "objectives",
         sourceSurface: "category-detail",
         categoryId: "cat-library",
         libraryMode: "category-view",
@@ -92,7 +92,7 @@ describe("dispatchOpenCreateTask", () => {
       expect.objectContaining({
         kind: "outcome",
         origin: expect.objectContaining({
-          mainTab: "library",
+          mainTab: "objectives",
           sourceSurface: "category-detail",
           categoryId: "cat-library",
           libraryMode: "category-view",
@@ -140,7 +140,7 @@ describe("dispatchOpenCreateTask", () => {
         kind: "assistant",
         requiresValidation: true,
         sourceContext: expect.objectContaining({
-          mainTab: "planning",
+          mainTab: "timeline",
           sourceSurface: "planning",
           categoryId: "cat-assistant",
         }),

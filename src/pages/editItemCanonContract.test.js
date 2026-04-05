@@ -10,18 +10,20 @@ function readSrc(relPath) {
 }
 
 describe("edit item canonical contract", () => {
-  it("routes library editing through the canonical edit-item page", () => {
+  it("routes objectives editing through the canonical edit-item page", () => {
     const app = readSrc("App.jsx");
-    const categories = readSrc("pages/Categories.jsx");
+    const objectives = readSrc("pages/Objectives.jsx");
 
-    expect(categories).toContain("onEditItem,");
-    expect(categories).toContain("function openEditItemRoute(goal)");
-    expect(categories).not.toContain("EditItemPanel");
-    expect(categories).not.toContain("editPanelGoalId");
-    expect(app).toContain("returnToCategoryView: true");
+    expect(objectives).toContain("onEditItem,");
+    expect(objectives).toContain("onEditItem?.({ id: action.id, type: \"PROCESS\"");
+    expect(objectives).not.toContain("EditItemPanel");
+    expect(objectives).not.toContain("editPanelGoalId");
+    expect(app).toContain("returnTab: \"objectives\"");
+    expect(app).toContain("returnToCategoryView: Boolean(goal.categoryId)");
     expect(app).toContain("returnToCategoryView: false");
     expect(app).toContain('setTab("edit-item", {');
     expect(app).toContain("editItemId: id");
+    expect(app).not.toContain('tab === "library"');
   });
 
   it("uses the split canonical screens and removes legacy edit panel recipes", () => {

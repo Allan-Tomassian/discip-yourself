@@ -21,34 +21,16 @@ describe("category accent UI contract", () => {
     expect(accentRow).toContain("categorySurface--surface");
   });
 
-  it("applies the shared category surface language across Today, Planning and Pilotage", () => {
+  it("keeps category color as subtle metadata instead of full-screen shell chrome", () => {
     const todayHero = readSrc("components/today/TodayHero.jsx");
     const todayNextActions = readSrc("components/today/TodayNextActions.jsx");
-    const todayDailyState = readSrc("components/today/TodayDailyState.jsx");
-    const planning = readSrc("pages/Planning.jsx");
-    const planningCoach = readSrc("components/planning/PlanningCoachCard.jsx");
-    const library = readSrc("pages/Categories.jsx");
-    const pilotage = readSrc("pages/Pilotage.jsx");
+    const objectives = readSrc("pages/Objectives.jsx");
 
-    expect(todayHero).toContain("level: \"surface\"");
-    expect(todayHero).toContain("activeCategory");
-    expect(todayHero).toContain("AppCard");
-    expect(todayNextActions).toContain("activeCategory");
-    expect(todayNextActions).toContain("level: \"surface\"");
-    expect(todayNextActions).toContain("AppCard");
-    expect(todayDailyState).toContain("activeCategory");
-    expect(todayDailyState).toContain("level: \"surface\"");
-    expect(todayDailyState).not.toContain("AppCard");
-    expect(todayDailyState).toContain("todayDailyState");
-    expect(planning).toContain("activeCategorySurfaceVars");
-    expect(planning).toContain("AppCard");
-    expect(planningCoach).toContain("getCategoryUiVars");
-    expect(planningCoach).toContain("AppCard");
-    expect(library).toContain("activeLibraryCategory");
-    expect(library).toContain("libraryPrimaryStack");
-    expect(library).not.toContain("libraryPrimaryCard");
-    expect(pilotage).toContain("resolveCategoryStateTone");
-    expect(pilotage).toContain("pilotageInlinePanel");
-    expect(pilotage).toContain("PilotageMetricCard");
+    expect(todayHero).not.toContain("getCategoryUiVars");
+    expect(todayHero).toContain("recommendedCategoryLabel");
+    expect(todayNextActions).toContain("resolveCategoryColor");
+    expect(objectives).toContain("resolveCategoryColor");
+    expect(objectives).toContain("ObjectiveRing");
+    expect(objectives).toContain("category?.name");
   });
 });

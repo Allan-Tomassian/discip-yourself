@@ -1,5 +1,5 @@
 export const DEFAULT_THEME = "discipline";
-export const BRAND_ACCENT = "#4C7DFF";
+export const BRAND_ACCENT = "#8B78FF";
 
 const IS_DEV = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
 let warnedAccentOverride = false;

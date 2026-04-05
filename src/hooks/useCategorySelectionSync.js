@@ -55,7 +55,7 @@ export function useCategorySelectionSync({
     if (!targetId) {
       setLibraryCategoryId(null);
       setCategoryDetailId(null);
-      setTab("library");
+      setTab("objectives");
       return;
     }
     if (!librarySelectedCategoryId || librarySelectedCategoryId !== targetId) {
@@ -80,11 +80,11 @@ export function useCategorySelectionSync({
     }
     setLibraryCategoryId(null);
     setCategoryDetailId(null);
-    setTab("library");
+    setTab("objectives");
   };
 
   useEffect(() => {
-    if (tab !== "library") return;
+    if (tab !== "objectives") return;
     if (typeof setData !== "function") return;
     setData((prev) => {
       const prevUi = prev.ui || {};
@@ -115,7 +115,7 @@ export function useCategorySelectionSync({
     } else if (tab === "today") {
       didInitTodaySyncRef.current = true;
     }
-    if (prevTab !== "library" && tab === "library" && !librarySelectedCategoryId && libraryEntryCategoryId) {
+    if (prevTab !== "objectives" && tab === "objectives" && !librarySelectedCategoryId && libraryEntryCategoryId) {
       setData((prev) => {
         const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
         if (!prevCategories.some((category) => category.id === libraryEntryCategoryId)) return prev;
@@ -181,11 +181,11 @@ export function useCategorySelectionSync({
       setCategoryDetailId(categoryId);
       return;
     }
-    if (tab === "planning") {
+    if (tab === "planning" || tab === "timeline") {
       syncExecutionCategorySelection();
       return;
     }
-    if (tab === "library") {
+    if (tab === "library" || tab === "objectives") {
       if (libraryCategoryId) {
         syncLibraryCategorySelection();
         setLibraryCategoryId(categoryId);
@@ -197,14 +197,14 @@ export function useCategorySelectionSync({
       });
       setLibraryCategoryId(null);
       setCategoryDetailId(null);
-      setTab("library");
+      setTab("objectives");
       return;
     }
     if (tab === "category-detail") {
       syncLibraryCategorySelection();
       setLibraryCategoryId(null);
       setCategoryDetailId(null);
-      setTab("library");
+      setTab("objectives");
       return;
     }
     if (tab === "category-progress") {
@@ -218,7 +218,7 @@ export function useCategorySelectionSync({
       syncLibraryCategorySelection();
       return;
     }
-    if (tab === "pilotage") {
+    if (tab === "pilotage" || tab === "insights") {
       syncExecutionCategorySelection();
       return;
     }
@@ -233,11 +233,11 @@ export function useCategorySelectionSync({
         ? categoryDetailId
         : tab === "category-progress"
           ? categoryProgressId
-          : tab === "pilotage"
+          : tab === "pilotage" || tab === "insights"
             ? getExecutionActiveCategoryId(safeData) || homeSelectedCategoryId || null
-          : tab === "planning"
+          : tab === "planning" || tab === "timeline"
             ? getExecutionActiveCategoryId(safeData) || homeSelectedCategoryId || null
-            : tab === "library" || tab === "edit-item"
+            : tab === "library" || tab === "objectives" || tab === "edit-item"
               ? libraryEntryCategoryId || null
               : getExecutionActiveCategoryId(safeData) || homeSelectedCategoryId || null,
     [

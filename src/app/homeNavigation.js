@@ -4,7 +4,7 @@ export function createHomeNavigationHandlers({ openLibraryDetail, setTab }) {
       if (typeof openLibraryDetail === "function") openLibraryDetail();
     },
     onOpenPilotage() {
-      if (typeof setTab === "function") setTab("pilotage");
+      if (typeof setTab === "function") setTab("insights");
     },
   };
 }

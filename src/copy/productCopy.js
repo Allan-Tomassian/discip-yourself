@@ -1,8 +1,8 @@
 export const SURFACE_LABELS = Object.freeze({
   today: "Today",
-  planning: "Planification",
-  library: "Bibliothèque",
-  pilotage: "Pilotage",
+  planning: "Timeline",
+  library: "Objectives",
+  pilotage: "Insights",
   coach: "Coach",
   session: "Session",
   journal: "Journal",
@@ -16,27 +16,27 @@ export const SURFACE_LABELS = Object.freeze({
 
 export const MAIN_PAGE_COPY = Object.freeze({
   today: Object.freeze({
-    orientation: "Commence par le prochain pas utile aujourd’hui.",
-    nextActionsSubtitle: "Le reste du jour, pour garder un rythme lisible.",
-    dailyStateTitle: "Repères du jour",
-    dailyStateSubtitle: "Prévu, fait, restant.",
+    orientation: "Your next useful move, clearly surfaced.",
+    nextActionsSubtitle: "Recommended actions for today.",
+    dailyStateTitle: "Daily State",
+    dailyStateSubtitle: "Planned, done, remaining.",
   }),
   planning: Object.freeze({
-    orientation: "Règle le rythme avant de charger la journée.",
-    weekDescription: "Répartis les créneaux sur la semaine pour garder une cadence tenable.",
-    dayDescription: "Ajuste le jour sans perdre le rythme.",
+    orientation: "Your roadmap to execution.",
+    weekDescription: "A clear timeline of completed and upcoming execution blocks.",
+    dayDescription: "A clear timeline of completed and upcoming execution blocks.",
   }),
   library: Object.freeze({
-    orientation: "Lis ton système par catégories stables.",
-    primaryTitle: "Carte active",
-    reclassifyTitle: "À reclasser",
-    suggestionsTitle: "Catégories suggérées",
+    orientation: "Outcome-first structure with linked actions underneath.",
+    primaryTitle: "Objectives",
+    reclassifyTitle: "Hidden for this direction",
+    suggestionsTitle: "Suggested structure",
   }),
   pilotage: Object.freeze({
-    orientation: "Relis la cohérence quand assez de signal existe.",
-    summaryTitle: "Lecture d’ensemble",
-    focusTitle: "Catégories suivies",
-    statsTitle: "Signaux récents",
+    orientation: "Your trajectory this week.",
+    summaryTitle: "Overview",
+    focusTitle: "Focus",
+    statsTitle: "Signals",
   }),
 });
 

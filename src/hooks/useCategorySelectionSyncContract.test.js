@@ -17,10 +17,10 @@ describe("useCategorySelectionSync contract", () => {
     expect(source).toContain("withExecutionActiveCategoryId");
     expect(source).toContain("withLibraryActiveCategoryId");
     expect(source).toContain("if (tab === \"today\") {");
-    expect(source).toContain("if (tab === \"planning\") {");
-    expect(source).toContain("if (tab === \"pilotage\") {");
+    expect(source).toContain("if (tab === \"planning\" || tab === \"timeline\") {");
+    expect(source).toContain("if (tab === \"pilotage\" || tab === \"insights\") {");
     expect(source).toContain("syncExecutionCategorySelection();");
-    expect(source).toContain("if (tab === \"library\") {");
+    expect(source).toContain("if (tab === \"library\" || tab === \"objectives\") {");
     expect(source).toContain("if (tab === \"category-detail\") {");
     expect(source).toContain("if (tab === \"category-progress\") {");
     expect(source).toContain("if (tab === \"edit-item\") {");

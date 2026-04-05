@@ -2,9 +2,14 @@ import { CATEGORY_VIEW, getSelectedCategoryForView } from "../../domain/category
 import { normalizeLocalDateKey, todayLocalKey } from "../../utils/dateKey";
 
 function resolveCoachCategoryView(surfaceTab) {
-  if (surfaceTab === "planning") return CATEGORY_VIEW.PLANNING;
-  if (surfaceTab === "pilotage") return CATEGORY_VIEW.PILOTAGE;
-  if (surfaceTab === "library" || surfaceTab === "category-detail" || surfaceTab === "category-progress") {
+  if (surfaceTab === "planning" || surfaceTab === "timeline") return CATEGORY_VIEW.PLANNING;
+  if (surfaceTab === "pilotage" || surfaceTab === "insights") return CATEGORY_VIEW.PILOTAGE;
+  if (
+    surfaceTab === "library" ||
+    surfaceTab === "objectives" ||
+    surfaceTab === "category-detail" ||
+    surfaceTab === "category-progress"
+  ) {
     return CATEGORY_VIEW.LIBRARY;
   }
   return CATEGORY_VIEW.TODAY;

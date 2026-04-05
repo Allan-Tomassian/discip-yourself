@@ -7,11 +7,14 @@
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
-  --topbar-bottom: calc(var(--safe-top) + 74px);
+  --topbar-bottom: calc(var(--safe-top) + 24px);
   --bottom-fixed-stack-space: 0px;
-  --page-pad: 20px;
-  --layout-max: 720px;
-  --floating-max: 720px;
+  --page-pad: 24px;
+  --layout-max: 540px;
+  --floating-max: 540px;
+  --lovable-surface: rgba(17, 17, 26, 0.94);
+  --lovable-border: rgba(255, 255, 255, 0.06);
+  --lovable-shadow-card: 0 24px 56px rgba(0, 0, 0, 0.4);
 
   /* Background motion defaults (themes may override) */
   --background-size: 140% 140%;
@@ -25,27 +28,6 @@
   --shadow-soft: var(--shadowSoft);
   --app-modal-max: 720px;
   --shadow-card: var(--shadowCard);
-}
-
-@media (min-width: 481px) and (max-width: 900px) {
-  :root {
-    --layout-max: 860px;
-    --floating-max: 780px;
-  }
-}
-
-@media (min-width: 901px) {
-  :root {
-    --layout-max: 1220px;
-    --floating-max: 1040px;
-  }
-}
-
-@media (min-width: 1200px) {
-  :root {
-    --layout-max: 1360px;
-    --floating-max: 1180px;
-  }
 }
 
 *{ box-sizing:border-box; }
@@ -95,13 +77,13 @@ a{ color:inherit; }
   max-width:var(--layout-max, var(--page-max));
   margin:0 auto;
   padding:
-    calc(var(--navGap, 10px) + var(--page-top-gap))
+    calc(var(--page-top-gap) + var(--safe-top))
     calc(var(--page-pad) + var(--safe-right))
     32px
     calc(var(--page-pad) + var(--safe-left));
   min-height:100dvh;
   overflow:visible;
-  padding-bottom:calc(32px + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px)));
+  padding-bottom:calc(120px + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px)));
   overflow-x:hidden;
 }
 .pageContent{
@@ -1214,35 +1196,35 @@ a{ color:inherit; }
 
 /* === Global Design System Refresh === */
 :root{
-  --page-pad: 16px;
-  --layout-max: 1200px;
-  --floating-max: 1200px;
-  --page-top-gap: 32px;
-  --page-section-gap: 32px;
+  --page-pad: 24px;
+  --layout-max: 540px;
+  --floating-max: 540px;
+  --page-top-gap: 24px;
+  --page-section-gap: 24px;
 }
 
 @media (max-width: 767px) {
   :root {
     --page-top-gap: 16px;
-    --navGap: 8px;
+    --navGap: 12px;
   }
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
   :root {
     --page-pad: 24px;
-    --layout-max: 1200px;
-    --floating-max: 1100px;
-    --page-top-gap: 36px;
+    --layout-max: 540px;
+    --floating-max: 540px;
+    --page-top-gap: 24px;
   }
 }
 
 @media (min-width: 1024px) {
   :root {
-    --page-pad: 32px;
-    --layout-max: 1200px;
-    --floating-max: 1200px;
-    --page-top-gap: 40px;
+    --page-pad: 24px;
+    --layout-max: 540px;
+    --floating-max: 540px;
+    --page-top-gap: 24px;
   }
 }
 
@@ -1256,8 +1238,8 @@ body,
 html,
 body {
   background-image:
-    radial-gradient(circle at top, rgba(91, 140, 255, 0.12), transparent 34%),
-    linear-gradient(180deg, var(--background-secondary) 0%, var(--background-primary) 48%, #0c0f14 100%);
+    radial-gradient(circle at top, rgba(139, 120, 255, 0.14), transparent 34%),
+    linear-gradient(180deg, var(--background-secondary) 0%, var(--background-primary) 48%, #08080d 100%);
 }
 
 body,
@@ -1265,7 +1247,7 @@ button,
 input,
 textarea,
 select {
-  font-family: Inter, "SF Pro Display", "SF Pro Text", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-family-ui);
 }
 
 .screenShell,
@@ -1275,8 +1257,8 @@ select {
 
 .container {
   max-width: min(var(--layout-max), calc(100vw - var(--safe-left) - var(--safe-right)));
-  padding-top: calc(var(--navGap, 10px) + var(--page-top-gap));
-  padding-bottom: calc(40px + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px)));
+  padding-top: calc(var(--safe-top) + var(--navGap, 10px) + var(--page-top-gap));
+  padding-bottom: calc(120px + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px)));
 }
 
 .pageHeader {
@@ -1442,8 +1424,8 @@ select {
 
 @media (max-width: 767px) {
   :root {
-    --navGap: 6px;
-    --page-top-gap: 6px;
+    --navGap: 12px;
+    --page-top-gap: 16px;
     --subtitleToContent: 16px;
   }
 

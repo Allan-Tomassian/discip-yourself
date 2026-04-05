@@ -2057,81 +2057,73 @@ export default function Home({
       heroViewModel?.primaryAction?.kind === "open_pilotage" ||
       (heroViewModel?.primaryAction?.kind === "start_occurrence" && heroOccurrence)
   );
-  const heroAnalyzeLabel = manualTodayAnalysis.isPersistedForContext ? UI_COPY.refreshAnalysis : UI_COPY.analyzePriority;
-  const showHeroPlanningShortcut = heroViewModel?.primaryAction?.kind !== "open_pilotage";
+  const greetingName = String(profile?.full_name || profile?.username || profile?.name || "").trim() || "there";
+  const greetingPeriod = (() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  })();
+  const headerDateLabel = (() => {
+    try {
+      return new Intl.DateTimeFormat("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      }).format(selectedDate);
+    } catch {
+      return selectedDateKey;
+    }
+  })();
+  const insightCopy = [
+    manualTodayAnalysis.visibleAnalysis?.headline || "",
+    heroReasonText || "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <AppScreen
       accent={accent}
       backgroundImage={backgroundImage}
       pageId="today"
-      headerTitle={<span data-tour-id="today-title">{SURFACE_LABELS.today}</span>}
-      headerSubtitle={MAIN_PAGE_COPY.today.orientation}
-      headerRight={headerRight}
+      headerTitle={<span data-tour-id="today-title">{`${greetingPeriod}, ${greetingName}`}</span>}
+      headerSubtitle={headerDateLabel}
       headerRowAlign="start"
     >
-      <div className="mainPageStack todayPageShell">
-        <section className="mainPageSection">
-          <div className="mainPageSectionBody">
-            <TodayHero
-              title={typedHeroTitle || heroViewModel.title}
-              category={heroDisplayCategory}
-              activeCategory={focusCategory || null}
-              behaviorCue={todayBehaviorCue}
-              categoryName={heroDisplayCategoryName}
-              durationLabel={heroDurationLabel}
-              reason={heroReasonText}
-              contributionLabel={heroContributionLabel}
-              recommendedCategoryLabel={heroViewModel.recommendedCategoryLabel || ""}
-              impactText={heroImpactText}
-              analysisStatusKind={heroAnalysisState.kind}
-              analysisModeLabel={heroAnalysisModeLabel}
-              analysisStorageLabel={heroStorageLabel}
-              timestampLabel={heroTimestampLabel}
-              analysisStageLabel={manualTodayAnalysis.loadingStageLabel}
-              primaryLabel={heroViewModel.primaryLabel || "Démarrer"}
-              onPrimaryAction={handleHeroPrimaryAction}
-              canPrimaryAction={canTriggerHeroPrimaryAction}
-              onAnalyze={handleAnalyzeHero}
-              analyzeLabel={heroAnalyzeLabel}
-              analyzeDisabled={manualTodayAnalysis.loading}
-              analyzeError={manualTodayAnalysis.error}
-              onDismissAnalysis={manualTodayAnalysis.isPersistedForContext ? manualTodayAnalysis.dismissAnalysis : null}
-              onOpenPlanning={openPlanningForToday}
-              showPlanningShortcut={showHeroPlanningShortcut}
-              isPreparing={manualTodayAnalysis.loading}
-            />
+      <div className="lovablePage">
+        <div className="lovableCard lovableTodayInsight">
+          <div className="lovableTodayInsightIcon" aria-hidden="true">AI</div>
+          <div className="lovableTodayInsightText">
+            <div className="lovableTodayInsightTitle">AI Insight</div>
+            <p className="lovableTodayInsightCopy">{insightCopy || MAIN_PAGE_COPY.today.orientation}</p>
           </div>
-        </section>
+        </div>
 
-        <section className="mainPageSection">
-          <SectionHeader
-            title="Ensuite aujourd’hui"
-            subtitle={MAIN_PAGE_COPY.today.nextActionsSubtitle}
+        <div>
+          <div className="lovableSectionLabel">Main Priority</div>
+          <TodayHero
+            title={typedHeroTitle || heroViewModel.title}
+            reason={heroImpactText || heroReasonText}
+            contributionLabel={heroContributionLabel}
+            recommendedCategoryLabel={heroViewModel.recommendedCategoryLabel || heroDisplayCategoryName}
+            primaryLabel={heroViewModel.primaryLabel === "Démarrer" ? "Start Now" : heroViewModel.primaryLabel || "Start Now"}
+            onPrimaryAction={handleHeroPrimaryAction}
+            canPrimaryAction={canTriggerHeroPrimaryAction}
+            isPreparing={manualTodayAnalysis.loading}
           />
-          <div className="mainPageSectionBody">
-            <TodayNextActions
-              actions={nextActions}
-              onOpenOccurrence={handleStartSession}
-              activeCategory={focusCategory || null}
-            />
-          </div>
-        </section>
+        </div>
 
-        <section className="mainPageSection">
-          <SectionHeader
-            title={MAIN_PAGE_COPY.today.dailyStateTitle}
-            subtitle={MAIN_PAGE_COPY.today.dailyStateSubtitle}
+        <div>
+          <div className="lovableSectionLabel">Recommended Actions</div>
+          <TodayNextActions
+            actions={nextActions}
+            onOpenOccurrence={handleStartSession}
+            activeCategory={focusCategory || null}
           />
-          <div className="mainPageSectionBody">
-            <TodayDailyState
-              plannedMinutes={dailyState.plannedMinutes}
-              doneMinutes={dailyState.doneMinutes}
-              remainingMinutes={dailyState.remainingMinutes}
-              activeCategory={focusCategory || null}
-            />
-          </div>
-        </section>
+        </div>
+
+        <p className="lovableTodayQuote">“Small consistent actions compound into extraordinary results.”</p>
       </div>
     </AppScreen>
   );

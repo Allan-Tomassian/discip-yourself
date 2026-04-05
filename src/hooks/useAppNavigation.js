@@ -3,9 +3,10 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "reac
 const TABS = new Set([
   "onboarding",
   "today",
-  "planning",
-  "library",
-  "pilotage",
+  "objectives",
+  "timeline",
+  "insights",
+  "coach",
   "create-item",
   "journal",
   "micro-actions",
@@ -25,8 +26,11 @@ const TABS = new Set([
 ]);
 
 export function normalizeTab(t) {
-  if (t === "tools") return "pilotage";
-  if (t === "plan") return "planning";
+  if (t === "tools") return "insights";
+  if (t === "pilotage") return "insights";
+  if (t === "plan") return "timeline";
+  if (t === "planning") return "timeline";
+  if (t === "library") return "objectives";
   if (t === "create") return "create-item";
   if (t === "preferences") return "settings";
   if (t === "subscription") return "billing";
@@ -70,8 +74,10 @@ function buildPathForTab({
   if (tab === "category-detail") return categoryDetailId ? `/category/${categoryDetailId}` : "/category";
   if (tab === "create-item") return "/create";
   if (tab === "edit-item") return editItemId ? `/edit/${encodeURIComponent(editItemId)}` : "/edit";
-  if (tab === "planning") return "/planning";
-  if (tab === "pilotage") return "/pilotage";
+  if (tab === "objectives") return "/objectives";
+  if (tab === "timeline") return "/timeline";
+  if (tab === "insights") return "/insights";
+  if (tab === "coach") return "/coach";
   if (tab === "onboarding") return "/onboarding";
   if (tab === "journal") return "/journal";
   if (tab === "micro-actions") return "/micro-actions";
@@ -100,17 +106,20 @@ export function parseNavigationState(pathname, search, historyState = null) {
   const categoryDetailId =
     pathParts[0] === "category" && pathParts.length === 2 ? decodeURIComponent(pathParts[1] || "") : null;
   const editItemId = pathParts[0] === "edit" && pathParts[1] ? decodeURIComponent(pathParts[1] || "") : null;
-  const isPilotagePath = initialPath.startsWith("/pilotage") || initialPath.startsWith("/tools");
-  const isPlanningPath = initialPath.startsWith("/planning") || initialPath.startsWith("/plan");
+  const isInsightsPath = initialPath.startsWith("/insights") || initialPath.startsWith("/pilotage") || initialPath.startsWith("/tools");
+  const isTimelinePath = initialPath.startsWith("/timeline") || initialPath.startsWith("/planning") || initialPath.startsWith("/plan");
+  const isObjectivesPath = initialPath.startsWith("/objectives") || initialPath.startsWith("/library");
   const coachAliasRequest = initialPath.startsWith("/coach/chat")
-    ? normalizeCoachAliasRequest(historyState, "today")
+    ? normalizeCoachAliasRequest(historyState, "coach")
     : null;
   let initialTab = "today";
   if (initialPath.startsWith("/onboarding")) initialTab = "onboarding";
   else if (initialPath.startsWith("/create")) initialTab = "create-item";
   else if (initialPath.startsWith("/edit")) initialTab = "edit-item";
-  else if (isPlanningPath) initialTab = "planning";
-  else if (isPilotagePath) initialTab = "pilotage";
+  else if (isObjectivesPath) initialTab = "objectives";
+  else if (isTimelinePath) initialTab = "timeline";
+  else if (isInsightsPath) initialTab = "insights";
+  else if (initialPath.startsWith("/coach")) initialTab = "coach";
   else if (initialPath.startsWith("/journal")) initialTab = "journal";
   else if (initialPath.startsWith("/micro-actions")) initialTab = "micro-actions";
   else if (initialPath.startsWith("/history")) initialTab = "history";
@@ -125,7 +134,7 @@ export function parseNavigationState(pathname, search, historyState = null) {
   else if (initialPath.startsWith("/faq")) initialTab = "faq";
   else if (categoryProgressId) initialTab = "category-progress";
   else if (categoryDetailId) initialTab = "category-detail";
-  if (coachAliasRequest) initialTab = coachAliasRequest.mainTab;
+  if (coachAliasRequest) initialTab = "coach";
 
   return {
     initialTab,
@@ -249,9 +258,9 @@ export function useAppNavigation({ safeData, setData }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (tab !== "pilotage") return;
+    if (tab !== "insights") return;
     if (window.location.pathname === "/tools") {
-      window.history.replaceState({}, "", "/pilotage");
+      window.history.replaceState({}, "", "/insights");
     }
   }, [tab]);
 

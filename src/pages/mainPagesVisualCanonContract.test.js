@@ -49,7 +49,7 @@ describe("main pages visual canon contract", () => {
     expect(indexCss).toContain("gap:24px;");
     expect(indexCss).toContain(".mainPageSection");
     expect(indexCss).toContain(".mainPageSectionBody");
-    expect(indexCss).toContain("padding-top: calc(var(--navGap, 10px) + var(--page-top-gap));");
+    expect(indexCss).toContain("padding-top: calc(var(--safe-top) + var(--navGap, 10px) + var(--page-top-gap));");
     expect(indexCss).toContain("position: sticky;");
     expect(fs.existsSync(path.join(SRC_ROOT, "shared/ui/gate/gatePage.css"))).toBe(false);
     expect(premiumCss).not.toContain(".topMenuCardOuter");

@@ -10,24 +10,29 @@ function readSrc(relPath) {
 }
 
 describe("main pages header contract", () => {
-  it("keeps the four main pages on the same header structure", () => {
+  it("keeps the five main pages on the Lovable header structure", () => {
     const home = readSrc("pages/Home.jsx");
-    const planning = readSrc("pages/Planning.jsx");
-    const library = readSrc("pages/Categories.jsx");
-    const pilotage = readSrc("pages/Pilotage.jsx");
+    const objectives = readSrc("pages/Objectives.jsx");
+    const timeline = readSrc("pages/Timeline.jsx");
+    const insights = readSrc("pages/Insights.jsx");
+    const coach = readSrc("pages/Coach.jsx");
 
     expect(home).toContain('pageId="today"');
-    expect(home).toContain("headerSubtitle={MAIN_PAGE_COPY.today.orientation}");
+    expect(home).toContain("headerSubtitle={headerDateLabel}");
+    expect(home).toContain("greetingPeriod");
 
-    expect(planning).toContain('pageId="planning"');
-    expect(planning).toContain("headerSubtitle={MAIN_PAGE_COPY.planning.orientation}");
+    expect(objectives).toContain('pageId="objectives"');
+    expect(objectives).toContain('headerTitle="Objectives"');
 
-    expect(library).toContain('pageId="library"');
-    expect(library).toContain("headerSubtitle={MAIN_PAGE_COPY.library.orientation}");
-    expect(library).not.toContain('headerSubtitle="Catégories"');
+    expect(timeline).toContain('pageId="timeline"');
+    expect(timeline).toContain('headerTitle="Timeline"');
+    expect(timeline).toContain('headerSubtitle="Your roadmap to execution"');
 
-    expect(pilotage).toContain('pageId="pilotage"');
-    expect(pilotage).toContain("headerSubtitle={MAIN_PAGE_COPY.pilotage.orientation}");
-    expect(pilotage).not.toContain('headerSubtitle="Vue d’ensemble"');
+    expect(insights).toContain('pageId="insights"');
+    expect(insights).toContain('headerTitle="Insights"');
+    expect(insights).toContain('headerSubtitle="Your trajectory this week"');
+
+    expect(coach).toContain('pageId="coach"');
+    expect(coach).toContain('headerTitle="AI Coach"');
   });
 });

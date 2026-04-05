@@ -13,18 +13,18 @@ function readSrc(relPath) {
 describe("product wording contract", () => {
   it("publishes the canonical visible surface names", () => {
     expect(SURFACE_LABELS.today).toBe("Today");
-    expect(SURFACE_LABELS.planning).toBe("Planification");
-    expect(SURFACE_LABELS.library).toBe("Bibliothèque");
-    expect(SURFACE_LABELS.pilotage).toBe("Pilotage");
+    expect(SURFACE_LABELS.planning).toBe("Timeline");
+    expect(SURFACE_LABELS.library).toBe("Objectives");
+    expect(SURFACE_LABELS.pilotage).toBe("Insights");
     expect(SURFACE_LABELS.coach).toBe("Coach");
     expect(SURFACE_LABELS.journal).toBe("Journal");
     expect(MARKETING_COPY.essentialPlan).toBe("Accès essentiel");
     expect(ANALYSIS_COPY.localDiagnostic).toBe("Lecture locale");
     expect(ANALYSIS_COPY.coachAnalysis).toBe("Lecture IA locale");
-    expect(MAIN_PAGE_COPY.today.orientation).toBe("Commence par le prochain pas utile aujourd’hui.");
-    expect(MAIN_PAGE_COPY.planning.orientation).toBe("Règle le rythme avant de charger la journée.");
-    expect(MAIN_PAGE_COPY.library.orientation).toBe("Lis ton système par catégories stables.");
-    expect(MAIN_PAGE_COPY.pilotage.orientation).toBe("Relis la cohérence quand assez de signal existe.");
+    expect(MAIN_PAGE_COPY.today.orientation).toBe("Your next useful move, clearly surfaced.");
+    expect(MAIN_PAGE_COPY.planning.orientation).toBe("Your roadmap to execution.");
+    expect(MAIN_PAGE_COPY.library.orientation).toBe("Outcome-first structure with linked actions underneath.");
+    expect(MAIN_PAGE_COPY.pilotage.orientation).toBe("Your trajectory this week.");
   });
 
   it("removes legacy wording from critical user-facing surfaces", () => {
@@ -71,8 +71,8 @@ describe("product wording contract", () => {
   });
 
   it("keeps navigation and planning copy aligned with the canon", () => {
-    expect(readSrc("components/navigation/MainDrawer.jsx")).toContain("SURFACE_LABELS.journal");
-    expect(readSrc("components/TopNav.jsx")).toContain("SURFACE_LABELS.planning");
-    expect(readSrc("pages/Planning.jsx")).toContain("headerTitle={SURFACE_LABELS.planning}");
+    expect(readSrc("components/navigation/LovableTabBar.jsx")).toContain('label: "Timeline"');
+    expect(readSrc("components/navigation/LovableTabBar.jsx")).toContain('label: "Objectives"');
+    expect(readSrc("pages/Timeline.jsx")).toContain('headerTitle="Timeline"');
   });
 });

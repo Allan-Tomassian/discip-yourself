@@ -38,10 +38,28 @@ function normalizeAnchorRect(rect) {
 
 function resolveCategoryContextNamespace({ source, tab }) {
   const safeSource = typeof source === "string" ? source.trim() : "";
-  if (safeSource === "library") return "library";
-  if (safeSource === "today" || safeSource === "planning" || safeSource === "pilotage") return "execution";
-  if (tab === "library" || tab === "category-detail" || tab === "category-progress" || tab === "edit-item") return "library";
-  if (tab === "today" || tab === "planning" || tab === "pilotage") return "execution";
+  if (safeSource === "library" || safeSource === "objectives") return "library";
+  if (
+    safeSource === "today" ||
+    safeSource === "planning" ||
+    safeSource === "timeline" ||
+    safeSource === "pilotage" ||
+    safeSource === "insights"
+  ) {
+    return "execution";
+  }
+  if (
+    tab === "library" ||
+    tab === "objectives" ||
+    tab === "category-detail" ||
+    tab === "category-progress" ||
+    tab === "edit-item"
+  ) {
+    return "library";
+  }
+  if (tab === "today" || tab === "planning" || tab === "timeline" || tab === "pilotage" || tab === "insights") {
+    return "execution";
+  }
   return "none";
 }
 

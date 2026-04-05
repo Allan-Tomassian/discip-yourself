@@ -27,39 +27,26 @@ describe("main section container contract", () => {
     expect(premiumCss).toContain(".GateMainSection .gateSectionBody");
   });
 
-  it("uses the shared main section grammar across Today, Planning, Bibliothèque and Pilotage", () => {
+  it("uses the Lovable shell grammar across the five main tabs", () => {
     const home = readSrc("pages/Home.jsx");
     const todayHero = readSrc("components/today/TodayHero.jsx");
     const todayNextActions = readSrc("components/today/TodayNextActions.jsx");
-    const todayDailyState = readSrc("components/today/TodayDailyState.jsx");
-    const planning = readSrc("pages/Planning.jsx");
-    const planningCoach = readSrc("components/planning/PlanningCoachCard.jsx");
-    const library = readSrc("pages/Categories.jsx");
-    const pilotage = readSrc("pages/Pilotage.jsx");
+    const objectives = readSrc("pages/Objectives.jsx");
+    const timeline = readSrc("pages/Timeline.jsx");
+    const insights = readSrc("pages/Insights.jsx");
+    const coach = readSrc("pages/Coach.jsx");
 
-    expect(home).toContain("mainPageSection");
-    expect(home).toContain("<SectionHeader");
-    expect(todayHero).toContain("AppCard");
-    expect(todayNextActions).toContain("AppCard");
-    expect(todayDailyState).not.toContain("AppCard");
-    expect(todayDailyState).toContain("todayDailyState");
-    expect(planning).toContain("planningCalendarSection");
-    expect(planning).toContain("<SectionHeader");
-    expect(planning).toContain("AppCard");
-    expect(planning).toContain("PlanningItemRow");
-    expect(planning).toContain("planningSecondaryBlock");
-    expect(planningCoach).toContain("planningCoachSection");
-    expect(planningCoach).toContain("AppCard");
-    expect(planningCoach).toContain("AppInlineMetaCard");
-    expect(planningCoach).not.toContain("Lecture locale du rythme");
-    expect(library).toContain("<SectionHeader");
-    expect(library).toContain("libraryPrimaryStack");
-    expect(library).not.toContain("libraryPrimaryCard");
-    expect(library).not.toContain("pageNarrow");
-    expect(pilotage).toContain("<SectionHeader");
-    expect(pilotage).toContain("pilotageFocusCard");
-    expect(pilotage).toContain("pilotageInlinePanel");
-    expect(pilotage).toContain("PilotageMetricBlock");
-    expect(pilotage).toContain("PilotageSummaryBlock");
+    expect(home).toContain("lovablePage");
+    expect(home).toContain("lovableTodayInsight");
+    expect(todayHero).toContain("lovablePriorityCard");
+    expect(todayNextActions).toContain("lovableTodayActionRow");
+    expect(objectives).toContain("lovableObjectiveCard");
+    expect(objectives).toContain("ObjectiveRing");
+    expect(timeline).toContain("lovableTimelineList");
+    expect(timeline).toContain("lovableTimelineCard");
+    expect(insights).toContain("lovableChartCard");
+    expect(insights).toContain("lovableMetricCard");
+    expect(coach).toContain("lovableCoachMessages");
+    expect(coach).toContain("lovableCoachComposer");
   });
 });

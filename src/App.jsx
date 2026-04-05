@@ -1,33 +1,27 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import TopNav from "./components/TopNav";
-import CategoryRail from "./components/CategoryRail";
-import MainDrawer from "./components/navigation/MainDrawer";
 import {
   ensureSystemInboxCategory,
   migrate,
 } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
-import PlusExpander from "./components/PlusExpander";
 import { markIOSRootClass } from "./utils/dialogs";
 import { readAiBackendBaseUrl } from "./infra/aiNowClient";
 import { logAiBackendTargetOnce } from "./infra/aiTransportDiagnostics";
 import {
   AppActionRow,
-  AppCard,
   AppDialog,
-  AppSurface,
   GhostButton,
   PrimaryButton,
 } from "./shared/ui/app";
 import "./app/appShell.css";
-import "./features/navigation/bottomCategoryBar.css";
-import "./features/navigation/navPillUnified.css";
+import "./styles/lovable.css";
 
 import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
-import Planning from "./pages/Planning";
-import Categories from "./pages/Categories";
-import TotemDockLayer from "./ui/totem/TotemDockLayer";
+import Objectives from "./pages/Objectives";
+import Timeline from "./pages/Timeline";
+import Insights from "./pages/Insights";
+import CoachPage from "./pages/Coach";
 import Preferences from "./pages/Preferences";
 import Account from "./pages/Account";
 import Subscription from "./pages/Subscription";
@@ -37,16 +31,15 @@ import History from "./pages/History";
 import Journal from "./pages/Journal";
 import Legal from "./pages/Legal";
 import MicroActions from "./pages/MicroActions";
-import CategoryView from "./pages/CategoryView";
 import EditItem from "./pages/EditItem";
 import CreateItem from "./pages/CreateItem";
 import CategoryDetailView from "./pages/CategoryDetailView";
 import CategoryProgress from "./pages/CategoryProgress";
 import Session from "./pages/Session";
-import Pilotage from "./pages/Pilotage";
 import Privacy from "./pages/Privacy";
 import Support from "./pages/Support";
-import CoachPanel from "./features/coach/CoachPanel";
+import LovableTabBar from "./components/navigation/LovableTabBar";
+import LovableCreateMenu from "./components/navigation/LovableCreateMenu";
 import { applyThemeTokens, BRAND_ACCENT, DEFAULT_THEME } from "./theme/themeTokens";
 import { todayLocalKey } from "./utils/dateKey";
 import { normalizePriorities } from "./logic/priority";
@@ -68,13 +61,10 @@ import { createHomeNavigationHandlers } from "./app/homeNavigation";
 import { resolveCoachCreatedViewTarget } from "./app/coachCreatedViewTarget";
 import {
   normalizeRouteOrigin,
-  resolveActiveTopNavTab,
   resolveMainTabForSurface,
   resolveRouteOriginLibraryMode,
 } from "./app/routeOrigin";
 import { useUserData } from "./data/useUserData";
-import { useProfile } from "./profile/useProfile";
-import { isProfileComplete } from "./profile/profileApi";
 import { applySessionRuntimeTransition, isRuntimeSessionOpen } from "./logic/sessionRuntime";
 import { emitSessionRuntimeNotificationHook } from "./logic/sessionRuntimeNotifications";
 import { buildUserAiProfileSignature, updateUserAiProfileAdaptation } from "./domain/userAiProfile";
@@ -110,44 +100,7 @@ function isSameOrder(a, b) {
   return true;
 }
 
-function normalizeWalletPreview(wallet) {
-  const source = wallet && typeof wallet === "object" ? wallet : {};
-  const balance = Number.isFinite(source.balance) ? Math.max(0, Math.floor(source.balance)) : 0;
-  const lastEvents = Array.isArray(source.lastEvents)
-    ? source.lastEvents.filter((event) => event && typeof event === "object")
-    : [];
-  const lastReward = [...lastEvents]
-    .reverse()
-    .find((event) => (event.type === "micro_done" || event.type === "ad_reward") && Number(event.amount) > 0);
-  const deltaAmount = Number.isFinite(lastReward?.amount) ? Math.max(0, Math.floor(lastReward.amount)) : 0;
-  const deltaKey = lastReward ? `${lastReward.ts || 0}:${lastReward.type || ""}:${deltaAmount}` : "";
-  return { balance, deltaAmount, deltaKey };
-}
-
-const COACH_FAB_OFFSET_STORAGE_KEY = "coach:fab-offset-y:v1";
-
-function loadCoachFabOffset() {
-  if (typeof window === "undefined") return -10;
-  try {
-    const parsed = Number.parseFloat(window.localStorage.getItem(COACH_FAB_OFFSET_STORAGE_KEY) || "");
-    return Number.isFinite(parsed) ? parsed : -10;
-  } catch {
-    return -10;
-  }
-}
-
-function persistCoachFabOffset(value) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(COACH_FAB_OFFSET_STORAGE_KEY, String(Math.round(value)));
-  } catch {
-    // Ignore storage failures.
-  }
-}
-
 export default function App() {
-  const { profile: supabaseProfile } = useProfile();
-  const profileNeedsCompletion = !isProfileComplete(supabaseProfile);
   const { data, setData, loading: dataLoading, persistenceScope } = useUserData();
   const safeData = data && typeof data === "object" ? data : {};
   const {
@@ -170,7 +123,6 @@ export default function App() {
   const [editItem, setEditItem] = useState(null);
   const [createTaskState, setCreateTaskState] = useState(null);
   const [coachState, setCoachState] = useState({
-    open: false,
     mode: "free",
     conversationId: null,
   });
@@ -216,36 +168,9 @@ export default function App() {
     canCreateOutcomeNow,
     canCreateActionNow,
   } = useEntitlementsPaywall({ safeData, setData });
-  const topWalletPreview = useMemo(
-    () => normalizeWalletPreview(safeData?.ui?.walletV1),
-    [safeData?.ui?.walletV1]
-  );
   const onboardingCompleted = Boolean(safeData.ui?.onboardingCompleted);
   const showPlanStep = Boolean(safeData.ui?.showPlanStep);
-  const isDrawerOpen = Boolean(safeData?.ui?.isDrawerOpen);
-  const coachOpen = Boolean(coachState.open);
-  const [coachFabOffsetY, setCoachFabOffsetY] = useState(() => loadCoachFabOffset());
-  const coachFabOffsetRef = useRef(coachFabOffsetY);
-  const coachFabDraggedRef = useRef(false);
   const bottomRailRef = useRef(null);
-
-  useEffect(() => {
-    coachFabOffsetRef.current = coachFabOffsetY;
-  }, [coachFabOffsetY]);
-
-  const setDrawerOpen = (open) => {
-    setData((prev) => {
-      const prevUi = prev?.ui && typeof prev.ui === "object" ? prev.ui : {};
-      if (Boolean(prevUi.isDrawerOpen) === Boolean(open)) return prev;
-      return {
-        ...prev,
-        ui: {
-          ...prevUi,
-          isDrawerOpen: Boolean(open),
-        },
-      };
-    });
-  };
 
   useEffect(() => {
     setData((prev) => {
@@ -285,93 +210,18 @@ export default function App() {
     return () => clearInterval(id);
   }, [setData]);
 
-  const currentTab = tab;
-  const taskActiveTab =
-    currentTab === "create-item"
-      ? createTaskState?.origin?.mainTab || "library"
-      : currentTab === "edit-item"
-        ? editItem?.returnTab || "library"
-        : null;
-  const activeTopNavTab = resolveActiveTopNavTab({
-    currentTab,
-    taskMainTab: taskActiveTab,
-    editReturnTab: editItem?.returnTab || null,
-  });
   const resolvedSessionDateKey =
     (typeof sessionDateKey === "string" && sessionDateKey) ||
     (typeof safeData?.ui?.selectedDateKey === "string" && safeData.ui.selectedDateKey) ||
     (typeof safeData?.ui?.selectedDate === "string" && safeData.ui.selectedDate) ||
     todayLocalKey();
-  const isLibraryWorkspace =
-    (currentTab === "library" && Boolean(libraryCategoryId)) ||
-    currentTab === "category-detail" ||
-    currentTab === "category-progress";
-  const utilityTabs = new Set([
-    "settings",
-    "account",
-    "billing",
-    "data",
-    "privacy",
-    "legal",
-    "support",
-    "faq",
-    "journal",
-    "micro-actions",
-    "history",
-  ]);
   const hideNavigationChrome =
     Boolean(showPlanStep) ||
-    currentTab === "create-item" ||
-    currentTab === "edit-item" ||
-    currentTab === "session" ||
-    currentTab === "onboarding";
-  const topNavMode = hideNavigationChrome
-    ? "hidden"
-    : currentTab === "today" ||
-        currentTab === "planning" ||
-        currentTab === "pilotage" ||
-        (currentTab === "library" && !libraryCategoryId)
-      ? "full"
-      : isLibraryWorkspace || utilityTabs.has(currentTab)
-        ? "reduced"
-        : "full";
-  const bottomRailMode =
-    currentTab === "today" || currentTab === "planning" || currentTab === "pilotage"
-      ? "full"
-      : currentTab === "library" && !libraryCategoryId
-        ? "reduced"
-        : "hidden";
-  const coachEntryMode =
-    currentTab === "today" || currentTab === "planning" || currentTab === "pilotage"
-      ? "full"
-      : currentTab === "library" || isLibraryWorkspace
-        ? "reduced"
-        : "hidden";
-  const showTopNav = topNavMode !== "hidden";
-  const showBottomRail = bottomRailMode !== "hidden";
-  const showCoachEntry = coachEntryMode !== "hidden";
-  const topNav = (
-    <TopNav
-      mode={topNavMode}
-      active={activeTopNavTab}
-      setActive={(next) => {
-        if (next === "library") {
-          openLibraryDetail();
-          return;
-        }
-        setTab(next);
-      }}
-      onMenuOpen={() => setDrawerOpen(true)}
-      coinsBalance={topWalletPreview.balance}
-      coinDeltaAmount={topWalletPreview.deltaAmount}
-      coinDeltaKey={topWalletPreview.deltaKey}
-    />
-  );
-
-  // Single header: keep TopNav only (prevents duplicate logo/title)
-  const headerStack = topNav;
-  // Spacer under the fixed header stack (TopNav + wordmark). Keep it tight to avoid a big empty gap.
-  const headerSpacer = null;
+    tab === "create-item" ||
+    tab === "edit-item" ||
+    tab === "session" ||
+    tab === "onboarding";
+  const showBottomRail = !hideNavigationChrome && new Set(["today", "objectives", "timeline", "insights", "coach"]).has(tab);
   const categories = useMemo(
     () => (Array.isArray(safeData.categories) ? safeData.categories : []),
     [safeData.categories]
@@ -402,11 +252,6 @@ export default function App() {
     [safeData?.ui?.categoryRailOrder, visibleCategories]
   );
   const isDevEnv = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
-  const orderedCategories = useMemo(() => {
-    const map = new Map(visibleCategories.map((c) => [c.id, c]));
-    return categoryRailOrder.map((id) => map.get(id)).filter(Boolean);
-  }, [visibleCategories, categoryRailOrder]);
-  const railCategories = orderedCategories;
   const {
     homeActiveCategoryId,
     selectedCategoryId,
@@ -459,8 +304,8 @@ export default function App() {
     onCreateTaskOpen: setCreateTaskState,
   });
   const handleEditBack = () => {
-    const returnTab = editItem?.returnTab || "library";
-    if (returnTab === "library") {
+    const returnTab = editItem?.returnTab || "objectives";
+    if (returnTab === "objectives") {
       const nextId = editItem?.categoryId || libraryCategoryId || null;
       if (editItem?.returnToCategoryView === true && nextId) {
         setLibraryCategoryId(nextId);
@@ -480,7 +325,7 @@ export default function App() {
       id: editItemId,
       type: resolveGoalType(goal),
       categoryId: goal.categoryId || null,
-      returnTab: "library",
+      returnTab: "objectives",
       returnToCategoryView: Boolean(goal.categoryId),
     });
   }, [editItem, editItemId, safeData.goals, tab]);
@@ -497,14 +342,17 @@ export default function App() {
         sourceSurface: safeSource,
         categoryId: effectiveCategoryId,
         dateKey:
-          mainTab === "today" || mainTab === "planning" || contextSurface === "today" || contextSurface === "planning"
+          mainTab === "today" || mainTab === "timeline" || contextSurface === "today" || contextSurface === "timeline"
             ? resolvedSessionDateKey
             : null,
         occurrenceId: contextSurface === "session" ? sessionOccurrenceId || null : null,
         libraryMode: resolveRouteOriginLibraryMode({
           mainTab,
           sourceSurface: contextSurface,
-          categoryId: contextSurface === "library" ? effectiveCategoryId : libraryCategoryId || effectiveCategoryId,
+          categoryId:
+            contextSurface === "library" || contextSurface === "objectives"
+              ? effectiveCategoryId
+              : libraryCategoryId || effectiveCategoryId,
         }),
         coachConversationId: coachConversationId || null,
       });
@@ -534,7 +382,7 @@ export default function App() {
           },
         }));
       }
-      if (origin.mainTab === "library") {
+      if (origin.mainTab === "objectives") {
         setLibraryCategoryId(origin.libraryMode === "category-view" ? effectiveCategoryId : null);
         if (effectiveCategoryId) {
           setData((previous) => ({
@@ -544,7 +392,7 @@ export default function App() {
         }
         return;
       }
-      if (effectiveCategoryId && (origin.mainTab === "today" || origin.mainTab === "planning" || origin.mainTab === "pilotage")) {
+      if (effectiveCategoryId && (origin.mainTab === "today" || origin.mainTab === "timeline" || origin.mainTab === "insights")) {
         setData((previous) => ({
           ...previous,
           ui: withExecutionActiveCategoryId(previous.ui, effectiveCategoryId),
@@ -561,30 +409,16 @@ export default function App() {
       setCreateTaskState(null);
 
       if (origin?.sourceSurface === "coach" || origin?.coachConversationId) {
-        setTab(origin.mainTab || "today");
         setCoachState({
-          open: true,
           mode: "plan",
           conversationId: origin?.coachConversationId || null,
         });
+        setTab("coach");
         return;
       }
       setTab(origin?.mainTab || "today");
     },
     [createTaskState?.origin, resolveRouteOrigin, restoreTaskOriginContext, setTab, tab]
-  );
-
-  const openCoach = useCallback(
-    ({ mode = "free", conversationId = null } = {}) => {
-      setDrawerOpen(false);
-      closePlusExpander?.();
-      setCoachState({
-        open: true,
-        mode: mode === "plan" ? "plan" : "free",
-        conversationId: conversationId || null,
-      });
-    },
-    [closePlusExpander]
   );
 
   const openCoachAssistantCreate = useCallback(
@@ -626,7 +460,7 @@ export default function App() {
           },
         };
       });
-      setTab("library");
+      setTab("objectives");
     },
     [safeData.goals, setData, setLibraryCategoryId, setTab]
   );
@@ -770,7 +604,7 @@ export default function App() {
       if (ui.librarySelectedCategoryId && !visibleIds.has(ui.librarySelectedCategoryId)) {
         issues.push("librarySelectedCategoryId");
       }
-      ["today", "planning", "library", "pilotage"].forEach((key) => {
+      ["today", "timeline", "objectives", "insights"].forEach((key) => {
         if (scv[key] && !visibleIds.has(scv[key])) issues.push(`selectedCategoryByView.${key}`);
       });
       if (!issues.length) return;
@@ -820,17 +654,8 @@ export default function App() {
   }, [isDevEnv, safeData, setData]);
   const showTourOverlay = onboardingCompleted;
   const handlePlanCategory = ({ categoryId } = {}) => {
-    launchGuidedCreate({ sourceSurface: "pilotage", categoryId });
+    launchGuidedCreate({ sourceSurface: "insights", categoryId });
   };
-  const hasCoachBlockingOverlay =
-    isDrawerOpen ||
-    plusOpen ||
-    paywallOpen ||
-    Boolean(activeReminder) ||
-    Boolean(showTourOverlay && tour.isActive) ||
-    tab === "create-item";
-  const totemDockLayer = <TotemDockLayer data={safeData} setData={setData} />;
-  const routeCloseSigRef = useRef("");
 
   useLayoutEffect(() => {
     if (typeof window === "undefined" || typeof document === "undefined") return undefined;
@@ -890,82 +715,14 @@ export default function App() {
   }, [showBottomRail]);
 
   useEffect(() => {
-    if (showTopNav || !isDrawerOpen) return;
-    setDrawerOpen(false);
-  }, [isDrawerOpen, showTopNav]);
-
-  useEffect(() => {
-    const nextSig = [
-      tab,
-      categoryDetailId || "",
-      categoryProgressId || "",
-      libraryCategoryId || "",
-      sessionOccurrenceId || "",
-      sessionDateKey || "",
-    ].join("|");
-    if (!routeCloseSigRef.current) {
-      routeCloseSigRef.current = nextSig;
-      return;
-    }
-    if (routeCloseSigRef.current === nextSig) return;
-    routeCloseSigRef.current = nextSig;
-    setDrawerOpen(false);
-  }, [
-    categoryDetailId,
-    categoryProgressId,
-    libraryCategoryId,
-    sessionDateKey,
-    sessionOccurrenceId,
-    tab,
-  ]);
-
-  useEffect(() => {
-    if (!coachOpen) return;
-    if (!showCoachEntry || hasCoachBlockingOverlay) {
-      setCoachState((previous) => ({ ...previous, open: false }));
-    }
-  }, [coachOpen, hasCoachBlockingOverlay, showCoachEntry]);
-
-  useEffect(() => {
     if (!coachAliasRequest) return;
-    setTab(coachAliasRequest.mainTab || "today", { replace: true });
+    setTab("coach", { replace: true });
     setCoachState({
-      open: true,
       mode: coachAliasRequest.mode === "plan" ? "plan" : "free",
       conversationId: coachAliasRequest.conversationId || null,
     });
     consumeCoachAliasRequest();
   }, [coachAliasRequest, consumeCoachAliasRequest, setTab]);
-
-  const handleCoachFabPointerDown = useCallback(
-    (event) => {
-      if (event.button != null && event.button !== 0) return;
-      const startY = event.clientY;
-      const startOffset = coachFabOffsetRef.current;
-      const maxOffset = showBottomRail ? 6 : 24;
-      const minOffset = -Math.max(140, (typeof window !== "undefined" ? window.innerHeight : 0) - 240);
-      coachFabDraggedRef.current = false;
-
-      const handlePointerMove = (moveEvent) => {
-        const deltaY = moveEvent.clientY - startY;
-        const nextOffset = Math.max(minOffset, Math.min(maxOffset, startOffset + deltaY));
-        if (Math.abs(nextOffset - startOffset) > 4) coachFabDraggedRef.current = true;
-        setCoachFabOffsetY(nextOffset);
-      };
-
-      const handlePointerUp = () => {
-        window.removeEventListener("pointermove", handlePointerMove);
-        window.removeEventListener("pointerup", handlePointerUp);
-        window.removeEventListener("pointercancel", handlePointerUp);
-        persistCoachFabOffset(coachFabOffsetRef.current);
-      };
-
-      window.addEventListener("pointermove", handlePointerMove);
-      window.addEventListener("pointerup", handlePointerUp);
-      window.addEventListener("pointercancel", handlePointerUp);
-    },
-    [showBottomRail]
-  );
 
   useEffect(() => {
     if (typeof window === "undefined" || dataLoading) return;
@@ -973,22 +730,6 @@ export default function App() {
       window.history.replaceState({}, "", "/onboarding");
     }
   }, [dataLoading, onboardingCompleted]);
-
-  const profileReminder = showTopNav && profileNeedsCompletion && onboardingCompleted && tab !== "account" ? (
-    <div className="profileReminderShell">
-      <AppCard className="profileReminderCard">
-        <div className="profileReminderContent">
-          <div className="profileReminderText">
-            <div className="titleSm">Complète ton compte</div>
-            <div className="small">Ajoute ton username pour finaliser ton profil public.</div>
-          </div>
-          <PrimaryButton type="button" onClick={() => setTab("account")}>
-            Ouvrir
-          </PrimaryButton>
-        </div>
-      </AppCard>
-    </div>
-  ) : null;
 
   const renderWithBehaviorFeedback = (content) => (
     <BehaviorFeedbackProvider>
@@ -1016,7 +757,6 @@ export default function App() {
       <>
         <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />
         <DiagnosticOverlay data={safeData} tab={tab} />
-        {totemDockLayer}
       </>
     );
   }
@@ -1025,64 +765,12 @@ export default function App() {
       <>
         <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />
         <DiagnosticOverlay data={safeData} tab={tab} />
-        {totemDockLayer}
       </>
     );
   }
 
   return renderWithBehaviorFeedback(
     <>
-      {showTopNav ? headerStack : null}
-      {showTopNav ? headerSpacer : null}
-      {showTopNav ? (
-        <MainDrawer open={isDrawerOpen} active={tab} onClose={() => setDrawerOpen(false)} onNavigate={setTab} />
-      ) : null}
-      {profileReminder}
-      {showBottomRail ? (
-        <div
-          ref={bottomRailRef}
-          className={`bottomCategoryBar${bottomRailMode === "reduced" ? " bottomCategoryBar--reduced" : ""}`}
-          data-tour-id="topnav-rail"
-        >
-          <div className="BottomBarSurfaceOuter GateGlassOuter">
-            <div className="BottomBarSurfaceClip BottomBarBackdrop GateGlassClip GateGlassBackdrop">
-              <AppSurface
-                className={`bottomCategoryBarPanel GateGlassContent${bottomRailMode === "reduced" ? " bottomCategoryBarPanel--reduced" : ""}`}
-              >
-                <div className="bottomCategoryBarRow">
-                  <CategoryRail
-                    categories={railCategories}
-                    selectedCategoryId={railSelectedId}
-                    onSelect={handleSelectCategory}
-                    mode={bottomRailMode}
-                  />
-                  <button
-                    type="button"
-                    className={`bottomCategoryPlus NavPillUnified NavPillUnified--iconOnly${bottomRailMode === "reduced" ? " bottomCategoryPlus--reduced" : ""}`}
-                    aria-label="Créer"
-                    title="Créer"
-                    data-create-anchor="bottomrail"
-                    data-testid="create-plus-button"
-                    onClick={(event) => {
-                      const el = event?.currentTarget || null;
-                      const rect = el?.getBoundingClientRect ? el.getBoundingClientRect() : null;
-                      openCreateExpander({
-                        source: tab,
-                        categoryId: railSelectedId || selectedCategoryId || homeActiveCategoryId || null,
-                        anchorEl: el,
-                        anchorRect: rect,
-                      });
-                    }}
-                  >
-                    +
-                  </button>
-                </div>
-              </AppSurface>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       {tab === "onboarding" ? (
         <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />
       ) : tab === "today" ? (
@@ -1091,7 +779,7 @@ export default function App() {
           setData={setData}
           persistenceScope={persistenceScope}
           onOpenLibrary={homeNavigationHandlers.onOpenLibrary}
-          onOpenPlanning={() => setTab("planning")}
+          onOpenPlanning={() => setTab("timeline")}
           onOpenPilotage={homeNavigationHandlers.onOpenPilotage}
           onOpenManageCategory={(categoryId) => {
             if (!categoryId) return;
@@ -1100,7 +788,7 @@ export default function App() {
               ...prev,
               ui: withLibraryActiveCategoryId(prev.ui, categoryId),
             }));
-            setTab("library");
+            setTab("objectives");
           }}
           onOpenCreateOutcome={() => {
             launchOutcomeCreate({ sourceSurface: "today" });
@@ -1121,14 +809,8 @@ export default function App() {
           generationWindowDays={generationWindowDays}
           isPlanningUnlimited={planningUnlimited}
         />
-      ) : tab === "planning" ? (
-        <Planning
-          data={data}
-          setData={setData}
-          persistenceScope={persistenceScope}
-          setTab={setTab}
-          onOpenCoach={openCoach}
-        />
+      ) : tab === "timeline" ? (
+        <Timeline data={data} setTab={setTab} />
       ) : tab === "category-detail" ? (
         <CategoryDetailView
           data={data}
@@ -1141,7 +823,7 @@ export default function App() {
               ui: withLibraryActiveCategoryId(prev.ui, detailCategoryId),
             }));
             setCategoryDetailId(null);
-            setTab("library");
+            setTab("objectives");
           }}
         />
       ) : tab === "category-progress" ? (
@@ -1161,18 +843,49 @@ export default function App() {
               null;
             setCategoryProgressId(null);
             setLibraryCategoryId(fallbackId);
-            setTab("library");
+            setTab("objectives");
           }}
         />
-      ) : tab === "pilotage" ? (
-        <Pilotage
+      ) : tab === "insights" ? (
+        <Insights
+          data={data}
+        />
+      ) : tab === "objectives" ? (
+        <Objectives
           data={data}
           setData={setData}
-          persistenceScope={persistenceScope}
-          onPlanCategory={handlePlanCategory}
-          generationWindowDays={generationWindowDays}
-          isPlanningUnlimited={planningUnlimited}
-          onOpenCoach={openCoach}
+          onOpenCreateMenu={({ source, anchorEl, anchorRect }) =>
+            openCreateExpander({
+              source,
+              categoryId: libraryCategoryId || selectedCategoryId || homeActiveCategoryId || null,
+              anchorEl,
+              anchorRect,
+            })
+          }
+          onOpenCreateAction={(categoryId, outcomeId) =>
+            launchActionCreate({
+              sourceSurface: "objectives",
+              categoryId: categoryId || libraryCategoryId || null,
+              outcomeId: outcomeId || null,
+            })
+          }
+          onEditItem={({ id, type, categoryId }) => {
+            const nextId = categoryId || libraryCategoryId || null;
+            if (nextId) {
+              setData((prev) => ({
+                ...prev,
+                ui: withLibraryActiveCategoryId(prev.ui, nextId),
+              }));
+            }
+            setEditItem({ id, type, categoryId: nextId, returnTab: tab, returnToCategoryView: false });
+            setTab("edit-item", {
+              editItemId: id,
+              historyState: {
+                origin: resolveRouteOrigin({ sourceSurface: "objectives", categoryId: nextId }),
+                editItemId: id,
+              },
+            });
+          }}
         />
       ) : tab === "edit-item" ? (
         <EditItem
@@ -1196,74 +909,21 @@ export default function App() {
           planLimits={planLimits}
           generationWindowDays={generationWindowDays}
         />
-      ) : tab === "library" && libraryCategoryId ? (
-        <CategoryView
+      ) : tab === "coach" ? (
+        <CoachPage
           data={data}
           setData={setData}
-          categoryId={libraryCategoryId}
-          onBack={() => setLibraryCategoryId(null)}
-          onOpenPilotage={() => {
-            setLibraryCategoryId(null);
-            setTab("pilotage");
-          }}
-          onOpenCreateOutcome={(nextCategoryId) => {
-            launchOutcomeCreate({ sourceSurface: "library", categoryId: nextCategoryId || libraryCategoryId });
-          }}
-          onOpenCreateHabit={(nextCategoryId) => {
-            launchActionCreate({ sourceSurface: "library", categoryId: nextCategoryId || libraryCategoryId });
-          }}
-          onOpenProgress={(categoryIdValue) => {
-            if (!categoryIdValue) return;
-            setCategoryProgressId(categoryIdValue);
-            setTab("category-progress", { categoryProgressId: categoryIdValue });
-          }}
-          onEditItem={({ id, type, categoryId }) => {
-            const nextId = categoryId || libraryCategoryId || null;
-            if (nextId) {
-              setLibraryCategoryId(nextId);
-              setData((prev) => ({
-                ...prev,
-                ui: withLibraryActiveCategoryId(prev.ui, nextId),
-              }));
-            }
-            setEditItem({ id, type, categoryId: nextId, returnTab: tab, returnToCategoryView: true });
-            setTab("edit-item", {
-              editItemId: id,
-              historyState: {
-                origin: resolveRouteOrigin({ sourceSurface: "library", categoryId: nextId }),
-                editItemId: id,
-              },
-            });
-          }}
-        />
-      ) : tab === "library" ? (
-        <Categories
-          data={data}
-          setData={setData}
+          setTab={setTab}
+          requestedMode={coachState.mode}
+          requestedConversationId={coachState.conversationId}
+          onOpenAssistantCreate={openCoachAssistantCreate}
+          onOpenCreatedView={openCoachCreatedView}
           onOpenPaywall={openPaywall}
-          onOpenCreateOutcome={() => {
-            launchOutcomeCreate({ sourceSurface: "library" });
-          }}
-          onEditItem={({ id, type, categoryId }) => {
-            const nextId =
-              categoryId ||
-              resolveLibraryEntryCategoryId({ source: data, categories: data?.categories }) ||
-              null;
-            if (nextId) {
-              setData((prev) => ({
-                ...prev,
-                ui: withLibraryActiveCategoryId(prev.ui, nextId),
-              }));
-            }
-            setEditItem({ id, type, categoryId: nextId, returnTab: tab, returnToCategoryView: false });
-            setTab("edit-item", {
-              editItemId: id,
-              historyState: {
-                origin: resolveRouteOrigin({ sourceSurface: "library", categoryId: nextId }),
-                editItemId: id,
-              },
-            });
-          }}
+          canCreateAction={canCreateActionNow}
+          canCreateOutcome={canCreateOutcomeNow}
+          isPremiumPlan={isPremiumPlan}
+          planLimits={planLimits}
+          generationWindowDays={generationWindowDays}
         />
       ) : tab === "session" ? (
         <Session
@@ -1273,7 +933,7 @@ export default function App() {
           dateKey={resolvedSessionDateKey}
           occurrenceId={sessionOccurrenceId}
           setTab={setTab}
-          onOpenLibrary={() => setTab("library")}
+          onOpenLibrary={() => setTab("objectives")}
           onBack={() => {
             setLibraryCategoryId(null);
             setTab("today");
@@ -1304,49 +964,6 @@ export default function App() {
       ) : (
         <Preferences data={data} setData={setData} />
       )}
-      {showCoachEntry && !hasCoachBlockingOverlay ? (
-        <button
-          type="button"
-          className={`coachFab${showBottomRail ? " has-rail" : ""}${coachOpen ? " is-open" : ""}${coachEntryMode === "reduced" ? " is-reduced" : ""}`}
-          data-testid="coach-fab"
-          style={{ "--coach-fab-offset-y": `${coachFabOffsetY}px` }}
-          onPointerDown={handleCoachFabPointerDown}
-          onClick={() => {
-            if (coachFabDraggedRef.current) {
-              coachFabDraggedRef.current = false;
-              return;
-            }
-            if (coachOpen) {
-              setCoachState((previous) => ({ ...previous, open: false }));
-              return;
-            }
-            openCoach({ mode: "free" });
-          }}
-          aria-label="Coach"
-        >
-          <span className="coachFabDot" aria-hidden="true" />
-          <span>Coach</span>
-        </button>
-      ) : null}
-      <CoachPanel
-        open={coachOpen}
-        onClose={() => setCoachState((previous) => ({ ...previous, open: false }))}
-        data={data}
-        setData={setData}
-        setTab={setTab}
-        surfaceTab={tab}
-        requestedMode={coachState.mode}
-        requestedConversationId={coachState.conversationId}
-        onOpenAssistantCreate={openCoachAssistantCreate}
-        onOpenCreatedView={openCoachCreatedView}
-        onOpenPaywall={openPaywall}
-        canCreateAction={canCreateActionNow}
-        canCreateOutcome={canCreateOutcomeNow}
-        isPremiumPlan={isPremiumPlan}
-        planLimits={planLimits}
-        generationWindowDays={generationWindowDays}
-      />
-
       {activeReminder ? (
         <AppDialog
           open
@@ -1424,7 +1041,7 @@ export default function App() {
                       ...prev,
                       ui: withExecutionActiveCategoryId(prev.ui, target.categoryId),
                     }));
-                    setTab("pilotage");
+                    setTab("insights");
                   }
                   setActiveReminder(null);
                 }}
@@ -1449,10 +1066,9 @@ export default function App() {
         />
       ) : null}
       <DiagnosticOverlay data={safeData} tab={tab} />
-      <PlusExpander
+      <LovableCreateMenu
         open={plusOpen}
         anchorRect={plusAnchorRect}
-        anchorEl={plusAnchorElRef.current}
         onClose={closePlusExpander}
         onChooseObjective={handleChooseObjective}
         onChooseAction={handleChooseAction}
@@ -1469,7 +1085,7 @@ export default function App() {
         onOpenTerms={() => setTab("legal")}
         onOpenPrivacy={() => setTab("privacy")}
       />
-      {totemDockLayer}
+      {showBottomRail ? <LovableTabBar ref={bottomRailRef} activeTab={tab} onSelect={setTab} /> : null}
     </>
   );
 }

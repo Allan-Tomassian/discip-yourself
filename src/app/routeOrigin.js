@@ -1,4 +1,4 @@
-const MAIN_TABS = new Set(["today", "planning", "library", "pilotage"]);
+const MAIN_TABS = new Set(["today", "objectives", "timeline", "insights", "coach"]);
 const DRAWER_TABS = new Set([
   "settings",
   "account",
@@ -28,32 +28,48 @@ function normalizeDate(value) {
 }
 
 export function normalizeMainTab(value, fallback = "today") {
-  const next = asString(value);
+  const raw = asString(value);
+  const next =
+    raw === "planning" || raw === "plan"
+      ? "timeline"
+      : raw === "library"
+        ? "objectives"
+        : raw === "pilotage" || raw === "tools"
+          ? "insights"
+          : raw;
   return MAIN_TABS.has(next) ? next : fallback;
 }
 
 export function resolveMainTabForSurface(surface, fallbackMainTab = "today") {
-  const safeSurface = asString(surface);
+  const rawSurface = asString(surface);
+  const safeSurface =
+    rawSurface === "planning"
+      ? "timeline"
+      : rawSurface === "library"
+        ? "objectives"
+        : rawSurface === "pilotage" || rawSurface === "tools"
+          ? "insights"
+          : rawSurface;
   if (MAIN_TABS.has(safeSurface)) return safeSurface;
   if (safeSurface === "category-detail" || safeSurface === "category-progress" || safeSurface === "edit-item") {
-    return "library";
+    return "objectives";
   }
   if (safeSurface === "session" || safeSurface === "onboarding" || DRAWER_TABS.has(safeSurface)) {
     return "today";
   }
-  if (safeSurface === "coach" || safeSurface === "create-item") {
+  if (safeSurface === "create-item") {
     return normalizeMainTab(fallbackMainTab, "today");
   }
   return normalizeMainTab(fallbackMainTab, "today");
 }
 
 export function resolveRouteOriginLibraryMode({ mainTab, sourceSurface, categoryId = null } = {}) {
-  if (normalizeMainTab(mainTab, "") !== "library") return null;
+  if (normalizeMainTab(mainTab, "") !== "objectives") return null;
   const safeSurface = asString(sourceSurface);
   if (safeSurface === "category-detail" || safeSurface === "category-progress" || safeSurface === "edit-item") {
     return "category-view";
   }
-  if (safeSurface === "library") {
+  if (safeSurface === "library" || safeSurface === "objectives") {
     return categoryId ? "category-view" : "root";
   }
   return "root";
@@ -84,9 +100,9 @@ export function resolveActiveTopNavTab({
 } = {}) {
   const safeCurrentTab = asString(currentTab);
   if (safeCurrentTab === "session" || safeCurrentTab === "onboarding") return "today";
-  if (safeCurrentTab === "create-item") return normalizeMainTab(taskMainTab, "library");
-  if (safeCurrentTab === "edit-item") return resolveMainTabForSurface(editReturnTab, "library");
-  if (safeCurrentTab === "category-detail" || safeCurrentTab === "category-progress") return "library";
+  if (safeCurrentTab === "create-item") return normalizeMainTab(taskMainTab, "objectives");
+  if (safeCurrentTab === "edit-item") return resolveMainTabForSurface(editReturnTab, "objectives");
+  if (safeCurrentTab === "category-detail" || safeCurrentTab === "category-progress") return "objectives";
   if (DRAWER_TABS.has(safeCurrentTab)) return "today";
   return resolveMainTabForSurface(safeCurrentTab, "today");
 }

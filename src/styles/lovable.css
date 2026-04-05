@@ -1,0 +1,861 @@
+.screenShell {
+  position: relative;
+  min-height: 100dvh;
+}
+
+.container {
+  width: 100%;
+  max-width: var(--layout-max, 540px);
+  margin: 0 auto;
+  padding:
+    calc(28px + var(--safe-top))
+    calc(var(--page-pad) + var(--safe-right))
+    calc(124px + max(var(--safe-bottom), 0px))
+    calc(var(--page-pad) + var(--safe-left));
+}
+
+.pageHeader {
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: clamp(24px, 5.6vw, 32px);
+  line-height: 1.12;
+  letter-spacing: -0.04em;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.pageSubtitle {
+  margin-top: 8px;
+  font-size: 16px;
+  color: var(--muted);
+}
+
+.pageHeaderRight {
+  max-width: none;
+}
+
+.pageContent {
+  margin-top: 0;
+}
+
+.lovablePage {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.lovableSectionLabel {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.lovableCard {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--lovable-border);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0)),
+    var(--lovable-surface);
+  box-shadow: var(--lovable-shadow-card);
+}
+
+.lovableMuted {
+  color: var(--muted);
+}
+
+.lovablePrimaryButton,
+.lovableSecondaryButton,
+.lovableGhostButton,
+.lovableIconButton,
+.lovableMenuButton,
+.lovableCoachPrompt,
+.lovableCoachComposerSend,
+.lovableCoachBubbleAction,
+.lovableCoachDraftAction,
+.lovableCoachDraftSecondary,
+.lovableObjectivesCreate,
+.lovableTabButton,
+.lovableTimelineCard,
+.lovableTodayActionRow,
+.lovableObjectiveHeader {
+  appearance: none;
+  border: 0;
+  background: none;
+  font: inherit;
+}
+
+.lovablePrimaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 54px;
+  width: 100%;
+  padding: 0 18px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #9f8cff 0%, #8d78ff 100%);
+  color: #161124;
+  font-weight: 600;
+  box-shadow: 0 0 24px rgba(143, 120, 255, 0.26);
+  cursor: pointer;
+}
+
+.lovablePrimaryButton:disabled {
+  opacity: 0.56;
+  cursor: default;
+}
+
+.lovableSecondaryButton,
+.lovableGhostButton,
+.lovableCoachDraftSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+}
+
+.lovableIconButton,
+.lovableObjectivesCreate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(139, 120, 255, 0.14);
+  color: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 18px rgba(139, 120, 255, 0.12);
+}
+
+.lovableTabBarWrap {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 80;
+  padding:
+    0
+    calc(var(--page-pad) + var(--safe-right))
+    calc(12px + var(--safe-bottom))
+    calc(var(--page-pad) + var(--safe-left));
+  pointer-events: none;
+}
+
+.lovableTabBar {
+  pointer-events: auto;
+  width: 100%;
+  max-width: var(--layout-max, 540px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+  padding: 12px 10px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 24px;
+  background: rgba(14, 14, 22, 0.94);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.44);
+  backdrop-filter: blur(18px);
+}
+
+.lovableTabButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 60px;
+  border-radius: 16px;
+  color: rgba(180, 182, 198, 0.78);
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.lovableTabButton svg {
+  width: 21px;
+  height: 21px;
+  stroke: currentColor;
+}
+
+.lovableTabButtonLabel {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.lovableTabButton.is-active {
+  color: var(--accent);
+}
+
+.lovableTabButton.is-active svg {
+  filter: drop-shadow(0 0 8px rgba(139, 120, 255, 0.22));
+}
+
+.lovableMenuOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+}
+
+.lovableMenuBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.lovableMenu {
+  position: absolute;
+  min-width: 220px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  background: rgba(14, 14, 22, 0.98);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(18px);
+}
+
+.lovableMenuButton {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.lovableMenuButton:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.lovableMenuLabel {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.lovableMenuMeta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.lovableTodayInsight {
+  display: flex;
+  gap: 14px;
+  padding: 18px;
+}
+
+.lovableTodayInsightIcon {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(139, 120, 255, 0.14);
+  color: var(--accent);
+}
+
+.lovableTodayInsightText {
+  min-width: 0;
+}
+
+.lovableTodayInsightTitle,
+.lovableCoachEyebrow,
+.lovableInsightCardEyebrow,
+.lovablePriorityEyebrow,
+.lovableObjectiveCategory {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lovableTodayInsightTitle,
+.lovableInsightCardEyebrow,
+.lovablePriorityEyebrow {
+  color: var(--accent);
+}
+
+.lovableTodayInsightCopy {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.lovablePriorityCard {
+  padding: 22px;
+}
+
+.lovablePriorityTitle {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: -0.05em;
+}
+
+.lovablePriorityMeta {
+  margin: 14px 0 22px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.lovableActionList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lovableTodayActionRow {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.015);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.lovableTodayActionCircle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.lovableTodayActionTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+}
+
+.lovableTodayActionDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  opacity: 0.9;
+}
+
+.lovableTodayQuote {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 17px;
+  line-height: 1.6;
+  color: rgba(165, 167, 181, 0.76);
+  font-style: italic;
+}
+
+.lovableObjectivesList,
+.lovableTimelineList,
+.lovableInsightsStack,
+.lovableCoachStack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lovableObjectiveCard {
+  overflow: hidden;
+}
+
+.lovableObjectiveHeader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 18px 20px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.lovableObjectiveRing {
+  position: relative;
+  width: 52px;
+  height: 52px;
+}
+
+.lovableObjectiveRing svg {
+  width: 52px;
+  height: 52px;
+  transform: rotate(-90deg);
+}
+
+.lovableObjectiveRingTrack {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 5;
+}
+
+.lovableObjectiveRingValue {
+  fill: none;
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+
+.lovableObjectiveRingLabel {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.lovableObjectiveTitle {
+  margin: 0 0 6px;
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.lovableObjectiveSubtitle {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.lovableObjectiveChevron {
+  color: var(--muted);
+}
+
+.lovableObjectiveBody {
+  padding: 0 20px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.lovableObjectiveTasks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+}
+
+.lovableObjectiveTask {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.lovableObjectiveTask.is-done .lovableObjectiveTaskTitle {
+  color: rgba(165, 167, 181, 0.7);
+  text-decoration: line-through;
+}
+
+.lovableObjectiveTaskCircle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.lovableObjectiveTask.is-done .lovableObjectiveTaskCircle {
+  border-color: rgba(139, 120, 255, 0.5);
+  background: rgba(139, 120, 255, 0.1);
+}
+
+.lovableObjectiveTaskTitle {
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.lovableObjectiveFooter {
+  display: flex;
+  gap: 10px;
+  padding-top: 14px;
+}
+
+.lovableObjectiveLink {
+  color: var(--accent);
+}
+
+.lovableEmptyCard {
+  padding: 22px;
+}
+
+.lovableEmptyTitle {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.lovableEmptyCopy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.lovableTimelineList {
+  position: relative;
+  gap: 18px;
+  padding-left: 24px;
+}
+
+.lovableTimelineList::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 10px;
+  width: 1px;
+  background: rgba(139, 120, 255, 0.18);
+}
+
+.lovableTimelineItem {
+  position: relative;
+}
+
+.lovableTimelineNode {
+  position: absolute;
+  left: -24px;
+  top: 12px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(139, 120, 255, 0.28);
+  background: rgba(8, 8, 12, 0.94);
+  box-shadow: 0 0 0 4px rgba(8, 8, 12, 1);
+}
+
+.lovableTimelineItem.is-complete .lovableTimelineNode {
+  background: rgba(139, 120, 255, 0.14);
+  border-color: rgba(139, 120, 255, 0.56);
+}
+
+.lovableTimelineItem.is-current .lovableTimelineNode {
+  box-shadow:
+    0 0 0 4px rgba(8, 8, 12, 1),
+    0 0 18px rgba(139, 120, 255, 0.28);
+}
+
+.lovableTimelineCard {
+  display: block;
+  width: 100%;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.015);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.lovableTimelineDate {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.lovableTimelineTitle {
+  margin: 0 0 6px;
+  font-size: 16px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.lovableTimelineSubtitle {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.lovableInsightsMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.lovableMetricCard {
+  padding: 18px 14px;
+  text-align: center;
+}
+
+.lovableMetricIcon {
+  margin: 0 auto 12px;
+  width: 22px;
+  height: 22px;
+  color: var(--accent);
+}
+
+.lovableMetricValue {
+  margin: 0 0 6px;
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.lovableMetricLabel {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.lovableChartCard {
+  padding: 18px 18px 16px;
+}
+
+.lovableChartFrame {
+  width: 100%;
+  height: 180px;
+}
+
+.lovableChartAxisLabelRow {
+  display: grid;
+  grid-template-columns: repeat(var(--day-count, 7), minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.lovableChartAxisLabel {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.lovableChartPath {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.lovableChartPoint {
+  fill: var(--accent);
+}
+
+.lovableChartGuide {
+  stroke: rgba(255, 255, 255, 0.05);
+  stroke-width: 1;
+}
+
+.lovableInsightTextCard {
+  padding: 20px;
+}
+
+.lovableInsightCopy {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.65;
+}
+
+.lovableCoachPage {
+  gap: 16px;
+}
+
+.lovableCoachIntro,
+.lovableCoachBubble,
+.lovableCoachDraft {
+  padding: 18px;
+}
+
+.lovableCoachBubble {
+  max-width: 88%;
+}
+
+.lovableCoachBubble.is-user {
+  align-self: flex-end;
+  background: rgba(139, 120, 255, 0.16);
+  border-color: rgba(139, 120, 255, 0.24);
+}
+
+.lovableCoachBubble.is-assistant {
+  align-self: flex-start;
+}
+
+.lovableCoachText {
+  margin: 0;
+  line-height: 1.7;
+  white-space: pre-line;
+}
+
+.lovableCoachPrompts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lovableCoachPrompt {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.015);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.lovableCoachMessages {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+.lovableCoachActions,
+.lovableCoachDraftActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.lovableCoachBubbleAction,
+.lovableCoachDraftAction {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: rgba(139, 120, 255, 0.18);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.lovableCoachDraftTitle {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.lovableCoachDraftList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lovableCoachDraftItem {
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.lovableCoachComposerWrap {
+  position: sticky;
+  bottom: calc(82px + var(--safe-bottom));
+  z-index: 2;
+  margin-top: 6px;
+}
+
+.lovableCoachComposer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 12px;
+}
+
+.lovableCoachTextarea {
+  min-height: 52px;
+  max-height: 144px;
+  resize: vertical;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.015);
+  color: var(--text);
+  font: inherit;
+}
+
+.lovableCoachTextarea::placeholder {
+  color: var(--text-muted);
+}
+
+.lovableCoachComposerSend {
+  align-self: stretch;
+  width: 44px;
+  min-width: 44px;
+  border-radius: 14px;
+  background: rgba(139, 120, 255, 0.2);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.lovableCoachError {
+  margin-top: 10px;
+  color: #ff8f8f;
+  font-size: 14px;
+}
+
+.lovableHighlight {
+  animation: lovablePulse 1.4s ease;
+}
+
+@keyframes lovablePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(139, 120, 255, 0.34);
+  }
+  100% {
+    box-shadow: 0 0 0 18px rgba(139, 120, 255, 0);
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding-top: calc(26px + var(--safe-top));
+  }
+
+  .lovablePriorityTitle {
+    font-size: 30px;
+  }
+
+  .lovableInsightsMetrics {
+    grid-template-columns: 1fr;
+  }
+
+  .lovableMetricValue {
+    font-size: 30px;
+  }
+
+  .lovableCoachBubble {
+    max-width: 100%;
+  }
+}

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseNavigationState } from "./useAppNavigation";
 
 describe("useAppNavigation legacy coach alias", () => {
-  it("maps /coach/chat to the origin main tab and opens the coach alias request", () => {
+  it("maps /coach/chat to the dedicated coach tab while preserving the origin request", () => {
     expect(
       parseNavigationState("/coach/chat", "", {
         origin: {
@@ -12,20 +12,20 @@ describe("useAppNavigation legacy coach alias", () => {
         coachMode: "plan",
       })
     ).toMatchObject({
-      initialTab: "planning",
+      initialTab: "coach",
       initialCoachAliasRequest: {
-        mainTab: "planning",
+        mainTab: "timeline",
         mode: "plan",
         conversationId: "conv_1",
       },
     });
   });
 
-  it("falls back to today when the legacy coach alias has no origin state", () => {
+  it("falls back to the dedicated coach tab when the legacy coach alias has no origin state", () => {
     expect(parseNavigationState("/coach/chat", "", null)).toMatchObject({
-      initialTab: "today",
+      initialTab: "coach",
       initialCoachAliasRequest: {
-        mainTab: "today",
+        mainTab: "coach",
         mode: "free",
         conversationId: null,
       },

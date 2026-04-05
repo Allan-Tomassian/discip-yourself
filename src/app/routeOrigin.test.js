@@ -8,15 +8,15 @@ import {
 
 describe("route origin helpers", () => {
   it("maps non-main task surfaces back to their canonical main tabs", () => {
-    expect(resolveMainTabForSurface("category-detail", "today")).toBe("library");
-    expect(resolveMainTabForSurface("coach", "planning")).toBe("planning");
+    expect(resolveMainTabForSurface("category-detail", "today")).toBe("objectives");
+    expect(resolveMainTabForSurface("coach", "planning")).toBe("coach");
     expect(resolveMainTabForSurface("account", "library")).toBe("today");
   });
 
   it("derives the active top nav tab from the current task surface", () => {
-    expect(resolveActiveTopNavTab({ currentTab: "create-item", taskMainTab: "planning" })).toBe("planning");
-    expect(resolveActiveTopNavTab({ currentTab: "edit-item", editReturnTab: "library" })).toBe("library");
-    expect(resolveActiveTopNavTab({ currentTab: "pilotage" })).toBe("pilotage");
+    expect(resolveActiveTopNavTab({ currentTab: "create-item", taskMainTab: "planning" })).toBe("timeline");
+    expect(resolveActiveTopNavTab({ currentTab: "edit-item", editReturnTab: "library" })).toBe("objectives");
+    expect(resolveActiveTopNavTab({ currentTab: "pilotage" })).toBe("insights");
   });
 
   it("normalizes library route origin details", () => {
@@ -32,7 +32,7 @@ describe("route origin helpers", () => {
         }),
       })
     ).toEqual({
-      mainTab: "library",
+      mainTab: "objectives",
       sourceSurface: "category-detail",
       categoryId: "cat_1",
       dateKey: null,

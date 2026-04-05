@@ -371,18 +371,18 @@ export function useCoachConversationController({
           return;
         }
         if (action.categoryId) {
-          setTab?.("library");
+          setTab?.("objectives");
           onRequestClose?.();
         }
         return;
       }
       if (action.intent === "open_library") {
-        setTab?.("library");
+        setTab?.("objectives");
         onRequestClose?.();
         return;
       }
       if (action.intent === "open_pilotage") {
-        setTab?.("pilotage");
+        setTab?.("insights");
         onRequestClose?.();
         return;
       }
