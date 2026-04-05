@@ -66,6 +66,13 @@ function average(values) {
   return total / values.length;
 }
 
+function buildDayExplanation({ expected, done }) {
+  if (!expected) return "Aucune action planifiée ce jour-là.";
+  if (done >= expected) return "Toutes les actions prévues ont été complétées.";
+  if (done <= 0) return "Aucune action prévue n'a été complétée.";
+  return "Une partie des actions prévues a été complétée.";
+}
+
 function deriveTrendSummary(series) {
   const scoredSeries = Array.isArray(series) ? series.filter((entry) => Number.isFinite(entry?.score)) : [];
   const neutralDays = Array.isArray(series) ? series.filter((entry) => entry?.isNeutral).length : 0;
@@ -166,6 +173,7 @@ export function buildPilotageDisciplineTrend(state, {
       expected,
       done,
       isNeutral: expected <= 0,
+      explanation: buildDayExplanation({ expected, done }),
     };
   });
   const summary = deriveTrendSummary(series);

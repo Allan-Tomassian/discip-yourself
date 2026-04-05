@@ -12,6 +12,7 @@ const FILES_TO_SCAN = [
 
 const FORBIDDEN_VITE_NAME_PATTERNS = [
   /^VITE_OPENAI_/i,
+  /^VITE_.*OPENAI/i,
   /^VITE_.*SERVICE_ROLE/i,
   /^VITE_.*SECRET/i,
   /^VITE_.*PRIVATE(_KEY)?/i,
@@ -37,7 +38,8 @@ for (const relPath of FILES_TO_SCAN) {
     const hasForbiddenName = FORBIDDEN_VITE_NAME_PATTERNS.some((pattern) => pattern.test(name));
     const looksLikeServerSecret =
       /service_role/i.test(value) ||
-      /(^|[^A-Z])sk-[A-Za-z0-9]/i.test(value);
+      /(^|[^A-Z])sk-[A-Za-z0-9]/i.test(value) ||
+      /^sb_secret_/i.test(value);
 
     if (hasForbiddenName || looksLikeServerSecret) {
       violations.push({

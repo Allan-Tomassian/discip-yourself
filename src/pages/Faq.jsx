@@ -5,19 +5,19 @@ import { AppActionRow, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader 
 const QUESTIONS = [
   {
     question: "Comment démarrer rapidement ?",
-    answer: "Passe par l’onboarding IA, puis ouvre Today pour lancer ta priorité du moment.",
+    answer: "Passe par l’onboarding IA, puis ouvre Aujourd'hui pour lancer ta priorité du moment.",
   },
   {
     question: "Où retrouver mes actions ?",
-    answer: "Bibliothèque reste la source de vérité de tes actions et catégories.",
+    answer: "Objectifs reste la source de vérité de tes actions et catégories.",
   },
   {
-    question: "Pourquoi Today est plus simple ?",
-    answer: "Today sert uniquement à exécuter. Le calendrier détaillé reste dans Planification.",
+    question: "Pourquoi Aujourd'hui est plus simple ?",
+    answer: "Aujourd'hui sert uniquement à exécuter. Le calendrier détaillé reste dans Planning.",
   },
   {
     question: "Comment réorganiser une session ?",
-    answer: "Ouvre la session puis utilise Reporter pour la déplacer ou l’envoyer dans Planification.",
+    answer: "Ouvre la session puis utilise Reporter pour la déplacer ou l’envoyer dans Planning.",
   },
   {
     question: "Comment réinitialiser mon mot de passe ?",
@@ -36,7 +36,6 @@ export default function Faq({ data, setTab }) {
     <AppScreen
       data={safeData}
       pageId="faq"
-      backgroundImage={safeData?.profile?.whyImage || ""}
       headerTitle="FAQ"
       headerSubtitle="Réponses rapides aux questions fréquentes."
     >

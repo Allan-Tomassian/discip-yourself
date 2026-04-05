@@ -55,7 +55,6 @@ import {
 export default function EditItem({ data, setData, editItem, onBack, generationWindowDays = null, onOpenPaywall }) {
   const { emitBehaviorFeedback } = useBehaviorFeedback();
   const safeData = useMemo(() => (data && typeof data === "object" ? data : {}), [data]);
-  const backgroundImage = safeData?.profile?.whyImage || "";
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
   const goalsById = useMemo(() => new Map(goals.map((goal) => [goal.id, goal])), [goals]);
   const reminders = useMemo(
@@ -867,14 +866,13 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
     return (
       <AppScreen
         pageId="edit-item"
-        headerTitle={<span className="textAccent">Modifier</span>}
+        headerTitle="Modifier"
         headerSubtitle="Élément introuvable"
         headerRight={
           <GhostButton className="btnBackCompact backBtn" onClick={onBack}>
             Retour
           </GhostButton>
         }
-        backgroundImage={backgroundImage}
       >
         <div className="mainPageStack editItemPageShell">
           <AppCard variant="elevated">
@@ -888,7 +886,7 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
   return (
     <AppScreen
       pageId="edit-item"
-      headerTitle={<span className="textAccent">Modifier</span>}
+      headerTitle="Modifier"
       headerSubtitle={item.title || (isProcess ? LABELS.action : LABELS.goal)}
       headerRight={
         <GhostButton className="btnBackCompact backBtn" onClick={onBack}>
@@ -896,7 +894,6 @@ export default function EditItem({ data, setData, editItem, onBack, generationWi
         </GhostButton>
       }
       headerRowAlign="start"
-      backgroundImage={backgroundImage}
     >
       <div className="mainPageStack editItemPageShell editItemScope">
         {isProcess ? <ActionEditScreen controller={controller} /> : <OutcomeEditScreen controller={controller} />}

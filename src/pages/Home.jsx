@@ -11,7 +11,7 @@ import {
 import { fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { backfillMissedOccurrences, ensureWindowFromScheduleRules } from "../logic/occurrencePlanner";
 import { normalizeOccurrenceForUI } from "../logic/compat";
-import { applySessionRuntimeTransition, isRuntimeSessionOpen } from "../logic/sessionRuntime";
+import { isRuntimeSessionOpen, resolveRuntimeSessionGate } from "../logic/sessionRuntime";
 import { emitSessionRuntimeNotificationHook } from "../logic/sessionRuntimeNotifications";
 import { getAccentForPage } from "../utils/_theme";
 import { getCategoryAccentVars } from "../utils/categoryAccent";
@@ -40,7 +40,14 @@ import TodayDailyState from "../components/today/TodayDailyState";
 import TodayHero from "../components/today/TodayHero";
 import TodayNextActions from "../components/today/TodayNextActions";
 import { emitTotemEvent } from "../ui/totem/totemEvents";
-import { ANALYSIS_COPY, LABELS, MAIN_PAGE_COPY, SURFACE_LABELS, UI_COPY } from "../ui/labels";
+import {
+  ANALYSIS_COPY,
+  LABELS,
+  MAIN_PAGE_COPY,
+  SURFACE_LABELS,
+  TODAY_SCREEN_COPY,
+  UI_COPY,
+} from "../ui/labels";
 import { useAuth } from "../auth/useAuth";
 import { buildTodayCanonicalContextSummary, resolveTodayOccurrenceStartPolicy } from "../domain/todayIntervention";
 import { computeCategoryScopedRecommendation } from "../domain/todayCategoryCoherence";
@@ -248,8 +255,8 @@ function resolveImpactText({ heroGoal, heroCategory, goalsById }) {
 function resolveOccurrenceHeroCopy({ occurrence, goalsById, categoriesById }) {
   if (!occurrence) {
     return {
-      title: "Aucune action prête pour cette date.",
-      meta: "Commence dans Bibliothèque par une catégorie claire puis une première action.",
+      title: TODAY_SCREEN_COPY.noReadyActionTitle,
+      meta: TODAY_SCREEN_COPY.noReadyActionReason,
     };
   }
   const goal = goalsById.get(occurrence.goalId || "") || null;
@@ -271,6 +278,74 @@ function compareTodayOccurrences(left, right) {
   const rightStart = typeof right?.start === "string" ? right.start : "";
   if (leftStart !== rightStart) return leftStart.localeCompare(rightStart);
   return String(left?.title || "").localeCompare(String(right?.title || ""));
+}
+
+function buildTodayRecommendedActions({
+  occurrencesForSelectedDay,
+  goalsById,
+  categoriesById,
+  heroOccurrenceId = "",
+  selectedDateKey = "",
+  activeCategoryName = "",
+  hasOpenSession = false,
+}) {
+  const remainingOccurrences = (Array.isArray(occurrencesForSelectedDay) ? occurrencesForSelectedDay : [])
+    .filter((occurrence) => {
+      const status = typeof occurrence?.status === "string" ? occurrence.status : "";
+      return (
+        occurrence?.id &&
+        occurrence.id !== heroOccurrenceId &&
+        status !== "done" &&
+        status !== "skipped" &&
+        status !== "canceled" &&
+        status !== "missed" &&
+        status !== "rescheduled"
+      );
+    })
+    .sort(compareTodayOccurrences);
+
+  const seenTitles = new Set();
+  const suggestions = [];
+
+  for (const occurrence of remainingOccurrences) {
+    const goal = goalsById.get(occurrence?.goalId || "") || null;
+    const category = categoriesById.get(goal?.categoryId || "") || null;
+    const rawTitle = String(goal?.title || occurrence?.title || "").trim();
+    const normalizedTitle = rawTitle.toLowerCase();
+    if (!rawTitle || seenTitles.has(normalizedTitle)) continue;
+    seenTitles.add(normalizedTitle);
+    suggestions.push({
+      id: `suggestion:${occurrence.id}`,
+      intent: "start_occurrence",
+      occurrence,
+      category,
+      title: `Lancer ${rawTitle}`,
+      isAiPriority: false,
+    });
+    if (suggestions.length >= 3) return suggestions;
+  }
+
+  if (!hasOpenSession) {
+    suggestions.push({
+      id: `suggestion:planning:${selectedDateKey || todayLocalKey()}`,
+      intent: "open_planning",
+      title: "Clarifier le prochain bloc du jour",
+      category: null,
+      isAiPriority: false,
+    });
+  }
+
+  suggestions.push({
+    id: `suggestion:objectives:${selectedDateKey || todayLocalKey()}`,
+    intent: "open_objectives",
+    title: activeCategoryName
+      ? `Structurer la suite en ${activeCategoryName}`
+      : "Structurer la prochaine action",
+    category: null,
+    isAiPriority: false,
+  });
+
+  return suggestions.slice(0, 3);
 }
 
 function normalizeMicroItemForCompare(item) {
@@ -1142,14 +1217,39 @@ export default function Home({
     [onAddOccurrence]
   );
   const handleStartSession = useCallback(
-    (occurrence) => {
-      if (!occurrence) return;
+    (item) => {
+      if (!item) return;
+      if (item.intent === "open_planning") {
+        onOpenPlanning?.();
+        return;
+      }
+      if (item.intent === "open_objectives") {
+        onOpenLibrary?.();
+        return;
+      }
+      const occurrence = item.occurrence || item;
+      if (!occurrence?.id) return;
       const startPolicy = resolveTodayOccurrenceStartPolicy({
         activeDate: selectedDateKey,
         systemToday: localTodayKey,
         occurrenceDate: occurrence.date || "",
       });
       if (!startPolicy.canStartDirectly) return;
+      const gate = resolveRuntimeSessionGate(safeData, { occurrenceId: occurrence.id });
+      if (gate.status !== "ready" && gate.activeSession?.occurrenceId) {
+        const activeOccurrence = (Array.isArray(safeData.occurrences) ? safeData.occurrences : []).find(
+          (entry) => entry?.id === gate.activeSession.occurrenceId
+        ) || null;
+        const activeGoal = activeOccurrence?.goalId ? goalsById.get(activeOccurrence.goalId) || null : null;
+        if (typeof onOpenSession === "function") {
+          onOpenSession({
+            categoryId: activeGoal?.categoryId || null,
+            dateKey: gate.activeSession.dateKey || activeOccurrence?.date || selectedDateKey,
+            occurrenceId: gate.activeSession.occurrenceId || null,
+          });
+        }
+        return;
+      }
       const goal = occurrence.goalId ? goalsById.get(occurrence.goalId) || null : null;
       const categoryId = goal?.categoryId || null;
       if (typeof onOpenSession === "function") {
@@ -1160,7 +1260,7 @@ export default function Home({
         });
       }
     },
-    [goalsById, localTodayKey, onOpenSession, selectedDateKey]
+    [goalsById, localTodayKey, onOpenLibrary, onOpenPlanning, onOpenSession, safeData, selectedDateKey]
   );
   const lastEnsureSigRef = useRef("");
   const ensureDebugCountRef = useRef(0);
@@ -1933,51 +2033,28 @@ export default function Home({
     }
     return map;
   }, [safeData.sessionHistory]);
-  const nextActions = useMemo(() => {
-    const remainingOccurrences = occurrencesForSelectedDay
-      .filter((occurrence) => {
-        const status = typeof occurrence?.status === "string" ? occurrence.status : "";
-        return (
-          status !== "done" &&
-          status !== "skipped" &&
-          status !== "canceled" &&
-          status !== "missed" &&
-          status !== "rescheduled"
-        );
-      })
-      .map((occurrence) => {
-        const goal = goalsById.get(occurrence?.goalId || "") || null;
-        const category = categoriesById.get(goal?.categoryId || "") || null;
-        return {
-          ...occurrence,
-          title: goal?.title || occurrence?.title || "Action",
-          categoryName: category?.name || "Catégorie",
-          category,
-        };
-      })
-      .sort(compareTodayOccurrences);
-
-    const heroCanLeadList =
-      heroViewModel?.source === "ai" &&
-      Boolean(heroOccurrence?.id) &&
-      remainingOccurrences.some((occurrence) => occurrence?.id === heroOccurrence.id);
-
-    if (!heroCanLeadList) return remainingOccurrences.slice(0, 3);
-
-    const originalFirstId = remainingOccurrences[0]?.id || null;
-    const heroEntry = remainingOccurrences.find((occurrence) => occurrence?.id === heroOccurrence.id) || null;
-    const remainingWithoutHero = remainingOccurrences.filter((occurrence) => occurrence?.id !== heroOccurrence.id);
-
-    return [
-      {
-        ...heroEntry,
-        isAiPriority: Boolean(heroEntry?.id && heroEntry.id !== originalFirstId),
-      },
-      ...remainingWithoutHero,
+  const nextActions = useMemo(
+    () =>
+      buildTodayRecommendedActions({
+        occurrencesForSelectedDay,
+        goalsById,
+        categoriesById,
+        heroOccurrenceId: heroOccurrence?.id || "",
+        selectedDateKey,
+        activeCategoryName: focusCategory?.name || heroDisplayCategoryName || "",
+        hasOpenSession: Boolean(safeData?.ui?.activeSession && isRuntimeSessionOpen(safeData.ui.activeSession)),
+      }),
+    [
+      categoriesById,
+      focusCategory?.name,
+      goalsById,
+      heroDisplayCategoryName,
+      heroOccurrence?.id,
+      occurrencesForSelectedDay,
+      safeData?.ui?.activeSession,
+      selectedDateKey,
     ]
-      .filter(Boolean)
-      .slice(0, 3);
-  }, [categoriesById, goalsById, heroOccurrence?.id, heroViewModel?.source, occurrencesForSelectedDay]);
+  );
   const dailyState = useMemo(() => {
     const plannedMinutes = occurrencesForSelectedDay.reduce((sum, occurrence) => {
       const status = typeof occurrence?.status === "string" ? occurrence.status : "";
@@ -2057,16 +2134,16 @@ export default function Home({
       heroViewModel?.primaryAction?.kind === "open_pilotage" ||
       (heroViewModel?.primaryAction?.kind === "start_occurrence" && heroOccurrence)
   );
-  const greetingName = String(profile?.full_name || profile?.username || profile?.name || "").trim() || "there";
+  const greetingName =
+    String(profile?.full_name || profile?.username || profile?.name || "").trim() || TODAY_SCREEN_COPY.fallbackName;
   const greetingPeriod = (() => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
+    if (hour < 18) return TODAY_SCREEN_COPY.greetingMorning;
+    return TODAY_SCREEN_COPY.greetingEvening;
   })();
   const headerDateLabel = (() => {
     try {
-      return new Intl.DateTimeFormat("en-US", {
+      return new Intl.DateTimeFormat("fr-FR", {
         weekday: "long",
         month: "long",
         day: "numeric",
@@ -2093,21 +2170,21 @@ export default function Home({
     >
       <div className="lovablePage">
         <div className="lovableCard lovableTodayInsight">
-          <div className="lovableTodayInsightIcon" aria-hidden="true">AI</div>
+          <div className="lovableTodayInsightIcon" aria-hidden="true">IA</div>
           <div className="lovableTodayInsightText">
-            <div className="lovableTodayInsightTitle">AI Insight</div>
+            <div className="lovableTodayInsightTitle">{TODAY_SCREEN_COPY.insightTitle}</div>
             <p className="lovableTodayInsightCopy">{insightCopy || MAIN_PAGE_COPY.today.orientation}</p>
           </div>
         </div>
 
         <div>
-          <div className="lovableSectionLabel">Main Priority</div>
+          <div className="lovableSectionLabel">{TODAY_SCREEN_COPY.priorityTitle}</div>
           <TodayHero
             title={typedHeroTitle || heroViewModel.title}
             reason={heroImpactText || heroReasonText}
             contributionLabel={heroContributionLabel}
             recommendedCategoryLabel={heroViewModel.recommendedCategoryLabel || heroDisplayCategoryName}
-            primaryLabel={heroViewModel.primaryLabel === "Démarrer" ? "Start Now" : heroViewModel.primaryLabel || "Start Now"}
+            primaryLabel={heroViewModel.primaryLabel || TODAY_SCREEN_COPY.primaryAction}
             onPrimaryAction={handleHeroPrimaryAction}
             canPrimaryAction={canTriggerHeroPrimaryAction}
             isPreparing={manualTodayAnalysis.loading}
@@ -2115,7 +2192,7 @@ export default function Home({
         </div>
 
         <div>
-          <div className="lovableSectionLabel">Recommended Actions</div>
+          <div className="lovableSectionLabel">{TODAY_SCREEN_COPY.actionsTitle}</div>
           <TodayNextActions
             actions={nextActions}
             onOpenOccurrence={handleStartSession}
@@ -2123,7 +2200,7 @@ export default function Home({
           />
         </div>
 
-        <p className="lovableTodayQuote">“Small consistent actions compound into extraordinary results.”</p>
+        <p className="lovableTodayQuote">“{TODAY_SCREEN_COPY.quote}”</p>
       </div>
     </AppScreen>
   );

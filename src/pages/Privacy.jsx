@@ -4,13 +4,11 @@ import { AppActionRow, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader 
 
 export default function Privacy({ data, onOpenSupport }) {
   const safeData = data && typeof data === "object" ? data : {};
-  const backgroundImage = safeData?.profile?.whyImage || "";
 
   return (
     <AppScreen
       data={safeData}
       pageId="privacy"
-      backgroundImage={backgroundImage}
       headerTitle="Confidentialité"
       headerSubtitle="Comment tes données sont utilisées dans l’app."
     >

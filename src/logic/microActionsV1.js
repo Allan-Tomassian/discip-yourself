@@ -73,6 +73,60 @@ function buildTemplatePool(state, categoryId) {
   return library.filter((item) => item && item.id);
 }
 
+function resolveDayOccurrenceContext(state, dateKey, categoryId) {
+  const safeState = asObject(state);
+  const occurrences = Array.isArray(safeState.occurrences) ? safeState.occurrences : [];
+  const goals = Array.isArray(safeState.goals) ? safeState.goals : [];
+  const goalsById = new Map(goals.map((goal) => [goal?.id, goal]));
+
+  const candidates = occurrences
+    .filter((occurrence) => {
+      if (!occurrence || occurrence.date !== dateKey) return false;
+      const status = asString(occurrence.status).trim().toLowerCase();
+      if (status === "done" || status === "canceled" || status === "skipped") return false;
+      const goal = goalsById.get(occurrence.goalId);
+      if (categoryId && goal?.categoryId !== categoryId) return false;
+      return Boolean(goal?.title);
+    })
+    .sort((left, right) => {
+      const leftStart = asString(left?.start || left?.slotKey);
+      const rightStart = asString(right?.start || right?.slotKey);
+      return leftStart.localeCompare(rightStart);
+    });
+
+  const selected = candidates[0] || null;
+  if (!selected) return null;
+
+  const goal = goalsById.get(selected.goalId) || null;
+  const title = asString(goal?.title).trim();
+  if (!title) return null;
+
+  const hours = new Date().getHours();
+  const timeOfDay = hours < 11 ? "morning" : hours < 18 ? "day" : "evening";
+
+  return {
+    actionTitle: title,
+    timeOfDay,
+  };
+}
+
+function scoreTemplateMatch(template, effortContext) {
+  if (!template || !effortContext) return 0;
+  let score = 0;
+  const normalizedActionTitle = toSearchToken(effortContext.actionTitle);
+  const includes = Array.isArray(template?.matchers?.actionTitleIncludes)
+    ? template.matchers.actionTitleIncludes.map((entry) => toSearchToken(entry))
+    : [];
+  if (normalizedActionTitle && includes.some((entry) => entry && normalizedActionTitle.includes(entry))) {
+    score += 6;
+  }
+  if (template.timeOfDay && template.timeOfDay === effortContext.timeOfDay) {
+    score += 2;
+  }
+  if (template.intent === "prep") score += 1;
+  return score;
+}
+
 function normalizeStatus(value) {
   const status = asString(value).toLowerCase();
   if (status === DONE_STATUS) return DONE_STATUS;
@@ -130,10 +184,13 @@ function pickTemplate({ state, dateKey, categoryId, sequence, excludeTemplateIds
   const excluded = new Set((Array.isArray(excludeTemplateIds) ? excludeTemplateIds : []).map((value) => asString(value)));
   const available = pool.filter((item) => !excluded.has(asString(item.id)));
   const candidates = available.length ? available : pool;
+  const effortContext = resolveDayOccurrenceContext(state, dateKey, categoryId);
   const seed = `${dateKey}|${categoryId}|${sequence}`;
   const ordered = candidates
     .slice()
     .sort((a, b) => {
+      const matchDiff = scoreTemplateMatch(b, effortContext) - scoreTemplateMatch(a, effortContext);
+      if (matchDiff !== 0) return matchDiff;
       const scoreA = hashString(`${seed}|${asString(a?.id)}`);
       const scoreB = hashString(`${seed}|${asString(b?.id)}`);
       if (scoreA !== scoreB) return scoreB - scoreA;

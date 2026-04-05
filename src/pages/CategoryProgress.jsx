@@ -1,10 +1,8 @@
 import React from "react";
 import Gauge from "../components/Gauge";
-import { getAccentForPage } from "../utils/_theme";
-import { resolveCategoryColor } from "../utils/categoryPalette";
 import { resolveGoalType } from "../domain/goalType";
 import { LABELS } from "../ui/labels";
-import { AppCard, AppScreen, GhostButton } from "../shared/ui/app";
+import { AppCard, AppScreen, AppInlineMetaCard, GhostButton, SectionHeader } from "../shared/ui/app";
 
 const MEASURE_UNITS = {
   money: "€",
@@ -35,9 +33,8 @@ export default function CategoryProgress({ data, categoryId, onBack }) {
   if (!category) {
     return (
       <AppScreen
-        accent={getAccentForPage(safeData, "home")}
         pageId="category-progress"
-        headerTitle={<span className="textAccent">Progression</span>}
+        headerTitle="Progression"
         headerSubtitle="Catégorie introuvable"
       >
         <AppCard variant="elevated">
@@ -53,14 +50,10 @@ export default function CategoryProgress({ data, categoryId, onBack }) {
     );
   }
 
-  const accent = resolveCategoryColor(category, getAccentForPage(safeData, "home"));
-
   return (
     <AppScreen
-      accent={accent}
       pageId="category-progress"
-      backgroundImage={category.wallpaper || safeData.profile?.whyImage || ""}
-      headerTitle={<span className="textAccent">Progression</span>}
+      headerTitle="Progression"
       headerSubtitle={category.name || "Catégorie"}
     >
       <div className="stack stackGap12">
@@ -68,8 +61,12 @@ export default function CategoryProgress({ data, categoryId, onBack }) {
           ← Retour
         </GhostButton>
 
-        <AppCard variant="elevated" style={{ borderColor: accent }}>
-          <div className="titleSm">{LABELS.goals}</div>
+        <section className="mainPageSection">
+          <SectionHeader
+            title={LABELS.goals}
+            subtitle="Lecture des objectifs encore actifs dans cette catégorie."
+          />
+          <AppCard variant="elevated">
           {outcomeGoals.length ? (
             <div className="mt12 stack stackGap12">
               {outcomeGoals.map((g) => (
@@ -79,14 +76,15 @@ export default function CategoryProgress({ data, categoryId, onBack }) {
                   currentValue={Number(g.currentValue) || 0}
                   targetValue={Number(g.targetValue) || 0}
                   unit={MEASURE_UNITS[g.measureType] || ""}
-                  accentColor={accent}
+                  accentColor="var(--accent-primary)"
                 />
               ))}
             </div>
           ) : (
-            <div className="small2 mt10">Aucun {LABELS.goalLower} dans cette catégorie.</div>
+            <AppInlineMetaCard text={`Aucun ${LABELS.goalLower} actif dans cette catégorie.`} />
           )}
-        </AppCard>
+          </AppCard>
+        </section>
       </div>
     </AppScreen>
   );

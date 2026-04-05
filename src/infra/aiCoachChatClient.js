@@ -18,6 +18,7 @@ const ACTION_INTENTS = new Set([
 const DECISION_SOURCES = new Set(["ai", "rules"]);
 const META_FALLBACK_REASONS = new Set(["none", "quota", "timeout", "invalid_model_output", "backend_error"]);
 const CHAT_ROLES = new Set(["user", "assistant"]);
+const COACH_USE_CASES = new Set(["general", "life_plan", "stats_review"]);
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -148,6 +149,11 @@ export function normalizeAiCoachChatPayload(input) {
   const message = typeof source.message === "string" ? source.message.trim() : "";
   const recentMessages = Array.isArray(source.recentMessages) ? source.recentMessages : [];
   const mode = normalizeCoachChatMode(source.mode, COACH_CHAT_MODES.CARD);
+  const locale = typeof source.locale === "string" && source.locale.trim() ? source.locale.trim() : "fr-FR";
+  const useCase =
+    typeof source.useCase === "string" && COACH_USE_CASES.has(source.useCase.trim())
+      ? source.useCase.trim()
+      : "general";
 
   if (!isDateKey(selectedDateKey)) {
     const error = new Error("selectedDateKey must be YYYY-MM-DD");
@@ -170,6 +176,8 @@ export function normalizeAiCoachChatPayload(input) {
     activeCategoryId,
     message,
     mode,
+    locale,
+    useCase,
     recentMessages: recentMessages
       .filter((entry) => isPlainObject(entry) && CHAT_ROLES.has(entry.role))
       .map((entry) => ({

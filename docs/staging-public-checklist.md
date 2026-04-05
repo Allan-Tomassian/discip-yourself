@@ -64,13 +64,25 @@ Front staging:
 - vérifier `Coach`
 - vérifier `Today`
 - vérifier `Planning`
+- vérifier `Analyses`
+- vérifier `Objectifs`
 
 Backend staging:
 
 - `GET /health`
 - `POST /ai/chat`
 - `POST /ai/now`
+- `POST /ai/local-analysis`
 - vérifier CORS depuis l’origine Netlify staging
+
+## Rotation OpenAI
+
+- stocker `OPENAI_API_KEY` uniquement côté backend
+- créer la nouvelle clé dans le secret manager avant rotation
+- déployer le backend avec la nouvelle clé
+- smoke tester `POST /ai/now`, `POST /ai/chat`, `POST /ai/local-analysis`
+- révoquer l’ancienne clé seulement après validation
+- ne jamais copier la clé dans un `.env` frontend ni dans un `VITE_*`
 
 ## Checklist Coach
 

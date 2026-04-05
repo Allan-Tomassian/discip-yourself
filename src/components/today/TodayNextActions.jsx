@@ -1,4 +1,5 @@
 import React from "react";
+import { TODAY_SCREEN_COPY } from "../../ui/labels";
 import { resolveCategoryColor } from "../../utils/categoryPalette";
 
 export default function TodayNextActions({ actions = [], onOpenOccurrence }) {
@@ -7,8 +8,8 @@ export default function TodayNextActions({ actions = [], onOpenOccurrence }) {
   if (!safeActions.length) {
     return (
       <div className="lovableCard lovableEmptyCard">
-        <div className="lovableEmptyTitle">No more recommended actions today.</div>
-        <p className="lovableEmptyCopy">The rest of the day is intentionally clear so the rhythm stays readable.</p>
+        <div className="lovableEmptyTitle">{TODAY_SCREEN_COPY.emptyActionsTitle}</div>
+        <p className="lovableEmptyCopy">{TODAY_SCREEN_COPY.emptyActionsCopy}</p>
       </div>
     );
   }
@@ -23,7 +24,7 @@ export default function TodayNextActions({ actions = [], onOpenOccurrence }) {
           onClick={() => onOpenOccurrence?.(item)}
         >
           <span className="lovableTodayActionCircle" />
-          <span className="lovableTodayActionTitle">{item.title || "Action"}</span>
+          <span className="lovableTodayActionTitle">{item.title || TODAY_SCREEN_COPY.actionFallback}</span>
           <span
             className="lovableTodayActionDot"
             style={{ background: resolveCategoryColor(item.category, "#8b78ff") }}

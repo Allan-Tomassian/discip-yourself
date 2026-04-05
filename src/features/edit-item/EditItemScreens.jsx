@@ -24,6 +24,27 @@ import {
 } from "./editItemShared";
 import "./editItem.css";
 
+function resolveSelectedCategoryLabel(controller) {
+  const option = Array.isArray(controller?.categoryOptions)
+    ? controller.categoryOptions.find((entry) => entry.id === controller.selectedCategoryId)
+    : null;
+  return option?.name || "Catégorie";
+}
+
+function CategoryRoutingCard({ controller, relationLabel = "Cette catégorie restera le contexte principal de cet élément." }) {
+  const selectedLabel = resolveSelectedCategoryLabel(controller);
+  return (
+    <AppInlineMetaCard
+      title="Catégorie actuelle"
+      text={
+        controller?.selectedSuggestion
+          ? `${selectedLabel} est suggérée. Active-la avant de confirmer si tu veux l’utiliser durablement.`
+          : `${selectedLabel}. ${relationLabel}`
+      }
+    />
+  );
+}
+
 function SuggestionNotice({ controller, text }) {
   if (!controller.selectedSuggestion) return null;
   return (
@@ -32,7 +53,7 @@ function SuggestionNotice({ controller, text }) {
       text={text}
       action={(
         <GhostButton size="sm" onClick={() => controller.activateSuggestedCategory(controller.selectedSuggestion)}>
-          Activer
+          Utiliser cette catégorie
         </GhostButton>
       )}
     />
@@ -201,6 +222,11 @@ export function ActionEditScreen({ controller }) {
           </FieldGroup>
         </div>
 
+        <CategoryRoutingCard
+          controller={controller}
+          relationLabel="Elle guidera aussi le contexte visible dans Objectifs, Planning et Aujourd’hui."
+        />
+
         <SuggestionNotice
           controller={controller}
           text="Cette catégorie n’est pas encore active. Active-la avant de l’utiliser durablement."
@@ -223,7 +249,7 @@ export function ActionEditScreen({ controller }) {
       </AppFormSection>
 
       <AppFormSection
-        title="Planification"
+        title="Planning"
         description="Quand l’action existe, comment elle revient et combien de temps elle prend."
       >
         <FieldGroup label="Cadence" helper="Choisis le format le plus crédible pour cette action." className="editItemField">
@@ -414,6 +440,11 @@ export function OutcomeEditScreen({ controller }) {
             </AppSelect>
           </FieldGroup>
         </div>
+
+        <CategoryRoutingCard
+          controller={controller}
+          relationLabel="Cet objectif reste rattaché à cette catégorie pour toute sa progression."
+        />
 
         <SuggestionNotice
           controller={controller}

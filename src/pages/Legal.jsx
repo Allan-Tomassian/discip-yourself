@@ -4,13 +4,11 @@ import { AppActionRow, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader 
 
 export default function Legal({ data, onOpenSupport }) {
   const safeData = data && typeof data === "object" ? data : {};
-  const backgroundImage = safeData?.profile?.whyImage || "";
 
   return (
     <AppScreen
       data={safeData}
       pageId="legal"
-      backgroundImage={backgroundImage}
       headerTitle="Conditions"
       headerSubtitle="Conditions d’utilisation"
     >

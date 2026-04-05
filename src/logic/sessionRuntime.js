@@ -203,6 +203,41 @@ export function isRuntimeSessionOpen(session) {
   return OPEN_PHASES.has(phase);
 }
 
+export function getOpenRuntimeSession(state) {
+  const session = normalizeRuntimeSession(resolveActiveSession(state));
+  return isRuntimeSessionOpen(session) ? session : null;
+}
+
+export function resolveRuntimeSessionGate(state, { occurrenceId = null } = {}) {
+  const activeSession = getOpenRuntimeSession(state);
+  if (!activeSession) {
+    return {
+      status: "ready",
+      activeSession: null,
+      activeOccurrenceId: null,
+    };
+  }
+
+  const activeOccurrenceId =
+    typeof activeSession.occurrenceId === "string" && activeSession.occurrenceId.trim()
+      ? activeSession.occurrenceId
+      : null;
+
+  if (!occurrenceId || !activeOccurrenceId || activeOccurrenceId === occurrenceId) {
+    return {
+      status: "resume_active",
+      activeSession,
+      activeOccurrenceId,
+    };
+  }
+
+  return {
+    status: "blocked",
+    activeSession,
+    activeOccurrenceId,
+  };
+}
+
 export function isRuntimeSessionFinal(session) {
   if (!session || typeof session !== "object") return false;
   const phase = normalizePhase(session.runtimePhase, session);

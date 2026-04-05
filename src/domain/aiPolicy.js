@@ -24,6 +24,8 @@ export const LOCAL_ANALYSIS_SURFACES = Object.freeze({
   GENERIC: "generic",
   PLANNING: "planning",
   PILOTAGE: "pilotage",
+  TIMELINE: "planning",
+  INSIGHTS: "pilotage",
 });
 
 export const AI_REGIME_POLICY = Object.freeze({
@@ -64,7 +66,7 @@ export const AI_REGIME_POLICY = Object.freeze({
     canCreate: false,
     canMutate: false,
     canOpenSurface: true,
-    label: "Lecture IA locale",
+    label: "Lecture du coach",
   }),
   [AI_REGIMES.MUTATION_REVIEW]: Object.freeze({
     authorityLevel: AI_AUTHORITY_LEVELS.VALIDATED_MUTATION,
@@ -83,17 +85,17 @@ export const AI_REGIME_POLICY = Object.freeze({
 
 export const LOCAL_ANALYSIS_SURFACE_POLICY = Object.freeze({
   [LOCAL_ANALYSIS_SURFACES.GENERIC]: Object.freeze({
-    label: "Lecture IA locale",
+    label: "Lecture du coach",
     focus: "lecture contextuelle",
     allowedIntents: ["open_today", "open_library", "open_pilotage", "resume_session", "start_occurrence"],
   }),
   [LOCAL_ANALYSIS_SURFACES.PLANNING]: Object.freeze({
-    label: "Lecture locale du rythme",
+    label: "Lecture du rythme",
     focus: "cadence, trous, charge et crédibilité du rythme",
     allowedIntents: ["open_today", "open_library", "open_pilotage"],
   }),
   [LOCAL_ANALYSIS_SURFACES.PILOTAGE]: Object.freeze({
-    label: "Lecture locale du pilotage",
+    label: "Lecture des analyses",
     focus: "équilibre, surcharge, dérive et continuité",
     allowedIntents: ["open_today", "open_library", "open_pilotage"],
   }),
@@ -112,6 +114,8 @@ export function isConversationCoachMode(value) {
 }
 
 export function normalizeLocalAnalysisSurface(value, fallback = LOCAL_ANALYSIS_SURFACES.GENERIC) {
+  if (value === LOCAL_ANALYSIS_SURFACES.TIMELINE || value === "timeline") return LOCAL_ANALYSIS_SURFACES.PLANNING;
+  if (value === LOCAL_ANALYSIS_SURFACES.INSIGHTS || value === "insights") return LOCAL_ANALYSIS_SURFACES.PILOTAGE;
   if (value === LOCAL_ANALYSIS_SURFACES.PLANNING) return LOCAL_ANALYSIS_SURFACES.PLANNING;
   if (value === LOCAL_ANALYSIS_SURFACES.PILOTAGE) return LOCAL_ANALYSIS_SURFACES.PILOTAGE;
   return fallback === LOCAL_ANALYSIS_SURFACES.PLANNING || fallback === LOCAL_ANALYSIS_SURFACES.PILOTAGE

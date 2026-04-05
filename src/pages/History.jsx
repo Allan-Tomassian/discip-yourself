@@ -90,7 +90,6 @@ export default function History({ data }) {
     <AppScreen
       data={safeData}
       pageId="history"
-      backgroundImage={safeData?.profile?.whyImage || ""}
       headerTitle="Historique"
       headerSubtitle="Retrouve tes sessions terminées, reportées ou bloquées."
     >

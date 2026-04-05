@@ -13,6 +13,7 @@ const ACTION_INTENTS = new Set([
 ]);
 const DECISION_SOURCES = new Set(["ai", "rules"]);
 const META_FALLBACK_REASONS = new Set(["none", "quota", "timeout", "invalid_model_output", "backend_error"]);
+const DIRECTION_KEYS = new Set(["maintenir", "recalibrer", "accélérer", "alléger"]);
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -107,6 +108,7 @@ export function isAiLocalAnalysisResponse(value) {
     value.headline.length <= 72 &&
     typeof value.reason === "string" &&
     value.reason.length <= 160 &&
+    (value.direction === undefined || value.direction === null || DIRECTION_KEYS.has(value.direction)) &&
     isLocalAnalysisAction(value.primaryAction) &&
     (value.secondaryAction === null || isLocalAnalysisAction(value.secondaryAction)) &&
     (value.suggestedDurationMin === null ||

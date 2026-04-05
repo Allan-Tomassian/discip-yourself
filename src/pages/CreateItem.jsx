@@ -89,10 +89,10 @@ function buildMinDeadlineKey(startDate) {
 }
 
 function resolveMainTabLabel(mainTab) {
-  if (mainTab === "planning") return "Planification";
-  if (mainTab === "library") return "Bibliothèque";
-  if (mainTab === "pilotage") return "Pilotage";
-  return "Today";
+  if (mainTab === "planning") return "Planning";
+  if (mainTab === "library") return "Objectifs";
+  if (mainTab === "pilotage") return "Analyses";
+  return "Aujourd'hui";
 }
 
 function normalizeReminderTimes(value) {
@@ -419,7 +419,6 @@ export default function CreateItem({
   generationWindowDays = null,
 }) {
   const safeData = useMemo(() => (data && typeof data === "object" ? data : {}), [data]);
-  const backgroundImage = safeData?.profile?.whyImage || "";
   const draft = useMemo(() => normalizeCreateItemDraft(safeData?.ui?.createDraft), [safeData?.ui?.createDraft]);
   const origin = useMemo(() => normalizeRouteOrigin(taskOrigin || draft.origin), [draft.origin, taskOrigin]);
   const categories = useMemo(() => getVisibleCategories(safeData.categories), [safeData.categories]);
@@ -727,12 +726,12 @@ export default function CreateItem({
           : "Créer une action";
   const headerSubtitle =
     effectiveKind === "guided"
-      ? "Choisis une catégorie stable, pose un objectif, puis une première action exécutable."
+      ? "Commence par la catégorie, pose l’objectif, puis une première action vraiment exécutable."
       : effectiveKind === "outcome"
-        ? "Pose un objectif dans une catégorie avant d’y rattacher des actions."
+        ? "Choisis d’abord la bonne catégorie, puis pose un objectif clair."
         : effectiveKind === "assistant"
-          ? "Le Coach clarifie une structure. Tu valides seulement la catégorie, l’objectif et les actions utiles."
-          : "Ajoute une action dans une catégorie, puis donne-lui un rythme simple.";
+          ? "Le Coach propose une structure courte. Tu valides la catégorie, l’objectif éventuel et les actions utiles."
+          : "Choisis la catégorie, puis donne à l’action un rythme simple et crédible.";
 
   const headerRight = (
     <div className="createItemHeaderMeta">
@@ -769,7 +768,6 @@ export default function CreateItem({
       headerTitle={headerTitle}
       headerSubtitle={headerSubtitle}
       headerRight={headerRight}
-      backgroundImage={backgroundImage}
     >
       <div className="mainPageStack">
         {effectiveKind === "outcome" ? (

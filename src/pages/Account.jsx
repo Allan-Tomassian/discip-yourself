@@ -42,7 +42,6 @@ function getErrorMessage(error) {
 
 export default function Account({ data }) {
   const safeData = data && typeof data === "object" ? data : {};
-  const backgroundImage = safeData?.profile?.whyImage || "";
   const { user, signOut } = useAuth();
   const { profile, loading, loadError, refreshProfile, checkUsernameAvailability, saveProfile } = useProfile();
 
@@ -167,7 +166,6 @@ export default function Account({ data }) {
     <AppScreen
       data={safeData}
       pageId="settings"
-      backgroundImage={backgroundImage}
       headerTitle={<span>{SURFACE_LABELS.account}</span>}
       headerSubtitle="Identité, accès et profil visible."
     >

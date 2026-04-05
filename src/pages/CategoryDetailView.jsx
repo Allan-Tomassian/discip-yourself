@@ -1,12 +1,8 @@
 import React from "react";
-import AccentItem from "../components/AccentItem";
-import { getAccentForPage } from "../utils/_theme";
-import { getCategoryUiVars } from "../utils/categoryAccent";
-import { resolveCategoryColor } from "../utils/categoryPalette";
 import { resolveGoalType } from "../domain/goalType";
 import { isProcessLinkedToOutcome } from "../logic/linking";
 import { LABELS } from "../ui/labels";
-import { AppInlineMetaCard, AppScreen, GhostButton, SectionHeader, StatusBadge } from "../shared/ui/app";
+import { AppCard, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader, StatusBadge } from "../shared/ui/app";
 import "../features/library/library.css";
 
 export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
@@ -41,7 +37,6 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
   if (!category) {
     return (
       <AppScreen
-        accent={getAccentForPage(safeData, "home")}
         headerTitle="Catégorie"
         headerSubtitle="Introuvable"
       >
@@ -54,17 +49,12 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
       </AppScreen>
     );
   }
-
-  const accent = resolveCategoryColor(category, getAccentForPage(safeData, "home"));
-  const catAccentVars = getCategoryUiVars(category || accent, { level: "surface" });
   const whyText = (category.whyText || "").trim();
 
   return (
     <AppScreen
-      accent={accent}
-      backgroundImage={category.wallpaper || safeData.profile?.whyImage || ""}
       headerTitle={category.name || "Catégorie"}
-      headerSubtitle="Détail catégorie"
+      headerSubtitle="Vue rattachée à Objectifs"
       headerRight={
         typeof onOpenManage === "function" ? (
           <GhostButton type="button" size="sm" onClick={onOpenManage}>
@@ -81,14 +71,14 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
       </section>
 
       <section className="mainPageSection">
-        <SectionHeader title={LABELS.goals} subtitle="Objectifs et actions déjà reliées." />
+        <SectionHeader title={LABELS.goals} subtitle="Objectifs et actions déjà rattachés à cette catégorie." />
         <div className="mainPageSectionBody">
           {outcomeGoals.length ? (
             <div className="col gap12">
               {outcomeGoals.map((g) => {
                 const linkedHabits = habitsByOutcome.get(g.id) || [];
                 return (
-                  <AccentItem key={g.id} className="listItem" style={catAccentVars}>
+                  <AppCard key={g.id} className="listItem">
                     <div className="col gap8 minW0 wFull">
                       <div className="row rowBetween gap8 alignCenter">
                         <div className="itemTitle">{g.title || LABELS.goal}</div>
@@ -111,7 +101,7 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
                         <div className="itemSub">Aucune action liée.</div>
                       )}
                     </div>
-                  </AccentItem>
+                  </AppCard>
                 );
               })}
             </div>
@@ -127,9 +117,9 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
           <div className="mainPageSectionBody">
             <div className="col gap10">
               {unlinkedHabits.map((h) => (
-                <AccentItem key={h.id} className="listItem" style={catAccentVars}>
+                <AppCard key={h.id} className="listItem">
                   <div className="itemSub">{h.title || "Action"}</div>
-                </AccentItem>
+                </AppCard>
               ))}
             </div>
           </div>

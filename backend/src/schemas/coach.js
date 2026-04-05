@@ -16,6 +16,7 @@ const localAnalysisSurfaceSchema = z.enum([
   LOCAL_ANALYSIS_SURFACES.PILOTAGE,
 ]);
 const repeatSchema = z.enum(["none", "daily", "weekly"]);
+const directionSchema = z.enum(["maintenir", "recalibrer", "accélérer", "alléger"]);
 const interventionTypeSchema = z.enum([
   TODAY_INTERVENTION_TYPE.TODAY_RECOMMENDATION,
   TODAY_INTERVENTION_TYPE.SESSION_RESUME,
@@ -164,6 +165,7 @@ export const coachChatCardPayloadSchema = z
     kind: z.literal("chat"),
     headline: z.string().max(72),
     reason: z.string().max(160),
+    direction: directionSchema.nullable().optional().default(null),
     primaryAction: actionSchema,
     secondaryAction: actionSchema.nullable(),
     suggestedDurationMin: z.number().int().min(1).max(240).nullable(),

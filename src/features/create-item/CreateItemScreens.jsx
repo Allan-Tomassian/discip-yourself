@@ -24,15 +24,36 @@ import {
 } from "../edit-item/editItemShared";
 import "./createItem.css";
 
+function resolveSelectedCategoryLabel(controller) {
+  const option = Array.isArray(controller?.categoryOptions)
+    ? controller.categoryOptions.find((entry) => entry.id === controller.selectedCategoryId)
+    : null;
+  return option?.name || "Catégorie";
+}
+
+function CategoryRoutingCard({ controller, relationLabel = "Cette action sera créée dans cette catégorie." }) {
+  const selectedLabel = resolveSelectedCategoryLabel(controller);
+  return (
+    <AppInlineMetaCard
+      title="Catégorie actuelle"
+      text={
+        controller?.selectedSuggestion
+          ? `${selectedLabel} est suggérée. Active-la avant de confirmer si tu veux en faire un chantier durable.`
+          : `${selectedLabel}. ${relationLabel}`
+      }
+    />
+  );
+}
+
 function SuggestedCategoryCard({ controller, text }) {
   if (!controller.selectedSuggestion) return null;
   return (
     <AppInlineMetaCard
-      title="Categorie suggeree"
+      title="Catégorie suggérée"
       text={text}
       action={(
         <GhostButton size="sm" onClick={() => controller.activateSuggestedCategory(controller.selectedSuggestion)}>
-          Activer
+          Utiliser cette catégorie
         </GhostButton>
       )}
     />
@@ -233,6 +254,11 @@ function ActionIdentitySection({
         </FieldGroup>
       </div>
 
+      <CategoryRoutingCard
+        controller={controller}
+        relationLabel="Elle servira aussi de contexte principal dans Objectifs et Planning."
+      />
+
       <SuggestedCategoryCard
         controller={controller}
         text="Cette categorie n'est pas encore active. Active-la pour en faire un chantier durable."
@@ -240,8 +266,8 @@ function ActionIdentitySection({
 
       {showOutcomeLink ? (
         <FieldGroup
-          label={`${LABELS.goal} lie`}
-          helper={`Optionnel. Lie cette ${LABELS.actionLower} a un ${LABELS.goalLower} seulement si cela eclaire mieux son objectif.`}
+          label={`${LABELS.goal} lié`}
+          helper={`Optionnel. Rattache cette ${LABELS.actionLower} à un ${LABELS.goalLower} seulement si cela clarifie vraiment sa place.`}
           className="editItemField"
         >
           <AppSelect value={controller.effectiveSelectedOutcomeId} onChange={(event) => controller.setSelectedOutcomeId(event.target.value)}>
@@ -260,7 +286,7 @@ function ActionIdentitySection({
 
 function ActionPlanningSection({
   controller,
-  title = "Planification",
+  title = "Planning",
   description = "Quand l'action revient et quel rythme elle suit.",
 }) {
   return (
@@ -476,6 +502,11 @@ function OutcomeIdentitySection({
           </AppSelect>
         </FieldGroup>
       </div>
+
+      <CategoryRoutingCard
+        controller={controller}
+        relationLabel="Cet objectif deviendra l’ancre principale de cette catégorie."
+      />
 
       <SuggestedCategoryCard
         controller={controller}

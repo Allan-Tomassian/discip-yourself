@@ -12,7 +12,6 @@ import {
 
 export default function Subscription({ data, onOpenPaywall, onRestorePurchases }) {
   const safeData = data && typeof data === "object" ? data : {};
-  const backgroundImage = safeData?.profile?.whyImage || "";
   const premium = isPremium(safeData);
   const limits = getPlanLimits();
   const entitlements =
@@ -27,7 +26,6 @@ export default function Subscription({ data, onOpenPaywall, onRestorePurchases }
     <AppScreen
       data={safeData}
       pageId="billing"
-      backgroundImage={backgroundImage}
       headerTitle="Abonnement"
       headerSubtitle="Plan, achats et accès Premium"
     >

@@ -1,19 +1,23 @@
 import React from "react";
+import { TODAY_SCREEN_COPY } from "../../ui/labels";
 
 export default function TodayHero({
-  title = "No main priority",
+  title = TODAY_SCREEN_COPY.noPriorityTitle,
   reason = "",
   contributionLabel = "",
   recommendedCategoryLabel = "",
-  primaryLabel = "Start Now",
+  primaryLabel = TODAY_SCREEN_COPY.primaryAction,
   onPrimaryAction,
   canPrimaryAction = false,
   isPreparing = false,
 }) {
-  const displayTitle = title || (isPreparing ? "Preparing the next step" : "No main priority");
+  const displayTitle =
+    title || (isPreparing ? TODAY_SCREEN_COPY.preparingTitle : TODAY_SCREEN_COPY.noPriorityTitle);
   const displayReason =
-    reason || contributionLabel || (isPreparing ? "Reading your current context." : "No clear priority is available yet.");
-  const displayCategory = recommendedCategoryLabel || "Main priority";
+    reason ||
+    contributionLabel ||
+    (isPreparing ? TODAY_SCREEN_COPY.preparingReason : TODAY_SCREEN_COPY.noPriorityReason);
+  const displayCategory = recommendedCategoryLabel || TODAY_SCREEN_COPY.priorityCategoryFallback;
 
   return (
     <div className="lovableCard lovablePriorityCard">

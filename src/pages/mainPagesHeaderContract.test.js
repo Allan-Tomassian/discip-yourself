@@ -22,17 +22,17 @@ describe("main pages header contract", () => {
     expect(home).toContain("greetingPeriod");
 
     expect(objectives).toContain('pageId="objectives"');
-    expect(objectives).toContain('headerTitle="Objectives"');
+    expect(objectives).toContain("headerTitle={OBJECTIVES_SCREEN_COPY.title}");
 
     expect(timeline).toContain('pageId="timeline"');
-    expect(timeline).toContain('headerTitle="Timeline"');
-    expect(timeline).toContain('headerSubtitle="Your roadmap to execution"');
+    expect(timeline).toContain("headerTitle={TIMELINE_SCREEN_COPY.title}");
+    expect(timeline).toContain("headerSubtitle={TIMELINE_SCREEN_COPY.subtitle}");
 
     expect(insights).toContain('pageId="insights"');
-    expect(insights).toContain('headerTitle="Insights"');
-    expect(insights).toContain('headerSubtitle="Your trajectory this week"');
+    expect(insights).toContain("headerTitle={INSIGHTS_SCREEN_COPY.title}");
+    expect(insights).toContain("headerSubtitle={INSIGHTS_SCREEN_COPY.subtitle}");
 
     expect(coach).toContain('pageId="coach"');
-    expect(coach).toContain('headerTitle="AI Coach"');
+    expect(coach).toContain("headerTitle={COACH_SCREEN_COPY.title}");
   });
 });

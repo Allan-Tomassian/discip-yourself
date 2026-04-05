@@ -180,7 +180,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
       {
         key: "structure",
         title: "Niveau de structure",
-        subtitle: "On prépare Today, pas une configuration complète du système.",
+        subtitle: "On prépare Aujourd'hui, pas une configuration complète du système.",
         valid: USER_AI_STRUCTURES.includes(structurePreference),
         content: (
           <div className="onboardingOptionGrid">
@@ -211,8 +211,6 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
 
   const currentScreen = questionScreens[step];
   const canContinue = Boolean(currentScreen?.valid);
-  const backgroundImage = safeData?.profile?.whyImage || "";
-
   const finishOnboarding = () => {
     const now = new Date();
     const nowIso = now.toISOString();
@@ -256,7 +254,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
 
   if (planOnly) {
     return (
-      <AppScreen data={safeData} pageId="onboarding" backgroundImage={backgroundImage}>
+      <AppScreen data={safeData} pageId="onboarding">
         <AppCard variant="elevated" className="onboardingShell createFlowScope">
           <ScreenHeader
             className="createFlowHeader"
@@ -329,7 +327,7 @@ export default function Onboarding({ data, setData, onDone, planOnly = false }) 
   }
 
   return (
-    <AppScreen data={safeData} pageId="onboarding" backgroundImage={backgroundImage}>
+    <AppScreen data={safeData} pageId="onboarding">
       <AppCard variant="elevated" className="onboardingShell createFlowScope">
         <ScreenHeader
           className="createFlowHeader"

@@ -51,6 +51,10 @@ export default function FocusSessionView({
   onChooseReport,
 }) {
   const isFinal = viewState === "completed" || viewState === "blocked" || viewState === "reported";
+  const isRunning = viewState === "running";
+  const isPaused = viewState === "paused";
+  const startLabel = isPaused ? "Reprendre" : "Démarrer";
+  const completeLabel = "Terminer";
 
   return (
     <div className="sessionViewStack">
@@ -90,48 +94,50 @@ export default function FocusSessionView({
       {!isFinal ? (
         <AppCard className="sessionCard">
           <div className="sessionActionSection">
-            <div className="sessionSectionTitle">Actions</div>
-            <div className="sessionActions">
+            <div className="sessionSectionTitle">Prochain pas</div>
+            <div className="sessionActions sessionActions--primary">
               <PrimaryButton
-              type="button"
-              className="sessionActionButton"
-              onClick={() => onStart?.()}
-              disabled={!canStart}
-            >
-              {viewState === "paused" ? "Reprendre" : "Démarrer"}
+                type="button"
+                className="sessionActionButton sessionActionButton--primary"
+                onClick={() => onStart?.()}
+                disabled={!canStart}
+              >
+                {startLabel}
               </PrimaryButton>
-              <GhostButton
-              type="button"
-              className="sessionActionButton"
-              onClick={() => onPause?.()}
-              disabled={!canPause}
-            >
-              Pause
-              </GhostButton>
-              <GhostButton
-              type="button"
-              className="sessionActionButton"
-              onClick={() => onBlock?.()}
-              disabled={!canComplete}
-            >
-              Bloqué
-              </GhostButton>
-              <GhostButton
-              type="button"
-              className="sessionActionButton"
-              onClick={() => onOpenReport?.()}
-              disabled={!canComplete}
-            >
-              Reporter
-              </GhostButton>
               <PrimaryButton
-              type="button"
-              className="sessionActionButton"
-              onClick={() => onComplete?.()}
-              disabled={!canComplete}
-            >
-              Terminé
+                type="button"
+                className="sessionActionButton sessionActionButton--primary"
+                onClick={() => onComplete?.()}
+                disabled={!canComplete}
+              >
+                {completeLabel}
               </PrimaryButton>
+            </div>
+            <div className="sessionActions sessionActions--secondary">
+              <GhostButton
+                type="button"
+                className="sessionActionButton"
+                onClick={() => onPause?.()}
+                disabled={!canPause}
+              >
+                {isRunning ? "Mettre en pause" : "Pause"}
+              </GhostButton>
+              <GhostButton
+                type="button"
+                className="sessionActionButton"
+                onClick={() => onOpenReport?.()}
+                disabled={!canComplete}
+              >
+                Reporter
+              </GhostButton>
+              <GhostButton
+                type="button"
+                className="sessionActionButton"
+                onClick={() => onBlock?.()}
+                disabled={!canComplete}
+              >
+                Bloquer
+              </GhostButton>
             </div>
           </div>
         </AppCard>
@@ -141,6 +147,7 @@ export default function FocusSessionView({
         <AppCard className="sessionCard">
           <div className="sessionActionSection">
             <div className="sessionSectionTitle">Reporter</div>
+            <div className="sessionFieldHint">Choisis un report immédiat ou renvoie la session dans le planning.</div>
             <div className="sessionActions">
               <PrimaryButton
                 type="button"
@@ -161,7 +168,7 @@ export default function FocusSessionView({
                 className="sessionActionButton"
                 onClick={() => onChooseReport?.("planning")}
               >
-              Choisir dans la planification
+              Choisir dans le planning
               </GhostButton>
             </div>
           </div>
@@ -209,7 +216,7 @@ export default function FocusSessionView({
                 onClick={() => onFeedbackSubmit?.()}
                 disabled={!feedbackLevel}
               >
-                Enregistrer
+                Valider la session
               </PrimaryButton>
             </div>
           </div>

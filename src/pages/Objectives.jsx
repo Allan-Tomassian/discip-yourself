@@ -5,7 +5,9 @@ import { getVisibleCategories } from "../domain/categoryVisibility";
 import { computeAggregateProgress, getGoalProgress } from "../logic/goals";
 import { splitProcessByLink } from "../logic/linking";
 import { AppScreen } from "../shared/ui/app";
+import { OBJECTIVES_SCREEN_COPY } from "../ui/labels";
 import { resolveCategoryColor } from "../utils/categoryPalette";
+import { normalizeLocalDateKey, todayLocalKey } from "../utils/datetime";
 
 function clampPercent(value) {
   return Math.max(0, Math.min(100, Math.round((Number.isFinite(value) ? value : 0) * 100)));
@@ -14,9 +16,9 @@ function clampPercent(value) {
 function formatSubtitle(goal, category) {
   const notes = typeof goal?.notes === "string" ? goal.notes.trim() : "";
   if (notes) return notes;
-  if (goal?.deadline) return `Target: ${goal.deadline}`;
+  if (goal?.deadline) return `${OBJECTIVES_SCREEN_COPY.deadlinePrefix} : ${goal.deadline}`;
   if (category?.name) return category.name;
-  return "Linked execution underneath.";
+  return OBJECTIVES_SCREEN_COPY.fallbackSubtitle;
 }
 
 function groupStandaloneActions(actions, categoriesById) {
@@ -33,13 +35,99 @@ function groupStandaloneActions(actions, categoriesById) {
     return {
       id: `standalone:${categoryId}`,
       type: "standalone",
-      title: category?.name ? `${category.name} actions` : "Standalone actions",
-      subtitle: "Unlinked actions still available in the real app.",
+      title: category?.name ? `${category.name} ${OBJECTIVES_SCREEN_COPY.standaloneSuffix}` : OBJECTIVES_SCREEN_COPY.standaloneTitle,
+      subtitle: OBJECTIVES_SCREEN_COPY.standaloneSubtitle,
       category,
       progress,
       actions: items,
     };
   });
+}
+
+function compareOccurrences(left, right) {
+  const leftDate = String(left?.date || "");
+  const rightDate = String(right?.date || "");
+  if (leftDate !== rightDate) return leftDate.localeCompare(rightDate);
+  const leftStart = String(left?.start || left?.slotKey || "");
+  const rightStart = String(right?.start || right?.slotKey || "");
+  if (leftStart !== rightStart) return leftStart.localeCompare(rightStart);
+  return String(left?.id || "").localeCompare(String(right?.id || ""));
+}
+
+function formatOccurrenceMeta(dateKey) {
+  if (!dateKey) return "";
+  try {
+    return new Intl.DateTimeFormat("fr-FR", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    }).format(new Date(`${dateKey}T12:00:00`));
+  } catch {
+    return dateKey;
+  }
+}
+
+function buildObjectiveSections({ actions = [], occurrencesByGoalId, todayKey }) {
+  const activeItems = actions
+    .map((action) => ({
+      id: `active:${action.id}`,
+      title: action.title || OBJECTIVES_SCREEN_COPY.untitledAction,
+      meta: "",
+      isDone: action.status === "done",
+      goal: action,
+    }))
+    .sort((left, right) => left.title.localeCompare(right.title));
+
+  const todayItems = [];
+  const upcomingItems = [];
+
+  for (const action of actions) {
+    const occurrences = [...(occurrencesByGoalId.get(action.id) || [])].sort(compareOccurrences);
+    for (const occurrence of occurrences) {
+      const dateKey = normalizeLocalDateKey(occurrence?.date) || "";
+      if (!dateKey) continue;
+      const item = {
+        id: `occurrence:${occurrence.id}`,
+        title: action.title || OBJECTIVES_SCREEN_COPY.untitledAction,
+        meta: dateKey === todayKey ? "" : formatOccurrenceMeta(dateKey),
+        isDone: occurrence.status === "done",
+        goal: action,
+        occurrence,
+      };
+      if (dateKey === todayKey) {
+        todayItems.push(item);
+      } else if (dateKey > todayKey) {
+        upcomingItems.push(item);
+      }
+    }
+  }
+
+  return [
+    {
+      key: "active",
+      label: OBJECTIVES_SCREEN_COPY.activeActions,
+      emptyLabel: OBJECTIVES_SCREEN_COPY.noActiveActions,
+      items: activeItems,
+    },
+    {
+      key: "today",
+      label: OBJECTIVES_SCREEN_COPY.todayActions,
+      emptyLabel: OBJECTIVES_SCREEN_COPY.noTodayActions,
+      items: todayItems.slice(0, 4),
+    },
+    {
+      key: "upcoming",
+      label: OBJECTIVES_SCREEN_COPY.upcomingActions,
+      emptyLabel: OBJECTIVES_SCREEN_COPY.noUpcomingActions,
+      items: upcomingItems
+        .sort((left, right) => compareOccurrences(left.occurrence, right.occurrence))
+        .slice(0, 4),
+    },
+  ];
+}
+
+function openObjectiveActionEditor(action, onEditItem) {
+  onEditItem?.({ id: action.id, type: "PROCESS", categoryId: action.categoryId || null });
 }
 
 function ObjectiveRing({ progress = 0, color = "#8b78ff" }) {
@@ -79,6 +167,7 @@ export default function Objectives({
   const categories = useMemo(() => getVisibleCategories(safeData.categories), [safeData.categories]);
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
   const categoriesById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
+  const todayKey = useMemo(() => todayLocalKey(), []);
   const outcomes = useMemo(
     () =>
       goals.filter((goal) => {
@@ -110,6 +199,15 @@ export default function Objectives({
     () => processGoals.filter((goal) => !outcomes.some((outcome) => outcome?.id && goal?.parentId === outcome.id)),
     [outcomes, processGoals]
   );
+  const occurrencesByGoalId = useMemo(() => {
+    const map = new Map();
+    for (const occurrence of Array.isArray(safeData.occurrences) ? safeData.occurrences : []) {
+      if (!occurrence?.goalId || occurrence.status === "canceled" || occurrence.status === "skipped") continue;
+      if (!map.has(occurrence.goalId)) map.set(occurrence.goalId, []);
+      map.get(occurrence.goalId).push(occurrence);
+    }
+    return map;
+  }, [safeData.occurrences]);
 
   const cards = useMemo(() => {
     const outcomeCards = outcomes.map((outcome) => {
@@ -118,7 +216,7 @@ export default function Objectives({
       return {
         id: outcome.id,
         type: "outcome",
-        title: outcome.title || "Untitled objective",
+        title: outcome.title || OBJECTIVES_SCREEN_COPY.untitledObjective,
         subtitle: formatSubtitle(outcome, category),
         category,
         progress: goalProgressById.get(outcome.id) || 0,
@@ -181,12 +279,12 @@ export default function Objectives({
   return (
     <AppScreen
       pageId="objectives"
-      headerTitle="Objectives"
+      headerTitle={OBJECTIVES_SCREEN_COPY.title}
       headerRight={
         <button
           type="button"
           className="lovableObjectivesCreate"
-          aria-label="Create"
+          aria-label={OBJECTIVES_SCREEN_COPY.createAriaLabel}
           onClick={(event) =>
             onOpenCreateMenu?.({
               source: "objectives",
@@ -226,23 +324,37 @@ export default function Objectives({
                       {card.category?.name ? (
                         <div className="lovableObjectiveCategory">{card.category.name}</div>
                       ) : null}
-                      <div className="lovableObjectiveTasks">
-                        {card.actions.length ? (
-                          card.actions.map((action) => (
-                            <button
-                              key={action.id}
-                              type="button"
-                              className={`lovableObjectiveTask${action.status === "done" ? " is-done" : ""}`}
-                              data-objective-row={action.id}
-                              onClick={() => onEditItem?.({ id: action.id, type: "PROCESS", categoryId: action.categoryId || null })}
-                            >
-                              <span className="lovableObjectiveTaskCircle" />
-                              <span className="lovableObjectiveTaskTitle">{action.title || "Untitled action"}</span>
-                            </button>
-                          ))
-                        ) : (
-                          <div className="lovableMuted">No linked actions yet.</div>
-                        )}
+                      <div className="lovableObjectiveSections">
+                        {buildObjectiveSections({
+                          actions: card.actions,
+                          occurrencesByGoalId,
+                          todayKey,
+                        }).map((section) => (
+                          <div key={`${card.id}:${section.key}`} className="lovableObjectiveSection">
+                            <div className="lovableObjectiveSectionTitle">{section.label}</div>
+                            <div className="lovableObjectiveTasks">
+                              {section.items.length ? (
+                                section.items.map((item) => (
+                                  <button
+                                    key={item.id}
+                                    type="button"
+                                    className={`lovableObjectiveTask${item.isDone ? " is-done" : ""}`}
+                                    data-objective-row={item.goal?.id || ""}
+                                    onClick={() => openObjectiveActionEditor(item.goal, onEditItem)}
+                                  >
+                                    <span className="lovableObjectiveTaskCircle" />
+                                    <span className="lovableObjectiveTaskTitle">
+                                      {item.title}
+                                      {item.meta ? ` • ${item.meta}` : ""}
+                                    </span>
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="lovableMuted">{section.emptyLabel}</div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                       <div className="lovableObjectiveFooter">
                         {card.type === "outcome" ? (
@@ -257,7 +369,7 @@ export default function Objectives({
                               })
                             }
                           >
-                            Edit objective
+                            {OBJECTIVES_SCREEN_COPY.editObjective}
                           </button>
                         ) : null}
                         <button
@@ -265,7 +377,7 @@ export default function Objectives({
                           className="lovableGhostButton"
                           onClick={() => onOpenCreateAction?.(card.category?.id || null, card.type === "outcome" ? card.id : null)}
                         >
-                          Add action
+                          {OBJECTIVES_SCREEN_COPY.addAction}
                         </button>
                       </div>
                     </div>
@@ -276,9 +388,9 @@ export default function Objectives({
           </div>
         ) : (
           <div className="lovableCard lovableEmptyCard">
-            <div className="lovableEmptyTitle">No objectives yet.</div>
+            <div className="lovableEmptyTitle">{OBJECTIVES_SCREEN_COPY.emptyTitle}</div>
             <p className="lovableEmptyCopy">
-              Create your first objective to start mapping real work into the new Objectives surface.
+              {OBJECTIVES_SCREEN_COPY.emptyCopy}
             </p>
           </div>
         )}

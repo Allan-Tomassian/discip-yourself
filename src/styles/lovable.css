@@ -506,6 +506,24 @@
   padding-top: 14px;
 }
 
+.lovableObjectiveSections {
+  display: grid;
+  gap: 14px;
+}
+
+.lovableObjectiveSection {
+  display: grid;
+  gap: 10px;
+}
+
+.lovableObjectiveSectionTitle {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .lovableObjectiveLink {
   color: var(--accent);
 }
@@ -581,6 +599,21 @@
   text-align: left;
 }
 
+.lovableTimelineCard.is-expanded {
+  cursor: default;
+}
+
+.lovableTimelineCardButton {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
 .lovableTimelineDate {
   margin: 0 0 8px;
   font-size: 12px;
@@ -603,10 +636,132 @@
   line-height: 1.5;
 }
 
+.lovableTimelineExpand {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.lovableTimelineExpandDate {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.lovableTimelineExpandMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.lovableTimelineExpandItem {
+  display: grid;
+  gap: 4px;
+}
+
+.lovableTimelineExpandItem span {
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lovableTimelineExpandItem strong {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.lovableTimelineExpandBlock {
+  display: grid;
+  gap: 10px;
+}
+
+.lovableTimelineUpcomingList {
+  display: grid;
+  gap: 8px;
+}
+
+.lovableTimelineUpcomingItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+}
+
+.lovableTimelineUpcomingItem span {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.lovableTimelineUpcomingItem strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.lovableTimelineExpandActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.lovableTimelineAction {
+  min-height: 40px;
+}
+
+.lovableTimelineAction--primary {
+  margin-left: auto;
+}
+
+.lovableTimelineCalendarDialog {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+}
+
+.lovableTimelineCalendarHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.lovableTimelineCalendarTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.lovableTimelineCalendarSection {
+  display: grid;
+  gap: 12px;
+}
+
+.lovableTimelineDensityGrid,
+.lovableTimelineMonthGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.lovableTimelineDensityCard,
+.lovableTimelineMonthCard {
+  min-height: 86px;
+}
+
 .lovableInsightsMetrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.lovableInsightsMetrics .lovableMetricCard:nth-child(3) {
+  grid-column: 1 / -1;
 }
 
 .lovableMetricCard {
@@ -671,13 +826,69 @@
   fill: var(--accent);
 }
 
+.lovableChartPoint.is-selected {
+  filter: drop-shadow(0 0 8px rgba(139, 120, 255, 0.4));
+}
+
+.lovableChartPointHit {
+  fill: transparent;
+  cursor: pointer;
+}
+
 .lovableChartGuide {
   stroke: rgba(255, 255, 255, 0.05);
   stroke-width: 1;
 }
 
+.lovableChartPointCard {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.lovableChartPointGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.lovableChartPointMeta {
+  display: grid;
+  gap: 4px;
+}
+
+.lovableChartPointMeta span {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.lovableChartPointMeta strong {
+  font-size: 15px;
+  color: var(--text);
+}
+
 .lovableInsightTextCard {
   padding: 20px;
+}
+
+.lovableInsightDirection {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.lovableInsightDirectionLabel {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 
 .lovableInsightCopy {
@@ -687,7 +898,11 @@
 }
 
 .lovableCoachPage {
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  min-height: var(--coach-page-height, auto);
+  min-height: 0;
+  gap: 12px;
 }
 
 .lovableCoachIntro,
@@ -736,9 +951,13 @@
 
 .lovableCoachMessages {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 14px;
   min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+  padding-bottom: calc(var(--coach-composer-height, 92px) * 0.2);
 }
 
 .lovableCoachActions,
@@ -780,10 +999,10 @@
 }
 
 .lovableCoachComposerWrap {
-  position: sticky;
-  bottom: calc(82px + var(--safe-bottom));
+  flex: 0 0 auto;
   z-index: 2;
-  margin-top: 6px;
+  margin-top: auto;
+  bottom: calc(82px + var(--safe-bottom));
 }
 
 .lovableCoachComposer {
@@ -791,18 +1010,39 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   padding: 12px;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.lovableCoachComposer.is-focused {
+  border-color: rgba(139, 120, 255, 0.18);
+  box-shadow: 0 0 0 1px rgba(139, 120, 255, 0.12), var(--lovable-shadow-card);
+  transform: translateY(-1px);
 }
 
 .lovableCoachTextarea {
-  min-height: 52px;
-  max-height: 144px;
-  resize: vertical;
-  padding: 14px 16px;
+  min-height: 48px;
+  max-height: 136px;
+  resize: none;
+  padding: 13px 16px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.015);
   color: var(--text);
   font: inherit;
+  line-height: 1.5;
+  transition:
+    min-height 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+.lovableCoachTextarea.is-focused {
+  min-height: 72px;
+  border-color: rgba(139, 120, 255, 0.16);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .lovableCoachTextarea::placeholder {
@@ -845,10 +1085,6 @@
 
   .lovablePriorityTitle {
     font-size: 30px;
-  }
-
-  .lovableInsightsMetrics {
-    grid-template-columns: 1fr;
   }
 
   .lovableMetricValue {

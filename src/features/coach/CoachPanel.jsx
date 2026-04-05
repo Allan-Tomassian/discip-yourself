@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useAuth } from "../../auth/useAuth";
 import { requestAiCoachChat } from "../../infra/aiCoachChatClient";
 import { deriveAiUnavailableMessage } from "../../infra/aiTransportDiagnostics";
-import { applySessionRuntimeTransition } from "../../logic/sessionRuntime";
+import { applySessionRuntimeTransition, resolveRuntimeSessionGate } from "../../logic/sessionRuntime";
 import { commitPreparedCreatePlan, prepareCreateCommit } from "../create-item/createItemCommit";
 import { getManualAiLoadingStages } from "../manualAi/loadingStages";
 import { getCoachContextSnapshot } from "./coachContextAdapter";
@@ -22,6 +22,7 @@ import {
   removeCoachConversation,
   updateCoachConversationMessage,
   updateCoachConversationMode,
+  updateCoachConversationUseCase,
   upsertCoachConversation,
 } from "./coachStorage";
 import { useBehaviorFeedback } from "../../feedback/BehaviorFeedbackContext";
@@ -42,12 +43,55 @@ import {
 import "./coach.css";
 
 const COACH_QUICK_PROMPTS = [
-  "J’hésite sur mon prochain pas",
-  "Je bloque sur une catégorie",
-  "Aide-moi à arbitrer",
-  "Clarifie ce qui compte aujourd’hui",
-  "Je manque de discipline en ce moment",
+  "Aide-moi à clarifier ma journée",
+  "Je bloque sur ma discipline",
+  "Aide-moi à arbitrer mes priorités",
+  "Construis mon plan de vie",
+  "Analyse mes statistiques",
 ];
+
+const COACH_PLAN_PROMPTS = [
+  "Construis mon plan de vie",
+  "Structure mon travail",
+  "Ajoute une routine santé",
+  "Organise mon alimentation",
+  "Clarifie ma vie personnelle",
+];
+
+function normalizeCoachUseCase(value, fallback = "general") {
+  if (value === "life_plan") return "life_plan";
+  if (value === "stats_review") return "stats_review";
+  return fallback === "life_plan" || fallback === "stats_review" ? fallback : "general";
+}
+
+function deriveCoachUseCase(message, currentUseCase = "general", currentMode = "free") {
+  const normalizedMessage = String(message || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (
+    normalizedMessage.includes("plan de vie") ||
+    normalizedMessage.includes("routine") ||
+    normalizedMessage.includes("alimentation") ||
+    normalizedMessage.includes("sante") ||
+    normalizedMessage.includes("sport") ||
+    normalizedMessage.includes("travail") ||
+    normalizedMessage.includes("vie personnelle")
+  ) {
+    return "life_plan";
+  }
+  if (
+    normalizedMessage.includes("stat") ||
+    normalizedMessage.includes("analyse") ||
+    normalizedMessage.includes("tendance") ||
+    normalizedMessage.includes("completion") ||
+    normalizedMessage.includes("momentum")
+  ) {
+    return "stats_review";
+  }
+  if (currentMode === "plan" && currentUseCase === "general") return "life_plan";
+  return normalizeCoachUseCase(currentUseCase, "general");
+}
 
 function deriveCoachErrorMessage(result) {
   return deriveAiUnavailableMessage(result, {
@@ -157,6 +201,7 @@ export function useCoachConversationController({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [conversationMode, setConversationMode] = useState(normalizeCoachRequestedMode(requestedMode));
+  const [conversationUseCase, setConversationUseCase] = useState("general");
   const [loadingStageIndex, setLoadingStageIndex] = useState(-1);
   const [archivedConversation, setArchivedConversation] = useState(null);
   const archiveTimeoutRef = useRef(null);
@@ -202,6 +247,11 @@ export function useCoachConversationController({
     const nextMode = currentConversation?.mode || normalizeCoachRequestedMode(requestedMode);
     setConversationMode(nextMode);
   }, [currentConversation?.id, currentConversation?.mode, requestedMode]);
+
+  useEffect(() => {
+    const nextUseCase = normalizeCoachUseCase(currentConversation?.useCase, "general");
+    setConversationUseCase(nextUseCase);
+  }, [currentConversation?.id, currentConversation?.useCase]);
 
   useEffect(() => {
     if (!requestedConversationId) return;
@@ -287,12 +337,32 @@ export function useCoachConversationController({
     [currentConversation?.id, setData]
   );
 
+  const handleConversationUseCaseChange = useCallback(
+    (nextUseCase) => {
+      const normalizedUseCase = normalizeCoachUseCase(nextUseCase, conversationUseCase);
+      setConversationUseCase(normalizedUseCase);
+      if (!currentConversation?.id || typeof setData !== "function") return;
+      setData((previous) => {
+        const safePrevious = previous && typeof previous === "object" ? previous : {};
+        return {
+          ...safePrevious,
+          coach_conversations_v1: updateCoachConversationUseCase(safePrevious.coach_conversations_v1, {
+            conversationId: currentConversation.id,
+            useCase: normalizedUseCase,
+          }),
+        };
+      });
+    },
+    [conversationUseCase, currentConversation?.id, setData]
+  );
+
   const handleNewChat = useCallback(() => {
     setError("");
     setDraft("");
     if (typeof setData !== "function") return;
     const nextConversation = createCoachConversation({
       mode: conversationMode,
+      useCase: conversationUseCase,
       contextSnapshot: {
         activeCategoryId: contextSnapshot.activeCategoryId,
         dateKey: contextSnapshot.selectedDateKey,
@@ -306,7 +376,7 @@ export function useCoachConversationController({
       };
     });
     setActiveConversationId(nextConversation.id);
-  }, [contextSnapshot.activeCategoryId, contextSnapshot.selectedDateKey, conversationMode, setData]);
+  }, [contextSnapshot.activeCategoryId, contextSnapshot.selectedDateKey, conversationMode, conversationUseCase, setData]);
 
   useEffect(() => {
     return () => {
@@ -362,6 +432,7 @@ export function useCoachConversationController({
       if (!action || !action.intent) return;
       if (action.intent === "continue_coach") {
         setConversationMode("plan");
+        setConversationUseCase((current) => normalizeCoachUseCase(current, "life_plan"));
         return;
       }
       if (action.intent === "open_created_view") {
@@ -408,6 +479,24 @@ export function useCoachConversationController({
 
       const occurrence = findCoachOccurrence(safeData, action, contextSnapshot.selectedDateKey);
       if (!occurrence?.id) return;
+      const gate = resolveRuntimeSessionGate(safeData, { occurrenceId: occurrence.id });
+      if (gate.status !== "ready" && gate.activeSession?.occurrenceId) {
+        const activeOccurrence = Array.isArray(safeData.occurrences)
+          ? safeData.occurrences.find((entry) => entry?.id === gate.activeSession.occurrenceId) || null
+          : null;
+        const activeGoal = activeOccurrence?.goalId
+          ? Array.isArray(safeData.goals)
+            ? safeData.goals.find((goal) => goal?.id === activeOccurrence.goalId) || null
+            : null
+          : null;
+        setTab?.("session", {
+          sessionCategoryId: activeGoal?.categoryId || contextSnapshot.activeCategoryId || null,
+          sessionDateKey: gate.activeSession.dateKey || activeOccurrence?.date || contextSnapshot.selectedDateKey,
+          sessionOccurrenceId: gate.activeSession.occurrenceId || null,
+        });
+        onRequestClose?.();
+        return;
+      }
       const occurrenceGoal = Array.isArray(safeData.goals)
         ? safeData.goals.find((goal) => goal?.id === occurrence.goalId) || null
         : null;
@@ -434,6 +523,7 @@ export function useCoachConversationController({
       safeData,
       setData,
       setConversationMode,
+      setConversationUseCase,
       setTab,
     ]
   );
@@ -576,6 +666,7 @@ export function useCoachConversationController({
             dateKey: contextSnapshot.selectedDateKey,
           },
           mode: "plan",
+          useCase: currentConversation?.useCase || conversationUseCase,
         });
         return {
           ...commitResult.state,
@@ -589,12 +680,14 @@ export function useCoachConversationController({
       contextSnapshot.activeCategoryId,
       contextSnapshot.selectedDateKey,
       currentConversation?.id,
+      currentConversation?.useCase,
       generationWindowDays,
       isPremiumPlan,
       onOpenPaywall,
       planLimits,
       safeData,
       setData,
+      conversationUseCase,
     ]
   );
 
@@ -602,6 +695,9 @@ export function useCoachConversationController({
     async (nextValue = null) => {
       const message = typeof nextValue === "string" ? nextValue.trim() : draft.trim();
       if (!message || loading || typeof setData !== "function") return;
+      const effectiveMode = conversationMode === "plan" ? "plan" : "free";
+      const effectiveUseCase = deriveCoachUseCase(message, conversationUseCase, effectiveMode);
+      setConversationUseCase(effectiveUseCase);
 
       const userMessage = buildCoachConversationMessage("user", message);
       if (!userMessage) return;
@@ -613,7 +709,8 @@ export function useCoachConversationController({
           activeCategoryId: contextSnapshot.activeCategoryId,
           dateKey: contextSnapshot.selectedDateKey,
         },
-        mode: conversationMode,
+        mode: effectiveMode,
+        useCase: effectiveUseCase,
       });
       const preparedConversation = preparedResult.conversation;
       setActiveConversationId(preparedConversation?.id || "");
@@ -631,7 +728,9 @@ export function useCoachConversationController({
         payload: {
           selectedDateKey: contextSnapshot.selectedDateKey,
           activeCategoryId: contextSnapshot.activeCategoryId,
-          mode: conversationMode === "plan" ? "plan" : "free",
+          mode: effectiveMode,
+          locale: "fr-FR",
+          useCase: effectiveUseCase,
           message,
           recentMessages: buildRecentMessagesFromConversation(preparedConversation),
         },
@@ -660,7 +759,8 @@ export function useCoachConversationController({
               activeCategoryId: contextSnapshot.activeCategoryId,
               dateKey: contextSnapshot.selectedDateKey,
             },
-            mode: result.reply?.kind === "conversation" ? result.reply.mode : conversationMode,
+            mode: result.reply?.kind === "conversation" ? result.reply.mode : effectiveMode,
+            useCase: effectiveUseCase,
           });
           return {
             ...safePrevious,
@@ -675,6 +775,7 @@ export function useCoachConversationController({
     [
       accessToken,
       conversationMode,
+      conversationUseCase,
       contextSnapshot.activeCategoryId,
       contextSnapshot.selectedDateKey,
       currentConversation?.id,
@@ -682,6 +783,7 @@ export function useCoachConversationController({
       loading,
       safeData,
       setData,
+      setConversationUseCase,
     ]
   );
 
@@ -698,10 +800,12 @@ export function useCoachConversationController({
     messageEntries,
     quickPrompts:
       conversationMode === "plan"
-        ? ["Transformer une idée en plan", "Créer une première action", "Clarifier mes priorités", "Organiser un chantier", "Structurer un projet flou"]
+        ? COACH_PLAN_PROMPTS
         : COACH_QUICK_PROMPTS,
     conversationMode,
     setConversationMode: handleConversationModeChange,
+    conversationUseCase,
+    setConversationUseCase: handleConversationUseCaseChange,
     hasMessages: messageEntries.length > 0,
     categoriesById,
     submitMessage,

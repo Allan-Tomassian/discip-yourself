@@ -7,6 +7,7 @@ export const COACH_MAX_MESSAGES = 50;
 export const COACH_RECENT_MESSAGES_LIMIT = 6;
 
 const COACH_CONVERSATION_MODES = new Set(["free", "plan"]);
+const COACH_USE_CASES = new Set(["general", "life_plan", "stats_review"]);
 const COACH_REPLY_INTENTS = new Set([
   "start_occurrence",
   "resume_session",
@@ -47,6 +48,11 @@ function normalizeContextSnapshot(rawValue) {
 function normalizeConversationMode(value, fallback = "free") {
   const next = trimString(value, 24).toLowerCase();
   return COACH_CONVERSATION_MODES.has(next) ? next : fallback;
+}
+
+function normalizeConversationUseCase(value, fallback = "general") {
+  const next = trimString(value, 32).toLowerCase();
+  return COACH_USE_CASES.has(next) ? next : fallback;
 }
 
 function normalizeViewTarget(rawValue) {
@@ -175,6 +181,7 @@ function normalizeConversation(rawConversation) {
     updatedAt: normalizeIsoString(source.updatedAt, latestMessageCreatedAt || createdAt),
     messages,
     mode: normalizeConversationMode(source.mode, "free"),
+    useCase: normalizeConversationUseCase(source.useCase, "general"),
     contextSnapshot: normalizeContextSnapshot(source.contextSnapshot),
   };
 }
@@ -190,7 +197,12 @@ export function ensureCoachConversationsState(rawValue) {
   };
 }
 
-export function createCoachConversation({ contextSnapshot = null, now = new Date(), mode = "free" } = {}) {
+export function createCoachConversation({
+  contextSnapshot = null,
+  now = new Date(),
+  mode = "free",
+  useCase = "general",
+} = {}) {
   const createdAt = now instanceof Date ? now.toISOString() : new Date().toISOString();
   return {
     id: uid(),
@@ -198,6 +210,7 @@ export function createCoachConversation({ contextSnapshot = null, now = new Date
     updatedAt: createdAt,
     messages: [],
     mode: normalizeConversationMode(mode, "free"),
+    useCase: normalizeConversationUseCase(useCase, "general"),
     contextSnapshot: normalizeContextSnapshot(contextSnapshot),
   };
 }
@@ -236,7 +249,7 @@ export function removeCoachConversation(rawValue, conversationId) {
 
 export function appendCoachConversationMessages(
   rawValue,
-  { conversationId = null, messages = [], contextSnapshot = null, mode = null } = {}
+  { conversationId = null, messages = [], contextSnapshot = null, mode = null, useCase = null } = {}
 ) {
   const state = ensureCoachConversationsState(rawValue);
   const normalizedMessages = (Array.isArray(messages) ? messages : [])
@@ -245,7 +258,7 @@ export function appendCoachConversationMessages(
 
   const existingConversation =
     (conversationId ? state.conversations.find((entry) => entry.id === conversationId) : null) || null;
-  const baseConversation = existingConversation || createCoachConversation({ contextSnapshot, mode });
+  const baseConversation = existingConversation || createCoachConversation({ contextSnapshot, mode, useCase });
   const nextMessages = [...baseConversation.messages, ...normalizedMessages].slice(-COACH_MAX_MESSAGES);
   const updatedAt = normalizedMessages[normalizedMessages.length - 1]?.createdAt || new Date().toISOString();
   const nextConversation = {
@@ -253,6 +266,7 @@ export function appendCoachConversationMessages(
     updatedAt,
     messages: nextMessages,
     mode: normalizeConversationMode(mode, baseConversation.mode),
+    useCase: normalizeConversationUseCase(useCase, baseConversation.useCase),
     contextSnapshot: normalizeContextSnapshot(contextSnapshot || baseConversation.contextSnapshot),
   };
 
@@ -328,6 +342,18 @@ export function updateCoachConversationMode(rawValue, { conversationId, mode } =
   return upsertCoachConversation(state, {
     ...conversation,
     mode: normalizeConversationMode(mode, conversation.mode),
+  });
+}
+
+export function updateCoachConversationUseCase(rawValue, { conversationId, useCase } = {}) {
+  const safeConversationId = trimString(conversationId, 120);
+  if (!safeConversationId) return ensureCoachConversationsState(rawValue);
+  const state = ensureCoachConversationsState(rawValue);
+  const conversation = state.conversations.find((entry) => entry.id === safeConversationId) || null;
+  if (!conversation) return state;
+  return upsertCoachConversation(state, {
+    ...conversation,
+    useCase: normalizeConversationUseCase(useCase, conversation.useCase),
   });
 }
 

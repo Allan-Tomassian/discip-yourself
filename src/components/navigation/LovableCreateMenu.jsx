@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo } from "react";
+import { CREATE_MENU_COPY } from "../../ui/labels";
 
 function resolveMenuStyle(anchorRect) {
   if (!anchorRect || typeof window === "undefined") {
@@ -35,19 +36,19 @@ export default function LovableCreateMenu({
   return (
     <div className="lovableMenuOverlay" role="presentation">
       <div className="lovableMenuBackdrop" onClick={() => onClose?.()} />
-      <div className="lovableMenu" style={menuStyle} role="menu" aria-label="Create">
+      <div className="lovableMenu" style={menuStyle} role="menu" aria-label={CREATE_MENU_COPY.menuAriaLabel}>
         <button type="button" className="lovableMenuButton" onClick={() => onChooseObjective?.()} role="menuitem">
-          <span className="lovableMenuLabel">New objective</span>
-          <span className="lovableMenuMeta">Outcome</span>
+          <span className="lovableMenuLabel">{CREATE_MENU_COPY.objectiveLabel}</span>
+          <span className="lovableMenuMeta">{CREATE_MENU_COPY.objectiveMeta}</span>
         </button>
         <button type="button" className="lovableMenuButton" onClick={() => onChooseAction?.()} role="menuitem">
-          <span className="lovableMenuLabel">New action</span>
-          <span className="lovableMenuMeta">Process</span>
+          <span className="lovableMenuLabel">{CREATE_MENU_COPY.actionLabel}</span>
+          <span className="lovableMenuMeta">{CREATE_MENU_COPY.actionMeta}</span>
         </button>
         {hasDraft ? (
           <button type="button" className="lovableMenuButton" onClick={() => onResumeDraft?.()} role="menuitem">
-            <span className="lovableMenuLabel">Resume draft</span>
-            <span className="lovableMenuMeta">Continue</span>
+            <span className="lovableMenuLabel">{CREATE_MENU_COPY.resumeDraftLabel}</span>
+            <span className="lovableMenuMeta">{CREATE_MENU_COPY.resumeDraftMeta}</span>
           </button>
         ) : null}
       </div>

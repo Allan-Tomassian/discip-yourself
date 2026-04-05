@@ -113,6 +113,9 @@ function normalizeChatPayloadCandidate(candidate) {
   const normalized = { ...candidate };
   normalized.headline = truncateText(normalized.headline, TEXT_LIMITS.headline);
   normalized.reason = truncateText(normalized.reason, TEXT_LIMITS.reason);
+  if (!("direction" in normalized) || normalized.direction === undefined) {
+    normalized.direction = null;
+  }
   normalized.primaryAction = normalizeActionCandidate(normalized.primaryAction);
 
   if (!("secondaryAction" in normalized) || normalized.secondaryAction === undefined) {
@@ -270,6 +273,7 @@ function buildSystemPrompt(locale = DEFAULT_OUTPUT_LOCALE) {
     "You are a precise execution coach.",
     "Output valid JSON only.",
     "Keep text compact and actionable.",
+    "Prefer one clear next step over multiple options.",
     "Always write recommendations with an explicit action verb and a concrete object.",
     "When relevant, mention a short duration or a time anchor.",
     "If the user asks to understand a recommendation or how to use the app, explain it briefly and end with one concrete next step.",
@@ -363,6 +367,7 @@ function buildNowPrompt(context) {
   return [
     "You are the execution coach for Discip-Yourself.",
     "Return one short actionable recommendation for what the user should do now.",
+    "Treat Today as an execution surface: one state summary, one main priority, one concrete next step.",
     "No chat. No markdown. No prose outside JSON.",
     "Never invent actions or occurrences that are not in the context.",
     "Return all keys exactly once.",
@@ -524,6 +529,7 @@ function buildChatCardPrompt(context) {
   return [
     `You are the local analysis layer for Discip-Yourself on ${analysisSurface}.`,
     "Answer the user's latest message with one very short contextual recommendation.",
+    "This analysis must produce one strict direction when the user asks for a review: maintenir, recalibrer, accélérer, or alléger.",
     "No markdown. No prose outside JSON.",
     "Never invent actions or occurrences that are not in the context.",
     "This layer is secondary to the Coach and must stay local, concise, and non-conversational.",
@@ -550,6 +556,7 @@ function buildChatCardPrompt(context) {
     "When possible, mention a short duration or timing anchor.",
     "Avoid vague formulations such as améliorer, progresser, optimiser, or être plus régulier without naming the action.",
     "Keep headline <= 72 chars and reason <= 160 chars.",
+    "Use direction only when reviewing the weekly/global trajectory. Otherwise return null.",
     "Keep draft change titles <= 96 chars.",
     "Use null instead of omitting nullable fields.",
     `Valid JSON example: ${JSON.stringify(validExample)}`,
@@ -623,6 +630,7 @@ function buildFreeConversationPrompt(context) {
     "The user is talking freely and may not want to create anything yet.",
     "Reply like a real product coach, not like a generic chatbot and not like a form.",
     "Answer in natural French, short and calm, with one concrete next step when useful.",
+    "Prefer clarification, prioritization, and a single next step over long encouragement.",
     "Do not force creation, planning, or a CTA when the user only wants to reflect.",
     "You may suggest activating plan mode only when the user is clearly trying to structure something in the app.",
     "If the topic is outside the product scope or too sensitive, answer prudently and redirect to support or a more appropriate external help path.",
@@ -719,6 +727,7 @@ function buildPlanConversationPrompt(context) {
     "When something important is missing, keep the proposal conservative and list the missing point in unresolvedQuestions.",
     "Use one category. Prefer the active category when it fits. If it does not fit and you are unsure, mark categoryDraft as unresolved.",
     "Keep the proposal simple. One objective and one to three actions is enough.",
+    "Do not output a life system, a full routine matrix, or a long roadmap in one turn.",
     "Use kind=action for one standalone action, kind=outcome for one standalone objective, kind=guided when there is one objective plus at least one action.",
     "No markdown. No prose outside JSON.",
     `Valid JSON example: ${JSON.stringify(validExample)}`,

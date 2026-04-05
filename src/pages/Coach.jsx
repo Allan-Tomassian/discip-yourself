@@ -1,14 +1,15 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useBehaviorFeedback } from "../feedback/BehaviorFeedbackContext";
 import { AppScreen } from "../shared/ui/app";
 import { useCoachConversationController } from "../features/coach/CoachPanel";
+import { COACH_SCREEN_COPY } from "../ui/labels";
 
 function resolveName(profile) {
   const fullName = String(profile?.full_name || "").trim();
   if (fullName) return fullName.split(/\s+/)[0];
   const username = String(profile?.username || "").trim();
   if (username) return username;
-  return "there";
+  return "toi";
 }
 
 export default function Coach({
@@ -27,7 +28,15 @@ export default function Coach({
   generationWindowDays = null,
 }) {
   const { emitBehaviorFeedback } = useBehaviorFeedback();
+  const pageRef = useRef(null);
   const scrollRef = useRef(null);
+  const composerRef = useRef(null);
+  const textareaRef = useRef(null);
+  const stickToBottomRef = useRef(true);
+  const [pageHeight, setPageHeight] = useState(null);
+  const [composerHeight, setComposerHeight] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [composerFocused, setComposerFocused] = useState(false);
   const safeData = data && typeof data === "object" ? data : {};
   const profileName = resolveName(safeData.profile || {});
   const controller = useCoachConversationController({
@@ -50,23 +59,100 @@ export default function Coach({
     generationWindowDays,
   });
 
-  useEffect(() => {
+  const syncViewport = useCallback(() => {
+    if (typeof window === "undefined") return;
+    setViewportHeight(Math.round(window.visualViewport?.height || window.innerHeight || 0));
+  }, []);
+
+  const scrollToBottom = useCallback((behavior = "auto") => {
     const node = scrollRef.current;
     if (!node) return;
-    node.scrollTop = node.scrollHeight;
-  }, [controller.loading, controller.messageEntries.length]);
+    node.scrollTo({ top: node.scrollHeight, behavior });
+  }, []);
+
+  useEffect(() => {
+    syncViewport();
+    if (typeof window === "undefined") return undefined;
+    const viewport = window.visualViewport;
+    if (!viewport) {
+      window.addEventListener("resize", syncViewport);
+      return () => window.removeEventListener("resize", syncViewport);
+    }
+    viewport.addEventListener("resize", syncViewport);
+    viewport.addEventListener("scroll", syncViewport);
+    return () => {
+      viewport.removeEventListener("resize", syncViewport);
+      viewport.removeEventListener("scroll", syncViewport);
+    };
+  }, [syncViewport]);
+
+  useLayoutEffect(() => {
+    const node = pageRef.current;
+    if (!node || !viewportHeight) return;
+    const rect = node.getBoundingClientRect();
+    setPageHeight(Math.max(320, Math.floor(viewportHeight - rect.top - 8)));
+  }, [viewportHeight]);
+
+  useLayoutEffect(() => {
+    const node = composerRef.current;
+    if (!node) return;
+    const measure = () => setComposerHeight(Math.ceil(node.getBoundingClientRect().height));
+    measure();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [composerFocused, controller.draft, controller.error]);
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const minHeight = composerFocused ? 72 : 48;
+    const maxHeight = composerFocused ? 136 : 56;
+    textarea.style.height = "0px";
+    const nextHeight = Math.max(minHeight, Math.min(textarea.scrollHeight, maxHeight));
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+  }, [composerFocused, controller.draft]);
+
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (!node) return undefined;
+    const handleScroll = () => {
+      const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
+      stickToBottomRef.current = distanceFromBottom < 72;
+    };
+    handleScroll();
+    node.addEventListener("scroll", handleScroll);
+    return () => node.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!stickToBottomRef.current) return undefined;
+    const frameId = window.requestAnimationFrame(() => {
+      scrollToBottom(controller.messageEntries.length > 0 ? "smooth" : "auto");
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [composerHeight, controller.loading, controller.messageEntries.length, scrollToBottom, viewportHeight]);
 
   const introText = useMemo(
-    () => `Hello ${profileName}. I'm your AI coach here to help you stay clear, focused, and moving forward.\n\nWhat's on your mind today?`,
+    () => COACH_SCREEN_COPY.introMessage.replace("{name}", profileName),
     [profileName]
   );
 
   return (
-    <AppScreen pageId="coach" headerTitle="AI Coach" headerSubtitle="Your strategic thinking partner">
-      <div className="lovablePage lovableCoachPage">
+    <AppScreen pageId="coach" headerTitle={COACH_SCREEN_COPY.title} headerSubtitle={COACH_SCREEN_COPY.subtitle}>
+      <div
+        ref={pageRef}
+        className="lovablePage lovableCoachPage"
+        style={{
+          "--coach-page-height": pageHeight ? `${pageHeight}px` : undefined,
+          "--coach-composer-height": composerHeight ? `${composerHeight}px` : undefined,
+        }}
+      >
         <div ref={scrollRef} className="lovableCoachMessages">
           <div className="lovableCard lovableCoachIntro">
-            <div className="lovableCoachEyebrow">Coach</div>
+            <div className="lovableCoachEyebrow">{COACH_SCREEN_COPY.introEyebrow}</div>
             <p className="lovableCoachText">{introText}</p>
           </div>
 
@@ -95,7 +181,9 @@ export default function Coach({
                 key={entry.id}
                 className={`lovableCard lovableCoachBubble ${entry.role === "assistant" ? "is-assistant" : "is-user"}`}
               >
-                <div className="lovableCoachEyebrow">{entry.role === "assistant" ? "Coach" : "You"}</div>
+                <div className="lovableCoachEyebrow">
+                  {entry.role === "assistant" ? COACH_SCREEN_COPY.assistantEyebrow : COACH_SCREEN_COPY.userEyebrow}
+                </div>
                 <p className="lovableCoachText">{reply?.message || entry.text}</p>
 
                 {reply?.primaryAction || reply?.secondaryAction ? (
@@ -123,22 +211,22 @@ export default function Coach({
 
                 {isConversationReply && reply?.proposal ? (
                   <div className="lovableCard lovableCoachDraft">
-                    <div className="lovableCoachDraftTitle">Plan Proposed</div>
+                    <div className="lovableCoachDraftTitle">{COACH_SCREEN_COPY.concisePlanTitle}</div>
                     <div className="lovableCoachDraftList">
                       {reply.proposal?.categoryDraft?.label || reply.proposal?.categoryDraft?.id ? (
                         <div className="lovableCoachDraftItem">
-                          {`Category · ${reply.proposal.categoryDraft.label || reply.proposal.categoryDraft.id}`}
+                          {`${COACH_SCREEN_COPY.draftCategoryLabel} · ${reply.proposal.categoryDraft.label || reply.proposal.categoryDraft.id}`}
                         </div>
                       ) : null}
                       {reply.proposal?.outcomeDraft?.title ? (
                         <div className="lovableCoachDraftItem">
-                          {`Objective · ${reply.proposal.outcomeDraft.title}`}
+                          {`${COACH_SCREEN_COPY.draftObjectiveLabel} · ${reply.proposal.outcomeDraft.title}`}
                         </div>
                       ) : null}
                       {(Array.isArray(reply.proposal?.actionDrafts) ? reply.proposal.actionDrafts : []).map((draftItem, index) => (
                         <div key={`${entry.id}-draft-${index}`} className="lovableCoachDraftItem">
                           {[
-                            draftItem?.title || "Action",
+                            draftItem?.title || COACH_SCREEN_COPY.draftActionFallback,
                             draftItem?.oneOffDate || "",
                             draftItem?.startTime || "",
                           ]
@@ -147,6 +235,18 @@ export default function Coach({
                         </div>
                       ))}
                     </div>
+                    {(Array.isArray(reply.proposal?.unresolvedQuestions) ? reply.proposal.unresolvedQuestions : []).length ? (
+                      <>
+                        <div className="lovableCoachDraftTitle">{COACH_SCREEN_COPY.unresolvedTitle}</div>
+                        <div className="lovableCoachDraftList">
+                          {reply.proposal.unresolvedQuestions.map((question, index) => (
+                            <div key={`${entry.id}-question-${index}`} className="lovableCoachDraftItem">
+                              {question}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : null}
                     <div className="lovableCoachDraftActions">
                       <button
                         type="button"
@@ -155,10 +255,10 @@ export default function Coach({
                         onClick={() => controller.createFromPlanReply(entry)}
                       >
                         {reply?.createStatus === "created"
-                          ? "Created"
+                          ? COACH_SCREEN_COPY.created
                           : reply?.createStatus === "creating"
-                            ? "Creating..."
-                            : "Create"}
+                            ? COACH_SCREEN_COPY.creating
+                            : COACH_SCREEN_COPY.create}
                       </button>
                       <button
                         type="button"
@@ -166,7 +266,7 @@ export default function Coach({
                         disabled={reply?.createStatus === "creating"}
                         onClick={() => controller.openAssistantReview(entry)}
                       >
-                        Review in app
+                        {COACH_SCREEN_COPY.reviewInApp}
                       </button>
                     </div>
                     {entry.draftApplyMessage ? <div className="lovableCoachError">{entry.draftApplyMessage}</div> : null}
@@ -178,27 +278,34 @@ export default function Coach({
 
           {controller.loading ? (
             <div className="lovableCard lovableCoachBubble is-assistant">
-              <div className="lovableCoachEyebrow">Coach</div>
-              <p className="lovableCoachText">{controller.loadingStageLabel || "Thinking..."}</p>
+              <div className="lovableCoachEyebrow">{COACH_SCREEN_COPY.assistantEyebrow}</div>
+              <p className="lovableCoachText">{controller.loadingStageLabel || COACH_SCREEN_COPY.thinking}</p>
             </div>
           ) : null}
         </div>
 
-        <div className="lovableCoachComposerWrap">
-          <div className="lovableCard lovableCoachComposer">
+        <div ref={composerRef} className="lovableCoachComposerWrap">
+          <div className={`lovableCard lovableCoachComposer${composerFocused ? " is-focused" : ""}`}>
             <textarea
-              className="lovableCoachTextarea"
+              ref={textareaRef}
+              className={`lovableCoachTextarea${composerFocused ? " is-focused" : ""}`}
               value={controller.draft}
               onChange={(event) => controller.setDraft(event.target.value)}
-              placeholder="Ask your coach anything..."
-              rows={2}
+              onFocus={() => {
+                setComposerFocused(true);
+                stickToBottomRef.current = true;
+                window.requestAnimationFrame(() => scrollToBottom("smooth"));
+              }}
+              onBlur={() => setComposerFocused(false)}
+              placeholder={COACH_SCREEN_COPY.placeholder}
+              rows={1}
             />
             <button
               type="button"
               className="lovableCoachComposerSend"
               onClick={() => controller.submitMessage()}
               disabled={controller.loading || !controller.draft.trim()}
-              aria-label="Send"
+              aria-label={COACH_SCREEN_COPY.sendAriaLabel}
             >
               ↗
             </button>

@@ -19,8 +19,6 @@ import "../features/preferences/preferencesGate.css";
 export default function Preferences({ data, setData }) {
   const safeData = data && typeof data === "object" ? data : {};
   const profile = safeData?.profile || {};
-  const fallbackWallpaper = Array.isArray(safeData.categories) ? safeData.categories[0]?.wallpaper : "";
-  const backgroundImage = fallbackWallpaper || profile?.whyImage || "";
 
   const premium = isPremium(safeData);
   const limits = getPlanLimits();
@@ -59,7 +57,6 @@ export default function Preferences({ data, setData }) {
     <AppScreen
       data={safeData}
       pageId="settings"
-      backgroundImage={backgroundImage}
       headerTitle={<span data-tour-id="settings-title">Réglages</span>}
       headerSubtitle="App, apparence et préférences"
     >

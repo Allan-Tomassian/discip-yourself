@@ -810,7 +810,27 @@ export default function App() {
           isPlanningUnlimited={planningUnlimited}
         />
       ) : tab === "timeline" ? (
-        <Timeline data={data} setTab={setTab} />
+        <Timeline
+          data={data}
+          setTab={setTab}
+          onEditItem={({ id, type, categoryId }) => {
+            const nextId = categoryId || libraryCategoryId || null;
+            if (nextId) {
+              setData((prev) => ({
+                ...prev,
+                ui: withLibraryActiveCategoryId(prev.ui, nextId),
+              }));
+            }
+            setEditItem({ id, type, categoryId: nextId, returnTab: tab, returnToCategoryView: false });
+            setTab("edit-item", {
+              editItemId: id,
+              historyState: {
+                origin: resolveRouteOrigin({ sourceSurface: "timeline", categoryId: nextId }),
+                editItemId: id,
+              },
+            });
+          }}
+        />
       ) : tab === "category-detail" ? (
         <CategoryDetailView
           data={data}
@@ -849,6 +869,9 @@ export default function App() {
       ) : tab === "insights" ? (
         <Insights
           data={data}
+          setData={setData}
+          setTab={setTab}
+          persistenceScope={persistenceScope}
         />
       ) : tab === "objectives" ? (
         <Objectives

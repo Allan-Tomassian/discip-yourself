@@ -5,14 +5,12 @@ import pkg from "../../package.json";
 
 export default function Support({ data }) {
   const safeData = data && typeof data === "object" ? data : {};
-  const backgroundImage = safeData?.profile?.whyImage || "";
   const version = pkg?.version || "0.0.0";
 
   return (
     <AppScreen
       data={safeData}
       pageId="support"
-      backgroundImage={backgroundImage}
       headerTitle="Support"
       headerSubtitle="Aide, contact et réponses rapides."
     >

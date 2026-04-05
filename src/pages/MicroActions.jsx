@@ -350,7 +350,6 @@ export default function MicroActions({ data, setData, isPremiumPlan = false }) {
     <AppScreen
       data={safeData}
       pageId="micro-actions"
-      backgroundImage={safeData?.profile?.whyImage || ""}
       headerTitle="Micro-actions"
       headerSubtitle="Petites actions rapides pour relancer l’élan du jour."
     >
@@ -358,7 +357,7 @@ export default function MicroActions({ data, setData, isPremiumPlan = false }) {
         <section className="mainPageSection">
           <SectionHeader
             title="Micro-actions du jour"
-            subtitle="Trois leviers courts pour relancer l’élan sans repasser par Today."
+            subtitle="Trois leviers courts pour relancer l’élan sans repasser par Aujourd'hui."
           />
           <div className="mainPageSectionBody">
             <MicroActionsCard

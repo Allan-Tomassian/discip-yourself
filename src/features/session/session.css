@@ -73,6 +73,11 @@
   color: var(--text-primary);
 }
 
+.sessionFieldHint {
+  font-size: var(--font-meta);
+  color: var(--text-secondary);
+}
+
 .sessionActions,
 .sessionFooterActions {
   display: flex;
@@ -80,9 +85,22 @@
   gap: var(--space-8);
 }
 
+.sessionActions--primary .sessionActionButton {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.sessionActions--secondary .sessionActionButton {
+  flex: 1 1 120px;
+}
+
 .sessionBackButton,
 .sessionActionButton {
   min-height: 36px;
+}
+
+.sessionActionButton--primary {
+  min-height: 44px;
 }
 
 .sessionFeedbackInput {

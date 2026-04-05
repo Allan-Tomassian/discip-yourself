@@ -37,8 +37,8 @@ describe("home today canonical contract", () => {
     expect(home).toContain("headerDateLabel");
     expect(home).toContain("<AppScreen");
     expect(home).toContain('className="lovableCard lovableTodayInsight"');
-    expect(home).toContain('className="lovableSectionLabel">Main Priority<');
-    expect(home).toContain('className="lovableSectionLabel">Recommended Actions<');
+    expect(home).toContain('className="lovableSectionLabel">{TODAY_SCREEN_COPY.priorityTitle}<');
+    expect(home).toContain('className="lovableSectionLabel">{TODAY_SCREEN_COPY.actionsTitle}<');
     expect(home).toContain("<TodayHero");
     expect(home).toContain("<TodayNextActions");
     expect(home).not.toContain("<TodayDailyState");
@@ -64,7 +64,7 @@ describe("home today canonical contract", () => {
     expect(home).toContain("reason={heroImpactText || heroReasonText}");
     expect(home).toContain("contributionLabel={heroContributionLabel}");
     expect(home).toContain("recommendedCategoryLabel={heroViewModel.recommendedCategoryLabel || heroDisplayCategoryName}");
-    expect(home).toContain("primaryLabel={heroViewModel.primaryLabel === \"Démarrer\" ? \"Start Now\" : heroViewModel.primaryLabel || \"Start Now\"}");
+    expect(home).toContain("primaryLabel={heroViewModel.primaryLabel || TODAY_SCREEN_COPY.primaryAction}");
     expect(hero).not.toContain("AppCard");
     expect(home).toContain("isAiPriority:");
     expect(home).not.toContain("helpText=");

@@ -191,9 +191,8 @@ export default function Journal({ data, setData }) {
     <AppScreen
       data={safeData}
       pageId="journal"
-      backgroundImage={safeData?.profile?.whyImage || ""}
       headerTitle={SURFACE_LABELS.journal}
-      headerSubtitle="Capture le contexte du jour sans repasser par Today."
+      headerSubtitle="Capture le contexte du jour sans repasser par Aujourd'hui."
     >
       <section className="mainPageSection">
         <SectionHeader title="Édition" subtitle="Écriture rapide, contexte et niveau d’énergie." />

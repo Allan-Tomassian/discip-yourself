@@ -83,7 +83,7 @@ export default function PaywallModal({
             <AppInlineMetaCard className="paywallFeatureCard" text="Catégories illimitées" />
             <AppInlineMetaCard className="paywallFeatureCard" text={`${LABELS.goals} illimités`} />
             <AppInlineMetaCard className="paywallFeatureCard" text="Actions illimitées" />
-            <AppInlineMetaCard className="paywallFeatureCard" text="Planification et historique complets" />
+            <AppInlineMetaCard className="paywallFeatureCard" text="Planning et historique complets" />
             <AppInlineMetaCard className="paywallFeatureCard" text="Export des données" />
           </div>
         </section>

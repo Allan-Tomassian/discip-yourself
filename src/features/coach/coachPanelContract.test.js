@@ -28,16 +28,19 @@ describe("coach panel contract", () => {
     const coachPanel = readSrc("features/coach/CoachPanel.jsx");
 
     expect(coachPanel).toContain("conversationMode");
+    expect(coachPanel).toContain("conversationUseCase");
     expect(coachPanel).toContain("onOpenAssistantCreate");
     expect(coachPanel).toContain("onOpenCreatedView");
-    expect(coachPanel).toContain("mode: conversationMode === \"plan\" ? \"plan\" : \"free\"");
+    expect(coachPanel).toContain("const effectiveMode = conversationMode === \"plan\" ? \"plan\" : \"free\";");
+    expect(coachPanel).toContain('locale: "fr-FR"');
+    expect(coachPanel).toContain("useCase: effectiveUseCase");
     expect(coachPanel).toContain("coachConversationRail");
     expect(coachPanel).toContain("setActiveConversationId");
     expect(coachPanel).toContain("archiveConversation");
     expect(coachPanel).toContain("Discuter librement, puis passer en mode Plan quand tu veux construire.");
     expect(coachPanel).toContain("toggleCoachPlanMode");
     expect(coachPanel).toContain("coachModeBadge");
-    expect(coachPanel).toContain("Objectif ·");
+    expect(coachPanel).toContain("life_plan");
     expect(coachPanel).not.toContain("Direction ·");
     expect(coachPanel).toContain('sourceSurface: "coach"');
     expect(coachPanel).not.toContain("Appliquer le brouillon");

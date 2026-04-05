@@ -71,6 +71,9 @@ function normalizeEntry(entry) {
     selectedDateKey: safeNullableString(entry.selectedDateKey),
     activeCategoryId: safeNullableString(entry.activeCategoryId),
     fallbackReason: safeNullableString(entry.fallbackReason),
+    summary: safeNullableString(entry.summary),
+    trend: safeNullableString(entry.trend),
+    direction: safeNullableString(entry.direction),
   };
 }
 
@@ -198,6 +201,9 @@ export function createPersistedLocalAnalysisEntry({
   surface,
   storageScope,
   reply,
+  summary = null,
+  trend = null,
+  direction = null,
 }) {
   if (!isPlainObject(reply)) return null;
   const primaryAction = normalizeAction(reply.primaryAction);
@@ -223,6 +229,9 @@ export function createPersistedLocalAnalysisEntry({
     selectedDateKey: safeNullableString(reply?.meta?.selectedDateKey),
     activeCategoryId: safeNullableString(reply?.meta?.activeCategoryId),
     fallbackReason: safeNullableString(reply?.meta?.fallbackReason),
+    summary: safeNullableString(summary) || headline,
+    trend: safeNullableString(trend),
+    direction: safeNullableString(direction),
   });
 }
 

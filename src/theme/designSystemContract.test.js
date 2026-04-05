@@ -36,11 +36,11 @@ describe("design system contract", () => {
     const tokens = readSrc("styles/tokens.css");
     const themeTokens = readSrc("theme/themeTokens.js");
 
-    expect(tabBar).toContain('label: "Today"');
-    expect(tabBar).toContain('label: "Objectives"');
-    expect(tabBar).toContain('label: "Timeline"');
-    expect(tabBar).toContain('label: "Insights"');
-    expect(tabBar).toContain('label: "Coach"');
+    expect(tabBar).toContain("label: TAB_COPY.today");
+    expect(tabBar).toContain("label: TAB_COPY.objectives");
+    expect(tabBar).toContain("label: TAB_COPY.timeline");
+    expect(tabBar).toContain("label: TAB_COPY.insights");
+    expect(tabBar).toContain("label: TAB_COPY.coach");
     expect(app).toContain("theme: DEFAULT_THEME");
     expect(main).toContain('import "@fontsource-variable/geist";');
     expect(app).toContain("applyThemeTokens(DEFAULT_THEME, BRAND_ACCENT);");

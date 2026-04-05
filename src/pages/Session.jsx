@@ -5,9 +5,6 @@ import { resolveExecutableOccurrence } from "../logic/sessionResolver";
 import { updateOccurrence } from "../logic/occurrences";
 import { applySessionRuntimeTransition, isRuntimeSessionOpen } from "../logic/sessionRuntime";
 import { emitSessionRuntimeNotificationHook } from "../logic/sessionRuntimeNotifications";
-import { getAccentForPage } from "../utils/_theme";
-import { getCategoryUiVars } from "../utils/categoryAccent";
-import { resolveCategoryColor } from "../utils/categoryPalette";
 import { resolveConflictNearest } from "../logic/occurrencePlanner";
 import { normalizeActiveSessionForUI, normalizeOccurrenceForUI } from "../logic/compat";
 import { withExecutionActiveCategoryId } from "../domain/categoryVisibility";
@@ -122,9 +119,6 @@ export default function Session({
     return goals.find((item) => item?.id === selectedGoalId) || null;
   }, [goals, selectedOccurrence?.goalId, session?.habitIds]);
   const category = categories.find((item) => item?.id === goal?.categoryId) || null;
-  const accent = resolveCategoryColor(category, getAccentForPage(safeData, "home"));
-  const catAccentVars = getCategoryUiVars(category || accent, { level: "focus" });
-
   useEffect(() => {
     const isRunning = Boolean(session && isRuntimeSessionOpen(session) && session?.timerRunning);
     if (!isRunning) return undefined;
@@ -341,7 +335,7 @@ export default function Session({
         },
       })
     );
-    setTab?.("planning");
+    setTab?.("timeline");
   };
 
   const applyQuickReport = (target) => {
@@ -402,7 +396,6 @@ export default function Session({
   if (!selectedOccurrence && !session) {
     return (
       <AppScreen
-        accent={getAccentForPage(safeData, "home")}
         pageId="session"
         headerTitle={<span>Session</span>}
         headerSubtitle={<span>Exécution</span>}
@@ -414,7 +407,7 @@ export default function Session({
               <GhostButton className="sessionActionButton" onClick={onBack}>← Retour</GhostButton>
               {onOpenLibrary ? (
                 <GhostButton className="sessionActionButton" onClick={onOpenLibrary}>
-                  Ouvrir Bibliothèque
+                  Ouvrir Objectifs
                 </GhostButton>
               ) : null}
             </div>
@@ -426,44 +419,40 @@ export default function Session({
 
   return (
     <AppScreen
-      accent={accent}
       pageId="session"
-      backgroundImage={category?.wallpaper || safeData?.profile?.whyImage || ""}
       headerTitle={<span>{goal?.title || "Session"}</span>}
-      headerSubtitle={category?.name || "Catégorie"}
+      headerSubtitle={category?.name ? `Exécution · ${category.name}` : "Exécution"}
       headerRight={
         <GhostButton className="sessionBackButton" onClick={onBack}>
           ← Retour
         </GhostButton>
       }
     >
-      <div style={catAccentVars}>
-        <FocusSessionView
-          title={goal?.title || "Session"}
-          categoryName={category?.name || "Catégorie"}
-          behaviorCue={sessionBehaviorCue}
-          plannedDurationLabel={Number.isFinite(plannedMinutes) ? `${plannedMinutes} min` : ""}
-          elapsedLabel={formatElapsed(elapsedSec * 1000)}
-          remainingLabel={remainingSec != null ? formatElapsed(remainingSec * 1000) : ""}
-          viewState={viewState}
-          canStart={Boolean(selectedOccurrence?.id) && (viewState === "idle" || viewState === "paused")}
-          canPause={viewState === "running"}
-          canComplete={Boolean(session?.occurrenceId) && isRuntimeSessionOpen(session)}
-          onStart={viewState === "paused" ? resumeTimer : startTimer}
-          onPause={pauseTimer}
-          onComplete={() => setShowFeedback(true)}
-          onBlock={blockSession}
-          onOpenReport={() => setReportMode((current) => !current)}
-          showFeedback={showFeedback}
-          feedbackLevel={feedbackLevel}
-          feedbackText={feedbackText}
-          onFeedbackLevelChange={setFeedbackLevel}
-          onFeedbackTextChange={setFeedbackText}
-          onFeedbackSubmit={endSession}
-          reportMode={reportMode}
-          onChooseReport={applyQuickReport}
-        />
-      </div>
+      <FocusSessionView
+        title={goal?.title || "Session"}
+        categoryName={category?.name || "Catégorie"}
+        behaviorCue={sessionBehaviorCue}
+        plannedDurationLabel={Number.isFinite(plannedMinutes) ? `${plannedMinutes} min` : ""}
+        elapsedLabel={formatElapsed(elapsedSec * 1000)}
+        remainingLabel={remainingSec != null ? formatElapsed(remainingSec * 1000) : ""}
+        viewState={viewState}
+        canStart={Boolean(selectedOccurrence?.id) && (viewState === "idle" || viewState === "paused")}
+        canPause={viewState === "running"}
+        canComplete={Boolean(session?.occurrenceId) && isRuntimeSessionOpen(session)}
+        onStart={viewState === "paused" ? resumeTimer : startTimer}
+        onPause={pauseTimer}
+        onComplete={() => setShowFeedback(true)}
+        onBlock={blockSession}
+        onOpenReport={() => setReportMode((current) => !current)}
+        showFeedback={showFeedback}
+        feedbackLevel={feedbackLevel}
+        feedbackText={feedbackText}
+        onFeedbackLevelChange={setFeedbackLevel}
+        onFeedbackTextChange={setFeedbackText}
+        onFeedbackSubmit={endSession}
+        reportMode={reportMode}
+        onChooseReport={applyQuickReport}
+      />
     </AppScreen>
   );
 }

@@ -29,7 +29,6 @@ function downloadJsonFile(filename, payload) {
 
 export default function Data({ data, setData, onOpenPaywall }) {
   const safeData = data && typeof data === "object" ? data : {};
-  const backgroundImage = safeData?.profile?.whyImage || "";
   const premium = isPremium(safeData);
   const importInputRef = useRef(null);
   const [importStatus, setImportStatus] = useState("");
@@ -60,7 +59,6 @@ export default function Data({ data, setData, onOpenPaywall }) {
     <AppScreen
       data={safeData}
       pageId="data"
-      backgroundImage={backgroundImage}
       headerTitle="Données"
       headerSubtitle="Exporter ou réimporter l’état complet de l’app."
     >
