@@ -476,6 +476,7 @@ test("POST /ai/chat returns a plan conversation fallback when mode is plan", asy
 });
 
 test("POST /ai/chat accepts locale and useCase without returning INVALID_BODY", async () => {
+  const insertedLogs = [];
   const app = await buildApp({
     config: TEST_CONFIG,
     verifyAccessToken: async () => ({ id: "user-chat-contract" }),
@@ -485,6 +486,7 @@ test("POST /ai/chat accepts locale and useCase without returning INVALID_BODY", 
     entitlement: null,
     dailyCount: 0,
     monthlyCount: 0,
+    insertedLogs,
   });
 
   const response = await app.inject({
@@ -506,6 +508,8 @@ test("POST /ai/chat accepts locale and useCase without returning INVALID_BODY", 
   const payload = coachChatResponseSchema.parse(response.json());
   assert.equal(payload.kind, "conversation");
   assert.equal(payload.mode, "free");
+  assert.equal(insertedLogs[0]?.coach_kind, "chat");
+  assert.equal(insertedLogs[0]?.route, "/ai/chat");
   await app.close();
 });
 
@@ -572,6 +576,72 @@ test("POST /ai/local-analysis returns a pilotage fallback scoped to pilotage gui
   assert.equal(payload.decisionSource, "rules");
   assert.equal(payload.meta.selectedDateKey, TODAY_KEY);
   assert.match(payload.primaryAction.intent, /open_today|open_pilotage|open_library/);
+  await app.close();
+});
+
+test("POST /ai/local-analysis accepts an AI response that includes direction", async () => {
+  const insertedLogs = [];
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-local-analysis-ai-direction" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+    insertedLogs,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: {
+                  kind: "chat",
+                  headline: "Recalibre ton rythme",
+                  reason: "Ton effort récent mérite un ajustement léger avant d'accélérer.",
+                  direction: "recalibrer",
+                  primaryAction: {
+                    label: "Voir pilotage",
+                    intent: "open_pilotage",
+                    categoryId: "cat-1",
+                    actionId: null,
+                    occurrenceId: null,
+                    dateKey: TODAY_KEY,
+                  },
+                  secondaryAction: null,
+                  suggestedDurationMin: null,
+                },
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/local-analysis",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.28" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      surface: "pilotage",
+      message: "Analyse ma trajectoire récente et donne une direction claire.",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachLocalAnalysisResponseSchema.parse(response.json());
+  assert.equal(payload.kind, "chat");
+  assert.equal(payload.decisionSource, "ai");
+  assert.equal(payload.direction, "recalibrer");
+  assert.equal(insertedLogs[0]?.coach_kind, "local-analysis");
+  assert.equal(insertedLogs[0]?.route, "/ai/local-analysis");
   await app.close();
 });
 

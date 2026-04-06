@@ -49,6 +49,32 @@ function createNowContext() {
   };
 }
 
+function createChatContext(overrides = {}) {
+  return {
+    activeDate: "2026-03-06",
+    activeCategoryId: "cat-1",
+    chatMode: "free",
+    locale: "fr-FR",
+    useCase: "general",
+    recentMessages: [
+      { role: "assistant", content: "On repart sur quelque chose de simple." },
+      { role: "user", content: "Je veux éviter de me disperser." },
+    ],
+    message: "Que dois-je faire maintenant ?",
+    planningSummary: null,
+    pilotageSummary: null,
+    quotaRemaining: 3,
+    category: null,
+    activeCategoryProfileSummary: null,
+    relatedCategoryProfileSummaries: [],
+    userAiProfile: null,
+    availableCategories: [],
+    actionSummaries: [],
+    activeCategoryLabel: "Focus",
+    ...overrides,
+  };
+}
+
 function createValidCandidate() {
   return {
     kind: "now",
@@ -172,27 +198,267 @@ test("runOpenAiCoach forwards chat locale to the system prompt", async () => {
   const payload = await runOpenAiCoach({
     app,
     kind: "chat",
-    context: {
-      activeDate: "2026-03-06",
-      activeCategoryId: "cat-1",
+    context: createChatContext({
       chatMode: "free",
       locale: "fr-CA",
-      useCase: "general",
       recentMessages: [],
       message: "Bonjour",
-      planningSummary: null,
-      pilotageSummary: null,
-      quotaRemaining: 3,
-      category: null,
-      activeCategoryProfileSummary: null,
-      relatedCategoryProfileSummaries: [],
-      userAiProfile: null,
-    },
+    }),
   });
 
   assert.equal(payload.kind, "conversation");
   assert.equal(payload.mode, "free");
   assert.match(parseArgs.messages[0].content, /French \(fr-CA\)/);
+});
+
+test("runOpenAiCoach uses an object root schema for free chat response_format", async () => {
+  let parseArgs = null;
+  const app = {
+    config: {
+      OPENAI_API_KEY: "test-openai-key",
+      OPENAI_MODEL: "gpt-4.1-mini",
+    },
+    openai: {
+      chat: {
+        completions: {
+          parse: async (args) => {
+            parseArgs = args;
+            return {
+              choices: [{
+                message: {
+                  parsed: {
+                    kind: "conversation",
+                    mode: "free",
+                    message: "On repart avec un pas concret.",
+                    primaryAction: null,
+                    secondaryAction: null,
+                    proposal: null,
+                  },
+                },
+              }],
+            };
+          },
+        },
+      },
+    },
+  };
+
+  const payload = await runOpenAiCoach({
+    app,
+    kind: "chat",
+    context: createChatContext({
+      chatMode: "free",
+      message: "Bonjour",
+      recentMessages: [],
+    }),
+  });
+
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "free");
+  assert.equal(parseArgs.response_format.json_schema.name, "coach_conversation_free_payload");
+  assert.equal(parseArgs.response_format.json_schema.schema.type, "object");
+});
+
+test("runOpenAiCoach uses an object root schema for plan chat response_format", async () => {
+  let parseArgs = null;
+  const app = {
+    config: {
+      OPENAI_API_KEY: "test-openai-key",
+      OPENAI_MODEL: "gpt-4.1-mini",
+    },
+    openai: {
+      chat: {
+        completions: {
+          parse: async (args) => {
+            parseArgs = args;
+            return {
+              choices: [{
+                message: {
+                  parsed: {
+                    kind: "conversation",
+                    mode: "plan",
+                    message: "Je te propose une structure courte et tenable.",
+                    primaryAction: null,
+                    secondaryAction: null,
+                    proposal: {
+                      kind: "guided",
+                      categoryDraft: {
+                        mode: "existing",
+                        id: "cat-1",
+                        label: "Focus",
+                      },
+                      outcomeDraft: {
+                        title: "Clarifier le prochain pas",
+                        categoryId: "cat-1",
+                        priority: "prioritaire",
+                        startDate: "2026-03-06",
+                        deadline: null,
+                        measureType: null,
+                        targetValue: null,
+                        notes: null,
+                      },
+                      actionDrafts: [],
+                      unresolvedQuestions: [],
+                      requiresValidation: true,
+                    },
+                  },
+                },
+              }],
+            };
+          },
+        },
+      },
+    },
+  };
+
+  const payload = await runOpenAiCoach({
+    app,
+    kind: "chat",
+    context: createChatContext({
+      chatMode: "plan",
+      message: "Aide-moi à structurer ça.",
+      recentMessages: [],
+    }),
+  });
+
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "plan");
+  assert.equal(parseArgs.response_format.json_schema.name, "coach_conversation_plan_payload");
+  assert.equal(parseArgs.response_format.json_schema.schema.type, "object");
+});
+
+test("runOpenAiCoach prioritizes latestUserMessage in the free conversation prompt", async () => {
+  let userPrompt = "";
+  const app = {
+    config: {
+      OPENAI_API_KEY: "test-openai-key",
+      OPENAI_MODEL: "gpt-4.1-mini",
+    },
+    openai: {
+      chat: {
+        completions: {
+          parse: async (args) => {
+            userPrompt = args.messages[1].content;
+            return {
+              choices: [
+                {
+                  message: {
+                    parsed: {
+                      kind: "conversation",
+                      mode: "free",
+                      message: "Réponds d’abord à ta question, puis garde un seul prochain pas.",
+                      primaryAction: null,
+                      secondaryAction: null,
+                      proposal: null,
+                    },
+                  },
+                },
+              ],
+            };
+          },
+        },
+      },
+    },
+  };
+
+  const payload = await runOpenAiCoach({
+    app,
+    kind: "chat",
+    context: createChatContext({
+      chatMode: "free",
+      message: "Que dois-je faire maintenant ?",
+    }),
+  });
+
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "free");
+  assert.match(userPrompt, /Respond first and directly to latestUserMessage\./);
+  assert.match(userPrompt, /If latestUserMessage asks a question, answer that question before suggesting anything else\./);
+  assert.match(userPrompt, /Use recentMessages only for continuity and relevant references\./);
+  assert.match(
+    userPrompt,
+    /Do not mechanically repeat, summarize, or paraphrase the previous assistant reply unless the user explicitly asks for that\./,
+  );
+  assert.ok(userPrompt.includes('"latestUserMessage":"Que dois-je faire maintenant ?"'));
+  assert.ok(userPrompt.includes('"recentMessages":['));
+  assert.ok(userPrompt.indexOf('"latestUserMessage"') < userPrompt.indexOf('"recentMessages"'));
+});
+
+test("runOpenAiCoach prioritizes latestUserMessage in the plan conversation prompt", async () => {
+  let userPrompt = "";
+  const app = {
+    config: {
+      OPENAI_API_KEY: "test-openai-key",
+      OPENAI_MODEL: "gpt-4.1-mini",
+    },
+    openai: {
+      chat: {
+        completions: {
+          parse: async (args) => {
+            userPrompt = args.messages[1].content;
+            return {
+              choices: [
+                {
+                  message: {
+                    parsed: {
+                      kind: "conversation",
+                      mode: "plan",
+                      message: "On peut cadrer une proposition légère à partir de ton besoin immédiat.",
+                      primaryAction: null,
+                      secondaryAction: null,
+                      proposal: {
+                        kind: "guided",
+                        categoryDraft: {
+                          mode: "existing",
+                          id: "cat-1",
+                          label: "Focus",
+                        },
+                        outcomeDraft: {
+                          title: "Stabiliser un prochain pas",
+                          categoryId: "cat-1",
+                          priority: "prioritaire",
+                          startDate: "2026-03-06",
+                          deadline: null,
+                          measureType: null,
+                          targetValue: null,
+                          notes: null,
+                        },
+                        actionDrafts: [],
+                        unresolvedQuestions: [],
+                        requiresValidation: true,
+                      },
+                    },
+                  },
+                },
+              ],
+            };
+          },
+        },
+      },
+    },
+  };
+
+  const payload = await runOpenAiCoach({
+    app,
+    kind: "chat",
+    context: createChatContext({
+      chatMode: "plan",
+      message: "Aide-moi à structurer le prochain pas sans repartir de zéro.",
+    }),
+  });
+
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "plan");
+  assert.match(userPrompt, /Respond first and directly to latestUserMessage, then converge to a small actionable proposal\./);
+  assert.match(userPrompt, /If latestUserMessage asks a question, answer it before expanding the proposal\./);
+  assert.match(userPrompt, /Use recentMessages only for continuity and relevant references\./);
+  assert.match(
+    userPrompt,
+    /Do not restart from or mechanically paraphrase the previous assistant reply unless the user explicitly asks for it\./,
+  );
+  assert.ok(userPrompt.includes('"latestUserMessage":"Aide-moi à structurer le prochain pas sans repartir de zéro."'));
+  assert.ok(userPrompt.includes('"recentMessages":['));
+  assert.ok(userPrompt.indexOf('"latestUserMessage"') < userPrompt.indexOf('"recentMessages"'));
 });
 
 test("runOpenAiCoach exposes stable issueCode for model refusal", async () => {

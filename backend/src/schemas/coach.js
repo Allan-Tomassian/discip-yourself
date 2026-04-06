@@ -174,7 +174,7 @@ export const coachChatCardPayloadSchema = z
   })
   .strict();
 
-const coachFreeConversationPayloadSchema = z
+export const coachFreeConversationPayloadSchema = z
   .object({
     kind: z.literal("conversation"),
     mode: z.literal(COACH_CHAT_MODES.FREE),
@@ -185,7 +185,7 @@ const coachFreeConversationPayloadSchema = z
   })
   .strict();
 
-const coachPlanConversationPayloadSchema = z
+export const coachPlanConversationPayloadSchema = z
   .object({
     kind: z.literal("conversation"),
     mode: z.literal(COACH_CHAT_MODES.PLAN),
@@ -307,7 +307,9 @@ export const coachChatCardResponseSchema = z
   })
   .strict();
 
-export const coachLocalAnalysisResponseSchema = coachChatCardResponseSchema;
+export const coachLocalAnalysisResponseSchema = coachChatCardResponseSchema.extend({
+  direction: directionSchema.nullable().optional().default(null),
+});
 
 const conversationResponseMetaSchema = z
   .object({

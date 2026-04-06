@@ -2,8 +2,9 @@ import { zodResponseFormat } from "openai/helpers/zod";
 import { ZodError } from "zod";
 import {
   coachChatCardPayloadSchema,
-  coachConversationPayloadSchema,
+  coachFreeConversationPayloadSchema,
   coachPayloadSchema,
+  coachPlanConversationPayloadSchema,
 } from "../../schemas/coach.js";
 import {
   COACH_CHAT_MODES,
@@ -629,6 +630,10 @@ function buildFreeConversationPrompt(context) {
     "You are the conversational Coach for Discip-Yourself.",
     "The user is talking freely and may not want to create anything yet.",
     "Reply like a real product coach, not like a generic chatbot and not like a form.",
+    "Respond first and directly to latestUserMessage.",
+    "If latestUserMessage asks a question, answer that question before suggesting anything else.",
+    "Use recentMessages only for continuity and relevant references.",
+    "Do not mechanically repeat, summarize, or paraphrase the previous assistant reply unless the user explicitly asks for that.",
     "Answer in natural French, short and calm, with one concrete next step when useful.",
     "Prefer clarification, prioritization, and a single next step over long encouragement.",
     "Do not force creation, planning, or a CTA when the user only wants to reflect.",
@@ -663,8 +668,8 @@ function buildFreeConversationPrompt(context) {
             structure_preference: context.userAiProfile.structure_preference || null,
           }
         : null,
-      recentMessages: Array.isArray(context.recentMessages) ? context.recentMessages : [],
       latestUserMessage: context.message || "",
+      recentMessages: Array.isArray(context.recentMessages) ? context.recentMessages : [],
       planningSummary: context.planningSummary || null,
       pilotageSummary: context.pilotageSummary || null,
       quotaRemaining: context.quotaRemaining,
@@ -721,6 +726,10 @@ function buildPlanConversationPrompt(context) {
   return [
     "You are the plan mode Coach for Discip-Yourself.",
     "The user explicitly wants to structure something that can become real objects in the app.",
+    "Respond first and directly to latestUserMessage, then converge to a small actionable proposal.",
+    "If latestUserMessage asks a question, answer it before expanding the proposal.",
+    "Use recentMessages only for continuity and relevant references.",
+    "Do not restart from or mechanically paraphrase the previous assistant reply unless the user explicitly asks for it.",
     "Reply in natural French, but converge to an actionable proposal instead of staying in pure discussion.",
     "Return a proposal only for things that fit the app: category, objective, actions, rhythm, next step.",
     "Do not create or modify data. Proposal only. The user will validate explicitly later.",
@@ -761,8 +770,8 @@ function buildPlanConversationPrompt(context) {
             structure_preference: context.userAiProfile.structure_preference || null,
           }
         : null,
-      recentMessages: Array.isArray(context.recentMessages) ? context.recentMessages : [],
       latestUserMessage: context.message || "",
+      recentMessages: Array.isArray(context.recentMessages) ? context.recentMessages : [],
       planningSummary: context.planningSummary || null,
       pilotageSummary: context.pilotageSummary || null,
       quotaRemaining: context.quotaRemaining,
@@ -782,9 +791,8 @@ function resolvePrompt(kind, context) {
 
 function resolveSchema(kind, context) {
   if (kind !== "chat") return coachPayloadSchema;
-  if (isConversationCoachMode(context.chatMode)) {
-    return coachConversationPayloadSchema;
-  }
+  if (context.chatMode === COACH_CHAT_MODES.FREE) return coachFreeConversationPayloadSchema;
+  if (context.chatMode === COACH_CHAT_MODES.PLAN) return coachPlanConversationPayloadSchema;
   return coachChatCardPayloadSchema;
 }
 
