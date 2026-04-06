@@ -11,6 +11,8 @@ const hhmmSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/);
 const fallbackReasonSchema = z.enum(["none", "quota", "timeout", "invalid_model_output", "backend_error"]);
 const decisionSourceSchema = z.enum(["ai", "rules"]);
 const chatModeSchema = z.enum([COACH_CHAT_MODES.CARD, COACH_CHAT_MODES.FREE, COACH_CHAT_MODES.PLAN]);
+const coachLocaleSchema = z.string().trim().min(2).max(32).regex(/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/);
+const coachUseCaseSchema = z.enum(["general", "life_plan", "stats_review"]);
 const localAnalysisSurfaceSchema = z.enum([
   LOCAL_ANALYSIS_SURFACES.PLANNING,
   LOCAL_ANALYSIS_SURFACES.PILOTAGE,
@@ -225,6 +227,8 @@ export const chatRequestSchema = z
     message: z.string().trim().min(1).max(500),
     recentMessages: z.array(chatMessageSchema).max(6).optional().default([]),
     mode: chatModeSchema.optional().default(COACH_CHAT_MODES.CARD),
+    locale: coachLocaleSchema.optional().default("fr-FR"),
+    useCase: coachUseCaseSchema.optional().default("general"),
   })
   .strict();
 

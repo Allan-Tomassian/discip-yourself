@@ -137,6 +137,64 @@ test("runOpenAiCoach repairs raw JSON content with safe omissions and returns va
   assert.equal(payload.primaryAction.actionId, null);
 });
 
+test("runOpenAiCoach forwards chat locale to the system prompt", async () => {
+  let parseArgs = null;
+  const app = {
+    config: {
+      OPENAI_API_KEY: "test-openai-key",
+      OPENAI_MODEL: "gpt-4.1-mini",
+    },
+    openai: {
+      chat: {
+        completions: {
+          parse: async (args) => {
+            parseArgs = args;
+            return {
+              choices: [{
+                message: {
+                  parsed: {
+                    kind: "conversation",
+                    mode: "free",
+                    message: "On peut repartir avec un seul pas clair aujourd’hui.",
+                    primaryAction: null,
+                    secondaryAction: null,
+                    proposal: null,
+                  },
+                },
+              }],
+            };
+          },
+        },
+      },
+    },
+  };
+
+  const payload = await runOpenAiCoach({
+    app,
+    kind: "chat",
+    context: {
+      activeDate: "2026-03-06",
+      activeCategoryId: "cat-1",
+      chatMode: "free",
+      locale: "fr-CA",
+      useCase: "general",
+      recentMessages: [],
+      message: "Bonjour",
+      planningSummary: null,
+      pilotageSummary: null,
+      quotaRemaining: 3,
+      category: null,
+      activeCategoryProfileSummary: null,
+      relatedCategoryProfileSummaries: [],
+      userAiProfile: null,
+    },
+  });
+
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "free");
+  assert.match(parseArgs.messages[0].content, /French \(fr-CA\)/);
+});
+
 test("runOpenAiCoach exposes stable issueCode for model refusal", async () => {
   const app = createRunnerApp({
     refusal: "cannot comply",

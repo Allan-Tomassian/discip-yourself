@@ -69,4 +69,35 @@ test("buildChatContext injects the active profile and related profiles mentioned
     currentLevel: null,
     hasProfile: true,
   });
+  assert.equal(context.locale, "fr-FR");
+  assert.equal(context.useCase, "general");
+});
+
+test("buildChatContext preserves locale and useCase from /ai/chat payload", () => {
+  const context = buildChatContext({
+    data: {
+      categories: [{ id: "cat-focus", name: "Focus" }],
+      goals: [{ id: "goal-1", title: "Deep work", type: "PROCESS", categoryId: "cat-focus" }],
+      occurrences: [{ id: "occ-1", goalId: "goal-1", date: "2026-03-06", status: "planned", start: "09:00" }],
+      ui: { activeSession: null },
+      sessionHistory: [],
+    },
+    selectedDateKey: "2026-03-06",
+    activeCategoryId: "cat-focus",
+    quotaState: { remaining: 3 },
+    requestId: "req-chat-locale",
+    body: {
+      mode: "plan",
+      locale: "fr-CA",
+      useCase: "life_plan",
+      message: "Aide-moi à structurer cette catégorie.",
+      recentMessages: [{ role: "user", content: "Je veux un plan simple." }],
+    },
+    now: new Date(2026, 2, 6, 12, 0, 0),
+  });
+
+  assert.equal(context.chatMode, "plan");
+  assert.equal(context.locale, "fr-CA");
+  assert.equal(context.useCase, "life_plan");
+  assert.deepEqual(context.recentMessages, [{ role: "user", content: "Je veux un plan simple." }]);
 });

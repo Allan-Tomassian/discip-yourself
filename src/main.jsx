@@ -11,6 +11,7 @@ import "./index.css";
 
 // Theme bootstrap: apply the single canonical design system before first paint.
 import { applyThemeTokens, BRAND_ACCENT, DEFAULT_THEME } from "./theme/themeTokens";
+import { logFrontendRuntimeEnvIssues } from "./infra/frontendEnv";
 
 function applyThemeEarly() {
   try {
@@ -21,21 +22,33 @@ function applyThemeEarly() {
 }
 
 applyThemeEarly();
+logFrontendRuntimeEnvIssues();
 
 const RootWrapper = import.meta.env.DEV ? React.Fragment : React.StrictMode;
+const rootElement = document.getElementById("root");
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <RootWrapper>
-    <ErrorBoundary>
-      <AuthProvider>
-        <AuthGate>
-          <ProfileProvider>
-            <ProfileGate>
-              <App />
-            </ProfileGate>
-          </ProfileProvider>
-        </AuthGate>
-      </AuthProvider>
-    </ErrorBoundary>
-  </RootWrapper>
-);
+if (!rootElement) {
+  throw new Error("Bootstrap failed: missing #root element.");
+}
+
+try {
+  ReactDOM.createRoot(rootElement).render(
+    <RootWrapper>
+      <ErrorBoundary>
+        <AuthProvider>
+          <AuthGate>
+            <ProfileProvider>
+              <ProfileGate>
+                <App />
+              </ProfileGate>
+            </ProfileProvider>
+          </AuthGate>
+        </AuthProvider>
+      </ErrorBoundary>
+    </RootWrapper>
+  );
+} catch (error) {
+  // eslint-disable-next-line no-console
+  console.error("[bootstrap] React mount failed.", error);
+  throw error;
+}

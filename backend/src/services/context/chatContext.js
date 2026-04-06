@@ -5,6 +5,18 @@ import { getCategoryProfileSummary } from "../../../../src/domain/categoryProfil
 import { LOCAL_ANALYSIS_SURFACES, normalizeLocalAnalysisSurface } from "../../../../src/domain/aiPolicy.js";
 
 const AI_FOUNDATION_PLANNING_TEMPLATE_ID = "ai_onboarding_planning";
+const DEFAULT_CHAT_LOCALE = "fr-FR";
+const COACH_USE_CASES = new Set(["general", "life_plan", "stats_review"]);
+
+function normalizeChatLocale(value) {
+  const next = typeof value === "string" ? value.trim() : "";
+  return next || DEFAULT_CHAT_LOCALE;
+}
+
+function normalizeChatUseCase(value) {
+  const next = typeof value === "string" ? value.trim() : "";
+  return COACH_USE_CASES.has(next) ? next : "general";
+}
 
 function isProcessGoal(goal) {
   if (!goal || typeof goal !== "object") return false;
@@ -340,6 +352,8 @@ export function buildChatContext({
   return {
     ...baseContext,
     chatMode,
+    locale: normalizeChatLocale(body?.locale),
+    useCase: normalizeChatUseCase(body?.useCase),
     analysisSurface,
     activeCategoryLabel: baseContext.category?.name || null,
     message,

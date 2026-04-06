@@ -1,7 +1,31 @@
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
+import { loadLocalEnvFiles } from "./localEnv.js";
 
-const config = loadConfig(process.env);
+function printConfigErrorAndExit(error) {
+  // eslint-disable-next-line no-console
+  console.error("[env] Backend startup aborted.", error?.message || "Backend env invalid.");
+  if (Array.isArray(error?.details)) {
+    for (const detail of error.details) {
+      const name = String(detail?.name || "").trim();
+      const message = String(detail?.message || "").trim();
+      if (!name || !message) continue;
+      // eslint-disable-next-line no-console
+      console.error(`- ${name}: ${message}`);
+    }
+  }
+  process.exit(1);
+}
+
+loadLocalEnvFiles();
+
+let config;
+try {
+  config = loadConfig(process.env);
+} catch (error) {
+  printConfigErrorAndExit(error);
+}
+
 const app = await buildApp({
   config,
   logger: config.LOG_LEVEL === "silent" ? false : { level: config.LOG_LEVEL },

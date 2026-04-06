@@ -814,7 +814,7 @@ export async function runOpenAiCoach({ app, kind, context }) {
     messages: [
       {
         role: "system",
-        content: buildSystemPrompt(),
+        content: buildSystemPrompt(context?.locale),
       },
       {
         role: "user",

@@ -4,15 +4,7 @@ import {
   TODAY_BACKEND_RESOLUTION_STATUS,
 } from "../domain/todayIntervention";
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
-
-const ENV =
-  typeof import.meta !== "undefined" && import.meta.env && typeof import.meta.env === "object"
-    ? import.meta.env
-    : {};
-const PROCESS_ENV =
-  typeof process !== "undefined" && process.env && typeof process.env === "object"
-    ? process.env
-    : {};
+import { readAiBackendBaseUrl as readAiBackendBaseUrlFromEnv } from "./frontendEnv";
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const AI_NOW_SURFACES = new Set(["today", "session"]);
@@ -58,21 +50,8 @@ function isNullableString(value) {
   return value === null || typeof value === "string";
 }
 
-function normalizeBaseUrl(rawValue) {
-  const value = String(rawValue || "").trim();
-  if (!value) return "";
-  try {
-    const url = new URL(value);
-    if (!/^https?:$/.test(url.protocol)) return "";
-    return url.toString().replace(/\/+$/, "");
-  } catch {
-    return "";
-  }
-}
-
 export function readAiBackendBaseUrl(rawValue) {
-  if (typeof rawValue === "string") return normalizeBaseUrl(rawValue);
-  return normalizeBaseUrl(ENV.VITE_AI_BACKEND_URL || PROCESS_ENV.VITE_AI_BACKEND_URL || "");
+  return readAiBackendBaseUrlFromEnv(rawValue);
 }
 
 export function isAiBackendConfigured(rawValue) {

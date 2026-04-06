@@ -1,109 +1,41 @@
 import { createClient } from "@supabase/supabase-js";
 import { shouldDetectSupabaseSessionInUrl } from "../auth/authPaths";
+import {
+  getSupabaseProjectRef,
+  readFrontendRuntimeEnv,
+  validateSupabaseEnv,
+} from "./frontendEnv";
 
-const ENV =
-  typeof import.meta !== "undefined" && import.meta.env && typeof import.meta.env === "object"
-    ? import.meta.env
-    : {};
-const PROCESS_ENV =
-  typeof globalThis !== "undefined"
-  && globalThis.process
-  && typeof globalThis.process === "object"
-  && globalThis.process.env
-  && typeof globalThis.process.env === "object"
-    ? globalThis.process.env
-    : {};
+export {
+  SUPABASE_ENV_ERROR_MESSAGE,
+  getSupabaseProjectRef,
+  validateSupabaseAnonKey,
+  validateSupabaseEnv,
+  validateSupabasePublishableKey,
+  validateSupabaseUrl,
+} from "./frontendEnv";
 
-export const SUPABASE_URL = String(
-  ENV.VITE_SUPABASE_URL || PROCESS_ENV.VITE_SUPABASE_URL || PROCESS_ENV.E2E_SUPABASE_URL || ""
-).trim();
-export const SUPABASE_PUBLISHABLE_KEY = String(
-  ENV.VITE_SUPABASE_PUBLISHABLE_KEY
-  || PROCESS_ENV.VITE_SUPABASE_PUBLISHABLE_KEY
-  || PROCESS_ENV.E2E_SUPABASE_PUBLISHABLE_KEY
-  || ENV.VITE_SUPABASE_ANON_KEY
-  || PROCESS_ENV.VITE_SUPABASE_ANON_KEY
-  || PROCESS_ENV.E2E_SUPABASE_ANON_KEY
-  || ""
-).trim();
-export const SUPABASE_ANON_KEY = SUPABASE_PUBLISHABLE_KEY;
+const runtimeEnv = readFrontendRuntimeEnv();
+const validatedEnv = runtimeEnv.supabaseConfigError
+  ? null
+  : validateSupabaseEnv(runtimeEnv.supabaseUrl, runtimeEnv.supabasePublishableKey);
 
-const SUPABASE_URL_RE = /^https:\/\/([a-z0-9-]+)\.supabase\.co$/i;
-const SUPABASE_PUBLISHABLE_KEY_RE = /^sb_publishable_[a-z0-9._-]+$/i;
-export const SUPABASE_ENV_ERROR_MESSAGE =
-  "Supabase env invalid: configure .env with Project URL + publishable key";
-
-export function validateSupabaseUrl(rawUrl) {
-  const value = String(rawUrl || "").trim();
-  const lower = value.toLowerCase();
-  const hasPlaceholder = lower.includes("your-project-ref") || lower.includes("your-project");
-  if (!value || hasPlaceholder || !SUPABASE_URL_RE.test(value)) {
-    const error = new Error(SUPABASE_ENV_ERROR_MESSAGE);
-    error.code = "SUPABASE_URL_INVALID";
-    throw error;
-  }
-  return value;
-}
-
-export function validateSupabasePublishableKey(rawKey) {
-  const value = String(rawKey || "").trim();
-  const lower = value.toLowerCase();
-  const isPlaceholder = lower.startsWith("your-") || lower.includes("replace") || lower.includes("insert");
-  const isPublishable = SUPABASE_PUBLISHABLE_KEY_RE.test(value);
-  const isJwt = value.startsWith("eyJ");
-
-  if (!value || isPlaceholder || (!isPublishable && !isJwt)) {
-    const error = new Error(SUPABASE_ENV_ERROR_MESSAGE);
-    error.code = "SUPABASE_PUBLISHABLE_KEY_INVALID";
-    throw error;
-  }
-  return value;
-}
-
-export const validateSupabaseAnonKey = validateSupabasePublishableKey;
-
-export function validateSupabaseEnv(rawUrl, rawPublishableKey) {
-  const url = validateSupabaseUrl(rawUrl);
-  const publishableKey = validateSupabasePublishableKey(rawPublishableKey);
-  return { url, publishableKey, anonKey: publishableKey };
-}
-
-export function getSupabaseProjectRef(rawUrl) {
-  const url = validateSupabaseUrl(rawUrl);
-  const match = SUPABASE_URL_RE.exec(url);
-  const projectRef = match?.[1] || "";
-  if (!projectRef) {
-    const error = new Error(SUPABASE_ENV_ERROR_MESSAGE);
-    error.code = "SUPABASE_PROJECT_REF_INVALID";
-    throw error;
-  }
-  return projectRef;
-}
-
-let validatedEnv = null;
-let supabaseConfigError = "";
-try {
-  validatedEnv = validateSupabaseEnv(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-} catch (error) {
-  supabaseConfigError = error?.message || SUPABASE_ENV_ERROR_MESSAGE;
-}
-
-export { supabaseConfigError };
-
-if (supabaseConfigError) {
-  throw new Error(supabaseConfigError);
-}
-
-export const supabaseProjectRef = getSupabaseProjectRef(validatedEnv.url);
+export const SUPABASE_URL = runtimeEnv.supabaseUrl;
+export const SUPABASE_PUBLISHABLE_KEY = runtimeEnv.supabasePublishableKey;
+export const SUPABASE_ANON_KEY = runtimeEnv.supabaseAnonKey;
+export const supabaseConfigError = runtimeEnv.supabaseConfigError;
+export const supabaseProjectRef = validatedEnv ? getSupabaseProjectRef(validatedEnv.url) : "";
 
 export function isSupabaseReady() {
-  return true;
+  return !supabaseConfigError;
 }
 
-export const supabase = createClient(validatedEnv.url, validatedEnv.anonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: shouldDetectSupabaseSessionInUrl,
-  },
-});
+export const supabase = validatedEnv
+  ? createClient(validatedEnv.url, validatedEnv.anonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: shouldDetectSupabaseSessionInUrl,
+    },
+  })
+  : null;

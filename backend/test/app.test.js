@@ -475,6 +475,40 @@ test("POST /ai/chat returns a plan conversation fallback when mode is plan", asy
   await app.close();
 });
 
+test("POST /ai/chat accepts locale and useCase without returning INVALID_BODY", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-chat-contract" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/chat",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.27" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      mode: "free",
+      locale: "fr-FR",
+      useCase: "life_plan",
+      message: "Aide-moi à clarifier mon prochain pas.",
+      recentMessages: [{ role: "user", content: "Je veux avancer sans me disperser." }],
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachChatResponseSchema.parse(response.json());
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "free");
+  await app.close();
+});
+
 test("POST /ai/local-analysis returns a planning fallback without using the Coach conversation contract", async () => {
   const app = await buildApp({
     config: TEST_CONFIG,

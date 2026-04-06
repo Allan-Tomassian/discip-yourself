@@ -1,7 +1,9 @@
 import { loadConfig } from "../config.js";
 import { assertRequiredAiTables, createSupabaseAdminClient } from "../lib/supabase.js";
+import { loadLocalEnvFiles } from "../localEnv.js";
 
 async function main() {
+  loadLocalEnvFiles();
   const config = loadConfig(process.env);
   const supabase = createSupabaseAdminClient(config);
   const result = await assertRequiredAiTables(supabase);
