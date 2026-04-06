@@ -3,6 +3,7 @@ import { safeArray } from "./shared.js";
 import { buildPilotageDisciplineTrend } from "../../../../src/features/pilotage/disciplineTrendModel.js";
 import { getCategoryProfileSummary } from "../../../../src/domain/categoryProfile.js";
 import { LOCAL_ANALYSIS_SURFACES, normalizeLocalAnalysisSurface } from "../../../../src/domain/aiPolicy.js";
+import { detectCoachBehavior } from "../coach/coachBehavior.js";
 
 const AI_FOUNDATION_PLANNING_TEMPLATE_ID = "ai_onboarding_planning";
 const DEFAULT_CHAT_LOCALE = "fr-FR";
@@ -348,6 +349,11 @@ export function buildChatContext({
       : null;
   const actionSummaries = buildActionSummaries(data, resolvedActiveCategoryId);
   const planningSummary = buildPlanningSummary(data, selectedDateKey);
+  const recentMessages = normalizeRecentMessages(body?.recentMessages);
+  const coachBehavior = detectCoachBehavior({
+    message,
+    recentMessages,
+  });
 
   return {
     ...baseContext,
@@ -358,7 +364,8 @@ export function buildChatContext({
     activeCategoryLabel: baseContext.category?.name || null,
     message,
     messagePreview: message ? message.slice(0, 120) : null,
-    recentMessages: normalizeRecentMessages(body?.recentMessages),
+    recentMessages,
+    coachBehavior,
     availableCategories: buildAvailableCategories(data),
     actionSummaries,
     planningSummary,

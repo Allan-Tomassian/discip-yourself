@@ -10,6 +10,12 @@ function createChatContext(overrides = {}) {
     quotaRemaining: 3,
     messagePreview: "Clarifie mon prochain pas",
     chatMode: "free",
+    coachBehavior: {
+      mode: "clarity",
+      overlays: ["choice_narrowing"],
+      horizon: "today",
+      intensity: "standard",
+    },
     locale: "fr-FR",
     useCase: "general",
     message: "Clarifie mon prochain pas",
@@ -88,6 +94,10 @@ test("runChatCoach logs the AI resolution path explicitly", async () => {
   assert.equal(entries[0].payload.fallbackReason, "none");
   assert.equal(entries[0].payload.hasOpenAiKey, true);
   assert.equal(entries[0].payload.hasOpenAiClient, true);
+  assert.equal(entries[0].payload.behaviorMode, "clarity");
+  assert.deepEqual(entries[0].payload.behaviorOverlays, ["choice_narrowing"]);
+  assert.equal(entries[0].payload.behaviorHorizon, "today");
+  assert.equal(entries[0].payload.behaviorIntensity, "standard");
 });
 
 test("runChatCoach logs openai_key_missing when chat falls back without a key", async () => {
@@ -115,6 +125,10 @@ test("runChatCoach logs openai_key_missing when chat falls back without a key", 
   assert.equal(entries[0].payload.fallbackReason, "none");
   assert.equal(entries[0].payload.hasOpenAiKey, false);
   assert.equal(entries[0].payload.hasOpenAiClient, false);
+  assert.equal(entries[0].payload.behaviorMode, "clarity");
+  assert.deepEqual(entries[0].payload.behaviorOverlays, ["choice_narrowing"]);
+  assert.equal(entries[0].payload.behaviorHorizon, "today");
+  assert.equal(entries[0].payload.behaviorIntensity, "standard");
 });
 
 test("runChatCoach logs invalid_model_output with issueCode when model output is rejected", async () => {

@@ -54,6 +54,12 @@ function createChatContext(overrides = {}) {
     activeDate: "2026-03-06",
     activeCategoryId: "cat-1",
     chatMode: "free",
+    coachBehavior: {
+      mode: "normal",
+      overlays: [],
+      horizon: "now",
+      intensity: "soft",
+    },
     locale: "fr-FR",
     useCase: "general",
     recentMessages: [
@@ -366,6 +372,12 @@ test("runOpenAiCoach prioritizes latestUserMessage in the free conversation prom
     kind: "chat",
     context: createChatContext({
       chatMode: "free",
+      coachBehavior: {
+        mode: "action",
+        overlays: ["choice_narrowing"],
+        horizon: "today",
+        intensity: "standard",
+      },
       message: "Que dois-je faire maintenant ?",
     }),
   });
@@ -379,9 +391,79 @@ test("runOpenAiCoach prioritizes latestUserMessage in the free conversation prom
     userPrompt,
     /Do not mechanically repeat, summarize, or paraphrase the previous assistant reply unless the user explicitly asks for that\./,
   );
+  assert.match(userPrompt, /Behavior mode: action/);
+  assert.match(userPrompt, /Behavior overlays: choice_narrowing/);
+  assert.match(userPrompt, /Behavior horizon: today/);
+  assert.match(userPrompt, /Behavior intensity: standard/);
+  assert.match(userPrompt, /latestUserMessage is the primary source of truth\./);
+  assert.match(userPrompt, /recentMessages are only for light disambiguation\./);
   assert.ok(userPrompt.includes('"latestUserMessage":"Que dois-je faire maintenant ?"'));
   assert.ok(userPrompt.includes('"recentMessages":['));
   assert.ok(userPrompt.indexOf('"latestUserMessage"') < userPrompt.indexOf('"recentMessages"'));
+});
+
+test("runOpenAiCoach ignores recentMessages for a simple greeting and suppresses CTA", async () => {
+  let userPrompt = "";
+  const app = {
+    config: {
+      OPENAI_API_KEY: "test-openai-key",
+      OPENAI_MODEL: "gpt-4.1-mini",
+    },
+    openai: {
+      chat: {
+        completions: {
+          parse: async (args) => {
+            userPrompt = args.messages[1].content;
+            return {
+              choices: [
+                {
+                  message: {
+                    parsed: {
+                      kind: "conversation",
+                      mode: "free",
+                      message: "Bonjour, je suis là.",
+                      primaryAction: {
+                        label: "Voir Today",
+                        intent: "open_today",
+                        categoryId: "cat-1",
+                        actionId: null,
+                        occurrenceId: null,
+                        dateKey: "2026-03-06",
+                      },
+                      secondaryAction: null,
+                      proposal: null,
+                    },
+                  },
+                },
+              ],
+            };
+          },
+        },
+      },
+    },
+  };
+
+  const payload = await runOpenAiCoach({
+    app,
+    kind: "chat",
+    context: createChatContext({
+      chatMode: "free",
+      message: "Bonjour",
+      recentMessages: [
+        { role: "assistant", content: "Hier on parlait de ton budget." },
+        { role: "user", content: "Je veux avancer sur mes finances." },
+      ],
+    }),
+  });
+
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "free");
+  assert.equal(payload.primaryAction, null);
+  assert.match(userPrompt, /This is a simple greeting\./);
+  assert.match(userPrompt, /Ignore recentMessages for the response\./);
+  assert.match(userPrompt, /If latestUserMessage is only a greeting, answer briefly, do not reuse recentMessages, and return primaryAction as null\./);
+  assert.ok(userPrompt.includes('"recentMessages":[]'));
+  assert.equal(userPrompt.includes("Hier on parlait de ton budget"), false);
 });
 
 test("runOpenAiCoach prioritizes latestUserMessage in the plan conversation prompt", async () => {
@@ -443,6 +525,12 @@ test("runOpenAiCoach prioritizes latestUserMessage in the plan conversation prom
     kind: "chat",
     context: createChatContext({
       chatMode: "plan",
+      coachBehavior: {
+        mode: "clarity",
+        overlays: ["plan_builder", "honest_audit"],
+        horizon: "short_plan",
+        intensity: "direct",
+      },
       message: "Aide-moi à structurer le prochain pas sans repartir de zéro.",
     }),
   });
@@ -456,9 +544,611 @@ test("runOpenAiCoach prioritizes latestUserMessage in the plan conversation prom
     userPrompt,
     /Do not restart from or mechanically paraphrase the previous assistant reply unless the user explicitly asks for it\./,
   );
+  assert.match(userPrompt, /Behavior mode: clarity/);
+  assert.match(userPrompt, /Behavior overlays: plan_builder, honest_audit|Behavior overlays: honest_audit, plan_builder/);
+  assert.match(userPrompt, /Behavior horizon: short_plan/);
+  assert.match(userPrompt, /Behavior intensity: direct/);
+  assert.match(userPrompt, /If honest_audit is active, tell the useful truth clearly and tactfully\./);
+  assert.match(userPrompt, /If plan_builder is active, you may structure up to 3 small blocks in the proposal\./);
   assert.ok(userPrompt.includes('"latestUserMessage":"Aide-moi à structurer le prochain pas sans repartir de zéro."'));
   assert.ok(userPrompt.includes('"recentMessages":['));
   assert.ok(userPrompt.indexOf('"latestUserMessage"') < userPrompt.indexOf('"recentMessages"'));
+});
+
+test("runOpenAiCoach keeps action mode focused on immediate execution without reset advice by default", async () => {
+  let userPrompt = "";
+  const app = {
+    config: {
+      OPENAI_API_KEY: "test-openai-key",
+      OPENAI_MODEL: "gpt-4.1-mini",
+    },
+    openai: {
+      chat: {
+        completions: {
+          parse: async (args) => {
+            userPrompt = args.messages[1].content;
+            return {
+              choices: [
+                {
+                  message: {
+                    parsed: {
+                      kind: "conversation",
+                      mode: "free",
+                      message: "Lance un bloc de 10 minutes tout de suite.",
+                      primaryAction: {
+                        label: "Voir Today",
+                        intent: "open_today",
+                        categoryId: "cat-1",
+                        actionId: null,
+                        occurrenceId: null,
+                        dateKey: "2026-03-06",
+                      },
+                      secondaryAction: null,
+                      proposal: null,
+                    },
+                  },
+                },
+              ],
+            };
+          },
+        },
+      },
+    },
+  };
+
+  const payload = await runOpenAiCoach({
+    app,
+    kind: "chat",
+    context: createChatContext({
+      chatMode: "free",
+      coachBehavior: {
+        mode: "action",
+        overlays: [],
+        horizon: "now",
+        intensity: "standard",
+      },
+      message: "J’ai du mal à démarrer, aide-moi à m’y mettre maintenant.",
+    }),
+  });
+
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "free");
+  assert.match(userPrompt, /Action mode is not reset mode\./);
+  assert.match(
+    userPrompt,
+    /Prioritize immediate execution with one low-friction start, one short block, and one clear next step\./,
+  );
+  assert.match(
+    userPrompt,
+    /Do not suggest meditation, breathing, walking, pausing, body reset, or relaxation here\./,
+  );
+  assert.match(userPrompt, /Orient the answer toward doing something now, not toward regulating yourself first\./);
+});
+
+test("runOpenAiCoach prevents plan_builder from inventing a domain and asks for neutral clarification", async () => {
+  let userPrompt = "";
+  const app = {
+    config: {
+      OPENAI_API_KEY: "test-openai-key",
+      OPENAI_MODEL: "gpt-4.1-mini",
+    },
+    openai: {
+      chat: {
+        completions: {
+          parse: async (args) => {
+            userPrompt = args.messages[1].content;
+            return {
+              choices: [
+                {
+                  message: {
+                    parsed: {
+                      kind: "conversation",
+                      mode: "plan",
+                      message: "Avant de cadrer ça, il me manque juste le domaine visé.",
+                      primaryAction: null,
+                      secondaryAction: null,
+                      proposal: {
+                        kind: "guided",
+                        categoryDraft: {
+                          mode: "unresolved",
+                          id: null,
+                          label: null,
+                        },
+                        outcomeDraft: null,
+                        actionDrafts: [],
+                        unresolvedQuestions: ["Dans quelle catégorie veux-tu avancer ?"],
+                        requiresValidation: true,
+                      },
+                    },
+                  },
+                },
+              ],
+            };
+          },
+        },
+      },
+    },
+  };
+
+  const payload = await runOpenAiCoach({
+    app,
+    kind: "chat",
+    context: createChatContext({
+      chatMode: "plan",
+      coachBehavior: {
+        mode: "clarity",
+        overlays: ["plan_builder"],
+        horizon: "short_plan",
+        intensity: "standard",
+      },
+      message: "Aide-moi à organiser mes deux prochains jours",
+    }),
+  });
+
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "plan");
+  assert.match(userPrompt, /Do not assume a domain the user did not explicitly mention\./);
+  assert.match(
+    userPrompt,
+    /Never invent a health, sport, food, sleep, or similar goal unless the user named it\./,
+  );
+  assert.match(
+    userPrompt,
+    /The domain is still unclear in latestUserMessage\./,
+  );
+  assert.match(
+    userPrompt,
+    /Do not name work, health, sport, sleep, admin, or any other domain in the answer or proposal\./,
+  );
+  assert.match(
+    userPrompt,
+    /Either give a very generic structure or ask one neutral clarification question\./,
+  );
+  assert.equal(userPrompt.includes("deep work"), false);
+  assert.equal(userPrompt.includes("rythme de travail stable"), false);
+});
+
+test("runOpenAiCoach suppresses CTA in free plan_builder chat when the domain is still unclear", async () => {
+  let userPrompt = "";
+  const app = {
+    config: {
+      OPENAI_API_KEY: "test-openai-key",
+      OPENAI_MODEL: "gpt-4.1-mini",
+    },
+    openai: {
+      chat: {
+        completions: {
+          parse: async (args) => {
+            userPrompt = args.messages[1].content;
+            return {
+              choices: [
+                {
+                  message: {
+                    parsed: {
+                      kind: "conversation",
+                      mode: "free",
+                      message: "On peut cadrer ça en deux temps, mais il me manque encore le domaine.",
+                      primaryAction: {
+                        label: "Structurer",
+                        intent: "open_pilotage",
+                        categoryId: "cat-1",
+                        actionId: null,
+                        occurrenceId: null,
+                        dateKey: "2026-03-06",
+                      },
+                      secondaryAction: null,
+                      proposal: null,
+                    },
+                  },
+                },
+              ],
+            };
+          },
+        },
+      },
+    },
+  };
+
+  const payload = await runOpenAiCoach({
+    app,
+    kind: "chat",
+    context: createChatContext({
+      chatMode: "free",
+      coachBehavior: {
+        mode: "clarity",
+        overlays: ["plan_builder"],
+        horizon: "short_plan",
+        intensity: "standard",
+      },
+      message: "Aide-moi à organiser mes deux prochains jours",
+      recentMessages: [],
+      activeCategoryLabel: null,
+      category: null,
+      availableCategories: [],
+    }),
+  });
+
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "free");
+  assert.equal(payload.primaryAction, null);
+  assert.match(userPrompt, /In free mode, do not use primaryAction for plan_builder while the domain is still unclear\./);
+});
+
+test("runOpenAiCoach keeps honest_audit hypothetical when evidence is weak and suppresses CTA in free chat", async () => {
+  let userPrompt = "";
+  const app = {
+    config: {
+      OPENAI_API_KEY: "test-openai-key",
+      OPENAI_MODEL: "gpt-4.1-mini",
+    },
+    openai: {
+      chat: {
+        completions: {
+          parse: async (args) => {
+            userPrompt = args.messages[1].content;
+            return {
+              choices: [
+                {
+                  message: {
+                    parsed: {
+                      kind: "conversation",
+                      mode: "free",
+                      message: "Le problème semble être un cadre qui se disperse vite.",
+                      primaryAction: {
+                        label: "Voir Today",
+                        intent: "open_today",
+                        categoryId: "cat-1",
+                        actionId: null,
+                        occurrenceId: null,
+                        dateKey: "2026-03-06",
+                      },
+                      secondaryAction: null,
+                      proposal: null,
+                    },
+                  },
+                },
+              ],
+            };
+          },
+        },
+      },
+    },
+  };
+
+  const payload = await runOpenAiCoach({
+    app,
+    kind: "chat",
+    context: createChatContext({
+      chatMode: "free",
+      coachBehavior: {
+        mode: "clarity",
+        overlays: ["honest_audit"],
+        horizon: "pattern",
+        intensity: "direct",
+      },
+      message: "Dis-moi franchement ce qui ne va pas.",
+      recentMessages: [],
+    }),
+  });
+
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "free");
+  assert.equal(payload.primaryAction, null);
+  assert.match(
+    userPrompt,
+    /If evidence is weak, frame the audit as a hypothesis such as 'Le problème semble être\.\.\.' or 'J’ai l’impression que\.\.\.' instead of a categorical diagnosis\./,
+  );
+  assert.match(userPrompt, /Base the audit on latestUserMessage and explicit context only\./);
+});
+
+test("runOpenAiCoach keeps choice_narrowing to 2 options max and asks for a clear recommendation", async () => {
+  let userPrompt = "";
+  const app = {
+    config: {
+      OPENAI_API_KEY: "test-openai-key",
+      OPENAI_MODEL: "gpt-4.1-mini",
+    },
+    openai: {
+      chat: {
+        completions: {
+          parse: async (args) => {
+            userPrompt = args.messages[1].content;
+            return {
+              choices: [
+                {
+                  message: {
+                    parsed: {
+                      kind: "conversation",
+                      mode: "plan",
+                      message: "Je te recommande la première option car elle est plus simple à tenir.",
+                      primaryAction: null,
+                      secondaryAction: null,
+                      proposal: {
+                        kind: "guided",
+                        categoryDraft: {
+                          mode: "existing",
+                          id: "cat-1",
+                          label: "Focus",
+                        },
+                        outcomeDraft: {
+                          title: "Choisir une piste simple",
+                          categoryId: "cat-1",
+                          priority: "prioritaire",
+                          startDate: "2026-03-06",
+                          deadline: null,
+                          measureType: null,
+                          targetValue: null,
+                          notes: null,
+                        },
+                        actionDrafts: [
+                          { title: "Option 1", categoryId: "cat-1" },
+                          { title: "Option 2", categoryId: "cat-1" },
+                          { title: "Option 3", categoryId: "cat-1" },
+                        ],
+                        unresolvedQuestions: [],
+                        requiresValidation: true,
+                      },
+                    },
+                  },
+                },
+              ],
+            };
+          },
+        },
+      },
+    },
+  };
+
+  const payload = await runOpenAiCoach({
+    app,
+    kind: "chat",
+    context: createChatContext({
+      chatMode: "plan",
+      coachBehavior: {
+        mode: "clarity",
+        overlays: ["choice_narrowing"],
+        horizon: "now",
+        intensity: "standard",
+      },
+      message: "Je ne sais pas laquelle choisir.",
+      recentMessages: [],
+    }),
+  });
+
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "plan");
+  assert.equal(payload.proposal.actionDrafts.length, 2);
+  assert.match(userPrompt, /If choice_narrowing is active, reduce to 2 options maximum and recommend 1\./);
+  assert.match(userPrompt, /State the recommendation explicitly, for example: Je te recommande l'option 1\./);
+  assert.match(userPrompt, /Explain briefly why the recommended option is the better pick\./);
+  assert.match(userPrompt, /Do not stay vague and do not end with only an open question\./);
+});
+
+test("runOpenAiCoach suppresses CTA in free choice_narrowing chat while the choice is still unstable", async () => {
+  let userPrompt = "";
+  const app = {
+    config: {
+      OPENAI_API_KEY: "test-openai-key",
+      OPENAI_MODEL: "gpt-4.1-mini",
+    },
+    openai: {
+      chat: {
+        completions: {
+          parse: async (args) => {
+            userPrompt = args.messages[1].content;
+            return {
+              choices: [
+                {
+                  message: {
+                    parsed: {
+                      kind: "conversation",
+                      mode: "free",
+                      message: "Je te recommande l’option 1, plus simple à lancer aujourd’hui.",
+                      primaryAction: {
+                        label: "Voir Today",
+                        intent: "open_today",
+                        categoryId: "cat-1",
+                        actionId: null,
+                        occurrenceId: null,
+                        dateKey: "2026-03-06",
+                      },
+                      secondaryAction: null,
+                      proposal: null,
+                    },
+                  },
+                },
+              ],
+            };
+          },
+        },
+      },
+    },
+  };
+
+  const payload = await runOpenAiCoach({
+    app,
+    kind: "chat",
+    context: createChatContext({
+      chatMode: "free",
+      coachBehavior: {
+        mode: "clarity",
+        overlays: ["choice_narrowing"],
+        horizon: "now",
+        intensity: "standard",
+      },
+      message: "Je veux faire une activité mais je ne sais pas laquelle.",
+      recentMessages: [],
+    }),
+  });
+
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "free");
+  assert.equal(payload.primaryAction, null);
+  assert.match(userPrompt, /In free mode, do not return primaryAction while the choice is still being narrowed\./);
+  assert.match(userPrompt, /In free mode, do not use primaryAction for choice_narrowing while the choice is still unstable\./);
+});
+
+test("runOpenAiCoach clamps plan proposal drafts to 1 without plan_builder and forces secondaryAction to null", async () => {
+  const app = {
+    config: {
+      OPENAI_API_KEY: "test-openai-key",
+      OPENAI_MODEL: "gpt-4.1-mini",
+    },
+    openai: {
+      chat: {
+        completions: {
+          parse: async () => ({
+            choices: [
+              {
+                message: {
+                  parsed: {
+                    kind: "conversation",
+                    mode: "plan",
+                    message: "On garde une seule piste claire.",
+                    primaryAction: null,
+                    secondaryAction: {
+                      label: "Voir Today",
+                      intent: "open_today",
+                      categoryId: "cat-1",
+                      actionId: null,
+                      occurrenceId: null,
+                      dateKey: "2026-03-06",
+                    },
+                    proposal: {
+                      kind: "guided",
+                      categoryDraft: {
+                        mode: "existing",
+                        id: "cat-1",
+                        label: "Focus",
+                      },
+                      outcomeDraft: {
+                        title: "Retrouver un cadre simple",
+                        categoryId: "cat-1",
+                        priority: "prioritaire",
+                        startDate: "2026-03-06",
+                        deadline: null,
+                        measureType: null,
+                        targetValue: null,
+                        notes: null,
+                      },
+                      actionDrafts: [
+                        { title: "Bloc 1", categoryId: "cat-1" },
+                        { title: "Bloc 2", categoryId: "cat-1" },
+                        { title: "Bloc 3", categoryId: "cat-1" },
+                      ],
+                      unresolvedQuestions: [],
+                      requiresValidation: true,
+                    },
+                  },
+                },
+              },
+            ],
+          }),
+        },
+      },
+    },
+  };
+
+  const payload = await runOpenAiCoach({
+    app,
+    kind: "chat",
+    context: createChatContext({
+      chatMode: "plan",
+      coachBehavior: {
+        mode: "clarity",
+        overlays: [],
+        horizon: "short_plan",
+        intensity: "standard",
+      },
+    }),
+  });
+
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "plan");
+  assert.equal(payload.secondaryAction, null);
+  assert.equal(payload.proposal.actionDrafts.length, 1);
+});
+
+test("runOpenAiCoach allows up to 3 plan proposal drafts with plan_builder and forces secondaryAction to null", async () => {
+  const app = {
+    config: {
+      OPENAI_API_KEY: "test-openai-key",
+      OPENAI_MODEL: "gpt-4.1-mini",
+    },
+    openai: {
+      chat: {
+        completions: {
+          parse: async () => ({
+            choices: [
+              {
+                message: {
+                  parsed: {
+                    kind: "conversation",
+                    mode: "plan",
+                    message: "On garde trois blocs maximum.",
+                    primaryAction: null,
+                    secondaryAction: {
+                      label: "Voir Today",
+                      intent: "open_today",
+                      categoryId: "cat-1",
+                      actionId: null,
+                      occurrenceId: null,
+                      dateKey: "2026-03-06",
+                    },
+                    proposal: {
+                      kind: "guided",
+                      categoryDraft: {
+                        mode: "existing",
+                        id: "cat-1",
+                        label: "Focus",
+                      },
+                      outcomeDraft: {
+                        title: "Cadre 3 jours",
+                        categoryId: "cat-1",
+                        priority: "prioritaire",
+                        startDate: "2026-03-06",
+                        deadline: null,
+                        measureType: null,
+                        targetValue: null,
+                        notes: null,
+                      },
+                      actionDrafts: [
+                        { title: "Bloc 1", categoryId: "cat-1" },
+                        { title: "Bloc 2", categoryId: "cat-1" },
+                        { title: "Bloc 3", categoryId: "cat-1" },
+                        { title: "Bloc 4", categoryId: "cat-1" },
+                      ],
+                      unresolvedQuestions: [],
+                      requiresValidation: true,
+                    },
+                  },
+                },
+              },
+            ],
+          }),
+        },
+      },
+    },
+  };
+
+  const payload = await runOpenAiCoach({
+    app,
+    kind: "chat",
+    context: createChatContext({
+      chatMode: "plan",
+      coachBehavior: {
+        mode: "clarity",
+        overlays: ["plan_builder"],
+        horizon: "short_plan",
+        intensity: "standard",
+      },
+    }),
+  });
+
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "plan");
+  assert.equal(payload.secondaryAction, null);
+  assert.equal(payload.proposal.actionDrafts.length, 3);
 });
 
 test("runOpenAiCoach exposes stable issueCode for model refusal", async () => {

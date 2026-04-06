@@ -12,6 +12,7 @@ import {
   LOCAL_ANALYSIS_SURFACES,
   LOCAL_ANALYSIS_SURFACE_POLICY,
 } from "../../../../src/domain/aiPolicy.js";
+import { isSimpleGreetingMessage, normalizeCoachBehaviorText } from "./coachBehavior.js";
 
 const DEFAULT_OUTPUT_LOCALE = "fr-FR";
 const TEXT_LIMITS = Object.freeze({
@@ -34,6 +35,46 @@ export const MODEL_OUTPUT_ISSUE_CODE = Object.freeze({
   INVALID_REWARD_SUGGESTION: "invalid_reward_suggestion",
   SCHEMA_VALIDATION_FAILED: "schema_validation_failed",
 });
+
+const DEFAULT_COACH_BEHAVIOR = Object.freeze({
+  mode: "normal",
+  overlays: [],
+  horizon: "now",
+  intensity: "soft",
+});
+
+const RESET_SIGNAL_TERMS = [
+  "epuise",
+  "epuisee",
+  "je n en peux plus",
+  "crame",
+  "creve",
+  "fatigue",
+  "sature",
+  "submerge",
+  "brouillard",
+  "decourage",
+  "a bout",
+];
+
+const EXPLICIT_DOMAIN_TERMS = [
+  "travail",
+  "pro",
+  "professionnel",
+  "boulot",
+  "perso",
+  "personnel",
+  "sante",
+  "sport",
+  "sommeil",
+  "administratif",
+  "admin",
+  "finance",
+  "finances",
+  "famille",
+  "maison",
+  "etudes",
+];
 
 class OpenAiModelOutputError extends Error {
   constructor(issueCode, options = {}) {
@@ -135,6 +176,13 @@ function normalizeChatPayloadCandidate(candidate) {
 function normalizeConversationPayloadCandidate(candidate) {
   if (!isPlainObject(candidate)) return candidate;
   const normalized = { ...candidate };
+  const conversationPolicy = resolveConversationPolicyContext(candidate?.conversationContext || null);
+  const coachBehavior = conversationPolicy.coachBehavior;
+  const maxActionDrafts = coachBehavior.overlays.includes("plan_builder")
+    ? 3
+    : coachBehavior.overlays.includes("choice_narrowing")
+      ? 2
+      : 1;
   normalized.message = truncateText(normalized.message, TEXT_LIMITS.message);
 
   if (!("primaryAction" in normalized) || normalized.primaryAction === undefined) {
@@ -143,11 +191,11 @@ function normalizeConversationPayloadCandidate(candidate) {
     normalized.primaryAction = normalizeActionCandidate(normalized.primaryAction);
   }
 
-  if (!("secondaryAction" in normalized) || normalized.secondaryAction === undefined) {
-    normalized.secondaryAction = null;
-  } else if (normalized.secondaryAction !== null) {
-    normalized.secondaryAction = normalizeActionCandidate(normalized.secondaryAction);
+  if (shouldSuppressConversationPrimaryAction(conversationPolicy, normalized.message)) {
+    normalized.primaryAction = null;
   }
+
+  normalized.secondaryAction = null;
 
   if (!("proposal" in normalized) || !isPlainObject(normalized.proposal)) {
     normalized.proposal = null;
@@ -175,7 +223,7 @@ function normalizeConversationPayloadCandidate(candidate) {
         durationMinutes: Number.isInteger(draft.durationMinutes) ? draft.durationMinutes : null,
         notes: draft.notes == null ? null : truncateText(draft.notes, 280),
       }))
-      .slice(0, 6);
+      .slice(0, maxActionDrafts);
     proposal.categoryDraft = isPlainObject(proposal.categoryDraft)
       ? {
           mode: proposal.categoryDraft.mode || "unresolved",
@@ -206,7 +254,195 @@ function normalizeConversationPayloadCandidate(candidate) {
     normalized.proposal = proposal;
   }
 
+  delete normalized.conversationContext;
+
   return normalized;
+}
+
+function resolveCoachBehavior(rawBehavior) {
+  const overlays = Array.isArray(rawBehavior?.overlays)
+    ? rawBehavior.overlays.filter((overlay) => typeof overlay === "string")
+    : [];
+  return {
+    mode: typeof rawBehavior?.mode === "string" ? rawBehavior.mode : DEFAULT_COACH_BEHAVIOR.mode,
+    overlays,
+    horizon: typeof rawBehavior?.horizon === "string" ? rawBehavior.horizon : DEFAULT_COACH_BEHAVIOR.horizon,
+    intensity: typeof rawBehavior?.intensity === "string" ? rawBehavior.intensity : DEFAULT_COACH_BEHAVIOR.intensity,
+  };
+}
+
+function includesAnyPhrase(text, phrases) {
+  const paddedText = ` ${text} `;
+  return phrases.some((phrase) => paddedText.includes(` ${phrase} `));
+}
+
+function buildConversationCategoryTerms(context) {
+  const labels = [
+    context?.activeCategoryLabel,
+    context?.category?.name,
+    ...(Array.isArray(context?.availableCategories) ? context.availableCategories.map((category) => category?.name) : []),
+    ...(Array.isArray(context?.relatedCategoryProfileSummaries)
+      ? context.relatedCategoryProfileSummaries.map((summary) => summary?.categoryLabel)
+      : []),
+  ];
+
+  return labels
+    .map((label) => normalizeCoachBehaviorText(label))
+    .filter((label) => label && label.length >= 3);
+}
+
+function hasExplicitDomainSignal(context, normalizedLatestUserMessage) {
+  if (!normalizedLatestUserMessage) return false;
+  if (includesAnyPhrase(normalizedLatestUserMessage, EXPLICIT_DOMAIN_TERMS)) return true;
+  return buildConversationCategoryTerms(context).some((term) => normalizedLatestUserMessage.includes(term));
+}
+
+function resolveConversationPromptContext(context) {
+  const latestUserMessage = typeof context?.message === "string" ? context.message : "";
+  const isGreeting = isSimpleGreetingMessage(latestUserMessage);
+  const normalizedLatestUserMessage = normalizeCoachBehaviorText(latestUserMessage);
+  return {
+    latestUserMessage,
+    normalizedLatestUserMessage,
+    recentMessages: isGreeting ? [] : Array.isArray(context?.recentMessages) ? context.recentMessages : [],
+    isGreeting,
+    hasResetSignals: includesAnyPhrase(normalizedLatestUserMessage, RESET_SIGNAL_TERMS),
+    hasExplicitDomainSignal: hasExplicitDomainSignal(context, normalizedLatestUserMessage),
+    coachBehavior: resolveCoachBehavior(context?.coachBehavior),
+    chatMode: context?.chatMode || COACH_CHAT_MODES.FREE,
+  };
+}
+
+function resolveConversationPolicyContext(rawContext) {
+  return {
+    chatMode: rawContext?.chatMode || COACH_CHAT_MODES.FREE,
+    coachBehavior: resolveCoachBehavior(rawContext?.coachBehavior),
+    isGreeting: rawContext?.isGreeting === true,
+    hasResetSignals: rawContext?.hasResetSignals === true,
+    hasExplicitDomainSignal: rawContext?.hasExplicitDomainSignal === true,
+  };
+}
+
+function isLikelyClarificationStageMessage(message) {
+  const normalizedMessage = normalizeCoachBehaviorText(message);
+  if (!normalizedMessage) return false;
+  if (/[?？]/.test(String(message || ""))) return true;
+  return /^(dans quelle|quelle|quel|quelles|quels|sur quoi|qu est ce que|est ce que|tu veux|veux tu)\b/.test(
+    normalizedMessage,
+  );
+}
+
+function shouldSuppressConversationPrimaryAction(conversationPolicy, message) {
+  if (conversationPolicy.chatMode !== COACH_CHAT_MODES.FREE) return false;
+  if (conversationPolicy.isGreeting) return true;
+  if (conversationPolicy.coachBehavior.overlays.includes("honest_audit")) return true;
+  if (conversationPolicy.coachBehavior.overlays.includes("choice_narrowing")) return true;
+  if (
+    conversationPolicy.coachBehavior.overlays.includes("plan_builder") &&
+    !conversationPolicy.hasExplicitDomainSignal
+  ) {
+    return true;
+  }
+  if (
+    conversationPolicy.coachBehavior.mode === "clarity" &&
+    isLikelyClarificationStageMessage(message)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function buildBehaviorPromptBlock(context, conversationContext) {
+  const coachBehavior = conversationContext.coachBehavior;
+  const overlaysLabel = coachBehavior.overlays.length ? coachBehavior.overlays.join(", ") : "none";
+  const lines = [
+    `Behavior mode: ${coachBehavior.mode}`,
+    `Behavior overlays: ${overlaysLabel}`,
+    `Behavior horizon: ${coachBehavior.horizon}`,
+    `Behavior intensity: ${coachBehavior.intensity}`,
+    "latestUserMessage is the primary source of truth.",
+    "recentMessages are only for light disambiguation.",
+    "Do not produce long lists.",
+    "Do not sound therapeutic, judgmental, or diagnostic.",
+    "Do not force a CTA if it does not materially help.",
+    "Use at most one primaryAction when a product CTA is genuinely useful.",
+    "Always return secondaryAction as null in conversation modes.",
+  ];
+
+  if (conversationContext.isGreeting) {
+    lines.push("This is a simple greeting.");
+    lines.push("Ignore recentMessages for the response.");
+    lines.push("Reply briefly and naturally.");
+    lines.push("Do not revive the previous topic.");
+    lines.push("Return primaryAction as null.");
+  }
+
+  if (coachBehavior.mode === "normal") {
+    lines.push("In normal mode, answer naturally, soberly, and usefully without over-coaching.");
+  }
+  if (coachBehavior.mode === "action") {
+    lines.push("In action mode, name the execution friction briefly and give one concrete next step.");
+    lines.push("Prioritize immediate execution with one low-friction start, one short block, and one clear next step.");
+    lines.push("Action mode is not reset mode.");
+    if (!conversationContext.hasResetSignals) {
+      lines.push("Do not suggest meditation, breathing, walking, pausing, body reset, or relaxation here.");
+      lines.push("Orient the answer toward doing something now, not toward regulating yourself first.");
+    } else {
+      lines.push("If reset or fatigue signals are explicit, acknowledge them briefly but still land on one simple action.");
+    }
+  }
+  if (coachBehavior.mode === "clarity") {
+    lines.push("In clarity mode, restate the real decision, narrow the field, and give one simple rule or one targeted question.");
+  }
+  if (coachBehavior.mode === "reset") {
+    lines.push("In reset mode, lower the pressure, offer a micro-reset, then a simple restart.");
+  }
+
+  if (coachBehavior.overlays.includes("honest_audit")) {
+    lines.push("If honest_audit is active, tell the useful truth clearly and tactfully.");
+    lines.push("If evidence is weak, frame the audit as a hypothesis such as 'Le problème semble être...' or 'J’ai l’impression que...' instead of a categorical diagnosis.");
+    lines.push("Base the audit on latestUserMessage and explicit context only.");
+  }
+  if (coachBehavior.overlays.includes("plan_builder")) {
+    if (conversationContext.chatMode === COACH_CHAT_MODES.PLAN) {
+      lines.push("If plan_builder is active, you may structure up to 3 small blocks in the proposal.");
+    } else {
+      lines.push("If plan_builder is active in free mode, stay in prose and keep any structure to at most 3 short blocks.");
+    }
+    lines.push("Do not assume a domain the user did not explicitly mention.");
+    lines.push("Never invent a health, sport, food, sleep, or similar goal unless the user named it.");
+    if (!conversationContext.hasExplicitDomainSignal) {
+      lines.push("The domain is still unclear in latestUserMessage.");
+      lines.push("Do not name work, health, sport, sleep, admin, or any other domain in the answer or proposal.");
+      lines.push("Either give a very generic structure or ask one neutral clarification question.");
+    } else {
+      lines.push("Keep the answer anchored to the explicit domain the user named.");
+    }
+  }
+  if (coachBehavior.overlays.includes("choice_narrowing")) {
+    lines.push("If choice_narrowing is active, reduce to 2 options maximum and recommend 1.");
+    lines.push("State the recommendation explicitly, for example: Je te recommande l'option 1.");
+    lines.push("Explain briefly why the recommended option is the better pick.");
+    lines.push("Do not stay vague and do not end with only an open question.");
+    if (conversationContext.chatMode === COACH_CHAT_MODES.FREE) {
+      lines.push("In free mode, do not return primaryAction while the choice is still being narrowed.");
+    }
+  }
+
+  if (coachBehavior.horizon === "now") {
+    lines.push("Anchor the answer in the immediate next step.");
+  }
+  if (coachBehavior.horizon === "today") {
+    lines.push("Anchor the answer in today.");
+  }
+  if (coachBehavior.horizon === "short_plan") {
+    lines.push("Frame the answer over 1 to 7 days only.");
+  }
+  if (coachBehavior.horizon === "pattern") {
+    lines.push("Name the recurring pattern before the next step.");
+  }
+
+  return lines;
 }
 
 function extractTextContent(content) {
@@ -609,19 +845,14 @@ function buildChatCardPrompt(context) {
 }
 
 function buildFreeConversationPrompt(context) {
+  const conversationContext = resolveConversationPromptContext(context);
+  const coachBehavior = conversationContext.coachBehavior;
   const validExample = {
     kind: "conversation",
     mode: "free",
     message:
       "Tu peux repartir avec une version plus légère: choisis un seul bloc utile aujourd’hui, puis laisse le reste en attente.",
-    primaryAction: {
-      label: "Voir Today",
-      intent: "open_today",
-      categoryId: context.activeCategoryId || "cat-1",
-      actionId: null,
-      occurrenceId: null,
-      dateKey: context.activeDate,
-    },
+    primaryAction: null,
     secondaryAction: null,
     proposal: null,
   };
@@ -639,10 +870,15 @@ function buildFreeConversationPrompt(context) {
     "Do not force creation, planning, or a CTA when the user only wants to reflect.",
     "You may suggest activating plan mode only when the user is clearly trying to structure something in the app.",
     "If the topic is outside the product scope or too sensitive, answer prudently and redirect to support or a more appropriate external help path.",
+    "If latestUserMessage is only a greeting, answer briefly, do not reuse recentMessages, and return primaryAction as null.",
     "Use primaryAction only when a product CTA is clearly useful. Otherwise return null.",
+    "Do not use primaryAction on a greeting, for honest_audit by default, or while you are still clarifying the situation.",
+    "In free mode, do not use primaryAction for choice_narrowing while the choice is still unstable.",
+    "In free mode, do not use primaryAction for plan_builder while the domain is still unclear.",
     "Allowed product intents are open_today, open_library, open_pilotage, and open_support.",
     "Never create or modify data. Never return a proposal in free mode.",
     "No markdown. No prose outside JSON.",
+    ...buildBehaviorPromptBlock(context, conversationContext),
     `Valid JSON example: ${JSON.stringify(validExample)}`,
     `Context: ${JSON.stringify({
       kind: "conversation",
@@ -668,8 +904,9 @@ function buildFreeConversationPrompt(context) {
             structure_preference: context.userAiProfile.structure_preference || null,
           }
         : null,
-      latestUserMessage: context.message || "",
-      recentMessages: Array.isArray(context.recentMessages) ? context.recentMessages : [],
+      latestUserMessage: conversationContext.latestUserMessage,
+      recentMessages: conversationContext.recentMessages,
+      coachBehavior,
       planningSummary: context.planningSummary || null,
       pilotageSummary: context.pilotageSummary || null,
       quotaRemaining: context.quotaRemaining,
@@ -678,12 +915,14 @@ function buildFreeConversationPrompt(context) {
 }
 
 function buildPlanConversationPrompt(context) {
+  const conversationContext = resolveConversationPromptContext(context);
+  const coachBehavior = conversationContext.coachBehavior;
   const categoryId = context.activeCategoryId || "cat-1";
   const validExample = {
     kind: "conversation",
     mode: "plan",
     message:
-      "Je te propose une structure simple: un objectif clair, puis une première action crédible cette semaine.",
+      "Je te propose une structure simple: un cap clair, puis un premier bloc utile cette semaine.",
     primaryAction: null,
     secondaryAction: null,
     proposal: {
@@ -694,7 +933,7 @@ function buildPlanConversationPrompt(context) {
         label: context.activeCategoryLabel || "Catégorie active",
       },
       outcomeDraft: {
-        title: "Retrouver un rythme de travail stable",
+        title: "Clarifier le prochain cap",
         categoryId,
         priority: "prioritaire",
         startDate: context.activeDate,
@@ -705,7 +944,7 @@ function buildPlanConversationPrompt(context) {
       },
       actionDrafts: [
         {
-          title: "Bloquer 25 min de deep work",
+          title: "Bloquer un premier bloc utile",
           categoryId,
           outcomeId: null,
           priority: "prioritaire",
@@ -739,10 +978,14 @@ function buildPlanConversationPrompt(context) {
     "When asking that clarification, prefer the wording: Dans quelle catégorie veux-tu avancer ?",
     "When availableCategories is not empty, base that clarification on those existing categories before inventing anything new.",
     "If the user names a new category in plain language, you may use it in categoryDraft.",
+    "Do not assume a domain the user did not explicitly mention.",
+    "Never invent a health, sport, food, sleep, or similar goal unless the user named it.",
+    "If the domain is still unclear, ask one neutral clarification question and keep the proposal conservative.",
     "Keep the proposal simple. One objective and one to three actions is enough.",
     "Do not output a life system, a full routine matrix, or a long roadmap in one turn.",
     "Use kind=action for one standalone action, kind=outcome for one standalone objective, kind=guided when there is one objective plus at least one action.",
     "No markdown. No prose outside JSON.",
+    ...buildBehaviorPromptBlock(context, conversationContext),
     `Valid JSON example: ${JSON.stringify(validExample)}`,
     `Context: ${JSON.stringify({
       kind: "conversation",
@@ -770,8 +1013,9 @@ function buildPlanConversationPrompt(context) {
             structure_preference: context.userAiProfile.structure_preference || null,
           }
         : null,
-      latestUserMessage: context.message || "",
-      recentMessages: Array.isArray(context.recentMessages) ? context.recentMessages : [],
+      latestUserMessage: conversationContext.latestUserMessage,
+      recentMessages: conversationContext.recentMessages,
+      coachBehavior,
       planningSummary: context.planningSummary || null,
       pilotageSummary: context.pilotageSummary || null,
       quotaRemaining: context.quotaRemaining,
@@ -806,7 +1050,17 @@ function resolveSchemaName(kind, context) {
 function normalizePayloadCandidateForKind(kind, context, candidate) {
   if (kind !== "chat") return normalizeCoachPayloadCandidate(candidate);
   if (isConversationCoachMode(context.chatMode)) {
-    return normalizeConversationPayloadCandidate(candidate);
+    const conversationContext = resolveConversationPromptContext(context);
+    return normalizeConversationPayloadCandidate({
+      ...candidate,
+      conversationContext: {
+        chatMode: conversationContext.chatMode,
+        coachBehavior: conversationContext.coachBehavior,
+        isGreeting: conversationContext.isGreeting,
+        hasResetSignals: conversationContext.hasResetSignals,
+        hasExplicitDomainSignal: conversationContext.hasExplicitDomainSignal,
+      },
+    });
   }
   return normalizeChatPayloadCandidate(candidate);
 }

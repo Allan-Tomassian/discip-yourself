@@ -71,6 +71,12 @@ test("buildChatContext injects the active profile and related profiles mentioned
   });
   assert.equal(context.locale, "fr-FR");
   assert.equal(context.useCase, "general");
+  assert.deepEqual(context.coachBehavior, {
+    mode: "clarity",
+    overlays: ["choice_narrowing"],
+    horizon: "today",
+    intensity: "standard",
+  });
 });
 
 test("buildChatContext preserves locale and useCase from /ai/chat payload", () => {
@@ -100,4 +106,10 @@ test("buildChatContext preserves locale and useCase from /ai/chat payload", () =
   assert.equal(context.locale, "fr-CA");
   assert.equal(context.useCase, "life_plan");
   assert.deepEqual(context.recentMessages, [{ role: "user", content: "Je veux un plan simple." }]);
+  assert.deepEqual(context.coachBehavior, {
+    mode: "clarity",
+    overlays: [],
+    horizon: "now",
+    intensity: "standard",
+  });
 });
