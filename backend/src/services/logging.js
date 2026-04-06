@@ -26,7 +26,10 @@ export async function insertAiRequestLog(supabase, entry = {}) {
       latency_ms: Number.isFinite(entry.latencyMs) ? Math.max(0, Math.round(entry.latencyMs)) : null,
       error_code: entry.errorCode || null,
     };
-    const { error } = await supabase.from("ai_request_logs").insert(payload);
+    // request_id can repeat across local server restarts, so observability inserts must stay idempotent.
+    const { error } = await supabase
+      .from("ai_request_logs")
+      .upsert(payload, { onConflict: "request_id", ignoreDuplicates: true });
     if (error) throw error;
   } catch (error) {
     if (supabase?.rest?.url) {

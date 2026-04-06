@@ -132,7 +132,7 @@ function createFakeSupabase({
             }
             throw new Error("Unexpected ai_request_logs select usage");
           },
-          insert: async (payload) => {
+          upsert: async (payload) => {
             if (Array.isArray(insertedLogs)) insertedLogs.push(payload);
             return { error: null };
           },
