@@ -13,7 +13,7 @@ function clampPercent(value) {
   return Math.max(0, Math.min(100, Math.round((Number.isFinite(value) ? value : 0) * 100)));
 }
 
-function formatSubtitle(goal, category) {
+function formatSubtitle(goal) {
   const notes = typeof goal?.notes === "string" ? goal.notes.trim() : "";
   if (notes) return notes;
   if (goal?.deadline) return `${OBJECTIVES_SCREEN_COPY.deadlinePrefix} : ${goal.deadline}`;

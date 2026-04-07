@@ -11,8 +11,8 @@ import {
   GateSection,
   GateSectionIntro,
   GateRow,
-  cx,
 } from "../gate/Gate";
+import { cx } from "../gate/gateCx";
 import {
   GateIconButton,
   GateInput,

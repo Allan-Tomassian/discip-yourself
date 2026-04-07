@@ -15,13 +15,11 @@ function getOrCreatePortalRoot(id) {
   return node;
 }
 
-export function usePortalRoot(id = DEFAULT_PORTAL_ID) {
+function usePortalRoot(id = DEFAULT_PORTAL_ID) {
   const [root, setRoot] = useState(() => getOrCreatePortalRoot(id));
 
   useEffect(() => {
-    const node = getOrCreatePortalRoot(id);
-    if (node && node !== root) setRoot(node);
-    return undefined;
+    setRoot((currentRoot) => getOrCreatePortalRoot(id) || currentRoot);
   }, [id]);
 
   return root;

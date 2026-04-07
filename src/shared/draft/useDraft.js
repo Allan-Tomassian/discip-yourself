@@ -1,19 +1,16 @@
-import { useRef, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { createDraftStore } from "./draftStore";
 
 export function useDraftStore(options = {}) {
-  const storeRef = useRef(null);
-  if (!storeRef.current) {
-    storeRef.current = createDraftStore(options);
-  }
+  const [store] = useState(() => createDraftStore(options));
 
   useSyncExternalStore(
-    storeRef.current.subscribe,
-    storeRef.current.getVersion,
-    storeRef.current.getVersion
+    store.subscribe,
+    store.getVersion,
+    store.getVersion
   );
 
-  return storeRef.current;
+  return store;
 }
 
 export function useDraft(options = {}) {

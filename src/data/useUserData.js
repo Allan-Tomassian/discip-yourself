@@ -53,7 +53,7 @@ function hasMeaningfulLocalData(value) {
   if (Array.isArray(userAiProfile.goals) && userAiProfile.goals.length > 0) return true;
   if (Object.values(categoryProfiles).some((profile) => hasMeaningfulCategoryProfile(profile))) return true;
   if (coachConversations.length > 0) return true;
-  if (Boolean(ui.onboardingCompleted)) return true;
+  if (ui.onboardingCompleted) return true;
 
   return false;
 }
@@ -211,8 +211,7 @@ export function useUserData() {
         setLoadError(String(error?.message || "").trim() || "Impossible de charger user_data.");
         setPersistenceScope(USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK);
       } finally {
-        if (!active) return;
-        setLoading(false);
+        if (active) setLoading(false);
       }
     })();
 

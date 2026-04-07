@@ -73,7 +73,7 @@ import {
   resolvePreferredVisibleCategoryId,
   withExecutionActiveCategoryId,
 } from "../domain/categoryVisibility";
-import { useBehaviorFeedback } from "../feedback/BehaviorFeedbackContext";
+import { useBehaviorFeedback } from "../feedback/behaviorFeedbackStore";
 import { deriveBehaviorFeedbackSignal, deriveTodayBehaviorCue } from "../feedback/feedbackDerivers";
 
 // TOUR MAP:

@@ -11,8 +11,7 @@ import { createActionModel } from "../../domain/actionModel";
 import { createGoal } from "../../logic/goals";
 import { ensureWindowFromScheduleRules } from "../../logic/occurrencePlanner";
 import { canCreateCategory } from "../../logic/entitlements";
-import { createDefaultGoalSchedule, normalizeCategory } from "../../logic/state";
-import { SUGGESTED_CATEGORIES } from "../../utils/categoriesSuggested";
+import { createDefaultGoalSchedule } from "../../logic/state";
 import {
   normalizeDays,
   normalizeDurationMinutes,
@@ -23,37 +22,12 @@ import {
   updateRemindersForGoal,
 } from "../edit-item/editItemShared";
 import { normalizeActionDraft, normalizeOutcomeDraft } from "../../creation/createItemDraft";
-
-function buildMinDeadlineKey(startDate) {
-  const normalized = normalizeLocalDateKey(startDate) || todayLocalKey();
-  const base = new Date(`${normalized}T12:00:00`);
-  if (Number.isNaN(base.getTime())) return normalized;
-  base.setDate(base.getDate() + 1);
-  return toLocalDateKey(base);
-}
-
-function normalizeReminderTimes(value) {
-  const list = Array.isArray(value) ? value : [];
-  const seen = new Set();
-  return list
-    .map((entry) => normalizeStartTime(entry))
-    .filter((entry) => {
-      if (!entry || seen.has(entry)) return false;
-      seen.add(entry);
-      return true;
-    });
-}
-
-function ensureSuggestedCategory(state, selectedSuggestion) {
-  if (!selectedSuggestion) return state;
-  const prevCategories = Array.isArray(state.categories) ? state.categories : [];
-  if (prevCategories.some((category) => category?.id === selectedSuggestion.id)) return state;
-  const created = normalizeCategory(
-    { id: selectedSuggestion.id, name: selectedSuggestion.name, color: selectedSuggestion.color },
-    prevCategories.length
-  );
-  return { ...state, categories: [...prevCategories, created] };
-}
+import {
+  buildMinDeadlineKey,
+  ensureSuggestedCategory,
+  normalizeReminderTimes,
+  resolveSuggestedCategories,
+} from "./createItemShared";
 
 function buildActionCandidateFromDraft(actionDraft, { actionId, categoryId, resolvedOutcomeId = null }) {
   const repeat = normalizeRepeat(actionDraft.repeat);
@@ -109,20 +83,6 @@ function buildActionCandidateFromDraft(actionDraft, { actionId, categoryId, reso
       status: "queued",
     },
     { categories: [{ id: categoryId }] }
-  );
-}
-
-function resolveSuggestedCategories(state) {
-  const categories = getVisibleCategories(state.categories);
-  const existingNames = new Set(
-    categories.map((category) => String(category?.name || "").trim().toLowerCase()).filter(Boolean)
-  );
-  const existingIds = new Set(categories.map((category) => category?.id).filter(Boolean));
-  return SUGGESTED_CATEGORIES.filter(
-    (category) =>
-      category &&
-      !existingIds.has(category.id) &&
-      !existingNames.has(String(category.name || "").trim().toLowerCase())
   );
 }
 
@@ -205,7 +165,7 @@ export function prepareCreateCommit({
     return { ok: false, kind: "validation", message: "Choisis une catégorie valide." };
   }
 
-  const suggestedCategories = resolveSuggestedCategories(safeState);
+  const suggestedCategories = resolveSuggestedCategories(categories);
   const chosenSuggestion =
     suggestedCategories.find(
       (category) => category.id === (normalizedOutcomeDraft?.categoryId || normalizedActionDraft?.categoryId)

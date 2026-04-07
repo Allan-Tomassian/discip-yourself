@@ -14,7 +14,8 @@ import {
   hasMeaningfulCategoryProfile,
   normalizeCategoryProfilesV1,
 } from "../../domain/categoryProfile";
-import { BehaviorCue, useBehaviorFeedback } from "../../feedback/BehaviorFeedbackContext";
+import { BehaviorCue } from "../../feedback/BehaviorFeedbackContext";
+import { useBehaviorFeedback } from "../../feedback/behaviorFeedbackStore";
 import { deriveBehaviorFeedbackSignal, deriveLibraryBehaviorCue } from "../../feedback/feedbackDerivers";
 import { resolveCategoryColor } from "../../utils/categoryPalette";
 import {

@@ -1,5 +1,6 @@
 import React from "react";
-import { cx, GateFooter, GateHeader, GatePanel } from "./Gate";
+import { GateFooter, GateHeader, GatePanel } from "./Gate";
+import { cx } from "./gateCx";
 import "../overlays/overlays.css";
 import "./gate-standalone.css";
 

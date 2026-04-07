@@ -9,7 +9,6 @@ export default function AccentItem({
   onClick,
   children,
   rightSlot = null,
-  compact = false,
   tone = "accent",
   style = {},
   className = "",

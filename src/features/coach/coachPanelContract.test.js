@@ -26,23 +26,18 @@ describe("coach panel contract", () => {
 
   it("keeps a single shared coach conversation surface without panel/page divergence", () => {
     const coachPanel = readSrc("features/coach/CoachPanel.jsx");
+    const coachController = readSrc("features/coach/coachPanelController.js");
 
     expect(coachPanel).toContain("conversationMode");
-    expect(coachPanel).toContain("conversationUseCase");
     expect(coachPanel).toContain("onOpenAssistantCreate");
     expect(coachPanel).toContain("onOpenCreatedView");
-    expect(coachPanel).toContain("const effectiveMode = conversationMode === \"plan\" ? \"plan\" : \"free\";");
-    expect(coachPanel).toContain('locale: "fr-FR"');
-    expect(coachPanel).toContain("useCase: effectiveUseCase");
     expect(coachPanel).toContain("coachConversationRail");
     expect(coachPanel).toContain("setActiveConversationId");
     expect(coachPanel).toContain("archiveConversation");
     expect(coachPanel).toContain("Discuter librement, puis passer en mode Plan quand tu veux construire.");
     expect(coachPanel).toContain("toggleCoachPlanMode");
     expect(coachPanel).toContain("coachModeBadge");
-    expect(coachPanel).toContain("life_plan");
     expect(coachPanel).not.toContain("Direction ·");
-    expect(coachPanel).toContain('sourceSurface: "coach"');
     expect(coachPanel).not.toContain("Appliquer le brouillon");
     expect(coachPanel).not.toContain("Brouillon proposé");
     expect(coachPanel).not.toContain("onOpenStructuring");
@@ -50,5 +45,12 @@ describe("coach panel contract", () => {
     expect(coachPanel).not.toContain('setTab?.("coach-chat")');
     expect(coachPanel).not.toContain("Coach prêt");
     expect(coachPanel).not.toContain(">Conversations<");
+
+    expect(coachController).toContain("conversationUseCase");
+    expect(coachController).toContain("const effectiveMode = conversationMode === \"plan\" ? \"plan\" : \"free\";");
+    expect(coachController).toContain('locale: "fr-FR"');
+    expect(coachController).toContain("useCase: effectiveUseCase");
+    expect(coachController).toContain("life_plan");
+    expect(coachController).toContain('sourceSurface: "coach"');
   });
 });

@@ -24,13 +24,13 @@ export default function Preferences({ data, setData }) {
   const limits = getPlanLimits();
   const visualSystemLabel = DEFAULT_THEME.charAt(0).toUpperCase() + DEFAULT_THEME.slice(1);
   const [soundEnabled, setSoundEnabledState] = useState(() => isClickSoundEnabled());
+  const [nowMs] = useState(() => Date.now());
 
   const [whyDraft, setWhyDraft] = useState(profile.whyText || "");
   useEffect(() => {
     setWhyDraft(profile.whyText || "");
   }, [profile.whyText]);
 
-  const nowMs = Date.now();
   const lastUpdatedMs = profile.whyUpdatedAt ? Date.parse(profile.whyUpdatedAt) : 0;
   const rawDaysSince =
     Number.isFinite(nowMs) && Number.isFinite(lastUpdatedMs) && lastUpdatedMs > 0

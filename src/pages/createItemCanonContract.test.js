@@ -32,6 +32,7 @@ describe("create item canonical contract", () => {
   it("keeps creation draft-first and assistant creation proposal-based", () => {
     const createPage = readSrc("pages/CreateItem.jsx");
     const coachPanel = readSrc("features/coach/CoachPanel.jsx");
+    const coachController = readSrc("features/coach/coachPanelController.js");
     const planningCoachCard = readSrc("components/planning/PlanningCoachCard.jsx");
     const commitService = readSrc("features/create-item/createItemCommit.js");
 
@@ -42,7 +43,7 @@ describe("create item canonical contract", () => {
     expect(coachPanel).toContain("createFromPlanReply");
     expect(coachPanel).toContain("openAssistantReview");
     expect(coachPanel).toContain("onOpenAssistantCreate");
-    expect(coachPanel).toContain('sourceSurface: "coach"');
+    expect(coachController).toContain('sourceSurface: "coach"');
     expect(coachPanel).not.toContain('sourceSurface: "coach-chat"');
     expect(coachPanel).not.toContain('sourceSurface: "coach-panel"');
     expect(planningCoachCard).toContain("handleOpenCoach(\"plan\")");

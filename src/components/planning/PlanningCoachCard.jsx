@@ -12,7 +12,7 @@ import { useManualAiAnalysis } from "../../hooks/useManualAiAnalysis";
 import ManualAiStatus from "../ai/ManualAiStatus";
 import { getCategoryUiVars } from "../../utils/categoryAccent";
 import { ANALYSIS_COPY, UI_COPY } from "../../ui/labels";
-import { useBehaviorFeedback } from "../../feedback/BehaviorFeedbackContext";
+import { useBehaviorFeedback } from "../../feedback/behaviorFeedbackStore";
 import { deriveBehaviorFeedbackSignal } from "../../feedback/feedbackDerivers";
 import {
   AppCard,

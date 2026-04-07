@@ -1,19 +1,13 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Portal from "../portal/Portal";
 import { Z } from "../layer/zIndex";
-import { computeSelectPosition } from "../select/Select";
+import { computeSelectPosition } from "../select/selectPosition";
 import { fromLocalDateKey, normalizeLocalDateKey, todayLocalKey } from "../../utils/dateKey";
 import { addMonths, buildMonthGrid, getMonthLabelFR, startOfMonth, WEEKDAY_LABELS_FR } from "../../utils/dates";
+import { formatDisplayValue } from "./dateDisplayValue";
 
 const DEFAULT_MENU_WIDTH = 320;
 const DEFAULT_MENU_HEIGHT = 360;
-
-export function formatDisplayValue(value) {
-  const normalized = normalizeLocalDateKey(value);
-  if (!normalized) return "";
-  const [y, m, d] = normalized.split("-");
-  return `${d}/${m}/${y}`;
-}
 
 function toMonthStart(dateLike) {
   const base = dateLike instanceof Date ? dateLike : new Date();

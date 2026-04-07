@@ -32,7 +32,7 @@ import { normalizeTimeFields } from "../logic/timeFields";
 import { setOccurrenceStatusById } from "../logic/occurrences";
 import { findConflicts, suggestNextSlots } from "../core/scheduling/intervals";
 import { CATEGORY_UI_COPY, LABELS } from "../ui/labels";
-import { useBehaviorFeedback } from "../feedback/BehaviorFeedbackContext";
+import { useBehaviorFeedback } from "../feedback/behaviorFeedbackStore";
 import { deriveBehaviorFeedbackSignal } from "../feedback/feedbackDerivers";
 import { ActionEditScreen, OutcomeEditScreen } from "../features/edit-item/EditItemScreens";
 import {

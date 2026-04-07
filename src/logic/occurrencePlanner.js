@@ -626,7 +626,6 @@ export function resolveWindowConflictsForDay(occurrences, dateKey) {
   let changed = false;
 
   for (const item of sortedWindows) {
-    const occ = item.occ;
     const duration = item.duration;
     const canPlace =
       Number.isFinite(item.windowStart) &&
@@ -776,7 +775,6 @@ export function ensureWindowForGoal(data, goalId, fromDateKey, days = 14) {
 
   const prevOccurrences = Array.isArray(data?.occurrences) ? data.occurrences : [];
   const schedule = goal.schedule && typeof goal.schedule === "object" ? goal.schedule : null;
-  const scheduleMode = resolveScheduleMode(goal, schedule);
 
   const { slot: fallbackSlot, fromStartAt } = resolveFallbackSlot(goal);
   const oneOff = normalizeLocalDateKey(goal?.oneOffDate);

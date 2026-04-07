@@ -2,10 +2,7 @@ import React, { useId, useState } from "react";
 import "./gate.css";
 import "./gate-premium.css";
 import { playClickSound } from "../sound/useClickSound";
-
-export function cx(...parts) {
-  return parts.filter(Boolean).join(" ");
-}
+import { cx } from "./gateCx";
 
 export const GatePanel = React.forwardRef(function GatePanel(
   { children, className = "", ...props },

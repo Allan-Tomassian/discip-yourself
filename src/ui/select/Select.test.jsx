@@ -1,7 +1,7 @@
 import fs from "node:fs";
-import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
-import { computeSelectPosition } from "./Select";
+import { computeSelectPosition } from "./selectPosition";
 
 describe("computeSelectPosition", () => {
   it("positions below anchor by default and clamps within viewport", () => {
@@ -31,8 +31,7 @@ describe("computeSelectPosition", () => {
   });
 
   it("keeps portal-backed dropdown logic centralized", () => {
-    const root = process.cwd();
-    const candidates = [path.resolve(root, "src/ui/select/Select.jsx")];
+    const candidates = [fileURLToPath(new URL("./Select.jsx", import.meta.url))];
 
     const portalFiles = candidates.filter((file) => {
       const content = fs.readFileSync(file, "utf8");

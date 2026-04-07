@@ -7,6 +7,7 @@ import { getCategoryCounts } from "../logic/pilotage";
 import { ensureSystemInboxCategory, normalizeCategory, SYSTEM_INBOX_ID } from "../logic/state";
 import { updateGoal } from "../logic/goals";
 import { removeScheduleRulesForAction } from "../logic/occurrencePlanner";
+import { safeUpdateGoal } from "../logic/goalGuards";
 import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
 import { canCreateCategory } from "../logic/entitlements";
 import { LABELS, MAIN_PAGE_COPY, SURFACE_LABELS } from "../ui/labels";
@@ -26,7 +27,7 @@ import {
   withLibraryActiveCategoryId,
 } from "../domain/categoryVisibility";
 import { collectSystemInboxBuckets } from "../domain/systemInboxMigration";
-import { useBehaviorFeedback } from "../feedback/BehaviorFeedbackContext";
+import { useBehaviorFeedback } from "../feedback/behaviorFeedbackStore";
 import { deriveBehaviorFeedbackSignal } from "../feedback/feedbackDerivers";
 import {
   AppChip,

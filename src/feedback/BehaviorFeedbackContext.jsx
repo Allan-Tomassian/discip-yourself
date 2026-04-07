@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AppToast, StatusBadge } from "../shared/ui/app";
 import { getCategoryUiVars } from "../utils/categoryAccent";
@@ -8,13 +8,8 @@ import {
   createBehaviorFeedbackSignal,
   isBehaviorFeedbackSignal,
 } from "./feedbackSignals";
+import { BehaviorFeedbackContext, useBehaviorFeedback } from "./behaviorFeedbackStore";
 import "./behaviorFeedback.css";
-
-const BehaviorFeedbackContext = createContext({
-  currentSignal: null,
-  emitBehaviorFeedback: () => false,
-  dismissBehaviorFeedback: () => {},
-});
 
 function useTimersRef() {
   return useRef({
@@ -121,10 +116,6 @@ export function BehaviorFeedbackProvider({ children }) {
   );
 
   return <BehaviorFeedbackContext.Provider value={value}>{children}</BehaviorFeedbackContext.Provider>;
-}
-
-export function useBehaviorFeedback() {
-  return useContext(BehaviorFeedbackContext);
 }
 
 export function BehaviorFeedbackHost({ categories = [] }) {

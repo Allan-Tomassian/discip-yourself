@@ -28,6 +28,8 @@ export default function CompactCategoryFilter({
 }) {
   const triggerRef = useRef(null);
   const [open, setOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [anchorRect, setAnchorRect] = useState(null);
 
   const selectedOption = useMemo(() => {
     if (value === "all") return null;
@@ -44,7 +46,12 @@ export default function CompactCategoryFilter({
         className="lovableCompactFilterTrigger"
         aria-label={label || allLabel}
         aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
+        onClick={(event) => {
+          const nextAnchorEl = event.currentTarget || null;
+          setAnchorEl(nextAnchorEl);
+          setAnchorRect(nextAnchorEl?.getBoundingClientRect?.() || null);
+          setOpen((current) => !current);
+        }}
       >
         <span className="lovableCompactFilterValue">{triggerLabel}</span>
         <ChevronIcon open={open} />
@@ -52,8 +59,8 @@ export default function CompactCategoryFilter({
 
       <AppPopoverMenu
         open={open}
-        anchorEl={triggerRef.current}
-        anchorRect={triggerRef.current?.getBoundingClientRect?.() || null}
+        anchorEl={anchorEl}
+        anchorRect={anchorRect}
         onClose={() => setOpen(false)}
         ariaLabel={label || allLabel}
         panelClassName="lovableCompactFilterPanel"

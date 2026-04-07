@@ -2,10 +2,6 @@ const ENV =
   typeof import.meta !== "undefined" && import.meta.env && typeof import.meta.env === "object"
     ? import.meta.env
     : {};
-const PROCESS_ENV =
-  typeof process !== "undefined" && process.env && typeof process.env === "object"
-    ? process.env
-    : {};
 let didLogAiBackendTarget = false;
 
 function safeParseUrl(value) {
@@ -41,7 +37,7 @@ function readFrontendOrigin() {
 }
 
 function readAppEnv() {
-  return String(ENV.VITE_APP_ENV || PROCESS_ENV.VITE_APP_ENV || "").trim().toLowerCase() || "local";
+  return String(ENV.VITE_APP_ENV || "").trim().toLowerCase() || "local";
 }
 
 function isCrossOrigin(frontendOrigin, backendBaseUrl) {
@@ -52,9 +48,8 @@ function isCrossOrigin(frontendOrigin, backendBaseUrl) {
 }
 
 function shouldLogAiTransportDebug() {
-  const mode = String(ENV.MODE || PROCESS_ENV.NODE_ENV || "").trim().toLowerCase();
-  const isVitest = String(PROCESS_ENV.VITEST || "").trim().toLowerCase() === "true";
-  if (isVitest || mode === "test") return false;
+  const mode = String(ENV.MODE || "").trim().toLowerCase();
+  if (mode === "test") return false;
   if (typeof window === "undefined") return false;
   const hostname = String(window.location?.hostname || "").trim();
   if (ENV.DEV) return true;

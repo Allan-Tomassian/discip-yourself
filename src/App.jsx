@@ -76,6 +76,7 @@ import {
   withExecutionActiveCategoryId,
   withLibraryActiveCategoryId,
 } from "./domain/categoryVisibility";
+import { resolveGoalType } from "./domain/goalType";
 import { BehaviorFeedbackHost, BehaviorFeedbackProvider } from "./feedback/BehaviorFeedbackContext";
 
 function runSelfTests(data) {
@@ -256,8 +257,6 @@ export default function App() {
     homeActiveCategoryId,
     selectedCategoryId,
     openLibraryDetail,
-    handleSelectCategory,
-    railSelectedId,
     detailCategoryId,
   } = useCategorySelectionSync({
     tab,
@@ -285,7 +284,6 @@ export default function App() {
     hasDraft,
     plusOpen,
     plusAnchorRect,
-    plusAnchorElRef,
     openCreateExpander,
     closePlusExpander,
     handleChooseObjective,
@@ -293,7 +291,6 @@ export default function App() {
     resumeCreateDraft,
     openCreateOutcome,
     openCreateAction,
-    openCreateGuided,
     openCreateAssistant,
   } = useCreateFlowOrchestration({
     tab,
@@ -403,7 +400,7 @@ export default function App() {
   );
 
   const handleCreateTaskClose = useCallback(
-    ({ outcome = "cancel", origin: rawOrigin = null, createdCategoryId = null } = {}) => {
+    ({ origin: rawOrigin = null, createdCategoryId = null } = {}) => {
       const origin = normalizeRouteOrigin(rawOrigin || createTaskState?.origin || resolveRouteOrigin({ sourceSurface: tab }));
       restoreTaskOriginContext({ origin, createdCategoryId });
       setCreateTaskState(null);
@@ -481,15 +478,6 @@ export default function App() {
       openCreateOutcome({ source: sourceSurface, categoryId });
     },
     [openCreateOutcome, resolveRouteOrigin]
-  );
-
-  const launchGuidedCreate = useCallback(
-    ({ sourceSurface, categoryId = null } = {}) => {
-      const origin = resolveRouteOrigin({ sourceSurface, categoryId });
-      setCreateTaskState({ origin, kind: "guided" });
-      openCreateGuided({ source: sourceSurface, categoryId });
-    },
-    [openCreateGuided, resolveRouteOrigin]
   );
 
   // Theme reconciliation:
@@ -653,9 +641,6 @@ export default function App() {
     }
   }, [isDevEnv, safeData, setData]);
   const showTourOverlay = onboardingCompleted;
-  const handlePlanCategory = ({ categoryId } = {}) => {
-    launchGuidedCreate({ sourceSurface: "insights", categoryId });
-  };
 
   useLayoutEffect(() => {
     if (typeof window === "undefined" || typeof document === "undefined") return undefined;

@@ -17,7 +17,7 @@ export async function showRewardedAd({ placement = "default" } = {}) {
     if (result?.ok) return { ok: true };
     const reason = result?.reason === "unavailable" ? "unavailable" : "dismissed";
     return { ok: false, reason };
-  } catch (_error) {
+  } catch {
     return { ok: false, reason: "dismissed" };
   }
 }

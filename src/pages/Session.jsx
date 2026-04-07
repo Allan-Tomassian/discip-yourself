@@ -9,7 +9,7 @@ import { resolveConflictNearest } from "../logic/occurrencePlanner";
 import { normalizeActiveSessionForUI, normalizeOccurrenceForUI } from "../logic/compat";
 import { withExecutionActiveCategoryId } from "../domain/categoryVisibility";
 import { computeStreakDays } from "../logic/habits";
-import { useBehaviorFeedback } from "../feedback/BehaviorFeedbackContext";
+import { useBehaviorFeedback } from "../feedback/behaviorFeedbackStore";
 import { deriveBehaviorFeedbackSignal, deriveSessionBehaviorCue } from "../feedback/feedbackDerivers";
 import { AppCard, AppScreen, GhostButton } from "../shared/ui/app";
 import "../features/session/session.css";
@@ -75,7 +75,7 @@ export default function Session({
     normalizeLocalDateKey(safeData?.ui?.selectedDate) ||
     todayLocalKey();
   const effectiveCategoryId = categoryId || urlCategoryId || null;
-  const [tick, setTick] = useState(Date.now());
+  const [tick, setTick] = useState(() => Date.now());
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackLevel, setFeedbackLevel] = useState("");
   const [feedbackText, setFeedbackText] = useState("");

@@ -1,13 +1,12 @@
 import { normalizeRouteOrigin } from "../app/routeOrigin";
-import { uid } from "../utils/helpers";
 import { normalizeLocalDateKey, todayLocalKey } from "../utils/dateKey";
 import { addDaysLocal, normalizeStartTime } from "../utils/datetime";
-import { createActionModel, updateActionModel } from "../domain/actionModel";
-import { createGoal, updateGoal } from "./goals";
+import { updateActionModel } from "../domain/actionModel";
+import { updateGoal } from "./goals";
 import { updateOccurrence } from "./occurrences";
 import { getFirstVisibleCategoryId, resolveVisibleCategoryId } from "../domain/categoryVisibility";
 import { createDefaultGoalSchedule } from "./state";
-import { ensureWindowFromScheduleRules, regenerateWindowFromScheduleRules } from "./occurrencePlanner";
+import { regenerateWindowFromScheduleRules } from "./occurrencePlanner";
 
 function normalizeRepeat(value) {
   const raw = typeof value === "string" ? value.trim().toLowerCase() : "";

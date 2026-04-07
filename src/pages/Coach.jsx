@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useBehaviorFeedback } from "../feedback/BehaviorFeedbackContext";
 import { AppScreen } from "../shared/ui/app";
-import { useCoachConversationController } from "../features/coach/CoachPanel";
+import { useCoachConversationController } from "../features/coach/coachPanelController";
 import { COACH_SCREEN_COPY } from "../ui/labels";
 
 function resolveName(profile) {
@@ -27,7 +26,6 @@ export default function Coach({
   planLimits = null,
   generationWindowDays = null,
 }) {
-  const { emitBehaviorFeedback } = useBehaviorFeedback();
   const pageRef = useRef(null);
   const scrollRef = useRef(null);
   const composerRef = useRef(null);
@@ -46,7 +44,6 @@ export default function Coach({
     setTab,
     surfaceTab: "coach",
     onRequestClose: null,
-    emitBehaviorFeedback,
     requestedMode,
     requestedConversationId,
     onOpenAssistantCreate,

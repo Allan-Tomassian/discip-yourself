@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatDisplayValue } from "./DatePicker";
+import { formatDisplayValue } from "./dateDisplayValue";
 
 describe("DatePicker", () => {
   it("formats display value as dd/mm/yyyy", () => {

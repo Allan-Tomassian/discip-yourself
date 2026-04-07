@@ -1,6 +1,6 @@
 import { uid } from "../../utils/helpers";
 import { normalizeLocalDateKey, toLocalDateKey } from "../../utils/dateKey";
-import { resolveGoalType, isOutcome, isProcess } from "../../domain/goalType";
+import { resolveGoalType } from "../../domain/goalType";
 import { ensureManualAiAnalysisState } from "../../features/manualAi/manualAiAnalysis";
 import { ensureCoachConversationsState } from "../../features/coach/coachStorage";
 import { normalizeTimeFields } from "../timeFields";

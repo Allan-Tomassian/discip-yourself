@@ -4,7 +4,7 @@ import {
   normalizeCoachRequestedMode,
   shouldApplyCoachRequestedMode,
   toggleCoachPlanMode,
-} from "./CoachPanel.jsx";
+} from "./coachPanelController.js";
 
 describe("CoachPanel mode control", () => {
   it("toggle Plan bascule entre free et plan", () => {

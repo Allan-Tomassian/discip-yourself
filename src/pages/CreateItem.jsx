@@ -4,18 +4,11 @@ import { safeConfirm } from "../utils/dialogs";
 import { uid } from "../utils/helpers";
 import { AppScreen, StatusBadge } from "../shared/ui/app";
 import {
-  createActionModel,
-} from "../domain/actionModel";
-import {
-  getFirstVisibleCategoryId,
   getVisibleCategories,
-  resolveVisibleCategoryId,
 } from "../domain/categoryVisibility";
 import { resolveGoalType } from "../domain/goalType";
-import { createGoal } from "../logic/goals";
-import { ensureWindowFromScheduleRules } from "../logic/occurrencePlanner";
 import { canCreateCategory } from "../logic/entitlements";
-import { createDefaultGoalSchedule, normalizeCategory } from "../logic/state";
+import { normalizeCategory } from "../logic/state";
 import { CATEGORY_UI_COPY, LABELS } from "../ui/labels";
 import {
   appendCoachConversationMessages,
@@ -27,14 +20,14 @@ import {
   prepareCreateCommit,
 } from "../features/create-item/createItemCommit";
 import {
-  DEFAULT_CONFLICT_DURATION,
-  normalizeDays,
+  buildMinDeadlineKey,
+  ensureSuggestedCategory,
+  normalizeReminderTimes,
+  resolveSuggestedCategories,
+} from "../features/create-item/createItemShared";
+import {
   normalizeDurationMinutes,
-  normalizeQuantityPeriod,
-  normalizeQuantityUnit,
   normalizeQuantityValue,
-  normalizeRepeat,
-  updateRemindersForGoal,
 } from "../features/edit-item/editItemShared";
 import {
   ActionCreateScreen,
@@ -48,13 +41,9 @@ import {
   normalizeCreateItemDraft,
   normalizeOutcomeDraft,
 } from "../creation/createItemDraft";
-import { SUGGESTED_CATEGORIES } from "../utils/categoriesSuggested";
 import {
-  fromLocalDateKey,
   normalizeLocalDateKey,
   normalizeStartTime,
-  parseTimeToMinutes,
-  toLocalDateKey,
   todayLocalKey,
 } from "../utils/datetime";
 
@@ -81,41 +70,11 @@ function formatMomentSummary(draft) {
   return "Dans la journée";
 }
 
-function buildMinDeadlineKey(startDate) {
-  const normalized = normalizeLocalDateKey(startDate) || todayLocalKey();
-  const base = fromLocalDateKey(normalized);
-  base.setDate(base.getDate() + 1);
-  return toLocalDateKey(base);
-}
-
 function resolveMainTabLabel(mainTab) {
   if (mainTab === "planning") return "Planning";
   if (mainTab === "library") return "Objectifs";
   if (mainTab === "pilotage") return "Analyses";
   return "Aujourd'hui";
-}
-
-function normalizeReminderTimes(value) {
-  const list = Array.isArray(value) ? value : [];
-  const seen = new Set();
-  return list
-    .map((entry) => normalizeStartTime(entry))
-    .filter((entry) => {
-      if (!entry || seen.has(entry)) return false;
-      seen.add(entry);
-      return true;
-    });
-}
-
-function ensureSuggestedCategory(state, selectedSuggestion) {
-  if (!selectedSuggestion) return state;
-  const prevCategories = Array.isArray(state.categories) ? state.categories : [];
-  if (prevCategories.some((category) => category?.id === selectedSuggestion.id)) return state;
-  const created = normalizeCategory(
-    { id: selectedSuggestion.id, name: selectedSuggestion.name, color: selectedSuggestion.color },
-    prevCategories.length
-  );
-  return { ...state, categories: [...prevCategories, created] };
 }
 
 function normalizeCategoryName(value) {
@@ -124,63 +83,6 @@ function normalizeCategoryName(value) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
-}
-
-function buildActionCandidateFromDraft(actionDraft, { actionId, categoryId, resolvedOutcomeId = null }) {
-  const repeat = normalizeRepeat(actionDraft.repeat);
-  const startTime = normalizeStartTime(actionDraft.timeMode === "FIXED" ? actionDraft.startTime : "");
-  const durationMinutes = normalizeDurationMinutes(actionDraft.durationMinutes);
-  const normalizedDays = repeat === "weekly" ? normalizeDays(actionDraft.daysOfWeek) : [];
-  const reminderTimes = normalizeReminderTimes(actionDraft.reminderTimes);
-  const schedule =
-    repeat === "none"
-      ? null
-      : {
-          ...createDefaultGoalSchedule(),
-          daysOfWeek: repeat === "daily" ? [1, 2, 3, 4, 5, 6, 7] : normalizedDays,
-          timeSlots: startTime ? [startTime] : [],
-          durationMinutes,
-          windowStart: normalizeStartTime(actionDraft.windowStart),
-          windowEnd: normalizeStartTime(actionDraft.windowEnd),
-          remindersEnabled: reminderTimes.length > 0,
-        };
-
-  const oneOffDate = repeat === "none" ? normalizeLocalDateKey(actionDraft.oneOffDate) || todayLocalKey() : undefined;
-  const startAt = repeat === "none" && startTime ? `${oneOffDate}T${startTime}` : null;
-
-  return createActionModel(
-    {
-      id: actionId,
-      categoryId,
-      title: actionDraft.title,
-      type: "PROCESS",
-      planType: repeat === "none" ? "ONE_OFF" : "ACTION",
-      parentId: resolvedOutcomeId || actionDraft.outcomeId || null,
-      priority: actionDraft.priority || "secondaire",
-      repeat,
-      daysOfWeek: repeat === "weekly" ? normalizedDays : [],
-      oneOffDate,
-      startAt,
-      timeMode: actionDraft.timeMode === "FIXED" && startTime ? "FIXED" : "NONE",
-      timeSlots: startTime ? [startTime] : [],
-      startTime,
-      durationMinutes,
-      cadence: repeat === "daily" ? "DAILY" : repeat === "weekly" ? "WEEKLY" : undefined,
-      target: repeat === "none" ? undefined : 1,
-      freqCount: repeat === "none" ? undefined : 1,
-      freqUnit: repeat === "daily" ? "DAY" : repeat === "weekly" ? "WEEK" : undefined,
-      schedule,
-      quantityValue: normalizeQuantityValue(actionDraft.quantityValue),
-      quantityUnit: normalizeQuantityUnit(actionDraft.quantityUnit),
-      quantityPeriod: normalizeQuantityPeriod(actionDraft.quantityPeriod),
-      reminderTime: reminderTimes[0] || "",
-      reminderWindowStart: normalizeStartTime(actionDraft.windowStart),
-      reminderWindowEnd: normalizeStartTime(actionDraft.windowEnd),
-      habitNotes: actionDraft.notes || "",
-      status: "queued",
-    },
-    { categories: [{ id: categoryId }] }
-  );
 }
 
 function useActionDraftController({
@@ -494,20 +396,7 @@ export default function CreateItem({
   const categories = useMemo(() => getVisibleCategories(safeData.categories), [safeData.categories]);
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
   const outcomes = useMemo(() => goals.filter((goal) => resolveGoalType(goal) === "OUTCOME"), [goals]);
-  const existingActionCount = useMemo(() => goals.filter((goal) => resolveGoalType(goal) === "PROCESS").length, [goals]);
-  const existingOutcomeCount = useMemo(() => outcomes.length, [outcomes]);
-  const existingNames = new Set(categories.map((category) => String(category?.name || "").trim().toLowerCase()).filter(Boolean));
-  const existingIds = new Set(categories.map((category) => category?.id).filter(Boolean));
-  const suggestedCategories = useMemo(
-    () =>
-      SUGGESTED_CATEGORIES.filter(
-        (category) =>
-          category &&
-          !existingIds.has(category.id) &&
-          !existingNames.has(String(category.name || "").trim().toLowerCase())
-      ),
-    [existingIds, existingNames]
-  );
+  const suggestedCategories = useMemo(() => resolveSuggestedCategories(categories), [categories]);
   const categoryOptions = useMemo(
     () => [
       ...categories.slice().sort((left, right) => String(left?.name || "").localeCompare(String(right?.name || ""))),

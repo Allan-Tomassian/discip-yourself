@@ -920,7 +920,6 @@ export function migrate(prev) {
   const cats = Array.isArray(normalized.categories) ? normalized.categories : [];
   const goalList = Array.isArray(normalized.goals) ? normalized.goals : [];
   const safeUi = sanitizeVisibleCategoryUi(normalized.ui, cats);
-  const scv = normalizeSelectedCategoryByView(safeUi.selectedCategoryByView);
   const safeManualAiAnalysis = ensureManualAiAnalysisState(safeUi?.manualAiAnalysisV1);
   const safeCoachConversations = ensureCoachConversationsState(normalized.coach_conversations_v1);
   const rawOpenGoalEditId = safeUi?.openGoalEditId || null;
