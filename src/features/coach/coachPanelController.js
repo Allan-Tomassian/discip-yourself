@@ -136,6 +136,52 @@ export function shouldApplyCoachRequestedMode({
   return { shouldApply: true, intentKey, normalizedMode };
 }
 
+export function normalizeCoachRequestedPrefill(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+export function buildCoachRequestedPrefillIntentKey({
+  openCycle = 0,
+  requestedConversationId = null,
+  requestedPrefill = "",
+} = {}) {
+  const safeCycle = Number.isInteger(openCycle) && openCycle > 0 ? openCycle : 0;
+  const normalizedPrefill = normalizeCoachRequestedPrefill(requestedPrefill);
+  if (!safeCycle || !normalizedPrefill) return "";
+  return `${safeCycle}:${requestedConversationId || ""}:${normalizedPrefill}`;
+}
+
+export function shouldApplyCoachRequestedPrefill({
+  open = false,
+  openCycle = 0,
+  requestedConversationId = null,
+  currentConversationId = null,
+  requestedPrefill = "",
+  draft = "",
+  hasMessages = false,
+  lastAppliedIntentKey = "",
+} = {}) {
+  const normalizedPrefill = normalizeCoachRequestedPrefill(requestedPrefill);
+  if (!open || !normalizedPrefill || hasMessages || normalizeCoachRequestedPrefill(draft)) {
+    return { shouldApply: false, intentKey: "", normalizedPrefill };
+  }
+  const intentKey = buildCoachRequestedPrefillIntentKey({
+    openCycle,
+    requestedConversationId,
+    requestedPrefill: normalizedPrefill,
+  });
+  if (!intentKey) {
+    return { shouldApply: false, intentKey, normalizedPrefill };
+  }
+  if (requestedConversationId && currentConversationId !== requestedConversationId) {
+    return { shouldApply: false, intentKey, normalizedPrefill };
+  }
+  if (intentKey === lastAppliedIntentKey) {
+    return { shouldApply: false, intentKey, normalizedPrefill };
+  }
+  return { shouldApply: true, intentKey, normalizedPrefill };
+}
+
 export function useCoachConversationController({
   open = false,
   data,
@@ -145,6 +191,7 @@ export function useCoachConversationController({
   onRequestClose,
   requestedMode = "free",
   requestedConversationId = null,
+  requestedPrefill = "",
   onOpenAssistantCreate,
   onOpenCreatedView,
   onOpenPaywall,
@@ -166,6 +213,7 @@ export function useCoachConversationController({
   const [archivedConversation, setArchivedConversation] = useState(null);
   const archiveTimeoutRef = useRef(null);
   const lastAppliedRequestedModeIntentRef = useRef("");
+  const lastAppliedRequestedPrefillIntentRef = useRef("");
   const wasOpenRef = useRef(Boolean(open));
   const [openCycle, setOpenCycle] = useState(() => (open ? 1 : 0));
   const loadingStages = useMemo(() => getManualAiLoadingStages("coach"), []);
@@ -226,6 +274,7 @@ export function useCoachConversationController({
     }
     if (!open && wasOpenRef.current) {
       lastAppliedRequestedModeIntentRef.current = "";
+      lastAppliedRequestedPrefillIntentRef.current = "";
     }
     wasOpenRef.current = Boolean(open);
   }, [open]);
@@ -255,6 +304,22 @@ export function useCoachConversationController({
       };
     });
   }, [currentConversation?.id, currentConversation?.mode, open, openCycle, requestedConversationId, requestedMode, setData]);
+
+  useEffect(() => {
+    const prefillSync = shouldApplyCoachRequestedPrefill({
+      open,
+      openCycle,
+      requestedConversationId,
+      currentConversationId: currentConversation?.id || null,
+      requestedPrefill,
+      draft,
+      hasMessages: messageEntries.length > 0,
+      lastAppliedIntentKey: lastAppliedRequestedPrefillIntentRef.current,
+    });
+    if (!prefillSync.shouldApply) return;
+    setDraft(prefillSync.normalizedPrefill);
+    lastAppliedRequestedPrefillIntentRef.current = prefillSync.intentKey;
+  }, [currentConversation?.id, draft, messageEntries.length, open, openCycle, requestedConversationId, requestedPrefill]);
 
   useEffect(() => {
     if (!loading) {

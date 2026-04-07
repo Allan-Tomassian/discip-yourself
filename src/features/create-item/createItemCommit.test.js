@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildCreationViewTarget } from "./createItemCommit";
+import {
+  buildCreationViewTarget,
+  commitPreparedCreatePlan,
+  prepareCreateCommit,
+} from "./createItemCommit";
 import {
   buildMinDeadlineKey,
   ensureSuggestedCategory,
@@ -85,5 +89,31 @@ describe("createItem shared helpers", () => {
 
     expect(suggestions.some((category) => category.id === "cat_health")).toBe(false);
     expect(suggestions.some((category) => String(category.name).trim().toLowerCase() === "travail")).toBe(false);
+  });
+
+  it("laisse un objectif sans date cible quand le flow manuel choisit ce preset", () => {
+    const state = {
+      categories: [{ id: "cat_work", name: "Travail", color: "#111111" }],
+      goals: [],
+    };
+
+    const preparedCommit = prepareCreateCommit({
+      state,
+      kind: "outcome",
+      outcomeDraft: {
+        title: "Stabiliser le lancement",
+        categoryId: "cat_work",
+        startDate: "2026-04-07",
+        deadline: "",
+      },
+    });
+
+    expect(preparedCommit.ok).toBe(true);
+    expect(preparedCommit.plan.pendingOutcome.deadline).toBe("");
+
+    const commitResult = commitPreparedCreatePlan(state, preparedCommit.plan);
+    const createdOutcome = commitResult.state.goals.find((goal) => goal.id === commitResult.createdOutcomeId);
+
+    expect(createdOutcome?.deadline).toBe("");
   });
 });

@@ -126,6 +126,7 @@ export default function App() {
   const [coachState, setCoachState] = useState({
     mode: "free",
     conversationId: null,
+    prefill: "",
   });
   const dataRef = useRef(data);
   const invariantLogRef = useRef(new Set());
@@ -409,6 +410,7 @@ export default function App() {
         setCoachState({
           mode: "plan",
           conversationId: origin?.coachConversationId || null,
+          prefill: "",
         });
         setTab("coach");
         return;
@@ -705,6 +707,7 @@ export default function App() {
     setCoachState({
       mode: coachAliasRequest.mode === "plan" ? "plan" : "free",
       conversationId: coachAliasRequest.conversationId || null,
+      prefill: "",
     });
     consumeCoachAliasRequest();
   }, [coachAliasRequest, consumeCoachAliasRequest, setTab]);
@@ -764,10 +767,11 @@ export default function App() {
           setData={setData}
           persistenceScope={persistenceScope}
           onOpenLibrary={homeNavigationHandlers.onOpenLibrary}
-          onOpenCoachGuided={() => {
+          onOpenCoachGuided={({ mode = "free", prefill = "" } = {}) => {
             setCoachState({
-              mode: "plan",
+              mode: mode === "plan" ? "plan" : "free",
               conversationId: null,
+              prefill: typeof prefill === "string" ? prefill : "",
             });
             setTab("coach");
           }}
@@ -936,6 +940,7 @@ export default function App() {
           setTab={setTab}
           requestedMode={coachState.mode}
           requestedConversationId={coachState.conversationId}
+          requestedPrefill={coachState.prefill}
           onOpenAssistantCreate={openCoachAssistantCreate}
           onOpenCreatedView={openCoachCreatedView}
           onOpenPaywall={openPaywall}
@@ -1092,6 +1097,15 @@ export default function App() {
         onClose={closePlusExpander}
         onChooseObjective={handleChooseObjective}
         onChooseAction={handleChooseAction}
+        onChoosePlan={() => {
+          closePlusExpander();
+          setCoachState({
+            mode: "plan",
+            conversationId: null,
+            prefill: "Aide-moi à structurer ce que je veux faire avancer.",
+          });
+          setTab("coach");
+        }}
         onResumeDraft={hasDraft ? resumeCreateDraft : null}
         hasDraft={hasDraft}
       />

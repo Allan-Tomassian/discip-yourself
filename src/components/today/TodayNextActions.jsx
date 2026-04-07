@@ -3,16 +3,9 @@ import { TODAY_SCREEN_COPY } from "../../ui/labels";
 import { resolveCategoryColor } from "../../utils/categoryPalette";
 
 export default function TodayNextActions({ actions = [], onOpenOccurrence }) {
-  const safeActions = Array.isArray(actions) ? actions.slice(0, 3) : [];
+  const safeActions = Array.isArray(actions) ? actions.slice(0, 2) : [];
 
-  if (!safeActions.length) {
-    return (
-      <div className="lovableCard lovableEmptyCard">
-        <div className="lovableEmptyTitle">{TODAY_SCREEN_COPY.emptyActionsTitle}</div>
-        <p className="lovableEmptyCopy">{TODAY_SCREEN_COPY.emptyActionsCopy}</p>
-      </div>
-    );
-  }
+  if (!safeActions.length) return null;
 
   return (
     <div className="lovableActionList">

@@ -37,7 +37,9 @@ describe("main section container contract", () => {
     const coach = readSrc("pages/Coach.jsx");
 
     expect(home).toContain("lovablePage");
-    expect(home).toContain("lovableTodayInsight");
+    expect(home).toContain("const todayV2State = useMemo(");
+    expect(home).toContain("<TodayHero");
+    expect(home).not.toContain("lovableTodayInsight");
     expect(todayHero).toContain("lovablePriorityCard");
     expect(todayNextActions).toContain("lovableTodayActionRow");
     expect(objectives).toContain("lovableObjectiveCard");

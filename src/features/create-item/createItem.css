@@ -3,7 +3,33 @@
   gap: var(--space-12);
 }
 
+.createItemChoiceGrid {
+  display: grid;
+  gap: var(--space-10);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.createItemChoiceCard {
+  min-height: 100%;
+}
+
 .createItemStack--compact {
+  gap: var(--space-8);
+}
+
+.createItemDomainCard,
+.createItemInlineHint {
+  width: 100%;
+}
+
+.createItemAdvancedStack {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.createItemChipRow {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-8);
 }
 

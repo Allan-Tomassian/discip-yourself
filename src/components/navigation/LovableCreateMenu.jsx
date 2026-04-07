@@ -17,6 +17,7 @@ export default function LovableCreateMenu({
   onClose,
   onChooseObjective,
   onChooseAction,
+  onChoosePlan,
   onResumeDraft,
   hasDraft = false,
 }) {
@@ -37,6 +38,10 @@ export default function LovableCreateMenu({
     <div className="lovableMenuOverlay" role="presentation">
       <div className="lovableMenuBackdrop" onClick={() => onClose?.()} />
       <div className="lovableMenu" style={menuStyle} role="menu" aria-label={CREATE_MENU_COPY.menuAriaLabel}>
+        <div role="none" className="lovableMenuButton">
+          <span className="lovableMenuLabel">{CREATE_MENU_COPY.promptTitle}</span>
+          <span className="lovableMenuMeta">{CREATE_MENU_COPY.promptMeta}</span>
+        </div>
         <button type="button" className="lovableMenuButton" onClick={() => onChooseObjective?.()} role="menuitem">
           <span className="lovableMenuLabel">{CREATE_MENU_COPY.objectiveLabel}</span>
           <span className="lovableMenuMeta">{CREATE_MENU_COPY.objectiveMeta}</span>
@@ -44,6 +49,10 @@ export default function LovableCreateMenu({
         <button type="button" className="lovableMenuButton" onClick={() => onChooseAction?.()} role="menuitem">
           <span className="lovableMenuLabel">{CREATE_MENU_COPY.actionLabel}</span>
           <span className="lovableMenuMeta">{CREATE_MENU_COPY.actionMeta}</span>
+        </button>
+        <button type="button" className="lovableMenuButton" onClick={() => onChoosePlan?.()} role="menuitem">
+          <span className="lovableMenuLabel">{CREATE_MENU_COPY.planLabel}</span>
+          <span className="lovableMenuMeta">{CREATE_MENU_COPY.planMeta}</span>
         </button>
         {hasDraft ? (
           <button type="button" className="lovableMenuButton" onClick={() => onResumeDraft?.()} role="menuitem">

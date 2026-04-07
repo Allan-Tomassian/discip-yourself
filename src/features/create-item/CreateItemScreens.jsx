@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { CATEGORY_UI_COPY, LABELS } from "../../ui/labels";
 import {
   AppChip,
@@ -10,6 +10,7 @@ import {
   AppStickyFooter,
   AppTextarea,
   AppToggleRow,
+  ChoiceCard,
   FieldGroup,
   GhostButton,
   PrimaryButton,
@@ -255,6 +256,404 @@ function ReviewSection({ items = [], unresolvedQuestions = [], title = "Review",
         </div>
       ) : null}
     </AppFormSection>
+  );
+}
+
+function ManualDomainCard({ controller, advancedOpen = false, onToggleAdvanced }) {
+  const selectedLabel = resolveSelectedCategoryLabel(controller);
+  const selectedSuggestion = controller?.selectedSuggestion || null;
+  const domainMeta = selectedSuggestion
+    ? "Suggestion disponible. Tu peux la garder telle quelle ou la modifier."
+    : "Modifiable si tu veux ajuster la structure avant d’enregistrer.";
+
+  return (
+    <AppInlineMetaCard
+      className="createItemDomainCard"
+      title="Domaine"
+      text={selectedLabel}
+      meta={domainMeta}
+      action={(
+        <GhostButton size="sm" onClick={() => onToggleAdvanced?.()}>
+          {advancedOpen ? "Masquer" : "Modifier"}
+        </GhostButton>
+      )}
+    />
+  );
+}
+
+function ManualReviewSection({ items = [], title = "Validation simple", description = "" }) {
+  const safeItems = Array.isArray(items) ? items.filter((item) => item?.text) : [];
+  if (!safeItems.length) return null;
+  return (
+    <AppFormSection title={title} description={description}>
+      <div className="createItemStack createItemStack--compact">
+        {safeItems.map((item) => (
+          <AppInlineMetaCard
+            key={`${item.title}:${item.text}`}
+            className="createItemReviewCard"
+            title={item.title}
+            text={item.text}
+          />
+        ))}
+      </div>
+    </AppFormSection>
+  );
+}
+
+function ActionManualTimingSection({ controller }) {
+  const activePreset = controller.timingPreset || "now";
+  const recurringCadence = controller.repeat === "weekly" ? "weekly" : "daily";
+  const oneOffTimeEnabled = controller.timeMode === "FIXED";
+  const recurringTimeEnabled = controller.timeMode === "FIXED";
+
+  return (
+    <AppFormSection
+      title="Quand ?"
+      description="Choisis le cadre le plus simple pour vraiment lancer cette action."
+    >
+      <div className="createItemChoiceGrid">
+        {[
+          {
+            id: "now",
+            title: "Maintenant",
+            description: "Un pas simple à faire aujourd’hui, sans lui ajouter de structure inutile.",
+          },
+          {
+            id: "today",
+            title: "Aujourd’hui",
+            description: "Tu veux la faire aujourd’hui, avec une heure seulement si cela aide.",
+          },
+          {
+            id: "later",
+            title: "Plus tard",
+            description: "Tu connais déjà le bon jour, sans figer toute la structure.",
+          },
+          {
+            id: "recurring",
+            title: "Récurrent",
+            description: "Tu veux un rythme léger, quotidien ou hebdomadaire.",
+          },
+        ].map((option) => (
+          <ChoiceCard
+            key={option.id}
+            title={option.title}
+            description={option.description}
+            selected={activePreset === option.id}
+            className="createItemChoiceCard"
+            onClick={() => controller.selectTimingPreset?.(option.id)}
+          />
+        ))}
+      </div>
+
+      {activePreset === "now" ? (
+        <AppInlineMetaCard
+          className="createItemInlineHint"
+          title="Cadre choisi"
+          text="Créée pour aujourd’hui, sans heure imposée."
+        />
+      ) : null}
+
+      {activePreset === "today" ? (
+        <div className="createItemStack createItemStack--compact">
+          <AppToggleRow
+            checked={oneOffTimeEnabled}
+            onChange={(event) => controller.handleOneOffTimeModeChange(event.target.checked ? "FIXED" : "NONE")}
+            label="Ajouter une heure précise"
+            description="Seulement si cela augmente vraiment tes chances de la faire."
+          />
+          {oneOffTimeEnabled ? (
+            <FieldGroup label="Heure" className="editItemField">
+              <AppInput
+                type="time"
+                value={controller.oneOffTime}
+                onChange={(event) => controller.setOneOffTime(event.target.value)}
+              />
+            </FieldGroup>
+          ) : null}
+        </div>
+      ) : null}
+
+      {activePreset === "later" ? (
+        <div className="createItemStack createItemStack--compact">
+          <FieldGroup label="Jour" className="editItemField">
+            <AppDateField value={controller.oneOffDate} onChange={(event) => controller.setOneOffDate(event.target.value)} />
+          </FieldGroup>
+          <AppToggleRow
+            checked={oneOffTimeEnabled}
+            onChange={(event) => controller.handleOneOffTimeModeChange(event.target.checked ? "FIXED" : "NONE")}
+            label="Ajouter une heure précise"
+            description="Optionnel. Garde l’heure vide si tu veux juste réserver le bon jour."
+          />
+          {oneOffTimeEnabled ? (
+            <FieldGroup label="Heure" className="editItemField">
+              <AppInput
+                type="time"
+                value={controller.oneOffTime}
+                onChange={(event) => controller.setOneOffTime(event.target.value)}
+              />
+            </FieldGroup>
+          ) : null}
+        </div>
+      ) : null}
+
+      {activePreset === "recurring" ? (
+        <div className="createItemStack createItemStack--compact">
+          <FieldGroup label="Rythme" className="editItemField">
+            <div className="createItemChipRow">
+              <AppChip active={recurringCadence === "daily"} onClick={() => controller.setRecurringCadence?.("daily")}>
+                Quotidien
+              </AppChip>
+              <AppChip active={recurringCadence === "weekly"} onClick={() => controller.setRecurringCadence?.("weekly")}>
+                Hebdomadaire
+              </AppChip>
+            </div>
+          </FieldGroup>
+          {recurringCadence === "weekly" ? <DaysSelectorField value={controller.daysOfWeek} onToggle={controller.toggleDay} /> : null}
+          <AppToggleRow
+            checked={recurringTimeEnabled}
+            onChange={(event) => controller.handleRecurringTimeModeChange(event.target.checked ? "FIXED" : "NONE")}
+            label="Ajouter une heure précise"
+            description="Optionnel. Laisse vide si cette action doit rester souple."
+          />
+          {recurringTimeEnabled ? (
+            <FieldGroup label="Heure" className="editItemField">
+              <AppInput
+                type="time"
+                value={controller.startTime}
+                onChange={(event) => controller.setStartTime(event.target.value)}
+              />
+            </FieldGroup>
+          ) : null}
+        </div>
+      ) : null}
+    </AppFormSection>
+  );
+}
+
+function ActionManualAdvancedSection({ controller }) {
+  return (
+    <div className="createItemAdvancedStack">
+      <AppFormSection
+        title="Options avancées"
+        description="Affiner seulement si cela aide vraiment à mieux créer ou relancer cette action."
+      >
+        <div className="editItemTwoCol">
+          <CategorySelectField controller={controller} />
+          <FieldGroup label="Priorité" className="editItemField">
+            <AppSelect value={controller.priority} onChange={(event) => controller.setPriority(event.target.value)}>
+              {PRIORITY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </AppSelect>
+          </FieldGroup>
+        </div>
+
+        <FieldGroup
+          label={`${LABELS.goal} lié`}
+          helper={`Optionnel. Rattache cette ${LABELS.actionLower} à un ${LABELS.goalLower} seulement si cela clarifie sa place.`}
+          className="editItemField"
+        >
+          <AppSelect value={controller.effectiveSelectedOutcomeId} onChange={(event) => controller.setSelectedOutcomeId(event.target.value)}>
+            <option value="">{`Sans ${LABELS.goalLower}`}</option>
+            {controller.outcomes.map((outcome) => (
+              <option key={outcome.id} value={outcome.id}>
+                {outcome.title || LABELS.goal}
+              </option>
+            ))}
+          </AppSelect>
+        </FieldGroup>
+
+        <FieldGroup
+          label="Durée"
+          helper="Optionnel. Ajoute-la seulement si une durée claire aide vraiment à la faire."
+          className="editItemField"
+        >
+          <AppInput
+            type="number"
+            min="1"
+            value={controller.sessionMinutes}
+            onChange={(event) => controller.setSessionMinutes(event.target.value)}
+            placeholder="Minutes"
+          />
+        </FieldGroup>
+      </AppFormSection>
+
+      <ActionReminderSection controller={controller} />
+      <ActionQuantitySection controller={controller} />
+      <ActionContextSection controller={controller} />
+    </div>
+  );
+}
+
+export function ActionManualCreateScreen({
+  controller,
+  primaryLabel = "Créer l'action",
+}) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  return (
+    <>
+      <AppFormSection
+        main
+        title="Que veux-tu faire avancer ?"
+        description="Commence par l’intention. La structure vient seulement après."
+      >
+        <FieldGroup label="Intention" className="editItemField">
+          <AppInput
+            value={controller.title}
+            onChange={(event) => controller.setTitle(event.target.value)}
+            placeholder="Ex. Envoyer la proposition, appeler Paul, finaliser la page"
+          />
+        </FieldGroup>
+        <ManualDomainCard
+          controller={controller}
+          advancedOpen={advancedOpen}
+          onToggleAdvanced={() => setAdvancedOpen((value) => !value)}
+        />
+      </AppFormSection>
+
+      <ActionManualTimingSection controller={controller} />
+
+      {advancedOpen ? <ActionManualAdvancedSection controller={controller} /> : null}
+
+      <ManualReviewSection
+        title="Validation simple"
+        description="Vérifie juste le domaine, le cadre et le moment avant d’enregistrer."
+        items={controller.reviewCards}
+      />
+
+      <FooterActions
+        error={controller.error}
+        onCancel={controller.onBack}
+        onSave={controller.handleSave}
+        primaryLabel={primaryLabel}
+      />
+    </>
+  );
+}
+
+function OutcomeManualHorizonSection({ controller }) {
+  const activePreset = controller.horizonPreset || "";
+
+  return (
+    <AppFormSection
+      title="Horizon"
+      description="Choisis un horizon crédible. Tu pourras l’affiner si besoin."
+    >
+      <div className="createItemChoiceGrid">
+        {[
+          { id: "7", title: "7 jours", description: "Un cap court pour lancer le mouvement." },
+          { id: "30", title: "30 jours", description: "Un horizon simple pour structurer le mois." },
+          { id: "90", title: "90 jours", description: "Un cap plus large sans figer tout le plan." },
+          { id: "none", title: "Sans date cible", description: "Tu veux garder un cap clair sans fixer d’échéance." },
+        ].map((option) => (
+          <ChoiceCard
+            key={option.id}
+            title={option.title}
+            description={option.description}
+            selected={activePreset === option.id}
+            className="createItemChoiceCard"
+            onClick={() => controller.selectHorizonPreset?.(option.id)}
+          />
+        ))}
+      </div>
+      {!activePreset ? (
+        <AppInlineMetaCard
+          className="createItemInlineHint"
+          title="Horizon personnalisé"
+          text="Tu gardes des dates ajustées manuellement dans les options avancées."
+        />
+      ) : null}
+    </AppFormSection>
+  );
+}
+
+function OutcomeManualAdvancedSection({ controller }) {
+  return (
+    <div className="createItemAdvancedStack">
+      <AppFormSection
+        title="Options avancées"
+        description="Affiner seulement si cela aide vraiment à rendre cet objectif plus lisible."
+      >
+        <div className="editItemTwoCol">
+          <CategorySelectField controller={controller} />
+          <FieldGroup label="Priorité" className="editItemField">
+            <AppSelect value={controller.priority} onChange={(event) => controller.setPriority(event.target.value)}>
+              {PRIORITY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </AppSelect>
+          </FieldGroup>
+        </div>
+      </AppFormSection>
+
+      <OutcomeHorizonSection controller={controller} />
+      <OutcomeMeasureSection controller={controller} />
+    </div>
+  );
+}
+
+export function OutcomeManualCreateScreen({
+  controller,
+  primaryLabel = `Créer l'${LABELS.goalLower}`,
+}) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  return (
+    <>
+      <AppFormSection
+        main
+        title="Que veux-tu faire avancer ?"
+        description={`Commence par le cap à tenir, pas par la structure détaillée du ${LABELS.goalLower}.`}
+      >
+        <FieldGroup label="Intention" className="editItemField">
+          <AppInput
+            value={controller.title}
+            onChange={(event) => controller.setTitle(event.target.value)}
+            placeholder={`Ex. Lancer la nouvelle offre, remettre du calme dans ma semaine`}
+          />
+        </FieldGroup>
+        <ManualDomainCard
+          controller={controller}
+          advancedOpen={advancedOpen}
+          onToggleAdvanced={() => setAdvancedOpen((value) => !value)}
+        />
+      </AppFormSection>
+
+      <AppFormSection
+        title="Pourquoi ?"
+        description={`Donne la raison utile qui rend ce ${LABELS.goalLower} prioritaire maintenant.`}
+      >
+        <FieldGroup label="Pourquoi" className="editItemField">
+          <AppTextarea
+            value={controller.notes}
+            onChange={(event) => controller.setNotes(event.target.value)}
+            placeholder={`Ex. Ce cap me donne une direction claire et évite de disperser mon énergie.`}
+          />
+        </FieldGroup>
+      </AppFormSection>
+
+      <OutcomeManualHorizonSection controller={controller} />
+
+      {advancedOpen ? <OutcomeManualAdvancedSection controller={controller} /> : null}
+
+      <ManualReviewSection
+        title="Validation simple"
+        description={`Vérifie juste le domaine, l’horizon et la formulation avant de créer l’${LABELS.goalLower}.`}
+        items={controller.reviewCards}
+      />
+
+      <FooterActions
+        error={controller.error}
+        onCancel={controller.onBack}
+        onSave={controller.handleSave}
+        primaryLabel={primaryLabel}
+      />
+    </>
   );
 }
 

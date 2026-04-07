@@ -200,6 +200,43 @@
   padding-top: var(--space-4);
 }
 
+.todayV2HeroMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+}
+
+.todayV2HeroDuration {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-primary) 96%, transparent);
+  color: var(--text-secondary);
+  font-size: var(--font-meta);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.todayV2HeroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin-top: var(--space-16);
+}
+
+.todayV2HeroSecondaryButton {
+  min-width: 132px;
+  justify-content: center;
+}
+
+.todayV2ProgressBlock {
+  margin-top: var(--space-16);
+}
+
 .todayNextActionsList {
   display: grid;
   gap: var(--space-16);

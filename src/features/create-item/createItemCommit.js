@@ -23,7 +23,6 @@ import {
 } from "../edit-item/editItemShared";
 import { normalizeActionDraft, normalizeOutcomeDraft } from "../../creation/createItemDraft";
 import {
-  buildMinDeadlineKey,
   ensureSuggestedCategory,
   normalizeReminderTimes,
   resolveSuggestedCategories,
@@ -184,7 +183,7 @@ export function prepareCreateCommit({
         ? {
             ...normalizedOutcomeDraft,
             startDate: normalizedOutcomeDraft.startDate || todayLocalKey(),
-            deadline: normalizedOutcomeDraft.deadline || buildMinDeadlineKey(normalizedOutcomeDraft.startDate || todayLocalKey()),
+            deadline: normalizedOutcomeDraft.deadline || "",
           }
         : null,
       actionsToCreate,
@@ -233,7 +232,7 @@ export function commitPreparedCreatePlan(
       type: "OUTCOME",
       planType: "STATE",
       startDate: safePlan.pendingOutcome.startDate || todayLocalKey(),
-      deadline: safePlan.pendingOutcome.deadline || buildMinDeadlineKey(safePlan.pendingOutcome.startDate || todayLocalKey()),
+      deadline: safePlan.pendingOutcome.deadline || "",
       priority: safePlan.pendingOutcome.priority || "secondaire",
       measureType: safePlan.pendingOutcome.measureType || null,
       targetValue: safePlan.pendingOutcome.targetValue || null,

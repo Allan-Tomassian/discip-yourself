@@ -31,6 +31,7 @@ describe("create item canonical contract", () => {
 
   it("keeps creation draft-first and assistant creation proposal-based", () => {
     const createPage = readSrc("pages/CreateItem.jsx");
+    const createScreens = readSrc("features/create-item/CreateItemScreens.jsx");
     const coachPanel = readSrc("features/coach/CoachPanel.jsx");
     const coachController = readSrc("features/coach/coachPanelController.js");
     const planningCoachCard = readSrc("components/planning/PlanningCoachCard.jsx");
@@ -40,6 +41,11 @@ describe("create item canonical contract", () => {
     expect(createPage).toContain("prepareCreateCommit");
     expect(createPage).toContain("commitPreparedCreatePlan");
     expect(createPage).toContain("persistCoachSummary");
+    expect(createPage).toContain('pageId="create-item"');
+    expect(createScreens).toContain("ActionManualCreateScreen");
+    expect(createScreens).toContain("OutcomeManualCreateScreen");
+    expect(createScreens).toContain("GuidedCreateScreen");
+    expect(createScreens).toContain("AssistantCreateScreen");
     expect(coachPanel).toContain("createFromPlanReply");
     expect(coachPanel).toContain("openAssistantReview");
     expect(coachPanel).toContain("onOpenAssistantCreate");

@@ -31,26 +31,36 @@ describe("home today canonical contract", () => {
     const home = readSrc("pages/Home.jsx");
     const hero = readSrc("components/today/TodayHero.jsx");
     const nextActions = readSrc("components/today/TodayNextActions.jsx");
+    const stateModel = readSrc("features/today/todayV2State.js");
 
     expect(home).toContain('pageId="today"');
     expect(home).toContain("greetingPeriod");
     expect(home).toContain("headerDateLabel");
     expect(home).toContain("<AppScreen");
-    expect(home).toContain('className="lovableCard lovableTodayInsight"');
+    expect(home).toContain("const todayV2State = useMemo(");
+    expect(home).toContain("deriveTodayV2State({");
+    expect(stateModel).toContain('state: "ready"');
+    expect(stateModel).toContain('state: "clarify"');
+    expect(stateModel).toContain('state: "overload"');
+    expect(stateModel).toContain('state: "validated"');
     expect(home).toContain('className="lovableSectionLabel">{TODAY_SCREEN_COPY.priorityTitle}<');
-    expect(home).toContain('className="lovableSectionLabel">{TODAY_SCREEN_COPY.actionsTitle}<');
     expect(home).toContain("<TodayHero");
     expect(home).toContain("<TodayNextActions");
-    expect(home).not.toContain("<TodayDailyState");
+    expect(home).toContain("<TodayDailyState");
     expect(hero).toContain('className="lovableCard lovablePriorityCard"');
     expect(hero).toContain('className="lovablePrimaryButton"');
+    expect(hero).toContain("secondaryLabel");
+    expect(hero).toContain("durationLabel");
     expect(nextActions).toContain('className="lovableTodayActionRow"');
-    expect(nextActions).toContain("lovableEmptyTitle");
+    expect(nextActions).toContain("actions.slice(0, 2)");
+    expect(nextActions).not.toContain("lovableEmptyTitle");
     expect(home).not.toContain("<SortableBlocks");
     expect(home).not.toContain("onReorder={handleVisibleReorder}");
     expect(home).not.toContain("<CalendarCard");
     expect(home).not.toContain("<MicroActionsCard");
     expect(home).not.toContain('data-tour-id="today-notes-card"');
+    expect(home).not.toContain('className="lovableCard lovableTodayInsight"');
+    expect(home).not.toContain('className="lovableTodayQuote"');
   });
 
   it("passes decision-oriented hero props and ai-priority next actions", () => {
@@ -60,13 +70,13 @@ describe("home today canonical contract", () => {
     expect(home).toContain("const heroImpactText = useMemo(");
     expect(home).toContain("const heroContributionLabel =");
     expect(home).toContain("const heroDisplayCategory =");
-    expect(home).toContain("const insightCopy =");
-    expect(home).toContain("reason={heroImpactText || heroReasonText}");
+    expect(home).toContain("reason={todayV2State.hero.reason}");
     expect(home).toContain("contributionLabel={heroContributionLabel}");
-    expect(home).toContain("recommendedCategoryLabel={heroViewModel.recommendedCategoryLabel || heroDisplayCategoryName}");
-    expect(home).toContain("primaryLabel={heroViewModel.primaryLabel || TODAY_SCREEN_COPY.primaryAction}");
+    expect(home).toContain("recommendedCategoryLabel={todayV2State.hero.categoryLabel || heroDisplayCategoryName}");
+    expect(home).toContain("primaryLabel={todayV2State.hero.primaryLabel || TODAY_SCREEN_COPY.primaryAction}");
+    expect(home).toContain("secondaryLabel={todayV2State.hero.secondaryLabel || \"\"}");
     expect(hero).not.toContain("AppCard");
-    expect(home).toContain("isAiPriority:");
+    expect(home).toContain("todayV2State.alternatives");
     expect(home).not.toContain("helpText=");
     expect(home).not.toContain("reasonLinkType=");
   });
@@ -104,7 +114,7 @@ describe("home today canonical contract", () => {
     expect(home).toContain("ui: withExecutionActiveCategoryId(");
     expect(home).toContain("executionCategoryId || focusCategory?.id || getSelectedCategoryForView(prev, CATEGORY_VIEW.TODAY) || null");
     expect(home).not.toContain("planning: executionCategoryId || focusCategory?.id || getSelectedCategoryForView(prev, CATEGORY_VIEW.TODAY) || null");
-    expect(home).not.toContain("onOpenPlanning={openPlanningForToday}");
+    expect(home).toContain('kind === "open_planning_for_today"');
   });
 
   it("computes daily state from planned minutes, runtime seconds and remaining load", () => {
@@ -128,5 +138,22 @@ describe("home today canonical contract", () => {
     expect(home).toContain("const scopedFocusOccurrence = localGapSummary?.recommendedOccurrence || null;");
     expect(home).not.toContain("const heroAnalyzeLabel = manualTodayAnalysis.isPersistedForContext ? UI_COPY.refreshAnalysis : UI_COPY.analyzePriority;");
     expect(home).not.toContain("reasonLinkLabel={heroViewModel.reasonLinkLabel || \"\"}");
+  });
+
+  it("opens contextual coach and creation CTA from today v2", () => {
+    const app = readSrc("App.jsx");
+    const home = readSrc("pages/Home.jsx");
+    const coach = readSrc("pages/Coach.jsx");
+    const controller = readSrc("features/coach/coachPanelController.js");
+
+    expect(app).toContain("prefill: \"\"");
+    expect(app).toContain("onOpenCoachGuided={({ mode = \"free\", prefill = \"\" } = {}) => {");
+    expect(app).toContain("requestedPrefill={coachState.prefill}");
+    expect(home).toContain("onOpenCreateHabit");
+    expect(home).toContain('action.kind === "open_coach"');
+    expect(home).toContain('action.kind === "open_create_habit"');
+    expect(coach).toContain("requestedPrefill = \"\"");
+    expect(controller).toContain("shouldApplyCoachRequestedPrefill");
+    expect(controller).toContain("requestedPrefill = \"\"");
   });
 });

@@ -30,10 +30,10 @@ import {
   normalizeQuantityValue,
 } from "../features/edit-item/editItemShared";
 import {
-  ActionCreateScreen,
   AssistantCreateScreen,
   GuidedCreateScreen,
-  OutcomeCreateScreen,
+  ActionManualCreateScreen,
+  OutcomeManualCreateScreen,
 } from "../features/create-item/CreateItemScreens";
 import {
   createEmptyCreateItemDraft,
@@ -42,6 +42,7 @@ import {
   normalizeOutcomeDraft,
 } from "../creation/createItemDraft";
 import {
+  addDaysLocal,
   normalizeLocalDateKey,
   normalizeStartTime,
   todayLocalKey,
@@ -85,6 +86,65 @@ function normalizeCategoryName(value) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+function resolveActionTimingPreset(draftValue) {
+  const safeDraft = draftValue && typeof draftValue === "object" ? draftValue : {};
+  const repeat = safeDraft.repeat || "none";
+  if (repeat === "daily" || repeat === "weekly") return "recurring";
+  const todayKey = todayLocalKey();
+  const oneOffDate = normalizeLocalDateKey(safeDraft.oneOffDate);
+  if (oneOffDate && oneOffDate > todayKey) return "later";
+  if (safeDraft.timeMode === "FIXED" && normalizeStartTime(safeDraft.startTime)) return "today";
+  return "now";
+}
+
+function applyActionTimingPreset(controller, preset) {
+  const todayKey = todayLocalKey();
+  if (!controller || typeof controller !== "object") return;
+  if (preset === "recurring") {
+    controller.setRepeat(controller.repeat === "weekly" ? "weekly" : "daily");
+    controller.handleRecurringTimeModeChange("NONE");
+    controller.setStartTime("");
+    return;
+  }
+
+  controller.setRepeat("none");
+  controller.handleOneOffTimeModeChange("NONE");
+  controller.setOneOffTime("");
+
+  if (preset === "later") {
+    const nextDate =
+      normalizeLocalDateKey(controller.oneOffDate) > todayKey
+        ? normalizeLocalDateKey(controller.oneOffDate)
+        : addDaysLocal(todayKey, 1);
+    controller.setOneOffDate(nextDate || addDaysLocal(todayKey, 1));
+    return;
+  }
+
+  controller.setOneOffDate(todayKey);
+}
+
+function resolveOutcomeHorizonPreset(draftValue) {
+  const safeDraft = draftValue && typeof draftValue === "object" ? draftValue : {};
+  const startDate = normalizeLocalDateKey(safeDraft.startDate) || todayLocalKey();
+  const deadline = normalizeLocalDateKey(safeDraft.deadline);
+  if (!deadline) return "none";
+  if (deadline === addDaysLocal(startDate, 7)) return "7";
+  if (deadline === addDaysLocal(startDate, 30)) return "30";
+  if (deadline === addDaysLocal(startDate, 90)) return "90";
+  return "";
+}
+
+function applyOutcomeHorizonPreset(controller, preset) {
+  const todayKey = todayLocalKey();
+  if (!controller || typeof controller !== "object") return;
+  controller.handleOutcomeStartDateChange(todayKey);
+  if (preset === "none") {
+    controller.setDeadline("");
+    return;
+  }
+  controller.setDeadline(addDaysLocal(todayKey, Number.parseInt(preset, 10)) || "");
+}
+
 function useActionDraftController({
   categories,
   outcomes,
@@ -97,7 +157,7 @@ function useActionDraftController({
 }) {
   const initialDraft = useMemo(() => normalizeActionDraft(actionDraft), [actionDraft]);
   const [title, setTitle] = useState(initialDraft.title || "");
-  const [selectedCategoryId, setSelectedCategoryId] = useState(initialDraft.categoryId || "");
+  const [selectedCategoryId, setSelectedCategoryId] = useState(initialDraft.categoryId || categories[0]?.id || "");
   const [priority, setPriority] = useState(initialDraft.priority || "secondaire");
   const [selectedOutcomeId, setSelectedOutcomeId] = useState(initialDraft.outcomeId || "");
   const [repeat, setRepeat] = useState(initialDraft.repeat || "none");
@@ -169,6 +229,7 @@ function useActionDraftController({
     sessionMinutes,
     setSessionMinutes,
     daysOfWeek,
+    setDaysOfWeek,
     toggleDay: (value) =>
       setDaysOfWeek((previous) =>
         previous.includes(value) ? previous.filter((entry) => entry !== value) : [...previous, value].sort()
@@ -259,7 +320,8 @@ function useActionDraftController({
     notes,
   });
 
-  const categoryName = categories.find((category) => category.id === selectedCategoryId)?.name || "Catégorie à confirmer";
+  const categoryName =
+    categoryOptions.find((category) => category.id === selectedCategoryId)?.name || "Catégorie à confirmer";
   const linkedOutcomeTitle = outcomes.find((outcome) => outcome.id === effectiveSelectedOutcomeId)?.title || "";
 
   controller.reviewCards = [
@@ -282,10 +344,10 @@ function useOutcomeDraftController({
 }) {
   const initialDraft = useMemo(() => normalizeOutcomeDraft(outcomeDraft), [outcomeDraft]);
   const [title, setTitle] = useState(initialDraft.title || "");
-  const [selectedCategoryId, setSelectedCategoryId] = useState(initialDraft.categoryId || "");
+  const [selectedCategoryId, setSelectedCategoryId] = useState(initialDraft.categoryId || categories[0]?.id || "");
   const [priority, setPriority] = useState(initialDraft.priority || "secondaire");
   const [startDate, setStartDate] = useState(initialDraft.startDate || todayLocalKey());
-  const [deadline, setDeadline] = useState(initialDraft.deadline || buildMinDeadlineKey(initialDraft.startDate || todayLocalKey()));
+  const [deadline, setDeadline] = useState(initialDraft.deadline || "");
   const [measureType, setMeasureType] = useState(initialDraft.measureType || "");
   const [targetValue, setTargetValue] = useState(
     initialDraft.targetValue != null ? String(initialDraft.targetValue) : ""
@@ -347,7 +409,8 @@ function useOutcomeDraftController({
       setStartDate(normalized);
       setDeadline((previous) => {
         const current = normalizeLocalDateKey(previous);
-        return current && current >= buildMinDeadlineKey(normalized) ? current : buildMinDeadlineKey(normalized);
+        if (!current) return "";
+        return current >= buildMinDeadlineKey(normalized) ? current : buildMinDeadlineKey(normalized);
       });
     },
     handleDeadlineChange: (event) => {
@@ -366,7 +429,8 @@ function useOutcomeDraftController({
     targetValue: normalizeQuantityValue(targetValue),
     notes,
   });
-  const categoryName = categories.find((category) => category.id === selectedCategoryId)?.name || "Catégorie à confirmer";
+  const categoryName =
+    categoryOptions.find((category) => category.id === selectedCategoryId)?.name || "Catégorie à confirmer";
   controller.reviewCards = [
     { title: "Catégorie", text: categoryName },
     { title: "Horizon", text: [draftValue.startDate || "Aujourd’hui", draftValue.deadline || "Sans date cible"].join(" → ") },
@@ -484,6 +548,23 @@ export default function CreateItem({
     onActivateSuggestedCategory: activateSuggestedCategory,
     onCreateCategory: createInlineCategory,
   });
+  const actionManualController = {
+    ...actionController,
+    timingPreset: resolveActionTimingPreset(actionController.draftValue),
+    selectTimingPreset: (preset) => applyActionTimingPreset(actionController, preset),
+    setRecurringCadence: (value) => {
+      const normalized = value === "weekly" ? "weekly" : "daily";
+      actionController.setRepeat(normalized);
+      if (normalized === "weekly" && !actionController.daysOfWeek.length) {
+        actionController.setDaysOfWeek([1, 2, 3, 4, 5]);
+      }
+    },
+  };
+  const outcomeManualController = {
+    ...outcomeController,
+    horizonPreset: resolveOutcomeHorizonPreset(outcomeController.draftValue),
+    selectHorizonPreset: (preset) => applyOutcomeHorizonPreset(outcomeController, preset),
+  };
 
   const [error, setError] = useState("");
 
@@ -728,10 +809,10 @@ export default function CreateItem({
     effectiveKind === "guided"
       ? "Commence par la catégorie, pose l’objectif, puis une première action vraiment exécutable."
       : effectiveKind === "outcome"
-        ? "Choisis d’abord la bonne catégorie, puis pose un objectif clair."
+        ? `Pars du cap à faire avancer, puis affine seulement ce qui aide à rendre l’${LABELS.goalLower} lisible.`
         : effectiveKind === "assistant"
           ? "Le Coach propose une structure courte. Tu valides la catégorie, l’objectif éventuel et les actions utiles."
-          : "Choisis la catégorie, puis donne à l’action un rythme simple et crédible.";
+          : "Pars de l’intention, choisis un cadre simple, puis confirme sans te noyer dans le formulaire.";
 
   const headerRight = (
     <div className="createItemHeaderMeta">
@@ -749,13 +830,13 @@ export default function CreateItem({
   );
 
   const actionScreenController = {
-    ...actionController,
+    ...actionManualController,
     error,
     onBack: handleCancel,
     handleSave,
   };
   const outcomeScreenController = {
-    ...outcomeController,
+    ...outcomeManualController,
     error,
     onBack: handleCancel,
     handleSave,
@@ -771,7 +852,7 @@ export default function CreateItem({
     >
       <div className="mainPageStack">
         {effectiveKind === "outcome" ? (
-          <OutcomeCreateScreen controller={outcomeScreenController} />
+          <OutcomeManualCreateScreen controller={outcomeScreenController} />
         ) : effectiveKind === "guided" ? (
           <GuidedCreateScreen
             outcomeController={outcomeController}
@@ -793,7 +874,7 @@ export default function CreateItem({
             onSave={handleSave}
           />
         ) : (
-          <ActionCreateScreen controller={actionScreenController} />
+          <ActionManualCreateScreen controller={actionScreenController} />
         )}
       </div>
     </AppScreen>

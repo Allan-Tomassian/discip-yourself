@@ -6,9 +6,13 @@ export default function TodayHero({
   reason = "",
   contributionLabel = "",
   recommendedCategoryLabel = "",
+  durationLabel = "",
   primaryLabel = TODAY_SCREEN_COPY.primaryAction,
+  secondaryLabel = "",
   onPrimaryAction,
+  onSecondaryAction,
   canPrimaryAction = false,
+  canSecondaryAction = false,
   isPreparing = false,
 }) {
   const displayTitle =
@@ -23,16 +27,33 @@ export default function TodayHero({
     <div className="lovableCard lovablePriorityCard">
       <div className="lovablePriorityEyebrow">{displayCategory}</div>
       <h2 className="lovablePriorityTitle">{displayTitle}</h2>
+      {durationLabel ? (
+        <div className="todayV2HeroMetaRow">
+          <span className="todayV2HeroDuration">{durationLabel}</span>
+        </div>
+      ) : null}
       <p className="lovablePriorityMeta">{displayReason}</p>
-      <button
-        type="button"
-        className="lovablePrimaryButton"
-        onClick={() => onPrimaryAction?.()}
-        disabled={!canPrimaryAction}
-      >
-        {primaryLabel}
-        <span aria-hidden="true">→</span>
-      </button>
+      <div className="todayV2HeroActions">
+        <button
+          type="button"
+          className="lovablePrimaryButton"
+          onClick={() => onPrimaryAction?.()}
+          disabled={!canPrimaryAction}
+        >
+          {primaryLabel}
+          <span aria-hidden="true">→</span>
+        </button>
+        {secondaryLabel ? (
+          <button
+            type="button"
+            className="lovableGhostButton todayV2HeroSecondaryButton"
+            onClick={() => onSecondaryAction?.()}
+            disabled={!canSecondaryAction}
+          >
+            {secondaryLabel}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

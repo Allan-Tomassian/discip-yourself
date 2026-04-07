@@ -13,16 +13,28 @@ describe("create flow visual contract", () => {
   it("keeps the canonical create host on AppUI form sections instead of the modal host", () => {
     const pageSource = readSrc("pages/CreateItem.jsx");
     const screenSource = readSrc("features/create-item/CreateItemScreens.jsx");
+    const menuSource = readSrc("components/navigation/LovableCreateMenu.jsx");
+    const copySource = readSrc("copy/productCopy.js");
     const onboardingSource = readSrc("pages/Onboarding.jsx");
 
     expect(pageSource).toContain('pageId="create-item"');
     expect(pageSource).toContain("normalizeCreateItemDraft");
-    expect(screenSource).toContain("ActionCreateScreen");
-    expect(screenSource).toContain("OutcomeCreateScreen");
+    expect(screenSource).toContain("ActionManualCreateScreen");
+    expect(screenSource).toContain("OutcomeManualCreateScreen");
     expect(screenSource).toContain("GuidedCreateScreen");
+    expect(screenSource).toContain("Validation simple");
+    expect(screenSource).toContain("Options avancées");
     expect(screenSource).toContain("AppFormSection");
     expect(screenSource).toContain("AppStickyFooter");
     expect(screenSource).toContain("AppInlineMetaCard");
+    expect(menuSource).toContain("CREATE_MENU_COPY.promptTitle");
+    expect(menuSource).toContain("CREATE_MENU_COPY.actionLabel");
+    expect(menuSource).toContain("CREATE_MENU_COPY.objectiveLabel");
+    expect(menuSource).toContain("CREATE_MENU_COPY.planLabel");
+    expect(copySource).toContain('promptTitle: "Que veux-tu faire avancer ?"');
+    expect(copySource).toContain('actionLabel: "Créer une action"');
+    expect(copySource).toContain('objectiveLabel: "Créer un objectif"');
+    expect(copySource).toContain('planLabel: "Passer en mode Plan"');
     expect(onboardingSource).toContain("ChoiceCard");
     expect(onboardingSource).toContain("AppStickyFooter");
     expect(onboardingSource).not.toContain("CreateChoiceCard");

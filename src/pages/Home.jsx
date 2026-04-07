@@ -54,6 +54,7 @@ import { computeCategoryScopedRecommendation } from "../domain/todayCategoryCohe
 import { deriveTodayNowModel } from "../features/today/nowModel";
 import { deriveTodayCalendarModel } from "../features/today/todayCalendarModel";
 import { deriveTodayProgressModel } from "../features/today/todayProgressModel";
+import { deriveTodayV2State } from "../features/today/todayV2State";
 import {
   buildTodayManualAiContextKey,
   createPersistedNowAnalysisEntry,
@@ -479,6 +480,7 @@ export default function Home({
   onOpenSecondaryRoute,
   onOpenPlanning,
   onOpenPilotage,
+  onOpenCreateHabit,
   onOpenSession,
   onDayOpen,
   onAddOccurrence,
@@ -2099,6 +2101,33 @@ export default function Home({
       remainingMinutes: Math.max(plannedMinutes - doneMinutes, 0),
     };
   }, [occurrencesForSelectedDay, sessionHistoryByOccurrenceId]);
+  const todayV2State = useMemo(
+    () =>
+      deriveTodayV2State({
+        selectedDateKey,
+        localTodayKey,
+        activeSessionForActiveDate,
+        heroViewModel,
+        heroOccurrence,
+        focusCategory,
+        localGapSummary,
+        dailyState,
+        occurrencesForSelectedDay,
+        nextActions,
+      }),
+    [
+      activeSessionForActiveDate,
+      dailyState,
+      focusCategory,
+      heroOccurrence,
+      heroViewModel,
+      localGapSummary,
+      localTodayKey,
+      nextActions,
+      occurrencesForSelectedDay,
+      selectedDateKey,
+    ]
+  );
   const todayBehaviorCue = useMemo(
     () =>
       deriveTodayBehaviorCue({
@@ -2125,6 +2154,75 @@ export default function Home({
     }
     onOpenPlanning?.();
   }, [executionCategoryId, focusCategory?.id, localTodayKey, onOpenPlanning, setData]);
+  const handleTodayHeroAction = useCallback(
+    (action) => {
+      if (!action?.kind) return;
+      if (action.kind === "open_coach") {
+        onOpenCoachGuided?.({
+          mode: action.mode === "plan" ? "plan" : "free",
+          prefill: action.prefill || "",
+        });
+        return;
+      }
+      if (action.kind === "open_create_habit") {
+        onOpenCreateHabit?.();
+        return;
+      }
+      if (action.kind === "open_planning_for_today") {
+        openPlanningForToday();
+        return;
+      }
+      if (action.kind === "start_occurrence") {
+        if (action.occurrence) handleStartSession(action.occurrence);
+        return;
+      }
+      if (action.kind === "resume_session") {
+        if (typeof onOpenSession !== "function") return;
+        onOpenSession({
+          categoryId: action.categoryId || executionCategoryId || focusCategory?.id || null,
+          dateKey: selectedDateKey,
+          occurrenceId: activeSessionForActiveDate?.occurrenceId || null,
+        });
+        return;
+      }
+      if (action.kind === "open_library") {
+        onOpenLibrary?.();
+        return;
+      }
+      if (action.kind === "open_pilotage") {
+        onOpenPilotage?.();
+      }
+    },
+    [
+      activeSessionForActiveDate?.occurrenceId,
+      executionCategoryId,
+      focusCategory?.id,
+      handleStartSession,
+      onOpenCoachGuided,
+      onOpenCreateHabit,
+      onOpenLibrary,
+      onOpenPilotage,
+      onOpenSession,
+      openPlanningForToday,
+      selectedDateKey,
+    ]
+  );
+  const canHandleTodayHeroAction = useCallback(
+    (action) =>
+      Boolean(
+        action &&
+          (
+            action.kind === "open_coach" ||
+            action.kind === "open_planning_for_today" ||
+            action.kind === "open_library" ||
+            action.kind === "open_pilotage" ||
+            action.kind === "resume_session" ||
+            action.kind === "open_create_habit" ||
+            (action.kind === "start_occurrence" && action.occurrence)
+          )
+      ),
+    []
+  );
   const handleAnalyzeHero = useCallback(async () => {
     await manualTodayAnalysis.runAnalysis({
       execute: () =>
@@ -2218,44 +2316,48 @@ export default function Home({
         headerRowAlign="start"
       >
         <div className="lovablePage">
-          <div className="lovableCard lovableTodayInsight">
-            <div className="lovableTodayInsightIcon" aria-hidden="true">IA</div>
-            <div className="lovableTodayInsightText">
-              <div className="lovableTodayInsightTitle">{TODAY_SCREEN_COPY.insightTitle}</div>
-              <p className="lovableTodayInsightCopy">{insightCopy || MAIN_PAGE_COPY.today.orientation}</p>
-            </div>
-          </div>
-
           <div>
             <div className="lovableSectionLabel">{TODAY_SCREEN_COPY.priorityTitle}</div>
             <TodayHero
-              title={typedHeroTitle || heroViewModel.title}
-              reason={heroImpactText || heroReasonText}
+              title={
+                todayV2State.state === "ready" || todayV2State.state === "legacy_fallback"
+                  ? typedHeroTitle || todayV2State.hero.title
+                  : todayV2State.hero.title
+              }
+              reason={todayV2State.hero.reason}
               contributionLabel={heroContributionLabel}
-              recommendedCategoryLabel={heroViewModel.recommendedCategoryLabel || heroDisplayCategoryName}
-              primaryLabel={heroViewModel.primaryLabel || TODAY_SCREEN_COPY.primaryAction}
-              onPrimaryAction={() => {
-                if (heroViewModel?.primaryAction?.kind === "open_coach_plan") {
-                  onOpenCoachGuided?.();
-                  return;
-                }
-                handleHeroPrimaryAction();
-              }}
-              canPrimaryAction={canTriggerHeroPrimaryAction}
+              recommendedCategoryLabel={todayV2State.hero.categoryLabel || heroDisplayCategoryName}
+              durationLabel={todayV2State.hero.durationLabel}
+              primaryLabel={todayV2State.hero.primaryLabel || TODAY_SCREEN_COPY.primaryAction}
+              secondaryLabel={todayV2State.hero.secondaryLabel || ""}
+              onPrimaryAction={() => handleTodayHeroAction(todayV2State.hero.primaryAction)}
+              onSecondaryAction={() => handleTodayHeroAction(todayV2State.hero.secondaryAction)}
+              canPrimaryAction={canHandleTodayHeroAction(todayV2State.hero.primaryAction)}
+              canSecondaryAction={canHandleTodayHeroAction(todayV2State.hero.secondaryAction)}
               isPreparing={manualTodayAnalysis.loading}
             />
+            {todayV2State.showProgress ? (
+              <div className="todayV2ProgressBlock">
+                <TodayDailyState
+                  plannedMinutes={dailyState.plannedMinutes}
+                  doneMinutes={dailyState.doneMinutes}
+                  remainingMinutes={dailyState.remainingMinutes}
+                  activeCategory={heroDisplayCategory || focusCategory || null}
+                />
+              </div>
+            ) : null}
           </div>
 
-          <div>
+          {todayV2State.alternatives.length ? (
+            <div>
             <div className="lovableSectionLabel">{TODAY_SCREEN_COPY.actionsTitle}</div>
             <TodayNextActions
-              actions={nextActions}
+              actions={todayV2State.alternatives}
               onOpenOccurrence={handleStartSession}
               activeCategory={focusCategory || null}
             />
           </div>
-
-          <p className="lovableTodayQuote">“{TODAY_SCREEN_COPY.quote}”</p>
+          ) : null}
         </div>
       </AppScreen>
 
