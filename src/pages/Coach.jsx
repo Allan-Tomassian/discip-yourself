@@ -27,14 +27,11 @@ export default function Coach({
   planLimits = null,
   generationWindowDays = null,
 }) {
-  const pageRef = useRef(null);
   const scrollRef = useRef(null);
   const composerRef = useRef(null);
   const textareaRef = useRef(null);
   const stickToBottomRef = useRef(true);
   const pendingInitialBottomSyncRef = useRef(true);
-  const [pageHeight, setPageHeight] = useState(null);
-  const [viewportHeight, setViewportHeight] = useState(0);
   const [composerFocused, setComposerFocused] = useState(false);
   const safeData = data && typeof data === "object" ? data : {};
   const profileName = resolveName(safeData.profile || {});
@@ -59,39 +56,11 @@ export default function Coach({
   });
   const activeConversationKey = controller.activeConversationId || "__coach-empty__";
 
-  const syncViewport = useCallback(() => {
-    if (typeof window === "undefined") return;
-    setViewportHeight(Math.round(window.visualViewport?.height || window.innerHeight || 0));
-  }, []);
-
   const scrollToBottom = useCallback((behavior = "auto") => {
     const node = scrollRef.current;
     if (!node) return;
     node.scrollTo({ top: node.scrollHeight, behavior });
   }, []);
-
-  useEffect(() => {
-    syncViewport();
-    if (typeof window === "undefined") return undefined;
-    const viewport = window.visualViewport;
-    if (!viewport) {
-      window.addEventListener("resize", syncViewport);
-      return () => window.removeEventListener("resize", syncViewport);
-    }
-    viewport.addEventListener("resize", syncViewport);
-    viewport.addEventListener("scroll", syncViewport);
-    return () => {
-      viewport.removeEventListener("resize", syncViewport);
-      viewport.removeEventListener("scroll", syncViewport);
-    };
-  }, [syncViewport]);
-
-  useLayoutEffect(() => {
-    const node = pageRef.current;
-    if (!node || !viewportHeight) return;
-    const rect = node.getBoundingClientRect();
-    setPageHeight(Math.max(320, Math.floor(viewportHeight - rect.top - 8)));
-  }, [viewportHeight]);
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
@@ -122,14 +91,48 @@ export default function Coach({
   }, [activeConversationKey]);
 
   useLayoutEffect(() => {
-    if (!pageHeight || !pendingInitialBottomSyncRef.current) return undefined;
-    const frameId = window.requestAnimationFrame(() => {
-      scrollToBottom("auto");
+    if (!pendingInitialBottomSyncRef.current) return undefined;
+    const node = scrollRef.current;
+    if (!node) return undefined;
+    let frameA = 0;
+    let frameB = 0;
+    let settleTimer = 0;
+    let observer = null;
+
+    const finalize = () => {
       stickToBottomRef.current = true;
       pendingInitialBottomSyncRef.current = false;
-    });
-    return () => window.cancelAnimationFrame(frameId);
-  }, [activeConversationKey, pageHeight, scrollToBottom]);
+    };
+
+    const scheduleBottomSync = () => {
+      window.cancelAnimationFrame(frameA);
+      window.cancelAnimationFrame(frameB);
+      window.clearTimeout(settleTimer);
+      frameA = window.requestAnimationFrame(() => {
+        frameB = window.requestAnimationFrame(() => {
+          scrollToBottom("auto");
+          settleTimer = window.setTimeout(finalize, 120);
+        });
+      });
+    };
+
+    scheduleBottomSync();
+
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(() => {
+        if (!pendingInitialBottomSyncRef.current) return;
+        scheduleBottomSync();
+      });
+      observer.observe(node);
+    }
+
+    return () => {
+      window.cancelAnimationFrame(frameA);
+      window.cancelAnimationFrame(frameB);
+      window.clearTimeout(settleTimer);
+      observer?.disconnect();
+    };
+  }, [activeConversationKey, controller.hasMessages, controller.loading, controller.messageEntries.length, scrollToBottom]);
 
   useLayoutEffect(() => {
     if (pendingInitialBottomSyncRef.current || !stickToBottomRef.current) return undefined;
@@ -146,13 +149,7 @@ export default function Coach({
 
   return (
     <AppScreen pageId="coach" headerTitle={COACH_SCREEN_COPY.title} headerSubtitle={COACH_SCREEN_COPY.subtitle}>
-      <div
-        ref={pageRef}
-        className="lovablePage lovableCoachPage"
-        style={{
-          "--coach-page-height": pageHeight ? `${pageHeight}px` : undefined,
-        }}
-      >
+      <div className="lovablePage lovableCoachPage">
         <div ref={scrollRef} className="lovableCoachMessages">
           <div className="lovableCard lovableCoachIntro">
             <div className="lovableCoachEyebrow">{COACH_SCREEN_COPY.introEyebrow}</div>

@@ -1015,29 +1015,36 @@ html.keyboardOpen[data-active-tab="coach"] .lovableTabBarWrap {
 }
 
 [data-page-id="coach"] .container {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 100dvh;
+  height: 100dvh;
   overflow: hidden;
   padding-bottom: 0;
 }
 
 [data-page-id="coach"] .pageContent {
   display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+  margin-top: 0;
+  padding-bottom: calc(12px + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px), 84px));
+}
+
+html.keyboardOpen[data-active-tab="coach"] [data-page-id="coach"] .pageContent {
+  padding-bottom: 12px;
 }
 
 [data-page-id="coach"] .lovableCoachPage {
-  display: flex;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   flex: 1 1 auto;
-  flex-direction: column;
-  height: var(--coach-page-height, 100%);
   min-height: 0;
   gap: 12px;
   overflow: hidden;
+  padding-bottom: 0;
 }
 
 .lovableCoachIntro,
@@ -1135,10 +1142,9 @@ html.keyboardOpen[data-active-tab="coach"] .lovableTabBarWrap {
 }
 
 [data-page-id="coach"] .lovableCoachComposerWrap {
-  flex: 0 0 auto;
   z-index: 2;
-  margin-top: auto;
-  padding-bottom: calc(12px + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px)));
+  margin-top: 0;
+  padding-bottom: 0;
 }
 
 .lovableCoachComposer {
