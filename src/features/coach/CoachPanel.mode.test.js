@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildQuickCreateIntentTransition,
   buildCoachRequestedModeIntentKey,
   buildCoachRequestedPrefillIntentKey,
+  buildStructuringIntentTransition,
   normalizeCoachRequestedMode,
   normalizeCoachRequestedPrefill,
   shouldApplyCoachRequestedMode,
   shouldApplyCoachRequestedPrefill,
+  shouldClearDraftOnDismissWorkIntent,
   toggleCoachPlanMode,
 } from "./coachPanelController.js";
 
@@ -76,7 +79,7 @@ describe("CoachPanel mode control", () => {
     });
   });
 
-  it("normalise requestedPrefill et l'applique une seule fois sur un draft vide", () => {
+  it("normalise requestedPrefill et l'applique une seule fois sur un draft vide, meme avec historique", () => {
     expect(normalizeCoachRequestedPrefill("  Clarifier mon prochain bloc  ")).toBe("Clarifier mon prochain bloc");
     const intentKey = buildCoachRequestedPrefillIntentKey({
       openCycle: 4,
@@ -92,7 +95,7 @@ describe("CoachPanel mode control", () => {
         currentConversationId: "conv_1",
         requestedPrefill: "Clarifier mon prochain bloc",
         draft: "",
-        hasMessages: false,
+        hasMessages: true,
         lastAppliedIntentKey: "",
       })
     ).toEqual({
@@ -109,7 +112,7 @@ describe("CoachPanel mode control", () => {
         currentConversationId: "conv_1",
         requestedPrefill: "Clarifier mon prochain bloc",
         draft: "",
-        hasMessages: false,
+        hasMessages: true,
         lastAppliedIntentKey: intentKey,
       })
     ).toEqual({
@@ -141,10 +144,9 @@ describe("CoachPanel mode control", () => {
         currentConversationId: "conv_1",
         requestedPrefill: "Alléger ma journée",
         draft: "",
-        hasMessages: true,
         lastAppliedIntentKey: "",
       }).shouldApply
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("reapplique requestedPrefill sur une nouvelle ouverture", () => {
@@ -170,5 +172,51 @@ describe("CoachPanel mode control", () => {
       intentKey: "7:conv_1:Préparer le prochain pas",
       normalizedPrefill: "Préparer le prochain pas",
     });
+  });
+
+  it("seed Structurer seulement si le draft est vide", () => {
+    expect(buildStructuringIntentTransition({ draft: "" })).toMatchObject({
+      nextMode: "plan",
+      shouldSeedDraft: true,
+    });
+    expect(buildStructuringIntentTransition({ draft: "Déjà saisi" })).toMatchObject({
+      nextMode: "plan",
+      nextDraft: "Déjà saisi",
+      shouldSeedDraft: false,
+    });
+  });
+
+  it("seed Créer vite seulement si le draft est vide", () => {
+    expect(buildQuickCreateIntentTransition({ draft: "" })).toMatchObject({
+      nextMode: "plan",
+      shouldSeedDraft: true,
+    });
+    expect(buildQuickCreateIntentTransition({ draft: "J'ai déjà mon idée" })).toMatchObject({
+      nextMode: "plan",
+      nextDraft: "J'ai déjà mon idée",
+      shouldSeedDraft: false,
+    });
+  });
+
+  it("n'efface le draft seedé à la fermeture que s'il n'a pas été retouché", () => {
+    expect(
+      shouldClearDraftOnDismissWorkIntent({
+        activeWorkIntent: {
+          seededDraftPrefill: "Aide-moi à structurer ce que je veux faire avancer.",
+          draftTouchedSinceSeed: false,
+        },
+        draft: "Aide-moi à structurer ce que je veux faire avancer.",
+      })
+    ).toBe(true);
+
+    expect(
+      shouldClearDraftOnDismissWorkIntent({
+        activeWorkIntent: {
+          seededDraftPrefill: "Aide-moi à structurer ce que je veux faire avancer.",
+          draftTouchedSinceSeed: true,
+        },
+        draft: "Aide-moi à structurer ce que je veux faire avancer.",
+      })
+    ).toBe(false);
   });
 });

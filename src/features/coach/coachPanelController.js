@@ -3,6 +3,7 @@ import { useAuth } from "../../auth/useAuth";
 import { requestAiCoachChat } from "../../infra/aiCoachChatClient";
 import { deriveAiUnavailableMessage } from "../../infra/aiTransportDiagnostics";
 import { applySessionRuntimeTransition, resolveRuntimeSessionGate } from "../../logic/sessionRuntime";
+import { COACH_SCREEN_COPY } from "../../ui/labels";
 import { commitPreparedCreatePlan, prepareCreateCommit } from "../create-item/createItemCommit";
 import { getManualAiLoadingStages } from "../manualAi/loadingStages";
 import { getCoachContextSnapshot } from "./coachContextAdapter";
@@ -140,6 +141,91 @@ export function normalizeCoachRequestedPrefill(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeCoachWorkIntentType(value) {
+  if (value === "structuring") return "structuring";
+  if (value === "quick_create") return "quick_create";
+  if (value === "contextual") return "contextual";
+  return null;
+}
+
+function buildCoachWorkIntentLabel(type) {
+  if (type === "structuring") return COACH_SCREEN_COPY.structuringModeLabel;
+  if (type === "quick_create") return COACH_SCREEN_COPY.quickCreateLabel;
+  if (type === "contextual") return COACH_SCREEN_COPY.contextualIntentLabel;
+  return "";
+}
+
+function buildCoachWorkIntent({
+  type = null,
+  label = "",
+  prefill = "",
+  preferredMode = "free",
+  source = "",
+  seededDraftPrefill = "",
+  draftTouchedSinceSeed = false,
+} = {}) {
+  const normalizedType = normalizeCoachWorkIntentType(type);
+  if (!normalizedType) return null;
+  const normalizedPrefill = normalizeCoachRequestedPrefill(prefill);
+  const normalizedSeed = normalizeCoachRequestedPrefill(seededDraftPrefill);
+  return {
+    type: normalizedType,
+    label: normalizeCoachRequestedPrefill(label) || buildCoachWorkIntentLabel(normalizedType),
+    prefill: normalizedPrefill,
+    preferredMode: normalizeCoachRequestedMode(preferredMode),
+    source: source === "requested_prefill" ? "requested_prefill" : "composer_menu",
+    seededDraftPrefill: normalizedSeed || null,
+    draftTouchedSinceSeed: Boolean(draftTouchedSinceSeed),
+  };
+}
+
+export function buildStructuringIntentTransition({ draft = "" } = {}) {
+  const normalizedDraft = normalizeCoachRequestedPrefill(draft);
+  const fallbackPrefill = normalizeCoachRequestedPrefill(COACH_SCREEN_COPY.structuringPrefill);
+  const shouldSeedDraft = !normalizedDraft;
+  return {
+    nextMode: "plan",
+    nextDraft: shouldSeedDraft ? fallbackPrefill : normalizedDraft,
+    shouldSeedDraft,
+    intent: buildCoachWorkIntent({
+      type: "structuring",
+      prefill: fallbackPrefill,
+      preferredMode: "plan",
+      source: "composer_menu",
+      seededDraftPrefill: shouldSeedDraft ? fallbackPrefill : "",
+      draftTouchedSinceSeed: false,
+    }),
+  };
+}
+
+export function buildQuickCreateIntentTransition({ draft = "" } = {}) {
+  const normalizedDraft = normalizeCoachRequestedPrefill(draft);
+  const fallbackPrefill = normalizeCoachRequestedPrefill(COACH_SCREEN_COPY.quickCreatePrefill);
+  const shouldSeedDraft = !normalizedDraft;
+  return {
+    nextMode: "plan",
+    nextDraft: shouldSeedDraft ? fallbackPrefill : normalizedDraft,
+    shouldSeedDraft,
+    intent: buildCoachWorkIntent({
+      type: "quick_create",
+      prefill: fallbackPrefill,
+      preferredMode: "plan",
+      source: "composer_menu",
+      seededDraftPrefill: shouldSeedDraft ? fallbackPrefill : "",
+      draftTouchedSinceSeed: false,
+    }),
+  };
+}
+
+export function shouldClearDraftOnDismissWorkIntent({ activeWorkIntent = null, draft = "" } = {}) {
+  const normalizedDraft = normalizeCoachRequestedPrefill(draft);
+  return Boolean(
+    activeWorkIntent?.seededDraftPrefill &&
+      !activeWorkIntent?.draftTouchedSinceSeed &&
+      normalizedDraft === activeWorkIntent.seededDraftPrefill
+  );
+}
+
 export function buildCoachRequestedPrefillIntentKey({
   openCycle = 0,
   requestedConversationId = null,
@@ -158,11 +244,10 @@ export function shouldApplyCoachRequestedPrefill({
   currentConversationId = null,
   requestedPrefill = "",
   draft = "",
-  hasMessages = false,
   lastAppliedIntentKey = "",
 } = {}) {
   const normalizedPrefill = normalizeCoachRequestedPrefill(requestedPrefill);
-  if (!open || !normalizedPrefill || hasMessages || normalizeCoachRequestedPrefill(draft)) {
+  if (!open || !normalizedPrefill || normalizeCoachRequestedPrefill(draft)) {
     return { shouldApply: false, intentKey: "", normalizedPrefill };
   }
   const intentKey = buildCoachRequestedPrefillIntentKey({
@@ -211,6 +296,7 @@ export function useCoachConversationController({
   const [conversationUseCase, setConversationUseCase] = useState("general");
   const [loadingStageIndex, setLoadingStageIndex] = useState(-1);
   const [archivedConversation, setArchivedConversation] = useState(null);
+  const [activeWorkIntent, setActiveWorkIntent] = useState(null);
   const archiveTimeoutRef = useRef(null);
   const lastAppliedRequestedModeIntentRef = useRef("");
   const lastAppliedRequestedPrefillIntentRef = useRef("");
@@ -260,6 +346,18 @@ export function useCoachConversationController({
     const nextUseCase = normalizeCoachUseCase(currentConversation?.useCase, "general");
     setConversationUseCase(nextUseCase);
   }, [currentConversation?.id, currentConversation?.useCase]);
+
+  useEffect(() => {
+    setActiveWorkIntent((current) => {
+      if (!current?.seededDraftPrefill || current.draftTouchedSinceSeed) return current;
+      return normalizeCoachRequestedPrefill(draft) === current.seededDraftPrefill
+        ? current
+        : {
+            ...current,
+            draftTouchedSinceSeed: true,
+          };
+    });
+  }, [draft]);
 
   useEffect(() => {
     if (!requestedConversationId) return;
@@ -313,13 +411,22 @@ export function useCoachConversationController({
       currentConversationId: currentConversation?.id || null,
       requestedPrefill,
       draft,
-      hasMessages: messageEntries.length > 0,
       lastAppliedIntentKey: lastAppliedRequestedPrefillIntentRef.current,
     });
     if (!prefillSync.shouldApply) return;
     setDraft(prefillSync.normalizedPrefill);
     lastAppliedRequestedPrefillIntentRef.current = prefillSync.intentKey;
-  }, [currentConversation?.id, draft, messageEntries.length, open, openCycle, requestedConversationId, requestedPrefill]);
+    setActiveWorkIntent(
+      buildCoachWorkIntent({
+        type: "contextual",
+        prefill: prefillSync.normalizedPrefill,
+        preferredMode: requestedMode,
+        source: "requested_prefill",
+        seededDraftPrefill: prefillSync.normalizedPrefill,
+        draftTouchedSinceSeed: false,
+      })
+    );
+  }, [currentConversation?.id, draft, open, openCycle, requestedConversationId, requestedMode, requestedPrefill]);
 
   useEffect(() => {
     if (!loading) {
@@ -362,6 +469,33 @@ export function useCoachConversationController({
     [currentConversation?.id, setData]
   );
 
+  const startStructuringIntent = useCallback(() => {
+    const transition = buildStructuringIntentTransition({ draft });
+    handleConversationModeChange(transition.nextMode);
+    if (transition.shouldSeedDraft) setDraft(transition.nextDraft);
+    setActiveWorkIntent(transition.intent);
+    setError("");
+  }, [draft, handleConversationModeChange]);
+
+  const startQuickCreateIntent = useCallback(() => {
+    const transition = buildQuickCreateIntentTransition({ draft });
+    handleConversationModeChange(transition.nextMode);
+    if (transition.shouldSeedDraft) setDraft(transition.nextDraft);
+    setActiveWorkIntent(transition.intent);
+    setError("");
+  }, [draft, handleConversationModeChange]);
+
+  const dismissWorkIntent = useCallback(() => {
+    if (shouldClearDraftOnDismissWorkIntent({ activeWorkIntent, draft })) {
+      setDraft("");
+    }
+    setActiveWorkIntent(null);
+  }, [activeWorkIntent, draft]);
+
+  const reenterStructuring = useCallback(() => {
+    handleConversationModeChange("plan");
+  }, [handleConversationModeChange]);
+
   const handleConversationUseCaseChange = useCallback(
     (nextUseCase) => {
       const normalizedUseCase = normalizeCoachUseCase(nextUseCase, conversationUseCase);
@@ -384,6 +518,7 @@ export function useCoachConversationController({
   const handleNewChat = useCallback(() => {
     setError("");
     setDraft("");
+    setActiveWorkIntent(null);
     if (typeof setData !== "function") return;
     const nextConversation = createCoachConversation({
       mode: conversationMode,
@@ -830,6 +965,11 @@ export function useCoachConversationController({
         : COACH_QUICK_PROMPTS,
     conversationMode,
     setConversationMode: handleConversationModeChange,
+    activeWorkIntent,
+    startStructuringIntent,
+    startQuickCreateIntent,
+    dismissWorkIntent,
+    reenterStructuring,
     conversationUseCase,
     setConversationUseCase: handleConversationUseCaseChange,
     hasMessages: messageEntries.length > 0,

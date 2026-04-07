@@ -25,26 +25,28 @@ describe("coach panel contract", () => {
   });
 
   it("keeps a single shared coach conversation surface without panel/page divergence", () => {
-    const coachPanel = readSrc("features/coach/CoachPanel.jsx");
+    const coachPage = readSrc("pages/Coach.jsx");
     const coachController = readSrc("features/coach/coachPanelController.js");
+    const workTray = readSrc("features/coach/CoachWorkTray.jsx");
+    const composerMenu = readSrc("features/coach/CoachComposerMenu.jsx");
+    const copy = readSrc("copy/productCopy.js");
 
-    expect(coachPanel).toContain("conversationMode");
-    expect(coachPanel).toContain("onOpenAssistantCreate");
-    expect(coachPanel).toContain("onOpenCreatedView");
-    expect(coachPanel).toContain("coachConversationRail");
-    expect(coachPanel).toContain("setActiveConversationId");
-    expect(coachPanel).toContain("archiveConversation");
-    expect(coachPanel).toContain("Discuter librement, puis passer en mode Plan quand tu veux construire.");
-    expect(coachPanel).toContain("toggleCoachPlanMode");
-    expect(coachPanel).toContain("coachModeBadge");
-    expect(coachPanel).not.toContain("Direction ·");
-    expect(coachPanel).not.toContain("Appliquer le brouillon");
-    expect(coachPanel).not.toContain("Brouillon proposé");
-    expect(coachPanel).not.toContain("onOpenStructuring");
-    expect(coachPanel).not.toContain("Ouvrir le Coach");
-    expect(coachPanel).not.toContain('setTab?.("coach-chat")');
-    expect(coachPanel).not.toContain("Coach prêt");
-    expect(coachPanel).not.toContain(">Conversations<");
+    expect(coachPage).toContain("coachSurfaceTopbar");
+    expect(coachPage).toContain("coachSurfaceModeToggle");
+    expect(coachPage).toContain("<CoachWorkTray");
+    expect(coachPage).toContain("<CoachComposerMenu");
+    expect(coachPage).toContain("coachSurfaceDock");
+    expect(coachPage).toContain("coachSurfaceComposerPlus");
+    expect(coachPage).not.toContain('setTab("create-item")');
+    expect(workTray).toContain("workTrayViewDraft");
+    expect(workTray).toContain("workTrayReenter");
+    expect(workTray).toContain("workTrayDismiss");
+    expect(composerMenu).toContain("composerMenuAriaLabel");
+    expect(composerMenu).toContain("structuringMenuDescription");
+    expect(composerMenu).toContain("quickCreateMenuDescription");
+    expect(copy).toContain('chatModeLabel: "Chat"');
+    expect(copy).toContain('structuringModeLabel: "Structurer"');
+    expect(copy).toContain('quickCreateLabel: "Créer vite"');
 
     expect(coachController).toContain("conversationUseCase");
     expect(coachController).toContain("const effectiveMode = conversationMode === \"plan\" ? \"plan\" : \"free\";");
@@ -52,5 +54,10 @@ describe("coach panel contract", () => {
     expect(coachController).toContain("useCase: effectiveUseCase");
     expect(coachController).toContain("life_plan");
     expect(coachController).toContain('sourceSurface: "coach"');
+    expect(coachController).toContain("activeWorkIntent");
+    expect(coachController).toContain("startStructuringIntent");
+    expect(coachController).toContain("startQuickCreateIntent");
+    expect(coachController).toContain("dismissWorkIntent");
+    expect(coachController).not.toContain('setTab?.("coach-chat")');
   });
 });
