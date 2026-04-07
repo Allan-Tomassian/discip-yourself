@@ -29,6 +29,7 @@ describe("mobile viewport contract", () => {
     expect(app).toContain("const bottomRailRef = useRef(null);");
     expect(app).toContain('rootStyle.setProperty("--bottom-fixed-stack-space", "0px");');
     expect(app).toContain('rootStyle.setProperty("--bottom-fixed-stack-space", `${clearSpace}px`);');
+    expect(app).toContain("root.dataset.activeTab = tab;");
     expect(app).toContain("<LovableTabBar");
     expect(app).toContain('className="appViewportFill"');
     expect(app).not.toContain('minHeight: "100vh"');
@@ -37,7 +38,12 @@ describe("mobile viewport contract", () => {
 
     expect(lovableCss).toContain(".lovableTabBarWrap");
     expect(lovableCss).toContain("bottom: 0;");
-    expect(lovableCss).toContain(".lovableCoachComposerWrap");
-    expect(lovableCss).toContain("bottom: calc(82px + var(--safe-bottom));");
+    expect(lovableCss).toContain('html.keyboardOpen[data-active-tab="coach"] .lovableTabBarWrap');
+    expect(lovableCss).toContain('[data-page-id="coach"] .container');
+    expect(lovableCss).toContain('[data-page-id="coach"] .pageContent');
+    expect(lovableCss).toContain('[data-page-id="coach"] .lovableCoachPage');
+    expect(lovableCss).toContain('[data-page-id="coach"] .lovableCoachMessages');
+    expect(lovableCss).toContain('[data-page-id="coach"] .lovableCoachComposerWrap');
+    expect(lovableCss).toContain("padding-bottom: calc(12px + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px)));");
   });
 });

@@ -1,108 +1,80 @@
 .coachSurfacePage {
-  gap: var(--space-12);
-}
-
-.coachSurfaceTopbar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-10);
-  flex-wrap: wrap;
-}
-
-.coachSurfaceModeToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-6);
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--surface-elevated) 82%, transparent);
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 88%, transparent);
-}
-
-.coachSurfaceModeButton {
-  min-height: 36px;
-  padding: 0 var(--space-14);
-  border-radius: var(--radius-pill);
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-  transition:
-    background-color var(--motion-fast) var(--ease-standard),
-    border-color var(--motion-fast) var(--ease-standard),
-    color var(--motion-fast) var(--ease-standard);
-}
-
-.coachSurfaceModeButton.is-active {
-  background: color-mix(in srgb, var(--accent-soft) 78%, var(--surface-primary));
-  border-color: color-mix(in srgb, var(--accent-primary) 24%, var(--border-subtle));
-}
-
-.coachSurfaceStage {
-  white-space: nowrap;
+  flex-direction: column;
+  height: var(--coach-page-height, auto);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .coachSurfaceScroll {
-  padding-bottom: 0;
-}
-
-.coachSurfaceProposalTarget.is-highlighted {
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--accent-primary) 34%, transparent),
-    0 0 0 8px color-mix(in srgb, var(--accent-primary) 10%, transparent),
-    var(--lovable-shadow-card);
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-bottom: var(--space-8);
 }
 
 .coachSurfaceDock {
   position: sticky;
-  bottom: 0;
+  bottom: var(--bottom-fixed-stack-space, 0px);
   z-index: 3;
   display: grid;
   gap: var(--space-10);
   padding-top: var(--space-6);
-  padding-bottom: calc(var(--space-10) + var(--safe-bottom));
+  padding-bottom: calc(var(--space-10) + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px)));
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--surface-primary) 0%, transparent), color-mix(in srgb, var(--surface-primary) 94%, transparent) 20%, color-mix(in srgb, var(--surface-primary) 98%, transparent));
   backdrop-filter: blur(18px);
 }
 
 .coachWorkTray {
-  display: grid;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-10);
-  padding: var(--space-12) var(--space-14);
-  border-radius: var(--radius-18);
+  min-width: 0;
+  padding: var(--space-10) var(--space-12);
+  border-radius: var(--radius-16);
   border: 1px solid color-mix(in srgb, var(--border-subtle) 88%, transparent);
   background: color-mix(in srgb, var(--surface-elevated) 90%, transparent);
 }
 
 .coachWorkTrayMain {
+  min-width: 0;
   display: grid;
-  gap: var(--space-8);
+  gap: var(--space-6);
 }
 
 .coachWorkTrayBadge {
   width: fit-content;
 }
 
-.coachWorkTrayBadge--intent {
-  background: color-mix(in srgb, var(--accent-soft) 82%, transparent);
-}
-
 .coachWorkTrayText {
+  min-width: 0;
   font-size: var(--font-sm);
-  line-height: 1.5;
-  color: var(--text);
+  line-height: 1.45;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .coachWorkTrayActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-8);
+  flex: 0 0 auto;
+}
+
+.coachWorkTrayDismiss {
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--font-sm);
+  cursor: pointer;
 }
 
 .coachSurfaceComposerWrap {
+  flex: 0 0 auto;
   margin-top: 0;
   bottom: auto;
 }
@@ -125,6 +97,13 @@
   cursor: pointer;
 }
 
+.coachSurfaceComposerPlus:focus-visible,
+.coachWorkTrayDismiss:focus-visible,
+.coachComposerMenuAction:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-primary) 72%, white 12%);
+  outline-offset: 2px;
+}
+
 .coachSurfaceComposerPlus:disabled {
   opacity: 0.56;
   cursor: default;
@@ -136,13 +115,13 @@
 }
 
 .coachComposerMenuPanel {
-  min-width: min(320px, calc(100vw - 32px));
+  min-width: min(280px, calc(100vw - 24px));
 }
 
 .coachComposerMenuAction {
   width: 100%;
   display: grid;
-  gap: var(--space-6);
+  gap: 4px;
   padding: var(--space-12);
   border-radius: var(--radius-14);
   border: 1px solid color-mix(in srgb, var(--border-subtle) 82%, transparent);
@@ -160,35 +139,25 @@
 
 .coachComposerMenuDescription {
   font-size: var(--font-meta);
-  line-height: 1.45;
+  line-height: 1.4;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @media (max-width: 640px) {
-  .coachSurfaceTopbar {
-    align-items: stretch;
-  }
-
-  .coachSurfaceModeToggle {
-    width: 100%;
-    justify-content: stretch;
-  }
-
-  .coachSurfaceModeButton {
-    flex: 1 1 0;
-  }
-
   .coachSurfaceDock {
     gap: var(--space-8);
-    padding-bottom: calc(var(--space-8) + var(--safe-bottom));
+    padding-bottom: calc(var(--space-8) + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px)));
   }
 
-  .coachWorkTrayActions {
-    width: 100%;
+  .coachWorkTray {
+    align-items: flex-start;
   }
 
-  .coachWorkTrayActions > * {
-    flex: 1 1 calc(50% - var(--space-8));
+  .coachWorkTrayDismiss {
+    min-height: 28px;
   }
 
   .coachSurfaceComposer {
@@ -197,6 +166,6 @@
   }
 
   .coachComposerMenuPanel {
-    min-width: min(288px, calc(100vw - 24px));
+    min-width: min(264px, calc(100vw - 20px));
   }
 }

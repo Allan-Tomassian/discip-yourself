@@ -245,6 +245,12 @@
   pointer-events: none;
 }
 
+html.keyboardOpen[data-active-tab="coach"] .lovableTabBarWrap {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(calc(18px + var(--safe-bottom)));
+}
+
 .lovableTabBar {
   pointer-events: auto;
   width: 100%;
@@ -1003,10 +1009,32 @@
   line-height: 1.65;
 }
 
-.lovableCoachPage {
+[data-page-id="coach"] {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+[data-page-id="coach"] .container {
   display: flex;
   flex-direction: column;
-  min-height: var(--coach-page-height, auto);
+  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+[data-page-id="coach"] .pageContent {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+[data-page-id="coach"] .lovableCoachPage {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  height: var(--coach-page-height, 100%);
   min-height: 0;
   gap: 12px;
   overflow: hidden;
@@ -1056,15 +1084,16 @@
   text-align: left;
 }
 
-.lovableCoachMessages {
+[data-page-id="coach"] .lovableCoachMessages {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
   gap: 14px;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding-right: 2px;
-  padding-bottom: calc(var(--coach-composer-height, 92px) + 12px);
+  padding-bottom: 12px;
 }
 
 .lovableCoachActions,
@@ -1105,11 +1134,11 @@
   line-height: 1.5;
 }
 
-.lovableCoachComposerWrap {
+[data-page-id="coach"] .lovableCoachComposerWrap {
   flex: 0 0 auto;
   z-index: 2;
   margin-top: auto;
-  bottom: calc(82px + var(--safe-bottom));
+  padding-bottom: calc(12px + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px)));
 }
 
 .lovableCoachComposer {

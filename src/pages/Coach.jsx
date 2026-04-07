@@ -1,10 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AppScreen } from "../shared/ui/app";
 import { useCoachConversationController } from "../features/coach/coachPanelController";
-import CoachComposerMenu from "../features/coach/CoachComposerMenu";
-import CoachWorkTray from "../features/coach/CoachWorkTray";
 import { COACH_SCREEN_COPY } from "../ui/labels";
-import "../features/coach/coachSurface.css";
 
 function resolveName(profile) {
   const fullName = String(profile?.full_name || "").trim();
@@ -32,20 +29,13 @@ export default function Coach({
 }) {
   const pageRef = useRef(null);
   const scrollRef = useRef(null);
-  const dockRef = useRef(null);
+  const composerRef = useRef(null);
   const textareaRef = useRef(null);
-  const plusButtonRef = useRef(null);
   const stickToBottomRef = useRef(true);
-  const proposalRefs = useRef(new Map());
-  const highlightTimeoutRef = useRef(null);
+  const pendingInitialBottomSyncRef = useRef(true);
   const [pageHeight, setPageHeight] = useState(null);
-  const [dockHeight, setDockHeight] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
   const [composerFocused, setComposerFocused] = useState(false);
-  const [composerMenuOpen, setComposerMenuOpen] = useState(false);
-  const [composerMenuAnchorRect, setComposerMenuAnchorRect] = useState(null);
-  const [composerMenuAnchorEl, setComposerMenuAnchorEl] = useState(null);
-  const [highlightedProposalEntryId, setHighlightedProposalEntryId] = useState("");
   const safeData = data && typeof data === "object" ? data : {};
   const profileName = resolveName(safeData.profile || {});
   const controller = useCoachConversationController({
@@ -67,6 +57,7 @@ export default function Coach({
     planLimits,
     generationWindowDays,
   });
+  const activeConversationKey = controller.activeConversationId || "__coach-empty__";
 
   const syncViewport = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -77,10 +68,6 @@ export default function Coach({
     const node = scrollRef.current;
     if (!node) return;
     node.scrollTo({ top: node.scrollHeight, behavior });
-  }, []);
-  const handlePlusButtonRef = useCallback((node) => {
-    plusButtonRef.current = node;
-    setComposerMenuAnchorEl(node);
   }, []);
 
   useEffect(() => {
@@ -107,17 +94,6 @@ export default function Coach({
   }, [viewportHeight]);
 
   useLayoutEffect(() => {
-    const node = dockRef.current;
-    if (!node) return;
-    const measure = () => setDockHeight(Math.ceil(node.getBoundingClientRect().height));
-    measure();
-    if (typeof ResizeObserver === "undefined") return undefined;
-    const observer = new ResizeObserver(measure);
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [controller.activeWorkIntent, controller.draft, controller.error]);
-
-  useLayoutEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
     const minHeight = composerFocused ? 72 : 48;
@@ -141,71 +117,43 @@ export default function Coach({
   }, []);
 
   useLayoutEffect(() => {
-    if (!stickToBottomRef.current) return undefined;
+    pendingInitialBottomSyncRef.current = true;
+    stickToBottomRef.current = true;
+  }, [activeConversationKey]);
+
+  useLayoutEffect(() => {
+    if (!pageHeight || !pendingInitialBottomSyncRef.current) return undefined;
+    const frameId = window.requestAnimationFrame(() => {
+      scrollToBottom("auto");
+      stickToBottomRef.current = true;
+      pendingInitialBottomSyncRef.current = false;
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [activeConversationKey, pageHeight, scrollToBottom]);
+
+  useLayoutEffect(() => {
+    if (pendingInitialBottomSyncRef.current || !stickToBottomRef.current) return undefined;
     const frameId = window.requestAnimationFrame(() => {
       scrollToBottom(controller.messageEntries.length > 0 ? "smooth" : "auto");
     });
     return () => window.cancelAnimationFrame(frameId);
-  }, [dockHeight, controller.loading, controller.messageEntries.length, scrollToBottom, viewportHeight]);
+  }, [controller.loading, controller.messageEntries.length, scrollToBottom]);
 
   const introText = useMemo(
     () => COACH_SCREEN_COPY.introMessage.replace("{name}", profileName),
     [profileName]
   );
-  const latestProposalEntry = useMemo(
-    () => [...controller.messageEntries].reverse().find((entry) => entry.reply?.proposal) || null,
-    [controller.messageEntries]
-  );
-  const canReenterStructuring = Boolean(
-    controller.activeWorkIntent &&
-      controller.conversationMode !== "plan" &&
-      (controller.activeWorkIntent.type === "structuring" ||
-        controller.activeWorkIntent.type === "quick_create")
-  );
-
-  useEffect(() => {
-    return () => {
-      if (highlightTimeoutRef.current) window.clearTimeout(highlightTimeoutRef.current);
-    };
-  }, []);
 
   return (
     <AppScreen pageId="coach" headerTitle={COACH_SCREEN_COPY.title} headerSubtitle={COACH_SCREEN_COPY.subtitle}>
       <div
         ref={pageRef}
-        className="lovablePage lovableCoachPage coachSurfacePage"
+        className="lovablePage lovableCoachPage"
         style={{
           "--coach-page-height": pageHeight ? `${pageHeight}px` : undefined,
-          "--coach-composer-height": dockHeight ? `${dockHeight}px` : undefined,
         }}
       >
-        <div className="coachSurfaceTopbar">
-          <div className="coachSurfaceModeToggle" role="tablist" aria-label={COACH_SCREEN_COPY.composerMenuAriaLabel}>
-            <button
-              type="button"
-              className={`coachSurfaceModeButton${controller.conversationMode === "free" ? " is-active" : ""}`}
-              aria-pressed={controller.conversationMode === "free"}
-              onClick={() => controller.setConversationMode("free")}
-            >
-              {COACH_SCREEN_COPY.chatModeLabel}
-            </button>
-            <button
-              type="button"
-              className={`coachSurfaceModeButton${controller.conversationMode === "plan" ? " is-active" : ""}`}
-              aria-pressed={controller.conversationMode === "plan"}
-              onClick={() => controller.setConversationMode("plan")}
-            >
-              {COACH_SCREEN_COPY.structuringModeLabel}
-            </button>
-          </div>
-          {controller.loading ? (
-            <div className="coachSurfaceStage lovableCoachEyebrow">
-              {controller.loadingStageLabel || COACH_SCREEN_COPY.thinking}
-            </div>
-          ) : null}
-        </div>
-
-        <div ref={scrollRef} className="lovableCoachMessages coachSurfaceScroll">
+        <div ref={scrollRef} className="lovableCoachMessages">
           <div className="lovableCard lovableCoachIntro">
             <div className="lovableCoachEyebrow">{COACH_SCREEN_COPY.introEyebrow}</div>
             <p className="lovableCoachText">{introText}</p>
@@ -268,15 +216,7 @@ export default function Coach({
                 ) : null}
 
                 {isConversationReply && reply?.proposal ? (
-                  <div
-                    ref={(node) => {
-                      if (node) proposalRefs.current.set(entry.id, node);
-                      else proposalRefs.current.delete(entry.id);
-                    }}
-                    className={`lovableCard lovableCoachDraft coachSurfaceProposalTarget${
-                      highlightedProposalEntryId === entry.id ? " is-highlighted" : ""
-                    }`}
-                  >
+                  <div className="lovableCard lovableCoachDraft">
                     <div className="lovableCoachDraftTitle">{COACH_SCREEN_COPY.concisePlanTitle}</div>
                     <div className="lovableCoachDraftList">
                       {reply.proposal?.categoryDraft?.label || reply.proposal?.categoryDraft?.id ? (
@@ -350,94 +290,34 @@ export default function Coach({
           ) : null}
         </div>
 
-        <div ref={dockRef} className="coachSurfaceDock">
-          <CoachWorkTray
-            visible={Boolean(controller.activeWorkIntent)}
-            modeLabel={
-              controller.conversationMode === "plan"
-                ? COACH_SCREEN_COPY.structuringModeLabel
-                : COACH_SCREEN_COPY.chatModeLabel
-            }
-            intentLabel={controller.activeWorkIntent?.label || ""}
-            intentText={controller.activeWorkIntent?.prefill || ""}
-            canViewDraft={Boolean(latestProposalEntry)}
-            canReenterStructuring={canReenterStructuring}
-            onViewDraft={() => {
-              if (!latestProposalEntry?.id) return;
-              proposalRefs.current.get(latestProposalEntry.id)?.scrollIntoView({
-                behavior: "smooth",
-                block: "center",
-              });
-              if (highlightTimeoutRef.current) window.clearTimeout(highlightTimeoutRef.current);
-              setHighlightedProposalEntryId(latestProposalEntry.id);
-              highlightTimeoutRef.current = window.setTimeout(() => {
-                setHighlightedProposalEntryId("");
-              }, 1600);
-            }}
-            onReenterStructuring={() => controller.reenterStructuring()}
-            onDismiss={() => controller.dismissWorkIntent()}
-          />
-
-          <div className="lovableCoachComposerWrap coachSurfaceComposerWrap">
-            <div className={`lovableCard lovableCoachComposer coachSurfaceComposer${composerFocused ? " is-focused" : ""}`}>
-              <button
-                ref={handlePlusButtonRef}
-                type="button"
-                className="coachSurfaceComposerPlus"
-                aria-label={COACH_SCREEN_COPY.composerPlusAriaLabel}
-                onClick={() => {
-                  const nextRect = plusButtonRef.current?.getBoundingClientRect?.() || null;
-                  setComposerMenuAnchorRect(nextRect);
-                  setComposerMenuOpen((current) => !current);
-                }}
-              >
-                +
-              </button>
-              <textarea
-                ref={textareaRef}
-                className={`lovableCoachTextarea${composerFocused ? " is-focused" : ""}`}
-                value={controller.draft}
-                onChange={(event) => controller.setDraft(event.target.value)}
-                onFocus={() => {
-                  setComposerFocused(true);
-                }}
-                onBlur={() => setComposerFocused(false)}
-                placeholder={COACH_SCREEN_COPY.placeholder}
-                rows={1}
-              />
-              <button
-                type="button"
-                className="lovableCoachComposerSend"
-                onClick={() => {
-                  stickToBottomRef.current = true;
-                  controller.submitMessage();
-                }}
-                disabled={controller.loading || !controller.draft.trim()}
-                aria-label={COACH_SCREEN_COPY.sendAriaLabel}
-              >
-                ↗
-              </button>
-            </div>
-            {controller.error ? <div className="lovableCoachError">{controller.error}</div> : null}
+        <div ref={composerRef} className="lovableCoachComposerWrap">
+          <div className={`lovableCard lovableCoachComposer${composerFocused ? " is-focused" : ""}`}>
+            <textarea
+              ref={textareaRef}
+              className={`lovableCoachTextarea${composerFocused ? " is-focused" : ""}`}
+              value={controller.draft}
+              onChange={(event) => controller.setDraft(event.target.value)}
+              onFocus={() => setComposerFocused(true)}
+              onBlur={() => setComposerFocused(false)}
+              placeholder={COACH_SCREEN_COPY.placeholder}
+              rows={1}
+            />
+            <button
+              type="button"
+              className="lovableCoachComposerSend"
+              onClick={() => {
+                stickToBottomRef.current = true;
+                controller.submitMessage();
+              }}
+              disabled={controller.loading || !controller.draft.trim()}
+              aria-label={COACH_SCREEN_COPY.sendAriaLabel}
+            >
+              ↗
+            </button>
           </div>
+          {controller.error ? <div className="lovableCoachError">{controller.error}</div> : null}
         </div>
       </div>
-      <CoachComposerMenu
-        open={composerMenuOpen}
-        anchorRect={composerMenuAnchorRect}
-        anchorEl={composerMenuAnchorEl}
-        onClose={() => setComposerMenuOpen(false)}
-        onSelectStructuring={() => {
-          setComposerMenuOpen(false);
-          controller.startStructuringIntent();
-          textareaRef.current?.focus?.();
-        }}
-        onSelectQuickCreate={() => {
-          setComposerMenuOpen(false);
-          controller.startQuickCreateIntent();
-          textareaRef.current?.focus?.();
-        }}
-      />
     </AppScreen>
   );
 }

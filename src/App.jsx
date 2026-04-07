@@ -228,6 +228,16 @@ export default function App() {
     () => (Array.isArray(safeData.categories) ? safeData.categories : []),
     [safeData.categories]
   );
+
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const root = document.documentElement;
+    root.dataset.activeTab = tab;
+    return () => {
+      if (root.dataset.activeTab === tab) delete root.dataset.activeTab;
+    };
+  }, [tab]);
+
   const visibleCategories = useMemo(
     () => getVisibleCategories(categories),
     [categories]

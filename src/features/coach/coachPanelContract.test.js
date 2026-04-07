@@ -27,24 +27,20 @@ describe("coach panel contract", () => {
   it("keeps a single shared coach conversation surface without panel/page divergence", () => {
     const coachPage = readSrc("pages/Coach.jsx");
     const coachController = readSrc("features/coach/coachPanelController.js");
-    const workTray = readSrc("features/coach/CoachWorkTray.jsx");
-    const composerMenu = readSrc("features/coach/CoachComposerMenu.jsx");
     const copy = readSrc("copy/productCopy.js");
 
-    expect(coachPage).toContain("coachSurfaceTopbar");
-    expect(coachPage).toContain("coachSurfaceModeToggle");
-    expect(coachPage).toContain("<CoachWorkTray");
-    expect(coachPage).toContain("<CoachComposerMenu");
-    expect(coachPage).toContain("coachSurfaceDock");
-    expect(coachPage).toContain("coachSurfaceComposerPlus");
+    expect(coachPage).toContain("lovableCoachMessages");
+    expect(coachPage).toContain("lovableCoachComposerWrap");
+    expect(coachPage).toContain("ref={composerRef}");
+    expect(coachPage).toContain("pendingInitialBottomSyncRef");
+    expect(coachPage).toContain("activeConversationKey");
+    expect(coachPage).not.toContain("composerHeight");
+    expect(coachPage).not.toContain("<CoachWorkTray");
+    expect(coachPage).not.toContain("<CoachComposerMenu");
+    expect(coachPage).not.toContain("coachSurfaceDock");
+    expect(coachPage).not.toContain("coachSurfaceComposerPlus");
+    expect(coachPage).not.toContain("coachSurfaceModeToggle");
     expect(coachPage).not.toContain('setTab("create-item")');
-    expect(workTray).toContain("workTrayViewDraft");
-    expect(workTray).toContain("workTrayReenter");
-    expect(workTray).toContain("workTrayDismiss");
-    expect(composerMenu).toContain("composerMenuAriaLabel");
-    expect(composerMenu).toContain("structuringMenuDescription");
-    expect(composerMenu).toContain("quickCreateMenuDescription");
-    expect(copy).toContain('chatModeLabel: "Chat"');
     expect(copy).toContain('structuringModeLabel: "Structurer"');
     expect(copy).toContain('quickCreateLabel: "Créer vite"');
 
@@ -58,6 +54,7 @@ describe("coach panel contract", () => {
     expect(coachController).toContain("startStructuringIntent");
     expect(coachController).toContain("startQuickCreateIntent");
     expect(coachController).toContain("dismissWorkIntent");
+    expect(coachController).toContain('nextMode: "free"');
     expect(coachController).not.toContain('setTab?.("coach-chat")');
   });
 });

@@ -6,7 +6,9 @@ function MenuAction({ label, description, onClick }) {
   return (
     <button type="button" className="coachComposerMenuAction" onClick={onClick} role="menuitem">
       <span className="coachComposerMenuLabel">{label}</span>
-      <span className="coachComposerMenuDescription">{description}</span>
+      <span className="coachComposerMenuDescription" title={description}>
+        {description}
+      </span>
     </button>
   );
 }

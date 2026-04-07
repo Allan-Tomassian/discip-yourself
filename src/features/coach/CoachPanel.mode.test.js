@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildDismissWorkIntentTransition,
   buildQuickCreateIntentTransition,
   buildCoachRequestedModeIntentKey,
   buildCoachRequestedPrefillIntentKey,
@@ -218,5 +219,35 @@ describe("CoachPanel mode control", () => {
         draft: "Aide-moi à structurer ce que je veux faire avancer.",
       })
     ).toBe(false);
+  });
+
+  it("annuler une intention ramène le coach au mode free", () => {
+    expect(
+      buildDismissWorkIntentTransition({
+        activeWorkIntent: {
+          seededDraftPrefill: "Aide-moi à structurer ce que je veux faire avancer.",
+          draftTouchedSinceSeed: false,
+        },
+        draft: "Aide-moi à structurer ce que je veux faire avancer.",
+      })
+    ).toMatchObject({
+      nextMode: "free",
+      nextDraft: "",
+      shouldClearDraft: true,
+    });
+
+    expect(
+      buildDismissWorkIntentTransition({
+        activeWorkIntent: {
+          seededDraftPrefill: "Aide-moi à structurer ce que je veux faire avancer.",
+          draftTouchedSinceSeed: true,
+        },
+        draft: "Aide-moi à structurer ce que je veux faire avancer, puis clarifie mes priorités.",
+      })
+    ).toMatchObject({
+      nextMode: "free",
+      nextDraft: "Aide-moi à structurer ce que je veux faire avancer, puis clarifie mes priorités.",
+      shouldClearDraft: false,
+    });
   });
 });

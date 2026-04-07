@@ -226,6 +226,15 @@ export function shouldClearDraftOnDismissWorkIntent({ activeWorkIntent = null, d
   );
 }
 
+export function buildDismissWorkIntentTransition({ activeWorkIntent = null, draft = "" } = {}) {
+  const shouldClearDraft = shouldClearDraftOnDismissWorkIntent({ activeWorkIntent, draft });
+  return {
+    nextMode: "free",
+    nextDraft: shouldClearDraft ? "" : normalizeCoachRequestedPrefill(draft),
+    shouldClearDraft,
+  };
+}
+
 export function buildCoachRequestedPrefillIntentKey({
   openCycle = 0,
   requestedConversationId = null,
@@ -486,11 +495,11 @@ export function useCoachConversationController({
   }, [draft, handleConversationModeChange]);
 
   const dismissWorkIntent = useCallback(() => {
-    if (shouldClearDraftOnDismissWorkIntent({ activeWorkIntent, draft })) {
-      setDraft("");
-    }
+    const transition = buildDismissWorkIntentTransition({ activeWorkIntent, draft });
+    handleConversationModeChange(transition.nextMode);
+    if (transition.shouldClearDraft) setDraft("");
     setActiveWorkIntent(null);
-  }, [activeWorkIntent, draft]);
+  }, [activeWorkIntent, draft, handleConversationModeChange]);
 
   const reenterStructuring = useCallback(() => {
     handleConversationModeChange("plan");
