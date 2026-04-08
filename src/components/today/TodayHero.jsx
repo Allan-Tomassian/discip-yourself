@@ -28,6 +28,9 @@ export default function TodayHero({
     (isPreparing ? TODAY_SCREEN_COPY.preparingReason : TODAY_SCREEN_COPY.noPriorityReason);
   const displayCategory = recommendedCategoryLabel || TODAY_SCREEN_COPY.priorityCategoryFallback;
   const displaySupportLabel = supportLabel || "";
+  const isValidated = stateTone === "validated";
+  const showTopline = !isValidated && Boolean(displayCategory || stateLabel);
+  const showMeta = !isValidated && Boolean(timingLabel || durationLabel);
   const showReason = Boolean(displayReason) && (
     isPreparing ||
     stateTone === "clarify" ||
@@ -37,20 +40,22 @@ export default function TodayHero({
 
   return (
     <div
-      className="lovableCard lovablePriorityCard todayShellHeroCard"
+      className={`lovableCard lovablePriorityCard todayShellHeroCard${isValidated ? " is-validated" : ""}`}
       data-testid="today-hero-card"
-      style={categoryColor ? { "--today-hero-category-accent": categoryColor } : undefined}
+      style={!isValidated && categoryColor ? { "--today-hero-category-accent": categoryColor } : undefined}
     >
-      <div className="todayShellHeroTopline">
-        <div className="lovablePriorityEyebrow todayShellHeroEyebrow">{displayCategory}</div>
-        {stateLabel ? (
-          <div className={`todayShellHeroState is-${stateTone}`}>
-            {stateLabel}
-          </div>
-        ) : null}
-      </div>
+      {showTopline ? (
+        <div className="todayShellHeroTopline">
+          {displayCategory ? <div className="lovablePriorityEyebrow todayShellHeroEyebrow">{displayCategory}</div> : null}
+          {stateLabel ? (
+            <div className={`todayShellHeroState is-${stateTone}`}>
+              {stateLabel}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       <h2 className="lovablePriorityTitle">{displayTitle}</h2>
-      {timingLabel || durationLabel ? (
+      {showMeta ? (
         <div className="todayV2HeroMetaRow">
           {timingLabel ? <span className="todayV2HeroTiming">{timingLabel}</span> : null}
           {durationLabel ? <span className="todayV2HeroDuration">{durationLabel}</span> : null}

@@ -362,7 +362,11 @@ function resolveTodayNextBlockLabel({ todayState, heroTitle, heroOccurrence, nex
   return fallbackAction?.title || TODAY_SCREEN_COPY.progressNothingReady;
 }
 
-function resolveTodayWelcomeSubtitle({ hour }) {
+function resolveTodayWelcomeSubtitle({ hour, todayState, hasActiveSession }) {
+  if (hasActiveSession) return TODAY_SCREEN_COPY.welcomeSessionSubtitle;
+  if (todayState === "validated") return TODAY_SCREEN_COPY.welcomeValidatedSubtitle;
+  if (todayState === "overload") return TODAY_SCREEN_COPY.welcomeOverloadSubtitle;
+  if (todayState === "clarify") return TODAY_SCREEN_COPY.welcomeClarifySubtitle;
   if (hour < 12) return TODAY_SCREEN_COPY.welcomeMorningSubtitle;
   if (hour < 18) return TODAY_SCREEN_COPY.welcomeDaySubtitle;
   return TODAY_SCREEN_COPY.welcomeEveningSubtitle || TODAY_SCREEN_COPY.welcomeFallbackSubtitle;
@@ -380,7 +384,6 @@ function resolveTodayHeroStateLabel({ todayState, hasActiveSession }) {
 function resolveTodayHeroGuideLabel({ todayState }) {
   if (todayState === "clarify") return TODAY_SCREEN_COPY.heroGuideClarify;
   if (todayState === "overload") return TODAY_SCREEN_COPY.heroGuideOverload;
-  if (todayState === "validated") return TODAY_SCREEN_COPY.heroGuideValidated;
   return "";
 }
 
@@ -400,6 +403,8 @@ function resolveTodayValuePulse({
   nextBlockLabel,
   todayBehaviorCue,
 }) {
+  if (todayState === "validated") return null;
+
   const safeDoneMinutes = Number.isFinite(dailyState?.doneMinutes) ? Math.max(0, Math.round(dailyState.doneMinutes)) : 0;
   const safeDoneBlocksCount = Number.isFinite(doneBlocksCount) ? Math.max(0, doneBlocksCount) : 0;
 
@@ -2384,6 +2389,8 @@ export default function Home({
         dateLabel: headerDateLabel,
         subtitle: resolveTodayWelcomeSubtitle({
           hour: currentHour,
+          todayState: todayV2State.state,
+          hasActiveSession: Boolean(activeSessionForActiveDate),
         }),
       },
       progress: {
@@ -2401,7 +2408,7 @@ export default function Home({
         reason: todayV2State.hero.reason,
         categoryLabel: todayV2State.hero.categoryLabel || heroDisplayCategoryName,
         durationLabel: todayV2State.hero.durationLabel,
-        timingLabel: resolveTodayHeroTimingLabel(heroOccurrence),
+        timingLabel: todayV2State.state === "validated" ? "" : resolveTodayHeroTimingLabel(heroOccurrence),
         stateLabel: resolveTodayHeroStateLabel({
           todayState: todayV2State.state,
           hasActiveSession: Boolean(activeSessionForActiveDate),
@@ -2410,7 +2417,10 @@ export default function Home({
         supportLabel: resolveTodayHeroGuideLabel({
           todayState: todayV2State.state,
         }),
-        categoryColor: resolveCategoryColor(heroDisplayCategory || focusCategory, accent),
+        categoryColor:
+          todayV2State.state === "validated"
+            ? ""
+            : resolveCategoryColor(heroDisplayCategory || focusCategory, accent),
         primaryLabel: todayV2State.hero.primaryLabel || TODAY_SCREEN_COPY.primaryAction,
         primaryAction: todayV2State.hero.primaryAction,
         secondaryLabel: todayV2State.hero.secondaryLabel || "",

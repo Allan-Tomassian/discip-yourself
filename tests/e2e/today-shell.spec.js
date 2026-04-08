@@ -142,6 +142,7 @@ test("today shell reads as a compact home in ready state", async ({ page }, test
   await expect(page.locator(".todayHeaderSessionBadge")).toHaveCount(0);
   await expect(page.locator(".todayDailyState")).not.toContainText("Progression du jour");
   await expect(page.locator(".todayWelcomeHint")).not.toContainText(/session/i);
+  await expect(page.locator(".todayWelcomeHint")).toContainText(/cap|essentiel/i);
   await expectPrimaryActionAboveFold(page);
 
   const heroBox = await page.getByTestId("today-hero-card").boundingBox();
@@ -186,14 +187,19 @@ test("today shell shows overload without becoming analytical", async ({ page }, 
   await attachScreenshot(page, testInfo, "today-overload-shell.png");
 });
 
-test("today shell shows validated progress and return of value", async ({ page }, testInfo) => {
+test("today shell turns validated into a calm day-closure state", async ({ page }, testInfo) => {
   await openToday(page, buildValidatedState());
 
   await expect(page.getByTestId("today-progress-strip")).toBeVisible();
-  await expect(page.getByTestId("today-value-pulse")).toBeVisible();
-  await expect(page.getByText("Journée validée")).toBeVisible();
+  await expect(page.getByText("Belle avancée aujourd’hui")).toBeVisible();
+  await expect(page.getByText("L’essentiel est fait. Protège l’élan sans rallonger la journée.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Préparer demain" })).toBeVisible();
+  await expect(page.getByTestId("today-value-pulse")).toHaveCount(0);
+  await expect(page.locator(".todayShellHeroState")).toHaveCount(0);
+  await expect(page.locator(".todayShellHeroEyebrow")).toHaveCount(0);
+  await expect(page.locator(".todayV2HeroMetaRow")).toHaveCount(0);
+  await expect(page.locator(".todayWelcomeHint")).toContainText("Tu clôtures proprement.");
+  await expectPrimaryActionAboveFold(page);
 
   await attachScreenshot(page, testInfo, "today-validated-shell.png");
-  await page.getByTestId("today-value-pulse").scrollIntoViewIfNeeded();
-  await attachScreenshot(page, testInfo, "today-validated-value-pulse.png");
 });

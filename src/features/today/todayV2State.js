@@ -113,7 +113,7 @@ export function deriveTodayV2State({
       state: "validated",
       hero: {
         title: TODAY_SCREEN_COPY.validatedTitle,
-        reason: doneMinutes > 0 ? `${doneMinutes} min accomplies aujourd’hui.` : TODAY_SCREEN_COPY.validatedReason,
+        reason: TODAY_SCREEN_COPY.validatedReason,
         categoryLabel,
         durationLabel: "",
         primaryLabel: TODAY_SCREEN_COPY.prepareNextStep,

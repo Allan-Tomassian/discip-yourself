@@ -122,7 +122,9 @@ describe("deriveTodayV2State", () => {
 
     expect(result.state).toBe("validated");
     expect(result.showProgress).toBe(true);
-    expect(result.hero.primaryLabel).toBe("Préparer le prochain pas");
+    expect(result.hero.title).toBe("Belle avancée aujourd’hui");
+    expect(result.hero.reason).toBe("L’essentiel est fait. Protège l’élan sans rallonger la journée.");
+    expect(result.hero.primaryLabel).toBe("Préparer demain");
   });
 
   it("returns legacy_fallback when selected date is not today", () => {

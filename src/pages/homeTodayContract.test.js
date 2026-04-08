@@ -52,7 +52,7 @@ describe("home today canonical contract", () => {
     expect(home).toContain("<TodayNextActions");
     expect(home).toContain("<TodayDailyState");
     expect(home).toContain("<TodayValuePulse");
-    expect(hero).toContain('className="lovableCard lovablePriorityCard todayShellHeroCard"');
+    expect(hero).toContain('className={`lovableCard lovablePriorityCard todayShellHeroCard${isValidated ? " is-validated" : ""}`}');
     expect(hero).toContain("todayShellHeroState is-${stateTone}");
     expect(hero).toContain('className="todayShellHeroGuide"');
     expect(hero).toContain('className="lovablePrimaryButton"');

@@ -267,6 +267,10 @@
   pointer-events: none;
 }
 
+.todayShellHeroCard.is-validated::after {
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent-soft) 12%, transparent));
+}
+
 .todayShellHeroTopline {
   display: flex;
   align-items: center;
@@ -334,6 +338,19 @@
   flex-wrap: wrap;
   gap: var(--space-8);
   margin-top: var(--space-16);
+}
+
+.todayShellHeroCard.is-validated .lovablePriorityTitle {
+  max-width: 12ch;
+}
+
+.todayShellHeroCard.is-validated .lovablePriorityMeta {
+  max-width: 30ch;
+  color: color-mix(in srgb, var(--text-primary) 80%, var(--text-secondary));
+}
+
+.todayShellHeroCard.is-validated .todayV2HeroActions {
+  margin-top: var(--space-20);
 }
 
 .todayV2HeroSecondaryButton {
