@@ -208,4 +208,32 @@ describe("dispatchOpenCreateTask", () => {
       })
     );
   });
+
+  it("passes an initial title into the canonical create-item draft seeding", () => {
+    const seedCreateDraft = vi.fn();
+
+    dispatchOpenCreateTask({
+      request: {
+        source: "objectives",
+        categoryId: "cat-business",
+        kind: "action",
+        initialTitle: "Appeler le dentiste demain",
+      },
+      tab: "objectives",
+      librarySelectedCategoryId: "cat-business",
+      resolvePreferredCategoryId: vi.fn(({ categoryId }) => categoryId),
+      seedCreateDraft,
+      onCreateTaskOpen: vi.fn(),
+      setTab: vi.fn(),
+      setPlusOpen: vi.fn(),
+    });
+
+    expect(seedCreateDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "action",
+        initialTitle: "Appeler le dentiste demain",
+        categoryId: "cat-business",
+      })
+    );
+  });
 });

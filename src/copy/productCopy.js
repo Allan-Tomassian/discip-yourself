@@ -49,18 +49,13 @@ export const TAB_COPY = Object.freeze({
 });
 
 export const CREATE_MENU_COPY = Object.freeze({
-  menuAriaLabel: "Créer",
+  menuAriaLabel: "Capture universelle",
   openMenu: "Créer",
-  promptTitle: "Que veux-tu faire avancer ?",
-  promptMeta: "Choisis le chemin le plus simple pour avancer sans te perdre dans la structure.",
-  objectiveLabel: "Créer un objectif",
-  objectiveMeta: "Poser un cap clair",
-  actionLabel: "Créer une action",
-  actionMeta: "Définir le prochain pas concret",
-  planLabel: "Passer en mode Plan",
-  planMeta: "Structurer avec le Coach",
+  promptTitle: "Qu’est-ce que tu veux faire avancer ?",
+  inputPlaceholder: "Décris ton intention en une phrase.",
+  submitLabel: "Continuer",
   resumeDraftLabel: "Reprendre le brouillon",
-  resumeDraftMeta: "Continuer là où tu t’es arrêté",
+  resumeDraftMeta: "Continuer la création en cours",
 });
 
 export const TODAY_SCREEN_COPY = Object.freeze({

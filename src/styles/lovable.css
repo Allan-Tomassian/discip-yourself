@@ -328,6 +328,92 @@ html[data-active-tab="coach"][data-coach-composer-menu-open="true"] .lovableTabB
   backdrop-filter: blur(18px);
 }
 
+.lovableCaptureMenu {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.lovableCapturePrompt {
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.lovableCaptureTextarea {
+  width: 100%;
+  min-height: 88px;
+  padding: 14px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+}
+
+.lovableCaptureTextarea::placeholder {
+  color: var(--muted);
+}
+
+.lovableCaptureTextarea:focus {
+  border-color: rgba(139, 120, 255, 0.42);
+  box-shadow: 0 0 0 1px rgba(139, 120, 255, 0.22);
+}
+
+.lovableCaptureFooter {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lovableCaptureResume {
+  display: grid;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.lovableCaptureResumeLabel {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.lovableCaptureResumeMeta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.lovableCaptureSpacer {
+  flex: 1 1 auto;
+}
+
+.lovableCaptureSubmit {
+  min-width: 104px;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(139, 120, 255, 0.22);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lovableCaptureSubmit:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
 .lovableMenuButton {
   display: flex;
   width: 100%;

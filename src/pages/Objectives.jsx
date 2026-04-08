@@ -337,6 +337,7 @@ export default function Objectives({
         <button
           type="button"
           className="lovableObjectivesCreate"
+          data-testid="objectives-universal-capture-button"
           aria-label={OBJECTIVES_SCREEN_COPY.createAriaLabel}
           onClick={(event) =>
             onOpenCreateMenu?.({

@@ -78,6 +78,7 @@ export function dispatchOpenCreateTask({
     source,
     kind = "action",
     outcomeId,
+    initialTitle = "",
     preserveDraft = false,
     origin,
     proposal,
@@ -105,6 +106,7 @@ export function dispatchOpenCreateTask({
     categoryId: resolvedCategoryId,
     outcomeId,
     kind,
+    initialTitle,
     preserveDraft,
     origin: nextOrigin,
     proposal: normalizedProposal,
@@ -182,7 +184,7 @@ export function useCreateFlowOrchestration({
     });
   }, [categories, safeData, tab]);
 
-  const seedCreateDraft = useCallback(({ source, categoryId, outcomeId, kind, preserveDraft = false, origin, proposal } = {}) => {
+  const seedCreateDraft = useCallback(({ source, categoryId, outcomeId, kind, initialTitle = "", preserveDraft = false, origin, proposal } = {}) => {
     if (typeof setData !== "function") return;
     setData((prev) => {
       const prevUi = prev.ui || {};
@@ -249,6 +251,7 @@ export function useCreateFlowOrchestration({
         }
       );
       const nextKind = kind || currentDraft.kind || "action";
+      const normalizedInitialTitle = typeof initialTitle === "string" ? initialTitle.trim() : "";
       const normalizedProposal = proposal ? normalizeCreationProposal(proposal, nextOrigin) : null;
       const nextDraft = {
         ...currentDraft,
@@ -266,6 +269,7 @@ export function useCreateFlowOrchestration({
           ? normalizeActionDraft(
               {
                 ...normalizedProposal.actionDrafts[0],
+                title: normalizedInitialTitle || normalizedProposal.actionDrafts[0]?.title,
                 categoryId: normalizedProposal.actionDrafts[0]?.categoryId || resolvedCategoryId,
                 outcomeId: normalizedProposal.actionDrafts[0]?.outcomeId || resolvedOutcomeId,
               },
@@ -274,6 +278,7 @@ export function useCreateFlowOrchestration({
           : normalizeActionDraft(
               {
                 ...currentDraft.actionDraft,
+                title: normalizedInitialTitle || currentDraft.actionDraft?.title,
                 categoryId: currentDraft.actionDraft?.categoryId || resolvedCategoryId,
                 outcomeId: currentDraft.actionDraft?.outcomeId || resolvedOutcomeId,
               },
@@ -283,6 +288,7 @@ export function useCreateFlowOrchestration({
           ? normalizeOutcomeDraft(
               {
                 ...normalizedProposal.outcomeDraft,
+                title: normalizedInitialTitle || normalizedProposal.outcomeDraft?.title,
                 categoryId: normalizedProposal.outcomeDraft?.categoryId || resolvedCategoryId,
               },
               resolvedCategoryId
@@ -290,6 +296,7 @@ export function useCreateFlowOrchestration({
           : normalizeOutcomeDraft(
               {
                 ...currentDraft.outcomeDraft,
+                title: normalizedInitialTitle || currentDraft.outcomeDraft?.title,
                 categoryId: currentDraft.outcomeDraft?.categoryId || resolvedCategoryId,
               },
               resolvedCategoryId
@@ -352,22 +359,24 @@ export function useCreateFlowOrchestration({
 
   const closePlusExpander = () => setPlusOpen(false);
 
-  const openCreateOutcome = ({ source, categoryId } = {}) => {
+  const openCreateOutcome = ({ source, categoryId, initialTitle } = {}) => {
     const preferredCategoryId = resolvePreferredCategoryId({ categoryId, source });
     openCreateTask({
       source,
       categoryId: preferredCategoryId,
       kind: "outcome",
+      initialTitle,
     });
   };
 
-  const openCreateAction = ({ source, categoryId, outcomeId } = {}) => {
+  const openCreateAction = ({ source, categoryId, outcomeId, initialTitle } = {}) => {
     const preferredCategoryId = resolvePreferredCategoryId({ categoryId, source });
     openCreateTask({
       source,
       categoryId: preferredCategoryId,
       outcomeId,
       kind: "action",
+      initialTitle,
       preserveDraft: Boolean(outcomeId),
     });
   };
@@ -430,6 +439,7 @@ export function useCreateFlowOrchestration({
     hasDraft,
     plusOpen,
     plusAnchorRect,
+    plusContext,
     plusAnchorElRef,
     resetCreateDraft,
     seedCreateDraft,

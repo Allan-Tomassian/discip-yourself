@@ -56,6 +56,10 @@ import { useRemindersLoop } from "./hooks/useRemindersLoop";
 import { useSessionRuntimeLoop } from "./hooks/useSessionRuntimeLoop";
 import { useCreateFlowOrchestration } from "./hooks/useCreateFlowOrchestration";
 import { useCategorySelectionSync } from "./hooks/useCategorySelectionSync";
+import {
+  buildUniversalCaptureCoachPrefill,
+  resolveUniversalCaptureDecision,
+} from "./features/universal-capture/universalCapture";
 import { getInboxId } from "./app/inbox";
 import { createHomeNavigationHandlers } from "./app/homeNavigation";
 import { resolveCoachCreatedViewTarget } from "./app/coachCreatedViewTarget";
@@ -295,10 +299,9 @@ export default function App() {
     hasDraft,
     plusOpen,
     plusAnchorRect,
+    plusContext,
     openCreateExpander,
     closePlusExpander,
-    handleChooseObjective,
-    handleChooseAction,
     resumeCreateDraft,
     openCreateOutcome,
     openCreateAction,
@@ -475,21 +478,70 @@ export default function App() {
   );
 
   const launchActionCreate = useCallback(
-    ({ sourceSurface, categoryId = null, outcomeId = null } = {}) => {
+    ({ sourceSurface, categoryId = null, outcomeId = null, initialTitle = "" } = {}) => {
       const origin = resolveRouteOrigin({ sourceSurface, categoryId });
       setCreateTaskState({ origin, kind: "action" });
-      openCreateAction({ source: sourceSurface, categoryId, outcomeId });
+      openCreateAction({ source: sourceSurface, categoryId, outcomeId, initialTitle });
     },
     [openCreateAction, resolveRouteOrigin]
   );
 
   const launchOutcomeCreate = useCallback(
-    ({ sourceSurface, categoryId = null } = {}) => {
+    ({ sourceSurface, categoryId = null, initialTitle = "" } = {}) => {
       const origin = resolveRouteOrigin({ sourceSurface, categoryId });
       setCreateTaskState({ origin, kind: "outcome" });
-      openCreateOutcome({ source: sourceSurface, categoryId });
+      openCreateOutcome({ source: sourceSurface, categoryId, initialTitle });
     },
     [openCreateOutcome, resolveRouteOrigin]
+  );
+
+  const handleUniversalCaptureSubmit = useCallback(
+    (rawText) => {
+      const decision = resolveUniversalCaptureDecision(rawText);
+      const sourceSurface = plusContext?.source || "objectives";
+      const categoryId =
+        plusContext?.categoryId || libraryCategoryId || selectedCategoryId || homeActiveCategoryId || null;
+
+      closePlusExpander();
+
+      if (decision.route === "direct_action") {
+        launchActionCreate({
+          sourceSurface,
+          categoryId,
+          initialTitle: decision.normalizedText,
+        });
+        return;
+      }
+
+      if (decision.route === "direct_goal") {
+        launchOutcomeCreate({
+          sourceSurface,
+          categoryId,
+          initialTitle: decision.normalizedText,
+        });
+        return;
+      }
+
+      setCoachState({
+        mode: decision.route === "coach_structuring" ? "plan" : "free",
+        conversationId: null,
+        prefill: buildUniversalCaptureCoachPrefill({
+          route: decision.route,
+          text: decision.normalizedText,
+        }),
+      });
+      setTab("coach");
+    },
+    [
+      closePlusExpander,
+      homeActiveCategoryId,
+      launchActionCreate,
+      launchOutcomeCreate,
+      libraryCategoryId,
+      plusContext,
+      selectedCategoryId,
+      setTab,
+    ]
   );
 
   // Theme reconciliation:
@@ -1105,17 +1157,7 @@ export default function App() {
         open={plusOpen}
         anchorRect={plusAnchorRect}
         onClose={closePlusExpander}
-        onChooseObjective={handleChooseObjective}
-        onChooseAction={handleChooseAction}
-        onChoosePlan={() => {
-          closePlusExpander();
-          setCoachState({
-            mode: "plan",
-            conversationId: null,
-            prefill: "Aide-moi à structurer ce que je veux faire avancer.",
-          });
-          setTab("coach");
-        }}
+        onSubmitCapture={handleUniversalCaptureSubmit}
         onResumeDraft={hasDraft ? resumeCreateDraft : null}
         hasDraft={hasDraft}
       />
