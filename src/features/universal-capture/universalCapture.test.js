@@ -5,28 +5,74 @@ import {
 } from "./universalCapture";
 
 describe("resolveUniversalCaptureDecision", () => {
-  it("route les intentions concretes vers une action", () => {
-    expect(resolveUniversalCaptureDecision("Appeler le dentiste demain")).toMatchObject({
+  it("construit une preview action en haute confiance quand le draft est deterministe", () => {
+    expect(
+      resolveUniversalCaptureDecision("Appeler le dentiste demain", {
+        categoryId: "cat_health",
+        categoryLabel: "Santé",
+      })
+    ).toMatchObject({
       route: "direct_action",
+      confidence: "high",
       normalizedText: "Appeler le dentiste demain",
-    });
-    expect(resolveUniversalCaptureDecision("Faire 3 séances de sport par semaine")).toMatchObject({
-      route: "direct_action",
-      normalizedText: "Faire 3 séances de sport par semaine",
+      preview: {
+        kind: "action",
+        title: "Appeler le dentiste demain",
+        categoryId: "cat_health",
+        meta: {
+          categoryLabel: "Santé",
+          dateLabel: "Demain",
+        },
+        actionDraft: {
+          title: "Appeler le dentiste demain",
+          categoryId: "cat_health",
+          repeat: "none",
+        },
+      },
     });
   });
 
-  it("route une cible large et unique vers un objectif", () => {
-    expect(resolveUniversalCaptureDecision("Lancer la nouvelle page d’accueil")).toMatchObject({
+  it("garde les actions cadencees hors preview en confiance moyenne", () => {
+    expect(resolveUniversalCaptureDecision("Faire 3 séances de sport par semaine")).toMatchObject({
+      route: "direct_action",
+      confidence: "medium",
+      fallbackCoachRoute: "coach_structuring",
+      normalizedText: "Faire 3 séances de sport par semaine",
+      preview: null,
+    });
+  });
+
+  it("construit une preview objectif en haute confiance pour une cible unique", () => {
+    expect(
+      resolveUniversalCaptureDecision("Lancer la nouvelle page d’accueil", {
+        categoryId: "cat_business",
+        categoryLabel: "Business",
+      })
+    ).toMatchObject({
       route: "direct_goal",
+      confidence: "high",
       normalizedText: "Lancer la nouvelle page d’accueil",
+      preview: {
+        kind: "goal",
+        title: "Lancer la nouvelle page d’accueil",
+        categoryId: "cat_business",
+        meta: {
+          categoryLabel: "Business",
+        },
+        outcomeDraft: {
+          title: "Lancer la nouvelle page d’accueil",
+          categoryId: "cat_business",
+        },
+      },
     });
   });
 
   it("bascule vers le coach en clarification pour une intention trop vague", () => {
     expect(resolveUniversalCaptureDecision("sport")).toMatchObject({
       route: "coach_clarify",
+      confidence: "low",
       normalizedText: "sport",
+      preview: null,
     });
   });
 
@@ -35,7 +81,9 @@ describe("resolveUniversalCaptureDecision", () => {
       resolveUniversalCaptureDecision("Je veux mieux manger, reprendre le sport et organiser mes semaines")
     ).toMatchObject({
       route: "coach_structuring",
+      confidence: "low",
       normalizedText: "Je veux mieux manger, reprendre le sport et organiser mes semaines",
+      preview: null,
     });
   });
 

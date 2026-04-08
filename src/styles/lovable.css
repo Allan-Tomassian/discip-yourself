@@ -414,6 +414,79 @@ html[data-active-tab="coach"][data-coach-composer-menu-open="true"] .lovableTabB
   cursor: default;
 }
 
+.lovableCapturePreview {
+  display: grid;
+  gap: 12px;
+}
+
+.lovableCapturePreviewBadge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.lovableCapturePreviewTitle {
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.lovableCapturePreviewMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lovableCapturePreviewChip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.lovableCapturePreviewActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.lovableCapturePreviewAdjust,
+.lovableCapturePreviewCreate {
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 14px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lovableCapturePreviewAdjust {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+}
+
+.lovableCapturePreviewCreate {
+  border: 0;
+  background: rgba(139, 120, 255, 0.22);
+  color: var(--text);
+}
+
 .lovableMenuButton {
   display: flex;
   width: 100%;

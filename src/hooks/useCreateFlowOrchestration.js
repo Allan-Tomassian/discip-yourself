@@ -79,6 +79,7 @@ export function dispatchOpenCreateTask({
     kind = "action",
     outcomeId,
     initialTitle = "",
+    draftOverrides = null,
     preserveDraft = false,
     origin,
     proposal,
@@ -107,6 +108,7 @@ export function dispatchOpenCreateTask({
     outcomeId,
     kind,
     initialTitle,
+    draftOverrides,
     preserveDraft,
     origin: nextOrigin,
     proposal: normalizedProposal,
@@ -184,7 +186,7 @@ export function useCreateFlowOrchestration({
     });
   }, [categories, safeData, tab]);
 
-  const seedCreateDraft = useCallback(({ source, categoryId, outcomeId, kind, initialTitle = "", preserveDraft = false, origin, proposal } = {}) => {
+  const seedCreateDraft = useCallback(({ source, categoryId, outcomeId, kind, initialTitle = "", draftOverrides = null, preserveDraft = false, origin, proposal } = {}) => {
     if (typeof setData !== "function") return;
     setData((prev) => {
       const prevUi = prev.ui || {};
@@ -252,6 +254,29 @@ export function useCreateFlowOrchestration({
       );
       const nextKind = kind || currentDraft.kind || "action";
       const normalizedInitialTitle = typeof initialTitle === "string" ? initialTitle.trim() : "";
+      const normalizedActionOverride =
+        draftOverrides?.actionDraft
+          ? normalizeActionDraft(
+              {
+                ...draftOverrides.actionDraft,
+                title: draftOverrides.actionDraft?.title || normalizedInitialTitle,
+                categoryId: draftOverrides.actionDraft?.categoryId || resolvedCategoryId,
+                outcomeId: draftOverrides.actionDraft?.outcomeId || resolvedOutcomeId,
+              },
+              resolvedCategoryId
+            )
+          : null;
+      const normalizedOutcomeOverride =
+        draftOverrides?.outcomeDraft
+          ? normalizeOutcomeDraft(
+              {
+                ...draftOverrides.outcomeDraft,
+                title: draftOverrides.outcomeDraft?.title || normalizedInitialTitle,
+                categoryId: draftOverrides.outcomeDraft?.categoryId || resolvedCategoryId,
+              },
+              resolvedCategoryId
+            )
+          : null;
       const normalizedProposal = proposal ? normalizeCreationProposal(proposal, nextOrigin) : null;
       const nextDraft = {
         ...currentDraft,
@@ -265,7 +290,9 @@ export function useCreateFlowOrchestration({
           origin: nextOrigin,
         },
         proposal: normalizedProposal,
-        actionDraft: normalizedProposal?.actionDrafts?.[0]
+        actionDraft: normalizedActionOverride
+          ? normalizedActionOverride
+          : normalizedProposal?.actionDrafts?.[0]
           ? normalizeActionDraft(
               {
                 ...normalizedProposal.actionDrafts[0],
@@ -284,7 +311,9 @@ export function useCreateFlowOrchestration({
               },
               resolvedCategoryId
             ),
-        outcomeDraft: normalizedProposal?.outcomeDraft
+        outcomeDraft: normalizedOutcomeOverride
+          ? normalizedOutcomeOverride
+          : normalizedProposal?.outcomeDraft
           ? normalizeOutcomeDraft(
               {
                 ...normalizedProposal.outcomeDraft,
@@ -359,17 +388,18 @@ export function useCreateFlowOrchestration({
 
   const closePlusExpander = () => setPlusOpen(false);
 
-  const openCreateOutcome = ({ source, categoryId, initialTitle } = {}) => {
+  const openCreateOutcome = ({ source, categoryId, initialTitle, draftOverrides } = {}) => {
     const preferredCategoryId = resolvePreferredCategoryId({ categoryId, source });
     openCreateTask({
       source,
       categoryId: preferredCategoryId,
       kind: "outcome",
       initialTitle,
+      draftOverrides,
     });
   };
 
-  const openCreateAction = ({ source, categoryId, outcomeId, initialTitle } = {}) => {
+  const openCreateAction = ({ source, categoryId, outcomeId, initialTitle, draftOverrides } = {}) => {
     const preferredCategoryId = resolvePreferredCategoryId({ categoryId, source });
     openCreateTask({
       source,
@@ -377,6 +407,7 @@ export function useCreateFlowOrchestration({
       outcomeId,
       kind: "action",
       initialTitle,
+      draftOverrides,
       preserveDraft: Boolean(outcomeId),
     });
   };

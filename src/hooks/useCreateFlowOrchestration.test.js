@@ -236,4 +236,45 @@ describe("dispatchOpenCreateTask", () => {
       })
     );
   });
+
+  it("passes structured draft overrides into canonical create-item seeding", () => {
+    const seedCreateDraft = vi.fn();
+
+    dispatchOpenCreateTask({
+      request: {
+        source: "objectives",
+        categoryId: "cat-business",
+        kind: "action",
+        draftOverrides: {
+          actionDraft: {
+            title: "Appeler le dentiste demain",
+            categoryId: "cat-business",
+            repeat: "none",
+            oneOffDate: "2026-04-09",
+          },
+        },
+      },
+      tab: "objectives",
+      librarySelectedCategoryId: "cat-business",
+      resolvePreferredCategoryId: vi.fn(({ categoryId }) => categoryId),
+      seedCreateDraft,
+      onCreateTaskOpen: vi.fn(),
+      setTab: vi.fn(),
+      setPlusOpen: vi.fn(),
+    });
+
+    expect(seedCreateDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "action",
+        categoryId: "cat-business",
+        draftOverrides: {
+          actionDraft: expect.objectContaining({
+            title: "Appeler le dentiste demain",
+            repeat: "none",
+            oneOffDate: "2026-04-09",
+          }),
+        },
+      })
+    );
+  });
 });

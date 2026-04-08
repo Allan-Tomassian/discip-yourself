@@ -54,6 +54,10 @@ export const CREATE_MENU_COPY = Object.freeze({
   promptTitle: "Qu’est-ce que tu veux faire avancer ?",
   inputPlaceholder: "Décris ton intention en une phrase.",
   submitLabel: "Continuer",
+  previewActionLabel: "Action",
+  previewGoalLabel: "Objectif",
+  previewCreateLabel: "Créer",
+  previewAdjustLabel: "Ajuster",
   resumeDraftLabel: "Reprendre le brouillon",
   resumeDraftMeta: "Continuer la création en cours",
 });

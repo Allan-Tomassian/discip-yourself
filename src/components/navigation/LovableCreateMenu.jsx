@@ -21,6 +21,10 @@ export default function LovableCreateMenu({
   anchorRect = null,
   onClose,
   onSubmitCapture,
+  preview = null,
+  onPreviewCreate,
+  onPreviewAdjust,
+  onClearPreview,
   onResumeDraft,
   hasDraft = false,
 }) {
@@ -32,8 +36,12 @@ export default function LovableCreateMenu({
     const normalizedDraft = draft.trim();
     if (!normalizedDraft) return;
     onSubmitCapture?.(normalizedDraft);
-    setDraft("");
   }, [draft, onSubmitCapture]);
+
+  const handleDismiss = useCallback(() => {
+    onClearPreview?.();
+    onClose?.();
+  }, [onClearPreview, onClose]);
 
   useEffect(() => {
     if (!open) {
@@ -42,11 +50,11 @@ export default function LovableCreateMenu({
     }
 
     const frameId = window.requestAnimationFrame(() => {
-      textareaRef.current?.focus();
+      if (!preview) textareaRef.current?.focus();
     });
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") onClose?.();
-      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      if (event.key === "Escape") handleDismiss();
+      if (!preview && (event.metaKey || event.ctrlKey) && event.key === "Enter") {
         event.preventDefault();
         handleSubmit();
       }
@@ -56,13 +64,18 @@ export default function LovableCreateMenu({
       window.cancelAnimationFrame(frameId);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [handleSubmit, onClose, open]);
+  }, [handleDismiss, handleSubmit, open, preview]);
+
+  useEffect(() => {
+    if (!preview) return;
+    textareaRef.current?.blur();
+  }, [preview]);
 
   if (!open) return null;
 
   return (
     <div className="lovableMenuOverlay" role="presentation">
-      <div className="lovableMenuBackdrop" onClick={() => onClose?.()} />
+      <div className="lovableMenuBackdrop" onClick={handleDismiss} />
       <div
         className="lovableMenu lovableCaptureMenu"
         data-testid="universal-capture-surface"
@@ -74,40 +87,88 @@ export default function LovableCreateMenu({
         <label className="lovableCapturePrompt" htmlFor="lovable-universal-capture-input">
           {CREATE_MENU_COPY.promptTitle}
         </label>
-        <textarea
-          ref={textareaRef}
-          id="lovable-universal-capture-input"
-          className="lovableCaptureTextarea"
-          data-testid="universal-capture-input"
-          placeholder={CREATE_MENU_COPY.inputPlaceholder}
-          value={draft}
-          rows={3}
-          onChange={(event) => setDraft(event.target.value)}
-        />
-        <div className="lovableCaptureFooter">
-          {hasDraft && !draft.trim() ? (
-            <button
-              type="button"
-              className="lovableCaptureResume"
-              data-testid="universal-capture-resume-draft"
-              onClick={() => onResumeDraft?.()}
-            >
-              <span className="lovableCaptureResumeLabel">{CREATE_MENU_COPY.resumeDraftLabel}</span>
-              <span className="lovableCaptureResumeMeta">{CREATE_MENU_COPY.resumeDraftMeta}</span>
-            </button>
-          ) : (
-            <span className="lovableCaptureSpacer" aria-hidden="true" />
-          )}
-          <button
-            type="button"
-            className="lovableCaptureSubmit"
-            data-testid="universal-capture-submit"
-            onClick={handleSubmit}
-            disabled={!draft.trim()}
-          >
-            {CREATE_MENU_COPY.submitLabel}
-          </button>
-        </div>
+        {preview ? (
+          <div className="lovableCapturePreview" data-testid="universal-capture-preview">
+            <span className="lovableCapturePreviewBadge" data-testid="universal-capture-preview-kind">
+              {preview.kind === "action" ? CREATE_MENU_COPY.previewActionLabel : CREATE_MENU_COPY.previewGoalLabel}
+            </span>
+            <div className="lovableCapturePreviewTitle" data-testid="universal-capture-preview-title">
+              {preview.title}
+            </div>
+            {preview.meta?.categoryLabel || preview.meta?.dateLabel ? (
+              <div className="lovableCapturePreviewMeta">
+                {preview.meta?.categoryLabel ? (
+                  <span
+                    className="lovableCapturePreviewChip"
+                    data-testid="universal-capture-preview-category"
+                  >
+                    {preview.meta.categoryLabel}
+                  </span>
+                ) : null}
+                {preview.meta?.dateLabel ? (
+                  <span className="lovableCapturePreviewChip" data-testid="universal-capture-preview-date">
+                    {preview.meta.dateLabel}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="lovableCapturePreviewActions">
+              <button
+                type="button"
+                className="lovableCapturePreviewAdjust"
+                data-testid="universal-capture-preview-adjust"
+                onClick={() => onPreviewAdjust?.()}
+              >
+                {CREATE_MENU_COPY.previewAdjustLabel}
+              </button>
+              <button
+                type="button"
+                className="lovableCapturePreviewCreate"
+                data-testid="universal-capture-preview-create"
+                onClick={() => onPreviewCreate?.()}
+              >
+                {CREATE_MENU_COPY.previewCreateLabel}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <textarea
+              ref={textareaRef}
+              id="lovable-universal-capture-input"
+              className="lovableCaptureTextarea"
+              data-testid="universal-capture-input"
+              placeholder={CREATE_MENU_COPY.inputPlaceholder}
+              value={draft}
+              rows={3}
+              onChange={(event) => setDraft(event.target.value)}
+            />
+            <div className="lovableCaptureFooter">
+              {hasDraft && !draft.trim() ? (
+                <button
+                  type="button"
+                  className="lovableCaptureResume"
+                  data-testid="universal-capture-resume-draft"
+                  onClick={() => onResumeDraft?.()}
+                >
+                  <span className="lovableCaptureResumeLabel">{CREATE_MENU_COPY.resumeDraftLabel}</span>
+                  <span className="lovableCaptureResumeMeta">{CREATE_MENU_COPY.resumeDraftMeta}</span>
+                </button>
+              ) : (
+                <span className="lovableCaptureSpacer" aria-hidden="true" />
+              )}
+              <button
+                type="button"
+                className="lovableCaptureSubmit"
+                data-testid="universal-capture-submit"
+                onClick={handleSubmit}
+                disabled={!draft.trim()}
+              >
+                {CREATE_MENU_COPY.submitLabel}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

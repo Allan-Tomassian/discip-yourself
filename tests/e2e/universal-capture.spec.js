@@ -68,8 +68,15 @@ test("objectives universal capture routes a concrete intent to prefilled action 
   await page.getByTestId("universal-capture-input").fill("Appeler le dentiste demain");
   await page.getByTestId("universal-capture-submit").click();
 
-  await expect(page.getByText("Créer une action")).toBeVisible();
-  await expect(page.locator("input").first()).toHaveValue("Appeler le dentiste demain");
+  await expect(page.getByTestId("universal-capture-preview")).toBeVisible();
+  await expect(page.getByTestId("universal-capture-preview-kind")).toHaveText("Action");
+  await expect(page.getByTestId("universal-capture-preview-title")).toHaveText("Appeler le dentiste demain");
+  await expect(page.getByTestId("universal-capture-preview-date")).toHaveText("Demain");
+
+  await page.getByTestId("universal-capture-preview-create").click();
+
+  await expect(page.locator(".pageHeader .pageTitle")).toHaveText("Objectifs");
+  await expect(page.getByText("Appeler le dentiste demain", { exact: true }).first()).toBeVisible();
 
   await attachScreenshot(page, testInfo, "objectives-universal-capture-action-prefill.png");
 });
@@ -79,6 +86,12 @@ test("objectives universal capture routes a goal intent to prefilled outcome cre
 
   await page.getByTestId("universal-capture-input").fill("Lancer la nouvelle page d’accueil");
   await page.getByTestId("universal-capture-submit").click();
+
+  await expect(page.getByTestId("universal-capture-preview")).toBeVisible();
+  await expect(page.getByTestId("universal-capture-preview-kind")).toHaveText("Objectif");
+  await expect(page.getByTestId("universal-capture-preview-title")).toHaveText("Lancer la nouvelle page d’accueil");
+
+  await page.getByTestId("universal-capture-preview-adjust").click();
 
   await expect(page.getByText("Créer un objectif")).toBeVisible();
   await expect(page.locator("input").first()).toHaveValue("Lancer la nouvelle page d’accueil");
@@ -110,4 +123,19 @@ test("objectives universal capture routes ambiguous or composite intents to coac
   );
 
   await attachScreenshot(page, testInfo, "objectives-universal-capture-coach-structuring.png");
+});
+
+test("objectives universal capture keeps medium confidence direct intents on the coach path", async ({ page }, testInfo) => {
+  await openObjectivesCapture(page, buildBaseState({ withContent: false }));
+
+  await page.getByTestId("universal-capture-input").fill("Faire 3 séances de sport par semaine");
+  await page.getByTestId("universal-capture-submit").click();
+
+  await expect(page.getByTestId("universal-capture-preview")).toHaveCount(0);
+  await expect(page.getByText("Ton copilote stratégique")).toBeVisible();
+  await expect(page.locator(".lovableCoachTextarea")).toHaveValue(
+    'Aide-moi à structurer ce que je veux faire avancer à partir de cette intention : "Faire 3 séances de sport par semaine"'
+  );
+
+  await attachScreenshot(page, testInfo, "objectives-universal-capture-medium-confidence-coach.png");
 });

@@ -1,3 +1,5 @@
+import { addDaysLocal, todayLocalKey } from "../../utils/datetime";
+
 function normalizeWhitespace(value) {
   return String(value || "")
     .replace(/\s+/g, " ")
@@ -24,6 +26,131 @@ function countMatches(text, patterns) {
 function countRegex(text, regex) {
   const matches = text.match(regex);
   return Array.isArray(matches) ? matches.length : 0;
+}
+
+function resolveExplicitDate(simplifiedText) {
+  if (simplifiedText.includes("demain")) {
+    return {
+      dateKey: addDaysLocal(todayLocalKey(), 1),
+      label: "Demain",
+    };
+  }
+  if (simplifiedText.includes("aujourd hui") || simplifiedText.includes("aujourdhui") || simplifiedText.includes("ce soir")) {
+    return {
+      dateKey: todayLocalKey(),
+      label: "Aujourd’hui",
+    };
+  }
+  return null;
+}
+
+function resolveFallbackCoachRoute(signals, scores) {
+  if (
+    signals.cadenceHits > 0 ||
+    signals.structuringHits > 0 ||
+    signals.hasMultipleClauses ||
+    scores.coach_structuring >= scores.coach_clarify + 2
+  ) {
+    return "coach_structuring";
+  }
+  return "coach_clarify";
+}
+
+function buildActionPreview({ normalizedText, signals, context }) {
+  const explicitDate = resolveExplicitDate(signals.simplifiedText);
+  const categoryId = typeof context?.categoryId === "string" ? context.categoryId : null;
+  const categoryLabel = typeof context?.categoryLabel === "string" ? context.categoryLabel : "";
+
+  return {
+    kind: "action",
+    title: normalizedText,
+    categoryId,
+    categoryLabel: categoryLabel || null,
+    actionDraft: {
+      title: normalizedText,
+      categoryId,
+      priority: "secondaire",
+      repeat: "none",
+      oneOffDate: explicitDate?.dateKey || "",
+      timeMode: "NONE",
+      startTime: "",
+      durationMinutes: null,
+      daysOfWeek: [],
+      notes: "",
+    },
+    outcomeDraft: null,
+    meta: {
+      categoryLabel: categoryLabel || "",
+      dateLabel: explicitDate?.label || "",
+    },
+  };
+}
+
+function buildGoalPreview({ normalizedText, context }) {
+  const categoryId = typeof context?.categoryId === "string" ? context.categoryId : null;
+  const categoryLabel = typeof context?.categoryLabel === "string" ? context.categoryLabel : "";
+
+  return {
+    kind: "goal",
+    title: normalizedText,
+    categoryId,
+    categoryLabel: categoryLabel || null,
+    actionDraft: null,
+    outcomeDraft: {
+      title: normalizedText,
+      categoryId,
+      priority: "secondaire",
+      startDate: "",
+      deadline: "",
+      notes: "",
+    },
+    meta: {
+      categoryLabel: categoryLabel || "",
+      dateLabel: "",
+    },
+  };
+}
+
+function resolveDirectActionConfidence(signals, scores) {
+  const explicitDate = resolveExplicitDate(signals.simplifiedText);
+  const dominantEnough = scores.direct_action >= scores.direct_goal + 2;
+  const simpleSingleIntent =
+    !signals.hasMultipleClauses &&
+    signals.structuringHits === 0 &&
+    !signals.isShortVagueTopic &&
+    !signals.lacksStrongVerb &&
+    signals.wordCount >= 3 &&
+    signals.wordCount <= 8;
+
+  if (dominantEnough && simpleSingleIntent && signals.cadenceHits === 0 && explicitDate) {
+    return "high";
+  }
+
+  if (scores.direct_action >= 4) {
+    return "medium";
+  }
+
+  return "low";
+}
+
+function resolveDirectGoalConfidence(signals, scores) {
+  const dominantEnough = scores.direct_goal >= scores.direct_action + 2;
+  const simpleSingleIntent =
+    !signals.hasMultipleClauses &&
+    signals.structuringHits === 0 &&
+    !signals.isShortVagueTopic &&
+    signals.wordCount >= 3 &&
+    signals.wordCount <= 8;
+
+  if (dominantEnough && simpleSingleIntent && signals.cadenceHits === 0 && signals.nearTermHits === 0) {
+    return "high";
+  }
+
+  if (scores.direct_goal >= 4) {
+    return "medium";
+  }
+
+  return "low";
 }
 
 const ACTION_PATTERNS = [
@@ -140,7 +267,7 @@ export function buildUniversalCaptureCoachPrefill({ route, text }) {
   return `Aide-moi à clarifier cette intention et à en faire le prochain pas utile : "${normalizedText}"`;
 }
 
-export function resolveUniversalCaptureDecision(rawText) {
+export function resolveUniversalCaptureDecision(rawText, context = {}) {
   const normalizedText = normalizeWhitespace(rawText);
   const signals = buildSignals(normalizedText);
 
@@ -168,12 +295,28 @@ export function resolveUniversalCaptureDecision(rawText) {
   if (signals.outcomeObjectHits > 0) scores.direct_goal += 2;
   if (signals.cadenceHits > 0 || signals.nearTermHits > 0) scores.direct_goal -= 2;
 
+  const fallbackCoachRoute = resolveFallbackCoachRoute(signals, scores);
+
   if (scores.coach_structuring >= 5 && scores.coach_structuring >= scores.direct_action + 2) {
-    return { route: "coach_structuring", normalizedText, scores };
+    return {
+      route: "coach_structuring",
+      normalizedText,
+      confidence: "low",
+      fallbackCoachRoute: "coach_structuring",
+      preview: null,
+      scores,
+    };
   }
 
   if (scores.coach_clarify >= 5 && scores.coach_clarify >= Math.max(scores.direct_action, scores.direct_goal)) {
-    return { route: "coach_clarify", normalizedText, scores };
+    return {
+      route: "coach_clarify",
+      normalizedText,
+      confidence: "low",
+      fallbackCoachRoute: "coach_clarify",
+      preview: null,
+      scores,
+    };
   }
 
   const topDirectRoute = scores.direct_action >= scores.direct_goal ? "direct_action" : "direct_goal";
@@ -181,12 +324,46 @@ export function resolveUniversalCaptureDecision(rawText) {
   const secondDirectScore = Math.min(scores.direct_action, scores.direct_goal);
 
   if (topDirectScore < 4) {
-    return { route: "coach_clarify", normalizedText, scores };
+    return {
+      route: fallbackCoachRoute,
+      normalizedText,
+      confidence: "low",
+      fallbackCoachRoute,
+      preview: null,
+      scores,
+    };
   }
 
   if (topDirectScore - secondDirectScore <= 1 && secondDirectScore >= 3) {
-    return { route: "coach_clarify", normalizedText, scores };
+    return {
+      route: topDirectRoute,
+      normalizedText,
+      confidence: "medium",
+      fallbackCoachRoute,
+      preview: null,
+      scores,
+    };
   }
 
-  return { route: topDirectRoute, normalizedText, scores };
+  if (topDirectRoute === "direct_action") {
+    const confidence = resolveDirectActionConfidence(signals, scores);
+    return {
+      route: "direct_action",
+      normalizedText,
+      confidence,
+      fallbackCoachRoute,
+      preview: confidence === "high" ? buildActionPreview({ normalizedText, signals, context }) : null,
+      scores,
+    };
+  }
+
+  const confidence = resolveDirectGoalConfidence(signals, scores);
+  return {
+    route: "direct_goal",
+    normalizedText,
+    confidence,
+    fallbackCoachRoute,
+    preview: confidence === "high" ? buildGoalPreview({ normalizedText, context }) : null,
+    scores,
+  };
 }
