@@ -18,7 +18,8 @@ describe("main pages header contract", () => {
     const coach = readSrc("pages/Coach.jsx");
 
     expect(home).toContain('pageId="today"');
-    expect(home).toContain("headerSubtitle={headerDateLabel}");
+    expect(home).toContain("className=\"todayWelcomeTitle\"");
+    expect(home).toContain("className=\"todayWelcomeSubtitle\"");
     expect(home).toContain("greetingPeriod");
 
     expect(objectives).toContain('pageId="objectives"');

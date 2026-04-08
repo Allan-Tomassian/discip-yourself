@@ -84,7 +84,7 @@ export function deriveTodayV2State({
       state: "legacy_fallback",
       hero: buildFallbackHero({ heroViewModel, heroOccurrence, categoryLabel }),
       alternatives,
-      showProgress: false,
+      showProgress: true,
       coachPrefill: "",
     };
   }
@@ -92,9 +92,17 @@ export function deriveTodayV2State({
   if (hasActiveSession) {
     return {
       state: "ready",
-      hero: buildFallbackHero({ heroViewModel, heroOccurrence, categoryLabel }),
+      hero: {
+        ...buildFallbackHero({ heroViewModel, heroOccurrence, categoryLabel }),
+        title: heroViewModel?.title || TODAY_SCREEN_COPY.resumeSessionTitle,
+        primaryLabel: TODAY_SCREEN_COPY.resumeSessionAction,
+        primaryAction: {
+          kind: "resume_session",
+          categoryId: focusCategory?.id || null,
+        },
+      },
       alternatives,
-      showProgress: false,
+      showProgress: true,
       coachPrefill: "",
     };
   }
@@ -137,7 +145,7 @@ export function deriveTodayV2State({
         secondaryAction: { kind: "open_planning_for_today" },
       },
       alternatives: [],
-      showProgress: false,
+      showProgress: true,
       coachPrefill,
     };
   }
@@ -147,7 +155,7 @@ export function deriveTodayV2State({
       state: "ready",
       hero: buildFallbackHero({ heroViewModel, heroOccurrence, categoryLabel }),
       alternatives,
-      showProgress: false,
+      showProgress: true,
       coachPrefill: "",
     };
   }
@@ -170,7 +178,7 @@ export function deriveTodayV2State({
       secondaryAction: { kind: "open_create_habit" },
     },
     alternatives: [],
-    showProgress: false,
+    showProgress: true,
     coachPrefill,
   };
 }

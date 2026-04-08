@@ -38,6 +38,7 @@ describe("deriveTodayV2State", () => {
     expect(result.hero.primaryLabel).toBe("Démarrer");
     expect(result.hero.durationLabel).toBe("25 min");
     expect(result.alternatives).toHaveLength(2);
+    expect(result.showProgress).toBe(true);
   });
 
   it("returns clarify when no credible next block is available", () => {
@@ -61,6 +62,7 @@ describe("deriveTodayV2State", () => {
     expect(result.hero.primaryAction.kind).toBe("open_coach");
     expect(result.hero.secondaryAction.kind).toBe("open_create_habit");
     expect(result.coachPrefill).toMatch(/clarifier/i);
+    expect(result.showProgress).toBe(true);
   });
 
   it("returns overload when the day is overloaded", () => {
@@ -83,6 +85,7 @@ describe("deriveTodayV2State", () => {
     expect(result.state).toBe("overload");
     expect(result.hero.primaryAction.kind).toBe("open_coach");
     expect(result.hero.secondaryAction.kind).toBe("open_planning_for_today");
+    expect(result.showProgress).toBe(true);
   });
 
   it("keeps overload priority ahead of a startable focus block", () => {
@@ -131,6 +134,7 @@ describe("deriveTodayV2State", () => {
 
     expect(result.state).toBe("legacy_fallback");
     expect(result.alternatives).toHaveLength(2);
+    expect(result.showProgress).toBe(true);
   });
 
   it("keeps ready priority for an active session", () => {
@@ -143,6 +147,8 @@ describe("deriveTodayV2State", () => {
     );
 
     expect(result.state).toBe("ready");
-    expect(result.hero.primaryLabel).toBe("Démarrer");
+    expect(result.hero.primaryLabel).toBe("Reprendre la session");
+    expect(result.hero.primaryAction.kind).toBe("resume_session");
+    expect(result.showProgress).toBe(true);
   });
 });

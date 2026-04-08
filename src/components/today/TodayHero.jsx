@@ -6,7 +6,12 @@ export default function TodayHero({
   reason = "",
   contributionLabel = "",
   recommendedCategoryLabel = "",
+  categoryColor = "",
   durationLabel = "",
+  timingLabel = "",
+  stateLabel = "",
+  stateTone = "ready",
+  supportLabel = "",
   primaryLabel = TODAY_SCREEN_COPY.primaryAction,
   secondaryLabel = "",
   onPrimaryAction,
@@ -22,17 +27,37 @@ export default function TodayHero({
     contributionLabel ||
     (isPreparing ? TODAY_SCREEN_COPY.preparingReason : TODAY_SCREEN_COPY.noPriorityReason);
   const displayCategory = recommendedCategoryLabel || TODAY_SCREEN_COPY.priorityCategoryFallback;
+  const displaySupportLabel = supportLabel || "";
+  const showReason = Boolean(displayReason) && (
+    isPreparing ||
+    stateTone === "clarify" ||
+    stateTone === "overload" ||
+    stateTone === "validated"
+  );
 
   return (
-    <div className="lovableCard lovablePriorityCard">
-      <div className="lovablePriorityEyebrow">{displayCategory}</div>
+    <div
+      className="lovableCard lovablePriorityCard todayShellHeroCard"
+      data-testid="today-hero-card"
+      style={categoryColor ? { "--today-hero-category-accent": categoryColor } : undefined}
+    >
+      <div className="todayShellHeroTopline">
+        <div className="lovablePriorityEyebrow todayShellHeroEyebrow">{displayCategory}</div>
+        {stateLabel ? (
+          <div className={`todayShellHeroState is-${stateTone}`}>
+            {stateLabel}
+          </div>
+        ) : null}
+      </div>
       <h2 className="lovablePriorityTitle">{displayTitle}</h2>
-      {durationLabel ? (
+      {timingLabel || durationLabel ? (
         <div className="todayV2HeroMetaRow">
-          <span className="todayV2HeroDuration">{durationLabel}</span>
+          {timingLabel ? <span className="todayV2HeroTiming">{timingLabel}</span> : null}
+          {durationLabel ? <span className="todayV2HeroDuration">{durationLabel}</span> : null}
         </div>
       ) : null}
-      <p className="lovablePriorityMeta">{displayReason}</p>
+      {displaySupportLabel ? <div className="todayShellHeroGuide">{displaySupportLabel}</div> : null}
+      {showReason ? <p className="lovablePriorityMeta">{displayReason}</p> : null}
       <div className="todayV2HeroActions">
         <button
           type="button"

@@ -14,7 +14,6 @@ import { normalizeOccurrenceForUI } from "../logic/compat";
 import { isRuntimeSessionOpen, resolveRuntimeSessionGate } from "../logic/sessionRuntime";
 import { emitSessionRuntimeNotificationHook } from "../logic/sessionRuntimeNotifications";
 import { getAccentForPage } from "../utils/_theme";
-import { getCategoryAccentVars } from "../utils/categoryAccent";
 import { resolveCategoryColor } from "../utils/categoryPalette";
 import { getDefaultBlockIds } from "../logic/blocks/registry";
 import { getCategoryProfileSummary } from "../domain/categoryProfile";
@@ -39,6 +38,7 @@ import { ensureTotemV1 } from "../logic/totemV1";
 import TodayDailyState from "../components/today/TodayDailyState";
 import TodayHero from "../components/today/TodayHero";
 import TodayNextActions from "../components/today/TodayNextActions";
+import TodayValuePulse from "../components/today/TodayValuePulse";
 import { emitTotemEvent } from "../ui/totem/totemEvents";
 import {
   ANALYSIS_COPY,
@@ -82,6 +82,8 @@ import { deriveBehaviorFeedbackSignal, deriveTodayBehaviorCue } from "../feedbac
 // - key_elements: focus section, calendar, micro-actions, daily note
 // - optional_elements: day stats/discipline stats modals
 const DEFAULT_BLOCK_ORDER = getDefaultBlockIds("home");
+const TODAY_COMPLETED_STATUSES = new Set(["done"]);
+const TODAY_HIDDEN_BLOCK_STATUSES = new Set(["canceled", "skipped", "missed", "rescheduled"]);
 
 function diffDays(anchor, target) {
   if (!(anchor instanceof Date) || !(target instanceof Date)) return 0;
@@ -347,6 +349,91 @@ function buildTodayRecommendedActions({
   });
 
   return suggestions.slice(0, 3);
+}
+
+function resolveTodayNextBlockLabel({ todayState, heroTitle, heroOccurrence, nextActions }) {
+  if (todayState === "validated") return "Essentiel terminé";
+  if (todayState === "overload") return "Charge à alléger";
+  if (todayState === "clarify") return TODAY_SCREEN_COPY.progressNothingReady;
+  if (heroOccurrence?.id && heroTitle) return heroTitle;
+  const fallbackAction = Array.isArray(nextActions)
+    ? nextActions.find((item) => typeof item?.title === "string" && item.title.trim())
+    : null;
+  return fallbackAction?.title || TODAY_SCREEN_COPY.progressNothingReady;
+}
+
+function resolveTodayWelcomeSubtitle({ hour }) {
+  if (hour < 12) return TODAY_SCREEN_COPY.welcomeMorningSubtitle;
+  if (hour < 18) return TODAY_SCREEN_COPY.welcomeDaySubtitle;
+  return TODAY_SCREEN_COPY.welcomeEveningSubtitle || TODAY_SCREEN_COPY.welcomeFallbackSubtitle;
+}
+
+function resolveTodayHeroStateLabel({ todayState, hasActiveSession }) {
+  if (hasActiveSession) return TODAY_SCREEN_COPY.heroStateSession;
+  if (todayState === "ready") return TODAY_SCREEN_COPY.heroStateReady;
+  if (todayState === "clarify") return TODAY_SCREEN_COPY.heroStateClarify;
+  if (todayState === "overload") return TODAY_SCREEN_COPY.heroStateOverload;
+  if (todayState === "validated") return TODAY_SCREEN_COPY.heroStateValidated;
+  return TODAY_SCREEN_COPY.heroStateFallback;
+}
+
+function resolveTodayHeroGuideLabel({ todayState }) {
+  if (todayState === "clarify") return TODAY_SCREEN_COPY.heroGuideClarify;
+  if (todayState === "overload") return TODAY_SCREEN_COPY.heroGuideOverload;
+  if (todayState === "validated") return TODAY_SCREEN_COPY.heroGuideValidated;
+  return "";
+}
+
+function resolveTodayHeroTimingLabel(occurrence) {
+  const rawStart =
+    (typeof occurrence?.start === "string" && occurrence.start.trim()) ||
+    (typeof occurrence?.slotKey === "string" && occurrence.slotKey.trim()) ||
+    "";
+  if (!rawStart || occurrence?.noTime) return "";
+  return rawStart;
+}
+
+function resolveTodayValuePulse({
+  dailyState,
+  doneBlocksCount,
+  todayState,
+  nextBlockLabel,
+  todayBehaviorCue,
+}) {
+  const safeDoneMinutes = Number.isFinite(dailyState?.doneMinutes) ? Math.max(0, Math.round(dailyState.doneMinutes)) : 0;
+  const safeDoneBlocksCount = Number.isFinite(doneBlocksCount) ? Math.max(0, doneBlocksCount) : 0;
+
+  if (safeDoneBlocksCount > 0) {
+    return {
+      title: `${safeDoneBlocksCount} bloc${safeDoneBlocksCount > 1 ? "s" : ""} validé${safeDoneBlocksCount > 1 ? "s" : ""} aujourd’hui`,
+      meta:
+        safeDoneMinutes > 0
+          ? `${safeDoneMinutes} min exécutées${todayState === "validated" ? "" : ` • ${nextBlockLabel}`}`
+          : nextBlockLabel,
+      tone: todayState === "validated" ? "continuity" : "momentum",
+    };
+  }
+
+  if (safeDoneMinutes > 0) {
+    return {
+      title: `${safeDoneMinutes} min déjà exécutées aujourd’hui`,
+      meta: nextBlockLabel || TODAY_SCREEN_COPY.valuePulseFallbackMeta,
+      tone: "continuity",
+    };
+  }
+
+  if (todayState === "ready" && todayBehaviorCue?.message) {
+    return {
+      title: todayBehaviorCue.message,
+      meta:
+        nextBlockLabel && nextBlockLabel !== TODAY_SCREEN_COPY.progressNothingReady
+          ? `Prochain: ${nextBlockLabel}`
+          : "",
+      tone: todayBehaviorCue.cueKind || "structure",
+    };
+  }
+
+  return null;
 }
 
 function normalizeMicroItemForCompare(item) {
@@ -1116,15 +1203,6 @@ export default function Home({
     disciplineSummary: disciplineBreakdown,
   } = todayProgressModel;
 
-  const sessionBadgeLabel = useMemo(() => {
-    if (!sessionForDay || !isRuntimeSessionOpen(sessionForDay)) return "";
-    const sessionMinutes = Number.isFinite(sessionHabit?.sessionMinutes)
-      ? sessionHabit.sessionMinutes
-      : null;
-    if (sessionMinutes) return `Session en cours · ${sessionMinutes} min`;
-    return "Session en cours";
-  }, [sessionForDay, sessionHabit]);
-
   const calendarRangeLabel = useMemo(() => {
     try {
       const fmt = new Intl.DateTimeFormat("fr-FR", {
@@ -1757,16 +1835,11 @@ export default function Home({
 
 
   // Render
-  const accent = focusCategory && focusCategory.color ? focusCategory.color : getAccentForPage(safeData, "home");
+  const accent = getAccentForPage(safeData, "home");
   const backgroundImage = profile.whyImage || "";
-  const accentVars = getCategoryAccentVars(focusCategory || accent);
 
   const whyText = (profile.whyText || "").trim();
   const whyDisplay = whyText || "Ajoute ton pourquoi dans l’onboarding.";
-
-  const headerRight = sessionBadgeLabel ? (
-    null
-  ) : null;
   const localGapSummary = useMemo(
     () =>
       buildLocalGapSummary({
@@ -2259,8 +2332,9 @@ export default function Home({
   );
   const greetingName =
     String(profile?.full_name || profile?.username || profile?.name || "").trim() || TODAY_SCREEN_COPY.fallbackName;
+  const currentHour = new Date().getHours();
   const greetingPeriod = (() => {
-    const hour = new Date().getHours();
+    const hour = currentHour;
     if (hour < 18) return TODAY_SCREEN_COPY.greetingMorning;
     return TODAY_SCREEN_COPY.greetingEvening;
   })();
@@ -2275,6 +2349,110 @@ export default function Home({
       return selectedDateKey;
     }
   })();
+  const plannedBlocksCount = useMemo(
+    () =>
+      occurrencesForSelectedDay.reduce((sum, occurrence) => {
+        const status = typeof occurrence?.status === "string" ? occurrence.status : "";
+        if (TODAY_HIDDEN_BLOCK_STATUSES.has(status)) return sum;
+        return sum + 1;
+      }, 0),
+    [occurrencesForSelectedDay]
+  );
+  const doneBlocksCount = useMemo(
+    () =>
+      occurrencesForSelectedDay.reduce((sum, occurrence) => {
+        const status = typeof occurrence?.status === "string" ? occurrence.status : "";
+        return sum + (TODAY_COMPLETED_STATUSES.has(status) ? 1 : 0);
+      }, 0),
+    [occurrencesForSelectedDay]
+  );
+  const nextBlockLabel = useMemo(
+    () =>
+      resolveTodayNextBlockLabel({
+        todayState: todayV2State.state,
+        heroTitle: todayV2State.hero.title,
+        heroOccurrence,
+        nextActions: todayV2State.alternatives,
+      }),
+    [heroOccurrence, todayV2State.alternatives, todayV2State.hero.title, todayV2State.state]
+  );
+  const todayShellModel = useMemo(
+    () => ({
+      welcome: {
+        greeting: greetingPeriod,
+        name: greetingName,
+        dateLabel: headerDateLabel,
+        subtitle: resolveTodayWelcomeSubtitle({
+          hour: currentHour,
+        }),
+      },
+      progress: {
+        ratio: plannedBlocksCount > 0 ? doneBlocksCount / plannedBlocksCount : 0,
+        doneBlocksCount,
+        plannedBlocksCount,
+        doneMinutes: dailyState.doneMinutes,
+        nextBlockLabel,
+      },
+      hero: {
+        title:
+          todayV2State.state === "ready" || todayV2State.state === "legacy_fallback"
+            ? typedHeroTitle || todayV2State.hero.title
+            : todayV2State.hero.title,
+        reason: todayV2State.hero.reason,
+        categoryLabel: todayV2State.hero.categoryLabel || heroDisplayCategoryName,
+        durationLabel: todayV2State.hero.durationLabel,
+        timingLabel: resolveTodayHeroTimingLabel(heroOccurrence),
+        stateLabel: resolveTodayHeroStateLabel({
+          todayState: todayV2State.state,
+          hasActiveSession: Boolean(activeSessionForActiveDate),
+        }),
+        stateTone: activeSessionForActiveDate ? "session" : todayV2State.state,
+        supportLabel: resolveTodayHeroGuideLabel({
+          todayState: todayV2State.state,
+        }),
+        categoryColor: resolveCategoryColor(heroDisplayCategory || focusCategory, accent),
+        primaryLabel: todayV2State.hero.primaryLabel || TODAY_SCREEN_COPY.primaryAction,
+        primaryAction: todayV2State.hero.primaryAction,
+        secondaryLabel: todayV2State.hero.secondaryLabel || "",
+        secondaryAction: todayV2State.hero.secondaryAction,
+      },
+      secondaryActions: todayV2State.alternatives,
+      valuePulse: resolveTodayValuePulse({
+        dailyState,
+        doneBlocksCount,
+        todayState: todayV2State.state,
+        nextBlockLabel,
+        todayBehaviorCue,
+      }),
+    }),
+    [
+      activeSessionForActiveDate,
+      currentHour,
+      dailyState,
+      doneBlocksCount,
+      greetingName,
+      greetingPeriod,
+      headerDateLabel,
+      heroContributionLabel,
+      heroDisplayCategoryName,
+        heroOccurrence,
+        nextBlockLabel,
+        plannedBlocksCount,
+        todayBehaviorCue,
+        todayV2State.alternatives,
+        accent,
+        todayV2State.hero.primaryAction,
+        todayV2State.hero.primaryLabel,
+        todayV2State.hero.reason,
+      todayV2State.hero.secondaryAction,
+      todayV2State.hero.secondaryLabel,
+      todayV2State.hero.title,
+      todayV2State.hero.durationLabel,
+      todayV2State.hero.categoryLabel,
+      todayV2State.state,
+      typedHeroTitle,
+    ]
+  );
   const insightCopy = [
     manualTodayAnalysis.visibleAnalysis?.headline || "",
     heroReasonText || "",
@@ -2283,13 +2461,6 @@ export default function Home({
     .join(" ");
   const todayHeaderRight = (
     <div className="todayHeaderRightCluster">
-      {sessionBadgeLabel ? (
-        <div className="todayHeaderSessionBadge" style={accentVars}>
-          <span className="badge badgeAccent">
-            {sessionBadgeLabel}
-          </span>
-        </div>
-      ) : null}
       <button
         type="button"
         className="lovableIconButton todayProfileButton"
@@ -2310,53 +2481,62 @@ export default function Home({
         accent={accent}
         backgroundImage={backgroundImage}
         pageId="today"
-        headerTitle={<span data-tour-id="today-title">{`${greetingPeriod}, ${greetingName}`}</span>}
-        headerSubtitle={headerDateLabel}
+        headerTitle={
+          <span className="todayWelcomeTitle" data-tour-id="today-title">
+            <span>{todayShellModel.welcome.greeting}, </span>
+            <span className="todayWelcomeAccent">{todayShellModel.welcome.name}</span>
+          </span>
+        }
+        headerSubtitle={
+          <span className="todayWelcomeSubtitle">
+            <span className="todayWelcomeDate">{todayShellModel.welcome.dateLabel}</span>
+            <span className="todayWelcomeHint">{todayShellModel.welcome.subtitle}</span>
+          </span>
+        }
         headerRight={todayHeaderRight}
         headerRowAlign="start"
       >
-        <div className="lovablePage">
-          <div>
-            <div className="lovableSectionLabel">{TODAY_SCREEN_COPY.priorityTitle}</div>
-            <TodayHero
-              title={
-                todayV2State.state === "ready" || todayV2State.state === "legacy_fallback"
-                  ? typedHeroTitle || todayV2State.hero.title
-                  : todayV2State.hero.title
-              }
-              reason={todayV2State.hero.reason}
-              contributionLabel={heroContributionLabel}
-              recommendedCategoryLabel={todayV2State.hero.categoryLabel || heroDisplayCategoryName}
-              durationLabel={todayV2State.hero.durationLabel}
-              primaryLabel={todayV2State.hero.primaryLabel || TODAY_SCREEN_COPY.primaryAction}
-              secondaryLabel={todayV2State.hero.secondaryLabel || ""}
-              onPrimaryAction={() => handleTodayHeroAction(todayV2State.hero.primaryAction)}
-              onSecondaryAction={() => handleTodayHeroAction(todayV2State.hero.secondaryAction)}
-              canPrimaryAction={canHandleTodayHeroAction(todayV2State.hero.primaryAction)}
-              canSecondaryAction={canHandleTodayHeroAction(todayV2State.hero.secondaryAction)}
-              isPreparing={manualTodayAnalysis.loading}
+        <div className="lovablePage todayShellPage">
+          {todayV2State.showProgress ? (
+            <TodayDailyState
+              model={todayShellModel.progress}
             />
-            {todayV2State.showProgress ? (
-              <div className="todayV2ProgressBlock">
-                <TodayDailyState
-                  plannedMinutes={dailyState.plannedMinutes}
-                  doneMinutes={dailyState.doneMinutes}
-                  remainingMinutes={dailyState.remainingMinutes}
-                  activeCategory={heroDisplayCategory || focusCategory || null}
-                />
-              </div>
-            ) : null}
-          </div>
+          ) : null}
 
-          {todayV2State.alternatives.length ? (
-            <div>
-            <div className="lovableSectionLabel">{TODAY_SCREEN_COPY.actionsTitle}</div>
+          <TodayHero
+            title={todayShellModel.hero.title}
+            reason={todayShellModel.hero.reason}
+            contributionLabel={heroContributionLabel}
+            recommendedCategoryLabel={todayShellModel.hero.categoryLabel}
+            durationLabel={todayShellModel.hero.durationLabel}
+            timingLabel={todayShellModel.hero.timingLabel}
+            stateLabel={todayShellModel.hero.stateLabel}
+            stateTone={todayShellModel.hero.stateTone}
+            supportLabel={todayShellModel.hero.supportLabel}
+            categoryColor={todayShellModel.hero.categoryColor}
+            primaryLabel={todayShellModel.hero.primaryLabel}
+            secondaryLabel={todayShellModel.hero.secondaryLabel}
+            onPrimaryAction={() => handleTodayHeroAction(todayShellModel.hero.primaryAction)}
+            onSecondaryAction={() => handleTodayHeroAction(todayShellModel.hero.secondaryAction)}
+            canPrimaryAction={canHandleTodayHeroAction(todayShellModel.hero.primaryAction)}
+            canSecondaryAction={canHandleTodayHeroAction(todayShellModel.hero.secondaryAction)}
+            isPreparing={manualTodayAnalysis.loading}
+          />
+
+          {todayShellModel.secondaryActions.length ? (
             <TodayNextActions
-              actions={todayV2State.alternatives}
+              actions={todayShellModel.secondaryActions}
               onOpenOccurrence={handleStartSession}
-              activeCategory={focusCategory || null}
+              activeCategory={heroDisplayCategory || focusCategory || null}
             />
-          </div>
+          ) : null}
+
+          {todayShellModel.valuePulse ? (
+            <TodayValuePulse
+              title={todayShellModel.valuePulse.title}
+              meta={todayShellModel.valuePulse.meta}
+              tone={todayShellModel.valuePulse.tone}
+            />
           ) : null}
         </div>
       </AppScreen>
