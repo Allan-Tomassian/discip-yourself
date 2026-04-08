@@ -1,110 +1,38 @@
-.coachSurfacePage {
-  display: flex;
-  flex-direction: column;
-  height: var(--coach-page-height, auto);
-  min-height: 0;
-  overflow: hidden;
-}
-
-.coachSurfaceScroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  padding-bottom: var(--space-8);
-}
-
-.coachSurfaceDock {
-  position: sticky;
-  bottom: var(--bottom-fixed-stack-space, 0px);
-  z-index: 3;
-  display: grid;
-  gap: var(--space-10);
-  padding-top: var(--space-6);
-  padding-bottom: calc(var(--space-10) + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px)));
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-primary) 0%, transparent), color-mix(in srgb, var(--surface-primary) 94%, transparent) 20%, color-mix(in srgb, var(--surface-primary) 98%, transparent));
-  backdrop-filter: blur(18px);
-}
-
-.coachWorkTray {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-10);
-  min-width: 0;
-  padding: var(--space-10) var(--space-12);
-  border-radius: var(--radius-16);
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 88%, transparent);
-  background: color-mix(in srgb, var(--surface-elevated) 90%, transparent);
-}
-
-.coachWorkTrayMain {
-  min-width: 0;
-  display: grid;
-  gap: var(--space-6);
-}
-
-.coachWorkTrayBadge {
-  width: fit-content;
-}
-
-.coachWorkTrayText {
-  min-width: 0;
-  font-size: var(--font-sm);
-  line-height: 1.45;
-  color: var(--text-muted);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-}
-
-.coachWorkTrayActions {
-  flex: 0 0 auto;
-}
-
-.coachWorkTrayDismiss {
-  min-height: 32px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--accent);
-  font: inherit;
-  font-size: var(--font-sm);
-  cursor: pointer;
-}
-
-.coachSurfaceComposerWrap {
-  flex: 0 0 auto;
-  margin-top: 0;
-  bottom: auto;
-}
-
-.coachSurfaceComposer {
+[data-page-id="coach"] .lovableCoachComposer {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: end;
 }
 
-.coachSurfaceComposerPlus {
+[data-page-id="coach"] .coachSurfaceComposerPlus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: end;
+  justify-self: start;
+  flex: 0 0 auto;
   width: 44px;
   min-width: 44px;
+  max-width: 44px;
   height: 44px;
+  min-height: 44px;
+  max-height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 88%, transparent);
-  background: color-mix(in srgb, var(--surface-elevated) 90%, transparent);
+  background: rgba(255, 255, 255, 0.015);
   color: var(--text);
+  font: inherit;
   font-size: 24px;
   line-height: 1;
   cursor: pointer;
 }
 
-.coachSurfaceComposerPlus:focus-visible,
-.coachWorkTrayDismiss:focus-visible,
+[data-page-id="coach"] .coachSurfaceComposerPlus:focus-visible,
 .coachComposerMenuAction:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--accent-primary) 72%, white 12%);
   outline-offset: 2px;
 }
 
-.coachSurfaceComposerPlus:disabled {
+[data-page-id="coach"] .coachSurfaceComposerPlus:disabled {
   opacity: 0.56;
   cursor: default;
 }
@@ -147,24 +75,6 @@
 }
 
 @media (max-width: 640px) {
-  .coachSurfaceDock {
-    gap: var(--space-8);
-    padding-bottom: calc(var(--space-8) + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px)));
-  }
-
-  .coachWorkTray {
-    align-items: flex-start;
-  }
-
-  .coachWorkTrayDismiss {
-    min-height: 28px;
-  }
-
-  .coachSurfaceComposer {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    padding: var(--space-10);
-  }
-
   .coachComposerMenuPanel {
     min-width: min(264px, calc(100vw - 20px));
   }

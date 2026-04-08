@@ -44,6 +44,9 @@ describe("mobile viewport contract", () => {
     expect(lovableCss).toContain('[data-page-id="coach"] .lovableCoachPage');
     expect(lovableCss).toContain('[data-page-id="coach"] .lovableCoachMessages');
     expect(lovableCss).toContain('[data-page-id="coach"] .lovableCoachComposerWrap');
+    expect(lovableCss).toContain("-webkit-text-size-adjust: 100%;");
+    expect(lovableCss).toContain("@supports (-webkit-touch-callout: none)");
+    expect(lovableCss).toContain("flex: 0 0 auto;");
     expect(lovableCss).toContain("padding-bottom: calc(12px + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px), 84px));");
     expect(lovableCss).toContain('html.keyboardOpen[data-active-tab="coach"] [data-page-id="coach"] .pageContent');
   });

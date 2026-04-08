@@ -245,7 +245,9 @@
   pointer-events: none;
 }
 
-html.keyboardOpen[data-active-tab="coach"] .lovableTabBarWrap {
+html.keyboardOpen[data-active-tab="coach"] .lovableTabBarWrap,
+html[data-active-tab="coach"][data-coach-composer-focused="true"] .lovableTabBarWrap,
+html[data-active-tab="coach"][data-coach-composer-menu-open="true"] .lovableTabBarWrap {
   opacity: 0;
   pointer-events: none;
   transform: translateY(calc(18px + var(--safe-bottom)));
@@ -1012,6 +1014,8 @@ html.keyboardOpen[data-active-tab="coach"] .lovableTabBarWrap {
 [data-page-id="coach"] {
   height: 100dvh;
   overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 [data-page-id="coach"] .container {
@@ -1033,7 +1037,8 @@ html.keyboardOpen[data-active-tab="coach"] .lovableTabBarWrap {
   padding-bottom: calc(12px + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px), 84px));
 }
 
-html.keyboardOpen[data-active-tab="coach"] [data-page-id="coach"] .pageContent {
+html.keyboardOpen[data-active-tab="coach"] [data-page-id="coach"] .pageContent,
+html[data-active-tab="coach"][data-coach-composer-focused="true"] [data-page-id="coach"] .pageContent {
   padding-bottom: 12px;
 }
 
@@ -1057,6 +1062,14 @@ html.keyboardOpen[data-active-tab="coach"] [data-page-id="coach"] .pageContent {
   max-width: 88%;
 }
 
+[data-page-id="coach"] .lovableCoachIntro,
+[data-page-id="coach"] .lovableCoachBubble,
+[data-page-id="coach"] .lovableCoachDraft {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
 .lovableCoachBubble.is-user {
   align-self: flex-end;
   background: rgba(139, 120, 255, 0.16);
@@ -1071,6 +1084,28 @@ html.keyboardOpen[data-active-tab="coach"] [data-page-id="coach"] .pageContent {
   margin: 0;
   line-height: 1.7;
   white-space: pre-line;
+}
+
+[data-page-id="coach"] .coachSurfaceMessageText {
+  display: block;
+  width: 100%;
+  margin: 0;
+  color: var(--text);
+  opacity: 1;
+  visibility: visible;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+@supports (-webkit-touch-callout: none) {
+  [data-page-id="coach"] .lovableCoachIntro,
+  [data-page-id="coach"] .lovableCoachBubble,
+  [data-page-id="coach"] .lovableCoachDraft {
+    flex: 0 0 auto;
+    min-height: auto;
+  }
 }
 
 .lovableCoachPrompts {
@@ -1142,7 +1177,8 @@ html.keyboardOpen[data-active-tab="coach"] [data-page-id="coach"] .pageContent {
 }
 
 [data-page-id="coach"] .lovableCoachComposerWrap {
-  z-index: 2;
+  position: relative;
+  z-index: 90;
   margin-top: 0;
   padding-bottom: 0;
 }
@@ -1152,16 +1188,18 @@ html.keyboardOpen[data-active-tab="coach"] [data-page-id="coach"] .pageContent {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   padding: 12px;
+  background: rgba(17, 17, 26, 0.84);
+  -webkit-backdrop-filter: blur(14px) saturate(1.04);
+  backdrop-filter: blur(14px) saturate(1.04);
   transition:
     border-color 140ms ease,
     box-shadow 140ms ease,
-    transform 140ms ease;
+    background-color 140ms ease;
 }
 
 .lovableCoachComposer.is-focused {
   border-color: rgba(139, 120, 255, 0.18);
   box-shadow: 0 0 0 1px rgba(139, 120, 255, 0.12), var(--lovable-shadow-card);
-  transform: translateY(-1px);
 }
 
 .lovableCoachTextarea {
@@ -1182,7 +1220,7 @@ html.keyboardOpen[data-active-tab="coach"] [data-page-id="coach"] .pageContent {
 }
 
 .lovableCoachTextarea.is-focused {
-  min-height: 72px;
+  min-height: 48px;
   border-color: rgba(139, 120, 255, 0.16);
   background: rgba(255, 255, 255, 0.02);
 }
@@ -1192,9 +1230,18 @@ html.keyboardOpen[data-active-tab="coach"] [data-page-id="coach"] .pageContent {
 }
 
 .lovableCoachComposerSend {
-  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: end;
+  justify-self: end;
+  flex: 0 0 auto;
   width: 44px;
   min-width: 44px;
+  max-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
   border-radius: 14px;
   background: rgba(139, 120, 255, 0.2);
   color: var(--accent);

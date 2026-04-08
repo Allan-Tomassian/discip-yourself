@@ -27,6 +27,8 @@ describe("coach panel contract", () => {
   it("keeps a single shared coach conversation surface without panel/page divergence", () => {
     const coachPage = readSrc("pages/Coach.jsx");
     const coachController = readSrc("features/coach/coachPanelController.js");
+    const coachModel = readSrc("features/coach/coachConversationModel.js");
+    const coachSurfaceCss = readSrc("features/coach/coachSurface.css");
     const copy = readSrc("copy/productCopy.js");
 
     expect(coachPage).toContain("lovableCoachMessages");
@@ -34,15 +36,26 @@ describe("coach panel contract", () => {
     expect(coachPage).toContain("ref={composerRef}");
     expect(coachPage).toContain("pendingInitialBottomSyncRef");
     expect(coachPage).toContain("activeConversationKey");
+    expect(coachPage).toContain('import "../features/coach/coachSurface.css";');
+    expect(coachPage).toContain("<CoachComposerMenu");
+    expect(coachPage).toContain("coachSurfaceComposerPlus");
+    expect(coachPage).toContain("entry.displayText");
     expect(coachPage).not.toContain("composerHeight");
     expect(coachPage).not.toContain("<CoachWorkTray");
-    expect(coachPage).not.toContain("<CoachComposerMenu");
     expect(coachPage).not.toContain("coachSurfaceDock");
-    expect(coachPage).not.toContain("coachSurfaceComposerPlus");
+    expect(coachPage).not.toContain("coachSurfacePage");
     expect(coachPage).not.toContain("coachSurfaceModeToggle");
     expect(coachPage).not.toContain('setTab("create-item")');
     expect(copy).toContain('structuringModeLabel: "Structurer"');
     expect(copy).toContain('quickCreateLabel: "Créer vite"');
+    expect(copy).toContain('composerPlusAriaLabel: "Ouvrir les intentions du coach"');
+    expect(coachSurfaceCss).toContain(".coachSurfaceComposerPlus");
+    expect(coachSurfaceCss).toContain(".coachComposerMenuPanel");
+    expect(coachSurfaceCss).not.toContain(".coachSurfaceDock");
+    expect(coachModel).toContain("resolveCoachMessageDisplayText");
+    expect(coachModel).toContain("displayText:");
+    expect(coachModel).toContain("headline");
+    expect(coachModel).toContain("reason");
 
     expect(coachController).toContain("conversationUseCase");
     expect(coachController).toContain("const effectiveMode = conversationMode === \"plan\" ? \"plan\" : \"free\";");

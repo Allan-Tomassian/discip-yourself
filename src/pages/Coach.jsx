@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AppScreen } from "../shared/ui/app";
+import CoachComposerMenu from "../features/coach/CoachComposerMenu";
 import { useCoachConversationController } from "../features/coach/coachPanelController";
 import { COACH_SCREEN_COPY } from "../ui/labels";
+import "../features/coach/coachSurface.css";
 
 function resolveName(profile) {
   const fullName = String(profile?.full_name || "").trim();
@@ -30,9 +32,13 @@ export default function Coach({
   const scrollRef = useRef(null);
   const composerRef = useRef(null);
   const textareaRef = useRef(null);
+  const plusButtonRef = useRef(null);
   const stickToBottomRef = useRef(true);
   const pendingInitialBottomSyncRef = useRef(true);
   const [composerFocused, setComposerFocused] = useState(false);
+  const [composerMenuOpen, setComposerMenuOpen] = useState(false);
+  const [composerMenuAnchorEl, setComposerMenuAnchorEl] = useState(null);
+  const [composerMenuAnchorRect, setComposerMenuAnchorRect] = useState(null);
   const safeData = data && typeof data === "object" ? data : {};
   const profileName = resolveName(safeData.profile || {});
   const controller = useCoachConversationController({
@@ -65,13 +71,39 @@ export default function Coach({
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    const minHeight = composerFocused ? 72 : 48;
-    const maxHeight = composerFocused ? 136 : 56;
+    const minHeight = 48;
+    const maxHeight = 136;
     textarea.style.height = "0px";
     const nextHeight = Math.max(minHeight, Math.min(textarea.scrollHeight, maxHeight));
     textarea.style.height = `${nextHeight}px`;
     textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
-  }, [composerFocused, controller.draft]);
+  }, [controller.draft]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const root = document.documentElement;
+    if (composerFocused) {
+      root.dataset.coachComposerFocused = "true";
+    } else {
+      delete root.dataset.coachComposerFocused;
+    }
+    return () => {
+      delete root.dataset.coachComposerFocused;
+    };
+  }, [composerFocused]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const root = document.documentElement;
+    if (composerMenuOpen) {
+      root.dataset.coachComposerMenuOpen = "true";
+    } else {
+      delete root.dataset.coachComposerMenuOpen;
+    }
+    return () => {
+      delete root.dataset.coachComposerMenuOpen;
+    };
+  }, [composerMenuOpen]);
 
   useEffect(() => {
     const node = scrollRef.current;
@@ -147,6 +179,44 @@ export default function Coach({
     [profileName]
   );
 
+  const focusComposer = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+    });
+  }, []);
+
+  const handleCloseComposerMenu = useCallback(() => {
+    setComposerMenuOpen(false);
+    setComposerMenuAnchorEl(null);
+    setComposerMenuAnchorRect(null);
+  }, []);
+
+  const handleSelectStructuring = useCallback(() => {
+    handleCloseComposerMenu();
+    controller.startStructuringIntent();
+    focusComposer();
+  }, [controller, focusComposer, handleCloseComposerMenu]);
+
+  const handleSelectQuickCreate = useCallback(() => {
+    handleCloseComposerMenu();
+    controller.startQuickCreateIntent();
+    focusComposer();
+  }, [controller, focusComposer, handleCloseComposerMenu]);
+
+  const handleToggleComposerMenu = useCallback(() => {
+    if (composerMenuOpen) {
+      handleCloseComposerMenu();
+      return;
+    }
+
+    const node = plusButtonRef.current;
+    if (!node) return;
+
+    setComposerMenuAnchorEl(node);
+    setComposerMenuAnchorRect(node.getBoundingClientRect());
+    setComposerMenuOpen(true);
+  }, [composerMenuOpen, handleCloseComposerMenu]);
+
   return (
     <AppScreen pageId="coach" headerTitle={COACH_SCREEN_COPY.title} headerSubtitle={COACH_SCREEN_COPY.subtitle}>
       <div className="lovablePage lovableCoachPage">
@@ -187,7 +257,7 @@ export default function Coach({
                 <div className="lovableCoachEyebrow">
                   {entry.role === "assistant" ? COACH_SCREEN_COPY.assistantEyebrow : COACH_SCREEN_COPY.userEyebrow}
                 </div>
-                <p className="lovableCoachText">{reply?.message || entry.text}</p>
+                <p className="lovableCoachText coachSurfaceMessageText">{entry.displayText}</p>
 
                 {reply?.primaryAction || reply?.secondaryAction ? (
                   <div className="lovableCoachActions">
@@ -282,13 +352,26 @@ export default function Coach({
           {controller.loading ? (
             <div className="lovableCard lovableCoachBubble is-assistant">
               <div className="lovableCoachEyebrow">{COACH_SCREEN_COPY.assistantEyebrow}</div>
-              <p className="lovableCoachText">{controller.loadingStageLabel || COACH_SCREEN_COPY.thinking}</p>
+              <p className="lovableCoachText coachSurfaceMessageText">
+                {controller.loadingStageLabel || COACH_SCREEN_COPY.thinking}
+              </p>
             </div>
           ) : null}
         </div>
 
         <div ref={composerRef} className="lovableCoachComposerWrap">
           <div className={`lovableCard lovableCoachComposer${composerFocused ? " is-focused" : ""}`}>
+            <button
+              ref={plusButtonRef}
+              type="button"
+              className="coachSurfaceComposerPlus"
+              aria-label={COACH_SCREEN_COPY.composerPlusAriaLabel}
+              aria-haspopup="menu"
+              aria-expanded={composerMenuOpen}
+              onClick={handleToggleComposerMenu}
+            >
+              +
+            </button>
             <textarea
               ref={textareaRef}
               className={`lovableCoachTextarea${composerFocused ? " is-focused" : ""}`}
@@ -312,6 +395,14 @@ export default function Coach({
               ↗
             </button>
           </div>
+          <CoachComposerMenu
+            open={composerMenuOpen}
+            anchorRect={composerMenuAnchorRect}
+            anchorEl={composerMenuAnchorEl}
+            onClose={handleCloseComposerMenu}
+            onSelectStructuring={handleSelectStructuring}
+            onSelectQuickCreate={handleSelectQuickCreate}
+          />
           {controller.error ? <div className="lovableCoachError">{controller.error}</div> : null}
         </div>
       </div>
