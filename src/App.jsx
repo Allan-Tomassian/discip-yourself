@@ -347,7 +347,7 @@ export default function App() {
   }, [editItem, editItemId, safeData.goals, tab]);
 
   const resolveRouteOrigin = useCallback(
-    ({ sourceSurface, categoryId = null, coachConversationId = null } = {}) => {
+    ({ sourceSurface, categoryId = null, coachConversationId = null, coachMessageCreatedAt = null } = {}) => {
       const safeSource = sourceSurface || tab;
       const contextSurface = safeSource === "coach" ? tab : safeSource;
       const fallbackMainTab = safeSource === "coach" ? resolveMainTabForSurface(tab, "today") : tab;
@@ -371,6 +371,7 @@ export default function App() {
               : libraryCategoryId || effectiveCategoryId,
         }),
         coachConversationId: coachConversationId || null,
+        coachMessageCreatedAt: coachMessageCreatedAt || null,
       });
     },
     [
@@ -439,8 +440,12 @@ export default function App() {
   );
 
   const openCoachAssistantCreate = useCallback(
-    ({ sourceSurface = "coach", conversationId = null, proposal } = {}) => {
-      const origin = resolveRouteOrigin({ sourceSurface, coachConversationId: conversationId });
+    ({ sourceSurface = "coach", conversationId = null, messageCreatedAt = null, proposal } = {}) => {
+      const origin = resolveRouteOrigin({
+        sourceSurface,
+        coachConversationId: conversationId,
+        coachMessageCreatedAt: messageCreatedAt,
+      });
       setCreateTaskState({ origin, kind: "assistant", proposal });
       openCreateAssistant({
         source: sourceSurface,

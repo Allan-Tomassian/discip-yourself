@@ -5,7 +5,6 @@ import { deriveAiUnavailableMessage } from "../../infra/aiTransportDiagnostics";
 import { applySessionRuntimeTransition, resolveRuntimeSessionGate } from "../../logic/sessionRuntime";
 import { COACH_SCREEN_COPY } from "../../ui/labels";
 import { commitPreparedCreatePlan, prepareCreateCommit } from "../create-item/createItemCommit";
-import { getManualAiLoadingStages } from "../manualAi/loadingStages";
 import { getCoachContextSnapshot } from "./coachContextAdapter";
 import {
   deriveCoachMessageEntries,
@@ -382,7 +381,6 @@ export function useCoachConversationController({
   const [conversationMode, setConversationMode] = useState(initialPlanningState.mode);
   const [planningState, setPlanningState] = useState(initialPlanningState);
   const [conversationUseCase, setConversationUseCase] = useState("general");
-  const [loadingStageIndex, setLoadingStageIndex] = useState(-1);
   const [archivedConversation, setArchivedConversation] = useState(null);
   const [activeWorkIntent, setActiveWorkIntent] = useState(null);
   const archiveTimeoutRef = useRef(null);
@@ -390,7 +388,6 @@ export function useCoachConversationController({
   const lastAppliedRequestedPrefillIntentRef = useRef("");
   const wasOpenRef = useRef(Boolean(open));
   const [openCycle, setOpenCycle] = useState(() => (open ? 1 : 0));
-  const loadingStages = useMemo(() => getManualAiLoadingStages("coach"), []);
 
   const contextSnapshot = useMemo(
     () => getCoachContextSnapshot({ data: safeData, surfaceTab }),
@@ -546,28 +543,6 @@ export function useCoachConversationController({
       );
     }
   }, [currentConversation?.id, draft, open, openCycle, requestedConversationId, requestedMode, requestedPrefill]);
-
-  useEffect(() => {
-    if (!loading) {
-      setLoadingStageIndex(-1);
-      return undefined;
-    }
-    setLoadingStageIndex(0);
-    if (loadingStages.length <= 1) return undefined;
-    const intervalId = globalThis.setInterval(() => {
-      setLoadingStageIndex((current) => {
-        const safeCurrent = Number.isFinite(current) ? current : 0;
-        if (safeCurrent >= loadingStages.length - 1) return safeCurrent;
-        return safeCurrent + 1;
-      });
-    }, 1200);
-    return () => globalThis.clearInterval(intervalId);
-  }, [loading, loadingStages]);
-
-  const loadingStageLabel =
-    loading && loadingStages.length
-      ? loadingStages[Math.max(0, Math.min(loadingStageIndex, loadingStages.length - 1))]
-      : "";
 
   const persistPlanningState = useCallback(
     (nextPlanningState) => {
@@ -861,11 +836,13 @@ export function useCoachConversationController({
       onOpenAssistantCreate({
         sourceSurface: "coach",
         conversationId: currentConversation.id,
+        messageCreatedAt: entry.createdAt,
         proposal: {
           ...entry.reply.proposal,
           sourceContext: {
             ...(entry.reply.proposal?.sourceContext || {}),
             coachConversationId: currentConversation.id,
+            coachMessageCreatedAt: entry.createdAt,
           },
         },
       });
@@ -884,6 +861,7 @@ export function useCoachConversationController({
         sourceContext: {
           ...(entry.reply.proposal?.sourceContext || {}),
           coachConversationId: currentConversation.id,
+          coachMessageCreatedAt: entry.createdAt,
         },
       };
 
@@ -950,20 +928,6 @@ export function useCoachConversationController({
           generationWindowDays,
           isPremiumPlan,
         });
-        const categoryLabel =
-          (Array.isArray(commitResult.state?.categories)
-            ? commitResult.state.categories.find((category) => category?.id === commitResult.createdCategoryId)?.name
-            : null) ||
-          "ta catégorie";
-        const summaryBits = [];
-        if (commitResult.createdOutcomeId) summaryBits.push("1 objectif");
-        if (commitResult.createdActionIds.length) {
-          summaryBits.push(
-            `${commitResult.createdActionIds.length} action${commitResult.createdActionIds.length > 1 ? "s" : ""}`
-          );
-        }
-        const summaryText = `Créé dans ${categoryLabel}.\n${summaryBits.join(" · ") || "Structure créée."}`;
-        const createdAt = new Date().toISOString();
         const coachWithStatus = updateCoachConversationMessage(commitResult.state.coach_conversations_v1, {
           conversationId: currentConversation.id,
           messageCreatedAt: entry.createdAt,
@@ -972,71 +936,27 @@ export function useCoachConversationController({
             coachReply: {
               ...(message?.coachReply || entry.reply),
               createStatus: "created",
-              createMessage: "Créé dans l’app.",
+              createMessage: "",
               viewTarget: commitResult.viewTarget,
             },
           }),
         });
-        const successMessage = buildCoachConversationMessage("assistant", summaryText, createdAt, {
-          kind: "conversation",
-          mode: "plan",
-          message: summaryText,
-          primaryAction: {
-            intent: "open_created_view",
-            label: "Voir",
-            categoryId: commitResult.createdCategoryId || null,
-            actionId:
-              commitResult.createdActionIds.length === 1 && !commitResult.createdOutcomeId
-                ? commitResult.createdActionIds[0]
-                : commitResult.createdOutcomeId || null,
-            viewTarget: commitResult.viewTarget,
-          },
-          secondaryAction: {
-            intent: "continue_coach",
-            label: "Continuer",
-          },
-          proposal: null,
-          createStatus: "created",
-          createMessage: "",
-          viewTarget: commitResult.viewTarget,
-        });
-        const appendedConversation = appendCoachConversationMessages(coachWithStatus, {
-          conversationId: currentConversation.id,
-          messages: successMessage ? [successMessage] : [],
-          contextSnapshot: {
-            activeCategoryId: commitResult.createdCategoryId || contextSnapshot.activeCategoryId,
-            dateKey: contextSnapshot.selectedDateKey,
-          },
-          mode: "plan",
-          useCase: currentConversation?.useCase || conversationUseCase,
-          planningState: buildPlanningState({
-            currentPlanningState: planningState,
-            mode: "plan",
-            entryPoint: "manual_reentry",
-            autoActivation: "allowed",
-          }),
-        });
         return {
           ...commitResult.state,
-          coach_conversations_v1: appendedConversation.state,
+          coach_conversations_v1: coachWithStatus,
         };
       });
     },
     [
       canCreateAction,
       canCreateOutcome,
-      contextSnapshot.activeCategoryId,
-      contextSnapshot.selectedDateKey,
       currentConversation?.id,
-      currentConversation?.useCase,
-      planningState,
       generationWindowDays,
       isPremiumPlan,
       onOpenPaywall,
       planLimits,
       safeData,
       setData,
-      conversationUseCase,
     ]
   );
 
@@ -1159,7 +1079,6 @@ export function useCoachConversationController({
     setDraft,
     error,
     loading,
-    loadingStageLabel,
     currentConversation,
     conversations,
     activeConversationId,

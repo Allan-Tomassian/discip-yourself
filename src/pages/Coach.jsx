@@ -13,6 +13,16 @@ function resolveName(profile) {
   return "toi";
 }
 
+function buildCreatedViewAction(reply) {
+  if (!reply?.viewTarget) return null;
+  return {
+    intent: "open_created_view",
+    label: COACH_SCREEN_COPY.viewInApp,
+    categoryId: reply?.proposal?.categoryDraft?.id || null,
+    viewTarget: reply.viewTarget,
+  };
+}
+
 export default function Coach({
   data,
   setData,
@@ -260,6 +270,7 @@ export default function Coach({
           {controller.messageEntries.map((entry) => {
             const reply = entry.reply || null;
             const isConversationReply = entry.role === "assistant" && reply?.kind === "conversation";
+            const isCreatedProposal = isConversationReply && reply?.proposal && reply?.createStatus === "created";
 
             return (
               <div
@@ -295,8 +306,10 @@ export default function Coach({
                 ) : null}
 
                 {isConversationReply && reply?.proposal ? (
-                  <div className="lovableCard lovableCoachDraft">
-                    <div className="lovableCoachDraftTitle">{COACH_SCREEN_COPY.concisePlanTitle}</div>
+                  <div className={`lovableCard lovableCoachDraft${isCreatedProposal ? " is-created" : ""}`}>
+                    <div className="lovableCoachDraftTitle">
+                      {isCreatedProposal ? COACH_SCREEN_COPY.createdPlanTitle : COACH_SCREEN_COPY.concisePlanTitle}
+                    </div>
                     <div className="lovableCoachDraftList">
                       {reply.proposal?.categoryDraft?.label || reply.proposal?.categoryDraft?.id ? (
                         <div className="lovableCoachDraftItem">
@@ -346,26 +359,46 @@ export default function Coach({
                       </>
                     ) : null}
                     <div className="lovableCoachDraftActions">
-                      <button
-                        type="button"
-                        className="lovableCoachDraftAction"
-                        disabled={reply?.createStatus === "creating" || reply?.createStatus === "created"}
-                        onClick={() => controller.createFromPlanReply(entry)}
-                      >
-                        {reply?.createStatus === "created"
-                          ? COACH_SCREEN_COPY.created
-                          : reply?.createStatus === "creating"
-                            ? COACH_SCREEN_COPY.creating
-                            : COACH_SCREEN_COPY.create}
-                      </button>
-                      <button
-                        type="button"
-                        className="lovableCoachDraftSecondary"
-                        disabled={reply?.createStatus === "creating"}
-                        onClick={() => controller.openAssistantReview(entry)}
-                      >
-                        {COACH_SCREEN_COPY.reviewInApp}
-                      </button>
+                      {isCreatedProposal ? (
+                        <>
+                          <button
+                            type="button"
+                            className="lovableCoachDraftAction"
+                            onClick={() => {
+                              const action = buildCreatedViewAction(reply);
+                              if (action) controller.applyAction(action);
+                            }}
+                          >
+                            {COACH_SCREEN_COPY.viewInApp}
+                          </button>
+                          <button
+                            type="button"
+                            className="lovableCoachDraftSecondary"
+                            onClick={() => controller.reenterStructuring()}
+                          >
+                            {COACH_SCREEN_COPY.continue}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="lovableCoachDraftAction"
+                            disabled={reply?.createStatus === "creating"}
+                            onClick={() => controller.createFromPlanReply(entry)}
+                          >
+                            {reply?.createStatus === "creating" ? COACH_SCREEN_COPY.creating : COACH_SCREEN_COPY.create}
+                          </button>
+                          <button
+                            type="button"
+                            className="lovableCoachDraftSecondary"
+                            disabled={reply?.createStatus === "creating"}
+                            onClick={() => controller.openAssistantReview(entry)}
+                          >
+                            {COACH_SCREEN_COPY.reviewInApp}
+                          </button>
+                        </>
+                      )}
                     </div>
                     {entry.draftApplyMessage ? <div className="lovableCoachError">{entry.draftApplyMessage}</div> : null}
                   </div>
@@ -373,15 +406,6 @@ export default function Coach({
               </div>
             );
           })}
-
-          {controller.loading ? (
-            <div className="lovableCard lovableCoachBubble is-assistant">
-              <div className="lovableCoachEyebrow">{COACH_SCREEN_COPY.assistantEyebrow}</div>
-              <p className="lovableCoachText coachSurfaceMessageText">
-                {controller.loadingStageLabel || COACH_SCREEN_COPY.thinking}
-              </p>
-            </div>
-          ) : null}
         </div>
 
         <div ref={composerRef} className="lovableCoachComposerWrap">

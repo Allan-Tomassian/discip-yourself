@@ -29,6 +29,7 @@ describe("coach panel contract", () => {
     const coachController = readSrc("features/coach/coachPanelController.js");
     const coachModel = readSrc("features/coach/coachConversationModel.js");
     const coachSurfaceCss = readSrc("features/coach/coachSurface.css");
+    const createItemPage = readSrc("pages/CreateItem.jsx");
     const copy = readSrc("copy/productCopy.js");
 
     expect(coachPage).toContain("lovableCoachMessages");
@@ -41,6 +42,10 @@ describe("coach panel contract", () => {
     expect(coachPage).toContain("coachSurfaceComposerPlus");
     expect(coachPage).toContain("coachSurfacePlanPill");
     expect(coachPage).toContain("entry.displayText");
+    expect(coachPage).toContain("COACH_SCREEN_COPY.createdPlanTitle");
+    expect(coachPage).toContain("COACH_SCREEN_COPY.viewInApp");
+    expect(coachPage).not.toContain("controller.loadingStageLabel");
+    expect(coachPage).not.toContain("COACH_SCREEN_COPY.thinking");
     expect(coachPage).not.toContain("composerHeight");
     expect(coachPage).not.toContain("<CoachWorkTray");
     expect(coachPage).not.toContain("coachSurfaceDock");
@@ -51,9 +56,12 @@ describe("coach panel contract", () => {
     expect(copy).toContain('quickCreateLabel: "Créer vite"');
     expect(copy).toContain('planActiveLabel: "Plan actif"');
     expect(copy).toContain('composerPlusAriaLabel: "Ouvrir les intentions du coach"');
+    expect(copy).toContain('createdPlanTitle: "Plan créé"');
+    expect(copy).toContain('viewInApp: "Voir dans l’app"');
     expect(coachSurfaceCss).toContain(".coachSurfaceComposerPlus");
     expect(coachSurfaceCss).toContain(".coachComposerMenuPanel");
     expect(coachSurfaceCss).toContain(".coachSurfacePlanPill");
+    expect(coachSurfaceCss).toContain(".lovableCoachDraft.is-created");
     expect(coachSurfaceCss).not.toContain(".coachSurfaceDock");
     expect(coachModel).toContain("resolveCoachMessageDisplayText");
     expect(coachModel).toContain("displayText:");
@@ -72,7 +80,13 @@ describe("coach panel contract", () => {
     expect(coachController).toContain("startQuickCreateIntent");
     expect(coachController).toContain("dismissWorkIntent");
     expect(coachController).toContain("dismissPlanningState");
+    expect(coachController).toContain("coachMessageCreatedAt: entry.createdAt");
     expect(coachController).toContain('nextMode: "free"');
+    expect(coachController).not.toContain('const successMessage = buildCoachConversationMessage("assistant", summaryText');
     expect(coachController).not.toContain('setTab?.("coach-chat")');
+    expect(createItemPage).toContain("origin.coachMessageCreatedAt");
+    expect(createItemPage).toContain("updateCoachConversationMessage");
+    expect(createItemPage).not.toContain("appendCoachConversationMessages");
+    expect(createItemPage).not.toContain("buildCoachConversationMessage");
   });
 });

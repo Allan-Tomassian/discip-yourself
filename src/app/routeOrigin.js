@@ -90,6 +90,7 @@ export function normalizeRouteOrigin(rawValue) {
           ? "root"
           : null,
     coachConversationId: asNullableString(source.coachConversationId),
+    coachMessageCreatedAt: asNullableString(source.coachMessageCreatedAt),
   };
 }
 

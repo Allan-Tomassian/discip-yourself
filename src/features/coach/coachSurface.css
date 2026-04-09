@@ -126,6 +126,15 @@
   margin-top: -2px;
 }
 
+[data-page-id="coach"] .lovableCoachDraft.is-created {
+  border-color: color-mix(in srgb, var(--accent-primary) 28%, var(--border-subtle));
+  box-shadow: 0 16px 32px rgba(10, 12, 26, 0.18);
+}
+
+[data-page-id="coach"] .lovableCoachDraft.is-created .lovableCoachDraftTitle {
+  color: color-mix(in srgb, var(--accent-primary) 78%, white 10%);
+}
+
 @media (max-width: 640px) {
   .coachComposerMenuPanel {
     min-width: min(264px, calc(100vw - 20px));

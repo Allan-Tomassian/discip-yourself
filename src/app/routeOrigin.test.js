@@ -39,6 +39,7 @@ describe("route origin helpers", () => {
       occurrenceId: null,
       libraryMode: "category-view",
       coachConversationId: null,
+      coachMessageCreatedAt: null,
     });
   });
 });

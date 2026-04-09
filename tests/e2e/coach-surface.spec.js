@@ -112,6 +112,73 @@ function buildCoachProposalState() {
   return state;
 }
 
+function buildCoachCreatedProposalState() {
+  const state = buildBaseState({ withContent: true });
+  const today = state.ui?.selectedDate || new Date().toISOString().slice(0, 10);
+  const messages = [
+    {
+      role: "assistant",
+      text: "Je te propose un plan concret pour aujourd'hui.",
+      createdAt: "2026-04-07T11:00:00.000Z",
+      coachReply: {
+        kind: "conversation",
+        mode: "plan",
+        message: "Je te propose un plan concret pour aujourd'hui.",
+        proposal: {
+          kind: "assistant",
+          categoryDraft: {
+            mode: "existing",
+            id: "cat_sport",
+            label: "Sport",
+          },
+          actionDrafts: [
+            {
+              title: "Séance de sport rapide de 20 minutes",
+              oneOffDate: today,
+              startTime: "19:00",
+              durationMinutes: 20,
+            },
+          ],
+          primaryActionRef: { index: 0 },
+          sessionBlueprintDraft: {
+            protocolType: "sport",
+            why: "activer ton énergie et tenir le rythme",
+            firstStep: "commence par 3 min d’échauffement",
+            ifBlocked: "fais la version courte",
+            successDefinition: "séance tenue ou version courte assumée",
+            estimatedMinutes: 20,
+          },
+          unresolvedQuestions: [],
+          requiresValidation: true,
+        },
+        createStatus: "created",
+        createMessage: "",
+        viewTarget: {
+          type: "library-focus",
+          categoryId: "cat_sport",
+          section: "actions",
+          outcomeId: null,
+          actionIds: ["goal_sport_1"],
+        },
+      },
+    },
+  ];
+
+  state.coach_conversations_v1 = appendCoachConversationMessages(null, {
+    messages,
+    contextSnapshot: { activeCategoryId: "cat_sport", dateKey: today },
+    mode: "plan",
+    planningState: {
+      mode: "plan",
+      entryPoint: "manual_reentry",
+      intent: "quick_create",
+      autoActivation: "allowed",
+    },
+  }).state;
+
+  return state;
+}
+
 async function attachScreenshot(page, testInfo, name) {
   const path = testInfo.outputPath(name);
   await page.screenshot({ path, fullPage: false });
@@ -155,6 +222,7 @@ test("coach structure remains stable and text is visible at open", async ({ page
   await expect(page.locator(".coachSurfaceComposerPlus")).toBeVisible();
   await expect(page.getByText("Finaliser la page d'accueil.")).toBeVisible();
   await expect(page.getByText("Bien. Commence par la section hero puis verrouille le CTA principal.")).toBeVisible();
+  await expect(page.getByText("Lecture des catégories")).toHaveCount(0);
 
   const openMetrics = await page.evaluate(() => {
     const composerCard = document.querySelector(".lovableCoachComposer")?.getBoundingClientRect();
@@ -216,7 +284,23 @@ test("coach proposal card stays readable with assistant text", async ({ page }, 
   await expect(page.getByText("Séance type")).toBeVisible();
   await expect(page.getByText(/Cap ·/)).toBeVisible();
   await expect(page.getByText("Finaliser la section hero •")).toBeVisible();
+  await expect(page.getByText("Lecture des catégories")).toHaveCount(0);
   await attachScreenshot(page, testInfo, "coach-text-visible-proposal.png");
+});
+
+test("coach created proposal stays the single success surface", async ({ page }, testInfo) => {
+  await openCoach(page, buildCoachCreatedProposalState());
+
+  await expect(page.getByText("Plan créé")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Voir dans l’app" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continuer" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Valider" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Modifier" })).toHaveCount(0);
+  await expect(page.getByText("Créé dans l’app.")).toHaveCount(0);
+  await expect(page.getByText("Créé dans Sport.")).toHaveCount(0);
+  await expect(page.getByText("Lecture des catégories")).toHaveCount(0);
+  expect(await page.locator(".lovableCoachBubble.is-assistant").count()).toBe(1);
+  await attachScreenshot(page, testInfo, "coach-success-single-surface.png");
 });
 
 test("coach plus menu triggers structurer without moving layout", async ({ page }, testInfo) => {

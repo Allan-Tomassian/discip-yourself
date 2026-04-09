@@ -11,8 +11,7 @@ import { canCreateCategory } from "../logic/entitlements";
 import { normalizeCategory } from "../logic/state";
 import { CATEGORY_UI_COPY, LABELS } from "../ui/labels";
 import {
-  appendCoachConversationMessages,
-  buildCoachConversationMessage,
+  updateCoachConversationMessage,
 } from "../features/coach/coachStorage";
 import {
   buildCreationViewTarget,
@@ -692,59 +691,32 @@ export default function CreateItem({
 
   const persistCoachSummary = ({ createdCategoryId, createdActionIds, createdOutcomeId }) => {
     if (!origin.coachConversationId || typeof setData !== "function") return;
-    const categoryLabel =
-      categories.find((category) => category.id === createdCategoryId)?.name ||
-      safeData.categories?.find((category) => category?.id === createdCategoryId)?.name ||
-      "ta catégorie";
-    const summaryBits = [];
-    if (createdOutcomeId) summaryBits.push("1 objectif");
-    if (createdActionIds.length) summaryBits.push(`${createdActionIds.length} action${createdActionIds.length > 1 ? "s" : ""}`);
-    const createdAt = new Date().toISOString();
-    const summaryText = `Créé dans ${categoryLabel}.\n${summaryBits.join(" · ") || "Structure créée."}`;
+    const messageCreatedAt =
+      origin.coachMessageCreatedAt || assistantProposal?.sourceContext?.coachMessageCreatedAt || null;
+    if (!messageCreatedAt) return;
     const viewTarget = buildCreationViewTarget({
       createdCategoryId,
       createdActionIds,
       createdOutcomeId,
     });
-    const message = buildCoachConversationMessage(
-      "assistant",
-      summaryText,
-      createdAt,
-      {
-        kind: "conversation",
-        mode: "plan",
-        message: summaryText,
-        primaryAction: {
-          intent: "open_created_view",
-          label: "Voir",
-          categoryId: createdCategoryId,
-          actionId: createdActionIds.length === 1 && !createdOutcomeId ? createdActionIds[0] : createdOutcomeId || null,
-          viewTarget,
-        },
-        secondaryAction: {
-          intent: "continue_coach",
-          label: "Continuer",
-        },
-        proposal: null,
-        createStatus: "created",
-        createMessage: "",
-        viewTarget,
-      }
-    );
     setData((previous) => {
       const safePrevious = previous && typeof previous === "object" ? previous : {};
-      const result = appendCoachConversationMessages(safePrevious.coach_conversations_v1, {
+      const nextCoachConversations = updateCoachConversationMessage(safePrevious.coach_conversations_v1, {
         conversationId: origin.coachConversationId,
-        messages: message ? [message] : [],
-        contextSnapshot: {
-          activeCategoryId: createdCategoryId,
-          dateKey: origin.dateKey,
-        },
-        mode: "plan",
+        messageCreatedAt,
+        update: (message) => ({
+          ...message,
+          coachReply: {
+            ...(message?.coachReply || {}),
+            createStatus: "created",
+            createMessage: "",
+            viewTarget,
+          },
+        }),
       });
       return {
         ...safePrevious,
-        coach_conversations_v1: result.state,
+        coach_conversations_v1: nextCoachConversations,
       };
     });
   };
