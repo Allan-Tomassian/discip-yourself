@@ -20,9 +20,10 @@ import {
   ensureCoachConversationsState,
   getCoachConversationById,
   getLatestCoachConversation,
+  normalizeCoachPlanningState,
   removeCoachConversation,
   updateCoachConversationMessage,
-  updateCoachConversationMode,
+  updateCoachConversationPlanningState,
   updateCoachConversationUseCase,
   upsertCoachConversation,
 } from "./coachStorage";
@@ -146,6 +147,75 @@ function normalizeCoachWorkIntentType(value) {
   if (value === "quick_create") return "quick_create";
   if (value === "contextual") return "contextual";
   return null;
+}
+
+function resolvePlanningIntentFromWorkIntent(value) {
+  return normalizeCoachWorkIntentType(value);
+}
+
+function buildPlanningState({
+  currentPlanningState = null,
+  mode = "free",
+  entryPoint,
+  intent,
+  autoActivation,
+} = {}) {
+  const current = normalizeCoachPlanningState(currentPlanningState, mode);
+  const nextMode = normalizeCoachRequestedMode(mode);
+  return normalizeCoachPlanningState(
+    {
+      mode: nextMode,
+      entryPoint: entryPoint !== undefined ? entryPoint : current.entryPoint,
+      intent: intent !== undefined ? intent : current.intent,
+      autoActivation: autoActivation !== undefined ? autoActivation : current.autoActivation,
+    },
+    nextMode
+  );
+}
+
+export function buildManualPlanDismissTransition({ planningState = null, activeWorkIntent = null, draft = "" } = {}) {
+  const baseTransition = buildDismissWorkIntentTransition({ activeWorkIntent, draft });
+  return {
+    ...baseTransition,
+    planningState: buildPlanningState({
+      currentPlanningState: planningState,
+      mode: "free",
+      autoActivation: "blocked_by_user",
+      intent: null,
+    }),
+  };
+}
+
+export function resolveAssistantReplyPlanningState({
+  currentPlanningState = null,
+  reply = null,
+  activeWorkIntentType = null,
+} = {}) {
+  const current = normalizeCoachPlanningState(currentPlanningState, "free");
+  if (!reply || reply.kind !== "conversation") return current;
+
+  if (normalizeCoachRequestedMode(reply.mode) !== "plan") {
+    return buildPlanningState({
+      currentPlanningState: current,
+      mode: reply.mode,
+      intent: normalizeCoachRequestedMode(reply.mode) === "plan" ? current.intent : null,
+    });
+  }
+
+  if (current.autoActivation === "blocked_by_user") {
+    return buildPlanningState({
+      currentPlanningState: current,
+      mode: "free",
+      intent: null,
+    });
+  }
+
+  return buildPlanningState({
+    currentPlanningState: current,
+    mode: "plan",
+    entryPoint: "assistant_auto",
+    intent: resolvePlanningIntentFromWorkIntent(activeWorkIntentType) || "contextual",
+  });
 }
 
 function buildCoachWorkIntentLabel(type) {
@@ -301,7 +371,16 @@ export function useCoachConversationController({
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [conversationMode, setConversationMode] = useState(normalizeCoachRequestedMode(requestedMode));
+  const initialPlanningState = useMemo(
+    () =>
+      buildPlanningState({
+        mode: normalizeCoachRequestedMode(requestedMode),
+        entryPoint: normalizeCoachRequestedMode(requestedMode) === "plan" ? "requested_mode" : null,
+      }),
+    [requestedMode]
+  );
+  const [conversationMode, setConversationMode] = useState(initialPlanningState.mode);
+  const [planningState, setPlanningState] = useState(initialPlanningState);
   const [conversationUseCase, setConversationUseCase] = useState("general");
   const [loadingStageIndex, setLoadingStageIndex] = useState(-1);
   const [archivedConversation, setArchivedConversation] = useState(null);
@@ -347,9 +426,14 @@ export function useCoachConversationController({
   );
 
   useEffect(() => {
-    const nextMode = currentConversation?.mode || normalizeCoachRequestedMode(requestedMode);
-    setConversationMode(nextMode);
-  }, [currentConversation?.id, currentConversation?.mode, requestedMode]);
+    const fallbackMode = currentConversation?.mode || normalizeCoachRequestedMode(requestedMode);
+    const nextPlanningState = normalizeCoachPlanningState(
+      currentConversation?.planningState || initialPlanningState,
+      fallbackMode
+    );
+    setPlanningState(nextPlanningState);
+    setConversationMode(nextPlanningState.mode);
+  }, [currentConversation?.id, currentConversation?.mode, currentConversation?.planningState, initialPlanningState, requestedMode]);
 
   useEffect(() => {
     const nextUseCase = normalizeCoachUseCase(currentConversation?.useCase, "general");
@@ -396,21 +480,36 @@ export function useCoachConversationController({
       lastAppliedIntentKey: lastAppliedRequestedModeIntentRef.current,
     });
     if (!modeSync.shouldApply) return;
-    setConversationMode(modeSync.normalizedMode);
-    if (!currentConversation?.id) return;
+    const nextPlanningState = buildPlanningState({
+      currentPlanningState: planningState,
+      mode: modeSync.normalizedMode,
+      entryPoint: "requested_mode",
+      autoActivation: "allowed",
+    });
+    setPlanningState(nextPlanningState);
+    setConversationMode(nextPlanningState.mode);
     lastAppliedRequestedModeIntentRef.current = modeSync.intentKey;
-    if (typeof setData !== "function" || currentConversation.mode === modeSync.normalizedMode) return;
+    if (!currentConversation?.id) return;
+    if (typeof setData !== "function") return;
     setData((previous) => {
       const safePrevious = previous && typeof previous === "object" ? previous : {};
       return {
         ...safePrevious,
-        coach_conversations_v1: updateCoachConversationMode(safePrevious.coach_conversations_v1, {
+        coach_conversations_v1: updateCoachConversationPlanningState(safePrevious.coach_conversations_v1, {
           conversationId: currentConversation.id,
-          mode: modeSync.normalizedMode,
+          planningState: nextPlanningState,
         }),
       };
     });
-  }, [currentConversation?.id, currentConversation?.mode, open, openCycle, requestedConversationId, requestedMode, setData]);
+  }, [
+    currentConversation?.id,
+    open,
+    openCycle,
+    planningState,
+    requestedConversationId,
+    requestedMode,
+    setData,
+  ]);
 
   useEffect(() => {
     const prefillSync = shouldApplyCoachRequestedPrefill({
@@ -435,6 +534,17 @@ export function useCoachConversationController({
         draftTouchedSinceSeed: false,
       })
     );
+    if (normalizeCoachRequestedMode(requestedMode) === "plan") {
+      setPlanningState((current) =>
+        buildPlanningState({
+          currentPlanningState: current,
+          mode: "plan",
+          entryPoint: "requested_mode",
+          intent: "contextual",
+          autoActivation: "allowed",
+        })
+      );
+    }
   }, [currentConversation?.id, draft, open, openCycle, requestedConversationId, requestedMode, requestedPrefill]);
 
   useEffect(() => {
@@ -459,28 +569,48 @@ export function useCoachConversationController({
       ? loadingStages[Math.max(0, Math.min(loadingStageIndex, loadingStages.length - 1))]
       : "";
 
-  const handleConversationModeChange = useCallback(
-    (nextMode) => {
-      const normalizedMode = nextMode === "plan" ? "plan" : "free";
-      setConversationMode(normalizedMode);
+  const persistPlanningState = useCallback(
+    (nextPlanningState) => {
+      const normalizedPlanningState = normalizeCoachPlanningState(nextPlanningState, conversationMode);
+      setPlanningState(normalizedPlanningState);
+      setConversationMode(normalizedPlanningState.mode);
       if (!currentConversation?.id || typeof setData !== "function") return;
       setData((previous) => {
         const safePrevious = previous && typeof previous === "object" ? previous : {};
         return {
           ...safePrevious,
-          coach_conversations_v1: updateCoachConversationMode(safePrevious.coach_conversations_v1, {
+          coach_conversations_v1: updateCoachConversationPlanningState(safePrevious.coach_conversations_v1, {
             conversationId: currentConversation.id,
-            mode: normalizedMode,
+            planningState: normalizedPlanningState,
           }),
         };
       });
     },
-    [currentConversation?.id, setData]
+    [conversationMode, currentConversation?.id, setData]
+  );
+
+  const handleConversationModeChange = useCallback(
+    (nextMode, options = {}) => {
+      persistPlanningState(
+        buildPlanningState({
+          currentPlanningState: planningState,
+          mode: nextMode === "plan" ? "plan" : "free",
+          entryPoint: options.entryPoint,
+          intent: options.intent,
+          autoActivation: options.autoActivation,
+        })
+      );
+    },
+    [persistPlanningState, planningState]
   );
 
   const startStructuringIntent = useCallback(() => {
     const transition = buildStructuringIntentTransition({ draft });
-    handleConversationModeChange(transition.nextMode);
+    handleConversationModeChange(transition.nextMode, {
+      entryPoint: "composer_structuring",
+      intent: "structuring",
+      autoActivation: "allowed",
+    });
     if (transition.shouldSeedDraft) setDraft(transition.nextDraft);
     setActiveWorkIntent(transition.intent);
     setError("");
@@ -488,21 +618,35 @@ export function useCoachConversationController({
 
   const startQuickCreateIntent = useCallback(() => {
     const transition = buildQuickCreateIntentTransition({ draft });
-    handleConversationModeChange(transition.nextMode);
+    handleConversationModeChange(transition.nextMode, {
+      entryPoint: "composer_quick_create",
+      intent: "quick_create",
+      autoActivation: "allowed",
+    });
     if (transition.shouldSeedDraft) setDraft(transition.nextDraft);
     setActiveWorkIntent(transition.intent);
     setError("");
   }, [draft, handleConversationModeChange]);
 
   const dismissWorkIntent = useCallback(() => {
-    const transition = buildDismissWorkIntentTransition({ activeWorkIntent, draft });
-    handleConversationModeChange(transition.nextMode);
-    if (transition.shouldClearDraft) setDraft("");
+    const transition = buildManualPlanDismissTransition({ planningState, activeWorkIntent, draft });
+    persistPlanningState(transition.planningState);
+    setDraft(transition.nextDraft);
     setActiveWorkIntent(null);
-  }, [activeWorkIntent, draft, handleConversationModeChange]);
+  }, [activeWorkIntent, draft, persistPlanningState, planningState]);
+
+  const dismissPlanningState = useCallback(() => {
+    const transition = buildManualPlanDismissTransition({ planningState, activeWorkIntent, draft });
+    persistPlanningState(transition.planningState);
+    setDraft(transition.nextDraft);
+    setActiveWorkIntent(null);
+  }, [activeWorkIntent, draft, persistPlanningState, planningState]);
 
   const reenterStructuring = useCallback(() => {
-    handleConversationModeChange("plan");
+    handleConversationModeChange("plan", {
+      entryPoint: "manual_reentry",
+      autoActivation: "allowed",
+    });
   }, [handleConversationModeChange]);
 
   const handleConversationUseCaseChange = useCallback(
@@ -531,6 +675,7 @@ export function useCoachConversationController({
     if (typeof setData !== "function") return;
     const nextConversation = createCoachConversation({
       mode: conversationMode,
+      planningState,
       useCase: conversationUseCase,
       contextSnapshot: {
         activeCategoryId: contextSnapshot.activeCategoryId,
@@ -545,7 +690,14 @@ export function useCoachConversationController({
       };
     });
     setActiveConversationId(nextConversation.id);
-  }, [contextSnapshot.activeCategoryId, contextSnapshot.selectedDateKey, conversationMode, conversationUseCase, setData]);
+  }, [
+    contextSnapshot.activeCategoryId,
+    contextSnapshot.selectedDateKey,
+    conversationMode,
+    conversationUseCase,
+    planningState,
+    setData,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -604,7 +756,10 @@ export function useCoachConversationController({
     (action) => {
       if (!action || !action.intent) return;
       if (action.intent === "continue_coach") {
-        setConversationMode("plan");
+        handleConversationModeChange("plan", {
+          entryPoint: "manual_reentry",
+          autoActivation: "allowed",
+        });
         setConversationUseCase((current) => normalizeCoachUseCase(current, "life_plan"));
         return;
       }
@@ -691,6 +846,7 @@ export function useCoachConversationController({
     [
       contextSnapshot.activeCategoryId,
       contextSnapshot.selectedDateKey,
+      handleConversationModeChange,
       onRequestClose,
       onOpenCreatedView,
       safeData,
@@ -705,7 +861,13 @@ export function useCoachConversationController({
       onOpenAssistantCreate({
         sourceSurface: "coach",
         conversationId: currentConversation.id,
-        proposal: entry.reply.proposal,
+        proposal: {
+          ...entry.reply.proposal,
+          sourceContext: {
+            ...(entry.reply.proposal?.sourceContext || {}),
+            coachConversationId: currentConversation.id,
+          },
+        },
       });
     },
     [currentConversation?.id, onOpenAssistantCreate]
@@ -717,12 +879,21 @@ export function useCoachConversationController({
         return;
       }
 
+      const proposalForCommit = {
+        ...entry.reply.proposal,
+        sourceContext: {
+          ...(entry.reply.proposal?.sourceContext || {}),
+          coachConversationId: currentConversation.id,
+        },
+      };
+
       const preparedCommit = prepareCreateCommit({
         state: safeData,
-        kind: entry.reply.proposal.kind || "assistant",
-        actionDraft: entry.reply.proposal.actionDrafts?.[0] || null,
-        outcomeDraft: entry.reply.proposal.outcomeDraft || null,
-        additionalActionDrafts: entry.reply.proposal.actionDrafts?.slice(1) || [],
+        kind: proposalForCommit.kind || "assistant",
+        actionDraft: proposalForCommit.actionDrafts?.[0] || null,
+        outcomeDraft: proposalForCommit.outcomeDraft || null,
+        additionalActionDrafts: proposalForCommit.actionDrafts?.slice(1) || [],
+        proposal: proposalForCommit,
         canCreateAction,
         canCreateOutcome,
         isPremiumPlan,
@@ -838,6 +1009,12 @@ export function useCoachConversationController({
           },
           mode: "plan",
           useCase: currentConversation?.useCase || conversationUseCase,
+          planningState: buildPlanningState({
+            currentPlanningState: planningState,
+            mode: "plan",
+            entryPoint: "manual_reentry",
+            autoActivation: "allowed",
+          }),
         });
         return {
           ...commitResult.state,
@@ -852,6 +1029,7 @@ export function useCoachConversationController({
       contextSnapshot.selectedDateKey,
       currentConversation?.id,
       currentConversation?.useCase,
+      planningState,
       generationWindowDays,
       isPremiumPlan,
       onOpenPaywall,
@@ -882,6 +1060,7 @@ export function useCoachConversationController({
         },
         mode: effectiveMode,
         useCase: effectiveUseCase,
+        planningState,
       });
       const preparedConversation = preparedResult.conversation;
       setActiveConversationId(preparedConversation?.id || "");
@@ -913,12 +1092,24 @@ export function useCoachConversationController({
         return;
       }
 
+      const resolvedPlanningState = resolveAssistantReplyPlanningState({
+        currentPlanningState: planningState,
+        reply: result.reply,
+        activeWorkIntentType: activeWorkIntent?.type,
+      });
+      const resolvedReply =
+        result.reply?.kind === "conversation"
+          ? {
+              ...result.reply,
+              mode: resolvedPlanningState.mode,
+            }
+          : result.reply;
       const assistantCreatedAt = new Date().toISOString();
       const assistantMessage = buildCoachConversationMessage(
         "assistant",
-        buildAssistantTranscriptText(result.reply),
+        buildAssistantTranscriptText(resolvedReply),
         assistantCreatedAt,
-        result.reply
+        resolvedReply
       );
       if (assistantMessage) {
         setData((previous) => {
@@ -930,8 +1121,9 @@ export function useCoachConversationController({
               activeCategoryId: contextSnapshot.activeCategoryId,
               dateKey: contextSnapshot.selectedDateKey,
             },
-            mode: result.reply?.kind === "conversation" ? result.reply.mode : effectiveMode,
+            mode: resolvedReply?.kind === "conversation" ? resolvedReply.mode : effectiveMode,
             useCase: effectiveUseCase,
+            planningState: resolvedPlanningState,
           });
           return {
             ...safePrevious,
@@ -939,6 +1131,9 @@ export function useCoachConversationController({
           };
         });
       }
+
+      setPlanningState(resolvedPlanningState);
+      setConversationMode(resolvedPlanningState.mode);
 
       setLoading(false);
       setError("");
@@ -952,6 +1147,8 @@ export function useCoachConversationController({
       currentConversation?.id,
       draft,
       loading,
+      planningState,
+      activeWorkIntent?.type,
       safeData,
       setData,
     ]
@@ -973,11 +1170,13 @@ export function useCoachConversationController({
         ? COACH_PLAN_PROMPTS
         : COACH_QUICK_PROMPTS,
     conversationMode,
+    planningState,
     setConversationMode: handleConversationModeChange,
     activeWorkIntent,
     startStructuringIntent,
     startQuickCreateIntent,
     dismissWorkIntent,
+    dismissPlanningState,
     reenterStructuring,
     conversationUseCase,
     setConversationUseCase: handleConversationUseCaseChange,

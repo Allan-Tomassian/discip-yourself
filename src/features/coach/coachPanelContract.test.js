@@ -39,6 +39,7 @@ describe("coach panel contract", () => {
     expect(coachPage).toContain('import "../features/coach/coachSurface.css";');
     expect(coachPage).toContain("<CoachComposerMenu");
     expect(coachPage).toContain("coachSurfaceComposerPlus");
+    expect(coachPage).toContain("coachSurfacePlanPill");
     expect(coachPage).toContain("entry.displayText");
     expect(coachPage).not.toContain("composerHeight");
     expect(coachPage).not.toContain("<CoachWorkTray");
@@ -48,9 +49,11 @@ describe("coach panel contract", () => {
     expect(coachPage).not.toContain('setTab("create-item")');
     expect(copy).toContain('structuringModeLabel: "Structurer"');
     expect(copy).toContain('quickCreateLabel: "Créer vite"');
+    expect(copy).toContain('planActiveLabel: "Plan actif"');
     expect(copy).toContain('composerPlusAriaLabel: "Ouvrir les intentions du coach"');
     expect(coachSurfaceCss).toContain(".coachSurfaceComposerPlus");
     expect(coachSurfaceCss).toContain(".coachComposerMenuPanel");
+    expect(coachSurfaceCss).toContain(".coachSurfacePlanPill");
     expect(coachSurfaceCss).not.toContain(".coachSurfaceDock");
     expect(coachModel).toContain("resolveCoachMessageDisplayText");
     expect(coachModel).toContain("displayText:");
@@ -64,9 +67,11 @@ describe("coach panel contract", () => {
     expect(coachController).toContain("life_plan");
     expect(coachController).toContain('sourceSurface: "coach"');
     expect(coachController).toContain("activeWorkIntent");
+    expect(coachController).toContain("planningState");
     expect(coachController).toContain("startStructuringIntent");
     expect(coachController).toContain("startQuickCreateIntent");
     expect(coachController).toContain("dismissWorkIntent");
+    expect(coachController).toContain("dismissPlanningState");
     expect(coachController).toContain('nextMode: "free"');
     expect(coachController).not.toContain('setTab?.("coach-chat")');
   });

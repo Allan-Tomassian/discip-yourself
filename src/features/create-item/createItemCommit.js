@@ -22,6 +22,7 @@ import {
   updateRemindersForGoal,
 } from "../edit-item/editItemShared";
 import { normalizeActionDraft, normalizeOutcomeDraft } from "../../creation/createItemDraft";
+import { buildPersistedSessionBlueprint } from "../action-protocol/sessionBlueprint";
 import {
   ensureSuggestedCategory,
   normalizeReminderTimes,
@@ -101,6 +102,7 @@ export function prepareCreateCommit({
   actionDraft = null,
   outcomeDraft = null,
   additionalActionDrafts = [],
+  proposal = null,
   canCreateAction = true,
   canCreateOutcome = true,
   isPremiumPlan = false,
@@ -116,6 +118,7 @@ export function prepareCreateCommit({
   const normalizedAdditionalActionDrafts = (Array.isArray(additionalActionDrafts) ? additionalActionDrafts : [])
     .map((entry) => normalizeActionDraft(entry))
     .filter((entry) => entry?.title);
+  const normalizedProposal = proposal && typeof proposal === "object" ? proposal : null;
   const normalizedKind =
     kind === "assistant"
       ? normalizedOutcomeDraft?.title
@@ -131,6 +134,9 @@ export function prepareCreateCommit({
   }
   if (requiresAction && !normalizedActionDraft?.title && !normalizedAdditionalActionDrafts.length) {
     return { ok: false, kind: "validation", message: "Le titre de l’action est requis." };
+  }
+  if ((normalizedProposal?.unresolvedQuestions || []).length) {
+    return { ok: false, kind: "validation", message: "Confirme d’abord les points en suspens avec le coach." };
   }
 
   const actionsToCreate = [
@@ -173,6 +179,14 @@ export function prepareCreateCommit({
     return { ok: false, kind: "paywall", message: "Limite de catégories atteinte." };
   }
 
+  const requestedPrimaryActionIndex = Number(normalizedProposal?.primaryActionRef?.index);
+  const primaryActionIndex =
+    actionsToCreate.length && Number.isInteger(requestedPrimaryActionIndex) && requestedPrimaryActionIndex >= 0
+      ? Math.min(requestedPrimaryActionIndex, actionsToCreate.length - 1)
+      : actionsToCreate.length
+        ? 0
+        : null;
+
   return {
     ok: true,
     plan: {
@@ -187,6 +201,8 @@ export function prepareCreateCommit({
           }
         : null,
       actionsToCreate,
+      primaryActionIndex,
+      coachConversationId: normalizedProposal?.sourceContext?.coachConversationId || null,
     },
   };
 }
@@ -241,7 +257,7 @@ export function commitPreparedCreatePlan(
   }
 
   availableCategories = getVisibleCategories(nextState.categories);
-  for (const actionDraft of safePlan.actionsToCreate || []) {
+  for (const [actionIndex, actionDraft] of (safePlan.actionsToCreate || []).entries()) {
     if (!actionDraft?.title) continue;
     const resolvedCategoryId =
       resolveVisibleCategoryId(actionDraft.categoryId || createdCategoryId, availableCategories) || createdCategoryId;
@@ -252,7 +268,17 @@ export function commitPreparedCreatePlan(
       resolvedOutcomeId: createdOutcomeId || actionDraft.outcomeId || null,
     });
     if (!candidate.ok || !candidate.value) continue;
-    nextState = createGoal(nextState, candidate.value);
+    const categoryName =
+      availableCategories.find((category) => category?.id === resolvedCategoryId)?.name || "";
+    const sessionBlueprintV1 =
+      safePlan.primaryActionIndex === actionIndex
+        ? buildPersistedSessionBlueprint({
+            actionDraft: candidate.value,
+            categoryName,
+            conversationId: safePlan.coachConversationId || null,
+          })
+        : null;
+    nextState = createGoal(nextState, sessionBlueprintV1 ? { ...candidate.value, sessionBlueprintV1 } : candidate.value);
     nextState = {
       ...nextState,
       reminders: updateRemindersForGoal(

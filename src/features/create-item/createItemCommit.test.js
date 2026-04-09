@@ -116,4 +116,112 @@ describe("createItem shared helpers", () => {
 
     expect(createdOutcome?.deadline).toBe("");
   });
+
+  it("attache sessionBlueprintV1 a l'action primaire creee depuis une proposal coach", () => {
+    const state = {
+      categories: [{ id: "cat_sport", name: "Sport", color: "#111111" }],
+      goals: [],
+    };
+
+    const preparedCommit = prepareCreateCommit({
+      state,
+      kind: "assistant",
+      actionDraft: {
+        title: "Séance de sport rapide de 20 minutes",
+        categoryId: "cat_sport",
+        durationMinutes: 20,
+      },
+      proposal: {
+        primaryActionRef: { index: 0 },
+        sourceContext: {
+          coachConversationId: "conv_sport",
+        },
+        unresolvedQuestions: [],
+      },
+    });
+
+    expect(preparedCommit.ok).toBe(true);
+    const commitResult = commitPreparedCreatePlan(state, preparedCommit.plan);
+    const createdAction = commitResult.state.goals.find((goal) => goal.id === commitResult.createdActionIds[0]);
+
+    expect(createdAction?.sessionBlueprintV1).toEqual({
+      version: 1,
+      status: "validated",
+      source: "coach_plan",
+      protocolType: "sport",
+      why: "activer ton énergie et tenir le rythme",
+      firstStep: "commence par 3 min d’échauffement",
+      ifBlocked: "fais la version courte",
+      successDefinition: "séance tenue ou version courte assumée",
+      estimatedMinutes: 20,
+      conversationId: "conv_sport",
+    });
+  });
+
+  it("recalcule le blueprint persiste depuis le draft final au lieu de copier celui du chat", () => {
+    const state = {
+      categories: [{ id: "cat_work", name: "Business", color: "#111111" }],
+      goals: [],
+    };
+
+    const preparedCommit = prepareCreateCommit({
+      state,
+      kind: "assistant",
+      actionDraft: {
+        title: "Build onboarding MVP",
+        categoryId: "cat_work",
+        durationMinutes: 50,
+      },
+      proposal: {
+        primaryActionRef: { index: 0 },
+        sessionBlueprintDraft: {
+          protocolType: "sport",
+          why: "ancien cap",
+          firstStep: "ancien départ",
+          ifBlocked: "ancien blocage",
+          successDefinition: "ancienne réussite",
+          estimatedMinutes: 20,
+        },
+        unresolvedQuestions: [],
+      },
+    });
+
+    expect(preparedCommit.ok).toBe(true);
+    const commitResult = commitPreparedCreatePlan(state, preparedCommit.plan);
+    const createdAction = commitResult.state.goals.find((goal) => goal.id === commitResult.createdActionIds[0]);
+
+    expect(createdAction?.sessionBlueprintV1).toMatchObject({
+      protocolType: "deep_work",
+      why: "avancer sur un levier concret",
+      firstStep: "ouvre la première sous-partie précise",
+      estimatedMinutes: 50,
+    });
+  });
+
+  it("bloque la creation tant que la proposal du coach garde des points en suspens", () => {
+    const state = {
+      categories: [{ id: "cat_work", name: "Business", color: "#111111" }],
+      goals: [],
+    };
+
+    expect(
+      prepareCreateCommit({
+        state,
+        kind: "assistant",
+        actionDraft: {
+          title: "Build onboarding MVP",
+          categoryId: "cat_work",
+          durationMinutes: 50,
+        },
+        proposal: {
+          primaryActionRef: { index: 0 },
+          unresolvedQuestions: ["Quel créneau ?"],
+        },
+      })
+    ).toEqual({
+      ok: false,
+      kind: "validation",
+      message: "Confirme d’abord les points en suspens avec le coach.",
+    });
+  });
 });

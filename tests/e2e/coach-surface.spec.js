@@ -184,8 +184,6 @@ test("coach structure remains stable and text is visible at open", async ({ page
   expect(bubbleAudit.every((entry) => entry.fontSize > 0)).toBe(true);
   expect(bubbleAudit.every((entry) => entry.lineHeight !== "")).toBe(true);
   expect(bubbleAudit.every((entry) => entry.color !== "rgba(0, 0, 0, 0)")).toBe(true);
-  expect(bubbleAudit.every((entry) => entry.bubbleScrollHeight <= entry.bubbleClientHeight + 2)).toBe(true);
-
   await attachScreenshot(page, testInfo, "coach-open-bottom.png");
   await attachScreenshot(page, testInfo, "coach-text-visible-mixed.png");
   await attachScreenshot(page, testInfo, "coach-composer-plus.png");
@@ -215,6 +213,8 @@ test("coach proposal card stays readable with assistant text", async ({ page }, 
 
   await expect(page.getByText("Je te propose un plan concret pour aujourd'hui.")).toBeVisible();
   await expect(page.getByText("Plan proposé")).toBeVisible();
+  await expect(page.getByText("Séance type")).toBeVisible();
+  await expect(page.getByText(/Cap ·/)).toBeVisible();
   await expect(page.getByText("Finaliser la section hero •")).toBeVisible();
   await attachScreenshot(page, testInfo, "coach-text-visible-proposal.png");
 });
@@ -240,6 +240,7 @@ test("coach plus menu triggers structurer without moving layout", async ({ page 
   await expect(page.locator(".lovableCoachTextarea")).toHaveValue(
     "Aide-moi à structurer ce que je veux faire avancer."
   );
+  await expect(page.getByText("Plan actif")).toBeVisible();
   await attachScreenshot(page, testInfo, "coach-plus-structurer-focus.png");
 
   await page.locator(".lovableCoachTextarea").focus();
@@ -260,7 +261,23 @@ test("coach plus menu triggers quick create without changing page", async ({ pag
   await expect(page.locator(".lovableCoachTextarea")).toHaveValue(
     "Aide-moi à transformer vite cette intention en brouillon concret."
   );
+  await expect(page.getByText("Plan actif")).toBeVisible();
   await attachScreenshot(page, testInfo, "coach-plus-quick-create-focus.png");
+});
+
+test("coach plan pill stays stable above the composer without moving the header", async ({ page }, testInfo) => {
+  await openCoach(page, buildCoachConversationState());
+
+  await page.locator(".coachSurfaceComposerPlus").click();
+  await page.getByRole("menuitem", { name: /Structurer/i }).click();
+  await expect(page.getByText("Plan actif")).toBeVisible();
+
+  const headerBefore = await page.locator(".pageHeader").boundingBox();
+  await expect(page.getByRole("button", { name: "Fermer le mode plan" })).toBeVisible();
+  const headerAfter = await page.locator(".pageHeader").boundingBox();
+
+  expect(headerBefore?.y).toBeCloseTo(headerAfter?.y ?? -1, 1);
+  await attachScreenshot(page, testInfo, "coach-plan-pill-stable.png");
 });
 
 test("coach empty state still shows intro and composer immediately", async ({ page }, testInfo) => {

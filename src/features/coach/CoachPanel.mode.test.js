@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildManualPlanDismissTransition,
   buildDismissWorkIntentTransition,
   buildQuickCreateIntentTransition,
   buildCoachRequestedModeIntentKey,
@@ -7,6 +8,7 @@ import {
   buildStructuringIntentTransition,
   normalizeCoachRequestedMode,
   normalizeCoachRequestedPrefill,
+  resolveAssistantReplyPlanningState,
   shouldApplyCoachRequestedMode,
   shouldApplyCoachRequestedPrefill,
   shouldClearDraftOnDismissWorkIntent,
@@ -248,6 +250,57 @@ describe("CoachPanel mode control", () => {
       nextMode: "free",
       nextDraft: "Aide-moi à structurer ce que je veux faire avancer, puis clarifie mes priorités.",
       shouldClearDraft: false,
+    });
+  });
+
+  it("fermer manuellement le mode plan bloque la réactivation automatique", () => {
+    expect(
+      buildManualPlanDismissTransition({
+        planningState: {
+          mode: "plan",
+          entryPoint: "composer_structuring",
+          intent: "structuring",
+          autoActivation: "allowed",
+        },
+        activeWorkIntent: {
+          seededDraftPrefill: "Aide-moi à structurer ce que je veux faire avancer.",
+          draftTouchedSinceSeed: false,
+        },
+        draft: "Aide-moi à structurer ce que je veux faire avancer.",
+      })
+    ).toMatchObject({
+      nextMode: "free",
+      nextDraft: "",
+      shouldClearDraft: true,
+      planningState: {
+        mode: "free",
+        entryPoint: "composer_structuring",
+        intent: null,
+        autoActivation: "blocked_by_user",
+      },
+    });
+  });
+
+  it("ignore une tentative de retour automatique en plan après fermeture manuelle", () => {
+    expect(
+      resolveAssistantReplyPlanningState({
+        currentPlanningState: {
+          mode: "free",
+          entryPoint: "composer_structuring",
+          intent: null,
+          autoActivation: "blocked_by_user",
+        },
+        reply: {
+          kind: "conversation",
+          mode: "plan",
+        },
+        activeWorkIntentType: "structuring",
+      })
+    ).toEqual({
+      mode: "free",
+      entryPoint: "composer_structuring",
+      intent: null,
+      autoActivation: "blocked_by_user",
     });
   });
 });

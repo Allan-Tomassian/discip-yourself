@@ -52,6 +52,15 @@ describe("coachStorage", () => {
           kind: "action",
           categoryDraft: { mode: "existing", id: "cat_1", label: "Focus" },
           actionDrafts: [{ title: "Bloquer 20 min", categoryId: "cat_1" }],
+          primaryActionRef: { index: 0 },
+          sessionBlueprintDraft: {
+            protocolType: "deep_work",
+            why: "avancer sur un levier concret",
+            firstStep: "ouvre la première sous-partie précise",
+            ifBlocked: "réduis le scope à un sous-livrable",
+            successDefinition: "une avancée visible est produite",
+            estimatedMinutes: 20,
+          },
           unresolvedQuestions: [],
           requiresValidation: true,
         },
@@ -62,14 +71,30 @@ describe("coachStorage", () => {
       messages: [message],
       contextSnapshot: { activeCategoryId: "cat_1", dateKey: "2026-03-26" },
       mode: "plan",
+      planningState: {
+        mode: "plan",
+        entryPoint: "assistant_auto",
+        intent: "contextual",
+        autoActivation: "allowed",
+      },
     });
 
     expect(result.state.conversations[0].mode).toBe("plan");
+    expect(result.state.conversations[0].planningState).toEqual({
+      mode: "plan",
+      entryPoint: "assistant_auto",
+      intent: "contextual",
+      autoActivation: "allowed",
+    });
     expect(result.state.conversations[0].messages[0].coachReply).toMatchObject({
       kind: "conversation",
       mode: "plan",
       proposal: {
         kind: "action",
+        primaryActionRef: { index: 0 },
+        sessionBlueprintDraft: {
+          protocolType: "deep_work",
+        },
       },
     });
   });
@@ -84,6 +109,7 @@ describe("coachStorage", () => {
           proposal: {
             kind: "action",
             actionDrafts: [{ title: "Bloquer 20 min", categoryId: "cat_1" }],
+            primaryActionRef: { index: 0 },
             unresolvedQuestions: [],
             requiresValidation: true,
           },
@@ -110,6 +136,24 @@ describe("coachStorage", () => {
     expect(nextState.conversations[0].messages[0].coachReply).toMatchObject({
       createStatus: "created",
       createMessage: "Créé dans l’app.",
+    });
+  });
+
+  it("derives a planning state from legacy conversation mode for storage compatibility", () => {
+    const state = upsertCoachConversation(null, {
+      id: "conv_legacy",
+      createdAt: "2026-03-26T09:00:00.000Z",
+      updatedAt: "2026-03-26T09:00:00.000Z",
+      messages: [],
+      mode: "plan",
+      contextSnapshot: { activeCategoryId: "cat_1", dateKey: "2026-03-26" },
+    });
+
+    expect(state.conversations[0].planningState).toEqual({
+      mode: "plan",
+      entryPoint: "requested_mode",
+      intent: null,
+      autoActivation: "allowed",
     });
   });
 

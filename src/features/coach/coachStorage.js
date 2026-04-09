@@ -8,6 +8,16 @@ export const COACH_RECENT_MESSAGES_LIMIT = 6;
 
 const COACH_CONVERSATION_MODES = new Set(["free", "plan"]);
 const COACH_USE_CASES = new Set(["general", "life_plan", "stats_review"]);
+const COACH_PLANNING_ENTRY_POINTS = new Set([
+  "composer_structuring",
+  "composer_quick_create",
+  "requested_mode",
+  "universal_capture",
+  "assistant_auto",
+  "manual_reentry",
+]);
+const COACH_PLANNING_INTENTS = new Set(["structuring", "quick_create", "contextual"]);
+const COACH_PLANNING_AUTO_ACTIVATIONS = new Set(["allowed", "blocked_by_user"]);
 const COACH_REPLY_INTENTS = new Set([
   "start_occurrence",
   "resume_session",
@@ -53,6 +63,32 @@ function normalizeConversationMode(value, fallback = "free") {
 function normalizeConversationUseCase(value, fallback = "general") {
   const next = trimString(value, 32).toLowerCase();
   return COACH_USE_CASES.has(next) ? next : fallback;
+}
+
+function normalizePlanningEntryPoint(value, fallback = null) {
+  const next = trimString(value, 40).toLowerCase();
+  return COACH_PLANNING_ENTRY_POINTS.has(next) ? next : fallback;
+}
+
+function normalizePlanningIntent(value, fallback = null) {
+  const next = trimString(value, 32).toLowerCase();
+  return COACH_PLANNING_INTENTS.has(next) ? next : fallback;
+}
+
+function normalizePlanningAutoActivation(value, fallback = "allowed") {
+  const next = trimString(value, 32).toLowerCase();
+  return COACH_PLANNING_AUTO_ACTIVATIONS.has(next) ? next : fallback;
+}
+
+export function normalizeCoachPlanningState(rawValue, fallbackMode = "free") {
+  const source = isPlainObject(rawValue) ? rawValue : {};
+  const mode = normalizeConversationMode(source.mode, normalizeConversationMode(fallbackMode, "free"));
+  return {
+    mode,
+    entryPoint: normalizePlanningEntryPoint(source.entryPoint, mode === "plan" ? "requested_mode" : null),
+    intent: normalizePlanningIntent(source.intent, null),
+    autoActivation: normalizePlanningAutoActivation(source.autoActivation, "allowed"),
+  };
 }
 
 function normalizeViewTarget(rawValue) {
@@ -175,14 +211,16 @@ function normalizeConversation(rawConversation) {
     .filter(Boolean)
     .slice(-COACH_MAX_MESSAGES);
   const latestMessageCreatedAt = messages[messages.length - 1]?.createdAt || null;
+  const mode = normalizeConversationMode(source.mode, "free");
   return {
     id: trimString(source.id, 120) || uid(),
     createdAt,
     updatedAt: normalizeIsoString(source.updatedAt, latestMessageCreatedAt || createdAt),
     messages,
-    mode: normalizeConversationMode(source.mode, "free"),
+    mode,
     useCase: normalizeConversationUseCase(source.useCase, "general"),
     contextSnapshot: normalizeContextSnapshot(source.contextSnapshot),
+    planningState: normalizeCoachPlanningState(source.planningState, mode),
   };
 }
 
@@ -202,16 +240,19 @@ export function createCoachConversation({
   now = new Date(),
   mode = "free",
   useCase = "general",
+  planningState = null,
 } = {}) {
   const createdAt = now instanceof Date ? now.toISOString() : new Date().toISOString();
+  const normalizedMode = normalizeConversationMode(mode, "free");
   return {
     id: uid(),
     createdAt,
     updatedAt: createdAt,
     messages: [],
-    mode: normalizeConversationMode(mode, "free"),
+    mode: normalizedMode,
     useCase: normalizeConversationUseCase(useCase, "general"),
     contextSnapshot: normalizeContextSnapshot(contextSnapshot),
+    planningState: normalizeCoachPlanningState(planningState, normalizedMode),
   };
 }
 
@@ -249,7 +290,7 @@ export function removeCoachConversation(rawValue, conversationId) {
 
 export function appendCoachConversationMessages(
   rawValue,
-  { conversationId = null, messages = [], contextSnapshot = null, mode = null, useCase = null } = {}
+  { conversationId = null, messages = [], contextSnapshot = null, mode = null, useCase = null, planningState = null } = {}
 ) {
   const state = ensureCoachConversationsState(rawValue);
   const normalizedMessages = (Array.isArray(messages) ? messages : [])
@@ -258,16 +299,19 @@ export function appendCoachConversationMessages(
 
   const existingConversation =
     (conversationId ? state.conversations.find((entry) => entry.id === conversationId) : null) || null;
-  const baseConversation = existingConversation || createCoachConversation({ contextSnapshot, mode, useCase });
+  const baseConversation =
+    existingConversation || createCoachConversation({ contextSnapshot, mode, useCase, planningState });
   const nextMessages = [...baseConversation.messages, ...normalizedMessages].slice(-COACH_MAX_MESSAGES);
   const updatedAt = normalizedMessages[normalizedMessages.length - 1]?.createdAt || new Date().toISOString();
+  const nextMode = normalizeConversationMode(mode, baseConversation.mode);
   const nextConversation = {
     ...baseConversation,
     updatedAt,
     messages: nextMessages,
-    mode: normalizeConversationMode(mode, baseConversation.mode),
+    mode: nextMode,
     useCase: normalizeConversationUseCase(useCase, baseConversation.useCase),
     contextSnapshot: normalizeContextSnapshot(contextSnapshot || baseConversation.contextSnapshot),
+    planningState: normalizeCoachPlanningState(planningState || baseConversation.planningState, nextMode),
   };
 
   return {
@@ -339,9 +383,25 @@ export function updateCoachConversationMode(rawValue, { conversationId, mode } =
   const state = ensureCoachConversationsState(rawValue);
   const conversation = state.conversations.find((entry) => entry.id === safeConversationId) || null;
   if (!conversation) return state;
+  const nextMode = normalizeConversationMode(mode, conversation.mode);
   return upsertCoachConversation(state, {
     ...conversation,
-    mode: normalizeConversationMode(mode, conversation.mode),
+    mode: nextMode,
+    planningState: normalizeCoachPlanningState(conversation.planningState, nextMode),
+  });
+}
+
+export function updateCoachConversationPlanningState(rawValue, { conversationId, planningState } = {}) {
+  const safeConversationId = trimString(conversationId, 120);
+  if (!safeConversationId) return ensureCoachConversationsState(rawValue);
+  const state = ensureCoachConversationsState(rawValue);
+  const conversation = state.conversations.find((entry) => entry.id === safeConversationId) || null;
+  if (!conversation) return state;
+  const nextPlanningState = normalizeCoachPlanningState(planningState, conversation.mode);
+  return upsertCoachConversation(state, {
+    ...conversation,
+    mode: nextPlanningState.mode,
+    planningState: nextPlanningState,
   });
 }
 

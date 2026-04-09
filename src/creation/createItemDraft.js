@@ -1,4 +1,9 @@
 import { normalizeRouteOrigin } from "../app/routeOrigin";
+import {
+  buildSessionBlueprintDraft,
+  normalizePrimaryActionRef,
+  normalizeSessionBlueprintDraft,
+} from "../features/action-protocol/sessionBlueprint";
 
 const CREATE_ITEM_KINDS = new Set(["action", "outcome", "guided", "assistant"]);
 const REPEAT_VALUES = new Set(["none", "daily", "weekly"]);
@@ -145,19 +150,37 @@ export function normalizeOutcomeDraft(rawValue, fallbackCategoryId = null) {
 export function normalizeCreationProposal(rawValue, fallbackOrigin = null) {
   const source = rawValue && typeof rawValue === "object" ? rawValue : {};
   const categoryDraft = normalizeCategoryDraft(source.categoryDraft);
-  const actionDrafts = (Array.isArray(source.actionDrafts) ? source.actionDrafts : [])
+  let actionDrafts = (Array.isArray(source.actionDrafts) ? source.actionDrafts : [])
     .map((draft) => normalizeActionDraft(draft, categoryDraft?.id || null))
     .filter((draft) => draft.title || draft.categoryId);
+  const normalizedPrimaryActionRef = normalizePrimaryActionRef(source.primaryActionRef, actionDrafts);
+  if (normalizedPrimaryActionRef?.index > 0) {
+    const primaryDraft = actionDrafts[normalizedPrimaryActionRef.index];
+    actionDrafts = [primaryDraft, ...actionDrafts.filter((_, index) => index !== normalizedPrimaryActionRef.index)];
+  }
   const unresolvedQuestions = Array.isArray(source.unresolvedQuestions)
     ? source.unresolvedQuestions.map((entry) => asString(entry)).filter(Boolean)
     : [];
   const normalizedOrigin = normalizeRouteOrigin(source.sourceContext || fallbackOrigin);
   const outcomeDraft = source.outcomeDraft ? normalizeOutcomeDraft(source.outcomeDraft, categoryDraft?.id || null) : null;
+  const primaryActionRef = actionDrafts.length ? { index: 0 } : null;
+  const fallbackSessionBlueprintDraft = primaryActionRef
+    ? buildSessionBlueprintDraft({
+        actionDraft: actionDrafts[primaryActionRef.index],
+        categoryName: categoryDraft?.label || categoryDraft?.id || "",
+      })
+    : null;
   return {
     kind: normalizeKind(source.kind, outcomeDraft ? "guided" : actionDrafts.length > 1 ? "assistant" : "assistant"),
     categoryDraft,
     outcomeDraft,
     actionDrafts,
+    primaryActionRef,
+    sessionBlueprintDraft: primaryActionRef
+      ? normalizeSessionBlueprintDraft(source.sessionBlueprintDraft, {
+          fallback: fallbackSessionBlueprintDraft,
+        })
+      : null,
     unresolvedQuestions,
     sourceContext: normalizedOrigin,
     requiresValidation: source.requiresValidation !== false,

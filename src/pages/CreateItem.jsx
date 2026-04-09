@@ -763,6 +763,7 @@ export default function CreateItem({
       actionDraft: pendingAction,
       outcomeDraft: pendingOutcome,
       additionalActionDrafts: additionalProposalActionDrafts,
+      proposal: assistantProposal,
       canCreateAction,
       canCreateOutcome,
       isPremiumPlan,

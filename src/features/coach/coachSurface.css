@@ -3,6 +3,54 @@
   align-items: end;
 }
 
+[data-page-id="coach"] .coachSurfacePlanPill {
+  width: fit-content;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px 4px;
+  padding: 6px 10px 6px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-subtle));
+  background: color-mix(in srgb, var(--accent-primary) 10%, var(--surface-primary));
+  box-shadow: 0 8px 18px rgba(10, 12, 26, 0.14);
+}
+
+[data-page-id="coach"] .coachSurfacePlanPillLabel {
+  font-size: var(--font-meta);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--accent-primary) 72%, white 16%);
+}
+
+[data-page-id="coach"] .coachSurfacePlanPillClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: none;
+  padding: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+}
+
+[data-page-id="coach"] .coachSurfacePlanPillClose:hover {
+  color: var(--text);
+}
+
+[data-page-id="coach"] .coachSurfacePlanPillClose:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-primary) 72%, white 12%);
+  outline-offset: 2px;
+}
+
 [data-page-id="coach"] .coachSurfaceComposerPlus {
   display: inline-flex;
   align-items: center;
@@ -72,6 +120,10 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+[data-page-id="coach"] .lovableCoachDraftBlueprintList {
+  margin-top: -2px;
 }
 
 @media (max-width: 640px) {

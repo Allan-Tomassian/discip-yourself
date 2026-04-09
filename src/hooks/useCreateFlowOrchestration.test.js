@@ -113,7 +113,7 @@ describe("dispatchOpenCreateTask", () => {
     const proposal = {
       kind: "assistant",
       categoryDraft: { mode: "existing", id: "cat-assistant" },
-      actionDrafts: [{ title: "Planifier la semaine", repeat: "weekly", daysOfWeek: [1, 3] }],
+      actionDrafts: [{ title: "Build onboarding MVP", repeat: "weekly", daysOfWeek: [1, 3] }],
       unresolvedQuestions: ["Quel créneau ?"],
     };
     const seedCreateDraft = vi.fn();
@@ -138,7 +138,13 @@ describe("dispatchOpenCreateTask", () => {
     expect(result.normalizedProposal).toEqual(
       expect.objectContaining({
         kind: "assistant",
+        primaryActionRef: { index: 0 },
         requiresValidation: true,
+        sessionBlueprintDraft: expect.objectContaining({
+          protocolType: "deep_work",
+          why: "avancer sur un levier concret",
+          firstStep: "ouvre la première sous-partie précise",
+        }),
         sourceContext: expect.objectContaining({
           mainTab: "timeline",
           sourceSurface: "planning",
@@ -146,7 +152,7 @@ describe("dispatchOpenCreateTask", () => {
         }),
         actionDrafts: [
           expect.objectContaining({
-            title: "Planifier la semaine",
+            title: "Build onboarding MVP",
             categoryId: "cat-assistant",
           }),
         ],

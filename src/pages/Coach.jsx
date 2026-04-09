@@ -39,6 +39,7 @@ export default function Coach({
   const [composerMenuOpen, setComposerMenuOpen] = useState(false);
   const [composerMenuAnchorEl, setComposerMenuAnchorEl] = useState(null);
   const [composerMenuAnchorRect, setComposerMenuAnchorRect] = useState(null);
+  const [planPillDismissed, setPlanPillDismissed] = useState(false);
   const safeData = data && typeof data === "object" ? data : {};
   const profileName = resolveName(safeData.profile || {});
   const controller = useCoachConversationController({
@@ -104,6 +105,10 @@ export default function Coach({
       delete root.dataset.coachComposerMenuOpen;
     };
   }, [composerMenuOpen]);
+
+  useEffect(() => {
+    setPlanPillDismissed(false);
+  }, [activeConversationKey]);
 
   useEffect(() => {
     const node = scrollRef.current;
@@ -193,15 +198,22 @@ export default function Coach({
 
   const handleSelectStructuring = useCallback(() => {
     handleCloseComposerMenu();
+    setPlanPillDismissed(false);
     controller.startStructuringIntent();
     focusComposer();
   }, [controller, focusComposer, handleCloseComposerMenu]);
 
   const handleSelectQuickCreate = useCallback(() => {
     handleCloseComposerMenu();
+    setPlanPillDismissed(false);
     controller.startQuickCreateIntent();
     focusComposer();
   }, [controller, focusComposer, handleCloseComposerMenu]);
+
+  const handleDismissPlanPill = useCallback(() => {
+    setPlanPillDismissed(true);
+    controller.dismissPlanningState();
+  }, [controller]);
 
   const handleToggleComposerMenu = useCallback(() => {
     if (composerMenuOpen) {
@@ -308,6 +320,19 @@ export default function Coach({
                         </div>
                       ))}
                     </div>
+                    {reply.proposal?.sessionBlueprintDraft ? (
+                      <>
+                        <div className="lovableCoachDraftTitle">{COACH_SCREEN_COPY.sessionBlueprintTitle}</div>
+                        <div className="lovableCoachDraftList lovableCoachDraftBlueprintList">
+                          <div className="lovableCoachDraftItem">
+                            {`${COACH_SCREEN_COPY.sessionBlueprintWhyLabel} · ${reply.proposal.sessionBlueprintDraft.why}`}
+                          </div>
+                          <div className="lovableCoachDraftItem">
+                            {`${COACH_SCREEN_COPY.sessionBlueprintFirstStepLabel} · ${reply.proposal.sessionBlueprintDraft.firstStep}`}
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
                     {(Array.isArray(reply.proposal?.unresolvedQuestions) ? reply.proposal.unresolvedQuestions : []).length ? (
                       <>
                         <div className="lovableCoachDraftTitle">{COACH_SCREEN_COPY.unresolvedTitle}</div>
@@ -360,6 +385,19 @@ export default function Coach({
         </div>
 
         <div ref={composerRef} className="lovableCoachComposerWrap">
+          {controller.planningState?.mode === "plan" && !planPillDismissed ? (
+            <div className="coachSurfacePlanPill" role="status" aria-live="polite">
+              <span className="coachSurfacePlanPillLabel">{COACH_SCREEN_COPY.planActiveLabel}</span>
+              <button
+                type="button"
+                className="coachSurfacePlanPillClose"
+                aria-label={COACH_SCREEN_COPY.planActiveDismissAriaLabel}
+                onClick={handleDismissPlanPill}
+              >
+                ×
+              </button>
+            </div>
+          ) : null}
           <div className={`lovableCard lovableCoachComposer${composerFocused ? " is-focused" : ""}`}>
             <button
               ref={plusButtonRef}
