@@ -12,6 +12,7 @@ export default function TodayHero({
   stateLabel = "",
   stateTone = "ready",
   supportLabel = "",
+  actionProtocolBrief = [],
   primaryLabel = TODAY_SCREEN_COPY.primaryAction,
   secondaryLabel = "",
   onPrimaryAction,
@@ -29,6 +30,11 @@ export default function TodayHero({
   const displayCategory = recommendedCategoryLabel || TODAY_SCREEN_COPY.priorityCategoryFallback;
   const displaySupportLabel = supportLabel || "";
   const isValidated = stateTone === "validated";
+  const briefItems = Array.isArray(actionProtocolBrief)
+    ? actionProtocolBrief
+        .filter((item) => item && typeof item.text === "string" && item.text.trim())
+        .slice(0, 2)
+    : [];
   const showTopline = !isValidated && Boolean(displayCategory || stateLabel);
   const showMeta = !isValidated && Boolean(timingLabel || durationLabel);
   const showReason = Boolean(displayReason) && (
@@ -63,6 +69,16 @@ export default function TodayHero({
       ) : null}
       {displaySupportLabel ? <div className="todayShellHeroGuide">{displaySupportLabel}</div> : null}
       {showReason ? <p className="lovablePriorityMeta">{displayReason}</p> : null}
+      {briefItems.length ? (
+        <div className="todayActionProtocol" data-testid="today-action-protocol">
+          {briefItems.map((item) => (
+            <div key={`${item.label}:${item.text}`} className="todayActionProtocolLine">
+              <span className="todayActionProtocolLabel">{item.label}</span>
+              <span className="todayActionProtocolText">{item.text}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <div className="todayV2HeroActions">
         <button
           type="button"

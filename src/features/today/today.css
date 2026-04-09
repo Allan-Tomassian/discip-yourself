@@ -333,6 +333,37 @@
   line-height: 1.4;
 }
 
+.todayActionProtocol {
+  display: grid;
+  gap: var(--space-8);
+  margin-top: var(--space-12);
+  padding-top: var(--space-12);
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 88%, transparent);
+}
+
+.todayActionProtocolLine {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-8);
+  font-size: var(--font-meta);
+  line-height: 1.45;
+}
+
+.todayActionProtocolLabel {
+  color: color-mix(in srgb, var(--accent-primary) 72%, white 28%);
+  font-size: var(--font-micro);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.todayActionProtocolText {
+  min-width: 0;
+  color: color-mix(in srgb, var(--text-primary) 88%, var(--text-secondary));
+}
+
 .todayV2HeroActions {
   display: flex;
   flex-wrap: wrap;

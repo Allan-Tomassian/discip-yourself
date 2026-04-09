@@ -39,6 +39,7 @@ import TodayDailyState from "../components/today/TodayDailyState";
 import TodayHero from "../components/today/TodayHero";
 import TodayNextActions from "../components/today/TodayNextActions";
 import TodayValuePulse from "../components/today/TodayValuePulse";
+import { deriveActionProtocol, deriveTodayActionProtocolBrief } from "../features/action-protocol/actionProtocol";
 import { emitTotemEvent } from "../ui/totem/totemEvents";
 import {
   ANALYSIS_COPY,
@@ -2206,6 +2207,37 @@ export default function Home({
       selectedDateKey,
     ]
   );
+  const heroActionProtocol = useMemo(() => {
+    const protocolState = activeSessionForActiveDate ? "session" : todayV2State.state;
+    if (protocolState !== "ready" && protocolState !== "session") return null;
+
+    const protocolTitle = heroGoal?.title || todayV2State.hero.title || "";
+    if (!protocolTitle) return null;
+
+    return deriveActionProtocol({
+      title: protocolTitle,
+      categoryName: heroDisplayCategoryName || heroCategory?.name || "",
+      durationMinutes: heroOccurrence?.durationMinutes || 0,
+      isHabitLike: Boolean(heroGoal?.cadence),
+    });
+  }, [
+    activeSessionForActiveDate,
+    heroDisplayCategoryName,
+    heroCategory?.name,
+    heroGoal?.cadence,
+    heroGoal?.title,
+    heroOccurrence?.durationMinutes,
+    todayV2State.hero.title,
+    todayV2State.state,
+  ]);
+  const heroActionProtocolBrief = useMemo(
+    () =>
+      deriveTodayActionProtocolBrief({
+        protocol: heroActionProtocol,
+        mode: activeSessionForActiveDate ? "session" : "ready",
+      }),
+    [activeSessionForActiveDate, heroActionProtocol]
+  );
   const todayBehaviorCue = useMemo(
     () =>
       deriveTodayBehaviorCue({
@@ -2417,6 +2449,7 @@ export default function Home({
         supportLabel: resolveTodayHeroGuideLabel({
           todayState: todayV2State.state,
         }),
+        actionProtocolBrief: heroActionProtocolBrief,
         categoryColor:
           todayV2State.state === "validated"
             ? ""
@@ -2444,6 +2477,7 @@ export default function Home({
       greetingPeriod,
       headerDateLabel,
       heroContributionLabel,
+      heroActionProtocolBrief,
       heroDisplayCategoryName,
         heroOccurrence,
         nextBlockLabel,
@@ -2523,6 +2557,7 @@ export default function Home({
             stateLabel={todayShellModel.hero.stateLabel}
             stateTone={todayShellModel.hero.stateTone}
             supportLabel={todayShellModel.hero.supportLabel}
+            actionProtocolBrief={todayShellModel.hero.actionProtocolBrief}
             categoryColor={todayShellModel.hero.categoryColor}
             primaryLabel={todayShellModel.hero.primaryLabel}
             secondaryLabel={todayShellModel.hero.secondaryLabel}

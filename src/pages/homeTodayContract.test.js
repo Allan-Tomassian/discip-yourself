@@ -34,6 +34,7 @@ describe("home today canonical contract", () => {
     const dailyState = readSrc("components/today/TodayDailyState.jsx");
     const valuePulse = readSrc("components/today/TodayValuePulse.jsx");
     const stateModel = readSrc("features/today/todayV2State.js");
+    const actionProtocol = readSrc("features/action-protocol/actionProtocol.js");
 
     expect(home).toContain('pageId="today"');
     expect(home).toContain("greetingPeriod");
@@ -52,9 +53,13 @@ describe("home today canonical contract", () => {
     expect(home).toContain("<TodayNextActions");
     expect(home).toContain("<TodayDailyState");
     expect(home).toContain("<TodayValuePulse");
+    expect(home).toContain("deriveActionProtocol(");
+    expect(home).toContain("deriveTodayActionProtocolBrief(");
+    expect(home).toContain("actionProtocolBrief={todayShellModel.hero.actionProtocolBrief}");
     expect(hero).toContain('className={`lovableCard lovablePriorityCard todayShellHeroCard${isValidated ? " is-validated" : ""}`}');
     expect(hero).toContain("todayShellHeroState is-${stateTone}");
     expect(hero).toContain('className="todayShellHeroGuide"');
+    expect(hero).toContain('data-testid="today-action-protocol"');
     expect(hero).toContain('className="lovablePrimaryButton"');
     expect(hero).toContain("secondaryLabel");
     expect(hero).toContain("durationLabel");
@@ -64,6 +69,9 @@ describe("home today canonical contract", () => {
     expect(dailyState).toContain("todayDailyStateRail");
     expect(dailyState).toContain("todayDailyStatePip");
     expect(valuePulse).toContain('data-testid="today-value-pulse"');
+    expect(actionProtocol).toContain('label: "Cap"');
+    expect(actionProtocol).toContain('label: "Départ"');
+    expect(actionProtocol).toContain('label: "Blocage"');
     expect(nextActions).not.toContain("lovableEmptyTitle");
     expect(home).not.toContain("TODAY_SCREEN_COPY.actionsTitle");
     expect(home).not.toContain("TODAY_SCREEN_COPY.actionsSubtitle");

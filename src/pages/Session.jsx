@@ -12,6 +12,7 @@ import { computeStreakDays } from "../logic/habits";
 import { useBehaviorFeedback } from "../feedback/behaviorFeedbackStore";
 import { deriveBehaviorFeedbackSignal, deriveSessionBehaviorCue } from "../feedback/feedbackDerivers";
 import { AppCard, AppScreen, GhostButton } from "../shared/ui/app";
+import { deriveActionProtocol } from "../features/action-protocol/actionProtocol";
 import "../features/session/session.css";
 
 function formatElapsed(ms) {
@@ -163,6 +164,17 @@ export default function Session({
       }),
     [category?.id, effectiveCategoryId, plannedMinutes, viewState]
   );
+  const actionProtocol = useMemo(() => {
+    const protocolTitle = goal?.title || "";
+    if (!protocolTitle || protocolTitle === "Session") return null;
+
+    return deriveActionProtocol({
+      title: protocolTitle,
+      categoryName: category?.name || "",
+      durationMinutes: plannedMinutes || 0,
+      isHabitLike: Boolean(goal?.cadence),
+    });
+  }, [category?.name, goal?.cadence, goal?.title, plannedMinutes]);
 
   function startTimer() {
     if (!selectedOccurrence?.id || typeof setData !== "function") return;
@@ -431,6 +443,7 @@ export default function Session({
       <FocusSessionView
         title={goal?.title || "Session"}
         categoryName={category?.name || "Catégorie"}
+        actionProtocol={actionProtocol}
         behaviorCue={sessionBehaviorCue}
         plannedDurationLabel={Number.isFinite(plannedMinutes) ? `${plannedMinutes} min` : ""}
         elapsedLabel={formatElapsed(elapsedSec * 1000)}

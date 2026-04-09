@@ -28,6 +28,7 @@ function toneForState(viewState) {
 export default function FocusSessionView({
   title = "Session",
   categoryName = "Catégorie",
+  actionProtocol = null,
   plannedDurationLabel = "",
   elapsedLabel = "",
   remainingLabel = "",
@@ -55,6 +56,14 @@ export default function FocusSessionView({
   const isPaused = viewState === "paused";
   const startLabel = isPaused ? "Reprendre" : "Démarrer";
   const completeLabel = "Terminer";
+  const protocolItems = actionProtocol
+    ? [
+        { label: "Pourquoi", text: actionProtocol.why },
+        { label: "Départ", text: actionProtocol.firstStep },
+        { label: "Si blocage", text: actionProtocol.ifBlocked },
+        { label: "Réussi quand", text: actionProtocol.successDefinition },
+      ].filter((item) => item.text)
+    : [];
 
   return (
     <div className="sessionViewStack">
@@ -68,6 +77,18 @@ export default function FocusSessionView({
             <StatusBadge tone={toneForState(viewState)}>{labelForState(viewState)}</StatusBadge>
           </div>
           {behaviorCue ? <BehaviorCue cue={behaviorCue} /> : null}
+          {protocolItems.length ? (
+            <div className="sessionProtocol" data-testid="session-action-protocol">
+              <div className="sessionProtocolGrid">
+                {protocolItems.map((item) => (
+                  <div key={item.label} className="sessionProtocolItem">
+                    <div className="sessionProtocolLabel">{item.label}</div>
+                    <div className="sessionProtocolText">{item.text}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="sessionMetrics">
             {plannedDurationLabel ? (
               <div className="sessionMetric">
