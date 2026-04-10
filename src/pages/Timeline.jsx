@@ -187,7 +187,7 @@ function CalendarIcon() {
   );
 }
 
-export default function Timeline({ data, setData, setTab, onEditItem }) {
+export default function Timeline({ data, setData, setTab, onEditItem, onOpenSession }) {
   const safeData = data && typeof data === "object" ? data : {};
   const [expandedEntryId, setExpandedEntryId] = useState("");
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -364,22 +364,38 @@ export default function Timeline({ data, setData, setTab, onEditItem }) {
           (entry) => entry?.id === gate.activeSession.occurrenceId
         ) || null;
         const activeGoal = activeOccurrence?.goalId ? goalsById.get(activeOccurrence.goalId) || null : null;
-        setTab?.("session", {
-          sessionCategoryId: activeGoal?.categoryId || categoryId || null,
-          sessionDateKey: gate.activeSession.dateKey || activeOccurrence?.date || todayKey,
-          sessionOccurrenceId: gate.activeSession.occurrenceId || null,
-        });
+        if (typeof onOpenSession === "function") {
+          onOpenSession({
+            categoryId: activeGoal?.categoryId || categoryId || null,
+            dateKey: gate.activeSession.dateKey || activeOccurrence?.date || todayKey,
+            occurrenceId: gate.activeSession.occurrenceId || null,
+          });
+        } else {
+          setTab?.("session", {
+            sessionCategoryId: activeGoal?.categoryId || categoryId || null,
+            sessionDateKey: gate.activeSession.dateKey || activeOccurrence?.date || todayKey,
+            sessionOccurrenceId: gate.activeSession.occurrenceId || null,
+          });
+        }
         return;
       }
 
       const goal = occurrence.goalId ? goalsById.get(occurrence.goalId) || null : null;
-      setTab?.("session", {
-        sessionCategoryId: goal?.categoryId || categoryId || null,
-        sessionDateKey: occurrence.date || todayKey,
-        sessionOccurrenceId: occurrence.id || null,
-      });
+      if (typeof onOpenSession === "function") {
+        onOpenSession({
+          categoryId: goal?.categoryId || categoryId || null,
+          dateKey: occurrence.date || todayKey,
+          occurrenceId: occurrence.id || null,
+        });
+      } else {
+        setTab?.("session", {
+          sessionCategoryId: goal?.categoryId || categoryId || null,
+          sessionDateKey: occurrence.date || todayKey,
+          sessionOccurrenceId: occurrence.id || null,
+        });
+      }
     },
-    [goalsById, safeData, setTab, todayKey]
+    [goalsById, onOpenSession, safeData, setTab, todayKey]
   );
 
   const toggleExpanded = useCallback((entryId) => {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../auth/useAuth";
 import { requestAiCoachChat } from "../../infra/aiCoachChatClient";
 import { deriveAiUnavailableMessage } from "../../infra/aiTransportDiagnostics";
-import { applySessionRuntimeTransition, resolveRuntimeSessionGate } from "../../logic/sessionRuntime";
+import { resolveRuntimeSessionGate } from "../../logic/sessionRuntime";
 import { COACH_SCREEN_COPY } from "../../ui/labels";
 import { commitPreparedCreatePlan, prepareCreateCommit } from "../create-item/createItemCommit";
 import { getCoachContextSnapshot } from "./coachContextAdapter";
@@ -367,6 +367,7 @@ export function useCoachConversationController({
   data,
   setData,
   setTab,
+  onOpenSession,
   surfaceTab = "today",
   onRequestClose,
   requestedMode = "free",
@@ -792,10 +793,19 @@ export function useCoachConversationController({
         return;
       }
       if (action.intent === "resume_session") {
-        setTab?.("session", {
-          sessionCategoryId: action.categoryId || contextSnapshot.activeCategoryId || null,
-          sessionDateKey: action.dateKey || contextSnapshot.selectedDateKey,
-        });
+        if (typeof onOpenSession === "function") {
+          onOpenSession({
+            categoryId: action.categoryId || contextSnapshot.activeCategoryId || null,
+            dateKey: action.dateKey || contextSnapshot.selectedDateKey,
+            occurrenceId: null,
+          });
+        } else {
+          setTab?.("session", {
+            sessionCategoryId: action.categoryId || contextSnapshot.activeCategoryId || null,
+            sessionDateKey: action.dateKey || contextSnapshot.selectedDateKey,
+            sessionOccurrenceId: null,
+          });
+        }
         onRequestClose?.();
         return;
       }
@@ -813,40 +823,48 @@ export function useCoachConversationController({
             ? safeData.goals.find((goal) => goal?.id === activeOccurrence.goalId) || null
             : null
           : null;
-        setTab?.("session", {
-          sessionCategoryId: activeGoal?.categoryId || contextSnapshot.activeCategoryId || null,
-          sessionDateKey: gate.activeSession.dateKey || activeOccurrence?.date || contextSnapshot.selectedDateKey,
-          sessionOccurrenceId: gate.activeSession.occurrenceId || null,
-        });
+        if (typeof onOpenSession === "function") {
+          onOpenSession({
+            categoryId: activeGoal?.categoryId || contextSnapshot.activeCategoryId || null,
+            dateKey: gate.activeSession.dateKey || activeOccurrence?.date || contextSnapshot.selectedDateKey,
+            occurrenceId: gate.activeSession.occurrenceId || null,
+          });
+        } else {
+          setTab?.("session", {
+            sessionCategoryId: activeGoal?.categoryId || contextSnapshot.activeCategoryId || null,
+            sessionDateKey: gate.activeSession.dateKey || activeOccurrence?.date || contextSnapshot.selectedDateKey,
+            sessionOccurrenceId: gate.activeSession.occurrenceId || null,
+          });
+        }
         onRequestClose?.();
         return;
       }
       const occurrenceGoal = Array.isArray(safeData.goals)
         ? safeData.goals.find((goal) => goal?.id === occurrence.goalId) || null
         : null;
-      setData?.((previous) =>
-        applySessionRuntimeTransition(previous, {
-          type: "start",
-          occurrenceId: occurrence.id,
+      if (typeof onOpenSession === "function") {
+        onOpenSession({
+          categoryId: occurrenceGoal?.categoryId || action.categoryId || contextSnapshot.activeCategoryId || null,
           dateKey: occurrence.date || action.dateKey || contextSnapshot.selectedDateKey,
-          objectiveId: null,
-          habitIds: occurrence.goalId ? [occurrence.goalId] : action.actionId ? [action.actionId] : [],
-        })
-      );
-      setTab?.("session", {
-        sessionCategoryId: occurrenceGoal?.categoryId || action.categoryId || contextSnapshot.activeCategoryId || null,
-        sessionDateKey: occurrence.date || action.dateKey || contextSnapshot.selectedDateKey,
-      });
+          occurrenceId: occurrence.id || null,
+        });
+      } else {
+        setTab?.("session", {
+          sessionCategoryId: occurrenceGoal?.categoryId || action.categoryId || contextSnapshot.activeCategoryId || null,
+          sessionDateKey: occurrence.date || action.dateKey || contextSnapshot.selectedDateKey,
+          sessionOccurrenceId: occurrence.id || null,
+        });
+      }
       onRequestClose?.();
     },
     [
       contextSnapshot.activeCategoryId,
       contextSnapshot.selectedDateKey,
       handleConversationModeChange,
+      onOpenSession,
       onRequestClose,
       onOpenCreatedView,
       safeData,
-      setData,
       setTab,
     ]
   );

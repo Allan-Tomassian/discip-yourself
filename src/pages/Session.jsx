@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import FocusSessionView from "../components/session/FocusSessionView";
+import SessionLaunchView from "../components/session/SessionLaunchView";
 import { addDaysLocal, minutesToTimeStr, normalizeLocalDateKey, parseTimeToMinutes, todayLocalKey } from "../utils/datetime";
 import { resolveExecutableOccurrence } from "../logic/sessionResolver";
 import { updateOccurrence } from "../logic/occurrences";
@@ -13,6 +14,11 @@ import { useBehaviorFeedback } from "../feedback/behaviorFeedbackStore";
 import { deriveBehaviorFeedbackSignal, deriveSessionBehaviorCue } from "../feedback/feedbackDerivers";
 import { AppCard, AppScreen, GhostButton } from "../shared/ui/app";
 import { deriveActionProtocol } from "../features/action-protocol/actionProtocol";
+import {
+  buildSessionRunbookV1,
+  deriveGuidedCurrentStep,
+  normalizeSessionBlueprintSnapshot,
+} from "../features/session/sessionRunbook";
 import "../features/session/session.css";
 
 function formatElapsed(ms) {
@@ -46,6 +52,8 @@ function resolveFinalViewState(session) {
 export default function Session({
   data,
   setData,
+  sessionLaunchState = null,
+  setSessionLaunchState = null,
   onBack,
   onOpenLibrary,
   dateKey,
@@ -81,6 +89,7 @@ export default function Session({
   const [feedbackLevel, setFeedbackLevel] = useState("");
   const [feedbackText, setFeedbackText] = useState("");
   const [reportMode, setReportMode] = useState(false);
+  const [preparationTimerId, setPreparationTimerId] = useState(0);
 
   const routeOccurrence = useMemo(
     () => normalizeOccurrenceForUI(occurrences.find((occurrenceItem) => occurrenceItem?.id === routeOccurrenceId) || null),
@@ -120,6 +129,10 @@ export default function Session({
     return goals.find((item) => item?.id === selectedGoalId) || null;
   }, [goals, selectedOccurrence?.goalId, session?.habitIds]);
   const category = categories.find((item) => item?.id === goal?.categoryId) || null;
+  const blueprintSnapshot = useMemo(
+    () => normalizeSessionBlueprintSnapshot(goal?.sessionBlueprintV1),
+    [goal?.sessionBlueprintV1]
+  );
   useEffect(() => {
     const isRunning = Boolean(session && isRuntimeSessionOpen(session) && session?.timerRunning);
     if (!isRunning) return undefined;
@@ -175,6 +188,173 @@ export default function Session({
       isHabitLike: Boolean(goal?.cadence),
     });
   }, [category?.name, goal?.cadence, goal?.title, plannedMinutes]);
+  const launchStateMatchesOccurrence = Boolean(
+    sessionLaunchState?.occurrenceId &&
+      selectedOccurrence?.id &&
+      sessionLaunchState.occurrenceId === selectedOccurrence.id
+  );
+  const launchPhase = launchStateMatchesOccurrence ? sessionLaunchState?.phase || "ready" : "";
+  const occurrenceStatus = String(selectedOccurrence?.status || "");
+  const isLaunchableOccurrence = occurrenceStatus === "planned" || occurrenceStatus === "in_progress";
+  const shouldShowLaunchSurface =
+    launchStateMatchesOccurrence &&
+    !session &&
+    Boolean(blueprintSnapshot) &&
+    isLaunchableOccurrence &&
+    (launchPhase === "ready" || launchPhase === "preparing" || launchPhase === "plan_ready");
+  const guidedRunbook =
+    launchStateMatchesOccurrence && sessionLaunchState?.launchMode === "guided"
+      ? sessionLaunchState?.sessionRunbookV1 || null
+      : null;
+  const guidedPlan = useMemo(
+    () => deriveGuidedCurrentStep({ sessionRunbookV1: guidedRunbook, elapsedSec }),
+    [elapsedSec, guidedRunbook]
+  );
+  const sessionTimingLabel =
+    selectedOccurrence?.start && selectedOccurrence.start !== "00:00" ? selectedOccurrence.start : "Dans la journée";
+  const isPrelaunchPhase = shouldShowLaunchSurface;
+  const sessionScreenClassName = isPrelaunchPhase ? "sessionScreen sessionScreen--launch" : "sessionScreen";
+
+  useEffect(() => {
+    if (typeof setSessionLaunchState !== "function") return;
+    if (!selectedOccurrence?.id) return;
+    setSessionLaunchState((current) => {
+      if (!current || current.occurrenceId !== selectedOccurrence.id) return current;
+      const nextDateKey = selectedOccurrence.date || effectiveDateKey || current.dateKey || null;
+      const nextCategoryId = category?.id || goal?.categoryId || effectiveCategoryId || current.categoryId || null;
+      const nextActionId = goal?.id || current.actionId || null;
+      if (
+        current.actionId === nextActionId &&
+        current.categoryId === nextCategoryId &&
+        current.dateKey === nextDateKey &&
+        current.blueprintSnapshot === blueprintSnapshot
+      ) {
+        return current;
+      }
+      return {
+        ...current,
+        actionId: nextActionId,
+        categoryId: nextCategoryId,
+        dateKey: nextDateKey,
+        blueprintSnapshot: blueprintSnapshot || null,
+      };
+    });
+  }, [
+    blueprintSnapshot,
+    category?.id,
+    effectiveCategoryId,
+    effectiveDateKey,
+    goal?.categoryId,
+    goal?.id,
+    selectedOccurrence?.date,
+    selectedOccurrence?.id,
+    setSessionLaunchState,
+  ]);
+
+  useEffect(() => {
+    if (!preparationTimerId) return undefined;
+    return () => window.clearTimeout(preparationTimerId);
+  }, [preparationTimerId]);
+
+  useEffect(() => {
+    if (typeof setSessionLaunchState !== "function") return;
+    if (!sessionLaunchState) return;
+    if (!selectedOccurrence?.id) {
+      window.clearTimeout(preparationTimerId);
+      setPreparationTimerId(0);
+      setSessionLaunchState(null);
+      return;
+    }
+    if (sessionLaunchState.occurrenceId && sessionLaunchState.occurrenceId !== selectedOccurrence.id) {
+      window.clearTimeout(preparationTimerId);
+      setPreparationTimerId(0);
+      setSessionLaunchState(null);
+    }
+  }, [preparationTimerId, selectedOccurrence?.id, sessionLaunchState, setSessionLaunchState]);
+
+  const handleLaunchStandard = () => {
+    if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id) return;
+    setSessionLaunchState((current) =>
+      current && current.occurrenceId === selectedOccurrence.id
+        ? {
+            ...current,
+            phase: "launched_standard",
+            launchMode: "standard",
+            sessionRunbookV1: null,
+          }
+        : current
+    );
+  };
+
+  const handlePrepareGuided = () => {
+    if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id || !goal || !blueprintSnapshot) return;
+    const nextRunbook = buildSessionRunbookV1({
+      blueprintSnapshot,
+      occurrence: selectedOccurrence,
+      action: goal,
+      category,
+    });
+    if (!nextRunbook) {
+      handleLaunchStandard();
+      return;
+    }
+    window.clearTimeout(preparationTimerId);
+    setSessionLaunchState((current) =>
+      current && current.occurrenceId === selectedOccurrence.id
+        ? {
+            ...current,
+            phase: "preparing",
+            launchMode: "guided",
+            sessionRunbookV1: null,
+          }
+        : current
+    );
+    const timerId = window.setTimeout(() => {
+      setPreparationTimerId(0);
+      setSessionLaunchState((current) =>
+        current && current.occurrenceId === selectedOccurrence.id && current.phase === "preparing"
+          ? {
+              ...current,
+              phase: "plan_ready",
+              launchMode: "guided",
+              sessionRunbookV1: nextRunbook,
+            }
+          : current
+      );
+    }, 800);
+    setPreparationTimerId(timerId);
+  };
+
+  const handleRevertToStandard = () => {
+    if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id) return;
+    window.clearTimeout(preparationTimerId);
+    setPreparationTimerId(0);
+    setSessionLaunchState((current) =>
+      current && current.occurrenceId === selectedOccurrence.id
+        ? {
+            ...current,
+            phase: "ready",
+            launchMode: null,
+            sessionRunbookV1: null,
+          }
+        : current
+    );
+  };
+
+  const handleLaunchGuided = () => {
+    if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id) return;
+    window.clearTimeout(preparationTimerId);
+    setPreparationTimerId(0);
+    setSessionLaunchState((current) =>
+      current && current.occurrenceId === selectedOccurrence.id
+        ? {
+            ...current,
+            phase: "launched_guided",
+            launchMode: "guided",
+          }
+        : current
+    );
+  };
 
   function startTimer() {
     if (!selectedOccurrence?.id || typeof setData !== "function") return;
@@ -431,19 +611,49 @@ export default function Session({
 
   return (
     <AppScreen
+      className={sessionScreenClassName}
       pageId="session"
-      headerTitle={<span>{goal?.title || "Session"}</span>}
-      headerSubtitle={category?.name ? `Exécution · ${category.name}` : "Exécution"}
+      headerTitle={
+        isPrelaunchPhase ? (
+          <GhostButton className="sessionBackButton sessionBackButton--launch" onClick={onBack}>
+            ← Retour
+          </GhostButton>
+        ) : (
+          <span>{goal?.title || "Session"}</span>
+        )
+      }
+      headerSubtitle={isPrelaunchPhase ? null : category?.name ? `Exécution · ${category.name}` : "Exécution"}
       headerRight={
-        <GhostButton className="sessionBackButton" onClick={onBack}>
-          ← Retour
-        </GhostButton>
+        isPrelaunchPhase ? null : (
+          <GhostButton className="sessionBackButton" onClick={onBack}>
+            ← Retour
+          </GhostButton>
+        )
       }
     >
+      {shouldShowLaunchSurface ? (
+        <SessionLaunchView
+          phase={launchPhase}
+          categoryName={category?.name || "Catégorie"}
+          title={goal?.title || "Session"}
+          timingLabel={sessionTimingLabel}
+          durationLabel={Number.isFinite(plannedMinutes) ? `${plannedMinutes} min` : ""}
+          why={blueprintSnapshot?.why || ""}
+          firstStep={blueprintSnapshot?.firstStep || ""}
+          steps={Array.isArray(sessionLaunchState?.sessionRunbookV1?.steps) ? sessionLaunchState.sessionRunbookV1.steps : []}
+          onStartStandard={handleLaunchStandard}
+          onPrepareGuided={handlePrepareGuided}
+          onLaunchGuided={handleLaunchGuided}
+          onRevertToStandard={handleRevertToStandard}
+        />
+      ) : (
       <FocusSessionView
         title={goal?.title || "Session"}
         categoryName={category?.name || "Catégorie"}
         actionProtocol={actionProtocol}
+        guidedPlan={
+          launchStateMatchesOccurrence && sessionLaunchState?.phase === "launched_guided" ? guidedPlan : null
+        }
         behaviorCue={sessionBehaviorCue}
         plannedDurationLabel={Number.isFinite(plannedMinutes) ? `${plannedMinutes} min` : ""}
         elapsedLabel={formatElapsed(elapsedSec * 1000)}
@@ -466,6 +676,7 @@ export default function Session({
         reportMode={reportMode}
         onChooseReport={applyQuickReport}
       />
+      )}
     </AppScreen>
   );
 }

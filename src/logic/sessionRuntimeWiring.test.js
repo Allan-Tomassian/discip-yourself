@@ -16,6 +16,7 @@ describe("session runtime wiring (SSoT)", () => {
     expect(app).not.toContain('import SessionMVP from "./pages/SessionMVP";');
     expect(app).toContain('tab === "session" ? (');
     expect(app).toContain("<Session");
+    expect(app).toContain("sessionLaunchState={sessionLaunchState}");
   });
 
   it("removes SessionMVP once Session becomes the only runtime session screen", () => {

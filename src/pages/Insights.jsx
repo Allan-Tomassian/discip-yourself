@@ -97,7 +97,7 @@ function resolveDirection({ trendLabel: currentTrendLabel, completionPct, active
   };
 }
 
-function applyCoachAction(action, setTab, fallbackDateKey) {
+function applyCoachAction(action, setTab, fallbackDateKey, onOpenSession) {
   if (!action?.intent) return;
   if (action.intent === "open_library") {
     setTab?.("objectives");
@@ -116,19 +116,35 @@ function applyCoachAction(action, setTab, fallbackDateKey) {
     return;
   }
   if (action.intent === "resume_session") {
-    setTab?.("session", {
-      sessionCategoryId: action.categoryId || null,
-      sessionDateKey: action.dateKey || fallbackDateKey,
-      sessionOccurrenceId: action.occurrenceId || null,
-    });
+    if (typeof onOpenSession === "function") {
+      onOpenSession({
+        categoryId: action.categoryId || null,
+        dateKey: action.dateKey || fallbackDateKey,
+        occurrenceId: action.occurrenceId || null,
+      });
+    } else {
+      setTab?.("session", {
+        sessionCategoryId: action.categoryId || null,
+        sessionDateKey: action.dateKey || fallbackDateKey,
+        sessionOccurrenceId: action.occurrenceId || null,
+      });
+    }
     return;
   }
   if (action.intent === "start_occurrence") {
-    setTab?.("session", {
-      sessionCategoryId: action.categoryId || null,
-      sessionDateKey: action.dateKey || fallbackDateKey,
-      sessionOccurrenceId: action.occurrenceId || null,
-    });
+    if (typeof onOpenSession === "function") {
+      onOpenSession({
+        categoryId: action.categoryId || null,
+        dateKey: action.dateKey || fallbackDateKey,
+        occurrenceId: action.occurrenceId || null,
+      });
+    } else {
+      setTab?.("session", {
+        sessionCategoryId: action.categoryId || null,
+        sessionDateKey: action.dateKey || fallbackDateKey,
+        sessionOccurrenceId: action.occurrenceId || null,
+      });
+    }
   }
 }
 
@@ -247,6 +263,7 @@ export default function Insights({
   data,
   setData,
   setTab,
+  onOpenSession,
   persistenceScope = "local_fallback",
 }) {
   const { session } = useAuth();
@@ -472,7 +489,7 @@ export default function Insights({
                 <button
                   type="button"
                   className="lovableCoachBubbleAction"
-                  onClick={() => applyCoachAction(coachAnalysis.visibleAnalysis.primaryAction, setTab, toKey)}
+                  onClick={() => applyCoachAction(coachAnalysis.visibleAnalysis.primaryAction, setTab, toKey, onOpenSession)}
                 >
                   {coachAnalysis.visibleAnalysis.primaryAction.label}
                 </button>
@@ -481,7 +498,7 @@ export default function Insights({
                 <button
                   type="button"
                   className="lovableGhostButton"
-                  onClick={() => applyCoachAction(coachAnalysis.visibleAnalysis.secondaryAction, setTab, toKey)}
+                  onClick={() => applyCoachAction(coachAnalysis.visibleAnalysis.secondaryAction, setTab, toKey, onOpenSession)}
                 >
                   {coachAnalysis.visibleAnalysis.secondaryAction.label}
                 </button>

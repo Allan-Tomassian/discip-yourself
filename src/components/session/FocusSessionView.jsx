@@ -29,6 +29,7 @@ export default function FocusSessionView({
   title = "Session",
   categoryName = "Catégorie",
   actionProtocol = null,
+  guidedPlan = null,
   plannedDurationLabel = "",
   elapsedLabel = "",
   remainingLabel = "",
@@ -64,6 +65,7 @@ export default function FocusSessionView({
         { label: "Réussi quand", text: actionProtocol.successDefinition },
       ].filter((item) => item.text)
     : [];
+  const guidedSteps = Array.isArray(guidedPlan?.steps) ? guidedPlan.steps : [];
 
   return (
     <div className="sessionViewStack">
@@ -77,7 +79,33 @@ export default function FocusSessionView({
             <StatusBadge tone={toneForState(viewState)}>{labelForState(viewState)}</StatusBadge>
           </div>
           {behaviorCue ? <BehaviorCue cue={behaviorCue} /> : null}
-          {protocolItems.length ? (
+          {guidedPlan && !isFinal ? (
+            <div className="sessionGuidedPlan" data-testid="session-guided-plan">
+              <div className="sessionGuidedPlanEyebrow">Plan du bloc</div>
+              <div className="sessionGuidedPlanCurrent">
+                <div className="sessionGuidedPlanMeta">
+                  Étape {Number(guidedPlan?.currentStepIndex || 0) + 1}/{guidedPlan?.totalSteps || guidedSteps.length}
+                </div>
+                <div className="sessionGuidedPlanTitle">{guidedPlan?.currentStep?.label || "Étape"}</div>
+                <div className="sessionGuidedPlanDuration">
+                  {Number.isFinite(guidedPlan?.currentStep?.minutes) ? `${guidedPlan.currentStep.minutes} min` : ""}
+                </div>
+                <div className="sessionGuidedPlanText">{guidedPlan?.currentStep?.guidance || ""}</div>
+              </div>
+              <div className="sessionGuidedPlanSteps">
+                {guidedSteps.map((step, index) => (
+                  <div
+                    key={step.id || `${step.label}-${index}`}
+                    className={`sessionGuidedPlanStep sessionGuidedPlanStep--${step.state || "upcoming"}`}
+                  >
+                    <span className="sessionGuidedPlanStepIndex">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="sessionGuidedPlanStepLabel">{step.label}</span>
+                    <span className="sessionGuidedPlanStepMinutes">{step.minutes} min</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : protocolItems.length ? (
             <div className="sessionProtocol" data-testid="session-action-protocol">
               <div className="sessionProtocolGrid">
                 {protocolItems.map((item) => (

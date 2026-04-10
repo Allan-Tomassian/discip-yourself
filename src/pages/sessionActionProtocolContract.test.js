@@ -17,7 +17,9 @@ describe("session action protocol contract", () => {
 
     expect(session).toContain("deriveActionProtocol({");
     expect(session).toContain("actionProtocol={actionProtocol}");
+    expect(session).toContain("guidedPlan={");
     expect(focusView).toContain('data-testid="session-action-protocol"');
+    expect(focusView).toContain('data-testid="session-guided-plan"');
     expect(focusView).toContain('label: "Pourquoi"');
     expect(focusView).toContain('label: "Départ"');
     expect(focusView).toContain('label: "Si blocage"');

@@ -13,6 +13,7 @@ import {
   GhostButton,
   PrimaryButton,
 } from "./shared/ui/app";
+import { uid } from "./utils/helpers";
 import "./app/appShell.css";
 import "./styles/lovable.css";
 
@@ -132,6 +133,7 @@ export default function App() {
   const [editItem, setEditItem] = useState(null);
   const [createTaskState, setCreateTaskState] = useState(null);
   const [universalCapturePreview, setUniversalCapturePreview] = useState(null);
+  const [sessionLaunchState, setSessionLaunchState] = useState(null);
   const [coachState, setCoachState] = useState({
     mode: "free",
     conversationId: null,
@@ -226,6 +228,39 @@ export default function App() {
     (typeof safeData?.ui?.selectedDateKey === "string" && safeData.ui.selectedDateKey) ||
     (typeof safeData?.ui?.selectedDate === "string" && safeData.ui.selectedDate) ||
     todayLocalKey();
+
+  const openSessionSurface = useCallback(
+    ({ sourceSurface = "unknown", categoryId = null, dateKey = null, occurrenceId = null } = {}) => {
+      const normalizedSource =
+        sourceSurface === "today" ||
+        sourceSurface === "timeline" ||
+        sourceSurface === "coach" ||
+        sourceSurface === "insights"
+          ? sourceSurface
+          : "unknown";
+      setSessionLaunchState({
+        version: 1,
+        entryId: uid(),
+        phase: "ready",
+        launchMode: null,
+        sourceSurface: normalizedSource,
+        occurrenceId: typeof occurrenceId === "string" && occurrenceId ? occurrenceId : null,
+        actionId: null,
+        dateKey: typeof dateKey === "string" && dateKey ? dateKey : null,
+        categoryId: typeof categoryId === "string" && categoryId ? categoryId : null,
+        blueprintSnapshot: null,
+        sessionRunbookV1: null,
+        openedAtMs: Date.now(),
+      });
+      setTab("session", {
+        sessionCategoryId: categoryId || null,
+        sessionDateKey: dateKey || null,
+        sessionOccurrenceId: occurrenceId || null,
+      });
+    },
+    [setTab]
+  );
+
   const hideNavigationChrome =
     Boolean(showPlanStep) ||
     tab === "create-item" ||
@@ -985,10 +1020,11 @@ export default function App() {
             launchActionCreate({ sourceSurface: "today" });
           }}
           onOpenSession={({ categoryId, dateKey, occurrenceId }) =>
-            setTab("session", {
-              sessionCategoryId: categoryId || null,
-              sessionDateKey: dateKey || null,
-              sessionOccurrenceId: occurrenceId || null,
+            openSessionSurface({
+              sourceSurface: "today",
+              categoryId,
+              dateKey,
+              occurrenceId,
             })
           }
           onOpenPaywall={openPaywall}
@@ -1002,6 +1038,14 @@ export default function App() {
           data={data}
           setData={setData}
           setTab={setTab}
+          onOpenSession={({ categoryId, dateKey, occurrenceId }) =>
+            openSessionSurface({
+              sourceSurface: "timeline",
+              categoryId,
+              dateKey,
+              occurrenceId,
+            })
+          }
           onEditItem={({ id, type, categoryId }) => {
             const nextId = categoryId || libraryCategoryId || null;
             if (nextId) {
@@ -1060,6 +1104,14 @@ export default function App() {
           data={data}
           setData={setData}
           setTab={setTab}
+          onOpenSession={({ categoryId, dateKey, occurrenceId }) =>
+            openSessionSurface({
+              sourceSurface: "insights",
+              categoryId,
+              dateKey,
+              occurrenceId,
+            })
+          }
           persistenceScope={persistenceScope}
         />
       ) : tab === "objectives" ? (
@@ -1126,6 +1178,14 @@ export default function App() {
           data={data}
           setData={setData}
           setTab={setTab}
+          onOpenSession={({ categoryId, dateKey, occurrenceId }) =>
+            openSessionSurface({
+              sourceSurface: "coach",
+              categoryId,
+              dateKey,
+              occurrenceId,
+            })
+          }
           requestedMode={coachState.mode}
           requestedConversationId={coachState.conversationId}
           requestedPrefill={coachState.prefill}
@@ -1142,14 +1202,25 @@ export default function App() {
         <Session
           data={data}
           setData={setData}
+          sessionLaunchState={sessionLaunchState}
+          setSessionLaunchState={setSessionLaunchState}
           categoryId={sessionCategoryId}
           dateKey={resolvedSessionDateKey}
           occurrenceId={sessionOccurrenceId}
           setTab={setTab}
           onOpenLibrary={() => setTab("objectives")}
           onBack={() => {
+            const returnTab =
+              sessionLaunchState?.sourceSurface === "timeline"
+                ? "timeline"
+                : sessionLaunchState?.sourceSurface === "coach"
+                  ? "coach"
+                  : sessionLaunchState?.sourceSurface === "insights"
+                    ? "insights"
+                  : "today";
+            setSessionLaunchState(null);
             setLibraryCategoryId(null);
-            setTab("today");
+            setTab(returnTab);
           }}
         />
       ) : tab === "journal" ? (
