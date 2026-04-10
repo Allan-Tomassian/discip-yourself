@@ -29,6 +29,17 @@ describe("aiPolicy", () => {
     expect(AI_REGIME_POLICY[AI_REGIMES.COACH_PLAN].canPrepareCreate).toBe(true);
   });
 
+  it("exposes a non-conversational session guidance regime", () => {
+    expect(AI_REGIMES.SESSION_GUIDANCE).toBe("session_guidance");
+    expect(AI_REGIME_POLICY[AI_REGIMES.SESSION_GUIDANCE]).toMatchObject({
+      authorityLevel: AI_AUTHORITY_LEVELS.SUGGESTION,
+      conversation: false,
+      canRecommend: true,
+      canPropose: true,
+      canOpenSurface: false,
+    });
+  });
+
   it("normalizes coach modes without widening card into conversation", () => {
     expect(normalizeCoachChatMode("free")).toBe(COACH_CHAT_MODES.FREE);
     expect(normalizeCoachChatMode("plan")).toBe(COACH_CHAT_MODES.PLAN);

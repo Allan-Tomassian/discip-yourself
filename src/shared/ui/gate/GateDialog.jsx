@@ -10,7 +10,14 @@ function isDesktopLikeInput() {
   }
 }
 
-export default function GateDialog({ open, onClose, children, className = "", maxWidth = 520 }) {
+export default function GateDialog({
+  open,
+  onClose,
+  children,
+  className = "",
+  maxWidth = 520,
+  placement = "center",
+}) {
   const panelRef = useRef(null);
   const prevOverflowRef = useRef("");
 
@@ -54,18 +61,21 @@ export default function GateDialog({ open, onClose, children, className = "", ma
 
   return (
     <div
-      className="modalBackdrop GateOverlayBackdrop"
+      className={`modalBackdrop GateOverlayBackdrop${placement === "bottom" ? " modalBackdrop--bottom" : ""}`}
       onClick={(event) => {
         if (event.target !== event.currentTarget) return;
         onClose?.({ reason: "backdrop", event });
       }}
       role="presentation"
     >
-      <div className="modalPanelOuter GateGlassOuter" onClick={(event) => event.stopPropagation()}>
+      <div
+        className={`modalPanelOuter GateGlassOuter${placement === "bottom" ? " modalPanelOuter--bottom" : ""}`}
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="modalPanelClip GateGlassClip GateGlassBackdrop">
           <GatePanel
             ref={panelRef}
-            className={`modalPanel GateGlassContent GateSurfacePremium GateCardPremium${className ? ` ${className}` : ""}`}
+            className={`modalPanel GateGlassContent GateSurfacePremium GateCardPremium${placement === "bottom" ? " modalPanel--bottom" : ""}${className ? ` ${className}` : ""}`}
             role="dialog"
             aria-modal="true"
             style={{ width: `min(${maxWidth}px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)))` }}

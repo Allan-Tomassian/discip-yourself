@@ -15,6 +15,12 @@
   overflow-x: hidden;
 }
 
+.modalBackdrop--bottom {
+  align-items: flex-end;
+  padding-top: max(24px, var(--safe-top));
+  padding-bottom: 0;
+}
+
 .modalPanel {
   width: min(520px, calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right)));
   max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
@@ -32,6 +38,31 @@
   max-width: 100%;
 }
 
+.modalPanelOuter--bottom {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
 .modalPanelClip {
   border-radius: inherit;
+}
+
+.modalPanel--bottom {
+  max-height: calc(100dvh - var(--safe-top) - 8px);
+}
+
+@media (max-width: 767px) {
+  .modalPanelOuter--bottom {
+    width: calc(100% + (2 * var(--page-pad)));
+    max-width: none;
+    margin-inline: calc(-1 * var(--page-pad));
+  }
+
+  .modalPanel--bottom {
+    width: 100%;
+    max-width: none;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
 }

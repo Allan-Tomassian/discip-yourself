@@ -228,4 +228,20 @@ describe("sessionRuntime transitions", () => {
     });
     expect(started).toBe(state);
   });
+
+  it("allows a missed occurrence to restart a runtime session from Session launch", () => {
+    const state = baseState({
+      occurrences: [{ id: "occ1", goalId: "g1", date: "2026-02-20", start: "09:00", status: "missed", durationMinutes: 30 }],
+    });
+    const started = applySessionRuntimeTransition(state, {
+      type: "start",
+      occurrenceId: "occ1",
+      dateKey: "2026-02-20",
+      habitIds: ["g1"],
+      now: new Date("2026-02-20T09:30:00.000Z"),
+    });
+    expect(started.ui.activeSession).toBeTruthy();
+    expect(started.ui.activeSession.runtimePhase).toBe("in_progress");
+    expect(started.occurrences.find((item) => item.id === "occ1")?.status).toBe("in_progress");
+  });
 });

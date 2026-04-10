@@ -1,9 +1,18 @@
 import React from "react";
-import { AppCard, GhostButton, PrimaryButton } from "../../shared/ui/app";
+import { GhostButton, PrimaryButton } from "../../shared/ui/app";
+import CoachAssistIcon from "../../shared/ui/icons/CoachAssistIcon";
 
 function TimingChip({ children }) {
   if (!children) return null;
   return <span className="sessionLaunchChip">{children}</span>;
+}
+
+function readStepPreview(step) {
+  if (!step || typeof step !== "object") return "";
+  if (typeof step.purpose === "string" && step.purpose.trim()) return step.purpose.trim();
+  if (typeof step.successCue === "string" && step.successCue.trim()) return step.successCue.trim();
+  const firstItem = Array.isArray(step.items) ? step.items.find((item) => item?.guidance) : null;
+  return typeof firstItem?.guidance === "string" ? firstItem.guidance.trim() : "";
 }
 
 export default function SessionLaunchView({
@@ -31,6 +40,9 @@ export default function SessionLaunchView({
         <div className="sessionLaunchPreparingOrb" aria-hidden="true">
           <span className="sessionLaunchPreparingRing" />
           <span className="sessionLaunchPreparingRing sessionLaunchPreparingRing--inner" />
+          <span className="sessionLaunchPreparingIcon">
+            <CoachAssistIcon size={26} />
+          </span>
         </div>
         <div className="sessionLaunchPreparingTitle">Préparation en cours</div>
         <div className="sessionLaunchPreparingMeta">{title}</div>
@@ -40,9 +52,15 @@ export default function SessionLaunchView({
 
   if (phase === "plan_ready") {
     return (
-      <div className="sessionLaunchViewStack" data-testid="session-launch-plan-ready">
-        <div className="sessionLaunchSectionEyebrow">Plan prêt</div>
-        <AppCard className="sessionLaunchPlanCard" variant="elevated">
+      <div className="sessionLaunchViewStack sessionLaunchViewStack--plan" data-testid="session-launch-plan-ready">
+        <div className="sessionLaunchHero sessionLaunchHero--plan">
+          <div className="sessionLaunchSectionEyebrow sessionLaunchSectionEyebrow--withIcon">
+            <CoachAssistIcon className="sessionLaunchEyebrowIcon" size={14} />
+            <span>Plan prêt</span>
+          </div>
+          <div className="sessionLaunchHeroMeta">{title}</div>
+        </div>
+        <div className="sessionLaunchCard sessionLaunchCard--plan">
           <div className="sessionLaunchPlanList">
             {steps.map((step, index) => (
               <div key={step.id || `${step.label}-${index}`} className="sessionLaunchPlanStep">
@@ -52,12 +70,12 @@ export default function SessionLaunchView({
                     <div className="sessionLaunchPlanLabel">{step.label}</div>
                     <div className="sessionLaunchPlanMinutes">{step.minutes} min</div>
                   </div>
-                  <div className="sessionLaunchPlanGuidance">{step.guidance}</div>
+                  <div className="sessionLaunchPlanGuidance">{readStepPreview(step)}</div>
                 </div>
               </div>
             ))}
           </div>
-        </AppCard>
+        </div>
         <div className="sessionLaunchFooter">
           <PrimaryButton type="button" className="sessionLaunchPrimary" onClick={onLaunchGuided}>
             Lancer la session
@@ -71,15 +89,17 @@ export default function SessionLaunchView({
   }
 
   return (
-    <div className="sessionLaunchViewStack" data-testid="session-launch-ready">
-      <div className="sessionLaunchSectionEyebrow">Séance prête</div>
-      <AppCard className="sessionLaunchReadyCard" variant="elevated">
+    <div className="sessionLaunchViewStack sessionLaunchViewStack--ready" data-testid="session-launch-ready">
+      <div className="sessionLaunchHero sessionLaunchHero--ready">
+        <div className="sessionLaunchSectionEyebrow">Séance prête</div>
         <div className="sessionLaunchCategory">{categoryName || "Catégorie"}</div>
         <div className="sessionLaunchTitle">{title}</div>
         <div className="sessionLaunchChips">
           <TimingChip>{timingLabel}</TimingChip>
           <TimingChip>{durationLabel}</TimingChip>
         </div>
+      </div>
+      <div className="sessionLaunchCard sessionLaunchCard--ready">
         <div className="sessionLaunchBrief">
           {why ? (
             <div className="sessionLaunchBriefRow">
@@ -96,13 +116,16 @@ export default function SessionLaunchView({
         </div>
         <div className="sessionLaunchActions">
           <PrimaryButton type="button" className="sessionLaunchPrimary" onClick={onStartStandard}>
-            Commencer maintenant
+            Session standard
           </PrimaryButton>
           <GhostButton type="button" className="sessionLaunchSecondary" onClick={onPrepareGuided}>
-            Aller plus loin
+            <span className="sessionLaunchSecondaryInner">
+              <CoachAssistIcon className="sessionLaunchSecondaryIcon" size={16} />
+              <span>Aller plus loin</span>
+            </span>
           </GhostButton>
         </div>
-      </AppCard>
+      </div>
     </div>
   );
 }

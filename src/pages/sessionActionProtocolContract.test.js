@@ -16,7 +16,7 @@ describe("session action protocol contract", () => {
     const protocol = readSrc("features/action-protocol/actionProtocol.js");
 
     expect(session).toContain("deriveActionProtocol({");
-    expect(session).toContain("actionProtocol={actionProtocol}");
+    expect(session).toContain("actionProtocol={effectiveActionProtocol}");
     expect(session).toContain("guidedPlan={");
     expect(focusView).toContain('data-testid="session-action-protocol"');
     expect(focusView).toContain('data-testid="session-guided-plan"');

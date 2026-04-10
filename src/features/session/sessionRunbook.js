@@ -2,6 +2,10 @@ function asString(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function clamp(min, value, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
 function normalizeProtocolType(value) {
   const next = asString(value).toLowerCase();
   if (next === "sport") return "sport";
@@ -15,6 +19,117 @@ function normalizePositiveMinutes(value, fallback = 20) {
   const next = typeof value === "string" ? Number(value) : value;
   if (!Number.isFinite(next) || next <= 0) return fallback;
   return Math.max(1, Math.round(next));
+}
+
+function normalizePositiveSeconds(value, fallback = 0) {
+  const next = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(next) || next <= 0) return fallback;
+  return Math.max(0, Math.round(next));
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function limitText(value, maxLength, fallback = "") {
+  const next = asString(value);
+  if (!next) return fallback;
+  return next.length > maxLength ? `${next.slice(0, maxLength - 1).trim()}…` : next;
+}
+
+function slugify(value, fallback = "item") {
+  const next = asString(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return next || fallback;
+}
+
+function distributeMinutes(totalMinutes, count) {
+  const total = normalizePositiveMinutes(totalMinutes, count || 1);
+  const safeCount = Math.max(1, Math.min(total, Math.round(count || 1)));
+  const base = Math.floor(total / safeCount);
+  const remainder = total % safeCount;
+  return Array.from({ length: safeCount }, (_, index) => base + (index < remainder ? 1 : 0));
+}
+
+function scaleMinuteBuckets(values, targetMinutes) {
+  const safeValues = (Array.isArray(values) ? values : []).map((value) => normalizePositiveMinutes(value, 1));
+  if (!safeValues.length) return [];
+  const target = normalizePositiveMinutes(targetMinutes, safeValues.length);
+  if (target <= safeValues.length) {
+    return Array.from({ length: safeValues.length }, (_, index) => (index === 0 ? target - (safeValues.length - 1) : 1))
+      .map((value) => Math.max(1, value));
+  }
+
+  const rawTotal = safeValues.reduce((sum, value) => sum + value, 0) || safeValues.length;
+  const scaled = safeValues.map((value) => Math.max(1, Math.floor((value / rawTotal) * target)));
+  let currentTotal = scaled.reduce((sum, value) => sum + value, 0);
+
+  while (currentTotal < target) {
+    let candidateIndex = 0;
+    let bestRatio = -Infinity;
+    scaled.forEach((value, index) => {
+      const ratio = safeValues[index] / value;
+      if (ratio > bestRatio) {
+        bestRatio = ratio;
+        candidateIndex = index;
+      }
+    });
+    scaled[candidateIndex] += 1;
+    currentTotal += 1;
+  }
+
+  while (currentTotal > target) {
+    let candidateIndex = -1;
+    let bestMargin = -Infinity;
+    scaled.forEach((value, index) => {
+      if (value <= 1) return;
+      const margin = value - safeValues[index] / rawTotal;
+      if (margin > bestMargin) {
+        bestMargin = margin;
+        candidateIndex = index;
+      }
+    });
+    if (candidateIndex === -1) break;
+    scaled[candidateIndex] -= 1;
+    currentTotal -= 1;
+  }
+
+  return scaled;
+}
+
+function distributeStepMinutes(totalMinutes) {
+  const total = normalizePositiveMinutes(totalMinutes, 20);
+  if (total === 1) return [1];
+  if (total === 2) return [1, 1];
+  if (total === 3) return [1, 1, 1];
+
+  const introTarget = total >= 25 ? 4 : total >= 15 ? 3 : 2;
+  const outroTarget = total >= 10 ? 2 : 1;
+  const intro = Math.min(introTarget, Math.max(1, total - 2));
+  const remainingAfterIntro = total - intro;
+  const outro = Math.min(outroTarget, Math.max(1, remainingAfterIntro - 1));
+  const main = Math.max(1, total - intro - outro);
+  return [intro, main, total - intro - main];
+}
+
+function normalizeSessionObjective(rawValue, fallback = null) {
+  const source = isPlainObject(rawValue) ? rawValue : fallback;
+  if (!isPlainObject(source)) return null;
+  const why = limitText(source.why || fallback?.why, 160);
+  const successDefinition = limitText(source.successDefinition || fallback?.successDefinition, 160);
+  if (!why || !successDefinition) return null;
+  return { why, successDefinition };
+}
+
+function buildFallbackObjective(blueprint) {
+  return normalizeSessionObjective({
+    why: blueprint?.why,
+    successDefinition: blueprint?.successDefinition,
+  });
 }
 
 export function normalizeSessionBlueprintSnapshot(rawValue) {
@@ -36,73 +151,340 @@ export function normalizeSessionBlueprintSnapshot(rawValue) {
   };
 }
 
-function resolveRunbookTemplate(protocolType) {
+function detectSportPattern(title) {
+  const normalized = asString(title)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (
+    normalized.includes("yoga") ||
+    normalized.includes("mobilite") ||
+    normalized.includes("stretch") ||
+    normalized.includes("etirement")
+  ) {
+    return "mobility";
+  }
+  if (
+    normalized.includes("course") ||
+    normalized.includes("run") ||
+    normalized.includes("cardio") ||
+    normalized.includes("marche")
+  ) {
+    return "cardio";
+  }
+  if (
+    normalized.includes("gainage") ||
+    normalized.includes("abdos") ||
+    normalized.includes("renfo") ||
+    normalized.includes("muscu") ||
+    normalized.includes("circuit")
+  ) {
+    return "strength";
+  }
+  return "general";
+}
+
+function buildFallbackStepSpecs(protocolType, { title = "", blueprint = null } = {}) {
   if (protocolType === "sport") {
-    return {
-      labels: ["Échauffement", "Phase principale", "Retour au calme"],
-      guidance: [
-        "Mobilité articulaire et activation légère",
-        "Reste sur la séquence utile du bloc",
-        "Ralentis et ferme proprement",
-      ],
-    };
+    const pattern = detectSportPattern(title);
+    if (pattern === "mobility") {
+      return [
+        {
+          label: "Échauffement",
+          purpose: "ouvrir le corps sans forcer",
+          successCue: "mouvement plus ample et respiration posée",
+          items: [
+            { kind: "activation", label: "Ouverture articulaire", guidance: "déroule nuque, épaules et hanches" },
+            { kind: "warmup", label: "Mobilité douce", guidance: "mets de l’amplitude sans chercher l’intensité" },
+          ],
+        },
+        {
+          label: "Séquence centrale",
+          purpose: "tenir la partie utile de la séance",
+          successCue: "corps engagé sans tension excessive",
+          items: [
+            { kind: "sequence", label: "Enchaînement principal", guidance: "reste sur la séquence centrale prévue" },
+            { kind: "sequence", label: "Amplitude contrôlée", guidance: "garde un rythme calme et continu" },
+          ],
+        },
+        {
+          label: "Retour au calme",
+          purpose: "refermer la séance proprement",
+          successCue: "respiration basse et corps relâché",
+          items: [
+            { kind: "cooldown", label: "Décompression", guidance: "relâche progressivement les zones sollicitées" },
+            { kind: "breath", label: "Respiration finale", guidance: "ralentis jusqu’à retrouver un souffle calme" },
+          ],
+        },
+      ];
+    }
+
+    if (pattern === "strength") {
+      return [
+        {
+          label: "Échauffement",
+          purpose: "mettre le corps en tension utile",
+          successCue: "articulations prêtes et coeur un peu monté",
+          items: [
+            { kind: "activation", label: "Activation générale", guidance: "réveille épaules, hanches et tronc" },
+            { kind: "warmup", label: "Montée en tension", guidance: "fais un premier passage léger" },
+          ],
+        },
+        {
+          label: "Bloc principal",
+          purpose: "tenir le coeur de l’effort",
+          successCue: "série utile tenue avec forme propre",
+          items: [
+            { kind: "effort", label: "Passage principal", guidance: "attaque la série la plus utile du bloc", restSec: 30 },
+            { kind: "effort", label: "Deuxième passage", guidance: "reste propre, même si tu baisses légèrement le rythme", restSec: 30 },
+            { kind: "effort", label: "Sortie contrôlée", guidance: "termine sans casser la technique" },
+          ],
+        },
+        {
+          label: "Retour au calme",
+          purpose: "faire redescendre le système",
+          successCue: "souffle récupéré et tension redescendue",
+          items: [
+            { kind: "cooldown", label: "Décompression", guidance: "secoue, marche ou relâche les groupes sollicités" },
+            { kind: "breath", label: "Respiration", guidance: "revient à un rythme calme avant de finir" },
+          ],
+        },
+      ];
+    }
+
+    if (pattern === "cardio") {
+      return [
+        {
+          label: "Échauffement",
+          purpose: "mettre le système en route",
+          successCue: "rythme trouvé sans pic brutal",
+          items: [
+            { kind: "activation", label: "Mobilité rapide", guidance: "délie les articulations majeures" },
+            { kind: "warmup", label: "Montée progressive", guidance: "augmente l’intensité en douceur" },
+          ],
+        },
+        {
+          label: "Bloc principal",
+          purpose: "tenir l’intensité utile du jour",
+          successCue: "rythme tenu sans te désunir",
+          items: [
+            { kind: "effort", label: "Rythme central", guidance: "stabilise l’allure qui fait avancer la séance", restSec: 20 },
+            { kind: "effort", label: "Relance courte", guidance: "garde un peu de tonicité sans te cramer", restSec: 20 },
+            { kind: "effort", label: "Sortie sous contrôle", guidance: "finis propre sans accélération inutile" },
+          ],
+        },
+        {
+          label: "Retour au calme",
+          purpose: "faire redescendre progressivement",
+          successCue: "souffle revenu et jambes légères",
+          items: [
+            { kind: "cooldown", label: "Décélération", guidance: "ralentis franchement le rythme" },
+            { kind: "breath", label: "Respiration calme", guidance: "reprends un souffle régulier avant de couper" },
+          ],
+        },
+      ];
+    }
+
+    return [
+      {
+        label: "Échauffement",
+        purpose: "mettre le corps et l’attention en route",
+        successCue: "corps chaud et disponibilité retrouvée",
+        items: [
+          { kind: "activation", label: "Activation articulaire", guidance: "réveille les zones qui vont travailler" },
+          { kind: "warmup", label: "Montée en rythme", guidance: "passe doucement du calme à l’effort" },
+        ],
+      },
+      {
+        label: "Bloc principal",
+        purpose: "tenir la partie utile de la séance",
+        successCue: "bloc central tenu sans te disperser",
+        items: [
+          { kind: "effort", label: "Séquence utile", guidance: "reste sur le coeur du bloc prévu", restSec: 20 },
+          { kind: "effort", label: "Relance contrôlée", guidance: "garde une intensité utile sans te crisper", restSec: 20 },
+          { kind: "effort", label: "Sortie propre", guidance: "termine le bloc sans casser la forme" },
+        ],
+      },
+      {
+        label: "Retour au calme",
+        purpose: "refermer le bloc proprement",
+        successCue: "souffle posé et récupération enclenchée",
+        items: [
+          { kind: "cooldown", label: "Redescente", guidance: "ralentis franchement avant de couper" },
+          { kind: "breath", label: "Respiration finale", guidance: "reviens à un souffle calme et stable" },
+        ],
+      },
+    ];
   }
+
   if (protocolType === "deep_work") {
-    return {
-      labels: ["Ouverture", "Bloc principal", "Clôture"],
-      guidance: [
-        "Rouvre la sous-partie exacte et coupe le reste",
-        "Travaille jusqu’à une avancée visible",
-        "Laisse une reprise nette",
-      ],
-    };
+    return [
+      {
+        label: "Ouverture",
+        purpose: "revenir dans le bon contexte de travail",
+        successCue: "point d’entrée précis identifié",
+        items: [
+          { kind: "setup", label: "Rouvre le contexte", guidance: "remets sous les yeux uniquement ce qui sert le bloc" },
+          { kind: "setup", label: "Fixe le point d’entrée", guidance: blueprint?.firstStep || "choisis la sous-partie exacte à attaquer" },
+        ],
+      },
+      {
+        label: "Bloc principal",
+        purpose: "produire une avancée visible",
+        successCue: "un sous-livrable concret existe",
+        items: [
+          { kind: "focus", label: "Premier passage utile", guidance: "travaille sans changer de sujet" },
+          { kind: "focus", label: "Passage critique", guidance: "pousse jusqu’au point qui débloque vraiment le bloc" },
+          { kind: "checkpoint", label: "Trace exploitable", guidance: "laisse quelque chose de réutilisable tout de suite" },
+        ],
+      },
+      {
+        label: "Clôture",
+        purpose: "fermer sans perdre la reprise",
+        successCue: "reprise future rendue évidente",
+        items: [
+          { kind: "close", label: "Note la reprise", guidance: "écris la prochaine sous-action avant de sortir" },
+          { kind: "close", label: "Nettoie le contexte", guidance: "garde uniquement ce qui sert la prochaine reprise" },
+        ],
+      },
+    ];
   }
+
   if (protocolType === "admin") {
-    return {
-      labels: ["Ouverture", "Traitement", "Clôture"],
-      guidance: [
-        "Ouvre l’item le plus simple à fermer",
-        "Vide le lot sans te disperser",
-        "Envoie ou note la prochaine étape",
-      ],
-    };
+    return [
+      {
+        label: "Ouverture",
+        purpose: "lancer le lot sans friction",
+        successCue: "ordre de traitement clair",
+        items: [
+          { kind: "setup", label: "Ouvre le lot", guidance: "rassemble uniquement les items à traiter maintenant" },
+          { kind: "setup", label: "Choisis l’ordre", guidance: "attaque d’abord ce qui ferme le plus vite" },
+        ],
+      },
+      {
+        label: "Traitement",
+        purpose: "vider le lot sans te disperser",
+        successCue: "items fermés ou prochaine étape envoyée",
+        items: [
+          { kind: "process", label: "Fermeture simple", guidance: "termine les items évidents sans changer de contexte" },
+          { kind: "process", label: "Passage utile", guidance: "traite ensuite l’item qui retire le plus de friction" },
+          { kind: "process", label: "Sortie envoyée", guidance: "envoie ou consigne la prochaine étape si besoin" },
+        ],
+      },
+      {
+        label: "Clôture",
+        purpose: "laisser un état net",
+        successCue: "aucun flou sur la suite",
+        items: [
+          { kind: "close", label: "Vérification finale", guidance: "assure-toi que rien d’urgent ne reste flottant" },
+          { kind: "close", label: "Suite notée", guidance: "laisse la prochaine action visible si le lot continue" },
+        ],
+      },
+    ];
   }
+
   if (protocolType === "routine") {
-    return {
-      labels: ["Mise en route", "Bloc central", "Clôture"],
-      guidance: [
-        "Lance la version minimum sans négocier",
-        "Tiens le rythme sans changer de contexte",
-        "Valide puis ferme le bloc",
-      ],
-    };
+    return [
+      {
+        label: "Mise en route",
+        purpose: "entrer sans négocier",
+        successCue: "version minimum effectivement lancée",
+        items: [
+          { kind: "setup", label: "Version minimum", guidance: "commence par le niveau le plus léger crédible" },
+          { kind: "setup", label: "Installation", guidance: "mets-toi dans la posture qui soutient la régularité" },
+        ],
+      },
+      {
+        label: "Bloc central",
+        purpose: "tenir le rythme de la routine",
+        successCue: "séquence centrale tenue sans rupture",
+        items: [
+          { kind: "routine", label: "Rythme central", guidance: "reste sur le coeur de la routine sans varier" },
+          { kind: "routine", label: "Passage complet", guidance: "termine la séquence prévue sans te disperser" },
+        ],
+      },
+      {
+        label: "Clôture",
+        purpose: "valider la continuité",
+        successCue: "routine fermée proprement",
+        items: [
+          { kind: "close", label: "Validation", guidance: "marque clairement que le bloc est tenu" },
+          { kind: "close", label: "Sortie calme", guidance: "ferme sans casser l’élan de régularité" },
+        ],
+      },
+    ];
   }
+
+  return [
+    {
+      label: "Lancement",
+      purpose: "ouvrir le bon point d’entrée",
+      successCue: "premier pas concret enclenché",
+      items: [
+        { kind: "setup", label: "Point d’entrée", guidance: blueprint?.firstStep || "ouvre le plus petit point d’entrée concret" },
+        { kind: "setup", label: "Mise en route", guidance: "coupe le reste et garde seulement ce qui sert ce bloc" },
+      ],
+    },
+    {
+      label: "Bloc principal",
+      purpose: "faire avancer le coeur de la séance",
+      successCue: "progression visible sur le vrai sujet",
+      items: [
+        { kind: "focus", label: "Premier passage utile", guidance: "attaque le coeur du bloc sans te disperser" },
+        { kind: "focus", label: "Progression visible", guidance: "continue jusqu’à obtenir un résultat net" },
+      ],
+    },
+    {
+      label: "Clôture",
+      purpose: "sortir avec une suite claire",
+      successCue: "prochaine reprise déjà préparée",
+      items: [
+        { kind: "close", label: "Nettoyage de sortie", guidance: "ferme le bloc sans laisser de flou" },
+        { kind: "close", label: "Suite notée", guidance: "écris la prochaine reprise avant de quitter" },
+      ],
+    },
+  ];
+}
+
+function materializeStep(stepSpec, stepIndex, stepMinutes, runbookIdSeed = "runbook") {
+  const itemSpecs = Array.isArray(stepSpec?.items) && stepSpec.items.length ? stepSpec.items : [
+    {
+      kind: "task",
+      label: stepSpec?.label || `Étape ${stepIndex + 1}`,
+      guidance: stepSpec?.purpose || "",
+    },
+  ];
+  const safeStepMinutes = normalizePositiveMinutes(stepMinutes, itemSpecs.length);
+  const usableItemSpecs =
+    safeStepMinutes < itemSpecs.length ? itemSpecs.slice(0, safeStepMinutes) : itemSpecs;
+  const itemMinuteBuckets = scaleMinuteBuckets(
+    distributeMinutes(safeStepMinutes, usableItemSpecs.length),
+    safeStepMinutes
+  );
+
+  const stepId = `${runbookIdSeed}_step_${stepIndex + 1}`;
+  const items = usableItemSpecs.map((itemSpec, itemIndex) => ({
+    id: `${stepId}_${slugify(itemSpec.label, `item_${itemIndex + 1}`)}`,
+    kind: asString(itemSpec.kind || "task").toLowerCase() || "task",
+    label: limitText(itemSpec.label, 56, `Item ${itemIndex + 1}`),
+    minutes: itemMinuteBuckets[itemIndex],
+    guidance: limitText(itemSpec.guidance, 160, stepSpec?.purpose || ""),
+    successCue: limitText(itemSpec.successCue, 120, stepSpec?.successCue || ""),
+    restSec: normalizePositiveSeconds(itemSpec.restSec, 0),
+    transitionLabel: limitText(itemSpec.transitionLabel, 80, ""),
+  }));
+
   return {
-    labels: ["Lancement", "Bloc principal", "Clôture"],
-    guidance: [
-      "Ouvre le plus petit point d’entrée concret",
-      "Avance jusqu’à un résultat visible",
-      "Note la suite avant de sortir",
-    ],
+    id: stepId,
+    label: limitText(stepSpec?.label, 56, `Étape ${stepIndex + 1}`),
+    purpose: limitText(stepSpec?.purpose, 120, ""),
+    minutes: items.reduce((sum, item) => sum + item.minutes, 0),
+    successCue: limitText(stepSpec?.successCue, 120, ""),
+    items,
   };
 }
 
-function distributeStepMinutes(totalMinutes) {
-  const total = normalizePositiveMinutes(totalMinutes, 20);
-  if (total === 1) return [1, 0, 0];
-  if (total === 2) return [1, 1, 0];
-  if (total === 3) return [1, 1, 1];
-
-  const introTarget = total >= 25 ? 4 : total >= 15 ? 3 : 2;
-  const outroTarget = total >= 10 ? 2 : 1;
-  const intro = Math.min(introTarget, Math.max(1, total - 2));
-  const remainingAfterIntro = total - intro;
-  const outro = Math.min(outroTarget, Math.max(1, remainingAfterIntro - 1));
-  const main = Math.max(1, total - intro - outro);
-  return [intro, main, total - intro - main];
-}
-
-export function buildSessionRunbookV1({
+function createFallbackRunbook({
   blueprintSnapshot = null,
   occurrence = null,
   action = null,
@@ -119,19 +501,16 @@ export function buildSessionRunbookV1({
     20
   );
   const categoryName = asString(category?.name);
-  const [introMinutes, mainMinutes, outroMinutes] = distributeStepMinutes(durationMinutes);
-  const template = resolveRunbookTemplate(blueprint.protocolType);
-  const minuteBuckets = [introMinutes, mainMinutes, outroMinutes];
-  const steps = template.labels.map((label, index) => ({
-    id: `step_${index + 1}`,
-    label,
-    minutes: minuteBuckets[index],
-    guidance: template.guidance[index],
-  }));
+  const stepSpecs = buildFallbackStepSpecs(blueprint.protocolType, { title, blueprint });
+  const stepMinuteBuckets = scaleMinuteBuckets(distributeStepMinutes(durationMinutes), durationMinutes);
+  const runbookIdSeed = `${slugify(actionId, "goal")}_${slugify(occurrenceId, "occ")}`;
+  const steps = stepSpecs.map((stepSpec, index) =>
+    materializeStep(stepSpec, index, stepMinuteBuckets[index] || 1, runbookIdSeed)
+  );
 
   return {
     version: 1,
-    source: "local_blueprint_derivation",
+    source: "deterministic_fallback",
     protocolType: blueprint.protocolType,
     occurrenceId,
     actionId,
@@ -139,34 +518,213 @@ export function buildSessionRunbookV1({
     title,
     categoryName,
     durationMinutes,
+    objective: buildFallbackObjective(blueprint),
     steps,
   };
 }
 
-export function deriveGuidedCurrentStep({ sessionRunbookV1 = null, elapsedSec = 0 } = {}) {
-  const runbook = sessionRunbookV1 && typeof sessionRunbookV1 === "object" ? sessionRunbookV1 : null;
+function normalizeRunbookItem(rawValue, { fallback = null, itemId = "" } = {}) {
+  const source = isPlainObject(rawValue) ? rawValue : fallback;
+  if (!isPlainObject(source)) return null;
+  const label = limitText(source.label || fallback?.label, 56);
+  const guidance = limitText(source.guidance || fallback?.guidance, 160);
+  if (!label || !guidance) return null;
+  return {
+    id: asString(source.id || fallback?.id) || itemId || slugify(label, "item"),
+    kind: asString(source.kind || fallback?.kind || "task").toLowerCase() || "task",
+    label,
+    minutes: normalizePositiveMinutes(source.minutes ?? fallback?.minutes, 1),
+    guidance,
+    successCue: limitText(source.successCue || fallback?.successCue, 120, ""),
+    restSec: normalizePositiveSeconds(source.restSec ?? fallback?.restSec, 0),
+    transitionLabel: limitText(source.transitionLabel || fallback?.transitionLabel, 80, ""),
+  };
+}
+
+function normalizeRunbookStep(rawValue, { fallback = null, stepIndex = 0, runbookSeed = "runbook" } = {}) {
+  const source = isPlainObject(rawValue) ? rawValue : fallback;
+  if (!isPlainObject(source)) return null;
+  const label = limitText(source.label || fallback?.label, 56);
+  const purpose = limitText(source.purpose || fallback?.purpose, 120, "");
+  const successCue = limitText(source.successCue || fallback?.successCue, 120, "");
+  if (!label) return null;
+
+  const rawItems = Array.isArray(source.items) && source.items.length ? source.items : fallback?.items || [];
+  const items = rawItems
+    .slice(0, 4)
+    .map((item, itemIndex) =>
+      normalizeRunbookItem(item, {
+        fallback: fallback?.items?.[itemIndex] || null,
+        itemId: `${runbookSeed}_step_${stepIndex + 1}_item_${itemIndex + 1}`,
+      })
+    )
+    .filter(Boolean);
+
+  if (!items.length) return null;
+  return {
+    id:
+      asString(source.id || fallback?.id) ||
+      `${runbookSeed}_step_${stepIndex + 1}_${slugify(label, `step_${stepIndex + 1}`)}`,
+    label,
+    purpose,
+    minutes: items.reduce((sum, item) => sum + item.minutes, 0),
+    successCue,
+    items,
+  };
+}
+
+function normalizeRunbookShape(rawValue, { fallback = null } = {}) {
+  const source = isPlainObject(rawValue) ? rawValue : fallback;
+  if (!isPlainObject(source)) return null;
+
+  const fallbackRunbook = isPlainObject(fallback) ? fallback : null;
+  const version = Number(source.version || fallbackRunbook?.version || 1);
+  if (version !== 1 && version !== 2) return null;
+
+  const title = limitText(source.title || fallbackRunbook?.title, 96, "Session");
+  const occurrenceId = asString(source.occurrenceId || fallbackRunbook?.occurrenceId);
+  const actionId = asString(source.actionId || fallbackRunbook?.actionId);
+  if (!occurrenceId || !actionId || !title) return null;
+
+  const objective = normalizeSessionObjective(source.objective, fallbackRunbook?.objective);
+  if (!objective) return null;
+
+  const protocolType = normalizeProtocolType(source.protocolType || fallbackRunbook?.protocolType);
+  const runbookSeed = `${slugify(actionId, "goal")}_${slugify(occurrenceId, "occ")}`;
+  const steps = (Array.isArray(source.steps) ? source.steps : fallbackRunbook?.steps || [])
+    .slice(0, version === 2 ? 5 : 4)
+    .map((step, stepIndex) =>
+      normalizeRunbookStep(step, {
+        fallback: fallbackRunbook?.steps?.[stepIndex] || null,
+        stepIndex,
+        runbookSeed,
+      })
+    )
+    .filter(Boolean);
+  const totalItems = steps.reduce((count, step) => count + step.items.length, 0);
+  if (!steps.length || totalItems < (version === 2 ? 6 : 3) || totalItems > 12) return null;
+
+  return {
+    version,
+    source: version === 2 ? "ai_prepared" : asString(source.source || fallbackRunbook?.source) || "deterministic_fallback",
+    protocolType,
+    occurrenceId,
+    actionId,
+    dateKey: asString(source.dateKey || fallbackRunbook?.dateKey),
+    title,
+    categoryName: limitText(source.categoryName || fallbackRunbook?.categoryName, 56, ""),
+    durationMinutes: steps.reduce((sum, step) => sum + step.minutes, 0),
+    objective,
+    steps,
+  };
+}
+
+export function normalizeSessionRunbook(rawValue, { fallback = null } = {}) {
+  return normalizeRunbookShape(rawValue, { fallback });
+}
+
+export function normalizePreparedSessionRunbook(rawValue, { fallbackRunbook = null } = {}) {
+  const fallback = normalizeSessionRunbook(fallbackRunbook);
+  const normalized = normalizeRunbookShape(rawValue, { fallback });
+  if (!normalized || normalized.version !== 2) return null;
+  if (normalized.steps.length < 3 || normalized.steps.length > 5) return null;
+  const itemCount = normalized.steps.reduce((count, step) => count + step.items.length, 0);
+  if (itemCount < 6 || itemCount > 12) return null;
+  return normalized;
+}
+
+export function buildSessionRunbookV1({
+  blueprintSnapshot = null,
+  occurrence = null,
+  action = null,
+  category = null,
+} = {}) {
+  return createFallbackRunbook({ blueprintSnapshot, occurrence, action, category });
+}
+
+function flattenRunbookItems(steps) {
+  const flattened = [];
+  steps.forEach((step, stepIndex) => {
+    step.items.forEach((item, itemIndex) => {
+      flattened.push({
+        stepId: step.id,
+        stepIndex,
+        stepLabel: step.label,
+        stepPurpose: step.purpose,
+        stepSuccessCue: step.successCue,
+        stepMinutes: step.minutes,
+        itemIndex,
+        item,
+      });
+    });
+  });
+  return flattened;
+}
+
+export function deriveGuidedCurrentStep({
+  sessionRunbook = null,
+  sessionRunbookV1 = null,
+  elapsedSec = 0,
+} = {}) {
+  const runbook = normalizeSessionRunbook(sessionRunbook, { fallback: sessionRunbookV1 });
   const steps = Array.isArray(runbook?.steps) ? runbook.steps.filter(Boolean) : [];
   if (!runbook || !steps.length) return null;
 
+  const flattenedItems = flattenRunbookItems(steps);
+  if (!flattenedItems.length) return null;
+
   const safeElapsedSec = Number.isFinite(elapsedSec) ? Math.max(0, elapsedSec) : 0;
-  let currentStepIndex = steps.length - 1;
+  let absoluteItemIndex = flattenedItems.length - 1;
   let threshold = 0;
-  for (let index = 0; index < steps.length; index += 1) {
-    threshold += Math.max(0, Number(steps[index]?.minutes || 0)) * 60;
+
+  for (let index = 0; index < flattenedItems.length; index += 1) {
+    threshold += Math.max(0, Number(flattenedItems[index]?.item?.minutes || 0)) * 60;
     if (safeElapsedSec < threshold) {
-      currentStepIndex = index;
+      absoluteItemIndex = index;
       break;
     }
   }
 
+  const current = flattenedItems[absoluteItemIndex];
+  const previousThreshold = flattenedItems
+    .slice(0, absoluteItemIndex)
+    .reduce((sum, entry) => sum + Math.max(0, Number(entry?.item?.minutes || 0)) * 60, 0);
+  const currentItemDurationSec = Math.max(60, Math.round((current?.item?.minutes || 1) * 60));
+  const elapsedWithinItemSec = clamp(0, safeElapsedSec - previousThreshold, currentItemDurationSec);
+  const remainingWithinItemSec = Math.max(currentItemDurationSec - elapsedWithinItemSec, 0);
+  const nextFlatItem = flattenedItems[absoluteItemIndex + 1] || null;
+  const currentStep = steps[current.stepIndex];
+
   return {
     title: runbook.title,
     totalSteps: steps.length,
-    currentStepIndex,
-    currentStep: steps[currentStepIndex],
-    steps: steps.map((step, index) => ({
+    totalItems: flattenedItems.length,
+    currentStepIndex: current.stepIndex,
+    currentStep,
+    currentItemIndex: current.itemIndex,
+    currentItem: current.item,
+    absoluteItemIndex,
+    currentItemProgress01: currentItemDurationSec > 0 ? elapsedWithinItemSec / currentItemDurationSec : 0,
+    elapsedWithinItemSec,
+    remainingWithinItemSec,
+    nextItem: nextFlatItem
+      ? {
+          ...nextFlatItem.item,
+          stepLabel: nextFlatItem.stepLabel,
+          stepIndex: nextFlatItem.stepIndex,
+        }
+      : null,
+    steps: steps.map((step, stepIndex) => ({
       ...step,
-      state: index < currentStepIndex ? "done" : index === currentStepIndex ? "current" : "upcoming",
+      state:
+        stepIndex < current.stepIndex ? "done" : stepIndex === current.stepIndex ? "current" : "upcoming",
+      items: step.items.map((item, itemIndex) => {
+        if (stepIndex < current.stepIndex) return { ...item, state: "done" };
+        if (stepIndex > current.stepIndex) return { ...item, state: "upcoming" };
+        if (itemIndex < current.itemIndex) return { ...item, state: "done" };
+        if (itemIndex === current.itemIndex) return { ...item, state: "current" };
+        return { ...item, state: "upcoming" };
+      }),
     })),
   };
 }

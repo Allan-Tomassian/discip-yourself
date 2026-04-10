@@ -1,5 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "../auth/useAuth";
 import FocusSessionView from "../components/session/FocusSessionView";
+import SessionAdjustSheet from "../components/session/SessionAdjustSheet";
 import SessionLaunchView from "../components/session/SessionLaunchView";
 import { addDaysLocal, minutesToTimeStr, normalizeLocalDateKey, parseTimeToMinutes, todayLocalKey } from "../utils/datetime";
 import { resolveExecutableOccurrence } from "../logic/sessionResolver";
@@ -17,9 +19,20 @@ import { deriveActionProtocol } from "../features/action-protocol/actionProtocol
 import {
   buildSessionRunbookV1,
   deriveGuidedCurrentStep,
+  normalizePreparedSessionRunbook,
   normalizeSessionBlueprintSnapshot,
+  normalizeSessionRunbook,
 } from "../features/session/sessionRunbook";
+import {
+  applyGuidedAdjustmentLocally,
+  applyStandardAdjustmentLocally,
+  buildGuidedAdjustmentOptions,
+  buildStandardAdjustmentOptions,
+  SESSION_ADJUST_CAUSES,
+} from "../features/session/sessionAdjustments";
+import { requestAiSessionGuidance } from "../infra/aiSessionGuidanceClient";
 import "../features/session/session.css";
+import "../features/session/session-guided.css";
 
 function formatElapsed(ms) {
   const safe = Number.isFinite(ms) && ms > 0 ? ms : 0;
@@ -49,6 +62,49 @@ function resolveFinalViewState(session) {
   return "completed";
 }
 
+function normalizePositiveMinutes(value, fallback = 1) {
+  const next = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(next) || next <= 0) return fallback;
+  return Math.max(1, Math.round(next));
+}
+
+function readSessionGuidanceRunbookPayload(payload, fallbackRunbook = null) {
+  if (!payload || typeof payload !== "object") return null;
+  return normalizePreparedSessionRunbook(
+    payload.sessionRunbook || payload.runbook || payload,
+    { fallbackRunbook }
+  );
+}
+
+function readGoalSessionNotes(goal) {
+  return [goal?.notes, goal?.note, goal?.description, goal?.summary]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean)
+    .join("\n")
+    .slice(0, 400);
+}
+
+function SessionTopChrome({ isPrelaunch = false, categoryName = "", onBack }) {
+  return (
+    <div
+      className={`sessionTopChrome${isPrelaunch ? " sessionTopChrome--launch" : " sessionTopChrome--runtime"}`}
+      data-testid="session-top-chrome"
+    >
+      <GhostButton
+        type="button"
+        className={`sessionChromeButton${isPrelaunch ? " sessionChromeButton--back" : " sessionChromeButton--close"}`}
+        onClick={onBack}
+        aria-label="Retour"
+      >
+        {isPrelaunch ? "← Retour" : "×"}
+      </GhostButton>
+      {!isPrelaunch && categoryName ? (
+        <div className="sessionTopChromeMeta">{String(categoryName).toUpperCase()}</div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function Session({
   data,
   setData,
@@ -61,6 +117,8 @@ export default function Session({
   categoryId,
   setTab,
 }) {
+  const { session: authSession } = useAuth();
+  const accessToken = authSession?.access_token || "";
   const { emitBehaviorFeedback } = useBehaviorFeedback();
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
@@ -90,6 +148,11 @@ export default function Session({
   const [feedbackText, setFeedbackText] = useState("");
   const [reportMode, setReportMode] = useState(false);
   const [preparationTimerId, setPreparationTimerId] = useState(0);
+  const [adjustSheetMode, setAdjustSheetMode] = useState("");
+  const [adjustCause, setAdjustCause] = useState("");
+  const [adjustLoading, setAdjustLoading] = useState(false);
+  const prepareRequestRef = useRef(0);
+  const adjustRequestRef = useRef(0);
 
   const routeOccurrence = useMemo(
     () => normalizeOccurrenceForUI(occurrences.find((occurrenceItem) => occurrenceItem?.id === routeOccurrenceId) || null),
@@ -188,32 +251,129 @@ export default function Session({
       isHabitLike: Boolean(goal?.cadence),
     });
   }, [category?.name, goal?.cadence, goal?.title, plannedMinutes]);
-  const launchStateMatchesOccurrence = Boolean(
-    sessionLaunchState?.occurrenceId &&
-      selectedOccurrence?.id &&
-      sessionLaunchState.occurrenceId === selectedOccurrence.id
-  );
-  const launchPhase = launchStateMatchesOccurrence ? sessionLaunchState?.phase || "ready" : "";
+  const currentLaunchState = sessionLaunchState && typeof sessionLaunchState === "object" ? sessionLaunchState : null;
   const occurrenceStatus = String(selectedOccurrence?.status || "");
-  const isLaunchableOccurrence = occurrenceStatus === "planned" || occurrenceStatus === "in_progress";
+  const isLaunchableOccurrence =
+    occurrenceStatus === "planned" || occurrenceStatus === "in_progress" || occurrenceStatus === "missed";
+  const launchStateMatchesOccurrence = Boolean(
+    currentLaunchState?.occurrenceId &&
+      selectedOccurrence?.id &&
+      currentLaunchState.occurrenceId === selectedOccurrence.id
+  );
+  const launchPhase =
+    launchStateMatchesOccurrence
+      ? currentLaunchState?.phase || "ready"
+      : !session && Boolean(selectedOccurrence?.id) && Boolean(blueprintSnapshot) && isLaunchableOccurrence
+        ? "ready"
+        : "";
   const shouldShowLaunchSurface =
-    launchStateMatchesOccurrence &&
     !session &&
     Boolean(blueprintSnapshot) &&
     isLaunchableOccurrence &&
     (launchPhase === "ready" || launchPhase === "preparing" || launchPhase === "plan_ready");
-  const guidedRunbook =
-    launchStateMatchesOccurrence && sessionLaunchState?.launchMode === "guided"
-      ? sessionLaunchState?.sessionRunbookV1 || null
-      : null;
+  const launchMode = launchStateMatchesOccurrence ? currentLaunchState?.launchMode || null : null;
+  const launchRunbook = useMemo(
+    () => normalizeSessionRunbook(currentLaunchState?.sessionRunbook || null),
+    [currentLaunchState?.sessionRunbook]
+  );
+  const guidedRunbook = launchStateMatchesOccurrence && launchMode === "guided" ? launchRunbook : null;
   const guidedPlan = useMemo(
-    () => deriveGuidedCurrentStep({ sessionRunbookV1: guidedRunbook, elapsedSec }),
+    () => deriveGuidedCurrentStep({ sessionRunbook: guidedRunbook, elapsedSec }),
     [elapsedSec, guidedRunbook]
   );
+  const standardAdjustment =
+    launchStateMatchesOccurrence && launchMode !== "guided" && currentLaunchState?.standardAdjustment
+      ? currentLaunchState.standardAdjustment
+      : null;
+  const guidedAdjustment =
+    launchStateMatchesOccurrence && launchMode === "guided" ? currentLaunchState?.guidedAdjustment || null : null;
+  const effectiveActionProtocol = useMemo(() => {
+    if (!standardAdjustment?.protocolOverride) return actionProtocol;
+    return {
+      ...(actionProtocol || {}),
+      ...standardAdjustment.protocolOverride,
+    };
+  }, [actionProtocol, standardAdjustment?.protocolOverride]);
+  const effectivePlannedMinutes =
+    normalizePositiveMinutes(
+      guidedRunbook?.durationMinutes ??
+        guidedAdjustment?.adjustedDurationMinutes ??
+        standardAdjustment?.adjustedDurationMinutes ??
+        plannedMinutes,
+      plannedMinutes || 20
+    );
+  const currentAdjustmentSummary = guidedAdjustment?.summary || standardAdjustment?.summary || "";
+  const currentAdjustmentLabel = guidedAdjustment?.label || standardAdjustment?.label || "";
+  const canAdjustStandard = Boolean(selectedOccurrence?.id) && launchMode !== "guided";
+  const canAdjustGuided = Boolean(guidedPlan && !shouldShowLaunchSurface && launchMode === "guided");
   const sessionTimingLabel =
     selectedOccurrence?.start && selectedOccurrence.start !== "00:00" ? selectedOccurrence.start : "Dans la journée";
   const isPrelaunchPhase = shouldShowLaunchSurface;
   const sessionScreenClassName = isPrelaunchPhase ? "sessionScreen sessionScreen--launch" : "sessionScreen";
+  const adjustCauses = useMemo(
+    () =>
+      SESSION_ADJUST_CAUSES.map((entry) => ({
+        ...entry,
+        description:
+          entry.id === "less_time"
+            ? "Réduis le bloc sans perdre ce qui compte."
+            : entry.id === "less_energy"
+              ? "Baisse l’intensité sans casser l’objectif."
+              : entry.id === "running_late"
+                ? "Recolle au timing depuis l’endroit où tu es."
+                : "Repars sur une relance crédible.",
+      })),
+    []
+  );
+  const remainingMinutesForAdjustment =
+    remainingSec != null ? Math.max(1, Math.ceil(remainingSec / 60)) : effectivePlannedMinutes;
+  const standardAdjustOptions = useMemo(
+    () =>
+      buildStandardAdjustmentOptions({
+        cause: adjustCause,
+        plannedMinutes: effectivePlannedMinutes,
+        remainingMinutes: remainingMinutesForAdjustment,
+        actionProtocol: effectiveActionProtocol,
+      }),
+    [adjustCause, effectiveActionProtocol, effectivePlannedMinutes, remainingMinutesForAdjustment]
+  );
+  const guidedAdjustOptions = useMemo(
+    () =>
+      buildGuidedAdjustmentOptions({
+        cause: adjustCause,
+        sessionRunbook: guidedRunbook,
+        elapsedSec,
+      }),
+    [adjustCause, elapsedSec, guidedRunbook]
+  );
+  const activeAdjustOptions = adjustSheetMode === "guided" ? guidedAdjustOptions : standardAdjustOptions;
+  const readLaunchStateBase = (current = null) => {
+    const currentValue =
+      current && selectedOccurrence?.id && current.occurrenceId === selectedOccurrence.id ? current : null;
+    return {
+      version: 1,
+      entryId: currentValue?.entryId || `session-${selectedOccurrence?.id || "current"}`,
+      phase: currentValue?.phase || "ready",
+      launchMode: currentValue?.launchMode || null,
+      sourceSurface: currentValue?.sourceSurface || "unknown",
+      occurrenceId: selectedOccurrence?.id || null,
+      actionId: goal?.id || selectedOccurrence?.goalId || currentValue?.actionId || null,
+      dateKey: selectedOccurrence?.date || effectiveDateKey || currentValue?.dateKey || null,
+      categoryId: category?.id || goal?.categoryId || effectiveCategoryId || currentValue?.categoryId || null,
+      blueprintSnapshot: blueprintSnapshot || currentValue?.blueprintSnapshot || null,
+      sessionRunbook: currentValue?.sessionRunbook || null,
+      standardAdjustment: currentValue?.standardAdjustment || null,
+      guidedAdjustment: currentValue?.guidedAdjustment || null,
+      openedAtMs: currentValue?.openedAtMs || Date.now(),
+    };
+  };
+
+  const closeAdjustSheet = () => {
+    adjustRequestRef.current += 1;
+    setAdjustLoading(false);
+    setAdjustCause("");
+    setAdjustSheetMode("");
+  };
 
   useEffect(() => {
     if (typeof setSessionLaunchState !== "function") return;
@@ -256,104 +416,261 @@ export default function Session({
     return () => window.clearTimeout(preparationTimerId);
   }, [preparationTimerId]);
 
+  useEffect(
+    () => () => {
+      prepareRequestRef.current += 1;
+      adjustRequestRef.current += 1;
+    },
+    []
+  );
+
   useEffect(() => {
     if (typeof setSessionLaunchState !== "function") return;
     if (!sessionLaunchState) return;
-    if (!selectedOccurrence?.id) {
+    if (selectedOccurrence?.id && sessionLaunchState.occurrenceId && sessionLaunchState.occurrenceId !== selectedOccurrence.id) {
       window.clearTimeout(preparationTimerId);
       setPreparationTimerId(0);
-      setSessionLaunchState(null);
-      return;
-    }
-    if (sessionLaunchState.occurrenceId && sessionLaunchState.occurrenceId !== selectedOccurrence.id) {
-      window.clearTimeout(preparationTimerId);
-      setPreparationTimerId(0);
+      closeAdjustSheet();
       setSessionLaunchState(null);
     }
   }, [preparationTimerId, selectedOccurrence?.id, sessionLaunchState, setSessionLaunchState]);
 
   const handleLaunchStandard = () => {
     if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id) return;
-    setSessionLaunchState((current) =>
-      current && current.occurrenceId === selectedOccurrence.id
-        ? {
-            ...current,
-            phase: "launched_standard",
-            launchMode: "standard",
-            sessionRunbookV1: null,
-          }
-        : current
-    );
+    prepareRequestRef.current += 1;
+    window.clearTimeout(preparationTimerId);
+    setPreparationTimerId(0);
+    closeAdjustSheet();
+    setSessionLaunchState((current) => ({
+      ...readLaunchStateBase(current),
+      phase: "launched_standard",
+      launchMode: "standard",
+      sessionRunbook: null,
+      standardAdjustment: null,
+      guidedAdjustment: null,
+    }));
   };
 
-  const handlePrepareGuided = () => {
+  const handlePrepareGuided = async () => {
     if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id || !goal || !blueprintSnapshot) return;
-    const nextRunbook = buildSessionRunbookV1({
+    const fallbackRunbook = buildSessionRunbookV1({
       blueprintSnapshot,
       occurrence: selectedOccurrence,
       action: goal,
       category,
     });
-    if (!nextRunbook) {
+    if (!fallbackRunbook) {
       handleLaunchStandard();
       return;
     }
+    prepareRequestRef.current += 1;
+    const requestId = prepareRequestRef.current;
+    const startedAtMs = Date.now();
     window.clearTimeout(preparationTimerId);
-    setSessionLaunchState((current) =>
-      current && current.occurrenceId === selectedOccurrence.id
-        ? {
-            ...current,
-            phase: "preparing",
-            launchMode: "guided",
-            sessionRunbookV1: null,
-          }
-        : current
-    );
-    const timerId = window.setTimeout(() => {
-      setPreparationTimerId(0);
-      setSessionLaunchState((current) =>
-        current && current.occurrenceId === selectedOccurrence.id && current.phase === "preparing"
-          ? {
-              ...current,
-              phase: "plan_ready",
-              launchMode: "guided",
-              sessionRunbookV1: nextRunbook,
-            }
-          : current
-      );
-    }, 800);
-    setPreparationTimerId(timerId);
+    setPreparationTimerId(0);
+    closeAdjustSheet();
+    setSessionLaunchState((current) => ({
+      ...readLaunchStateBase(current),
+      phase: "preparing",
+      launchMode: "guided",
+      sessionRunbook: null,
+      standardAdjustment: null,
+      guidedAdjustment: null,
+    }));
+
+    let nextRunbook = fallbackRunbook;
+    if (accessToken) {
+      const prepareResult = await requestAiSessionGuidance({
+        accessToken,
+        payload: {
+          mode: "prepare",
+          dateKey: selectedOccurrence.date || effectiveDateKey,
+          occurrenceId: selectedOccurrence.id,
+          actionId: goal.id,
+          categoryId: category?.id || goal?.categoryId || effectiveCategoryId || null,
+          blueprintSnapshot,
+          fallbackRunbook,
+          notes: readGoalSessionNotes(goal),
+        },
+      });
+      const preparedRunbook = readSessionGuidanceRunbookPayload(prepareResult?.payload, fallbackRunbook);
+      if (prepareResult?.ok && preparedRunbook) nextRunbook = preparedRunbook;
+    }
+
+    const remainingMs = Math.max(0, 800 - (Date.now() - startedAtMs));
+    if (remainingMs > 0) {
+      await new Promise((resolve) => {
+        const timerId = window.setTimeout(() => {
+          setPreparationTimerId(0);
+          resolve();
+        }, remainingMs);
+        setPreparationTimerId(timerId);
+      });
+    }
+
+    if (prepareRequestRef.current !== requestId) return;
+    setSessionLaunchState((current) => {
+      const base = readLaunchStateBase(current);
+      if (!base.occurrenceId || base.occurrenceId !== selectedOccurrence.id) return current;
+      return {
+        ...base,
+        phase: "plan_ready",
+        launchMode: "guided",
+        sessionRunbook: nextRunbook,
+        standardAdjustment: null,
+        guidedAdjustment: null,
+      };
+    });
   };
 
   const handleRevertToStandard = () => {
     if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id) return;
+    prepareRequestRef.current += 1;
     window.clearTimeout(preparationTimerId);
     setPreparationTimerId(0);
-    setSessionLaunchState((current) =>
-      current && current.occurrenceId === selectedOccurrence.id
-        ? {
-            ...current,
-            phase: "ready",
-            launchMode: null,
-            sessionRunbookV1: null,
-          }
-        : current
-    );
+    closeAdjustSheet();
+    setSessionLaunchState((current) => ({
+      ...readLaunchStateBase(current),
+      phase: "ready",
+      launchMode: null,
+      sessionRunbook: null,
+      standardAdjustment: null,
+      guidedAdjustment: null,
+    }));
   };
 
   const handleLaunchGuided = () => {
     if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id) return;
+    prepareRequestRef.current += 1;
     window.clearTimeout(preparationTimerId);
     setPreparationTimerId(0);
-    setSessionLaunchState((current) =>
-      current && current.occurrenceId === selectedOccurrence.id
-        ? {
-            ...current,
-            phase: "launched_guided",
-            launchMode: "guided",
-          }
-        : current
-    );
+    setSessionLaunchState((current) => {
+      const base = readLaunchStateBase(current);
+      if (!base.occurrenceId || !launchRunbook) return current;
+      return {
+        ...base,
+        phase: "launched_guided",
+        launchMode: "guided",
+        sessionRunbook: launchRunbook,
+        standardAdjustment: null,
+      };
+    });
+  };
+
+  const openStandardAdjust = () => {
+    if (!canAdjustStandard) return;
+    setAdjustCause("");
+    setAdjustLoading(false);
+    setAdjustSheetMode("standard");
+  };
+
+  const openGuidedAdjust = () => {
+    if (!canAdjustGuided) return;
+    setAdjustCause("");
+    setAdjustLoading(false);
+    setAdjustSheetMode("guided");
+  };
+
+  const handleApplyAdjustment = async (option) => {
+    if (!option || typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id) return;
+    const requestId = adjustRequestRef.current + 1;
+    adjustRequestRef.current = requestId;
+    setAdjustLoading(true);
+
+    if (adjustSheetMode === "standard") {
+      const nextAdjustment = applyStandardAdjustmentLocally({
+        cause: adjustCause,
+        strategyId: option.strategyId,
+        plannedMinutes: effectivePlannedMinutes,
+        remainingMinutes: remainingMinutesForAdjustment,
+        actionProtocol: effectiveActionProtocol,
+      });
+      if (adjustRequestRef.current !== requestId) return;
+      if (nextAdjustment) {
+        setSessionLaunchState((current) => {
+          const base = readLaunchStateBase(current);
+          return {
+            ...base,
+            phase: "launched_standard",
+            launchMode: "standard",
+            sessionRunbook: null,
+            standardAdjustment: nextAdjustment,
+            guidedAdjustment: null,
+          };
+        });
+      }
+      setAdjustLoading(false);
+      setAdjustCause("");
+      setAdjustSheetMode("");
+      return;
+    }
+
+    const localGuidedResult = applyGuidedAdjustmentLocally({
+      cause: adjustCause,
+      strategyId: option.strategyId,
+      sessionRunbook: guidedRunbook,
+      elapsedSec,
+    });
+    if (!localGuidedResult) {
+      setAdjustLoading(false);
+      return;
+    }
+
+    let nextRunbook = localGuidedResult.sessionRunbook;
+    let nextAdjustment = localGuidedResult.adjustment;
+
+    if (option.aiPreferred && accessToken && guidedRunbook) {
+      const adjustResult = await requestAiSessionGuidance({
+        accessToken,
+        payload: {
+          mode: "adjust",
+          dateKey: selectedOccurrence.date || effectiveDateKey,
+          occurrenceId: selectedOccurrence.id,
+          actionId: goal?.id || selectedOccurrence.goalId || "",
+          categoryId: category?.id || goal?.categoryId || effectiveCategoryId || null,
+          blueprintSnapshot,
+          sessionRunbook: guidedRunbook,
+          cause: adjustCause,
+          strategyId: option.strategyId,
+          runtimeContext: {
+            currentStepId: guidedPlan?.currentStep?.id || null,
+            currentItemId: guidedPlan?.currentItem?.id || null,
+            elapsedSec,
+            remainingSec: remainingSec ?? 0,
+          },
+        },
+      });
+      const preparedRunbook = readSessionGuidanceRunbookPayload(adjustResult?.payload, nextRunbook);
+      if (adjustResult?.ok && preparedRunbook) {
+        nextRunbook = preparedRunbook;
+        nextAdjustment = {
+          ...nextAdjustment,
+          adjustedDurationMinutes: preparedRunbook.durationMinutes,
+          runbookPatch: {
+            version: preparedRunbook.version,
+            stepCount: preparedRunbook.steps.length,
+            itemCount: preparedRunbook.steps.reduce((count, step) => count + step.items.length, 0),
+          },
+        };
+      }
+    }
+
+    if (adjustRequestRef.current !== requestId) return;
+    setSessionLaunchState((current) => {
+      const base = readLaunchStateBase(current);
+      if (!base.occurrenceId) return current;
+      return {
+        ...base,
+        phase: "launched_guided",
+        launchMode: "guided",
+        sessionRunbook: nextRunbook,
+        standardAdjustment: null,
+        guidedAdjustment: nextAdjustment,
+      };
+    });
+    setAdjustLoading(false);
+    setAdjustCause("");
+    setAdjustSheetMode("");
   };
 
   function startTimer() {
@@ -611,72 +928,90 @@ export default function Session({
 
   return (
     <AppScreen
-      className={sessionScreenClassName}
+      className={`${sessionScreenClassName} sessionScreen--immersive`}
       pageId="session"
-      headerTitle={
-        isPrelaunchPhase ? (
-          <GhostButton className="sessionBackButton sessionBackButton--launch" onClick={onBack}>
-            ← Retour
-          </GhostButton>
-        ) : (
-          <span>{goal?.title || "Session"}</span>
-        )
-      }
-      headerSubtitle={isPrelaunchPhase ? null : category?.name ? `Exécution · ${category.name}` : "Exécution"}
-      headerRight={
-        isPrelaunchPhase ? null : (
-          <GhostButton className="sessionBackButton" onClick={onBack}>
-            ← Retour
-          </GhostButton>
-        )
-      }
+      headerTitle={null}
+      headerSubtitle={null}
+      headerRight={null}
     >
-      {shouldShowLaunchSurface ? (
-        <SessionLaunchView
-          phase={launchPhase}
-          categoryName={category?.name || "Catégorie"}
-          title={goal?.title || "Session"}
-          timingLabel={sessionTimingLabel}
-          durationLabel={Number.isFinite(plannedMinutes) ? `${plannedMinutes} min` : ""}
-          why={blueprintSnapshot?.why || ""}
-          firstStep={blueprintSnapshot?.firstStep || ""}
-          steps={Array.isArray(sessionLaunchState?.sessionRunbookV1?.steps) ? sessionLaunchState.sessionRunbookV1.steps : []}
-          onStartStandard={handleLaunchStandard}
-          onPrepareGuided={handlePrepareGuided}
-          onLaunchGuided={handleLaunchGuided}
-          onRevertToStandard={handleRevertToStandard}
+      <div className={`sessionScreenBody${isPrelaunchPhase ? " sessionScreenBody--launch" : " sessionScreenBody--runtime"}`}>
+        <SessionTopChrome
+          isPrelaunch={isPrelaunchPhase}
+          categoryName={category?.name || ""}
+          onBack={onBack}
         />
-      ) : (
-      <FocusSessionView
-        title={goal?.title || "Session"}
-        categoryName={category?.name || "Catégorie"}
-        actionProtocol={actionProtocol}
-        guidedPlan={
-          launchStateMatchesOccurrence && sessionLaunchState?.phase === "launched_guided" ? guidedPlan : null
-        }
-        behaviorCue={sessionBehaviorCue}
-        plannedDurationLabel={Number.isFinite(plannedMinutes) ? `${plannedMinutes} min` : ""}
-        elapsedLabel={formatElapsed(elapsedSec * 1000)}
-        remainingLabel={remainingSec != null ? formatElapsed(remainingSec * 1000) : ""}
-        viewState={viewState}
-        canStart={Boolean(selectedOccurrence?.id) && (viewState === "idle" || viewState === "paused")}
-        canPause={viewState === "running"}
-        canComplete={Boolean(session?.occurrenceId) && isRuntimeSessionOpen(session)}
-        onStart={viewState === "paused" ? resumeTimer : startTimer}
-        onPause={pauseTimer}
-        onComplete={() => setShowFeedback(true)}
-        onBlock={blockSession}
-        onOpenReport={() => setReportMode((current) => !current)}
-        showFeedback={showFeedback}
-        feedbackLevel={feedbackLevel}
-        feedbackText={feedbackText}
-        onFeedbackLevelChange={setFeedbackLevel}
-        onFeedbackTextChange={setFeedbackText}
-        onFeedbackSubmit={endSession}
-        reportMode={reportMode}
-        onChooseReport={applyQuickReport}
+        {shouldShowLaunchSurface ? (
+          <SessionLaunchView
+            phase={launchPhase}
+            categoryName={category?.name || "Catégorie"}
+            title={goal?.title || "Session"}
+            timingLabel={sessionTimingLabel}
+            durationLabel={Number.isFinite(effectivePlannedMinutes) ? `${effectivePlannedMinutes} min` : ""}
+            why={blueprintSnapshot?.why || ""}
+            firstStep={blueprintSnapshot?.firstStep || ""}
+            steps={Array.isArray(currentLaunchState?.sessionRunbook?.steps) ? currentLaunchState.sessionRunbook.steps : []}
+            onStartStandard={handleLaunchStandard}
+            onPrepareGuided={handlePrepareGuided}
+            onLaunchGuided={handleLaunchGuided}
+            onRevertToStandard={handleRevertToStandard}
+          />
+        ) : (
+          <FocusSessionView
+            title={goal?.title || "Session"}
+            categoryName={category?.name || "Catégorie"}
+            actionProtocol={effectiveActionProtocol}
+            guidedPlan={
+              launchStateMatchesOccurrence && currentLaunchState?.phase === "launched_guided" ? guidedPlan : null
+            }
+            adjustmentLabel={currentAdjustmentLabel}
+            adjustmentSummary={currentAdjustmentSummary}
+            behaviorCue={sessionBehaviorCue}
+            plannedDurationLabel={Number.isFinite(effectivePlannedMinutes) ? `${effectivePlannedMinutes} min` : ""}
+            elapsedLabel={formatElapsed(elapsedSec * 1000)}
+            remainingLabel={remainingSec != null ? formatElapsed(remainingSec * 1000) : ""}
+            timerLabel={
+              viewState === "completed" || viewState === "blocked" || viewState === "reported"
+                ? formatElapsed(elapsedSec * 1000)
+                : remainingSec != null
+                  ? formatElapsed(remainingSec * 1000)
+                  : formatElapsed(elapsedSec * 1000)
+            }
+            viewState={viewState}
+            canStart={Boolean(selectedOccurrence?.id) && (viewState === "idle" || viewState === "paused")}
+            canPause={viewState === "running"}
+            canComplete={Boolean(session?.occurrenceId) && isRuntimeSessionOpen(session)}
+            onStart={viewState === "paused" ? resumeTimer : startTimer}
+            onPause={pauseTimer}
+            onComplete={() => setShowFeedback(true)}
+            onBlock={blockSession}
+            onOpenReport={() => setReportMode((current) => !current)}
+            onOpenAdjust={canAdjustGuided ? openGuidedAdjust : openStandardAdjust}
+            showAdjust={viewState !== "completed" && viewState !== "blocked" && viewState !== "reported" && (canAdjustGuided || canAdjustStandard)}
+            adjustMode={canAdjustGuided ? "guided" : "standard"}
+            showFeedback={showFeedback}
+            feedbackLevel={feedbackLevel}
+            feedbackText={feedbackText}
+            onFeedbackLevelChange={setFeedbackLevel}
+            onFeedbackTextChange={setFeedbackText}
+            onFeedbackSubmit={endSession}
+            reportMode={reportMode}
+            onChooseReport={applyQuickReport}
+          />
+        )}
+      </div>
+      <SessionAdjustSheet
+        open={Boolean(adjustSheetMode)}
+        mode={adjustSheetMode || "standard"}
+        causes={adjustCauses}
+        selectedCause={adjustCause}
+        options={activeAdjustOptions}
+        currentSummary={currentAdjustmentSummary}
+        loading={adjustLoading}
+        onClose={closeAdjustSheet}
+        onSelectCause={setAdjustCause}
+        onResetCause={() => setAdjustCause("")}
+        onApply={handleApplyAdjustment}
       />
-      )}
     </AppScreen>
   );
 }

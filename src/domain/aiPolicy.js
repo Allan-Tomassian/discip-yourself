@@ -2,6 +2,7 @@ export const AI_REGIMES = Object.freeze({
   COACH_FREE: "coach_free",
   COACH_PLAN: "coach_plan",
   LOCAL_ANALYSIS: "local_analysis",
+  SESSION_GUIDANCE: "session_guidance",
   MUTATION_REVIEW: "mutation_review",
 });
 
@@ -67,6 +68,19 @@ export const AI_REGIME_POLICY = Object.freeze({
     canMutate: false,
     canOpenSurface: true,
     label: "Lecture du coach",
+  }),
+  [AI_REGIMES.SESSION_GUIDANCE]: Object.freeze({
+    authorityLevel: AI_AUTHORITY_LEVELS.SUGGESTION,
+    conversation: false,
+    canRead: true,
+    canClarify: false,
+    canRecommend: true,
+    canPropose: true,
+    canPrepareCreate: false,
+    canCreate: false,
+    canMutate: false,
+    canOpenSurface: false,
+    label: "Préparation de séance",
   }),
   [AI_REGIMES.MUTATION_REVIEW]: Object.freeze({
     authorityLevel: AI_AUTHORITY_LEVELS.VALIDATED_MUTATION,

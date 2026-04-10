@@ -121,6 +121,18 @@ function applyOccurrenceRuntimeStatus(occurrences, goals, occurrenceId, nextStat
   return setOccurrenceStatusById(occurrenceId, normalizedTarget, { occurrences, goals });
 }
 
+function applyOccurrenceRuntimeStatusForLaunch(occurrences, goals, occurrenceId, nextStatus) {
+  const occurrence = resolveOccurrence(occurrences, occurrenceId);
+  if (!occurrence) return occurrences;
+  const currentStatus = normalizeOccurrenceStatus(occurrence.status);
+  const normalizedTarget = normalizeOccurrenceStatus(nextStatus, currentStatus);
+  if (currentStatus === normalizedTarget) return occurrences;
+  if (currentStatus === OCCURRENCE_STATUS.MISSED && normalizedTarget === OCCURRENCE_STATUS.IN_PROGRESS) {
+    return setOccurrenceStatusById(occurrenceId, normalizedTarget, { occurrences, goals });
+  }
+  return applyOccurrenceRuntimeStatus(occurrences, goals, occurrenceId, normalizedTarget);
+}
+
 function buildHistoryRecord({
   currentSession,
   occurrence,
@@ -298,7 +310,7 @@ export function applySessionRuntimeTransition(state, input = {}) {
     if (!occurrenceId) return prevState;
     const occurrence = resolveOccurrence(occurrences, occurrenceId);
     const occurrenceStatus = normalizeOccurrenceStatus(occurrence?.status);
-    if (isTerminalOccurrenceStatus(occurrenceStatus)) return prevState;
+    if (isTerminalOccurrenceStatus(occurrenceStatus) && occurrenceStatus !== OCCURRENCE_STATUS.MISSED) return prevState;
 
     const currentIsSameOpen =
       current && isRuntimeSessionOpen(current) && typeof current.occurrenceId === "string" && current.occurrenceId === occurrenceId;
@@ -324,7 +336,7 @@ export function applySessionRuntimeTransition(state, input = {}) {
           nowIso,
         });
 
-    const nextOccurrences = applyOccurrenceRuntimeStatus(
+    const nextOccurrences = applyOccurrenceRuntimeStatusForLaunch(
       occurrences,
       goals,
       occurrenceId,
@@ -392,7 +404,7 @@ export function applySessionRuntimeTransition(state, input = {}) {
       timerAccumulatedSec: elapsedSec,
       startedAt: current.startedAt || nowIso,
     };
-    nextOccurrences = applyOccurrenceRuntimeStatus(
+    nextOccurrences = applyOccurrenceRuntimeStatusForLaunch(
       occurrences,
       goals,
       occurrenceId,

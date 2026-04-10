@@ -249,7 +249,9 @@ export default function App() {
         dateKey: typeof dateKey === "string" && dateKey ? dateKey : null,
         categoryId: typeof categoryId === "string" && categoryId ? categoryId : null,
         blueprintSnapshot: null,
-        sessionRunbookV1: null,
+        sessionRunbook: null,
+        standardAdjustment: null,
+        guidedAdjustment: null,
         openedAtMs: Date.now(),
       });
       setTab("session", {

@@ -1,0 +1,292 @@
+.sessionLaunchSectionEyebrow--withIcon,
+.sessionLaunchSecondaryInner,
+.sessionLaunchPreparingIcon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sessionLaunchEyebrowIcon,
+.sessionLaunchSecondaryIcon,
+.sessionLaunchPreparingIcon {
+  color: color-mix(in srgb, var(--accent-primary) 78%, white 22%);
+}
+
+.sessionLaunchPreparingIcon {
+  position: relative;
+  z-index: 1;
+  width: 40px;
+  height: 40px;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  box-shadow: 0 10px 32px color-mix(in srgb, var(--accent-primary) 14%, transparent);
+}
+
+.sessionLaunchSecondaryInner {
+  justify-content: center;
+}
+
+.sessionGuidedPlan {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid var(--lovable-border);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0)),
+    var(--lovable-surface);
+  box-shadow: var(--lovable-shadow-card);
+}
+
+.sessionGuidedPlanCurrent {
+  display: grid;
+  gap: 10px;
+}
+
+.sessionGuidedPlanMeta,
+.sessionGuidedPlanCurrentItemMeta,
+.sessionGuidedPlanNextLabel,
+.sessionGuidedPlanStepMinutes,
+.sessionAdjustmentNoticeLabel {
+  font-size: var(--font-micro);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent-primary) 68%, white 32%);
+}
+
+.sessionGuidedPlanTitle {
+  font-size: clamp(1.75rem, 6vw, 2.3rem);
+  line-height: 1.04;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--text-primary);
+}
+
+.sessionGuidedPlanStepPurpose,
+.sessionGuidedPlanNextMeta,
+.sessionGuidedPlanStepText,
+.sessionGuidedPlanText,
+.sessionGuidedPlanSuccessCue,
+.sessionAdjustmentNoticeText,
+.sessionAdjustSheetSubtitle,
+.sessionAdjustOptionDescription,
+.sessionAdjustSheetCurrent,
+.sessionAdjustSheetEmpty {
+  font-size: var(--font-meta);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.sessionGuidedPlanCurrentItem,
+.sessionGuidedPlanNext {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.sessionGuidedPlanCurrentItemLabel,
+.sessionGuidedPlanNextValue {
+  font-size: var(--font-body-strong);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.sessionGuidedPlanProgress {
+  margin-top: 4px;
+}
+
+.sessionGuidedPlanSteps {
+  display: grid;
+  gap: 10px;
+}
+
+.sessionGuidedPlanStep {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.sessionGuidedPlanStepBody {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sessionGuidedPlanStepLabel {
+  font-size: var(--font-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.sessionAdjustmentNotice {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(143, 120, 255, 0.18);
+  background: rgba(143, 120, 255, 0.08);
+}
+
+.sessionAdjustmentNotice--inline {
+  padding: 12px 14px;
+}
+
+.sessionDockAdjustButton--guided {
+  border-color: rgba(143, 120, 255, 0.18);
+}
+
+.sessionAdjustSheet.modalPanel {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 28px 28px 0 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0)),
+    var(--lovable-surface);
+  box-shadow: var(--lovable-shadow-card);
+}
+
+.sessionAdjustSheetContent {
+  display: grid;
+  gap: 18px;
+  padding: 20px 20px 24px;
+}
+
+.sessionAdjustSheetHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sessionAdjustSheetHeaderText {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sessionAdjustSheetTitle {
+  font-size: clamp(1.9rem, 7vw, 2.5rem);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  color: var(--text-primary);
+}
+
+.sessionAdjustSheetHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sessionAdjustSheetCurrent,
+.sessionAdjustSheetEmpty {
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.sessionAdjustSheetChoices {
+  display: grid;
+  gap: 12px;
+}
+
+.sessionAdjustOption {
+  appearance: none;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  text-align: left;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    transform 150ms ease;
+}
+
+.sessionAdjustOption:hover {
+  border-color: rgba(143, 120, 255, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  transform: translateY(-1px);
+}
+
+.sessionAdjustOption.is-disabled,
+.sessionAdjustOption:disabled {
+  opacity: 0.56;
+  cursor: default;
+  transform: none;
+}
+
+.sessionAdjustOptionText {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sessionAdjustOptionTitle {
+  font-size: clamp(1.3rem, 5vw, 1.7rem);
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+
+.sessionAdjustOptionBadge {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(143, 120, 255, 0.16);
+  background: rgba(143, 120, 255, 0.08);
+  font-size: var(--font-meta);
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (max-width: 767px) {
+  .sessionGuidedPlan {
+    padding: 20px;
+    gap: 14px;
+  }
+
+  .sessionGuidedPlanTitle {
+    font-size: clamp(1.55rem, 8vw, 1.95rem);
+  }
+
+  .sessionAdjustSheetHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sessionAdjustSheetHeaderActions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .sessionAdjustOption {
+    flex-direction: column;
+  }
+
+  .sessionAdjustOptionBadge {
+    align-self: flex-start;
+  }
+}
