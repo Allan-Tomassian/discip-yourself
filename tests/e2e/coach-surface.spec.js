@@ -1,8 +1,11 @@
 import { test, expect, devices } from "@playwright/test";
 import { appendCoachConversationMessages } from "../../src/features/coach/coachStorage.js";
+import { buildLocalUserDataKey } from "../../src/data/userDataApi.js";
+import { LS_KEY } from "../../src/utils/storage.js";
 import { buildBaseState, seedState } from "./utils/seed.js";
 
 const iPhone13 = devices["iPhone 13"];
+const E2E_USER_DATA_KEY = buildLocalUserDataKey("e2e-user-id");
 
 test.use({
   viewport: iPhone13.viewport,
@@ -179,6 +182,125 @@ function buildCoachCreatedProposalState() {
   return state;
 }
 
+function buildFreeConversationReply() {
+  return {
+    kind: "conversation",
+    mode: "free",
+    decisionSource: "rules",
+    message: "Commence par nommer le prochain pas concret à fermer aujourd'hui.",
+    primaryAction: null,
+    secondaryAction: null,
+    proposal: null,
+    meta: {
+      coachVersion: "v1",
+      requestId: "req_free_pending",
+      selectedDateKey: "2026-04-10",
+      activeCategoryId: "cat_business",
+      quotaRemaining: 3,
+      fallbackReason: "none",
+      messagePreview: "Clarifier mon prochain pas",
+    },
+  };
+}
+
+function buildPlanConversationReply(today) {
+  return {
+    kind: "conversation",
+    mode: "plan",
+    decisionSource: "rules",
+    message: "Je te propose un plan concret pour aujourd'hui.",
+    primaryAction: null,
+    secondaryAction: null,
+    proposal: {
+      kind: "assistant",
+      categoryDraft: {
+        mode: "existing",
+        id: "cat_business",
+        label: "Business",
+      },
+      outcomeDraft: {
+        title: "Lancer la nouvelle page d'accueil",
+      },
+      actionDrafts: [
+        {
+          title: "Finaliser la section hero",
+          oneOffDate: today,
+          startTime: "10:00",
+        },
+        {
+          title: "Vérifier le CTA principal",
+          oneOffDate: today,
+          startTime: "11:00",
+        },
+      ],
+      unresolvedQuestions: [],
+      requiresValidation: true,
+    },
+    meta: {
+      coachVersion: "v1",
+      requestId: "req_plan_pending",
+      selectedDateKey: today,
+      activeCategoryId: "cat_business",
+      quotaRemaining: 3,
+      fallbackReason: "none",
+      messagePreview: "Aide-moi à structurer ce que je veux faire avancer.",
+    },
+  };
+}
+
+async function installDelayedCoachReply(page, responseBody, { delayMs = 1800 } = {}) {
+  await page.addInitScript(() => {
+    globalThis.process = globalThis.process || {};
+    globalThis.process.env = {
+      ...(globalThis.process.env || {}),
+      VITE_AI_BACKEND_URL: globalThis.location.origin,
+    };
+  });
+
+  await page.route("**/ai/chat", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(responseBody),
+    });
+  });
+}
+
+async function readPersistedCoachMessages(page) {
+  return page.evaluate(
+    ({ lsKey, userDataKey }) => {
+      const parse = (key) => {
+        try {
+          return JSON.parse(localStorage.getItem(key) || "null");
+        } catch {
+          return null;
+        }
+      };
+      const userScoped = parse(userDataKey);
+      const localScoped = parse(lsKey);
+      const source =
+        userScoped?.coach_conversations_v1?.conversations?.length
+          ? userScoped
+          : localScoped?.coach_conversations_v1?.conversations?.length
+            ? localScoped
+            : userScoped || localScoped || {};
+      const conversations = Array.isArray(source?.coach_conversations_v1?.conversations)
+        ? source.coach_conversations_v1.conversations
+        : [];
+      const activeConversation = conversations[0] || null;
+      const messages = Array.isArray(activeConversation?.messages) ? activeConversation.messages : [];
+      return {
+        conversationCount: conversations.length,
+        totalMessages: messages.length,
+        assistantMessages: messages.filter((message) => message?.role === "assistant").length,
+        userMessages: messages.filter((message) => message?.role === "user").length,
+      };
+    },
+    { lsKey: LS_KEY, userDataKey: E2E_USER_DATA_KEY }
+  );
+}
+
 async function attachScreenshot(page, testInfo, name) {
   const path = testInfo.outputPath(name);
   await page.screenshot({ path, fullPage: false });
@@ -301,6 +423,67 @@ test("coach created proposal stays the single success surface", async ({ page },
   await expect(page.getByText("Lecture des catégories")).toHaveCount(0);
   expect(await page.locator(".lovableCoachBubble.is-assistant").count()).toBe(1);
   await attachScreenshot(page, testInfo, "coach-success-single-surface.png");
+});
+
+test("coach free mode shows a non-persisted pending bubble", async ({ page }, testInfo) => {
+  await installDelayedCoachReply(page, buildFreeConversationReply());
+  await openCoach(page, buildBaseState({ withContent: true }));
+
+  await page.locator(".lovableCoachTextarea").fill("Clarifie mon prochain pas.");
+  await page.evaluate(() => {
+    document.querySelector(".lovableCoachComposerSend")?.click();
+  });
+  await expect(page.locator(".lovableCoachTextarea")).toHaveValue("");
+  await expect(page.locator(".lovableCoachBubble.is-user").last()).toContainText("Clarifie mon prochain pas.");
+
+  await expect(page.locator(".coachSurfacePending--free")).toBeVisible();
+  await expect(page.locator(".coachSurfacePending--free .coachSurfacePendingLabel")).toHaveCount(0);
+  await expect(page.locator(".coachSurfacePending--free .coachSurfacePendingDot")).toHaveCount(3);
+  await expect(page.getByText("Lecture des catégories")).toHaveCount(0);
+  await expect(page.getByText("Chargement")).toHaveCount(0);
+  await expect(page.getByText("Je réfléchis")).toHaveCount(0);
+  await attachScreenshot(page, testInfo, "coach-free-pending.png");
+
+  await expect(page.getByText("Commence par nommer le prochain pas concret à fermer aujourd'hui.")).toBeVisible();
+  await expect(page.locator(".coachSurfacePending")).toHaveCount(0);
+  expect(await readPersistedCoachMessages(page)).toMatchObject({
+    assistantMessages: 1,
+    userMessages: 1,
+  });
+});
+
+test("coach plan mode shows a pending plan state without persisting it", async ({ page }, testInfo) => {
+  const state = buildBaseState({ withContent: true });
+  const today = state.ui?.selectedDate || new Date().toISOString().slice(0, 10);
+  await installDelayedCoachReply(page, buildPlanConversationReply(today));
+  await openCoach(page, state);
+
+  await page.locator(".coachSurfaceComposerPlus").click();
+  await page.getByRole("menuitem", { name: /Structurer/i }).click();
+  await expect(page.getByText("Plan actif")).toBeVisible();
+  await page.evaluate(() => {
+    document.querySelector(".lovableCoachComposerSend")?.click();
+  });
+  await expect(page.locator(".lovableCoachTextarea")).toHaveValue("");
+  await expect(page.locator(".lovableCoachBubble.is-user").last()).toContainText(
+    "Aide-moi à structurer ce que je veux faire avancer."
+  );
+
+  await expect(page.locator(".coachSurfacePending--plan")).toBeVisible();
+  await expect(page.getByText("Préparation du plan")).toBeVisible();
+  await expect(page.locator(".coachSurfacePending--plan .coachSurfacePendingDot")).toHaveCount(3);
+  await expect(page.getByText("Lecture des catégories")).toHaveCount(0);
+  await expect(page.getByText("Chargement")).toHaveCount(0);
+  await expect(page.getByText("Je réfléchis")).toHaveCount(0);
+  await attachScreenshot(page, testInfo, "coach-plan-pending.png");
+
+  await expect(page.getByText("Plan proposé")).toBeVisible();
+  await expect(page.locator(".coachSurfacePending")).toHaveCount(0);
+  await attachScreenshot(page, testInfo, "coach-plan-pending-clean.png");
+  expect(await readPersistedCoachMessages(page)).toMatchObject({
+    assistantMessages: 1,
+    userMessages: 1,
+  });
 });
 
 test("coach plus menu triggers structurer without moving layout", async ({ page }, testInfo) => {

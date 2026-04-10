@@ -6,6 +6,7 @@ import {
   buildCoachRequestedModeIntentKey,
   buildCoachRequestedPrefillIntentKey,
   buildStructuringIntentTransition,
+  deriveCoachPendingUi,
   normalizeCoachRequestedMode,
   normalizeCoachRequestedPrefill,
   resolveAssistantReplyPlanningState,
@@ -301,6 +302,46 @@ describe("CoachPanel mode control", () => {
       entryPoint: "composer_structuring",
       intent: null,
       autoActivation: "blocked_by_user",
+    });
+  });
+
+  it("n'expose aucun pending UI quand le coach ne charge pas", () => {
+    expect(deriveCoachPendingUi({ loading: false, planningState: { mode: "free" } })).toBeNull();
+  });
+
+  it("expose un pending compact sans texte en mode free", () => {
+    expect(
+      deriveCoachPendingUi({
+        loading: true,
+        planningState: {
+          mode: "free",
+          entryPoint: null,
+          intent: null,
+          autoActivation: "allowed",
+        },
+      })
+    ).toEqual({
+      variant: "free",
+      label: "",
+      ariaLabel: "Le coach prépare sa réponse",
+    });
+  });
+
+  it("expose un pending éditorial en mode plan", () => {
+    expect(
+      deriveCoachPendingUi({
+        loading: true,
+        planningState: {
+          mode: "plan",
+          entryPoint: "composer_structuring",
+          intent: "structuring",
+          autoActivation: "allowed",
+        },
+      })
+    ).toEqual({
+      variant: "plan",
+      label: "Préparation du plan",
+      ariaLabel: "Le coach prépare le plan",
     });
   });
 });

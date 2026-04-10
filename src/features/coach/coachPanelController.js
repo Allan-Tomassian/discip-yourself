@@ -217,6 +217,23 @@ export function resolveAssistantReplyPlanningState({
   });
 }
 
+export function deriveCoachPendingUi({ loading = false, planningState = null } = {}) {
+  if (!loading) return null;
+  const safePlanningState = normalizeCoachPlanningState(planningState, "free");
+  if (safePlanningState.mode === "plan") {
+    return {
+      variant: "plan",
+      label: COACH_SCREEN_COPY.planPendingLabel,
+      ariaLabel: COACH_SCREEN_COPY.planPendingAriaLabel,
+    };
+  }
+  return {
+    variant: "free",
+    label: "",
+    ariaLabel: COACH_SCREEN_COPY.freePendingAriaLabel,
+  };
+}
+
 function buildCoachWorkIntentLabel(type) {
   if (type === "structuring") return COACH_SCREEN_COPY.structuringModeLabel;
   if (type === "quick_create") return COACH_SCREEN_COPY.quickCreateLabel;
@@ -388,6 +405,10 @@ export function useCoachConversationController({
   const lastAppliedRequestedPrefillIntentRef = useRef("");
   const wasOpenRef = useRef(Boolean(open));
   const [openCycle, setOpenCycle] = useState(() => (open ? 1 : 0));
+  const pendingUi = useMemo(
+    () => deriveCoachPendingUi({ loading, planningState }),
+    [loading, planningState]
+  );
 
   const contextSnapshot = useMemo(
     () => getCoachContextSnapshot({ data: safeData, surfaceTab }),
@@ -1079,6 +1100,7 @@ export function useCoachConversationController({
     setDraft,
     error,
     loading,
+    pendingUi,
     currentConversation,
     conversations,
     activeConversationId,

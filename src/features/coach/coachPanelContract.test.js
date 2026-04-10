@@ -44,6 +44,8 @@ describe("coach panel contract", () => {
     expect(coachPage).toContain("entry.displayText");
     expect(coachPage).toContain("COACH_SCREEN_COPY.createdPlanTitle");
     expect(coachPage).toContain("COACH_SCREEN_COPY.viewInApp");
+    expect(coachPage).toContain("<CoachPendingState pendingUi={controller.pendingUi} />");
+    expect(coachPage).toContain("coachSurfacePending");
     expect(coachPage).not.toContain("controller.loadingStageLabel");
     expect(coachPage).not.toContain("COACH_SCREEN_COPY.thinking");
     expect(coachPage).not.toContain("composerHeight");
@@ -58,10 +60,14 @@ describe("coach panel contract", () => {
     expect(copy).toContain('composerPlusAriaLabel: "Ouvrir les intentions du coach"');
     expect(copy).toContain('createdPlanTitle: "Plan créé"');
     expect(copy).toContain('viewInApp: "Voir dans l’app"');
+    expect(copy).toContain('planPendingLabel: "Préparation du plan"');
     expect(coachSurfaceCss).toContain(".coachSurfaceComposerPlus");
     expect(coachSurfaceCss).toContain(".coachComposerMenuPanel");
     expect(coachSurfaceCss).toContain(".coachSurfacePlanPill");
     expect(coachSurfaceCss).toContain(".lovableCoachDraft.is-created");
+    expect(coachSurfaceCss).toContain(".coachSurfacePending--free");
+    expect(coachSurfaceCss).toContain(".coachSurfacePending--plan");
+    expect(coachSurfaceCss).toContain(".coachSurfacePendingDot");
     expect(coachSurfaceCss).not.toContain(".coachSurfaceDock");
     expect(coachModel).toContain("resolveCoachMessageDisplayText");
     expect(coachModel).toContain("displayText:");
@@ -81,6 +87,8 @@ describe("coach panel contract", () => {
     expect(coachController).toContain("dismissWorkIntent");
     expect(coachController).toContain("dismissPlanningState");
     expect(coachController).toContain("coachMessageCreatedAt: entry.createdAt");
+    expect(coachController).toContain("deriveCoachPendingUi");
+    expect(coachController).toContain("pendingUi");
     expect(coachController).toContain('nextMode: "free"');
     expect(coachController).not.toContain('const successMessage = buildCoachConversationMessage("assistant", summaryText');
     expect(coachController).not.toContain('setTab?.("coach-chat")');

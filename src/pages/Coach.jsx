@@ -23,6 +23,26 @@ function buildCreatedViewAction(reply) {
   };
 }
 
+function CoachPendingState({ pendingUi }) {
+  if (!pendingUi) return null;
+  const isPlan = pendingUi.variant === "plan";
+  return (
+    <div
+      className={`lovableCard ${isPlan ? "coachSurfacePending coachSurfacePending--plan" : "lovableCoachBubble is-assistant coachSurfacePending coachSurfacePending--free"}`}
+      role="status"
+      aria-live="polite"
+      aria-label={pendingUi.ariaLabel}
+    >
+      {isPlan ? <div className="coachSurfacePendingLabel">{pendingUi.label}</div> : null}
+      <div className="coachSurfacePendingDots" aria-hidden="true">
+        <span className="coachSurfacePendingDot" />
+        <span className="coachSurfacePendingDot" />
+        <span className="coachSurfacePendingDot" />
+      </div>
+    </div>
+  );
+}
+
 export default function Coach({
   data,
   setData,
@@ -406,6 +426,7 @@ export default function Coach({
               </div>
             );
           })}
+          <CoachPendingState pendingUi={controller.pendingUi} />
         </div>
 
         <div ref={composerRef} className="lovableCoachComposerWrap">
