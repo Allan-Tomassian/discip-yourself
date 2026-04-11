@@ -6,8 +6,8 @@
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding-top: calc(14px + var(--safe-top));
-  padding-bottom: calc(24px + var(--safe-bottom));
+  padding-top: calc(10px + var(--safe-top));
+  padding-bottom: calc(18px + var(--safe-bottom));
 }
 
 .sessionScreen--immersive .pageContent {
@@ -25,18 +25,18 @@
 }
 
 .sessionScreenBody--launch {
-  gap: clamp(28px, 6vh, 72px);
+  gap: clamp(20px, 5vh, 48px);
 }
 
 .sessionScreenBody--runtime {
-  gap: 20px;
+  gap: 14px;
 }
 
 .sessionTopChrome {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 40px;
+  min-height: 36px;
 }
 
 .sessionTopChrome--launch {
@@ -44,20 +44,20 @@
 }
 
 .sessionChromeButton {
-  min-height: 36px;
+  min-height: 34px;
   border-color: transparent;
   background: transparent;
   color: var(--text-primary);
 }
 
 .sessionChromeButton--close {
-  min-width: 40px;
-  width: 40px;
+  min-width: 42px;
+  width: 42px;
   padding: 0;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.02);
-  font-size: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.015);
+  font-size: 24px;
   line-height: 1;
 }
 
@@ -69,9 +69,9 @@
 .sessionTopChromeMeta {
   font-size: var(--font-micro);
   font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--accent-primary) 72%, white 28%);
+  color: color-mix(in srgb, var(--accent-primary) 62%, white 38%);
 }
 
 .sessionViewStack,
@@ -84,19 +84,19 @@
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
 }
 
 .sessionRuntimeHero {
   display: grid;
   justify-items: center;
-  gap: 12px;
+  gap: 10px;
   text-align: center;
-  padding-top: clamp(12px, 6vh, 56px);
+  padding-top: clamp(6px, 3.5vh, 28px);
 }
 
 .sessionRuntimeTimer {
-  font-size: clamp(4.4rem, 19vw, 7.25rem);
+  font-size: clamp(4.55rem, 20vw, 7.15rem);
   line-height: 0.92;
   font-weight: 700;
   letter-spacing: -0.08em;
@@ -106,7 +106,7 @@
 .sessionRuntimeProgressRow {
   display: inline-flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   color: var(--text-secondary);
 }
 
@@ -140,12 +140,12 @@
 }
 
 .sessionRuntimeTitle {
-  font-size: clamp(1.05rem, 4vw, 1.35rem);
-  line-height: 1.35;
-  color: color-mix(in srgb, var(--text-primary) 68%, white 32%);
+  max-width: 18ch;
+  font-size: clamp(1rem, 3.7vw, 1.18rem);
+  line-height: 1.32;
+  color: color-mix(in srgb, var(--text-primary) 60%, white 40%);
 }
 
-.sessionRuntimeBrief,
 .sessionLaunchCard,
 .sessionSupplementCard,
 .sessionFallbackCard {
@@ -159,7 +159,6 @@
   box-shadow: var(--lovable-shadow-card);
 }
 
-.sessionRuntimeBrief,
 .sessionSupplementCard,
 .sessionFallbackCard,
 .sessionLaunchCard {
@@ -168,7 +167,12 @@
 
 .sessionRuntimeBrief {
   display: grid;
-  gap: 18px;
+  gap: 14px;
+  padding: 4px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .sessionRuntimeBriefHeader {
@@ -176,21 +180,33 @@
   gap: 10px;
 }
 
+.sessionRuntimeBriefEyebrowRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .sessionRuntimeBriefTitle {
-  font-size: var(--font-body);
+  font-size: var(--font-micro);
   font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent-primary) 68%, white 32%);
 }
 
 .sessionRuntimeBriefRows {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .sessionRuntimeBriefRow {
   display: grid;
-  gap: 8px;
-  padding-top: 14px;
+  grid-template-columns: minmax(64px, 84px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -208,7 +224,7 @@
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--accent-primary) 72%, white 28%);
+  color: color-mix(in srgb, var(--accent-primary) 68%, white 32%);
 }
 
 .sessionRuntimeBriefText,
@@ -218,53 +234,67 @@
 .sessionMeta,
 .sessionSupplementHint {
   font-size: var(--font-body);
-  line-height: 1.45;
-  color: var(--text-primary);
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--text-primary) 92%, white 8%);
 }
 
-.sessionBehaviorCueSlot {
-  display: grid;
+.sessionRuntimeBriefCue.behaviorCue {
+  padding: 5px 9px;
+  gap: 6px;
+  font-size: var(--font-meta);
 }
 
 .sessionRuntimeMetaStrip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  padding: 0 4px;
+  gap: 10px;
+  padding: 2px 0 0;
 }
 
 .sessionRuntimeMetaItem {
   display: grid;
-  gap: 6px;
+  gap: 3px;
   min-width: 0;
 }
 
 .sessionRuntimeMetaValue {
-  font-size: var(--font-body-strong);
+  font-size: var(--font-body);
   font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
+  color: color-mix(in srgb, var(--text-primary) 90%, white 10%);
 }
 
 .sessionActionDock {
   margin-top: auto;
   display: grid;
-  gap: 12px;
-  padding: 18px;
-  border: 1px solid var(--lovable-border);
-  border-radius: 28px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0)),
-    rgba(17, 17, 26, 0.94);
-  box-shadow: var(--lovable-shadow-card);
+  gap: 10px;
+  padding-top: 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .sessionDockAdjustButton,
+.sessionDockToolsButton,
 .sessionDockPrimaryAction,
 .sessionDockSecondaryAction {
   width: 100%;
 }
 
+.sessionDockUtilityRow {
+  display: grid;
+  gap: 10px;
+}
+
+.sessionDockUtilityRow.has-tools {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .sessionDockAdjustButton {
+  min-height: 48px;
+}
+
+.sessionDockToolsButton {
   min-height: 48px;
 }
 
@@ -273,7 +303,7 @@
 .sessionSupplementActions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .sessionDockSecondaryRow > :last-child:nth-child(odd),
@@ -282,11 +312,11 @@
 }
 
 .sessionDockPrimaryAction {
-  min-height: 52px;
+  min-height: 56px;
 }
 
 .sessionDockSecondaryAction {
-  min-height: 46px;
+  min-height: 44px;
 }
 
 .sessionSupplementCard {
@@ -331,27 +361,28 @@
 
 .sessionLaunchViewStack--ready {
   justify-content: center;
-  gap: 22px;
+  gap: 18px;
 }
 
 .sessionLaunchViewStack--plan {
-  justify-content: center;
-  gap: 18px;
+  justify-content: flex-start;
+  gap: 16px;
 }
 
 .sessionLaunchHero {
   display: grid;
   justify-items: center;
-  gap: 12px;
+  gap: 10px;
   text-align: center;
 }
 
 .sessionLaunchHero--ready {
-  gap: 14px;
+  gap: 10px;
 }
 
 .sessionLaunchTitle {
-  font-size: clamp(2.35rem, 12vw, 4.2rem);
+  max-width: 11ch;
+  font-size: clamp(1.95rem, 10.6vw, 3.45rem);
   line-height: 0.98;
   font-weight: 700;
   letter-spacing: -0.06em;
@@ -384,7 +415,9 @@
 
 .sessionLaunchBriefRow {
   display: grid;
-  gap: 8px;
+  grid-template-columns: minmax(58px, 72px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
   padding-top: 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
@@ -400,6 +433,11 @@
   gap: 12px;
 }
 
+.sessionLaunchFooter {
+  margin-top: auto;
+  padding-top: clamp(12px, 4vh, 28px);
+}
+
 .sessionLaunchPrimary,
 .sessionLaunchSecondary {
   width: 100%;
@@ -413,7 +451,7 @@
   justify-self: center;
   padding: 0;
   font: inherit;
-  color: var(--text-secondary);
+  color: color-mix(in srgb, var(--text-secondary) 88%, white 12%);
 }
 
 .sessionLaunchPreparing {
@@ -421,30 +459,41 @@
   display: grid;
   place-content: center;
   justify-items: center;
-  gap: 12px;
+  gap: 10px;
   text-align: center;
 }
 
 .sessionLaunchPreparingOrb {
   position: relative;
-  width: 92px;
-  height: 92px;
+  width: 104px;
+  height: 104px;
   display: grid;
   place-items: center;
 }
 
-.sessionLaunchPreparingRing {
+.sessionLaunchPreparingHalo {
   position: absolute;
-  inset: 0;
+  inset: 8px;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 22%, transparent);
-  box-shadow: 0 0 28px color-mix(in srgb, var(--accent-primary) 14%, transparent);
-  animation: sessionLaunchPulse 1.8s ease-in-out infinite;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  box-shadow: 0 0 36px color-mix(in srgb, var(--accent-primary) 12%, transparent);
+  transform-origin: center;
+  animation: sessionLaunchHaloOuter 3.6s ease-in-out infinite;
 }
 
-.sessionLaunchPreparingRing--inner {
-  inset: 16px;
-  animation-delay: 0.24s;
+.sessionLaunchPreparingHalo--inner {
+  inset: 22px;
+  border-color: color-mix(in srgb, var(--accent-primary) 24%, transparent);
+  animation-name: sessionLaunchHaloInner;
+  animation-duration: 2.7s;
+  animation-delay: 0.22s;
+}
+
+.sessionLaunchPreparingCore {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
 }
 
 .sessionLaunchPreparingTitle {
@@ -493,49 +542,54 @@
   color: var(--text-primary);
 }
 
-@keyframes sessionLaunchPulse {
+@keyframes sessionLaunchHaloOuter {
   0%,
   100% {
-    opacity: 0.35;
+    opacity: 0.26;
     transform: scale(0.98);
   }
+  45% {
+    opacity: 0.58;
+    transform: scale(1.035);
+  }
+}
+
+@keyframes sessionLaunchHaloInner {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: scale(0.985);
+  }
   50% {
-    opacity: 1;
+    opacity: 0.82;
     transform: scale(1.02);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sessionLaunchPreparingRing {
+  .sessionLaunchPreparingHalo {
     animation: none;
   }
 }
 
 @media (max-width: 767px) {
   .sessionScreen--immersive .container {
-    padding-top: calc(12px + var(--safe-top));
-    padding-bottom: calc(20px + var(--safe-bottom));
+    padding-top: calc(10px + var(--safe-top));
+    padding-bottom: calc(16px + var(--safe-bottom));
   }
 
   .sessionRuntimeTimer {
-    font-size: clamp(4rem, 24vw, 5.8rem);
+    font-size: clamp(4.1rem, 24vw, 5.95rem);
   }
 
-  .sessionRuntimeMetaStrip {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    padding: 0;
-  }
-
-  .sessionDockPrimaryRow,
-  .sessionDockSecondaryRow,
-  .sessionSupplementActions,
-  .sessionSupplementActions--feedback {
-    grid-template-columns: 1fr;
+  .sessionRuntimeBriefRow,
+  .sessionLaunchBriefRow {
+    grid-template-columns: minmax(56px, 68px) minmax(0, 1fr);
+    gap: 12px;
   }
 
   .sessionLaunchTitle {
-    font-size: clamp(2rem, 14vw, 3.4rem);
+    font-size: clamp(1.85rem, 13vw, 3.1rem);
   }
 
   .sessionLaunchPlanStep {

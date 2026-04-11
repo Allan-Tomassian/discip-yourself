@@ -36,7 +36,9 @@ describe("session launch contract", () => {
     const session = readSrc("pages/Session.jsx");
     const launchView = readSrc("components/session/SessionLaunchView.jsx");
     const adjustSheet = readSrc("components/session/SessionAdjustSheet.jsx");
+    const toolsSheet = readSrc("components/session/SessionToolsSheet.jsx");
     const runbook = readSrc("features/session/sessionRunbook.js");
+    const tools = readSrc("features/session/sessionTools.js");
 
     expect(session).toContain('launchPhase === "ready"');
     expect(session).toContain('launchPhase === "preparing"');
@@ -50,6 +52,9 @@ describe("session launch contract", () => {
     expect(session).toContain("buildSessionRunbookV1({");
     expect(session).toContain("requestAiSessionGuidance({");
     expect(session).toContain("SessionAdjustSheet");
+    expect(session).toContain("SessionToolsSheet");
+    expect(session).toContain("sessionToolPlan");
+    expect(session).toContain("sessionToolState");
     expect(launchView).toContain('data-testid="session-launch-ready"');
     expect(launchView).toContain('data-testid="session-launch-preparing"');
     expect(launchView).toContain('data-testid="session-launch-plan-ready"');
@@ -60,6 +65,8 @@ describe("session launch contract", () => {
     expect(launchView).toContain("CoachAssistIcon");
     expect(launchView).not.toContain("Runbook prêt");
     expect(adjustSheet).toContain('placement="bottom"');
+    expect(toolsSheet).toContain('data-testid="session-tools-sheet"');
+    expect(tools).toContain("buildSessionToolPlan");
     expect(adjustSheet).not.toContain("ChoiceCard");
     expect(runbook).toContain('source: "deterministic_fallback"');
   });
@@ -72,5 +79,6 @@ describe("session launch contract", () => {
     expect(focusView).toContain('data-testid="session-guided-plan"');
     expect(focusView).toContain("Plan du bloc");
     expect(focusView).toContain("Réajuster");
+    expect(focusView).toContain("Outils");
   });
 });

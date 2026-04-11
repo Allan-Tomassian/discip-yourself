@@ -23,7 +23,6 @@ function renderProgressDots(total, currentIndex) {
 
 export default function FocusSessionView({
   title = "Session",
-  categoryName = "Catégorie",
   actionProtocol = null,
   guidedPlan = null,
   adjustmentLabel = "",
@@ -43,8 +42,11 @@ export default function FocusSessionView({
   onBlock,
   onOpenReport,
   onOpenAdjust,
+  onOpenTools,
   showAdjust = false,
+  showTools = false,
   adjustMode = "standard",
+  toolTray = null,
   showFeedback = false,
   feedbackLevel = "",
   feedbackText = "",
@@ -80,6 +82,7 @@ export default function FocusSessionView({
   const previewItems = currentStepItems
     .filter((item) => item?.id && item.id !== currentItem?.id && item.state !== "done")
     .slice(0, 2);
+  const inlineBehaviorCue = behaviorCue && !guidedPlan && !isFinal ? behaviorCue : null;
   const runtimeStats = [
     { label: "Prévu", value: plannedDurationLabel },
     { label: "Écoulé", value: elapsedLabel },
@@ -102,9 +105,6 @@ export default function FocusSessionView({
           </div>
         ) : null}
         <div className="sessionRuntimeTitle">{title}</div>
-        {!guidedPlan && categoryName ? (
-          <div className="sessionRuntimeSubtitle">{categoryName}</div>
-        ) : null}
       </div>
 
       {guidedPlan && !isFinal ? (
@@ -174,7 +174,10 @@ export default function FocusSessionView({
       ) : protocolItems.length ? (
         <div className="sessionRuntimeBrief" data-testid="session-action-protocol">
           <div className="sessionRuntimeBriefHeader">
-            <div className="sessionRuntimeBriefTitle">Bloc prêt</div>
+            <div className="sessionRuntimeBriefEyebrowRow">
+              <div className="sessionRuntimeBriefTitle">Bloc prêt</div>
+              {inlineBehaviorCue ? <BehaviorCue cue={inlineBehaviorCue} className="sessionRuntimeBriefCue" /> : null}
+            </div>
             {adjustmentSummary ? (
               <div className="sessionAdjustmentNotice sessionAdjustmentNotice--inline" data-testid="session-adjustment-summary">
                 <span className="sessionAdjustmentNoticeLabel">{adjustmentLabel || "Ajustée"}</span>
@@ -193,8 +196,6 @@ export default function FocusSessionView({
         </div>
       ) : null}
 
-      {behaviorCue ? <div className="sessionBehaviorCueSlot"><BehaviorCue cue={behaviorCue} /></div> : null}
-
       {runtimeStats.length ? (
         <div className="sessionRuntimeMetaStrip">
           {runtimeStats.map((item) => (
@@ -206,16 +207,34 @@ export default function FocusSessionView({
         </div>
       ) : null}
 
+      {toolTray}
+
       {!isFinal ? (
-        <div className="sessionActionDock" data-testid="session-action-dock">
-          {showAdjust ? (
-            <GhostButton
-              type="button"
-              className={`sessionDockAdjustButton${adjustMode === "guided" ? " sessionDockAdjustButton--guided" : ""}`}
-              onClick={() => onOpenAdjust?.()}
-            >
-              Réajuster
-            </GhostButton>
+        <div
+          className={`sessionActionDock${guidedPlan && !isFinal ? " sessionActionDock--guided" : " sessionActionDock--standard"}`}
+          data-testid="session-action-dock"
+        >
+          {showAdjust || showTools ? (
+            <div className={`sessionDockUtilityRow${showTools ? " has-tools" : ""}`}>
+              {showAdjust ? (
+                <GhostButton
+                  type="button"
+                  className={`sessionDockAdjustButton${adjustMode === "guided" ? " sessionDockAdjustButton--guided" : ""}`}
+                  onClick={() => onOpenAdjust?.()}
+                >
+                  Réajuster
+                </GhostButton>
+              ) : null}
+              {showTools ? (
+                <GhostButton
+                  type="button"
+                  className="sessionDockToolsButton"
+                  onClick={() => onOpenTools?.()}
+                >
+                  Outils
+                </GhostButton>
+              ) : null}
+            </div>
           ) : null}
           <div className="sessionDockPrimaryRow">
             <PrimaryButton

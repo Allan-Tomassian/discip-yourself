@@ -38,10 +38,12 @@ export default function SessionLaunchView({
         data-testid="session-launch-preparing"
       >
         <div className="sessionLaunchPreparingOrb" aria-hidden="true">
-          <span className="sessionLaunchPreparingRing" />
-          <span className="sessionLaunchPreparingRing sessionLaunchPreparingRing--inner" />
-          <span className="sessionLaunchPreparingIcon">
-            <CoachAssistIcon size={26} />
+          <span className="sessionLaunchPreparingHalo sessionLaunchPreparingHalo--outer" />
+          <span className="sessionLaunchPreparingHalo sessionLaunchPreparingHalo--inner" />
+          <span className="sessionLaunchPreparingCore">
+            <span className="sessionAssistBadge sessionAssistBadge--orb">
+              <CoachAssistIcon className="sessionLaunchPreparingIcon" size={20} />
+            </span>
           </span>
         </div>
         <div className="sessionLaunchPreparingTitle">Préparation en cours</div>
@@ -55,7 +57,9 @@ export default function SessionLaunchView({
       <div className="sessionLaunchViewStack sessionLaunchViewStack--plan" data-testid="session-launch-plan-ready">
         <div className="sessionLaunchHero sessionLaunchHero--plan">
           <div className="sessionLaunchSectionEyebrow sessionLaunchSectionEyebrow--withIcon">
-            <CoachAssistIcon className="sessionLaunchEyebrowIcon" size={14} />
+            <span className="sessionAssistBadge sessionAssistBadge--eyebrow">
+              <CoachAssistIcon className="sessionLaunchEyebrowIcon" size={12} />
+            </span>
             <span>Plan prêt</span>
           </div>
           <div className="sessionLaunchHeroMeta">{title}</div>
@@ -120,7 +124,9 @@ export default function SessionLaunchView({
           </PrimaryButton>
           <GhostButton type="button" className="sessionLaunchSecondary" onClick={onPrepareGuided}>
             <span className="sessionLaunchSecondaryInner">
-              <CoachAssistIcon className="sessionLaunchSecondaryIcon" size={16} />
+              <span className="sessionAssistBadge sessionAssistBadge--cta">
+                <CoachAssistIcon className="sessionLaunchSecondaryIcon" size={13} />
+              </span>
               <span>Aller plus loin</span>
             </span>
           </GhostButton>

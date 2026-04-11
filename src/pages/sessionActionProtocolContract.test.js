@@ -18,12 +18,14 @@ describe("session action protocol contract", () => {
     expect(session).toContain("deriveActionProtocol({");
     expect(session).toContain("actionProtocol={effectiveActionProtocol}");
     expect(session).toContain("guidedPlan={");
+    expect(session).toContain("showTools={");
     expect(focusView).toContain('data-testid="session-action-protocol"');
     expect(focusView).toContain('data-testid="session-guided-plan"');
     expect(focusView).toContain('label: "Pourquoi"');
     expect(focusView).toContain('label: "Départ"');
     expect(focusView).toContain('label: "Si blocage"');
     expect(focusView).toContain('label: "Réussi quand"');
+    expect(focusView).toContain("sessionDockToolsButton");
     expect(protocol).toContain('return bestScore > 0 ? bestType : "generic"');
   });
 });

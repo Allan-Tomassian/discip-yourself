@@ -252,6 +252,8 @@ export default function App() {
         sessionRunbook: null,
         standardAdjustment: null,
         guidedAdjustment: null,
+        sessionToolPlan: null,
+        sessionToolState: null,
         openedAtMs: Date.now(),
       });
       setTab("session", {

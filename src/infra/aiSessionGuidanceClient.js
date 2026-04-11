@@ -2,7 +2,7 @@ import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnost
 import { readAiBackendBaseUrl } from "./aiNowClient";
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
-const GUIDANCE_MODES = new Set(["prepare", "adjust"]);
+const GUIDANCE_MODES = new Set(["prepare", "adjust", "tool"]);
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -30,7 +30,7 @@ export function normalizeAiSessionGuidancePayload(input) {
   const source = isPlainObject(input) ? input : {};
   const mode = typeof source.mode === "string" && GUIDANCE_MODES.has(source.mode) ? source.mode : "";
   if (!mode) {
-    const error = new Error("mode must be prepare or adjust");
+    const error = new Error("mode must be prepare, adjust, or tool");
     error.code = "INVALID_REQUEST";
     throw error;
   }
@@ -50,6 +50,13 @@ export function normalizeAiSessionGuidancePayload(input) {
     throw error;
   }
 
+  const toolId = typeof source.toolId === "string" ? source.toolId.trim() : "";
+  if (mode === "tool" && !toolId) {
+    const error = new Error("toolId is required");
+    error.code = "INVALID_REQUEST";
+    throw error;
+  }
+
   return {
     mode,
     dateKey,
@@ -59,6 +66,7 @@ export function normalizeAiSessionGuidancePayload(input) {
     blueprintSnapshot: isPlainObject(source.blueprintSnapshot) ? source.blueprintSnapshot : null,
     fallbackRunbook: isPlainObject(source.fallbackRunbook) ? source.fallbackRunbook : null,
     sessionRunbook: isPlainObject(source.sessionRunbook) ? source.sessionRunbook : null,
+    toolId,
     cause: typeof source.cause === "string" ? source.cause.trim() : "",
     strategyId: typeof source.strategyId === "string" ? source.strategyId.trim() : "",
     notes: typeof source.notes === "string" ? source.notes.trim().slice(0, 400) : "",

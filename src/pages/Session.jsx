@@ -1,8 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../auth/useAuth";
 import FocusSessionView from "../components/session/FocusSessionView";
 import SessionAdjustSheet from "../components/session/SessionAdjustSheet";
 import SessionLaunchView from "../components/session/SessionLaunchView";
+import SessionToolResultSheet from "../components/session/SessionToolResultSheet";
+import SessionToolsSheet from "../components/session/SessionToolsSheet";
+import SessionToolTray from "../components/session/SessionToolTray";
 import { addDaysLocal, minutesToTimeStr, normalizeLocalDateKey, parseTimeToMinutes, todayLocalKey } from "../utils/datetime";
 import { resolveExecutableOccurrence } from "../logic/sessionResolver";
 import { updateOccurrence } from "../logic/occurrences";
@@ -30,6 +33,21 @@ import {
   buildStandardAdjustmentOptions,
   SESSION_ADJUST_CAUSES,
 } from "../features/session/sessionAdjustments";
+import {
+  buildSessionToolPlan,
+  createEmptySessionToolState,
+  deriveActiveSessionToolUtilitySnapshot,
+  deriveRecommendedSessionTools,
+  executeLocalSessionTool,
+  normalizePreparedSessionToolPlan,
+  normalizePreparedSessionToolResult,
+  normalizeSessionToolPlan,
+  normalizeSessionToolState,
+  pauseSessionToolUtility,
+  resetSessionToolUtility,
+  startSessionToolUtility,
+  toggleSessionToolUtilityCollapse,
+} from "../features/session/sessionTools";
 import { requestAiSessionGuidance } from "../infra/aiSessionGuidanceClient";
 import "../features/session/session.css";
 import "../features/session/session-guided.css";
@@ -74,6 +92,18 @@ function readSessionGuidanceRunbookPayload(payload, fallbackRunbook = null) {
     payload.sessionRunbook || payload.runbook || payload,
     { fallbackRunbook }
   );
+}
+
+function readSessionGuidanceToolPlanPayload(payload, sessionRunbook = null) {
+  if (!payload || typeof payload !== "object") return null;
+  return normalizePreparedSessionToolPlan(payload.sessionToolPlan || payload.toolPlan || null, {
+    sessionRunbook,
+  });
+}
+
+function readSessionGuidanceToolResultPayload(payload, toolId = "") {
+  if (!payload || typeof payload !== "object") return null;
+  return normalizePreparedSessionToolResult(payload, { toolId });
 }
 
 function readGoalSessionNotes(goal) {
@@ -151,8 +181,12 @@ export default function Session({
   const [adjustSheetMode, setAdjustSheetMode] = useState("");
   const [adjustCause, setAdjustCause] = useState("");
   const [adjustLoading, setAdjustLoading] = useState(false);
+  const [toolsSheetOpen, setToolsSheetOpen] = useState(false);
+  const [toolsLoading, setToolsLoading] = useState(false);
+  const [toolTick, setToolTick] = useState(() => Date.now());
   const prepareRequestRef = useRef(0);
   const adjustRequestRef = useRef(0);
+  const toolRequestRef = useRef(0);
 
   const routeOccurrence = useMemo(
     () => normalizeOccurrenceForUI(occurrences.find((occurrenceItem) => occurrenceItem?.id === routeOccurrenceId) || null),
@@ -277,10 +311,37 @@ export default function Session({
     [currentLaunchState?.sessionRunbook]
   );
   const guidedRunbook = launchStateMatchesOccurrence && launchMode === "guided" ? launchRunbook : null;
+  const launchToolPlan = useMemo(
+    () => normalizeSessionToolPlan(currentLaunchState?.sessionToolPlan || null, { sessionRunbook: launchRunbook }),
+    [currentLaunchState?.sessionToolPlan, launchRunbook]
+  );
+  const launchToolState = useMemo(
+    () => normalizeSessionToolState(currentLaunchState?.sessionToolState || null),
+    [currentLaunchState?.sessionToolState]
+  );
   const guidedPlan = useMemo(
     () => deriveGuidedCurrentStep({ sessionRunbook: guidedRunbook, elapsedSec }),
     [elapsedSec, guidedRunbook]
   );
+  const guidedToolPlan = launchStateMatchesOccurrence && launchMode === "guided" ? launchToolPlan : null;
+  const guidedTools = useMemo(
+    () =>
+      deriveRecommendedSessionTools({
+        sessionToolPlan: guidedToolPlan,
+        guidedPlan,
+        accessToken,
+      }),
+    [accessToken, guidedPlan, guidedToolPlan]
+  );
+  const activeToolUtility = launchStateMatchesOccurrence && launchMode === "guided" ? launchToolState.activeUtility : null;
+  const activeToolUtilitySnapshot = useMemo(
+    () => deriveActiveSessionToolUtilitySnapshot(activeToolUtility, toolTick),
+    [activeToolUtility, toolTick]
+  );
+  const activeToolArtifact =
+    launchStateMatchesOccurrence && launchMode === "guided" && launchToolState.openArtifactToolId
+      ? launchToolState.artifactsByToolId?.[launchToolState.openArtifactToolId] || null
+      : null;
   const standardAdjustment =
     launchStateMatchesOccurrence && launchMode !== "guided" && currentLaunchState?.standardAdjustment
       ? currentLaunchState.standardAdjustment
@@ -306,6 +367,7 @@ export default function Session({
   const currentAdjustmentLabel = guidedAdjustment?.label || standardAdjustment?.label || "";
   const canAdjustStandard = Boolean(selectedOccurrence?.id) && launchMode !== "guided";
   const canAdjustGuided = Boolean(guidedPlan && !shouldShowLaunchSurface && launchMode === "guided");
+  const canOpenGuidedTools = Boolean(guidedPlan && !shouldShowLaunchSurface && launchMode === "guided" && guidedTools.length);
   const sessionTimingLabel =
     selectedOccurrence?.start && selectedOccurrence.start !== "00:00" ? selectedOccurrence.start : "Dans la journée";
   const isPrelaunchPhase = shouldShowLaunchSurface;
@@ -347,32 +409,67 @@ export default function Session({
     [adjustCause, elapsedSec, guidedRunbook]
   );
   const activeAdjustOptions = adjustSheetMode === "guided" ? guidedAdjustOptions : standardAdjustOptions;
-  const readLaunchStateBase = (current = null) => {
-    const currentValue =
-      current && selectedOccurrence?.id && current.occurrenceId === selectedOccurrence.id ? current : null;
-    return {
-      version: 1,
-      entryId: currentValue?.entryId || `session-${selectedOccurrence?.id || "current"}`,
-      phase: currentValue?.phase || "ready",
-      launchMode: currentValue?.launchMode || null,
-      sourceSurface: currentValue?.sourceSurface || "unknown",
-      occurrenceId: selectedOccurrence?.id || null,
-      actionId: goal?.id || selectedOccurrence?.goalId || currentValue?.actionId || null,
-      dateKey: selectedOccurrence?.date || effectiveDateKey || currentValue?.dateKey || null,
-      categoryId: category?.id || goal?.categoryId || effectiveCategoryId || currentValue?.categoryId || null,
-      blueprintSnapshot: blueprintSnapshot || currentValue?.blueprintSnapshot || null,
-      sessionRunbook: currentValue?.sessionRunbook || null,
-      standardAdjustment: currentValue?.standardAdjustment || null,
-      guidedAdjustment: currentValue?.guidedAdjustment || null,
-      openedAtMs: currentValue?.openedAtMs || Date.now(),
-    };
-  };
+  const readLaunchStateBase = useCallback(
+    (current = null) => {
+      const currentValue =
+        current && selectedOccurrence?.id && current.occurrenceId === selectedOccurrence.id ? current : null;
+      return {
+        version: 1,
+        entryId: currentValue?.entryId || `session-${selectedOccurrence?.id || "current"}`,
+        phase: currentValue?.phase || "ready",
+        launchMode: currentValue?.launchMode || null,
+        sourceSurface: currentValue?.sourceSurface || "unknown",
+        occurrenceId: selectedOccurrence?.id || null,
+        actionId: goal?.id || selectedOccurrence?.goalId || currentValue?.actionId || null,
+        dateKey: selectedOccurrence?.date || effectiveDateKey || currentValue?.dateKey || null,
+        categoryId: category?.id || goal?.categoryId || effectiveCategoryId || currentValue?.categoryId || null,
+        blueprintSnapshot: blueprintSnapshot || currentValue?.blueprintSnapshot || null,
+        sessionRunbook: currentValue?.sessionRunbook || null,
+        standardAdjustment: currentValue?.standardAdjustment || null,
+        guidedAdjustment: currentValue?.guidedAdjustment || null,
+        sessionToolPlan: currentValue?.sessionToolPlan || null,
+        sessionToolState: currentValue?.sessionToolState || null,
+        openedAtMs: currentValue?.openedAtMs || Date.now(),
+      };
+    },
+    [
+      blueprintSnapshot,
+      category?.id,
+      effectiveCategoryId,
+      effectiveDateKey,
+      goal?.categoryId,
+      goal?.id,
+      selectedOccurrence?.date,
+      selectedOccurrence?.goalId,
+      selectedOccurrence?.id,
+    ]
+  );
 
   const closeAdjustSheet = () => {
     adjustRequestRef.current += 1;
     setAdjustLoading(false);
     setAdjustCause("");
     setAdjustSheetMode("");
+  };
+
+  const closeToolsSheet = () => {
+    toolRequestRef.current += 1;
+    setToolsLoading(false);
+    setToolsSheetOpen(false);
+  };
+
+  const updateGuidedToolState = (updater) => {
+    if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id) return;
+    setSessionLaunchState((current) => {
+      const base = readLaunchStateBase(current);
+      const currentToolState = normalizeSessionToolState(base.sessionToolState);
+      const nextToolState =
+        typeof updater === "function" ? updater(currentToolState) : updater;
+      return {
+        ...base,
+        sessionToolState: nextToolState || createEmptySessionToolState(),
+      };
+    });
   };
 
   useEffect(() => {
@@ -416,10 +513,43 @@ export default function Session({
     return () => window.clearTimeout(preparationTimerId);
   }, [preparationTimerId]);
 
+  useEffect(() => {
+    if (activeToolUtilitySnapshot?.state !== "running") return undefined;
+    const timerId = window.setInterval(() => setToolTick(Date.now()), 500);
+    return () => window.clearInterval(timerId);
+  }, [activeToolUtilitySnapshot?.state]);
+
+  useEffect(() => {
+    if (typeof setSessionLaunchState !== "function") return;
+    if (!activeToolUtility || activeToolUtility.state !== "running") return;
+    if (activeToolUtilitySnapshot?.state !== "done") return;
+    setSessionLaunchState((current) => {
+      const base = readLaunchStateBase(current);
+      const currentToolState = normalizeSessionToolState(base.sessionToolState);
+      return {
+        ...base,
+        sessionToolState: {
+          ...currentToolState,
+          activeUtility: {
+            ...activeToolUtilitySnapshot,
+            state: "done",
+            startedAtMs: null,
+          },
+        },
+      };
+    });
+  }, [
+    activeToolUtility,
+    activeToolUtilitySnapshot,
+    readLaunchStateBase,
+    setSessionLaunchState,
+  ]);
+
   useEffect(
     () => () => {
       prepareRequestRef.current += 1;
       adjustRequestRef.current += 1;
+      toolRequestRef.current += 1;
     },
     []
   );
@@ -431,6 +561,7 @@ export default function Session({
       window.clearTimeout(preparationTimerId);
       setPreparationTimerId(0);
       closeAdjustSheet();
+      closeToolsSheet();
       setSessionLaunchState(null);
     }
   }, [preparationTimerId, selectedOccurrence?.id, sessionLaunchState, setSessionLaunchState]);
@@ -441,6 +572,7 @@ export default function Session({
     window.clearTimeout(preparationTimerId);
     setPreparationTimerId(0);
     closeAdjustSheet();
+    closeToolsSheet();
     setSessionLaunchState((current) => ({
       ...readLaunchStateBase(current),
       phase: "launched_standard",
@@ -448,6 +580,8 @@ export default function Session({
       sessionRunbook: null,
       standardAdjustment: null,
       guidedAdjustment: null,
+      sessionToolPlan: null,
+      sessionToolState: null,
     }));
   };
 
@@ -469,6 +603,7 @@ export default function Session({
     window.clearTimeout(preparationTimerId);
     setPreparationTimerId(0);
     closeAdjustSheet();
+    closeToolsSheet();
     setSessionLaunchState((current) => ({
       ...readLaunchStateBase(current),
       phase: "preparing",
@@ -476,9 +611,12 @@ export default function Session({
       sessionRunbook: null,
       standardAdjustment: null,
       guidedAdjustment: null,
+      sessionToolPlan: null,
+      sessionToolState: null,
     }));
 
     let nextRunbook = fallbackRunbook;
+    let nextToolPlan = buildSessionToolPlan({ sessionRunbook: fallbackRunbook });
     if (accessToken) {
       const prepareResult = await requestAiSessionGuidance({
         accessToken,
@@ -495,6 +633,8 @@ export default function Session({
       });
       const preparedRunbook = readSessionGuidanceRunbookPayload(prepareResult?.payload, fallbackRunbook);
       if (prepareResult?.ok && preparedRunbook) nextRunbook = preparedRunbook;
+      const preparedToolPlan = readSessionGuidanceToolPlanPayload(prepareResult?.payload, preparedRunbook || nextRunbook);
+      if (prepareResult?.ok && preparedToolPlan) nextToolPlan = preparedToolPlan;
     }
 
     const remainingMs = Math.max(0, 800 - (Date.now() - startedAtMs));
@@ -519,6 +659,8 @@ export default function Session({
         sessionRunbook: nextRunbook,
         standardAdjustment: null,
         guidedAdjustment: null,
+        sessionToolPlan: nextToolPlan,
+        sessionToolState: createEmptySessionToolState(),
       };
     });
   };
@@ -529,6 +671,7 @@ export default function Session({
     window.clearTimeout(preparationTimerId);
     setPreparationTimerId(0);
     closeAdjustSheet();
+    closeToolsSheet();
     setSessionLaunchState((current) => ({
       ...readLaunchStateBase(current),
       phase: "ready",
@@ -536,6 +679,8 @@ export default function Session({
       sessionRunbook: null,
       standardAdjustment: null,
       guidedAdjustment: null,
+      sessionToolPlan: null,
+      sessionToolState: null,
     }));
   };
 
@@ -544,6 +689,7 @@ export default function Session({
     prepareRequestRef.current += 1;
     window.clearTimeout(preparationTimerId);
     setPreparationTimerId(0);
+    closeToolsSheet();
     setSessionLaunchState((current) => {
       const base = readLaunchStateBase(current);
       if (!base.occurrenceId || !launchRunbook) return current;
@@ -553,12 +699,15 @@ export default function Session({
         launchMode: "guided",
         sessionRunbook: launchRunbook,
         standardAdjustment: null,
+        sessionToolPlan: launchToolPlan || buildSessionToolPlan({ sessionRunbook: launchRunbook }),
+        sessionToolState: createEmptySessionToolState(),
       };
     });
   };
 
   const openStandardAdjust = () => {
     if (!canAdjustStandard) return;
+    closeToolsSheet();
     setAdjustCause("");
     setAdjustLoading(false);
     setAdjustSheetMode("standard");
@@ -566,9 +715,168 @@ export default function Session({
 
   const openGuidedAdjust = () => {
     if (!canAdjustGuided) return;
+    closeToolsSheet();
+    handleCloseToolResult();
     setAdjustCause("");
     setAdjustLoading(false);
     setAdjustSheetMode("guided");
+  };
+
+  const openGuidedTools = () => {
+    if (!canOpenGuidedTools) return;
+    closeAdjustSheet();
+    handleCloseToolResult();
+    setToolsLoading(false);
+    setToolsSheetOpen(true);
+  };
+
+  const handleCloseToolResult = () => {
+    updateGuidedToolState((currentToolState) => ({
+      ...currentToolState,
+      openArtifactToolId: null,
+    }));
+  };
+
+  const handleCopyToolResult = async () => {
+    if (!activeToolArtifact?.copyText || typeof navigator === "undefined" || !navigator.clipboard?.writeText) return;
+    try {
+      await navigator.clipboard.writeText(activeToolArtifact.copyText);
+    } catch {
+      // no-op
+    }
+  };
+
+  const handleExecuteTool = async (tool, { forceRegenerate = false } = {}) => {
+    if (!tool || typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id || !guidedRunbook || !guidedPlan) return;
+    const cachedArtifact = !forceRegenerate ? launchToolState.artifactsByToolId?.[tool.toolId] || null : null;
+    if (cachedArtifact && tool.outputKind === "support_artifact") {
+      updateGuidedToolState((currentToolState) => ({
+        ...currentToolState,
+        lastToolId: tool.toolId,
+        openArtifactToolId: tool.toolId,
+      }));
+      setToolsSheetOpen(false);
+      return;
+    }
+
+    const requestId = toolRequestRef.current + 1;
+    toolRequestRef.current = requestId;
+    setToolsLoading(true);
+
+    let nextResult = null;
+    if (tool.executionMode === "ai" && accessToken) {
+      const aiResult = await requestAiSessionGuidance({
+        accessToken,
+        payload: {
+          mode: "tool",
+          dateKey: selectedOccurrence.date || effectiveDateKey,
+          occurrenceId: selectedOccurrence.id,
+          actionId: goal?.id || selectedOccurrence.goalId || "",
+          categoryId: category?.id || goal?.categoryId || effectiveCategoryId || null,
+          blueprintSnapshot,
+          sessionRunbook: guidedRunbook,
+          toolId: tool.toolId,
+          notes: readGoalSessionNotes(goal),
+          runtimeContext: {
+            currentStepId: guidedPlan.currentStep?.id || null,
+            currentItemId: guidedPlan.currentItem?.id || null,
+            elapsedSec,
+            remainingSec: remainingSec ?? 0,
+          },
+        },
+        timeoutMs: 1200,
+      });
+      if (aiResult?.ok) {
+        nextResult = readSessionGuidanceToolResultPayload(aiResult.payload, tool.toolId);
+      }
+    }
+
+    if (!nextResult) {
+      nextResult = executeLocalSessionTool({
+        toolId: tool.toolId,
+        sessionRunbook: guidedRunbook,
+        guidedPlan,
+      });
+    }
+
+    if (toolRequestRef.current !== requestId) return;
+
+    if (nextResult?.kind === "artifact" && nextResult.artifact) {
+      updateGuidedToolState((currentToolState) => ({
+        ...currentToolState,
+        lastToolId: tool.toolId,
+        openArtifactToolId: tool.toolId,
+        artifactsByToolId: {
+          ...currentToolState.artifactsByToolId,
+          [tool.toolId]: nextResult.artifact,
+        },
+      }));
+      setToolsSheetOpen(false);
+      setToolsLoading(false);
+      return;
+    }
+
+    if (nextResult?.kind === "utility" && nextResult.utility) {
+      updateGuidedToolState((currentToolState) => ({
+        ...currentToolState,
+        lastToolId: tool.toolId,
+        openArtifactToolId: null,
+        activeUtility: nextResult.utility,
+      }));
+      setToolsSheetOpen(false);
+      setToolsLoading(false);
+      return;
+    }
+
+    setToolsLoading(false);
+  };
+
+  const handleRegenerateToolResult = () => {
+    const toolId = launchToolState.openArtifactToolId;
+    if (!toolId) return;
+    const tool = guidedTools.find((entry) => entry.toolId === toolId) || guidedToolPlan?.catalog?.find((entry) => entry.toolId === toolId) || null;
+    if (!tool) return;
+    handleExecuteTool(tool, { forceRegenerate: true });
+  };
+
+  const handleStartToolUtility = () => {
+    updateGuidedToolState((currentToolState) => {
+      const activeUtility = currentToolState.activeUtility;
+      const restartedUtility =
+        activeToolUtilitySnapshot?.state === "done" ? resetSessionToolUtility(activeUtility) : activeUtility;
+      return {
+        ...currentToolState,
+        activeUtility: startSessionToolUtility(restartedUtility, Date.now()),
+      };
+    });
+  };
+
+  const handlePauseToolUtility = () => {
+    updateGuidedToolState((currentToolState) => ({
+      ...currentToolState,
+      activeUtility: pauseSessionToolUtility(currentToolState.activeUtility, Date.now()),
+    }));
+  };
+
+  const handleResetToolUtility = () => {
+    updateGuidedToolState((currentToolState) => ({
+      ...currentToolState,
+      activeUtility: resetSessionToolUtility(currentToolState.activeUtility),
+    }));
+  };
+
+  const handleCloseToolUtility = () => {
+    updateGuidedToolState((currentToolState) => ({
+      ...currentToolState,
+      activeUtility: null,
+    }));
+  };
+
+  const handleToggleToolUtility = () => {
+    updateGuidedToolState((currentToolState) => ({
+      ...currentToolState,
+      activeUtility: toggleSessionToolUtilityCollapse(currentToolState.activeUtility),
+    }));
   };
 
   const handleApplyAdjustment = async (option) => {
@@ -596,6 +904,8 @@ export default function Session({
             sessionRunbook: null,
             standardAdjustment: nextAdjustment,
             guidedAdjustment: null,
+            sessionToolPlan: null,
+            sessionToolState: null,
           };
         });
       }
@@ -618,6 +928,7 @@ export default function Session({
 
     let nextRunbook = localGuidedResult.sessionRunbook;
     let nextAdjustment = localGuidedResult.adjustment;
+    let nextToolPlan = buildSessionToolPlan({ sessionRunbook: nextRunbook });
 
     if (option.aiPreferred && accessToken && guidedRunbook) {
       const adjustResult = await requestAiSessionGuidance({
@@ -643,6 +954,7 @@ export default function Session({
       const preparedRunbook = readSessionGuidanceRunbookPayload(adjustResult?.payload, nextRunbook);
       if (adjustResult?.ok && preparedRunbook) {
         nextRunbook = preparedRunbook;
+        nextToolPlan = buildSessionToolPlan({ sessionRunbook: preparedRunbook });
         nextAdjustment = {
           ...nextAdjustment,
           adjustedDurationMinutes: preparedRunbook.durationMinutes,
@@ -666,6 +978,8 @@ export default function Session({
         sessionRunbook: nextRunbook,
         standardAdjustment: null,
         guidedAdjustment: nextAdjustment,
+        sessionToolPlan: nextToolPlan,
+        sessionToolState: createEmptySessionToolState(),
       };
     });
     setAdjustLoading(false);
@@ -986,8 +1300,22 @@ export default function Session({
             onBlock={blockSession}
             onOpenReport={() => setReportMode((current) => !current)}
             onOpenAdjust={canAdjustGuided ? openGuidedAdjust : openStandardAdjust}
+            onOpenTools={openGuidedTools}
             showAdjust={viewState !== "completed" && viewState !== "blocked" && viewState !== "reported" && (canAdjustGuided || canAdjustStandard)}
+            showTools={viewState !== "completed" && viewState !== "blocked" && viewState !== "reported" && canOpenGuidedTools}
             adjustMode={canAdjustGuided ? "guided" : "standard"}
+            toolTray={
+              activeToolUtilitySnapshot ? (
+                <SessionToolTray
+                  utility={activeToolUtilitySnapshot}
+                  onStart={handleStartToolUtility}
+                  onPause={handlePauseToolUtility}
+                  onReset={handleResetToolUtility}
+                  onClose={handleCloseToolUtility}
+                  onToggleCollapse={handleToggleToolUtility}
+                />
+              ) : null
+            }
             showFeedback={showFeedback}
             feedbackLevel={feedbackLevel}
             feedbackText={feedbackText}
@@ -1011,6 +1339,21 @@ export default function Session({
         onSelectCause={setAdjustCause}
         onResetCause={() => setAdjustCause("")}
         onApply={handleApplyAdjustment}
+      />
+      <SessionToolsSheet
+        open={toolsSheetOpen}
+        tools={guidedTools}
+        loading={toolsLoading}
+        onClose={closeToolsSheet}
+        onSelectTool={handleExecuteTool}
+      />
+      <SessionToolResultSheet
+        open={Boolean(activeToolArtifact)}
+        artifact={activeToolArtifact}
+        loading={toolsLoading}
+        onClose={handleCloseToolResult}
+        onCopy={handleCopyToolResult}
+        onRegenerate={handleRegenerateToolResult}
       />
     </AppScreen>
   );
