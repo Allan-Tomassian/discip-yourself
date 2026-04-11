@@ -90,6 +90,19 @@ function deriveCoachErrorMessage(result) {
   });
 }
 
+function logCoachUiFallback(result, { mode = "free" } = {}) {
+  if (!import.meta.env.DEV || typeof window === "undefined") return;
+  // Dev-only UI fallback diagnostics to correlate the visible error with transport logs.
+  console.warn("[coach-ui-fallback]", {
+    errorCode: String(result?.errorCode || "").trim().toUpperCase() || null,
+    backendErrorCode: String(result?.backendErrorCode || "").trim().toUpperCase() || null,
+    status: Number.isInteger(result?.status) ? result.status : null,
+    requestId: String(result?.requestId || "").trim() || null,
+    mode: normalizeCoachRequestedMode(mode),
+    probableCause: result?.transportMeta?.probableCause || null,
+  });
+}
+
 export function normalizeCoachRequestedMode(value) {
   return value === "plan" ? "plan" : "free";
 }
@@ -1046,6 +1059,7 @@ export function useCoachConversationController({
       });
 
       if (!result.ok || !result.reply || !preparedConversation?.id) {
+        logCoachUiFallback(result, { mode: effectiveMode });
         setError(deriveCoachErrorMessage(result));
         setLoading(false);
         return;

@@ -513,6 +513,60 @@ test("POST /ai/chat accepts locale and useCase without returning INVALID_BODY", 
   await app.close();
 });
 
+test("POST /ai/chat stays available when user_data carries guided runtime extras in activeSession", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-chat-guided-runtime" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData({
+      activeSession: {
+        id: "sess-guided",
+        dateKey: TODAY_KEY,
+        occurrenceId: "occ-1",
+        habitIds: ["goal-1"],
+        runtimePhase: "in_progress",
+        status: "partial",
+        timerRunning: true,
+        timerStartedAt: `${TODAY_KEY}T09:00:00.000Z`,
+        timerAccumulatedSec: 180,
+        experienceMode: "guided",
+        guidedRuntimeV1: {
+          version: 1,
+          occurrenceId: "occ-1",
+          guidedSpatialState: {
+            mode: "active",
+            viewedStepIndex: 0,
+            activeStepIndex: 0,
+          },
+        },
+      },
+    }),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/chat",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.28" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      mode: "free",
+      message: "Aide-moi à reprendre proprement.",
+      recentMessages: [{ role: "user", content: "Je veux reprendre." }],
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachChatResponseSchema.parse(response.json());
+  assert.equal(payload.kind, "conversation");
+  assert.equal(payload.mode, "free");
+  await app.close();
+});
+
 test("POST /ai/local-analysis returns a planning fallback without using the Coach conversation contract", async () => {
   const app = await buildApp({
     config: TEST_CONFIG,

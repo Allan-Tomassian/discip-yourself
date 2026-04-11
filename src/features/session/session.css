@@ -133,8 +133,7 @@
 .sessionLaunchPreparingMeta,
 .sessionRuntimeSubtitle,
 .sessionRuntimeMetaLabel,
-.sessionRuntimeBriefLabel,
-.sessionLaunchPlanMinutes {
+.sessionRuntimeBriefLabel {
   font-size: var(--font-meta);
   color: var(--text-secondary);
 }
@@ -229,7 +228,6 @@
 
 .sessionRuntimeBriefText,
 .sessionLaunchBriefText,
-.sessionLaunchPlanGuidance,
 .sessionFallbackBody,
 .sessionMeta,
 .sessionSupplementHint {
@@ -362,11 +360,6 @@
 .sessionLaunchViewStack--ready {
   justify-content: center;
   gap: 18px;
-}
-
-.sessionLaunchViewStack--plan {
-  justify-content: flex-start;
-  gap: 16px;
 }
 
 .sessionLaunchHero {
@@ -502,46 +495,6 @@
   color: var(--text-primary);
 }
 
-.sessionLaunchPlanList {
-  display: grid;
-  gap: 0;
-}
-
-.sessionLaunchPlanStep {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 14px;
-  padding: 16px 0;
-}
-
-.sessionLaunchPlanStep + .sessionLaunchPlanStep {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.sessionLaunchPlanIndex {
-  font-size: var(--font-micro);
-  font-weight: var(--font-weight-semibold);
-  color: color-mix(in srgb, var(--accent-primary) 72%, white 28%);
-}
-
-.sessionLaunchPlanBody {
-  display: grid;
-  gap: 6px;
-}
-
-.sessionLaunchPlanRow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.sessionLaunchPlanLabel {
-  font-size: var(--font-body-strong);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
-}
-
 @keyframes sessionLaunchHaloOuter {
   0%,
   100% {
@@ -590,13 +543,5 @@
 
   .sessionLaunchTitle {
     font-size: clamp(1.85rem, 13vw, 3.1rem);
-  }
-
-  .sessionLaunchPlanStep {
-    grid-template-columns: 1fr;
-  }
-
-  .sessionLaunchPlanIndex {
-    display: none;
   }
 }

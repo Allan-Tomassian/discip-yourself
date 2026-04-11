@@ -119,8 +119,8 @@ async function openGuidedRuntime(page, state) {
   await page.locator(".lovableTimelineCardButton").first().click();
   await page.getByRole("button", { name: /Démarrer la session|Reprendre la session/i }).click();
   await page.getByRole("button", { name: "Aller plus loin" }).click();
-  await expect(page.getByTestId("session-launch-plan-ready")).toBeVisible();
-  await page.getByRole("button", { name: "Lancer la session" }).click();
+  await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
+  await page.getByRole("button", { name: "Démarrer" }).click();
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
 }
 
@@ -160,4 +160,3 @@ test("deep work guided tools produce a reusable support artifact in a result she
 
   await attachScreenshot(page, testInfo, "session-tool-result-deep-work.png");
 });
-

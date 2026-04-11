@@ -139,7 +139,7 @@ test("standard launch keeps the existing runtime and does not auto-start", async
   await attachScreenshot(page, testInfo, "session-standard-runtime.png");
 });
 
-test("guided launch shows preparing, plan ready, and a compact guided runtime", async ({ page }, testInfo) => {
+test("guided launch shows preparing, spatial preview, and a compact guided runtime", async ({ page }, testInfo) => {
   await openTimelineLaunch(page, buildLaunchState());
 
   await expect(page.getByTestId("session-launch-ready")).toBeVisible();
@@ -151,33 +151,38 @@ test("guided launch shows preparing, plan ready, and a compact guided runtime", 
   await expect(page.locator(".pageHeader")).toHaveCount(0);
   await attachScreenshot(page, testInfo, "session-launch-preparing.png");
 
-  await expect(page.getByTestId("session-launch-plan-ready")).toBeVisible();
-  await expect(page.getByText("Plan prêt")).toBeVisible();
+  await expect(page.getByTestId("session-guided-plan")).toBeVisible();
+  await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Régénérer" })).toBeVisible();
+  await expect(page.getByText("Plan du bloc")).toBeVisible();
   await expect(page.getByText("Échauffement")).toBeVisible();
   await expect(page.locator(".lovableTabBarWrap")).toHaveCount(0);
   await expect(page.locator(".pageHeader")).toHaveCount(0);
-  await attachScreenshot(page, testInfo, "session-launch-plan-ready.png");
+  await attachScreenshot(page, testInfo, "session-guided-preview.png");
 
   await page.getByRole("button", { name: "Revenir au standard" }).click();
+  await expect(page.getByTestId("session-guided-preview-actions")).toHaveCount(0);
+  await expect(page.getByTestId("session-guided-plan")).toHaveCount(0);
+
+  await openTimelineLaunch(page, buildLaunchState());
   await expect(page.getByTestId("session-launch-ready")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Session standard" })).toBeVisible();
-
   await page.getByRole("button", { name: "Aller plus loin" }).click();
-  await expect(page.getByTestId("session-launch-plan-ready")).toBeVisible();
+  await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
 
-  await page.getByRole("button", { name: "Lancer la session" }).click();
+  await page.getByRole("button", { name: "Démarrer" }).click();
 
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
   await expect(page.getByTestId("session-action-protocol")).toHaveCount(0);
   await expect(page.getByTestId("session-action-dock")).toBeVisible();
   await expect(page.locator(".pageHeader")).toHaveCount(0);
   await expect(page.getByText("Plan du bloc")).toBeVisible();
-  await expect(page.getByText(/Étape 1\/3 · Item 1\//)).toBeVisible();
+  await expect(page.locator(".sessionRuntimeProgressLabel")).toHaveText("Étape 1/3");
   await expect(page.getByRole("button", { name: "Réajuster" })).toBeVisible();
-  await expect(page.getByText("Outils")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Outils" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Régénérer" })).toHaveCount(0);
 
   const persisted = await getUserData(page, E2E_USER_ID);
-  expect(persisted?.ui?.activeSession ?? null).toBeNull();
+  expect(persisted?.ui?.activeSession?.occurrenceId ?? null).toBe("occ_launch");
   expect(JSON.stringify(persisted || {})).not.toContain("\"sessionRunbook\"");
 
   await attachScreenshot(page, testInfo, "session-guided-plan-runtime.png");

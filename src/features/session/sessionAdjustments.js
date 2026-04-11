@@ -1,4 +1,10 @@
-import { deriveGuidedCurrentStep, normalizeSessionRunbook } from "./sessionRunbook";
+import { normalizeSessionRunbook } from "./sessionRunbook";
+import {
+  activateGuidedSpatialState,
+  createGuidedSpatialState,
+  deriveGuidedSpatialPlan,
+  normalizeGuidedSpatialState,
+} from "./sessionSpatialRuntime";
 
 function asString(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -240,8 +246,12 @@ export function applyStandardAdjustmentLocally({
   };
 }
 
-function buildGuidedAdjustmentOptionsForCause(cause, runbook, elapsedSec) {
-  const currentState = deriveGuidedCurrentStep({ sessionRunbook: runbook, elapsedSec });
+function buildGuidedAdjustmentOptionsForCause(cause, runbook, elapsedSec, guidedSpatialState = null) {
+  const currentState = deriveGuidedAdjustmentContext({
+    sessionRunbook: runbook,
+    guidedSpatialState,
+    elapsedSec,
+  });
   if (!currentState) return [];
   const remainingMinutes = Math.max(
     1,
@@ -316,8 +326,44 @@ function selectCoreItems(runbook, currentStepIndex, currentItemIndex) {
   });
 }
 
-function scaleRunbookFuture(runbook, strategyId, elapsedSec) {
-  const currentState = deriveGuidedCurrentStep({ sessionRunbook: runbook, elapsedSec });
+function deriveGuidedAdjustmentContext({
+  sessionRunbook = null,
+  guidedSpatialState = null,
+  elapsedSec = 0,
+} = {}) {
+  const runbook = normalizeSessionRunbook(sessionRunbook);
+  if (!runbook) return null;
+  const normalizedSpatialState =
+    normalizeGuidedSpatialState(guidedSpatialState, { sessionRunbook: runbook }) ||
+    activateGuidedSpatialState({
+      guidedSpatialState: createGuidedSpatialState({
+        sessionRunbook: runbook,
+        mode: "preview",
+      }),
+      sessionRunbook: runbook,
+      elapsedSec,
+    });
+  const plan = deriveGuidedSpatialPlan({
+    sessionRunbook: runbook,
+    guidedSpatialState: normalizedSpatialState,
+    elapsedSec,
+  });
+  if (!plan?.activeStep) return null;
+  return {
+    guidedSpatialState: normalizedSpatialState,
+    currentStepIndex: plan.activeStepIndex,
+    currentStep: plan.activeStep,
+    currentItemIndex: plan.currentItemIndex,
+    currentItem: plan.currentItem,
+  };
+}
+
+function scaleRunbookFuture(runbook, strategyId, elapsedSec, guidedSpatialState = null) {
+  const currentState = deriveGuidedAdjustmentContext({
+    sessionRunbook: runbook,
+    guidedSpatialState,
+    elapsedSec,
+  });
   if (!currentState) return null;
   const currentStepIndex = currentState.currentStepIndex;
   const currentItemIndex = currentState.currentItemIndex;
@@ -364,8 +410,12 @@ function scaleRunbookFuture(runbook, strategyId, elapsedSec) {
   return nextRunbook;
 }
 
-function softenRunbookIntensity(runbook, elapsedSec) {
-  const currentState = deriveGuidedCurrentStep({ sessionRunbook: runbook, elapsedSec });
+function softenRunbookIntensity(runbook, elapsedSec, guidedSpatialState = null) {
+  const currentState = deriveGuidedAdjustmentContext({
+    sessionRunbook: runbook,
+    guidedSpatialState,
+    elapsedSec,
+  });
   if (!currentState) return null;
   const nextRunbook = cloneRunbook(runbook);
   nextRunbook.steps = nextRunbook.steps.map((step, stepIndex) => ({
@@ -393,8 +443,12 @@ function softenRunbookIntensity(runbook, elapsedSec) {
   return nextRunbook;
 }
 
-function recenterRunbook(runbook, elapsedSec) {
-  const currentState = deriveGuidedCurrentStep({ sessionRunbook: runbook, elapsedSec });
+function recenterRunbook(runbook, elapsedSec, guidedSpatialState = null) {
+  const currentState = deriveGuidedAdjustmentContext({
+    sessionRunbook: runbook,
+    guidedSpatialState,
+    elapsedSec,
+  });
   if (!currentState) return null;
   const nextRunbook = cloneRunbook(runbook);
   const lastStep = nextRunbook.steps[nextRunbook.steps.length - 1];
@@ -442,35 +496,41 @@ function recenterRunbook(runbook, elapsedSec) {
 export function buildGuidedAdjustmentOptions({
   cause = "",
   sessionRunbook = null,
+  guidedSpatialState = null,
   elapsedSec = 0,
 } = {}) {
   const normalizedRunbook = normalizeSessionRunbook(sessionRunbook);
   if (!normalizedRunbook) return [];
-  return buildGuidedAdjustmentOptionsForCause(cause, normalizedRunbook, elapsedSec);
+  return buildGuidedAdjustmentOptionsForCause(cause, normalizedRunbook, elapsedSec, guidedSpatialState);
 }
 
 export function applyGuidedAdjustmentLocally({
   cause = "",
   strategyId = "",
   sessionRunbook = null,
+  guidedSpatialState = null,
   elapsedSec = 0,
 } = {}) {
   const normalizedRunbook = normalizeSessionRunbook(sessionRunbook);
   if (!normalizedRunbook) return null;
-  const currentState = deriveGuidedCurrentStep({ sessionRunbook: normalizedRunbook, elapsedSec });
+  const currentState = deriveGuidedAdjustmentContext({
+    sessionRunbook: normalizedRunbook,
+    guidedSpatialState,
+    elapsedSec,
+  });
   if (!currentState) return null;
 
   let patchedRunbook = null;
   if (strategyId === "shorten_keep_core" || strategyId === "compress_from_now") {
-    patchedRunbook = scaleRunbookFuture(normalizedRunbook, strategyId, elapsedSec);
+    patchedRunbook = scaleRunbookFuture(normalizedRunbook, strategyId, elapsedSec, guidedSpatialState);
   } else if (strategyId === "lower_intensity_keep_goal") {
-    patchedRunbook = softenRunbookIntensity(normalizedRunbook, elapsedSec);
+    patchedRunbook = softenRunbookIntensity(normalizedRunbook, elapsedSec, guidedSpatialState);
   } else if (strategyId === "recenter_on_subsegment") {
-    patchedRunbook = recenterRunbook(normalizedRunbook, elapsedSec);
+    patchedRunbook = recenterRunbook(normalizedRunbook, elapsedSec, guidedSpatialState);
   }
 
   if (!patchedRunbook) return null;
-  const option = buildGuidedAdjustmentOptionsForCause(cause, normalizedRunbook, elapsedSec).find(
+  const option = buildGuidedAdjustmentOptionsForCause(cause, normalizedRunbook, elapsedSec, guidedSpatialState).find(
     (entry) => entry.strategyId === strategyId
   );
   if (!option) return null;

@@ -32,7 +32,7 @@ describe("session launch contract", () => {
     expect(insights).toContain("onOpenSession");
   });
 
-  it("wires ready, preparing, and plan ready states into the existing session shell", () => {
+  it("wires ready, preparing, and guided spatial preview states into the existing session shell", () => {
     const session = readSrc("pages/Session.jsx");
     const launchView = readSrc("components/session/SessionLaunchView.jsx");
     const adjustSheet = readSrc("components/session/SessionAdjustSheet.jsx");
@@ -42,7 +42,8 @@ describe("session launch contract", () => {
 
     expect(session).toContain('launchPhase === "ready"');
     expect(session).toContain('launchPhase === "preparing"');
-    expect(session).toContain('launchPhase === "plan_ready"');
+    expect(session).toContain('phase: "guided_preview"');
+    expect(session).toContain('phase: "guided_active"');
     expect(session).toContain("const isPrelaunchPhase = shouldShowLaunchSurface;");
     expect(session).toContain("headerTitle={null}");
     expect(session).toContain("headerSubtitle={null}");
@@ -55,12 +56,12 @@ describe("session launch contract", () => {
     expect(session).toContain("SessionToolsSheet");
     expect(session).toContain("sessionToolPlan");
     expect(session).toContain("sessionToolState");
+    expect(session).toContain("guidedSpatialState");
     expect(launchView).toContain('data-testid="session-launch-ready"');
     expect(launchView).toContain('data-testid="session-launch-preparing"');
-    expect(launchView).toContain('data-testid="session-launch-plan-ready"');
     expect(launchView).toContain("Séance prête");
     expect(launchView).toContain("Préparation en cours");
-    expect(launchView).toContain("Plan prêt");
+    expect(launchView).not.toContain("Plan prêt");
     expect(launchView).toContain("Session standard");
     expect(launchView).toContain("CoachAssistIcon");
     expect(launchView).not.toContain("Runbook prêt");
@@ -74,11 +75,15 @@ describe("session launch contract", () => {
   it("replaces standard action protocol with a compact guided block when launch mode is guided", () => {
     const session = readSrc("pages/Session.jsx");
     const focusView = readSrc("components/session/FocusSessionView.jsx");
+    const deck = readSrc("components/session/SessionGuidedDeck.jsx");
 
-    expect(session).toContain('currentLaunchState?.phase === "launched_guided"');
-    expect(focusView).toContain('data-testid="session-guided-plan"');
-    expect(focusView).toContain("Plan du bloc");
+    expect(session).toContain('phase: "guided_active"');
+    expect(session).toContain("guidedMode={launchMode === \"guided\" ? guidedMode : \"\"}");
+    expect(focusView).toContain('data-testid="session-guided-preview-actions"');
+    expect(deck).toContain('data-testid="session-guided-plan"');
+    expect(deck).toContain("Plan du bloc");
     expect(focusView).toContain("Réajuster");
     expect(focusView).toContain("Outils");
+    expect(deck).toContain('data-testid="session-guided-active-step-notice"');
   });
 });

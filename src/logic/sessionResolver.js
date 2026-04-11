@@ -53,7 +53,8 @@ export function resolveExecutableOccurrence(state, { dateKey, goalIds } = {}) {
       o.date === date &&
       ids.includes(o.goalId) &&
       (normalizeOccurrenceStatus(o.status) === OCCURRENCE_STATUS.PLANNED ||
-        normalizeOccurrenceStatus(o.status) === OCCURRENCE_STATUS.IN_PROGRESS)
+        normalizeOccurrenceStatus(o.status) === OCCURRENCE_STATUS.IN_PROGRESS ||
+        normalizeOccurrenceStatus(o.status) === OCCURRENCE_STATUS.MISSED)
   );
 
   if (!candidates.length) return { occurrenceId: null, kind: "not_found" };
@@ -64,6 +65,8 @@ export function resolveExecutableOccurrence(state, { dateKey, goalIds } = {}) {
     if (statusA !== statusB) {
       if (statusA === OCCURRENCE_STATUS.IN_PROGRESS) return -1;
       if (statusB === OCCURRENCE_STATUS.IN_PROGRESS) return 1;
+      if (statusA === OCCURRENCE_STATUS.PLANNED) return -1;
+      if (statusB === OCCURRENCE_STATUS.PLANNED) return 1;
     }
 
     const kindA = classifyOccurrence(a);
@@ -83,6 +86,11 @@ export function resolveExecutableOccurrence(state, { dateKey, goalIds } = {}) {
 
   const picked = sorted[0] || null;
   if (!picked || !picked.id) return { occurrenceId: null, kind: "not_found" };
-  if (isFinalOccurrenceStatus(picked.status)) return { occurrenceId: picked.id, kind: "final" };
+  if (
+    isFinalOccurrenceStatus(picked.status) &&
+    normalizeOccurrenceStatus(picked.status) !== OCCURRENCE_STATUS.MISSED
+  ) {
+    return { occurrenceId: picked.id, kind: "final" };
+  }
   return { occurrenceId: picked.id, kind: "ok" };
 }

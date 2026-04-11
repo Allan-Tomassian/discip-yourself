@@ -25,9 +25,16 @@ export default function SessionToolsSheet({
   open = false,
   tools = [],
   loading = false,
+  activeStepLabel = "",
+  viewedStepIsActive = true,
   onClose,
   onSelectTool,
 }) {
+  const subtitle =
+    viewedStepIsActive || !activeStepLabel
+      ? "Aides utiles pour cette étape."
+      : `Aides utiles pour l’étape active : ${activeStepLabel}.`;
+
   return (
     <AppSheet
       open={open}
@@ -40,7 +47,7 @@ export default function SessionToolsSheet({
         <div className="sessionToolsSheetHeader">
           <div className="sessionToolsSheetHeaderText">
             <div className="sessionToolsSheetTitle">Outils</div>
-            <div className="sessionToolsSheetSubtitle">Aides utiles pour cette étape.</div>
+            <div className="sessionToolsSheetSubtitle">{subtitle}</div>
           </div>
           <GhostButton type="button" size="sm" onClick={onClose}>
             Fermer
@@ -65,4 +72,3 @@ export default function SessionToolsSheet({
     </AppSheet>
   );
 }
-

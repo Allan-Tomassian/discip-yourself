@@ -1,26 +1,57 @@
 import { describe, expect, it } from "vitest";
 import { buildSessionRunbookV1 } from "./sessionRunbook";
 import {
+  activateGuidedSpatialState,
+  advanceGuidedSpatialStep,
+  createGuidedSpatialState,
+} from "./sessionSpatialRuntime";
+import {
   applyGuidedAdjustmentLocally,
   applyStandardAdjustmentLocally,
   buildGuidedAdjustmentOptions,
   buildStandardAdjustmentOptions,
 } from "./sessionAdjustments";
 
-function makeRunbook() {
+function makeRunbook(protocolType = "sport") {
   return buildSessionRunbookV1({
     blueprintSnapshot: {
       version: 1,
-      protocolType: "sport",
-      why: "activer ton énergie et tenir le rythme",
-      firstStep: "commence par 3 min d’échauffement",
-      ifBlocked: "fais la version courte",
-      successDefinition: "séance tenue ou version courte assumée",
-      estimatedMinutes: 20,
+      protocolType,
+      why:
+        protocolType === "deep_work"
+          ? "sortir une base claire et exploitable"
+          : "activer ton énergie et tenir le rythme",
+      firstStep:
+        protocolType === "deep_work"
+          ? "rouvre la zone utile et fixe le point d’entrée"
+          : "commence par 3 min d’échauffement",
+      ifBlocked:
+        protocolType === "deep_work"
+          ? "réduis à une première trame"
+          : "fais la version courte",
+      successDefinition:
+        protocolType === "deep_work"
+          ? "une base exploitable existe"
+          : "séance tenue ou version courte assumée",
+      estimatedMinutes: protocolType === "deep_work" ? 30 : 20,
     },
-    occurrence: { id: "occ_1", goalId: "goal_1", date: "2026-04-10", durationMinutes: 20 },
-    action: { id: "goal_1", title: "Séance de sport rapide de 20 minutes" },
-    category: { id: "cat_sport", name: "Sport" },
+    occurrence: {
+      id: "occ_1",
+      goalId: "goal_1",
+      date: "2026-04-10",
+      durationMinutes: protocolType === "deep_work" ? 30 : 20,
+    },
+    action: {
+      id: "goal_1",
+      title:
+        protocolType === "deep_work"
+          ? "Structurer la note produit"
+          : "Séance de sport rapide de 20 minutes",
+    },
+    category: {
+      id: protocolType === "deep_work" ? "cat_work" : "cat_sport",
+      name: protocolType === "deep_work" ? "Travail" : "Sport",
+    },
   });
 }
 
@@ -105,5 +136,34 @@ describe("sessionAdjustments", () => {
     const futureItems = result.sessionRunbook.steps.flatMap((step) => step.items);
     expect(result.adjustment.label).toBe("Baisser l’intensité");
     expect(futureItems.some((item) => (item.restSec || 0) >= 30)).toBe(true);
+  });
+
+  it("anchors guided adjustment on the spatial active step instead of the legacy elapsed step", () => {
+    const runbook = makeRunbook("deep_work");
+    let guidedSpatialState = createGuidedSpatialState({
+      sessionRunbook: runbook,
+      mode: "preview",
+    });
+    guidedSpatialState = activateGuidedSpatialState({
+      sessionRunbook: runbook,
+      guidedSpatialState,
+      elapsedSec: 0,
+    });
+    guidedSpatialState = advanceGuidedSpatialStep({
+      sessionRunbook: runbook,
+      guidedSpatialState,
+      elapsedSec: 180,
+    });
+
+    const result = applyGuidedAdjustmentLocally({
+      cause: "blocked",
+      strategyId: "recenter_on_subsegment",
+      sessionRunbook: runbook,
+      guidedSpatialState,
+      elapsedSec: 180,
+    });
+
+    expect(result.currentState.currentStepIndex).toBe(1);
+    expect(result.currentState.currentStep.id).toBe(runbook.steps[1].id);
   });
 });

@@ -18,8 +18,144 @@ function safeParse(raw) {
   }
 }
 
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
 function hasObjectKeys(value) {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length > 0;
+  return isPlainObject(value) && Object.keys(value).length > 0;
+}
+
+const CLOUD_SAFE_ACTIVE_SESSION_KEYS = Object.freeze([
+  "id",
+  "occurrenceId",
+  "objectiveId",
+  "habitIds",
+  "dateKey",
+  "date",
+  "runtimePhase",
+  "status",
+  "timerRunning",
+  "timerStartedAt",
+  "timerAccumulatedSec",
+  "isOpen",
+]);
+
+function normalizeDateKey(value) {
+  const raw = String(value || "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : "";
+}
+
+function normalizeActiveSessionDateKey(session) {
+  if (!isPlainObject(session)) return "";
+  return normalizeDateKey(session.dateKey || session.date);
+}
+
+function isOpenRuntimeSession(session) {
+  if (!isPlainObject(session)) return false;
+  const runtimePhase = String(session.runtimePhase || "").trim();
+  const status = String(session.status || "").trim();
+  return (
+    runtimePhase === "in_progress" ||
+    runtimePhase === "paused" ||
+    (status === "partial" &&
+      runtimePhase !== "done" &&
+      runtimePhase !== "canceled" &&
+      runtimePhase !== "blocked" &&
+      runtimePhase !== "reported")
+  );
+}
+
+function hasGuidedRuntimeSnapshot(session) {
+  return isPlainObject(session) && (session.experienceMode === "guided" || isPlainObject(session.guidedRuntimeV1));
+}
+
+function areActiveSessionsCompatibleForGuidedRuntime(remoteSession, localSession) {
+  if (!isOpenRuntimeSession(remoteSession) || !isOpenRuntimeSession(localSession) || !hasGuidedRuntimeSnapshot(localSession)) {
+    return false;
+  }
+
+  const remoteId = String(remoteSession.id || "").trim();
+  const localId = String(localSession.id || "").trim();
+  const remoteOccurrenceId = String(remoteSession.occurrenceId || "").trim();
+  const localOccurrenceId = String(localSession.occurrenceId || "").trim();
+  const sameId = remoteId && localId && remoteId === localId;
+  const sameOccurrenceId = remoteOccurrenceId && localOccurrenceId && remoteOccurrenceId === localOccurrenceId;
+
+  if (!sameId && !sameOccurrenceId) return false;
+
+  const remoteDateKey = normalizeActiveSessionDateKey(remoteSession);
+  const localDateKey = normalizeActiveSessionDateKey(localSession);
+  if (remoteDateKey && localDateKey && remoteDateKey !== localDateKey) return false;
+
+  return true;
+}
+
+function shouldUseLocalOpenGuidedSession(remoteSession, localSession) {
+  return !isOpenRuntimeSession(remoteSession) && isOpenRuntimeSession(localSession) && hasGuidedRuntimeSnapshot(localSession);
+}
+
+function sanitizeActiveSessionForCloud(activeSession) {
+  const source = isPlainObject(activeSession) ? activeSession : null;
+  if (!source) return null;
+  const next = {};
+  CLOUD_SAFE_ACTIVE_SESSION_KEYS.forEach((key) => {
+    if (key in source) next[key] = source[key];
+  });
+  return hasObjectKeys(next) ? next : null;
+}
+
+export function sanitizeUserDataForCloudSync(data) {
+  const source = isPlainObject(data) ? data : {};
+  const sourceUi = isPlainObject(source.ui) ? source.ui : null;
+  const nextActiveSession = sanitizeActiveSessionForCloud(sourceUi?.activeSession);
+
+  if (!sourceUi) return source;
+
+  const nextUi = { ...sourceUi, activeSession: nextActiveSession };
+  return {
+    ...source,
+    ui: nextUi,
+  };
+}
+
+export function rehydrateUserDataWithLocalGuidedRuntime({ data, localData } = {}) {
+  const remoteData = isPlainObject(data) ? data : {};
+  const localSnapshot = isPlainObject(localData) ? localData : {};
+  const remoteUi = isPlainObject(remoteData.ui) ? remoteData.ui : null;
+  const localUi = isPlainObject(localSnapshot.ui) ? localSnapshot.ui : null;
+  const remoteActiveSession = isPlainObject(remoteUi?.activeSession) ? remoteUi.activeSession : null;
+  const localActiveSession = isPlainObject(localUi?.activeSession) ? localUi.activeSession : null;
+
+  if (shouldUseLocalOpenGuidedSession(remoteActiveSession, localActiveSession)) {
+    return {
+      ...remoteData,
+      ui: {
+        ...(remoteUi || {}),
+        activeSession: { ...localActiveSession },
+      },
+    };
+  }
+
+  if (!areActiveSessionsCompatibleForGuidedRuntime(remoteActiveSession, localActiveSession)) {
+    return remoteData;
+  }
+
+  const nextActiveSession = { ...remoteActiveSession };
+  if (localActiveSession.experienceMode === "guided") {
+    nextActiveSession.experienceMode = "guided";
+  }
+  if (isPlainObject(localActiveSession.guidedRuntimeV1)) {
+    nextActiveSession.guidedRuntimeV1 = localActiveSession.guidedRuntimeV1;
+  }
+
+  return {
+    ...remoteData,
+    ui: {
+      ...(remoteUi || {}),
+      activeSession: nextActiveSession,
+    },
+  };
 }
 
 function isUsingE2EMockedSession(userId) {
@@ -72,9 +208,11 @@ export async function loadUserDataWithMeta(userId) {
     };
   }
 
+  const localSnapshot = loadLocalUserData(normalizedUserId);
+
   if (!supabase) {
     return {
-      data: loadLocalUserData(normalizedUserId),
+      data: localSnapshot,
       storageScope: USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK,
     };
   }
@@ -89,7 +227,7 @@ export async function loadUserDataWithMeta(userId) {
     const mappedError = mapUserDataPersistenceError(error);
     if (canUseLocalPersistenceFallback(mappedError)) {
       return {
-        data: loadLocalUserData(normalizedUserId),
+        data: localSnapshot,
         storageScope: USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK,
       };
     }
@@ -98,17 +236,20 @@ export async function loadUserDataWithMeta(userId) {
   const payload = data?.data;
   const safePayload = payload && typeof payload === "object" ? payload : {};
   if (!hasObjectKeys(safePayload)) {
-    const localFallback = loadLocalUserData(normalizedUserId);
-    if (hasObjectKeys(localFallback)) {
+    if (hasObjectKeys(localSnapshot)) {
       return {
-        data: localFallback,
+        data: localSnapshot,
         storageScope: USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK,
       };
     }
   }
-  saveLocalUserData(normalizedUserId, safePayload);
-  return {
+  const hydratedPayload = rehydrateUserDataWithLocalGuidedRuntime({
     data: safePayload,
+    localData: localSnapshot,
+  });
+  saveLocalUserData(normalizedUserId, hydratedPayload);
+  return {
+    data: hydratedPayload,
     storageScope: USER_DATA_STORAGE_SCOPE.CLOUD,
   };
 }
@@ -123,6 +264,7 @@ export async function upsertUserDataWithMeta(userId, data) {
   const normalizedUserId = String(userId || "").trim();
   if (!normalizedUserId) throw new Error("userId requis");
   const payload = data && typeof data === "object" ? data : {};
+  const remotePayload = sanitizeUserDataForCloudSync(payload);
 
   if (isUsingE2EMockedSession(normalizedUserId)) {
     saveLocalUserData(normalizedUserId, payload);
@@ -147,7 +289,7 @@ export async function upsertUserDataWithMeta(userId, data) {
     .upsert(
       {
         user_id: normalizedUserId,
-        data: payload,
+        data: remotePayload,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" }

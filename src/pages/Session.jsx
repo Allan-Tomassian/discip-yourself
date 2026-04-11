@@ -21,11 +21,23 @@ import { AppCard, AppScreen, GhostButton } from "../shared/ui/app";
 import { deriveActionProtocol } from "../features/action-protocol/actionProtocol";
 import {
   buildSessionRunbookV1,
-  deriveGuidedCurrentStep,
   normalizePreparedSessionRunbook,
   normalizeSessionBlueprintSnapshot,
   normalizeSessionRunbook,
 } from "../features/session/sessionRunbook";
+import {
+  activateGuidedSpatialState,
+  areGuidedSpatialStatesEqual,
+  advanceGuidedSpatialStep,
+  createGuidedSpatialState,
+  deriveGuidedSpatialPlan,
+  normalizeGuidedSpatialState,
+  rebaseGuidedSpatialState,
+  returnGuidedSpatialToActive,
+  setGuidedSpatialViewedStep,
+  syncGuidedSpatialStateWithElapsed,
+  toggleGuidedSpatialChecklistItem,
+} from "../features/session/sessionSpatialRuntime";
 import {
   applyGuidedAdjustmentLocally,
   applyStandardAdjustmentLocally,
@@ -49,6 +61,7 @@ import {
   toggleSessionToolUtilityCollapse,
 } from "../features/session/sessionTools";
 import { requestAiSessionGuidance } from "../infra/aiSessionGuidanceClient";
+import { saveState } from "../utils/storage";
 import "../features/session/session.css";
 import "../features/session/session-guided.css";
 
@@ -112,6 +125,87 @@ function readGoalSessionNotes(goal) {
     .filter(Boolean)
     .join("\n")
     .slice(0, 400);
+}
+
+function normalizeGuidedRuntimeSnapshot(rawValue, { occurrenceId = null } = {}) {
+  const source = rawValue && typeof rawValue === "object" ? rawValue : null;
+  const sessionRunbook = normalizeSessionRunbook(source?.sessionRunbook || null);
+  if (!sessionRunbook) return null;
+  const guidedSpatialState = normalizeGuidedSpatialState(source?.guidedSpatialState || null, {
+    sessionRunbook,
+  });
+  if (!guidedSpatialState) return null;
+  return {
+    version: 1,
+    occurrenceId: source?.occurrenceId || occurrenceId || null,
+    sessionRunbook,
+    sessionToolPlan: normalizeSessionToolPlan(source?.sessionToolPlan || null, {
+      sessionRunbook,
+    }),
+    guidedAdjustment: source?.guidedAdjustment || null,
+    guidedSpatialState,
+  };
+}
+
+function buildGuidedRuntimeSnapshot({
+  occurrenceId = null,
+  sessionRunbook = null,
+  sessionToolPlan = null,
+  guidedAdjustment = null,
+  guidedSpatialState = null,
+} = {}) {
+  return normalizeGuidedRuntimeSnapshot(
+    {
+      version: 1,
+      occurrenceId,
+      sessionRunbook,
+      sessionToolPlan,
+      guidedAdjustment,
+      guidedSpatialState,
+    },
+    { occurrenceId }
+  );
+}
+
+function areGuidedRuntimeSnapshotsEqual(a, b) {
+  const left = normalizeGuidedRuntimeSnapshot(a);
+  const right = normalizeGuidedRuntimeSnapshot(b);
+  if (!left || !right) return left === right;
+  return (
+    left.occurrenceId === right.occurrenceId &&
+    areGuidedSpatialStatesEqual(left.guidedSpatialState, right.guidedSpatialState, {
+      sessionRunbook: left.sessionRunbook,
+    }) &&
+    JSON.stringify(left.sessionRunbook) === JSON.stringify(right.sessionRunbook) &&
+    JSON.stringify(left.sessionToolPlan || null) === JSON.stringify(right.sessionToolPlan || null) &&
+    JSON.stringify(left.guidedAdjustment || null) === JSON.stringify(right.guidedAdjustment || null)
+  );
+}
+
+function persistActiveGuidedRuntime(prevState, { occurrenceId = null, snapshot = null } = {}) {
+  if (!snapshot || !occurrenceId) return prevState;
+  const prev = prevState && typeof prevState === "object" ? prevState : {};
+  const prevUi = prev.ui && typeof prev.ui === "object" ? prev.ui : {};
+  const currentSession =
+    prevUi.activeSession && typeof prevUi.activeSession === "object" ? prevUi.activeSession : null;
+  if (!currentSession || currentSession.occurrenceId !== occurrenceId) return prevState;
+  const currentSnapshot = normalizeGuidedRuntimeSnapshot(currentSession.guidedRuntimeV1 || null, {
+    occurrenceId: currentSession.occurrenceId || null,
+  });
+  if (currentSession.experienceMode === "guided" && areGuidedRuntimeSnapshotsEqual(currentSnapshot, snapshot)) {
+    return prevState;
+  }
+  return {
+    ...prev,
+    ui: {
+      ...prevUi,
+      activeSession: {
+        ...currentSession,
+        experienceMode: "guided",
+        guidedRuntimeV1: snapshot,
+      },
+    },
+  };
 }
 
 function SessionTopChrome({ isPrelaunch = false, categoryName = "", onBack }) {
@@ -304,13 +398,16 @@ export default function Session({
     !session &&
     Boolean(blueprintSnapshot) &&
     isLaunchableOccurrence &&
-    (launchPhase === "ready" || launchPhase === "preparing" || launchPhase === "plan_ready");
+    (launchPhase === "ready" || launchPhase === "preparing");
   const launchMode = launchStateMatchesOccurrence ? currentLaunchState?.launchMode || null : null;
   const launchRunbook = useMemo(
     () => normalizeSessionRunbook(currentLaunchState?.sessionRunbook || null),
     [currentLaunchState?.sessionRunbook]
   );
-  const guidedRunbook = launchStateMatchesOccurrence && launchMode === "guided" ? launchRunbook : null;
+  const launchSpatialState = useMemo(
+    () => normalizeGuidedSpatialState(currentLaunchState?.guidedSpatialState || null, { sessionRunbook: launchRunbook }),
+    [currentLaunchState?.guidedSpatialState, launchRunbook]
+  );
   const launchToolPlan = useMemo(
     () => normalizeSessionToolPlan(currentLaunchState?.sessionToolPlan || null, { sessionRunbook: launchRunbook }),
     [currentLaunchState?.sessionToolPlan, launchRunbook]
@@ -319,11 +416,99 @@ export default function Session({
     () => normalizeSessionToolState(currentLaunchState?.sessionToolState || null),
     [currentLaunchState?.sessionToolState]
   );
-  const guidedPlan = useMemo(
-    () => deriveGuidedCurrentStep({ sessionRunbook: guidedRunbook, elapsedSec }),
-    [elapsedSec, guidedRunbook]
+  const persistedGuidedRuntime = useMemo(
+    () =>
+      normalizeGuidedRuntimeSnapshot(session?.guidedRuntimeV1 || null, {
+        occurrenceId: session?.occurrenceId || null,
+      }),
+    [session?.guidedRuntimeV1, session?.occurrenceId]
   );
-  const guidedToolPlan = launchStateMatchesOccurrence && launchMode === "guided" ? launchToolPlan : null;
+  const hasPersistedGuidedRuntime = Boolean(
+    session &&
+      isRuntimeSessionOpen(session) &&
+      persistedGuidedRuntime &&
+      selectedOccurrence?.id &&
+      session.occurrenceId === selectedOccurrence.id
+  );
+  const guidedRunbook = useMemo(() => {
+    if (launchStateMatchesOccurrence && launchMode === "guided") return launchRunbook;
+    return hasPersistedGuidedRuntime ? persistedGuidedRuntime.sessionRunbook : null;
+  }, [
+    hasPersistedGuidedRuntime,
+    launchMode,
+    launchRunbook,
+    launchStateMatchesOccurrence,
+    persistedGuidedRuntime,
+  ]);
+  const resolvedLaunchSpatialState = useMemo(() => {
+    if (!launchStateMatchesOccurrence || launchMode !== "guided" || !guidedRunbook || !launchSpatialState) {
+      return launchSpatialState;
+    }
+    if (!session || !isRuntimeSessionOpen(session) || launchSpatialState.mode === "active") {
+      return launchSpatialState;
+    }
+    return activateGuidedSpatialState({
+      guidedSpatialState: launchSpatialState,
+      sessionRunbook: guidedRunbook,
+      elapsedSec,
+    });
+  }, [
+    elapsedSec,
+    guidedRunbook,
+    launchMode,
+    launchSpatialState,
+    launchStateMatchesOccurrence,
+    session,
+  ]);
+  const effectiveGuidedSpatialState = useMemo(() => {
+    if (launchStateMatchesOccurrence && launchMode === "guided") return resolvedLaunchSpatialState;
+    return hasPersistedGuidedRuntime ? persistedGuidedRuntime.guidedSpatialState : null;
+  }, [
+    hasPersistedGuidedRuntime,
+    launchMode,
+    launchStateMatchesOccurrence,
+    persistedGuidedRuntime,
+    resolvedLaunchSpatialState,
+  ]);
+  const effectiveLaunchMode =
+    launchStateMatchesOccurrence && launchMode
+      ? launchMode
+      : hasPersistedGuidedRuntime
+        ? "guided"
+        : null;
+  const guidedMode =
+    effectiveLaunchMode === "guided"
+      ? effectiveGuidedSpatialState?.mode ||
+        (launchPhase === "guided_active" || (session && isRuntimeSessionOpen(session)) ? "active" : "preview")
+      : "";
+  const syncedGuidedSpatialState = useMemo(
+    () =>
+      syncGuidedSpatialStateWithElapsed({
+        sessionRunbook: guidedRunbook,
+        guidedSpatialState: effectiveGuidedSpatialState,
+        elapsedSec,
+      }),
+    [elapsedSec, effectiveGuidedSpatialState, guidedRunbook]
+  );
+  const guidedPlan = useMemo(
+    () =>
+      deriveGuidedSpatialPlan({
+        sessionRunbook: guidedRunbook,
+        guidedSpatialState: syncedGuidedSpatialState,
+        elapsedSec,
+      }),
+    [elapsedSec, guidedRunbook, syncedGuidedSpatialState]
+  );
+  const guidedToolPlan = useMemo(() => {
+    if (launchStateMatchesOccurrence && launchMode === "guided") return launchToolPlan;
+    return hasPersistedGuidedRuntime ? persistedGuidedRuntime.sessionToolPlan : null;
+  }, [
+    hasPersistedGuidedRuntime,
+    launchMode,
+    launchStateMatchesOccurrence,
+    launchToolPlan,
+    persistedGuidedRuntime,
+  ]);
   const guidedTools = useMemo(
     () =>
       deriveRecommendedSessionTools({
@@ -333,7 +518,8 @@ export default function Session({
       }),
     [accessToken, guidedPlan, guidedToolPlan]
   );
-  const activeToolUtility = launchStateMatchesOccurrence && launchMode === "guided" ? launchToolState.activeUtility : null;
+  const activeToolUtility =
+    launchStateMatchesOccurrence && launchMode === "guided" ? launchToolState.activeUtility : null;
   const activeToolUtilitySnapshot = useMemo(
     () => deriveActiveSessionToolUtilitySnapshot(activeToolUtility, toolTick),
     [activeToolUtility, toolTick]
@@ -343,11 +529,21 @@ export default function Session({
       ? launchToolState.artifactsByToolId?.[launchToolState.openArtifactToolId] || null
       : null;
   const standardAdjustment =
-    launchStateMatchesOccurrence && launchMode !== "guided" && currentLaunchState?.standardAdjustment
+    launchStateMatchesOccurrence && effectiveLaunchMode !== "guided" && currentLaunchState?.standardAdjustment
       ? currentLaunchState.standardAdjustment
       : null;
-  const guidedAdjustment =
-    launchStateMatchesOccurrence && launchMode === "guided" ? currentLaunchState?.guidedAdjustment || null : null;
+  const guidedAdjustment = useMemo(() => {
+    if (launchStateMatchesOccurrence && launchMode === "guided") {
+      return currentLaunchState?.guidedAdjustment || null;
+    }
+    return hasPersistedGuidedRuntime ? persistedGuidedRuntime.guidedAdjustment || null : null;
+  }, [
+    currentLaunchState,
+    hasPersistedGuidedRuntime,
+    launchMode,
+    launchStateMatchesOccurrence,
+    persistedGuidedRuntime,
+  ]);
   const effectiveActionProtocol = useMemo(() => {
     if (!standardAdjustment?.protocolOverride) return actionProtocol;
     return {
@@ -365,9 +561,17 @@ export default function Session({
     );
   const currentAdjustmentSummary = guidedAdjustment?.summary || standardAdjustment?.summary || "";
   const currentAdjustmentLabel = guidedAdjustment?.label || standardAdjustment?.label || "";
-  const canAdjustStandard = Boolean(selectedOccurrence?.id) && launchMode !== "guided";
-  const canAdjustGuided = Boolean(guidedPlan && !shouldShowLaunchSurface && launchMode === "guided");
-  const canOpenGuidedTools = Boolean(guidedPlan && !shouldShowLaunchSurface && launchMode === "guided" && guidedTools.length);
+  const canAdjustStandard = Boolean(selectedOccurrence?.id) && effectiveLaunchMode !== "guided";
+  const canAdjustGuided = Boolean(
+    guidedPlan && !shouldShowLaunchSurface && effectiveLaunchMode === "guided" && guidedMode === "active"
+  );
+  const canOpenGuidedTools = Boolean(
+    guidedPlan &&
+      !shouldShowLaunchSurface &&
+      effectiveLaunchMode === "guided" &&
+      guidedMode === "active" &&
+      guidedTools.length
+  );
   const sessionTimingLabel =
     selectedOccurrence?.start && selectedOccurrence.start !== "00:00" ? selectedOccurrence.start : "Dans la journée";
   const isPrelaunchPhase = shouldShowLaunchSurface;
@@ -404,31 +608,41 @@ export default function Session({
       buildGuidedAdjustmentOptions({
         cause: adjustCause,
         sessionRunbook: guidedRunbook,
+        guidedSpatialState: syncedGuidedSpatialState,
         elapsedSec,
       }),
-    [adjustCause, elapsedSec, guidedRunbook]
+    [adjustCause, elapsedSec, guidedRunbook, syncedGuidedSpatialState]
   );
   const activeAdjustOptions = adjustSheetMode === "guided" ? guidedAdjustOptions : standardAdjustOptions;
   const readLaunchStateBase = useCallback(
     (current = null) => {
       const currentValue =
         current && selectedOccurrence?.id && current.occurrenceId === selectedOccurrence.id ? current : null;
+      const runtimeGuidedBase = hasPersistedGuidedRuntime ? persistedGuidedRuntime : null;
+      const currentPhase = currentValue?.phase || "";
+      const currentLaunchMode = currentValue?.launchMode || null;
       return {
         version: 1,
         entryId: currentValue?.entryId || `session-${selectedOccurrence?.id || "current"}`,
-        phase: currentValue?.phase || "ready",
-        launchMode: currentValue?.launchMode || null,
+        phase:
+          currentLaunchMode === "guided"
+            ? currentPhase || "guided_active"
+            : runtimeGuidedBase
+              ? "guided_active"
+              : currentPhase || "ready",
+        launchMode: currentLaunchMode || (runtimeGuidedBase ? "guided" : null),
         sourceSurface: currentValue?.sourceSurface || "unknown",
         occurrenceId: selectedOccurrence?.id || null,
         actionId: goal?.id || selectedOccurrence?.goalId || currentValue?.actionId || null,
         dateKey: selectedOccurrence?.date || effectiveDateKey || currentValue?.dateKey || null,
         categoryId: category?.id || goal?.categoryId || effectiveCategoryId || currentValue?.categoryId || null,
         blueprintSnapshot: blueprintSnapshot || currentValue?.blueprintSnapshot || null,
-        sessionRunbook: currentValue?.sessionRunbook || null,
+        sessionRunbook: currentValue?.sessionRunbook || runtimeGuidedBase?.sessionRunbook || null,
         standardAdjustment: currentValue?.standardAdjustment || null,
-        guidedAdjustment: currentValue?.guidedAdjustment || null,
-        sessionToolPlan: currentValue?.sessionToolPlan || null,
+        guidedAdjustment: currentValue?.guidedAdjustment || runtimeGuidedBase?.guidedAdjustment || null,
+        sessionToolPlan: currentValue?.sessionToolPlan || runtimeGuidedBase?.sessionToolPlan || null,
         sessionToolState: currentValue?.sessionToolState || null,
+        guidedSpatialState: currentValue?.guidedSpatialState || runtimeGuidedBase?.guidedSpatialState || null,
         openedAtMs: currentValue?.openedAtMs || Date.now(),
       };
     },
@@ -439,6 +653,8 @@ export default function Session({
       effectiveDateKey,
       goal?.categoryId,
       goal?.id,
+      hasPersistedGuidedRuntime,
+      persistedGuidedRuntime,
       selectedOccurrence?.date,
       selectedOccurrence?.goalId,
       selectedOccurrence?.id,
@@ -468,6 +684,21 @@ export default function Session({
       return {
         ...base,
         sessionToolState: nextToolState || createEmptySessionToolState(),
+      };
+    });
+  };
+
+  const updateGuidedSpatialState = (updater) => {
+    if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id) return;
+    setSessionLaunchState((current) => {
+      const base = readLaunchStateBase(current);
+      const currentSpatialState = normalizeGuidedSpatialState(base.guidedSpatialState, {
+        sessionRunbook: base.sessionRunbook,
+      });
+      const nextSpatialState = typeof updater === "function" ? updater(currentSpatialState) : updater;
+      return {
+        ...base,
+        guidedSpatialState: nextSpatialState || null,
       };
     });
   };
@@ -545,6 +776,84 @@ export default function Session({
     setSessionLaunchState,
   ]);
 
+  useEffect(() => {
+    if (typeof setSessionLaunchState !== "function") return;
+    if (!launchStateMatchesOccurrence || launchMode !== "guided") return;
+    if (!guidedRunbook || !launchSpatialState || !syncedGuidedSpatialState) return;
+    if (
+      areGuidedSpatialStatesEqual(syncedGuidedSpatialState, launchSpatialState, {
+        sessionRunbook: guidedRunbook,
+      })
+    ) {
+      return;
+    }
+    setSessionLaunchState((current) => {
+      const base = readLaunchStateBase(current);
+      if (base.occurrenceId !== selectedOccurrence?.id) return current;
+      if (
+        areGuidedSpatialStatesEqual(base.guidedSpatialState, syncedGuidedSpatialState, {
+          sessionRunbook: guidedRunbook,
+        }) &&
+        base.phase === (syncedGuidedSpatialState.mode === "active" ? "guided_active" : "guided_preview")
+      ) {
+        return current;
+      }
+      return {
+        ...base,
+        phase: syncedGuidedSpatialState.mode === "active" ? "guided_active" : "guided_preview",
+        guidedSpatialState: syncedGuidedSpatialState,
+      };
+    });
+  }, [
+    guidedRunbook,
+    launchMode,
+    launchSpatialState,
+    launchStateMatchesOccurrence,
+    readLaunchStateBase,
+    selectedOccurrence?.id,
+    setSessionLaunchState,
+    syncedGuidedSpatialState,
+  ]);
+
+  const activeGuidedRuntimeSnapshot = useMemo(
+    () =>
+      effectiveLaunchMode === "guided" && guidedMode === "active"
+        ? buildGuidedRuntimeSnapshot({
+            occurrenceId: selectedOccurrence?.id || null,
+            sessionRunbook: guidedRunbook,
+            sessionToolPlan: guidedToolPlan,
+            guidedAdjustment,
+            guidedSpatialState: syncedGuidedSpatialState,
+          })
+        : null,
+    [
+      effectiveLaunchMode,
+      guidedAdjustment,
+      guidedMode,
+      guidedRunbook,
+      guidedToolPlan,
+      selectedOccurrence?.id,
+      syncedGuidedSpatialState,
+    ]
+  );
+
+  useEffect(() => {
+    if (typeof setData !== "function") return;
+    if (!session || !isRuntimeSessionOpen(session)) return;
+    if (!selectedOccurrence?.id || !activeGuidedRuntimeSnapshot) return;
+    setData((prev) =>
+      persistActiveGuidedRuntime(prev, {
+        occurrenceId: selectedOccurrence.id,
+        snapshot: activeGuidedRuntimeSnapshot,
+      })
+    );
+  }, [
+    activeGuidedRuntimeSnapshot,
+    selectedOccurrence?.id,
+    session,
+    setData,
+  ]);
+
   useEffect(
     () => () => {
       prepareRequestRef.current += 1;
@@ -582,6 +891,7 @@ export default function Session({
       guidedAdjustment: null,
       sessionToolPlan: null,
       sessionToolState: null,
+      guidedSpatialState: null,
     }));
   };
 
@@ -613,6 +923,7 @@ export default function Session({
       guidedAdjustment: null,
       sessionToolPlan: null,
       sessionToolState: null,
+      guidedSpatialState: null,
     }));
 
     let nextRunbook = fallbackRunbook;
@@ -654,13 +965,17 @@ export default function Session({
       if (!base.occurrenceId || base.occurrenceId !== selectedOccurrence.id) return current;
       return {
         ...base,
-        phase: "plan_ready",
+        phase: "guided_preview",
         launchMode: "guided",
         sessionRunbook: nextRunbook,
         standardAdjustment: null,
         guidedAdjustment: null,
         sessionToolPlan: nextToolPlan,
         sessionToolState: createEmptySessionToolState(),
+        guidedSpatialState: createGuidedSpatialState({
+          sessionRunbook: nextRunbook,
+          mode: "preview",
+        }),
       };
     });
   };
@@ -681,28 +996,170 @@ export default function Session({
       guidedAdjustment: null,
       sessionToolPlan: null,
       sessionToolState: null,
+      guidedSpatialState: null,
     }));
   };
 
-  const handleLaunchGuided = () => {
-    if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id) return;
+  const handleStartGuidedSession = () => {
+    if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id || !launchRunbook) return;
     prepareRequestRef.current += 1;
     window.clearTimeout(preparationTimerId);
     setPreparationTimerId(0);
+    closeAdjustSheet();
     closeToolsSheet();
+    const nextToolPlan = launchToolPlan || buildSessionToolPlan({ sessionRunbook: launchRunbook });
+    const nextGuidedSpatialState = activateGuidedSpatialState({
+      guidedSpatialState: effectiveGuidedSpatialState,
+      sessionRunbook: launchRunbook,
+      elapsedSec,
+    });
+    const nextGuidedRuntimeSnapshot = buildGuidedRuntimeSnapshot({
+      occurrenceId: selectedOccurrence.id,
+      sessionRunbook: launchRunbook,
+      sessionToolPlan: nextToolPlan,
+      guidedAdjustment: null,
+      guidedSpatialState: nextGuidedSpatialState,
+    });
     setSessionLaunchState((current) => {
       const base = readLaunchStateBase(current);
       if (!base.occurrenceId || !launchRunbook) return current;
       return {
         ...base,
-        phase: "launched_guided",
+        phase: "guided_active",
         launchMode: "guided",
         sessionRunbook: launchRunbook,
         standardAdjustment: null,
-        sessionToolPlan: launchToolPlan || buildSessionToolPlan({ sessionRunbook: launchRunbook }),
+        guidedAdjustment: null,
+        sessionToolPlan: nextToolPlan,
         sessionToolState: createEmptySessionToolState(),
+        guidedSpatialState: nextGuidedSpatialState,
       };
     });
+    startTimer({ guidedRuntimeSnapshot: nextGuidedRuntimeSnapshot });
+  };
+
+  const handleRegenerateGuided = async () => {
+    if (
+      typeof setSessionLaunchState !== "function" ||
+      !selectedOccurrence?.id ||
+      !goal ||
+      !blueprintSnapshot ||
+      !launchRunbook ||
+      guidedMode !== "preview"
+    ) {
+      return;
+    }
+
+    prepareRequestRef.current += 1;
+    const requestId = prepareRequestRef.current;
+    updateGuidedSpatialState((currentSpatialState) => ({
+      ...(currentSpatialState || createGuidedSpatialState({ sessionRunbook: launchRunbook, mode: "preview" })),
+      isRegenerating: true,
+    }));
+
+    const fallbackRunbook = buildSessionRunbookV1({
+      blueprintSnapshot,
+      occurrence: selectedOccurrence,
+      action: goal,
+      category,
+    });
+
+    let nextRunbook = launchRunbook;
+    let nextToolPlan = launchToolPlan || buildSessionToolPlan({ sessionRunbook: launchRunbook });
+
+    if (accessToken && fallbackRunbook) {
+      const prepareResult = await requestAiSessionGuidance({
+        accessToken,
+        payload: {
+          mode: "prepare",
+          variant: "regenerate",
+          dateKey: selectedOccurrence.date || effectiveDateKey,
+          occurrenceId: selectedOccurrence.id,
+          actionId: goal.id,
+          categoryId: category?.id || goal?.categoryId || effectiveCategoryId || null,
+          blueprintSnapshot,
+          fallbackRunbook,
+          notes: readGoalSessionNotes(goal),
+        },
+      });
+      const preparedRunbook = readSessionGuidanceRunbookPayload(prepareResult?.payload, fallbackRunbook);
+      if (prepareResult?.ok && preparedRunbook) {
+        nextRunbook = preparedRunbook;
+      }
+      const preparedToolPlan = readSessionGuidanceToolPlanPayload(
+        prepareResult?.payload,
+        preparedRunbook || nextRunbook
+      );
+      if (prepareResult?.ok && preparedToolPlan) {
+        nextToolPlan = preparedToolPlan;
+      }
+    }
+
+    if (prepareRequestRef.current !== requestId) return;
+    setSessionLaunchState((current) => {
+      const base = readLaunchStateBase(current);
+      if (base.occurrenceId !== selectedOccurrence.id) return current;
+      return {
+        ...base,
+        phase: "guided_preview",
+        launchMode: "guided",
+        sessionRunbook: nextRunbook,
+        guidedAdjustment: null,
+        sessionToolPlan: nextToolPlan,
+        sessionToolState: createEmptySessionToolState(),
+        guidedSpatialState: {
+          ...createGuidedSpatialState({
+            sessionRunbook: nextRunbook,
+            mode: "preview",
+          }),
+          isRegenerating: false,
+        },
+      };
+    });
+  };
+
+  const handleViewGuidedStep = (stepIndex) => {
+    if (!guidedRunbook) return;
+    updateGuidedSpatialState((currentSpatialState) =>
+      setGuidedSpatialViewedStep({
+        guidedSpatialState: currentSpatialState,
+        sessionRunbook: guidedRunbook,
+        stepIndex,
+      })
+    );
+  };
+
+  const handleReturnToActiveGuidedStep = () => {
+    if (!guidedRunbook) return;
+    updateGuidedSpatialState((currentSpatialState) =>
+      returnGuidedSpatialToActive({
+        guidedSpatialState: currentSpatialState,
+        sessionRunbook: guidedRunbook,
+      })
+    );
+  };
+
+  const handleToggleGuidedChecklistItem = (stepId, itemId) => {
+    if (!guidedRunbook) return;
+    updateGuidedSpatialState((currentSpatialState) =>
+      toggleGuidedSpatialChecklistItem({
+        guidedSpatialState: currentSpatialState,
+        sessionRunbook: guidedRunbook,
+        stepId,
+        itemId,
+      })
+    );
+  };
+
+  const handleAdvanceGuidedStep = () => {
+    if (!guidedRunbook) return;
+    updateGuidedSpatialState((currentSpatialState) =>
+      advanceGuidedSpatialStep({
+        guidedSpatialState: currentSpatialState,
+        sessionRunbook: guidedRunbook,
+        elapsedSec,
+      })
+    );
   };
 
   const openStandardAdjust = () => {
@@ -919,6 +1376,7 @@ export default function Session({
       cause: adjustCause,
       strategyId: option.strategyId,
       sessionRunbook: guidedRunbook,
+      guidedSpatialState: syncedGuidedSpatialState,
       elapsedSec,
     });
     if (!localGuidedResult) {
@@ -973,13 +1431,20 @@ export default function Session({
       if (!base.occurrenceId) return current;
       return {
         ...base,
-        phase: "launched_guided",
+        phase: "guided_active",
         launchMode: "guided",
         sessionRunbook: nextRunbook,
         standardAdjustment: null,
         guidedAdjustment: nextAdjustment,
         sessionToolPlan: nextToolPlan,
         sessionToolState: createEmptySessionToolState(),
+        guidedSpatialState: rebaseGuidedSpatialState({
+          guidedSpatialState: base.guidedSpatialState,
+          previousRunbook: guidedRunbook,
+          nextRunbook,
+          mode: "active",
+          elapsedSec,
+        }),
       };
     });
     setAdjustLoading(false);
@@ -987,13 +1452,13 @@ export default function Session({
     setAdjustSheetMode("");
   };
 
-  function startTimer() {
-    if (!selectedOccurrence?.id || typeof setData !== "function") return;
-    const selectedOccurrenceId = selectedOccurrence.id;
-    const selectedGoalId = selectedOccurrence.goalId || "";
-    setData((prev) => {
-      const current = prev?.ui?.activeSession;
-      let next = prev;
+  const buildStartedRuntimeState = useCallback(
+    (sourceState, guidedRuntimeSnapshot = null) => {
+      if (!selectedOccurrence?.id) return sourceState;
+      const selectedOccurrenceId = selectedOccurrence.id;
+      const selectedGoalId = selectedOccurrence.goalId || "";
+      const current = sourceState?.ui?.activeSession;
+      let next = sourceState;
       if (!current || !isRuntimeSessionOpen(current) || current.occurrenceId !== selectedOccurrenceId) {
         next = applySessionRuntimeTransition(next, {
           type: "start",
@@ -1003,13 +1468,28 @@ export default function Session({
           habitIds: selectedGoalId ? [selectedGoalId] : [],
         });
       }
-      return applySessionRuntimeTransition(next, {
+      const resumed = applySessionRuntimeTransition(next, {
         type: "resume",
         occurrenceId: selectedOccurrenceId,
         dateKey: selectedOccurrence.date || effectiveDateKey,
         durationSec: 0,
       });
-    });
+      return guidedRuntimeSnapshot
+        ? persistActiveGuidedRuntime(resumed, {
+            occurrenceId: selectedOccurrenceId,
+            snapshot: guidedRuntimeSnapshot,
+          })
+        : resumed;
+    },
+    [effectiveDateKey, selectedOccurrence?.date, selectedOccurrence?.goalId, selectedOccurrence?.id]
+  );
+
+  function startTimer({ guidedRuntimeSnapshot = null } = {}) {
+    if (!selectedOccurrence?.id || typeof setData !== "function") return;
+    const selectedOccurrenceId = selectedOccurrence.id;
+    const nextRuntimeState = buildStartedRuntimeState(safeData, guidedRuntimeSnapshot);
+    saveState(nextRuntimeState);
+    setData((prev) => buildStartedRuntimeState(prev, guidedRuntimeSnapshot));
     emitSessionRuntimeNotificationHook("resume", {
       occurrenceId: selectedOccurrenceId,
       dateKey: selectedOccurrence.date || effectiveDateKey,
@@ -1263,20 +1743,16 @@ export default function Session({
             durationLabel={Number.isFinite(effectivePlannedMinutes) ? `${effectivePlannedMinutes} min` : ""}
             why={blueprintSnapshot?.why || ""}
             firstStep={blueprintSnapshot?.firstStep || ""}
-            steps={Array.isArray(currentLaunchState?.sessionRunbook?.steps) ? currentLaunchState.sessionRunbook.steps : []}
             onStartStandard={handleLaunchStandard}
             onPrepareGuided={handlePrepareGuided}
-            onLaunchGuided={handleLaunchGuided}
-            onRevertToStandard={handleRevertToStandard}
           />
         ) : (
           <FocusSessionView
             title={goal?.title || "Session"}
             categoryName={category?.name || "Catégorie"}
             actionProtocol={effectiveActionProtocol}
-            guidedPlan={
-              launchStateMatchesOccurrence && currentLaunchState?.phase === "launched_guided" ? guidedPlan : null
-            }
+            guidedPlan={effectiveLaunchMode === "guided" ? guidedPlan : null}
+            guidedMode={effectiveLaunchMode === "guided" ? guidedMode : ""}
             adjustmentLabel={currentAdjustmentLabel}
             adjustmentSummary={currentAdjustmentSummary}
             behaviorCue={sessionBehaviorCue}
@@ -1294,18 +1770,31 @@ export default function Session({
             canStart={Boolean(selectedOccurrence?.id) && (viewState === "idle" || viewState === "paused")}
             canPause={viewState === "running"}
             canComplete={Boolean(session?.occurrenceId) && isRuntimeSessionOpen(session)}
-            onStart={viewState === "paused" ? resumeTimer : startTimer}
+            onStart={
+              guidedMode === "preview"
+                ? handleStartGuidedSession
+                : viewState === "paused"
+                  ? resumeTimer
+                  : startTimer
+            }
             onPause={pauseTimer}
             onComplete={() => setShowFeedback(true)}
             onBlock={blockSession}
             onOpenReport={() => setReportMode((current) => !current)}
             onOpenAdjust={canAdjustGuided ? openGuidedAdjust : openStandardAdjust}
             onOpenTools={openGuidedTools}
+            onRegenerateGuided={handleRegenerateGuided}
+            onRevertToStandard={handleRevertToStandard}
+            onViewGuidedStep={handleViewGuidedStep}
+            onReturnToActiveGuidedStep={handleReturnToActiveGuidedStep}
+            onToggleGuidedChecklistItem={handleToggleGuidedChecklistItem}
+            onAdvanceGuidedStep={handleAdvanceGuidedStep}
             showAdjust={viewState !== "completed" && viewState !== "blocked" && viewState !== "reported" && (canAdjustGuided || canAdjustStandard)}
             showTools={viewState !== "completed" && viewState !== "blocked" && viewState !== "reported" && canOpenGuidedTools}
             adjustMode={canAdjustGuided ? "guided" : "standard"}
+            guidedRegenerating={syncedGuidedSpatialState?.isRegenerating === true}
             toolTray={
-              activeToolUtilitySnapshot ? (
+              guidedMode === "active" && activeToolUtilitySnapshot ? (
                 <SessionToolTray
                   utility={activeToolUtilitySnapshot}
                   onStart={handleStartToolUtility}
@@ -1344,6 +1833,8 @@ export default function Session({
         open={toolsSheetOpen}
         tools={guidedTools}
         loading={toolsLoading}
+        activeStepLabel={guidedPlan?.currentStep?.label || ""}
+        viewedStepIsActive={guidedPlan?.isViewedStepActive !== false}
         onClose={closeToolsSheet}
         onSelectTool={handleExecuteTool}
       />

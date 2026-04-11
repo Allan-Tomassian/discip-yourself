@@ -129,12 +129,13 @@ test("guided adjust patches the runbook locally and keeps the runtime guided", a
   await openTimelineLaunch(page, buildLaunchState());
 
   await page.getByRole("button", { name: "Aller plus loin" }).click();
-  await expect(page.getByTestId("session-launch-plan-ready")).toBeVisible();
-  await page.getByRole("button", { name: "Lancer la session" }).click();
+  await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
+  await page.getByRole("button", { name: "Démarrer" }).click();
 
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
   await expect(page.getByTestId("session-action-dock")).toBeVisible();
   await expect(page.locator(".pageHeader")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Régénérer" })).toHaveCount(0);
   await page.getByRole("button", { name: "Réajuster" }).click();
   await expect(page.getByTestId("session-adjust-causes")).toBeVisible();
   await attachScreenshot(page, testInfo, "session-guided-adjust-sheet.png");

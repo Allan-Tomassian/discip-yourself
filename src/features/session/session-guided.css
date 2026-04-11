@@ -63,16 +63,92 @@
     0 0 0 1px color-mix(in srgb, var(--accent-primary) 8%, transparent);
 }
 
-.sessionGuidedPlanCurrent {
+.sessionGuidedSurface {
   display: grid;
-  gap: 8px;
+  gap: 12px;
 }
 
-.sessionGuidedPlanMeta,
-.sessionGuidedPlanCurrentItemMeta,
-.sessionGuidedPlanNextLabel,
-.sessionGuidedPlanStepMinutes,
-.sessionAdjustmentNoticeLabel {
+.sessionGuidedPlanNotice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.sessionGuidedPlanNoticeText {
+  font-size: var(--font-meta);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.sessionGuidedSlidesTrack {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 100%;
+  gap: 16px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sessionGuidedSlidesTrack::-webkit-scrollbar {
+  display: none;
+}
+
+.sessionGuidedSlidesTrack.is-locked {
+  pointer-events: none;
+}
+
+.sessionGuidedSlideFrame {
+  scroll-snap-align: center;
+}
+
+.sessionGuidedSlide {
+  display: grid;
+  gap: 16px;
+  min-height: 100%;
+  padding: 22px;
+  border-radius: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.008)),
+    rgba(255, 255, 255, 0.012);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.sessionGuidedSlide.is-viewed {
+  border-color: color-mix(in srgb, var(--accent-primary) 14%, rgba(255, 255, 255, 0.08));
+}
+
+.sessionGuidedSlide.is-active {
+  border-color: color-mix(in srgb, var(--accent-primary) 22%, rgba(255, 255, 255, 0.08));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 10%, transparent);
+}
+
+.sessionGuidedSlideHeader,
+.sessionGuidedSlideMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sessionGuidedSlideMeta,
+.sessionGuidedSlideStatus,
+.sessionGuidedStepCurrentMeta,
+.sessionGuidedStepNextLabel,
+.sessionGuidedPreviewRowMeta,
+.sessionGuidedStepChecklistMeta {
   font-size: var(--font-micro);
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.08em;
@@ -80,7 +156,18 @@
   color: color-mix(in srgb, var(--accent-primary) 68%, white 32%);
 }
 
-.sessionGuidedPlanTitle {
+.sessionGuidedSlideStatus {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.025);
+  display: inline-flex;
+  align-items: center;
+}
+
+.sessionGuidedSlideTitle {
   font-size: clamp(1.65rem, 5.8vw, 2.1rem);
   line-height: 1.02;
   font-weight: 700;
@@ -88,28 +175,29 @@
   color: var(--text-primary);
 }
 
-.sessionGuidedPlanStepPurpose,
-.sessionGuidedPlanNextMeta,
-.sessionGuidedPlanStepText,
-.sessionGuidedPlanText,
-.sessionGuidedPlanSuccessCue,
-.sessionAdjustmentNoticeText,
-.sessionAdjustSheetSubtitle,
-.sessionAdjustOptionDescription,
-.sessionAdjustSheetCurrent,
-.sessionAdjustSheetEmpty {
+.sessionGuidedSlidePurpose,
+.sessionGuidedSlideCue,
+.sessionGuidedPreviewRowHint,
+.sessionGuidedStepCurrentText,
+.sessionGuidedStepCurrentCue,
+.sessionGuidedStepNextMeta,
+.sessionGuidedChecklistHint,
+.sessionGuidedStepOpenCue {
   font-size: var(--font-meta);
   line-height: 1.45;
   color: var(--text-secondary);
 }
 
-.sessionGuidedPlanCurrentItem,
-.sessionGuidedPlanNext {
+.sessionGuidedStepBody,
+.sessionGuidedPreviewRows,
+.sessionGuidedChecklistRows {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
-.sessionGuidedPlanCurrentItem {
+.sessionGuidedStepCurrentItem {
+  display: grid;
+  gap: 8px;
   padding: 18px;
   border-radius: 24px;
   border: 1px solid color-mix(in srgb, var(--accent-primary) 14%, rgba(255, 255, 255, 0.08));
@@ -118,54 +206,124 @@
     rgba(255, 255, 255, 0.014);
 }
 
-.sessionGuidedPlanNext {
-  padding: 12px 0 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.sessionGuidedPlanCurrentItemLabel,
-.sessionGuidedPlanNextValue {
+.sessionGuidedStepCurrentLabel,
+.sessionGuidedStepNextValue,
+.sessionGuidedPreviewRowLabel,
+.sessionGuidedChecklistLabel {
   font-size: var(--font-body-strong);
   font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
 }
 
-.sessionGuidedPlanProgress {
+.sessionGuidedStepCurrentProgress {
   margin-top: 4px;
 }
 
-.sessionGuidedPlanSteps {
+.sessionGuidedStepNext {
   display: grid;
-  gap: 0;
+  gap: 8px;
+  padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding-top: 4px;
 }
 
-.sessionGuidedPlanStep {
+.sessionGuidedPreviewRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: start;
   padding: 12px 0;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
 }
 
-.sessionGuidedPlanStep + .sessionGuidedPlanStep {
+.sessionGuidedPreviewRow + .sessionGuidedPreviewRow {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.sessionGuidedPlanStepBody {
+.sessionGuidedPreviewRowText,
+.sessionGuidedChecklistText {
   display: grid;
   gap: 4px;
   min-width: 0;
 }
 
-.sessionGuidedPlanStepLabel {
-  font-size: var(--font-body);
-  font-weight: var(--font-weight-medium);
-  color: var(--text-primary);
+.sessionGuidedChecklistRow {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.018);
+  text-align: left;
+  color: inherit;
+}
+
+.sessionGuidedChecklistRow.is-interactive {
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    transform 150ms ease;
+}
+
+.sessionGuidedChecklistRow.is-interactive:hover {
+  border-color: rgba(143, 120, 255, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  transform: translateY(-1px);
+}
+
+.sessionGuidedChecklistRow.is-checked {
+  border-color: rgba(143, 120, 255, 0.18);
+  background: rgba(143, 120, 255, 0.08);
+}
+
+.sessionGuidedChecklistMarker {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.sessionGuidedChecklistRow.is-checked .sessionGuidedChecklistMarker {
+  border-color: rgba(143, 120, 255, 0.28);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(143, 120, 255, 0.9) 0 42%, transparent 45%),
+    rgba(143, 120, 255, 0.12);
+}
+
+.sessionGuidedStepInlineAction {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 4px;
+}
+
+.sessionGuidedPreviewActions {
+  display: grid;
+  gap: 10px;
+}
+
+.sessionGuidedPreviewTextAction {
+  justify-self: center;
+}
+.sessionAdjustmentNoticeLabel {
+  font-size: var(--font-micro);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent-primary) 68%, white 32%);
+}
+
+.sessionAdjustmentNoticeText,
+.sessionAdjustSheetSubtitle,
+.sessionAdjustOptionDescription,
+.sessionAdjustSheetCurrent,
+.sessionAdjustSheetEmpty {
+  font-size: var(--font-meta);
+  line-height: 1.45;
+  color: var(--text-secondary);
 }
 
 .sessionAdjustmentNotice {
@@ -519,7 +677,12 @@
     gap: 12px;
   }
 
-  .sessionGuidedPlanTitle {
+  .sessionGuidedSlide {
+    padding: 20px;
+    gap: 14px;
+  }
+
+  .sessionGuidedSlideTitle {
     font-size: clamp(1.45rem, 7.4vw, 1.82rem);
   }
 
@@ -554,5 +717,11 @@
 
   .sessionToolsOption {
     padding: 15px;
+  }
+
+  .sessionGuidedPlanNotice,
+  .sessionGuidedSlideHeader,
+  .sessionGuidedSlideMeta {
+    align-items: flex-start;
   }
 }

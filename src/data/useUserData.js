@@ -7,6 +7,7 @@ import { loadState, saveState } from "../utils/storage";
 import {
   isRemoteUserDataEnabled,
   loadUserDataWithMeta,
+  rehydrateUserDataWithLocalGuidedRuntime,
   upsertUserDataWithMeta,
   USER_DATA_STORAGE_SCOPE,
 } from "./userDataApi";
@@ -141,7 +142,13 @@ export function useUserData() {
   const useDebounceRef = useRef(false);
 
   const setData = useCallback((next) => {
-    setDataState((prev) => (typeof next === "function" ? next(prev) : next));
+    setDataState((prev) => {
+      const resolved = typeof next === "function" ? next(prev) : next;
+      const safeNext = toSafeState(resolved);
+      // Persist locally at mutation time so active guided sessions survive fast reload/remount paths.
+      saveState(safeNext);
+      return safeNext;
+    });
   }, []);
 
   useEffect(() => {
@@ -192,7 +199,12 @@ export function useUserData() {
           sourceData = localCandidate;
         }
 
-        const next = toSafeState(sourceData);
+        const next = toSafeState(
+          rehydrateUserDataWithLocalGuidedRuntime({
+            data: sourceData,
+            localData: localCandidate,
+          })
+        );
         if (!active) return;
 
         hydratedSignatureRef.current = createStateSignature(next);

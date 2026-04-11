@@ -14,14 +14,33 @@ import { resolveQuotaState, enforceMemoryRateLimit } from "../services/quotas.js
 import { buildNowContext } from "../services/context/nowContext.js";
 import { buildChatContext } from "../services/context/chatContext.js";
 import { buildRecoveryContext } from "../services/context/recoveryContext.js";
+import { sanitizeUserDataForAiContext } from "../services/context/shared.js";
 import { runNowCoach } from "../services/coach/nowCoach.js";
 import { runChatCoach } from "../services/coach/chatCoach.js";
 import { runLocalAnalysisCoach } from "../services/coach/localAnalysisCoach.js";
 import { runRecoveryCoach } from "../services/coach/recoveryCoach.js";
 
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
 function getClientIp(request) {
   const forwarded = String(request.headers["x-forwarded-for"] || "").split(",")[0]?.trim();
   return forwarded || request.ip || "";
+}
+
+function describeActiveSessionPayload(data) {
+  const activeSession =
+    isPlainObject(data?.ui) && isPlainObject(data.ui.activeSession) ? data.ui.activeSession : null;
+  const activeSessionKeys = activeSession ? Object.keys(activeSession) : [];
+  return {
+    hasActiveSession: Boolean(activeSession),
+    hasGuidedRuntimeExtras: Boolean(activeSession?.guidedRuntimeV1) || activeSession?.experienceMode === "guided",
+    activeSessionKeyCount: activeSessionKeys.length,
+    activeSessionExtraKeys: activeSessionKeys
+      .filter((key) => key === "guidedRuntimeV1" || key === "experienceMode")
+      .slice(0, 6),
+  };
 }
 
 export async function aiRoutes(app) {
@@ -182,17 +201,38 @@ async function handleCoachRoute({
     });
   }
 
-  const context = contextBuilder({
-    data: snapshot.userData,
-    selectedDateKey: parsedBody.data.selectedDateKey,
-    activeCategoryId: parsedBody.data.activeCategoryId,
-    quotaState,
-    requestId: request.requestId,
-    trigger: parsedBody.data.trigger,
-    body: parsedBody.data,
-  });
+  const contextData = sanitizeUserDataForAiContext(snapshot.userData);
+  const activeSessionDiagnostics = describeActiveSessionPayload(snapshot.userData);
 
-  const response = responseSchema.parse(await runner({ app, context, snapshot, quotaState }));
+  let response;
+  try {
+    const context = contextBuilder({
+      data: contextData,
+      selectedDateKey: parsedBody.data.selectedDateKey,
+      activeCategoryId: parsedBody.data.activeCategoryId,
+      quotaState,
+      requestId: request.requestId,
+      trigger: parsedBody.data.trigger,
+      body: parsedBody.data,
+    });
+    response = responseSchema.parse(await runner({ app, context, snapshot, quotaState }));
+  } catch (error) {
+    request.log.error(
+      {
+        err: error,
+        requestId: request.requestId,
+        coachKind,
+        ...activeSessionDiagnostics,
+      },
+      "coach route failed"
+    );
+    return reply.code(503).send({
+      error: "BACKEND_ERROR",
+      message: "Unable to build coach response.",
+      requestId: request.requestId,
+    });
+  }
+
   await insertAiRequestLog(app.supabase, {
     requestId: request.requestId,
     userId: request.user.id,

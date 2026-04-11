@@ -254,6 +254,7 @@ export default function App() {
         guidedAdjustment: null,
         sessionToolPlan: null,
         sessionToolState: null,
+        guidedSpatialState: null,
         openedAtMs: Date.now(),
       });
       setTab("session", {

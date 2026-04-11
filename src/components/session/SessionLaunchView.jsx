@@ -7,14 +7,6 @@ function TimingChip({ children }) {
   return <span className="sessionLaunchChip">{children}</span>;
 }
 
-function readStepPreview(step) {
-  if (!step || typeof step !== "object") return "";
-  if (typeof step.purpose === "string" && step.purpose.trim()) return step.purpose.trim();
-  if (typeof step.successCue === "string" && step.successCue.trim()) return step.successCue.trim();
-  const firstItem = Array.isArray(step.items) ? step.items.find((item) => item?.guidance) : null;
-  return typeof firstItem?.guidance === "string" ? firstItem.guidance.trim() : "";
-}
-
 export default function SessionLaunchView({
   phase = "ready",
   categoryName = "",
@@ -23,11 +15,8 @@ export default function SessionLaunchView({
   durationLabel = "",
   why = "",
   firstStep = "",
-  steps = [],
   onStartStandard,
   onPrepareGuided,
-  onLaunchGuided,
-  onRevertToStandard,
 }) {
   if (phase === "preparing") {
     return (
@@ -48,46 +37,6 @@ export default function SessionLaunchView({
         </div>
         <div className="sessionLaunchPreparingTitle">Préparation en cours</div>
         <div className="sessionLaunchPreparingMeta">{title}</div>
-      </div>
-    );
-  }
-
-  if (phase === "plan_ready") {
-    return (
-      <div className="sessionLaunchViewStack sessionLaunchViewStack--plan" data-testid="session-launch-plan-ready">
-        <div className="sessionLaunchHero sessionLaunchHero--plan">
-          <div className="sessionLaunchSectionEyebrow sessionLaunchSectionEyebrow--withIcon">
-            <span className="sessionAssistBadge sessionAssistBadge--eyebrow">
-              <CoachAssistIcon className="sessionLaunchEyebrowIcon" size={12} />
-            </span>
-            <span>Plan prêt</span>
-          </div>
-          <div className="sessionLaunchHeroMeta">{title}</div>
-        </div>
-        <div className="sessionLaunchCard sessionLaunchCard--plan">
-          <div className="sessionLaunchPlanList">
-            {steps.map((step, index) => (
-              <div key={step.id || `${step.label}-${index}`} className="sessionLaunchPlanStep">
-                <div className="sessionLaunchPlanIndex">{String(index + 1).padStart(2, "0")}</div>
-                <div className="sessionLaunchPlanBody">
-                  <div className="sessionLaunchPlanRow">
-                    <div className="sessionLaunchPlanLabel">{step.label}</div>
-                    <div className="sessionLaunchPlanMinutes">{step.minutes} min</div>
-                  </div>
-                  <div className="sessionLaunchPlanGuidance">{readStepPreview(step)}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="sessionLaunchFooter">
-          <PrimaryButton type="button" className="sessionLaunchPrimary" onClick={onLaunchGuided}>
-            Lancer la session
-          </PrimaryButton>
-          <button type="button" className="sessionLaunchTextAction" onClick={onRevertToStandard}>
-            Revenir au standard
-          </button>
-        </div>
       </div>
     );
   }

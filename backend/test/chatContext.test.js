@@ -113,3 +113,49 @@ test("buildChatContext preserves locale and useCase from /ai/chat payload", () =
     intensity: "standard",
   });
 });
+
+test("buildChatContext ignores guided runtime extras inside ui.activeSession", () => {
+  const context = buildChatContext({
+    data: {
+      categories: [{ id: "cat-focus", name: "Focus" }],
+      goals: [{ id: "goal-1", title: "Deep work", type: "PROCESS", categoryId: "cat-focus" }],
+      occurrences: [{ id: "occ-1", goalId: "goal-1", date: "2026-03-06", status: "planned", start: "09:00" }],
+      ui: {
+        activeSession: {
+          id: "sess-guided",
+          occurrenceId: "occ-1",
+          objectiveId: null,
+          habitIds: ["goal-1"],
+          dateKey: "2026-03-06",
+          runtimePhase: "in_progress",
+          status: "partial",
+          timerRunning: true,
+          timerStartedAt: "2026-03-06T09:00:00.000Z",
+          timerAccumulatedSec: 120,
+          experienceMode: "guided",
+          guidedRuntimeV1: {
+            version: 1,
+            occurrenceId: "occ-1",
+            guidedSpatialState: { mode: "active" },
+          },
+        },
+      },
+      sessionHistory: [],
+    },
+    selectedDateKey: "2026-03-06",
+    activeCategoryId: "cat-focus",
+    quotaState: { remaining: 3 },
+    requestId: "req-chat-guided-active-session",
+    body: {
+      mode: "free",
+      message: "Aide-moi à garder le cap.",
+      recentMessages: [],
+    },
+    now: new Date(2026, 2, 6, 12, 0, 0),
+  });
+
+  assert.equal(context.activeSessionForActiveDate?.id, "sess-guided");
+  assert.equal(context.activeSessionForActiveDate?.occurrenceId, "occ-1");
+  assert.equal("experienceMode" in context.activeSessionForActiveDate, false);
+  assert.equal("guidedRuntimeV1" in context.activeSessionForActiveDate, false);
+});

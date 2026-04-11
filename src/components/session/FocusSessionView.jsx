@@ -1,14 +1,7 @@
 import React from "react";
 import { BehaviorCue } from "../../feedback/BehaviorFeedbackContext";
-import { AppTextarea, GhostButton, PrimaryButton, ProgressBar } from "../../shared/ui/app";
-
-function readMinuteLabel(value) {
-  return Number.isFinite(value) && value > 0 ? `${value} min` : "";
-}
-
-function readRestLabel(value) {
-  return Number.isFinite(value) && value > 0 ? `${Math.round(value)} s repos` : "";
-}
+import { AppTextarea, GhostButton, PrimaryButton } from "../../shared/ui/app";
+import SessionGuidedDeck from "./SessionGuidedDeck";
 
 function renderProgressDots(total, currentIndex) {
   const count = Math.max(1, Number.isFinite(total) ? total : 1);
@@ -25,6 +18,7 @@ export default function FocusSessionView({
   title = "Session",
   actionProtocol = null,
   guidedPlan = null,
+  guidedMode = "",
   adjustmentLabel = "",
   adjustmentSummary = "",
   plannedDurationLabel = "",
@@ -43,10 +37,17 @@ export default function FocusSessionView({
   onOpenReport,
   onOpenAdjust,
   onOpenTools,
+  onRegenerateGuided,
+  onRevertToStandard,
+  onViewGuidedStep,
+  onReturnToActiveGuidedStep,
+  onToggleGuidedChecklistItem,
+  onAdvanceGuidedStep,
   showAdjust = false,
   showTools = false,
   adjustMode = "standard",
   toolTray = null,
+  guidedRegenerating = false,
   showFeedback = false,
   feedbackLevel = "",
   feedbackText = "",
@@ -60,6 +61,9 @@ export default function FocusSessionView({
   const isRunning = viewState === "running";
   const isPaused = viewState === "paused";
   const startLabel = isPaused ? "Reprendre" : "Démarrer";
+  const isGuided = Boolean(guidedPlan && !isFinal);
+  const isGuidedPreview = isGuided && guidedMode === "preview";
+  const isGuidedActive = isGuided && guidedMode === "active";
   const protocolItems = actionProtocol
     ? [
         { label: "Pourquoi", text: actionProtocol.why },
@@ -68,20 +72,6 @@ export default function FocusSessionView({
         { label: "Réussi quand", text: actionProtocol.successDefinition },
       ].filter((item) => item.text)
     : [];
-  const guidedSteps = Array.isArray(guidedPlan?.steps) ? guidedPlan.steps : [];
-  const totalSteps = Math.max(1, Number(guidedPlan?.totalSteps || guidedSteps.length || 1));
-  const currentStepIndex = Math.max(0, Number(guidedPlan?.currentStepIndex || 0));
-  const currentStepItems = Array.isArray(guidedPlan?.currentStep?.items) ? guidedPlan.currentStep.items : [];
-  const currentItem = guidedPlan?.currentItem || null;
-  const currentItemMeta = [
-    readMinuteLabel(currentItem?.minutes),
-    readRestLabel(currentItem?.restSec),
-    currentItem?.transitionLabel || "",
-  ].filter(Boolean);
-  const nextItem = guidedPlan?.nextItem || null;
-  const previewItems = currentStepItems
-    .filter((item) => item?.id && item.id !== currentItem?.id && item.state !== "done")
-    .slice(0, 2);
   const inlineBehaviorCue = behaviorCue && !guidedPlan && !isFinal ? behaviorCue : null;
   const runtimeStats = [
     { label: "Prévu", value: plannedDurationLabel },
@@ -89,87 +79,45 @@ export default function FocusSessionView({
     { label: "Reste", value: remainingLabel },
   ].filter((item) => item.value);
   const heroTimerLabel = timerLabel || remainingLabel || elapsedLabel || plannedDurationLabel || "00:00";
+  const progressDotsIndex = isGuided
+    ? Math.max(0, Number(isGuidedPreview ? guidedPlan?.viewedStepIndex : guidedPlan?.activeStepIndex || 0))
+    : 0;
+  const progressDotsTotal = Math.max(1, Number(guidedPlan?.totalSteps || 1));
+  const progressLabel = isGuidedPreview
+    ? `Étape ${progressDotsIndex + 1}/${progressDotsTotal}`
+    : `Étape ${Math.max(0, Number(guidedPlan?.activeStepIndex || 0)) + 1}/${progressDotsTotal}`;
 
   return (
-    <div className={`sessionRuntimeStack${guidedPlan && !isFinal ? " is-guided" : " is-standard"}`}>
+    <div className={`sessionRuntimeStack${isGuided ? " is-guided" : " is-standard"}`}>
       <div className="sessionRuntimeHero">
         <div className="sessionRuntimeTimer">{heroTimerLabel}</div>
-        {guidedPlan && !isFinal ? (
+        {isGuided ? (
           <div className="sessionRuntimeProgressRow">
             <div className="sessionRuntimeDots" aria-hidden="true">
-              {renderProgressDots(totalSteps, currentStepIndex)}
+              {renderProgressDots(progressDotsTotal, progressDotsIndex)}
             </div>
-            <div className="sessionRuntimeProgressLabel">
-              Étape {currentStepIndex + 1}/{totalSteps}
-            </div>
+            <div className="sessionRuntimeProgressLabel">{progressLabel}</div>
           </div>
         ) : null}
         <div className="sessionRuntimeTitle">{title}</div>
       </div>
 
-      {guidedPlan && !isFinal ? (
-        <div className="sessionGuidedPlan" data-testid="session-guided-plan">
-          <div className="sessionGuidedPlanEyebrow">Plan du bloc</div>
-          {adjustmentSummary ? (
+      {isGuided ? (
+        <div className="sessionGuidedSurface">
+          {adjustmentSummary && isGuidedActive ? (
             <div className="sessionAdjustmentNotice" data-testid="session-adjustment-summary">
               <span className="sessionAdjustmentNoticeLabel">{adjustmentLabel || "Ajustée"}</span>
               <span className="sessionAdjustmentNoticeText">{adjustmentSummary}</span>
             </div>
           ) : null}
-          <div className="sessionGuidedPlanCurrent">
-            <div className="sessionGuidedPlanMeta">
-              Étape {currentStepIndex + 1}/{totalSteps}
-              {currentItem ? ` · Item ${Number(guidedPlan?.currentItemIndex || 0) + 1}/${Math.max(currentStepItems.length, 1)}` : ""}
-            </div>
-            <div className="sessionGuidedPlanTitle">{guidedPlan?.currentStep?.label || "Étape"}</div>
-            {guidedPlan?.currentStep?.purpose ? (
-              <div className="sessionGuidedPlanStepPurpose">{guidedPlan.currentStep.purpose}</div>
-            ) : null}
-            {currentItem ? (
-              <div className="sessionGuidedPlanCurrentItem">
-                <div className="sessionGuidedPlanCurrentItemLabel">{currentItem.label}</div>
-                {currentItemMeta.length ? (
-                  <div className="sessionGuidedPlanCurrentItemMeta">{currentItemMeta.join(" · ")}</div>
-                ) : null}
-                <div className="sessionGuidedPlanText">{currentItem.guidance}</div>
-                {currentItem.successCue ? (
-                  <div className="sessionGuidedPlanSuccessCue">{currentItem.successCue}</div>
-                ) : null}
-                <ProgressBar
-                  className="sessionGuidedPlanProgress"
-                  value01={guidedPlan?.currentItemProgress01 || 0}
-                  tone="info"
-                  label={readMinuteLabel(currentItem.minutes)}
-                />
-              </div>
-            ) : null}
-            {nextItem ? (
-              <div className="sessionGuidedPlanNext">
-                <div className="sessionGuidedPlanNextLabel">Ensuite</div>
-                <div className="sessionGuidedPlanNextValue">{nextItem.label}</div>
-                <div className="sessionGuidedPlanNextMeta">
-                  {[nextItem.stepLabel, readMinuteLabel(nextItem.minutes)].filter(Boolean).join(" · ")}
-                </div>
-              </div>
-            ) : null}
-          </div>
-          {previewItems.length ? (
-            <div className="sessionGuidedPlanSteps">
-              {previewItems.map((item, index) => (
-                <div key={item.id || `${item.label}-${index}`} className="sessionGuidedPlanStep">
-                  <div className="sessionGuidedPlanStepBody">
-                    <span className="sessionGuidedPlanStepLabel">{item.label}</span>
-                    {item.successCue ? (
-                      <span className="sessionGuidedPlanStepText">{item.successCue}</span>
-                    ) : item.guidance ? (
-                      <span className="sessionGuidedPlanStepText">{item.guidance}</span>
-                    ) : null}
-                  </div>
-                  <span className="sessionGuidedPlanStepMinutes">{readMinuteLabel(item.minutes)}</span>
-                </div>
-              ))}
-            </div>
-          ) : null}
+          <SessionGuidedDeck
+            plan={guidedPlan}
+            loading={guidedRegenerating}
+            onViewStep={onViewGuidedStep}
+            onReturnToActiveStep={onReturnToActiveGuidedStep}
+            onToggleChecklistItem={onToggleGuidedChecklistItem}
+            onAdvanceStep={onAdvanceGuidedStep}
+          />
         </div>
       ) : protocolItems.length ? (
         <div className="sessionRuntimeBrief" data-testid="session-action-protocol">
@@ -196,7 +144,7 @@ export default function FocusSessionView({
         </div>
       ) : null}
 
-      {runtimeStats.length ? (
+      {runtimeStats.length && !isGuided ? (
         <div className="sessionRuntimeMetaStrip">
           {runtimeStats.map((item) => (
             <div key={item.label} className="sessionRuntimeMetaItem">
@@ -207,14 +155,36 @@ export default function FocusSessionView({
         </div>
       ) : null}
 
-      {toolTray}
+      {isGuidedActive ? toolTray : null}
 
       {!isFinal ? (
         <div
-          className={`sessionActionDock${guidedPlan && !isFinal ? " sessionActionDock--guided" : " sessionActionDock--standard"}`}
+          className={`sessionActionDock${isGuided ? " sessionActionDock--guided" : " sessionActionDock--standard"}`}
           data-testid="session-action-dock"
         >
-          {showAdjust || showTools ? (
+          {isGuidedPreview ? (
+            <div className="sessionGuidedPreviewActions" data-testid="session-guided-preview-actions">
+              <PrimaryButton
+                type="button"
+                className="sessionDockPrimaryAction"
+                onClick={() => onStart?.()}
+                disabled={!canStart}
+              >
+                Démarrer
+              </PrimaryButton>
+              <GhostButton
+                type="button"
+                className="sessionDockSecondaryAction"
+                onClick={() => onRegenerateGuided?.()}
+                disabled={guidedRegenerating}
+              >
+                Régénérer
+              </GhostButton>
+              <button type="button" className="sessionLaunchTextAction sessionGuidedPreviewTextAction" onClick={() => onRevertToStandard?.()}>
+                Revenir au standard
+              </button>
+            </div>
+          ) : showAdjust || showTools ? (
             <div className={`sessionDockUtilityRow${showTools ? " has-tools" : ""}`}>
               {showAdjust ? (
                 <GhostButton
@@ -236,50 +206,54 @@ export default function FocusSessionView({
               ) : null}
             </div>
           ) : null}
-          <div className="sessionDockPrimaryRow">
-            <PrimaryButton
-              type="button"
-              className="sessionDockPrimaryAction"
-              onClick={() => onStart?.()}
-              disabled={!canStart}
-            >
-              {startLabel}
-            </PrimaryButton>
-            <PrimaryButton
-              type="button"
-              className="sessionDockPrimaryAction"
-              onClick={() => onComplete?.()}
-              disabled={!canComplete}
-            >
-              Terminer
-            </PrimaryButton>
-          </div>
-          <div className="sessionDockSecondaryRow">
-            <GhostButton
-              type="button"
-              className="sessionDockSecondaryAction"
-              onClick={() => onPause?.()}
-              disabled={!canPause}
-            >
-              {isRunning ? "Mettre en pause" : "Pause"}
-            </GhostButton>
-            <GhostButton
-              type="button"
-              className="sessionDockSecondaryAction"
-              onClick={() => onOpenReport?.()}
-              disabled={!canComplete}
-            >
-              Reporter
-            </GhostButton>
-            <GhostButton
-              type="button"
-              className="sessionDockSecondaryAction"
-              onClick={() => onBlock?.()}
-              disabled={!canComplete}
-            >
-              Bloquer
-            </GhostButton>
-          </div>
+          {!isGuidedPreview ? (
+            <>
+              <div className="sessionDockPrimaryRow">
+                <PrimaryButton
+                  type="button"
+                  className="sessionDockPrimaryAction"
+                  onClick={() => onStart?.()}
+                  disabled={!canStart}
+                >
+                  {startLabel}
+                </PrimaryButton>
+                <PrimaryButton
+                  type="button"
+                  className="sessionDockPrimaryAction"
+                  onClick={() => onComplete?.()}
+                  disabled={!canComplete}
+                >
+                  Terminer
+                </PrimaryButton>
+              </div>
+              <div className="sessionDockSecondaryRow">
+                <GhostButton
+                  type="button"
+                  className="sessionDockSecondaryAction"
+                  onClick={() => onPause?.()}
+                  disabled={!canPause}
+                >
+                  {isRunning ? "Mettre en pause" : "Pause"}
+                </GhostButton>
+                <GhostButton
+                  type="button"
+                  className="sessionDockSecondaryAction"
+                  onClick={() => onOpenReport?.()}
+                  disabled={!canComplete}
+                >
+                  Reporter
+                </GhostButton>
+                <GhostButton
+                  type="button"
+                  className="sessionDockSecondaryAction"
+                  onClick={() => onBlock?.()}
+                  disabled={!canComplete}
+                >
+                  Bloquer
+                </GhostButton>
+              </div>
+            </>
+          ) : null}
         </div>
       ) : null}
 

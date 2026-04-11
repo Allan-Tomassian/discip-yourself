@@ -8,6 +8,21 @@ export function safeObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
+const AI_CONTEXT_ACTIVE_SESSION_KEYS = Object.freeze([
+  "id",
+  "occurrenceId",
+  "objectiveId",
+  "habitIds",
+  "dateKey",
+  "date",
+  "runtimePhase",
+  "status",
+  "timerRunning",
+  "timerStartedAt",
+  "timerAccumulatedSec",
+  "isOpen",
+]);
+
 export function normalizeDateKey(value, fallback = "") {
   const raw = String(value || "").trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
@@ -50,8 +65,31 @@ export function resolvePlannedActionsForDate(data, dateKey, categoryId = null) {
   return resolveOccurrencesForDate(data, dateKey, categoryId).filter((occurrence) => occurrence?.status === "planned");
 }
 
-export function normalizeSession(session) {
+export function sanitizeActiveSessionForAiContext(session) {
   const safe = safeObject(session);
+  if (!safe || !safe.id) return null;
+  const next = {};
+  AI_CONTEXT_ACTIVE_SESSION_KEYS.forEach((key) => {
+    if (key in safe) next[key] = safe[key];
+  });
+  return next;
+}
+
+export function sanitizeUserDataForAiContext(data) {
+  const safe = safeObject(data);
+  const ui = safeObject(safe.ui);
+  if (!ui || !("activeSession" in ui)) return safe;
+  return {
+    ...safe,
+    ui: {
+      ...ui,
+      activeSession: sanitizeActiveSessionForAiContext(ui.activeSession),
+    },
+  };
+}
+
+export function normalizeSession(session) {
+  const safe = safeObject(sanitizeActiveSessionForAiContext(session));
   if (!safe || !safe.id) return null;
   const runtimePhase = typeof safe.runtimePhase === "string" ? safe.runtimePhase : "";
   const status = typeof safe.status === "string" ? safe.status : "";
