@@ -79,6 +79,10 @@ describe("aiLocalAnalysisClient", () => {
         errorCode: "NETWORK_ERROR",
         requestId: null,
         backendErrorCode: null,
+        surface: "analysis",
+        analysisSurface: "planning",
+        baseUrlUsed: "https://discip-yourself-backend.onrender.com",
+        originUsed: "http://192.168.1.183:5173",
         responseKind: null,
         transportMeta: {
           frontendOrigin: "http://192.168.1.183:5173",
@@ -120,8 +124,34 @@ describe("aiLocalAnalysisClient", () => {
       status: 401,
       requestId: "req_401",
       backendErrorCode: "UNAUTHORIZED",
+      surface: "analysis",
+      analysisSurface: "pilotage",
+      baseUrlUsed: "https://discip-yourself-backend.onrender.com",
       responseKind: null,
     });
+  });
+
+  it("envoie un header de surface pour faciliter la corrélation backend", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => buildLocalAnalysisResponse(),
+    });
+
+    await requestAiLocalAnalysis({
+      accessToken: "token",
+      baseUrl: "https://discip-yourself-backend.onrender.com",
+      fetchImpl,
+      payload: {
+        selectedDateKey: "2026-03-25",
+        activeCategoryId: "cat-1",
+        surface: "planning",
+        message: "Analyse ce planning",
+      },
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl.mock.calls[0]?.[1]?.headers?.["x-discip-surface"]).toBe("analysis");
   });
 
   it("rejette une surface locale invalide", async () => {
@@ -141,6 +171,39 @@ describe("aiLocalAnalysisClient", () => {
       ok: false,
       errorCode: "INVALID_RESPONSE",
       status: null,
+    });
+  });
+
+  it("conserve le backendErrorCode stage-level sur un 503 backend", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({
+        error: "PROVIDER_FAILED",
+        requestId: "req_stage_503",
+      }),
+    });
+
+    const result = await requestAiLocalAnalysis({
+      accessToken: "token",
+      baseUrl: "https://discip-yourself-backend.onrender.com",
+      fetchImpl,
+      payload: {
+        selectedDateKey: "2026-03-25",
+        activeCategoryId: "cat-1",
+        surface: "planning",
+        message: "Analyse ce planning",
+      },
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      errorCode: "BACKEND_ERROR",
+      status: 503,
+      requestId: "req_stage_503",
+      backendErrorCode: "PROVIDER_FAILED",
+      surface: "analysis",
+      analysisSurface: "planning",
     });
   });
 });

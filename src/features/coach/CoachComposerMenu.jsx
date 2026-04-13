@@ -18,8 +18,7 @@ export default function CoachComposerMenu({
   anchorRect = null,
   anchorEl = null,
   onClose,
-  onSelectStructuring,
-  onSelectQuickCreate,
+  onSelectPlan,
 }) {
   return (
     <AppPopoverMenu
@@ -32,14 +31,9 @@ export default function CoachComposerMenu({
     >
       <div className="coachComposerMenu">
         <MenuAction
-          label={COACH_SCREEN_COPY.structuringModeLabel}
-          description={COACH_SCREEN_COPY.structuringMenuDescription}
-          onClick={onSelectStructuring}
-        />
-        <MenuAction
-          label={COACH_SCREEN_COPY.quickCreateLabel}
-          description={COACH_SCREEN_COPY.quickCreateMenuDescription}
-          onClick={onSelectQuickCreate}
+          label={COACH_SCREEN_COPY.planModeLabel}
+          description={COACH_SCREEN_COPY.planMenuDescription}
+          onClick={onSelectPlan}
         />
       </div>
     </AppPopoverMenu>

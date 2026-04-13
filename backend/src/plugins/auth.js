@@ -19,7 +19,7 @@ export async function authPlugin(app, options = {}) {
     const accessToken = readBearerToken(request.headers.authorization);
     if (!accessToken) {
       return reply.code(401).send({
-        error: "UNAUTHORIZED",
+        error: "AUTH_MISSING",
         message: "Bearer token required.",
         requestId: request.requestId,
       });
@@ -35,7 +35,7 @@ export async function authPlugin(app, options = {}) {
     const user = await verifyAccessToken(accessToken, request);
     if (!user?.id) {
       return reply.code(401).send({
-        error: "UNAUTHORIZED",
+        error: "AUTH_INVALID",
         message: "Invalid bearer token.",
         requestId: request.requestId,
       });

@@ -54,7 +54,7 @@ export async function buildApp({ config, logger = false, verifyAccessToken } = {
       callback(null, allowed);
     },
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Authorization", "Content-Type"],
+    allowedHeaders: ["Authorization", "Content-Type", "X-Discip-Surface"],
     credentials: false,
   });
 

@@ -43,6 +43,59 @@ function describeActiveSessionPayload(data) {
   };
 }
 
+function shouldLogAiErrorDiagnostics(app) {
+  const appEnv = String(app?.config?.APP_ENV || "").trim().toLowerCase();
+  return appEnv === "local";
+}
+
+function describeContextShape(context) {
+  const safeContext = isPlainObject(context) ? context : {};
+  return {
+    contextKeyCount: Object.keys(safeContext).length,
+    hasMessage: typeof safeContext.message === "string" && safeContext.message.length > 0,
+    hasRecentMessages: Array.isArray(safeContext.recentMessages) && safeContext.recentMessages.length > 0,
+    hasCategorySnapshot: Boolean(safeContext.categorySnapshot),
+    hasPlanningSummary: Boolean(safeContext.planningSummary),
+    hasPilotageSummary: Boolean(safeContext.pilotageSummary),
+  };
+}
+
+function logAiStageError({
+  app,
+  request,
+  route,
+  stage,
+  status,
+  errorCode,
+  err = null,
+  activeSessionDiagnostics = null,
+  context = null,
+}) {
+  if (!shouldLogAiErrorDiagnostics(app)) return;
+  request.log.error(
+    {
+      err: err || undefined,
+      requestId: request.requestId,
+      route,
+      stage,
+      status,
+      errorCode,
+      surface: String(request.headers["x-discip-surface"] || "").trim() || null,
+      ...(activeSessionDiagnostics || {}),
+      ...describeContextShape(context),
+    },
+    "ai route failed"
+  );
+}
+
+function sendAiStageError(reply, requestId, { status = 503, errorCode, message }) {
+  return reply.code(status).send({
+    error: errorCode,
+    message,
+    requestId,
+  });
+}
+
 export async function aiRoutes(app) {
   app.post("/now", { preHandler: [app.authenticate] }, async (request, reply) => {
     return handleCoachRoute({
@@ -115,6 +168,7 @@ async function handleCoachRoute({
   runner,
 }) {
   const startedAt = Date.now();
+  const route = `/ai/${coachKind}`;
   const parsedBody = bodySchema.safeParse(request.body);
   if (!parsedBody.success) {
     return reply.code(400).send({
@@ -148,14 +202,22 @@ async function handleCoachRoute({
   try {
     snapshot = await loadUserSnapshot(app.supabase, request.user.id);
   } catch (error) {
-    request.log.error({ err: error, requestId: request.requestId }, "snapshot load failed");
+    logAiStageError({
+      app,
+      request,
+      route,
+      stage: "snapshot_load",
+      status: 503,
+      errorCode: isSupabaseSchemaError(error) ? "BACKEND_SCHEMA_MISSING" : "SNAPSHOT_LOAD_FAILED",
+      err: error,
+    });
     if (isSupabaseSchemaError(error)) {
       return reply.code(503).send(buildSchemaErrorReply(request.requestId));
     }
-    return reply.code(503).send({
-      error: "BACKEND_ERROR",
+    return sendAiStageError(reply, request.requestId, {
+      status: 503,
+      errorCode: "SNAPSHOT_LOAD_FAILED",
       message: "Unable to load user context.",
-      requestId: request.requestId,
     });
   }
 
@@ -168,14 +230,23 @@ async function handleCoachRoute({
       quotaMode: app.config.AI_QUOTA_MODE,
     });
   } catch (error) {
-    request.log.error({ err: error, requestId: request.requestId }, "quota load failed");
+    logAiStageError({
+      app,
+      request,
+      route,
+      stage: "quota_load",
+      status: 503,
+      errorCode: isSupabaseSchemaError(error) ? "BACKEND_SCHEMA_MISSING" : "QUOTA_LOAD_FAILED",
+      err: error,
+      activeSessionDiagnostics: describeActiveSessionPayload(snapshot?.userData),
+    });
     if (isSupabaseSchemaError(error)) {
       return reply.code(503).send(buildSchemaErrorReply(request.requestId));
     }
-    return reply.code(503).send({
-      error: "BACKEND_ERROR",
+    return sendAiStageError(reply, request.requestId, {
+      status: 503,
+      errorCode: "QUOTA_LOAD_FAILED",
       message: "Unable to resolve AI quota.",
-      requestId: request.requestId,
     });
   }
   if (quotaState.exceeded) {
@@ -203,8 +274,6 @@ async function handleCoachRoute({
 
   const contextData = sanitizeUserDataForAiContext(snapshot.userData);
   const activeSessionDiagnostics = describeActiveSessionPayload(snapshot.userData);
-
-  let response;
   try {
     const context = contextBuilder({
       data: contextData,
@@ -215,36 +284,80 @@ async function handleCoachRoute({
       trigger: parsedBody.data.trigger,
       body: parsedBody.data,
     });
-    response = responseSchema.parse(await runner({ app, context, snapshot, quotaState }));
-  } catch (error) {
-    request.log.error(
-      {
+
+    let runnerResult;
+    try {
+      runnerResult = await runner({ app, context, snapshot, quotaState });
+    } catch (error) {
+      logAiStageError({
+        app,
+        request,
+        route,
+        stage: "runner",
+        status: 503,
+        errorCode: "PROVIDER_FAILED",
         err: error,
-        requestId: request.requestId,
-        coachKind,
-        ...activeSessionDiagnostics,
-      },
-      "coach route failed"
-    );
-    return reply.code(503).send({
-      error: "BACKEND_ERROR",
-      message: "Unable to build coach response.",
+        activeSessionDiagnostics,
+        context,
+      });
+      return sendAiStageError(reply, request.requestId, {
+        status: 503,
+        errorCode: "PROVIDER_FAILED",
+        message: "Unable to resolve AI response.",
+      });
+    }
+
+    let response;
+    try {
+      response = responseSchema.parse(runnerResult);
+    } catch (error) {
+      logAiStageError({
+        app,
+        request,
+        route,
+        stage: "response_parse",
+        status: 503,
+        errorCode: "INVALID_RESPONSE",
+        err: error,
+        activeSessionDiagnostics,
+        context,
+      });
+      return sendAiStageError(reply, request.requestId, {
+        status: 503,
+        errorCode: "INVALID_RESPONSE",
+        message: "Unable to validate AI response.",
+      });
+    }
+
+    await insertAiRequestLog(app.supabase, {
       requestId: request.requestId,
+      userId: request.user.id,
+      coachKind,
+      route,
+      planTier: quotaState.planTier,
+      decisionSource: response.decisionSource,
+      statusCode: 200,
+      requestHash,
+      ipHash: hashValue(getClientIp(request)),
+      userAgent: request.headers["user-agent"] || "",
+      latencyMs: Date.now() - startedAt,
+    });
+    return reply.code(200).send(response);
+  } catch (error) {
+    logAiStageError({
+      app,
+      request,
+      route,
+      stage: "context_build",
+      status: 503,
+      errorCode: "CONTEXT_BUILD_FAILED",
+      err: error,
+      activeSessionDiagnostics,
+    });
+    return sendAiStageError(reply, request.requestId, {
+      status: 503,
+      errorCode: "CONTEXT_BUILD_FAILED",
+      message: "Unable to build AI context.",
     });
   }
-
-  await insertAiRequestLog(app.supabase, {
-    requestId: request.requestId,
-    userId: request.user.id,
-    coachKind,
-    route: `/ai/${coachKind}`,
-    planTier: quotaState.planTier,
-    decisionSource: response.decisionSource,
-    statusCode: 200,
-    requestHash,
-    ipHash: hashValue(getClientIp(request)),
-    userAgent: request.headers["user-agent"] || "",
-    latencyMs: Date.now() - startedAt,
-  });
-  return reply.code(200).send(response);
 }

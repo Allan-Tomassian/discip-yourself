@@ -56,6 +56,10 @@ function shouldLogAiTransportDebug() {
   return hostname === "localhost" || hostname === "127.0.0.1" || isPrivateIpv4Hostname(hostname);
 }
 
+export function shouldShowAiDebugUi() {
+  return shouldLogAiTransportDebug();
+}
+
 export function buildAiTransportMeta({ baseUrl, errorCode = null } = {}) {
   const frontendOrigin = readFrontendOrigin();
   const backendBaseUrl = typeof baseUrl === "string" ? String(baseUrl).trim() : "";
@@ -128,6 +132,31 @@ export function logAiBackendTargetOnce({ backendBaseUrl } = {}) {
     frontendOrigin: frontendOrigin || "",
     backendBaseUrl: String(backendBaseUrl || "").trim() || "",
   });
+}
+
+export function buildAiDebugLine(details = {}) {
+  const errorCode = String(details?.errorCode || "").trim().toUpperCase();
+  const backendErrorCode = String(details?.backendErrorCode || "").trim().toUpperCase();
+  const requestId = String(details?.requestId || "").trim();
+  const parts = [errorCode, backendErrorCode, requestId].filter(Boolean);
+  return parts.length ? `IA_DEBUG: ${parts.join(" / ")}` : "";
+}
+
+export function buildAiDebugDetails(result = {}, { surface = null } = {}) {
+  const transportMeta = result?.transportMeta && typeof result.transportMeta === "object" ? result.transportMeta : {};
+  const resolvedSurface = String(result?.surface || surface || "").trim() || null;
+  return {
+    errorCode: String(result?.errorCode || "").trim().toUpperCase() || null,
+    backendErrorCode: String(result?.backendErrorCode || "").trim().toUpperCase() || null,
+    status: Number.isInteger(result?.status) ? result.status : null,
+    requestId: String(result?.requestId || "").trim() || null,
+    surface: resolvedSurface,
+    probableCause: String(result?.probableCause || transportMeta?.probableCause || "").trim() || null,
+    baseUrlUsed:
+      String(result?.baseUrlUsed || transportMeta?.backendBaseUrl || "").trim() || null,
+    originUsed:
+      String(result?.originUsed || transportMeta?.frontendOrigin || "").trim() || null,
+  };
 }
 
 export function deriveAiUnavailableMessage(

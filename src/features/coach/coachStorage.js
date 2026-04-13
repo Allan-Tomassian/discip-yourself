@@ -9,6 +9,7 @@ export const COACH_RECENT_MESSAGES_LIMIT = 6;
 const COACH_CONVERSATION_MODES = new Set(["free", "plan"]);
 const COACH_USE_CASES = new Set(["general", "life_plan", "stats_review"]);
 const COACH_PLANNING_ENTRY_POINTS = new Set([
+  "composer_plan",
   "composer_structuring",
   "composer_quick_create",
   "requested_mode",
@@ -16,7 +17,7 @@ const COACH_PLANNING_ENTRY_POINTS = new Set([
   "assistant_auto",
   "manual_reentry",
 ]);
-const COACH_PLANNING_INTENTS = new Set(["structuring", "quick_create", "contextual"]);
+const COACH_PLANNING_INTENTS = new Set(["manual_plan", "structuring", "quick_create", "contextual"]);
 const COACH_PLANNING_AUTO_ACTIVATIONS = new Set(["allowed", "blocked_by_user"]);
 const COACH_REPLY_INTENTS = new Set([
   "start_occurrence",

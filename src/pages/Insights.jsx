@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { useAuth } from "../auth/useAuth";
+import AiDebugLine from "../components/ai/AiDebugLine";
 import { resolveManualAiDisplayState } from "../features/manualAi/displayState";
 import {
   buildPilotageManualAiContextKey,
@@ -482,7 +483,12 @@ export default function Insights({
               </button>
             ) : null}
           </div>
-          {coachAnalysis.error ? <p className="lovableInsightCopy">{coachAnalysis.error}</p> : null}
+          {coachAnalysis.error ? (
+            <>
+              <p className="lovableInsightCopy">{coachAnalysis.error}</p>
+              <AiDebugLine diagnostics={coachAnalysis.errorDiagnostics} className="lovableMuted" />
+            </>
+          ) : null}
           {coachAnalysis.visibleAnalysis?.primaryAction || coachAnalysis.visibleAnalysis?.secondaryAction ? (
             <div className="lovableCoachActions">
               {coachAnalysis.visibleAnalysis?.primaryAction ? (

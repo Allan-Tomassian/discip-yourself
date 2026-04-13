@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../auth/useAuth";
 import { requestAiCoachChat } from "../../infra/aiCoachChatClient";
-import { deriveAiUnavailableMessage } from "../../infra/aiTransportDiagnostics";
+import { buildAiDebugDetails, deriveAiUnavailableMessage } from "../../infra/aiTransportDiagnostics";
 import { resolveRuntimeSessionGate } from "../../logic/sessionRuntime";
 import { COACH_SCREEN_COPY } from "../../ui/labels";
 import { commitPreparedCreatePlan, prepareCreateCommit } from "../create-item/createItemCommit";
@@ -155,6 +155,7 @@ export function normalizeCoachRequestedPrefill(value) {
 }
 
 function normalizeCoachWorkIntentType(value) {
+  if (value === "manual_plan") return "manual_plan";
   if (value === "structuring") return "structuring";
   if (value === "quick_create") return "quick_create";
   if (value === "contextual") return "contextual";
@@ -248,8 +249,9 @@ export function deriveCoachPendingUi({ loading = false, planningState = null } =
 }
 
 function buildCoachWorkIntentLabel(type) {
-  if (type === "structuring") return COACH_SCREEN_COPY.structuringModeLabel;
-  if (type === "quick_create") return COACH_SCREEN_COPY.quickCreateLabel;
+  if (type === "manual_plan" || type === "structuring" || type === "quick_create") {
+    return COACH_SCREEN_COPY.planModeLabel;
+  }
   if (type === "contextual") return COACH_SCREEN_COPY.contextualIntentLabel;
   return "";
 }
@@ -278,35 +280,16 @@ function buildCoachWorkIntent({
   };
 }
 
-export function buildStructuringIntentTransition({ draft = "" } = {}) {
+export function buildPlanIntentTransition({ draft = "" } = {}) {
   const normalizedDraft = normalizeCoachRequestedPrefill(draft);
-  const fallbackPrefill = normalizeCoachRequestedPrefill(COACH_SCREEN_COPY.structuringPrefill);
+  const fallbackPrefill = normalizeCoachRequestedPrefill(COACH_SCREEN_COPY.planPrefill);
   const shouldSeedDraft = !normalizedDraft;
   return {
     nextMode: "plan",
     nextDraft: shouldSeedDraft ? fallbackPrefill : normalizedDraft,
     shouldSeedDraft,
     intent: buildCoachWorkIntent({
-      type: "structuring",
-      prefill: fallbackPrefill,
-      preferredMode: "plan",
-      source: "composer_menu",
-      seededDraftPrefill: shouldSeedDraft ? fallbackPrefill : "",
-      draftTouchedSinceSeed: false,
-    }),
-  };
-}
-
-export function buildQuickCreateIntentTransition({ draft = "" } = {}) {
-  const normalizedDraft = normalizeCoachRequestedPrefill(draft);
-  const fallbackPrefill = normalizeCoachRequestedPrefill(COACH_SCREEN_COPY.quickCreatePrefill);
-  const shouldSeedDraft = !normalizedDraft;
-  return {
-    nextMode: "plan",
-    nextDraft: shouldSeedDraft ? fallbackPrefill : normalizedDraft,
-    shouldSeedDraft,
-    intent: buildCoachWorkIntent({
-      type: "quick_create",
+      type: "manual_plan",
       prefill: fallbackPrefill,
       preferredMode: "plan",
       source: "composer_menu",
@@ -401,6 +384,7 @@ export function useCoachConversationController({
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [errorDiagnostics, setErrorDiagnostics] = useState(null);
   const initialPlanningState = useMemo(
     () =>
       buildPlanningState({
@@ -614,23 +598,11 @@ export function useCoachConversationController({
     [persistPlanningState, planningState]
   );
 
-  const startStructuringIntent = useCallback(() => {
-    const transition = buildStructuringIntentTransition({ draft });
+  const startPlanIntent = useCallback(() => {
+    const transition = buildPlanIntentTransition({ draft });
     handleConversationModeChange(transition.nextMode, {
-      entryPoint: "composer_structuring",
-      intent: "structuring",
-      autoActivation: "allowed",
-    });
-    if (transition.shouldSeedDraft) setDraft(transition.nextDraft);
-    setActiveWorkIntent(transition.intent);
-    setError("");
-  }, [draft, handleConversationModeChange]);
-
-  const startQuickCreateIntent = useCallback(() => {
-    const transition = buildQuickCreateIntentTransition({ draft });
-    handleConversationModeChange(transition.nextMode, {
-      entryPoint: "composer_quick_create",
-      intent: "quick_create",
+      entryPoint: "composer_plan",
+      intent: "manual_plan",
       autoActivation: "allowed",
     });
     if (transition.shouldSeedDraft) setDraft(transition.nextDraft);
@@ -652,9 +624,10 @@ export function useCoachConversationController({
     setActiveWorkIntent(null);
   }, [activeWorkIntent, draft, persistPlanningState, planningState]);
 
-  const reenterStructuring = useCallback(() => {
+  const reenterPlan = useCallback(() => {
     handleConversationModeChange("plan", {
       entryPoint: "manual_reentry",
+      intent: "manual_plan",
       autoActivation: "allowed",
     });
   }, [handleConversationModeChange]);
@@ -1043,6 +1016,7 @@ export function useCoachConversationController({
 
       setDraft("");
       setError("");
+      setErrorDiagnostics(null);
       setLoading(true);
 
       const result = await requestAiCoachChat({
@@ -1061,6 +1035,7 @@ export function useCoachConversationController({
       if (!result.ok || !result.reply || !preparedConversation?.id) {
         logCoachUiFallback(result, { mode: effectiveMode });
         setError(deriveCoachErrorMessage(result));
+        setErrorDiagnostics(buildAiDebugDetails(result, { surface: "coach" }));
         setLoading(false);
         return;
       }
@@ -1110,6 +1085,7 @@ export function useCoachConversationController({
 
       setLoading(false);
       setError("");
+      setErrorDiagnostics(null);
     },
     [
       accessToken,
@@ -1131,6 +1107,7 @@ export function useCoachConversationController({
     draft,
     setDraft,
     error,
+    errorDiagnostics,
     loading,
     pendingUi,
     currentConversation,
@@ -1146,11 +1123,10 @@ export function useCoachConversationController({
     planningState,
     setConversationMode: handleConversationModeChange,
     activeWorkIntent,
-    startStructuringIntent,
-    startQuickCreateIntent,
+    startPlanIntent,
     dismissWorkIntent,
     dismissPlanningState,
-    reenterStructuring,
+    reenterPlan,
     conversationUseCase,
     setConversationUseCase: handleConversationUseCaseChange,
     hasMessages: messageEntries.length > 0,

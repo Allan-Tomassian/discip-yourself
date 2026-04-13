@@ -220,6 +220,7 @@ test("OPTIONS /ai/now responds to local frontend preflight", async () => {
   assert.equal(response.headers["access-control-allow-origin"], "http://localhost:5173");
   assert.match(String(response.headers["access-control-allow-methods"] || ""), /POST/);
   assert.match(String(response.headers["access-control-allow-headers"] || ""), /Authorization/i);
+  assert.match(String(response.headers["access-control-allow-headers"] || ""), /X-Discip-Surface/i);
   await app.close();
 });
 
@@ -345,7 +346,30 @@ test("POST /ai/now without bearer returns 401", async () => {
     },
   });
   assert.equal(response.statusCode, 401);
-  assert.equal(response.json().error, "UNAUTHORIZED");
+  assert.equal(response.json().error, "AUTH_MISSING");
+  await app.close();
+});
+
+test("POST /ai/now with an invalid bearer returns AUTH_INVALID", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => null,
+  });
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: {
+      authorization: "Bearer invalid-token",
+    },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: null,
+      surface: "today",
+      trigger: "manual",
+    },
+  });
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.json().error, "AUTH_INVALID");
   await app.close();
 });
 
@@ -750,7 +774,7 @@ test("POST /ai/now allows higher dev quota without changing the real plan tier",
   const response = await app.inject({
     method: "POST",
     url: "/ai/now",
-    headers: { authorization: "Bearer token" },
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.44" },
     payload: {
       selectedDateKey: TODAY_KEY,
       activeCategoryId: "cat-1",
@@ -795,10 +819,69 @@ test("POST /ai/now returns 503 when required snapshot tables are missing", async
   await app.close();
 });
 
-test("POST /ai/now returns rules fallback when OpenAI is disabled", async () => {
+test("POST /ai/now returns SNAPSHOT_LOAD_FAILED when snapshot loading fails outside schema errors", async () => {
   const app = await buildApp({
     config: TEST_CONFIG,
     verifyAccessToken: async () => ({ id: "user-1" }),
+  });
+  app.supabase = createFakeSupabase({
+    snapshotError: {
+      code: "500",
+      message: "boom",
+    },
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: null,
+      surface: "today",
+      trigger: "manual",
+    },
+  });
+
+  assert.equal(response.statusCode, 503);
+  assert.equal(response.json().error, "SNAPSHOT_LOAD_FAILED");
+  await app.close();
+});
+
+test("POST /ai/now returns QUOTA_LOAD_FAILED when quota resolution fails outside schema errors", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-1" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    quotaError: {
+      code: "500",
+      message: "quota boom",
+    },
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: null,
+      surface: "today",
+      trigger: "manual",
+    },
+  });
+
+  assert.equal(response.statusCode, 503);
+  assert.equal(response.json().error, "QUOTA_LOAD_FAILED");
+  await app.close();
+});
+
+test("POST /ai/now returns rules fallback when OpenAI is disabled", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-openai-disabled" }),
   });
   app.supabase = createFakeSupabase({
     userData: createCoachContextUserData(),
@@ -1102,7 +1185,7 @@ test("POST /ai/now returns ai decision when OpenAI returns valid structured outp
   let capturedPrompt = "";
   const app = await buildApp({
     config: TEST_CONFIG_WITH_OPENAI,
-    verifyAccessToken: async () => ({ id: "user-1" }),
+    verifyAccessToken: async () => ({ id: "user-openai-valid" }),
   });
   app.supabase = createFakeSupabase({
     userData: createCoachContextUserData(),

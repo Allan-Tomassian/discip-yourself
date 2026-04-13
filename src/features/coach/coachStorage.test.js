@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   appendCoachConversationMessages,
   buildCoachConversationMessage,
+  normalizeCoachPlanningState,
   removeCoachConversation,
   updateCoachConversationMessage,
   upsertCoachConversation,
@@ -153,6 +154,36 @@ describe("coachStorage", () => {
       mode: "plan",
       entryPoint: "requested_mode",
       intent: null,
+      autoActivation: "allowed",
+    });
+  });
+
+  it("accepts the new canonical plan entry points and legacy intents in read compatibility", () => {
+    expect(
+      normalizeCoachPlanningState({
+        mode: "plan",
+        entryPoint: "composer_plan",
+        intent: "manual_plan",
+        autoActivation: "allowed",
+      })
+    ).toEqual({
+      mode: "plan",
+      entryPoint: "composer_plan",
+      intent: "manual_plan",
+      autoActivation: "allowed",
+    });
+
+    expect(
+      normalizeCoachPlanningState({
+        mode: "plan",
+        entryPoint: "composer_structuring",
+        intent: "quick_create",
+        autoActivation: "allowed",
+      })
+    ).toEqual({
+      mode: "plan",
+      entryPoint: "composer_structuring",
+      intent: "quick_create",
       autoActivation: "allowed",
     });
   });

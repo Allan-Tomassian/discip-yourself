@@ -2,10 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildManualPlanDismissTransition,
   buildDismissWorkIntentTransition,
-  buildQuickCreateIntentTransition,
+  buildPlanIntentTransition,
   buildCoachRequestedModeIntentKey,
   buildCoachRequestedPrefillIntentKey,
-  buildStructuringIntentTransition,
   deriveCoachPendingUi,
   normalizeCoachRequestedMode,
   normalizeCoachRequestedPrefill,
@@ -178,27 +177,27 @@ describe("CoachPanel mode control", () => {
     });
   });
 
-  it("seed Structurer seulement si le draft est vide", () => {
-    expect(buildStructuringIntentTransition({ draft: "" })).toMatchObject({
+  it("seed Plan seulement si le draft est vide", () => {
+    expect(buildPlanIntentTransition({ draft: "" })).toMatchObject({
       nextMode: "plan",
       shouldSeedDraft: true,
     });
-    expect(buildStructuringIntentTransition({ draft: "Déjà saisi" })).toMatchObject({
+    expect(buildPlanIntentTransition({ draft: "Déjà saisi" })).toMatchObject({
       nextMode: "plan",
       nextDraft: "Déjà saisi",
       shouldSeedDraft: false,
     });
   });
 
-  it("seed Créer vite seulement si le draft est vide", () => {
-    expect(buildQuickCreateIntentTransition({ draft: "" })).toMatchObject({
+  it("émet un intent manuel canonique pour Plan", () => {
+    expect(buildPlanIntentTransition({ draft: "" })).toMatchObject({
       nextMode: "plan",
       shouldSeedDraft: true,
-    });
-    expect(buildQuickCreateIntentTransition({ draft: "J'ai déjà mon idée" })).toMatchObject({
-      nextMode: "plan",
-      nextDraft: "J'ai déjà mon idée",
-      shouldSeedDraft: false,
+      intent: {
+        type: "manual_plan",
+        preferredMode: "plan",
+        source: "composer_menu",
+      },
     });
   });
 
@@ -259,15 +258,15 @@ describe("CoachPanel mode control", () => {
       buildManualPlanDismissTransition({
         planningState: {
           mode: "plan",
-          entryPoint: "composer_structuring",
-          intent: "structuring",
+          entryPoint: "composer_plan",
+          intent: "manual_plan",
           autoActivation: "allowed",
         },
         activeWorkIntent: {
-          seededDraftPrefill: "Aide-moi à structurer ce que je veux faire avancer.",
+          seededDraftPrefill: "Aide-moi à transformer cette intention en plan clair et actionnable.",
           draftTouchedSinceSeed: false,
         },
-        draft: "Aide-moi à structurer ce que je veux faire avancer.",
+        draft: "Aide-moi à transformer cette intention en plan clair et actionnable.",
       })
     ).toMatchObject({
       nextMode: "free",
@@ -275,7 +274,7 @@ describe("CoachPanel mode control", () => {
       shouldClearDraft: true,
       planningState: {
         mode: "free",
-        entryPoint: "composer_structuring",
+        entryPoint: "composer_plan",
         intent: null,
         autoActivation: "blocked_by_user",
       },
@@ -287,7 +286,7 @@ describe("CoachPanel mode control", () => {
       resolveAssistantReplyPlanningState({
         currentPlanningState: {
           mode: "free",
-          entryPoint: "composer_structuring",
+          entryPoint: "composer_plan",
           intent: null,
           autoActivation: "blocked_by_user",
         },
@@ -295,11 +294,11 @@ describe("CoachPanel mode control", () => {
           kind: "conversation",
           mode: "plan",
         },
-        activeWorkIntentType: "structuring",
+        activeWorkIntentType: "manual_plan",
       })
     ).toEqual({
       mode: "free",
-      entryPoint: "composer_structuring",
+      entryPoint: "composer_plan",
       intent: null,
       autoActivation: "blocked_by_user",
     });
@@ -333,8 +332,8 @@ describe("CoachPanel mode control", () => {
         loading: true,
         planningState: {
           mode: "plan",
-          entryPoint: "composer_structuring",
-          intent: "structuring",
+          entryPoint: "composer_plan",
+          intent: "manual_plan",
           autoActivation: "allowed",
         },
       })

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/useAuth";
+import AiDebugLine from "../components/ai/AiDebugLine";
 import { getCategoryProfileSummary } from "../domain/categoryProfile";
 import { requestAiLocalAnalysis } from "../infra/aiLocalAnalysisClient";
 import {
@@ -847,6 +848,7 @@ export default function Pilotage({
               <div className="pilotageInlineAiPanel">
                 <div className="pilotagePanelTitle">Analyse indisponible</div>
                 <FeedbackMessage tone="warning">{manualPilotageAnalysis.error}</FeedbackMessage>
+                <AiDebugLine diagnostics={manualPilotageAnalysis.errorDiagnostics} className="lovableMuted" />
               </div>
             ) : null}
           </div>

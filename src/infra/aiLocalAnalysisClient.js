@@ -14,6 +14,7 @@ const ACTION_INTENTS = new Set([
 const DECISION_SOURCES = new Set(["ai", "rules"]);
 const META_FALLBACK_REASONS = new Set(["none", "quota", "timeout", "invalid_model_output", "backend_error"]);
 const DIRECTION_KEYS = new Set(["maintenir", "recalibrer", "accélérer", "alléger"]);
+const AI_SURFACE = "analysis";
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -56,11 +57,21 @@ function summarizeBodyShape(body) {
 
 function normalizeBackendErrorCode(status, backendErrorCode) {
   const code = String(backendErrorCode || "").trim().toUpperCase();
-  if (code === "UNAUTHORIZED") return "UNAUTHORIZED";
+  if (code === "AUTH_MISSING" || code === "AUTH_INVALID" || code === "UNAUTHORIZED") return "UNAUTHORIZED";
   if (code === "RATE_LIMITED") return "RATE_LIMITED";
   if (code === "QUOTA_EXCEEDED") return "QUOTA_EXCEEDED";
   if (code === "BACKEND_SCHEMA_MISSING") return "BACKEND_SCHEMA_MISSING";
+  if (code === "INVALID_RESPONSE") return "INVALID_RESPONSE";
   if (code === "BACKEND_ERROR") return "BACKEND_ERROR";
+  if (
+    code === "SNAPSHOT_LOAD_FAILED" ||
+    code === "QUOTA_LOAD_FAILED" ||
+    code === "CONTEXT_BUILD_FAILED" ||
+    code === "PROVIDER_FAILED" ||
+    code === "UNKNOWN_BACKEND_ERROR"
+  ) {
+    return "BACKEND_ERROR";
+  }
   if (status === 401) return "UNAUTHORIZED";
   if (status === 429) return "RATE_LIMITED";
   if (status === 503) return "BACKEND_ERROR";
@@ -170,6 +181,13 @@ export async function requestAiLocalAnalysis({
 }) {
   const resolvedBaseUrl = readAiBackendBaseUrl(baseUrl);
   const buildTransport = (errorCode = null) => buildAiTransportMeta({ baseUrl: resolvedBaseUrl, errorCode });
+  const buildResultMeta = (transportMeta, analysisSurface = payload?.surface || null) => ({
+    surface: AI_SURFACE,
+    analysisSurface,
+    probableCause: transportMeta?.probableCause || null,
+    baseUrlUsed: transportMeta?.backendBaseUrl || resolvedBaseUrl || "",
+    originUsed: transportMeta?.frontendOrigin || "",
+  });
   if (!resolvedBaseUrl) {
     const transportMeta = buildTransport("DISABLED");
     logLocalAnalysisIssue({ errorCode: "DISABLED", transportMeta, surface: payload?.surface || null });
@@ -182,6 +200,7 @@ export async function requestAiLocalAnalysis({
       backendErrorCode: null,
       responseKind: null,
       transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
   if (typeof fetchImpl !== "function") {
@@ -196,6 +215,7 @@ export async function requestAiLocalAnalysis({
       backendErrorCode: null,
       responseKind: null,
       transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
   if (!String(accessToken || "").trim()) {
@@ -210,6 +230,7 @@ export async function requestAiLocalAnalysis({
       backendErrorCode: "UNAUTHORIZED",
       responseKind: null,
       transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
 
@@ -228,6 +249,7 @@ export async function requestAiLocalAnalysis({
       backendErrorCode: null,
       responseKind: null,
       transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
 
@@ -238,6 +260,7 @@ export async function requestAiLocalAnalysis({
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
+        "x-discip-surface": AI_SURFACE,
       },
       body: JSON.stringify(normalizedPayload),
     });
@@ -253,6 +276,7 @@ export async function requestAiLocalAnalysis({
       backendErrorCode: null,
       responseKind: null,
       transportMeta,
+      ...buildResultMeta(transportMeta, normalizedPayload.surface),
     };
   }
 
@@ -280,6 +304,7 @@ export async function requestAiLocalAnalysis({
       backendErrorCode: typeof body?.error === "string" ? body.error : null,
       responseKind: bodySummary.responseKind,
       transportMeta,
+      ...buildResultMeta(transportMeta, normalizedPayload.surface),
     };
   }
 
@@ -303,9 +328,11 @@ export async function requestAiLocalAnalysis({
       backendErrorCode: null,
       responseKind: bodySummary.responseKind,
       transportMeta,
+      ...buildResultMeta(transportMeta, normalizedPayload.surface),
     };
   }
 
+  const transportMeta = buildTransport(null);
   return {
     ok: true,
     errorCode: null,
@@ -314,6 +341,7 @@ export async function requestAiLocalAnalysis({
     requestId: bodySummary.requestId,
     backendErrorCode: null,
     responseKind: bodySummary.responseKind,
-    transportMeta: buildTransport(null),
+    transportMeta,
+    ...buildResultMeta(transportMeta, normalizedPayload.surface),
   };
 }

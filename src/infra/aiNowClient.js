@@ -166,11 +166,21 @@ export function isAiCoachResponse(value) {
 
 function normalizeBackendErrorCode(status, backendErrorCode) {
   const code = String(backendErrorCode || "").trim().toUpperCase();
-  if (code === "UNAUTHORIZED") return "UNAUTHORIZED";
+  if (code === "AUTH_MISSING" || code === "AUTH_INVALID" || code === "UNAUTHORIZED") return "UNAUTHORIZED";
   if (code === "RATE_LIMITED") return "RATE_LIMITED";
   if (code === "QUOTA_EXCEEDED") return "QUOTA_EXCEEDED";
   if (code === "BACKEND_SCHEMA_MISSING") return "BACKEND_SCHEMA_MISSING";
+  if (code === "INVALID_RESPONSE") return "INVALID_RESPONSE";
   if (code === "BACKEND_ERROR") return "BACKEND_ERROR";
+  if (
+    code === "SNAPSHOT_LOAD_FAILED" ||
+    code === "QUOTA_LOAD_FAILED" ||
+    code === "CONTEXT_BUILD_FAILED" ||
+    code === "PROVIDER_FAILED" ||
+    code === "UNKNOWN_BACKEND_ERROR"
+  ) {
+    return "BACKEND_ERROR";
+  }
   if (status === 401) return "UNAUTHORIZED";
   if (status === 429) return "RATE_LIMITED";
   if (status === 503) return "BACKEND_ERROR";

@@ -6,7 +6,7 @@ import {
   upsertManualAiAnalysisEntry,
 } from "../features/manualAi/manualAiAnalysis";
 import { getManualAiLoadingStages } from "../features/manualAi/loadingStages";
-import { deriveAiUnavailableMessage } from "../infra/aiTransportDiagnostics";
+import { buildAiDebugDetails, deriveAiUnavailableMessage } from "../infra/aiTransportDiagnostics";
 
 function deriveDefaultErrorMessage(result) {
   return deriveAiUnavailableMessage(result, {
@@ -28,6 +28,7 @@ export function useManualAiAnalysis({
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [errorDiagnostics, setErrorDiagnostics] = useState(null);
   const [loadingStageIndex, setLoadingStageIndex] = useState(-1);
   const [requestDiagnostics, setRequestDiagnostics] = useState({
     deliverySource: null,
@@ -49,6 +50,7 @@ export function useManualAiAnalysis({
   useEffect(() => {
     setLoading(false);
     setError("");
+    setErrorDiagnostics(null);
     setRequestDiagnostics({
       deliverySource: visibleAnalysis ? "persisted" : null,
       hadVisibleLoading: false,
@@ -89,6 +91,7 @@ export function useManualAiAnalysis({
       };
     });
     setError("");
+    setErrorDiagnostics(null);
     setLoading(false);
     setRequestDiagnostics({
       deliverySource: null,
@@ -109,23 +112,36 @@ export function useManualAiAnalysis({
       }
       setLoading(true);
       setError("");
-        setRequestDiagnostics((current) => ({
-          deliverySource: current.deliverySource,
-          hadVisibleLoading: !visibleAnalysis,
-          savedAt: current.savedAt,
-          wasRefreshed: false,
-        }));
+      setErrorDiagnostics(null);
+      setRequestDiagnostics((current) => ({
+        deliverySource: current.deliverySource,
+        hadVisibleLoading: !visibleAnalysis,
+        savedAt: current.savedAt,
+        wasRefreshed: false,
+      }));
       try {
         const result = await execute();
         if (!result?.ok) {
           const nextMessage = typeof errorMessage === "function" ? errorMessage(result) : deriveDefaultErrorMessage(result);
           setError(nextMessage);
+          setErrorDiagnostics(buildAiDebugDetails(result, { surface: "analysis" }));
           setLoading(false);
           return result;
         }
         const nextEntry = serializeSuccess(result);
         if (!nextEntry) {
           setError("Analyse indisponible.");
+          setErrorDiagnostics(
+            buildAiDebugDetails(
+              {
+                errorCode: "INVALID_RESPONSE",
+                backendErrorCode: null,
+                status: Number.isInteger(result?.status) ? result.status : null,
+                requestId: result?.requestId || null,
+              },
+              { surface: "analysis" }
+            )
+          );
           setLoading(false);
           return { ok: false, errorCode: "INVALID_RESPONSE" };
         }
@@ -151,12 +167,24 @@ export function useManualAiAnalysis({
         });
         setLoading(false);
         setError("");
+        setErrorDiagnostics(null);
         return {
           ...result,
           entry: nextEntry,
         };
       } catch (runtimeError) {
         setError("Analyse indisponible.");
+        setErrorDiagnostics(
+          buildAiDebugDetails(
+            {
+              errorCode: "NETWORK_ERROR",
+              backendErrorCode: null,
+              status: null,
+              requestId: null,
+            },
+            { surface: "analysis" }
+          )
+        );
         setLoading(false);
         return { ok: false, errorCode: "NETWORK_ERROR", error: runtimeError };
       }
@@ -168,6 +196,7 @@ export function useManualAiAnalysis({
     visibleAnalysis,
     loading,
     error,
+    errorDiagnostics,
     runAnalysis,
     dismissAnalysis,
     isPersistedForContext: Boolean(visibleAnalysis),

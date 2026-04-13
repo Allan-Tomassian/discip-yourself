@@ -54,10 +54,9 @@ describe("coach panel contract", () => {
     expect(coachPage).not.toContain("coachSurfacePage");
     expect(coachPage).not.toContain("coachSurfaceModeToggle");
     expect(coachPage).not.toContain('setTab("create-item")');
-    expect(copy).toContain('structuringModeLabel: "Structurer"');
-    expect(copy).toContain('quickCreateLabel: "Créer vite"');
+    expect(copy).toContain('planModeLabel: "Plan"');
     expect(copy).toContain('planActiveLabel: "Plan actif"');
-    expect(copy).toContain('composerPlusAriaLabel: "Ouvrir les intentions du coach"');
+    expect(copy).toContain('composerMenuAriaLabel: "Menu plan du coach"');
     expect(copy).toContain('createdPlanTitle: "Plan créé"');
     expect(copy).toContain('viewInApp: "Voir dans l’app"');
     expect(copy).toContain('planPendingLabel: "Préparation du plan"');
@@ -82,8 +81,9 @@ describe("coach panel contract", () => {
     expect(coachController).toContain('sourceSurface: "coach"');
     expect(coachController).toContain("activeWorkIntent");
     expect(coachController).toContain("planningState");
-    expect(coachController).toContain("startStructuringIntent");
-    expect(coachController).toContain("startQuickCreateIntent");
+    expect(coachController).toContain("startPlanIntent");
+    expect(coachController).toContain('entryPoint: "composer_plan"');
+    expect(coachController).toContain('intent: "manual_plan"');
     expect(coachController).toContain("dismissWorkIntent");
     expect(coachController).toContain("dismissPlanningState");
     expect(coachController).toContain("coachMessageCreatedAt: entry.createdAt");

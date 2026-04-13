@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AppScreen } from "../shared/ui/app";
+import AiDebugLine from "../components/ai/AiDebugLine";
 import CoachComposerMenu from "../features/coach/CoachComposerMenu";
 import { useCoachConversationController } from "../features/coach/coachPanelController";
 import { COACH_SCREEN_COPY } from "../ui/labels";
@@ -228,17 +229,10 @@ export default function Coach({
     setComposerMenuAnchorRect(null);
   }, []);
 
-  const handleSelectStructuring = useCallback(() => {
+  const handleSelectPlan = useCallback(() => {
     handleCloseComposerMenu();
     setPlanPillDismissed(false);
-    controller.startStructuringIntent();
-    focusComposer();
-  }, [controller, focusComposer, handleCloseComposerMenu]);
-
-  const handleSelectQuickCreate = useCallback(() => {
-    handleCloseComposerMenu();
-    setPlanPillDismissed(false);
-    controller.startQuickCreateIntent();
+    controller.startPlanIntent();
     focusComposer();
   }, [controller, focusComposer, handleCloseComposerMenu]);
 
@@ -396,7 +390,7 @@ export default function Coach({
                           <button
                             type="button"
                             className="lovableCoachDraftSecondary"
-                            onClick={() => controller.reenterStructuring()}
+                            onClick={() => controller.reenterPlan()}
                           >
                             {COACH_SCREEN_COPY.continue}
                           </button>
@@ -485,10 +479,14 @@ export default function Coach({
             anchorRect={composerMenuAnchorRect}
             anchorEl={composerMenuAnchorEl}
             onClose={handleCloseComposerMenu}
-            onSelectStructuring={handleSelectStructuring}
-            onSelectQuickCreate={handleSelectQuickCreate}
+            onSelectPlan={handleSelectPlan}
           />
-          {controller.error ? <div className="lovableCoachError">{controller.error}</div> : null}
+          {controller.error ? (
+            <>
+              <div className="lovableCoachError">{controller.error}</div>
+              <AiDebugLine diagnostics={controller.errorDiagnostics} className="lovableCoachError" />
+            </>
+          ) : null}
         </div>
       </div>
     </AppScreen>

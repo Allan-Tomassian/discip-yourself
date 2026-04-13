@@ -138,6 +138,9 @@ describe("aiCoachChatClient", () => {
         errorCode: "NETWORK_ERROR",
         requestId: null,
         backendErrorCode: null,
+        surface: "coach",
+        baseUrlUsed: "https://discip-yourself-backend.onrender.com",
+        originUsed: "http://192.168.1.183:5173",
         responseKind: null,
         responseMode: null,
         transportMeta: {
@@ -181,9 +184,35 @@ describe("aiCoachChatClient", () => {
       status: 401,
       requestId: "req_401",
       backendErrorCode: "UNAUTHORIZED",
+      surface: "coach",
+      baseUrlUsed: "https://discip-yourself-backend.onrender.com",
       responseKind: null,
       responseMode: null,
     });
+  });
+
+  it("envoie un header de surface pour faciliter la corrélation backend", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => buildConversationResponse({ mode: "free", proposal: null }),
+    });
+
+    await requestAiCoachChat({
+      accessToken: "token",
+      baseUrl: "https://discip-yourself-backend.onrender.com",
+      fetchImpl,
+      payload: {
+        selectedDateKey: "2026-03-25",
+        activeCategoryId: "cat-1",
+        mode: "free",
+        message: "Bonjour",
+        recentMessages: [],
+      },
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl.mock.calls[0]?.[1]?.headers?.["x-discip-surface"]).toBe("coach");
   });
 
   it("retourne un diagnostic complet sur un 429 backend", async () => {
@@ -217,6 +246,39 @@ describe("aiCoachChatClient", () => {
       backendErrorCode: "RATE_LIMITED",
       responseKind: null,
       responseMode: null,
+    });
+  });
+
+  it("conserve le backendErrorCode stage-level sur un 503 backend", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({
+        error: "CONTEXT_BUILD_FAILED",
+        requestId: "req_stage_503",
+      }),
+    });
+
+    const result = await requestAiCoachChat({
+      accessToken: "token",
+      baseUrl: "https://discip-yourself-backend.onrender.com",
+      fetchImpl,
+      payload: {
+        selectedDateKey: "2026-03-25",
+        activeCategoryId: "cat-1",
+        mode: "plan",
+        message: "Structure ce projet",
+        recentMessages: [],
+      },
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      errorCode: "BACKEND_ERROR",
+      status: 503,
+      requestId: "req_stage_503",
+      backendErrorCode: "CONTEXT_BUILD_FAILED",
+      surface: "coach",
     });
   });
 
