@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSessionRunbookV1 } from "./sessionRunbook";
+import { buildSessionRunbookV1, normalizeSessionRunbook } from "./sessionRunbook";
 import {
   activateGuidedSpatialState,
   advanceGuidedSpatialStep,
@@ -127,6 +127,7 @@ describe("sessionAdjustments", () => {
       },
     });
     expect(result.sessionRunbook.durationMinutes).toBeLessThan(runbook.durationMinutes);
+    expect(normalizeSessionRunbook(result.sessionRunbook)).not.toBeNull();
   });
 
   it("softens future sport segments when energy is lower", () => {

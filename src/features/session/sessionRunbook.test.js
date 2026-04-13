@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  assessPreparedSessionRunbookQuality,
   buildSessionRunbookV1,
   deriveGuidedCurrentStep,
   normalizePreparedSessionRunbook,
@@ -145,6 +146,242 @@ describe("sessionRunbook", () => {
     });
     expect(prepared.steps).toHaveLength(3);
     expect(prepared.steps[1].items).toHaveLength(3);
+  });
+
+  it("accepts a premium sport runbook only when the content is specific enough", () => {
+    const quality = assessPreparedSessionRunbookQuality({
+      preparedRunbook: {
+        version: 2,
+        protocolType: "sport",
+        occurrenceId: "occ_4",
+        actionId: "goal_4",
+        dateKey: "2026-04-10",
+        title: "Circuit jambes et gainage",
+        categoryName: "Sport",
+        objective: {
+          why: "tenir un bloc cardio-force net",
+          successDefinition: "le circuit est tenu sans casser la forme",
+        },
+        steps: [
+          {
+            label: "Mise en route",
+            purpose: "préparer les appuis",
+            successCue: "souffle posé",
+            items: [
+              {
+                label: "Montées de genoux",
+                minutes: 3,
+                guidance: "alterne 30 sec dynamiques puis 30 sec plus calmes pour monter en température",
+                successCue: "respiration stable",
+              },
+              {
+                label: "Squats au poids du corps",
+                minutes: 2,
+                guidance: "fais 2 séries de 12 reps en gardant le buste haut",
+                successCue: "genoux stables",
+              },
+            ],
+          },
+          {
+            label: "Bloc force",
+            purpose: "tenir le coeur utile",
+            successCue: "gainage propre",
+            items: [
+              {
+                label: "Fentes alternées",
+                minutes: 4,
+                guidance: "2 séries de 10 reps par jambe sans te précipiter",
+                successCue: "appuis nets",
+                restSec: 25,
+              },
+              {
+                label: "Planche avant",
+                minutes: 4,
+                guidance: "3 passages de 40 sec avec 20 sec de repos entre les passages",
+                successCue: "bassin aligné",
+                restSec: 20,
+              },
+              {
+                label: "Pont fessier",
+                minutes: 3,
+                guidance: "2 séries de 15 reps avec montée contrôlée et pause d’une seconde en haut",
+                successCue: "fessiers engagés",
+                restSec: 20,
+              },
+            ],
+          },
+          {
+            label: "Retour au calme",
+            purpose: "faire redescendre proprement",
+            successCue: "souffle revenu",
+            items: [
+              {
+                label: "Marche lente",
+                minutes: 2,
+                guidance: "marche en récupérant le souffle avant de t’arrêter",
+                successCue: "fréquence calmée",
+              },
+              {
+                label: "Étirements hanches et mollets",
+                minutes: 2,
+                guidance: "tiens 30 sec par côté sans forcer",
+                successCue: "tension relâchée",
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(quality).toEqual({
+      isPremiumReady: true,
+      validationPassed: true,
+      richnessPassed: true,
+      reason: null,
+    });
+  });
+
+  it("accepts a premium deep work runbook only when the content is concrete and restartable", () => {
+    const quality = assessPreparedSessionRunbookQuality({
+      preparedRunbook: {
+        version: 2,
+        protocolType: "deep_work",
+        occurrenceId: "occ_4b",
+        actionId: "goal_4b",
+        dateKey: "2026-04-10",
+        title: "Structurer la note produit",
+        categoryName: "Travail",
+        objective: {
+          why: "sortir une avancée visible sur le livrable",
+          successDefinition: "une version réutilisable existe à la fin du bloc",
+        },
+        steps: [
+          {
+            label: "Ouverture utile",
+            purpose: "rentrer dans le bon sous-sujet",
+            successCue: "point d’entrée verrouillé",
+            items: [
+              {
+                label: "Rouvrir le plan de note",
+                minutes: 3,
+                guidance: "relis uniquement la section cible et note le sous-livrable attendu",
+                successCue: "sous-livrable choisi",
+              },
+              {
+                label: "Choisir l’ordre d’attaque",
+                minutes: 2,
+                guidance: "liste les 2 sous-parties à traiter dans l’ordre pour éviter de repartir en vrac",
+                successCue: "ordre clair",
+              },
+            ],
+          },
+          {
+            label: "Production",
+            purpose: "faire avancer le coeur du livrable",
+            successCue: "matière exploitable créée",
+            items: [
+              {
+                label: "Écrire la section problème",
+                minutes: 8,
+                guidance: "rédige une première version complète de la section problème avec 3 points maximum",
+                successCue: "section complète",
+              },
+              {
+                label: "Rédiger les décisions",
+                minutes: 8,
+                guidance: "enchaîne directement sur les décisions concrètes à garder ou à couper; si tu bloques, reformule-les d’abord en 3 puces",
+                successCue: "décisions formulées",
+              },
+              {
+                label: "Vérifier la trace finale",
+                minutes: 4,
+                guidance: "contrôle que la note peut être reprise telle quelle plus tard",
+                successCue: "trace réutilisable",
+              },
+            ],
+          },
+          {
+            label: "Clôture",
+            purpose: "préparer la reprise",
+            successCue: "suite explicite",
+            items: [
+              {
+                label: "Noter le prochain sous-livrable",
+                minutes: 3,
+                guidance: "écris la prochaine sous-partie à ouvrir et le critère de fin associé pour reprendre sans friction",
+                successCue: "reprise prête",
+              },
+              {
+                label: "Nettoyer le contexte de travail",
+                minutes: 2,
+                guidance: "laisse seulement les documents utiles à la prochaine reprise",
+                successCue: "contexte propre",
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(quality).toEqual({
+      isPremiumReady: true,
+      validationPassed: true,
+      richnessPassed: true,
+      reason: null,
+    });
+  });
+
+  it("rejects a generic prepared runbook as non premium-ready", () => {
+    const quality = assessPreparedSessionRunbookQuality({
+      preparedRunbook: {
+        version: 2,
+        protocolType: "deep_work",
+        occurrenceId: "occ_5",
+        actionId: "goal_5",
+        dateKey: "2026-04-10",
+        title: "Structurer la note produit",
+        categoryName: "Travail",
+        objective: {
+          why: "sortir une note utile",
+          successDefinition: "une trace existe",
+        },
+        steps: [
+          {
+            label: "Ouverture",
+            purpose: "rentrer dans le sujet",
+            successCue: "contexte rouvert",
+            items: [
+              { label: "Rouvre le contexte", minutes: 2, guidance: "remets sous les yeux ce qui sert le bloc" },
+              { label: "Premier passage utile", minutes: 2, guidance: "attaque le sujet sans changer de thème" },
+            ],
+          },
+          {
+            label: "Bloc principal",
+            purpose: "avancer",
+            successCue: "avancée visible",
+            items: [
+              { label: "Passage principal", minutes: 8, guidance: "travaille le coeur du sujet" },
+              { label: "Passage critique", minutes: 8, guidance: "continue jusqu’au point utile" },
+              { label: "Trace exploitable", minutes: 4, guidance: "laisse quelque chose de réutilisable" },
+            ],
+          },
+          {
+            label: "Clôture",
+            purpose: "sortir proprement",
+            successCue: "suite notée",
+            items: [
+              { label: "Noter la reprise", minutes: 2, guidance: "écris la suite" },
+              { label: "Nettoyer le contexte", minutes: 2, guidance: "range l’essentiel" },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(quality.isPremiumReady).toBe(false);
+    expect(quality.validationPassed).toBe(true);
+    expect(quality.richnessPassed).toBe(false);
+    expect(quality.reason).toBe("richness_failed");
   });
 
   it("derives the current guided item from elapsed seconds", () => {

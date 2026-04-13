@@ -1,5 +1,6 @@
 import { test, expect, devices } from "@playwright/test";
 import { buildBaseState, buildMockProfile, seedState } from "./utils/seed.js";
+import { enablePremium, installSessionGuidanceMock } from "./utils/sessionGuidanceMock.js";
 
 const iPhone13 = devices["iPhone 13"];
 const E2E_USER_ID = "e2e-user-id";
@@ -81,7 +82,7 @@ function buildLaunchState() {
     },
   ];
 
-  return state;
+  return enablePremium(state);
 }
 
 async function seedApp(page, state) {
@@ -126,6 +127,7 @@ test("standard adjust applies a lightweight local patch without opening guided m
 });
 
 test("guided adjust patches the runbook locally and keeps the runtime guided", async ({ page }, testInfo) => {
+  await installSessionGuidanceMock(page);
   await openTimelineLaunch(page, buildLaunchState());
 
   await page.getByRole("button", { name: "Aller plus loin" }).click();

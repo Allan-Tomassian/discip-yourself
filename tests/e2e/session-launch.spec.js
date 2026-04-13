@@ -1,5 +1,6 @@
 import { test, expect, devices } from "@playwright/test";
 import { buildBaseState, buildMockProfile, getUserData, seedState } from "./utils/seed.js";
+import { enablePremium, installSessionGuidanceMock } from "./utils/sessionGuidanceMock.js";
 
 const iPhone13 = devices["iPhone 13"];
 const E2E_USER_ID = "e2e-user-id";
@@ -82,7 +83,7 @@ function buildLaunchState({ withBlueprint = true } = {}) {
   ];
   state.reminders = [];
 
-  return state;
+  return enablePremium(state);
 }
 
 async function seedApp(page, state) {
@@ -140,6 +141,7 @@ test("standard launch keeps the existing runtime and does not auto-start", async
 });
 
 test("guided launch shows preparing, spatial preview, and a compact guided runtime", async ({ page }, testInfo) => {
+  await installSessionGuidanceMock(page);
   await openTimelineLaunch(page, buildLaunchState());
 
   await expect(page.getByTestId("session-launch-ready")).toBeVisible();
@@ -155,7 +157,7 @@ test("guided launch shows preparing, spatial preview, and a compact guided runti
   await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
   await expect(page.getByRole("button", { name: "Régénérer" })).toBeVisible();
   await expect(page.getByText("Plan du bloc")).toBeVisible();
-  await expect(page.getByText("Échauffement")).toBeVisible();
+  await expect(page.getByText("Mise en route")).toBeVisible();
   await expect(page.locator(".lovableTabBarWrap")).toHaveCount(0);
   await expect(page.locator(".pageHeader")).toHaveCount(0);
   await attachScreenshot(page, testInfo, "session-guided-preview.png");
@@ -183,9 +185,174 @@ test("guided launch shows preparing, spatial preview, and a compact guided runti
 
   const persisted = await getUserData(page, E2E_USER_ID);
   expect(persisted?.ui?.activeSession?.occurrenceId ?? null).toBe("occ_launch");
-  expect(JSON.stringify(persisted || {})).not.toContain("\"sessionRunbook\"");
+  expect(persisted?.ui?.activeSession?.guidedRuntimeV1?.sessionRunbook?.version ?? null).toBe(2);
 
   await attachScreenshot(page, testInfo, "session-guided-plan-runtime.png");
+});
+
+test("premium guided prepare shows an explicit degraded state and retry can recover", async ({ page }, testInfo) => {
+  let prepareAttempts = 0;
+  await page.addInitScript(() => {
+    globalThis.process = globalThis.process || {};
+    globalThis.process.env = {
+      ...(globalThis.process.env || {}),
+      VITE_AI_BACKEND_URL: globalThis.location.origin,
+    };
+  });
+  await page.route("**/ai/session-guidance", async (route) => {
+    const body = JSON.parse(route.request().postData() || "{}");
+    if (body.mode !== "prepare") {
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: "SESSION_GUIDANCE_BACKEND_UNAVAILABLE",
+          requestId: `req-session-guidance-${body.mode || "unknown"}`,
+        }),
+      });
+      return;
+    }
+
+    prepareAttempts += 1;
+    if (prepareAttempts === 1) {
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: "SESSION_GUIDANCE_BACKEND_UNAVAILABLE",
+          requestId: "req-session-guidance-prepare-1",
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        kind: "session_guidance",
+        mode: "prepare",
+        payload: {
+          preparedRunbook: {
+            version: 2,
+            protocolType: "sport",
+            occurrenceId: body.occurrenceId || "occ_launch",
+            actionId: body.actionId || "goal_sport",
+            dateKey: body.dateKey,
+            title: body.actionTitle || "Séance guidée premium",
+            categoryName: body.categoryName || "Sport",
+            objective: {
+              why: "tenir un bloc cardio-force net",
+              successDefinition: "le circuit est tenu sans casser la forme",
+            },
+            steps: [
+              {
+                label: "Mise en route",
+                purpose: "préparer les appuis",
+                successCue: "souffle posé",
+                items: [
+                  {
+                    kind: "warmup",
+                    label: "Montées de genoux",
+                    minutes: 3,
+                    guidance: "alterne 30 sec dynamiques puis 30 sec plus calmes pour monter en température",
+                    successCue: "respiration stable",
+                  },
+                  {
+                    kind: "activation",
+                    label: "Squats au poids du corps",
+                    minutes: 2,
+                    guidance: "2 séries de 12 reps en gardant le buste haut",
+                    successCue: "genoux stables",
+                  },
+                ],
+              },
+              {
+                label: "Bloc force",
+                purpose: "tenir le coeur utile",
+                successCue: "gainage propre",
+                items: [
+                  {
+                    kind: "effort",
+                    label: "Fentes alternées",
+                    minutes: 4,
+                    guidance: "2 séries de 10 reps par jambe sans te précipiter",
+                    successCue: "appuis nets",
+                    restSec: 25,
+                  },
+                  {
+                    kind: "effort",
+                    label: "Planche avant",
+                    minutes: 4,
+                    guidance: "3 passages de 40 sec avec 20 sec de repos entre les passages",
+                    successCue: "bassin aligné",
+                    restSec: 20,
+                  },
+                  {
+                    kind: "effort",
+                    label: "Pont fessier",
+                    minutes: 3,
+                    guidance: "2 séries de 15 reps avec montée contrôlée et pause d’une seconde en haut",
+                    successCue: "fessiers engagés",
+                    restSec: 20,
+                  },
+                ],
+              },
+              {
+                label: "Retour au calme",
+                purpose: "faire redescendre proprement",
+                successCue: "souffle revenu",
+                items: [
+                  {
+                    kind: "cooldown",
+                    label: "Marche lente",
+                    minutes: 2,
+                    guidance: "marche en récupérant le souffle avant de t’arrêter",
+                    successCue: "fréquence calmée",
+                  },
+                  {
+                    kind: "breath",
+                    label: "Étirements hanches et mollets",
+                    minutes: 2,
+                    guidance: "tiens 30 sec par côté sans forcer",
+                    successCue: "tension relâchée",
+                  },
+                ],
+              },
+            ],
+          },
+          toolPlan: null,
+          quality: {
+            isPremiumReady: true,
+            validationPassed: true,
+            richnessPassed: true,
+            reason: null,
+          },
+        },
+        meta: {
+          coachVersion: "v1",
+          requestId: "req-session-guidance-prepare-2",
+          aiIntent: "session_prepare",
+          quotaRemaining: 5,
+          source: "ai_premium",
+        },
+      }),
+    });
+  });
+
+  await openTimelineLaunch(page, buildLaunchState());
+
+  await page.getByRole("button", { name: "Aller plus loin" }).click();
+  await expect(page.getByTestId("session-launch-degraded")).toBeVisible();
+  await expect(page.getByText("Réessaye ou passe en standard.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Réessayer" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Passer en standard" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Réessayer" }).click();
+  await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
+  await expect(page.getByText("Mise en route")).toBeVisible();
+
+  await attachScreenshot(page, testInfo, "session-guided-degraded-then-retry.png");
 });
 
 test("occurrences without blueprint bypass Séance prête and keep the current session behavior", async ({ page }, testInfo) => {

@@ -4,6 +4,7 @@ import { buildLocalUserDataKey } from "../../src/data/userDataApi.js";
 import { buildLocalProfileKey, LOCAL_PROFILE_USERNAME_MAP_KEY } from "../../src/profile/profileApi.js";
 import { LS_KEY } from "../../src/utils/storage.js";
 import { buildBaseState, buildMockAuthSession, buildMockProfile, seedState } from "./utils/seed.js";
+import { enablePremium, installSessionGuidanceMock } from "./utils/sessionGuidanceMock.js";
 
 const iPhone13 = devices["iPhone 13"];
 const E2E_USER_ID = "e2e-user-id";
@@ -110,7 +111,7 @@ function buildState({
     },
   ];
 
-  return state;
+  return enablePremium(state);
 }
 
 async function seedApp(page, state) {
@@ -254,6 +255,7 @@ async function installCoachReply(page, responseBody) {
 }
 
 async function openGuidedPreview(page, state) {
+  await installSessionGuidanceMock(page);
   await seedApp(page, state);
   await page.goto("/");
   await page.getByRole("button", { name: "Planning" }).click();
@@ -273,6 +275,7 @@ async function openGuidedActive(page, state) {
 }
 
 async function openGuidedActiveWithOneShotSeed(page, state) {
+  await installSessionGuidanceMock(page);
   await seedAppOnce(page, state);
   await page.getByRole("button", { name: "Planning" }).click();
   await page.locator(".lovableTimelineCardButton").first().click();

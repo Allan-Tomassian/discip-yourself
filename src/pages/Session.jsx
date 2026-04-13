@@ -20,6 +20,7 @@ import { deriveBehaviorFeedbackSignal, deriveSessionBehaviorCue } from "../feedb
 import { AppCard, AppScreen, GhostButton } from "../shared/ui/app";
 import { deriveActionProtocol } from "../features/action-protocol/actionProtocol";
 import {
+  assessPreparedSessionRunbookQuality,
   buildSessionRunbookV1,
   normalizePreparedSessionRunbook,
   normalizeSessionBlueprintSnapshot,
@@ -127,6 +128,64 @@ function readSessionGuidanceToolPlanPayload(payload, sessionRunbook = null) {
 function readSessionGuidanceToolResultPayload(payload, toolId = "") {
   if (!payload || typeof payload !== "object") return null;
   return normalizePreparedSessionToolResult(payload, { toolId });
+}
+
+function readSessionGuidancePrepareQualityPayload(payload, fallbackRunbook = null) {
+  const preparedRunbook = readSessionGuidanceRunbookPayload(payload, fallbackRunbook);
+  return assessPreparedSessionRunbookQuality({
+    preparedRunbook,
+    quality: payload?.quality || null,
+    fallbackRunbook,
+  });
+}
+
+function resolveSessionGuidancePrepareFailureMessage(errorCode = "", quality = null) {
+  if (errorCode === "PREMIUM_REQUIRED") {
+    return "Cette préparation détaillée fait partie du premium.";
+  }
+  if (errorCode === "SESSION_GUIDANCE_BACKEND_UNAVAILABLE") {
+    return "La préparation détaillée est indisponible pour le moment. Réessaye ou passe en standard.";
+  }
+  if (quality?.validationPassed === false) {
+    return "Le plan reçu n’était pas valide. Réessaye ou passe en standard.";
+  }
+  if (quality?.richnessPassed === false) {
+    return "Le plan détaillé n’était pas assez spécifique. Réessaye ou passe en standard.";
+  }
+  if (errorCode === "TIMEOUT" || errorCode === "NETWORK_ERROR") {
+    return "La préparation détaillée a expiré. Réessaye ou passe en standard.";
+  }
+  return "Impossible de préparer un plan détaillé pour le moment. Réessaye ou passe en standard.";
+}
+
+function buildSessionPreparePayload({
+  variant = "",
+  selectedOccurrence = null,
+  goal = null,
+  category = null,
+  blueprintSnapshot = null,
+  effectiveDateKey = "",
+  effectiveCategoryId = null,
+} = {}) {
+  if (!selectedOccurrence?.id || !goal?.id || !blueprintSnapshot) return null;
+  return {
+    mode: "prepare",
+    variant,
+    dateKey: selectedOccurrence.date || effectiveDateKey,
+    occurrenceId: selectedOccurrence.id,
+    actionId: goal.id,
+    actionTitle: goal.title || selectedOccurrence.title || "Session",
+    categoryId: category?.id || goal?.categoryId || effectiveCategoryId || null,
+    categoryName: category?.name || "",
+    protocolType: blueprintSnapshot.protocolType || null,
+    targetDurationMinutes:
+      Number.isFinite(selectedOccurrence.durationMinutes) ? selectedOccurrence.durationMinutes
+      : Number.isFinite(goal.sessionMinutes) ? goal.sessionMinutes
+      : Number.isFinite(blueprintSnapshot.estimatedMinutes) ? blueprintSnapshot.estimatedMinutes
+      : null,
+    blueprintSnapshot,
+    notes: readGoalSessionNotes(goal),
+  };
 }
 
 function readGoalSessionNotes(goal) {
@@ -250,6 +309,8 @@ export default function Session({
   occurrenceId,
   categoryId,
   setTab,
+  onOpenPaywall,
+  isPremiumPlan = false,
 }) {
   const { session: authSession } = useAuth();
   const accessToken = authSession?.access_token || "";
@@ -344,6 +405,11 @@ export default function Session({
       applied = false,
       cause = null,
       toolId = null,
+      planSource = null,
+      validationPassed = null,
+      richnessPassed = null,
+      failoverReason = null,
+      degradedStateShown = false,
     } = {}) => {
       const nextBackendState = resolveSessionGuidanceBackendState(
         sessionGuidanceBackendStateRef.current,
@@ -359,17 +425,25 @@ export default function Session({
       if (
         source === SESSION_GUIDANCE_EXECUTION_SOURCES.LOCAL_ONLY &&
         !attempted &&
-        !String(accessToken || "").trim()
+        !String(accessToken || "").trim() &&
+        !degradedStateShown
       ) {
         return nextBackendState;
       }
       logSessionGuidanceResolution({
         operation,
         source,
+        planSource,
         backendState: nextBackendState,
         requestId: result?.requestId || null,
         errorCode: result?.errorCode || null,
         backendErrorCode: result?.backendErrorCode || null,
+        entitlement: isPremiumPlan ? "premium" : "free",
+        backendAttempted: attempted,
+        validationPassed,
+        richnessPassed,
+        failoverReason,
+        degradedStateShown,
         cause,
         toolId,
         occurrenceId: selectedOccurrence?.id || null,
@@ -378,7 +452,7 @@ export default function Session({
       });
       return nextBackendState;
     },
-    [accessToken, goal?.id, selectedOccurrence?.goalId, selectedOccurrence?.id]
+    [accessToken, goal?.id, isPremiumPlan, selectedOccurrence?.goalId, selectedOccurrence?.id]
   );
 
   useEffect(() => {
@@ -455,8 +529,10 @@ export default function Session({
     !session &&
     Boolean(blueprintSnapshot) &&
     isLaunchableOccurrence &&
-    (launchPhase === "ready" || launchPhase === "preparing");
+    (launchPhase === "ready" || launchPhase === "preparing" || launchPhase === "guided_degraded");
   const launchMode = launchStateMatchesOccurrence ? currentLaunchState?.launchMode || null : null;
+  const launchPrepareMessage = launchStateMatchesOccurrence ? currentLaunchState?.guidedPrepareMessage || "" : "";
+  const launchPrepareErrorCode = launchStateMatchesOccurrence ? currentLaunchState?.guidedPrepareErrorCode || null : null;
   const launchRunbook = useMemo(
     () => normalizeSessionRunbook(currentLaunchState?.sessionRunbook || null),
     [currentLaunchState?.sessionRunbook]
@@ -700,6 +776,10 @@ export default function Session({
         sessionToolPlan: currentValue?.sessionToolPlan || runtimeGuidedBase?.sessionToolPlan || null,
         sessionToolState: currentValue?.sessionToolState || null,
         guidedSpatialState: currentValue?.guidedSpatialState || runtimeGuidedBase?.guidedSpatialState || null,
+        guidedPrepareErrorCode: currentValue?.guidedPrepareErrorCode || null,
+        guidedPrepareMessage: currentValue?.guidedPrepareMessage || "",
+        guidedPrepareRequestId: currentValue?.guidedPrepareRequestId || null,
+        guidedPreparePlanSource: currentValue?.guidedPreparePlanSource || null,
         openedAtMs: currentValue?.openedAtMs || Date.now(),
       };
     },
@@ -949,11 +1029,20 @@ export default function Session({
       sessionToolPlan: null,
       sessionToolState: null,
       guidedSpatialState: null,
+      guidedPrepareErrorCode: null,
+      guidedPrepareMessage: "",
+      guidedPrepareRequestId: null,
+      guidedPreparePlanSource: null,
     }));
   };
 
   const handlePrepareGuided = async () => {
     if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id || !goal || !blueprintSnapshot) return;
+    if (!isPremiumPlan) {
+      onOpenPaywall?.("Aller plus loin");
+      return;
+    }
+    const forceBackendAttempt = launchPhase === "guided_degraded";
     const fallbackRunbook = buildSessionRunbookV1({
       blueprintSnapshot,
       occurrence: selectedOccurrence,
@@ -974,52 +1063,70 @@ export default function Session({
     setSessionLaunchState((current) => ({
       ...readLaunchStateBase(current),
       phase: "preparing",
-      launchMode: "guided",
+      launchMode: null,
       sessionRunbook: null,
       standardAdjustment: null,
       guidedAdjustment: null,
       sessionToolPlan: null,
       sessionToolState: null,
       guidedSpatialState: null,
+      guidedPrepareErrorCode: null,
+      guidedPrepareMessage: "",
+      guidedPrepareRequestId: null,
+      guidedPreparePlanSource: null,
     }));
 
-    let nextRunbook = fallbackRunbook;
-    const fallbackToolPlan = buildSessionToolPlan({ sessionRunbook: fallbackRunbook });
-    let nextToolPlan = fallbackToolPlan;
+    let nextRunbook = null;
+    let nextToolPlan = null;
     let prepareAttempted = false;
     let prepareApplied = false;
     let prepareResult = null;
+    let prepareQuality = {
+      isPremiumReady: false,
+      validationPassed: false,
+      richnessPassed: false,
+      reason: "backend_unavailable",
+    };
+    let degradedMessage = "";
     if (
       shouldAttemptSessionGuidanceBackend({
         backendState: sessionGuidanceBackendStateRef.current,
         accessToken,
+        forceAttempt: forceBackendAttempt,
       })
     ) {
       prepareAttempted = true;
       prepareResult = await requestAiSessionGuidance({
         accessToken,
-        payload: {
-          mode: "prepare",
-          dateKey: selectedOccurrence.date || effectiveDateKey,
-          occurrenceId: selectedOccurrence.id,
-          actionId: goal.id,
-          categoryId: category?.id || goal?.categoryId || effectiveCategoryId || null,
+        payload: buildSessionPreparePayload({
+          selectedOccurrence,
+          goal,
+          category,
           blueprintSnapshot,
-          fallbackRunbook,
-          fallbackToolPlan,
-          notes: readGoalSessionNotes(goal),
-        },
+          effectiveDateKey,
+          effectiveCategoryId,
+        }),
+        timeoutMs: 4200,
       });
       const preparedRunbook = readSessionGuidanceRunbookPayload(prepareResult?.payload, fallbackRunbook);
-      if (prepareResult?.ok && preparedRunbook) {
+      prepareQuality = readSessionGuidancePrepareQualityPayload(prepareResult?.payload, fallbackRunbook);
+      if (prepareResult?.ok && prepareQuality.isPremiumReady && preparedRunbook) {
         nextRunbook = preparedRunbook;
         prepareApplied = true;
       }
       const preparedToolPlan = readSessionGuidanceToolPlanPayload(prepareResult?.payload, preparedRunbook || nextRunbook);
-      if (prepareResult?.ok && preparedToolPlan) {
+      if (prepareResult?.ok && prepareQuality.isPremiumReady && preparedToolPlan) {
         nextToolPlan = preparedToolPlan;
-        prepareApplied = true;
       }
+      if (prepareResult?.ok && prepareQuality.isPremiumReady && preparedRunbook && !nextToolPlan) {
+        nextToolPlan = buildSessionToolPlan({ sessionRunbook: preparedRunbook });
+      }
+      degradedMessage = resolveSessionGuidancePrepareFailureMessage(prepareResult?.errorCode || "", prepareQuality);
+      if (prepareResult?.errorCode === "PREMIUM_REQUIRED") {
+        onOpenPaywall?.("Aller plus loin");
+      }
+    } else {
+      degradedMessage = resolveSessionGuidancePrepareFailureMessage("SESSION_GUIDANCE_BACKEND_UNAVAILABLE", prepareQuality);
     }
     trackSessionGuidanceAttempt({
       operation: SESSION_GUIDANCE_OPERATIONS.PREPARE,
@@ -1027,6 +1134,12 @@ export default function Session({
       attempted: prepareAttempted,
       result: prepareResult,
       applied: prepareApplied,
+      cause: prepareApplied ? "premium_prepare" : prepareQuality.reason || "prepare_degraded",
+      planSource: prepareApplied ? "ai_premium" : "fallback_local",
+      validationPassed: prepareQuality.validationPassed,
+      richnessPassed: prepareQuality.richnessPassed,
+      failoverReason: prepareApplied ? null : prepareResult?.errorCode || prepareQuality.reason || "prepare_degraded",
+      degradedStateShown: !prepareApplied && prepareResult?.errorCode !== "PREMIUM_REQUIRED",
     });
 
     const remainingMs = Math.max(0, 800 - (Date.now() - startedAtMs));
@@ -1044,6 +1157,40 @@ export default function Session({
     setSessionLaunchState((current) => {
       const base = readLaunchStateBase(current);
       if (!base.occurrenceId || base.occurrenceId !== selectedOccurrence.id) return current;
+      if (!prepareApplied || !nextRunbook) {
+        if (prepareResult?.errorCode === "PREMIUM_REQUIRED") {
+          return {
+            ...base,
+            phase: "ready",
+            launchMode: null,
+            sessionRunbook: null,
+            standardAdjustment: null,
+            guidedAdjustment: null,
+            sessionToolPlan: null,
+            sessionToolState: null,
+            guidedSpatialState: null,
+            guidedPrepareErrorCode: null,
+            guidedPrepareMessage: "",
+            guidedPrepareRequestId: null,
+            guidedPreparePlanSource: null,
+          };
+        }
+        return {
+          ...base,
+          phase: "guided_degraded",
+          launchMode: null,
+          sessionRunbook: null,
+          standardAdjustment: null,
+          guidedAdjustment: null,
+          sessionToolPlan: null,
+          sessionToolState: null,
+          guidedSpatialState: null,
+          guidedPrepareErrorCode: prepareResult?.errorCode || prepareQuality.reason || launchPrepareErrorCode || null,
+          guidedPrepareMessage: degradedMessage,
+          guidedPrepareRequestId: prepareResult?.requestId || null,
+          guidedPreparePlanSource: "fallback_local",
+        };
+      }
       return {
         ...base,
         phase: "guided_preview",
@@ -1057,6 +1204,10 @@ export default function Session({
           sessionRunbook: nextRunbook,
           mode: "preview",
         }),
+        guidedPrepareErrorCode: null,
+        guidedPrepareMessage: "",
+        guidedPrepareRequestId: prepareResult?.requestId || null,
+        guidedPreparePlanSource: "ai_premium",
       };
     });
   };
@@ -1078,6 +1229,10 @@ export default function Session({
       sessionToolPlan: null,
       sessionToolState: null,
       guidedSpatialState: null,
+      guidedPrepareErrorCode: null,
+      guidedPrepareMessage: "",
+      guidedPrepareRequestId: null,
+      guidedPreparePlanSource: null,
     }));
   };
 
@@ -1138,22 +1293,13 @@ export default function Session({
       isRegenerating: true,
     }));
 
-    const fallbackRunbook = buildSessionRunbookV1({
-      blueprintSnapshot,
-      occurrence: selectedOccurrence,
-      action: goal,
-      category,
-    });
-
     let nextRunbook = launchRunbook;
-    const fallbackToolPlan = launchToolPlan || buildSessionToolPlan({ sessionRunbook: launchRunbook });
-    let nextToolPlan = fallbackToolPlan;
+    let nextToolPlan = launchToolPlan || buildSessionToolPlan({ sessionRunbook: launchRunbook });
     let prepareAttempted = false;
     let prepareApplied = false;
     let prepareResult = null;
 
     if (
-      fallbackRunbook &&
       shouldAttemptSessionGuidanceBackend({
         backendState: sessionGuidanceBackendStateRef.current,
         accessToken,
@@ -1163,21 +1309,23 @@ export default function Session({
       prepareAttempted = true;
       prepareResult = await requestAiSessionGuidance({
         accessToken,
-        payload: {
-          mode: "prepare",
+        payload: buildSessionPreparePayload({
           variant: "regenerate",
-          dateKey: selectedOccurrence.date || effectiveDateKey,
-          occurrenceId: selectedOccurrence.id,
-          actionId: goal.id,
-          categoryId: category?.id || goal?.categoryId || effectiveCategoryId || null,
+          selectedOccurrence,
+          goal,
+          category,
           blueprintSnapshot,
-          fallbackRunbook,
-          fallbackToolPlan,
-          notes: readGoalSessionNotes(goal),
-        },
+          effectiveDateKey,
+          effectiveCategoryId,
+        }),
+        timeoutMs: 4200,
       });
-      const preparedRunbook = readSessionGuidanceRunbookPayload(prepareResult?.payload, fallbackRunbook);
-      if (prepareResult?.ok && preparedRunbook) {
+      if (prepareResult?.errorCode === "PREMIUM_REQUIRED") {
+        onOpenPaywall?.("Aller plus loin");
+      }
+      const prepareQuality = readSessionGuidancePrepareQualityPayload(prepareResult?.payload, launchRunbook);
+      const preparedRunbook = readSessionGuidanceRunbookPayload(prepareResult?.payload, launchRunbook);
+      if (prepareResult?.ok && prepareQuality.isPremiumReady && preparedRunbook) {
         nextRunbook = preparedRunbook;
         prepareApplied = true;
       }
@@ -1185,9 +1333,11 @@ export default function Session({
         prepareResult?.payload,
         preparedRunbook || nextRunbook
       );
-      if (prepareResult?.ok && preparedToolPlan) {
+      if (prepareResult?.ok && prepareQuality.isPremiumReady && preparedToolPlan) {
         nextToolPlan = preparedToolPlan;
-        prepareApplied = true;
+      }
+      if (prepareResult?.ok && prepareQuality.isPremiumReady && preparedRunbook && !preparedToolPlan) {
+        nextToolPlan = buildSessionToolPlan({ sessionRunbook: preparedRunbook });
       }
       trackSessionGuidanceAttempt({
         operation: SESSION_GUIDANCE_OPERATIONS.PREPARE,
@@ -1195,6 +1345,7 @@ export default function Session({
         attempted: prepareAttempted,
         result: prepareResult,
         applied: prepareApplied,
+        planSource: prepareApplied ? "ai_premium" : "fallback_local",
       });
     } else {
       trackSessionGuidanceAttempt({
@@ -1901,8 +2052,10 @@ export default function Session({
             durationLabel={Number.isFinite(effectivePlannedMinutes) ? `${effectivePlannedMinutes} min` : ""}
             why={blueprintSnapshot?.why || ""}
             firstStep={blueprintSnapshot?.firstStep || ""}
+            degradedMessage={launchPrepareMessage}
             onStartStandard={handleLaunchStandard}
             onPrepareGuided={handlePrepareGuided}
+            onRetryGuided={handlePrepareGuided}
           />
         ) : (
           <FocusSessionView

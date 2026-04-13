@@ -1,4 +1,4 @@
-import { normalizeSessionRunbook } from "./sessionRunbook";
+import { normalizeSessionRunbook } from "./sessionRunbook.js";
 
 function asString(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -789,4 +789,3 @@ export function toggleSessionToolUtilityCollapse(activeUtility) {
     collapsed: !utility.collapsed,
   };
 }
-

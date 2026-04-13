@@ -1214,6 +1214,8 @@ export default function App() {
           occurrenceId={sessionOccurrenceId}
           setTab={setTab}
           onOpenLibrary={() => setTab("objectives")}
+          onOpenPaywall={openPaywall}
+          isPremiumPlan={isPremiumPlan}
           onBack={() => {
             const returnTab =
               sessionLaunchState?.sourceSurface === "timeline"

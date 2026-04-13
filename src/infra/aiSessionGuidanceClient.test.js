@@ -70,12 +70,46 @@ describe("aiSessionGuidanceClient", () => {
       dateKey: "2026-03-25",
       occurrenceId: "occ-1",
       actionId: "goal-1",
+      actionTitle: "Structurer la note produit",
+      categoryName: "Travail",
+      protocolType: "deep_work",
+      targetDurationMinutes: 30,
       sessionRunbook: { version: 1, steps: [] },
       fallbackToolPlan: { version: 1, recommendations: [] },
     });
 
+    expect(payload.actionTitle).toBe("Structurer la note produit");
+    expect(payload.categoryName).toBe("Travail");
+    expect(payload.protocolType).toBe("deep_work");
+    expect(payload.targetDurationMinutes).toBe(30);
     expect(payload.currentRunbook).toEqual({ version: 1, steps: [] });
     expect(payload.fallbackToolPlan).toEqual({ version: 1, recommendations: [] });
+  });
+
+  it("surface PREMIUM_REQUIRED without collapsing it into a backend error", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({
+        error: "PREMIUM_REQUIRED",
+        requestId: "req-session-guidance-premium",
+      }),
+    });
+
+    const result = await requestAiSessionGuidance({
+      accessToken: "token",
+      baseUrl: "https://ai.example.com",
+      fetchImpl,
+      payload: {
+        mode: "prepare",
+        dateKey: "2026-03-25",
+        occurrenceId: "occ-1",
+        actionId: "goal-1",
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errorCode).toBe("PREMIUM_REQUIRED");
   });
 
   it("classifie une route absente comme backend optional unavailable", async () => {

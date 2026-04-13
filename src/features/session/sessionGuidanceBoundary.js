@@ -52,8 +52,10 @@ export function normalizeSessionGuidanceBackendState(
 export function shouldAttemptSessionGuidanceBackend({
   backendState = SESSION_GUIDANCE_BACKEND_STATES.UNKNOWN,
   accessToken = "",
+  forceAttempt = false,
 } = {}) {
   if (!String(accessToken || "").trim()) return false;
+  if (forceAttempt) return true;
   return normalizeSessionGuidanceBackendState(backendState) !== SESSION_GUIDANCE_BACKEND_STATES.UNAVAILABLE;
 }
 
@@ -101,10 +103,17 @@ function shouldLogSessionGuidanceDiagnostics() {
 export function logSessionGuidanceResolution({
   operation,
   source,
+  planSource = null,
   backendState = SESSION_GUIDANCE_BACKEND_STATES.UNKNOWN,
   requestId = null,
   errorCode = null,
   backendErrorCode = null,
+  entitlement = null,
+  backendAttempted = null,
+  validationPassed = null,
+  richnessPassed = null,
+  failoverReason = null,
+  degradedStateShown = null,
   cause = null,
   toolId = null,
   occurrenceId = null,
@@ -115,10 +124,17 @@ export function logSessionGuidanceResolution({
   console.info("[session-guidance]", {
     operation: normalizeSessionGuidanceOperation(operation),
     source: String(source || "").trim() || null,
+    planSource: String(planSource || "").trim() || null,
     backendState: normalizeSessionGuidanceBackendState(backendState),
     requestId: String(requestId || "").trim() || null,
     errorCode: String(errorCode || "").trim().toUpperCase() || null,
     backendErrorCode: String(backendErrorCode || "").trim().toUpperCase() || null,
+    entitlement: String(entitlement || "").trim() || null,
+    backendAttempted: typeof backendAttempted === "boolean" ? backendAttempted : null,
+    validationPassed: typeof validationPassed === "boolean" ? validationPassed : null,
+    richnessPassed: typeof richnessPassed === "boolean" ? richnessPassed : null,
+    failoverReason: String(failoverReason || "").trim() || null,
+    degradedStateShown: typeof degradedStateShown === "boolean" ? degradedStateShown : null,
     cause: String(cause || "").trim() || null,
     toolId: String(toolId || "").trim() || null,
     occurrenceId: String(occurrenceId || "").trim() || null,

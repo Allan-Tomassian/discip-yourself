@@ -5,6 +5,7 @@ import {
   coachChatResponseSchema,
   coachLocalAnalysisResponseSchema,
   coachResponseSchema,
+  sessionGuidanceResponseSchema,
 } from "../src/schemas/coach.js";
 
 const TEST_CONFIG = {
@@ -721,6 +722,263 @@ test("POST /ai/local-analysis accepts an AI response that includes direction", a
   assert.equal(payload.direction, "recalibrer");
   assert.equal(insertedLogs[0]?.coach_kind, "local-analysis");
   assert.equal(insertedLogs[0]?.route, "/ai/local-analysis");
+  await app.close();
+});
+
+test("POST /ai/session-guidance blocks free users from premium prepare", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-session-free" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/session-guidance",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.41" },
+    payload: {
+      mode: "prepare",
+      dateKey: TODAY_KEY,
+      occurrenceId: "occ-1",
+      actionId: "goal-1",
+      actionTitle: "Séance de sport rapide",
+      protocolType: "sport",
+      blueprintSnapshot: {
+        version: 1,
+        protocolType: "sport",
+        why: "tenir le bloc",
+        firstStep: "commence par t’échauffer",
+        ifBlocked: "version courte",
+        successDefinition: "séance tenue",
+        estimatedMinutes: 20,
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 403);
+  assert.equal(response.json().error, "PREMIUM_REQUIRED");
+  await app.close();
+});
+
+test("POST /ai/session-guidance returns backend unavailable when premium prepare has no OpenAI provider", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-session-premium-noai" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: { plan_tier: "premium" },
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/session-guidance",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.42" },
+    payload: {
+      mode: "prepare",
+      dateKey: TODAY_KEY,
+      occurrenceId: "occ-1",
+      actionId: "goal-1",
+      actionTitle: "Séance de sport rapide",
+      protocolType: "sport",
+      blueprintSnapshot: {
+        version: 1,
+        protocolType: "sport",
+        why: "tenir le bloc",
+        firstStep: "commence par t’échauffer",
+        ifBlocked: "version courte",
+        successDefinition: "séance tenue",
+        estimatedMinutes: 20,
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 503);
+  assert.equal(response.json().error, "SESSION_GUIDANCE_BACKEND_UNAVAILABLE");
+  await app.close();
+});
+
+test("POST /ai/session-guidance returns an AI premium runbook with quality metadata", async () => {
+  const insertedLogs = [];
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-session-premium-ai" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: { plan_tier: "premium" },
+    dailyCount: 0,
+    monthlyCount: 0,
+    insertedLogs,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: {
+                  preparedRunbook: {
+                    version: 2,
+                    protocolType: "sport",
+                    occurrenceId: "occ-1",
+                    actionId: "goal-1",
+                    dateKey: TODAY_KEY,
+                    title: "Circuit jambes et gainage",
+                    categoryName: "Sport",
+                    objective: {
+                      why: "tenir un bloc cardio-force net",
+                      successDefinition: "le circuit est tenu sans casser la forme",
+                    },
+                    steps: [
+                      {
+                        id: "step_1",
+                        label: "Mise en route",
+                        purpose: "préparer les appuis",
+                        successCue: "souffle posé",
+                        items: [
+                          {
+                            id: "step_1_item_1",
+                            kind: "warmup",
+                            label: "Montées de genoux",
+                            minutes: 3,
+                            guidance: "alterne 30 sec dynamiques puis 30 sec plus calmes pour monter en température",
+                            successCue: "respiration stable",
+                            restSec: 0,
+                            transitionLabel: "",
+                          },
+                          {
+                            id: "step_1_item_2",
+                            kind: "activation",
+                            label: "Squats au poids du corps",
+                            minutes: 2,
+                            guidance: "2 séries de 12 reps en gardant le buste haut",
+                            successCue: "genoux stables",
+                            restSec: 0,
+                            transitionLabel: "",
+                          },
+                        ],
+                      },
+                      {
+                        id: "step_2",
+                        label: "Bloc force",
+                        purpose: "tenir le coeur utile",
+                        successCue: "gainage propre",
+                        items: [
+                          {
+                            id: "step_2_item_1",
+                            kind: "effort",
+                            label: "Fentes alternées",
+                            minutes: 4,
+                            guidance: "2 séries de 10 reps par jambe sans te précipiter",
+                            successCue: "appuis nets",
+                            restSec: 25,
+                            transitionLabel: "",
+                          },
+                          {
+                            id: "step_2_item_2",
+                            kind: "effort",
+                            label: "Planche avant",
+                            minutes: 4,
+                            guidance: "3 passages de 40 sec avec 20 sec de repos entre les passages",
+                            successCue: "bassin aligné",
+                            restSec: 20,
+                            transitionLabel: "",
+                          },
+                          {
+                            id: "step_2_item_3",
+                            kind: "effort",
+                            label: "Pont fessier",
+                            minutes: 3,
+                            guidance: "2 séries de 15 reps avec montée contrôlée et pause d’une seconde en haut",
+                            successCue: "fessiers engagés",
+                            restSec: 20,
+                            transitionLabel: "",
+                          },
+                        ],
+                      },
+                      {
+                        id: "step_3",
+                        label: "Retour au calme",
+                        purpose: "faire redescendre proprement",
+                        successCue: "souffle revenu",
+                        items: [
+                          {
+                            id: "step_3_item_1",
+                            kind: "cooldown",
+                            label: "Marche lente",
+                            minutes: 2,
+                            guidance: "marche en récupérant le souffle avant de t’arrêter",
+                            successCue: "fréquence calmée",
+                            restSec: 0,
+                            transitionLabel: "",
+                          },
+                          {
+                            id: "step_3_item_2",
+                            kind: "breath",
+                            label: "Étirements hanches et mollets",
+                            minutes: 2,
+                            guidance: "tiens 30 sec par côté sans forcer",
+                            successCue: "tension relâchée",
+                            restSec: 0,
+                            transitionLabel: "",
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/session-guidance",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.43" },
+    payload: {
+      mode: "prepare",
+      aiIntent: "session_prepare",
+      dateKey: TODAY_KEY,
+      occurrenceId: "occ-1",
+      actionId: "goal-1",
+      actionTitle: "Circuit jambes et gainage",
+      categoryId: "cat-1",
+      categoryName: "Sport",
+      protocolType: "sport",
+      targetDurationMinutes: 20,
+      blueprintSnapshot: {
+        version: 1,
+        protocolType: "sport",
+        why: "tenir le bloc",
+        firstStep: "commence par t’échauffer",
+        ifBlocked: "version courte",
+        successDefinition: "séance tenue",
+        estimatedMinutes: 20,
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = sessionGuidanceResponseSchema.parse(response.json());
+  assert.equal(payload.kind, "session_guidance");
+  assert.equal(payload.mode, "prepare");
+  assert.equal(payload.meta.source, "ai_premium");
+  assert.equal(payload.payload.quality.isPremiumReady, true);
+  assert.equal(insertedLogs[0]?.coach_kind, "session-guidance");
+  assert.equal(insertedLogs[0]?.route, "/ai/session-guidance");
   await app.close();
 });
 

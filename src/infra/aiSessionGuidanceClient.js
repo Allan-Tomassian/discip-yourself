@@ -18,6 +18,10 @@ function isNullableString(value) {
   return value === null || typeof value === "string";
 }
 
+function normalizeNullableNumber(value) {
+  return Number.isFinite(value) ? Math.max(0, Math.round(value)) : null;
+}
+
 function normalizeRuntimeContext(value) {
   const source = isPlainObject(value) ? value : {};
   return {
@@ -70,6 +74,10 @@ export function normalizeAiSessionGuidancePayload(input) {
     occurrenceId,
     actionId,
     categoryId: isNullableString(source.categoryId) ? source.categoryId : null,
+    actionTitle: isNullableString(source.actionTitle) ? source.actionTitle : null,
+    categoryName: isNullableString(source.categoryName) ? source.categoryName : null,
+    protocolType: isNullableString(source.protocolType) ? source.protocolType : null,
+    targetDurationMinutes: normalizeNullableNumber(source.targetDurationMinutes),
     blueprintSnapshot: isPlainObject(source.blueprintSnapshot) ? source.blueprintSnapshot : null,
     fallbackRunbook: isPlainObject(source.fallbackRunbook) ? source.fallbackRunbook : null,
     fallbackToolPlan: isPlainObject(source.fallbackToolPlan) ? source.fallbackToolPlan : null,
@@ -116,8 +124,10 @@ function normalizeBackendErrorCode(status, backendErrorCode) {
   const code = String(backendErrorCode || "").trim().toUpperCase();
   if (code === "SESSION_GUIDANCE_BACKEND_UNAVAILABLE") return "SESSION_GUIDANCE_BACKEND_UNAVAILABLE";
   if (code === "AUTH_MISSING" || code === "AUTH_INVALID" || code === "UNAUTHORIZED") return "UNAUTHORIZED";
+  if (code === "PREMIUM_REQUIRED") return "PREMIUM_REQUIRED";
   if (code === "RATE_LIMITED") return "RATE_LIMITED";
   if (code === "QUOTA_EXCEEDED") return "QUOTA_EXCEEDED";
+  if (code === "INVALID_SESSION_GUIDANCE_RESPONSE") return "INVALID_RESPONSE";
   if (code === "BACKEND_SCHEMA_MISSING") return "BACKEND_SCHEMA_MISSING";
   if (code === "INVALID_RESPONSE") return "INVALID_RESPONSE";
   if (code === "BACKEND_ERROR") return "BACKEND_ERROR";
@@ -171,6 +181,7 @@ export async function requestAiSessionGuidance({
       requestId: null,
       backendErrorCode: null,
       transportMeta,
+      responseMeta: null,
       ...buildResultMeta(transportMeta),
     };
   }
@@ -186,6 +197,7 @@ export async function requestAiSessionGuidance({
       requestId: null,
       backendErrorCode: null,
       transportMeta,
+      responseMeta: null,
       ...buildResultMeta(transportMeta),
     };
   }
@@ -200,6 +212,7 @@ export async function requestAiSessionGuidance({
       requestId: null,
       backendErrorCode: "UNAUTHORIZED",
       transportMeta,
+      responseMeta: null,
       ...buildResultMeta(transportMeta),
     };
   }
@@ -217,6 +230,7 @@ export async function requestAiSessionGuidance({
       requestId: null,
       backendErrorCode: null,
       transportMeta,
+      responseMeta: null,
       ...buildResultMeta(transportMeta),
     };
   }
@@ -255,6 +269,7 @@ export async function requestAiSessionGuidance({
       requestId: null,
       backendErrorCode: null,
       transportMeta,
+      responseMeta: null,
       ...buildResultMeta(transportMeta),
     };
   }
@@ -287,6 +302,7 @@ export async function requestAiSessionGuidance({
       requestId,
       backendErrorCode,
       transportMeta,
+      responseMeta: isPlainObject(body?.meta) ? body.meta : null,
       ...buildResultMeta(transportMeta),
     };
   }
@@ -310,6 +326,7 @@ export async function requestAiSessionGuidance({
       requestId,
       backendErrorCode: null,
       transportMeta,
+      responseMeta: isPlainObject(body?.meta) ? body.meta : null,
       ...buildResultMeta(transportMeta),
     };
   }
@@ -322,6 +339,7 @@ export async function requestAiSessionGuidance({
     requestId,
     backendErrorCode: null,
     transportMeta,
+    responseMeta: isPlainObject(body?.meta) ? body.meta : null,
     ...buildResultMeta(transportMeta),
   };
 }

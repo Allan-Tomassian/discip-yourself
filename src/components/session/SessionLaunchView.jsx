@@ -15,8 +15,10 @@ export default function SessionLaunchView({
   durationLabel = "",
   why = "",
   firstStep = "",
+  degradedMessage = "",
   onStartStandard,
   onPrepareGuided,
+  onRetryGuided,
 }) {
   if (phase === "preparing") {
     return (
@@ -37,6 +39,40 @@ export default function SessionLaunchView({
         </div>
         <div className="sessionLaunchPreparingTitle">Préparation en cours</div>
         <div className="sessionLaunchPreparingMeta">{title}</div>
+      </div>
+    );
+  }
+
+  if (phase === "guided_degraded") {
+    return (
+      <div className="sessionLaunchViewStack sessionLaunchViewStack--ready" data-testid="session-launch-degraded">
+        <div className="sessionLaunchHero sessionLaunchHero--ready">
+          <div className="sessionLaunchSectionEyebrow">Séance prête</div>
+          <div className="sessionLaunchCategory">{categoryName || "Catégorie"}</div>
+          <div className="sessionLaunchTitle">{title}</div>
+          <div className="sessionLaunchChips">
+            <TimingChip>{timingLabel}</TimingChip>
+            <TimingChip>{durationLabel}</TimingChip>
+          </div>
+        </div>
+        <div className="sessionLaunchCard sessionLaunchCard--ready">
+          <div className="sessionLaunchBrief">
+            <div className="sessionLaunchBriefRow">
+              <div className="sessionLaunchBriefLabel">Détail</div>
+              <div className="sessionLaunchBriefText">
+                {degradedMessage || "Impossible de préparer un plan détaillé pour le moment."}
+              </div>
+            </div>
+          </div>
+          <div className="sessionLaunchActions">
+            <PrimaryButton type="button" className="sessionLaunchPrimary" onClick={onRetryGuided || onPrepareGuided}>
+              Réessayer
+            </PrimaryButton>
+            <button type="button" className="sessionLaunchTextAction" onClick={onStartStandard}>
+              Passer en standard
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

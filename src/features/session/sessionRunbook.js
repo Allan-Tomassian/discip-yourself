@@ -132,6 +132,103 @@ function buildFallbackObjective(blueprint) {
   });
 }
 
+const PREMIUM_GENERIC_ITEM_LABELS = new Set([
+  "activation generale",
+  "passage principal",
+  "relance courte",
+  "rouvre le contexte",
+  "premier passage utile",
+  "passage critique",
+  "trace exploitable",
+  "noter la reprise",
+  "nettoyer le contexte",
+  "enchainement principal",
+  "amplitude controlee",
+  "ouverture articulaire",
+]);
+
+function normalizeMatchText(value) {
+  return asString(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function countMeaningfulSuccessCues(runbook) {
+  const stepCues = runbook.steps.filter((step) => asString(step.successCue).length >= 8).length;
+  const itemCues = runbook.steps.flatMap((step) => step.items).filter((item) => asString(item.successCue).length >= 8).length;
+  return stepCues + itemCues;
+}
+
+function countNonGenericItemLabels(runbook) {
+  return runbook.steps
+    .flatMap((step) => step.items)
+    .filter((item) => !PREMIUM_GENERIC_ITEM_LABELS.has(normalizeMatchText(item.label)))
+    .length;
+}
+
+function hasSportSpecificRichness(runbook) {
+  const labels = runbook.steps.flatMap((step) => step.items.map((item) => normalizeMatchText(item.label)));
+  const guidance = runbook.steps.flatMap((step) => step.items.map((item) => normalizeMatchText(item.guidance)));
+  const hasNamedExercise = labels.some(
+    (label) =>
+      label.length >= 10 &&
+      !PREMIUM_GENERIC_ITEM_LABELS.has(label) &&
+      !["effort", "activation", "echauffement", "retour au calme"].includes(label)
+  );
+  const hasCadenceOrRest = runbook.steps
+    .flatMap((step) => step.items)
+    .some((item) => item.restSec > 0 || /\b(rep|reps|serie|series|tempo|repos?)\b/.test(normalizeMatchText(item.guidance)));
+  const hasWarmup = runbook.steps.some((step) =>
+    /\b(echauff|activation|mise en route)\b/.test(normalizeMatchText(step.label))
+  );
+  const hasCooldown = runbook.steps.some((step) => /\b(retour|calme|recuperation|souffle)\b/.test(normalizeMatchText(step.label)));
+  const hasUsefulGuidance = guidance.filter((entry) => entry.length >= 20).length >= 4;
+  return hasNamedExercise && hasCadenceOrRest && hasWarmup && hasCooldown && hasUsefulGuidance;
+}
+
+function hasDeepWorkRichness(runbook) {
+  const labels = runbook.steps.flatMap((step) => step.items.map((item) => normalizeMatchText(item.label)));
+  const guidance = runbook.steps.flatMap((step) => step.items.map((item) => normalizeMatchText(item.guidance)));
+  const hasConcreteSubdeliverable = labels.some(
+    (label) =>
+      label.length >= 10 &&
+      !PREMIUM_GENERIC_ITEM_LABELS.has(label) &&
+      !["ouverture", "bloc principal", "cloture"].includes(label)
+  );
+  const hasDeliverableSignal = guidance.some((entry) =>
+    /\b(livrable|version|section|note|plan|preuve|trace|critere|critere de fin|sortie)\b/.test(entry)
+  );
+  const hasRelaunchSignal = guidance.some((entry) => /\b(reprends|relance|reprendre|bloque|si tu bloques)\b/.test(entry));
+  return hasConcreteSubdeliverable && hasDeliverableSignal && hasRelaunchSignal;
+}
+
+function hasGenericPremiumRichness(runbook) {
+  const nonGenericItemLabels = countNonGenericItemLabels(runbook);
+  const longGuidanceCount = runbook.steps
+    .flatMap((step) => step.items)
+    .filter((item) => asString(item.guidance).length >= 24)
+    .length;
+  return nonGenericItemLabels >= 4 && longGuidanceCount >= 4;
+}
+
+function normalizePreparedQuality(rawValue) {
+  const source = isPlainObject(rawValue) ? rawValue : {};
+  const validationPassed = typeof source.validationPassed === "boolean" ? source.validationPassed : null;
+  const richnessPassed = typeof source.richnessPassed === "boolean" ? source.richnessPassed : null;
+  const isPremiumReady = typeof source.isPremiumReady === "boolean" ? source.isPremiumReady : null;
+  const reason = asString(source.reason) || null;
+  return {
+    isPremiumReady,
+    validationPassed,
+    richnessPassed,
+    reason,
+  };
+}
+
 export function normalizeSessionBlueprintSnapshot(rawValue) {
   const source = rawValue && typeof rawValue === "object" ? rawValue : null;
   if (!source) return null;
@@ -602,7 +699,7 @@ function normalizeRunbookShape(rawValue, { fallback = null } = {}) {
     )
     .filter(Boolean);
   const totalItems = steps.reduce((count, step) => count + step.items.length, 0);
-  if (!steps.length || totalItems < (version === 2 ? 6 : 3) || totalItems > 12) return null;
+  if (!steps.length || totalItems < 1 || totalItems > 12) return null;
 
   return {
     version,
@@ -631,6 +728,53 @@ export function normalizePreparedSessionRunbook(rawValue, { fallbackRunbook = nu
   const itemCount = normalized.steps.reduce((count, step) => count + step.items.length, 0);
   if (itemCount < 6 || itemCount > 12) return null;
   return normalized;
+}
+
+export function assessPreparedSessionRunbookQuality({
+  preparedRunbook = null,
+  quality = null,
+  fallbackRunbook = null,
+} = {}) {
+  const normalizedRunbook = normalizePreparedSessionRunbook(preparedRunbook, { fallbackRunbook });
+  const providedQuality = normalizePreparedQuality(quality);
+  if (!normalizedRunbook) {
+    return {
+      isPremiumReady: false,
+      validationPassed: false,
+      richnessPassed: false,
+      reason: providedQuality.reason || "invalid_runbook",
+    };
+  }
+
+  const protocolType = normalizeProtocolType(normalizedRunbook.protocolType);
+  const meaningfulCueCount = countMeaningfulSuccessCues(normalizedRunbook);
+  const nonGenericItemLabels = countNonGenericItemLabels(normalizedRunbook);
+
+  let localRichnessPassed = meaningfulCueCount >= 2 && nonGenericItemLabels >= 4;
+  if (protocolType === "sport") {
+    localRichnessPassed = localRichnessPassed && hasSportSpecificRichness(normalizedRunbook);
+  } else if (protocolType === "deep_work") {
+    localRichnessPassed = localRichnessPassed && hasDeepWorkRichness(normalizedRunbook);
+  } else {
+    localRichnessPassed = localRichnessPassed && hasGenericPremiumRichness(normalizedRunbook);
+  }
+
+  const validationPassed = providedQuality.validationPassed !== false;
+  const richnessPassed = providedQuality.richnessPassed !== false && localRichnessPassed;
+  const isPremiumReady =
+    providedQuality.isPremiumReady !== false &&
+    validationPassed &&
+    richnessPassed;
+
+  return {
+    isPremiumReady,
+    validationPassed,
+    richnessPassed,
+    reason:
+      isPremiumReady
+        ? null
+        : providedQuality.reason || (!validationPassed ? "validation_failed" : "richness_failed"),
+  };
 }
 
 export function summarizeSessionRunbookPatch(sessionRunbook = null) {

@@ -1,5 +1,6 @@
 import { test, expect, devices } from "@playwright/test";
 import { buildBaseState, buildMockProfile, seedState } from "./utils/seed.js";
+import { enablePremium, installSessionGuidanceMock } from "./utils/sessionGuidanceMock.js";
 
 const iPhone13 = devices["iPhone 13"];
 const E2E_USER_ID = "e2e-user-id";
@@ -99,7 +100,7 @@ function buildState({ protocolType = "sport", title = "Faire une marche rapide d
     },
   ];
 
-  return state;
+  return enablePremium(state);
 }
 
 async function seedApp(page, state) {
@@ -113,6 +114,7 @@ async function seedApp(page, state) {
 }
 
 async function openGuidedRuntime(page, state) {
+  await installSessionGuidanceMock(page);
   await seedApp(page, state);
   await page.goto("/");
   await page.getByRole("button", { name: "Planning" }).click();

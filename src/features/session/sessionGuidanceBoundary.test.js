@@ -44,6 +44,14 @@ describe("sessionGuidanceBoundary", () => {
         accessToken: "token",
       })
     ).toBe(false);
+
+    expect(
+      shouldAttemptSessionGuidanceBackend({
+        backendState: SESSION_GUIDANCE_BACKEND_STATES.UNAVAILABLE,
+        accessToken: "token",
+        forceAttempt: true,
+      })
+    ).toBe(true);
   });
 
   it("distinguishes ai-applied from local fallback resolutions", () => {

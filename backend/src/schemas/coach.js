@@ -361,3 +361,125 @@ export const coachConversationResponseSchema = z.discriminatedUnion("mode", [
 ]);
 
 export const coachChatResponseSchema = z.union([coachChatCardResponseSchema, coachConversationResponseSchema]);
+
+const protocolTypeSchema = z.enum(["sport", "deep_work", "admin", "routine", "generic"]);
+const sessionGuidanceModeSchema = z.enum(["prepare", "adjust", "tool"]);
+const sessionRuntimeContextSchema = z
+  .object({
+    currentStepId: z.string().nullable().optional().default(null),
+    currentItemId: z.string().nullable().optional().default(null),
+    elapsedSec: z.number().int().min(0).optional().default(0),
+    remainingSec: z.number().int().min(0).optional().default(0),
+  })
+  .strict();
+const sessionGuidanceQualitySchema = z
+  .object({
+    isPremiumReady: z.boolean(),
+    validationPassed: z.boolean(),
+    richnessPassed: z.boolean(),
+    reason: z.string().nullable(),
+  })
+  .strict();
+const looseObjectSchema = z.record(z.string(), z.unknown());
+
+export const sessionGuidanceRequestSchema = z
+  .object({
+    mode: sessionGuidanceModeSchema,
+    aiIntent: aiIntentSchema.optional(),
+    variant: z.string().trim().max(32).optional().default(""),
+    dateKey: isoDateKey,
+    occurrenceId: z.string().trim().min(1).max(96),
+    actionId: z.string().trim().min(1).max(96),
+    categoryId: z.string().nullable().optional().default(null),
+    actionTitle: z.string().trim().min(1).max(96).nullable().optional().default(null),
+    categoryName: z.string().trim().max(56).nullable().optional().default(null),
+    protocolType: protocolTypeSchema.nullable().optional().default(null),
+    targetDurationMinutes: z.number().int().min(1).max(240).nullable().optional().default(null),
+    blueprintSnapshot: looseObjectSchema.nullable().optional().default(null),
+    fallbackRunbook: looseObjectSchema.nullable().optional().default(null),
+    fallbackToolPlan: looseObjectSchema.nullable().optional().default(null),
+    currentRunbook: looseObjectSchema.nullable().optional().default(null),
+    sessionRunbook: looseObjectSchema.nullable().optional().default(null),
+    adjustmentLineage: looseObjectSchema.nullable().optional().default(null),
+    toolId: z.string().trim().max(64).nullable().optional().default(null),
+    cause: z.string().trim().max(48).optional().default(""),
+    strategyId: z.string().trim().max(48).optional().default(""),
+    notes: z.string().trim().max(400).optional().default(""),
+    runtimeContext: sessionRuntimeContextSchema.optional().default({}),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.mode === "tool" && !value.toolId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["toolId"],
+        message: "toolId is required for tool mode.",
+      });
+    }
+  });
+
+const sessionGuidanceMetaSchema = z
+  .object({
+    coachVersion: z.literal("v1"),
+    requestId: z.string(),
+    aiIntent: aiIntentSchema,
+    quotaRemaining: z.number().int().nullable(),
+    source: z.enum(["ai_premium", "ai_assist"]),
+  })
+  .strict();
+
+const sessionGuidancePrepareResponseSchema = z
+  .object({
+    kind: z.literal("session_guidance"),
+    mode: z.literal("prepare"),
+    payload: z
+      .object({
+        preparedRunbook: looseObjectSchema,
+        toolPlan: looseObjectSchema.nullable().optional().default(null),
+        quality: sessionGuidanceQualitySchema,
+      })
+      .strict(),
+    meta: sessionGuidanceMetaSchema.extend({
+      source: z.literal("ai_premium"),
+    }),
+  })
+  .strict();
+
+const sessionGuidanceAdjustResponseSchema = z
+  .object({
+    kind: z.literal("session_guidance"),
+    mode: z.literal("adjust"),
+    payload: z
+      .object({
+        currentRunbook: looseObjectSchema,
+        toolPlan: looseObjectSchema.nullable().optional().default(null),
+        impactNote: z.string().trim().min(1).max(220),
+        guardrails: z.array(z.string().trim().min(1).max(120)).max(4).optional().default([]),
+      })
+      .strict(),
+    meta: sessionGuidanceMetaSchema.extend({
+      source: z.literal("ai_assist"),
+    }),
+  })
+  .strict();
+
+const sessionGuidanceToolResponseSchema = z
+  .object({
+    kind: z.literal("session_guidance"),
+    mode: z.literal("tool"),
+    payload: z
+      .object({
+        toolResult: looseObjectSchema,
+      })
+      .strict(),
+    meta: sessionGuidanceMetaSchema.extend({
+      source: z.literal("ai_assist"),
+    }),
+  })
+  .strict();
+
+export const sessionGuidanceResponseSchema = z.discriminatedUnion("mode", [
+  sessionGuidancePrepareResponseSchema,
+  sessionGuidanceAdjustResponseSchema,
+  sessionGuidanceToolResponseSchema,
+]);

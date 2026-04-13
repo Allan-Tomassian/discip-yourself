@@ -24,6 +24,8 @@ describe("session launch contract", () => {
     expect(app).toContain('sourceSurface: "coach"');
     expect(app).toContain('sourceSurface: "insights"');
     expect(app).toContain("sessionLaunchState={sessionLaunchState}");
+    expect(app).toContain("onOpenPaywall={openPaywall}");
+    expect(app).toContain("isPremiumPlan={isPremiumPlan}");
     expect(app).not.toContain("setSessionLaunchState((current) => (current ? null : current))");
     expect(home).toContain("onOpenSession({");
     expect(timeline).toContain("onOpenSession");
@@ -42,6 +44,7 @@ describe("session launch contract", () => {
 
     expect(session).toContain('launchPhase === "ready"');
     expect(session).toContain('launchPhase === "preparing"');
+    expect(session).toContain('launchPhase === "guided_degraded"');
     expect(session).toContain('phase: "guided_preview"');
     expect(session).toContain('phase: "guided_active"');
     expect(session).toContain("const isPrelaunchPhase = shouldShowLaunchSurface;");
@@ -59,8 +62,11 @@ describe("session launch contract", () => {
     expect(session).toContain("guidedSpatialState");
     expect(launchView).toContain('data-testid="session-launch-ready"');
     expect(launchView).toContain('data-testid="session-launch-preparing"');
+    expect(launchView).toContain('data-testid="session-launch-degraded"');
     expect(launchView).toContain("Séance prête");
     expect(launchView).toContain("Préparation en cours");
+    expect(launchView).toContain("Réessayer");
+    expect(launchView).toContain("Passer en standard");
     expect(launchView).not.toContain("Plan prêt");
     expect(launchView).toContain("Session standard");
     expect(launchView).toContain("CoachAssistIcon");
