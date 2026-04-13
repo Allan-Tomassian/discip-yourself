@@ -5,6 +5,7 @@ import {
   TODAY_INTERVENTION_TYPE,
 } from "../../../src/domain/todayIntervention.js";
 import { COACH_CHAT_MODES, LOCAL_ANALYSIS_SURFACES } from "../../../src/domain/aiPolicy.js";
+import { AI_INTENTS } from "../../../src/domain/aiIntent.js";
 
 const isoDateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const hhmmSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/);
@@ -13,6 +14,7 @@ const decisionSourceSchema = z.enum(["ai", "rules"]);
 const chatModeSchema = z.enum([COACH_CHAT_MODES.CARD, COACH_CHAT_MODES.FREE, COACH_CHAT_MODES.PLAN]);
 const coachLocaleSchema = z.string().trim().min(2).max(32).regex(/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/);
 const coachUseCaseSchema = z.enum(["general", "life_plan", "stats_review"]);
+const aiIntentSchema = z.enum(Object.values(AI_INTENTS));
 const localAnalysisSurfaceSchema = z.enum([
   LOCAL_ANALYSIS_SURFACES.PLANNING,
   LOCAL_ANALYSIS_SURFACES.PILOTAGE,
@@ -209,6 +211,7 @@ export const nowRequestSchema = z
     activeCategoryId: z.string().nullable().optional().default(null),
     surface: z.enum(["today", "session"]),
     trigger: z.enum(["manual", "screen_open", "resume"]),
+    aiIntent: aiIntentSchema.optional(),
   })
   .strict();
 
@@ -217,6 +220,7 @@ export const recoveryRequestSchema = z
     selectedDateKey: isoDateKey,
     activeCategoryId: z.string().nullable().optional().default(null),
     trigger: z.enum(["manual", "auto_slip", "resume_after_gap"]),
+    aiIntent: aiIntentSchema.optional(),
   })
   .strict();
 
@@ -227,6 +231,7 @@ export const chatRequestSchema = z
     message: z.string().trim().min(1).max(500),
     recentMessages: z.array(chatMessageSchema).max(6).optional().default([]),
     mode: chatModeSchema.optional().default(COACH_CHAT_MODES.CARD),
+    aiIntent: aiIntentSchema.optional(),
     locale: coachLocaleSchema.optional().default("fr-FR"),
     useCase: coachUseCaseSchema.optional().default("general"),
   })
@@ -238,6 +243,7 @@ export const localAnalysisRequestSchema = z
     activeCategoryId: z.string().nullable().optional().default(null),
     surface: localAnalysisSurfaceSchema,
     message: z.string().trim().min(1).max(500),
+    aiIntent: aiIntentSchema.optional(),
   })
   .strict();
 

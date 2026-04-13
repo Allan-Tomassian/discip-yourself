@@ -3,6 +3,7 @@ import { safeArray } from "./shared.js";
 import { buildPilotageDisciplineTrend } from "../../../../src/features/pilotage/disciplineTrendModel.js";
 import { getCategoryProfileSummary } from "../../../../src/domain/categoryProfile.js";
 import { LOCAL_ANALYSIS_SURFACES, normalizeLocalAnalysisSurface } from "../../../../src/domain/aiPolicy.js";
+import { resolveAiIntentForChatContext } from "../../../../src/domain/aiIntent.js";
 import { detectCoachBehavior } from "../coach/coachBehavior.js";
 
 const AI_FOUNDATION_PLANNING_TEMPLATE_ID = "ai_onboarding_planning";
@@ -354,9 +355,16 @@ export function buildChatContext({
     message,
     recentMessages,
   });
+  const aiIntent = resolveAiIntentForChatContext({
+    mode: chatMode,
+    requestedIntent: body?.aiIntent,
+    planningState: body?.planningState,
+    message,
+  });
 
   return {
     ...baseContext,
+    aiIntent,
     chatMode,
     locale: normalizeChatLocale(body?.locale),
     useCase: normalizeChatUseCase(body?.useCase),

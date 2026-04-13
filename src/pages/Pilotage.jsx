@@ -13,7 +13,7 @@ import { getCategoryPilotageCounts, getCategoryStatus } from "../logic/pilotage"
 import { getWindowBounds } from "../logic/metrics";
 import { computeWindowStats } from "../logic/progressionModel";
 import AccentCategoryRow from "../components/AccentCategoryRow";
-import { ANALYSIS_COPY, LABELS, MAIN_PAGE_COPY, SURFACE_LABELS } from "../ui/labels";
+import { ANALYSIS_COPY, LABELS, MAIN_PAGE_COPY, SURFACE_LABELS, UI_COPY } from "../ui/labels";
 import {
   CATEGORY_VIEW,
   getExecutionActiveCategoryId,
@@ -796,7 +796,7 @@ export default function Pilotage({
           >
             <div className="pilotagePanelHeader">
               <div className="pilotagePanelHeaderText">
-                <div className="pilotagePanelTitle">Lecture locale</div>
+                <div className="pilotagePanelTitle">Lecture</div>
                 <ManualAiStatus
                   statusKind={pilotageAnalysisState.kind}
                   statusLabel={pilotageAnalysisState.label}
@@ -816,14 +816,18 @@ export default function Pilotage({
                   onClick={handleAnalyzeCategory}
                   disabled={!detailCategory || manualPilotageAnalysis.loading}
                 >
-                  {manualPilotageAnalysis.loading ? manualPilotageAnalysis.loadingStageLabel || "Analyse..." : "Analyser cette catégorie"}
+                  {manualPilotageAnalysis.loading
+                    ? manualPilotageAnalysis.loadingStageLabel || "Lecture en cours..."
+                    : manualPilotageAnalysis.visibleAnalysis
+                      ? UI_COPY.rerunCoachAnalysis
+                      : UI_COPY.coachAnalysis}
                 </PrimaryButton>
                 <GhostButton size="sm" onClick={() => onOpenCoach?.({ mode: "free" })}>
                   Ouvrir le Coach
                 </GhostButton>
                 {manualPilotageAnalysis.isPersistedForContext ? (
                   <GhostButton size="sm" onClick={manualPilotageAnalysis.dismissAnalysis}>
-                    Revenir au diagnostic local
+                    {UI_COPY.backToLocalDiagnostic}
                   </GhostButton>
                 ) : null}
               </div>
@@ -846,7 +850,7 @@ export default function Pilotage({
             </div>
             {manualPilotageAnalysis.error ? (
               <div className="pilotageInlineAiPanel">
-                <div className="pilotagePanelTitle">Analyse indisponible</div>
+                <div className="pilotagePanelTitle">Lecture indisponible</div>
                 <FeedbackMessage tone="warning">{manualPilotageAnalysis.error}</FeedbackMessage>
                 <AiDebugLine diagnostics={manualPilotageAnalysis.errorDiagnostics} className="lovableMuted" />
               </div>

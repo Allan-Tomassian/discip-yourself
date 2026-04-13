@@ -28,9 +28,9 @@ describe("PlanningCoachCard contract", () => {
     expect(source).toContain("<ManualAiStatus");
     expect(source).toContain("statusLabel={planningAnalysisState.label}");
     expect(source).toContain("stageLabel={manualPlanningAnalysis.loadingStageLabel}");
-    expect(source).toContain("manualPlanningAnalysis.loadingStageLabel || \"Analyse...\"");
-    expect(source).toContain("Observer ma semaine");
-    expect(source).toContain("Observer ma journée");
+    expect(source).toContain("manualPlanningAnalysis.loadingStageLabel || \"Lecture en cours...\"");
+    expect(source).toContain("UI_COPY.coachAnalysis");
+    expect(source).toContain("UI_COPY.rerunCoachAnalysis");
     expect(source).not.toContain("titleSm GateRoleCardTitle");
     expect(source).toContain('className="planningCoachValue"');
   });

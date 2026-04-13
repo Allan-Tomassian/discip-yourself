@@ -5,6 +5,7 @@ import {
   isConversationCoachMode,
   normalizeCoachChatMode,
 } from "../domain/aiPolicy";
+import { resolveAiIntentForCoachRequest } from "../domain/aiIntent";
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const ACTION_INTENTS = new Set([
@@ -155,6 +156,12 @@ export function normalizeAiCoachChatPayload(input) {
     typeof source.useCase === "string" && COACH_USE_CASES.has(source.useCase.trim())
       ? source.useCase.trim()
       : "general";
+  const aiIntent = resolveAiIntentForCoachRequest({
+    mode,
+    requestedIntent: source.aiIntent,
+    planningState: source.planningState,
+    message,
+  });
 
   if (!isDateKey(selectedDateKey)) {
     const error = new Error("selectedDateKey must be YYYY-MM-DD");
@@ -177,6 +184,7 @@ export function normalizeAiCoachChatPayload(input) {
     activeCategoryId,
     message,
     mode,
+    aiIntent,
     locale,
     useCase,
     recentMessages: recentMessages

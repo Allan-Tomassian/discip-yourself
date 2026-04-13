@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { isAiLocalAnalysisResponse, requestAiLocalAnalysis } from "./aiLocalAnalysisClient";
+import {
+  isAiLocalAnalysisResponse,
+  normalizeAiLocalAnalysisPayload,
+  requestAiLocalAnalysis,
+} from "./aiLocalAnalysisClient";
 
 function buildLocalAnalysisResponse(overrides = {}) {
   return {
@@ -48,6 +52,17 @@ describe("aiLocalAnalysisClient", () => {
         meta: buildLocalAnalysisResponse().meta,
       }),
     ).toBe(false);
+  });
+
+  it("émet review comme intent canonique pour l'analyse locale", () => {
+    expect(
+      normalizeAiLocalAnalysisPayload({
+        selectedDateKey: "2026-03-25",
+        activeCategoryId: "cat-1",
+        surface: "planning",
+        message: "Analyse ce planning",
+      }).aiIntent,
+    ).toBe("review");
   });
 
   it("retourne un diagnostic offline quand le navigateur est hors ligne", async () => {
@@ -152,6 +167,7 @@ describe("aiLocalAnalysisClient", () => {
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(fetchImpl.mock.calls[0]?.[1]?.headers?.["x-discip-surface"]).toBe("analysis");
+    expect(JSON.parse(fetchImpl.mock.calls[0]?.[1]?.body || "{}").aiIntent).toBe("review");
   });
 
   it("rejette une surface locale invalide", async () => {

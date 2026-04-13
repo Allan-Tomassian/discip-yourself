@@ -12,6 +12,7 @@ import {
   LOCAL_ANALYSIS_SURFACES,
   LOCAL_ANALYSIS_SURFACE_POLICY,
 } from "../../../../src/domain/aiPolicy.js";
+import { AI_INTENTS } from "../../../../src/domain/aiIntent.js";
 import { isSimpleGreetingMessage, normalizeCoachBehaviorText } from "./coachBehavior.js";
 
 const DEFAULT_OUTPUT_LOCALE = "fr-FR";
@@ -603,6 +604,7 @@ function buildNowPrompt(context) {
 
   return [
     "You are the execution coach for Discip-Yourself.",
+    `Canonical aiIntent: ${context.aiIntent || AI_INTENTS.EXECUTE_NOW}.`,
     "Return one short actionable recommendation for what the user should do now.",
     "Treat Today as an execution surface: one state summary, one main priority, one concrete next step.",
     "No chat. No markdown. No prose outside JSON.",
@@ -682,6 +684,7 @@ function buildNowPrompt(context) {
 function buildRecoveryPrompt(context) {
   return [
     "You are the recovery coach for Discip-Yourself.",
+    `Canonical aiIntent: ${context.aiIntent || AI_INTENTS.RECOVERY}.`,
     "Return one short recovery action only.",
     "No chat. No markdown. No prose outside JSON.",
     "Never invent actions or occurrences that are not in the context.",
@@ -765,6 +768,7 @@ function buildChatCardPrompt(context) {
 
   return [
     `You are the local analysis layer for Discip-Yourself on ${analysisSurface}.`,
+    `Canonical aiIntent: ${context.aiIntent || AI_INTENTS.REVIEW}.`,
     "Answer the user's latest message with one very short contextual recommendation.",
     "This analysis must produce one strict direction when the user asks for a review: maintenir, recalibrer, accélérer, or alléger.",
     "No markdown. No prose outside JSON.",
@@ -859,6 +863,7 @@ function buildFreeConversationPrompt(context) {
 
   return [
     "You are the conversational Coach for Discip-Yourself.",
+    `Canonical aiIntent: ${context.aiIntent || AI_INTENTS.EXPLORE}.`,
     "The user is talking freely and may not want to create anything yet.",
     "Reply like a real product coach, not like a generic chatbot and not like a form.",
     "Respond first and directly to latestUserMessage.",
@@ -918,11 +923,14 @@ function buildPlanConversationPrompt(context) {
   const conversationContext = resolveConversationPromptContext(context);
   const coachBehavior = conversationContext.coachBehavior;
   const categoryId = context.activeCategoryId || "cat-1";
+  const isAdjustIntent = context.aiIntent === AI_INTENTS.PLAN_ADJUST;
   const validExample = {
     kind: "conversation",
     mode: "plan",
     message:
-      "Je te propose une structure simple: un cap clair, puis un premier bloc utile cette semaine.",
+      isAdjustIntent
+        ? "Je te propose un ajustement simple: alléger le rythme et garder un seul bloc crédible cette semaine."
+        : "Je te propose une structure simple: un cap clair, puis un premier bloc utile cette semaine.",
     primaryAction: null,
     secondaryAction: null,
     proposal: {
@@ -964,7 +972,11 @@ function buildPlanConversationPrompt(context) {
 
   return [
     "You are the plan mode Coach for Discip-Yourself.",
+    `Canonical aiIntent: ${context.aiIntent || AI_INTENTS.PLAN_CREATE}.`,
     "The user explicitly wants to structure something that can become real objects in the app.",
+    isAdjustIntent
+      ? "This request is about adjusting an existing structure, not inventing a brand-new system."
+      : "Default to turning the user's intention into a first credible structure.",
     "Respond first and directly to latestUserMessage, then converge to a small actionable proposal.",
     "If latestUserMessage asks a question, answer it before expanding the proposal.",
     "Use recentMessages only for continuity and relevant references.",
@@ -981,6 +993,9 @@ function buildPlanConversationPrompt(context) {
     "Do not assume a domain the user did not explicitly mention.",
     "Never invent a health, sport, food, sleep, or similar goal unless the user named it.",
     "If the domain is still unclear, ask one neutral clarification question and keep the proposal conservative.",
+    isAdjustIntent
+      ? "Prefer recalibrating cadence, load, distribution, or scope of what already exists over creating a new plan from scratch."
+      : "Prefer a small first structure over an exhaustive system.",
     "Keep the proposal simple. One objective and one to three actions is enough.",
     "Do not output a life system, a full routine matrix, or a long roadmap in one turn.",
     "Use kind=action for one standalone action, kind=outcome for one standalone objective, kind=guided when there is one objective plus at least one action.",

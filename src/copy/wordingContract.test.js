@@ -4,10 +4,14 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   ANALYSIS_COPY,
+  COACH_SCREEN_COPY,
+  INSIGHTS_SCREEN_COPY,
   MAIN_PAGE_COPY,
   MARKETING_COPY,
   SURFACE_LABELS,
   TAB_COPY,
+  TODAY_SCREEN_COPY,
+  UI_COPY,
 } from "./productCopy";
 
 const SRC_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -27,6 +31,15 @@ describe("product wording contract", () => {
     expect(MARKETING_COPY.essentialPlan).toBe("Accès essentiel");
     expect(ANALYSIS_COPY.localDiagnostic).toBe("Lecture locale");
     expect(ANALYSIS_COPY.coachAnalysis).toBe("Lecture du coach");
+    expect(ANALYSIS_COPY.coachAnalysisUpdated).toBe("Lecture mise à jour");
+    expect(ANALYSIS_COPY.coachLoadingHint).toBe("Lecture en cours");
+    expect(INSIGHTS_SCREEN_COPY.coachReading).toBe("Lecture");
+    expect(INSIGHTS_SCREEN_COPY.coachAnalysisCta).toBe("Lecture du coach");
+    expect(INSIGHTS_SCREEN_COPY.coachAnalysisRetry).toBe("Actualiser la lecture");
+    expect(TODAY_SCREEN_COPY.createWithCoach).toBe("Planifier avec le coach");
+    expect(COACH_SCREEN_COPY.draftTitle).toBe("Plan proposé");
+    expect(UI_COPY.coachAnalysis).toBe("Lecture du coach");
+    expect(UI_COPY.rerunCoachAnalysis).toBe("Actualiser la lecture");
     expect(MAIN_PAGE_COPY.today.orientation).toBe("Ton prochain pas utile, clairement mis en avant.");
     expect(MAIN_PAGE_COPY.planning.orientation).toBe("Ta feuille de route d'exécution.");
     expect(MAIN_PAGE_COPY.library.orientation).toBe("Une structure par objectifs avec les actions liées en dessous.");
@@ -50,14 +63,20 @@ describe("product wording contract", () => {
       "auth/VerifyEmail.jsx",
       "components/today/TodayHero.jsx",
       "pages/Home.jsx",
-      "features/manualAi/displayState.js",
+      "pages/Coach.jsx",
+      "pages/Insights.jsx",
+      "pages/Pilotage.jsx",
       "components/planning/PlanningCoachCard.jsx",
+      "features/manualAi/displayState.js",
       "pages/CreateItem.jsx",
       "components/PlusExpander.jsx",
     ];
     const legacyPatterns = [
       /Coach IA/,
       /Analyse IA/,
+      /Analyse du coach/,
+      /Proposition structurée/,
+      /Créer avec le coach/,
       /Note du jour/,
       /\bUsername\b/,
       /Passer Premium/,

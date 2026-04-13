@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { isAiCoachChatResponse, requestAiCoachChat } from "./aiCoachChatClient";
+import { isAiCoachChatResponse, normalizeAiCoachChatPayload, requestAiCoachChat } from "./aiCoachChatClient";
 
 function buildChatResponse(overrides = {}) {
   return {
@@ -89,6 +89,29 @@ describe("aiCoachChatClient", () => {
 
   it("valide une reponse conversationnelle en mode plan", () => {
     expect(isAiCoachChatResponse(buildConversationResponse())).toBe(true);
+  });
+
+  it("resolve un aiIntent canonique pour le coach conversationnel", () => {
+    expect(
+      normalizeAiCoachChatPayload({
+        selectedDateKey: "2026-03-25",
+        activeCategoryId: "cat-1",
+        mode: "free",
+        message: "Bonjour",
+        recentMessages: [],
+      }).aiIntent,
+    ).toBe("explore");
+
+    expect(
+      normalizeAiCoachChatPayload({
+        selectedDateKey: "2026-03-25",
+        activeCategoryId: "cat-1",
+        mode: "plan",
+        message: "Réajuste ce plan",
+        recentMessages: [],
+        planningState: { intent: "contextual" },
+      }).aiIntent,
+    ).toBe("plan_adjust");
   });
 
   it("rejette une reponse free qui embarque une proposal", () => {
@@ -213,6 +236,7 @@ describe("aiCoachChatClient", () => {
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(fetchImpl.mock.calls[0]?.[1]?.headers?.["x-discip-surface"]).toBe("coach");
+    expect(JSON.parse(fetchImpl.mock.calls[0]?.[1]?.body || "{}").aiIntent).toBe("explore");
   });
 
   it("retourne un diagnostic complet sur un 429 backend", async () => {

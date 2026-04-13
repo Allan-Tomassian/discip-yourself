@@ -120,6 +120,11 @@ describe("sessionAdjustments", () => {
     expect(result.adjustment).toMatchObject({
       kind: "guided",
       strategyId: "shorten_keep_core",
+      runbookPatch: {
+        version: 1,
+        stepCount: expect.any(Number),
+        itemCount: expect.any(Number),
+      },
     });
     expect(result.sessionRunbook.durationMinutes).toBeLessThan(runbook.durationMinutes);
   });

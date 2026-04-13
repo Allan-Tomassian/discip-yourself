@@ -39,6 +39,7 @@ test("buildChatContext injects the active profile and related profiles mentioned
     quotaState: { remaining: 3 },
     requestId: "req-chat-profile",
     body: {
+      mode: "free",
       message: "Je veux arbitrer entre Finance et Travail aujourd’hui.",
       recentMessages: [],
     },
@@ -71,6 +72,7 @@ test("buildChatContext injects the active profile and related profiles mentioned
   });
   assert.equal(context.locale, "fr-FR");
   assert.equal(context.useCase, "general");
+  assert.equal(context.aiIntent, "explore");
   assert.deepEqual(context.coachBehavior, {
     mode: "clarity",
     overlays: ["choice_narrowing"],
@@ -105,6 +107,7 @@ test("buildChatContext preserves locale and useCase from /ai/chat payload", () =
   assert.equal(context.chatMode, "plan");
   assert.equal(context.locale, "fr-CA");
   assert.equal(context.useCase, "life_plan");
+  assert.equal(context.aiIntent, "plan_create");
   assert.deepEqual(context.recentMessages, [{ role: "user", content: "Je veux un plan simple." }]);
   assert.deepEqual(context.coachBehavior, {
     mode: "clarity",
@@ -158,4 +161,33 @@ test("buildChatContext ignores guided runtime extras inside ui.activeSession", (
   assert.equal(context.activeSessionForActiveDate?.occurrenceId, "occ-1");
   assert.equal("experienceMode" in context.activeSessionForActiveDate, false);
   assert.equal("guidedRuntimeV1" in context.activeSessionForActiveDate, false);
+  assert.equal(context.aiIntent, "explore");
+});
+
+test("buildChatContext resolves plan_adjust from canonical aiIntent without widening useCase into routing", () => {
+  const context = buildChatContext({
+    data: {
+      categories: [{ id: "cat-focus", name: "Focus" }],
+      goals: [{ id: "goal-1", title: "Deep work", type: "PROCESS", categoryId: "cat-focus" }],
+      occurrences: [{ id: "occ-1", goalId: "goal-1", date: "2026-03-06", status: "planned", start: "09:00" }],
+      ui: { activeSession: null },
+      sessionHistory: [],
+    },
+    selectedDateKey: "2026-03-06",
+    activeCategoryId: "cat-focus",
+    quotaState: { remaining: 3 },
+    requestId: "req-chat-adjust",
+    body: {
+      mode: "plan",
+      aiIntent: "plan_adjust",
+      useCase: "life_plan",
+      message: "Réajuste ce plan pour qu'il soit plus tenable.",
+      recentMessages: [],
+    },
+    now: new Date(2026, 2, 6, 12, 0, 0),
+  });
+
+  assert.equal(context.chatMode, "plan");
+  assert.equal(context.useCase, "life_plan");
+  assert.equal(context.aiIntent, "plan_adjust");
 });

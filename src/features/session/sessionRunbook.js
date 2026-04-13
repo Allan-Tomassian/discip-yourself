@@ -633,6 +633,16 @@ export function normalizePreparedSessionRunbook(rawValue, { fallbackRunbook = nu
   return normalized;
 }
 
+export function summarizeSessionRunbookPatch(sessionRunbook = null) {
+  const runbook = normalizeSessionRunbook(sessionRunbook);
+  if (!runbook) return null;
+  return {
+    version: runbook.version,
+    stepCount: runbook.steps.length,
+    itemCount: runbook.steps.reduce((count, step) => count + step.items.length, 0),
+  };
+}
+
 export function buildSessionRunbookV1({
   blueprintSnapshot = null,
   occurrence = null,

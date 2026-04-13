@@ -51,6 +51,7 @@ function shouldLogAiErrorDiagnostics(app) {
 function describeContextShape(context) {
   const safeContext = isPlainObject(context) ? context : {};
   return {
+    aiIntent: typeof safeContext.aiIntent === "string" ? safeContext.aiIntent : null,
     contextKeyCount: Object.keys(safeContext).length,
     hasMessage: typeof safeContext.message === "string" && safeContext.message.length > 0,
     hasRecentMessages: Array.isArray(safeContext.recentMessages) && safeContext.recentMessages.length > 0,
@@ -67,6 +68,7 @@ function logAiStageError({
   stage,
   status,
   errorCode,
+  requestedAiIntent = null,
   err = null,
   activeSessionDiagnostics = null,
   context = null,
@@ -80,6 +82,7 @@ function logAiStageError({
       stage,
       status,
       errorCode,
+      requestedAiIntent: typeof requestedAiIntent === "string" ? requestedAiIntent : null,
       surface: String(request.headers["x-discip-surface"] || "").trim() || null,
       ...(activeSessionDiagnostics || {}),
       ...describeContextShape(context),
@@ -210,6 +213,7 @@ async function handleCoachRoute({
       status: 503,
       errorCode: isSupabaseSchemaError(error) ? "BACKEND_SCHEMA_MISSING" : "SNAPSHOT_LOAD_FAILED",
       err: error,
+      requestedAiIntent: parsedBody.data?.aiIntent || null,
     });
     if (isSupabaseSchemaError(error)) {
       return reply.code(503).send(buildSchemaErrorReply(request.requestId));
@@ -239,6 +243,7 @@ async function handleCoachRoute({
       errorCode: isSupabaseSchemaError(error) ? "BACKEND_SCHEMA_MISSING" : "QUOTA_LOAD_FAILED",
       err: error,
       activeSessionDiagnostics: describeActiveSessionPayload(snapshot?.userData),
+      requestedAiIntent: parsedBody.data?.aiIntent || null,
     });
     if (isSupabaseSchemaError(error)) {
       return reply.code(503).send(buildSchemaErrorReply(request.requestId));
@@ -298,6 +303,7 @@ async function handleCoachRoute({
         errorCode: "PROVIDER_FAILED",
         err: error,
         activeSessionDiagnostics,
+        requestedAiIntent: parsedBody.data?.aiIntent || null,
         context,
       });
       return sendAiStageError(reply, request.requestId, {
@@ -320,6 +326,7 @@ async function handleCoachRoute({
         errorCode: "INVALID_RESPONSE",
         err: error,
         activeSessionDiagnostics,
+        requestedAiIntent: parsedBody.data?.aiIntent || null,
         context,
       });
       return sendAiStageError(reply, request.requestId, {
@@ -353,6 +360,7 @@ async function handleCoachRoute({
       errorCode: "CONTEXT_BUILD_FAILED",
       err: error,
       activeSessionDiagnostics,
+      requestedAiIntent: parsedBody.data?.aiIntent || null,
     });
     return sendAiStageError(reply, request.requestId, {
       status: 503,

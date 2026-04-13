@@ -5,6 +5,7 @@ import {
 } from "../domain/todayIntervention";
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
 import { readAiBackendBaseUrl as readAiBackendBaseUrlFromEnv } from "./frontendEnv";
+import { resolveAiIntentForNow } from "../domain/aiIntent";
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const AI_NOW_SURFACES = new Set(["today", "session"]);
@@ -91,6 +92,7 @@ export function normalizeAiNowPayload(input) {
     activeCategoryId,
     surface,
     trigger,
+    aiIntent: resolveAiIntentForNow({ requestedIntent: source.aiIntent }),
   };
 }
 

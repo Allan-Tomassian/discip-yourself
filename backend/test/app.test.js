@@ -499,7 +499,7 @@ test("POST /ai/chat returns a plan conversation fallback when mode is plan", asy
   await app.close();
 });
 
-test("POST /ai/chat accepts locale and useCase without returning INVALID_BODY", async () => {
+test("POST /ai/chat accepts locale, useCase, and aiIntent without returning INVALID_BODY", async () => {
   const insertedLogs = [];
   const app = await buildApp({
     config: TEST_CONFIG,
@@ -521,6 +521,7 @@ test("POST /ai/chat accepts locale and useCase without returning INVALID_BODY", 
       selectedDateKey: TODAY_KEY,
       activeCategoryId: "cat-1",
       mode: "free",
+      aiIntent: "explore",
       locale: "fr-FR",
       useCase: "life_plan",
       message: "Aide-moi à clarifier mon prochain pas.",

@@ -17,6 +17,7 @@ import { computeCategoryScopedRecommendation } from "../../../../src/domain/toda
 import { resolveTodayOccurrenceStartPolicy } from "../../../../src/domain/todayIntervention.js";
 import { getCategoryProfileSummary } from "../../../../src/domain/categoryProfile.js";
 import { derivePreferredBlockAlignment, normalizeUserAiProfile } from "../../../../src/domain/userAiProfile.js";
+import { resolveAiIntentForNow } from "../../../../src/domain/aiIntent.js";
 
 function buildOccurrenceById(data) {
   return new Map(safeArray(data?.occurrences).filter((occurrence) => occurrence?.id).map((occurrence) => [occurrence.id, occurrence]));
@@ -151,6 +152,7 @@ export function buildNowContext({
   quotaState,
   requestId,
   trigger,
+  body = null,
   now = new Date(),
 }) {
   const dateKey = normalizeDateKey(selectedDateKey);
@@ -247,6 +249,7 @@ export function buildNowContext({
   };
 
   return {
+    aiIntent: resolveAiIntentForNow({ requestedIntent: body?.aiIntent }),
     requestId,
     trigger,
     activeDate: dateKey,

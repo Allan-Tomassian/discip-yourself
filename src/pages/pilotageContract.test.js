@@ -54,7 +54,8 @@ describe("Pilotage contract", () => {
     expect(source).toContain("PilotageInsightCard");
     expect(source).toContain("Niveau actuel");
     expect(source).toContain("Jours actifs");
-    expect(source).toContain("Analyser cette catégorie");
+    expect(source).toContain('UI_COPY.coachAnalysis');
+    expect(source).toContain("Lecture indisponible");
   });
 
   it("keeps the global view and opens category detail inline from focus categories", () => {

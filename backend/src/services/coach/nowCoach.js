@@ -63,11 +63,12 @@ export async function runNowCoach({ app, context }) {
     } else {
       if (isOpenAiModelOutputError(error)) {
         app.log?.warn?.(
-          {
-            requestId: context.requestId,
-            kind: "now",
-            issueCode: error.issueCode,
-          },
+        {
+          requestId: context.requestId,
+          kind: "now",
+          aiIntent: context.aiIntent || null,
+          issueCode: error.issueCode,
+        },
           "OpenAI coach output rejected before governance",
         );
       }

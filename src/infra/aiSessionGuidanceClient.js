@@ -1,8 +1,10 @@
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
 import { readAiBackendBaseUrl } from "./aiNowClient";
+import { resolveAiIntentForSessionGuidance } from "../domain/aiIntent";
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const GUIDANCE_MODES = new Set(["prepare", "adjust", "tool"]);
+const AI_SURFACE = "session";
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -59,13 +61,23 @@ export function normalizeAiSessionGuidancePayload(input) {
 
   return {
     mode,
+    aiIntent: resolveAiIntentForSessionGuidance({
+      mode,
+      requestedIntent: source.aiIntent,
+    }),
+    variant: typeof source.variant === "string" ? source.variant.trim().slice(0, 32) : "",
     dateKey,
     occurrenceId,
     actionId,
     categoryId: isNullableString(source.categoryId) ? source.categoryId : null,
     blueprintSnapshot: isPlainObject(source.blueprintSnapshot) ? source.blueprintSnapshot : null,
     fallbackRunbook: isPlainObject(source.fallbackRunbook) ? source.fallbackRunbook : null,
-    sessionRunbook: isPlainObject(source.sessionRunbook) ? source.sessionRunbook : null,
+    fallbackToolPlan: isPlainObject(source.fallbackToolPlan) ? source.fallbackToolPlan : null,
+    currentRunbook:
+      isPlainObject(source.currentRunbook) ? source.currentRunbook
+      : isPlainObject(source.sessionRunbook) ? source.sessionRunbook
+      : null,
+    adjustmentLineage: isPlainObject(source.adjustmentLineage) ? source.adjustmentLineage : null,
     toolId,
     cause: typeof source.cause === "string" ? source.cause.trim() : "",
     strategyId: typeof source.strategyId === "string" ? source.strategyId.trim() : "",
@@ -102,6 +114,7 @@ function summarizeBodyShape(body) {
 
 function normalizeBackendErrorCode(status, backendErrorCode) {
   const code = String(backendErrorCode || "").trim().toUpperCase();
+  if (code === "SESSION_GUIDANCE_BACKEND_UNAVAILABLE") return "SESSION_GUIDANCE_BACKEND_UNAVAILABLE";
   if (code === "AUTH_MISSING" || code === "AUTH_INVALID" || code === "UNAUTHORIZED") return "UNAUTHORIZED";
   if (code === "RATE_LIMITED") return "RATE_LIMITED";
   if (code === "QUOTA_EXCEEDED") return "QUOTA_EXCEEDED";
@@ -119,6 +132,7 @@ function normalizeBackendErrorCode(status, backendErrorCode) {
   }
   if (status === 401) return "UNAUTHORIZED";
   if (status === 429) return "RATE_LIMITED";
+  if (status === 404 || status === 405) return "SESSION_GUIDANCE_BACKEND_UNAVAILABLE";
   if (status === 503) return "BACKEND_ERROR";
   return "BACKEND_ERROR";
 }
@@ -140,8 +154,15 @@ export async function requestAiSessionGuidance({
 }) {
   const resolvedBaseUrl = readAiBackendBaseUrl(baseUrl);
   const buildTransport = (errorCode = null) => buildAiTransportMeta({ baseUrl: resolvedBaseUrl, errorCode });
+  const buildResultMeta = (transportMeta) => ({
+    surface: AI_SURFACE,
+    probableCause: transportMeta?.probableCause || null,
+    baseUrlUsed: transportMeta?.backendBaseUrl || resolvedBaseUrl || "",
+    originUsed: transportMeta?.frontendOrigin || "",
+  });
 
   if (!resolvedBaseUrl) {
+    const transportMeta = buildTransport("DISABLED");
     return {
       ok: false,
       errorCode: "DISABLED",
@@ -149,7 +170,8 @@ export async function requestAiSessionGuidance({
       status: null,
       requestId: null,
       backendErrorCode: null,
-      transportMeta: buildTransport("DISABLED"),
+      transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
 
@@ -164,10 +186,12 @@ export async function requestAiSessionGuidance({
       requestId: null,
       backendErrorCode: null,
       transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
 
   if (!String(accessToken || "").trim()) {
+    const transportMeta = buildTransport("UNAUTHORIZED");
     return {
       ok: false,
       errorCode: "UNAUTHORIZED",
@@ -175,7 +199,8 @@ export async function requestAiSessionGuidance({
       status: 401,
       requestId: null,
       backendErrorCode: "UNAUTHORIZED",
-      transportMeta: buildTransport("UNAUTHORIZED"),
+      transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
 
@@ -183,6 +208,7 @@ export async function requestAiSessionGuidance({
   try {
     normalizedPayload = normalizeAiSessionGuidancePayload(payload);
   } catch {
+    const transportMeta = buildTransport("INVALID_RESPONSE");
     return {
       ok: false,
       errorCode: "INVALID_RESPONSE",
@@ -190,7 +216,8 @@ export async function requestAiSessionGuidance({
       status: null,
       requestId: null,
       backendErrorCode: null,
-      transportMeta: buildTransport("INVALID_RESPONSE"),
+      transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
 
@@ -210,6 +237,7 @@ export async function requestAiSessionGuidance({
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
+        "x-discip-surface": AI_SURFACE,
       },
       body: JSON.stringify(normalizedPayload),
       signal: controller?.signal,
@@ -227,6 +255,7 @@ export async function requestAiSessionGuidance({
       requestId: null,
       backendErrorCode: null,
       transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
   if (timeoutId) clearTimeout(timeoutId);
@@ -234,7 +263,7 @@ export async function requestAiSessionGuidance({
   const body = await safeParseJson(response);
   const shape = summarizeBodyShape(body);
   const requestId = shape.requestId;
-  const backendErrorCode = normalizeBackendErrorCode(response.status, body?.errorCode);
+  const backendErrorCode = normalizeBackendErrorCode(response.status, body?.error || body?.errorCode);
   const transportMeta = buildTransport(response.ok ? null : backendErrorCode);
 
   if (!response.ok) {
@@ -243,6 +272,8 @@ export async function requestAiSessionGuidance({
       errorCode: backendErrorCode,
       status: response.status,
       requestId,
+      mode: normalizedPayload.mode,
+      backendErrorCode,
       responseKind: shape.responseKind,
       responseMode: shape.responseMode,
       bodyKeys: shape.bodyKeys,
@@ -256,6 +287,7 @@ export async function requestAiSessionGuidance({
       requestId,
       backendErrorCode,
       transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
 
@@ -278,6 +310,7 @@ export async function requestAiSessionGuidance({
       requestId,
       backendErrorCode: null,
       transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
 
@@ -289,5 +322,6 @@ export async function requestAiSessionGuidance({
     requestId,
     backendErrorCode: null,
     transportMeta,
+    ...buildResultMeta(transportMeta),
   };
 }

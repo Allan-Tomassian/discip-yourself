@@ -47,6 +47,7 @@ export async function runChatCoach({ app, context }) {
   const logPayload = {
     requestId: context.requestId,
     kind: "chat",
+    aiIntent: context.aiIntent || null,
     chatMode: context.chatMode || null,
     behaviorMode: context.coachBehavior?.mode || null,
     behaviorOverlays: Array.isArray(context.coachBehavior?.overlays) ? context.coachBehavior.overlays : [],

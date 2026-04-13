@@ -26,7 +26,7 @@ describe("resolveManualAiDisplayState", () => {
       })
     ).toEqual({
       kind: "ai_updated",
-      label: "Lecture du coach mise à jour",
+      label: "Lecture mise à jour",
       isAi: true,
     });
   });

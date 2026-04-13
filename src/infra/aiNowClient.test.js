@@ -74,6 +74,7 @@ describe("aiNowClient", () => {
       activeCategoryId: null,
       surface: "today",
       trigger: "screen_open",
+      aiIntent: "execute_now",
     });
   });
 
@@ -131,6 +132,7 @@ describe("aiNowClient", () => {
     const [url, options] = fetchImpl.mock.calls[0];
     expect(url).toBe("https://ai.example.com/ai/now");
     expect(options.headers.Authorization).toBe("Bearer token");
+    expect(JSON.parse(options.body).aiIntent).toBe("execute_now");
   });
 
   it("mappe QUOTA_EXCEEDED", async () => {

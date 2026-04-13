@@ -24,6 +24,7 @@ import {
   normalizePreparedSessionRunbook,
   normalizeSessionBlueprintSnapshot,
   normalizeSessionRunbook,
+  summarizeSessionRunbookPatch,
 } from "../features/session/sessionRunbook";
 import {
   activateGuidedSpatialState,
@@ -60,6 +61,15 @@ import {
   startSessionToolUtility,
   toggleSessionToolUtilityCollapse,
 } from "../features/session/sessionTools";
+import {
+  SESSION_GUIDANCE_BACKEND_STATES,
+  SESSION_GUIDANCE_EXECUTION_SOURCES,
+  SESSION_GUIDANCE_OPERATIONS,
+  logSessionGuidanceResolution,
+  resolveSessionGuidanceBackendState,
+  resolveSessionGuidanceExecutionSource,
+  shouldAttemptSessionGuidanceBackend,
+} from "../features/session/sessionGuidanceBoundary";
 import { requestAiSessionGuidance } from "../infra/aiSessionGuidanceClient";
 import { saveState } from "../utils/storage";
 import "../features/session/session.css";
@@ -102,7 +112,7 @@ function normalizePositiveMinutes(value, fallback = 1) {
 function readSessionGuidanceRunbookPayload(payload, fallbackRunbook = null) {
   if (!payload || typeof payload !== "object") return null;
   return normalizePreparedSessionRunbook(
-    payload.sessionRunbook || payload.runbook || payload,
+    payload.preparedRunbook || payload.currentRunbook || payload.sessionRunbook || payload.runbook || payload,
     { fallbackRunbook }
   );
 }
@@ -281,6 +291,7 @@ export default function Session({
   const prepareRequestRef = useRef(0);
   const adjustRequestRef = useRef(0);
   const toolRequestRef = useRef(0);
+  const sessionGuidanceBackendStateRef = useRef(SESSION_GUIDANCE_BACKEND_STATES.UNKNOWN);
 
   const routeOccurrence = useMemo(
     () => normalizeOccurrenceForUI(occurrences.find((occurrenceItem) => occurrenceItem?.id === routeOccurrenceId) || null),
@@ -324,6 +335,52 @@ export default function Session({
     () => normalizeSessionBlueprintSnapshot(goal?.sessionBlueprintV1),
     [goal?.sessionBlueprintV1]
   );
+  const trackSessionGuidanceAttempt = useCallback(
+    ({
+      operation,
+      startedAtMs = 0,
+      attempted = false,
+      result = null,
+      applied = false,
+      cause = null,
+      toolId = null,
+    } = {}) => {
+      const nextBackendState = resolveSessionGuidanceBackendState(
+        sessionGuidanceBackendStateRef.current,
+        result
+      );
+      sessionGuidanceBackendStateRef.current = nextBackendState;
+      const source = resolveSessionGuidanceExecutionSource({
+        attempted,
+        result,
+        applied,
+        backendState: nextBackendState,
+      });
+      if (
+        source === SESSION_GUIDANCE_EXECUTION_SOURCES.LOCAL_ONLY &&
+        !attempted &&
+        !String(accessToken || "").trim()
+      ) {
+        return nextBackendState;
+      }
+      logSessionGuidanceResolution({
+        operation,
+        source,
+        backendState: nextBackendState,
+        requestId: result?.requestId || null,
+        errorCode: result?.errorCode || null,
+        backendErrorCode: result?.backendErrorCode || null,
+        cause,
+        toolId,
+        occurrenceId: selectedOccurrence?.id || null,
+        actionId: goal?.id || selectedOccurrence?.goalId || "",
+        latencyMs: startedAtMs > 0 ? Date.now() - startedAtMs : null,
+      });
+      return nextBackendState;
+    },
+    [accessToken, goal?.id, selectedOccurrence?.goalId, selectedOccurrence?.id]
+  );
+
   useEffect(() => {
     const isRunning = Boolean(session && isRuntimeSessionOpen(session) && session?.timerRunning);
     if (!isRunning) return undefined;
@@ -927,9 +984,19 @@ export default function Session({
     }));
 
     let nextRunbook = fallbackRunbook;
-    let nextToolPlan = buildSessionToolPlan({ sessionRunbook: fallbackRunbook });
-    if (accessToken) {
-      const prepareResult = await requestAiSessionGuidance({
+    const fallbackToolPlan = buildSessionToolPlan({ sessionRunbook: fallbackRunbook });
+    let nextToolPlan = fallbackToolPlan;
+    let prepareAttempted = false;
+    let prepareApplied = false;
+    let prepareResult = null;
+    if (
+      shouldAttemptSessionGuidanceBackend({
+        backendState: sessionGuidanceBackendStateRef.current,
+        accessToken,
+      })
+    ) {
+      prepareAttempted = true;
+      prepareResult = await requestAiSessionGuidance({
         accessToken,
         payload: {
           mode: "prepare",
@@ -939,14 +1006,28 @@ export default function Session({
           categoryId: category?.id || goal?.categoryId || effectiveCategoryId || null,
           blueprintSnapshot,
           fallbackRunbook,
+          fallbackToolPlan,
           notes: readGoalSessionNotes(goal),
         },
       });
       const preparedRunbook = readSessionGuidanceRunbookPayload(prepareResult?.payload, fallbackRunbook);
-      if (prepareResult?.ok && preparedRunbook) nextRunbook = preparedRunbook;
+      if (prepareResult?.ok && preparedRunbook) {
+        nextRunbook = preparedRunbook;
+        prepareApplied = true;
+      }
       const preparedToolPlan = readSessionGuidanceToolPlanPayload(prepareResult?.payload, preparedRunbook || nextRunbook);
-      if (prepareResult?.ok && preparedToolPlan) nextToolPlan = preparedToolPlan;
+      if (prepareResult?.ok && preparedToolPlan) {
+        nextToolPlan = preparedToolPlan;
+        prepareApplied = true;
+      }
     }
+    trackSessionGuidanceAttempt({
+      operation: SESSION_GUIDANCE_OPERATIONS.PREPARE,
+      startedAtMs,
+      attempted: prepareAttempted,
+      result: prepareResult,
+      applied: prepareApplied,
+    });
 
     const remainingMs = Math.max(0, 800 - (Date.now() - startedAtMs));
     if (remainingMs > 0) {
@@ -1065,10 +1146,22 @@ export default function Session({
     });
 
     let nextRunbook = launchRunbook;
-    let nextToolPlan = launchToolPlan || buildSessionToolPlan({ sessionRunbook: launchRunbook });
+    const fallbackToolPlan = launchToolPlan || buildSessionToolPlan({ sessionRunbook: launchRunbook });
+    let nextToolPlan = fallbackToolPlan;
+    let prepareAttempted = false;
+    let prepareApplied = false;
+    let prepareResult = null;
 
-    if (accessToken && fallbackRunbook) {
-      const prepareResult = await requestAiSessionGuidance({
+    if (
+      fallbackRunbook &&
+      shouldAttemptSessionGuidanceBackend({
+        backendState: sessionGuidanceBackendStateRef.current,
+        accessToken,
+      })
+    ) {
+      const guidanceStartedAtMs = Date.now();
+      prepareAttempted = true;
+      prepareResult = await requestAiSessionGuidance({
         accessToken,
         payload: {
           mode: "prepare",
@@ -1079,12 +1172,14 @@ export default function Session({
           categoryId: category?.id || goal?.categoryId || effectiveCategoryId || null,
           blueprintSnapshot,
           fallbackRunbook,
+          fallbackToolPlan,
           notes: readGoalSessionNotes(goal),
         },
       });
       const preparedRunbook = readSessionGuidanceRunbookPayload(prepareResult?.payload, fallbackRunbook);
       if (prepareResult?.ok && preparedRunbook) {
         nextRunbook = preparedRunbook;
+        prepareApplied = true;
       }
       const preparedToolPlan = readSessionGuidanceToolPlanPayload(
         prepareResult?.payload,
@@ -1092,7 +1187,23 @@ export default function Session({
       );
       if (prepareResult?.ok && preparedToolPlan) {
         nextToolPlan = preparedToolPlan;
+        prepareApplied = true;
       }
+      trackSessionGuidanceAttempt({
+        operation: SESSION_GUIDANCE_OPERATIONS.PREPARE,
+        startedAtMs: guidanceStartedAtMs,
+        attempted: prepareAttempted,
+        result: prepareResult,
+        applied: prepareApplied,
+      });
+    } else {
+      trackSessionGuidanceAttempt({
+        operation: SESSION_GUIDANCE_OPERATIONS.PREPARE,
+        startedAtMs: 0,
+        attempted: false,
+        result: null,
+        applied: false,
+      });
     }
 
     if (prepareRequestRef.current !== requestId) return;
@@ -1221,8 +1332,19 @@ export default function Session({
     setToolsLoading(true);
 
     let nextResult = null;
-    if (tool.executionMode === "ai" && accessToken) {
-      const aiResult = await requestAiSessionGuidance({
+    let toolAttempted = false;
+    let toolApplied = false;
+    let toolResult = null;
+    const toolStartedAtMs = Date.now();
+    if (
+      tool.executionMode === "ai" &&
+      shouldAttemptSessionGuidanceBackend({
+        backendState: sessionGuidanceBackendStateRef.current,
+        accessToken,
+      })
+    ) {
+      toolAttempted = true;
+      toolResult = await requestAiSessionGuidance({
         accessToken,
         payload: {
           mode: "tool",
@@ -1231,7 +1353,7 @@ export default function Session({
           actionId: goal?.id || selectedOccurrence.goalId || "",
           categoryId: category?.id || goal?.categoryId || effectiveCategoryId || null,
           blueprintSnapshot,
-          sessionRunbook: guidedRunbook,
+          currentRunbook: guidedRunbook,
           toolId: tool.toolId,
           notes: readGoalSessionNotes(goal),
           runtimeContext: {
@@ -1243,8 +1365,9 @@ export default function Session({
         },
         timeoutMs: 1200,
       });
-      if (aiResult?.ok) {
-        nextResult = readSessionGuidanceToolResultPayload(aiResult.payload, tool.toolId);
+      if (toolResult?.ok) {
+        nextResult = readSessionGuidanceToolResultPayload(toolResult.payload, tool.toolId);
+        toolApplied = Boolean(nextResult);
       }
     }
 
@@ -1255,6 +1378,14 @@ export default function Session({
         guidedPlan,
       });
     }
+    trackSessionGuidanceAttempt({
+      operation: SESSION_GUIDANCE_OPERATIONS.TOOL,
+      startedAtMs: toolStartedAtMs,
+      attempted: toolAttempted,
+      result: toolResult,
+      applied: toolApplied,
+      toolId: tool.toolId,
+    });
 
     if (toolRequestRef.current !== requestId) return;
 
@@ -1388,8 +1519,20 @@ export default function Session({
     let nextAdjustment = localGuidedResult.adjustment;
     let nextToolPlan = buildSessionToolPlan({ sessionRunbook: nextRunbook });
 
-    if (option.aiPreferred && accessToken && guidedRunbook) {
-      const adjustResult = await requestAiSessionGuidance({
+    let adjustAttempted = false;
+    let adjustApplied = false;
+    let adjustResult = null;
+    const adjustStartedAtMs = Date.now();
+    if (
+      option.aiPreferred &&
+      guidedRunbook &&
+      shouldAttemptSessionGuidanceBackend({
+        backendState: sessionGuidanceBackendStateRef.current,
+        accessToken,
+      })
+    ) {
+      adjustAttempted = true;
+      adjustResult = await requestAiSessionGuidance({
         accessToken,
         payload: {
           mode: "adjust",
@@ -1398,7 +1541,15 @@ export default function Session({
           actionId: goal?.id || selectedOccurrence.goalId || "",
           categoryId: category?.id || goal?.categoryId || effectiveCategoryId || null,
           blueprintSnapshot,
-          sessionRunbook: guidedRunbook,
+          currentRunbook: guidedRunbook,
+          adjustmentLineage:
+            nextAdjustment?.runbookPatch
+              ? {
+                  cause: nextAdjustment.cause || adjustCause,
+                  strategyId: nextAdjustment.strategyId || option.strategyId,
+                  previousPatch: nextAdjustment.runbookPatch,
+                }
+              : null,
           cause: adjustCause,
           strategyId: option.strategyId,
           runtimeContext: {
@@ -1412,18 +1563,25 @@ export default function Session({
       const preparedRunbook = readSessionGuidanceRunbookPayload(adjustResult?.payload, nextRunbook);
       if (adjustResult?.ok && preparedRunbook) {
         nextRunbook = preparedRunbook;
-        nextToolPlan = buildSessionToolPlan({ sessionRunbook: preparedRunbook });
+        nextToolPlan =
+          readSessionGuidanceToolPlanPayload(adjustResult?.payload, preparedRunbook) ||
+          buildSessionToolPlan({ sessionRunbook: preparedRunbook });
         nextAdjustment = {
           ...nextAdjustment,
           adjustedDurationMinutes: preparedRunbook.durationMinutes,
-          runbookPatch: {
-            version: preparedRunbook.version,
-            stepCount: preparedRunbook.steps.length,
-            itemCount: preparedRunbook.steps.reduce((count, step) => count + step.items.length, 0),
-          },
+          runbookPatch: summarizeSessionRunbookPatch(preparedRunbook),
         };
+        adjustApplied = true;
       }
     }
+    trackSessionGuidanceAttempt({
+      operation: SESSION_GUIDANCE_OPERATIONS.ADJUST,
+      startedAtMs: adjustStartedAtMs,
+      attempted: adjustAttempted,
+      result: adjustResult,
+      applied: adjustApplied,
+      cause: adjustCause,
+    });
 
     if (adjustRequestRef.current !== requestId) return;
     setSessionLaunchState((current) => {

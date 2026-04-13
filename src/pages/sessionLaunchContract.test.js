@@ -78,7 +78,7 @@ describe("session launch contract", () => {
     const deck = readSrc("components/session/SessionGuidedDeck.jsx");
 
     expect(session).toContain('phase: "guided_active"');
-    expect(session).toContain("guidedMode={launchMode === \"guided\" ? guidedMode : \"\"}");
+    expect(session).toContain("guidedMode={effectiveLaunchMode === \"guided\" ? guidedMode : \"\"}");
     expect(focusView).toContain('data-testid="session-guided-preview-actions"');
     expect(deck).toContain('data-testid="session-guided-plan"');
     expect(deck).toContain("Plan du bloc");

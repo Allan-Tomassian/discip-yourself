@@ -8,8 +8,17 @@ import {
   resolveOccurrencesForDate,
   sortOccurrencesForExecution,
 } from "./shared.js";
+import { resolveAiIntentForRecovery } from "../../../../src/domain/aiIntent.js";
 
-export function buildRecoveryContext({ data, selectedDateKey, activeCategoryId, quotaState, requestId, trigger }) {
+export function buildRecoveryContext({
+  data,
+  selectedDateKey,
+  activeCategoryId,
+  quotaState,
+  requestId,
+  trigger,
+  body = null,
+}) {
   const dateKey = normalizeDateKey(selectedDateKey);
   const category = resolveCategory(data, activeCategoryId);
   const categoryId = category?.id || null;
@@ -25,6 +34,7 @@ export function buildRecoveryContext({ data, selectedDateKey, activeCategoryId, 
   const discipline14d = buildWindowStats(data, dateKey, 14);
 
   return {
+    aiIntent: resolveAiIntentForRecovery({ requestedIntent: body?.aiIntent }),
     requestId,
     trigger,
     selectedDateKey: dateKey,

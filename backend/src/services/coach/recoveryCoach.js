@@ -25,6 +25,7 @@ export async function runRecoveryCoach({ app, context }) {
         {
           requestId: context.requestId,
           kind: "recovery",
+          aiIntent: context.aiIntent || null,
           issueCode: error.issueCode,
         },
         "OpenAI coach output rejected before governance",

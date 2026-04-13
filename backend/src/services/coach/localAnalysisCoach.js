@@ -18,6 +18,7 @@ export async function runLocalAnalysisCoach({ app, context }) {
         {
           requestId: context.requestId,
           kind: "local-analysis",
+          aiIntent: context.aiIntent || null,
           issueCode: error.issueCode,
           surface: context.analysisSurface || null,
         },

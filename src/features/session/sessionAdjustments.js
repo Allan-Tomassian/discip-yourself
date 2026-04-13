@@ -1,4 +1,4 @@
-import { normalizeSessionRunbook } from "./sessionRunbook";
+import { normalizeSessionRunbook, summarizeSessionRunbookPatch } from "./sessionRunbook";
 import {
   activateGuidedSpatialState,
   createGuidedSpatialState,
@@ -540,11 +540,7 @@ export function applyGuidedAdjustmentLocally({
       ...option,
       kind: "guided",
       adjustedDurationMinutes: patchedRunbook.durationMinutes,
-      runbookPatch: {
-        version: patchedRunbook.version,
-        stepCount: patchedRunbook.steps.length,
-        itemCount: patchedRunbook.steps.reduce((count, step) => count + step.items.length, 0),
-      },
+      runbookPatch: summarizeSessionRunbookPatch(patchedRunbook),
     },
     sessionRunbook: patchedRunbook,
     currentState,

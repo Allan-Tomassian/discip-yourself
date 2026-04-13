@@ -48,7 +48,7 @@ describe("deriveTodayV2State", () => {
           title: "Aucune priorité claire",
           meta: "Il faut clarifier.",
           recommendedCategoryLabel: "Travail",
-          primaryLabel: "Créer avec le coach",
+          primaryLabel: "Planifier avec le coach",
           primaryAction: { kind: "open_coach_plan" },
         },
         heroOccurrence: null,

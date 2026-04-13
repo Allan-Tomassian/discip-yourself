@@ -203,10 +203,10 @@ export default function PlanningCoachCard({
               disabled={manualPlanningAnalysis.loading}
             >
               {manualPlanningAnalysis.loading
-                ? manualPlanningAnalysis.loadingStageLabel || "Analyse..."
-                : planningView === "week"
-                  ? "Observer ma semaine"
-                  : "Observer ma journée"}
+                ? manualPlanningAnalysis.loadingStageLabel || "Lecture en cours..."
+                : manualPlanningAnalysis.visibleAnalysis
+                  ? UI_COPY.rerunCoachAnalysis
+                  : UI_COPY.coachAnalysis}
             </PrimaryButton>
             {manualPlanningAnalysis.isPersistedForContext ? (
               <GhostButton

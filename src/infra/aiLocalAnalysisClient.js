@@ -1,6 +1,7 @@
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
 import { readAiBackendBaseUrl } from "./aiNowClient";
 import { LOCAL_ANALYSIS_SURFACES, normalizeLocalAnalysisSurface } from "../domain/aiPolicy";
+import { resolveAiIntentForLocalAnalysis } from "../domain/aiIntent";
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const ACTION_INTENTS = new Set([
@@ -169,6 +170,10 @@ export function normalizeAiLocalAnalysisPayload(input) {
     selectedDateKey,
     activeCategoryId,
     surface,
+    aiIntent: resolveAiIntentForLocalAnalysis({
+      requestedIntent: source.aiIntent,
+      surface,
+    }),
     message,
   };
 }

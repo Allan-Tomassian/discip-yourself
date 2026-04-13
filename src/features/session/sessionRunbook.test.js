@@ -4,6 +4,7 @@ import {
   deriveGuidedCurrentStep,
   normalizePreparedSessionRunbook,
   normalizeSessionBlueprintSnapshot,
+  summarizeSessionRunbookPatch,
 } from "./sessionRunbook";
 
 function makeBlueprint(overrides = {}) {
@@ -165,5 +166,20 @@ describe("sessionRunbook", () => {
     expect(middle.currentStep.label).toBe("Bloc principal");
     expect(middle.currentItem).toBeTruthy();
     expect(middle.nextItem || null).not.toBe(undefined);
+  });
+
+  it("summarizes a runbook patch without exposing runtime-only details", () => {
+    const runbook = buildSessionRunbookV1({
+      blueprintSnapshot: makeBlueprint(),
+      occurrence: { id: "occ_1", goalId: "goal_1", date: "2026-04-10", durationMinutes: 20 },
+      action: { id: "goal_1", title: "Séance de sport rapide de 20 minutes" },
+      category: { id: "cat_sport", name: "Sport" },
+    });
+
+    expect(summarizeSessionRunbookPatch(runbook)).toEqual({
+      version: 1,
+      stepCount: 3,
+      itemCount: expect.any(Number),
+    });
   });
 });

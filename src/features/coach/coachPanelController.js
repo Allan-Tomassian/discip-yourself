@@ -3,6 +3,7 @@ import { useAuth } from "../../auth/useAuth";
 import { requestAiCoachChat } from "../../infra/aiCoachChatClient";
 import { buildAiDebugDetails, deriveAiUnavailableMessage } from "../../infra/aiTransportDiagnostics";
 import { resolveRuntimeSessionGate } from "../../logic/sessionRuntime";
+import { resolveAiIntentForCoachRequest } from "../../domain/aiIntent";
 import { COACH_SCREEN_COPY } from "../../ui/labels";
 import { commitPreparedCreatePlan, prepareCreateCommit } from "../create-item/createItemCommit";
 import { getCoachContextSnapshot } from "./coachContextAdapter";
@@ -991,6 +992,11 @@ export function useCoachConversationController({
       if (!message || loading || typeof setData !== "function") return;
       const effectiveMode = conversationMode === "plan" ? "plan" : "free";
       const effectiveUseCase = deriveCoachUseCase(message, conversationUseCase, effectiveMode);
+      const effectiveAiIntent = resolveAiIntentForCoachRequest({
+        mode: effectiveMode,
+        planningState,
+        message,
+      });
       setConversationUseCase(effectiveUseCase);
 
       const userMessage = buildCoachConversationMessage("user", message);
@@ -1025,10 +1031,12 @@ export function useCoachConversationController({
           selectedDateKey: contextSnapshot.selectedDateKey,
           activeCategoryId: contextSnapshot.activeCategoryId,
           mode: effectiveMode,
+          aiIntent: effectiveAiIntent,
           locale: "fr-FR",
           useCase: effectiveUseCase,
           message,
           recentMessages: buildRecentMessagesFromConversation(preparedConversation),
+          planningState,
         },
       });
 

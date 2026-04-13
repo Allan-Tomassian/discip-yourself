@@ -10,13 +10,13 @@ import { buildAiDebugDetails, deriveAiUnavailableMessage } from "../infra/aiTran
 
 function deriveDefaultErrorMessage(result) {
   return deriveAiUnavailableMessage(result, {
-    disabled: "Analyse indisponible sur cet appareil.",
-    unauthorized: "Connecte-toi pour lancer l’analyse.",
-    rateLimited: "Analyse indisponible pour le moment.",
-    offline: "Analyse indisponible hors ligne.",
-    corsPrivateOrigin: "Analyse indisponible sur cette origine de test.",
-    networkUnknown: "Analyse indisponible pour le moment.",
-    fallback: "Analyse indisponible.",
+    disabled: "Lecture indisponible sur cet appareil.",
+    unauthorized: "Connecte-toi pour lancer la lecture.",
+    rateLimited: "Lecture indisponible pour le moment.",
+    offline: "Lecture indisponible hors ligne.",
+    corsPrivateOrigin: "Lecture indisponible sur cette origine de test.",
+    networkUnknown: "Lecture indisponible pour le moment.",
+    fallback: "Lecture indisponible.",
   });
 }
 
@@ -130,7 +130,7 @@ export function useManualAiAnalysis({
         }
         const nextEntry = serializeSuccess(result);
         if (!nextEntry) {
-          setError("Analyse indisponible.");
+          setError("Lecture indisponible.");
           setErrorDiagnostics(
             buildAiDebugDetails(
               {
@@ -173,7 +173,7 @@ export function useManualAiAnalysis({
           entry: nextEntry,
         };
       } catch (runtimeError) {
-        setError("Analyse indisponible.");
+        setError("Lecture indisponible.");
         setErrorDiagnostics(
           buildAiDebugDetails(
             {
