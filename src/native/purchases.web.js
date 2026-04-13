@@ -16,5 +16,11 @@ export async function restore() {
 }
 
 export async function getPremiumEntitlement() {
-  return { premium: false, expiresAt: null, source: "none" };
+  return {
+    premium: false,
+    expiresAt: null,
+    source: "none",
+    status: "unavailable",
+    errorCode: "STORE_UNAVAILABLE",
+  };
 }

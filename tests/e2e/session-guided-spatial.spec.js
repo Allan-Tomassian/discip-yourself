@@ -422,7 +422,7 @@ test("guided active can route back to coach plan mode without surfacing the unav
 
   await expect(page.getByText("Ton copilote stratégique")).toBeVisible();
   await page.locator(".coachSurfaceComposerPlus").click();
-  await page.getByRole("menuitem", { name: /Structurer/i }).click();
+  await page.getByRole("menuitem", { name: /Plan/i }).click();
   await expect(page.getByText("Plan actif")).toBeVisible();
   await page.evaluate(() => {
     document.querySelector(".lovableCoachComposerSend")?.click();

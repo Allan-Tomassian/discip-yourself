@@ -202,22 +202,46 @@ export async function restore() {
 export async function getPremiumEntitlement() {
   const available = await isStoreAvailable();
   if (!available || !Purchases || typeof Purchases.getCurrentTransactions !== "function") {
-    return { premium: false, expiresAt: null, source: SOURCE_NONE };
+    return {
+      premium: false,
+      expiresAt: null,
+      source: SOURCE_NONE,
+      status: "unavailable",
+      errorCode: "STORE_UNAVAILABLE",
+    };
   }
   try {
     const result = await Purchases.getCurrentTransactions();
     const transactions = Array.isArray(result?.transactions) ? result.transactions : [];
     const relevant = transactions.filter((t) => isPremiumTransaction(t));
     if (!relevant.length) {
-      return { premium: false, expiresAt: null, source: SOURCE_STORE };
+      return {
+        premium: false,
+        expiresAt: null,
+        source: SOURCE_STORE,
+        status: "ok",
+        errorCode: null,
+      };
     }
     const active = relevant.filter((t) => isTransactionActive(t));
     const target = (active.length ? active : relevant)[0];
     const expiresAt = resolveExpiry(target);
     const premium = active.length > 0 || Boolean(expiresAt);
-    return { premium, expiresAt: expiresAt || null, source: SOURCE_STORE };
+    return {
+      premium,
+      expiresAt: expiresAt || null,
+      source: SOURCE_STORE,
+      status: "ok",
+      errorCode: null,
+    };
   } catch (err) {
     void err;
-    return { premium: false, expiresAt: null, source: SOURCE_NONE };
+    return {
+      premium: false,
+      expiresAt: null,
+      source: SOURCE_NONE,
+      status: "error",
+      errorCode: "STORE_QUERY_FAILED",
+    };
   }
 }

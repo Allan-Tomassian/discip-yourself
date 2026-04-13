@@ -16,17 +16,19 @@ export default function SessionLaunchView({
   why = "",
   firstStep = "",
   degradedMessage = "",
+  lockedPreview = null,
   onStartStandard,
   onPrepareGuided,
   onRetryGuided,
+  onOpenLockedPaywall,
 }) {
-  if (phase === "preparing") {
+  if (phase === "preparing" || phase === "checking_access") {
     return (
       <div
         className="sessionLaunchPreparing"
         role="status"
         aria-live="polite"
-        data-testid="session-launch-preparing"
+        data-testid={phase === "checking_access" ? "session-launch-checking" : "session-launch-preparing"}
       >
         <div className="sessionLaunchPreparingOrb" aria-hidden="true">
           <span className="sessionLaunchPreparingHalo sessionLaunchPreparingHalo--outer" />
@@ -37,7 +39,9 @@ export default function SessionLaunchView({
             </span>
           </span>
         </div>
-        <div className="sessionLaunchPreparingTitle">Préparation en cours</div>
+        <div className="sessionLaunchPreparingTitle">
+          {phase === "checking_access" ? "Vérification en cours" : "Préparation en cours"}
+        </div>
         <div className="sessionLaunchPreparingMeta">{title}</div>
       </div>
     );
@@ -70,6 +74,98 @@ export default function SessionLaunchView({
             </PrimaryButton>
             <button type="button" className="sessionLaunchTextAction" onClick={onStartStandard}>
               Passer en standard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "access_error") {
+    return (
+      <div className="sessionLaunchViewStack sessionLaunchViewStack--ready" data-testid="session-launch-access-error">
+        <div className="sessionLaunchHero sessionLaunchHero--ready">
+          <div className="sessionLaunchSectionEyebrow">Séance prête</div>
+          <div className="sessionLaunchCategory">{categoryName || "Catégorie"}</div>
+          <div className="sessionLaunchTitle">{title}</div>
+          <div className="sessionLaunchChips">
+            <TimingChip>{timingLabel}</TimingChip>
+            <TimingChip>{durationLabel}</TimingChip>
+          </div>
+        </div>
+        <div className="sessionLaunchCard sessionLaunchCard--ready">
+          <div className="sessionLaunchBrief">
+            <div className="sessionLaunchBriefRow">
+              <div className="sessionLaunchBriefLabel">Accès</div>
+              <div className="sessionLaunchBriefText">
+                {degradedMessage || "Impossible de vérifier l’accès premium pour le moment."}
+              </div>
+            </div>
+          </div>
+          <div className="sessionLaunchActions">
+            <PrimaryButton type="button" className="sessionLaunchPrimary" onClick={onRetryGuided || onPrepareGuided}>
+              Réessayer
+            </PrimaryButton>
+            <button type="button" className="sessionLaunchTextAction" onClick={onStartStandard}>
+              Session standard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "guided_locked") {
+    const previewSteps = Array.isArray(lockedPreview?.steps) ? lockedPreview.steps : [];
+    return (
+      <div className="sessionLaunchViewStack sessionLaunchViewStack--ready" data-testid="session-launch-locked">
+        <div className="sessionLaunchHero sessionLaunchHero--ready">
+          <div className="sessionLaunchSectionEyebrow">Aperçu Premium</div>
+          <div className="sessionLaunchCategory">{categoryName || "Catégorie"}</div>
+          <div className="sessionLaunchTitle">{title}</div>
+          <div className="sessionLaunchChips">
+            <TimingChip>{timingLabel}</TimingChip>
+            <TimingChip>{durationLabel || (Number.isFinite(lockedPreview?.totalDuration) ? `${lockedPreview.totalDuration} min` : "")}</TimingChip>
+          </div>
+        </div>
+        <div className="sessionLaunchCard sessionLaunchCard--ready">
+          <div className="sessionLaunchBrief">
+            {lockedPreview?.objectiveWhy ? (
+              <div className="sessionLaunchBriefRow">
+                <div className="sessionLaunchBriefLabel">Objectif</div>
+                <div className="sessionLaunchBriefText">{lockedPreview.objectiveWhy}</div>
+              </div>
+            ) : null}
+            {lockedPreview?.premiumBenefit ? (
+              <div className="sessionLaunchBriefRow">
+                <div className="sessionLaunchBriefLabel">Avec Premium</div>
+                <div className="sessionLaunchBriefText">{lockedPreview.premiumBenefit}</div>
+              </div>
+            ) : null}
+            {previewSteps.length ? (
+              <div className="sessionLaunchBriefRow">
+                <div className="sessionLaunchBriefLabel">Phases</div>
+                <div className="sessionLaunchBriefText">
+                  {previewSteps
+                    .map((step) => step?.label)
+                    .filter(Boolean)
+                    .join(" · ")}
+                </div>
+              </div>
+            ) : null}
+            {previewSteps[0]?.example ? (
+              <div className="sessionLaunchBriefRow">
+                <div className="sessionLaunchBriefLabel">Exemple</div>
+                <div className="sessionLaunchBriefText">{previewSteps[0].example}</div>
+              </div>
+            ) : null}
+          </div>
+          <div className="sessionLaunchActions">
+            <PrimaryButton type="button" className="sessionLaunchPrimary" onClick={onOpenLockedPaywall}>
+              Découvrir Premium
+            </PrimaryButton>
+            <button type="button" className="sessionLaunchTextAction" onClick={onStartStandard}>
+              Session standard
             </button>
           </div>
         </div>

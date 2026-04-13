@@ -1,5 +1,11 @@
 import { test, expect, devices } from "@playwright/test";
-import { buildBaseState, buildMockProfile, getUserData, seedState } from "./utils/seed.js";
+import {
+  buildBaseState,
+  buildMockAuthSession,
+  buildMockProfile,
+  getUserData,
+  seedState,
+} from "./utils/seed.js";
 import { enablePremium, installSessionGuidanceMock } from "./utils/sessionGuidanceMock.js";
 
 const iPhone13 = devices["iPhone 13"];
@@ -86,8 +92,73 @@ function buildLaunchState({ withBlueprint = true } = {}) {
   return enablePremium(state);
 }
 
-async function seedApp(page, state) {
+function buildFreeLaunchState({ withBlueprint = true } = {}) {
+  const state = buildBaseState({ withContent: true });
+  const today = state.ui.selectedDate;
+
+  state.categories = [
+    { id: "sys_inbox", name: "Général", color: "#64748B", isSystem: true },
+    { id: "cat_sport", name: "Sport", color: "#22C55E" },
+  ];
+  state.ui.categoryRailOrder = ["cat_sport", "sys_inbox"];
+  state.ui.selectedCategoryId = "cat_sport";
+  state.ui.selectedCategoryByView = {
+    home: "cat_sport",
+    library: "cat_sport",
+    plan: "cat_sport",
+    pilotage: "cat_sport",
+  };
+
+  state.goals = [
+    {
+      id: "goal_sport",
+      categoryId: "cat_sport",
+      title: "Séance de sport rapide de 20 minutes",
+      type: "PROCESS",
+      planType: "ONE_OFF",
+      status: "active",
+      oneOffDate: today,
+      timeMode: "FIXED",
+      startTime: "19:00",
+      timeSlots: ["19:00"],
+      reminderTime: "18:40",
+      sessionMinutes: 20,
+      ...(withBlueprint ? { sessionBlueprintV1: buildBlueprint() } : {}),
+    },
+  ];
+  state.habits = [];
+  state.occurrences = [
+    {
+      id: "occ_launch",
+      goalId: "goal_sport",
+      date: today,
+      start: "19:00",
+      slotKey: "19:00",
+      durationMinutes: 20,
+      status: "planned",
+    },
+  ];
+  state.reminders = [];
+  state.profile = {
+    ...(state.profile && typeof state.profile === "object" ? state.profile : {}),
+    plan: "free",
+    entitlements: {
+      ...((state.profile && typeof state.profile.entitlements === "object") ? state.profile.entitlements : {}),
+      premium: false,
+    },
+  };
+
+  return state;
+}
+
+async function seedApp(page, state, { authSession = null } = {}) {
   await seedState(page, state, {
+    authSession:
+      authSession ||
+      buildMockAuthSession({
+        userId: E2E_USER_ID,
+        email: "allan@example.com",
+      }),
     profile: buildMockProfile({
       userId: E2E_USER_ID,
       username: "allan",
@@ -353,6 +424,62 @@ test("premium guided prepare shows an explicit degraded state and retry can reco
   await expect(page.getByText("Mise en route")).toBeVisible();
 
   await attachScreenshot(page, testInfo, "session-guided-degraded-then-retry.png");
+});
+
+test("free users see a bounded premium preview and only hit the paywall from the locked CTA", async ({ page }, testInfo) => {
+  let sessionGuidanceCalls = 0;
+  await page.route("**/ai/session-guidance", async (route) => {
+    sessionGuidanceCalls += 1;
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "SHOULD_NOT_BE_CALLED" }),
+    });
+  });
+
+  await openTimelineLaunch(page, buildFreeLaunchState());
+
+  await page.getByRole("button", { name: "Aller plus loin" }).click();
+
+  await expect(page.getByTestId("session-launch-locked")).toBeVisible();
+  await expect(page.getByText("Aperçu Premium")).toBeVisible();
+  await expect(page.getByText("Avec Premium")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Découvrir Premium" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Session standard" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Démarrer" })).toHaveCount(0);
+  expect(sessionGuidanceCalls).toBe(0);
+
+  await page.getByRole("button", { name: "Découvrir Premium" }).click();
+  await expect(page.getByText("Version complète")).toBeVisible();
+  await expect(page.getByText("Choisir une offre")).toBeVisible();
+
+  await attachScreenshot(page, testInfo, "session-launch-locked-preview-free.png");
+});
+
+test("founder override bypasses the paywall and enters the premium guided flow", async ({ page }, testInfo) => {
+  await installSessionGuidanceMock(page);
+  await seedApp(page, buildFreeLaunchState(), {
+    authSession: buildMockAuthSession({
+      userId: E2E_USER_ID,
+      email: "allan@example.com",
+      appMetadata: { entitlement_override: "founder" },
+    }),
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Planning" }).click();
+  await expect(page.locator(".lovableTimelineCardButton").first()).toBeVisible();
+  await page.locator(".lovableTimelineCardButton").first().click();
+  await page.getByRole("button", { name: /Démarrer la session|Reprendre la session/i }).click();
+
+  await expect(page.getByTestId("session-launch-ready")).toBeVisible();
+  await page.getByRole("button", { name: "Aller plus loin" }).click();
+
+  await expect(page.getByTestId("session-guided-plan")).toBeVisible();
+  await expect(page.getByTestId("session-launch-locked")).toHaveCount(0);
+  await expect(page.getByText("Version complète")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Régénérer" })).toBeVisible();
+
+  await attachScreenshot(page, testInfo, "session-founder-guided-preview.png");
 });
 
 test("occurrences without blueprint bypass Séance prête and keep the current session behavior", async ({ page }, testInfo) => {

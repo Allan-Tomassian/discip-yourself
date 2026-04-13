@@ -805,6 +805,49 @@ test("POST /ai/session-guidance returns backend unavailable when premium prepare
   await app.close();
 });
 
+test("POST /ai/session-guidance allows founder override from auth metadata without billing entitlement", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({
+      id: "user-session-founder",
+      app_metadata: { entitlement_override: "founder" },
+    }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/session-guidance",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.43" },
+    payload: {
+      mode: "prepare",
+      dateKey: TODAY_KEY,
+      occurrenceId: "occ-1",
+      actionId: "goal-1",
+      actionTitle: "Séance de sport rapide",
+      protocolType: "sport",
+      blueprintSnapshot: {
+        version: 1,
+        protocolType: "sport",
+        why: "tenir le bloc",
+        firstStep: "commence par t’échauffer",
+        ifBlocked: "version courte",
+        successDefinition: "séance tenue",
+        estimatedMinutes: 20,
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 503);
+  assert.equal(response.json().error, "SESSION_GUIDANCE_BACKEND_UNAVAILABLE");
+  await app.close();
+});
+
 test("POST /ai/session-guidance returns an AI premium runbook with quality metadata", async () => {
   const insertedLogs = [];
   const app = await buildApp({

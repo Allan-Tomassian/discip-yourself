@@ -26,6 +26,8 @@ describe("session launch contract", () => {
     expect(app).toContain("sessionLaunchState={sessionLaunchState}");
     expect(app).toContain("onOpenPaywall={openPaywall}");
     expect(app).toContain("isPremiumPlan={isPremiumPlan}");
+    expect(app).toContain("ensureResolvedEntitlement={ensureResolved}");
+    expect(app).toContain("entitlementAccess={entitlementAccess}");
     expect(app).not.toContain("setSessionLaunchState((current) => (current ? null : current))");
     expect(home).toContain("onOpenSession({");
     expect(timeline).toContain("onOpenSession");
@@ -43,8 +45,11 @@ describe("session launch contract", () => {
     const tools = readSrc("features/session/sessionTools.js");
 
     expect(session).toContain('launchPhase === "ready"');
+    expect(session).toContain('launchPhase === "checking_access"');
     expect(session).toContain('launchPhase === "preparing"');
+    expect(session).toContain('launchPhase === "guided_locked"');
     expect(session).toContain('launchPhase === "guided_degraded"');
+    expect(session).toContain('launchPhase === "access_error"');
     expect(session).toContain('phase: "guided_preview"');
     expect(session).toContain('phase: "guided_active"');
     expect(session).toContain("const isPrelaunchPhase = shouldShowLaunchSurface;");
@@ -61,11 +66,15 @@ describe("session launch contract", () => {
     expect(session).toContain("sessionToolState");
     expect(session).toContain("guidedSpatialState");
     expect(launchView).toContain('data-testid="session-launch-ready"');
-    expect(launchView).toContain('data-testid="session-launch-preparing"');
+    expect(launchView).toContain('phase === "checking_access" ? "session-launch-checking" : "session-launch-preparing"');
+    expect(launchView).toContain('data-testid="session-launch-locked"');
     expect(launchView).toContain('data-testid="session-launch-degraded"');
+    expect(launchView).toContain('data-testid="session-launch-access-error"');
     expect(launchView).toContain("Séance prête");
+    expect(launchView).toContain("Vérification en cours");
     expect(launchView).toContain("Préparation en cours");
     expect(launchView).toContain("Réessayer");
+    expect(launchView).toContain("Découvrir Premium");
     expect(launchView).toContain("Passer en standard");
     expect(launchView).not.toContain("Plan prêt");
     expect(launchView).toContain("Session standard");

@@ -124,6 +124,8 @@ export function buildMockAuthSession({
   userId = "e2e-user-id",
   email = "e2e@example.com",
   verified = true,
+  appMetadata = null,
+  role = "authenticated",
 } = {}) {
   const emailConfirmedAt = verified ? "2026-03-23T10:00:00.000Z" : "";
   return {
@@ -135,8 +137,8 @@ export function buildMockAuthSession({
       id: userId,
       email,
       aud: "authenticated",
-      role: "authenticated",
-      app_metadata: { provider: "email" },
+      role,
+      app_metadata: { provider: "email", ...(appMetadata && typeof appMetadata === "object" ? appMetadata : {}) },
       user_metadata: {},
       email_confirmed_at: emailConfirmedAt,
       confirmed_at: emailConfirmedAt,

@@ -27,6 +27,32 @@ function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function normalizeLowerString(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function hasFounderEntitlementOverride(user) {
+  const appMetadata = isPlainObject(user?.app_metadata) ? user.app_metadata : {};
+  const entitlementOverride = normalizeLowerString(appMetadata.entitlement_override);
+  if (entitlementOverride === "founder") return true;
+  const role = normalizeLowerString(appMetadata.role || user?.role);
+  return role === "founder" || role === "admin";
+}
+
+function resolveSessionGuidanceEntitlement({ user, entitlement }) {
+  if (hasFounderEntitlementOverride(user)) {
+    return {
+      ...(isPlainObject(entitlement) ? entitlement : {}),
+      plan_tier: "premium",
+    };
+  }
+  return entitlement;
+}
+
+function resolveSessionGuidanceDecisionSource(user) {
+  return hasFounderEntitlementOverride(user) ? "auth_override" : null;
+}
+
 function getClientIp(request) {
   const forwarded = String(request.headers["x-forwarded-for"] || "").split(",")[0]?.trim();
   return forwarded || request.ip || "";
@@ -234,10 +260,15 @@ async function handleCoachRoute({
 
   const requestHash = hashValue(JSON.stringify({ route: coachKind, body: parsedBody.data }));
   let quotaState;
+  const sessionGuidanceEntitlement = resolveSessionGuidanceEntitlement({
+    user: request.user,
+    entitlement: snapshot.entitlement,
+  });
+  const sessionGuidanceDecisionSource = resolveSessionGuidanceDecisionSource(request.user);
   try {
     quotaState = await resolveQuotaState(app.supabase, {
       userId: request.user.id,
-      entitlement: snapshot.entitlement,
+      entitlement: sessionGuidanceEntitlement,
       quotaMode: app.config.AI_QUOTA_MODE,
     });
   } catch (error) {
@@ -435,10 +466,15 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
   }
 
   let quotaState;
+  const sessionGuidanceEntitlement = resolveSessionGuidanceEntitlement({
+    user: request.user,
+    entitlement: snapshot.entitlement,
+  });
+  const sessionGuidanceDecisionSource = resolveSessionGuidanceDecisionSource(request.user);
   try {
     quotaState = await resolveQuotaState(app.supabase, {
       userId: request.user.id,
-      entitlement: snapshot.entitlement,
+      entitlement: sessionGuidanceEntitlement,
       quotaMode: app.config.AI_QUOTA_MODE,
     });
   } catch (error) {
@@ -469,7 +505,7 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
       coachKind: "session-guidance",
       route,
       planTier: quotaState.planTier,
-      decisionSource: null,
+      decisionSource: sessionGuidanceDecisionSource,
       statusCode: 403,
       requestHash,
       ipHash: hashValue(getClientIp(request)),
@@ -525,7 +561,7 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
       coachKind: "session-guidance",
       route,
       planTier: quotaState.planTier,
-      decisionSource: "ai",
+      decisionSource: sessionGuidanceDecisionSource || "ai",
       statusCode: status,
       requestHash,
       ipHash: hashValue(getClientIp(request)),
@@ -551,7 +587,7 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
       coachKind: "session-guidance",
       route,
       planTier: quotaState.planTier,
-      decisionSource: "ai",
+      decisionSource: sessionGuidanceDecisionSource || "ai",
       statusCode: 502,
       requestHash,
       ipHash: hashValue(getClientIp(request)),
@@ -572,7 +608,7 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
     coachKind: "session-guidance",
     route,
     planTier: quotaState.planTier,
-    decisionSource: "ai",
+    decisionSource: sessionGuidanceDecisionSource || "ai",
     statusCode: 200,
     requestHash,
     ipHash: hashValue(getClientIp(request)),

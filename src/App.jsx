@@ -174,6 +174,8 @@ export default function App() {
     openPaywall,
     handlePurchase,
     handleRestorePurchases,
+    ensureResolved,
+    entitlementAccess,
     planLimits,
     isPremiumPlan,
     generationWindowDays,
@@ -255,6 +257,7 @@ export default function App() {
         sessionToolPlan: null,
         sessionToolState: null,
         guidedSpatialState: null,
+        guidedLockedPreview: null,
         openedAtMs: Date.now(),
       });
       setTab("session", {
@@ -1215,6 +1218,8 @@ export default function App() {
           setTab={setTab}
           onOpenLibrary={() => setTab("objectives")}
           onOpenPaywall={openPaywall}
+          ensureResolvedEntitlement={ensureResolved}
+          entitlementAccess={entitlementAccess}
           isPremiumPlan={isPremiumPlan}
           onBack={() => {
             const returnTab =
@@ -1239,7 +1244,13 @@ export default function App() {
       ) : tab === "account" ? (
         <Account data={data} />
       ) : tab === "billing" ? (
-        <Subscription data={data} onOpenPaywall={openPaywall} onRestorePurchases={handleRestorePurchases} />
+        <Subscription
+          data={data}
+          entitlementAccess={entitlementAccess}
+          onOpenPaywall={openPaywall}
+          onRefreshEntitlement={ensureResolved}
+          onRestorePurchases={handleRestorePurchases}
+        />
       ) : tab === "data" ? (
         <DataPage data={data} setData={setData} onOpenPaywall={openPaywall} />
       ) : tab === "privacy" ? (

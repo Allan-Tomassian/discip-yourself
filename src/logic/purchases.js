@@ -79,5 +79,11 @@ export async function getPremiumEntitlement() {
   } catch (err) {
     void err;
   }
-  return { premium: false, expiresAt: null, source: SOURCE_NONE };
+  return {
+    premium: false,
+    expiresAt: null,
+    source: SOURCE_NONE,
+    status: "error",
+    errorCode: "ENTITLEMENT_MODULE_LOAD_FAILED",
+  };
 }

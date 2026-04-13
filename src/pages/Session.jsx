@@ -63,6 +63,10 @@ import {
   toggleSessionToolUtilityCollapse,
 } from "../features/session/sessionTools";
 import {
+  buildBoundedPremiumSessionPreview,
+  resolveSessionPremiumGateDecision,
+} from "../features/session/sessionPremiumGate";
+import {
   SESSION_GUIDANCE_BACKEND_STATES,
   SESSION_GUIDANCE_EXECUTION_SOURCES,
   SESSION_GUIDANCE_OPERATIONS,
@@ -310,6 +314,8 @@ export default function Session({
   categoryId,
   setTab,
   onOpenPaywall,
+  ensureResolvedEntitlement,
+  entitlementAccess = null,
   isPremiumPlan = false,
 }) {
   const { session: authSession } = useAuth();
@@ -353,6 +359,17 @@ export default function Session({
   const adjustRequestRef = useRef(0);
   const toolRequestRef = useRef(0);
   const sessionGuidanceBackendStateRef = useRef(SESSION_GUIDANCE_BACKEND_STATES.UNKNOWN);
+  const currentEntitlementAccess =
+    entitlementAccess && typeof entitlementAccess === "object"
+      ? entitlementAccess
+      : {
+          status: isPremiumPlan ? "premium" : "free",
+          effectiveTier: isPremiumPlan ? "premium" : "free",
+          isResolved: true,
+          canPreviewPremiumSession: true,
+          canLaunchPremiumSession: isPremiumPlan,
+          canOpenPaywall: !isPremiumPlan,
+        };
 
   const routeOccurrence = useMemo(
     () => normalizeOccurrenceForUI(occurrences.find((occurrenceItem) => occurrenceItem?.id === routeOccurrenceId) || null),
@@ -438,7 +455,7 @@ export default function Session({
         requestId: result?.requestId || null,
         errorCode: result?.errorCode || null,
         backendErrorCode: result?.backendErrorCode || null,
-        entitlement: isPremiumPlan ? "premium" : "free",
+        entitlement: currentEntitlementAccess.effectiveTier || "free",
         backendAttempted: attempted,
         validationPassed,
         richnessPassed,
@@ -452,7 +469,13 @@ export default function Session({
       });
       return nextBackendState;
     },
-    [accessToken, goal?.id, isPremiumPlan, selectedOccurrence?.goalId, selectedOccurrence?.id]
+    [
+      accessToken,
+      currentEntitlementAccess.effectiveTier,
+      goal?.id,
+      selectedOccurrence?.goalId,
+      selectedOccurrence?.id,
+    ]
   );
 
   useEffect(() => {
@@ -529,10 +552,21 @@ export default function Session({
     !session &&
     Boolean(blueprintSnapshot) &&
     isLaunchableOccurrence &&
-    (launchPhase === "ready" || launchPhase === "preparing" || launchPhase === "guided_degraded");
+    (
+      launchPhase === "ready" ||
+      launchPhase === "checking_access" ||
+      launchPhase === "preparing" ||
+      launchPhase === "guided_locked" ||
+      launchPhase === "guided_degraded" ||
+      launchPhase === "access_error"
+    );
   const launchMode = launchStateMatchesOccurrence ? currentLaunchState?.launchMode || null : null;
   const launchPrepareMessage = launchStateMatchesOccurrence ? currentLaunchState?.guidedPrepareMessage || "" : "";
   const launchPrepareErrorCode = launchStateMatchesOccurrence ? currentLaunchState?.guidedPrepareErrorCode || null : null;
+  const launchLockedPreview =
+    launchStateMatchesOccurrence && currentLaunchState?.guidedLockedPreview && typeof currentLaunchState.guidedLockedPreview === "object"
+      ? currentLaunchState.guidedLockedPreview
+      : null;
   const launchRunbook = useMemo(
     () => normalizeSessionRunbook(currentLaunchState?.sessionRunbook || null),
     [currentLaunchState?.sessionRunbook]
@@ -780,6 +814,7 @@ export default function Session({
         guidedPrepareMessage: currentValue?.guidedPrepareMessage || "",
         guidedPrepareRequestId: currentValue?.guidedPrepareRequestId || null,
         guidedPreparePlanSource: currentValue?.guidedPreparePlanSource || null,
+        guidedLockedPreview: currentValue?.guidedLockedPreview || null,
         openedAtMs: currentValue?.openedAtMs || Date.now(),
       };
     },
@@ -1012,17 +1047,31 @@ export default function Session({
     }
   }, [preparationTimerId, selectedOccurrence?.id, sessionLaunchState, setSessionLaunchState]);
 
-  const handleLaunchStandard = () => {
-    if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id) return;
-    prepareRequestRef.current += 1;
-    window.clearTimeout(preparationTimerId);
-    setPreparationTimerId(0);
-    closeAdjustSheet();
-    closeToolsSheet();
-    setSessionLaunchState((current) => ({
+  const buildLockedPremiumPreview = useCallback(
+    (fallbackRunbook) =>
+      buildBoundedPremiumSessionPreview({
+        fallbackRunbook,
+        blueprintSnapshot,
+        actionTitle: goal?.title || "Session",
+        durationMinutes:
+          Number.isFinite(selectedOccurrence?.durationMinutes) ? selectedOccurrence.durationMinutes
+          : Number.isFinite(goal?.sessionMinutes) ? goal.sessionMinutes
+          : Number.isFinite(blueprintSnapshot?.estimatedMinutes) ? blueprintSnapshot.estimatedMinutes
+          : null,
+      }),
+    [
+      blueprintSnapshot,
+      goal?.sessionMinutes,
+      goal?.title,
+      selectedOccurrence?.durationMinutes,
+    ]
+  );
+
+  const resetLaunchPrepareArtifacts = useCallback(
+    (current, phase = "ready", extra = {}) => ({
       ...readLaunchStateBase(current),
-      phase: "launched_standard",
-      launchMode: "standard",
+      phase,
+      launchMode: null,
       sessionRunbook: null,
       standardAdjustment: null,
       guidedAdjustment: null,
@@ -1033,16 +1082,53 @@ export default function Session({
       guidedPrepareMessage: "",
       guidedPrepareRequestId: null,
       guidedPreparePlanSource: null,
+      guidedLockedPreview: null,
+      ...extra,
+    }),
+    [readLaunchStateBase]
+  );
+
+  const openLockedPremiumPreview = useCallback(
+    (lockedPreview) => {
+      if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id) return;
+      setSessionLaunchState((current) =>
+        resetLaunchPrepareArtifacts(current, "guided_locked", {
+          guidedLockedPreview: lockedPreview,
+        })
+      );
+    },
+    [resetLaunchPrepareArtifacts, selectedOccurrence?.id, setSessionLaunchState]
+  );
+
+  const openPremiumAccessError = useCallback(
+    (message) => {
+      if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id) return;
+      setSessionLaunchState((current) =>
+        resetLaunchPrepareArtifacts(current, "access_error", {
+          guidedPrepareMessage: message || "Impossible de vérifier l’accès premium pour le moment.",
+          guidedPrepareErrorCode: "ENTITLEMENT_ACCESS_ERROR",
+        })
+      );
+    },
+    [resetLaunchPrepareArtifacts, selectedOccurrence?.id, setSessionLaunchState]
+  );
+
+  const handleLaunchStandard = () => {
+    if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id) return;
+    prepareRequestRef.current += 1;
+    window.clearTimeout(preparationTimerId);
+    setPreparationTimerId(0);
+    closeAdjustSheet();
+    closeToolsSheet();
+    setSessionLaunchState((current) => ({
+      ...resetLaunchPrepareArtifacts(current, "launched_standard"),
+      phase: "launched_standard",
+      launchMode: "standard",
     }));
   };
 
   const handlePrepareGuided = async () => {
     if (typeof setSessionLaunchState !== "function" || !selectedOccurrence?.id || !goal || !blueprintSnapshot) return;
-    if (!isPremiumPlan) {
-      onOpenPaywall?.("Aller plus loin");
-      return;
-    }
-    const forceBackendAttempt = launchPhase === "guided_degraded";
     const fallbackRunbook = buildSessionRunbookV1({
       blueprintSnapshot,
       occurrence: selectedOccurrence,
@@ -1060,21 +1146,28 @@ export default function Session({
     setPreparationTimerId(0);
     closeAdjustSheet();
     closeToolsSheet();
-    setSessionLaunchState((current) => ({
-      ...readLaunchStateBase(current),
-      phase: "preparing",
-      launchMode: null,
-      sessionRunbook: null,
-      standardAdjustment: null,
-      guidedAdjustment: null,
-      sessionToolPlan: null,
-      sessionToolState: null,
-      guidedSpatialState: null,
-      guidedPrepareErrorCode: null,
-      guidedPrepareMessage: "",
-      guidedPrepareRequestId: null,
-      guidedPreparePlanSource: null,
-    }));
+    let resolvedAccess = currentEntitlementAccess;
+    let gateDecision = resolveSessionPremiumGateDecision(resolvedAccess);
+    if (gateDecision === "checking_access") {
+      setSessionLaunchState((current) => resetLaunchPrepareArtifacts(current, "checking_access"));
+      resolvedAccess =
+        typeof ensureResolvedEntitlement === "function"
+          ? await ensureResolvedEntitlement()
+          : currentEntitlementAccess;
+      if (prepareRequestRef.current !== requestId) return;
+      gateDecision = resolveSessionPremiumGateDecision(resolvedAccess);
+    }
+    if (gateDecision === "locked_preview") {
+      openLockedPremiumPreview(buildLockedPremiumPreview(fallbackRunbook));
+      return;
+    }
+    if (gateDecision === "access_error") {
+      openPremiumAccessError("Impossible de vérifier l’accès premium pour le moment. Réessaye ou passe en standard.");
+      return;
+    }
+
+    const forceBackendAttempt = launchPhase === "guided_degraded" || launchPhase === "access_error";
+    setSessionLaunchState((current) => resetLaunchPrepareArtifacts(current, "preparing"));
 
     let nextRunbook = null;
     let nextToolPlan = null;
@@ -1122,9 +1215,6 @@ export default function Session({
         nextToolPlan = buildSessionToolPlan({ sessionRunbook: preparedRunbook });
       }
       degradedMessage = resolveSessionGuidancePrepareFailureMessage(prepareResult?.errorCode || "", prepareQuality);
-      if (prepareResult?.errorCode === "PREMIUM_REQUIRED") {
-        onOpenPaywall?.("Aller plus loin");
-      }
     } else {
       degradedMessage = resolveSessionGuidancePrepareFailureMessage("SESSION_GUIDANCE_BACKEND_UNAVAILABLE", prepareQuality);
     }
@@ -1154,37 +1244,27 @@ export default function Session({
     }
 
     if (prepareRequestRef.current !== requestId) return;
+    if (prepareResult?.errorCode === "PREMIUM_REQUIRED") {
+      const reconciledAccess =
+        typeof ensureResolvedEntitlement === "function"
+          ? await ensureResolvedEntitlement({ force: true })
+          : currentEntitlementAccess;
+      if (prepareRequestRef.current !== requestId) return;
+      const reconciledDecision = resolveSessionPremiumGateDecision(reconciledAccess);
+      if (reconciledDecision === "locked_preview") {
+        openLockedPremiumPreview(buildLockedPremiumPreview(fallbackRunbook));
+        return;
+      }
+      openPremiumAccessError("Impossible de confirmer l’accès premium pour le moment. Réessaye ou passe en standard.");
+      return;
+    }
     setSessionLaunchState((current) => {
       const base = readLaunchStateBase(current);
       if (!base.occurrenceId || base.occurrenceId !== selectedOccurrence.id) return current;
       if (!prepareApplied || !nextRunbook) {
-        if (prepareResult?.errorCode === "PREMIUM_REQUIRED") {
-          return {
-            ...base,
-            phase: "ready",
-            launchMode: null,
-            sessionRunbook: null,
-            standardAdjustment: null,
-            guidedAdjustment: null,
-            sessionToolPlan: null,
-            sessionToolState: null,
-            guidedSpatialState: null,
-            guidedPrepareErrorCode: null,
-            guidedPrepareMessage: "",
-            guidedPrepareRequestId: null,
-            guidedPreparePlanSource: null,
-          };
-        }
         return {
-          ...base,
+          ...resetLaunchPrepareArtifacts(base, "guided_degraded"),
           phase: "guided_degraded",
-          launchMode: null,
-          sessionRunbook: null,
-          standardAdjustment: null,
-          guidedAdjustment: null,
-          sessionToolPlan: null,
-          sessionToolState: null,
-          guidedSpatialState: null,
           guidedPrepareErrorCode: prepareResult?.errorCode || prepareQuality.reason || launchPrepareErrorCode || null,
           guidedPrepareMessage: degradedMessage,
           guidedPrepareRequestId: prepareResult?.requestId || null,
@@ -1219,21 +1299,7 @@ export default function Session({
     setPreparationTimerId(0);
     closeAdjustSheet();
     closeToolsSheet();
-    setSessionLaunchState((current) => ({
-      ...readLaunchStateBase(current),
-      phase: "ready",
-      launchMode: null,
-      sessionRunbook: null,
-      standardAdjustment: null,
-      guidedAdjustment: null,
-      sessionToolPlan: null,
-      sessionToolState: null,
-      guidedSpatialState: null,
-      guidedPrepareErrorCode: null,
-      guidedPrepareMessage: "",
-      guidedPrepareRequestId: null,
-      guidedPreparePlanSource: null,
-    }));
+    setSessionLaunchState((current) => resetLaunchPrepareArtifacts(current, "ready"));
   };
 
   const handleStartGuidedSession = () => {
@@ -1285,6 +1351,10 @@ export default function Session({
     ) {
       return;
     }
+    if (!currentEntitlementAccess.canLaunchPremiumSession) {
+      openLockedPremiumPreview(buildLockedPremiumPreview(launchRunbook));
+      return;
+    }
 
     prepareRequestRef.current += 1;
     const requestId = prepareRequestRef.current;
@@ -1320,9 +1390,6 @@ export default function Session({
         }),
         timeoutMs: 4200,
       });
-      if (prepareResult?.errorCode === "PREMIUM_REQUIRED") {
-        onOpenPaywall?.("Aller plus loin");
-      }
       const prepareQuality = readSessionGuidancePrepareQualityPayload(prepareResult?.payload, launchRunbook);
       const preparedRunbook = readSessionGuidanceRunbookPayload(prepareResult?.payload, launchRunbook);
       if (prepareResult?.ok && prepareQuality.isPremiumReady && preparedRunbook) {
@@ -1355,6 +1422,21 @@ export default function Session({
         result: null,
         applied: false,
       });
+    }
+
+    if (prepareResult?.errorCode === "PREMIUM_REQUIRED") {
+      const reconciledAccess =
+        typeof ensureResolvedEntitlement === "function"
+          ? await ensureResolvedEntitlement({ force: true })
+          : currentEntitlementAccess;
+      if (prepareRequestRef.current !== requestId) return;
+      const reconciledDecision = resolveSessionPremiumGateDecision(reconciledAccess);
+      if (reconciledDecision === "locked_preview") {
+        openLockedPremiumPreview(buildLockedPremiumPreview(launchRunbook));
+        return;
+      }
+      openPremiumAccessError("Impossible de confirmer l’accès premium pour le moment. Réessaye ou passe en standard.");
+      return;
     }
 
     if (prepareRequestRef.current !== requestId) return;
@@ -2053,9 +2135,13 @@ export default function Session({
             why={blueprintSnapshot?.why || ""}
             firstStep={blueprintSnapshot?.firstStep || ""}
             degradedMessage={launchPrepareMessage}
+            lockedPreview={launchLockedPreview}
             onStartStandard={handleLaunchStandard}
             onPrepareGuided={handlePrepareGuided}
             onRetryGuided={handlePrepareGuided}
+            onOpenLockedPaywall={() => {
+              if (currentEntitlementAccess.canOpenPaywall) onOpenPaywall?.("Aller plus loin");
+            }}
           />
         ) : (
           <FocusSessionView
