@@ -443,6 +443,17 @@ export function migrate(prev) {
   if (!next.ui.selectedCategoryByView.today) {
     next.ui.selectedCategoryByView.today = next.ui.selectedCategoryId || null;
   }
+  if (!next.ui.selectedCategoryByView.library) {
+    next.ui.selectedCategoryByView.library = next.ui.selectedCategoryId || null;
+  }
+  if (!next.ui.selectedCategoryByView.planning) {
+    next.ui.selectedCategoryByView.planning =
+      next.ui.selectedCategoryId || next.ui.selectedCategoryByView.today || null;
+  }
+  if (!next.ui.selectedCategoryByView.pilotage) {
+    next.ui.selectedCategoryByView.pilotage =
+      next.ui.selectedCategoryByView.today || next.ui.selectedCategoryId || null;
+  }
   next.ui.selectedCategoryByView.home = next.ui.selectedCategoryByView.today;
   next.ui.selectedCategoryByView.plan = next.ui.selectedCategoryByView.planning;
 

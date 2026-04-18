@@ -168,35 +168,26 @@ export function withSelectedCategoryByView(ui, updates = {}) {
 
 export function sanitizeVisibleCategoryUi(ui, categories) {
   const safeUi = withSelectedCategoryByView(ui);
-  const selectedByView = normalizeSelectedCategoryByView(safeUi.selectedCategoryByView);
   const fallbackVisibleId = getFirstVisibleCategoryId(categories);
   const execution = resolvePreferredVisibleCategoryId({
     categories,
     candidates: [
       getExecutionActiveCategoryId(safeUi),
-      selectedByView.today,
-      selectedByView.planning,
-      selectedByView.pilotage,
+      safeUi?.selectedCategoryByView?.today,
+      safeUi?.selectedCategoryByView?.planning,
+      safeUi?.selectedCategoryByView?.pilotage,
       safeUi.selectedCategoryId,
       fallbackVisibleId,
     ],
   });
-  const library = resolveVisibleCategoryId(getStoredLibraryActiveCategoryId(safeUi), categories);
-  const planning = resolveVisibleCategoryId(selectedByView.planning, categories);
-  const pilotage = resolveVisibleCategoryId(selectedByView.pilotage, categories);
+  const library = resolvePreferredVisibleCategoryId({
+    categories,
+    candidates: [
+      getStoredLibraryActiveCategoryId(safeUi),
+      execution,
+      fallbackVisibleId,
+    ],
+  });
 
-  return withSelectedCategoryByView(
-    {
-      ...safeUi,
-      librarySelectedCategoryId: library,
-    },
-    {
-      today: execution,
-      planning,
-      library,
-      pilotage,
-      selectedCategoryId: execution,
-      librarySelectedCategoryId: library,
-    }
-  );
+  return withLibraryActiveCategoryId(withExecutionActiveCategoryId(safeUi, execution), library);
 }

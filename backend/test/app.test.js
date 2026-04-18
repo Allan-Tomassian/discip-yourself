@@ -829,40 +829,6 @@ test("POST /ai/local-analysis returns a pilotage fallback scoped to pilotage gui
   await app.close();
 });
 
-test("POST /ai/local-analysis returns an objectives fallback scoped to recentring guidance", async () => {
-  const app = await buildApp({
-    config: TEST_CONFIG,
-    verifyAccessToken: async () => ({ id: "user-local-analysis-objectives" }),
-  });
-  app.supabase = createFakeSupabase({
-    userData: createCoachContextUserData(),
-    entitlement: null,
-    dailyCount: 0,
-    monthlyCount: 0,
-  });
-
-  const response = await app.inject({
-    method: "POST",
-    url: "/ai/local-analysis",
-    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.27" },
-    payload: {
-      selectedDateKey: TODAY_KEY,
-      activeCategoryId: "cat-1",
-      surface: "objectives",
-      message: "Recentre ma semaine et dis-moi où agir ensuite.",
-    },
-  });
-
-  assert.equal(response.statusCode, 200);
-  const payload = coachLocalAnalysisResponseSchema.parse(response.json());
-  assert.equal(payload.kind, "chat");
-  assert.equal(payload.decisionSource, "rules");
-  assert.equal(payload.meta.selectedDateKey, TODAY_KEY);
-  assert.equal(payload.primaryAction.intent, "open_planning");
-  assert.equal(payload.secondaryAction?.intent, "open_pilotage");
-  await app.close();
-});
-
 test("POST /ai/local-analysis accepts an AI response that includes direction", async () => {
   const insertedLogs = [];
   const app = await buildApp({
@@ -926,75 +892,6 @@ test("POST /ai/local-analysis accepts an AI response that includes direction", a
   assert.equal(payload.direction, "recalibrer");
   assert.equal(insertedLogs[0]?.coach_kind, "local-analysis");
   assert.equal(insertedLogs[0]?.route, "/ai/local-analysis");
-  await app.close();
-});
-
-test("POST /ai/local-analysis accepts an objectives AI response that opens planning", async () => {
-  const app = await buildApp({
-    config: TEST_CONFIG_WITH_OPENAI,
-    verifyAccessToken: async () => ({ id: "user-local-analysis-ai-objectives" }),
-  });
-  app.supabase = createFakeSupabase({
-    userData: createCoachContextUserData(),
-    entitlement: null,
-    dailyCount: 0,
-    monthlyCount: 0,
-  });
-  app.openai = {
-    chat: {
-      completions: {
-        parse: async () => ({
-          choices: [
-            {
-              message: {
-                parsed: {
-                  kind: "chat",
-                  headline: "Protège le focus sport",
-                  reason: "La surcharge arrive surtout du sport mal arbitré. Réserve le prochain créneau utile et retire un bloc secondaire.",
-                  primaryAction: {
-                    label: "Ouvrir Planning",
-                    intent: "open_planning",
-                    categoryId: "cat-1",
-                    actionId: null,
-                    occurrenceId: null,
-                    dateKey: TODAY_KEY,
-                  },
-                  secondaryAction: {
-                    label: "Approfondir",
-                    intent: "open_pilotage",
-                    categoryId: "cat-1",
-                    actionId: null,
-                    occurrenceId: null,
-                    dateKey: TODAY_KEY,
-                  },
-                  suggestedDurationMin: null,
-                },
-              },
-            },
-          ],
-        }),
-      },
-    },
-  };
-
-  const response = await app.inject({
-    method: "POST",
-    url: "/ai/local-analysis",
-    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.29" },
-    payload: {
-      selectedDateKey: TODAY_KEY,
-      activeCategoryId: "cat-1",
-      surface: "objectives",
-      message: "Recentre la semaine et donne une décision concrète.",
-    },
-  });
-
-  assert.equal(response.statusCode, 200);
-  const payload = coachLocalAnalysisResponseSchema.parse(response.json());
-  assert.equal(payload.kind, "chat");
-  assert.equal(payload.decisionSource, "ai");
-  assert.equal(payload.primaryAction.intent, "open_planning");
-  assert.equal(payload.secondaryAction?.intent, "open_pilotage");
   await app.close();
 });
 

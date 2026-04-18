@@ -17,12 +17,6 @@ export const MANUAL_AI_LOADING_STAGES = Object.freeze({
     "Recherche d’ajustement prioritaire",
     "Vérification cohérence planning",
   ],
-  objectives: [
-    "Analyse des objectifs",
-    "Lecture des tensions utiles",
-    "Recherche du meilleur arbitrage",
-    "Formulation du recentrage",
-  ],
   pilotage: [
     "Analyse du contexte",
     "Lecture des métriques",

@@ -10,21 +10,12 @@ function readSrc(relPath) {
 }
 
 describe("edit item canonical contract", () => {
-  it("keeps editing on planning and out of objectives", () => {
+  it("routes objectives editing through the canonical edit-item page", () => {
     const app = readSrc("App.jsx");
     const objectives = readSrc("pages/Objectives.jsx");
-    const timeline = readSrc("pages/Timeline.jsx");
 
-    expect(objectives).not.toContain("onEditItem");
-    expect(objectives).not.toContain("onOpenCreateAction");
-    expect(objectives).not.toContain("onOpenCreateMenu");
-    expect(objectives).not.toContain("objectives-universal-capture-button");
-    expect(objectives).toContain("onOpenPlanning");
-    expect(objectives).toContain("requestAiLocalAnalysis");
-    expect(objectives).toContain('surface: "objectives"');
-    expect(timeline).toContain("onEditItem?.({");
-    expect(timeline).toContain("TIMELINE_SCREEN_COPY.inlineEditAction");
-    expect(timeline).toContain("TIMELINE_SCREEN_COPY.inlineEditObjective");
+    expect(objectives).toContain("onEditItem,");
+    expect(objectives).toContain("onEditItem?.({ id: action.id, type: \"PROCESS\"");
     expect(objectives).not.toContain("EditItemPanel");
     expect(objectives).not.toContain("editPanelGoalId");
     expect(app).toContain("returnTab: \"objectives\"");

@@ -42,7 +42,7 @@ describe("product wording contract", () => {
     expect(UI_COPY.rerunCoachAnalysis).toBe("Actualiser la lecture");
     expect(MAIN_PAGE_COPY.today.orientation).toBe("Ton prochain pas utile, clairement mis en avant.");
     expect(MAIN_PAGE_COPY.planning.orientation).toBe("Ta feuille de route d'exécution.");
-    expect(MAIN_PAGE_COPY.library.orientation).toBe("Ta salle de contrôle pour protéger l'essentiel.");
+    expect(MAIN_PAGE_COPY.library.orientation).toBe("Une structure par objectifs avec les actions liées en dessous.");
     expect(MAIN_PAGE_COPY.pilotage.orientation).toBe("Ta trajectoire cette semaine.");
     expect(TAB_COPY.timeline).toBe("Planning");
     expect(TAB_COPY.insights).toBe("Analyses");

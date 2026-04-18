@@ -115,9 +115,25 @@ export function useCategorySelectionSync({
     } else if (tab === "today") {
       didInitTodaySyncRef.current = true;
     }
+    if (prevTab !== "objectives" && tab === "objectives" && !librarySelectedCategoryId && libraryEntryCategoryId) {
+      setData((prev) => {
+        const prevCategories = Array.isArray(prev.categories) ? prev.categories : [];
+        if (!prevCategories.some((category) => category.id === libraryEntryCategoryId)) return prev;
+        const prevUi = prev.ui || {};
+        const nextUi = withLibraryActiveCategoryId(prevUi, libraryEntryCategoryId);
+        if (getStoredLibraryActiveCategoryId(prevUi) === libraryEntryCategoryId) return prev;
+        return {
+          ...prev,
+          ui: nextUi,
+        };
+      });
+    }
     prevTabRef.current = tab;
   }, [
     tab,
+    categories,
+    libraryEntryCategoryId,
+    librarySelectedCategoryId,
     setData,
   ]);
 

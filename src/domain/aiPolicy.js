@@ -25,7 +25,6 @@ export const LOCAL_ANALYSIS_SURFACES = Object.freeze({
   GENERIC: "generic",
   PLANNING: "planning",
   PILOTAGE: "pilotage",
-  OBJECTIVES: "objectives",
   TIMELINE: "planning",
   INSIGHTS: "pilotage",
 });
@@ -109,11 +108,6 @@ export const LOCAL_ANALYSIS_SURFACE_POLICY = Object.freeze({
     focus: "cadence, trous, charge et crédibilité du rythme",
     allowedIntents: ["open_today", "open_library", "open_pilotage"],
   }),
-  [LOCAL_ANALYSIS_SURFACES.OBJECTIVES]: Object.freeze({
-    label: "Recentrer la semaine",
-    focus: "objectifs, catégories, actions clés et arbitrage concret",
-    allowedIntents: ["open_planning", "open_pilotage"],
-  }),
   [LOCAL_ANALYSIS_SURFACES.PILOTAGE]: Object.freeze({
     label: "Lecture des analyses",
     focus: "équilibre, surcharge, dérive et continuité",
@@ -136,14 +130,9 @@ export function isConversationCoachMode(value) {
 export function normalizeLocalAnalysisSurface(value, fallback = LOCAL_ANALYSIS_SURFACES.GENERIC) {
   if (value === LOCAL_ANALYSIS_SURFACES.TIMELINE || value === "timeline") return LOCAL_ANALYSIS_SURFACES.PLANNING;
   if (value === LOCAL_ANALYSIS_SURFACES.INSIGHTS || value === "insights") return LOCAL_ANALYSIS_SURFACES.PILOTAGE;
-  if (value === LOCAL_ANALYSIS_SURFACES.OBJECTIVES || value === "objectives" || value === "library") {
-    return LOCAL_ANALYSIS_SURFACES.OBJECTIVES;
-  }
   if (value === LOCAL_ANALYSIS_SURFACES.PLANNING) return LOCAL_ANALYSIS_SURFACES.PLANNING;
   if (value === LOCAL_ANALYSIS_SURFACES.PILOTAGE) return LOCAL_ANALYSIS_SURFACES.PILOTAGE;
-  return fallback === LOCAL_ANALYSIS_SURFACES.PLANNING ||
-    fallback === LOCAL_ANALYSIS_SURFACES.PILOTAGE ||
-    fallback === LOCAL_ANALYSIS_SURFACES.OBJECTIVES
+  return fallback === LOCAL_ANALYSIS_SURFACES.PLANNING || fallback === LOCAL_ANALYSIS_SURFACES.PILOTAGE
     ? fallback
     : LOCAL_ANALYSIS_SURFACES.GENERIC;
 }
