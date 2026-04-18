@@ -112,7 +112,8 @@ export function sanitizeUserDataForCloudSync(data) {
 
   if (!sourceUi) return source;
 
-  const nextUi = { ...sourceUi, activeSession: nextActiveSession };
+  const { sessionPremiumPrepareCacheV1: _sessionPremiumPrepareCacheV1, ...safeUi } = sourceUi;
+  const nextUi = { ...safeUi, activeSession: nextActiveSession };
   return {
     ...source,
     ui: nextUi,
@@ -126,6 +127,9 @@ export function rehydrateUserDataWithLocalGuidedRuntime({ data, localData } = {}
   const localUi = isPlainObject(localSnapshot.ui) ? localSnapshot.ui : null;
   const remoteActiveSession = isPlainObject(remoteUi?.activeSession) ? remoteUi.activeSession : null;
   const localActiveSession = isPlainObject(localUi?.activeSession) ? localUi.activeSession : null;
+  const localPremiumPrepareCache = isPlainObject(localUi?.sessionPremiumPrepareCacheV1)
+    ? localUi.sessionPremiumPrepareCacheV1
+    : null;
 
   if (shouldUseLocalOpenGuidedSession(remoteActiveSession, localActiveSession)) {
     return {
@@ -133,12 +137,20 @@ export function rehydrateUserDataWithLocalGuidedRuntime({ data, localData } = {}
       ui: {
         ...(remoteUi || {}),
         activeSession: { ...localActiveSession },
+        ...(localPremiumPrepareCache ? { sessionPremiumPrepareCacheV1: localPremiumPrepareCache } : {}),
       },
     };
   }
 
   if (!areActiveSessionsCompatibleForGuidedRuntime(remoteActiveSession, localActiveSession)) {
-    return remoteData;
+    if (!localPremiumPrepareCache) return remoteData;
+    return {
+      ...remoteData,
+      ui: {
+        ...(remoteUi || {}),
+        sessionPremiumPrepareCacheV1: localPremiumPrepareCache,
+      },
+    };
   }
 
   const nextActiveSession = { ...remoteActiveSession };
@@ -154,6 +166,7 @@ export function rehydrateUserDataWithLocalGuidedRuntime({ data, localData } = {}
     ui: {
       ...(remoteUi || {}),
       activeSession: nextActiveSession,
+      ...(localPremiumPrepareCache ? { sessionPremiumPrepareCacheV1: localPremiumPrepareCache } : {}),
     },
   };
 }

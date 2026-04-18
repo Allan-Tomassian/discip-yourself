@@ -75,6 +75,15 @@ describe("sessionGuidanceBoundary", () => {
       resolveSessionGuidanceExecutionSource({
         attempted: false,
         applied: false,
+        cacheHit: true,
+        backendState: SESSION_GUIDANCE_BACKEND_STATES.AVAILABLE,
+      })
+    ).toBe(SESSION_GUIDANCE_EXECUTION_SOURCES.LOCAL_ONLY);
+
+    expect(
+      resolveSessionGuidanceExecutionSource({
+        attempted: false,
+        applied: false,
         backendState: SESSION_GUIDANCE_BACKEND_STATES.UNAVAILABLE,
       })
     ).toBe(SESSION_GUIDANCE_EXECUTION_SOURCES.BACKEND_UNAVAILABLE_FALLBACK);

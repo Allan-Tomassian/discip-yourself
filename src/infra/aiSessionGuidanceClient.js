@@ -122,6 +122,7 @@ function summarizeBodyShape(body) {
 
 function normalizeBackendErrorCode(status, backendErrorCode) {
   const code = String(backendErrorCode || "").trim().toUpperCase();
+  if (code === "SESSION_GUIDANCE_PROVIDER_TIMEOUT") return "TIMEOUT";
   if (code === "SESSION_GUIDANCE_BACKEND_UNAVAILABLE") return "SESSION_GUIDANCE_BACKEND_UNAVAILABLE";
   if (code === "AUTH_MISSING" || code === "AUTH_INVALID" || code === "UNAUTHORIZED") return "UNAUTHORIZED";
   if (code === "PREMIUM_REQUIRED") return "PREMIUM_REQUIRED";
@@ -179,6 +180,8 @@ export async function requestAiSessionGuidance({
       payload: null,
       status: null,
       requestId: null,
+      errorMessage: null,
+      errorDetails: null,
       backendErrorCode: null,
       transportMeta,
       responseMeta: null,
@@ -195,6 +198,8 @@ export async function requestAiSessionGuidance({
       payload: null,
       status: null,
       requestId: null,
+      errorMessage: null,
+      errorDetails: null,
       backendErrorCode: null,
       transportMeta,
       responseMeta: null,
@@ -210,6 +215,8 @@ export async function requestAiSessionGuidance({
       payload: null,
       status: 401,
       requestId: null,
+      errorMessage: null,
+      errorDetails: null,
       backendErrorCode: "UNAUTHORIZED",
       transportMeta,
       responseMeta: null,
@@ -228,6 +235,8 @@ export async function requestAiSessionGuidance({
       payload: null,
       status: null,
       requestId: null,
+      errorMessage: null,
+      errorDetails: null,
       backendErrorCode: null,
       transportMeta,
       responseMeta: null,
@@ -267,6 +276,8 @@ export async function requestAiSessionGuidance({
       payload: null,
       status: null,
       requestId: null,
+      errorMessage: null,
+      errorDetails: null,
       backendErrorCode: null,
       transportMeta,
       responseMeta: null,
@@ -278,17 +289,21 @@ export async function requestAiSessionGuidance({
   const body = await safeParseJson(response);
   const shape = summarizeBodyShape(body);
   const requestId = shape.requestId;
-  const backendErrorCode = normalizeBackendErrorCode(response.status, body?.error || body?.errorCode);
-  const transportMeta = buildTransport(response.ok ? null : backendErrorCode);
+  const rawBackendErrorCode =
+    typeof body?.error === "string" ? body.error
+    : typeof body?.errorCode === "string" ? body.errorCode
+    : null;
+  const errorCode = normalizeBackendErrorCode(response.status, rawBackendErrorCode);
+  const transportMeta = buildTransport(response.ok ? null : errorCode);
 
   if (!response.ok) {
     logAiTransportIssue({
       endpoint: "/ai/session-guidance",
-      errorCode: backendErrorCode,
+      errorCode,
       status: response.status,
       requestId,
       mode: normalizedPayload.mode,
-      backendErrorCode,
+      backendErrorCode: rawBackendErrorCode,
       responseKind: shape.responseKind,
       responseMode: shape.responseMode,
       bodyKeys: shape.bodyKeys,
@@ -296,11 +311,13 @@ export async function requestAiSessionGuidance({
     });
     return {
       ok: false,
-      errorCode: backendErrorCode,
+      errorCode,
       payload: null,
       status: response.status,
       requestId,
-      backendErrorCode,
+      errorMessage: typeof body?.message === "string" ? body.message : null,
+      errorDetails: isPlainObject(body?.details) ? body.details : null,
+      backendErrorCode: rawBackendErrorCode,
       transportMeta,
       responseMeta: isPlainObject(body?.meta) ? body.meta : null,
       ...buildResultMeta(transportMeta),
@@ -324,6 +341,8 @@ export async function requestAiSessionGuidance({
       payload: null,
       status: response.status,
       requestId,
+      errorMessage: null,
+      errorDetails: null,
       backendErrorCode: null,
       transportMeta,
       responseMeta: isPlainObject(body?.meta) ? body.meta : null,
@@ -337,6 +356,8 @@ export async function requestAiSessionGuidance({
     payload: body.payload,
     status: response.status,
     requestId,
+    errorMessage: null,
+    errorDetails: null,
     backendErrorCode: null,
     transportMeta,
     responseMeta: isPlainObject(body?.meta) ? body.meta : null,

@@ -65,6 +65,35 @@ describe("aiLocalAnalysisClient", () => {
     ).toBe("review");
   });
 
+  it("accepte la surface objectives et l'intent open_planning", () => {
+    expect(
+      isAiLocalAnalysisResponse(
+        buildLocalAnalysisResponse({
+          primaryAction: {
+            label: "Ouvrir Planning",
+            intent: "open_planning",
+            categoryId: "cat-1",
+            actionId: null,
+            occurrenceId: null,
+            dateKey: "2026-03-25",
+          },
+        }),
+      ),
+    ).toBe(true);
+
+    expect(
+      normalizeAiLocalAnalysisPayload({
+        selectedDateKey: "2026-03-25",
+        activeCategoryId: "cat-1",
+        surface: "objectives",
+        message: "Recentre ma semaine.",
+      }),
+    ).toMatchObject({
+      surface: "objectives",
+      aiIntent: "review",
+    });
+  });
+
   it("retourne un diagnostic offline quand le navigateur est hors ligne", async () => {
     vi.stubGlobal("window", {
       location: {

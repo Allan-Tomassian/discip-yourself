@@ -4,6 +4,7 @@ import { buildPilotageDisciplineTrend } from "../../../../src/features/pilotage/
 import { getCategoryProfileSummary } from "../../../../src/domain/categoryProfile.js";
 import { LOCAL_ANALYSIS_SURFACES, normalizeLocalAnalysisSurface } from "../../../../src/domain/aiPolicy.js";
 import { resolveAiIntentForChatContext } from "../../../../src/domain/aiIntent.js";
+import { addDaysLocal } from "../../../../src/utils/datetime.js";
 import { detectCoachBehavior } from "../coach/coachBehavior.js";
 
 const AI_FOUNDATION_PLANNING_TEMPLATE_ID = "ai_onboarding_planning";
@@ -318,6 +319,121 @@ function buildPilotageSummary(data, activeCategoryId) {
   };
 }
 
+function buildObjectivesSummary(data, activeCategoryId, activeDate) {
+  const categoriesById = new Map(
+    safeArray(data?.categories)
+      .filter((category) => category?.id && category.id !== "sys_inbox" && category.system !== true)
+      .map((category) => [category.id, category]),
+  );
+  const goals = safeArray(data?.goals).filter((goal) => goal?.id && categoriesById.has(goal.categoryId || ""));
+  const outcomes = goals.filter((goal) => {
+    const type = typeof goal?.type === "string" ? goal.type.toUpperCase() : "";
+    return type === "OUTCOME" && (!activeCategoryId || goal.categoryId === activeCategoryId);
+  });
+  const actions = goals.filter((goal) => isProcessGoal(goal) && (!activeCategoryId || goal.categoryId === activeCategoryId));
+  const actionIds = new Set(actions.map((action) => action.id));
+  const actionById = new Map(actions.map((action) => [action.id, action]));
+  const outcomeById = new Map(outcomes.map((outcome) => [outcome.id, outcome]));
+  const fromKey = activeDate || toDateKey(new Date());
+  const toKey = addDaysLocal(fromKey, 6);
+  const occurrencesByGoalId = new Map();
+
+  for (const occurrence of safeArray(data?.occurrences)) {
+    if (!actionIds.has(occurrence?.goalId)) continue;
+    const dateKey = typeof occurrence?.date === "string" ? occurrence.date : "";
+    if (!dateKey || dateKey < fromKey || dateKey > toKey) continue;
+    const list = occurrencesByGoalId.get(occurrence.goalId) || [];
+    list.push(occurrence);
+    occurrencesByGoalId.set(occurrence.goalId, list);
+  }
+
+  const actionSummaries = actions.map((action) => {
+    const linkedOutcome =
+      outcomeById.get(typeof action?.parentId === "string" ? action.parentId : "") ||
+      outcomeById.get(typeof action?.outcomeId === "string" ? action.outcomeId : "") ||
+      null;
+    const occurrences = occurrencesByGoalId.get(action.id) || [];
+    const expectedCount = occurrences.filter((occurrence) => {
+      const status = typeof occurrence?.status === "string" ? occurrence.status.toLowerCase() : "";
+      return status !== "canceled" && status !== "skipped";
+    }).length;
+    const doneCount = occurrences.filter((occurrence) => {
+      const status = typeof occurrence?.status === "string" ? occurrence.status.toLowerCase() : "";
+      return status === "done";
+    }).length;
+    const totalMinutes = occurrences.reduce(
+      (sum, occurrence) => sum + (Number.isFinite(occurrence?.durationMinutes) ? occurrence.durationMinutes : 0),
+      0,
+    );
+    return {
+      action,
+      linkedOutcome,
+      expectedCount,
+      doneCount,
+      totalMinutes,
+    };
+  });
+
+  const objectiveSummaries = outcomes.map((outcome) => {
+    const linkedActions = actionSummaries.filter((entry) => entry.linkedOutcome?.id === outcome.id);
+    const expectedCount = linkedActions.reduce((sum, entry) => sum + entry.expectedCount, 0);
+    const doneCount = linkedActions.reduce((sum, entry) => sum + entry.doneCount, 0);
+    const totalMinutes = linkedActions.reduce((sum, entry) => sum + entry.totalMinutes, 0);
+    const progress = Number.isFinite(outcome?.progress) ? outcome.progress : 0;
+    return {
+      outcome,
+      linkedActions,
+      expectedCount,
+      doneCount,
+      totalMinutes,
+      progress,
+      stalled: linkedActions.length === 0 || (expectedCount === 0 && doneCount === 0),
+      overflow: expectedCount >= 4 && doneCount === 0,
+      protect: progress >= 0.55 || doneCount > 0 || totalMinutes >= 45,
+    };
+  });
+
+  const minutesByCategory = new Map();
+  for (const summary of actionSummaries) {
+    const categoryId = summary.action?.categoryId || null;
+    if (!categoryId) continue;
+    minutesByCategory.set(categoryId, (minutesByCategory.get(categoryId) || 0) + summary.totalMinutes);
+  }
+
+  let dominantCategoryName = null;
+  let dominantCategoryMinutes = 0;
+  for (const [categoryId, minutes] of minutesByCategory.entries()) {
+    if (minutes > dominantCategoryMinutes) {
+      dominantCategoryMinutes = minutes;
+      dominantCategoryName = categoriesById.get(categoryId)?.name || null;
+    }
+  }
+
+  const protectObjective = objectiveSummaries.find((entry) => entry.protect) || objectiveSummaries[0] || null;
+  const loosenObjective =
+    objectiveSummaries.find((entry) => entry.overflow) ||
+    (dominantCategoryName ? { outcome: { title: dominantCategoryName } } : null);
+  const reframeObjective =
+    objectiveSummaries.find((entry) => entry.stalled) ||
+    actionSummaries.find((entry) => !entry.linkedOutcome) ||
+    null;
+
+  return {
+    objectiveCount: objectiveSummaries.length,
+    actionCount: actionSummaries.length,
+    orphanActionCount: actionSummaries.filter((entry) => !entry.linkedOutcome).length,
+    stalledObjectiveCount: objectiveSummaries.filter((entry) => entry.stalled).length,
+    overflowObjectiveCount: objectiveSummaries.filter((entry) => entry.overflow).length,
+    dominantObjectiveLabel: protectObjective?.outcome?.title || null,
+    dominantCategoryName,
+    protectLabel: protectObjective?.outcome?.title || null,
+    loosenLabel: loosenObjective?.outcome?.title || null,
+    reframeLabel: reframeObjective?.outcome?.title || reframeObjective?.action?.title || null,
+    fromKey,
+    toKey,
+  };
+}
+
 export function buildChatContext({
   data,
   selectedDateKey,
@@ -377,6 +493,7 @@ export function buildChatContext({
     availableCategories: buildAvailableCategories(data),
     actionSummaries,
     planningSummary,
+    objectivesSummary: buildObjectivesSummary(data, activeCategoryId, selectedDateKey),
     pilotageSummary: buildPilotageSummary(data, activeCategoryId),
     categorySnapshot: baseContext.categoryCoherence?.categorySnapshot || null,
     relatedCategoryProfileSummaries: buildRelatedCategoryProfileSummaries({

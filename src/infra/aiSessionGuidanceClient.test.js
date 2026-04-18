@@ -112,6 +112,78 @@ describe("aiSessionGuidanceClient", () => {
     expect(result.errorCode).toBe("PREMIUM_REQUIRED");
   });
 
+  it("keeps backend diagnostics for invalid premium payloads", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      json: async () => ({
+        error: "INVALID_SESSION_GUIDANCE_RESPONSE",
+        requestId: "req-session-guidance-invalid",
+        message: "Session guidance response is invalid.",
+        details: {
+          rejectionReason: "provider_parse_failed",
+          rejectionStage: "provider_parse",
+        },
+      }),
+    });
+
+    const result = await requestAiSessionGuidance({
+      accessToken: "token",
+      baseUrl: "https://ai.example.com",
+      fetchImpl,
+      payload: {
+        mode: "prepare",
+        dateKey: "2026-03-25",
+        occurrenceId: "occ-1",
+        actionId: "goal-1",
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errorCode).toBe("INVALID_RESPONSE");
+    expect(result.errorDetails).toEqual({
+      rejectionReason: "provider_parse_failed",
+      rejectionStage: "provider_parse",
+    });
+    expect(result.errorMessage).toBe("Session guidance response is invalid.");
+  });
+
+  it("maps an explicit backend provider timeout to TIMEOUT while preserving the backend error code", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 504,
+      json: async () => ({
+        error: "SESSION_GUIDANCE_PROVIDER_TIMEOUT",
+        requestId: "req-session-guidance-timeout",
+        message: "Session guidance provider timed out.",
+        details: {
+          providerStatus: "timeout",
+          timeoutMs: 12000,
+        },
+      }),
+    });
+
+    const result = await requestAiSessionGuidance({
+      accessToken: "token",
+      baseUrl: "https://ai.example.com",
+      fetchImpl,
+      payload: {
+        mode: "prepare",
+        dateKey: "2026-03-25",
+        occurrenceId: "occ-1",
+        actionId: "goal-1",
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errorCode).toBe("TIMEOUT");
+    expect(result.backendErrorCode).toBe("SESSION_GUIDANCE_PROVIDER_TIMEOUT");
+    expect(result.errorDetails).toEqual({
+      providerStatus: "timeout",
+      timeoutMs: 12000,
+    });
+  });
+
   it("classifie une route absente comme backend optional unavailable", async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: false,

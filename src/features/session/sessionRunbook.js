@@ -132,8 +132,23 @@ function buildFallbackObjective(blueprint) {
   });
 }
 
+export const PREPARED_SESSION_REJECTION_REASONS = Object.freeze({
+  PROVIDER_PARSE_FAILED: "provider_parse_failed",
+  RUNBOOK_SHAPE_FAILED: "runbook_shape_failed",
+  RICHNESS_FAILED: "richness_failed",
+  VALIDATION_FAILED: "validation_failed",
+});
+
+export const PREPARED_SESSION_REJECTION_STAGES = Object.freeze({
+  PROVIDER_PARSE: "provider_parse",
+  RUNBOOK_NORMALIZATION: "runbook_normalization",
+  QUALITY_GATE: "quality_gate",
+  RENDERABILITY: "renderability",
+});
+
 const PREMIUM_GENERIC_ITEM_LABELS = new Set([
   "activation generale",
+  "mise en route",
   "passage principal",
   "relance courte",
   "rouvre le contexte",
@@ -142,6 +157,10 @@ const PREMIUM_GENERIC_ITEM_LABELS = new Set([
   "trace exploitable",
   "noter la reprise",
   "nettoyer le contexte",
+  "deuxieme passage",
+  "sortie propre",
+  "sortie controlee",
+  "sequence utile",
   "enchainement principal",
   "amplitude controlee",
   "ouverture articulaire",
@@ -170,29 +189,93 @@ function countNonGenericItemLabels(runbook) {
     .length;
 }
 
+function countRunbookItems(runbook) {
+  if (!runbook || !Array.isArray(runbook.steps)) return 0;
+  return runbook.steps.reduce(
+    (count, step) => count + (Array.isArray(step?.items) ? step.items.length : 0),
+    0
+  );
+}
+
+function isSportWarmupStep(step) {
+  const stepText = normalizeMatchText(`${step?.label || ""} ${step?.purpose || ""}`);
+  return /\b(echauff\w*|activation|mise en route|ouverture|mobilit\w*|prep\w*)\b/.test(stepText);
+}
+
+function isSportCooldownStep(step) {
+  const stepText = normalizeMatchText(`${step?.label || ""} ${step?.purpose || ""}`);
+  return /\b(retour|calme|recuper\w*|souffle|decompression|etirement\w*|redescente)\b/.test(stepText);
+}
+
+function isSportMainStep(step) {
+  return !isSportWarmupStep(step) && !isSportCooldownStep(step);
+}
+
+function hasSportWorkTarget(item) {
+  const guidance = normalizeMatchText(item?.guidance);
+  return (
+    (item?.restSec || 0) > 0 ||
+    (item?.execution?.restSec || 0) > 0 ||
+    asString(item?.execution?.reps).length > 0 ||
+    (Number.isFinite(item?.execution?.durationSec) && item.execution.durationSec > 0) ||
+    asString(item?.execution?.tempo).length > 0 ||
+    /\b(\d+\s?(rep|reps|serie|series|sec|seconde|secondes|min|minute|minutes)|x\s?\d+|tempo)\b/.test(guidance)
+  );
+}
+
+function hasSportTransitionSignal(item) {
+  const transitionText = normalizeMatchText(`${item?.transitionLabel || ""} ${item?.guidance || ""}`);
+  return (
+    asString(item?.transitionLabel).length >= 4 ||
+    (item?.restSec || 0) > 0 ||
+    (item?.execution?.restSec || 0) > 0 ||
+    /\b(ensuite|puis|avant de|entre chaque|entre les passages|recup|recuper|enchaine|alterne)\b/.test(
+      transitionText
+    )
+  );
+}
+
 function hasSportSpecificRichness(runbook) {
-  const labels = runbook.steps.flatMap((step) => step.items.map((item) => normalizeMatchText(item.label)));
-  const guidance = runbook.steps.flatMap((step) => step.items.map((item) => normalizeMatchText(item.guidance)));
-  const hasNamedExercise = labels.some(
+  const items = runbook.steps.flatMap((step) => step.items);
+  const mainBlockItems = runbook.steps.filter((step) => isSportMainStep(step)).flatMap((step) => step.items);
+  const warmupItems = runbook.steps.filter((step) => isSportWarmupStep(step)).flatMap((step) => step.items);
+  const cooldownItems = runbook.steps.filter((step) => isSportCooldownStep(step)).flatMap((step) => step.items);
+  const labels = items.map((item) => normalizeMatchText(item.label));
+  const guidance = items.map((item) => normalizeMatchText(item.guidance));
+  const namedExerciseCount = labels.filter(
     (label) =>
-      label.length >= 10 &&
+      label.length >= 5 &&
       !PREMIUM_GENERIC_ITEM_LABELS.has(label) &&
-      !["effort", "activation", "echauffement", "retour au calme"].includes(label)
-  );
-  const hasCadenceOrRest = runbook.steps
-    .flatMap((step) => step.items)
-    .some((item) => item.restSec > 0 || /\b(rep|reps|serie|series|tempo|repos?)\b/.test(normalizeMatchText(item.guidance)));
+      !["effort", "activation", "echauffement", "bloc principal", "bloc effort", "retour au calme"].includes(label)
+  ).length;
+  const quantifiedMainItemCount = mainBlockItems.filter((item) => hasSportWorkTarget(item)).length;
+  const transitionSignalCount = items.filter((item) => hasSportTransitionSignal(item)).length;
+  const cuefulMainItemCount = mainBlockItems.filter((item) => asString(item.successCue).length >= 8).length;
   const hasWarmup = runbook.steps.some((step) =>
-    /\b(echauff|activation|mise en route)\b/.test(normalizeMatchText(step.label))
+    /\b(echauff\w*|activation|mise en route|ouverture|mobilit\w*)\b/.test(normalizeMatchText(step.label))
   );
-  const hasCooldown = runbook.steps.some((step) => /\b(retour|calme|recuperation|souffle)\b/.test(normalizeMatchText(step.label)));
-  const hasUsefulGuidance = guidance.filter((entry) => entry.length >= 20).length >= 4;
-  return hasNamedExercise && hasCadenceOrRest && hasWarmup && hasCooldown && hasUsefulGuidance;
+  const hasCooldown = runbook.steps.some((step) =>
+    /\b(retour|calme|recuperation|souffle|decompression|etirement\w*)\b/.test(normalizeMatchText(step.label))
+  );
+  const usefulGuidanceCount = guidance.filter((entry) => entry.length >= 20).length;
+  return (
+    hasWarmup &&
+    hasCooldown &&
+    mainBlockItems.length >= 2 &&
+    warmupItems.length >= 2 &&
+    cooldownItems.length >= 1 &&
+    namedExerciseCount >= 4 &&
+    quantifiedMainItemCount >= 2 &&
+    transitionSignalCount >= 2 &&
+    cuefulMainItemCount >= 2 &&
+    usefulGuidanceCount >= 5
+  );
 }
 
 function hasDeepWorkRichness(runbook) {
-  const labels = runbook.steps.flatMap((step) => step.items.map((item) => normalizeMatchText(item.label)));
-  const guidance = runbook.steps.flatMap((step) => step.items.map((item) => normalizeMatchText(item.guidance)));
+  const items = runbook.steps.flatMap((step) => step.items);
+  const labels = items.map((item) => normalizeMatchText(item.label));
+  const guidance = items.map((item) => normalizeMatchText(item.guidance));
   const hasConcreteSubdeliverable = labels.some(
     (label) =>
       label.length >= 10 &&
@@ -202,8 +285,36 @@ function hasDeepWorkRichness(runbook) {
   const hasDeliverableSignal = guidance.some((entry) =>
     /\b(livrable|version|section|note|plan|preuve|trace|critere|critere de fin|sortie)\b/.test(entry)
   );
-  const hasRelaunchSignal = guidance.some((entry) => /\b(reprends|relance|reprendre|bloque|si tu bloques)\b/.test(entry));
-  return hasConcreteSubdeliverable && hasDeliverableSignal && hasRelaunchSignal;
+  const hasStructuredExecution = items.some(
+    (item) =>
+      asString(item.execution?.deliverable).length >= 8 ||
+      asString(item.execution?.doneWhen).length >= 8
+  );
+  const hasRelaunchSignal =
+    guidance.some((entry) => /\b(reprends|relance|reprendre|bloque|si tu bloques)\b/.test(entry)) ||
+    items.some((item) => asString(item.execution?.relaunchCue).length >= 8);
+  return hasConcreteSubdeliverable && (hasDeliverableSignal || hasStructuredExecution) && hasRelaunchSignal;
+}
+
+function hasAdminRichness(runbook) {
+  const items = runbook.steps.flatMap((step) => step.items);
+  const labels = items.map((item) => normalizeMatchText(item.label));
+  const guidance = items.map((item) => normalizeMatchText(item.guidance));
+  const hasConcreteAction = labels.some(
+    (label) =>
+      label.length >= 8 &&
+      !PREMIUM_GENERIC_ITEM_LABELS.has(label) &&
+      !["ouverture", "traitement", "cloture", "administration"].includes(label)
+  );
+  const hasCompletionSignal =
+    guidance.some((entry) =>
+      /\b(envoye|envoyer|archive|archiver|classe|classer|valide|valider|confirme|confirmer|ferme|fermer|mis a jour|preuve|sortie)\b/.test(entry)
+    ) ||
+    items.some((item) => asString(item.execution?.doneWhen).length >= 8);
+  const hasRelaunchSignal =
+    guidance.some((entry) => /\b(prochaine|suite|reprends|relance|si tu bloques|ensuite)\b/.test(entry)) ||
+    items.some((item) => asString(item.execution?.relaunchCue).length >= 8);
+  return hasConcreteAction && hasCompletionSignal && hasRelaunchSignal;
 }
 
 function hasGenericPremiumRichness(runbook) {
@@ -215,18 +326,53 @@ function hasGenericPremiumRichness(runbook) {
   return nonGenericItemLabels >= 4 && longGuidanceCount >= 4;
 }
 
-function normalizePreparedQuality(rawValue) {
+function normalizeIssuePaths(rawValue) {
+  return (Array.isArray(rawValue) ? rawValue : [])
+    .map((entry) => asString(entry))
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+export function createEmptyPreparedSessionQuality(overrides = {}) {
+  return {
+    isPremiumReady: null,
+    validationPassed: null,
+    richnessPassed: null,
+    reason: null,
+    rejectionReason: null,
+    rejectionStage: null,
+    stepCount: null,
+    itemCount: null,
+    issuePaths: [],
+    ...overrides,
+  };
+}
+
+export function normalizePreparedSessionQuality(rawValue) {
   const source = isPlainObject(rawValue) ? rawValue : {};
   const validationPassed = typeof source.validationPassed === "boolean" ? source.validationPassed : null;
   const richnessPassed = typeof source.richnessPassed === "boolean" ? source.richnessPassed : null;
   const isPremiumReady = typeof source.isPremiumReady === "boolean" ? source.isPremiumReady : null;
-  const reason = asString(source.reason) || null;
-  return {
+  const rejectionReason = asString(source.rejectionReason || source.reason) || null;
+  const reason = asString(source.reason) || rejectionReason || null;
+  const rejectionStage = asString(source.rejectionStage) || null;
+  const stepCount =
+    Number.isFinite(source.stepCount) ? Math.max(0, Math.round(source.stepCount))
+    : null;
+  const itemCount =
+    Number.isFinite(source.itemCount) ? Math.max(0, Math.round(source.itemCount))
+    : null;
+  return createEmptyPreparedSessionQuality({
     isPremiumReady,
     validationPassed,
     richnessPassed,
     reason,
-  };
+    rejectionReason,
+    rejectionStage,
+    stepCount,
+    itemCount,
+    issuePaths: normalizeIssuePaths(source.issuePaths || source.zodIssuePaths),
+  });
 }
 
 export function normalizeSessionBlueprintSnapshot(rawValue) {
@@ -620,13 +766,47 @@ function createFallbackRunbook({
   };
 }
 
+function normalizeRunbookExecution(rawValue, { fallback = null } = {}) {
+  const source = isPlainObject(rawValue) ? rawValue : fallback;
+  if (!isPlainObject(source)) return null;
+
+  const repsRaw = source.reps ?? fallback?.reps;
+  const reps =
+    typeof repsRaw === "string" ? limitText(repsRaw, 32, "")
+    : Number.isFinite(repsRaw) && repsRaw > 0 ? String(Math.round(repsRaw))
+    : "";
+  const durationSecRaw = source.durationSec ?? fallback?.durationSec;
+  const durationSec =
+    Number.isFinite(durationSecRaw) && durationSecRaw > 0 ? normalizePositiveSeconds(durationSecRaw, 0) : 0;
+  const tempo = limitText(source.tempo || fallback?.tempo, 32, "");
+  const deliverable = limitText(source.deliverable || fallback?.deliverable, 160, "");
+  const doneWhen = limitText(source.doneWhen || fallback?.doneWhen, 160, "");
+  const relaunchCue = limitText(source.relaunchCue || fallback?.relaunchCue, 160, "");
+  const restSecRaw = source.restSec ?? fallback?.restSec;
+  const restSec =
+    Number.isFinite(restSecRaw) && restSecRaw > 0 ? normalizePositiveSeconds(restSecRaw, 0) : 0;
+
+  if (!reps && !durationSec && !tempo && !deliverable && !doneWhen && !relaunchCue && !restSec) return null;
+
+  const execution = {};
+  if (reps) execution.reps = reps;
+  if (durationSec) execution.durationSec = durationSec;
+  if (tempo) execution.tempo = tempo;
+  if (deliverable) execution.deliverable = deliverable;
+  if (doneWhen) execution.doneWhen = doneWhen;
+  if (relaunchCue) execution.relaunchCue = relaunchCue;
+  if (restSec) execution.restSec = restSec;
+  return execution;
+}
+
 function normalizeRunbookItem(rawValue, { fallback = null, itemId = "" } = {}) {
   const source = isPlainObject(rawValue) ? rawValue : fallback;
   if (!isPlainObject(source)) return null;
   const label = limitText(source.label || fallback?.label, 56);
   const guidance = limitText(source.guidance || fallback?.guidance, 160);
   if (!label || !guidance) return null;
-  return {
+  const execution = normalizeRunbookExecution(source.execution || fallback?.execution || null);
+  const normalized = {
     id: asString(source.id || fallback?.id) || itemId || slugify(label, "item"),
     kind: asString(source.kind || fallback?.kind || "task").toLowerCase() || "task",
     label,
@@ -636,6 +816,8 @@ function normalizeRunbookItem(rawValue, { fallback = null, itemId = "" } = {}) {
     restSec: normalizePositiveSeconds(source.restSec ?? fallback?.restSec, 0),
     transitionLabel: limitText(source.transitionLabel || fallback?.transitionLabel, 80, ""),
   };
+  if (execution) normalized.execution = execution;
+  return normalized;
 }
 
 function normalizeRunbookStep(rawValue, { fallback = null, stepIndex = 0, runbookSeed = "runbook" } = {}) {
@@ -736,25 +918,35 @@ export function assessPreparedSessionRunbookQuality({
   fallbackRunbook = null,
 } = {}) {
   const normalizedRunbook = normalizePreparedSessionRunbook(preparedRunbook, { fallbackRunbook });
-  const providedQuality = normalizePreparedQuality(quality);
+  const providedQuality = normalizePreparedSessionQuality(quality);
   if (!normalizedRunbook) {
-    return {
-      isPremiumReady: false,
+    return createEmptyPreparedSessionQuality({
       validationPassed: false,
       richnessPassed: false,
-      reason: providedQuality.reason || "invalid_runbook",
-    };
+      reason: providedQuality.reason || PREPARED_SESSION_REJECTION_REASONS.RUNBOOK_SHAPE_FAILED,
+      rejectionReason:
+        providedQuality.rejectionReason || PREPARED_SESSION_REJECTION_REASONS.RUNBOOK_SHAPE_FAILED,
+      rejectionStage:
+        providedQuality.rejectionStage || PREPARED_SESSION_REJECTION_STAGES.RUNBOOK_NORMALIZATION,
+      stepCount: providedQuality.stepCount,
+      itemCount: providedQuality.itemCount,
+      issuePaths: providedQuality.issuePaths,
+    });
   }
 
   const protocolType = normalizeProtocolType(normalizedRunbook.protocolType);
   const meaningfulCueCount = countMeaningfulSuccessCues(normalizedRunbook);
   const nonGenericItemLabels = countNonGenericItemLabels(normalizedRunbook);
+  const stepCount = normalizedRunbook.steps.length;
+  const itemCount = countRunbookItems(normalizedRunbook);
 
   let localRichnessPassed = meaningfulCueCount >= 2 && nonGenericItemLabels >= 4;
   if (protocolType === "sport") {
     localRichnessPassed = localRichnessPassed && hasSportSpecificRichness(normalizedRunbook);
   } else if (protocolType === "deep_work") {
     localRichnessPassed = localRichnessPassed && hasDeepWorkRichness(normalizedRunbook);
+  } else if (protocolType === "admin") {
+    localRichnessPassed = localRichnessPassed && hasAdminRichness(normalizedRunbook);
   } else {
     localRichnessPassed = localRichnessPassed && hasGenericPremiumRichness(normalizedRunbook);
   }
@@ -765,16 +957,104 @@ export function assessPreparedSessionRunbookQuality({
     providedQuality.isPremiumReady !== false &&
     validationPassed &&
     richnessPassed;
+  const rejectionReason =
+    isPremiumReady
+      ? null
+      : providedQuality.rejectionReason ||
+        providedQuality.reason ||
+        (!validationPassed
+          ? PREPARED_SESSION_REJECTION_REASONS.VALIDATION_FAILED
+          : PREPARED_SESSION_REJECTION_REASONS.RICHNESS_FAILED);
+  const rejectionStage =
+    isPremiumReady
+      ? null
+      : providedQuality.rejectionStage ||
+        (!validationPassed
+          ? PREPARED_SESSION_REJECTION_STAGES.RUNBOOK_NORMALIZATION
+          : PREPARED_SESSION_REJECTION_STAGES.QUALITY_GATE);
 
-  return {
+  return createEmptyPreparedSessionQuality({
     isPremiumReady,
     validationPassed,
     richnessPassed,
-    reason:
-      isPremiumReady
-        ? null
-        : providedQuality.reason || (!validationPassed ? "validation_failed" : "richness_failed"),
-  };
+    reason: rejectionReason,
+    rejectionReason,
+    rejectionStage,
+    stepCount: providedQuality.stepCount ?? stepCount,
+    itemCount: providedQuality.itemCount ?? itemCount,
+    issuePaths: providedQuality.issuePaths,
+  });
+}
+
+export function resolvePreparedSessionRunbookQuality({
+  preparedRunbook = null,
+  quality = null,
+  fallbackRunbook = null,
+} = {}) {
+  const normalizedRunbook = normalizePreparedSessionRunbook(preparedRunbook, { fallbackRunbook });
+  const providedQuality = normalizePreparedSessionQuality(quality);
+  const hasProvidedDecision =
+    providedQuality.isPremiumReady !== null ||
+    providedQuality.validationPassed !== null ||
+    providedQuality.richnessPassed !== null ||
+    Boolean(providedQuality.reason || providedQuality.rejectionReason);
+
+  if (!hasProvidedDecision) {
+    return assessPreparedSessionRunbookQuality({
+      preparedRunbook,
+      quality: null,
+      fallbackRunbook,
+    });
+  }
+
+  if (!normalizedRunbook) {
+    return createEmptyPreparedSessionQuality({
+      validationPassed: false,
+      richnessPassed: false,
+      reason: providedQuality.reason || PREPARED_SESSION_REJECTION_REASONS.RUNBOOK_SHAPE_FAILED,
+      rejectionReason:
+        providedQuality.rejectionReason || PREPARED_SESSION_REJECTION_REASONS.RUNBOOK_SHAPE_FAILED,
+      rejectionStage:
+        providedQuality.rejectionStage || PREPARED_SESSION_REJECTION_STAGES.RENDERABILITY,
+      stepCount: providedQuality.stepCount,
+      itemCount: providedQuality.itemCount,
+      issuePaths: providedQuality.issuePaths,
+    });
+  }
+
+  const validationPassed = providedQuality.validationPassed !== false;
+  const richnessPassed = validationPassed && providedQuality.richnessPassed === true;
+  const isPremiumReady =
+    providedQuality.isPremiumReady === true &&
+    validationPassed &&
+    richnessPassed;
+  const rejectionReason =
+    isPremiumReady
+      ? null
+      : providedQuality.rejectionReason ||
+        providedQuality.reason ||
+        (!validationPassed
+          ? PREPARED_SESSION_REJECTION_REASONS.VALIDATION_FAILED
+          : PREPARED_SESSION_REJECTION_REASONS.RICHNESS_FAILED);
+  const rejectionStage =
+    isPremiumReady
+      ? null
+      : providedQuality.rejectionStage ||
+        (!validationPassed
+          ? PREPARED_SESSION_REJECTION_STAGES.RENDERABILITY
+          : PREPARED_SESSION_REJECTION_STAGES.QUALITY_GATE);
+
+  return createEmptyPreparedSessionQuality({
+    isPremiumReady,
+    validationPassed,
+    richnessPassed,
+    reason: rejectionReason,
+    rejectionReason,
+    rejectionStage,
+    stepCount: providedQuality.stepCount ?? normalizedRunbook.steps.length,
+    itemCount: providedQuality.itemCount ?? countRunbookItems(normalizedRunbook),
+    issuePaths: providedQuality.issuePaths,
+  });
 }
 
 export function summarizeSessionRunbookPatch(sessionRunbook = null) {
@@ -783,7 +1063,7 @@ export function summarizeSessionRunbookPatch(sessionRunbook = null) {
   return {
     version: runbook.version,
     stepCount: runbook.steps.length,
-    itemCount: runbook.steps.reduce((count, step) => count + step.items.length, 0),
+    itemCount: countRunbookItems(runbook),
   };
 }
 

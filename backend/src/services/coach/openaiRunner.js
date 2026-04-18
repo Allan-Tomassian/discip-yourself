@@ -710,7 +710,8 @@ function buildRecoveryPrompt(context) {
 function buildChatCardPrompt(context) {
   const analysisSurface =
     context.analysisSurface === LOCAL_ANALYSIS_SURFACES.PLANNING ||
-    context.analysisSurface === LOCAL_ANALYSIS_SURFACES.PILOTAGE
+    context.analysisSurface === LOCAL_ANALYSIS_SURFACES.PILOTAGE ||
+    context.analysisSurface === LOCAL_ANALYSIS_SURFACES.OBJECTIVES
       ? context.analysisSurface
       : LOCAL_ANALYSIS_SURFACES.GENERIC;
   const analysisPolicy =
@@ -724,47 +725,71 @@ function buildChatCardPrompt(context) {
   const shouldUseStructureExample = Boolean(
     context.gapSummary?.hasGapToday && context.gapSummary?.selectionScope === "structure_missing"
   );
-  const validExample = {
-      kind: "chat",
-      headline: shouldUseStructureExample
-        ? "Structure la categorie active"
-        : gapCandidate
-        ? `Ajoute ${gapCandidate.title}`
-        : "Clarifie le prochain bloc",
-    reason: shouldUseStructureExample
-      ? "Clarifie l'objectif de la categorie active ou cree une premiere action exploitable."
-      : gapCandidate
-      ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. Programme-la en bloc court.`
-      : "Choisis l'action la plus exécutable maintenant et garde la réponse très courte.",
-    primaryAction: shouldUseStructureExample
+  const validExample =
+    analysisSurface === LOCAL_ANALYSIS_SURFACES.OBJECTIVES
       ? {
-          label: "Structurer",
-          intent: "open_pilotage",
-          categoryId: "cat-1",
-          actionId: null,
-          occurrenceId: null,
-          dateKey: context.activeDate,
-        }
-      : gapCandidate
-      ? {
-          label: "Planifier aujourd’hui",
-          intent: "open_pilotage",
-          categoryId: "cat-1",
-          actionId: gapCandidate.actionId || "goal-1",
-          occurrenceId: null,
-          dateKey: context.activeDate,
+          kind: "chat",
+          headline: "Protège Routine cardio",
+          reason: "Routine cardio porte le meilleur signal cette semaine. Dessers le reste puis ajuste le planning.",
+          primaryAction: {
+            label: "Ouvrir Planning",
+            intent: "open_planning",
+            categoryId: "cat-1",
+            actionId: null,
+            occurrenceId: null,
+            dateKey: context.activeDate,
+          },
+          secondaryAction: {
+            label: "Approfondir",
+            intent: "open_pilotage",
+            categoryId: "cat-1",
+            actionId: null,
+            occurrenceId: null,
+            dateKey: context.activeDate,
+          },
+          suggestedDurationMin: 20,
         }
       : {
-          label: "Voir aujourd’hui",
-          intent: "open_today",
-          categoryId: "cat-1",
-          actionId: null,
-          occurrenceId: null,
-          dateKey: context.activeDate,
-    },
-    secondaryAction: null,
-    suggestedDurationMin: shouldUseStructureExample ? null : gapCandidate?.durationMin || 10,
-  };
+          kind: "chat",
+          headline: shouldUseStructureExample
+            ? "Structure la categorie active"
+            : gapCandidate
+            ? `Ajoute ${gapCandidate.title}`
+            : "Clarifie le prochain bloc",
+          reason: shouldUseStructureExample
+            ? "Clarifie l'objectif de la categorie active ou cree une premiere action exploitable."
+            : gapCandidate
+            ? `${gapCandidate.title} n'est pas encore planifiée aujourd'hui. Programme-la en bloc court.`
+            : "Choisis l'action la plus exécutable maintenant et garde la réponse très courte.",
+          primaryAction: shouldUseStructureExample
+            ? {
+                label: "Structurer",
+                intent: "open_pilotage",
+                categoryId: "cat-1",
+                actionId: null,
+                occurrenceId: null,
+                dateKey: context.activeDate,
+              }
+            : gapCandidate
+            ? {
+                label: "Planifier aujourd’hui",
+                intent: "open_pilotage",
+                categoryId: "cat-1",
+                actionId: gapCandidate.actionId || "goal-1",
+                occurrenceId: null,
+                dateKey: context.activeDate,
+              }
+            : {
+                label: "Voir aujourd’hui",
+                intent: "open_today",
+                categoryId: "cat-1",
+                actionId: null,
+                occurrenceId: null,
+                dateKey: context.activeDate,
+              },
+          secondaryAction: null,
+          suggestedDurationMin: shouldUseStructureExample ? null : gapCandidate?.durationMin || 10,
+        };
 
   return [
     `You are the local analysis layer for Discip-Yourself on ${analysisSurface}.`,
@@ -782,12 +807,19 @@ function buildChatCardPrompt(context) {
     "Never invent actionId or occurrenceId values. Only use ids present in the context.",
     analysisSurface === LOCAL_ANALYSIS_SURFACES.GENERIC
       ? "Prefer resume_session when a session is already open today."
-      : "Prefer open_pilotage or open_today over execution shortcuts.",
+      : analysisSurface === LOCAL_ANALYSIS_SURFACES.OBJECTIVES
+        ? "Prefer open_planning over open_pilotage when the best next step is to protect, loosen, or recenter the week."
+        : "Prefer open_pilotage or open_today over execution shortcuts.",
     analysisSurface === LOCAL_ANALYSIS_SURFACES.GENERIC
       ? "Prefer start_occurrence when a credible occurrence can start now."
       : "Do not behave like the Coach and do not start a workflow on behalf of the user.",
-    "Use open_pilotage when the best next step is to plan or replan.",
+    analysisSurface === LOCAL_ANALYSIS_SURFACES.OBJECTIVES
+      ? "Use open_pilotage only when the user clearly needs a deeper diagnosis than a direct planning arbitrage."
+      : "Use open_pilotage when the best next step is to plan or replan.",
     "The active category governs the recommendation.",
+    analysisSurface === LOCAL_ANALYSIS_SURFACES.OBJECTIVES
+      ? "When objectivesSummary is available, structure the answer around what to protect, what to loosen, and what to recenter."
+      : "Keep the answer anchored on the strongest local signal.",
     "When categoryCoherence.selectionScope is cross_category, recommend only the proven cross-category action and explicitly name the contribution to categoryCoherence.contributionTargetLabel.",
     "When categoryCoherence.selectionScope is structure_missing, do not invent an action and tell the user to clarify the goal or create a first action in the active category.",
     "When activeCategoryProfileSummary.hasProfile is true, use it to avoid generic advice and connect the answer to subject, mainGoal, or currentPriority when relevant.",
@@ -838,6 +870,7 @@ function buildChatCardPrompt(context) {
       gapSummary: context.gapSummary || null,
       dayLoadSummary: context.dayLoadSummary || null,
       planningSummary: context.planningSummary || null,
+      objectivesSummary: context.objectivesSummary || null,
       pilotageSummary: context.pilotageSummary || null,
       analysisSurface,
       focusSelectionReason: context.focusSelectionReason || null,

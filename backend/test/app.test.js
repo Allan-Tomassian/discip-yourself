@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { APIConnectionTimeoutError } from "openai";
 import { buildApp } from "../src/app.js";
 import {
   coachChatResponseSchema,
@@ -15,6 +16,8 @@ const TEST_CONFIG = {
   SUPABASE_SECRET_KEY: "service-role-test",
   OPENAI_API_KEY: "",
   OPENAI_MODEL: "gpt-4.1-mini",
+  SESSION_GUIDANCE_PREPARE_OPENAI_MODEL: "",
+  SESSION_GUIDANCE_PREPARE_OPENAI_TIMEOUT_MS: 60000,
   AI_QUOTA_MODE: "normal",
   CORS_ALLOW_PRIVATE_NETWORK_DEV: false,
   CORS_ALLOWED_ORIGINS: ["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -178,6 +181,173 @@ function createValidCoachPayload({ dateKey = TODAY_KEY } = {}) {
     rewardSuggestion: {
       kind: "none",
       label: null,
+    },
+  };
+}
+
+function createValidSessionPreparedRunbook({
+  protocolType = "sport",
+  dateKey = TODAY_KEY,
+  occurrenceId = "occ-1",
+  actionId = "goal-1",
+  title = "Circuit jambes et gainage",
+  categoryName = "Sport",
+} = {}) {
+  return {
+    version: 2,
+    protocolType,
+    occurrenceId,
+    actionId,
+    dateKey,
+    title,
+    categoryName,
+    objective: {
+      why: "tenir un bloc cardio-force net",
+      successDefinition: "le circuit est tenu sans casser la forme",
+    },
+    steps: [
+      {
+        id: "step_1",
+        label: "Mise en route",
+        purpose: "préparer les appuis",
+        successCue: "souffle posé",
+        items: [
+          {
+            id: "step_1_item_1",
+            kind: "warmup",
+            label: "Montées de genoux",
+            minutes: 3,
+            guidance: "alterne 30 sec dynamiques puis 30 sec plus calmes pour monter en température",
+            successCue: "respiration stable",
+            restSec: 0,
+            transitionLabel: null,
+            execution: null,
+          },
+          {
+            id: "step_1_item_2",
+            kind: "activation",
+            label: "Squats au poids du corps",
+            minutes: 2,
+            guidance: "2 séries de 12 reps en gardant le buste haut",
+            successCue: "genoux stables",
+            restSec: 0,
+            transitionLabel: null,
+            execution: null,
+          },
+        ],
+      },
+      {
+        id: "step_2",
+        label: "Bloc force",
+        purpose: "tenir le coeur utile",
+        successCue: "gainage propre",
+        items: [
+          {
+            id: "step_2_item_1",
+            kind: "effort",
+            label: "Fentes alternées",
+            minutes: 4,
+            guidance: "2 séries de 10 reps par jambe sans te précipiter",
+            successCue: "appuis nets",
+            restSec: 25,
+            transitionLabel: null,
+            execution: {
+              reps: "2 x 10/jambe",
+              durationSec: null,
+              tempo: null,
+              deliverable: null,
+              doneWhen: null,
+              relaunchCue: null,
+              restSec: 25,
+            },
+          },
+          {
+            id: "step_2_item_2",
+            kind: "effort",
+            label: "Planche avant",
+            minutes: 4,
+            guidance: "3 passages de 40 sec avec 20 sec de repos entre les passages",
+            successCue: "bassin aligné",
+            restSec: 20,
+            transitionLabel: null,
+            execution: {
+              reps: null,
+              durationSec: 40,
+              tempo: null,
+              deliverable: null,
+              doneWhen: null,
+              relaunchCue: null,
+              restSec: 20,
+            },
+          },
+          {
+            id: "step_2_item_3",
+            kind: "effort",
+            label: "Pont fessier",
+            minutes: 3,
+            guidance: "2 séries de 15 reps avec montée contrôlée et pause d’une seconde en haut",
+            successCue: "fessiers engagés",
+            restSec: 20,
+            transitionLabel: null,
+            execution: null,
+          },
+        ],
+      },
+      {
+        id: "step_3",
+        label: "Retour au calme",
+        purpose: "faire redescendre proprement",
+        successCue: "souffle revenu",
+        items: [
+          {
+            id: "step_3_item_1",
+            kind: "cooldown",
+            label: "Marche lente",
+            minutes: 2,
+            guidance: "marche en récupérant le souffle avant de t’arrêter",
+            successCue: "fréquence calmée",
+            restSec: 0,
+            transitionLabel: null,
+            execution: null,
+          },
+          {
+            id: "step_3_item_2",
+            kind: "breath",
+            label: "Étirements hanches et mollets",
+            minutes: 2,
+            guidance: "tiens 30 sec par côté sans forcer",
+            successCue: "tension relâchée",
+            restSec: 0,
+            transitionLabel: null,
+            execution: null,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function createValidSessionAdjustCandidate() {
+  return {
+    currentRunbook: createValidSessionPreparedRunbook(),
+    impactNote: "On raccourcit légèrement le coeur du bloc sans perdre l’objectif.",
+    guardrails: ["Garde le même ordre", "Ralentis si la forme casse"],
+  };
+}
+
+function createValidSessionToolCandidate() {
+  return {
+    toolResult: {
+      artifactType: "cues_card",
+      title: "Repères d’exécution",
+      blocks: [
+        {
+          type: "list",
+          title: "Repères utiles",
+          items: ["Appuis nets", "Buste haut", "Relance propre"],
+        },
+      ],
+      copyText: "- Appuis nets\n- Buste haut\n- Relance propre",
     },
   };
 }
@@ -659,6 +829,40 @@ test("POST /ai/local-analysis returns a pilotage fallback scoped to pilotage gui
   await app.close();
 });
 
+test("POST /ai/local-analysis returns an objectives fallback scoped to recentring guidance", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-local-analysis-objectives" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/local-analysis",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.27" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      surface: "objectives",
+      message: "Recentre ma semaine et dis-moi où agir ensuite.",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachLocalAnalysisResponseSchema.parse(response.json());
+  assert.equal(payload.kind, "chat");
+  assert.equal(payload.decisionSource, "rules");
+  assert.equal(payload.meta.selectedDateKey, TODAY_KEY);
+  assert.equal(payload.primaryAction.intent, "open_planning");
+  assert.equal(payload.secondaryAction?.intent, "open_pilotage");
+  await app.close();
+});
+
 test("POST /ai/local-analysis accepts an AI response that includes direction", async () => {
   const insertedLogs = [];
   const app = await buildApp({
@@ -722,6 +926,75 @@ test("POST /ai/local-analysis accepts an AI response that includes direction", a
   assert.equal(payload.direction, "recalibrer");
   assert.equal(insertedLogs[0]?.coach_kind, "local-analysis");
   assert.equal(insertedLogs[0]?.route, "/ai/local-analysis");
+  await app.close();
+});
+
+test("POST /ai/local-analysis accepts an objectives AI response that opens planning", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-local-analysis-ai-objectives" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: {
+                  kind: "chat",
+                  headline: "Protège le focus sport",
+                  reason: "La surcharge arrive surtout du sport mal arbitré. Réserve le prochain créneau utile et retire un bloc secondaire.",
+                  primaryAction: {
+                    label: "Ouvrir Planning",
+                    intent: "open_planning",
+                    categoryId: "cat-1",
+                    actionId: null,
+                    occurrenceId: null,
+                    dateKey: TODAY_KEY,
+                  },
+                  secondaryAction: {
+                    label: "Approfondir",
+                    intent: "open_pilotage",
+                    categoryId: "cat-1",
+                    actionId: null,
+                    occurrenceId: null,
+                    dateKey: TODAY_KEY,
+                  },
+                  suggestedDurationMin: null,
+                },
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/local-analysis",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.29" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      surface: "objectives",
+      message: "Recentre la semaine et donne une décision concrète.",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = coachLocalAnalysisResponseSchema.parse(response.json());
+  assert.equal(payload.kind, "chat");
+  assert.equal(payload.decisionSource, "ai");
+  assert.equal(payload.primaryAction.intent, "open_planning");
+  assert.equal(payload.secondaryAction?.intent, "open_pilotage");
   await app.close();
 });
 
@@ -848,6 +1121,435 @@ test("POST /ai/session-guidance allows founder override from auth metadata witho
   await app.close();
 });
 
+test("POST /ai/session-guidance prepare prompt hardens sport specificity requirements", async () => {
+  let capturedPrompt = "";
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-session-prepare-prompt-sport" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: { plan_tier: "premium" },
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async (input) => {
+          capturedPrompt = input?.messages?.map((message) => message?.content || "").join("\n");
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: {
+                    preparedRunbook: createValidSessionPreparedRunbook(),
+                  },
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/session-guidance",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.46" },
+    payload: {
+      mode: "prepare",
+      aiIntent: "session_prepare",
+      dateKey: TODAY_KEY,
+      occurrenceId: "occ-1",
+      actionId: "goal-1",
+      actionTitle: "Circuit jambes et gainage",
+      categoryName: "Sport",
+      protocolType: "sport",
+      targetDurationMinutes: 20,
+      blueprintSnapshot: {
+        version: 1,
+        protocolType: "sport",
+        why: "tenir le bloc",
+        firstStep: "commence par t’échauffer",
+        ifBlocked: "version courte",
+        successDefinition: "séance tenue",
+        estimatedMinutes: 20,
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.match(capturedPrompt, /Sport premium hard requirements:/i);
+  assert.match(capturedPrompt, /Name real exercises on items/i);
+  assert.match(capturedPrompt, /Never leave final item labels as vague placeholders/i);
+  assert.match(capturedPrompt, /execution\.reps, execution\.durationSec, execution\.tempo/i);
+  await app.close();
+});
+
+test("POST /ai/session-guidance prepare uses gpt-5.4 with a dedicated timeout by default", async () => {
+  let requestedModel = null;
+  let requestedTimeout = null;
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-session-prepare-default-model" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: { plan_tier: "premium" },
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async (input, options) => {
+          requestedModel = input?.model || null;
+          requestedTimeout = options?.timeout ?? null;
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: {
+                    preparedRunbook: createValidSessionPreparedRunbook(),
+                  },
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/session-guidance",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.47" },
+    payload: {
+      mode: "prepare",
+      aiIntent: "session_prepare",
+      dateKey: TODAY_KEY,
+      occurrenceId: "occ-1",
+      actionId: "goal-1",
+      actionTitle: "Circuit jambes et gainage",
+      categoryName: "Sport",
+      protocolType: "sport",
+      targetDurationMinutes: 20,
+      blueprintSnapshot: {
+        version: 1,
+        protocolType: "sport",
+        why: "tenir le bloc",
+        firstStep: "commence par t’échauffer",
+        ifBlocked: "version courte",
+        successDefinition: "séance tenue",
+        estimatedMinutes: 20,
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(requestedModel, "gpt-5.4");
+  assert.equal(requestedTimeout, 60000);
+  await app.close();
+});
+
+test("POST /ai/session-guidance prepare prefers dedicated model and timeout overrides when configured", async () => {
+  let requestedModel = null;
+  let requestedTimeout = null;
+  const app = await buildApp({
+    config: {
+      ...TEST_CONFIG_WITH_OPENAI,
+      SESSION_GUIDANCE_PREPARE_OPENAI_MODEL: "gpt-5.4-custom-prepare",
+      SESSION_GUIDANCE_PREPARE_OPENAI_TIMEOUT_MS: 18000,
+    },
+    verifyAccessToken: async () => ({ id: "user-session-prepare-custom-model" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: { plan_tier: "premium" },
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async (input, options) => {
+          requestedModel = input?.model || null;
+          requestedTimeout = options?.timeout ?? null;
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: {
+                    preparedRunbook: createValidSessionPreparedRunbook(),
+                  },
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/session-guidance",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.48" },
+    payload: {
+      mode: "prepare",
+      aiIntent: "session_prepare",
+      dateKey: TODAY_KEY,
+      occurrenceId: "occ-1",
+      actionId: "goal-1",
+      actionTitle: "Circuit jambes et gainage",
+      categoryName: "Sport",
+      protocolType: "sport",
+      blueprintSnapshot: {
+        version: 1,
+        protocolType: "sport",
+        why: "tenir le bloc",
+        firstStep: "commence par t’échauffer",
+        ifBlocked: "version courte",
+        successDefinition: "séance tenue",
+        estimatedMinutes: 20,
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(requestedModel, "gpt-5.4-custom-prepare");
+  assert.equal(requestedTimeout, 18000);
+  await app.close();
+});
+
+test("POST /ai/session-guidance prepare returns an explicit provider timeout error", async () => {
+  const insertedLogs = [];
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-session-prepare-timeout" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: { plan_tier: "premium" },
+    dailyCount: 0,
+    monthlyCount: 0,
+    insertedLogs,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => {
+          throw new APIConnectionTimeoutError();
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/session-guidance",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.81" },
+    payload: {
+      mode: "prepare",
+      aiIntent: "session_prepare",
+      dateKey: TODAY_KEY,
+      occurrenceId: "occ-1",
+      actionId: "goal-1",
+      actionTitle: "Circuit jambes et gainage",
+      categoryName: "Sport",
+      protocolType: "sport",
+      targetDurationMinutes: 20,
+      blueprintSnapshot: {
+        version: 1,
+        protocolType: "sport",
+        why: "tenir le bloc",
+        firstStep: "commence par t’échauffer",
+        ifBlocked: "version courte",
+        successDefinition: "séance tenue",
+        estimatedMinutes: 20,
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 504);
+  assert.equal(response.json().error, "SESSION_GUIDANCE_PROVIDER_TIMEOUT");
+  assert.equal(response.json().details.providerStatus, "timeout");
+  assert.equal(response.json().details.timeoutMs, 60000);
+  assert.equal(insertedLogs[0]?.error_code, "SESSION_GUIDANCE_PROVIDER_TIMEOUT");
+  assert.equal(insertedLogs[0]?.provider_status, "timeout");
+  assert.equal(insertedLogs[0]?.mode, "prepare");
+  await app.close();
+});
+
+test("POST /ai/session-guidance adjust and tool keep the global OpenAI model and global timeout behavior", async () => {
+  const requestedInvocations = [];
+  const currentRunbook = createValidSessionPreparedRunbook();
+  const app = await buildApp({
+    config: {
+      ...TEST_CONFIG_WITH_OPENAI,
+      SESSION_GUIDANCE_PREPARE_OPENAI_MODEL: "gpt-5.4-custom-prepare",
+      SESSION_GUIDANCE_PREPARE_OPENAI_TIMEOUT_MS: 18000,
+    },
+    verifyAccessToken: async () => ({ id: "user-session-adapt-global-model" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: { plan_tier: "premium" },
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async (input, options) => {
+          requestedInvocations.push({
+            model: input?.model || null,
+            timeout: options?.timeout ?? null,
+          });
+          if (requestedInvocations.length === 1) {
+            return {
+              choices: [
+                {
+                  message: {
+                    parsed: createValidSessionAdjustCandidate(),
+                  },
+                },
+              ],
+            };
+          }
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: createValidSessionToolCandidate(),
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const adjustResponse = await app.inject({
+    method: "POST",
+    url: "/ai/session-guidance",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.49" },
+    payload: {
+      mode: "adjust",
+      aiIntent: "session_adapt",
+      dateKey: TODAY_KEY,
+      occurrenceId: "occ-1",
+      actionId: "goal-1",
+      actionTitle: "Circuit jambes et gainage",
+      categoryName: "Sport",
+      protocolType: "sport",
+      currentRunbook,
+      cause: "fatigue",
+      strategyId: "shorten_intensity",
+      runtimeContext: {
+        currentStepId: currentRunbook.steps[1].id,
+        currentItemId: currentRunbook.steps[1].items[0].id,
+        elapsedSec: 300,
+        remainingSec: 600,
+      },
+    },
+  });
+
+  const toolResponse = await app.inject({
+    method: "POST",
+    url: "/ai/session-guidance",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.50" },
+    payload: {
+      mode: "tool",
+      aiIntent: "session_adapt",
+      dateKey: TODAY_KEY,
+      occurrenceId: "occ-1",
+      actionId: "goal-1",
+      actionTitle: "Circuit jambes et gainage",
+      categoryName: "Sport",
+      protocolType: "sport",
+      toolId: "execution_cues",
+      currentRunbook,
+      runtimeContext: {
+        currentStepId: currentRunbook.steps[1].id,
+        currentItemId: currentRunbook.steps[1].items[1].id,
+        elapsedSec: 420,
+        remainingSec: 180,
+      },
+    },
+  });
+
+  assert.equal(adjustResponse.statusCode, 200);
+  assert.equal(toolResponse.statusCode, 200);
+  const adjustPayload = sessionGuidanceResponseSchema.parse(adjustResponse.json());
+  const toolPayload = sessionGuidanceResponseSchema.parse(toolResponse.json());
+  assert.equal(adjustPayload.meta.model, undefined);
+  assert.equal(adjustPayload.meta.promptVersion, undefined);
+  assert.equal(toolPayload.meta.model, undefined);
+  assert.equal(toolPayload.meta.promptVersion, undefined);
+  assert.deepEqual(requestedInvocations, [
+    { model: "gpt-4.1-mini", timeout: null },
+    { model: "gpt-4.1-mini", timeout: null },
+  ]);
+  await app.close();
+});
+
+test("POST /ai/now keeps the global OpenAI model when session prepare overrides are configured", async () => {
+  let requestedModel = null;
+  let requestedTimeout = null;
+  const app = await buildApp({
+    config: {
+      ...TEST_CONFIG_WITH_OPENAI,
+      SESSION_GUIDANCE_PREPARE_OPENAI_MODEL: "gpt-5.4-custom-prepare",
+      SESSION_GUIDANCE_PREPARE_OPENAI_TIMEOUT_MS: 18000,
+    },
+    verifyAccessToken: async () => ({ id: "user-now-global-model" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async (input, options) => {
+          requestedModel = input?.model || null;
+          requestedTimeout = options?.timeout ?? null;
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: createValidCoachPayload(),
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/now",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.51" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      surface: "today",
+      trigger: "manual",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(requestedModel, "gpt-4.1-mini");
+  assert.equal(requestedTimeout, null);
+  await app.close();
+});
+
 test("POST /ai/session-guidance returns an AI premium runbook with quality metadata", async () => {
   const insertedLogs = [];
   const app = await buildApp({
@@ -897,6 +1599,7 @@ test("POST /ai/session-guidance returns an AI premium runbook with quality metad
                             successCue: "respiration stable",
                             restSec: 0,
                             transitionLabel: "",
+                            execution: null,
                           },
                           {
                             id: "step_1_item_2",
@@ -907,6 +1610,7 @@ test("POST /ai/session-guidance returns an AI premium runbook with quality metad
                             successCue: "genoux stables",
                             restSec: 0,
                             transitionLabel: "",
+                            execution: null,
                           },
                         ],
                       },
@@ -925,6 +1629,7 @@ test("POST /ai/session-guidance returns an AI premium runbook with quality metad
                             successCue: "appuis nets",
                             restSec: 25,
                             transitionLabel: "",
+                            execution: null,
                           },
                           {
                             id: "step_2_item_2",
@@ -935,6 +1640,7 @@ test("POST /ai/session-guidance returns an AI premium runbook with quality metad
                             successCue: "bassin aligné",
                             restSec: 20,
                             transitionLabel: "",
+                            execution: null,
                           },
                           {
                             id: "step_2_item_3",
@@ -945,6 +1651,7 @@ test("POST /ai/session-guidance returns an AI premium runbook with quality metad
                             successCue: "fessiers engagés",
                             restSec: 20,
                             transitionLabel: "",
+                            execution: null,
                           },
                         ],
                       },
@@ -963,6 +1670,7 @@ test("POST /ai/session-guidance returns an AI premium runbook with quality metad
                             successCue: "fréquence calmée",
                             restSec: 0,
                             transitionLabel: "",
+                            execution: null,
                           },
                           {
                             id: "step_3_item_2",
@@ -973,6 +1681,7 @@ test("POST /ai/session-guidance returns an AI premium runbook with quality metad
                             successCue: "tension relâchée",
                             restSec: 0,
                             transitionLabel: "",
+                            execution: null,
                           },
                         ],
                       },
@@ -1019,9 +1728,457 @@ test("POST /ai/session-guidance returns an AI premium runbook with quality metad
   assert.equal(payload.kind, "session_guidance");
   assert.equal(payload.mode, "prepare");
   assert.equal(payload.meta.source, "ai_premium");
+  assert.equal(payload.meta.model, "gpt-5.4");
+  assert.equal(payload.meta.promptVersion, "session_guidance_prepare_v2");
   assert.equal(payload.payload.quality.isPremiumReady, true);
+  assert.equal(payload.payload.quality.rejectionReason, null);
   assert.equal(insertedLogs[0]?.coach_kind, "session-guidance");
   assert.equal(insertedLogs[0]?.route, "/ai/session-guidance");
+  assert.equal(insertedLogs[0]?.mode, "prepare");
+  assert.equal(insertedLogs[0]?.protocol_type, "sport");
+  assert.equal(insertedLogs[0]?.provider_status, "ok");
+  await app.close();
+});
+
+test("POST /ai/session-guidance accepts prepare payloads when UI-only fields are null", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-session-premium-ai-minimal" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: { plan_tier: "premium" },
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: {
+                  preparedRunbook: {
+                    version: 2,
+                    protocolType: "sport",
+                    occurrenceId: "occ-1",
+                    actionId: "goal-1",
+                    dateKey: TODAY_KEY,
+                    title: "Bloc cardio court",
+                    categoryName: null,
+                    objective: {
+                      why: "tenir un bloc cardio propre",
+                      successDefinition: "le bloc est fait sans casser la forme",
+                    },
+                    steps: [
+                      {
+                        id: null,
+                        label: "Échauffement",
+                        purpose: "monter progressivement",
+                        successCue: "corps prêt",
+                        items: [
+                          {
+                            id: null,
+                            kind: null,
+                            label: "Jog sur place",
+                            minutes: 2,
+                            guidance: "alterne 20 sec calmes puis 20 sec plus dynamiques pour monter le rythme",
+                            successCue: "souffle lancé",
+                            restSec: null,
+                            transitionLabel: null,
+                            execution: null,
+                          },
+                          {
+                            id: null,
+                            kind: null,
+                            label: "Air squats",
+                            minutes: 2,
+                            guidance: "fais 15 reps contrôlées en gardant les appuis propres",
+                            successCue: "appuis stables",
+                            restSec: null,
+                            transitionLabel: null,
+                            execution: null,
+                          },
+                        ],
+                      },
+                      {
+                        id: null,
+                        label: "Bloc effort",
+                        purpose: "tenir le coeur du bloc",
+                        successCue: "rythme propre",
+                        items: [
+                          {
+                            id: null,
+                            kind: null,
+                            label: "Pompes",
+                            minutes: 3,
+                            guidance: "enchaîne 10 reps propres puis récupère 20 sec avant de repartir",
+                            successCue: "gainage tenu",
+                            restSec: null,
+                            transitionLabel: null,
+                            execution: null,
+                          },
+                          {
+                            id: null,
+                            kind: null,
+                            label: "Burpees",
+                            minutes: 3,
+                            guidance: "tiens 8 reps nettes puis prends 25 sec pour relancer proprement",
+                            successCue: "relance nette",
+                            restSec: null,
+                            transitionLabel: null,
+                            execution: null,
+                          },
+                          {
+                            id: null,
+                            kind: null,
+                            label: "Sprint",
+                            minutes: 2,
+                            guidance: "fais 4 efforts de 20 sec avec une vraie récup entre chaque",
+                            successCue: "souffle sous contrôle",
+                            restSec: null,
+                            transitionLabel: null,
+                            execution: null,
+                          },
+                        ],
+                      },
+                      {
+                        id: null,
+                        label: "Retour au calme",
+                        purpose: "redescendre proprement",
+                        successCue: "souffle revenu",
+                        items: [
+                          {
+                            id: null,
+                            kind: null,
+                            label: "Marche lente",
+                            minutes: 2,
+                            guidance: "marche jusqu’à sentir la respiration redescendre",
+                            successCue: "rythme calmé",
+                            restSec: null,
+                            transitionLabel: null,
+                            execution: null,
+                          },
+                          {
+                            id: null,
+                            kind: null,
+                            label: "Étirements",
+                            minutes: 2,
+                            guidance: "tiens 30 sec par zone sans forcer pour délier les jambes",
+                            successCue: "tension relâchée",
+                            restSec: null,
+                            transitionLabel: null,
+                            execution: null,
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/session-guidance",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.44" },
+    payload: {
+      mode: "prepare",
+      aiIntent: "session_prepare",
+      dateKey: TODAY_KEY,
+      occurrenceId: "occ-1",
+      actionId: "goal-1",
+      actionTitle: "Bloc cardio court",
+      protocolType: "sport",
+      blueprintSnapshot: {
+        version: 1,
+        protocolType: "sport",
+        why: "tenir le bloc",
+        firstStep: "commence par monter doucement",
+        ifBlocked: "version courte",
+        successDefinition: "séance tenue",
+        estimatedMinutes: 16,
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = sessionGuidanceResponseSchema.parse(response.json());
+  assert.equal(payload.payload.quality.isPremiumReady, true);
+  assert.match(payload.payload.preparedRunbook.steps[0].id, /^goal_1_occ_1_step_1_/);
+  assert.equal(payload.payload.preparedRunbook.steps[1].items[0].kind, "task");
+  await app.close();
+});
+
+test("POST /ai/session-guidance returns a degraded premium quality when sport content stays generic", async () => {
+  const insertedLogs = [];
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-session-premium-generic-sport" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: { plan_tier: "premium" },
+    dailyCount: 0,
+    monthlyCount: 0,
+    insertedLogs,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: {
+                  preparedRunbook: {
+                    version: 2,
+                    protocolType: "sport",
+                    occurrenceId: "occ-1",
+                    actionId: "goal-1",
+                    dateKey: TODAY_KEY,
+                    title: "Séance sport",
+                    categoryName: null,
+                    objective: {
+                      why: "tenir le bloc",
+                      successDefinition: "séance faite",
+                    },
+                    steps: [
+                      {
+                        id: null,
+                        label: "Ouverture",
+                        purpose: "te lancer",
+                        successCue: "contexte rouvert",
+                        items: [
+                          {
+                            id: null,
+                            kind: null,
+                            label: "Activation générale",
+                            minutes: 2,
+                            guidance: "prépare-toi pour la séance",
+                            successCue: null,
+                            restSec: null,
+                            transitionLabel: null,
+                            execution: null,
+                          },
+                          {
+                            id: null,
+                            kind: null,
+                            label: "Mise en route",
+                            minutes: 2,
+                            guidance: "commence doucement avant le bloc",
+                            successCue: null,
+                            restSec: null,
+                            transitionLabel: null,
+                            execution: null,
+                          },
+                        ],
+                      },
+                      {
+                        id: null,
+                        label: "Bloc principal",
+                        purpose: "avancer",
+                        successCue: "bloc tenu",
+                        items: [
+                          {
+                            id: null,
+                            kind: null,
+                            label: "Passage principal",
+                            minutes: 4,
+                            guidance: "travaille le coeur du bloc",
+                            successCue: null,
+                            restSec: null,
+                            transitionLabel: null,
+                            execution: null,
+                          },
+                          {
+                            id: null,
+                            kind: null,
+                            label: "Deuxième passage",
+                            minutes: 4,
+                            guidance: "continue sur le même effort",
+                            successCue: null,
+                            restSec: null,
+                            transitionLabel: null,
+                            execution: null,
+                          },
+                          {
+                            id: null,
+                            kind: null,
+                            label: "Sortie contrôlée",
+                            minutes: 3,
+                            guidance: "termine proprement",
+                            successCue: null,
+                            restSec: null,
+                            transitionLabel: null,
+                            execution: null,
+                          },
+                        ],
+                      },
+                      {
+                        id: null,
+                        label: "Retour au calme",
+                        purpose: "redescendre",
+                        successCue: "souffle revenu",
+                        items: [
+                          {
+                            id: null,
+                            kind: null,
+                            label: "Marche lente",
+                            minutes: 2,
+                            guidance: "marche un peu avant de finir",
+                            successCue: null,
+                            restSec: null,
+                            transitionLabel: null,
+                            execution: null,
+                          },
+                          {
+                            id: null,
+                            kind: null,
+                            label: "Respiration",
+                            minutes: 2,
+                            guidance: "reprends un souffle calme",
+                            successCue: null,
+                            restSec: null,
+                            transitionLabel: null,
+                            execution: null,
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/session-guidance",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.45" },
+    payload: {
+      mode: "prepare",
+      aiIntent: "session_prepare",
+      dateKey: TODAY_KEY,
+      occurrenceId: "occ-1",
+      actionId: "goal-1",
+      actionTitle: "Séance sport",
+      protocolType: "sport",
+      blueprintSnapshot: {
+        version: 1,
+        protocolType: "sport",
+        why: "tenir le bloc",
+        firstStep: "commence doucement",
+        ifBlocked: "version courte",
+        successDefinition: "séance tenue",
+        estimatedMinutes: 19,
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = sessionGuidanceResponseSchema.parse(response.json());
+  assert.equal(payload.payload.quality.isPremiumReady, false);
+  assert.equal(payload.payload.quality.validationPassed, true);
+  assert.equal(payload.payload.quality.richnessPassed, false);
+  assert.equal(payload.payload.quality.rejectionReason, "richness_failed");
+  assert.equal(payload.payload.quality.rejectionStage, "quality_gate");
+  assert.equal(insertedLogs[0]?.rejection_reason, "richness_failed");
+  assert.equal(insertedLogs[0]?.validation_passed, true);
+  assert.equal(insertedLogs[0]?.richness_passed, false);
+  await app.close();
+});
+
+test("POST /ai/session-guidance returns explicit diagnostics when provider payload is structurally invalid", async () => {
+  const insertedLogs = [];
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-session-premium-invalid-structure" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: { plan_tier: "premium" },
+    dailyCount: 0,
+    monthlyCount: 0,
+    insertedLogs,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: {
+                  preparedRunbook: {
+                    version: 2,
+                    protocolType: "sport",
+                    occurrenceId: "occ-1",
+                    actionId: "goal-1",
+                    dateKey: TODAY_KEY,
+                    title: "Séance sport",
+                    steps: [
+                      {
+                        label: "Bloc principal",
+                        items: [
+                          { label: "Pompes", minutes: 3, guidance: "fais quelques répétitions" },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/session-guidance",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.46" },
+    payload: {
+      mode: "prepare",
+      aiIntent: "session_prepare",
+      dateKey: TODAY_KEY,
+      occurrenceId: "occ-1",
+      actionId: "goal-1",
+      actionTitle: "Séance sport",
+      protocolType: "sport",
+      blueprintSnapshot: {
+        version: 1,
+        protocolType: "sport",
+        why: "tenir le bloc",
+        firstStep: "commence doucement",
+        ifBlocked: "version courte",
+        successDefinition: "séance tenue",
+        estimatedMinutes: 12,
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 502);
+  assert.equal(response.json().error, "INVALID_SESSION_GUIDANCE_RESPONSE");
+  assert.equal(response.json().details.rejectionReason, "provider_parse_failed");
+  assert.equal(response.json().details.rejectionStage, "provider_parse");
+  assert.equal(
+    response.json().details.zodIssuePaths.some((entry) => /preparedRunbook\.(objective|steps)/.test(entry)),
+    true
+  );
+  assert.equal(insertedLogs[0]?.rejection_reason, "provider_parse_failed");
+  assert.equal(insertedLogs[0]?.provider_status, "invalid_response");
   await app.close();
 });
 

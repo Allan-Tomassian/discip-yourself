@@ -17,6 +17,7 @@ const coachUseCaseSchema = z.enum(["general", "life_plan", "stats_review"]);
 const aiIntentSchema = z.enum(Object.values(AI_INTENTS));
 const localAnalysisSurfaceSchema = z.enum([
   LOCAL_ANALYSIS_SURFACES.PLANNING,
+  LOCAL_ANALYSIS_SURFACES.OBJECTIVES,
   LOCAL_ANALYSIS_SURFACES.PILOTAGE,
 ]);
 const repeatSchema = z.enum(["none", "daily", "weekly"]);
@@ -71,6 +72,7 @@ const actionSchema = z
       "start_occurrence",
       "resume_session",
       "open_library",
+      "open_planning",
       "open_pilotage",
       "open_today",
       "open_support",
@@ -378,6 +380,11 @@ const sessionGuidanceQualitySchema = z
     validationPassed: z.boolean(),
     richnessPassed: z.boolean(),
     reason: z.string().nullable(),
+    rejectionReason: z.string().nullable().optional().default(null),
+    rejectionStage: z.string().nullable().optional().default(null),
+    stepCount: z.number().int().nullable().optional().default(null),
+    itemCount: z.number().int().nullable().optional().default(null),
+    issuePaths: z.array(z.string()).optional().default([]),
   })
   .strict();
 const looseObjectSchema = z.record(z.string(), z.unknown());
@@ -441,6 +448,8 @@ const sessionGuidancePrepareResponseSchema = z
       .strict(),
     meta: sessionGuidanceMetaSchema.extend({
       source: z.literal("ai_premium"),
+      model: z.string().trim().min(1).max(80),
+      promptVersion: z.string().trim().min(1).max(80),
     }),
   })
   .strict();

@@ -51,6 +51,183 @@ function buildGuidedPayload(overrides = {}) {
   };
 }
 
+function buildPremiumPrepareCache() {
+  return {
+    version: 1,
+    entriesByKey: {
+      "v1:occ-guided:goal-guided:2026-04-11:sport:20:abc123:gpt-5.4:session_guidance_prepare_v2": {
+        cacheKey: "v1:occ-guided:goal-guided:2026-04-11:sport:20:abc123:gpt-5.4:session_guidance_prepare_v2",
+        occurrenceId: "occ-guided",
+        actionId: "goal-guided",
+        dateKey: "2026-04-11",
+        protocolType: "sport",
+        targetDurationMinutes: 20,
+        blueprintHash: "abc123",
+        preparedRunbook: {
+          version: 2,
+          protocolType: "sport",
+          occurrenceId: "occ-guided",
+          actionId: "goal-guided",
+          dateKey: "2026-04-11",
+          title: "Circuit jambes",
+          categoryName: "Sport",
+          objective: {
+            why: "tenir le bloc",
+            successDefinition: "séance tenue",
+          },
+          steps: [
+            {
+              id: "step-1",
+              label: "Échauffement",
+              purpose: "ouvrir les appuis",
+              successCue: "souffle posé",
+              items: [
+                {
+                  id: "step-1-item-1",
+                  kind: "warmup",
+                  label: "Montées de genoux",
+                  minutes: 3,
+                  guidance: "30 sec rapides puis 30 sec plus calmes",
+                  successCue: "buste haut",
+                  restSec: 0,
+                  transitionLabel: "enchaîne",
+                  execution: null,
+                },
+                {
+                  id: "step-1-item-2",
+                  kind: "activation",
+                  label: "Squats",
+                  minutes: 2,
+                  guidance: "2 séries de 12 reps",
+                  successCue: "genoux stables",
+                  restSec: 0,
+                  transitionLabel: "souffle 15 sec",
+                  execution: null,
+                },
+              ],
+            },
+            {
+              id: "step-2",
+              label: "Bloc effort",
+              purpose: "tenir le coeur utile",
+              successCue: "gainage propre",
+              items: [
+                {
+                  id: "step-2-item-1",
+                  kind: "effort",
+                  label: "Fentes alternées",
+                  minutes: 4,
+                  guidance: "2 x 10 par jambe",
+                  successCue: "appuis nets",
+                  restSec: 20,
+                  transitionLabel: "20 sec avant la planche",
+                  execution: {
+                    reps: "2 x 10/jambe",
+                    durationSec: null,
+                    tempo: null,
+                    deliverable: null,
+                    doneWhen: null,
+                    relaunchCue: null,
+                    restSec: 20,
+                  },
+                },
+                {
+                  id: "step-2-item-2",
+                  kind: "effort",
+                  label: "Planche avant",
+                  minutes: 4,
+                  guidance: "3 x 40 sec",
+                  successCue: "bassin aligné",
+                  restSec: 20,
+                  transitionLabel: "relâche puis repars",
+                  execution: {
+                    reps: null,
+                    durationSec: 40,
+                    tempo: null,
+                    deliverable: null,
+                    doneWhen: null,
+                    relaunchCue: null,
+                    restSec: 20,
+                  },
+                },
+              ],
+            },
+            {
+              id: "step-3",
+              label: "Retour au calme",
+              purpose: "faire redescendre proprement",
+              successCue: "souffle ralenti",
+              items: [
+                {
+                  id: "step-3-item-1",
+                  kind: "cooldown",
+                  label: "Marche lente",
+                  minutes: 4,
+                  guidance: "marche 2 min puis allonge l’expiration",
+                  successCue: "rythme cardiaque en baisse",
+                  restSec: 0,
+                  transitionLabel: "puis étire doucement",
+                  execution: {
+                    reps: null,
+                    durationSec: 120,
+                    tempo: null,
+                    deliverable: null,
+                    doneWhen: null,
+                    relaunchCue: null,
+                    restSec: 0,
+                  },
+                },
+                {
+                  id: "step-3-item-2",
+                  kind: "cooldown",
+                  label: "Étirement quadriceps",
+                  minutes: 3,
+                  guidance: "45 sec par côté",
+                  successCue: "relâchement progressif",
+                  restSec: 0,
+                  transitionLabel: "termine en secouant les jambes",
+                  execution: {
+                    reps: null,
+                    durationSec: 90,
+                    tempo: null,
+                    deliverable: null,
+                    doneWhen: null,
+                    relaunchCue: null,
+                    restSec: 0,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        toolPlan: {
+          version: 1,
+          catalog: [],
+          recommendations: [],
+        },
+        quality: {
+          isPremiumReady: true,
+          validationPassed: true,
+          richnessPassed: true,
+          reason: null,
+          rejectionReason: null,
+          rejectionStage: null,
+          stepCount: 3,
+          itemCount: 6,
+          issuePaths: [],
+        },
+        requestId: "req-guided-cache",
+        preparedAt: 1713091200000,
+        lastUsedAt: 1713091200000,
+        source: "ai_fresh",
+        model: "gpt-5.4",
+        promptVersion: "session_guidance_prepare_v2",
+      },
+    },
+    order: ["v1:occ-guided:goal-guided:2026-04-11:sport:20:abc123:gpt-5.4:session_guidance_prepare_v2"],
+  };
+}
+
 async function importUserDataApi() {
   return import("./userDataApi");
 }
@@ -139,7 +316,13 @@ describe("userDataApi remote sync boundary", () => {
 
   it("sends a cloud-safe activeSession while keeping the full guided runtime locally", async () => {
     const userId = "cloud-user";
-    const payload = buildGuidedPayload();
+    const payload = {
+      ...buildGuidedPayload(),
+      ui: {
+        ...buildGuidedPayload().ui,
+        sessionPremiumPrepareCacheV1: buildPremiumPrepareCache(),
+      },
+    };
     const { buildLocalUserDataKey, upsertUserDataWithMeta } = await importUserDataApi();
 
     const result = await upsertUserDataWithMeta(userId, payload);
@@ -148,13 +331,20 @@ describe("userDataApi remote sync boundary", () => {
     expect(upsertCalls).toHaveLength(1);
     expect(upsertCalls[0].data.ui.activeSession.experienceMode).toBeUndefined();
     expect(upsertCalls[0].data.ui.activeSession.guidedRuntimeV1).toBeUndefined();
+    expect(upsertCalls[0].data.ui.sessionPremiumPrepareCacheV1).toBeUndefined();
     expect(upsertCalls[0].data.ui.activeSession.occurrenceId).toBe("occ-guided");
     expect(JSON.parse(window.localStorage.getItem(buildLocalUserDataKey(userId)) || "null")).toEqual(payload);
   });
 
   it("rehydrates a compatible guided snapshot from the local cache after a cloud load", async () => {
     const userId = "cloud-user";
-    const payload = buildGuidedPayload();
+    const payload = {
+      ...buildGuidedPayload(),
+      ui: {
+        ...buildGuidedPayload().ui,
+        sessionPremiumPrepareCacheV1: buildPremiumPrepareCache(),
+      },
+    };
     const { loadUserDataWithMeta, upsertUserDataWithMeta } = await importUserDataApi();
 
     await upsertUserDataWithMeta(userId, payload);
@@ -163,6 +353,7 @@ describe("userDataApi remote sync boundary", () => {
     expect(readResult.storageScope).toBe("cloud");
     expect(readResult.data.ui.activeSession.experienceMode).toBe("guided");
     expect(readResult.data.ui.activeSession.guidedRuntimeV1).toEqual(payload.ui.activeSession.guidedRuntimeV1);
+    expect(readResult.data.ui.sessionPremiumPrepareCacheV1).toEqual(payload.ui.sessionPremiumPrepareCacheV1);
     expect(readResult.data.ui.activeSession.timerAccumulatedSec).toBe(payload.ui.activeSession.timerAccumulatedSec);
   });
 

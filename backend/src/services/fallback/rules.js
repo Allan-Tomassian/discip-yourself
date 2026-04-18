@@ -272,6 +272,44 @@ function buildPilotageLocalAnalysisFallback(context) {
   };
 }
 
+function buildObjectivesLocalAnalysisFallback(context) {
+  const objectivesSummary = context?.objectivesSummary || {};
+  const activeCategoryId = context?.activeCategoryId || null;
+  const protectLabel = objectivesSummary?.protectLabel || objectivesSummary?.dominantObjectiveLabel || null;
+  const loosenLabel = objectivesSummary?.loosenLabel || objectivesSummary?.dominantCategoryName || null;
+  const reframeLabel = objectivesSummary?.reframeLabel || null;
+
+  const headline = protectLabel
+    ? `Protège ${protectLabel}`.slice(0, 72)
+    : "Recentre la semaine";
+  const reason = [
+    protectLabel ? `${protectLabel} mérite la première place.` : "Le système a besoin d'un recentrage lisible.",
+    loosenLabel ? `Dessers ${loosenLabel.toLowerCase()} pour retrouver une charge crédible.` : null,
+    reframeLabel ? `Recadre ${reframeLabel.toLowerCase()} avant d'ajouter autre chose.` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return {
+    kind: "chat",
+    headline,
+    reason: reason || "Choisis un objectif à protéger et enlève une source de dispersion avant de rallonger la semaine.",
+    primaryAction: buildAction({
+      label: "Ouvrir Planning",
+      intent: "open_planning",
+      categoryId: activeCategoryId,
+      dateKey: context.activeDate,
+    }),
+    secondaryAction: buildAction({
+      label: "Approfondir",
+      intent: "open_pilotage",
+      categoryId: activeCategoryId,
+      dateKey: context.activeDate,
+    }),
+    suggestedDurationMin: 20,
+  };
+}
+
 export function buildNowFallback(context) {
   const categoryCoherence = resolveCategoryCoherence(context);
   const focusStartPolicy = resolveTodayOccurrenceStartPolicy({
@@ -813,6 +851,9 @@ export function buildChatFallback(context) {
 export function buildLocalAnalysisFallback(context) {
   if (context?.analysisSurface === LOCAL_ANALYSIS_SURFACES.PLANNING) {
     return buildPlanningLocalAnalysisFallback(context);
+  }
+  if (context?.analysisSurface === LOCAL_ANALYSIS_SURFACES.OBJECTIVES) {
+    return buildObjectivesLocalAnalysisFallback(context);
   }
   if (context?.analysisSurface === LOCAL_ANALYSIS_SURFACES.PILOTAGE) {
     return buildPilotageLocalAnalysisFallback(context);

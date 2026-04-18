@@ -8,6 +8,7 @@ const ACTION_INTENTS = new Set([
   "start_occurrence",
   "resume_session",
   "open_library",
+  "open_planning",
   "open_pilotage",
   "open_today",
   "open_support",
@@ -160,8 +161,12 @@ export function normalizeAiLocalAnalysisPayload(input) {
     error.code = "INVALID_REQUEST";
     throw error;
   }
-  if (surface !== LOCAL_ANALYSIS_SURFACES.PLANNING && surface !== LOCAL_ANALYSIS_SURFACES.PILOTAGE) {
-    const error = new Error("surface must be planning or pilotage");
+  if (
+    surface !== LOCAL_ANALYSIS_SURFACES.PLANNING &&
+    surface !== LOCAL_ANALYSIS_SURFACES.PILOTAGE &&
+    surface !== LOCAL_ANALYSIS_SURFACES.OBJECTIVES
+  ) {
+    const error = new Error("surface must be planning, objectives, or pilotage");
     error.code = "INVALID_REQUEST";
     throw error;
   }

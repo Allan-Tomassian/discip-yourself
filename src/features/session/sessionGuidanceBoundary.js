@@ -77,7 +77,9 @@ export function resolveSessionGuidanceExecutionSource({
   result = null,
   applied = false,
   backendState = SESSION_GUIDANCE_BACKEND_STATES.UNKNOWN,
+  cacheHit = false,
 } = {}) {
+  if (cacheHit) return SESSION_GUIDANCE_EXECUTION_SOURCES.LOCAL_ONLY;
   if (applied) return SESSION_GUIDANCE_EXECUTION_SOURCES.AI_APPLIED;
   if (!attempted) {
     return normalizeSessionGuidanceBackendState(backendState) === SESSION_GUIDANCE_BACKEND_STATES.UNAVAILABLE
@@ -116,6 +118,11 @@ export function logSessionGuidanceResolution({
   degradedStateShown = null,
   cause = null,
   toolId = null,
+  cacheHit = null,
+  preparedAt = null,
+  model = null,
+  promptVersion = null,
+  cacheKey = null,
   occurrenceId = null,
   actionId = null,
   latencyMs = null,
@@ -137,6 +144,11 @@ export function logSessionGuidanceResolution({
     degradedStateShown: typeof degradedStateShown === "boolean" ? degradedStateShown : null,
     cause: String(cause || "").trim() || null,
     toolId: String(toolId || "").trim() || null,
+    cacheHit: typeof cacheHit === "boolean" ? cacheHit : null,
+    preparedAt: Number.isFinite(preparedAt) ? Math.max(0, Math.round(preparedAt)) : null,
+    model: String(model || "").trim() || null,
+    promptVersion: String(promptVersion || "").trim() || null,
+    cacheKey: String(cacheKey || "").trim() || null,
     occurrenceId: String(occurrenceId || "").trim() || null,
     actionId: String(actionId || "").trim() || null,
     latencyMs: Number.isFinite(latencyMs) ? Math.max(0, Math.round(latencyMs)) : null,

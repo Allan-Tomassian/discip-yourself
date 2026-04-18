@@ -84,6 +84,7 @@ import {
   sanitizeVisibleCategoryUi,
   withExecutionActiveCategoryId,
   withLibraryActiveCategoryId,
+  withSelectedCategoryByView,
 } from "./domain/categoryVisibility";
 import { resolveGoalType } from "./domain/goalType";
 import { BehaviorFeedbackHost, BehaviorFeedbackProvider } from "./feedback/BehaviorFeedbackContext";
@@ -1126,37 +1127,45 @@ export default function App() {
         <Objectives
           data={data}
           setData={setData}
-          onOpenCreateMenu={({ source, anchorEl, anchorRect }) =>
-            openCreateExpander({
-              source,
-              categoryId: libraryCategoryId || selectedCategoryId || homeActiveCategoryId || null,
-              anchorEl,
-              anchorRect,
-            })
-          }
-          onOpenCreateAction={(categoryId, outcomeId) =>
-            launchActionCreate({
-              sourceSurface: "objectives",
-              categoryId: categoryId || libraryCategoryId || null,
-              outcomeId: outcomeId || null,
-            })
-          }
-          onEditItem={({ id, type, categoryId }) => {
-            const nextId = categoryId || libraryCategoryId || null;
-            if (nextId) {
+          persistenceScope={persistenceScope}
+          onOpenPlanning={({ categoryId = null, dateKey = null } = {}) => {
+            setData((prev) => {
+              const safePrev = prev && typeof prev === "object" ? prev : {};
+              const prevUi = safePrev.ui && typeof safePrev.ui === "object" ? safePrev.ui : {};
+              const nextUi = withSelectedCategoryByView(prevUi, {
+                planning: categoryId || null,
+              });
+              return {
+                ...safePrev,
+                ui: {
+                  ...nextUi,
+                  selectedDateKey: dateKey || prevUi.selectedDateKey || prevUi.selectedDate || null,
+                  selectedDate: dateKey || prevUi.selectedDate || prevUi.selectedDateKey || null,
+                },
+              };
+            });
+            setTab("timeline");
+          }}
+          onOpenPilotage={({ categoryId = null } = {}) => {
+            if (categoryId) {
               setData((prev) => ({
                 ...prev,
-                ui: withLibraryActiveCategoryId(prev.ui, nextId),
+                ui: withSelectedCategoryByView(prev.ui, {
+                  pilotage: categoryId,
+                }),
               }));
             }
-            setEditItem({ id, type, categoryId: nextId, returnTab: tab, returnToCategoryView: false });
-            setTab("edit-item", {
-              editItemId: id,
-              historyState: {
-                origin: resolveRouteOrigin({ sourceSurface: "objectives", categoryId: nextId }),
-                editItemId: id,
-              },
-            });
+            setTab("insights");
+          }}
+          onOpenCategory={(categoryId) => {
+            if (!categoryId) return;
+            setLibraryCategoryId(categoryId);
+            setCategoryDetailId(categoryId);
+            setData((prev) => ({
+              ...prev,
+              ui: withLibraryActiveCategoryId(prev.ui, categoryId),
+            }));
+            setTab("category-detail", { categoryDetailId: categoryId });
           }}
         />
       ) : tab === "edit-item" ? (

@@ -81,12 +81,32 @@ function describeContextShape(context) {
   const safeContext = isPlainObject(context) ? context : {};
   return {
     aiIntent: typeof safeContext.aiIntent === "string" ? safeContext.aiIntent : null,
+    mode: typeof safeContext.mode === "string" ? safeContext.mode : null,
+    protocolType: typeof safeContext.protocolType === "string" ? safeContext.protocolType : null,
     contextKeyCount: Object.keys(safeContext).length,
     hasMessage: typeof safeContext.message === "string" && safeContext.message.length > 0,
     hasRecentMessages: Array.isArray(safeContext.recentMessages) && safeContext.recentMessages.length > 0,
     hasCategorySnapshot: Boolean(safeContext.categorySnapshot),
     hasPlanningSummary: Boolean(safeContext.planningSummary),
     hasPilotageSummary: Boolean(safeContext.pilotageSummary),
+  };
+}
+
+function describeSessionGuidanceErrorDetails(details) {
+  const safeDetails = isPlainObject(details) ? details : {};
+  return {
+    providerStatus: typeof safeDetails.providerStatus === "string" ? safeDetails.providerStatus : null,
+    rejectionStage: typeof safeDetails.rejectionStage === "string" ? safeDetails.rejectionStage : null,
+    rejectionReason: typeof safeDetails.rejectionReason === "string" ? safeDetails.rejectionReason : null,
+    validationPassed:
+      typeof safeDetails.validationPassed === "boolean" ? safeDetails.validationPassed : null,
+    richnessPassed: typeof safeDetails.richnessPassed === "boolean" ? safeDetails.richnessPassed : null,
+    stepCount: Number.isFinite(safeDetails.stepCount) ? Math.round(safeDetails.stepCount) : null,
+    itemCount: Number.isFinite(safeDetails.itemCount) ? Math.round(safeDetails.itemCount) : null,
+    zodIssuePaths:
+      Array.isArray(safeDetails.zodIssuePaths) && safeDetails.zodIssuePaths.length
+        ? safeDetails.zodIssuePaths.slice(0, 12)
+        : null,
   };
 }
 
@@ -115,16 +135,18 @@ function logAiStageError({
       surface: String(request.headers["x-discip-surface"] || "").trim() || null,
       ...(activeSessionDiagnostics || {}),
       ...describeContextShape(context),
+      ...describeSessionGuidanceErrorDetails(err?.details || null),
     },
     "ai route failed"
   );
 }
 
-function sendAiStageError(reply, requestId, { status = 503, errorCode, message }) {
+function sendAiStageError(reply, requestId, { status = 503, errorCode, message, details = null }) {
   return reply.code(status).send({
     error: errorCode,
     message,
     requestId,
+    ...(isPlainObject(details) ? { details } : {}),
   });
 }
 
@@ -540,8 +562,10 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
     response = await runSessionGuidanceCoach({ app, context });
   } catch (error) {
     const errorCode = String(error?.code || "").trim().toUpperCase() || "UNKNOWN_BACKEND_ERROR";
+    const errorDetails = isPlainObject(error?.details) ? error.details : null;
     const status =
       errorCode === "SESSION_GUIDANCE_BACKEND_UNAVAILABLE" ? 503
+      : errorCode === "SESSION_GUIDANCE_PROVIDER_TIMEOUT" ? 504
       : errorCode === "INVALID_SESSION_GUIDANCE_RESPONSE" ? 502
       : 503;
     logAiStageError({
@@ -563,6 +587,17 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
       planTier: quotaState.planTier,
       decisionSource: sessionGuidanceDecisionSource || "ai",
       statusCode: status,
+      mode: parsedBody.data.mode,
+      protocolType: parsedBody.data.protocolType,
+      providerStatus: errorDetails?.providerStatus || (errorCode === "INVALID_SESSION_GUIDANCE_RESPONSE" ? "invalid_response" : "error"),
+      rejectionStage: errorDetails?.rejectionStage || null,
+      rejectionReason: errorDetails?.rejectionReason || null,
+      validationPassed:
+        typeof errorDetails?.validationPassed === "boolean" ? errorDetails.validationPassed : null,
+      richnessPassed: typeof errorDetails?.richnessPassed === "boolean" ? errorDetails.richnessPassed : null,
+      stepCount: Number.isFinite(errorDetails?.stepCount) ? errorDetails.stepCount : null,
+      itemCount: Number.isFinite(errorDetails?.itemCount) ? errorDetails.itemCount : null,
+      zodIssuePaths: Array.isArray(errorDetails?.zodIssuePaths) ? errorDetails.zodIssuePaths : null,
       requestHash,
       ipHash: hashValue(getClientIp(request)),
       userAgent: request.headers["user-agent"] || "",
@@ -574,8 +609,11 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
       message:
         errorCode === "SESSION_GUIDANCE_BACKEND_UNAVAILABLE"
           ? "Session guidance backend unavailable."
+          : errorCode === "SESSION_GUIDANCE_PROVIDER_TIMEOUT"
+            ? "Session guidance provider timed out."
           : "Unable to prepare premium session guidance.",
       requestId: request.requestId,
+      ...(errorDetails ? { details: errorDetails } : {}),
     });
   }
 
@@ -589,6 +627,13 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
       planTier: quotaState.planTier,
       decisionSource: sessionGuidanceDecisionSource || "ai",
       statusCode: 502,
+      mode: parsedBody.data.mode,
+      protocolType: parsedBody.data.protocolType,
+      providerStatus: "invalid_response",
+      rejectionStage: "response_schema",
+      rejectionReason: "provider_parse_failed",
+      validationPassed: false,
+      richnessPassed: false,
       requestHash,
       ipHash: hashValue(getClientIp(request)),
       userAgent: request.headers["user-agent"] || "",
@@ -602,6 +647,10 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
     });
   }
 
+  const prepareQuality =
+    parsedResponse.data.mode === "prepare" && isPlainObject(parsedResponse.data.payload?.quality)
+      ? parsedResponse.data.payload.quality
+      : null;
   await insertAiRequestLog(app.supabase, {
     requestId: request.requestId,
     userId: request.user.id,
@@ -610,6 +659,18 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
     planTier: quotaState.planTier,
     decisionSource: sessionGuidanceDecisionSource || "ai",
     statusCode: 200,
+    mode: parsedBody.data.mode,
+    protocolType: parsedBody.data.protocolType,
+    providerStatus: "ok",
+    rejectionStage: prepareQuality?.rejectionStage || null,
+    rejectionReason: prepareQuality?.rejectionReason || null,
+    validationPassed:
+      typeof prepareQuality?.validationPassed === "boolean" ? prepareQuality.validationPassed : null,
+    richnessPassed:
+      typeof prepareQuality?.richnessPassed === "boolean" ? prepareQuality.richnessPassed : null,
+    stepCount: Number.isFinite(prepareQuality?.stepCount) ? prepareQuality.stepCount : null,
+    itemCount: Number.isFinite(prepareQuality?.itemCount) ? prepareQuality.itemCount : null,
+    zodIssuePaths: Array.isArray(prepareQuality?.issuePaths) ? prepareQuality.issuePaths : null,
     requestHash,
     ipHash: hashValue(getClientIp(request)),
     userAgent: request.headers["user-agent"] || "",

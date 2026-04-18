@@ -233,12 +233,16 @@ describe("sessionRunbook", () => {
       },
     });
 
-    expect(quality).toEqual({
+    expect(quality).toMatchObject({
       isPremiumReady: true,
       validationPassed: true,
       richnessPassed: true,
       reason: null,
+      rejectionReason: null,
+      rejectionStage: null,
     });
+    expect(quality.stepCount).toBe(3);
+    expect(quality.itemCount).toBe(7);
   });
 
   it("accepts a premium deep work runbook only when the content is concrete and restartable", () => {
@@ -323,12 +327,16 @@ describe("sessionRunbook", () => {
       },
     });
 
-    expect(quality).toEqual({
+    expect(quality).toMatchObject({
       isPremiumReady: true,
       validationPassed: true,
       richnessPassed: true,
       reason: null,
+      rejectionReason: null,
+      rejectionStage: null,
     });
+    expect(quality.stepCount).toBe(3);
+    expect(quality.itemCount).toBe(7);
   });
 
   it("rejects a generic prepared runbook as non premium-ready", () => {
@@ -382,6 +390,252 @@ describe("sessionRunbook", () => {
     expect(quality.validationPassed).toBe(true);
     expect(quality.richnessPassed).toBe(false);
     expect(quality.reason).toBe("richness_failed");
+    expect(quality.rejectionReason).toBe("richness_failed");
+    expect(quality.rejectionStage).toBe("quality_gate");
+  });
+
+  it("accepts sport plans with short exercise labels when execution details stay concrete", () => {
+    const quality = assessPreparedSessionRunbookQuality({
+      preparedRunbook: {
+        version: 2,
+        protocolType: "sport",
+        occurrenceId: "occ_6",
+        actionId: "goal_6",
+        dateKey: "2026-04-10",
+        title: "Bloc cardio court",
+        categoryName: "Sport",
+        objective: {
+          why: "tenir un effort net sans casser la forme",
+          successDefinition: "le bloc est fait avec un rythme propre",
+        },
+        steps: [
+          {
+            label: "Échauffement",
+            purpose: "monter doucement",
+            successCue: "corps prêt",
+            items: [
+              {
+                label: "Jog sur place",
+                minutes: 2,
+                guidance: "alterne 20 sec souples puis 20 sec plus dynamiques pour monter le rythme",
+                successCue: "souffle lancé",
+              },
+              {
+                label: "Air squats",
+                minutes: 2,
+                guidance: "fais 15 reps contrôlées en gardant les appuis propres",
+                successCue: "appuis stables",
+              },
+            ],
+          },
+          {
+            label: "Bloc effort",
+            purpose: "tenir le coeur du bloc",
+            successCue: "rythme propre",
+            items: [
+              {
+                label: "Pompes",
+                minutes: 3,
+                guidance: "enchaîne des séries courtes sans casser l’alignement",
+                successCue: "gainage tenu",
+                execution: { reps: 10, restSec: 20 },
+              },
+              {
+                label: "Burpees",
+                minutes: 3,
+                guidance: "tiens des répétitions propres plutôt qu’un sprint brouillon",
+                successCue: "souffle sous contrôle",
+                execution: { reps: 8, restSec: 25 },
+              },
+              {
+                label: "Sprint",
+                minutes: 2,
+                guidance: "fais 4 efforts de 20 sec avec une vraie récup entre chaque",
+                successCue: "relance nette",
+                execution: { durationSec: 20, restSec: 25 },
+              },
+            ],
+          },
+          {
+            label: "Retour au calme",
+            purpose: "redescendre proprement",
+            successCue: "souffle revenu",
+            items: [
+              {
+                label: "Marche lente",
+                minutes: 2,
+                guidance: "marche jusqu’à sentir la respiration redescendre",
+                successCue: "rythme calmé",
+              },
+              {
+                label: "Étirements",
+                minutes: 2,
+                guidance: "tiens 30 sec par zone sans forcer pour délier les jambes",
+                successCue: "tension relâchée",
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(quality.isPremiumReady).toBe(true);
+    expect(quality.validationPassed).toBe(true);
+    expect(quality.richnessPassed).toBe(true);
+  });
+
+  it("rejects vague admin runbooks that still look structurally valid", () => {
+    const quality = assessPreparedSessionRunbookQuality({
+      preparedRunbook: {
+        version: 2,
+        protocolType: "admin",
+        occurrenceId: "occ_7",
+        actionId: "goal_7",
+        dateKey: "2026-04-10",
+        title: "Bloc admin",
+        categoryName: "Admin",
+        objective: {
+          why: "faire avancer l’administratif",
+          successDefinition: "quelque chose avance",
+        },
+        steps: [
+          {
+            label: "Ouverture",
+            purpose: "te mettre dedans",
+            successCue: "contexte rouvert",
+            items: [
+              { label: "Rouvre le contexte", minutes: 2, guidance: "regarde ce qu’il faut faire" },
+              { label: "Premier passage utile", minutes: 2, guidance: "commence par ce qui semble utile" },
+            ],
+          },
+          {
+            label: "Traitement",
+            purpose: "avancer",
+            successCue: "quelque chose bouge",
+            items: [
+              { label: "Passage principal", minutes: 5, guidance: "traite le coeur du sujet" },
+              { label: "Passage critique", minutes: 5, guidance: "continue jusqu’au point utile" },
+              { label: "Trace exploitable", minutes: 4, guidance: "laisse une trace si possible" },
+            ],
+          },
+          {
+            label: "Clôture",
+            purpose: "sortir",
+            successCue: "suite notée",
+            items: [
+              { label: "Noter la reprise", minutes: 2, guidance: "écris la suite" },
+              { label: "Nettoyer le contexte", minutes: 2, guidance: "range l’essentiel" },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(quality.isPremiumReady).toBe(false);
+    expect(quality.validationPassed).toBe(true);
+    expect(quality.richnessPassed).toBe(false);
+    expect(quality.rejectionReason).toBe("richness_failed");
+  });
+
+  it("accepts a premium admin runbook when actions, completion, and relaunch cues are concrete", () => {
+    const quality = assessPreparedSessionRunbookQuality({
+      preparedRunbook: {
+        version: 2,
+        protocolType: "admin",
+        occurrenceId: "occ_7b",
+        actionId: "goal_7b",
+        dateKey: "2026-04-10",
+        title: "Boucler le bloc admin du jour",
+        categoryName: "Admin",
+        objective: {
+          why: "vider les points administratifs qui bloquent la semaine",
+          successDefinition: "les documents critiques sont traités ou relancés proprement",
+        },
+        steps: [
+          {
+            label: "Ouverture utile",
+            purpose: "poser la file exacte",
+            successCue: "ordre de traitement clair",
+            items: [
+              {
+                label: "Ouvrir les 3 dossiers à traiter",
+                minutes: 3,
+                guidance: "mets côte à côte la facture fournisseur, le mail client en attente et le dossier URSSAF pour éviter les allers-retours",
+                successCue: "file visible",
+              },
+              {
+                label: "Choisir l’ordre de passage",
+                minutes: 2,
+                guidance: "attaque d’abord ce qui a une échéance ferme puis note le deuxième dossier à relancer ensuite",
+                successCue: "ordre verrouillé",
+              },
+            ],
+          },
+          {
+            label: "Traitement",
+            purpose: "clore les sorties concrètes du bloc",
+            successCue: "sorties envoyées ou validées",
+            items: [
+              {
+                label: "Vérifier la facture fournisseur d’avril",
+                minutes: 6,
+                guidance: "contrôle montant, TVA et IBAN puis marque la facture prête à payer seulement si les 3 points sont cohérents",
+                successCue: "facture validée",
+                execution: {
+                  deliverable: "facture annotée prête à payer",
+                  doneWhen: "montant, TVA et IBAN sont validés",
+                },
+              },
+              {
+                label: "Envoyer la relance au client Martin",
+                minutes: 6,
+                guidance: "rédige le mail de relance, joins la facture et envoie-le avant de fermer l’onglet",
+                successCue: "mail envoyé",
+                execution: {
+                  deliverable: "mail de relance envoyé avec pièce jointe",
+                  doneWhen: "le mail est parti avec la bonne facture",
+                  relaunchCue: "si le client ne répond pas, relance vendredi à 14h",
+                },
+              },
+              {
+                label: "Classer le justificatif URSSAF",
+                minutes: 4,
+                guidance: "range le PDF dans le bon dossier puis note la prochaine pièce attendue pour éviter une recherche plus tard",
+                successCue: "pièce classée",
+                execution: {
+                  doneWhen: "le PDF est rangé au bon endroit",
+                  relaunchCue: "la prochaine pièce à demander est notée dans la checklist",
+                },
+              },
+            ],
+          },
+          {
+            label: "Clôture",
+            purpose: "laisser une reprise lisible",
+            successCue: "suite évidente",
+            items: [
+              {
+                label: "Noter le prochain suivi admin",
+                minutes: 2,
+                guidance: "écris le prochain point à vérifier et sa date pour ne pas rouvrir tout le contexte demain",
+                successCue: "prochaine relance notée",
+              },
+              {
+                label: "Fermer la file proprement",
+                minutes: 2,
+                guidance: "archive les documents traités et laisse uniquement les éléments utiles à la prochaine action",
+                successCue: "bureau propre",
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(quality.isPremiumReady).toBe(true);
+    expect(quality.validationPassed).toBe(true);
+    expect(quality.richnessPassed).toBe(true);
+    expect(quality.rejectionReason).toBe(null);
   });
 
   it("derives the current guided item from elapsed seconds", () => {

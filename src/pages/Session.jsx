@@ -20,13 +20,15 @@ import { deriveBehaviorFeedbackSignal, deriveSessionBehaviorCue } from "../feedb
 import { AppCard, AppScreen, GhostButton } from "../shared/ui/app";
 import { deriveActionProtocol } from "../features/action-protocol/actionProtocol";
 import {
-  assessPreparedSessionRunbookQuality,
   buildSessionRunbookV1,
+  createEmptyPreparedSessionQuality,
   normalizePreparedSessionRunbook,
   normalizeSessionBlueprintSnapshot,
   normalizeSessionRunbook,
+  resolvePreparedSessionRunbookQuality,
   summarizeSessionRunbookPatch,
 } from "../features/session/sessionRunbook";
+import { buildSessionPrepareFailureState } from "../features/session/sessionPrepareFeedback";
 import {
   activateGuidedSpatialState,
   areGuidedSpatialStatesEqual,
@@ -67,6 +69,16 @@ import {
   resolveSessionPremiumGateDecision,
 } from "../features/session/sessionPremiumGate";
 import {
+  canUseSessionPremiumPrepareCache,
+  buildSessionPremiumPrepareCacheKey,
+  createSessionPremiumPrepareCacheEntry,
+  normalizeSessionPremiumPrepareCache,
+  readSessionPremiumPrepareCacheEntry,
+  resolveSessionPremiumPrepareCacheIdentity,
+  touchSessionPremiumPrepareCacheEntry,
+  upsertSessionPremiumPrepareCacheEntry,
+} from "../features/session/sessionPrepareCache";
+import {
   SESSION_GUIDANCE_BACKEND_STATES,
   SESSION_GUIDANCE_EXECUTION_SOURCES,
   SESSION_GUIDANCE_OPERATIONS,
@@ -79,6 +91,8 @@ import { requestAiSessionGuidance } from "../infra/aiSessionGuidanceClient";
 import { saveState } from "../utils/storage";
 import "../features/session/session.css";
 import "../features/session/session-guided.css";
+
+const SESSION_PREPARE_REQUEST_TIMEOUT_MS = 65000;
 
 function formatElapsed(ms) {
   const safe = Number.isFinite(ms) && ms > 0 ? ms : 0;
@@ -135,31 +149,13 @@ function readSessionGuidanceToolResultPayload(payload, toolId = "") {
 }
 
 function readSessionGuidancePrepareQualityPayload(payload, fallbackRunbook = null) {
+  if (!payload || typeof payload !== "object") return createEmptyPreparedSessionQuality();
   const preparedRunbook = readSessionGuidanceRunbookPayload(payload, fallbackRunbook);
-  return assessPreparedSessionRunbookQuality({
+  return resolvePreparedSessionRunbookQuality({
     preparedRunbook,
     quality: payload?.quality || null,
     fallbackRunbook,
   });
-}
-
-function resolveSessionGuidancePrepareFailureMessage(errorCode = "", quality = null) {
-  if (errorCode === "PREMIUM_REQUIRED") {
-    return "Cette préparation détaillée fait partie du premium.";
-  }
-  if (errorCode === "SESSION_GUIDANCE_BACKEND_UNAVAILABLE") {
-    return "La préparation détaillée est indisponible pour le moment. Réessaye ou passe en standard.";
-  }
-  if (quality?.validationPassed === false) {
-    return "Le plan reçu n’était pas valide. Réessaye ou passe en standard.";
-  }
-  if (quality?.richnessPassed === false) {
-    return "Le plan détaillé n’était pas assez spécifique. Réessaye ou passe en standard.";
-  }
-  if (errorCode === "TIMEOUT" || errorCode === "NETWORK_ERROR") {
-    return "La préparation détaillée a expiré. Réessaye ou passe en standard.";
-  }
-  return "Impossible de préparer un plan détaillé pour le moment. Réessaye ou passe en standard.";
 }
 
 function buildSessionPreparePayload({
@@ -279,6 +275,42 @@ function persistActiveGuidedRuntime(prevState, { occurrenceId = null, snapshot =
       },
     },
   };
+}
+
+function persistSessionPremiumPrepareCache(prevState, nextCache) {
+  const prev = prevState && typeof prevState === "object" ? prevState : {};
+  const prevUi = prev.ui && typeof prev.ui === "object" ? prev.ui : {};
+  const normalizedCurrentCache = normalizeSessionPremiumPrepareCache(prevUi.sessionPremiumPrepareCacheV1 || null);
+  const normalizedNextCache = normalizeSessionPremiumPrepareCache(nextCache);
+  if (JSON.stringify(normalizedCurrentCache) === JSON.stringify(normalizedNextCache)) {
+    return prevState;
+  }
+  return {
+    ...prev,
+    ui: {
+      ...prevUi,
+      sessionPremiumPrepareCacheV1: normalizedNextCache,
+    },
+  };
+}
+
+function upsertSessionPremiumPrepareCache(prevState, entry, { usedAt = Date.now() } = {}) {
+  const prev = prevState && typeof prevState === "object" ? prevState : {};
+  const currentCache = prev?.ui?.sessionPremiumPrepareCacheV1 || null;
+  const nextCache = upsertSessionPremiumPrepareCacheEntry(currentCache, entry, { usedAt });
+  return persistSessionPremiumPrepareCache(prev, nextCache);
+}
+
+function touchSessionPremiumPrepareCache(prevState, cacheKey, { usedAt = Date.now() } = {}) {
+  const prev = prevState && typeof prevState === "object" ? prevState : {};
+  const currentCache = prev?.ui?.sessionPremiumPrepareCacheV1 || null;
+  const nextCache = touchSessionPremiumPrepareCacheEntry(currentCache, cacheKey, { usedAt });
+  return persistSessionPremiumPrepareCache(prev, nextCache);
+}
+
+function resolvePreparePlanSource({ applied = false, variant = "" } = {}) {
+  if (!applied) return "fallback_local";
+  return variant === "regenerate" ? "ai_regenerated" : "ai_fresh";
 }
 
 function SessionTopChrome({ isPrelaunch = false, categoryName = "", onBack }) {
@@ -413,6 +445,29 @@ export default function Session({
     () => normalizeSessionBlueprintSnapshot(goal?.sessionBlueprintV1),
     [goal?.sessionBlueprintV1]
   );
+  const sessionPremiumPrepareCache = useMemo(
+    () => normalizeSessionPremiumPrepareCache(safeData?.ui?.sessionPremiumPrepareCacheV1 || null),
+    [safeData?.ui?.sessionPremiumPrepareCacheV1]
+  );
+  const sessionPreparePayload = useMemo(
+    () =>
+      buildSessionPreparePayload({
+        selectedOccurrence,
+        goal,
+        category,
+        blueprintSnapshot,
+        effectiveDateKey,
+        effectiveCategoryId,
+      }),
+    [
+      blueprintSnapshot,
+      category,
+      effectiveCategoryId,
+      effectiveDateKey,
+      goal,
+      selectedOccurrence,
+    ]
+  );
   const trackSessionGuidanceAttempt = useCallback(
     ({
       operation,
@@ -427,6 +482,12 @@ export default function Session({
       richnessPassed = null,
       failoverReason = null,
       degradedStateShown = false,
+      cacheHit = false,
+      preparedAt = null,
+      model = null,
+      promptVersion = null,
+      cacheKey = null,
+      requestIdOverride = null,
     } = {}) => {
       const nextBackendState = resolveSessionGuidanceBackendState(
         sessionGuidanceBackendStateRef.current,
@@ -438,6 +499,7 @@ export default function Session({
         result,
         applied,
         backendState: nextBackendState,
+        cacheHit,
       });
       if (
         source === SESSION_GUIDANCE_EXECUTION_SOURCES.LOCAL_ONLY &&
@@ -452,7 +514,7 @@ export default function Session({
         source,
         planSource,
         backendState: nextBackendState,
-        requestId: result?.requestId || null,
+        requestId: requestIdOverride || result?.requestId || null,
         errorCode: result?.errorCode || null,
         backendErrorCode: result?.backendErrorCode || null,
         entitlement: currentEntitlementAccess.effectiveTier || "free",
@@ -463,6 +525,11 @@ export default function Session({
         degradedStateShown,
         cause,
         toolId,
+        cacheHit,
+        preparedAt,
+        model,
+        promptVersion,
+        cacheKey,
         occurrenceId: selectedOccurrence?.id || null,
         actionId: goal?.id || selectedOccurrence?.goalId || "",
         latencyMs: startedAtMs > 0 ? Date.now() - startedAtMs : null,
@@ -811,9 +878,30 @@ export default function Session({
         sessionToolState: currentValue?.sessionToolState || null,
         guidedSpatialState: currentValue?.guidedSpatialState || runtimeGuidedBase?.guidedSpatialState || null,
         guidedPrepareErrorCode: currentValue?.guidedPrepareErrorCode || null,
+        guidedPrepareBackendErrorCode: currentValue?.guidedPrepareBackendErrorCode || null,
+        guidedPrepareStatus:
+          Number.isFinite(currentValue?.guidedPrepareStatus) ? Math.round(currentValue.guidedPrepareStatus) : null,
         guidedPrepareMessage: currentValue?.guidedPrepareMessage || "",
         guidedPrepareRequestId: currentValue?.guidedPrepareRequestId || null,
         guidedPreparePlanSource: currentValue?.guidedPreparePlanSource || null,
+        guidedPrepareRejectionReason: currentValue?.guidedPrepareRejectionReason || null,
+        guidedPrepareValidationPassed:
+          typeof currentValue?.guidedPrepareValidationPassed === "boolean"
+            ? currentValue.guidedPrepareValidationPassed
+            : null,
+        guidedPrepareRichnessPassed:
+          typeof currentValue?.guidedPrepareRichnessPassed === "boolean"
+            ? currentValue.guidedPrepareRichnessPassed
+            : null,
+        guidedPrepareCacheHit:
+          typeof currentValue?.guidedPrepareCacheHit === "boolean"
+            ? currentValue.guidedPrepareCacheHit
+            : null,
+        guidedPreparePreparedAt:
+          Number.isFinite(currentValue?.guidedPreparePreparedAt) ? Math.round(currentValue.guidedPreparePreparedAt) : null,
+        guidedPrepareModel: currentValue?.guidedPrepareModel || null,
+        guidedPreparePromptVersion: currentValue?.guidedPreparePromptVersion || null,
+        guidedPrepareCacheKey: currentValue?.guidedPrepareCacheKey || null,
         guidedLockedPreview: currentValue?.guidedLockedPreview || null,
         openedAtMs: currentValue?.openedAtMs || Date.now(),
       };
@@ -1079,14 +1167,64 @@ export default function Session({
       sessionToolState: null,
       guidedSpatialState: null,
       guidedPrepareErrorCode: null,
+      guidedPrepareBackendErrorCode: null,
+      guidedPrepareStatus: null,
       guidedPrepareMessage: "",
       guidedPrepareRequestId: null,
       guidedPreparePlanSource: null,
+      guidedPrepareRejectionReason: null,
+      guidedPrepareValidationPassed: null,
+      guidedPrepareRichnessPassed: null,
+      guidedPrepareCacheHit: null,
+      guidedPreparePreparedAt: null,
+      guidedPrepareModel: null,
+      guidedPreparePromptVersion: null,
+      guidedPrepareCacheKey: null,
       guidedLockedPreview: null,
       ...extra,
     }),
     [readLaunchStateBase]
   );
+
+  useEffect(() => {
+    if (typeof setSessionLaunchState !== "function") return;
+    if (!launchStateMatchesOccurrence || launchMode !== "guided") return;
+    if (!currentLaunchState?.sessionRunbook) return;
+    if (currentLaunchState?.phase === "guided_active") return;
+
+    const currentIdentity = resolveSessionPremiumPrepareCacheIdentity({
+      model: currentLaunchState?.guidedPrepareModel || null,
+      promptVersion: currentLaunchState?.guidedPreparePromptVersion || null,
+    });
+    const expectedCacheKey = buildSessionPremiumPrepareCacheKey({
+      preparePayload: sessionPreparePayload,
+      model: currentIdentity.model,
+      promptVersion: currentIdentity.promptVersion,
+    });
+    const currentCacheKey = currentLaunchState?.guidedPrepareCacheKey || "";
+    if (!currentCacheKey || !expectedCacheKey || currentCacheKey === expectedCacheKey) return;
+
+    setSessionLaunchState((current) => {
+      const base = readLaunchStateBase(current);
+      if (base.occurrenceId !== selectedOccurrence?.id) return current;
+      if (base.phase === "guided_active") return current;
+      if (!base.guidedPrepareCacheKey || base.guidedPrepareCacheKey === expectedCacheKey) return current;
+      return resetLaunchPrepareArtifacts(base, "ready");
+    });
+  }, [
+    currentLaunchState?.guidedPrepareCacheKey,
+    currentLaunchState?.guidedPrepareModel,
+    currentLaunchState?.guidedPreparePromptVersion,
+    currentLaunchState?.phase,
+    currentLaunchState?.sessionRunbook,
+    launchMode,
+    launchStateMatchesOccurrence,
+    readLaunchStateBase,
+    resetLaunchPrepareArtifacts,
+    selectedOccurrence?.id,
+    sessionPreparePayload,
+    setSessionLaunchState,
+  ]);
 
   const openLockedPremiumPreview = useCallback(
     (lockedPreview) => {
@@ -1139,6 +1277,11 @@ export default function Session({
       handleLaunchStandard();
       return;
     }
+    const preparePayload = sessionPreparePayload;
+    if (!preparePayload) {
+      handleLaunchStandard();
+      return;
+    }
     prepareRequestRef.current += 1;
     const requestId = prepareRequestRef.current;
     const startedAtMs = Date.now();
@@ -1166,6 +1309,76 @@ export default function Session({
       return;
     }
 
+    const currentPrepareIdentity = resolveSessionPremiumPrepareCacheIdentity();
+    const cachedPrepare = canUseSessionPremiumPrepareCache(resolvedAccess)
+      ? readSessionPremiumPrepareCacheEntry({
+          cacheState: sessionPremiumPrepareCache,
+          preparePayload,
+          model: currentPrepareIdentity.model,
+          promptVersion: currentPrepareIdentity.promptVersion,
+        })
+      : { cacheKey: "", entry: null };
+    if (cachedPrepare.entry) {
+      const cacheEntry = cachedPrepare.entry;
+      const cacheUsedAt = Date.now();
+      if (typeof setData === "function") {
+        setData((prev) =>
+          touchSessionPremiumPrepareCache(prev, cacheEntry.cacheKey, {
+            usedAt: cacheUsedAt,
+          })
+        );
+      }
+      trackSessionGuidanceAttempt({
+        operation: SESSION_GUIDANCE_OPERATIONS.PREPARE,
+        startedAtMs,
+        attempted: false,
+        applied: false,
+        cause: "premium_prepare_cache_hit",
+        planSource: "ai_cached",
+        validationPassed: cacheEntry.quality.validationPassed,
+        richnessPassed: cacheEntry.quality.richnessPassed,
+        cacheHit: true,
+        preparedAt: cacheEntry.preparedAt,
+        model: cacheEntry.model,
+        promptVersion: cacheEntry.promptVersion,
+        cacheKey: cacheEntry.cacheKey,
+        requestIdOverride: cacheEntry.requestId,
+      });
+      setSessionLaunchState((current) => {
+        const base = readLaunchStateBase(current);
+        if (!base.occurrenceId || base.occurrenceId !== selectedOccurrence.id) return current;
+        return {
+          ...base,
+          phase: "guided_preview",
+          launchMode: "guided",
+          sessionRunbook: cacheEntry.preparedRunbook,
+          standardAdjustment: null,
+          guidedAdjustment: null,
+          sessionToolPlan: cacheEntry.toolPlan,
+          sessionToolState: createEmptySessionToolState(),
+          guidedSpatialState: createGuidedSpatialState({
+            sessionRunbook: cacheEntry.preparedRunbook,
+            mode: "preview",
+          }),
+          guidedPrepareErrorCode: null,
+          guidedPrepareBackendErrorCode: null,
+          guidedPrepareStatus: null,
+          guidedPrepareMessage: "",
+          guidedPrepareRequestId: cacheEntry.requestId,
+          guidedPreparePlanSource: "ai_cached",
+          guidedPrepareRejectionReason: null,
+          guidedPrepareValidationPassed: cacheEntry.quality.validationPassed,
+          guidedPrepareRichnessPassed: cacheEntry.quality.richnessPassed,
+          guidedPrepareCacheHit: true,
+          guidedPreparePreparedAt: cacheEntry.preparedAt,
+          guidedPrepareModel: cacheEntry.model,
+          guidedPreparePromptVersion: cacheEntry.promptVersion,
+          guidedPrepareCacheKey: cacheEntry.cacheKey,
+        };
+      });
+      return;
+    }
+
     const forceBackendAttempt = launchPhase === "guided_degraded" || launchPhase === "access_error";
     setSessionLaunchState((current) => resetLaunchPrepareArtifacts(current, "preparing"));
 
@@ -1174,13 +1387,7 @@ export default function Session({
     let prepareAttempted = false;
     let prepareApplied = false;
     let prepareResult = null;
-    let prepareQuality = {
-      isPremiumReady: false,
-      validationPassed: false,
-      richnessPassed: false,
-      reason: "backend_unavailable",
-    };
-    let degradedMessage = "";
+    let prepareQuality = createEmptyPreparedSessionQuality();
     if (
       shouldAttemptSessionGuidanceBackend({
         backendState: sessionGuidanceBackendStateRef.current,
@@ -1191,15 +1398,8 @@ export default function Session({
       prepareAttempted = true;
       prepareResult = await requestAiSessionGuidance({
         accessToken,
-        payload: buildSessionPreparePayload({
-          selectedOccurrence,
-          goal,
-          category,
-          blueprintSnapshot,
-          effectiveDateKey,
-          effectiveCategoryId,
-        }),
-        timeoutMs: 4200,
+        payload: preparePayload,
+        timeoutMs: SESSION_PREPARE_REQUEST_TIMEOUT_MS,
       });
       const preparedRunbook = readSessionGuidanceRunbookPayload(prepareResult?.payload, fallbackRunbook);
       prepareQuality = readSessionGuidancePrepareQualityPayload(prepareResult?.payload, fallbackRunbook);
@@ -1214,21 +1414,73 @@ export default function Session({
       if (prepareResult?.ok && prepareQuality.isPremiumReady && preparedRunbook && !nextToolPlan) {
         nextToolPlan = buildSessionToolPlan({ sessionRunbook: preparedRunbook });
       }
-      degradedMessage = resolveSessionGuidancePrepareFailureMessage(prepareResult?.errorCode || "", prepareQuality);
-    } else {
-      degradedMessage = resolveSessionGuidancePrepareFailureMessage("SESSION_GUIDANCE_BACKEND_UNAVAILABLE", prepareQuality);
     }
+    const prepareIdentity = resolveSessionPremiumPrepareCacheIdentity({
+      model: prepareResult?.responseMeta?.model || null,
+      promptVersion: prepareResult?.responseMeta?.promptVersion || null,
+    });
+    const prepareCacheKey = buildSessionPremiumPrepareCacheKey({
+      preparePayload,
+      model: prepareIdentity.model,
+      promptVersion: prepareIdentity.promptVersion,
+    });
+    const preparePreparedAt = prepareApplied ? Date.now() : null;
+    const preparePlanSource = resolvePreparePlanSource({
+      applied: prepareApplied,
+      variant: preparePayload.variant,
+    });
+    let persistedPrepareEntry = null;
+    if (prepareApplied && nextRunbook) {
+      persistedPrepareEntry = createSessionPremiumPrepareCacheEntry({
+        preparePayload,
+        preparedRunbook: nextRunbook,
+        toolPlan: nextToolPlan,
+        quality: prepareQuality,
+        requestId: prepareResult?.requestId || null,
+        preparedAt: preparePreparedAt,
+        source: preparePlanSource,
+        model: prepareIdentity.model,
+        promptVersion: prepareIdentity.promptVersion,
+      });
+      if (persistedPrepareEntry && typeof setData === "function") {
+        setData((prev) =>
+          upsertSessionPremiumPrepareCache(prev, persistedPrepareEntry, {
+            usedAt: preparePreparedAt || Date.now(),
+          })
+        );
+      }
+    }
+    const prepareFailureState = buildSessionPrepareFailureState({
+      result:
+        prepareResult ||
+        {
+          errorCode: "SESSION_GUIDANCE_BACKEND_UNAVAILABLE",
+          backendErrorCode: "SESSION_GUIDANCE_BACKEND_UNAVAILABLE",
+        },
+      quality: prepareQuality,
+    });
     trackSessionGuidanceAttempt({
       operation: SESSION_GUIDANCE_OPERATIONS.PREPARE,
       startedAtMs,
       attempted: prepareAttempted,
       result: prepareResult,
       applied: prepareApplied,
-      cause: prepareApplied ? "premium_prepare" : prepareQuality.reason || "prepare_degraded",
-      planSource: prepareApplied ? "ai_premium" : "fallback_local",
+      cause: prepareApplied ? "premium_prepare" : prepareFailureState.rejectionReason || prepareQuality.reason || "prepare_degraded",
+      planSource: preparePlanSource,
       validationPassed: prepareQuality.validationPassed,
       richnessPassed: prepareQuality.richnessPassed,
-      failoverReason: prepareApplied ? null : prepareResult?.errorCode || prepareQuality.reason || "prepare_degraded",
+      cacheHit: false,
+      preparedAt: preparePreparedAt,
+      model: prepareApplied ? prepareIdentity.model : null,
+      promptVersion: prepareApplied ? prepareIdentity.promptVersion : null,
+      cacheKey: prepareApplied ? prepareCacheKey : null,
+      failoverReason:
+        prepareApplied
+          ? null
+          : prepareFailureState.errorCode ||
+            prepareFailureState.rejectionReason ||
+            prepareQuality.reason ||
+            "prepare_degraded",
       degradedStateShown: !prepareApplied && prepareResult?.errorCode !== "PREMIUM_REQUIRED",
     });
 
@@ -1265,10 +1517,20 @@ export default function Session({
         return {
           ...resetLaunchPrepareArtifacts(base, "guided_degraded"),
           phase: "guided_degraded",
-          guidedPrepareErrorCode: prepareResult?.errorCode || prepareQuality.reason || launchPrepareErrorCode || null,
-          guidedPrepareMessage: degradedMessage,
-          guidedPrepareRequestId: prepareResult?.requestId || null,
+          guidedPrepareErrorCode:
+            prepareFailureState.errorCode ||
+            prepareFailureState.rejectionReason ||
+            launchPrepareErrorCode ||
+            null,
+          guidedPrepareBackendErrorCode: prepareFailureState.backendErrorCode,
+          guidedPrepareStatus: prepareFailureState.status,
+          guidedPrepareMessage: prepareFailureState.message,
+          guidedPrepareRequestId: prepareFailureState.requestId,
           guidedPreparePlanSource: "fallback_local",
+          guidedPrepareRejectionReason: prepareFailureState.rejectionReason,
+          guidedPrepareValidationPassed: prepareFailureState.validationPassed,
+          guidedPrepareRichnessPassed: prepareFailureState.richnessPassed,
+          guidedPrepareCacheHit: false,
         };
       }
       return {
@@ -1285,9 +1547,19 @@ export default function Session({
           mode: "preview",
         }),
         guidedPrepareErrorCode: null,
+        guidedPrepareBackendErrorCode: null,
+        guidedPrepareStatus: null,
         guidedPrepareMessage: "",
         guidedPrepareRequestId: prepareResult?.requestId || null,
-        guidedPreparePlanSource: "ai_premium",
+        guidedPreparePlanSource: preparePlanSource,
+        guidedPrepareRejectionReason: null,
+        guidedPrepareValidationPassed: prepareQuality.validationPassed,
+        guidedPrepareRichnessPassed: prepareQuality.richnessPassed,
+        guidedPrepareCacheHit: false,
+        guidedPreparePreparedAt: persistedPrepareEntry?.preparedAt || preparePreparedAt,
+        guidedPrepareModel: prepareIdentity.model,
+        guidedPreparePromptVersion: prepareIdentity.promptVersion,
+        guidedPrepareCacheKey: persistedPrepareEntry?.cacheKey || prepareCacheKey || null,
       };
     });
   };
@@ -1355,6 +1627,13 @@ export default function Session({
       openLockedPremiumPreview(buildLockedPremiumPreview(launchRunbook));
       return;
     }
+    const regeneratePayload = sessionPreparePayload
+      ? {
+          ...sessionPreparePayload,
+          variant: "regenerate",
+        }
+      : null;
+    if (!regeneratePayload) return;
 
     prepareRequestRef.current += 1;
     const requestId = prepareRequestRef.current;
@@ -1368,6 +1647,20 @@ export default function Session({
     let prepareAttempted = false;
     let prepareApplied = false;
     let prepareResult = null;
+    let prepareQuality = createEmptyPreparedSessionQuality();
+    let prepareFailureState = {
+      errorCode: "SESSION_GUIDANCE_BACKEND_UNAVAILABLE",
+      rejectionReason: null,
+    };
+    let prepareIdentity = resolveSessionPremiumPrepareCacheIdentity();
+    let prepareCacheKey = buildSessionPremiumPrepareCacheKey({
+      preparePayload: regeneratePayload,
+      model: prepareIdentity.model,
+      promptVersion: prepareIdentity.promptVersion,
+    });
+    let preparePreparedAt = null;
+    let preparePlanSource = "fallback_local";
+    let persistedPrepareEntry = null;
 
     if (
       shouldAttemptSessionGuidanceBackend({
@@ -1379,19 +1672,15 @@ export default function Session({
       prepareAttempted = true;
       prepareResult = await requestAiSessionGuidance({
         accessToken,
-        payload: buildSessionPreparePayload({
-          variant: "regenerate",
-          selectedOccurrence,
-          goal,
-          category,
-          blueprintSnapshot,
-          effectiveDateKey,
-          effectiveCategoryId,
-        }),
-        timeoutMs: 4200,
+        payload: regeneratePayload,
+        timeoutMs: SESSION_PREPARE_REQUEST_TIMEOUT_MS,
       });
-      const prepareQuality = readSessionGuidancePrepareQualityPayload(prepareResult?.payload, launchRunbook);
+      prepareQuality = readSessionGuidancePrepareQualityPayload(prepareResult?.payload, launchRunbook);
       const preparedRunbook = readSessionGuidanceRunbookPayload(prepareResult?.payload, launchRunbook);
+      prepareFailureState = buildSessionPrepareFailureState({
+        result: prepareResult,
+        quality: prepareQuality,
+      });
       if (prepareResult?.ok && prepareQuality.isPremiumReady && preparedRunbook) {
         nextRunbook = preparedRunbook;
         prepareApplied = true;
@@ -1406,13 +1695,59 @@ export default function Session({
       if (prepareResult?.ok && prepareQuality.isPremiumReady && preparedRunbook && !preparedToolPlan) {
         nextToolPlan = buildSessionToolPlan({ sessionRunbook: preparedRunbook });
       }
+      prepareIdentity = resolveSessionPremiumPrepareCacheIdentity({
+        model: prepareResult?.responseMeta?.model || null,
+        promptVersion: prepareResult?.responseMeta?.promptVersion || null,
+      });
+      prepareCacheKey = buildSessionPremiumPrepareCacheKey({
+        preparePayload: regeneratePayload,
+        model: prepareIdentity.model,
+        promptVersion: prepareIdentity.promptVersion,
+      });
+      preparePreparedAt = prepareApplied ? Date.now() : null;
+      preparePlanSource = resolvePreparePlanSource({
+        applied: prepareApplied,
+        variant: regeneratePayload.variant,
+      });
+      if (prepareApplied && nextRunbook) {
+        persistedPrepareEntry = createSessionPremiumPrepareCacheEntry({
+          preparePayload: regeneratePayload,
+          preparedRunbook: nextRunbook,
+          toolPlan: nextToolPlan,
+          quality: prepareQuality,
+          requestId: prepareResult?.requestId || null,
+          preparedAt: preparePreparedAt,
+          source: preparePlanSource,
+          model: prepareIdentity.model,
+          promptVersion: prepareIdentity.promptVersion,
+        });
+        if (persistedPrepareEntry && typeof setData === "function") {
+          setData((prev) =>
+            upsertSessionPremiumPrepareCache(prev, persistedPrepareEntry, {
+              usedAt: preparePreparedAt || Date.now(),
+            })
+          );
+        }
+      }
       trackSessionGuidanceAttempt({
         operation: SESSION_GUIDANCE_OPERATIONS.PREPARE,
         startedAtMs: guidanceStartedAtMs,
         attempted: prepareAttempted,
         result: prepareResult,
         applied: prepareApplied,
-        planSource: prepareApplied ? "ai_premium" : "fallback_local",
+        cause: prepareApplied ? "premium_prepare" : prepareFailureState.rejectionReason || "prepare_degraded",
+        planSource: preparePlanSource,
+        validationPassed: prepareQuality.validationPassed,
+        richnessPassed: prepareQuality.richnessPassed,
+        cacheHit: false,
+        preparedAt: preparePreparedAt,
+        model: prepareApplied ? prepareIdentity.model : null,
+        promptVersion: prepareApplied ? prepareIdentity.promptVersion : null,
+        cacheKey: prepareApplied ? prepareCacheKey : null,
+        failoverReason:
+          prepareApplied
+            ? null
+            : prepareFailureState.errorCode || prepareFailureState.rejectionReason || "prepare_degraded",
       });
     } else {
       trackSessionGuidanceAttempt({
@@ -1458,6 +1793,22 @@ export default function Session({
           }),
           isRegenerating: false,
         },
+        guidedPrepareErrorCode: null,
+        guidedPrepareBackendErrorCode: null,
+        guidedPrepareStatus: null,
+        guidedPrepareMessage: "",
+        guidedPrepareRequestId: prepareResult?.requestId || base.guidedPrepareRequestId || null,
+        guidedPreparePlanSource: prepareApplied ? preparePlanSource : base.guidedPreparePlanSource || null,
+        guidedPrepareRejectionReason: null,
+        guidedPrepareValidationPassed: prepareApplied ? prepareQuality.validationPassed : base.guidedPrepareValidationPassed,
+        guidedPrepareRichnessPassed: prepareApplied ? prepareQuality.richnessPassed : base.guidedPrepareRichnessPassed,
+        guidedPrepareCacheHit: false,
+        guidedPreparePreparedAt: prepareApplied ? persistedPrepareEntry?.preparedAt || preparePreparedAt : base.guidedPreparePreparedAt || null,
+        guidedPrepareModel: prepareApplied ? prepareIdentity.model : base.guidedPrepareModel || null,
+        guidedPreparePromptVersion:
+          prepareApplied ? prepareIdentity.promptVersion : base.guidedPreparePromptVersion || null,
+        guidedPrepareCacheKey:
+          prepareApplied ? persistedPrepareEntry?.cacheKey || prepareCacheKey || null : base.guidedPrepareCacheKey || null,
       };
     });
   };

@@ -1,5 +1,9 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { getVisibleCategories } from "../domain/categoryVisibility";
+import {
+  getVisibleCategories,
+  normalizeSelectedCategoryByView,
+  withSelectedCategoryByView,
+} from "../domain/categoryVisibility";
 import { resolveGoalType } from "../domain/goalType";
 import { getOpenRuntimeSession, resolveRuntimeSessionGate } from "../logic/sessionRuntime";
 import {
@@ -191,7 +195,6 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
   const safeData = data && typeof data === "object" ? data : {};
   const [expandedEntryId, setExpandedEntryId] = useState("");
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [categoryFilterId, setCategoryFilterId] = useState("all");
   const categories = useMemo(() => getVisibleCategories(safeData.categories), [safeData.categories]);
   const categoriesById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
@@ -208,6 +211,7 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
   const todayKey = useMemo(() => todayLocalKey(), []);
   const selectedDateKey =
     normalizeLocalDateKey(safeData?.ui?.selectedDateKey || safeData?.ui?.selectedDate) || todayKey;
+  const planningCategoryId = normalizeSelectedCategoryByView(safeData?.ui?.selectedCategoryByView).planning || null;
   const openRuntimeSession = useMemo(() => getOpenRuntimeSession(safeData), [safeData]);
   const activeOccurrenceId =
     typeof openRuntimeSession?.occurrenceId === "string" && openRuntimeSession.occurrenceId.trim()
@@ -243,9 +247,9 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
   }, [categoriesById, goalsById, processGoalsById, safeData.occurrences, selectedDateKey]);
 
   const filteredOccurrenceEntries = useMemo(() => {
-    if (categoryFilterId === "all") return occurrenceEntries;
-    return occurrenceEntries.filter((entry) => entry.category?.id === categoryFilterId);
-  }, [categoryFilterId, occurrenceEntries]);
+    if (!planningCategoryId) return occurrenceEntries;
+    return occurrenceEntries.filter((entry) => entry.category?.id === planningCategoryId);
+  }, [occurrenceEntries, planningCategoryId]);
   const categoryOptions = useMemo(
     () => buildTimelineCategoryOptions({ categories, occurrenceEntries, anchorDateKey: selectedDateKey }),
     [categories, occurrenceEntries, selectedDateKey]
@@ -423,8 +427,28 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
           <CompactCategoryFilter
             label={TIMELINE_SCREEN_COPY.categoryFilterLabel}
             options={categoryOptions}
-            value={categoryFilterId}
-            onChange={setCategoryFilterId}
+            value={planningCategoryId || "all"}
+            onChange={(nextValue) => {
+              const nextCategoryId = nextValue === "all" ? null : nextValue;
+              if (typeof setData !== "function") return;
+              setData((previous) => {
+                const safePrevious = previous && typeof previous === "object" ? previous : {};
+                const previousUi = safePrevious.ui && typeof safePrevious.ui === "object" ? safePrevious.ui : {};
+                const nextUi = withSelectedCategoryByView(previousUi, {
+                  planning: nextCategoryId,
+                });
+                if (
+                  previousUi.selectedCategoryId === nextUi.selectedCategoryId &&
+                  JSON.stringify(previousUi.selectedCategoryByView || {}) === JSON.stringify(nextUi.selectedCategoryByView || {})
+                ) {
+                  return previous;
+                }
+                return {
+                  ...safePrevious,
+                  ui: nextUi,
+                };
+              });
+            }}
             allLabel={TIMELINE_SCREEN_COPY.allCategories}
           />
         ) : null}

@@ -65,6 +65,8 @@ describe("session launch contract", () => {
     expect(session).toContain("sessionToolPlan");
     expect(session).toContain("sessionToolState");
     expect(session).toContain("guidedSpatialState");
+    expect(session).toContain("readSessionPremiumPrepareCacheEntry({");
+    expect(session).toContain("sessionPremiumPrepareCacheV1");
     expect(launchView).toContain('data-testid="session-launch-ready"');
     expect(launchView).toContain('phase === "checking_access" ? "session-launch-checking" : "session-launch-preparing"');
     expect(launchView).toContain('data-testid="session-launch-locked"');

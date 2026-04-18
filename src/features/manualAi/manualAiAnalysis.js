@@ -164,6 +164,15 @@ export function buildPilotageManualAiContextKey({
   return `pilotage:${safeString(userId).trim()}:${safeString(windowId).trim() || "7d"}:${safeString(fromKey).trim()}:${safeString(toKey).trim()}:${safeString(activeCategoryId).trim() || "all"}`;
 }
 
+export function buildObjectivesManualAiContextKey({
+  userId,
+  horizon = "week",
+  lens = "objectives",
+  activeCategoryId = null,
+}) {
+  return `objectives:${safeString(userId).trim()}:${safeString(horizon).trim() || "week"}:${safeString(lens).trim() || "objectives"}:${safeString(activeCategoryId).trim() || "all"}`;
+}
+
 export function createPersistedNowAnalysisEntry({
   contextKey,
   storageScope,

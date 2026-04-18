@@ -47,13 +47,18 @@ describe("aiPolicy", () => {
     expect(resolveAiRegimeForCoachMode("card")).toBe(AI_REGIMES.LOCAL_ANALYSIS);
   });
 
-  it("defines planning and pilotage as dedicated local-analysis surfaces", () => {
+  it("defines planning, objectives, and pilotage as dedicated local-analysis surfaces", () => {
     expect(normalizeLocalAnalysisSurface("planning")).toBe(LOCAL_ANALYSIS_SURFACES.PLANNING);
+    expect(normalizeLocalAnalysisSurface("objectives")).toBe(LOCAL_ANALYSIS_SURFACES.OBJECTIVES);
     expect(normalizeLocalAnalysisSurface("pilotage")).toBe(LOCAL_ANALYSIS_SURFACES.PILOTAGE);
     expect(normalizeLocalAnalysisSurface("unknown")).toBe(LOCAL_ANALYSIS_SURFACES.GENERIC);
     expect(LOCAL_ANALYSIS_SURFACE_POLICY[LOCAL_ANALYSIS_SURFACES.PLANNING].allowedIntents).toEqual([
       "open_today",
       "open_library",
+      "open_pilotage",
+    ]);
+    expect(LOCAL_ANALYSIS_SURFACE_POLICY[LOCAL_ANALYSIS_SURFACES.OBJECTIVES].allowedIntents).toEqual([
+      "open_planning",
       "open_pilotage",
     ]);
   });
