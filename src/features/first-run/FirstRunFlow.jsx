@@ -20,6 +20,16 @@ import {
   getPreviousFirstRunStatus,
   normalizeFirstRunV1,
 } from "./firstRunModel";
+import {
+  applyFirstRunGenerationFailure,
+  applyFirstRunGenerationSuccess,
+  buildFirstRunGenerationError,
+  markFirstRunGenerationPending,
+  retryFirstRunGenerationState,
+  reuseFirstRunGeneratedPlans,
+  shouldReuseFirstRunGeneratedPlans,
+  shouldStartFirstRunGeneration,
+} from "./firstRunGenerationState";
 import FirstRunCommitScreen from "./FirstRunCommitScreen";
 import FirstRunCompareScreen from "./FirstRunCompareScreen";
 import FirstRunDiscoveryScreen from "./FirstRunDiscoveryScreen";
@@ -264,6 +274,9 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
 
   const goToSignalsFromGenerate = useCallback(() => {
     updateFirstRun((current) => {
+      if (current.status === "generate") {
+        generationRequestRef.current = { token: generationRequestRef.current.token + 1, inputHash: null };
+      }
       if (current.status !== "generate") {
         return {
           ...current,
@@ -301,12 +314,7 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
     updateFirstRun((current) => {
       if (current.status !== "generate") return current;
       generationRequestRef.current = { token: generationRequestRef.current.token + 1, inputHash: null };
-      return {
-        ...current,
-        inputHash: null,
-        generationError: null,
-        lastUpdatedAt: new Date().toISOString(),
-      };
+      return retryFirstRunGenerationState(current);
     });
   }, [updateFirstRun]);
 
@@ -331,35 +339,32 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
       if (isUnmountedRef.current || firstRun.status !== "generate") return;
 
       const persistedPlans = firstRun.generatedPlans;
-      if (persistedPlans?.inputHash && persistedPlans.inputHash === inputHash) {
+      if (shouldReuseFirstRunGeneratedPlans({ generatedPlans: persistedPlans, inputHash })) {
         commitFirstRunFromLatest((current) => {
-          if (current.status !== "generate") return current;
-          return {
-            ...current,
-            inputHash,
-            generationError: null,
-            status: "compare",
-            lastUpdatedAt: new Date().toISOString(),
-          };
+          return reuseFirstRunGeneratedPlans(current, inputHash);
         });
         return;
       }
 
-      if (firstRun.generationError && firstRun.inputHash === inputHash) return;
-      if (generationRequestRef.current.inputHash === inputHash) return;
+      if (
+        !shouldStartFirstRunGeneration({
+          firstRun: {
+            status: firstRun.status,
+            generationError: firstRun.generationError,
+            inputHash: firstRun.inputHash,
+          },
+          inputHash,
+          inFlightInputHash: generationRequestRef.current.inputHash,
+        })
+      ) {
+        return;
+      }
 
       const requestToken = generationRequestRef.current.token + 1;
       generationRequestRef.current = { token: requestToken, inputHash };
 
       commitFirstRunFromLatest((current) => {
-        if (current.status !== "generate") return current;
-        return {
-          ...current,
-          inputHash,
-          generationError: null,
-          selectedPlanId: null,
-          lastUpdatedAt: new Date().toISOString(),
-        };
+        return markFirstRunGenerationPending(current, inputHash);
       });
 
       const result = await requestAiFirstRunPlan({
@@ -373,37 +378,19 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
 
       if (!result.ok) {
         commitFirstRunFromLatest((current) => {
-          if (current.status !== "generate") return current;
-          if (current.inputHash !== inputHash) return current;
-          return {
-            ...current,
-            generationError: {
-              code: result.errorCode || "BACKEND_ERROR",
-              message: result.errorMessage || "Impossible de générer les plans pour le moment.",
-              requestId: result.requestId || null,
-              backendErrorCode: result.backendErrorCode || null,
-              probableCause: result.transportMeta?.probableCause || null,
-              baseUrlUsed: result.baseUrlUsed || result.transportMeta?.backendBaseUrl || null,
-              originUsed: result.originUsed || result.transportMeta?.frontendOrigin || null,
-              details: result.errorDetails || null,
-            },
-            lastUpdatedAt: new Date().toISOString(),
-          };
+          return applyFirstRunGenerationFailure(current, {
+            inputHash,
+            error: buildFirstRunGenerationError(result),
+          });
         });
         return;
       }
 
       commitFirstRunFromLatest((current) => {
-        if (current.status !== "generate") return current;
-        if (current.inputHash !== inputHash) return current;
-        return {
-          ...current,
-          generatedPlans: result.payload,
-          generationError: null,
-          selectedPlanId: null,
-          status: "compare",
-          lastUpdatedAt: new Date().toISOString(),
-        };
+        return applyFirstRunGenerationSuccess(current, {
+          inputHash,
+          payload: result.payload,
+        });
       });
     }
 
@@ -508,6 +495,7 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
         data={safeData}
         isLoading={!firstRun.generatedPlans && !firstRun.generationError}
         error={firstRun.generationError}
+        goalLabel={firstRun.draftAnswers?.primaryGoal || ""}
         onBack={goToSignalsFromGenerate}
         onRetry={retryGeneration}
       />

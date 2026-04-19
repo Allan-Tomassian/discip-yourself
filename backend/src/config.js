@@ -71,7 +71,7 @@ const envSchema = z.object({
   OPENAI_MODEL: z.string().optional().default("gpt-4.1-mini"),
   OPENAI_DEFAULT_TIMEOUT_MS: z.coerce.number().int().min(1000).max(90000).optional().default(30000),
   FIRST_RUN_PLAN_OPENAI_MODEL: z.string().optional().default(""),
-  FIRST_RUN_PLAN_OPENAI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(90000).optional().default(45000),
+  FIRST_RUN_PLAN_OPENAI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(90000).optional().default(55000),
   SESSION_GUIDANCE_PREPARE_OPENAI_MODEL: z.string().optional().default(""),
   SESSION_GUIDANCE_PREPARE_OPENAI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).optional().default(60000),
   AI_QUOTA_MODE: z.enum(["normal", "dev_relaxed"]).default("normal"),

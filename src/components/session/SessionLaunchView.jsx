@@ -1,5 +1,6 @@
 import React from "react";
 import { GhostButton, PrimaryButton } from "../../shared/ui/app";
+import AiPreparationShell from "../../shared/ui/ai/AiPreparationShell";
 import CoachAssistIcon from "../../shared/ui/icons/CoachAssistIcon";
 
 function TimingChip({ children }) {
@@ -24,26 +25,12 @@ export default function SessionLaunchView({
 }) {
   if (phase === "preparing" || phase === "checking_access") {
     return (
-      <div
-        className="sessionLaunchPreparing"
-        role="status"
-        aria-live="polite"
+      <AiPreparationShell
         data-testid={phase === "checking_access" ? "session-launch-checking" : "session-launch-preparing"}
-      >
-        <div className="sessionLaunchPreparingOrb" aria-hidden="true">
-          <span className="sessionLaunchPreparingHalo sessionLaunchPreparingHalo--outer" />
-          <span className="sessionLaunchPreparingHalo sessionLaunchPreparingHalo--inner" />
-          <span className="sessionLaunchPreparingCore">
-            <span className="sessionAssistBadge sessionAssistBadge--orb">
-              <CoachAssistIcon className="sessionLaunchPreparingIcon" size={20} />
-            </span>
-          </span>
-        </div>
-        <div className="sessionLaunchPreparingTitle">
-          {phase === "checking_access" ? "Vérification en cours" : "Préparation en cours"}
-        </div>
-        <div className="sessionLaunchPreparingMeta">{title}</div>
-      </div>
+        title={phase === "checking_access" ? "Vérification en cours" : "Préparation en cours"}
+        meta={title}
+        icon={<CoachAssistIcon className="sessionLaunchPreparingIcon" size={20} />}
+      />
     );
   }
 

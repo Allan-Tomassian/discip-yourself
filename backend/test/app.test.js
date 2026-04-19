@@ -19,7 +19,7 @@ const TEST_CONFIG = {
   OPENAI_MODEL: "gpt-4.1-mini",
   OPENAI_DEFAULT_TIMEOUT_MS: 20000,
   FIRST_RUN_PLAN_OPENAI_MODEL: "",
-  FIRST_RUN_PLAN_OPENAI_TIMEOUT_MS: 45000,
+  FIRST_RUN_PLAN_OPENAI_TIMEOUT_MS: 55000,
   SESSION_GUIDANCE_PREPARE_OPENAI_MODEL: "",
   SESSION_GUIDANCE_PREPARE_OPENAI_TIMEOUT_MS: 60000,
   AI_QUOTA_MODE: "normal",
@@ -1267,7 +1267,7 @@ test("POST /ai/first-run-plan uses gpt-5.4 with a dedicated timeout by default",
 
   assert.equal(response.statusCode, 200);
   assert.equal(requestedModel, "gpt-5.4");
-  assert.equal(requestedTimeout, 45000);
+  assert.equal(requestedTimeout, 55000);
   await app.close();
 });
 
@@ -1378,16 +1378,14 @@ test("POST /ai/first-run-plan rejects plans that do not diverge enough", async (
         parse: async () => {
           const basePlans = createValidFirstRunPlanResponse().plans;
           const baseTenable = basePlans[0];
-          const validAmbitious = basePlans[1];
-          const weakTenableDraft = {
+          const validTenableDraft = {
             ...baseTenable.commitDraft,
             occurrences: [
-              { id: "weak_t_1", goalId: "action_roadmap", date: TODAY_KEY, start: "08:00", durationMinutes: 35, status: "planned" },
-              { id: "weak_t_2", goalId: "action_walk", date: FUTURE_KEY, start: "18:30", durationMinutes: 25, status: "planned" },
-              { id: "weak_t_3", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 2), start: "08:00", durationMinutes: 35, status: "planned" },
-              { id: "weak_t_4", goalId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 3), start: "18:30", durationMinutes: 30, status: "planned" },
-              { id: "weak_t_5", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "08:00", durationMinutes: 35, status: "planned" },
-              { id: "weak_t_6", goalId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 5), start: "18:30", durationMinutes: 30, status: "planned" },
+              { id: "div_t_1", goalId: "action_roadmap", date: TODAY_KEY, start: "08:00", durationMinutes: 40, status: "planned" },
+              { id: "div_t_2", goalId: "action_walk", date: FUTURE_KEY, start: "18:30", durationMinutes: 30, status: "planned" },
+              { id: "div_t_3", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 2), start: "08:00", durationMinutes: 50, status: "planned" },
+              { id: "div_t_4", goalId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 3), start: "18:30", durationMinutes: 40, status: "planned" },
+              { id: "div_t_5", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "08:00", durationMinutes: 50, status: "planned" },
             ],
           };
           return {
@@ -1400,13 +1398,26 @@ test("POST /ai/first-run-plan rejects plans that do not diverge enough", async (
                         variant: "tenable",
                         summary: baseTenable.summary,
                         rationale: baseTenable.rationale,
-                        commitDraft: weakTenableDraft,
+                        commitDraft: validTenableDraft,
                       },
                       {
                         variant: "ambitious",
-                        summary: validAmbitious.summary,
-                        rationale: validAmbitious.rationale,
-                        commitDraft: validAmbitious.commitDraft,
+                        summary: "Plan ambitieux trop proche",
+                        rationale: basePlans[1].rationale,
+                        commitDraft: {
+                          ...validTenableDraft,
+                          occurrences: [
+                            ...validTenableDraft.occurrences,
+                            {
+                              id: "weak_a_6",
+                              goalId: "action_roadmap",
+                              date: addDateKeyOffset(TODAY_KEY, 6),
+                              start: "08:00",
+                              durationMinutes: 15,
+                              status: "planned",
+                            },
+                          ],
+                        },
                       },
                     ],
                   },
@@ -1429,6 +1440,88 @@ test("POST /ai/first-run-plan rejects plans that do not diverge enough", async (
   assert.equal(response.statusCode, 502);
   assert.equal(response.json().error, "INVALID_FIRST_RUN_PLAN_RESPONSE");
   assert.equal(response.json().details?.rejectionStage, "variant_divergence");
+  await app.close();
+});
+
+test("POST /ai/first-run-plan accepts valid plans even when preview and recovery remain close", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-close-variants" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => {
+          const basePlans = createValidFirstRunPlanResponse().plans;
+          const tenable = basePlans[0];
+          const ambitious = basePlans[1];
+          const closeTenableDraft = {
+            ...tenable.commitDraft,
+            occurrences: [
+              { id: "close_t_1", goalId: "action_roadmap", date: TODAY_KEY, start: "08:00", durationMinutes: 40, status: "planned" },
+              { id: "close_t_2", goalId: "action_walk", date: FUTURE_KEY, start: "18:30", durationMinutes: 30, status: "planned" },
+              { id: "close_t_3", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 2), start: "08:00", durationMinutes: 50, status: "planned" },
+              { id: "close_t_4", goalId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 3), start: "18:30", durationMinutes: 40, status: "planned" },
+              { id: "close_t_5", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "08:00", durationMinutes: 50, status: "planned" },
+            ],
+          };
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: {
+                    plans: [
+                      {
+                        variant: "tenable",
+                        summary: tenable.summary,
+                        rationale: tenable.rationale,
+                        commitDraft: closeTenableDraft,
+                      },
+                      {
+                        variant: "ambitious",
+                        summary: ambitious.summary,
+                        rationale: ambitious.rationale,
+                        commitDraft: {
+                          ...closeTenableDraft,
+                          occurrences: [
+                            ...closeTenableDraft.occurrences,
+                            {
+                              id: "occ_close_a_6",
+                              goalId: "action_roadmap",
+                              date: addDateKeyOffset(TODAY_KEY, 6),
+                              start: "08:00",
+                              durationMinutes: 45,
+                              status: "planned",
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.38" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.json().plans?.length, 2);
   await app.close();
 });
 

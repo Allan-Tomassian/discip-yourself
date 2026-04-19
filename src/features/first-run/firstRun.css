@@ -203,6 +203,36 @@
   gap: var(--space-7);
 }
 
+.firstRunGenerateBody {
+  justify-content: center;
+}
+
+.firstRunGenerateStack {
+  width: 100%;
+  min-height: 100%;
+  justify-content: center;
+}
+
+.firstRunGenerateErrorCard {
+  width: min(100%, 460px);
+  margin-inline: auto;
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--danger) 20%, rgba(255, 255, 255, 0.08));
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0)),
+    var(--lovable-surface);
+  box-shadow: var(--lovable-shadow-card);
+}
+
+.firstRunGenerateErrorTitle {
+  font-size: var(--font-body-strong);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
 .firstRunFormSection {
   --gate-card-padding: clamp(16px, 2vw, 20px);
   --gate-card-gap: var(--space-6);

@@ -1,0 +1,159 @@
+.aiPreparationShell {
+  flex: 1 1 auto;
+  width: min(100%, 460px);
+  margin-inline: auto;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.aiPreparationOrb {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  display: grid;
+  place-items: center;
+}
+
+.aiPreparationHalo {
+  position: absolute;
+  inset: 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  box-shadow: 0 0 42px color-mix(in srgb, var(--accent-primary) 14%, transparent);
+  transform-origin: center;
+  animation: aiPreparationHaloOuter 3.6s ease-in-out infinite;
+}
+
+.aiPreparationHalo--inner {
+  inset: 22px;
+  border-color: color-mix(in srgb, var(--accent-primary) 24%, transparent);
+  animation-name: aiPreparationHaloInner;
+  animation-duration: 2.7s;
+  animation-delay: 0.22s;
+}
+
+.aiPreparationCore {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+}
+
+.aiPreparationIconBadge {
+  width: 48px;
+  height: 48px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 24%, transparent);
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.015) 58%),
+    rgba(255, 255, 255, 0.02);
+  color: color-mix(in srgb, var(--accent-primary) 80%, white 20%);
+  box-shadow:
+    0 12px 32px color-mix(in srgb, var(--accent-primary) 14%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.aiPreparationTitle {
+  font-size: var(--font-body-strong);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.aiPreparationMeta {
+  font-size: var(--font-meta);
+  color: var(--text-secondary);
+}
+
+.aiPreparationDetail {
+  max-width: 34ch;
+  font-size: var(--font-body);
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--text-primary) 90%, white 10%);
+}
+
+.aiPreparationCard {
+  width: 100%;
+  margin-top: 4px;
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 16%, rgba(255, 255, 255, 0.08));
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.008)),
+    var(--lovable-surface);
+  box-shadow:
+    var(--lovable-shadow-card),
+    0 0 0 1px color-mix(in srgb, var(--accent-primary) 8%, transparent);
+}
+
+.aiPreparationEyebrow {
+  font-size: var(--font-micro);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent-primary) 68%, white 32%);
+}
+
+.aiPreparationStepList {
+  display: grid;
+  gap: 10px;
+  text-align: left;
+}
+
+.aiPreparationStep {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.aiPreparationStepDot {
+  width: 9px;
+  height: 9px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-primary) 76%, white 24%);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent-primary) 22%, transparent);
+  flex: 0 0 auto;
+}
+
+.aiPreparationStepText {
+  font-size: var(--font-body);
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--text-primary) 92%, white 8%);
+}
+
+@keyframes aiPreparationHaloOuter {
+  0%,
+  100% {
+    opacity: 0.26;
+    transform: scale(0.98);
+  }
+  45% {
+    opacity: 0.58;
+    transform: scale(1.035);
+  }
+}
+
+@keyframes aiPreparationHaloInner {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: scale(0.985);
+  }
+  50% {
+    opacity: 0.82;
+    transform: scale(1.02);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aiPreparationHalo {
+    animation: none;
+  }
+}

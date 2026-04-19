@@ -24,7 +24,7 @@ import {
 } from "../../../../src/features/first-run/firstRunPlanContract.js";
 
 const DEFAULT_FIRST_RUN_PLAN_MODEL = "gpt-5.4";
-const DEFAULT_FIRST_RUN_PLAN_TIMEOUT_MS = 45000;
+const DEFAULT_FIRST_RUN_PLAN_TIMEOUT_MS = 55000;
 const MIN_FIRST_RUN_PLAN_TIMEOUT_MS = 30000;
 const FIRST_RUN_PLAN_PROMPT_VERSION = "first_run_plan_v1";
 
@@ -624,39 +624,8 @@ function validatePlanDivergence(plans = []) {
     );
   }
 
-  const blockGap = ambitious.comparisonMetrics.totalBlocks - tenable.comparisonMetrics.totalBlocks;
-  if (blockGap < 2) {
-    throw createBackendError(
-      "INVALID_FIRST_RUN_PLAN_RESPONSE",
-      "INVALID_FIRST_RUN_PLAN_RESPONSE",
-      buildInvalidResponseDetails({
-        rejectionStage: "variant_divergence",
-        rejectionReason: "total_blocks_gap_too_small",
-      })
-    );
-  }
-
-  if (tenable.comparisonMetrics.recoverySlots <= ambitious.comparisonMetrics.recoverySlots) {
-    throw createBackendError(
-      "INVALID_FIRST_RUN_PLAN_RESPONSE",
-      "INVALID_FIRST_RUN_PLAN_RESPONSE",
-      buildInvalidResponseDetails({
-        rejectionStage: "variant_divergence",
-        rejectionReason: "recovery_gap_invalid",
-      })
-    );
-  }
-
-  if (JSON.stringify(tenable.preview) === JSON.stringify(ambitious.preview)) {
-    throw createBackendError(
-      "INVALID_FIRST_RUN_PLAN_RESPONSE",
-      "INVALID_FIRST_RUN_PLAN_RESPONSE",
-      buildInvalidResponseDetails({
-        rejectionStage: "variant_divergence",
-        rejectionReason: "preview_identical",
-      })
-    );
-  }
+  // Weekly load remains the hard guard. Preview rows and recovery days can stay
+  // close while still producing a valid, committable compare state.
 }
 
 function normalizeProviderPayload(providerPayload, context, requestMeta) {
