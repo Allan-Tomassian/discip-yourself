@@ -69,6 +69,7 @@ const envSchema = z.object({
     .default("")
     .refine((value) => !value || !isPlaceholderValue(value), "OPENAI_API_KEY must be empty or a real server-only key."),
   OPENAI_MODEL: z.string().optional().default("gpt-4.1-mini"),
+  OPENAI_DEFAULT_TIMEOUT_MS: z.coerce.number().int().min(1000).max(90000).optional().default(20000),
   FIRST_RUN_PLAN_OPENAI_MODEL: z.string().optional().default(""),
   FIRST_RUN_PLAN_OPENAI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(90000).optional().default(45000),
   SESSION_GUIDANCE_PREPARE_OPENAI_MODEL: z.string().optional().default(""),

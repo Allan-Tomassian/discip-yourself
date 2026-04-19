@@ -68,7 +68,23 @@ export function buildAiTransportMeta({ baseUrl, errorCode = null } = {}) {
   const normalizedCode = String(errorCode || "").trim().toUpperCase();
 
   let probableCause = null;
-  if (normalizedCode === "NETWORK_ERROR") {
+  if (normalizedCode === "DISABLED") {
+    probableCause = "backend_disabled";
+  } else if (normalizedCode === "TIMEOUT") {
+    probableCause = "request_timeout";
+  } else if (normalizedCode === "BACKEND_UNAVAILABLE") {
+    probableCause = "backend_unavailable";
+  } else if (normalizedCode === "AUTH_MISSING") {
+    probableCause = "auth_missing";
+  } else if (normalizedCode === "AUTH_INVALID" || normalizedCode === "UNAUTHORIZED") {
+    probableCause = "auth_invalid";
+  } else if (normalizedCode === "INVALID_RESPONSE") {
+    probableCause = "invalid_response";
+  } else if (normalizedCode === "PREMIUM_REQUIRED") {
+    probableCause = "premium_required";
+  } else if (normalizedCode === "QUALITY_REJECTED") {
+    probableCause = "quality_rejected";
+  } else if (normalizedCode === "NETWORK_ERROR") {
     if (online === false) probableCause = "offline";
     else if (
       frontendOrigin &&
@@ -165,6 +181,8 @@ export function deriveAiUnavailableMessage(
     disabled,
     unauthorized,
     rateLimited,
+    timeout,
+    backendUnavailable,
     offline,
     corsPrivateOrigin,
     networkUnknown,
@@ -175,8 +193,10 @@ export function deriveAiUnavailableMessage(
   const probableCause = String(result?.transportMeta?.probableCause || "").trim().toLowerCase();
 
   if (code === "DISABLED") return disabled;
-  if (code === "UNAUTHORIZED") return unauthorized;
+  if (code === "AUTH_MISSING" || code === "AUTH_INVALID" || code === "UNAUTHORIZED") return unauthorized;
   if (code === "RATE_LIMITED" || code === "QUOTA_EXCEEDED") return rateLimited;
+  if (code === "TIMEOUT") return timeout || fallback;
+  if (code === "BACKEND_UNAVAILABLE") return backendUnavailable || fallback;
   if (code === "NETWORK_ERROR") {
     if (probableCause === "offline") return offline;
     if (probableCause === "cors_private_origin") return corsPrivateOrigin;

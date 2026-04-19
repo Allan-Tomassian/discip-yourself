@@ -43,6 +43,29 @@ function hasNamedValue(name) {
   );
 }
 
+function isPrivateIpv4Hostname(hostname) {
+  const value = String(hostname || "").trim();
+  const parts = value.split(".");
+  if (parts.length !== 4) return false;
+  const octets = parts.map((part) => Number.parseInt(part, 10));
+  if (octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return false;
+  const [first, second] = octets;
+  if (first === 10) return true;
+  if (first === 192 && second === 168) return true;
+  if (first === 172 && second >= 16 && second <= 31) return true;
+  return false;
+}
+
+function isLoopbackHostname(hostname) {
+  const value = String(hostname || "").trim().toLowerCase();
+  return value === "localhost" || value === "127.0.0.1" || value === "[::1]";
+}
+
+function isLocalDevHostname(hostname) {
+  const value = String(hostname || "").trim().toLowerCase();
+  return isLoopbackHostname(value) || isPrivateIpv4Hostname(value) || value.endsWith(".local");
+}
+
 function isPlaceholderValue(rawValue) {
   const value = String(rawValue || "").trim();
   if (!value) return true;
@@ -119,9 +142,32 @@ export function normalizeBaseUrl(rawValue) {
   }
 }
 
+function resolveAiBackendDevPort() {
+  const value = String(readFirstDefinedValue(["VITE_AI_BACKEND_PORT"]) || "").trim();
+  const numeric = Number.parseInt(value, 10);
+  if (Number.isInteger(numeric) && numeric >= 1 && numeric <= 65535) {
+    return String(numeric);
+  }
+  return "3001";
+}
+
+export function inferLocalAiBackendBaseUrl() {
+  if (typeof window === "undefined" || !window.location) return "";
+  const appEnv = readFrontendAppEnv();
+  const isDevLike = ENV.DEV || appEnv === "local" || appEnv === "test";
+  if (!isDevLike) return "";
+
+  const hostname = String(window.location.hostname || "").trim();
+  if (!isLocalDevHostname(hostname)) return "";
+
+  return normalizeBaseUrl(`http://${hostname}:${resolveAiBackendDevPort()}`);
+}
+
 export function readAiBackendBaseUrl(rawValue) {
   if (typeof rawValue === "string") return normalizeBaseUrl(rawValue);
-  return normalizeBaseUrl(readFirstDefinedValue(["VITE_AI_BACKEND_URL"]));
+  const explicitValue = String(readFirstDefinedValue(["VITE_AI_BACKEND_URL"]) || "").trim();
+  if (explicitValue) return normalizeBaseUrl(explicitValue);
+  return inferLocalAiBackendBaseUrl();
 }
 
 export function readFrontendRuntimeEnv() {
@@ -135,7 +181,7 @@ export function readFrontendRuntimeEnv() {
     ]) || ""
   ).trim();
   const rawAiBackendUrl = String(readFirstDefinedValue(["VITE_AI_BACKEND_URL"]) || "").trim();
-  const aiBackendBaseUrl = normalizeBaseUrl(rawAiBackendUrl);
+  const aiBackendBaseUrl = rawAiBackendUrl ? normalizeBaseUrl(rawAiBackendUrl) : inferLocalAiBackendBaseUrl();
 
   let supabaseConfigError = "";
   try {

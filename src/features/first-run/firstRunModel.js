@@ -20,11 +20,14 @@ export const FIRST_RUN_STATUSES = Object.freeze([
 export const FIRST_RUN_CAPACITY_OPTIONS = Object.freeze(["reprise", "stable", "forte"]);
 export const FIRST_RUN_PLAN_ERROR_CODES = Object.freeze([
   "DISABLED",
+  "AUTH_MISSING",
+  "AUTH_INVALID",
   "UNAUTHORIZED",
   "NETWORK_ERROR",
   "RATE_LIMITED",
   "QUOTA_EXCEEDED",
   "TIMEOUT",
+  "BACKEND_UNAVAILABLE",
   "BACKEND_ERROR",
   "BACKEND_SCHEMA_MISSING",
   "INVALID_RESPONSE",
@@ -319,6 +322,10 @@ function normalizeGenerationError(value) {
     code,
     message: trimString(value.message, 240),
     requestId: trimString(value.requestId, 120) || null,
+    backendErrorCode: trimString(value.backendErrorCode, 120).toUpperCase() || null,
+    probableCause: trimString(value.probableCause, 120) || null,
+    baseUrlUsed: trimString(value.baseUrlUsed, 240) || null,
+    originUsed: trimString(value.originUsed, 240) || null,
     details: isPlainObject(value.details) ? value.details : null,
   };
 }

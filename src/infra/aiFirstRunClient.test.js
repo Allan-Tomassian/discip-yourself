@@ -260,6 +260,32 @@ describe("aiFirstRunClient", () => {
     expect(result.errorDetails).toEqual({ providerStatus: "timeout", timeoutMs: 45000 });
   });
 
+  it("mappe un timeout de transport frontend sur TIMEOUT", async () => {
+    const abortError = new Error("Aborted");
+    abortError.name = "AbortError";
+    const fetchImpl = vi.fn().mockRejectedValue(abortError);
+
+    const result = await requestAiFirstRunPlan({
+      accessToken: "token",
+      baseUrl: "https://ai.example.com",
+      fetchImpl,
+      payload: {
+        whyText: "Reprendre un cadre",
+        primaryGoal: "Relancer le projet",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["business"],
+        locale: "fr-FR",
+        timezone: "Europe/Paris",
+        referenceDateKey: "2026-04-19",
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errorCode).toBe("TIMEOUT");
+    expect(result.requestId).toBe(null);
+    expect(result.backendErrorCode).toBe(null);
+  });
+
   it("rejette une réponse backend mal structurée", async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
@@ -316,5 +342,36 @@ describe("aiFirstRunClient", () => {
 
     expect(result.ok).toBe(true);
     expect(result.payload?.plans?.[0]?.commitDraft?.categories?.[0]?.templateId).toBe("health");
+  });
+
+  it("mappe un backend indisponible générique tout en conservant le backendErrorCode", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({
+        error: "FIRST_RUN_PLAN_BACKEND_UNAVAILABLE",
+        requestId: "req-first-run-backend-down",
+      }),
+    });
+
+    const result = await requestAiFirstRunPlan({
+      accessToken: "token",
+      baseUrl: "https://ai.example.com",
+      fetchImpl,
+      payload: {
+        whyText: "Reprendre un cadre",
+        primaryGoal: "Relancer le projet",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["business"],
+        locale: "fr-FR",
+        timezone: "Europe/Paris",
+        referenceDateKey: "2026-04-19",
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errorCode).toBe("BACKEND_UNAVAILABLE");
+    expect(result.backendErrorCode).toBe("FIRST_RUN_PLAN_BACKEND_UNAVAILABLE");
+    expect(result.baseUrlUsed).toBe("https://ai.example.com");
   });
 });

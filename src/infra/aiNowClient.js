@@ -4,6 +4,7 @@ import {
   TODAY_BACKEND_RESOLUTION_STATUS,
 } from "../domain/todayIntervention";
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
+import { fetchJsonWithTimeout } from "./aiRequest";
 import { readAiBackendBaseUrl as readAiBackendBaseUrlFromEnv } from "./frontendEnv";
 import { resolveAiIntentForNow } from "../domain/aiIntent";
 
@@ -34,6 +35,7 @@ const META_FALLBACK_REASONS = new Set(["none", "quota", "timeout", "invalid_mode
 const META_TRIGGERS = new Set(["manual", "screen_open", "resume", "auto_slip", "resume_after_gap"]);
 const DIAGNOSTIC_RESOLUTION_STATUSES = new Set(Object.values(TODAY_BACKEND_RESOLUTION_STATUS));
 const DIAGNOSTIC_REJECTION_REASONS = new Set(Object.values(TODAY_DIAGNOSTIC_REJECTION_REASON));
+const DEFAULT_AI_NOW_TIMEOUT_MS = 15000;
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -49,6 +51,20 @@ function hasEnumValue(set, value) {
 
 function isNullableString(value) {
   return value === null || typeof value === "string";
+}
+
+function summarizeBodyShape(body) {
+  const source = isPlainObject(body) ? body : {};
+  return {
+    responseKind: typeof source.kind === "string" ? source.kind : null,
+    requestId:
+      typeof source.requestId === "string"
+        ? source.requestId
+        : typeof source.meta?.requestId === "string"
+          ? source.meta.requestId
+          : null,
+    bodyKeys: Object.keys(source),
+  };
 }
 
 export function readAiBackendBaseUrl(rawValue) {
@@ -168,12 +184,13 @@ export function isAiCoachResponse(value) {
 
 function normalizeBackendErrorCode(status, backendErrorCode) {
   const code = String(backendErrorCode || "").trim().toUpperCase();
-  if (code === "AUTH_MISSING" || code === "AUTH_INVALID" || code === "UNAUTHORIZED") return "UNAUTHORIZED";
+  if (code === "AUTH_MISSING") return "AUTH_MISSING";
+  if (code === "AUTH_INVALID" || code === "UNAUTHORIZED") return "AUTH_INVALID";
   if (code === "RATE_LIMITED") return "RATE_LIMITED";
   if (code === "QUOTA_EXCEEDED") return "QUOTA_EXCEEDED";
-  if (code === "BACKEND_SCHEMA_MISSING") return "BACKEND_SCHEMA_MISSING";
+  if (code === "BACKEND_SCHEMA_MISSING") return "BACKEND_UNAVAILABLE";
   if (code === "INVALID_RESPONSE") return "INVALID_RESPONSE";
-  if (code === "BACKEND_ERROR") return "BACKEND_ERROR";
+  if (code === "BACKEND_ERROR") return "BACKEND_UNAVAILABLE";
   if (
     code === "SNAPSHOT_LOAD_FAILED" ||
     code === "QUOTA_LOAD_FAILED" ||
@@ -181,12 +198,14 @@ function normalizeBackendErrorCode(status, backendErrorCode) {
     code === "PROVIDER_FAILED" ||
     code === "UNKNOWN_BACKEND_ERROR"
   ) {
-    return "BACKEND_ERROR";
+    return "BACKEND_UNAVAILABLE";
   }
-  if (status === 401) return "UNAUTHORIZED";
+  if (status === 401) return "AUTH_INVALID";
   if (status === 429) return "RATE_LIMITED";
-  if (status === 503) return "BACKEND_ERROR";
-  return "BACKEND_ERROR";
+  if (status === 404 || status === 405 || status === 503) return "BACKEND_UNAVAILABLE";
+  if (status === 502) return "INVALID_RESPONSE";
+  if (status === 504) return "TIMEOUT";
+  return "BACKEND_UNAVAILABLE";
 }
 
 async function safeParseJson(response) {
@@ -202,30 +221,54 @@ export async function requestAiNow({
   payload,
   baseUrl,
   fetchImpl = globalThis.fetch,
+  timeoutMs = DEFAULT_AI_NOW_TIMEOUT_MS,
 }) {
   const resolvedBaseUrl = readAiBackendBaseUrl(baseUrl);
   const buildTransport = (errorCode = null) => buildAiTransportMeta({ baseUrl: resolvedBaseUrl, errorCode });
+  const buildResultMeta = (transportMeta, surface = payload?.surface || null) => ({
+    surface,
+    probableCause: transportMeta?.probableCause || null,
+    baseUrlUsed: transportMeta?.backendBaseUrl || resolvedBaseUrl || "",
+    originUsed: transportMeta?.frontendOrigin || "",
+  });
   if (!resolvedBaseUrl) {
+    const transportMeta = buildTransport("DISABLED");
     return {
       ok: false,
       errorCode: "DISABLED",
       coach: null,
       status: null,
-      transportMeta: buildTransport("DISABLED"),
+      requestId: null,
+      backendErrorCode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
   if (typeof fetchImpl !== "function") {
     const transportMeta = buildTransport("NETWORK_ERROR");
     logAiTransportIssue({ endpoint: "/ai/now", errorCode: "NETWORK_ERROR", transportMeta });
-    return { ok: false, errorCode: "NETWORK_ERROR", coach: null, status: null, transportMeta };
-  }
-  if (!String(accessToken || "").trim()) {
     return {
       ok: false,
-      errorCode: "UNAUTHORIZED",
+      errorCode: "NETWORK_ERROR",
+      coach: null,
+      status: null,
+      requestId: null,
+      backendErrorCode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+  if (!String(accessToken || "").trim()) {
+    const transportMeta = buildTransport("AUTH_MISSING");
+    return {
+      ok: false,
+      errorCode: "AUTH_MISSING",
       coach: null,
       status: 401,
-      transportMeta: buildTransport("UNAUTHORIZED"),
+      requestId: null,
+      backendErrorCode: "AUTH_MISSING",
+      transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
 
@@ -233,61 +276,112 @@ export async function requestAiNow({
   try {
     normalizedPayload = normalizeAiNowPayload(payload);
   } catch {
+    const transportMeta = buildTransport("INVALID_RESPONSE");
     return {
       ok: false,
       errorCode: "INVALID_RESPONSE",
       coach: null,
       status: null,
-      transportMeta: buildTransport("INVALID_RESPONSE"),
+      requestId: null,
+      backendErrorCode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
 
-  let response;
-  try {
-    response = await fetchImpl(`${resolvedBaseUrl}/ai/now`, {
+  const requestResult = await fetchJsonWithTimeout({
+    fetchImpl,
+    url: `${resolvedBaseUrl}/ai/now`,
+    timeoutMs,
+    defaultTimeoutMs: DEFAULT_AI_NOW_TIMEOUT_MS,
+    options: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
+        "x-discip-surface": normalizedPayload.surface,
       },
       body: JSON.stringify(normalizedPayload),
-    });
-  } catch {
-    const transportMeta = buildTransport("NETWORK_ERROR");
-    logAiTransportIssue({ endpoint: "/ai/now", errorCode: "NETWORK_ERROR", transportMeta });
-    return { ok: false, errorCode: "NETWORK_ERROR", coach: null, status: null, transportMeta };
+    },
+  });
+  if (!requestResult.ok) {
+    const errorCode = requestResult.timedOut ? "TIMEOUT" : "NETWORK_ERROR";
+    const transportMeta = buildTransport(errorCode);
+    logAiTransportIssue({ endpoint: "/ai/now", errorCode, transportMeta });
+    return {
+      ok: false,
+      errorCode,
+      coach: null,
+      status: null,
+      requestId: null,
+      backendErrorCode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta, normalizedPayload.surface),
+    };
   }
+  const response = requestResult.response;
 
   const body = await safeParseJson(response);
+  const shape = summarizeBodyShape(body);
   if (!response.ok) {
     const errorCode = normalizeBackendErrorCode(response.status, body?.error);
+    const transportMeta = buildTransport(errorCode);
+    logAiTransportIssue({
+      endpoint: "/ai/now",
+      errorCode,
+      status: response.status,
+      requestId: shape.requestId,
+      mode: normalizedPayload.surface,
+      backendErrorCode: body?.error || null,
+      responseKind: shape.responseKind,
+      bodyKeys: shape.bodyKeys,
+      transportMeta,
+    });
     return {
       ok: false,
       errorCode,
       coach: null,
       status: response.status,
-      requestId: typeof body?.requestId === "string" ? body.requestId : null,
-      transportMeta: buildTransport(errorCode),
+      requestId: shape.requestId,
+      backendErrorCode: typeof body?.error === "string" ? body.error : null,
+      transportMeta,
+      ...buildResultMeta(transportMeta, normalizedPayload.surface),
     };
   }
 
   if (!isAiCoachResponse(body)) {
+    const transportMeta = buildTransport("INVALID_RESPONSE");
+    logAiTransportIssue({
+      endpoint: "/ai/now",
+      errorCode: "INVALID_RESPONSE",
+      status: response.status,
+      requestId: shape.requestId,
+      mode: normalizedPayload.surface,
+      responseKind: shape.responseKind,
+      bodyKeys: shape.bodyKeys,
+      transportMeta,
+    });
     return {
       ok: false,
       errorCode: "INVALID_RESPONSE",
       coach: null,
       status: response.status,
-      requestId: typeof body?.meta?.requestId === "string" ? body.meta.requestId : null,
-      transportMeta: buildTransport("INVALID_RESPONSE"),
+      requestId: shape.requestId,
+      backendErrorCode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta, normalizedPayload.surface),
     };
   }
 
+  const transportMeta = buildTransport(null);
   return {
     ok: true,
     errorCode: null,
     coach: body,
     status: response.status,
     requestId: body.meta.requestId,
-    transportMeta: buildTransport(null),
+    backendErrorCode: null,
+    transportMeta,
+    ...buildResultMeta(transportMeta, normalizedPayload.surface),
   };
 }

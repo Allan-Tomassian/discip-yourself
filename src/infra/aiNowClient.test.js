@@ -6,6 +6,7 @@ import {
   readAiBackendBaseUrl,
   requestAiNow,
 } from "./aiNowClient";
+import { inferLocalAiBackendBaseUrl } from "./frontendEnv";
 
 function buildCoachResponse(overrides = {}) {
   return {
@@ -84,6 +85,21 @@ describe("aiNowClient", () => {
     expect(isAiBackendConfigured("")).toBe(false);
   });
 
+  it("déduit un backend local sur le même host quand aucune URL explicite n'est fournie", () => {
+    vi.stubGlobal("window", {
+      location: {
+        origin: "http://192.168.1.183:5173",
+        hostname: "192.168.1.183",
+      },
+    });
+
+    try {
+      expect(inferLocalAiBackendBaseUrl()).toBe("http://192.168.1.183:3001");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("valide le coach contract backend", () => {
     expect(isAiCoachResponse(buildCoachResponse())).toBe(true);
     expect(isAiCoachResponse({})).toBe(false);
@@ -103,7 +119,7 @@ describe("aiNowClient", () => {
       },
     });
 
-    expect(result).toMatchObject({ ok: false, errorCode: "DISABLED" });
+    expect(result).toMatchObject({ ok: false, errorCode: "DISABLED", surface: "today" });
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
@@ -176,7 +192,12 @@ describe("aiNowClient", () => {
       },
     });
 
-    expect(result).toMatchObject({ ok: false, errorCode: "BACKEND_SCHEMA_MISSING", status: 503 });
+    expect(result).toMatchObject({
+      ok: false,
+      errorCode: "BACKEND_UNAVAILABLE",
+      backendErrorCode: "BACKEND_SCHEMA_MISSING",
+      status: 503,
+    });
   });
 
   it("mappe une erreur reseau", async () => {
@@ -195,6 +216,32 @@ describe("aiNowClient", () => {
     });
 
     expect(result).toMatchObject({ ok: false, errorCode: "NETWORK_ERROR" });
+  });
+
+  it("mappe un timeout de transport sur TIMEOUT", async () => {
+    const abortError = new Error("Aborted");
+    abortError.name = "AbortError";
+    const fetchImpl = vi.fn().mockRejectedValue(abortError);
+
+    const result = await requestAiNow({
+      accessToken: "token",
+      baseUrl: "https://ai.example.com",
+      fetchImpl,
+      payload: {
+        selectedDateKey: "2026-03-13",
+        activeCategoryId: null,
+        surface: "today",
+        trigger: "screen_open",
+      },
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      errorCode: "TIMEOUT",
+      status: null,
+      requestId: null,
+      backendErrorCode: null,
+    });
   });
 
   it("deduit une origine LAN privee probable quand le fetch casse depuis un iPhone de dev", async () => {
@@ -224,6 +271,9 @@ describe("aiNowClient", () => {
       expect(result).toMatchObject({
         ok: false,
         errorCode: "NETWORK_ERROR",
+        surface: "today",
+        baseUrlUsed: "https://discip-yourself-backend.onrender.com",
+        originUsed: "http://192.168.1.183:5173",
         transportMeta: {
           frontendOrigin: "http://192.168.1.183:5173",
           backendBaseUrl: "https://discip-yourself-backend.onrender.com",

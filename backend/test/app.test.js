@@ -17,6 +17,7 @@ const TEST_CONFIG = {
   SUPABASE_SECRET_KEY: "service-role-test",
   OPENAI_API_KEY: "",
   OPENAI_MODEL: "gpt-4.1-mini",
+  OPENAI_DEFAULT_TIMEOUT_MS: 20000,
   FIRST_RUN_PLAN_OPENAI_MODEL: "",
   FIRST_RUN_PLAN_OPENAI_TIMEOUT_MS: 45000,
   SESSION_GUIDANCE_PREPARE_OPENAI_MODEL: "",
@@ -614,7 +615,16 @@ test("GET /health returns ok", async () => {
   });
   const response = await app.inject({ method: "GET", url: "/health" });
   assert.equal(response.statusCode, 200);
-  assert.deepEqual(response.json(), { ok: true });
+  assert.deepEqual(response.json(), {
+    ok: true,
+    service: "ai-backend",
+    appEnv: "test",
+    requestId: response.headers["x-request-id"],
+    openAiConfigured: false,
+    cors: {
+      allowPrivateNetworkDev: false,
+    },
+  });
   await app.close();
 });
 
@@ -706,6 +716,28 @@ test("OPTIONS /ai/chat accepts an explicit public staging frontend origin", asyn
   await app.close();
 });
 
+test("OPTIONS /ai/chat accepts a .local dev origin when private network dev CORS is enabled", async () => {
+  const app = await buildApp({
+    config: {
+      ...TEST_CONFIG,
+      CORS_ALLOW_PRIVATE_NETWORK_DEV: true,
+    },
+    verifyAccessToken: async () => ({ id: "user-chat-local-domain" }),
+  });
+  const response = await app.inject({
+    method: "OPTIONS",
+    url: "/ai/chat",
+    headers: {
+      origin: "http://discip.local:5173",
+      "access-control-request-method": "POST",
+      "access-control-request-headers": "authorization,content-type",
+    },
+  });
+  assert.equal(response.statusCode, 204);
+  assert.equal(response.headers["access-control-allow-origin"], "http://discip.local:5173");
+  await app.close();
+});
+
 test("OPTIONS /ai/local-analysis accepts a private LAN origin when private network dev CORS is enabled", async () => {
   const app = await buildApp({
     config: {
@@ -732,6 +764,28 @@ test("OPTIONS private LAN preflight stays blocked when private network dev CORS 
   const app = await buildApp({
     config: TEST_CONFIG,
     verifyAccessToken: async () => ({ id: "user-1" }),
+  });
+  const response = await app.inject({
+    method: "OPTIONS",
+    url: "/ai/now",
+    headers: {
+      origin: "http://192.168.1.183:5173",
+      "access-control-request-method": "POST",
+      "access-control-request-headers": "authorization,content-type",
+    },
+  });
+  assert.notEqual(response.headers["access-control-allow-origin"], "http://192.168.1.183:5173");
+  await app.close();
+});
+
+test("OPTIONS private LAN preflight stays blocked outside local/test even when private network dev CORS is enabled", async () => {
+  const app = await buildApp({
+    config: {
+      ...TEST_CONFIG,
+      APP_ENV: "prod",
+      CORS_ALLOW_PRIVATE_NETWORK_DEV: true,
+    },
+    verifyAccessToken: async () => ({ id: "user-prod-lan" }),
   });
   const response = await app.inject({
     method: "OPTIONS",

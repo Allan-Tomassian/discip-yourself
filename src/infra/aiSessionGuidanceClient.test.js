@@ -112,6 +112,29 @@ describe("aiSessionGuidanceClient", () => {
     expect(result.errorCode).toBe("PREMIUM_REQUIRED");
   });
 
+  it("mappe un timeout de transport sur TIMEOUT", async () => {
+    const abortError = new Error("Aborted");
+    abortError.name = "AbortError";
+    const fetchImpl = vi.fn().mockRejectedValue(abortError);
+
+    const result = await requestAiSessionGuidance({
+      accessToken: "token",
+      baseUrl: "https://ai.example.com",
+      fetchImpl,
+      payload: {
+        mode: "adjust",
+        dateKey: "2026-03-25",
+        occurrenceId: "occ-1",
+        actionId: "goal-1",
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errorCode).toBe("TIMEOUT");
+    expect(result.requestId).toBe(null);
+    expect(result.backendErrorCode).toBe(null);
+  });
+
   it("keeps backend diagnostics for invalid premium payloads", async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: false,
@@ -208,7 +231,7 @@ describe("aiSessionGuidanceClient", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.errorCode).toBe("SESSION_GUIDANCE_BACKEND_UNAVAILABLE");
+    expect(result.errorCode).toBe("BACKEND_UNAVAILABLE");
     expect(result.surface).toBe("session");
     expect(result.baseUrlUsed).toBe("https://ai.example.com");
   });

@@ -1,10 +1,12 @@
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
+import { fetchJsonWithTimeout } from "./aiRequest";
 import { readAiBackendBaseUrl } from "./aiNowClient";
 import { resolveAiIntentForSessionGuidance } from "../domain/aiIntent";
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const GUIDANCE_MODES = new Set(["prepare", "adjust", "tool"]);
 const AI_SURFACE = "session";
+const DEFAULT_AI_SESSION_GUIDANCE_TIMEOUT_MS = 12000;
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -123,15 +125,16 @@ function summarizeBodyShape(body) {
 function normalizeBackendErrorCode(status, backendErrorCode) {
   const code = String(backendErrorCode || "").trim().toUpperCase();
   if (code === "SESSION_GUIDANCE_PROVIDER_TIMEOUT") return "TIMEOUT";
-  if (code === "SESSION_GUIDANCE_BACKEND_UNAVAILABLE") return "SESSION_GUIDANCE_BACKEND_UNAVAILABLE";
-  if (code === "AUTH_MISSING" || code === "AUTH_INVALID" || code === "UNAUTHORIZED") return "UNAUTHORIZED";
+  if (code === "SESSION_GUIDANCE_BACKEND_UNAVAILABLE") return "BACKEND_UNAVAILABLE";
+  if (code === "AUTH_MISSING") return "AUTH_MISSING";
+  if (code === "AUTH_INVALID" || code === "UNAUTHORIZED") return "AUTH_INVALID";
   if (code === "PREMIUM_REQUIRED") return "PREMIUM_REQUIRED";
   if (code === "RATE_LIMITED") return "RATE_LIMITED";
   if (code === "QUOTA_EXCEEDED") return "QUOTA_EXCEEDED";
   if (code === "INVALID_SESSION_GUIDANCE_RESPONSE") return "INVALID_RESPONSE";
-  if (code === "BACKEND_SCHEMA_MISSING") return "BACKEND_SCHEMA_MISSING";
+  if (code === "BACKEND_SCHEMA_MISSING") return "BACKEND_UNAVAILABLE";
   if (code === "INVALID_RESPONSE") return "INVALID_RESPONSE";
-  if (code === "BACKEND_ERROR") return "BACKEND_ERROR";
+  if (code === "BACKEND_ERROR") return "BACKEND_UNAVAILABLE";
   if (
     code === "SNAPSHOT_LOAD_FAILED" ||
     code === "QUOTA_LOAD_FAILED" ||
@@ -139,13 +142,14 @@ function normalizeBackendErrorCode(status, backendErrorCode) {
     code === "PROVIDER_FAILED" ||
     code === "UNKNOWN_BACKEND_ERROR"
   ) {
-    return "BACKEND_ERROR";
+    return "BACKEND_UNAVAILABLE";
   }
-  if (status === 401) return "UNAUTHORIZED";
+  if (status === 401) return "AUTH_INVALID";
   if (status === 429) return "RATE_LIMITED";
-  if (status === 404 || status === 405) return "SESSION_GUIDANCE_BACKEND_UNAVAILABLE";
-  if (status === 503) return "BACKEND_ERROR";
-  return "BACKEND_ERROR";
+  if (status === 404 || status === 405 || status === 503) return "BACKEND_UNAVAILABLE";
+  if (status === 502) return "INVALID_RESPONSE";
+  if (status === 504) return "TIMEOUT";
+  return "BACKEND_UNAVAILABLE";
 }
 
 async function safeParseJson(response) {
@@ -161,7 +165,7 @@ export async function requestAiSessionGuidance({
   payload,
   baseUrl,
   fetchImpl = globalThis.fetch,
-  timeoutMs = 2500,
+  timeoutMs = DEFAULT_AI_SESSION_GUIDANCE_TIMEOUT_MS,
 }) {
   const resolvedBaseUrl = readAiBackendBaseUrl(baseUrl);
   const buildTransport = (errorCode = null) => buildAiTransportMeta({ baseUrl: resolvedBaseUrl, errorCode });
@@ -208,16 +212,16 @@ export async function requestAiSessionGuidance({
   }
 
   if (!String(accessToken || "").trim()) {
-    const transportMeta = buildTransport("UNAUTHORIZED");
+    const transportMeta = buildTransport("AUTH_MISSING");
     return {
       ok: false,
-      errorCode: "UNAUTHORIZED",
+      errorCode: "AUTH_MISSING",
       payload: null,
       status: 401,
       requestId: null,
       errorMessage: null,
       errorDetails: null,
-      backendErrorCode: "UNAUTHORIZED",
+      backendErrorCode: "AUTH_MISSING",
       transportMeta,
       responseMeta: null,
       ...buildResultMeta(transportMeta),
@@ -244,18 +248,12 @@ export async function requestAiSessionGuidance({
     };
   }
 
-  let response;
-  const supportsAbortController = typeof AbortController === "function";
-  const controller = supportsAbortController ? new AbortController() : null;
-  const safeTimeoutMs = Number.isFinite(timeoutMs) ? Math.max(250, Math.round(timeoutMs)) : 2500;
-  const timeoutId =
-    controller
-      ? setTimeout(() => {
-          controller.abort();
-        }, safeTimeoutMs)
-      : 0;
-  try {
-    response = await fetchImpl(`${resolvedBaseUrl}/ai/session-guidance`, {
+  const requestResult = await fetchJsonWithTimeout({
+    fetchImpl,
+    url: `${resolvedBaseUrl}/ai/session-guidance`,
+    timeoutMs,
+    defaultTimeoutMs: DEFAULT_AI_SESSION_GUIDANCE_TIMEOUT_MS,
+    options: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -263,11 +261,10 @@ export async function requestAiSessionGuidance({
         "x-discip-surface": AI_SURFACE,
       },
       body: JSON.stringify(normalizedPayload),
-      signal: controller?.signal,
-    });
-  } catch {
-    if (timeoutId) clearTimeout(timeoutId);
-    const errorCode = controller?.signal?.aborted ? "TIMEOUT" : "NETWORK_ERROR";
+    },
+  });
+  if (!requestResult.ok) {
+    const errorCode = requestResult.timedOut ? "TIMEOUT" : "NETWORK_ERROR";
     const transportMeta = buildTransport(errorCode);
     logAiTransportIssue({ endpoint: "/ai/session-guidance", errorCode, transportMeta });
     return {
@@ -284,7 +281,7 @@ export async function requestAiSessionGuidance({
       ...buildResultMeta(transportMeta),
     };
   }
-  if (timeoutId) clearTimeout(timeoutId);
+  const response = requestResult.response;
 
   const body = await safeParseJson(response);
   const shape = summarizeBodyShape(body);

@@ -19,10 +19,22 @@ function isPrivateIpv4Hostname(hostname) {
   return false;
 }
 
-function isPrivateNetworkDevOrigin(origin) {
+function isLoopbackHostname(hostname) {
+  const value = String(hostname || "").trim().toLowerCase();
+  return value === "localhost" || value === "127.0.0.1" || value === "[::1]";
+}
+
+function isAllowedDevOrigin(origin) {
   try {
     const url = new URL(origin);
-    return url.protocol === "http:" && isPrivateIpv4Hostname(url.hostname);
+    return (
+      url.protocol === "http:" &&
+      (
+        isLoopbackHostname(url.hostname) ||
+        isPrivateIpv4Hostname(url.hostname) ||
+        String(url.hostname || "").trim().toLowerCase().endsWith(".local")
+      )
+    );
   } catch {
     return false;
   }
@@ -42,7 +54,8 @@ export async function buildApp({ config, logger = false, verifyAccessToken } = {
   app.decorate("openai", openai);
 
   const allowedOrigins = Array.isArray(config?.CORS_ALLOWED_ORIGINS) ? config.CORS_ALLOWED_ORIGINS : [];
-  const allowPrivateNetworkDev = Boolean(config?.CORS_ALLOW_PRIVATE_NETWORK_DEV);
+  const isLocalLikeEnv = config?.APP_ENV === "local" || config?.APP_ENV === "test";
+  const allowPrivateNetworkDev = Boolean(config?.CORS_ALLOW_PRIVATE_NETWORK_DEV) && isLocalLikeEnv;
   await app.register(cors, {
     origin(origin, callback) {
       if (!origin) {
@@ -50,7 +63,7 @@ export async function buildApp({ config, logger = false, verifyAccessToken } = {
         return;
       }
       const allowed =
-        allowedOrigins.includes(origin) || (allowPrivateNetworkDev && isPrivateNetworkDevOrigin(origin));
+        allowedOrigins.includes(origin) || (allowPrivateNetworkDev && isAllowedDevOrigin(origin));
       callback(null, allowed);
     },
     methods: ["GET", "POST", "OPTIONS"],
@@ -61,8 +74,17 @@ export async function buildApp({ config, logger = false, verifyAccessToken } = {
   await requestIdPlugin(app);
   await authPlugin(app, { config, supabase, verifyAccessToken });
 
-  app.get("/health", async (_request, reply) => {
-    return reply.code(200).send({ ok: true });
+  app.get("/health", async (request, reply) => {
+    return reply.code(200).send({
+      ok: true,
+      service: "ai-backend",
+      appEnv: String(config?.APP_ENV || "").trim() || null,
+      requestId: request.requestId || null,
+      openAiConfigured: Boolean(app.openai),
+      cors: {
+        allowPrivateNetworkDev,
+      },
+    });
   });
 
   await app.register(aiRoutes, { prefix: "/ai" });

@@ -1,4 +1,5 @@
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
+import { fetchJsonWithTimeout } from "./aiRequest";
 import { readAiBackendBaseUrl } from "./aiNowClient";
 import { LOCAL_ANALYSIS_SURFACES, normalizeLocalAnalysisSurface } from "../domain/aiPolicy";
 import { resolveAiIntentForLocalAnalysis } from "../domain/aiIntent";
@@ -8,6 +9,7 @@ const ACTION_INTENTS = new Set([
   "start_occurrence",
   "resume_session",
   "open_library",
+  "open_planning",
   "open_pilotage",
   "open_today",
   "open_support",
@@ -16,6 +18,7 @@ const DECISION_SOURCES = new Set(["ai", "rules"]);
 const META_FALLBACK_REASONS = new Set(["none", "quota", "timeout", "invalid_model_output", "backend_error"]);
 const DIRECTION_KEYS = new Set(["maintenir", "recalibrer", "accélérer", "alléger"]);
 const AI_SURFACE = "analysis";
+const DEFAULT_AI_LOCAL_ANALYSIS_TIMEOUT_MS = 20000;
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -58,12 +61,13 @@ function summarizeBodyShape(body) {
 
 function normalizeBackendErrorCode(status, backendErrorCode) {
   const code = String(backendErrorCode || "").trim().toUpperCase();
-  if (code === "AUTH_MISSING" || code === "AUTH_INVALID" || code === "UNAUTHORIZED") return "UNAUTHORIZED";
+  if (code === "AUTH_MISSING") return "AUTH_MISSING";
+  if (code === "AUTH_INVALID" || code === "UNAUTHORIZED") return "AUTH_INVALID";
   if (code === "RATE_LIMITED") return "RATE_LIMITED";
   if (code === "QUOTA_EXCEEDED") return "QUOTA_EXCEEDED";
-  if (code === "BACKEND_SCHEMA_MISSING") return "BACKEND_SCHEMA_MISSING";
+  if (code === "BACKEND_SCHEMA_MISSING") return "BACKEND_UNAVAILABLE";
   if (code === "INVALID_RESPONSE") return "INVALID_RESPONSE";
-  if (code === "BACKEND_ERROR") return "BACKEND_ERROR";
+  if (code === "BACKEND_ERROR") return "BACKEND_UNAVAILABLE";
   if (
     code === "SNAPSHOT_LOAD_FAILED" ||
     code === "QUOTA_LOAD_FAILED" ||
@@ -71,12 +75,14 @@ function normalizeBackendErrorCode(status, backendErrorCode) {
     code === "PROVIDER_FAILED" ||
     code === "UNKNOWN_BACKEND_ERROR"
   ) {
-    return "BACKEND_ERROR";
+    return "BACKEND_UNAVAILABLE";
   }
-  if (status === 401) return "UNAUTHORIZED";
+  if (status === 401) return "AUTH_INVALID";
   if (status === 429) return "RATE_LIMITED";
-  if (status === 503) return "BACKEND_ERROR";
-  return "BACKEND_ERROR";
+  if (status === 404 || status === 405 || status === 503) return "BACKEND_UNAVAILABLE";
+  if (status === 502) return "INVALID_RESPONSE";
+  if (status === 504) return "TIMEOUT";
+  return "BACKEND_UNAVAILABLE";
 }
 
 async function safeParseJson(response) {
@@ -160,8 +166,12 @@ export function normalizeAiLocalAnalysisPayload(input) {
     error.code = "INVALID_REQUEST";
     throw error;
   }
-  if (surface !== LOCAL_ANALYSIS_SURFACES.PLANNING && surface !== LOCAL_ANALYSIS_SURFACES.PILOTAGE) {
-    const error = new Error("surface must be planning or pilotage");
+  if (
+    surface !== LOCAL_ANALYSIS_SURFACES.PLANNING &&
+    surface !== LOCAL_ANALYSIS_SURFACES.OBJECTIVES &&
+    surface !== LOCAL_ANALYSIS_SURFACES.PILOTAGE
+  ) {
+    const error = new Error("surface must be planning, objectives or pilotage");
     error.code = "INVALID_REQUEST";
     throw error;
   }
@@ -183,6 +193,7 @@ export async function requestAiLocalAnalysis({
   payload,
   baseUrl,
   fetchImpl = globalThis.fetch,
+  timeoutMs = DEFAULT_AI_LOCAL_ANALYSIS_TIMEOUT_MS,
 }) {
   const resolvedBaseUrl = readAiBackendBaseUrl(baseUrl);
   const buildTransport = (errorCode = null) => buildAiTransportMeta({ baseUrl: resolvedBaseUrl, errorCode });
@@ -224,15 +235,15 @@ export async function requestAiLocalAnalysis({
     };
   }
   if (!String(accessToken || "").trim()) {
-    const transportMeta = buildTransport("UNAUTHORIZED");
-    logLocalAnalysisIssue({ errorCode: "UNAUTHORIZED", status: 401, transportMeta, surface: payload?.surface || null });
+    const transportMeta = buildTransport("AUTH_MISSING");
+    logLocalAnalysisIssue({ errorCode: "AUTH_MISSING", status: 401, transportMeta, surface: payload?.surface || null });
     return {
       ok: false,
-      errorCode: "UNAUTHORIZED",
+      errorCode: "AUTH_MISSING",
       reply: null,
       status: 401,
       requestId: null,
-      backendErrorCode: "UNAUTHORIZED",
+      backendErrorCode: "AUTH_MISSING",
       responseKind: null,
       transportMeta,
       ...buildResultMeta(transportMeta),
@@ -258,9 +269,12 @@ export async function requestAiLocalAnalysis({
     };
   }
 
-  let response;
-  try {
-    response = await fetchImpl(`${resolvedBaseUrl}/ai/local-analysis`, {
+  const requestResult = await fetchJsonWithTimeout({
+    fetchImpl,
+    url: `${resolvedBaseUrl}/ai/local-analysis`,
+    timeoutMs,
+    defaultTimeoutMs: DEFAULT_AI_LOCAL_ANALYSIS_TIMEOUT_MS,
+    options: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -268,13 +282,15 @@ export async function requestAiLocalAnalysis({
         "x-discip-surface": AI_SURFACE,
       },
       body: JSON.stringify(normalizedPayload),
-    });
-  } catch {
-    const transportMeta = buildTransport("NETWORK_ERROR");
-    logLocalAnalysisIssue({ errorCode: "NETWORK_ERROR", transportMeta, surface: normalizedPayload.surface });
+    },
+  });
+  if (!requestResult.ok) {
+    const errorCode = requestResult.timedOut ? "TIMEOUT" : "NETWORK_ERROR";
+    const transportMeta = buildTransport(errorCode);
+    logLocalAnalysisIssue({ errorCode, transportMeta, surface: normalizedPayload.surface });
     return {
       ok: false,
-      errorCode: "NETWORK_ERROR",
+      errorCode,
       reply: null,
       status: null,
       requestId: null,
@@ -284,6 +300,7 @@ export async function requestAiLocalAnalysis({
       ...buildResultMeta(transportMeta, normalizedPayload.surface),
     };
   }
+  const response = requestResult.response;
 
   const body = await safeParseJson(response);
   const bodySummary = summarizeBodyShape(body);

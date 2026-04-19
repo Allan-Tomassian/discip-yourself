@@ -4,7 +4,7 @@ import FirstRunStepScreen from "./FirstRunStepScreen";
 
 function resolveErrorMessage(error) {
   const code = String(error?.code || "").trim().toUpperCase();
-  if (code === "DISABLED" || code === "FIRST_RUN_PLAN_BACKEND_UNAVAILABLE") {
+  if (code === "DISABLED" || code === "BACKEND_UNAVAILABLE" || code === "FIRST_RUN_PLAN_BACKEND_UNAVAILABLE") {
     return "Le moteur de génération n'est pas disponible pour le moment.";
   }
   if (code === "TIMEOUT") {
@@ -13,7 +13,7 @@ function resolveErrorMessage(error) {
   if (code === "RATE_LIMITED" || code === "QUOTA_EXCEEDED") {
     return "La génération est temporairement limitée. Réessaie dans un instant.";
   }
-  if (code === "UNAUTHORIZED") {
+  if (code === "AUTH_MISSING" || code === "AUTH_INVALID" || code === "UNAUTHORIZED") {
     return "La session a expiré. Recharge l'application puis relance la génération.";
   }
   if (typeof error?.message === "string" && error.message.trim()) return error.message;

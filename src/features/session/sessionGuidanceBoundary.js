@@ -66,7 +66,7 @@ export function resolveSessionGuidanceBackendState(
   const normalizedCurrent = normalizeSessionGuidanceBackendState(currentState);
   if (result?.ok) return SESSION_GUIDANCE_BACKEND_STATES.AVAILABLE;
   const code = String(result?.errorCode || result?.backendErrorCode || "").trim().toUpperCase();
-  if (code === "DISABLED" || code === "SESSION_GUIDANCE_BACKEND_UNAVAILABLE") {
+  if (code === "DISABLED" || code === "BACKEND_UNAVAILABLE" || code === "SESSION_GUIDANCE_BACKEND_UNAVAILABLE") {
     return SESSION_GUIDANCE_BACKEND_STATES.UNAVAILABLE;
   }
   return normalizedCurrent;
@@ -88,7 +88,7 @@ export function resolveSessionGuidanceExecutionSource({
   }
 
   const code = String(result?.errorCode || result?.backendErrorCode || "").trim().toUpperCase();
-  if (code === "DISABLED" || code === "SESSION_GUIDANCE_BACKEND_UNAVAILABLE") {
+  if (code === "DISABLED" || code === "BACKEND_UNAVAILABLE" || code === "SESSION_GUIDANCE_BACKEND_UNAVAILABLE") {
     return SESSION_GUIDANCE_EXECUTION_SOURCES.BACKEND_UNAVAILABLE_FALLBACK;
   }
   return SESSION_GUIDANCE_EXECUTION_SOURCES.AI_FAILED_FALLBACK;

@@ -12,7 +12,7 @@ describe("sessionGuidanceBoundary", () => {
     expect(
       resolveSessionGuidanceBackendState(SESSION_GUIDANCE_BACKEND_STATES.UNKNOWN, {
         ok: false,
-        errorCode: "SESSION_GUIDANCE_BACKEND_UNAVAILABLE",
+        errorCode: "BACKEND_UNAVAILABLE",
       })
     ).toBe(SESSION_GUIDANCE_BACKEND_STATES.UNAVAILABLE);
 

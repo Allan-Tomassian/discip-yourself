@@ -40,13 +40,16 @@ export function resolveSessionPrepareFailureMessage({ result = null, quality = n
   if (errorCode === "PREMIUM_REQUIRED") {
     return "Cette préparation détaillée fait partie du premium.";
   }
+  if (errorCode === "AUTH_MISSING" || errorCode === "AUTH_INVALID") {
+    return "Ta session a expiré. Recharge l'application puis réessaie.";
+  }
   if (errorCode === "TIMEOUT" || errorCode === "SESSION_GUIDANCE_PROVIDER_TIMEOUT") {
     return "La préparation détaillée a expiré. Réessaye ou passe en standard.";
   }
   if (errorCode === "NETWORK_ERROR") {
     return "La préparation détaillée a échoué à cause du réseau. Réessaye ou passe en standard.";
   }
-  if (errorCode === "SESSION_GUIDANCE_BACKEND_UNAVAILABLE") {
+  if (errorCode === "BACKEND_UNAVAILABLE" || errorCode === "SESSION_GUIDANCE_BACKEND_UNAVAILABLE") {
     return "La préparation détaillée est indisponible pour le moment. Réessaye ou passe en standard.";
   }
   if (

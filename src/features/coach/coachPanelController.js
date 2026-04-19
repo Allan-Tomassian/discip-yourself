@@ -84,6 +84,8 @@ function deriveCoachErrorMessage(result) {
     disabled: "Coach indisponible sur cet appareil.",
     unauthorized: "Connecte-toi pour utiliser le coach.",
     rateLimited: "Coach indisponible pour le moment.",
+    timeout: "Le coach a pris trop de temps. Réessaie.",
+    backendUnavailable: "Le backend IA du coach est indisponible pour le moment.",
     offline: "Coach indisponible hors ligne.",
     corsPrivateOrigin: "Coach indisponible sur cette origine de test.",
     networkUnknown: "Coach indisponible pour le moment.",

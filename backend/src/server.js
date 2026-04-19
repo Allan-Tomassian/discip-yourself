@@ -33,10 +33,15 @@ const app = await buildApp({
 
 try {
   await app.listen({ host: "0.0.0.0", port: config.PORT });
+  const allowPrivateNetworkDev =
+    Boolean(config.CORS_ALLOW_PRIVATE_NETWORK_DEV) &&
+    (config.APP_ENV === "local" || config.APP_ENV === "test");
   app.log.info({
     appEnv: config.APP_ENV,
     port: config.PORT,
-    allowPrivateNetworkDev: Boolean(config.CORS_ALLOW_PRIVATE_NETWORK_DEV),
+    openAiConfigured: Boolean(String(config.OPENAI_API_KEY || "").trim()),
+    openAiDefaultTimeoutMs: config.OPENAI_DEFAULT_TIMEOUT_MS,
+    allowPrivateNetworkDev,
     allowedOrigins: Array.isArray(config.CORS_ALLOWED_ORIGINS) ? config.CORS_ALLOWED_ORIGINS : [],
   }, "AI backend ready");
 } catch (error) {

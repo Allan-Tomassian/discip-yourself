@@ -67,4 +67,65 @@ describe("aiTransportDiagnostics", () => {
       )
     ).toBe("unknown");
   });
+
+  it("mappe les codes d'auth explicites sur le message de session", () => {
+    expect(
+      deriveAiUnavailableMessage(
+        {
+          errorCode: "AUTH_INVALID",
+        },
+        {
+          disabled: "disabled",
+          unauthorized: "unauthorized",
+          rateLimited: "rate",
+          timeout: "timeout",
+          backendUnavailable: "backend",
+          offline: "offline",
+          corsPrivateOrigin: "cors",
+          networkUnknown: "unknown",
+          fallback: "fallback",
+        }
+      )
+    ).toBe("unauthorized");
+  });
+
+  it("mappe les indisponibilités backend et les timeouts sur des messages dédiés", () => {
+    expect(
+      deriveAiUnavailableMessage(
+        {
+          errorCode: "BACKEND_UNAVAILABLE",
+        },
+        {
+          disabled: "disabled",
+          unauthorized: "unauthorized",
+          rateLimited: "rate",
+          timeout: "timeout",
+          backendUnavailable: "backend",
+          offline: "offline",
+          corsPrivateOrigin: "cors",
+          networkUnknown: "unknown",
+          fallback: "fallback",
+        }
+      )
+    ).toBe("backend");
+
+    expect(
+      deriveAiUnavailableMessage(
+        {
+          errorCode: "TIMEOUT",
+        },
+        {
+          disabled: "disabled",
+          unauthorized: "unauthorized",
+          rateLimited: "rate",
+          timeout: "timeout",
+          backendUnavailable: "backend",
+          offline: "offline",
+          corsPrivateOrigin: "cors",
+          networkUnknown: "unknown",
+          fallback: "fallback",
+        }
+      )
+    ).toBe("timeout");
+  });
 });

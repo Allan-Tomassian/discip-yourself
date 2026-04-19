@@ -1,4 +1,5 @@
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
+import { fetchJsonWithTimeout } from "./aiRequest";
 import { readAiBackendBaseUrl } from "./aiNowClient";
 import {
   FIRST_RUN_PLAN_RESPONSE_VERSION,
@@ -8,6 +9,7 @@ import {
 } from "../features/first-run/firstRunPlanContract";
 
 const AI_SURFACE = "onboarding";
+const DEFAULT_AI_FIRST_RUN_TIMEOUT_MS = 50000;
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -42,27 +44,28 @@ async function sha256Hex(value) {
 function normalizeBackendErrorCode(status, backendErrorCode) {
   const code = String(backendErrorCode || "").trim().toUpperCase();
   if (code === "FIRST_RUN_PLAN_PROVIDER_TIMEOUT") return "TIMEOUT";
-  if (code === "FIRST_RUN_PLAN_BACKEND_UNAVAILABLE") return "FIRST_RUN_PLAN_BACKEND_UNAVAILABLE";
-  if (code === "AUTH_MISSING" || code === "AUTH_INVALID" || code === "UNAUTHORIZED") return "UNAUTHORIZED";
+  if (code === "FIRST_RUN_PLAN_BACKEND_UNAVAILABLE") return "BACKEND_UNAVAILABLE";
+  if (code === "AUTH_MISSING") return "AUTH_MISSING";
+  if (code === "AUTH_INVALID" || code === "UNAUTHORIZED") return "AUTH_INVALID";
   if (code === "RATE_LIMITED") return "RATE_LIMITED";
   if (code === "QUOTA_EXCEEDED") return "QUOTA_EXCEEDED";
-  if (code === "BACKEND_SCHEMA_MISSING") return "BACKEND_SCHEMA_MISSING";
+  if (code === "BACKEND_SCHEMA_MISSING") return "BACKEND_UNAVAILABLE";
   if (code === "INVALID_FIRST_RUN_PLAN_RESPONSE" || code === "INVALID_RESPONSE") return "INVALID_RESPONSE";
-  if (code === "BACKEND_ERROR") return "BACKEND_ERROR";
+  if (code === "BACKEND_ERROR") return "BACKEND_UNAVAILABLE";
   if (
     code === "SNAPSHOT_LOAD_FAILED" ||
     code === "QUOTA_LOAD_FAILED" ||
     code === "PROVIDER_FAILED" ||
     code === "UNKNOWN_BACKEND_ERROR"
   ) {
-    return "BACKEND_ERROR";
+    return "BACKEND_UNAVAILABLE";
   }
-  if (status === 401) return "UNAUTHORIZED";
-  if (status === 404 || status === 405) return "FIRST_RUN_PLAN_BACKEND_UNAVAILABLE";
+  if (status === 401) return "AUTH_INVALID";
+  if (status === 404 || status === 405 || status === 503) return "BACKEND_UNAVAILABLE";
   if (status === 429) return "RATE_LIMITED";
   if (status === 502) return "INVALID_RESPONSE";
   if (status === 504) return "TIMEOUT";
-  return "BACKEND_ERROR";
+  return "BACKEND_UNAVAILABLE";
 }
 
 async function safeParseJson(response) {
@@ -217,11 +220,19 @@ export async function requestAiFirstRunPlan({
   payload,
   baseUrl,
   fetchImpl = globalThis.fetch,
+  timeoutMs = DEFAULT_AI_FIRST_RUN_TIMEOUT_MS,
 }) {
   const resolvedBaseUrl = readAiBackendBaseUrl(baseUrl);
   const buildTransport = (errorCode = null) => buildAiTransportMeta({ baseUrl: resolvedBaseUrl, errorCode });
+  const buildResultMeta = (transportMeta) => ({
+    surface: AI_SURFACE,
+    probableCause: transportMeta?.probableCause || null,
+    baseUrlUsed: transportMeta?.backendBaseUrl || resolvedBaseUrl || "",
+    originUsed: transportMeta?.frontendOrigin || "",
+  });
 
   if (!resolvedBaseUrl) {
+    const transportMeta = buildTransport("DISABLED");
     return {
       ok: false,
       errorCode: "DISABLED",
@@ -231,8 +242,8 @@ export async function requestAiFirstRunPlan({
       errorMessage: null,
       errorDetails: null,
       backendErrorCode: null,
-      transportMeta: buildTransport("DISABLED"),
-      surface: AI_SURFACE,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
 
@@ -249,22 +260,23 @@ export async function requestAiFirstRunPlan({
       errorDetails: null,
       backendErrorCode: null,
       transportMeta,
-      surface: AI_SURFACE,
+      ...buildResultMeta(transportMeta),
     };
   }
 
   if (!String(accessToken || "").trim()) {
+    const transportMeta = buildTransport("AUTH_MISSING");
     return {
       ok: false,
-      errorCode: "UNAUTHORIZED",
+      errorCode: "AUTH_MISSING",
       payload: null,
       status: 401,
       requestId: null,
       errorMessage: null,
       errorDetails: null,
-      backendErrorCode: "UNAUTHORIZED",
-      transportMeta: buildTransport("UNAUTHORIZED"),
-      surface: AI_SURFACE,
+      backendErrorCode: "AUTH_MISSING",
+      transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
 
@@ -272,6 +284,7 @@ export async function requestAiFirstRunPlan({
   try {
     normalizedPayload = normalizeFirstRunPlanRequestPayload(payload);
   } catch {
+    const transportMeta = buildTransport("INVALID_RESPONSE");
     return {
       ok: false,
       errorCode: "INVALID_RESPONSE",
@@ -281,14 +294,17 @@ export async function requestAiFirstRunPlan({
       errorMessage: null,
       errorDetails: null,
       backendErrorCode: null,
-      transportMeta: buildTransport("INVALID_RESPONSE"),
-      surface: AI_SURFACE,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
     };
   }
 
-  let response;
-  try {
-    response = await fetchImpl(`${resolvedBaseUrl}/ai/first-run-plan`, {
+  const requestResult = await fetchJsonWithTimeout({
+    fetchImpl,
+    url: `${resolvedBaseUrl}/ai/first-run-plan`,
+    timeoutMs,
+    defaultTimeoutMs: DEFAULT_AI_FIRST_RUN_TIMEOUT_MS,
+    options: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -296,13 +312,15 @@ export async function requestAiFirstRunPlan({
         "x-discip-surface": AI_SURFACE,
       },
       body: JSON.stringify(normalizedPayload),
-    });
-  } catch {
-    const transportMeta = buildTransport("NETWORK_ERROR");
-    logAiTransportIssue({ endpoint: "/ai/first-run-plan", errorCode: "NETWORK_ERROR", transportMeta });
+    },
+  });
+  if (!requestResult.ok) {
+    const errorCode = requestResult.timedOut ? "TIMEOUT" : "NETWORK_ERROR";
+    const transportMeta = buildTransport(errorCode);
+    logAiTransportIssue({ endpoint: "/ai/first-run-plan", errorCode, transportMeta });
     return {
       ok: false,
-      errorCode: "NETWORK_ERROR",
+      errorCode,
       payload: null,
       status: null,
       requestId: null,
@@ -310,9 +328,10 @@ export async function requestAiFirstRunPlan({
       errorDetails: null,
       backendErrorCode: null,
       transportMeta,
-      surface: AI_SURFACE,
+      ...buildResultMeta(transportMeta),
     };
   }
+  const response = requestResult.response;
 
   const body = await safeParseJson(response);
   const requestId =
@@ -349,7 +368,7 @@ export async function requestAiFirstRunPlan({
       errorDetails: isPlainObject(body?.details) ? body.details : null,
       backendErrorCode: rawBackendErrorCode,
       transportMeta,
-      surface: AI_SURFACE,
+      ...buildResultMeta(transportMeta),
     };
   }
 
@@ -373,7 +392,7 @@ export async function requestAiFirstRunPlan({
       errorDetails: null,
       backendErrorCode: null,
       transportMeta,
-      surface: AI_SURFACE,
+      ...buildResultMeta(transportMeta),
     };
   }
 
@@ -387,6 +406,6 @@ export async function requestAiFirstRunPlan({
     errorDetails: null,
     backendErrorCode: null,
     transportMeta,
-    surface: AI_SURFACE,
+    ...buildResultMeta(transportMeta),
   };
 }

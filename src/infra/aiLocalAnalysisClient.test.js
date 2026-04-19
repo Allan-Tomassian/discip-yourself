@@ -164,7 +164,7 @@ describe("aiLocalAnalysisClient", () => {
 
     expect(result).toMatchObject({
       ok: false,
-      errorCode: "UNAUTHORIZED",
+      errorCode: "AUTH_INVALID",
       status: 401,
       requestId: "req_401",
       backendErrorCode: "UNAUTHORIZED",
@@ -243,12 +243,39 @@ describe("aiLocalAnalysisClient", () => {
 
     expect(result).toMatchObject({
       ok: false,
-      errorCode: "BACKEND_ERROR",
+      errorCode: "BACKEND_UNAVAILABLE",
       status: 503,
       requestId: "req_stage_503",
       backendErrorCode: "PROVIDER_FAILED",
       surface: "analysis",
       analysisSurface: "planning",
+    });
+  });
+
+  it("mappe un timeout de transport sur TIMEOUT", async () => {
+    const abortError = new Error("Aborted");
+    abortError.name = "AbortError";
+    const fetchImpl = vi.fn().mockRejectedValue(abortError);
+
+    const result = await requestAiLocalAnalysis({
+      accessToken: "token",
+      baseUrl: "https://discip-yourself-backend.onrender.com",
+      fetchImpl,
+      payload: {
+        selectedDateKey: "2026-03-25",
+        activeCategoryId: "cat-1",
+        surface: "objectives",
+        message: "Recentre ma semaine.",
+      },
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      errorCode: "TIMEOUT",
+      requestId: null,
+      backendErrorCode: null,
+      surface: "analysis",
+      analysisSurface: "objectives",
     });
   });
 });
