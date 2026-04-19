@@ -116,10 +116,12 @@ describe("aiTransportDiagnostics", () => {
         },
         {
           disabled: "disabled",
+          waking: "waking",
           unauthorized: "unauthorized",
           rateLimited: "rate",
           timeout: "timeout",
           backendUnavailable: "backend",
+          genericBackend: "generic",
           offline: "offline",
           corsPrivateOrigin: "cors",
           networkUnknown: "unknown",
@@ -127,5 +129,29 @@ describe("aiTransportDiagnostics", () => {
         }
       )
     ).toBe("timeout");
+  });
+
+  it("mappe un cold start probable sur le message de réveil dédié", () => {
+    expect(
+      deriveAiUnavailableMessage(
+        {
+          errorCode: "TIMEOUT",
+          transportMeta: { probableCause: "backend_waking" },
+        },
+        {
+          disabled: "disabled",
+          waking: "waking",
+          unauthorized: "unauthorized",
+          rateLimited: "rate",
+          timeout: "timeout",
+          backendUnavailable: "backend",
+          genericBackend: "generic",
+          offline: "offline",
+          corsPrivateOrigin: "cors",
+          networkUnknown: "unknown",
+          fallback: "fallback",
+        }
+      )
+    ).toBe("waking");
   });
 });

@@ -60,41 +60,59 @@ export function shouldShowAiDebugUi() {
   return shouldLogAiTransportDebug();
 }
 
-export function buildAiTransportMeta({ baseUrl, errorCode = null } = {}) {
+function normalizeWarmupState(warmupState) {
+  const source = warmupState && typeof warmupState === "object" ? warmupState : {};
+  return {
+    lastHealthyAt: Number.isFinite(source.lastHealthyAt) ? Math.max(0, Math.round(source.lastHealthyAt)) : null,
+    lastWakeAttemptAt: Number.isFinite(source.lastWakeAttemptAt)
+      ? Math.max(0, Math.round(source.lastWakeAttemptAt))
+      : null,
+    lastWakeDurationMs: Number.isFinite(source.lastWakeDurationMs)
+      ? Math.max(0, Math.round(source.lastWakeDurationMs))
+      : null,
+    wakeState: String(source.wakeState || "").trim().toLowerCase() || null,
+  };
+}
+
+export function buildAiTransportMeta({ baseUrl, errorCode = null, warmupState = null, probableCause = null } = {}) {
   const frontendOrigin = readFrontendOrigin();
   const backendBaseUrl = typeof baseUrl === "string" ? String(baseUrl).trim() : "";
   const online =
     typeof navigator !== "undefined" && typeof navigator.onLine === "boolean" ? navigator.onLine : null;
   const normalizedCode = String(errorCode || "").trim().toUpperCase();
+  const normalizedWarmupState = normalizeWarmupState(warmupState);
+  const explicitProbableCause = String(probableCause || "").trim().toLowerCase();
 
-  let probableCause = null;
-  if (normalizedCode === "DISABLED") {
-    probableCause = "backend_disabled";
-  } else if (normalizedCode === "TIMEOUT") {
-    probableCause = "request_timeout";
-  } else if (normalizedCode === "BACKEND_UNAVAILABLE") {
-    probableCause = "backend_unavailable";
-  } else if (normalizedCode === "AUTH_MISSING") {
-    probableCause = "auth_missing";
-  } else if (normalizedCode === "AUTH_INVALID" || normalizedCode === "UNAUTHORIZED") {
-    probableCause = "auth_invalid";
-  } else if (normalizedCode === "INVALID_RESPONSE") {
-    probableCause = "invalid_response";
-  } else if (normalizedCode === "PREMIUM_REQUIRED") {
-    probableCause = "premium_required";
-  } else if (normalizedCode === "QUALITY_REJECTED") {
-    probableCause = "quality_rejected";
-  } else if (normalizedCode === "NETWORK_ERROR") {
-    if (online === false) probableCause = "offline";
-    else if (
-      frontendOrigin &&
-      backendBaseUrl &&
-      isPrivateNetworkOrigin(frontendOrigin) &&
-      isCrossOrigin(frontendOrigin, backendBaseUrl)
-    ) {
-      probableCause = "cors_private_origin";
-    } else {
-      probableCause = "network_unknown";
+  let resolvedProbableCause = explicitProbableCause || null;
+  if (!resolvedProbableCause) {
+    if (normalizedCode === "DISABLED") {
+      resolvedProbableCause = "backend_disabled";
+    } else if (normalizedCode === "TIMEOUT") {
+      resolvedProbableCause = "request_timeout";
+    } else if (normalizedCode === "BACKEND_UNAVAILABLE") {
+      resolvedProbableCause = "backend_unavailable";
+    } else if (normalizedCode === "AUTH_MISSING") {
+      resolvedProbableCause = "auth_missing";
+    } else if (normalizedCode === "AUTH_INVALID" || normalizedCode === "UNAUTHORIZED") {
+      resolvedProbableCause = "auth_invalid";
+    } else if (normalizedCode === "INVALID_RESPONSE") {
+      resolvedProbableCause = "invalid_response";
+    } else if (normalizedCode === "PREMIUM_REQUIRED") {
+      resolvedProbableCause = "premium_required";
+    } else if (normalizedCode === "QUALITY_REJECTED") {
+      resolvedProbableCause = "quality_rejected";
+    } else if (normalizedCode === "NETWORK_ERROR") {
+      if (online === false) resolvedProbableCause = "offline";
+      else if (
+        frontendOrigin &&
+        backendBaseUrl &&
+        isPrivateNetworkOrigin(frontendOrigin) &&
+        isCrossOrigin(frontendOrigin, backendBaseUrl)
+      ) {
+        resolvedProbableCause = "cors_private_origin";
+      } else {
+        resolvedProbableCause = "network_unknown";
+      }
     }
   }
 
@@ -102,7 +120,11 @@ export function buildAiTransportMeta({ baseUrl, errorCode = null } = {}) {
     frontendOrigin,
     backendBaseUrl,
     online,
-    probableCause,
+    probableCause: resolvedProbableCause,
+    lastHealthyAt: normalizedWarmupState.lastHealthyAt,
+    lastWakeAttemptAt: normalizedWarmupState.lastWakeAttemptAt,
+    lastWakeDurationMs: normalizedWarmupState.lastWakeDurationMs,
+    wakeState: normalizedWarmupState.wakeState,
   };
 }
 
@@ -168,6 +190,7 @@ export function buildAiDebugDetails(result = {}, { surface = null } = {}) {
     requestId: String(result?.requestId || "").trim() || null,
     surface: resolvedSurface,
     probableCause: String(result?.probableCause || transportMeta?.probableCause || "").trim() || null,
+    wakeState: String(transportMeta?.wakeState || "").trim() || null,
     baseUrlUsed:
       String(result?.baseUrlUsed || transportMeta?.backendBaseUrl || "").trim() || null,
     originUsed:
@@ -179,10 +202,12 @@ export function deriveAiUnavailableMessage(
   result,
   {
     disabled,
+    waking,
     unauthorized,
     rateLimited,
     timeout,
     backendUnavailable,
+    genericBackend,
     offline,
     corsPrivateOrigin,
     networkUnknown,
@@ -192,15 +217,18 @@ export function deriveAiUnavailableMessage(
   const code = String(result?.errorCode || "").trim().toUpperCase();
   const probableCause = String(result?.transportMeta?.probableCause || "").trim().toLowerCase();
 
+  if (probableCause === "backend_waking") return waking || timeout || backendUnavailable || fallback;
   if (code === "DISABLED") return disabled;
   if (code === "AUTH_MISSING" || code === "AUTH_INVALID" || code === "UNAUTHORIZED") return unauthorized;
   if (code === "RATE_LIMITED" || code === "QUOTA_EXCEEDED") return rateLimited;
   if (code === "TIMEOUT") return timeout || fallback;
   if (code === "BACKEND_UNAVAILABLE") return backendUnavailable || fallback;
+  if (code === "INVALID_RESPONSE") return genericBackend || fallback;
   if (code === "NETWORK_ERROR") {
     if (probableCause === "offline") return offline;
     if (probableCause === "cors_private_origin") return corsPrivateOrigin;
     return networkUnknown;
   }
+  if (code) return genericBackend || fallback;
   return fallback;
 }

@@ -82,14 +82,16 @@ function deriveCoachUseCase(message, currentUseCase = "general", currentMode = "
 function deriveCoachErrorMessage(result) {
   return deriveAiUnavailableMessage(result, {
     disabled: "Coach indisponible sur cet appareil.",
+    waking: "Le service IA se réveille. Réessaie dans quelques secondes.",
     unauthorized: "Connecte-toi pour utiliser le coach.",
     rateLimited: "Coach indisponible pour le moment.",
     timeout: "Le coach a pris trop de temps. Réessaie.",
     backendUnavailable: "Le backend IA du coach est indisponible pour le moment.",
+    genericBackend: "Le coach a rencontré une erreur côté IA. Réessaie.",
     offline: "Coach indisponible hors ligne.",
     corsPrivateOrigin: "Coach indisponible sur cette origine de test.",
     networkUnknown: "Coach indisponible pour le moment.",
-    fallback: "Coach indisponible.",
+    fallback: "Le coach a rencontré une erreur. Réessaie.",
   });
 }
 

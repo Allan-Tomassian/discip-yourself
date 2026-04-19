@@ -1,4 +1,5 @@
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
+import { ensureAiBackendWarm } from "./aiBackendWarmup";
 import { fetchJsonWithTimeout } from "./aiRequest";
 import { readAiBackendBaseUrl } from "./aiNowClient";
 import { resolveAiIntentForSessionGuidance } from "../domain/aiIntent";
@@ -6,7 +7,8 @@ import { resolveAiIntentForSessionGuidance } from "../domain/aiIntent";
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const GUIDANCE_MODES = new Set(["prepare", "adjust", "tool"]);
 const AI_SURFACE = "session";
-const DEFAULT_AI_SESSION_GUIDANCE_TIMEOUT_MS = 12000;
+export const DEFAULT_AI_SESSION_GUIDANCE_TIMEOUT_MS = 30000;
+export const DEFAULT_AI_SESSION_GUIDANCE_PREPARE_TIMEOUT_MS = 65000;
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -32,6 +34,13 @@ function normalizeRuntimeContext(value) {
     elapsedSec: Number.isFinite(source.elapsedSec) ? Math.max(0, Math.round(source.elapsedSec)) : 0,
     remainingSec: Number.isFinite(source.remainingSec) ? Math.max(0, Math.round(source.remainingSec)) : 0,
   };
+}
+
+export function resolveAiSessionGuidanceTimeoutMs({ mode = "", timeoutMs } = {}) {
+  if (Number.isFinite(timeoutMs)) return Math.max(250, Math.round(timeoutMs));
+  return mode === "prepare"
+    ? DEFAULT_AI_SESSION_GUIDANCE_PREPARE_TIMEOUT_MS
+    : DEFAULT_AI_SESSION_GUIDANCE_TIMEOUT_MS;
 }
 
 export function normalizeAiSessionGuidancePayload(input) {
@@ -165,10 +174,17 @@ export async function requestAiSessionGuidance({
   payload,
   baseUrl,
   fetchImpl = globalThis.fetch,
-  timeoutMs = DEFAULT_AI_SESSION_GUIDANCE_TIMEOUT_MS,
+  timeoutMs,
 }) {
   const resolvedBaseUrl = readAiBackendBaseUrl(baseUrl);
-  const buildTransport = (errorCode = null) => buildAiTransportMeta({ baseUrl: resolvedBaseUrl, errorCode });
+  let latestWarmupState = null;
+  const buildTransport = (errorCode = null, probableCause = null) =>
+    buildAiTransportMeta({
+      baseUrl: resolvedBaseUrl,
+      errorCode,
+      warmupState: latestWarmupState,
+      probableCause,
+    });
   const buildResultMeta = (transportMeta) => ({
     surface: AI_SURFACE,
     probableCause: transportMeta?.probableCause || null,
@@ -248,11 +264,45 @@ export async function requestAiSessionGuidance({
     };
   }
 
+  const resolvedTimeoutMs = resolveAiSessionGuidanceTimeoutMs({
+    mode: normalizedPayload.mode,
+    timeoutMs,
+  });
+  const warmupResult = await ensureAiBackendWarm({
+    baseUrl: resolvedBaseUrl,
+    fetchImpl,
+  });
+  latestWarmupState = warmupResult?.state || latestWarmupState;
+  if (!warmupResult?.ok) {
+    const errorCode = String(warmupResult?.errorCode || "").trim().toUpperCase() || "BACKEND_UNAVAILABLE";
+    const transportMeta = buildTransport(errorCode, warmupResult?.probableCause || null);
+    logAiTransportIssue({
+      endpoint: "/ai/session-guidance",
+      errorCode,
+      status: Number.isInteger(warmupResult?.status) ? warmupResult.status : null,
+      mode: normalizedPayload.mode,
+      transportMeta,
+    });
+    return {
+      ok: false,
+      errorCode,
+      payload: null,
+      status: Number.isInteger(warmupResult?.status) ? warmupResult.status : null,
+      requestId: null,
+      errorMessage: null,
+      errorDetails: null,
+      backendErrorCode: null,
+      transportMeta,
+      responseMeta: null,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+
   const requestResult = await fetchJsonWithTimeout({
     fetchImpl,
     url: `${resolvedBaseUrl}/ai/session-guidance`,
-    timeoutMs,
-    defaultTimeoutMs: DEFAULT_AI_SESSION_GUIDANCE_TIMEOUT_MS,
+    timeoutMs: resolvedTimeoutMs,
+    defaultTimeoutMs: resolvedTimeoutMs,
     options: {
       method: "POST",
       headers: {

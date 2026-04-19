@@ -1,9 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildAiFirstRunPlanRequest,
+  DEFAULT_AI_FIRST_RUN_TIMEOUT_MS,
   normalizeAiFirstRunPayloadForTest,
   requestAiFirstRunPlan,
 } from "./aiFirstRunClient";
+import { resetAiBackendWarmupStateForTests } from "./aiBackendWarmup";
 
 const VALID_RESPONSE = {
   version: 2,
@@ -148,6 +150,11 @@ const VALID_RESPONSE = {
 };
 
 describe("aiFirstRunClient", () => {
+  afterEach(() => {
+    resetAiBackendWarmupStateForTests();
+    vi.unstubAllGlobals();
+  });
+
   it("normalise le payload first-run et exclut les fenetres incomplètes", () => {
     expect(
       normalizeAiFirstRunPayloadForTest({
@@ -258,6 +265,10 @@ describe("aiFirstRunClient", () => {
     expect(result.errorCode).toBe("TIMEOUT");
     expect(result.backendErrorCode).toBe("FIRST_RUN_PLAN_PROVIDER_TIMEOUT");
     expect(result.errorDetails).toEqual({ providerStatus: "timeout", timeoutMs: 45000 });
+  });
+
+  it("relève le budget frontend first-run pour rester compatible avec la route dédiée", () => {
+    expect(DEFAULT_AI_FIRST_RUN_TIMEOUT_MS).toBe(60000);
   });
 
   it("mappe un timeout de transport frontend sur TIMEOUT", async () => {
@@ -373,5 +384,56 @@ describe("aiFirstRunClient", () => {
     expect(result.errorCode).toBe("BACKEND_UNAVAILABLE");
     expect(result.backendErrorCode).toBe("FIRST_RUN_PLAN_BACKEND_UNAVAILABLE");
     expect(result.baseUrlUsed).toBe("https://ai.example.com");
+  });
+
+  it("réveille le backend avant la génération first-run dans le navigateur", async () => {
+    vi.stubGlobal("window", {
+      location: {
+        origin: "https://test-discip-yourself.netlify.app",
+        hostname: "test-discip-yourself.netlify.app",
+      },
+    });
+
+    const fetchImpl = vi.fn().mockImplementation(async (url) => {
+      if (String(url).endsWith("/health")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ ok: true }),
+        };
+      }
+      return {
+        ok: false,
+        status: 503,
+        json: async () => ({
+          error: "FIRST_RUN_PLAN_BACKEND_UNAVAILABLE",
+          requestId: "req-first-run-after-warmup",
+        }),
+      };
+    });
+
+    const result = await requestAiFirstRunPlan({
+      accessToken: "token",
+      baseUrl: "https://ai.example.com",
+      fetchImpl,
+      payload: {
+        whyText: "Reprendre un cadre",
+        primaryGoal: "Relancer le projet",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["business"],
+        locale: "fr-FR",
+        timezone: "Europe/Paris",
+        referenceDateKey: "2026-04-19",
+      },
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://ai.example.com/health");
+    expect(fetchImpl.mock.calls[1]?.[0]).toBe("https://ai.example.com/ai/first-run-plan");
+    expect(result.ok).toBe(false);
+    expect(result.transportMeta).toMatchObject({
+      wakeState: "healthy",
+      lastWakeAttemptAt: expect.any(Number),
+    });
   });
 });

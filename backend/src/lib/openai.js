@@ -5,7 +5,7 @@ export function createOpenAIClient(config) {
   if (!apiKey) return null;
   const timeoutMs = Number.isFinite(config?.OPENAI_DEFAULT_TIMEOUT_MS)
     ? Math.max(1000, Math.round(config.OPENAI_DEFAULT_TIMEOUT_MS))
-    : 20000;
+    : 30000;
   return new OpenAI({
     apiKey,
     timeout: timeoutMs,

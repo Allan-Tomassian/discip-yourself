@@ -21,6 +21,14 @@ function readFailureDetails(result = null) {
   return isPlainObject(result?.errorDetails) ? result.errorDetails : null;
 }
 
+function readProbableCause(result = null) {
+  return (
+    String(result?.probableCause || "").trim().toLowerCase() ||
+    String(result?.transportMeta?.probableCause || "").trim().toLowerCase() ||
+    null
+  );
+}
+
 export function readSessionPrepareFailureReason({ result = null, quality = null } = {}) {
   const normalizedQuality = normalizeFailureQuality(quality);
   const details = readFailureDetails(result);
@@ -36,12 +44,16 @@ export function resolveSessionPrepareFailureMessage({ result = null, quality = n
   const errorCode = normalizeErrorCode(result?.errorCode || result?.backendErrorCode);
   const normalizedQuality = normalizeFailureQuality(quality);
   const rejectionReason = readSessionPrepareFailureReason({ result, quality: normalizedQuality });
+  const probableCause = readProbableCause(result);
 
   if (errorCode === "PREMIUM_REQUIRED") {
     return "Cette préparation détaillée fait partie du premium.";
   }
   if (errorCode === "AUTH_MISSING" || errorCode === "AUTH_INVALID") {
     return "Ta session a expiré. Recharge l'application puis réessaie.";
+  }
+  if (probableCause === "backend_waking") {
+    return "Le service IA se réveille. Réessaye dans quelques secondes ou passe en standard.";
   }
   if (errorCode === "TIMEOUT" || errorCode === "SESSION_GUIDANCE_PROVIDER_TIMEOUT") {
     return "La préparation détaillée a expiré. Réessaye ou passe en standard.";
@@ -83,6 +95,7 @@ export function buildSessionPrepareFailureState({ result = null, quality = null 
   return {
     errorCode: String(result?.errorCode || "").trim().toUpperCase() || null,
     backendErrorCode: String(result?.backendErrorCode || "").trim().toUpperCase() || null,
+    probableCause: readProbableCause(result),
     status: Number.isFinite(result?.status) ? Math.round(result.status) : null,
     requestId: String(result?.requestId || "").trim() || null,
     rejectionReason: readSessionPrepareFailureReason({ result, quality: normalizedQuality }),

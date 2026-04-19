@@ -3,6 +3,7 @@ import {
   TODAY_INTERVENTION_TYPE,
   TODAY_BACKEND_RESOLUTION_STATUS,
 } from "../domain/todayIntervention";
+import { ensureAiBackendWarm } from "./aiBackendWarmup";
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
 import { fetchJsonWithTimeout } from "./aiRequest";
 import { readAiBackendBaseUrl as readAiBackendBaseUrlFromEnv } from "./frontendEnv";
@@ -35,7 +36,7 @@ const META_FALLBACK_REASONS = new Set(["none", "quota", "timeout", "invalid_mode
 const META_TRIGGERS = new Set(["manual", "screen_open", "resume", "auto_slip", "resume_after_gap"]);
 const DIAGNOSTIC_RESOLUTION_STATUSES = new Set(Object.values(TODAY_BACKEND_RESOLUTION_STATUS));
 const DIAGNOSTIC_REJECTION_REASONS = new Set(Object.values(TODAY_DIAGNOSTIC_REJECTION_REASON));
-const DEFAULT_AI_NOW_TIMEOUT_MS = 15000;
+export const DEFAULT_AI_NOW_TIMEOUT_MS = 30000;
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -224,7 +225,14 @@ export async function requestAiNow({
   timeoutMs = DEFAULT_AI_NOW_TIMEOUT_MS,
 }) {
   const resolvedBaseUrl = readAiBackendBaseUrl(baseUrl);
-  const buildTransport = (errorCode = null) => buildAiTransportMeta({ baseUrl: resolvedBaseUrl, errorCode });
+  let latestWarmupState = null;
+  const buildTransport = (errorCode = null, probableCause = null) =>
+    buildAiTransportMeta({
+      baseUrl: resolvedBaseUrl,
+      errorCode,
+      warmupState: latestWarmupState,
+      probableCause,
+    });
   const buildResultMeta = (transportMeta, surface = payload?.surface || null) => ({
     surface,
     probableCause: transportMeta?.probableCause || null,
@@ -286,6 +294,33 @@ export async function requestAiNow({
       backendErrorCode: null,
       transportMeta,
       ...buildResultMeta(transportMeta),
+    };
+  }
+
+  const warmupResult = await ensureAiBackendWarm({
+    baseUrl: resolvedBaseUrl,
+    fetchImpl,
+  });
+  latestWarmupState = warmupResult?.state || latestWarmupState;
+  if (!warmupResult?.ok) {
+    const errorCode = String(warmupResult?.errorCode || "").trim().toUpperCase() || "BACKEND_UNAVAILABLE";
+    const transportMeta = buildTransport(errorCode, warmupResult?.probableCause || null);
+    logAiTransportIssue({
+      endpoint: "/ai/now",
+      errorCode,
+      status: Number.isInteger(warmupResult?.status) ? warmupResult.status : null,
+      mode: normalizedPayload.surface,
+      transportMeta,
+    });
+    return {
+      ok: false,
+      errorCode,
+      coach: null,
+      status: Number.isInteger(warmupResult?.status) ? warmupResult.status : null,
+      requestId: null,
+      backendErrorCode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta, normalizedPayload.surface),
     };
   }
 

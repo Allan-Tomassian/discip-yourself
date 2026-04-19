@@ -1,10 +1,17 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   normalizeAiSessionGuidancePayload,
+  resolveAiSessionGuidanceTimeoutMs,
   requestAiSessionGuidance,
 } from "./aiSessionGuidanceClient";
+import { resetAiBackendWarmupStateForTests } from "./aiBackendWarmup";
 
 describe("aiSessionGuidanceClient", () => {
+  afterEach(() => {
+    resetAiBackendWarmupStateForTests();
+    vi.unstubAllGlobals();
+  });
+
   it("mappe prepare vers session_prepare", () => {
     expect(
       normalizeAiSessionGuidancePayload({
@@ -35,6 +42,12 @@ describe("aiSessionGuidanceClient", () => {
         toolId: "breathing_reset",
       }).aiIntent,
     ).toBe("session_adapt");
+  });
+
+  it("applique des budgets publics cohérents selon le mode de session-guidance", () => {
+    expect(resolveAiSessionGuidanceTimeoutMs({ mode: "prepare" })).toBe(65000);
+    expect(resolveAiSessionGuidanceTimeoutMs({ mode: "adjust" })).toBe(30000);
+    expect(resolveAiSessionGuidanceTimeoutMs({ mode: "tool", timeoutMs: 1200 })).toBe(1200);
   });
 
   it("envoie le canon aiIntent quand la route backend existe", async () => {
@@ -234,5 +247,53 @@ describe("aiSessionGuidanceClient", () => {
     expect(result.errorCode).toBe("BACKEND_UNAVAILABLE");
     expect(result.surface).toBe("session");
     expect(result.baseUrlUsed).toBe("https://ai.example.com");
+  });
+
+  it("réveille le backend avant un prepare session-guidance dans le navigateur", async () => {
+    vi.stubGlobal("window", {
+      location: {
+        origin: "https://test-discip-yourself.netlify.app",
+        hostname: "test-discip-yourself.netlify.app",
+      },
+    });
+
+    const fetchImpl = vi.fn().mockImplementation(async (url) => {
+      if (String(url).endsWith("/health")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ ok: true }),
+        };
+      }
+      return {
+        ok: false,
+        status: 503,
+        json: async () => ({
+          error: "UNKNOWN_BACKEND_ERROR",
+          requestId: "req-session-guidance-after-warmup",
+        }),
+      };
+    });
+
+    const result = await requestAiSessionGuidance({
+      accessToken: "token",
+      baseUrl: "https://ai.example.com",
+      fetchImpl,
+      payload: {
+        mode: "prepare",
+        dateKey: "2026-03-25",
+        occurrenceId: "occ-1",
+        actionId: "goal-1",
+      },
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://ai.example.com/health");
+    expect(fetchImpl.mock.calls[1]?.[0]).toBe("https://ai.example.com/ai/session-guidance");
+    expect(result.ok).toBe(false);
+    expect(result.transportMeta).toMatchObject({
+      wakeState: "healthy",
+      lastWakeAttemptAt: expect.any(Number),
+    });
   });
 });

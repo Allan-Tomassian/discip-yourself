@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { isAiCoachChatResponse, normalizeAiCoachChatPayload, requestAiCoachChat } from "./aiCoachChatClient";
+import { resetAiBackendWarmupStateForTests } from "./aiBackendWarmup";
 
 function buildChatResponse(overrides = {}) {
   return {
@@ -73,6 +74,11 @@ function buildConversationResponse(overrides = {}) {
 }
 
 describe("aiCoachChatClient", () => {
+  afterEach(() => {
+    resetAiBackendWarmupStateForTests();
+    vi.unstubAllGlobals();
+  });
+
   it("valide une reponse chat locale sans draftChanges", () => {
     expect(isAiCoachChatResponse(buildChatResponse())).toBe(true);
   });
@@ -264,6 +270,53 @@ describe("aiCoachChatClient", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(fetchImpl.mock.calls[0]?.[1]?.headers?.["x-discip-surface"]).toBe("coach");
     expect(JSON.parse(fetchImpl.mock.calls[0]?.[1]?.body || "{}").aiIntent).toBe("explore");
+  });
+
+  it("réveille le backend public avant le premier appel coach dans le navigateur", async () => {
+    vi.stubGlobal("window", {
+      location: {
+        origin: "https://test-discip-yourself.netlify.app",
+        hostname: "test-discip-yourself.netlify.app",
+      },
+    });
+
+    const fetchImpl = vi.fn().mockImplementation(async (url) => {
+      if (String(url).endsWith("/health")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ ok: true }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => buildConversationResponse({ mode: "free", proposal: null }),
+      };
+    });
+
+    const result = await requestAiCoachChat({
+      accessToken: "token",
+      baseUrl: "https://discip-yourself-backend.onrender.com",
+      fetchImpl,
+      payload: {
+        selectedDateKey: "2026-03-25",
+        activeCategoryId: "cat-1",
+        mode: "free",
+        message: "Bonjour",
+        recentMessages: [],
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://discip-yourself-backend.onrender.com/health");
+    expect(fetchImpl.mock.calls[1]?.[0]).toBe("https://discip-yourself-backend.onrender.com/ai/chat");
+    expect(result.transportMeta).toMatchObject({
+      wakeState: "healthy",
+      lastWakeAttemptAt: expect.any(Number),
+      lastWakeDurationMs: expect.any(Number),
+    });
   });
 
   it("retourne un diagnostic complet sur un 429 backend", async () => {

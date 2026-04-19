@@ -1,4 +1,5 @@
 import { readAiBackendBaseUrl } from "./aiNowClient";
+import { ensureAiBackendWarm } from "./aiBackendWarmup";
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
 import { fetchJsonWithTimeout } from "./aiRequest";
 import {
@@ -22,7 +23,7 @@ const META_FALLBACK_REASONS = new Set(["none", "quota", "timeout", "invalid_mode
 const CHAT_ROLES = new Set(["user", "assistant"]);
 const COACH_USE_CASES = new Set(["general", "life_plan", "stats_review"]);
 const AI_SURFACE = "coach";
-const DEFAULT_AI_COACH_CHAT_TIMEOUT_MS = 20000;
+export const DEFAULT_AI_COACH_CHAT_TIMEOUT_MS = 35000;
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -242,7 +243,14 @@ export async function requestAiCoachChat({
   timeoutMs = DEFAULT_AI_COACH_CHAT_TIMEOUT_MS,
 }) {
   const resolvedBaseUrl = readAiBackendBaseUrl(baseUrl);
-  const buildTransport = (errorCode = null) => buildAiTransportMeta({ baseUrl: resolvedBaseUrl, errorCode });
+  let latestWarmupState = null;
+  const buildTransport = (errorCode = null, probableCause = null) =>
+    buildAiTransportMeta({
+      baseUrl: resolvedBaseUrl,
+      errorCode,
+      warmupState: latestWarmupState,
+      probableCause,
+    });
   const buildResultMeta = (transportMeta) => ({
     surface: AI_SURFACE,
     probableCause: transportMeta?.probableCause || null,
@@ -309,6 +317,34 @@ export async function requestAiCoachChat({
       errorCode: "INVALID_RESPONSE",
       reply: null,
       status: null,
+      requestId: null,
+      backendErrorCode: null,
+      responseKind: null,
+      responseMode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+
+  const warmupResult = await ensureAiBackendWarm({
+    baseUrl: resolvedBaseUrl,
+    fetchImpl,
+  });
+  latestWarmupState = warmupResult?.state || latestWarmupState;
+  if (!warmupResult?.ok) {
+    const errorCode = String(warmupResult?.errorCode || "").trim().toUpperCase() || "BACKEND_UNAVAILABLE";
+    const transportMeta = buildTransport(errorCode, warmupResult?.probableCause || null);
+    logCoachChatIssue({
+      errorCode,
+      status: Number.isInteger(warmupResult?.status) ? warmupResult.status : null,
+      transportMeta,
+      mode: normalizedPayload.mode,
+    });
+    return {
+      ok: false,
+      errorCode,
+      reply: null,
+      status: Number.isInteger(warmupResult?.status) ? warmupResult.status : null,
       requestId: null,
       backendErrorCode: null,
       responseKind: null,

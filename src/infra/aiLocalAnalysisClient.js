@@ -1,4 +1,5 @@
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
+import { ensureAiBackendWarm } from "./aiBackendWarmup";
 import { fetchJsonWithTimeout } from "./aiRequest";
 import { readAiBackendBaseUrl } from "./aiNowClient";
 import { LOCAL_ANALYSIS_SURFACES, normalizeLocalAnalysisSurface } from "../domain/aiPolicy";
@@ -18,7 +19,7 @@ const DECISION_SOURCES = new Set(["ai", "rules"]);
 const META_FALLBACK_REASONS = new Set(["none", "quota", "timeout", "invalid_model_output", "backend_error"]);
 const DIRECTION_KEYS = new Set(["maintenir", "recalibrer", "accélérer", "alléger"]);
 const AI_SURFACE = "analysis";
-const DEFAULT_AI_LOCAL_ANALYSIS_TIMEOUT_MS = 20000;
+export const DEFAULT_AI_LOCAL_ANALYSIS_TIMEOUT_MS = 35000;
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -196,7 +197,14 @@ export async function requestAiLocalAnalysis({
   timeoutMs = DEFAULT_AI_LOCAL_ANALYSIS_TIMEOUT_MS,
 }) {
   const resolvedBaseUrl = readAiBackendBaseUrl(baseUrl);
-  const buildTransport = (errorCode = null) => buildAiTransportMeta({ baseUrl: resolvedBaseUrl, errorCode });
+  let latestWarmupState = null;
+  const buildTransport = (errorCode = null, probableCause = null) =>
+    buildAiTransportMeta({
+      baseUrl: resolvedBaseUrl,
+      errorCode,
+      warmupState: latestWarmupState,
+      probableCause,
+    });
   const buildResultMeta = (transportMeta, analysisSurface = payload?.surface || null) => ({
     surface: AI_SURFACE,
     analysisSurface,
@@ -266,6 +274,33 @@ export async function requestAiLocalAnalysis({
       responseKind: null,
       transportMeta,
       ...buildResultMeta(transportMeta),
+    };
+  }
+
+  const warmupResult = await ensureAiBackendWarm({
+    baseUrl: resolvedBaseUrl,
+    fetchImpl,
+  });
+  latestWarmupState = warmupResult?.state || latestWarmupState;
+  if (!warmupResult?.ok) {
+    const errorCode = String(warmupResult?.errorCode || "").trim().toUpperCase() || "BACKEND_UNAVAILABLE";
+    const transportMeta = buildTransport(errorCode, warmupResult?.probableCause || null);
+    logLocalAnalysisIssue({
+      errorCode,
+      status: Number.isInteger(warmupResult?.status) ? warmupResult.status : null,
+      transportMeta,
+      surface: normalizedPayload.surface,
+    });
+    return {
+      ok: false,
+      errorCode,
+      reply: null,
+      status: Number.isInteger(warmupResult?.status) ? warmupResult.status : null,
+      requestId: null,
+      backendErrorCode: null,
+      responseKind: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta, normalizedPayload.surface),
     };
   }
 

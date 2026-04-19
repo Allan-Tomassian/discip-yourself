@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   isAiLocalAnalysisResponse,
   normalizeAiLocalAnalysisPayload,
   requestAiLocalAnalysis,
 } from "./aiLocalAnalysisClient";
+import { resetAiBackendWarmupStateForTests } from "./aiBackendWarmup";
 
 function buildLocalAnalysisResponse(overrides = {}) {
   return {
@@ -35,6 +36,11 @@ function buildLocalAnalysisResponse(overrides = {}) {
 }
 
 describe("aiLocalAnalysisClient", () => {
+  afterEach(() => {
+    resetAiBackendWarmupStateForTests();
+    vi.unstubAllGlobals();
+  });
+
   it("valide une reponse locale card", () => {
     expect(isAiLocalAnalysisResponse(buildLocalAnalysisResponse())).toBe(true);
   });
@@ -276,6 +282,43 @@ describe("aiLocalAnalysisClient", () => {
       backendErrorCode: null,
       surface: "analysis",
       analysisSurface: "objectives",
+    });
+  });
+
+  it("signale un cold start probable quand le warmup /health expire avant l'analyse", async () => {
+    vi.stubGlobal("window", {
+      location: {
+        origin: "https://test-discip-yourself.netlify.app",
+        hostname: "test-discip-yourself.netlify.app",
+      },
+    });
+
+    const abortError = new Error("Aborted");
+    abortError.name = "AbortError";
+    const fetchImpl = vi.fn().mockRejectedValue(abortError);
+
+    const result = await requestAiLocalAnalysis({
+      accessToken: "token",
+      baseUrl: "https://discip-yourself-backend.onrender.com",
+      fetchImpl,
+      payload: {
+        selectedDateKey: "2026-03-25",
+        activeCategoryId: "cat-1",
+        surface: "planning",
+        message: "Analyse ce planning",
+      },
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://discip-yourself-backend.onrender.com/health");
+    expect(result).toMatchObject({
+      ok: false,
+      errorCode: "TIMEOUT",
+      probableCause: "backend_waking",
+      transportMeta: {
+        probableCause: "backend_waking",
+        wakeState: "timeout",
+      },
     });
   });
 });

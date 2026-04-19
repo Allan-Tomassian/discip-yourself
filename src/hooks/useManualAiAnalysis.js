@@ -11,12 +11,16 @@ import { buildAiDebugDetails, deriveAiUnavailableMessage } from "../infra/aiTran
 function deriveDefaultErrorMessage(result) {
   return deriveAiUnavailableMessage(result, {
     disabled: "Lecture indisponible sur cet appareil.",
+    waking: "Le service IA se réveille. Réessaie dans quelques secondes.",
     unauthorized: "Connecte-toi pour lancer la lecture.",
     rateLimited: "Lecture indisponible pour le moment.",
+    timeout: "La lecture IA a pris trop de temps. Réessaie.",
+    backendUnavailable: "Le backend IA est indisponible pour le moment.",
+    genericBackend: "La lecture IA a rencontré une erreur. Réessaie.",
     offline: "Lecture indisponible hors ligne.",
     corsPrivateOrigin: "Lecture indisponible sur cette origine de test.",
     networkUnknown: "Lecture indisponible pour le moment.",
-    fallback: "Lecture indisponible.",
+    fallback: "La lecture IA a rencontré une erreur. Réessaie.",
   });
 }
 
@@ -130,7 +134,7 @@ export function useManualAiAnalysis({
         }
         const nextEntry = serializeSuccess(result);
         if (!nextEntry) {
-          setError("Lecture indisponible.");
+          setError("La lecture IA a renvoyé une réponse inexploitable. Réessaie.");
           setErrorDiagnostics(
             buildAiDebugDetails(
               {
@@ -173,7 +177,7 @@ export function useManualAiAnalysis({
           entry: nextEntry,
         };
       } catch (runtimeError) {
-        setError("Lecture indisponible.");
+        setError("La lecture IA a échoué. Réessaie.");
         setErrorDiagnostics(
           buildAiDebugDetails(
             {

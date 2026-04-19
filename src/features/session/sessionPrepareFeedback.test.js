@@ -25,6 +25,17 @@ describe("sessionPrepareFeedback", () => {
     ).toBe("La préparation détaillée a expiré. Réessaye ou passe en standard.");
   });
 
+  it("surfaces a backend wakeup with dedicated premium copy", () => {
+    expect(
+      resolveSessionPrepareFailureMessage({
+        result: {
+          errorCode: "TIMEOUT",
+          probableCause: "backend_waking",
+        },
+      })
+    ).toBe("Le service IA se réveille. Réessaye dans quelques secondes ou passe en standard.");
+  });
+
   it("surfaces richness failures with the dedicated premium-specific copy", () => {
     expect(
       resolveSessionPrepareFailureMessage({
