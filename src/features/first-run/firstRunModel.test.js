@@ -159,7 +159,7 @@ describe("firstRunModel", () => {
                 },
               ],
               occurrences: [
-                { id: "occ_1", goalId: "action_1", date: "2026-04-19", start: "08:00", durationMinutes: 25, status: "planned" },
+                { id: "occ_1", actionId: "action_1", date: "2026-04-19", start: "08:00", durationMinutes: 25, status: "planned" },
               ],
             },
           },
@@ -173,5 +173,92 @@ describe("firstRunModel", () => {
     expect(normalized.generatedPlans?.plans[0]?.title).toBe("Plan tenable");
     expect(normalized.selectedPlanId).toBe("tenable");
     expect(normalized.generatedPlans?.plans[0]?.commitDraft?.actions[0]?.id).toBe("action_1");
+    expect(normalized.generatedPlans?.plans[0]?.commitDraft?.occurrences[0]?.actionId).toBe("action_1");
+  });
+
+  it("reste compatible avec les anciens payloads qui stockent occurrence.goalId", () => {
+    const normalized = normalizeFirstRunV1({
+      status: "compare",
+      generatedPlans: {
+        version: 2,
+        source: "ai_backend",
+        inputHash: "hash-legacy",
+        generatedAt: "2026-04-19T08:00:00.000Z",
+        requestId: "req-legacy",
+        model: "gpt-5.4",
+        promptVersion: "first_run_plan_v1",
+        plans: [
+          {
+            id: "tenable",
+            variant: "tenable",
+            title: "Plan tenable",
+            summary: "Version legacy",
+            comparisonMetrics: {
+              weeklyMinutes: 150,
+              totalBlocks: 5,
+              activeDays: 4,
+              recoverySlots: 3,
+              dailyDensity: "respirable",
+              engagementLevel: "tenable",
+            },
+            categories: [{ id: "cat_1", label: "Business", role: "primary", blockCount: 3 }],
+            preview: [
+              {
+                dayKey: "2026-04-19",
+                dayLabel: "DIM 19/04",
+                slotLabel: "08:00 - 08:25",
+                categoryId: "cat_1",
+                categoryLabel: "Business",
+                title: "Bloc profond",
+                minutes: 25,
+              },
+            ],
+            todayPreview: [
+              {
+                dayKey: "2026-04-19",
+                dayLabel: "DIM 19/04",
+                slotLabel: "08:00 - 08:25",
+                categoryId: "cat_1",
+                categoryLabel: "Business",
+                title: "Bloc profond",
+                minutes: 25,
+              },
+            ],
+            rationale: {
+              whyFit: "Plan sobre.",
+              capacityFit: "Charge stable.",
+              constraintFit: "Contraintes respectées.",
+            },
+            commitDraft: {
+              version: 1,
+              categories: [{ id: "cat_1", templateId: "business", name: "Business", color: "#0ea5e9", order: 0 }],
+              goals: [{ id: "goal_1", categoryId: "cat_1", title: "Relancer le projet", type: "OUTCOME", order: 0 }],
+              actions: [
+                {
+                  id: "action_1",
+                  categoryId: "cat_1",
+                  parentGoalId: "goal_1",
+                  title: "Bloc profond",
+                  type: "PROCESS",
+                  order: 0,
+                  repeat: "weekly",
+                  daysOfWeek: [1, 3, 5],
+                  timeMode: "FIXED",
+                  startTime: "08:00",
+                  timeSlots: ["08:00"],
+                  durationMinutes: 25,
+                  sessionMinutes: 25,
+                },
+              ],
+              occurrences: [
+                { id: "occ_legacy", goalId: "action_1", date: "2026-04-19", start: "08:00", durationMinutes: 25, status: "planned" },
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    expect(normalized.generatedPlans?.plans[0]?.commitDraft?.occurrences[0]?.actionId).toBe("action_1");
   });
 });

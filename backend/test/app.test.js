@@ -292,11 +292,11 @@ function createValidFirstRunPlanResponse({ requestId = "req-first-run", inputHas
             },
           ],
           occurrences: [
-            { id: "occ_t_1", goalId: "action_roadmap", date: TODAY_KEY, start: "08:00", durationMinutes: 25, status: "planned" },
-            { id: "occ_t_2", goalId: "action_walk", date: FUTURE_KEY, start: "18:30", durationMinutes: 25, status: "planned" },
-            { id: "occ_t_3", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 2), start: "08:00", durationMinutes: 35, status: "planned" },
-            { id: "occ_t_4", goalId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 3), start: "18:30", durationMinutes: 30, status: "planned" },
-            { id: "occ_t_5", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "08:00", durationMinutes: 35, status: "planned" },
+            { id: "occ_t_1", actionId: "action_roadmap", date: TODAY_KEY, start: "08:00", durationMinutes: 25, status: "planned" },
+            { id: "occ_t_2", actionId: "action_walk", date: FUTURE_KEY, start: "18:30", durationMinutes: 25, status: "planned" },
+            { id: "occ_t_3", actionId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 2), start: "08:00", durationMinutes: 35, status: "planned" },
+            { id: "occ_t_4", actionId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 3), start: "18:30", durationMinutes: 30, status: "planned" },
+            { id: "occ_t_5", actionId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "08:00", durationMinutes: 35, status: "planned" },
           ],
         },
       },
@@ -386,13 +386,13 @@ function createValidFirstRunPlanResponse({ requestId = "req-first-run", inputHas
             },
           ],
           occurrences: [
-            { id: "occ_a_1", goalId: "action_roadmap", date: TODAY_KEY, start: "07:30", durationMinutes: 45, status: "planned" },
-            { id: "occ_a_2", goalId: "action_walk", date: FUTURE_KEY, start: "18:30", durationMinutes: 30, status: "planned" },
-            { id: "occ_a_3", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 2), start: "07:30", durationMinutes: 45, status: "planned" },
-            { id: "occ_a_4", goalId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 3), start: "18:30", durationMinutes: 30, status: "planned" },
-            { id: "occ_a_5", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "07:30", durationMinutes: 45, status: "planned" },
-            { id: "occ_a_6", goalId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 5), start: "18:30", durationMinutes: 30, status: "planned" },
-            { id: "occ_a_7", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 6), start: "07:30", durationMinutes: 30, status: "planned" },
+            { id: "occ_a_1", actionId: "action_roadmap", date: TODAY_KEY, start: "07:30", durationMinutes: 45, status: "planned" },
+            { id: "occ_a_2", actionId: "action_walk", date: FUTURE_KEY, start: "18:30", durationMinutes: 30, status: "planned" },
+            { id: "occ_a_3", actionId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 2), start: "07:30", durationMinutes: 45, status: "planned" },
+            { id: "occ_a_4", actionId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 3), start: "18:30", durationMinutes: 30, status: "planned" },
+            { id: "occ_a_5", actionId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "07:30", durationMinutes: 45, status: "planned" },
+            { id: "occ_a_6", actionId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 5), start: "18:30", durationMinutes: 30, status: "planned" },
+            { id: "occ_a_7", actionId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 6), start: "07:30", durationMinutes: 30, status: "planned" },
           ],
         },
       },
@@ -1381,11 +1381,11 @@ test("POST /ai/first-run-plan rejects plans that do not diverge enough", async (
           const validTenableDraft = {
             ...baseTenable.commitDraft,
             occurrences: [
-              { id: "div_t_1", goalId: "action_roadmap", date: TODAY_KEY, start: "08:00", durationMinutes: 40, status: "planned" },
-              { id: "div_t_2", goalId: "action_walk", date: FUTURE_KEY, start: "18:30", durationMinutes: 30, status: "planned" },
-              { id: "div_t_3", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 2), start: "08:00", durationMinutes: 50, status: "planned" },
-              { id: "div_t_4", goalId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 3), start: "18:30", durationMinutes: 40, status: "planned" },
-              { id: "div_t_5", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "08:00", durationMinutes: 50, status: "planned" },
+              { id: "div_t_1", actionId: "action_roadmap", date: TODAY_KEY, start: "08:00", durationMinutes: 40, status: "planned" },
+              { id: "div_t_2", actionId: "action_walk", date: FUTURE_KEY, start: "18:30", durationMinutes: 30, status: "planned" },
+              { id: "div_t_3", actionId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 2), start: "08:00", durationMinutes: 50, status: "planned" },
+              { id: "div_t_4", actionId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 3), start: "18:30", durationMinutes: 40, status: "planned" },
+              { id: "div_t_5", actionId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "08:00", durationMinutes: 50, status: "planned" },
             ],
           };
           return {
@@ -1410,7 +1410,7 @@ test("POST /ai/first-run-plan rejects plans that do not diverge enough", async (
                             ...validTenableDraft.occurrences,
                             {
                               id: "weak_a_6",
-                              goalId: "action_roadmap",
+                              actionId: "action_roadmap",
                               date: addDateKeyOffset(TODAY_KEY, 6),
                               start: "08:00",
                               durationMinutes: 15,
@@ -1464,11 +1464,11 @@ test("POST /ai/first-run-plan accepts valid plans even when preview and recovery
           const closeTenableDraft = {
             ...tenable.commitDraft,
             occurrences: [
-              { id: "close_t_1", goalId: "action_roadmap", date: TODAY_KEY, start: "08:00", durationMinutes: 40, status: "planned" },
-              { id: "close_t_2", goalId: "action_walk", date: FUTURE_KEY, start: "18:30", durationMinutes: 30, status: "planned" },
-              { id: "close_t_3", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 2), start: "08:00", durationMinutes: 50, status: "planned" },
-              { id: "close_t_4", goalId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 3), start: "18:30", durationMinutes: 40, status: "planned" },
-              { id: "close_t_5", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "08:00", durationMinutes: 50, status: "planned" },
+              { id: "close_t_1", actionId: "action_roadmap", date: TODAY_KEY, start: "08:00", durationMinutes: 40, status: "planned" },
+              { id: "close_t_2", actionId: "action_walk", date: FUTURE_KEY, start: "18:30", durationMinutes: 30, status: "planned" },
+              { id: "close_t_3", actionId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 2), start: "08:00", durationMinutes: 50, status: "planned" },
+              { id: "close_t_4", actionId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 3), start: "18:30", durationMinutes: 40, status: "planned" },
+              { id: "close_t_5", actionId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "08:00", durationMinutes: 50, status: "planned" },
             ],
           };
           return {
@@ -1493,7 +1493,7 @@ test("POST /ai/first-run-plan accepts valid plans even when preview and recovery
                             ...closeTenableDraft.occurrences,
                             {
                               id: "occ_close_a_6",
-                              goalId: "action_roadmap",
+                              actionId: "action_roadmap",
                               date: addDateKeyOffset(TODAY_KEY, 6),
                               start: "08:00",
                               durationMinutes: 45,
@@ -1522,6 +1522,272 @@ test("POST /ai/first-run-plan accepts valid plans even when preview and recovery
 
   assert.equal(response.statusCode, 200);
   assert.equal(response.json().plans?.length, 2);
+  await app.close();
+});
+
+test("POST /ai/first-run-plan repairs legacy occurrence.goalId when it still carries an action id", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-legacy-goal-id-alias" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: {
+                  plans: createValidFirstRunPlanResponse().plans.map((plan) => ({
+                    variant: plan.variant,
+                    summary: plan.summary,
+                    rationale: plan.rationale,
+                    commitDraft: {
+                      ...plan.commitDraft,
+                      occurrences: plan.commitDraft.occurrences.map(({ actionId, ...occurrence }) => ({
+                        ...occurrence,
+                        goalId: actionId,
+                      })),
+                    },
+                  })),
+                },
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.39" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.json().plans?.[0]?.commitDraft?.occurrences?.[0]?.actionId, "action_roadmap");
+  await app.close();
+});
+
+test("POST /ai/first-run-plan repairs occurrences when the model uses a parent goal id", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-parent-goal-reference" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: {
+                  plans: createValidFirstRunPlanResponse().plans.map((plan) => ({
+                    variant: plan.variant,
+                    summary: plan.summary,
+                    rationale: plan.rationale,
+                    commitDraft: {
+                      ...plan.commitDraft,
+                      occurrences: plan.commitDraft.occurrences.map((occurrence) =>
+                        occurrence.actionId === "action_roadmap"
+                          ? {
+                              id: occurrence.id,
+                              goalId: "goal_business",
+                              date: occurrence.date,
+                              start: occurrence.start,
+                              durationMinutes: occurrence.durationMinutes,
+                              status: occurrence.status,
+                            }
+                          : occurrence
+                      ),
+                    },
+                  })),
+                },
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.40" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.json().plans?.[0]?.commitDraft?.occurrences?.[0]?.actionId, "action_roadmap");
+  assert.equal(response.json().plans?.[0]?.preview?.[0]?.title, "Bloc roadmap");
+  await app.close();
+});
+
+test("POST /ai/first-run-plan repairs occurrences from category and title hints before deriving compare data", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-title-category-repair" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: {
+                  plans: createValidFirstRunPlanResponse().plans.map((plan) => {
+                    const actionsById = new Map(plan.commitDraft.actions.map((action) => [action.id, action]));
+                    return {
+                      variant: plan.variant,
+                      summary: plan.summary,
+                      rationale: plan.rationale,
+                      commitDraft: {
+                        ...plan.commitDraft,
+                        occurrences: plan.commitDraft.occurrences.map(({ actionId, ...occurrence }) => {
+                          const action = actionsById.get(actionId);
+                          return {
+                            ...occurrence,
+                            actionTitle: action?.title,
+                            categoryId: action?.categoryId,
+                          };
+                        }),
+                      },
+                    };
+                  }),
+                },
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.41" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  const body = response.json();
+  assert.equal(response.statusCode, 200);
+  assert.equal(body.plans?.[0]?.commitDraft?.occurrences?.[0]?.actionId, "action_roadmap");
+  assert.equal(body.plans?.[0]?.comparisonMetrics?.totalBlocks, body.plans?.[0]?.commitDraft?.occurrences?.length);
+  assert.equal(body.plans?.[0]?.preview?.[0]?.title, "Bloc roadmap");
+  await app.close();
+});
+
+test("POST /ai/first-run-plan rejects occurrences that remain ambiguous after repair attempts", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-ambiguous-occurrence" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => {
+          const basePlans = createValidFirstRunPlanResponse().plans;
+          const tenable = basePlans[0];
+          const ambiguousTenableDraft = {
+            ...tenable.commitDraft,
+            actions: [
+              ...tenable.commitDraft.actions,
+              {
+                id: "action_review",
+                categoryId: "cat_business",
+                parentGoalId: "goal_business",
+                title: "Bloc review",
+                type: "PROCESS",
+                order: 2,
+                repeat: "weekly",
+                daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+                timeMode: "FIXED",
+                startTime: "12:00",
+                timeSlots: ["12:00"],
+                durationMinutes: 20,
+                sessionMinutes: 20,
+              },
+            ],
+            occurrences: tenable.commitDraft.occurrences.map(({ actionId, ...occurrence }) => ({
+              ...occurrence,
+              goalId: actionId === "action_roadmap" ? "goal_business" : actionId,
+            })),
+          };
+
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: {
+                    plans: [
+                      {
+                        variant: "tenable",
+                        summary: tenable.summary,
+                        rationale: tenable.rationale,
+                        commitDraft: ambiguousTenableDraft,
+                      },
+                      {
+                        variant: basePlans[1].variant,
+                        summary: basePlans[1].summary,
+                        rationale: basePlans[1].rationale,
+                        commitDraft: basePlans[1].commitDraft,
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.42" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  const body = response.json();
+  assert.equal(response.statusCode, 502);
+  assert.equal(body.error, "INVALID_FIRST_RUN_PLAN_RESPONSE");
+  assert.equal(body.details?.rejectionReason, "occurrence_action_missing");
+  assert.equal(body.details?.variant, "tenable");
+  assert.ok(Array.isArray(body.details?.availableActionIds));
+  assert.ok(Array.isArray(body.details?.invalidOccurrenceRefs));
+  assert.equal(body.details?.rejectedOccurrenceCount > 0, true);
+  assert.equal(body.details?.invalidOccurrenceRefs?.[0]?.goalId, "goal_business");
   await app.close();
 });
 
@@ -1574,6 +1840,7 @@ test("POST /ai/first-run-plan returns two valid plans with commitDraft canonique
   assert.equal(payload.plans[0].id, "tenable");
   assert.equal(payload.plans[1].id, "ambitious");
   assert.equal(payload.plans[0].commitDraft.categories[0].templateId, "business");
+  assert.equal(payload.plans[0].commitDraft.occurrences[0].actionId, "action_roadmap");
   assert.equal(insertedLogs[0]?.coach_kind, "first-run-plan");
   assert.equal(insertedLogs[0]?.route, "/ai/first-run-plan");
   await app.close();

@@ -282,7 +282,7 @@ function normalizeCommitDraftOccurrence(value, index = 0) {
   const source = isPlainObject(value) ? value : {};
   return {
     id: trimString(source.id, 120) || `commit_occurrence_${index + 1}`,
-    goalId: trimString(source.goalId, 120),
+    actionId: trimString(source.actionId, 120) || trimString(source.goalId, 120),
     date: trimString(source.date, 10),
     start: normalizeTime(source.start),
     durationMinutes: Number.isFinite(source.durationMinutes) ? Math.max(1, Math.round(source.durationMinutes)) : 0,

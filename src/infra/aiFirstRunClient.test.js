@@ -78,7 +78,7 @@ const VALID_RESPONSE = {
             sessionMinutes: 25,
           },
         ],
-        occurrences: [{ id: "occ_walk_1", goalId: "action_walk", date: "2026-04-19", start: "08:00", durationMinutes: 25, status: "planned" }],
+        occurrences: [{ id: "occ_walk_1", actionId: "action_walk", date: "2026-04-19", start: "08:00", durationMinutes: 25, status: "planned" }],
       },
     },
     {
@@ -143,7 +143,7 @@ const VALID_RESPONSE = {
             sessionMinutes: 30,
           },
         ],
-        occurrences: [{ id: "occ_walk_2", goalId: "action_walk", date: "2026-04-19", start: "07:30", durationMinutes: 30, status: "planned" }],
+        occurrences: [{ id: "occ_walk_2", actionId: "action_walk", date: "2026-04-19", start: "07:30", durationMinutes: 30, status: "planned" }],
       },
     },
   ],
@@ -353,6 +353,44 @@ describe("aiFirstRunClient", () => {
 
     expect(result.ok).toBe(true);
     expect(result.payload?.plans?.[0]?.commitDraft?.categories?.[0]?.templateId).toBe("health");
+  });
+
+  it("reste compatible en lecture avec l'ancien shape occurrence.goalId", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        ...VALID_RESPONSE,
+        plans: VALID_RESPONSE.plans.map((plan) => ({
+          ...plan,
+          commitDraft: {
+            ...plan.commitDraft,
+            occurrences: plan.commitDraft.occurrences.map((occurrence) => ({
+              ...occurrence,
+              goalId: occurrence.actionId,
+              actionId: undefined,
+            })),
+          },
+        })),
+      }),
+    });
+
+    const result = await requestAiFirstRunPlan({
+      accessToken: "token",
+      baseUrl: "https://ai.example.com",
+      fetchImpl,
+      payload: {
+        whyText: "Reprendre un cadre",
+        primaryGoal: "Relancer le projet",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["business"],
+        locale: "fr-FR",
+        timezone: "Europe/Paris",
+        referenceDateKey: "2026-04-19",
+      },
+    });
+
+    expect(result.ok).toBe(true);
   });
 
   it("mappe un backend indisponible générique tout en conservant le backendErrorCode", async () => {

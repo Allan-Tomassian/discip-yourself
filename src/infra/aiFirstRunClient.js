@@ -145,7 +145,7 @@ function isCommitDraftOccurrence(value) {
   return (
     isPlainObject(value) &&
     typeof value.id === "string" &&
-    typeof value.goalId === "string" &&
+    (typeof value.actionId === "string" || typeof value.goalId === "string") &&
     isDateKey(value.date) &&
     isTime(value.start) &&
     Number.isInteger(value.durationMinutes) &&

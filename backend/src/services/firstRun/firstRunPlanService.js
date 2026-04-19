@@ -2,7 +2,8 @@ import { APIConnectionTimeoutError } from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import {
-  firstRunCommitDraftSchema,
+  firstRunCommitDraftOpenAiSchema,
+  firstRunCommitDraftProviderSchema,
   firstRunPlanRationaleSchema,
   firstRunPlanResponseSchema,
 } from "../../schemas/firstRun.js";
@@ -33,7 +34,16 @@ const firstRunPlanCandidateSchema = z
     variant: z.enum(["tenable", "ambitious"]),
     summary: z.string().trim().min(1).max(240),
     rationale: firstRunPlanRationaleSchema,
-    commitDraft: firstRunCommitDraftSchema,
+    commitDraft: firstRunCommitDraftProviderSchema,
+  })
+  .strict();
+
+const firstRunPlanOpenAiCandidateSchema = z
+  .object({
+    variant: z.enum(["tenable", "ambitious"]),
+    summary: z.string().trim().min(1).max(240),
+    rationale: firstRunPlanRationaleSchema,
+    commitDraft: firstRunCommitDraftOpenAiSchema,
   })
   .strict();
 
@@ -43,8 +53,29 @@ const firstRunPlanProviderSchema = z
   })
   .strict();
 
+const firstRunPlanOpenAiSchema = z
+  .object({
+    plans: z.array(firstRunPlanOpenAiCandidateSchema).length(2),
+  })
+  .strict();
+
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function trimString(value, maxLength = 4000) {
+  if (typeof value !== "string") return "";
+  return value.trim().slice(0, maxLength);
+}
+
+function normalizeTextKey(value, maxLength = 240) {
+  const normalized = trimString(value, maxLength).toLowerCase();
+  if (!normalized) return "";
+  return normalized
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function createBackendError(code, message = code, details = null) {
@@ -96,6 +127,220 @@ function buildInvalidResponseDetails(overrides = {}) {
     richnessPassed: false,
     zodIssuePaths: [],
     ...overrides,
+  };
+}
+
+function pushMapArray(map, key, value) {
+  if (!key) return;
+  const list = map.get(key) || [];
+  list.push(value);
+  map.set(key, list);
+}
+
+function buildCategoryTitleKey(categoryId, title) {
+  const safeCategoryId = trimString(categoryId, 120);
+  const safeTitle = normalizeTextKey(title, 160);
+  if (!safeCategoryId || !safeTitle) return "";
+  return `${safeCategoryId}::${safeTitle}`;
+}
+
+function buildOccurrenceRepairIndex(actions = []) {
+  const actionsById = new Map();
+  const actionsByGoalId = new Map();
+  const actionsByTitle = new Map();
+  const actionsByCategoryId = new Map();
+  const actionsByCategoryAndTitle = new Map();
+
+  actions.forEach((action) => {
+    const actionId = trimString(action?.id, 120);
+    if (!actionId) return;
+    actionsById.set(actionId, action);
+    pushMapArray(actionsByCategoryId, trimString(action?.categoryId, 120), action);
+    pushMapArray(actionsByGoalId, trimString(action?.parentGoalId, 120), action);
+
+    const titleKey = normalizeTextKey(action?.title, 160);
+    if (titleKey) {
+      pushMapArray(actionsByTitle, titleKey, action);
+      pushMapArray(actionsByCategoryAndTitle, buildCategoryTitleKey(action?.categoryId, action?.title), action);
+    }
+  });
+
+  return {
+    actionsById,
+    actionsByGoalId,
+    actionsByTitle,
+    actionsByCategoryId,
+    actionsByCategoryAndTitle,
+  };
+}
+
+function buildOccurrenceReferenceSnapshot(occurrence = null) {
+  const source = isPlainObject(occurrence) ? occurrence : {};
+  return {
+    occurrenceId: trimString(source.id, 120) || null,
+    actionId: trimString(source.actionId, 120) || null,
+    goalId: trimString(source.goalId, 120) || null,
+    actionTitle: trimString(source.actionTitle || source.title, 160) || null,
+    categoryId: trimString(source.categoryId, 120) || null,
+  };
+}
+
+function listCandidateActionIds(groups = []) {
+  return Array.from(
+    new Set(
+      groups.flatMap((group) => group.actions.map((action) => trimString(action?.id, 120)).filter(Boolean))
+    )
+  ).slice(0, 12);
+}
+
+function intersectIdSets(left, right) {
+  return new Set([...left].filter((value) => right.has(value)));
+}
+
+function resolveOccurrenceActionReference({ occurrence, repairIndex }) {
+  const reference = buildOccurrenceReferenceSnapshot(occurrence);
+
+  if (reference.actionId && repairIndex.actionsById.has(reference.actionId)) {
+    return {
+      actionId: reference.actionId,
+      repaired: false,
+      matchedBy: "action_id",
+      reference,
+      candidateActionIds: [reference.actionId],
+    };
+  }
+
+  if (reference.goalId && repairIndex.actionsById.has(reference.goalId)) {
+    return {
+      actionId: reference.goalId,
+      repaired: true,
+      matchedBy: "legacy_goal_id_as_action_id",
+      reference,
+      candidateActionIds: [reference.goalId],
+    };
+  }
+
+  const candidateGroups = [];
+  const categoryTitleKey = buildCategoryTitleKey(reference.categoryId, reference.actionTitle);
+  const titleKey = normalizeTextKey(reference.actionTitle, 160);
+
+  if (reference.goalId) {
+    const actionsForGoal = repairIndex.actionsByGoalId.get(reference.goalId);
+    if (Array.isArray(actionsForGoal) && actionsForGoal.length) {
+      candidateGroups.push({ label: "goal_id_parent_goal", actions: actionsForGoal });
+    }
+  }
+  if (categoryTitleKey) {
+    const actionsForCategoryTitle = repairIndex.actionsByCategoryAndTitle.get(categoryTitleKey);
+    if (Array.isArray(actionsForCategoryTitle) && actionsForCategoryTitle.length) {
+      candidateGroups.push({ label: "category_title", actions: actionsForCategoryTitle });
+    }
+  }
+  if (titleKey) {
+    const actionsForTitle = repairIndex.actionsByTitle.get(titleKey);
+    if (Array.isArray(actionsForTitle) && actionsForTitle.length) {
+      candidateGroups.push({ label: "title", actions: actionsForTitle });
+    }
+  }
+  if (reference.categoryId) {
+    const actionsForCategory = repairIndex.actionsByCategoryId.get(reference.categoryId);
+    if (Array.isArray(actionsForCategory) && actionsForCategory.length) {
+      candidateGroups.push({ label: "category_unique_action", actions: actionsForCategory });
+    }
+  }
+
+  if (!candidateGroups.length) {
+    return {
+      actionId: null,
+      repaired: false,
+      matchedBy: null,
+      reference,
+      candidateActionIds: [],
+    };
+  }
+
+  if (candidateGroups.length === 1 && candidateGroups[0].actions.length === 1) {
+    const [resolvedAction] = candidateGroups[0].actions;
+    return {
+      actionId: resolvedAction.id,
+      repaired: true,
+      matchedBy: candidateGroups[0].label,
+      reference,
+      candidateActionIds: [resolvedAction.id],
+    };
+  }
+
+  const intersectedIds = candidateGroups.reduce((current, group) => {
+    const ids = new Set(group.actions.map((action) => action.id));
+    return current ? intersectIdSets(current, ids) : ids;
+  }, null);
+
+  if (intersectedIds?.size === 1) {
+    const [resolvedActionId] = [...intersectedIds];
+    return {
+      actionId: resolvedActionId,
+      repaired: true,
+      matchedBy: candidateGroups.map((group) => group.label).join("+"),
+      reference,
+      candidateActionIds: [resolvedActionId],
+    };
+  }
+
+  return {
+    actionId: null,
+    repaired: false,
+    matchedBy: null,
+    reference,
+    candidateActionIds: listCandidateActionIds(candidateGroups),
+  };
+}
+
+function normalizeCommitDraftReferences({ variant, commitDraft }) {
+  const repairIndex = buildOccurrenceRepairIndex(commitDraft.actions);
+  const availableActionIds = [...repairIndex.actionsById.keys()].slice(0, 12);
+  const repairedOccurrences = [];
+  const invalidOccurrenceRefs = [];
+  let repairedOccurrenceCount = 0;
+
+  commitDraft.occurrences.forEach((occurrence) => {
+    const resolved = resolveOccurrenceActionReference({ occurrence, repairIndex });
+    if (!resolved.actionId) {
+      invalidOccurrenceRefs.push({
+        ...resolved.reference,
+        candidateActionIds: resolved.candidateActionIds,
+      });
+      return;
+    }
+    if (resolved.repaired) repairedOccurrenceCount += 1;
+    repairedOccurrences.push({
+      id: occurrence.id,
+      actionId: resolved.actionId,
+      date: occurrence.date,
+      start: occurrence.start,
+      durationMinutes: occurrence.durationMinutes,
+      status: occurrence.status,
+    });
+  });
+
+  if (invalidOccurrenceRefs.length) {
+    throw createBackendError(
+      "INVALID_FIRST_RUN_PLAN_RESPONSE",
+      "INVALID_FIRST_RUN_PLAN_RESPONSE",
+      buildInvalidResponseDetails({
+        rejectionStage: "commit_draft_validation",
+        rejectionReason: "occurrence_action_missing",
+        variant,
+        availableActionIds,
+        invalidOccurrenceRefs,
+        repairedOccurrenceCount,
+        rejectedOccurrenceCount: invalidOccurrenceRefs.length,
+      })
+    );
+  }
+
+  return {
+    ...commitDraft,
+    occurrences: repairedOccurrences,
   };
 }
 
@@ -197,7 +442,10 @@ function buildFirstRunPlanPrompt(context) {
 - ambitious: ${weeklyMinuteBands.ambitious[0]}..${weeklyMinuteBands.ambitious[1]}`,
     "13. Use concise, concrete French. No generic motivational filler.",
     "14. Categories, goals, actions, and occurrences must reference each other consistently by id.",
-    "15. Occurrences must use status planned.",
+    "15. Each occurrence must use actionId equal to the exact id of its matching commitDraft.actions entry.",
+    "16. Do not use goalId, labels, or free-text aliases as the canonical occurrence reference.",
+    "17. Keep parentGoalId only on actions. Occurrences reference actions, not goals.",
+    "18. Occurrences must use status planned.",
     `Context: ${JSON.stringify({
       whyText: context.whyText,
       primaryGoal: context.primaryGoal,
@@ -279,7 +527,7 @@ function buildDerivedView({ variant, summary, rationale, commitDraft, context })
   const rows = occurrences
     .filter((occurrence) => horizonKeys.has(occurrence.date))
     .map((occurrence) => {
-      const action = actionsById.get(occurrence.goalId);
+      const action = actionsById.get(occurrence.actionId);
       const category = categoriesById.get(action?.categoryId || "");
       return {
         occurrence,
@@ -395,6 +643,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
   const occurrenceIds = new Set();
   const allowedTemplateIds = new Set(context.priorityCategoryIds);
   const horizonKeys = new Set(buildDateHorizon(context.referenceDateKey));
+  const actionsById = new Map();
 
   categories.forEach((category) => {
     if (categoryIds.has(category.id)) {
@@ -456,6 +705,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       );
     }
     actionIds.add(action.id);
+    actionsById.set(action.id, action);
     if (!categoryIds.has(action.categoryId)) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
@@ -501,13 +751,23 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       );
     }
     occurrenceIds.add(occurrence.id);
-    if (!actionIds.has(occurrence.goalId)) {
+    if (!actionIds.has(occurrence.actionId)) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         buildInvalidResponseDetails({
           rejectionStage: "commit_draft_validation",
           rejectionReason: "occurrence_action_missing",
+          variant,
+          availableActionIds: [...actionIds].slice(0, 12),
+          invalidOccurrenceRefs: [
+            {
+              occurrenceId: occurrence.id,
+              actionId: trimString(occurrence.actionId, 120) || null,
+            },
+          ],
+          repairedOccurrenceCount: 0,
+          rejectedOccurrenceCount: 1,
         })
       );
     }
@@ -521,7 +781,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
         })
       );
     }
-    const action = actions.find((entry) => entry.id === occurrence.goalId);
+    const action = actionsById.get(occurrence.actionId);
     const occurrenceDay = appDowFromDate(fromLocalDateKey(occurrence.date));
     if (!action?.daysOfWeek?.includes(occurrenceDay)) {
       throw createBackendError(
@@ -631,12 +891,16 @@ function validatePlanDivergence(plans = []) {
 function normalizeProviderPayload(providerPayload, context, requestMeta) {
   const plans = providerPayload.plans
     .map((entry) => {
-      validateCommitDraft({ variant: entry.variant, commitDraft: entry.commitDraft, context });
+      const normalizedCommitDraft = normalizeCommitDraftReferences({
+        variant: entry.variant,
+        commitDraft: entry.commitDraft,
+      });
+      validateCommitDraft({ variant: entry.variant, commitDraft: normalizedCommitDraft, context });
       return buildDerivedView({
         variant: entry.variant,
         summary: entry.summary,
         rationale: entry.rationale,
-        commitDraft: entry.commitDraft,
+        commitDraft: normalizedCommitDraft,
         context,
       });
     })
@@ -668,7 +932,7 @@ async function runOpenAiFirstRunPlan({ app, context }) {
       {
         model: requestModel,
         temperature: 0.35,
-        response_format: zodResponseFormat(firstRunPlanProviderSchema, "first_run_plan_payload"),
+        response_format: zodResponseFormat(firstRunPlanOpenAiSchema, "first_run_plan_payload"),
         messages: [
           {
             role: "system",

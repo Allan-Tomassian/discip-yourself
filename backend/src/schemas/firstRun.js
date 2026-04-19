@@ -62,14 +62,54 @@ export const firstRunCommitDraftActionSchema = z
   })
   .strict();
 
+const firstRunCommitDraftOccurrenceBaseShape = {
+  id: z.string().trim().min(1).max(120),
+  date: isoDateKey,
+  start: hhmmSchema,
+  durationMinutes: z.number().int().min(5).max(240),
+  status: z.literal("planned"),
+};
+
+const nullableOccurrenceReferenceIdSchema = z.string().trim().min(1).max(120).nullable();
+const nullableOccurrenceReferenceTitleSchema = z.string().trim().min(1).max(160).nullable();
+
+const optionalNullableOccurrenceReferenceIdSchema = nullableOccurrenceReferenceIdSchema.optional();
+const optionalNullableOccurrenceReferenceTitleSchema = nullableOccurrenceReferenceTitleSchema.optional();
+
 export const firstRunCommitDraftOccurrenceSchema = z
   .object({
-    id: z.string().trim().min(1).max(120),
-    goalId: z.string().trim().min(1).max(120),
-    date: isoDateKey,
-    start: hhmmSchema,
-    durationMinutes: z.number().int().min(5).max(240),
-    status: z.literal("planned"),
+    ...firstRunCommitDraftOccurrenceBaseShape,
+    actionId: z.string().trim().min(1).max(120),
+  })
+  .strict();
+
+export const firstRunCommitDraftOccurrenceProviderSchema = z
+  .object({
+    ...firstRunCommitDraftOccurrenceBaseShape,
+    actionId: optionalNullableOccurrenceReferenceIdSchema,
+    goalId: optionalNullableOccurrenceReferenceIdSchema,
+    actionTitle: optionalNullableOccurrenceReferenceTitleSchema,
+    title: optionalNullableOccurrenceReferenceTitleSchema,
+    categoryId: optionalNullableOccurrenceReferenceIdSchema,
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.actionId || value.goalId || value.actionTitle || value.title || value.categoryId) return;
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Occurrence must reference an action or provide repair hints.",
+      path: ["actionId"],
+    });
+  });
+
+export const firstRunCommitDraftOccurrenceOpenAiSchema = z
+  .object({
+    ...firstRunCommitDraftOccurrenceBaseShape,
+    actionId: nullableOccurrenceReferenceIdSchema,
+    goalId: nullableOccurrenceReferenceIdSchema,
+    actionTitle: nullableOccurrenceReferenceTitleSchema,
+    title: nullableOccurrenceReferenceTitleSchema,
+    categoryId: nullableOccurrenceReferenceIdSchema,
   })
   .strict();
 
@@ -80,6 +120,26 @@ export const firstRunCommitDraftSchema = z
     goals: z.array(firstRunCommitDraftGoalSchema).min(1).max(6),
     actions: z.array(firstRunCommitDraftActionSchema).min(1).max(14),
     occurrences: z.array(firstRunCommitDraftOccurrenceSchema).min(1).max(28),
+  })
+  .strict();
+
+export const firstRunCommitDraftProviderSchema = z
+  .object({
+    version: z.literal(1),
+    categories: z.array(firstRunCommitDraftCategorySchema).min(1).max(6),
+    goals: z.array(firstRunCommitDraftGoalSchema).min(1).max(6),
+    actions: z.array(firstRunCommitDraftActionSchema).min(1).max(14),
+    occurrences: z.array(firstRunCommitDraftOccurrenceProviderSchema).min(1).max(28),
+  })
+  .strict();
+
+export const firstRunCommitDraftOpenAiSchema = z
+  .object({
+    version: z.literal(1),
+    categories: z.array(firstRunCommitDraftCategorySchema).min(1).max(6),
+    goals: z.array(firstRunCommitDraftGoalSchema).min(1).max(6),
+    actions: z.array(firstRunCommitDraftActionSchema).min(1).max(14),
+    occurrences: z.array(firstRunCommitDraftOccurrenceOpenAiSchema).min(1).max(28),
   })
   .strict();
 
