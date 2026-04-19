@@ -27,6 +27,11 @@ export function buildBaseState({ withContent = false } = {}) {
   const inTwoDays = addDaysKey(today, 2);
 
   data.ui.onboardingCompleted = true;
+  data.ui.firstRunV1 = {
+    ...(data.ui.firstRunV1 || {}),
+    status: "done",
+    discoveryDone: true,
+  };
   data.ui.showPlanStep = false;
   data.ui.selectedDate = today;
 

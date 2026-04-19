@@ -40,12 +40,17 @@ test("session mockee non verifiee: blocage sur verify email", async ({ page }) =
 test("session verifiee + onboarding incomplet: redirection vers onboarding", async ({ page }) => {
   const state = buildBaseState({ withContent: false });
   state.ui.onboardingCompleted = false;
+  state.ui.firstRunV1 = {
+    ...(state.ui.firstRunV1 || {}),
+    status: "intro",
+    discoveryDone: false,
+  };
   await seedState(page, state, {
     authSession: buildMockAuthSession({ verified: true }),
   });
   await page.goto("/auth/login");
 
-  await expect(page.getByText("Choisis tes priorites")).toBeVisible();
+  await expect(page.getByTestId("first-run-screen-intro")).toBeVisible();
 });
 
 test("session recovery presente sur /auth/reset-password: affiche le formulaire", async ({ page }) => {

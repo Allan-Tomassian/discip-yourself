@@ -6,6 +6,7 @@ import VerifyEmail from "./VerifyEmail";
 import ForgotPassword from "./ForgotPassword";
 import ResetPassword from "./ResetPassword";
 import { buildLocalUserDataKey } from "../data/userDataApi";
+import { hasMeaningfulFirstRunState, isFirstRunDone } from "../features/first-run/firstRunModel";
 import { resolveAuthGateState } from "./authGateModel";
 import {
   AUTH_SIGNUP_PATH,
@@ -13,6 +14,7 @@ import {
   getSearchParam,
   normalizePathname,
 } from "./authPaths";
+import { loadState } from "../utils/storage";
 
 function readLocation() {
   if (typeof window === "undefined") {
@@ -33,15 +35,30 @@ function safeParse(raw) {
   }
 }
 
-function readCachedOnboardingCompleted(userId) {
+function summarizeCachedUi(ui) {
+  const safeUi = ui && typeof ui === "object" ? ui : null;
+  if (!safeUi) return null;
+  const firstRun = safeUi.firstRunV1 && typeof safeUi.firstRunV1 === "object" ? safeUi.firstRunV1 : null;
+  const hasLegacyOnboarding = typeof safeUi.onboardingCompleted === "boolean";
+  if (!firstRun && !hasLegacyOnboarding) return null;
+  return {
+    firstRunDone: firstRun ? isFirstRunDone(safeUi) : null,
+    onboardingCompleted: hasLegacyOnboarding ? safeUi.onboardingCompleted : null,
+    hasMeaningfulFirstRun: hasMeaningfulFirstRunState(firstRun),
+  };
+}
+
+function readCachedFirstRunSummary(userId) {
   if (typeof window === "undefined") return null;
+  const globalSummary = summarizeCachedUi(loadState()?.ui);
+  if (globalSummary?.hasMeaningfulFirstRun || globalSummary?.firstRunDone === true) return globalSummary;
+
   const normalizedUserId = String(userId || "").trim();
-  if (!normalizedUserId) return null;
+  if (!normalizedUserId) return globalSummary;
   const cached = safeParse(window.localStorage.getItem(buildLocalUserDataKey(normalizedUserId)));
-  if (!cached || typeof cached !== "object") return null;
-  return cached?.ui && typeof cached.ui === "object"
-    ? Boolean(cached.ui.onboardingCompleted)
-    : null;
+  const userSummary = summarizeCachedUi(cached?.ui);
+
+  return userSummary || globalSummary;
 }
 
 export default function AuthGate({ children }) {
@@ -81,13 +98,14 @@ export default function AuthGate({ children }) {
     setLocation(readLocation());
   }, []);
 
-  const onboardingCompleted = readCachedOnboardingCompleted(user?.id);
+  const cachedFirstRun = readCachedFirstRunSummary(user?.id);
   const resolved = resolveAuthGateState({
     loading,
     pathname: location.pathname,
     session,
     emailVerified: isEmailVerified,
-    onboardingCompleted,
+    firstRunDone: cachedFirstRun?.firstRunDone ?? null,
+    onboardingCompleted: cachedFirstRun?.onboardingCompleted ?? null,
     recoveryMode,
   });
 

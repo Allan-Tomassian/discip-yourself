@@ -39,13 +39,30 @@ describe("authGateModel", () => {
     });
   });
 
-  it("sort des routes auth vers onboarding quand le cache indique onboarding incomplet", () => {
+  it("sort des routes auth vers onboarding quand le cache first-run indique un flow incomplet", () => {
     expect(
       resolveAuthGateState({
         loading: false,
         pathname: "/auth/login",
         session: VERIFIED_SESSION,
         emailVerified: true,
+        firstRunDone: false,
+        onboardingCompleted: false,
+      })
+    ).toEqual({
+      kind: "redirect",
+      to: "/onboarding",
+    });
+  });
+
+  it("retombe sur le flag legacy quand firstRun est absent mais onboardingCompleted vaut false", () => {
+    expect(
+      resolveAuthGateState({
+        loading: false,
+        pathname: "/auth/login",
+        session: VERIFIED_SESSION,
+        emailVerified: true,
+        firstRunDone: null,
         onboardingCompleted: false,
       })
     ).toEqual({
@@ -61,6 +78,7 @@ describe("authGateModel", () => {
         pathname: "/",
         session: VERIFIED_SESSION,
         emailVerified: true,
+        firstRunDone: true,
         onboardingCompleted: true,
       })
     ).toEqual({
@@ -68,13 +86,14 @@ describe("authGateModel", () => {
     });
   });
 
-  it("ne force pas onboarding quand le cache onboarding est inconnu", () => {
+  it("ne force pas onboarding quand le cache first-run est inconnu", () => {
     expect(
       resolveAuthGateState({
         loading: false,
         pathname: "/auth/login",
         session: VERIFIED_SESSION,
         emailVerified: true,
+        firstRunDone: null,
         onboardingCompleted: null,
       })
     ).toEqual({

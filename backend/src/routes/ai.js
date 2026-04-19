@@ -11,6 +11,7 @@ import {
   sessionGuidanceRequestSchema,
   sessionGuidanceResponseSchema,
 } from "../schemas/coach.js";
+import { firstRunPlanRequestSchema, firstRunPlanResponseSchema } from "../schemas/firstRun.js";
 import { insertAiRequestLog, hashValue } from "../services/logging.js";
 import { resolveQuotaState, enforceMemoryRateLimit } from "../services/quotas.js";
 import { buildNowContext } from "../services/context/nowContext.js";
@@ -22,6 +23,7 @@ import { runChatCoach } from "../services/coach/chatCoach.js";
 import { runLocalAnalysisCoach } from "../services/coach/localAnalysisCoach.js";
 import { runRecoveryCoach } from "../services/coach/recoveryCoach.js";
 import { runSessionGuidanceCoach } from "../services/coach/sessionGuidanceCoach.js";
+import { runFirstRunPlanService } from "../services/firstRun/firstRunPlanService.js";
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -212,6 +214,10 @@ export async function aiRoutes(app) {
 
   app.post("/session-guidance", { preHandler: [app.authenticate] }, async (request, reply) => {
     return handleSessionGuidanceRoute({ app, request, reply });
+  });
+
+  app.post("/first-run-plan", { preHandler: [app.authenticate] }, async (request, reply) => {
+    return handleFirstRunPlanRoute({ app, request, reply });
   });
 }
 
@@ -671,6 +677,219 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
     stepCount: Number.isFinite(prepareQuality?.stepCount) ? prepareQuality.stepCount : null,
     itemCount: Number.isFinite(prepareQuality?.itemCount) ? prepareQuality.itemCount : null,
     zodIssuePaths: Array.isArray(prepareQuality?.issuePaths) ? prepareQuality.issuePaths : null,
+    requestHash,
+    ipHash: hashValue(getClientIp(request)),
+    userAgent: request.headers["user-agent"] || "",
+    latencyMs: Date.now() - startedAt,
+  });
+  return reply.code(200).send(parsedResponse.data);
+}
+
+async function handleFirstRunPlanRoute({ app, request, reply }) {
+  const startedAt = Date.now();
+  const route = "/ai/first-run-plan";
+  const parsedBody = firstRunPlanRequestSchema.safeParse(request.body);
+  if (!parsedBody.success) {
+    return reply.code(400).send({
+      error: "INVALID_BODY",
+      message: "Request body is invalid.",
+      issues: parsedBody.error.issues,
+      requestId: request.requestId,
+    });
+  }
+
+  const rateLimited =
+    enforceMemoryRateLimit({
+      key: `user:${request.user.id}`,
+      limit: 5,
+      windowMs: 60 * 1000,
+    }) ||
+    enforceMemoryRateLimit({
+      key: `ip:${getClientIp(request)}`,
+      limit: 20,
+      windowMs: 15 * 60 * 1000,
+    });
+  if (rateLimited) {
+    return reply.code(429).send({
+      error: "RATE_LIMITED",
+      message: "Rate limit exceeded.",
+      requestId: request.requestId,
+    });
+  }
+
+  const requestHash = hashValue(JSON.stringify({ route: "first-run-plan", body: parsedBody.data }));
+  let snapshot;
+  try {
+    snapshot = await loadUserSnapshot(app.supabase, request.user.id);
+  } catch (error) {
+    logAiStageError({
+      app,
+      request,
+      route,
+      stage: "snapshot_load",
+      status: 503,
+      errorCode: isSupabaseSchemaError(error) ? "BACKEND_SCHEMA_MISSING" : "SNAPSHOT_LOAD_FAILED",
+      err: error,
+    });
+    if (isSupabaseSchemaError(error)) {
+      return reply.code(503).send(buildSchemaErrorReply(request.requestId));
+    }
+    return sendAiStageError(reply, request.requestId, {
+      status: 503,
+      errorCode: "SNAPSHOT_LOAD_FAILED",
+      message: "Unable to load user context.",
+    });
+  }
+
+  let quotaState;
+  try {
+    quotaState = await resolveQuotaState(app.supabase, {
+      userId: request.user.id,
+      entitlement: snapshot.entitlement,
+      quotaMode: app.config.AI_QUOTA_MODE,
+    });
+  } catch (error) {
+    logAiStageError({
+      app,
+      request,
+      route,
+      stage: "quota_load",
+      status: 503,
+      errorCode: isSupabaseSchemaError(error) ? "BACKEND_SCHEMA_MISSING" : "QUOTA_LOAD_FAILED",
+      err: error,
+    });
+    if (isSupabaseSchemaError(error)) {
+      return reply.code(503).send(buildSchemaErrorReply(request.requestId));
+    }
+    return sendAiStageError(reply, request.requestId, {
+      status: 503,
+      errorCode: "QUOTA_LOAD_FAILED",
+      message: "Unable to verify AI quota.",
+    });
+  }
+
+  if (quotaState.exceeded) {
+    return reply.code(429).send({
+      error: "QUOTA_EXCEEDED",
+      message: "AI quota exceeded.",
+      requestId: request.requestId,
+      quotaRemaining: quotaState.remaining,
+    });
+  }
+
+  const context = {
+    ...parsedBody.data,
+    requestId: request.requestId,
+    quotaRemaining: quotaState.remaining,
+  };
+
+  let response;
+  try {
+    response = await runFirstRunPlanService({ app, context });
+  } catch (error) {
+    const errorCode = String(error?.code || "").trim().toUpperCase() || "UNKNOWN_BACKEND_ERROR";
+    const errorDetails = isPlainObject(error?.details) ? error.details : null;
+    const status =
+      errorCode === "FIRST_RUN_PLAN_BACKEND_UNAVAILABLE" ? 503
+      : errorCode === "FIRST_RUN_PLAN_PROVIDER_TIMEOUT" ? 504
+      : errorCode === "INVALID_FIRST_RUN_PLAN_RESPONSE" ? 502
+      : 503;
+    logAiStageError({
+      app,
+      request,
+      route,
+      stage: "provider",
+      status,
+      errorCode,
+      err: error,
+      context,
+    });
+    await insertAiRequestLog(app.supabase, {
+      requestId: request.requestId,
+      userId: request.user.id,
+      coachKind: "first-run-plan",
+      route,
+      planTier: quotaState.planTier,
+      decisionSource: "ai",
+      statusCode: status,
+      mode: "generate",
+      providerStatus:
+        errorDetails?.providerStatus || (errorCode === "INVALID_FIRST_RUN_PLAN_RESPONSE" ? "invalid_response" : "error"),
+      rejectionStage: errorDetails?.rejectionStage || null,
+      rejectionReason: errorDetails?.rejectionReason || null,
+      validationPassed:
+        typeof errorDetails?.validationPassed === "boolean" ? errorDetails.validationPassed : null,
+      richnessPassed: typeof errorDetails?.richnessPassed === "boolean" ? errorDetails.richnessPassed : null,
+      zodIssuePaths: Array.isArray(errorDetails?.zodIssuePaths) ? errorDetails.zodIssuePaths : null,
+      requestHash,
+      ipHash: hashValue(getClientIp(request)),
+      userAgent: request.headers["user-agent"] || "",
+      latencyMs: Date.now() - startedAt,
+      errorCode,
+    });
+    return reply.code(status).send({
+      error: errorCode,
+      message:
+        errorCode === "FIRST_RUN_PLAN_BACKEND_UNAVAILABLE"
+          ? "First run plan backend unavailable."
+          : errorCode === "FIRST_RUN_PLAN_PROVIDER_TIMEOUT"
+            ? "First run plan provider timed out."
+            : "Unable to generate first run plans.",
+      requestId: request.requestId,
+      ...(errorDetails ? { details: errorDetails } : {}),
+    });
+  }
+
+  const parsedResponse = firstRunPlanResponseSchema.safeParse(response);
+  if (!parsedResponse.success) {
+    await insertAiRequestLog(app.supabase, {
+      requestId: request.requestId,
+      userId: request.user.id,
+      coachKind: "first-run-plan",
+      route,
+      planTier: quotaState.planTier,
+      decisionSource: "ai",
+      statusCode: 502,
+      mode: "generate",
+      providerStatus: "invalid_response",
+      rejectionStage: "response_schema",
+      rejectionReason: "provider_parse_failed",
+      validationPassed: false,
+      richnessPassed: false,
+      zodIssuePaths: parsedResponse.error.issues.map((issue) => issue.path.join(".")).filter(Boolean).slice(0, 16),
+      requestHash,
+      ipHash: hashValue(getClientIp(request)),
+      userAgent: request.headers["user-agent"] || "",
+      latencyMs: Date.now() - startedAt,
+      errorCode: "INVALID_FIRST_RUN_PLAN_RESPONSE",
+    });
+    return reply.code(502).send({
+      error: "INVALID_FIRST_RUN_PLAN_RESPONSE",
+      message: "First run plan response is invalid.",
+      requestId: request.requestId,
+    });
+  }
+
+  const totalBlocks = parsedResponse.data.plans.reduce(
+    (count, plan) => count + (plan?.comparisonMetrics?.totalBlocks || 0),
+    0
+  );
+  await insertAiRequestLog(app.supabase, {
+    requestId: request.requestId,
+    userId: request.user.id,
+    coachKind: "first-run-plan",
+    route,
+    planTier: quotaState.planTier,
+    decisionSource: "ai",
+    statusCode: 200,
+    mode: "generate",
+    providerStatus: "ok",
+    rejectionStage: null,
+    rejectionReason: null,
+    validationPassed: true,
+    richnessPassed: true,
+    stepCount: parsedResponse.data.plans.length,
+    itemCount: totalBlocks,
     requestHash,
     ipHash: hashValue(getClientIp(request)),
     userAgent: request.headers["user-agent"] || "",

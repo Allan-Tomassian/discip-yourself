@@ -18,6 +18,7 @@ import {
 } from "../../domain/categoryVisibility";
 import { ensureManualAiAnalysisState } from "../../features/manualAi/manualAiAnalysis";
 import { ensureCoachConversationsState } from "../../features/coach/coachStorage";
+import { normalizeFirstRunV1 } from "../../features/first-run/firstRunModel";
 import { autoReclassifySystemGoals } from "../../domain/systemInboxMigration";
 import {
   DEFAULT_BLOCKS,
@@ -438,6 +439,7 @@ export function migrate(prev) {
   }
   if (typeof next.ui.libraryFocusTarget === "undefined") next.ui.libraryFocusTarget = null;
   if (!Array.isArray(next.ui.categoryRailOrder)) next.ui.categoryRailOrder = [];
+  const rawLegacyOnboardingCompleted = next.ui.onboardingCompleted === true;
 
   next.ui.selectedCategoryByView = normalizeSelectedCategoryByView(next.ui.selectedCategoryByView);
   if (!next.ui.selectedCategoryByView.today) {
@@ -459,7 +461,10 @@ export function migrate(prev) {
 
   if (typeof next.ui.soundEnabled === "undefined") next.ui.soundEnabled = false;
   delete next.ui.pilotageRadarSelection;
-  if (typeof next.ui.onboardingCompleted === "undefined") next.ui.onboardingCompleted = false;
+  next.ui.firstRunV1 = normalizeFirstRunV1(next.ui.firstRunV1, {
+    legacyOnboardingCompleted: rawLegacyOnboardingCompleted,
+  });
+  next.ui.onboardingCompleted = next.ui.firstRunV1.status === "done";
   if (typeof next.ui.onboardingSeenVersion !== "number") next.ui.onboardingSeenVersion = 0;
   if (typeof next.ui.onboardingStep === "undefined") next.ui.onboardingStep = 1;
   if (typeof next.ui.tutorialEnabled === "undefined") next.ui.tutorialEnabled = false;
@@ -696,20 +701,6 @@ export function migrate(prev) {
   const homeCategoryForMain =
     next.categories.find((cat) => cat.id === homeCategoryId) || next.categories[0] || null;
   next.ui.mainGoalId = homeCategoryForMain?.mainGoalId || null;
-
-  // Onboarding completion rule:
-  if (!next.ui.onboardingCompleted) {
-    const step = Number(next.ui.onboardingStep) || 1;
-    const nameOk = Boolean((next.profile?.name || "").trim());
-    const whyOk = Boolean((next.profile?.whyText || "").trim());
-    const hasOutcome = next.goals.some((g) => isOutcome(g));
-    const hasProcess = next.goals.some((g) => isProcess(g));
-    const hasUserAiProfile = Array.isArray(next.user_ai_profile?.goals) && next.user_ai_profile.goals.length > 0;
-
-    if ((step >= 3 && nameOk && whyOk && (hasOutcome || hasProcess)) || hasUserAiProfile) {
-      next.ui.onboardingCompleted = true;
-    }
-  }
 
   // habits/checks
   if (!Array.isArray(next.reminders)) next.reminders = [];

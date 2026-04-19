@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../auth/useAuth";
 import { E2E_AUTH_SESSION_KEY } from "../auth/constants";
 import { hasMeaningfulCategoryProfile } from "../domain/categoryProfile";
+import { hasMeaningfulFirstRunState } from "../features/first-run/firstRunModel";
 import { migrate, initialData } from "../logic/state";
 import { loadState, saveState } from "../utils/storage";
 import {
@@ -54,6 +55,7 @@ function hasMeaningfulLocalData(value) {
   if (Array.isArray(userAiProfile.goals) && userAiProfile.goals.length > 0) return true;
   if (Object.values(categoryProfiles).some((profile) => hasMeaningfulCategoryProfile(profile))) return true;
   if (coachConversations.length > 0) return true;
+  if (hasMeaningfulFirstRunState(ui.firstRunV1)) return true;
   if (ui.onboardingCompleted) return true;
 
   return false;

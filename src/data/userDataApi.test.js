@@ -394,4 +394,59 @@ describe("userDataApi remote sync boundary", () => {
     expect(next.ui.activeSession).toEqual(localState.ui.activeSession);
     expect(next.ui.activeSession.experienceMode).toBe("guided");
   });
+
+  it("rehydrates a more recent local first-run draft when the user snapshot is stale", async () => {
+    const remoteState = {
+      ui: {
+        onboardingCompleted: false,
+        firstRunV1: {
+          version: 1,
+          status: "intro",
+          draftAnswers: {
+            whyText: "",
+            primaryGoal: "",
+            unavailableWindows: [],
+            preferredWindows: [],
+            currentCapacity: null,
+            priorityCategoryIds: [],
+          },
+          generatedPlans: null,
+          selectedPlanId: null,
+          discoveryDone: false,
+          lastUpdatedAt: null,
+        },
+      },
+    };
+    const localState = {
+      ui: {
+        onboardingCompleted: false,
+        firstRunV1: {
+          version: 1,
+          status: "signals",
+          draftAnswers: {
+            whyText: "Reprendre le controle",
+            primaryGoal: "Relancer mon projet",
+            unavailableWindows: [],
+            preferredWindows: [],
+            currentCapacity: "stable",
+            priorityCategoryIds: ["business"],
+          },
+          generatedPlans: null,
+          selectedPlanId: null,
+          discoveryDone: false,
+          lastUpdatedAt: "2026-04-18T12:00:00.000Z",
+        },
+      },
+    };
+    const { rehydrateUserDataWithLocalGuidedRuntime } = await importUserDataApi();
+
+    const next = rehydrateUserDataWithLocalGuidedRuntime({
+      data: remoteState,
+      localData: localState,
+    });
+
+    expect(next.ui.firstRunV1.status).toBe("signals");
+    expect(next.ui.firstRunV1.draftAnswers.whyText).toBe("Reprendre le controle");
+    expect(next.ui.onboardingCompleted).toBe(false);
+  });
 });

@@ -3,6 +3,7 @@ import { normalizeLocalDateKey, toLocalDateKey } from "../../utils/dateKey";
 import { resolveGoalType } from "../../domain/goalType";
 import { ensureManualAiAnalysisState } from "../../features/manualAi/manualAiAnalysis";
 import { ensureCoachConversationsState } from "../../features/coach/coachStorage";
+import { createInitialFirstRunState } from "../../features/first-run/firstRunModel";
 import { normalizeTimeFields } from "../timeFields";
 import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "../blocks/registry";
 import { BRAND_ACCENT, DEFAULT_THEME } from "../../theme/themeTokens";
@@ -531,6 +532,7 @@ export function initialData() {
       libraryFocusTarget: null,
       categoryRailOrder: [],
       onboardingCompleted: false,
+      firstRunV1: createInitialFirstRunState(),
       onboardingSeenVersion: 0,
       onboardingStep: 1,
       tutorialEnabled: false,
@@ -653,6 +655,7 @@ export function demoData() {
       libraryFocusTarget: null,
       categoryRailOrder: [],
       onboardingCompleted: true,
+      firstRunV1: createInitialFirstRunState({ status: "done", discoveryDone: true }, { legacyOnboardingCompleted: true }),
       onboardingSeenVersion: 2,
       onboardingStep: 3,
       tutorialEnabled: false,

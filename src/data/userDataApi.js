@@ -1,5 +1,10 @@
 import { supabase } from "../infra/supabaseClient";
 import { E2E_AUTH_SESSION_KEY } from "../auth/constants";
+import {
+  hasMeaningfulFirstRunState,
+  isFirstRunDone,
+  normalizeFirstRunV1,
+} from "../features/first-run/firstRunModel";
 import { canUseLocalPersistenceFallback, mapUserDataPersistenceError } from "../infra/supabasePersistenceErrors";
 
 const LOCAL_USER_DATA_PREFIX = "e2e.supabase.user_data.";
@@ -95,6 +100,27 @@ function shouldUseLocalOpenGuidedSession(remoteSession, localSession) {
   return !isOpenRuntimeSession(remoteSession) && isOpenRuntimeSession(localSession) && hasGuidedRuntimeSnapshot(localSession);
 }
 
+function shouldUseLocalFirstRunState(remoteUi, localUi) {
+  const safeRemoteUi = isPlainObject(remoteUi) ? remoteUi : {};
+  const safeLocalUi = isPlainObject(localUi) ? localUi : {};
+  const remoteFirstRun = isPlainObject(safeRemoteUi.firstRunV1) ? safeRemoteUi.firstRunV1 : null;
+  const localFirstRun = isPlainObject(safeLocalUi.firstRunV1) ? safeLocalUi.firstRunV1 : null;
+  const remoteDone = isFirstRunDone(safeRemoteUi);
+  const localDone = isFirstRunDone(safeLocalUi);
+  const remoteMeaningful = hasMeaningfulFirstRunState(remoteFirstRun);
+  const localMeaningful = hasMeaningfulFirstRunState(localFirstRun);
+
+  if (localDone && !remoteDone) return true;
+  if (localMeaningful && !remoteMeaningful) return true;
+  if (!localMeaningful || !remoteMeaningful) return false;
+
+  const remoteUpdatedAt = normalizeFirstRunV1(remoteFirstRun).lastUpdatedAt || "";
+  const localUpdatedAt = normalizeFirstRunV1(localFirstRun).lastUpdatedAt || "";
+  if (!localUpdatedAt) return false;
+  if (!remoteUpdatedAt) return true;
+  return localUpdatedAt > remoteUpdatedAt;
+}
+
 function sanitizeActiveSessionForCloud(activeSession) {
   const source = isPlainObject(activeSession) ? activeSession : null;
   if (!source) return null;
@@ -137,6 +163,18 @@ export function rehydrateUserDataWithLocalGuidedRuntime({ data, localData } = {}
       ui: {
         ...(remoteUi || {}),
         activeSession: { ...localActiveSession },
+        ...(localPremiumPrepareCache ? { sessionPremiumPrepareCacheV1: localPremiumPrepareCache } : {}),
+      },
+    };
+  }
+
+  if (shouldUseLocalFirstRunState(remoteUi, localUi)) {
+    return {
+      ...remoteData,
+      ui: {
+        ...(remoteUi || {}),
+        ...(isPlainObject(localUi?.firstRunV1) ? { firstRunV1: localUi.firstRunV1 } : {}),
+        onboardingCompleted: localUi?.onboardingCompleted === true,
         ...(localPremiumPrepareCache ? { sessionPremiumPrepareCacheV1: localPremiumPrepareCache } : {}),
       },
     };

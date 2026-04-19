@@ -13,7 +13,9 @@ export function isUserEmailVerified(user) {
   );
 }
 
-export function buildPostAuthPath(onboardingCompleted) {
+export function buildPostAuthPath({ firstRunDone = null, onboardingCompleted = null } = {}) {
+  if (firstRunDone === false) return "/onboarding";
+  if (firstRunDone === true) return "/";
   return onboardingCompleted === false ? "/onboarding" : "/";
 }
 
@@ -22,6 +24,7 @@ export function resolveAuthGateState({
   pathname,
   session,
   emailVerified,
+  firstRunDone,
   onboardingCompleted,
   recoveryMode,
 } = {}) {
@@ -31,7 +34,7 @@ export function resolveAuthGateState({
 
   const authScreen = getAuthScreenFromPath(pathname);
   const hasSession = Boolean(session);
-  const postAuthPath = buildPostAuthPath(onboardingCompleted);
+  const postAuthPath = buildPostAuthPath({ firstRunDone, onboardingCompleted });
 
   if (!hasSession) {
     if (authScreen === "reset-password") {

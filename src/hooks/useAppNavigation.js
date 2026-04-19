@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { isFirstRunDone } from "../features/first-run/firstRunModel";
 
 const TABS = new Set([
   "onboarding",
@@ -298,8 +299,7 @@ export function useAppNavigation({ safeData, setData }) {
   ]);
 
   useLayoutEffect(() => {
-    const completed = Boolean(safeData?.ui?.onboardingCompleted);
-    if (!completed) return;
+    if (!isFirstRunDone(safeData?.ui)) return;
     if (typeof window !== "undefined" && window.location.pathname !== "/")
       return;
     _setTab((cur) => (normalizeTab(cur) === "today" ? cur : "today"));

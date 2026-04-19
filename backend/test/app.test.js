@@ -8,6 +8,7 @@ import {
   coachResponseSchema,
   sessionGuidanceResponseSchema,
 } from "../src/schemas/coach.js";
+import { firstRunPlanResponseSchema } from "../src/schemas/firstRun.js";
 
 const TEST_CONFIG = {
   APP_ENV: "test",
@@ -16,6 +17,8 @@ const TEST_CONFIG = {
   SUPABASE_SECRET_KEY: "service-role-test",
   OPENAI_API_KEY: "",
   OPENAI_MODEL: "gpt-4.1-mini",
+  FIRST_RUN_PLAN_OPENAI_MODEL: "",
+  FIRST_RUN_PLAN_OPENAI_TIMEOUT_MS: 45000,
   SESSION_GUIDANCE_PREPARE_OPENAI_MODEL: "",
   SESSION_GUIDANCE_PREPARE_OPENAI_TIMEOUT_MS: 60000,
   AI_QUOTA_MODE: "normal",
@@ -39,6 +42,13 @@ function toDateKey(date) {
 function dateKeyFromOffset(days = 0) {
   const date = new Date();
   date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + days);
+  return toDateKey(date);
+}
+
+function addDateKeyOffset(dateKey, days = 0) {
+  const [year, month, day] = String(dateKey || "").split("-").map((value) => Number(value));
+  const date = new Date(year, month - 1, day, 12, 0, 0, 0);
   date.setDate(date.getDate() + days);
   return toDateKey(date);
 }
@@ -182,6 +192,241 @@ function createValidCoachPayload({ dateKey = TODAY_KEY } = {}) {
       kind: "none",
       label: null,
     },
+  };
+}
+
+function createValidFirstRunPlanResponse({ requestId = "req-first-run", inputHash = "hash-first-run" } = {}) {
+  return {
+    version: 2,
+    source: "ai_backend",
+    inputHash,
+    generatedAt: "2026-04-19T08:00:00.000Z",
+    requestId,
+    model: "gpt-5.4",
+    promptVersion: "first_run_plan_v1",
+    plans: [
+      {
+        id: "tenable",
+        variant: "tenable",
+        title: "Plan tenable",
+        summary: "Une semaine tenable, dense juste ce qu'il faut.",
+        comparisonMetrics: {
+          weeklyMinutes: 150,
+          totalBlocks: 5,
+          activeDays: 4,
+          recoverySlots: 3,
+          dailyDensity: "respirable",
+          engagementLevel: "tenable",
+        },
+        categories: [
+          { id: "cat_business", label: "Business", role: "primary", blockCount: 3 },
+          { id: "cat_health", label: "Santé", role: "support", blockCount: 2 },
+        ],
+        preview: [
+          {
+            dayKey: TODAY_KEY,
+            dayLabel: "DIM 19/04",
+            slotLabel: "08:00 - 08:25",
+            categoryId: "cat_business",
+            categoryLabel: "Business",
+            title: "Bloc roadmap",
+            minutes: 25,
+          },
+        ],
+        todayPreview: [
+          {
+            dayKey: TODAY_KEY,
+            dayLabel: "DIM 19/04",
+            slotLabel: "08:00 - 08:25",
+            categoryId: "cat_business",
+            categoryLabel: "Business",
+            title: "Bloc roadmap",
+            minutes: 25,
+          },
+        ],
+        rationale: {
+          whyFit: "Le plan protège l'élan.",
+          capacityFit: "La charge reste respirable.",
+          constraintFit: "Les contraintes sont respectées.",
+        },
+        commitDraft: {
+          version: 1,
+          categories: [
+            { id: "cat_business", templateId: "business", name: "Business", color: "#0ea5e9", order: 0 },
+            { id: "cat_health", templateId: "health", name: "Santé", color: "#22c55e", order: 1 },
+          ],
+          goals: [
+            { id: "goal_business", categoryId: "cat_business", title: "Relancer le projet", type: "OUTCOME", order: 0 },
+          ],
+          actions: [
+            {
+              id: "action_roadmap",
+              categoryId: "cat_business",
+              parentGoalId: "goal_business",
+              title: "Bloc roadmap",
+              type: "PROCESS",
+              order: 0,
+              repeat: "weekly",
+              daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+              timeMode: "FIXED",
+              startTime: "08:00",
+              timeSlots: ["08:00"],
+              durationMinutes: 25,
+              sessionMinutes: 25,
+            },
+            {
+              id: "action_walk",
+              categoryId: "cat_health",
+              parentGoalId: null,
+              title: "Marche active",
+              type: "PROCESS",
+              order: 1,
+              repeat: "weekly",
+              daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+              timeMode: "FIXED",
+              startTime: "18:30",
+              timeSlots: ["18:30"],
+              durationMinutes: 25,
+              sessionMinutes: 25,
+            },
+          ],
+          occurrences: [
+            { id: "occ_t_1", goalId: "action_roadmap", date: TODAY_KEY, start: "08:00", durationMinutes: 25, status: "planned" },
+            { id: "occ_t_2", goalId: "action_walk", date: FUTURE_KEY, start: "18:30", durationMinutes: 25, status: "planned" },
+            { id: "occ_t_3", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 2), start: "08:00", durationMinutes: 35, status: "planned" },
+            { id: "occ_t_4", goalId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 3), start: "18:30", durationMinutes: 30, status: "planned" },
+            { id: "occ_t_5", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "08:00", durationMinutes: 35, status: "planned" },
+          ],
+        },
+      },
+      {
+        id: "ambitious",
+        variant: "ambitious",
+        title: "Plan ambitieux",
+        summary: "Une semaine plus structurée et plus dense.",
+        comparisonMetrics: {
+          weeklyMinutes: 225,
+          totalBlocks: 7,
+          activeDays: 5,
+          recoverySlots: 2,
+          dailyDensity: "soutenue",
+          engagementLevel: "ambitious",
+        },
+        categories: [
+          { id: "cat_business", label: "Business", role: "primary", blockCount: 4 },
+          { id: "cat_health", label: "Santé", role: "support", blockCount: 3 },
+        ],
+        preview: [
+          {
+            dayKey: TODAY_KEY,
+            dayLabel: "DIM 19/04",
+            slotLabel: "07:30 - 08:15",
+            categoryId: "cat_business",
+            categoryLabel: "Business",
+            title: "Bloc roadmap",
+            minutes: 45,
+          },
+        ],
+        todayPreview: [
+          {
+            dayKey: TODAY_KEY,
+            dayLabel: "DIM 19/04",
+            slotLabel: "07:30 - 08:15",
+            categoryId: "cat_business",
+            categoryLabel: "Business",
+            title: "Bloc roadmap",
+            minutes: 45,
+          },
+        ],
+        rationale: {
+          whyFit: "Le plan accélère dès la première semaine.",
+          capacityFit: "La charge est plus engagée.",
+          constraintFit: "Les créneaux favorables sont maximisés.",
+        },
+        commitDraft: {
+          version: 1,
+          categories: [
+            { id: "cat_business", templateId: "business", name: "Business", color: "#0ea5e9", order: 0 },
+            { id: "cat_health", templateId: "health", name: "Santé", color: "#22c55e", order: 1 },
+          ],
+          goals: [
+            { id: "goal_business", categoryId: "cat_business", title: "Relancer le projet", type: "OUTCOME", order: 0 },
+          ],
+          actions: [
+            {
+              id: "action_roadmap",
+              categoryId: "cat_business",
+              parentGoalId: "goal_business",
+              title: "Bloc roadmap",
+              type: "PROCESS",
+              order: 0,
+              repeat: "weekly",
+              daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+              timeMode: "FIXED",
+              startTime: "07:30",
+              timeSlots: ["07:30"],
+              durationMinutes: 45,
+              sessionMinutes: 45,
+            },
+            {
+              id: "action_walk",
+              categoryId: "cat_health",
+              parentGoalId: null,
+              title: "Marche active",
+              type: "PROCESS",
+              order: 1,
+              repeat: "weekly",
+              daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+              timeMode: "FIXED",
+              startTime: "18:30",
+              timeSlots: ["18:30"],
+              durationMinutes: 30,
+              sessionMinutes: 30,
+            },
+          ],
+          occurrences: [
+            { id: "occ_a_1", goalId: "action_roadmap", date: TODAY_KEY, start: "07:30", durationMinutes: 45, status: "planned" },
+            { id: "occ_a_2", goalId: "action_walk", date: FUTURE_KEY, start: "18:30", durationMinutes: 30, status: "planned" },
+            { id: "occ_a_3", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 2), start: "07:30", durationMinutes: 45, status: "planned" },
+            { id: "occ_a_4", goalId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 3), start: "18:30", durationMinutes: 30, status: "planned" },
+            { id: "occ_a_5", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "07:30", durationMinutes: 45, status: "planned" },
+            { id: "occ_a_6", goalId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 5), start: "18:30", durationMinutes: 30, status: "planned" },
+            { id: "occ_a_7", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 6), start: "07:30", durationMinutes: 30, status: "planned" },
+          ],
+        },
+      },
+    ],
+  };
+}
+
+function createValidFirstRunPlanRequest(overrides = {}) {
+  return {
+    whyText: "Je veux retrouver une semaine sous contrôle.",
+    primaryGoal: "Relancer le projet principal",
+    unavailableWindows: [
+      {
+        id: "window_work",
+        daysOfWeek: [1, 2, 3, 4, 5],
+        startTime: "09:00",
+        endTime: "18:00",
+        label: "Travail",
+      },
+    ],
+    preferredWindows: [
+      {
+        id: "window_morning",
+        daysOfWeek: [1, 3, 5, 6],
+        startTime: "07:00",
+        endTime: "09:00",
+        label: "Matin",
+      },
+    ],
+    currentCapacity: "stable",
+    priorityCategoryIds: ["business", "health"],
+    timezone: "Europe/Paris",
+    locale: "fr-FR",
+    referenceDateKey: TODAY_KEY,
+    ...overrides,
   };
 }
 
@@ -892,6 +1137,298 @@ test("POST /ai/local-analysis accepts an AI response that includes direction", a
   assert.equal(payload.direction, "recalibrer");
   assert.equal(insertedLogs[0]?.coach_kind, "local-analysis");
   assert.equal(insertedLogs[0]?.route, "/ai/local-analysis");
+  await app.close();
+});
+
+test("POST /ai/first-run-plan returns backend unavailable when OpenAI is missing", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-first-run-noai" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.33" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  assert.equal(response.statusCode, 503);
+  assert.equal(response.json().error, "FIRST_RUN_PLAN_BACKEND_UNAVAILABLE");
+  await app.close();
+});
+
+test("POST /ai/first-run-plan uses gpt-5.4 with a dedicated timeout by default", async () => {
+  let requestedModel = null;
+  let requestedTimeout = null;
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-default-model" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async (input, options) => {
+          requestedModel = input?.model || null;
+          requestedTimeout = options?.timeout ?? null;
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: {
+                    plans: createValidFirstRunPlanResponse().plans.map((plan) => ({
+                      variant: plan.variant,
+                      summary: plan.summary,
+                      rationale: plan.rationale,
+                      commitDraft: plan.commitDraft,
+                    })),
+                  },
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.34" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(requestedModel, "gpt-5.4");
+  assert.equal(requestedTimeout, 45000);
+  await app.close();
+});
+
+test("POST /ai/first-run-plan applies a 30000ms floor to the dedicated timeout", async () => {
+  let requestedTimeout = null;
+  const app = await buildApp({
+    config: {
+      ...TEST_CONFIG_WITH_OPENAI,
+      FIRST_RUN_PLAN_OPENAI_TIMEOUT_MS: 12000,
+    },
+    verifyAccessToken: async () => ({ id: "user-first-run-timeout-floor" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async (_input, options) => {
+          requestedTimeout = options?.timeout ?? null;
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: {
+                    plans: createValidFirstRunPlanResponse().plans.map((plan) => ({
+                      variant: plan.variant,
+                      summary: plan.summary,
+                      rationale: plan.rationale,
+                      commitDraft: plan.commitDraft,
+                    })),
+                  },
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.35" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(requestedTimeout, 30000);
+  await app.close();
+});
+
+test("POST /ai/first-run-plan returns an explicit provider timeout error", async () => {
+  const insertedLogs = [];
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-provider-timeout" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+    insertedLogs,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => {
+          throw new APIConnectionTimeoutError();
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.36" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  assert.equal(response.statusCode, 504);
+  assert.equal(response.json().error, "FIRST_RUN_PLAN_PROVIDER_TIMEOUT");
+  assert.equal(insertedLogs[0]?.coach_kind, "first-run-plan");
+  assert.equal(insertedLogs[0]?.route, "/ai/first-run-plan");
+  await app.close();
+});
+
+test("POST /ai/first-run-plan rejects plans that do not diverge enough", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-no-divergence" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => {
+          const basePlans = createValidFirstRunPlanResponse().plans;
+          const baseTenable = basePlans[0];
+          const validAmbitious = basePlans[1];
+          const weakTenableDraft = {
+            ...baseTenable.commitDraft,
+            occurrences: [
+              { id: "weak_t_1", goalId: "action_roadmap", date: TODAY_KEY, start: "08:00", durationMinutes: 35, status: "planned" },
+              { id: "weak_t_2", goalId: "action_walk", date: FUTURE_KEY, start: "18:30", durationMinutes: 25, status: "planned" },
+              { id: "weak_t_3", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 2), start: "08:00", durationMinutes: 35, status: "planned" },
+              { id: "weak_t_4", goalId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 3), start: "18:30", durationMinutes: 30, status: "planned" },
+              { id: "weak_t_5", goalId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "08:00", durationMinutes: 35, status: "planned" },
+              { id: "weak_t_6", goalId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 5), start: "18:30", durationMinutes: 30, status: "planned" },
+            ],
+          };
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: {
+                    plans: [
+                      {
+                        variant: "tenable",
+                        summary: baseTenable.summary,
+                        rationale: baseTenable.rationale,
+                        commitDraft: weakTenableDraft,
+                      },
+                      {
+                        variant: "ambitious",
+                        summary: validAmbitious.summary,
+                        rationale: validAmbitious.rationale,
+                        commitDraft: validAmbitious.commitDraft,
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.37" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  assert.equal(response.statusCode, 502);
+  assert.equal(response.json().error, "INVALID_FIRST_RUN_PLAN_RESPONSE");
+  assert.equal(response.json().details?.rejectionStage, "variant_divergence");
+  await app.close();
+});
+
+test("POST /ai/first-run-plan returns two valid plans with commitDraft canonique", async () => {
+  const insertedLogs = [];
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-success" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+    insertedLogs,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: {
+                  plans: createValidFirstRunPlanResponse().plans.map((plan) => ({
+                    variant: plan.variant,
+                    summary: plan.summary,
+                    rationale: plan.rationale,
+                    commitDraft: plan.commitDraft,
+                  })),
+                },
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.38" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = firstRunPlanResponseSchema.parse(response.json());
+  assert.equal(payload.plans.length, 2);
+  assert.equal(payload.plans[0].id, "tenable");
+  assert.equal(payload.plans[1].id, "ambitious");
+  assert.equal(payload.plans[0].commitDraft.categories[0].templateId, "business");
+  assert.equal(insertedLogs[0]?.coach_kind, "first-run-plan");
+  assert.equal(insertedLogs[0]?.route, "/ai/first-run-plan");
   await app.close();
 });
 

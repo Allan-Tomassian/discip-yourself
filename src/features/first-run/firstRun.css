@@ -1,0 +1,443 @@
+.firstRunScreenShell .pageContent {
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.firstRunShell {
+  width: min(100%, 760px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  min-height: min(680px, calc(100dvh - var(--safe-top) - var(--safe-bottom) - 88px));
+  padding: clamp(20px, 3vw, 28px);
+}
+
+.firstRunHeader {
+  gap: var(--space-8);
+  padding-bottom: var(--space-2);
+}
+
+.firstRunHeader .gateSectionIntroText {
+  gap: var(--space-4);
+}
+
+.firstRunHeader .gateSectionIntroSubtitle {
+  max-width: 52ch;
+  font-size: var(--font-body);
+  line-height: 1.55;
+}
+
+.firstRunHeader .gateSectionIntroActions {
+  align-self: flex-start;
+}
+
+.firstRunHeaderTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.firstRunHeaderEyebrow {
+  font-size: var(--font-micro);
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text-secondary) 90%, rgba(255, 255, 255, 0.14));
+}
+
+.firstRunHeaderTitle {
+  font-size: clamp(28px, 3.3vw, 36px);
+  line-height: 1.08;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  color: var(--text-primary);
+}
+
+.firstRunHeaderBadge {
+  min-height: 28px;
+  padding-inline: var(--space-10);
+}
+
+.firstRunBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  min-height: 0;
+}
+
+.firstRunFooter {
+  margin-top: auto;
+}
+
+.firstRunFooterSurface {
+  padding: var(--space-16) var(--space-18) calc(var(--space-16) + var(--safe-bottom));
+  border-color: color-mix(in srgb, var(--panelFooterBorder) 88%, rgba(255, 255, 255, 0.06));
+  background:
+    linear-gradient(
+      180deg,
+      var(--overlayTransparent),
+      color-mix(in srgb, var(--panelFooterBg) 97%, transparent) 22%
+    );
+}
+
+.firstRunFooterActions {
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+
+.firstRunIntroBody,
+.firstRunDiscoveryBody {
+  justify-content: center;
+}
+
+.firstRunIntroHero,
+.firstRunDiscoveryHero {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.firstRunIntroLead,
+.firstRunDiscoveryLead,
+.firstRunBodyLead {
+  margin: 0;
+  max-width: 40ch;
+  font-size: clamp(18px, 2vw, 22px);
+  line-height: 1.55;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.firstRunBodyLead {
+  max-width: 46ch;
+}
+
+.firstRunSupportList,
+.firstRunPlanPreviewList {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.firstRunGenerateMeta {
+  font-size: var(--font-meta);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.firstRunSupportItem {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 90%, rgba(255, 255, 255, 0.08));
+  border-radius: calc(var(--radius-card) - 2px);
+  background: color-mix(in srgb, var(--surface-1) 92%, var(--background-secondary));
+}
+
+.firstRunSupportItemTitle {
+  font-size: var(--font-body-strong);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.firstRunSupportItemText {
+  font-size: var(--font-body);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.firstRunWhyBody {
+  gap: var(--space-8);
+}
+
+.firstRunWhyPanel {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.firstRunWhyField {
+  gap: var(--space-4);
+}
+
+.firstRunWhyField .appFieldLabel,
+.firstRunCompactField .appFieldLabel {
+  font-size: var(--font-micro);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text-secondary) 86%, rgba(255, 255, 255, 0.14));
+}
+
+.firstRunWhyInput {
+  min-height: 220px;
+  padding: var(--space-16) var(--space-16);
+  border-radius: calc(var(--radius-card) + 2px);
+  font-size: 16px;
+  line-height: 1.7;
+  background: color-mix(in srgb, var(--surface-1) 96%, var(--background-secondary));
+}
+
+.firstRunWhyHelper {
+  font-size: var(--font-meta);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.firstRunWhyHelper.is-error {
+  color: var(--danger);
+}
+
+.firstRunSignalsBody {
+  gap: var(--space-8);
+}
+
+.firstRunSignalsLead {
+  margin: 0;
+  max-width: 48ch;
+  font-size: var(--font-body);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.firstRunSectionStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+
+.firstRunFormSection {
+  --gate-card-padding: clamp(16px, 2vw, 20px);
+  --gate-card-gap: var(--space-6);
+  --gate-section-body-gap: var(--space-6);
+}
+
+.firstRunFormSection .gateSectionHeader {
+  padding-inline: 2px;
+}
+
+.firstRunFormSection .gateSectionHeaderText {
+  gap: var(--space-3);
+}
+
+.firstRunFormSection .gateSectionTitle {
+  font-size: var(--font-body-strong);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.firstRunFormSection .gateSectionDescription {
+  max-width: 54ch;
+  font-size: var(--font-meta);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.firstRunFormSectionBody {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.firstRunField {
+  gap: var(--space-4);
+}
+
+.firstRunChoiceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.firstRunChoiceCard {
+  min-height: 120px;
+  align-items: flex-start;
+  gap: var(--space-8);
+  padding: var(--space-16);
+}
+
+.firstRunChoiceCard .appChoiceCardText {
+  gap: var(--space-3);
+}
+
+.firstRunChoiceCard .appChoiceCardTitle {
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.firstRunChoiceCard .appChoiceCardDescription {
+  max-width: none;
+  font-size: var(--font-meta);
+  line-height: 1.5;
+}
+
+.firstRunChoiceCard .appChoiceCardBadge {
+  align-self: flex-start;
+}
+
+.firstRunWindowList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.firstRunWindowCard {
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 90%, rgba(255, 255, 255, 0.08));
+  border-radius: calc(var(--radius-card) - 2px);
+  padding: var(--space-6);
+  background: color-mix(in srgb, var(--surface-1) 94%, var(--background-secondary));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.firstRunWindowCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.firstRunWindowCardTitle {
+  font-size: var(--font-body-strong);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.firstRunWindowFields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.firstRunCompactField {
+  gap: var(--space-3);
+}
+
+.firstRunWindowTimeRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.firstRunDayRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.firstRunDayChip {
+  min-width: 40px;
+  padding-inline: var(--space-10);
+}
+
+.firstRunDayChip.is-active {
+  border-color: var(--accentBorderStrong);
+}
+
+.firstRunEmptyHint {
+  padding: var(--space-5);
+  border: 1px dashed color-mix(in srgb, var(--border-subtle) 82%, rgba(255, 255, 255, 0.12));
+  border-radius: calc(var(--radius-card) - 4px);
+  background: color-mix(in srgb, var(--surface-1) 68%, transparent);
+  color: var(--text-secondary);
+  font-size: var(--font-meta);
+  line-height: 1.5;
+}
+
+.firstRunSectionAction {
+  align-self: flex-start;
+}
+
+.firstRunInfoGrid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.firstRunInfoGrid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.firstRunInfoCard {
+  align-items: flex-start;
+  padding: var(--space-14);
+}
+
+.firstRunInfoCard .appInlineMetaCardBody {
+  gap: var(--space-3);
+}
+
+.firstRunCompareBlock {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.firstRunCompareMetricRow,
+.firstRunCompareCategoryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.firstRunCompareMetricChip,
+.firstRunCompareCategoryChip {
+  min-height: 34px;
+}
+
+.firstRunCompareCategoryChip.is-primary {
+  border-color: var(--accentBorderStrong);
+}
+
+.firstRunCompareRationale {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.firstRunInfoCard .appInlineMetaCardText,
+.firstRunPlanPreviewItem {
+  line-height: 1.55;
+}
+
+.firstRunPlanPreviewItem {
+  padding-left: var(--space-4);
+  border-left: 2px solid color-mix(in srgb, var(--accent-primary) 36%, transparent);
+  color: var(--text-primary);
+}
+
+.firstRunCompareChoiceGrid {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 720px) {
+  .firstRunShell {
+    min-height: 0;
+  }
+
+  .firstRunChoiceGrid,
+  .firstRunInfoGrid--two {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .firstRunHeader {
+    gap: var(--space-6);
+  }
+
+  .firstRunHeader .gateSectionIntroActions {
+    align-self: stretch;
+  }
+
+  .firstRunFooterSurface {
+    padding-inline: var(--space-16);
+  }
+
+  .firstRunFooterActions {
+    width: 100%;
+  }
+
+  .firstRunFooterActions > * {
+    flex: 1 1 auto;
+  }
+
+  .firstRunWindowTimeRow {
+    grid-template-columns: 1fr;
+  }
+}

@@ -40,7 +40,7 @@ const TABS = [
 const LovableTabBar = forwardRef(function LovableTabBar({ activeTab = "today", onSelect }, ref) {
   return (
     <div ref={ref} className="lovableTabBarWrap">
-      <nav className="lovableTabBar" aria-label="Navigation principale">
+      <nav className="lovableTabBar" aria-label="Navigation principale" data-tour-id="topnav-tabs">
         {TABS.map((tab) => {
           const active = activeTab === tab.id;
           return (

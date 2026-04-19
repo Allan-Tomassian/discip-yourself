@@ -85,6 +85,7 @@ import {
   withExecutionActiveCategoryId,
   withLibraryActiveCategoryId,
 } from "./domain/categoryVisibility";
+import { isFirstRunDone } from "./features/first-run/firstRunModel";
 import { resolveGoalType } from "./domain/goalType";
 import { BehaviorFeedbackHost, BehaviorFeedbackProvider } from "./feedback/BehaviorFeedbackContext";
 
@@ -183,7 +184,7 @@ export default function App() {
     canCreateOutcomeNow,
     canCreateActionNow,
   } = useEntitlementsPaywall({ safeData, setData });
-  const onboardingCompleted = Boolean(safeData.ui?.onboardingCompleted);
+  const firstRunDone = isFirstRunDone(safeData.ui);
   const showPlanStep = Boolean(safeData.ui?.showPlanStep);
   const bottomRailRef = useRef(null);
 
@@ -873,7 +874,7 @@ export default function App() {
       // dev guard must never throw
     }
   }, [isDevEnv, safeData, setData]);
-  const showTourOverlay = onboardingCompleted;
+  const showTourOverlay = firstRunDone;
 
   useLayoutEffect(() => {
     if (typeof window === "undefined" || typeof document === "undefined") return undefined;
@@ -945,10 +946,19 @@ export default function App() {
 
   useEffect(() => {
     if (typeof window === "undefined" || dataLoading) return;
-    if (!onboardingCompleted && window.location.pathname !== "/onboarding") {
+    if (!firstRunDone && window.location.pathname !== "/onboarding") {
       window.history.replaceState({}, "", "/onboarding");
+      return;
     }
-  }, [dataLoading, onboardingCompleted]);
+    if (firstRunDone && window.location.pathname === "/onboarding") {
+      window.history.replaceState({}, "", "/");
+    }
+  }, [dataLoading, firstRunDone]);
+
+  useEffect(() => {
+    if (dataLoading || !firstRunDone || tab !== "onboarding") return;
+    setTab("today", { replace: true });
+  }, [dataLoading, firstRunDone, setTab, tab]);
 
   const renderWithBehaviorFeedback = (content) => (
     <BehaviorFeedbackProvider>
@@ -971,7 +981,7 @@ export default function App() {
     );
   }
 
-  if (showPlanStep && onboardingCompleted) {
+  if (showPlanStep && firstRunDone) {
     return renderWithBehaviorFeedback(
       <>
         <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />
@@ -979,7 +989,7 @@ export default function App() {
       </>
     );
   }
-  if (!onboardingCompleted) {
+  if (!firstRunDone) {
     return renderWithBehaviorFeedback(
       <>
         <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />
@@ -988,11 +998,21 @@ export default function App() {
     );
   }
 
+  if (tab === "onboarding") {
+    return renderWithBehaviorFeedback(
+      <div
+        data-testid="first-run-redirecting-screen"
+        className="appViewportFill"
+        style={{ display: "grid", placeItems: "center", padding: 24 }}
+      >
+        <p>Redirection...</p>
+      </div>
+    );
+  }
+
   return renderWithBehaviorFeedback(
     <>
-      {tab === "onboarding" ? (
-        <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />
-      ) : tab === "today" ? (
+      {tab === "today" ? (
         <Home
           data={data}
           setData={setData}

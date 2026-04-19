@@ -16,6 +16,8 @@ describe("create flow visual contract", () => {
     const menuSource = readSrc("components/navigation/LovableCreateMenu.jsx");
     const copySource = readSrc("copy/productCopy.js");
     const onboardingSource = readSrc("pages/Onboarding.jsx");
+    const firstRunFlowSource = readSrc("features/first-run/FirstRunFlow.jsx");
+    const firstRunStepScreenSource = readSrc("features/first-run/FirstRunStepScreen.jsx");
 
     expect(pageSource).toContain('pageId="create-item"');
     expect(pageSource).toContain("normalizeCreateItemDraft");
@@ -47,8 +49,13 @@ describe("create flow visual contract", () => {
     expect(copySource).not.toContain('objectiveLabel: "Créer un objectif"');
     expect(copySource).not.toContain('planLabel: "Passer en mode Plan"');
     expect(copySource).not.toContain('microLabel:');
-    expect(onboardingSource).toContain("ChoiceCard");
-    expect(onboardingSource).toContain("AppStickyFooter");
+    expect(onboardingSource).toContain("FirstRunFlow");
+    expect(firstRunFlowSource).toContain("ChoiceCard");
+    expect(firstRunFlowSource).toContain("AppStickyFooter");
+    expect(firstRunStepScreenSource).toContain("firstRunShell");
+    expect(firstRunStepScreenSource).toContain("firstRunFooterSurface");
+    expect(firstRunStepScreenSource).not.toContain("createFlowScope");
+    expect(firstRunStepScreenSource).not.toContain("createFlowHeader");
     expect(onboardingSource).not.toContain("CreateChoiceCard");
     expect(onboardingSource).not.toContain("CreateButton");
     expect(pageSource).not.toContain("CreateFlowModal");
