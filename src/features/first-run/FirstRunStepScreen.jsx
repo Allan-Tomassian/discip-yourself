@@ -7,11 +7,12 @@ export default function FirstRunStepScreen({
   testId,
   title,
   subtitle = "",
-  eyebrow = "First run",
+  eyebrow = "Premiers pas",
   badge = "",
   children,
   footer,
   bodyClassName = "",
+  footerSurfaceClassName = "",
 }) {
   const resolvedBodyClassName = ["firstRunBody", bodyClassName].filter(Boolean).join(" ");
 
@@ -35,7 +36,7 @@ export default function FirstRunStepScreen({
         {footer ? (
           <AppStickyFooter
             className="firstRunFooter"
-            surfaceClassName="firstRunFooterSurface"
+            surfaceClassName={["firstRunFooterSurface", footerSurfaceClassName].filter(Boolean).join(" ")}
             actionsClassName="firstRunFooterActions"
           >
             {footer}

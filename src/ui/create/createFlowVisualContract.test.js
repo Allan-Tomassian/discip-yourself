@@ -18,6 +18,9 @@ describe("create flow visual contract", () => {
     const onboardingSource = readSrc("pages/Onboarding.jsx");
     const firstRunFlowSource = readSrc("features/first-run/FirstRunFlow.jsx");
     const firstRunStepScreenSource = readSrc("features/first-run/FirstRunStepScreen.jsx");
+    const firstRunIntroSource = readSrc("features/first-run/FirstRunIntroScreen.jsx");
+    const firstRunWhySource = readSrc("features/first-run/FirstRunWhyScreen.jsx");
+    const firstRunSignalsSource = readSrc("features/first-run/FirstRunSignalsScreen.jsx");
 
     expect(pageSource).toContain('pageId="create-item"');
     expect(pageSource).toContain("normalizeCreateItemDraft");
@@ -54,8 +57,12 @@ describe("create flow visual contract", () => {
     expect(firstRunFlowSource).toContain("AppStickyFooter");
     expect(firstRunStepScreenSource).toContain("firstRunShell");
     expect(firstRunStepScreenSource).toContain("firstRunFooterSurface");
+    expect(firstRunStepScreenSource).toContain('eyebrow = "Premiers pas"');
     expect(firstRunStepScreenSource).not.toContain("createFlowScope");
     expect(firstRunStepScreenSource).not.toContain("createFlowHeader");
+    expect(firstRunIntroSource).toContain('badge="1/5"');
+    expect(firstRunWhySource).toContain('badge="2/5"');
+    expect(firstRunSignalsSource).toContain('badge="3/5"');
     expect(onboardingSource).not.toContain("CreateChoiceCard");
     expect(onboardingSource).not.toContain("CreateButton");
     expect(pageSource).not.toContain("CreateFlowModal");

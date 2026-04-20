@@ -9,7 +9,7 @@ export default function FirstRunDiscoveryScreen({ data, onComplete }) {
       testId="first-run-screen-discovery"
       title="Dernière étape avant l'app"
       subtitle="La découverte guidée finale arrivera dans le lot suivant. Ici on valide simplement la fin du first-run."
-      badge="7/7"
+      badge=""
       footer={<PrimaryButton onClick={onComplete}>Entrer dans l'app</PrimaryButton>}
       bodyClassName="firstRunDiscoveryBody"
     >

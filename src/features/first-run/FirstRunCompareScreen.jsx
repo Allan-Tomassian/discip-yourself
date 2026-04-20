@@ -37,7 +37,7 @@ export default function FirstRunCompareScreen({
       testId="first-run-screen-compare"
       title="Choisis ton point de départ"
       subtitle=""
-      badge="5/7"
+      badge="5/5"
       footer={
         <>
           <GhostButton onClick={onBack}>Retour</GhostButton>

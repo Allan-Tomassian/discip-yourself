@@ -2,42 +2,48 @@ import React from "react";
 import { PrimaryButton } from "../../shared/ui/app";
 import FirstRunStepScreen from "./FirstRunStepScreen";
 
+function resolveFirstRunGreetingName(data) {
+  const profile = data && typeof data === "object" ? data.profile : null;
+  const username = String(profile?.username || "").trim();
+  if (username) return username;
+
+  const fullName = String(profile?.full_name || "").trim();
+  if (fullName) return fullName.split(/\s+/)[0];
+
+  const name = String(profile?.name || "").trim();
+  return name || "";
+}
+
 export default function FirstRunIntroScreen({ data, onStart }) {
+  const greetingName = resolveFirstRunGreetingName(data);
+  const title = greetingName ? `Bienvenue, ${greetingName}` : "Bienvenue";
+
   return (
     <FirstRunStepScreen
       data={data}
       testId="first-run-screen-intro"
-      title="On prépare ta première vraie semaine"
-      subtitle="Deux minutes pour poser ton pourquoi, quelques signaux réels, puis deux plans comparables."
-      badge="1/7"
+      title={title}
+      subtitle="On pose l’essentiel pour préparer tes deux premiers plans."
+      badge="1/5"
       footer={<PrimaryButton onClick={onStart}>Commencer</PrimaryButton>}
       bodyClassName="firstRunIntroBody"
+      footerSurfaceClassName="firstRunFooterSurface--quiet"
     >
       <div className="firstRunIntroHero">
-        <p className="firstRunIntroLead">
-          L&apos;app ne démarre pas par une liste vide. Elle prépare un vrai point de départ à partir de ton contexte.
-        </p>
-
-        <div className="firstRunSupportList">
-          <div className="firstRunSupportItem">
-            <div className="firstRunSupportItemTitle">Ton pourquoi lance le cadre</div>
-            <div className="firstRunSupportItemText">
-              On commence par ce qui compte maintenant, puis on le traduit en semaine crédible.
-            </div>
+        <div className="firstRunIntroPoints">
+          <div className="firstRunIntroPoint">
+            <div className="firstRunIntroPointTitle">Ton pourquoi</div>
+            <div className="firstRunIntroPointText">Ce qui compte pour toi maintenant.</div>
           </div>
 
-          <div className="firstRunSupportItem">
-            <div className="firstRunSupportItemTitle">Tes vraies contraintes sont prises en compte</div>
-            <div className="firstRunSupportItemText">
-              Objectif, capacité, moments indisponibles et créneaux favorables cadrent les deux plans.
-            </div>
+          <div className="firstRunIntroPoint">
+            <div className="firstRunIntroPointTitle">Tes signaux réels</div>
+            <div className="firstRunIntroPointText">Objectif, capacité et contraintes utiles.</div>
           </div>
 
-          <div className="firstRunSupportItem">
-            <div className="firstRunSupportItemTitle">Tu compares avant d’entrer</div>
-            <div className="firstRunSupportItemText">
-              Le flow prépare un plan tenable et un plan ambitieux avant l’arrivée dans l’app.
-            </div>
+          <div className="firstRunIntroPoint">
+            <div className="firstRunIntroPointTitle">Tes 2 plans</div>
+            <div className="firstRunIntroPointText">Un plan tenable et un plan ambitieux à comparer.</div>
           </div>
         </div>
       </div>

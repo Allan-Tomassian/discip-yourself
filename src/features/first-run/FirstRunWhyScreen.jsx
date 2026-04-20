@@ -15,9 +15,9 @@ export default function FirstRunWhyScreen({
     <FirstRunStepScreen
       data={data}
       testId="first-run-screen-why"
-      title="Pourquoi veux-tu te discipliner maintenant ?"
-      subtitle="Une réponse courte mais honnête suffit. Elle servira à contextualiser la suite du flow."
-      badge="2/7"
+      title="Pourquoi maintenant ?"
+      subtitle="Quelques mots suffisent pour dire ce qui compte vraiment pour toi."
+      badge="2/5"
       footer={
         <>
           <GhostButton onClick={onBack}>Retour</GhostButton>
@@ -27,12 +27,9 @@ export default function FirstRunWhyScreen({
         </>
       }
       bodyClassName="firstRunWhyBody"
+      footerSurfaceClassName="firstRunFooterSurface--quiet"
     >
       <div className="firstRunWhyPanel">
-        <p className="firstRunBodyLead">
-          Ce texte sert de point de départ. Il n&apos;a pas besoin d&apos;être parfait, seulement vrai.
-        </p>
-
         <FieldGroup label="Ton pourquoi" className="firstRunWhyField">
           <AppTextarea
             className="firstRunWhyInput"
@@ -40,13 +37,13 @@ export default function FirstRunWhyScreen({
             data-testid="first-run-why-input"
             value={value}
             rows={8}
-            placeholder="Pourquoi ce changement compte maintenant ?"
+            placeholder="Ex. reprendre le contrôle de mes semaines et relancer mon projet"
             onChange={(event) => onChange(event.target.value)}
           />
         </FieldGroup>
 
         <div className={`firstRunWhyHelper${error ? " is-error" : ""}`} role={error ? "alert" : undefined}>
-          {error || "Exemple : reprendre le contrôle de mes semaines et arrêter de repousser mon projet."}
+          {error || "Pas besoin d’écrire beaucoup. Sois simplement honnête."}
         </div>
       </div>
     </FirstRunStepScreen>

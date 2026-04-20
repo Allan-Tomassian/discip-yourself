@@ -45,7 +45,7 @@ export default function FirstRunGenerateScreen({ data, isLoading, error, onBack,
       testId="first-run-screen-generate"
       title="Préparation des plans"
       subtitle=""
-      badge="4/7"
+      badge="4/5"
       bodyClassName="firstRunGenerateBody"
       footer={
         <>

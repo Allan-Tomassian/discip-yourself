@@ -64,7 +64,7 @@ function WindowEditorCard({
       </div>
 
       <div className="firstRunWindowFields">
-        <FieldGroup label="Label" className="firstRunCompactField">
+        <FieldGroup label="Repère" className="firstRunCompactField">
           <AppInput
             value={safeWindow.label || ""}
             placeholder="Ex: Travail, sport, deep work"
@@ -175,9 +175,9 @@ export default function FirstRunSignalsScreen({
     <FirstRunStepScreen
       data={data}
       testId="first-run-screen-signals"
-      title="Quelques signaux essentiels"
-      subtitle="On capture juste assez d'information pour préparer deux plans cohérents."
-      badge="3/7"
+      title="Quelques signaux utiles"
+      subtitle="On cadre juste ce qu’il faut pour préparer deux plans crédibles."
+      badge="3/5"
       footer={
         <>
           <GhostButton onClick={onBack}>Retour</GhostButton>
@@ -187,31 +187,28 @@ export default function FirstRunSignalsScreen({
         </>
       }
       bodyClassName="firstRunSignalsBody"
+      footerSurfaceClassName="firstRunFooterSurface--quiet"
     >
       <div className="firstRunSectionStack">
-        <p className="firstRunSignalsLead">
-          On garde l&apos;élan. Ces quelques signaux suffisent pour cadrer la première proposition sans te faire passer par un setup lourd.
-        </p>
-
         <AppFormSection
-          title="Objectif immédiat"
-          description="Ce que tu veux faire avancer en premier dans les 2 à 6 prochaines semaines."
+          title="Objectif principal"
+          description="Ce que tu veux faire avancer d’abord."
           className="firstRunFormSection"
           bodyClassName="firstRunFormSectionBody"
         >
-          <FieldGroup label="Objectif principal" className="firstRunField">
-            <AppInput
-              data-testid="first-run-primary-goal-input"
-              value={safeDraftAnswers.primaryGoal || ""}
-              placeholder="Ex: remettre mon projet en mouvement"
-              onChange={(event) => onPrimaryGoalChange(event.target.value)}
-            />
-          </FieldGroup>
+          <AppInput
+            className="firstRunPrimaryGoalInput"
+            aria-label="Objectif principal"
+            data-testid="first-run-primary-goal-input"
+            value={safeDraftAnswers.primaryGoal || ""}
+            placeholder="Ex. remettre mon projet en mouvement"
+            onChange={(event) => onPrimaryGoalChange(event.target.value)}
+          />
         </AppFormSection>
 
         <AppFormSection
           title="Capacité actuelle"
-          description="Ce niveau borne le plan proposé. Il ne t'engage pas pour la suite."
+          description="Le niveau de charge qui te paraît réaliste maintenant."
           className="firstRunFormSection"
           bodyClassName="firstRunFormSectionBody"
         >
@@ -231,7 +228,7 @@ export default function FirstRunSignalsScreen({
 
         <AppFormSection
           title="Catégories prioritaires"
-          description="Choisis jusqu'à trois domaines. Ils nourriront les deux premières propositions."
+          description="Choisis jusqu’à 3 domaines à faire avancer d’abord."
           className="firstRunFormSection"
           bodyClassName="firstRunFormSectionBody"
         >
@@ -244,7 +241,6 @@ export default function FirstRunSignalsScreen({
                   key={categoryMeta.id}
                   className="firstRunChoiceCard"
                   title={categoryMeta.label}
-                  description="Utilisé pour structurer la semaine proposée."
                   selected={selected}
                   disabled={!selected && selectedCategoryIds.length >= 3}
                   badge={selected ? `#${selectionIndex + 1}` : null}
@@ -257,12 +253,12 @@ export default function FirstRunSignalsScreen({
 
         <WindowSection
           title="Indisponibilités"
-          description="Les contraintes fixes ou les fenêtres à éviter."
+          description="Les moments à éviter."
           itemLabel="Indisponibilité"
           windows={safeDraftAnswers.unavailableWindows}
           addLabel="Ajouter une indisponibilité"
           removeLabel="Retirer"
-          emptyLabel="Aucune indisponibilité ajoutée pour le moment."
+          emptyLabel="Aucune pour l’instant."
           onAdd={onAddUnavailableWindow}
           onPatch={onPatchUnavailableWindow}
           onRemove={onRemoveUnavailableWindow}
@@ -270,12 +266,12 @@ export default function FirstRunSignalsScreen({
 
         <WindowSection
           title="Créneaux favorables"
-          description="Les moments où tu exécutes le mieux, sans en faire des obligations dures."
+          description="Les moments où c’est plus facile pour toi."
           itemLabel="Créneau"
           windows={safeDraftAnswers.preferredWindows}
           addLabel="Ajouter un créneau favorable"
           removeLabel="Retirer"
-          emptyLabel="Ajoute un créneau si tu as déjà un moment favorable clair."
+          emptyLabel="Ajoute-en un si tu en as déjà un en tête."
           onAdd={onAddPreferredWindow}
           onPatch={onPatchPreferredWindow}
           onRemove={onRemovePreferredWindow}

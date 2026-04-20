@@ -24,7 +24,7 @@ export default function FirstRunCommitScreen({
       testId="first-run-screen-commit"
       title="Validation du plan choisi"
       subtitle="Ce lot ne crée pas encore le vrai système produit. Il persiste uniquement le choix et l'étape atteinte."
-      badge="6/7"
+      badge=""
       footer={
         <>
           <GhostButton onClick={onBack}>Retour</GhostButton>

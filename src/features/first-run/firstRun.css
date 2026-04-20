@@ -7,13 +7,15 @@
   width: min(100%, 760px);
   display: flex;
   flex-direction: column;
-  gap: var(--space-10);
+  gap: var(--space-8);
   min-height: min(680px, calc(100dvh - var(--safe-top) - var(--safe-bottom) - 88px));
   padding: clamp(20px, 3vw, 28px);
 }
 
 .firstRunHeader {
-  gap: var(--space-8);
+  align-items: flex-start;
+  gap: var(--space-6);
+  flex-wrap: nowrap;
   padding-bottom: var(--space-2);
 }
 
@@ -22,19 +24,22 @@
 }
 
 .firstRunHeader .gateSectionIntroSubtitle {
-  max-width: 52ch;
+  max-width: 42ch;
   font-size: var(--font-body);
-  line-height: 1.55;
+  line-height: 1.45;
 }
 
 .firstRunHeader .gateSectionIntroActions {
   align-self: flex-start;
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .firstRunHeaderTitleBlock {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  flex: 1 1 auto;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -47,22 +52,22 @@
 }
 
 .firstRunHeaderTitle {
-  font-size: clamp(28px, 3.3vw, 36px);
-  line-height: 1.08;
+  font-size: clamp(26px, 3.2vw, 34px);
+  line-height: 1.04;
   font-weight: 600;
   letter-spacing: -0.04em;
   color: var(--text-primary);
 }
 
 .firstRunHeaderBadge {
-  min-height: 28px;
-  padding-inline: var(--space-10);
+  min-height: 26px;
+  padding-inline: var(--space-8);
 }
 
 .firstRunBody {
   display: flex;
   flex-direction: column;
-  gap: var(--space-10);
+  gap: var(--space-8);
   min-height: 0;
 }
 
@@ -71,13 +76,24 @@
 }
 
 .firstRunFooterSurface {
-  padding: var(--space-16) var(--space-18) calc(var(--space-16) + var(--safe-bottom));
-  border-color: color-mix(in srgb, var(--panelFooterBorder) 88%, rgba(255, 255, 255, 0.06));
+  padding: var(--space-14) var(--space-18) calc(var(--space-14) + var(--safe-bottom));
+  border-color: color-mix(in srgb, var(--panelFooterBorder) 80%, rgba(255, 255, 255, 0.04));
   background:
     linear-gradient(
       180deg,
       var(--overlayTransparent),
-      color-mix(in srgb, var(--panelFooterBg) 97%, transparent) 22%
+      color-mix(in srgb, var(--panelFooterBg) 94%, transparent) 22%
+    );
+}
+
+.firstRunFooterSurface--quiet {
+  padding: var(--space-12) var(--space-16) calc(var(--space-12) + var(--safe-bottom));
+  border-color: color-mix(in srgb, var(--panelFooterBorder) 72%, rgba(255, 255, 255, 0.04));
+  background:
+    linear-gradient(
+      180deg,
+      transparent,
+      color-mix(in srgb, var(--panelFooterBg) 88%, transparent) 26%
     );
 }
 
@@ -94,7 +110,7 @@
 .firstRunIntroHero,
 .firstRunDiscoveryHero {
   display: grid;
-  gap: var(--space-8);
+  gap: var(--space-6);
 }
 
 .firstRunIntroLead,
@@ -116,6 +132,35 @@
 .firstRunPlanPreviewList {
   display: grid;
   gap: var(--space-4);
+}
+
+.firstRunIntroPoints {
+  display: grid;
+  gap: 0;
+}
+
+.firstRunIntroPoint {
+  display: grid;
+  gap: var(--space-2);
+  padding-block: var(--space-5);
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 84%, rgba(255, 255, 255, 0.08));
+}
+
+.firstRunIntroPoint:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.firstRunIntroPointTitle {
+  font-size: var(--font-body-strong);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.firstRunIntroPointText {
+  font-size: var(--font-body);
+  line-height: 1.5;
+  color: var(--text-secondary);
 }
 
 .firstRunGenerateMeta {
@@ -147,11 +192,15 @@
 
 .firstRunWhyBody {
   gap: var(--space-8);
+  justify-content: center;
 }
 
 .firstRunWhyPanel {
   display: grid;
-  gap: var(--space-6);
+  gap: var(--space-5);
+  max-width: 560px;
+  width: 100%;
+  margin-inline: auto;
 }
 
 .firstRunWhyField {
@@ -167,11 +216,11 @@
 }
 
 .firstRunWhyInput {
-  min-height: 220px;
+  min-height: 200px;
   padding: var(--space-16) var(--space-16);
   border-radius: calc(var(--radius-card) + 2px);
   font-size: 16px;
-  line-height: 1.7;
+  line-height: 1.6;
   background: color-mix(in srgb, var(--surface-1) 96%, var(--background-secondary));
 }
 
@@ -186,21 +235,13 @@
 }
 
 .firstRunSignalsBody {
-  gap: var(--space-8);
-}
-
-.firstRunSignalsLead {
-  margin: 0;
-  max-width: 48ch;
-  font-size: var(--font-body);
-  line-height: 1.55;
-  color: var(--text-secondary);
+  gap: var(--space-6);
 }
 
 .firstRunSectionStack {
   display: flex;
   flex-direction: column;
-  gap: var(--space-7);
+  gap: var(--space-6);
 }
 
 .firstRunGenerateBody {
@@ -239,6 +280,15 @@
   --gate-section-body-gap: var(--space-6);
 }
 
+.firstRunSignalsBody .firstRunFormSection {
+  --gate-card-padding: clamp(14px, 1.8vw, 18px);
+  --gate-card-gap: var(--space-4);
+  --gate-section-body-gap: var(--space-5);
+  border-color: color-mix(in srgb, var(--border-subtle) 84%, rgba(255, 255, 255, 0.06));
+  background: color-mix(in srgb, var(--surface-1) 88%, var(--background-secondary));
+  box-shadow: none;
+}
+
 .firstRunFormSection .gateSectionHeader {
   padding-inline: 2px;
 }
@@ -262,11 +312,15 @@
 
 .firstRunFormSectionBody {
   display: grid;
-  gap: var(--space-6);
+  gap: var(--space-5);
 }
 
 .firstRunField {
   gap: var(--space-4);
+}
+
+.firstRunPrimaryGoalInput {
+  width: 100%;
 }
 
 .firstRunChoiceGrid {
@@ -276,10 +330,10 @@
 }
 
 .firstRunChoiceCard {
-  min-height: 120px;
+  min-height: 104px;
   align-items: flex-start;
-  gap: var(--space-8);
-  padding: var(--space-16);
+  gap: var(--space-6);
+  padding: 14px;
 }
 
 .firstRunChoiceCard .appChoiceCardText {
@@ -304,18 +358,18 @@
 .firstRunWindowList {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-4);
 }
 
 .firstRunWindowCard {
   border: 1px solid color-mix(in srgb, var(--border-subtle) 90%, rgba(255, 255, 255, 0.08));
   border-radius: calc(var(--radius-card) - 2px);
-  padding: var(--space-6);
+  padding: var(--space-5);
   background: color-mix(in srgb, var(--surface-1) 94%, var(--background-secondary));
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  gap: var(--space-5);
+  box-shadow: none;
 }
 
 .firstRunWindowCardHeader {
@@ -334,7 +388,7 @@
 .firstRunWindowFields {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-4);
 }
 
 .firstRunCompactField {
@@ -363,7 +417,7 @@
 }
 
 .firstRunEmptyHint {
-  padding: var(--space-5);
+  padding: var(--space-4);
   border: 1px dashed color-mix(in srgb, var(--border-subtle) 82%, rgba(255, 255, 255, 0.12));
   border-radius: calc(var(--radius-card) - 4px);
   background: color-mix(in srgb, var(--surface-1) 68%, transparent);
@@ -448,11 +502,7 @@
 
 @media (max-width: 640px) {
   .firstRunHeader {
-    gap: var(--space-6);
-  }
-
-  .firstRunHeader .gateSectionIntroActions {
-    align-self: stretch;
+    gap: var(--space-4);
   }
 
   .firstRunFooterSurface {
