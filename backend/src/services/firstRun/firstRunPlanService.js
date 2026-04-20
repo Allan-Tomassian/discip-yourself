@@ -27,12 +27,24 @@ import {
 const DEFAULT_FIRST_RUN_PLAN_MODEL = "gpt-5.4";
 const DEFAULT_FIRST_RUN_PLAN_TIMEOUT_MS = 55000;
 const MIN_FIRST_RUN_PLAN_TIMEOUT_MS = 30000;
-const FIRST_RUN_PLAN_PROMPT_VERSION = "first_run_plan_v1";
+const FIRST_RUN_PLAN_PROMPT_VERSION = "first_run_plan_v2";
+const ALL_FIRST_RUN_CATEGORY_IDS = Object.freeze(Object.keys(USER_AI_CATEGORY_META));
+const FIRST_RUN_CATEGORY_INFERENCE_KEYWORDS = Object.freeze({
+  health: ["sante", "sport", "energie", "sommeil", "forme", "marche", "corps", "fatigue", "routine"],
+  business: ["business", "projet", "client", "vente", "offre", "roadmap", "produit", "startup", "lancement"],
+  learning: ["apprendre", "apprentissage", "etud", "etude", "formation", "cours", "lecture", "competence"],
+  productivity: ["discipline", "focus", "concentration", "organisation", "structure", "procrastination", "cadre"],
+  personal: ["perso", "personnel", "famille", "maison", "equilibre", "confiance", "vie", "quotidien"],
+  finance: ["finance", "argent", "budget", "revenu", "cash", "epargne", "facture", "tresorerie"],
+});
 
 const firstRunPlanCandidateSchema = z
   .object({
     variant: z.enum(["tenable", "ambitious"]),
     summary: z.string().trim().min(1).max(240),
+    weekGoal: z.string().trim().min(1).max(160),
+    weekBenefit: z.string().trim().min(1).max(200),
+    differenceNote: z.string().trim().min(1).max(200),
     rationale: firstRunPlanRationaleSchema,
     commitDraft: firstRunCommitDraftProviderSchema,
   })
@@ -42,6 +54,9 @@ const firstRunPlanOpenAiCandidateSchema = z
   .object({
     variant: z.enum(["tenable", "ambitious"]),
     summary: z.string().trim().min(1).max(240),
+    weekGoal: z.string().trim().min(1).max(160),
+    weekBenefit: z.string().trim().min(1).max(200),
+    differenceNote: z.string().trim().min(1).max(200),
     rationale: firstRunPlanRationaleSchema,
     commitDraft: firstRunCommitDraftOpenAiSchema,
   })
@@ -76,6 +91,64 @@ function normalizeTextKey(value, maxLength = 240) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function extractMeaningfulTokens(value, maxLength = 240) {
+  const normalized = normalizeTextKey(value, maxLength);
+  if (!normalized) return [];
+  const stopwords = new Set([
+    "pour",
+    "avec",
+    "dans",
+    "sans",
+    "mais",
+    "plus",
+    "moins",
+    "tout",
+    "cette",
+    "cette",
+    "cela",
+    "etre",
+    "avoir",
+    "faire",
+    "aller",
+    "comme",
+    "maintenant",
+    "semaine",
+    "semaines",
+    "prochaines",
+    "premiere",
+    "vraie",
+    "tres",
+    "trop",
+    "juste",
+    "bien",
+    "mieux",
+    "mon",
+    "mes",
+    "ton",
+    "tes",
+    "notre",
+    "votre",
+    "leur",
+    "leurs",
+    "reprendre",
+    "relancer",
+  ]);
+  return Array.from(
+    new Set(
+      normalized
+        .split(" ")
+        .map((entry) => entry.replace(/[^a-z0-9]/g, ""))
+        .filter((entry) => entry.length >= 4 && !stopwords.has(entry))
+    )
+  ).slice(0, 16);
+}
+
+function textIncludesAnyToken(value, tokens = []) {
+  const normalized = normalizeTextKey(value, 400);
+  if (!normalized || !Array.isArray(tokens) || !tokens.length) return false;
+  return tokens.some((token) => normalized.includes(token));
 }
 
 function createBackendError(code, message = code, details = null) {
@@ -403,6 +476,62 @@ function buildWindowSummary(windows = []) {
   }));
 }
 
+function buildCategoryCatalog() {
+  return Object.values(USER_AI_CATEGORY_META).map((entry) => ({
+    id: entry.id,
+    label: entry.label,
+    color: entry.color,
+  }));
+}
+
+function inferPriorityCategoryIds({ whyText, primaryGoal }) {
+  const combinedText = `${trimString(primaryGoal, 240)} ${trimString(whyText, 1200)}`.trim();
+  const normalizedText = normalizeTextKey(combinedText, 1800);
+  if (!normalizedText) return [];
+
+  const labelTokens = buildCategoryCatalog().flatMap((entry) => [
+    [entry.id, normalizeTextKey(entry.id, 80)],
+    [entry.id, normalizeTextKey(entry.label, 80)],
+  ]);
+
+  const scores = new Map(ALL_FIRST_RUN_CATEGORY_IDS.map((categoryId) => [categoryId, 0]));
+  labelTokens.forEach(([categoryId, token]) => {
+    if (!token || !normalizedText.includes(token)) return;
+    scores.set(categoryId, (scores.get(categoryId) || 0) + 3);
+  });
+
+  Object.entries(FIRST_RUN_CATEGORY_INFERENCE_KEYWORDS).forEach(([categoryId, keywords]) => {
+    keywords.forEach((keyword) => {
+      if (!normalizedText.includes(keyword)) return;
+      scores.set(categoryId, (scores.get(categoryId) || 0) + 2);
+    });
+  });
+
+  return [...scores.entries()]
+    .filter(([, score]) => score > 0)
+    .sort((left, right) => {
+      if (left[1] !== right[1]) return right[1] - left[1];
+      return left[0].localeCompare(right[0]);
+    })
+    .map(([categoryId]) => categoryId)
+    .slice(0, 3);
+}
+
+function resolvePriorityCategoryHints(context) {
+  const explicitHints = Array.isArray(context?.priorityCategoryIds)
+    ? context.priorityCategoryIds.filter((entry) => ALL_FIRST_RUN_CATEGORY_IDS.includes(entry))
+    : [];
+  const inferredHints = inferPriorityCategoryIds({
+    whyText: context?.whyText,
+    primaryGoal: context?.primaryGoal,
+  });
+  return {
+    explicitHints,
+    inferredHints,
+    promptHints: explicitHints.length ? explicitHints : inferredHints,
+  };
+}
+
 function buildFirstRunPlanSystemPrompt() {
   return [
     "You create premium first-run weekly plans for Discip Yourself.",
@@ -412,31 +541,30 @@ function buildFirstRunPlanSystemPrompt() {
     "Do not add any explanatory wrapper.",
     "Do not mention internal schemas, hidden fields, or the compare screen.",
     "Commit drafts must be committable later without another AI call.",
+    "The user gives only a few signals. The coach must infer the rest and organize a credible week.",
+    "The whyText must materially influence the weekly goal, weekly benefit, action selection, density, and wording.",
   ].join("\n");
 }
 
 function buildFirstRunPlanPrompt(context) {
-  const categoryCatalog = Object.values(USER_AI_CATEGORY_META).map((entry) => ({
-    id: entry.id,
-    label: entry.label,
-    color: entry.color,
-  }));
+  const categoryCatalog = buildCategoryCatalog();
+  const categoryHints = resolvePriorityCategoryHints(context);
   const weeklyMinuteBands = buildWeeklyMinuteBands(context.currentCapacity);
 
   return [
     "Build two first-run weekly plans from the exact user signals below.",
     "Hard requirements:",
     "1. Output exactly two plans with variants tenable and ambitious.",
-    "2. Each plan must include summary, rationale, and a commitDraft only.",
-    "3. Do not output comparisonMetrics, categories, preview, or todayPreview. They are derived later.",
-    "4. commitDraft.categories.templateId must only use ids from priorityCategoryIds.",
+    "2. Each plan must include summary, weekGoal, weekBenefit, differenceNote, rationale, and a commitDraft.",
+    "3. Do not output comparisonMetrics, categories, preview, todayPreview, weekSchedule, or rhythmGuidance. They are derived later.",
+    "4. priorityCategoryIds are only hints. If they are absent or incomplete, infer the categories from whyText and primaryGoal. Use only category ids from categoryCatalog.",
     "5. commitDraft.goals must contain OUTCOME items only.",
     "6. commitDraft.actions must contain PROCESS items only.",
     "7. Use concrete scheduled blocks only: actions should use timeMode FIXED with matching startTime and timeSlots[0].",
     "8. commitDraft.occurrences must cover the next 7 days starting at referenceDateKey, inclusive.",
     "9. Never place an occurrence inside unavailableWindows.",
     "10. Prefer preferredWindows when possible, but keep the plan credible.",
-    "11. The ambitious plan must be denser than the tenable plan while staying realistic.",
+    "11. The ambitious plan must be denser than the tenable plan while staying realistic, and the difference must be structural, not cosmetic.",
     `12. Weekly minute targets by capacity:
 - tenable: ${weeklyMinuteBands.tenable[0]}..${weeklyMinuteBands.tenable[1]}
 - ambitious: ${weeklyMinuteBands.ambitious[0]}..${weeklyMinuteBands.ambitious[1]}`,
@@ -446,11 +574,17 @@ function buildFirstRunPlanPrompt(context) {
     "16. Do not use goalId, labels, or free-text aliases as the canonical occurrence reference.",
     "17. Keep parentGoalId only on actions. Occurrences reference actions, not goals.",
     "18. Occurrences must use status planned.",
+    "19. weekGoal must state what the user should have moved forward by the end of the week.",
+    "20. weekBenefit must describe a concrete visible benefit at J+7. It must not be generic.",
+    "21. differenceNote must state what clearly changes versus the other plan: load, active days, margin, cadence, or timing.",
+    "22. The tenable plan must preserve margin with at least one lighter day. The ambitious plan must push harder without becoming unrealistic.",
     `Context: ${JSON.stringify({
       whyText: context.whyText,
       primaryGoal: context.primaryGoal,
       currentCapacity: context.currentCapacity,
-      priorityCategoryIds: context.priorityCategoryIds,
+      priorityCategoryIdsHint: categoryHints.explicitHints,
+      inferredCategoryIdsHint: categoryHints.inferredHints,
+      resolvedCategoryHints: categoryHints.promptHints,
       categoryCatalog,
       unavailableWindows: buildWindowSummary(context.unavailableWindows),
       preferredWindows: buildWindowSummary(context.preferredWindows),
@@ -513,7 +647,224 @@ function formatSlotLabel(start, durationMinutes) {
   return `${start} - ${minutesToTimeStr(endMinutes)}`;
 }
 
-function buildDerivedView({ variant, summary, rationale, commitDraft, context }) {
+function formatMinuteRange(startMinutes, endMinutes) {
+  if (!Number.isFinite(startMinutes) || !Number.isFinite(endMinutes)) return "";
+  const safeStart = Math.max(0, Math.round(startMinutes));
+  const safeEnd = Math.max(safeStart + 15, Math.min(23 * 60 + 59, Math.round(endMinutes)));
+  return `${minutesToTimeStr(safeStart)} - ${minutesToTimeStr(safeEnd)}`;
+}
+
+function classifyDayLoad(totalMinutes, blockCount) {
+  if (blockCount <= 0 || totalMinutes <= 20) return "leger";
+  if (blockCount >= 2 || totalMinutes >= 75) return "dense";
+  return "cadre";
+}
+
+function buildWeekScheduleHeadline(dayRows = []) {
+  if (!dayRows.length) return "Journée légère pour garder de la marge.";
+
+  const dominantCategory = [...dayRows]
+    .sort((left, right) => {
+      const leftMinutes = Math.max(0, Math.round(left?.occurrence?.durationMinutes || 0));
+      const rightMinutes = Math.max(0, Math.round(right?.occurrence?.durationMinutes || 0));
+      if (leftMinutes !== rightMinutes) return rightMinutes - leftMinutes;
+      return String(left?.action?.title || "").localeCompare(String(right?.action?.title || ""));
+    })[0]?.category;
+
+  if (dayRows.length === 1) {
+    return `Bloc clé ${dominantCategory?.name?.toLowerCase?.() || "utile"}: ${dayRows[0]?.action?.title || "avancée prioritaire"}.`;
+  }
+
+  return `${dayRows.length} blocs pour faire avancer ${dominantCategory?.name?.toLowerCase?.() || "la semaine"}.`;
+}
+
+function buildWeekSchedule({ rows, context, horizonKeys }) {
+  const rowsByDay = new Map(horizonKeys.map((dateKey) => [dateKey, []]));
+  rows.forEach((row) => {
+    if (!rowsByDay.has(row?.occurrence?.date)) return;
+    rowsByDay.get(row.occurrence.date).push(row);
+  });
+
+  return [...rowsByDay.entries()].map(([dateKey, dayRows]) => {
+    const sortedRows = [...dayRows].sort((left, right) => sortOccurrences(left?.occurrence, right?.occurrence));
+    const blockCount = sortedRows.length;
+    const totalMinutes = sortedRows.reduce(
+      (sum, row) => sum + Math.max(0, Math.round(row?.occurrence?.durationMinutes || 0)),
+      0
+    );
+    const firstRow = sortedRows[0] || null;
+    return {
+      dayKey: dateKey,
+      dayLabel: formatDayLabel(dateKey, context.locale),
+      blockCount,
+      totalMinutes,
+      loadLabel: classifyDayLoad(totalMinutes, blockCount),
+      primarySlotLabel:
+        firstRow ? formatSlotLabel(firstRow.occurrence.start, firstRow.occurrence.durationMinutes) : "Marge protégée",
+      headline: buildWeekScheduleHeadline(sortedRows),
+    };
+  });
+}
+
+function buildRhythmGuidance({ rows, preferredWindows = [] }) {
+  const daySummaries = new Map();
+  rows.forEach((row) => {
+    const dateKey = row?.occurrence?.date;
+    const startMinutes = parseTimeToMinutes(row?.occurrence?.start);
+    const endMinutes =
+      Number.isFinite(startMinutes) && Number.isFinite(row?.occurrence?.durationMinutes)
+        ? startMinutes + row.occurrence.durationMinutes
+        : null;
+    if (!dateKey || !Number.isFinite(startMinutes) || !Number.isFinite(endMinutes)) return;
+    const current = daySummaries.get(dateKey) || {
+      firstStart: startMinutes,
+      lastEnd: endMinutes,
+      rows: [],
+    };
+    current.firstStart = Math.min(current.firstStart, startMinutes);
+    current.lastEnd = Math.max(current.lastEnd, endMinutes);
+    current.rows.push(row);
+    daySummaries.set(dateKey, current);
+  });
+
+  const dayValues = [...daySummaries.values()];
+  if (dayValues.length < 3) return null;
+
+  const startValues = dayValues.map((entry) => entry.firstStart);
+  const endValues = dayValues.map((entry) => entry.lastEnd);
+  const minStart = Math.min(...startValues);
+  const maxStart = Math.max(...startValues);
+  const minEnd = Math.min(...endValues);
+  const maxEnd = Math.max(...endValues);
+  const startSpread = maxStart - minStart;
+  const endSpread = maxEnd - minEnd;
+  const preferredMatches = rows.filter((row) =>
+    preferredWindows.some((windowValue) => doesOccurrenceOverlapWindow(row?.occurrence, windowValue))
+  ).length;
+
+  const confidence =
+    dayValues.length >= 4 && startSpread <= 60 && endSpread <= 90 ? "high"
+    : dayValues.length >= 3 && (startSpread <= 90 || preferredMatches >= 2) ? "medium"
+    : "low";
+
+  if (confidence === "low") return null;
+
+  return {
+    startWindow: formatMinuteRange(minStart, minStart + Math.max(45, Math.min(90, startSpread + 45))),
+    shutdownWindow: formatMinuteRange(maxEnd, maxEnd + Math.max(30, Math.min(60, endSpread + 30))),
+    confidence,
+    label: "Fenêtres conseillées pour lancer et refermer la journée",
+    note:
+      preferredMatches > 0
+        ? "Ces repères s'appuient sur les créneaux déjà favorables et sur le rythme réellement planifié."
+        : "Ces repères s'appuient sur le rythme réellement planifié cette semaine.",
+  };
+}
+
+function buildPlanReferenceTokens(plan) {
+  const categoryTokens = (Array.isArray(plan?.categories) ? plan.categories : []).flatMap((entry) =>
+    extractMeaningfulTokens(entry?.label, 96)
+  );
+  const actionTokens = (Array.isArray(plan?.commitDraft?.actions) ? plan.commitDraft.actions : []).flatMap((entry) =>
+    extractMeaningfulTokens(entry?.title, 160)
+  );
+  const goalTokens = (Array.isArray(plan?.commitDraft?.goals) ? plan.commitDraft.goals : []).flatMap((entry) =>
+    extractMeaningfulTokens(entry?.title, 160)
+  );
+  return Array.from(new Set([...categoryTokens, ...actionTokens, ...goalTokens])).slice(0, 18);
+}
+
+function buildPlanDiagnostics(plan) {
+  const weekSchedule = Array.isArray(plan?.weekSchedule) ? plan.weekSchedule : [];
+  return {
+    retainedCategoryIds: (Array.isArray(plan?.commitDraft?.categories) ? plan.commitDraft.categories : []).map(
+      (category) => category.templateId
+    ),
+    activeDays: Number(plan?.comparisonMetrics?.activeDays || 0),
+    lightDays: weekSchedule.filter((entry) => entry?.loadLabel === "leger").length,
+    denseDays: weekSchedule.filter((entry) => entry?.loadLabel === "dense").length,
+    hasRhythmGuidance: Boolean(plan?.rhythmGuidance),
+    rhythmGuidanceConfidence: plan?.rhythmGuidance?.confidence || null,
+  };
+}
+
+function hasGroundedPlanText(text, { intentTokens = [], planTokens = [] } = {}) {
+  if (textIncludesAnyToken(text, intentTokens)) return true;
+  if (textIncludesAnyToken(text, planTokens)) return true;
+  return /\b\d+\b/.test(trimString(text, 240));
+}
+
+function hasSpecificDifferenceNote(text) {
+  const normalized = normalizeTextKey(text, 200);
+  if (!normalized) return false;
+  const words = normalized.split(" ").filter(Boolean);
+  if (words.length < 5) return false;
+  return ["plus", "moins", "jour", "jours", "blocs", "marge", "charge", "dense", "leger", "cadre", "rythme"].some(
+    (token) => normalized.includes(token)
+  );
+}
+
+function rejectPlanQuality(reason, { variant, plan, diagnostics, extraDetails = null }) {
+  throw createBackendError(
+    "INVALID_FIRST_RUN_PLAN_RESPONSE",
+    "INVALID_FIRST_RUN_PLAN_RESPONSE",
+    buildInvalidResponseDetails({
+      rejectionStage: "plan_quality",
+      rejectionReason: reason,
+      variant,
+      retainedCategoryIds: diagnostics?.retainedCategoryIds || null,
+      activeDays: diagnostics?.activeDays ?? null,
+      lightDays: diagnostics?.lightDays ?? null,
+      denseDays: diagnostics?.denseDays ?? null,
+      hasRhythmGuidance: diagnostics?.hasRhythmGuidance ?? null,
+      rhythmGuidanceConfidence: diagnostics?.rhythmGuidanceConfidence ?? null,
+      ...(extraDetails ? { details: extraDetails } : {}),
+    })
+  );
+}
+
+function validatePlanQuality({ plan, context }) {
+  const diagnostics = buildPlanDiagnostics(plan);
+  const intentTokens = extractMeaningfulTokens(`${context.primaryGoal} ${context.whyText}`, 1600);
+  const planTokens = buildPlanReferenceTokens(plan);
+  const weekSchedule = Array.isArray(plan.weekSchedule) ? plan.weekSchedule : [];
+  const minimumActiveDays = plan.variant === "ambitious" ? 5 : 4;
+
+  if (weekSchedule.length < 5 || Number(plan?.comparisonMetrics?.activeDays || 0) < minimumActiveDays) {
+    rejectPlanQuality("week_schedule_too_sparse", {
+      variant: plan.variant,
+      plan,
+      diagnostics,
+      extraDetails: {
+        minimumActiveDays,
+        activeDays: Number(plan?.comparisonMetrics?.activeDays || 0),
+        weekScheduleLength: weekSchedule.length,
+      },
+    });
+  }
+
+  if (!hasGroundedPlanText(plan.weekGoal, { intentTokens, planTokens })) {
+    rejectPlanQuality("week_goal_not_grounded", { variant: plan.variant, plan, diagnostics });
+  }
+
+  if (!hasGroundedPlanText(plan.weekBenefit, { intentTokens, planTokens }) || trimString(plan.weekBenefit, 200).split(/\s+/).length < 5) {
+    rejectPlanQuality("generic_week_benefit", { variant: plan.variant, plan, diagnostics });
+  }
+
+  if (!hasSpecificDifferenceNote(plan.differenceNote)) {
+    rejectPlanQuality("generic_difference_note", { variant: plan.variant, plan, diagnostics });
+  }
+
+  if (plan.variant === "tenable" && diagnostics.lightDays < 1) {
+    rejectPlanQuality("tenable_needs_light_day", { variant: plan.variant, plan, diagnostics });
+  }
+
+  if (plan.rhythmGuidance?.confidence === "low") {
+    rejectPlanQuality("low_confidence_rhythm_guidance", { variant: plan.variant, plan, diagnostics });
+  }
+}
+
+function buildDerivedView({ variant, summary, weekGoal, weekBenefit, differenceNote, rationale, commitDraft, context }) {
   const categories = [...commitDraft.categories].sort(sortByOrderThenId);
   const actions = [...commitDraft.actions].sort(sortByOrderThenId);
   const goals = [...commitDraft.goals].sort(sortByOrderThenId);
@@ -522,10 +873,10 @@ function buildDerivedView({ variant, summary, rationale, commitDraft, context })
   const categoriesById = new Map(categories.map((entry) => [entry.id, entry]));
   const actionsById = new Map(actions.map((entry) => [entry.id, entry]));
   const goalsById = new Map(goals.map((entry) => [entry.id, entry]));
-  const horizonKeys = new Set(buildDateHorizon(context.referenceDateKey));
+  const horizonKeySet = new Set(buildDateHorizon(context.referenceDateKey));
 
   const rows = occurrences
-    .filter((occurrence) => horizonKeys.has(occurrence.date))
+    .filter((occurrence) => horizonKeySet.has(occurrence.date))
     .map((occurrence) => {
       const action = actionsById.get(occurrence.actionId);
       const category = categoriesById.get(action?.categoryId || "");
@@ -610,16 +961,24 @@ function buildDerivedView({ variant, summary, rationale, commitDraft, context })
     title: action.title,
     minutes: occurrence.durationMinutes,
   }));
+  const scheduleHorizonKeys = buildDateHorizon(context.referenceDateKey);
+  const weekSchedule = buildWeekSchedule({ rows, context, horizonKeys: scheduleHorizonKeys });
+  const rhythmGuidance = buildRhythmGuidance({ rows, preferredWindows: context.preferredWindows });
 
   return {
     id: variant,
     variant,
     title: getFirstRunPlanTitle(variant),
     summary,
+    weekGoal,
+    weekBenefit,
+    differenceNote,
     comparisonMetrics,
     categories: categorySummary,
     preview,
     todayPreview,
+    weekSchedule,
+    rhythmGuidance,
     rationale,
     commitDraft: {
       ...commitDraft,
@@ -641,9 +1000,20 @@ function validateCommitDraft({ variant, commitDraft, context }) {
   const goalIds = new Set();
   const actionIds = new Set();
   const occurrenceIds = new Set();
-  const allowedTemplateIds = new Set(context.priorityCategoryIds);
+  const allowedTemplateIds = new Set(ALL_FIRST_RUN_CATEGORY_IDS);
   const horizonKeys = new Set(buildDateHorizon(context.referenceDateKey));
   const actionsById = new Map();
+
+  if (categories.length > 3) {
+    throw createBackendError(
+      "INVALID_FIRST_RUN_PLAN_RESPONSE",
+      "INVALID_FIRST_RUN_PLAN_RESPONSE",
+      buildInvalidResponseDetails({
+        rejectionStage: "commit_draft_validation",
+        rejectionReason: "too_many_categories",
+      })
+    );
+  }
 
   categories.forEach((category) => {
     if (categoryIds.has(category.id)) {
@@ -838,6 +1208,9 @@ function validateCommitDraft({ variant, commitDraft, context }) {
   const derived = buildDerivedView({
     variant,
     summary: "",
+    weekGoal: "objectif de semaine",
+    weekBenefit: "benefice concret a j+7",
+    differenceNote: "difference structurelle de semaine",
     rationale: { whyFit: "", capacityFit: "", constraintFit: "" },
     commitDraft,
     context,
@@ -857,7 +1230,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
   }
 }
 
-function validatePlanDivergence(plans = []) {
+function validatePlanDivergence(plans = [], context) {
   const tenable = plans.find((plan) => plan.variant === "tenable");
   const ambitious = plans.find((plan) => plan.variant === "ambitious");
   if (!tenable || !ambitious) {
@@ -870,6 +1243,9 @@ function validatePlanDivergence(plans = []) {
       })
     );
   }
+
+  validatePlanQuality({ plan: tenable, context });
+  validatePlanQuality({ plan: ambitious, context });
 
   const weeklyGap = ambitious.comparisonMetrics.weeklyMinutes - tenable.comparisonMetrics.weeklyMinutes;
   const minimumWeeklyGap = Math.max(45, Math.round(tenable.comparisonMetrics.weeklyMinutes * 0.2));
@@ -884,8 +1260,35 @@ function validatePlanDivergence(plans = []) {
     );
   }
 
-  // Weekly load remains the hard guard. Preview rows and recovery days can stay
-  // close while still producing a valid, committable compare state.
+  const tenableDiagnostics = buildPlanDiagnostics(tenable);
+  const ambitiousDiagnostics = buildPlanDiagnostics(ambitious);
+  const hasStructuralDifference =
+    ambitious.comparisonMetrics.activeDays > tenable.comparisonMetrics.activeDays ||
+    ambitious.comparisonMetrics.totalBlocks > tenable.comparisonMetrics.totalBlocks ||
+    ambitiousDiagnostics.denseDays > tenableDiagnostics.denseDays ||
+    ambitiousDiagnostics.lightDays < tenableDiagnostics.lightDays ||
+    ambitious.weekSchedule.some((entry, index) => {
+      const tenableEntry = tenable.weekSchedule[index] || null;
+      if (!tenableEntry) return true;
+      return (
+        entry.blockCount !== tenableEntry.blockCount ||
+        entry.loadLabel !== tenableEntry.loadLabel ||
+        (entry.blockCount > 0 && entry.primarySlotLabel !== tenableEntry.primarySlotLabel)
+      );
+    });
+
+  if (!hasStructuralDifference || normalizeTextKey(tenable.differenceNote, 200) === normalizeTextKey(ambitious.differenceNote, 200)) {
+    throw createBackendError(
+      "INVALID_FIRST_RUN_PLAN_RESPONSE",
+      "INVALID_FIRST_RUN_PLAN_RESPONSE",
+      buildInvalidResponseDetails({
+        rejectionStage: "variant_divergence",
+        rejectionReason: "plans_too_similar_structurally",
+        tenableDiagnostics,
+        ambitiousDiagnostics,
+      })
+    );
+  }
 }
 
 function normalizeProviderPayload(providerPayload, context, requestMeta) {
@@ -899,6 +1302,9 @@ function normalizeProviderPayload(providerPayload, context, requestMeta) {
       return buildDerivedView({
         variant: entry.variant,
         summary: entry.summary,
+        weekGoal: entry.weekGoal,
+        weekBenefit: entry.weekBenefit,
+        differenceNote: entry.differenceNote,
         rationale: entry.rationale,
         commitDraft: normalizedCommitDraft,
         context,
@@ -906,7 +1312,7 @@ function normalizeProviderPayload(providerPayload, context, requestMeta) {
     })
     .sort((left, right) => FIRST_RUN_PLAN_VARIANTS.indexOf(left.variant) - FIRST_RUN_PLAN_VARIANTS.indexOf(right.variant));
 
-  validatePlanDivergence(plans);
+  validatePlanDivergence(plans, context);
 
   return firstRunPlanResponseSchema.parse({
     version: 2,

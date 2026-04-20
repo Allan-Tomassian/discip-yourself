@@ -204,13 +204,16 @@ function createValidFirstRunPlanResponse({ requestId = "req-first-run", inputHas
     generatedAt: "2026-04-19T08:00:00.000Z",
     requestId,
     model: "gpt-5.4",
-    promptVersion: "first_run_plan_v1",
+    promptVersion: "first_run_plan_v2",
     plans: [
       {
         id: "tenable",
         variant: "tenable",
         title: "Plan tenable",
-        summary: "Une semaine tenable, dense juste ce qu'il faut.",
+        summary: "Une semaine tenable pour relancer le projet sans saturer la semaine.",
+        weekGoal: "Relancer le projet avec trois vrais blocs utiles et une base stable.",
+        weekBenefit: "À J+7, le projet a redémarré sans casser ton rythme ni ta marge.",
+        differenceNote: "Moins de jours actifs et plus de marge pour tenir la semaine.",
         comparisonMetrics: {
           weeklyMinutes: 150,
           totalBlocks: 5,
@@ -245,6 +248,78 @@ function createValidFirstRunPlanResponse({ requestId = "req-first-run", inputHas
             minutes: 25,
           },
         ],
+        weekSchedule: [
+          {
+            dayKey: TODAY_KEY,
+            dayLabel: "DIM 19/04",
+            blockCount: 1,
+            totalMinutes: 25,
+            loadLabel: "cadre",
+            primarySlotLabel: "08:00 - 08:25",
+            headline: "Bloc clé business: Bloc roadmap.",
+          },
+          {
+            dayKey: FUTURE_KEY,
+            dayLabel: "LUN 20/04",
+            blockCount: 1,
+            totalMinutes: 25,
+            loadLabel: "cadre",
+            primarySlotLabel: "18:30 - 18:55",
+            headline: "Bloc clé santé: Marche active.",
+          },
+          {
+            dayKey: addDateKeyOffset(TODAY_KEY, 2),
+            dayLabel: "MAR 21/04",
+            blockCount: 1,
+            totalMinutes: 35,
+            loadLabel: "cadre",
+            primarySlotLabel: "08:00 - 08:35",
+            headline: "Bloc clé business: Bloc roadmap.",
+          },
+          {
+            dayKey: addDateKeyOffset(TODAY_KEY, 3),
+            dayLabel: "MER 22/04",
+            blockCount: 1,
+            totalMinutes: 30,
+            loadLabel: "cadre",
+            primarySlotLabel: "18:30 - 19:00",
+            headline: "Bloc clé santé: Marche active.",
+          },
+          {
+            dayKey: addDateKeyOffset(TODAY_KEY, 4),
+            dayLabel: "JEU 23/04",
+            blockCount: 1,
+            totalMinutes: 35,
+            loadLabel: "cadre",
+            primarySlotLabel: "08:00 - 08:35",
+            headline: "Bloc clé business: Bloc roadmap.",
+          },
+          {
+            dayKey: addDateKeyOffset(TODAY_KEY, 5),
+            dayLabel: "VEN 24/04",
+            blockCount: 0,
+            totalMinutes: 0,
+            loadLabel: "leger",
+            primarySlotLabel: "Marge protégée",
+            headline: "Journée légère pour garder de la marge.",
+          },
+          {
+            dayKey: addDateKeyOffset(TODAY_KEY, 6),
+            dayLabel: "SAM 25/04",
+            blockCount: 0,
+            totalMinutes: 0,
+            loadLabel: "leger",
+            primarySlotLabel: "Marge protégée",
+            headline: "Journée légère pour garder de la marge.",
+          },
+        ],
+        rhythmGuidance: {
+          startWindow: "07:30 - 08:15",
+          shutdownWindow: "19:00 - 19:45",
+          confidence: "high",
+          label: "Fenêtres conseillées pour lancer et refermer la journée",
+          note: "Ces repères s'appuient sur les créneaux déjà favorables et sur le rythme réellement planifié.",
+        },
         rationale: {
           whyFit: "Le plan protège l'élan.",
           capacityFit: "La charge reste respirable.",
@@ -304,7 +379,10 @@ function createValidFirstRunPlanResponse({ requestId = "req-first-run", inputHas
         id: "ambitious",
         variant: "ambitious",
         title: "Plan ambitieux",
-        summary: "Une semaine plus structurée et plus dense.",
+        summary: "Une semaine plus structurée pour faire avancer le projet plus vite.",
+        weekGoal: "Créer une vraie traction projet avec plus de blocs actifs sur la semaine.",
+        weekBenefit: "À J+7, tu as plus d'avancement visible et un rythme de travail déjà installé.",
+        differenceNote: "Plus de jours actifs, plus de blocs et une charge hebdo plus dense.",
         comparisonMetrics: {
           weeklyMinutes: 225,
           totalBlocks: 7,
@@ -339,6 +417,78 @@ function createValidFirstRunPlanResponse({ requestId = "req-first-run", inputHas
             minutes: 45,
           },
         ],
+        weekSchedule: [
+          {
+            dayKey: TODAY_KEY,
+            dayLabel: "DIM 19/04",
+            blockCount: 1,
+            totalMinutes: 45,
+            loadLabel: "cadre",
+            primarySlotLabel: "07:30 - 08:15",
+            headline: "Bloc clé business: Bloc roadmap.",
+          },
+          {
+            dayKey: FUTURE_KEY,
+            dayLabel: "LUN 20/04",
+            blockCount: 1,
+            totalMinutes: 30,
+            loadLabel: "cadre",
+            primarySlotLabel: "18:30 - 19:00",
+            headline: "Bloc clé santé: Marche active.",
+          },
+          {
+            dayKey: addDateKeyOffset(TODAY_KEY, 2),
+            dayLabel: "MAR 21/04",
+            blockCount: 1,
+            totalMinutes: 45,
+            loadLabel: "cadre",
+            primarySlotLabel: "07:30 - 08:15",
+            headline: "Bloc clé business: Bloc roadmap.",
+          },
+          {
+            dayKey: addDateKeyOffset(TODAY_KEY, 3),
+            dayLabel: "MER 22/04",
+            blockCount: 1,
+            totalMinutes: 30,
+            loadLabel: "cadre",
+            primarySlotLabel: "18:30 - 19:00",
+            headline: "Bloc clé santé: Marche active.",
+          },
+          {
+            dayKey: addDateKeyOffset(TODAY_KEY, 4),
+            dayLabel: "JEU 23/04",
+            blockCount: 1,
+            totalMinutes: 45,
+            loadLabel: "cadre",
+            primarySlotLabel: "07:30 - 08:15",
+            headline: "Bloc clé business: Bloc roadmap.",
+          },
+          {
+            dayKey: addDateKeyOffset(TODAY_KEY, 5),
+            dayLabel: "VEN 24/04",
+            blockCount: 1,
+            totalMinutes: 30,
+            loadLabel: "cadre",
+            primarySlotLabel: "18:30 - 19:00",
+            headline: "Bloc clé santé: Marche active.",
+          },
+          {
+            dayKey: addDateKeyOffset(TODAY_KEY, 6),
+            dayLabel: "SAM 25/04",
+            blockCount: 1,
+            totalMinutes: 30,
+            loadLabel: "cadre",
+            primarySlotLabel: "07:30 - 08:00",
+            headline: "Bloc clé business: Bloc roadmap.",
+          },
+        ],
+        rhythmGuidance: {
+          startWindow: "07:30 - 08:15",
+          shutdownWindow: "19:00 - 19:45",
+          confidence: "high",
+          label: "Fenêtres conseillées pour lancer et refermer la journée",
+          note: "Ces repères s'appuient sur les créneaux déjà favorables et sur le rythme réellement planifié.",
+        },
         rationale: {
           whyFit: "Le plan accélère dès la première semaine.",
           capacityFit: "La charge est plus engagée.",
@@ -397,6 +547,19 @@ function createValidFirstRunPlanResponse({ requestId = "req-first-run", inputHas
         },
       },
     ],
+  };
+}
+
+function toProviderFirstRunPlanCandidate(plan, overrides = {}) {
+  return {
+    variant: plan.variant,
+    summary: plan.summary,
+    weekGoal: plan.weekGoal,
+    weekBenefit: plan.weekBenefit,
+    differenceNote: plan.differenceNote,
+    rationale: plan.rationale,
+    commitDraft: plan.commitDraft,
+    ...overrides,
   };
 }
 
@@ -1242,12 +1405,7 @@ test("POST /ai/first-run-plan uses gpt-5.4 with a dedicated timeout by default",
               {
                 message: {
                   parsed: {
-                    plans: createValidFirstRunPlanResponse().plans.map((plan) => ({
-                      variant: plan.variant,
-                      summary: plan.summary,
-                      rationale: plan.rationale,
-                      commitDraft: plan.commitDraft,
-                    })),
+                    plans: createValidFirstRunPlanResponse().plans.map((plan) => toProviderFirstRunPlanCandidate(plan)),
                   },
                 },
               },
@@ -1296,12 +1454,7 @@ test("POST /ai/first-run-plan applies a 30000ms floor to the dedicated timeout",
               {
                 message: {
                   parsed: {
-                    plans: createValidFirstRunPlanResponse().plans.map((plan) => ({
-                      variant: plan.variant,
-                      summary: plan.summary,
-                      rationale: plan.rationale,
-                      commitDraft: plan.commitDraft,
-                    })),
+                    plans: createValidFirstRunPlanResponse().plans.map((plan) => toProviderFirstRunPlanCandidate(plan)),
                   },
                 },
               },
@@ -1394,16 +1547,14 @@ test("POST /ai/first-run-plan rejects plans that do not diverge enough", async (
                 message: {
                   parsed: {
                     plans: [
-                      {
-                        variant: "tenable",
-                        summary: baseTenable.summary,
-                        rationale: baseTenable.rationale,
+                      toProviderFirstRunPlanCandidate(baseTenable, {
                         commitDraft: validTenableDraft,
-                      },
-                      {
-                        variant: "ambitious",
+                      }),
+                      toProviderFirstRunPlanCandidate(basePlans[1], {
                         summary: "Plan ambitieux trop proche",
-                        rationale: basePlans[1].rationale,
+                        weekGoal: basePlans[1].weekGoal,
+                        weekBenefit: "À J+7, tu avances un peu plus mais la structure reste presque identique.",
+                        differenceNote: "Un peu plus de minutes, mais presque la même semaine.",
                         commitDraft: {
                           ...validTenableDraft,
                           occurrences: [
@@ -1418,7 +1569,7 @@ test("POST /ai/first-run-plan rejects plans that do not diverge enough", async (
                             },
                           ],
                         },
-                      },
+                      }),
                     ],
                   },
                 },
@@ -1477,16 +1628,10 @@ test("POST /ai/first-run-plan accepts valid plans even when preview and recovery
                 message: {
                   parsed: {
                     plans: [
-                      {
-                        variant: "tenable",
-                        summary: tenable.summary,
-                        rationale: tenable.rationale,
+                      toProviderFirstRunPlanCandidate(tenable, {
                         commitDraft: closeTenableDraft,
-                      },
-                      {
-                        variant: "ambitious",
-                        summary: ambitious.summary,
-                        rationale: ambitious.rationale,
+                      }),
+                      toProviderFirstRunPlanCandidate(ambitious, {
                         commitDraft: {
                           ...closeTenableDraft,
                           occurrences: [
@@ -1501,7 +1646,7 @@ test("POST /ai/first-run-plan accepts valid plans even when preview and recovery
                             },
                           ],
                         },
-                      },
+                      }),
                     ],
                   },
                 },
@@ -1544,18 +1689,17 @@ test("POST /ai/first-run-plan repairs legacy occurrence.goalId when it still car
             {
               message: {
                 parsed: {
-                  plans: createValidFirstRunPlanResponse().plans.map((plan) => ({
-                    variant: plan.variant,
-                    summary: plan.summary,
-                    rationale: plan.rationale,
-                    commitDraft: {
-                      ...plan.commitDraft,
-                      occurrences: plan.commitDraft.occurrences.map(({ actionId, ...occurrence }) => ({
-                        ...occurrence,
-                        goalId: actionId,
-                      })),
-                    },
-                  })),
+                  plans: createValidFirstRunPlanResponse().plans.map((plan) =>
+                    toProviderFirstRunPlanCandidate(plan, {
+                      commitDraft: {
+                        ...plan.commitDraft,
+                        occurrences: plan.commitDraft.occurrences.map(({ actionId, ...occurrence }) => ({
+                          ...occurrence,
+                          goalId: actionId,
+                        })),
+                      },
+                    })
+                  ),
                 },
               },
             },
@@ -1596,16 +1740,14 @@ test("POST /ai/first-run-plan repairs occurrences when the model uses a parent g
             {
               message: {
                 parsed: {
-                  plans: createValidFirstRunPlanResponse().plans.map((plan) => ({
-                    variant: plan.variant,
-                    summary: plan.summary,
-                    rationale: plan.rationale,
-                    commitDraft: {
-                      ...plan.commitDraft,
-                      occurrences: plan.commitDraft.occurrences.map((occurrence) =>
-                        occurrence.actionId === "action_roadmap"
-                          ? {
-                              id: occurrence.id,
+                  plans: createValidFirstRunPlanResponse().plans.map((plan) =>
+                    toProviderFirstRunPlanCandidate(plan, {
+                      commitDraft: {
+                        ...plan.commitDraft,
+                        occurrences: plan.commitDraft.occurrences.map((occurrence) =>
+                          occurrence.actionId === "action_roadmap"
+                            ? {
+                                id: occurrence.id,
                               goalId: "goal_business",
                               date: occurrence.date,
                               start: occurrence.start,
@@ -1613,9 +1755,10 @@ test("POST /ai/first-run-plan repairs occurrences when the model uses a parent g
                               status: occurrence.status,
                             }
                           : occurrence
-                      ),
-                    },
-                  })),
+                        ),
+                      },
+                    })
+                  ),
                 },
               },
             },
@@ -1659,10 +1802,7 @@ test("POST /ai/first-run-plan repairs occurrences from category and title hints 
                 parsed: {
                   plans: createValidFirstRunPlanResponse().plans.map((plan) => {
                     const actionsById = new Map(plan.commitDraft.actions.map((action) => [action.id, action]));
-                    return {
-                      variant: plan.variant,
-                      summary: plan.summary,
-                      rationale: plan.rationale,
+                    return toProviderFirstRunPlanCandidate(plan, {
                       commitDraft: {
                         ...plan.commitDraft,
                         occurrences: plan.commitDraft.occurrences.map(({ actionId, ...occurrence }) => {
@@ -1674,7 +1814,7 @@ test("POST /ai/first-run-plan repairs occurrences from category and title hints 
                           };
                         }),
                       },
-                    };
+                    });
                   }),
                 },
               },
@@ -1749,18 +1889,10 @@ test("POST /ai/first-run-plan rejects occurrences that remain ambiguous after re
                 message: {
                   parsed: {
                     plans: [
-                      {
-                        variant: "tenable",
-                        summary: tenable.summary,
-                        rationale: tenable.rationale,
+                      toProviderFirstRunPlanCandidate(tenable, {
                         commitDraft: ambiguousTenableDraft,
-                      },
-                      {
-                        variant: basePlans[1].variant,
-                        summary: basePlans[1].summary,
-                        rationale: basePlans[1].rationale,
-                        commitDraft: basePlans[1].commitDraft,
-                      },
+                      }),
+                      toProviderFirstRunPlanCandidate(basePlans[1]),
                     ],
                   },
                 },
@@ -1812,12 +1944,7 @@ test("POST /ai/first-run-plan returns two valid plans with commitDraft canonique
             {
               message: {
                 parsed: {
-                  plans: createValidFirstRunPlanResponse().plans.map((plan) => ({
-                    variant: plan.variant,
-                    summary: plan.summary,
-                    rationale: plan.rationale,
-                    commitDraft: plan.commitDraft,
-                  })),
+                  plans: createValidFirstRunPlanResponse().plans.map((plan) => toProviderFirstRunPlanCandidate(plan)),
                 },
               },
             },
@@ -1839,10 +1966,379 @@ test("POST /ai/first-run-plan returns two valid plans with commitDraft canonique
   assert.equal(payload.plans.length, 2);
   assert.equal(payload.plans[0].id, "tenable");
   assert.equal(payload.plans[1].id, "ambitious");
+  assert.equal(Boolean(payload.plans[0].weekGoal), true);
+  assert.equal(Boolean(payload.plans[0].weekBenefit), true);
+  assert.equal(Boolean(payload.plans[0].differenceNote), true);
+  assert.equal(payload.plans[0].weekSchedule.length >= 5, true);
+  assert.equal(Boolean(payload.plans[0].rhythmGuidance), true);
   assert.equal(payload.plans[0].commitDraft.categories[0].templateId, "business");
   assert.equal(payload.plans[0].commitDraft.occurrences[0].actionId, "action_roadmap");
   assert.equal(insertedLogs[0]?.coach_kind, "first-run-plan");
   assert.equal(insertedLogs[0]?.route, "/ai/first-run-plan");
+  await app.close();
+});
+
+test("POST /ai/first-run-plan accepts requests without priorityCategoryIds and infers categories", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-inferred-categories" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: {
+                  plans: createValidFirstRunPlanResponse().plans.map((plan) => toProviderFirstRunPlanCandidate(plan)),
+                },
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const payload = createValidFirstRunPlanRequest();
+  delete payload.priorityCategoryIds;
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.43" },
+    payload,
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.json().plans?.[0]?.commitDraft?.categories?.[0]?.templateId, "business");
+  await app.close();
+});
+
+test("POST /ai/first-run-plan rejects provider payloads missing weekBenefit", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-missing-week-benefit" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: {
+                  plans: createValidFirstRunPlanResponse().plans.map((plan, index) =>
+                    toProviderFirstRunPlanCandidate(plan, index === 0 ? { weekBenefit: " " } : {})
+                  ),
+                },
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.44" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  const body = response.json();
+  assert.equal(response.statusCode, 502);
+  assert.equal(body.error, "INVALID_FIRST_RUN_PLAN_RESPONSE");
+  assert.equal(body.details?.rejectionStage, "provider_parse");
+  assert.equal(body.details?.zodIssuePaths?.includes("plans.0.weekBenefit"), true);
+  await app.close();
+});
+
+test("POST /ai/first-run-plan rejects a schedule that is too sparse for the visible weekly plan", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-sparse-week" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => {
+          const basePlans = createValidFirstRunPlanResponse().plans;
+          const sparseTenableDraft = {
+            ...basePlans[0].commitDraft,
+            occurrences: [
+              { id: "sparse_t_1", actionId: "action_roadmap", date: TODAY_KEY, start: "08:00", durationMinutes: 50, status: "planned" },
+              { id: "sparse_t_2", actionId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 2), start: "18:30", durationMinutes: 50, status: "planned" },
+              { id: "sparse_t_3", actionId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "08:00", durationMinutes: 50, status: "planned" },
+            ],
+          };
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: {
+                    plans: [
+                      toProviderFirstRunPlanCandidate(basePlans[0], {
+                        commitDraft: sparseTenableDraft,
+                      }),
+                      toProviderFirstRunPlanCandidate(basePlans[1]),
+                    ],
+                  },
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.45" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  const body = response.json();
+  assert.equal(response.statusCode, 502);
+  assert.equal(body.error, "INVALID_FIRST_RUN_PLAN_RESPONSE");
+  assert.equal(body.details?.rejectionStage, "plan_quality");
+  assert.equal(body.details?.rejectionReason, "week_schedule_too_sparse");
+  await app.close();
+});
+
+test("POST /ai/first-run-plan keeps rhythmGuidance absent when the weekly rhythm is too noisy", async () => {
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-noisy-rhythm" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => {
+          const basePlans = createValidFirstRunPlanResponse().plans;
+          const noisyTenableDraft = {
+            ...basePlans[0].commitDraft,
+            actions: [
+              {
+                id: "action_early",
+                categoryId: "cat_business",
+                parentGoalId: "goal_business",
+                title: "Bloc lancement tôt",
+                type: "PROCESS",
+                order: 0,
+                repeat: "weekly",
+                daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+                timeMode: "FIXED",
+                startTime: "06:30",
+                timeSlots: ["06:30"],
+                durationMinutes: 40,
+                sessionMinutes: 40,
+              },
+              {
+                id: "action_midday",
+                categoryId: "cat_health",
+                parentGoalId: null,
+                title: "Bloc milieu de journée",
+                type: "PROCESS",
+                order: 1,
+                repeat: "weekly",
+                daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+                timeMode: "FIXED",
+                startTime: "12:30",
+                timeSlots: ["12:30"],
+                durationMinutes: 35,
+                sessionMinutes: 35,
+              },
+              {
+                id: "action_evening",
+                categoryId: "cat_business",
+                parentGoalId: "goal_business",
+                title: "Bloc tardif",
+                type: "PROCESS",
+                order: 2,
+                repeat: "weekly",
+                daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+                timeMode: "FIXED",
+                startTime: "20:30",
+                timeSlots: ["20:30"],
+                durationMinutes: 40,
+                sessionMinutes: 40,
+              },
+              {
+                id: "action_bridge",
+                categoryId: "cat_health",
+                parentGoalId: null,
+                title: "Bloc relais",
+                type: "PROCESS",
+                order: 3,
+                repeat: "weekly",
+                daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+                timeMode: "FIXED",
+                startTime: "08:00",
+                timeSlots: ["08:00"],
+                durationMinutes: 35,
+                sessionMinutes: 35,
+              },
+            ],
+            occurrences: [
+              { id: "noisy_t_1", actionId: "action_early", date: TODAY_KEY, start: "06:30", durationMinutes: 40, status: "planned" },
+              { id: "noisy_t_2", actionId: "action_midday", date: FUTURE_KEY, start: "12:30", durationMinutes: 35, status: "planned" },
+              { id: "noisy_t_3", actionId: "action_evening", date: addDateKeyOffset(TODAY_KEY, 2), start: "20:30", durationMinutes: 40, status: "planned" },
+              { id: "noisy_t_4", actionId: "action_bridge", date: addDateKeyOffset(TODAY_KEY, 4), start: "08:00", durationMinutes: 35, status: "planned" },
+            ],
+          };
+          const noisyAmbitiousDraft = {
+            ...basePlans[1].commitDraft,
+            actions: [
+              {
+                id: "action_early_a",
+                categoryId: "cat_business",
+                parentGoalId: "goal_business",
+                title: "Bloc lancement tôt",
+                type: "PROCESS",
+                order: 0,
+                repeat: "weekly",
+                daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+                timeMode: "FIXED",
+                startTime: "06:30",
+                timeSlots: ["06:30"],
+                durationMinutes: 45,
+                sessionMinutes: 45,
+              },
+              {
+                id: "action_midday_a",
+                categoryId: "cat_health",
+                parentGoalId: null,
+                title: "Bloc milieu de journée",
+                type: "PROCESS",
+                order: 1,
+                repeat: "weekly",
+                daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+                timeMode: "FIXED",
+                startTime: "11:30",
+                timeSlots: ["11:30"],
+                durationMinutes: 45,
+                sessionMinutes: 45,
+              },
+              {
+                id: "action_evening_a",
+                categoryId: "cat_business",
+                parentGoalId: "goal_business",
+                title: "Bloc tardif",
+                type: "PROCESS",
+                order: 2,
+                repeat: "weekly",
+                daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+                timeMode: "FIXED",
+                startTime: "19:30",
+                timeSlots: ["19:30"],
+                durationMinutes: 45,
+                sessionMinutes: 45,
+              },
+              {
+                id: "action_bridge_a",
+                categoryId: "cat_health",
+                parentGoalId: null,
+                title: "Bloc relais",
+                type: "PROCESS",
+                order: 3,
+                repeat: "weekly",
+                daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+                timeMode: "FIXED",
+                startTime: "08:00",
+                timeSlots: ["08:00"],
+                durationMinutes: 45,
+                sessionMinutes: 45,
+              },
+              {
+                id: "action_late_a",
+                categoryId: "cat_business",
+                parentGoalId: "goal_business",
+                title: "Bloc fin de journée",
+                type: "PROCESS",
+                order: 4,
+                repeat: "weekly",
+                daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+                timeMode: "FIXED",
+                startTime: "16:30",
+                timeSlots: ["16:30"],
+                durationMinutes: 45,
+                sessionMinutes: 45,
+              },
+            ],
+            occurrences: [
+              { id: "noisy_a_1", actionId: "action_early_a", date: TODAY_KEY, start: "06:30", durationMinutes: 45, status: "planned" },
+              { id: "noisy_a_2", actionId: "action_midday_a", date: FUTURE_KEY, start: "11:30", durationMinutes: 45, status: "planned" },
+              { id: "noisy_a_3", actionId: "action_evening_a", date: addDateKeyOffset(TODAY_KEY, 2), start: "19:30", durationMinutes: 45, status: "planned" },
+              { id: "noisy_a_4", actionId: "action_bridge_a", date: addDateKeyOffset(TODAY_KEY, 4), start: "08:00", durationMinutes: 45, status: "planned" },
+              { id: "noisy_a_5", actionId: "action_late_a", date: addDateKeyOffset(TODAY_KEY, 6), start: "16:30", durationMinutes: 45, status: "planned" },
+            ],
+          };
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: {
+                    plans: [
+                      toProviderFirstRunPlanCandidate(basePlans[0], {
+                        commitDraft: noisyTenableDraft,
+                      }),
+                      toProviderFirstRunPlanCandidate(basePlans[1], {
+                        commitDraft: noisyAmbitiousDraft,
+                      }),
+                    ],
+                  },
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.46" },
+    payload: createValidFirstRunPlanRequest({
+      unavailableWindows: [],
+      preferredWindows: [],
+    }),
+  });
+
+  const body = firstRunPlanResponseSchema.parse(response.json());
+  assert.equal(response.statusCode, 200);
+  assert.equal(body.plans[0].rhythmGuidance, null);
+  assert.equal(body.plans[1].rhythmGuidance, null);
   await app.close();
 });
 

@@ -151,6 +151,28 @@ export const firstRunPlanRationaleSchema = z
   })
   .strict();
 
+export const firstRunPlanWeekScheduleEntrySchema = z
+  .object({
+    dayKey: isoDateKey,
+    dayLabel: z.string().trim().min(1).max(48),
+    blockCount: z.number().int().min(0).max(12),
+    totalMinutes: z.number().int().min(0).max(24 * 60),
+    loadLabel: z.enum(["leger", "cadre", "dense"]),
+    primarySlotLabel: z.string().trim().min(1).max(64),
+    headline: z.string().trim().min(1).max(160),
+  })
+  .strict();
+
+export const firstRunPlanRhythmGuidanceSchema = z
+  .object({
+    startWindow: z.string().trim().min(1).max(64),
+    shutdownWindow: z.string().trim().min(1).max(64),
+    confidence: z.enum(["low", "medium", "high"]),
+    label: z.string().trim().min(1).max(120),
+    note: z.string().trim().min(1).max(200).nullable().optional(),
+  })
+  .strict();
+
 export const firstRunPlanRequestSchema = z
   .object({
     whyText: z.string().trim().min(1).max(1200),
@@ -158,7 +180,7 @@ export const firstRunPlanRequestSchema = z
     unavailableWindows: z.array(firstRunPlanWindowSchema).max(12).optional().default([]),
     preferredWindows: z.array(firstRunPlanWindowSchema).max(12).optional().default([]),
     currentCapacity: capacitySchema,
-    priorityCategoryIds: z.array(firstRunCategoryTemplateSchema).min(1).max(3),
+    priorityCategoryIds: z.array(firstRunCategoryTemplateSchema).max(3).optional().default([]),
     timezone: z.string().trim().min(1).max(80),
     locale: localeSchema.optional().default("fr-FR"),
     referenceDateKey: isoDateKey,
@@ -203,10 +225,15 @@ export const firstRunPlanSchema = z
     variant: firstRunVariantSchema,
     title: z.string().trim().min(1).max(80),
     summary: z.string().trim().min(1).max(240),
+    weekGoal: z.string().trim().min(1).max(160),
+    weekBenefit: z.string().trim().min(1).max(200),
+    differenceNote: z.string().trim().min(1).max(200),
     comparisonMetrics: firstRunPlanComparisonMetricsSchema,
     categories: z.array(firstRunPlanCategorySummarySchema).min(1).max(6),
     preview: z.array(firstRunPlanPreviewEntrySchema).min(1).max(4),
     todayPreview: z.array(firstRunPlanPreviewEntrySchema).min(1).max(3),
+    weekSchedule: z.array(firstRunPlanWeekScheduleEntrySchema).min(5).max(7),
+    rhythmGuidance: firstRunPlanRhythmGuidanceSchema.nullable(),
     rationale: firstRunPlanRationaleSchema,
     commitDraft: firstRunCommitDraftSchema,
   })
