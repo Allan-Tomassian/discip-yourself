@@ -112,6 +112,51 @@ function describeSessionGuidanceErrorDetails(details) {
   };
 }
 
+function normalizeDiagnosticNumberArray(values) {
+  if (!Array.isArray(values)) return null;
+  const normalized = values
+    .filter((value) => Number.isFinite(value))
+    .map((value) => Math.round(value));
+  return normalized.length ? normalized : null;
+}
+
+function buildFirstRunPlanLogMetrics({ diagnostics = null, errorDetails = null } = {}) {
+  if (isPlainObject(diagnostics)) {
+    return {
+      providerMs: Number.isFinite(diagnostics.providerMs) ? Math.round(diagnostics.providerMs) : null,
+      repairedOccurrenceCount:
+        Number.isFinite(diagnostics.repairedOccurrenceCount) ? Math.round(diagnostics.repairedOccurrenceCount) : null,
+      repairedMinutesDelta:
+        Number.isFinite(diagnostics.repairedMinutesDelta) ? Math.round(diagnostics.repairedMinutesDelta) : null,
+      activeDays: normalizeDiagnosticNumberArray(diagnostics.activeDays),
+      lightDays: normalizeDiagnosticNumberArray(diagnostics.lightDays),
+      denseDays: normalizeDiagnosticNumberArray(diagnostics.denseDays),
+    };
+  }
+
+  const safeDetails = isPlainObject(errorDetails) ? errorDetails : {};
+  const tenableDiagnostics = isPlainObject(safeDetails.tenableDiagnostics) ? safeDetails.tenableDiagnostics : null;
+  const ambitiousDiagnostics = isPlainObject(safeDetails.ambitiousDiagnostics) ? safeDetails.ambitiousDiagnostics : null;
+  const readPlanArray = (key) => {
+    if (Number.isFinite(safeDetails[key])) return [Math.round(safeDetails[key])];
+    const values = [tenableDiagnostics?.[key], ambitiousDiagnostics?.[key]]
+      .filter((value) => Number.isFinite(value))
+      .map((value) => Math.round(value));
+    return values.length ? values : null;
+  };
+
+  return {
+    providerMs: Number.isFinite(safeDetails.providerMs) ? Math.round(safeDetails.providerMs) : null,
+    repairedOccurrenceCount:
+      Number.isFinite(safeDetails.repairedOccurrenceCount) ? Math.round(safeDetails.repairedOccurrenceCount) : null,
+    repairedMinutesDelta:
+      Number.isFinite(safeDetails.repairedMinutesDelta) ? Math.round(safeDetails.repairedMinutesDelta) : null,
+    activeDays: readPlanArray("activeDays"),
+    lightDays: readPlanArray("lightDays"),
+    denseDays: readPlanArray("denseDays"),
+  };
+}
+
 function logAiStageError({
   app,
   request,
@@ -784,11 +829,15 @@ async function handleFirstRunPlanRoute({ app, request, reply }) {
   };
 
   let response;
+  let serviceDiagnostics = null;
   try {
-    response = await runFirstRunPlanService({ app, context });
+    const serviceResult = await runFirstRunPlanService({ app, context });
+    response = serviceResult.response;
+    serviceDiagnostics = serviceResult.diagnostics;
   } catch (error) {
     const errorCode = String(error?.code || "").trim().toUpperCase() || "UNKNOWN_BACKEND_ERROR";
     const errorDetails = isPlainObject(error?.details) ? error.details : null;
+    const logMetrics = buildFirstRunPlanLogMetrics({ errorDetails });
     const status =
       errorCode === "FIRST_RUN_PLAN_BACKEND_UNAVAILABLE" ? 503
       : errorCode === "FIRST_RUN_PLAN_PROVIDER_TIMEOUT" ? 504
@@ -815,8 +864,14 @@ async function handleFirstRunPlanRoute({ app, request, reply }) {
       mode: "generate",
       providerStatus:
         errorDetails?.providerStatus || (errorCode === "INVALID_FIRST_RUN_PLAN_RESPONSE" ? "invalid_response" : "error"),
+      providerMs: logMetrics.providerMs,
       rejectionStage: errorDetails?.rejectionStage || null,
       rejectionReason: errorDetails?.rejectionReason || null,
+      repairedOccurrenceCount: logMetrics.repairedOccurrenceCount,
+      repairedMinutesDelta: logMetrics.repairedMinutesDelta,
+      activeDays: logMetrics.activeDays,
+      lightDays: logMetrics.lightDays,
+      denseDays: logMetrics.denseDays,
       validationPassed:
         typeof errorDetails?.validationPassed === "boolean" ? errorDetails.validationPassed : null,
       richnessPassed: typeof errorDetails?.richnessPassed === "boolean" ? errorDetails.richnessPassed : null,
@@ -824,7 +879,7 @@ async function handleFirstRunPlanRoute({ app, request, reply }) {
       requestHash,
       ipHash: hashValue(getClientIp(request)),
       userAgent: request.headers["user-agent"] || "",
-      latencyMs: Date.now() - startedAt,
+      latencyMs: Number.isFinite(errorDetails?.totalMs) ? Math.round(errorDetails.totalMs) : Date.now() - startedAt,
       errorCode,
     });
     return reply.code(status).send({
@@ -874,6 +929,7 @@ async function handleFirstRunPlanRoute({ app, request, reply }) {
     (count, plan) => count + (plan?.comparisonMetrics?.totalBlocks || 0),
     0
   );
+  const successMetrics = buildFirstRunPlanLogMetrics({ diagnostics: serviceDiagnostics });
   await insertAiRequestLog(app.supabase, {
     requestId: request.requestId,
     userId: request.user.id,
@@ -884,8 +940,14 @@ async function handleFirstRunPlanRoute({ app, request, reply }) {
     statusCode: 200,
     mode: "generate",
     providerStatus: "ok",
+    providerMs: successMetrics.providerMs,
     rejectionStage: null,
     rejectionReason: null,
+    repairedOccurrenceCount: successMetrics.repairedOccurrenceCount,
+    repairedMinutesDelta: successMetrics.repairedMinutesDelta,
+    activeDays: successMetrics.activeDays,
+    lightDays: successMetrics.lightDays,
+    denseDays: successMetrics.denseDays,
     validationPassed: true,
     richnessPassed: true,
     stepCount: parsedResponse.data.plans.length,
@@ -893,7 +955,7 @@ async function handleFirstRunPlanRoute({ app, request, reply }) {
     requestHash,
     ipHash: hashValue(getClientIp(request)),
     userAgent: request.headers["user-agent"] || "",
-    latencyMs: Date.now() - startedAt,
+    latencyMs: Number.isFinite(serviceDiagnostics?.totalMs) ? Math.round(serviceDiagnostics.totalMs) : Date.now() - startedAt,
   });
   return reply.code(200).send(parsedResponse.data);
 }

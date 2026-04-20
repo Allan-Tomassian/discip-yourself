@@ -1384,6 +1384,7 @@ test("POST /ai/first-run-plan returns backend unavailable when OpenAI is missing
 test("POST /ai/first-run-plan uses gpt-5.4 with a dedicated timeout by default", async () => {
   let requestedModel = null;
   let requestedTimeout = null;
+  let requestedUserPrompt = null;
   const app = await buildApp({
     config: TEST_CONFIG_WITH_OPENAI,
     verifyAccessToken: async () => ({ id: "user-first-run-default-model" }),
@@ -1400,6 +1401,7 @@ test("POST /ai/first-run-plan uses gpt-5.4 with a dedicated timeout by default",
         parse: async (input, options) => {
           requestedModel = input?.model || null;
           requestedTimeout = options?.timeout ?? null;
+          requestedUserPrompt = input?.messages?.[1]?.content || null;
           return {
             choices: [
               {
@@ -1426,6 +1428,10 @@ test("POST /ai/first-run-plan uses gpt-5.4 with a dedicated timeout by default",
   assert.equal(response.statusCode, 200);
   assert.equal(requestedModel, "gpt-5.4");
   assert.equal(requestedTimeout, 55000);
+  assert.match(requestedUserPrompt, /Do not output comparisonMetrics, categories, preview, todayPreview, weekSchedule, or rhythmGuidance/);
+  assert.match(requestedUserPrompt, /Keep each commitDraft compact/);
+  assert.match(requestedUserPrompt, /max 8 actions/);
+  assert.match(requestedUserPrompt, /exact same start as its action\.startTime/);
   await app.close();
 });
 
@@ -1511,6 +1517,195 @@ test("POST /ai/first-run-plan returns an explicit provider timeout error", async
   assert.equal(response.json().error, "FIRST_RUN_PLAN_PROVIDER_TIMEOUT");
   assert.equal(insertedLogs[0]?.coach_kind, "first-run-plan");
   assert.equal(insertedLogs[0]?.route, "/ai/first-run-plan");
+  assert.equal(Number.isInteger(insertedLogs[0]?.provider_ms), true);
+  await app.close();
+});
+
+test("POST /ai/first-run-plan repairs occurrence_time_mismatch before rejecting the plan", async () => {
+  const insertedLogs = [];
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-occurrence-time-repair" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+    insertedLogs,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => ({
+          choices: [
+            {
+              message: {
+                parsed: {
+                  plans: createValidFirstRunPlanResponse().plans.map((plan) =>
+                    toProviderFirstRunPlanCandidate(plan, {
+                      commitDraft: {
+                        ...plan.commitDraft,
+                        occurrences: plan.commitDraft.occurrences.map((occurrence, index) =>
+                          index === 0
+                            ? {
+                                ...occurrence,
+                                start: "08:15",
+                              }
+                            : occurrence
+                        ),
+                      },
+                    })
+                  ),
+                },
+              },
+            },
+          ],
+        }),
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.35" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  const body = firstRunPlanResponseSchema.parse(response.json());
+  assert.equal(response.statusCode, 200);
+  assert.equal(body.plans[0].commitDraft.occurrences[0].start, "08:00");
+  assert.equal(insertedLogs[0]?.repaired_occurrence_count > 0, true);
+  assert.equal(insertedLogs[0]?.repaired_minutes_delta, 0);
+  assert.equal(Array.isArray(insertedLogs[0]?.active_days), true);
+  await app.close();
+});
+
+test("POST /ai/first-run-plan repairs a small weekly_minutes_out_of_band overflow when the adjustment stays safe", async () => {
+  const insertedLogs = [];
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-weekly-minute-repair" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+    insertedLogs,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => {
+          const basePlans = createValidFirstRunPlanResponse().plans;
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: {
+                    plans: [
+                      toProviderFirstRunPlanCandidate(basePlans[0], {
+                        commitDraft: {
+                          ...basePlans[0].commitDraft,
+                          occurrences: [
+                            { id: "over_t_1", actionId: "action_roadmap", date: TODAY_KEY, start: "08:00", durationMinutes: 50, status: "planned" },
+                            { id: "over_t_2", actionId: "action_walk", date: FUTURE_KEY, start: "18:30", durationMinutes: 40, status: "planned" },
+                            { id: "over_t_3", actionId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 2), start: "08:00", durationMinutes: 50, status: "planned" },
+                            { id: "over_t_4", actionId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 3), start: "18:30", durationMinutes: 45, status: "planned" },
+                            { id: "over_t_5", actionId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "08:00", durationMinutes: 50, status: "planned" },
+                          ],
+                        },
+                      }),
+                      toProviderFirstRunPlanCandidate(basePlans[1]),
+                    ],
+                  },
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.36" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  const body = firstRunPlanResponseSchema.parse(response.json());
+  assert.equal(response.statusCode, 200);
+  assert.equal(body.plans[0].comparisonMetrics.weeklyMinutes, 210);
+  assert.equal(body.plans[0].commitDraft.occurrences.at(-1)?.durationMinutes, 25);
+  assert.equal(insertedLogs[0]?.repaired_minutes_delta, -25);
+  await app.close();
+});
+
+test("POST /ai/first-run-plan still rejects weekly_minutes_out_of_band when the gap is too large for a safe repair", async () => {
+  const insertedLogs = [];
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-weekly-minute-reject" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+    insertedLogs,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => {
+          const basePlans = createValidFirstRunPlanResponse().plans;
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: {
+                    plans: [
+                      toProviderFirstRunPlanCandidate(basePlans[0], {
+                        commitDraft: {
+                          ...basePlans[0].commitDraft,
+                          occurrences: [
+                            { id: "reject_t_1", actionId: "action_roadmap", date: TODAY_KEY, start: "08:00", durationMinutes: 55, status: "planned" },
+                            { id: "reject_t_2", actionId: "action_walk", date: FUTURE_KEY, start: "18:30", durationMinutes: 50, status: "planned" },
+                            { id: "reject_t_3", actionId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 2), start: "08:00", durationMinutes: 50, status: "planned" },
+                            { id: "reject_t_4", actionId: "action_walk", date: addDateKeyOffset(TODAY_KEY, 3), start: "18:30", durationMinutes: 50, status: "planned" },
+                            { id: "reject_t_5", actionId: "action_roadmap", date: addDateKeyOffset(TODAY_KEY, 4), start: "08:00", durationMinutes: 50, status: "planned" },
+                          ],
+                        },
+                      }),
+                      toProviderFirstRunPlanCandidate(basePlans[1]),
+                    ],
+                  },
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-plan",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.37" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  const body = response.json();
+  assert.equal(response.statusCode, 502);
+  assert.equal(body.error, "INVALID_FIRST_RUN_PLAN_RESPONSE");
+  assert.equal(body.details?.rejectionReason, "weekly_minutes_out_of_band");
+  assert.equal(body.details?.repairedMinutesDelta, 0);
+  assert.equal(insertedLogs[0]?.rejection_reason, "weekly_minutes_out_of_band");
   await app.close();
 });
 
@@ -1975,6 +2170,10 @@ test("POST /ai/first-run-plan returns two valid plans with commitDraft canonique
   assert.equal(payload.plans[0].commitDraft.occurrences[0].actionId, "action_roadmap");
   assert.equal(insertedLogs[0]?.coach_kind, "first-run-plan");
   assert.equal(insertedLogs[0]?.route, "/ai/first-run-plan");
+  assert.equal(Number.isInteger(insertedLogs[0]?.provider_ms), true);
+  assert.deepEqual(insertedLogs[0]?.active_days, [5, 7]);
+  assert.deepEqual(insertedLogs[0]?.light_days, [2, 0]);
+  assert.deepEqual(insertedLogs[0]?.dense_days, [0, 0]);
   await app.close();
 });
 

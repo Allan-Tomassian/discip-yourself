@@ -56,7 +56,7 @@ export const firstRunCommitDraftActionSchema = z
     daysOfWeek: z.array(z.number().int().min(1).max(7)).min(1).max(7),
     timeMode: z.enum(["FIXED", "NONE"]),
     startTime: hhmmSchema,
-    timeSlots: z.array(hhmmSchema).min(1).max(7),
+    timeSlots: z.array(hhmmSchema).length(1),
     durationMinutes: z.number().int().min(5).max(240),
     sessionMinutes: z.number().int().min(5).max(240),
   })
@@ -116,30 +116,30 @@ export const firstRunCommitDraftOccurrenceOpenAiSchema = z
 export const firstRunCommitDraftSchema = z
   .object({
     version: z.literal(1),
-    categories: z.array(firstRunCommitDraftCategorySchema).min(1).max(6),
-    goals: z.array(firstRunCommitDraftGoalSchema).min(1).max(6),
-    actions: z.array(firstRunCommitDraftActionSchema).min(1).max(14),
-    occurrences: z.array(firstRunCommitDraftOccurrenceSchema).min(1).max(28),
+    categories: z.array(firstRunCommitDraftCategorySchema).min(1).max(3),
+    goals: z.array(firstRunCommitDraftGoalSchema).min(1).max(4),
+    actions: z.array(firstRunCommitDraftActionSchema).min(1).max(8),
+    occurrences: z.array(firstRunCommitDraftOccurrenceSchema).min(1).max(14),
   })
   .strict();
 
 export const firstRunCommitDraftProviderSchema = z
   .object({
     version: z.literal(1),
-    categories: z.array(firstRunCommitDraftCategorySchema).min(1).max(6),
-    goals: z.array(firstRunCommitDraftGoalSchema).min(1).max(6),
-    actions: z.array(firstRunCommitDraftActionSchema).min(1).max(14),
-    occurrences: z.array(firstRunCommitDraftOccurrenceProviderSchema).min(1).max(28),
+    categories: z.array(firstRunCommitDraftCategorySchema).min(1).max(3),
+    goals: z.array(firstRunCommitDraftGoalSchema).min(1).max(4),
+    actions: z.array(firstRunCommitDraftActionSchema).min(1).max(8),
+    occurrences: z.array(firstRunCommitDraftOccurrenceProviderSchema).min(1).max(14),
   })
   .strict();
 
 export const firstRunCommitDraftOpenAiSchema = z
   .object({
     version: z.literal(1),
-    categories: z.array(firstRunCommitDraftCategorySchema).min(1).max(6),
-    goals: z.array(firstRunCommitDraftGoalSchema).min(1).max(6),
-    actions: z.array(firstRunCommitDraftActionSchema).min(1).max(14),
-    occurrences: z.array(firstRunCommitDraftOccurrenceOpenAiSchema).min(1).max(28),
+    categories: z.array(firstRunCommitDraftCategorySchema).min(1).max(3),
+    goals: z.array(firstRunCommitDraftGoalSchema).min(1).max(4),
+    actions: z.array(firstRunCommitDraftActionSchema).min(1).max(8),
+    occurrences: z.array(firstRunCommitDraftOccurrenceOpenAiSchema).min(1).max(14),
   })
   .strict();
 
@@ -229,7 +229,7 @@ export const firstRunPlanSchema = z
     weekBenefit: z.string().trim().min(1).max(200),
     differenceNote: z.string().trim().min(1).max(200),
     comparisonMetrics: firstRunPlanComparisonMetricsSchema,
-    categories: z.array(firstRunPlanCategorySummarySchema).min(1).max(6),
+    categories: z.array(firstRunPlanCategorySummarySchema).min(1).max(3),
     preview: z.array(firstRunPlanPreviewEntrySchema).min(1).max(4),
     todayPreview: z.array(firstRunPlanPreviewEntrySchema).min(1).max(3),
     weekSchedule: z.array(firstRunPlanWeekScheduleEntrySchema).min(5).max(7),

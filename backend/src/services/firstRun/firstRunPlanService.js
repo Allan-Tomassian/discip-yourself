@@ -27,7 +27,14 @@ import {
 const DEFAULT_FIRST_RUN_PLAN_MODEL = "gpt-5.4";
 const DEFAULT_FIRST_RUN_PLAN_TIMEOUT_MS = 55000;
 const MIN_FIRST_RUN_PLAN_TIMEOUT_MS = 30000;
-const FIRST_RUN_PLAN_PROMPT_VERSION = "first_run_plan_v2";
+const FIRST_RUN_PLAN_PROMPT_VERSION = "first_run_plan_v2_1";
+const MAX_COMMIT_DRAFT_CATEGORIES = 3;
+const MAX_COMMIT_DRAFT_GOALS = 4;
+const MAX_COMMIT_DRAFT_ACTIONS = 8;
+const MAX_COMMIT_DRAFT_OCCURRENCES = 14;
+const MAX_WEEKLY_MINUTE_REPAIR_DELTA = 30;
+const MIN_REPAIRABLE_OCCURRENCE_DURATION_MINUTES = 15;
+const MAX_REPAIRABLE_OCCURRENCE_DURATION_MINUTES = 90;
 const ALL_FIRST_RUN_CATEGORY_IDS = Object.freeze(Object.keys(USER_AI_CATEGORY_META));
 const FIRST_RUN_CATEGORY_INFERENCE_KEYWORDS = Object.freeze({
   health: ["sante", "sport", "energie", "sommeil", "forme", "marche", "corps", "fatigue", "routine"],
@@ -203,6 +210,37 @@ function buildInvalidResponseDetails(overrides = {}) {
   };
 }
 
+function toRoundedInt(value, fallback = null) {
+  return Number.isFinite(value) ? Math.round(value) : fallback;
+}
+
+function buildRepairDiagnostics(variant) {
+  return {
+    variant,
+    repairedOccurrenceCount: 0,
+    repairedMinutesDelta: 0,
+  };
+}
+
+function appendRepairDiagnostics(details = {}, repairDiagnostics = null) {
+  return {
+    ...details,
+    repairedOccurrenceCount: toRoundedInt(repairDiagnostics?.repairedOccurrenceCount, 0),
+    repairedMinutesDelta: toRoundedInt(repairDiagnostics?.repairedMinutesDelta, 0),
+  };
+}
+
+function sumRepairDiagnostics(items = []) {
+  return items.reduce(
+    (accumulator, item) => ({
+      repairedOccurrenceCount:
+        accumulator.repairedOccurrenceCount + Math.max(0, toRoundedInt(item?.repairedOccurrenceCount, 0)),
+      repairedMinutesDelta: accumulator.repairedMinutesDelta + toRoundedInt(item?.repairedMinutesDelta, 0),
+    }),
+    { repairedOccurrenceCount: 0, repairedMinutesDelta: 0 }
+  );
+}
+
 function pushMapArray(map, key, value) {
   if (!key) return;
   const list = map.get(key) || [];
@@ -373,7 +411,7 @@ function normalizeCommitDraftReferences({ variant, commitDraft }) {
   const availableActionIds = [...repairIndex.actionsById.keys()].slice(0, 12);
   const repairedOccurrences = [];
   const invalidOccurrenceRefs = [];
-  let repairedOccurrenceCount = 0;
+  const repairDiagnostics = buildRepairDiagnostics(variant);
 
   commitDraft.occurrences.forEach((occurrence) => {
     const resolved = resolveOccurrenceActionReference({ occurrence, repairIndex });
@@ -384,7 +422,7 @@ function normalizeCommitDraftReferences({ variant, commitDraft }) {
       });
       return;
     }
-    if (resolved.repaired) repairedOccurrenceCount += 1;
+    if (resolved.repaired) repairDiagnostics.repairedOccurrenceCount += 1;
     repairedOccurrences.push({
       id: occurrence.id,
       actionId: resolved.actionId,
@@ -405,15 +443,19 @@ function normalizeCommitDraftReferences({ variant, commitDraft }) {
         variant,
         availableActionIds,
         invalidOccurrenceRefs,
-        repairedOccurrenceCount,
+        repairedOccurrenceCount: repairDiagnostics.repairedOccurrenceCount,
+        repairedMinutesDelta: repairDiagnostics.repairedMinutesDelta,
         rejectedOccurrenceCount: invalidOccurrenceRefs.length,
       })
     );
   }
 
   return {
-    ...commitDraft,
-    occurrences: repairedOccurrences,
+    commitDraft: {
+      ...commitDraft,
+      occurrences: repairedOccurrences,
+    },
+    repairDiagnostics,
   };
 }
 
@@ -538,10 +580,8 @@ function buildFirstRunPlanSystemPrompt() {
     "Output valid JSON only.",
     "All user-visible text must be in natural French.",
     "Return exactly two variants: one tenable and one ambitious.",
-    "Do not add any explanatory wrapper.",
-    "Do not mention internal schemas, hidden fields, or the compare screen.",
-    "Commit drafts must be committable later without another AI call.",
-    "The user gives only a few signals. The coach must infer the rest and organize a credible week.",
+    "The user gives only a few signals. Infer the rest and organize a credible week.",
+    "Commit drafts must stay compact, consistent, and committable later without another AI call.",
     "The whyText must materially influence the weekly goal, weekly benefit, action selection, density, and wording.",
   ].join("\n");
 }
@@ -558,26 +598,25 @@ function buildFirstRunPlanPrompt(context) {
     "2. Each plan must include summary, weekGoal, weekBenefit, differenceNote, rationale, and a commitDraft.",
     "3. Do not output comparisonMetrics, categories, preview, todayPreview, weekSchedule, or rhythmGuidance. They are derived later.",
     "4. priorityCategoryIds are only hints. If they are absent or incomplete, infer the categories from whyText and primaryGoal. Use only category ids from categoryCatalog.",
-    "5. commitDraft.goals must contain OUTCOME items only.",
-    "6. commitDraft.actions must contain PROCESS items only.",
-    "7. Use concrete scheduled blocks only: actions should use timeMode FIXED with matching startTime and timeSlots[0].",
-    "8. commitDraft.occurrences must cover the next 7 days starting at referenceDateKey, inclusive.",
-    "9. Never place an occurrence inside unavailableWindows.",
-    "10. Prefer preferredWindows when possible, but keep the plan credible.",
-    "11. The ambitious plan must be denser than the tenable plan while staying realistic, and the difference must be structural, not cosmetic.",
-    `12. Weekly minute targets by capacity:
+    `5. Keep each commitDraft compact:
+- max ${MAX_COMMIT_DRAFT_CATEGORIES} categories
+- max ${MAX_COMMIT_DRAFT_GOALS} goals
+- max ${MAX_COMMIT_DRAFT_ACTIONS} actions
+- max ${MAX_COMMIT_DRAFT_OCCURRENCES} occurrences
+- prefer one canonical fixed slot per action with exactly one timeSlots entry`,
+    "6. commitDraft.goals must contain OUTCOME items only. commitDraft.actions must contain PROCESS items only.",
+    "7. Every FIXED action must have one canonical startTime. Each occurrence must use the exact actionId and the exact same start as its action.startTime.",
+    "8. commitDraft.occurrences must cover only the next 7 days starting at referenceDateKey, inclusive, with status planned.",
+    "9. Never place an occurrence inside unavailableWindows. Prefer preferredWindows when possible, but keep the plan credible.",
+    "10. The ambitious plan must be denser than the tenable plan, with a structural difference in load, active days, margin, or cadence.",
+    `11. Weekly minute targets by capacity:
 - tenable: ${weeklyMinuteBands.tenable[0]}..${weeklyMinuteBands.tenable[1]}
 - ambitious: ${weeklyMinuteBands.ambitious[0]}..${weeklyMinuteBands.ambitious[1]}`,
-    "13. Use concise, concrete French. No generic motivational filler.",
-    "14. Categories, goals, actions, and occurrences must reference each other consistently by id.",
-    "15. Each occurrence must use actionId equal to the exact id of its matching commitDraft.actions entry.",
-    "16. Do not use goalId, labels, or free-text aliases as the canonical occurrence reference.",
-    "17. Keep parentGoalId only on actions. Occurrences reference actions, not goals.",
-    "18. Occurrences must use status planned.",
-    "19. weekGoal must state what the user should have moved forward by the end of the week.",
-    "20. weekBenefit must describe a concrete visible benefit at J+7. It must not be generic.",
-    "21. differenceNote must state what clearly changes versus the other plan: load, active days, margin, cadence, or timing.",
-    "22. The tenable plan must preserve margin with at least one lighter day. The ambitious plan must push harder without becoming unrealistic.",
+    "12. Use concise, concrete French. No generic motivational filler.",
+    "13. weekGoal must state what the user should have moved forward by the end of the week.",
+    "14. weekBenefit must describe a concrete visible benefit at J+7. It must not be generic.",
+    "15. differenceNote must state what clearly changes versus the other plan: load, active days, margin, cadence, or timing.",
+    "16. The tenable plan must preserve margin with at least one lighter day. The ambitious plan must push harder without becoming unrealistic.",
     `Context: ${JSON.stringify({
       whyText: context.whyText,
       primaryGoal: context.primaryGoal,
@@ -630,6 +669,207 @@ function doesOccurrenceOverlapWindow(occurrence, windowValue) {
     return false;
   }
   return startMinutes < windowEnd && endMinutes > windowStart;
+}
+
+function doesOccurrenceMatchPreferredWindow(occurrence, preferredWindows = []) {
+  return preferredWindows.some((windowValue) => doesOccurrenceOverlapWindow(occurrence, windowValue));
+}
+
+function buildChronologicalOccurrences(occurrences = []) {
+  return [...occurrences].sort(sortOccurrences);
+}
+
+function buildCanonicalActionTimeCandidates(action) {
+  return Array.from(
+    new Set(
+      [action?.startTime, ...(Array.isArray(action?.timeSlots) ? action.timeSlots : [])]
+        .map((value) => trimString(value, 16))
+        .filter((value) => Number.isFinite(parseTimeToMinutes(value)))
+    )
+  ).slice(0, 3);
+}
+
+function resolveCanonicalActionStart({ action, occurrences, context }) {
+  const candidates = buildCanonicalActionTimeCandidates(action);
+  if (!candidates.length) return null;
+
+  const safeCandidates = candidates
+    .map((candidateStart) => {
+      const preferredMatches = occurrences.reduce(
+        (count, occurrence) =>
+          count +
+          (doesOccurrenceMatchPreferredWindow({ ...occurrence, start: candidateStart }, context.preferredWindows) ? 1 : 0),
+        0
+      );
+      const overlapsUnavailable = occurrences.some((occurrence) =>
+        context.unavailableWindows.some((windowValue) =>
+          doesOccurrenceOverlapWindow({ ...occurrence, start: candidateStart }, windowValue)
+        )
+      );
+      if (overlapsUnavailable) return null;
+      return {
+        start: candidateStart,
+        preferredMatches,
+        isCurrent: candidateStart === action.startTime,
+      };
+    })
+    .filter(Boolean);
+
+  if (!safeCandidates.length) return null;
+  safeCandidates.sort((left, right) => {
+    if (left.isCurrent !== right.isCurrent) return left.isCurrent ? -1 : 1;
+    if (left.preferredMatches !== right.preferredMatches) return right.preferredMatches - left.preferredMatches;
+    return left.start.localeCompare(right.start);
+  });
+  return safeCandidates[0]?.start || null;
+}
+
+function normalizeActionTimeSlots(action, resolvedStart) {
+  const orderedSlots = [resolvedStart, ...(Array.isArray(action?.timeSlots) ? action.timeSlots : [])]
+    .map((value) => trimString(value, 16))
+    .filter(Boolean);
+  return Array.from(new Set(orderedSlots)).slice(0, 1);
+}
+
+function repairCommitDraftTimeCoherence({ commitDraft, context, repairDiagnostics }) {
+  const repairedActions = [...commitDraft.actions];
+  const repairedOccurrences = buildChronologicalOccurrences(commitDraft.occurrences).map((occurrence) => ({ ...occurrence }));
+  const occurrencesByActionId = new Map();
+
+  repairedOccurrences.forEach((occurrence) => {
+    pushMapArray(occurrencesByActionId, trimString(occurrence.actionId, 120), occurrence);
+  });
+
+  repairedActions.forEach((action, index) => {
+    if (action?.timeMode !== "FIXED") return;
+    const actionOccurrences = occurrencesByActionId.get(trimString(action?.id, 120)) || [];
+    if (!actionOccurrences.length) return;
+    const resolvedStart = resolveCanonicalActionStart({
+      action,
+      occurrences: actionOccurrences,
+      context,
+    });
+    if (!resolvedStart) return;
+    if (resolvedStart !== action.startTime || action.timeSlots[0] !== resolvedStart || action.timeSlots.length !== 1) {
+      repairedActions[index] = {
+        ...action,
+        startTime: resolvedStart,
+        timeSlots: normalizeActionTimeSlots(action, resolvedStart),
+      };
+    }
+  });
+
+  const repairedActionsById = new Map(repairedActions.map((action) => [action.id, action]));
+  const synchronizedOccurrences = repairedOccurrences.map((occurrence) => {
+    const action = repairedActionsById.get(occurrence.actionId);
+    if (!action || action.timeMode !== "FIXED" || occurrence.start === action.startTime) return occurrence;
+    repairDiagnostics.repairedOccurrenceCount += 1;
+    return {
+      ...occurrence,
+      start: action.startTime,
+    };
+  });
+
+  return {
+    ...commitDraft,
+    actions: repairedActions,
+    occurrences: synchronizedOccurrences,
+  };
+}
+
+function canResizeOccurrenceWithinSchedule({
+  occurrence,
+  nextOccurrence = null,
+  nextDurationMinutes,
+  context,
+}) {
+  if (!Number.isFinite(nextDurationMinutes)) return false;
+  const safeDuration = Math.round(nextDurationMinutes);
+  if (
+    safeDuration < MIN_REPAIRABLE_OCCURRENCE_DURATION_MINUTES ||
+    safeDuration > MAX_REPAIRABLE_OCCURRENCE_DURATION_MINUTES
+  ) {
+    return false;
+  }
+
+  const startMinutes = parseTimeToMinutes(occurrence.start);
+  if (!Number.isFinite(startMinutes)) return false;
+  const endMinutes = startMinutes + safeDuration;
+  if (endMinutes > 23 * 60 + 59) return false;
+
+  const candidateOccurrence = {
+    ...occurrence,
+    durationMinutes: safeDuration,
+  };
+  if (context.unavailableWindows.some((windowValue) => doesOccurrenceOverlapWindow(candidateOccurrence, windowValue))) {
+    return false;
+  }
+
+  if (nextOccurrence && nextOccurrence.date === occurrence.date) {
+    const nextStartMinutes = parseTimeToMinutes(nextOccurrence.start);
+    if (Number.isFinite(nextStartMinutes) && endMinutes > nextStartMinutes) return false;
+  }
+
+  return true;
+}
+
+function repairWeeklyMinuteBand({ variant, commitDraft, context, repairDiagnostics }) {
+  const derived = buildDerivedView({
+    variant,
+    summary: "",
+    weekGoal: "objectif de semaine",
+    weekBenefit: "benefice concret a j+7",
+    differenceNote: "difference structurelle de semaine",
+    rationale: { whyFit: "", capacityFit: "", constraintFit: "" },
+    commitDraft,
+    context,
+  });
+  const bands = buildWeeklyMinuteBands(context.currentCapacity)[variant];
+  const weeklyMinutes = derived.comparisonMetrics.weeklyMinutes;
+  if (weeklyMinutes >= bands[0] && weeklyMinutes <= bands[1]) {
+    return { commitDraft, weeklyMinutes };
+  }
+
+  const delta = weeklyMinutes < bands[0] ? bands[0] - weeklyMinutes : weeklyMinutes - bands[1];
+  if (delta > MAX_WEEKLY_MINUTE_REPAIR_DELTA) {
+    return { commitDraft, weeklyMinutes };
+  }
+
+  const chronologicalOccurrences = buildChronologicalOccurrences(commitDraft.occurrences);
+  for (let index = chronologicalOccurrences.length - 1; index >= 0; index -= 1) {
+    const occurrence = chronologicalOccurrences[index];
+    const nextOccurrence = chronologicalOccurrences[index + 1] || null;
+    const targetDuration =
+      weeklyMinutes < bands[0] ? occurrence.durationMinutes + delta : occurrence.durationMinutes - delta;
+    if (
+      !canResizeOccurrenceWithinSchedule({
+        occurrence,
+        nextOccurrence,
+        nextDurationMinutes: targetDuration,
+        context,
+      })
+    ) {
+      continue;
+    }
+
+    repairDiagnostics.repairedMinutesDelta += weeklyMinutes < bands[0] ? delta : -delta;
+    return {
+      commitDraft: {
+        ...commitDraft,
+        occurrences: commitDraft.occurrences.map((entry) =>
+          entry.id === occurrence.id
+            ? {
+                ...entry,
+                durationMinutes: targetDuration,
+              }
+            : entry
+        ),
+      },
+      weeklyMinutes,
+    };
+  }
+
+  return { commitDraft, weeklyMinutes };
 }
 
 function formatDayLabel(dateKey, locale) {
@@ -990,7 +1230,7 @@ function buildDerivedView({ variant, summary, weekGoal, weekBenefit, differenceN
   };
 }
 
-function validateCommitDraft({ variant, commitDraft, context }) {
+function validateCommitDraft({ variant, commitDraft, context, repairDiagnostics = null }) {
   const categories = [...commitDraft.categories].sort(sortByOrderThenId);
   const goals = [...commitDraft.goals].sort(sortByOrderThenId);
   const actions = [...commitDraft.actions].sort(sortByOrderThenId);
@@ -1003,13 +1243,20 @@ function validateCommitDraft({ variant, commitDraft, context }) {
   const allowedTemplateIds = new Set(ALL_FIRST_RUN_CATEGORY_IDS);
   const horizonKeys = new Set(buildDateHorizon(context.referenceDateKey));
   const actionsById = new Map();
+  const buildValidationDetails = (overrides = {}) =>
+    appendRepairDiagnostics(
+      buildInvalidResponseDetails({
+        rejectionStage: "commit_draft_validation",
+        ...overrides,
+      }),
+      repairDiagnostics
+    );
 
-  if (categories.length > 3) {
+  if (categories.length > MAX_COMMIT_DRAFT_CATEGORIES) {
     throw createBackendError(
       "INVALID_FIRST_RUN_PLAN_RESPONSE",
       "INVALID_FIRST_RUN_PLAN_RESPONSE",
-      buildInvalidResponseDetails({
-        rejectionStage: "commit_draft_validation",
+      buildValidationDetails({
         rejectionReason: "too_many_categories",
       })
     );
@@ -1020,8 +1267,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
-        buildInvalidResponseDetails({
-          rejectionStage: "commit_draft_validation",
+        buildValidationDetails({
           rejectionReason: "duplicate_category_id",
         })
       );
@@ -1031,8 +1277,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
-        buildInvalidResponseDetails({
-          rejectionStage: "commit_draft_validation",
+        buildValidationDetails({
           rejectionReason: "category_template_out_of_scope",
         })
       );
@@ -1044,8 +1289,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
-        buildInvalidResponseDetails({
-          rejectionStage: "commit_draft_validation",
+        buildValidationDetails({
           rejectionReason: "duplicate_goal_id",
         })
       );
@@ -1055,8 +1299,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
-        buildInvalidResponseDetails({
-          rejectionStage: "commit_draft_validation",
+        buildValidationDetails({
           rejectionReason: "goal_category_missing",
         })
       );
@@ -1068,8 +1311,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
-        buildInvalidResponseDetails({
-          rejectionStage: "commit_draft_validation",
+        buildValidationDetails({
           rejectionReason: "duplicate_action_id",
         })
       );
@@ -1080,8 +1322,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
-        buildInvalidResponseDetails({
-          rejectionStage: "commit_draft_validation",
+        buildValidationDetails({
           rejectionReason: "action_category_missing",
         })
       );
@@ -1090,8 +1331,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
-        buildInvalidResponseDetails({
-          rejectionStage: "commit_draft_validation",
+        buildValidationDetails({
           rejectionReason: "action_parent_goal_missing",
         })
       );
@@ -1100,8 +1340,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
-        buildInvalidResponseDetails({
-          rejectionStage: "commit_draft_validation",
+        buildValidationDetails({
           rejectionReason: "fixed_action_start_mismatch",
         })
       );
@@ -1114,8 +1353,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
-        buildInvalidResponseDetails({
-          rejectionStage: "commit_draft_validation",
+        buildValidationDetails({
           rejectionReason: "duplicate_occurrence_id",
         })
       );
@@ -1125,8 +1363,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
-        buildInvalidResponseDetails({
-          rejectionStage: "commit_draft_validation",
+        buildValidationDetails({
           rejectionReason: "occurrence_action_missing",
           variant,
           availableActionIds: [...actionIds].slice(0, 12),
@@ -1136,7 +1373,6 @@ function validateCommitDraft({ variant, commitDraft, context }) {
               actionId: trimString(occurrence.actionId, 120) || null,
             },
           ],
-          repairedOccurrenceCount: 0,
           rejectedOccurrenceCount: 1,
         })
       );
@@ -1145,8 +1381,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
-        buildInvalidResponseDetails({
-          rejectionStage: "commit_draft_validation",
+        buildValidationDetails({
           rejectionReason: "occurrence_out_of_horizon",
         })
       );
@@ -1157,8 +1392,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
-        buildInvalidResponseDetails({
-          rejectionStage: "commit_draft_validation",
+        buildValidationDetails({
           rejectionReason: "occurrence_day_mismatch",
         })
       );
@@ -1167,8 +1401,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
-        buildInvalidResponseDetails({
-          rejectionStage: "commit_draft_validation",
+        buildValidationDetails({
           rejectionReason: "occurrence_time_mismatch",
         })
       );
@@ -1177,8 +1410,7 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
-        buildInvalidResponseDetails({
-          rejectionStage: "commit_draft_validation",
+        buildValidationDetails({
           rejectionReason: "occurrence_overlaps_unavailable_window",
         })
       );
@@ -1193,13 +1425,12 @@ function validateCommitDraft({ variant, commitDraft, context }) {
       const currentStart = parseTimeToMinutes(occurrence.start);
       if (Number.isFinite(previousEnd) && Number.isFinite(currentStart) && currentStart < previousEnd) {
         throw createBackendError(
-          "INVALID_FIRST_RUN_PLAN_RESPONSE",
-          "INVALID_FIRST_RUN_PLAN_RESPONSE",
-          buildInvalidResponseDetails({
-            rejectionStage: "commit_draft_validation",
-            rejectionReason: "overlapping_occurrences",
-          })
-        );
+        "INVALID_FIRST_RUN_PLAN_RESPONSE",
+        "INVALID_FIRST_RUN_PLAN_RESPONSE",
+        buildValidationDetails({
+          rejectionReason: "overlapping_occurrences",
+        })
+      );
       }
     }
     previousOccurrence = occurrence;
@@ -1221,10 +1452,14 @@ function validateCommitDraft({ variant, commitDraft, context }) {
     throw createBackendError(
       "INVALID_FIRST_RUN_PLAN_RESPONSE",
       "INVALID_FIRST_RUN_PLAN_RESPONSE",
-      buildInvalidResponseDetails({
-        rejectionStage: "commit_draft_validation",
+      buildValidationDetails({
         rejectionReason: "weekly_minutes_out_of_band",
-        details: { variant, weeklyMinutes, expected: bands },
+        details: {
+          variant,
+          weeklyMinutes,
+          expected: bands,
+          maxRepairDelta: MAX_WEEKLY_MINUTE_REPAIR_DELTA,
+        },
       })
     );
   }
@@ -1291,39 +1526,91 @@ function validatePlanDivergence(plans = [], context) {
   }
 }
 
+function buildFirstRunPlanServiceDiagnostics({ providerMs = null, totalMs = null, repairTotals = null, plans = [] } = {}) {
+  return {
+    providerMs: toRoundedInt(providerMs, null),
+    totalMs: toRoundedInt(totalMs, null),
+    repairedOccurrenceCount: toRoundedInt(repairTotals?.repairedOccurrenceCount, 0),
+    repairedMinutesDelta: toRoundedInt(repairTotals?.repairedMinutesDelta, 0),
+    activeDays: plans.map((plan) => toRoundedInt(plan?.comparisonMetrics?.activeDays, 0)),
+    lightDays: plans.map((plan) => buildPlanDiagnostics(plan).lightDays),
+    denseDays: plans.map((plan) => buildPlanDiagnostics(plan).denseDays),
+  };
+}
+
 function normalizeProviderPayload(providerPayload, context, requestMeta) {
-  const plans = providerPayload.plans
-    .map((entry) => {
-      const normalizedCommitDraft = normalizeCommitDraftReferences({
-        variant: entry.variant,
-        commitDraft: entry.commitDraft,
-      });
-      validateCommitDraft({ variant: entry.variant, commitDraft: normalizedCommitDraft, context });
-      return buildDerivedView({
-        variant: entry.variant,
-        summary: entry.summary,
-        weekGoal: entry.weekGoal,
-        weekBenefit: entry.weekBenefit,
-        differenceNote: entry.differenceNote,
-        rationale: entry.rationale,
-        commitDraft: normalizedCommitDraft,
-        context,
-      });
-    })
-    .sort((left, right) => FIRST_RUN_PLAN_VARIANTS.indexOf(left.variant) - FIRST_RUN_PLAN_VARIANTS.indexOf(right.variant));
+  const repairItems = [];
+  let plans = [];
 
-  validatePlanDivergence(plans, context);
+  try {
+    plans = providerPayload.plans
+      .map((entry) => {
+        const referenceRepair = normalizeCommitDraftReferences({
+          variant: entry.variant,
+          commitDraft: entry.commitDraft,
+        });
+        let preparedCommitDraft = repairCommitDraftTimeCoherence({
+          commitDraft: referenceRepair.commitDraft,
+          context,
+          repairDiagnostics: referenceRepair.repairDiagnostics,
+        });
+        preparedCommitDraft = repairWeeklyMinuteBand({
+          variant: entry.variant,
+          commitDraft: preparedCommitDraft,
+          context,
+          repairDiagnostics: referenceRepair.repairDiagnostics,
+        }).commitDraft;
+        repairItems.push(referenceRepair.repairDiagnostics);
+        validateCommitDraft({
+          variant: entry.variant,
+          commitDraft: preparedCommitDraft,
+          context,
+          repairDiagnostics: referenceRepair.repairDiagnostics,
+        });
+        return buildDerivedView({
+          variant: entry.variant,
+          summary: entry.summary,
+          weekGoal: entry.weekGoal,
+          weekBenefit: entry.weekBenefit,
+          differenceNote: entry.differenceNote,
+          rationale: entry.rationale,
+          commitDraft: preparedCommitDraft,
+          context,
+        });
+      })
+      .sort((left, right) => FIRST_RUN_PLAN_VARIANTS.indexOf(left.variant) - FIRST_RUN_PLAN_VARIANTS.indexOf(right.variant));
 
-  return firstRunPlanResponseSchema.parse({
-    version: 2,
-    source: "ai_backend",
-    inputHash: requestMeta.inputHash,
-    generatedAt: new Date().toISOString(),
-    requestId: context.requestId,
-    model: requestMeta.model,
-    promptVersion: requestMeta.promptVersion,
-    plans,
-  });
+    validatePlanDivergence(plans, context);
+  } catch (error) {
+    if (String(error?.code || "").trim().toUpperCase() === "INVALID_FIRST_RUN_PLAN_RESPONSE") {
+      const repairTotals = sumRepairDiagnostics(repairItems);
+      error.details = appendRepairDiagnostics(
+        isPlainObject(error?.details) ? error.details : buildInvalidResponseDetails(),
+        repairTotals
+      );
+    }
+    throw error;
+  }
+
+  const repairTotals = sumRepairDiagnostics(repairItems);
+  return {
+    response: firstRunPlanResponseSchema.parse({
+      version: 2,
+      source: "ai_backend",
+      inputHash: requestMeta.inputHash,
+      generatedAt: new Date().toISOString(),
+      requestId: context.requestId,
+      model: requestMeta.model,
+      promptVersion: requestMeta.promptVersion,
+      plans,
+    }),
+    diagnostics: buildFirstRunPlanServiceDiagnostics({
+      providerMs: requestMeta.providerMs,
+      totalMs: requestMeta.totalMs,
+      repairTotals,
+      plans,
+    }),
+  };
 }
 
 async function runOpenAiFirstRunPlan({ app, context }) {
@@ -1333,6 +1620,7 @@ async function runOpenAiFirstRunPlan({ app, context }) {
   const requestModel = resolveFirstRunPlanOpenAiModel(app);
   const requestTimeout = resolveFirstRunPlanOpenAiTimeoutMs(app);
   let completion;
+  const providerStartedAt = Date.now();
   try {
     completion = await app.openai.chat.completions.parse(
       {
@@ -1353,23 +1641,45 @@ async function runOpenAiFirstRunPlan({ app, context }) {
       { timeout: requestTimeout }
     );
   } catch (error) {
+    const providerMs = Math.max(0, Date.now() - providerStartedAt);
     if (isOpenAiRequestTimeoutError(error)) {
       throw createBackendError(
         "FIRST_RUN_PLAN_PROVIDER_TIMEOUT",
         "FIRST_RUN_PLAN_PROVIDER_TIMEOUT",
-        buildProviderTimeoutDetails({ timeoutMs: requestTimeout })
+        {
+          ...buildProviderTimeoutDetails({ timeoutMs: requestTimeout }),
+          providerMs,
+          totalMs: providerMs,
+        }
       );
     }
     throw error;
   }
+  const providerMs = Math.max(0, Date.now() - providerStartedAt);
 
   const message = completion.choices?.[0]?.message || null;
   if (!message || message.refusal) {
-    throw createBackendError("INVALID_FIRST_RUN_PLAN_RESPONSE", "INVALID_FIRST_RUN_PLAN_RESPONSE", buildInvalidResponseDetails());
+    throw createBackendError(
+      "INVALID_FIRST_RUN_PLAN_RESPONSE",
+      "INVALID_FIRST_RUN_PLAN_RESPONSE",
+      {
+        ...buildInvalidResponseDetails(),
+        providerMs,
+        totalMs: providerMs,
+      }
+    );
   }
   const candidate = extractPayloadCandidate(message);
   if (!candidate) {
-    throw createBackendError("INVALID_FIRST_RUN_PLAN_RESPONSE", "INVALID_FIRST_RUN_PLAN_RESPONSE", buildInvalidResponseDetails());
+    throw createBackendError(
+      "INVALID_FIRST_RUN_PLAN_RESPONSE",
+      "INVALID_FIRST_RUN_PLAN_RESPONSE",
+      {
+        ...buildInvalidResponseDetails(),
+        providerMs,
+        totalMs: providerMs,
+      }
+    );
   }
 
   try {
@@ -1377,15 +1687,20 @@ async function runOpenAiFirstRunPlan({ app, context }) {
       candidate: firstRunPlanProviderSchema.parse(candidate),
       model: requestModel,
       promptVersion: FIRST_RUN_PLAN_PROMPT_VERSION,
+      providerMs,
     };
   } catch (error) {
     if (error instanceof z.ZodError) {
       throw createBackendError(
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
         "INVALID_FIRST_RUN_PLAN_RESPONSE",
-        buildInvalidResponseDetails({
+        {
+          ...buildInvalidResponseDetails({
           zodIssuePaths: error.issues.map((issue) => formatIssuePath(issue)).filter(Boolean).slice(0, 16),
-        })
+          }),
+          providerMs,
+          totalMs: providerMs,
+        }
       );
     }
     throw error;
@@ -1393,11 +1708,28 @@ async function runOpenAiFirstRunPlan({ app, context }) {
 }
 
 export async function runFirstRunPlanService({ app, context }) {
+  const startedAt = Date.now();
   const inputHash = hashValue(serializeFirstRunPlanInput(context));
-  const provider = await runOpenAiFirstRunPlan({ app, context });
-  return normalizeProviderPayload(provider.candidate, context, {
-    inputHash,
-    model: provider.model,
-    promptVersion: provider.promptVersion,
-  });
+  let provider = null;
+
+  try {
+    provider = await runOpenAiFirstRunPlan({ app, context });
+    const totalMs = Math.max(0, Date.now() - startedAt);
+    return normalizeProviderPayload(provider.candidate, context, {
+      inputHash,
+      model: provider.model,
+      promptVersion: provider.promptVersion,
+      providerMs: provider.providerMs,
+      totalMs,
+    });
+  } catch (error) {
+    const totalMs = Math.max(0, Date.now() - startedAt);
+    const safeDetails = isPlainObject(error?.details) ? error.details : null;
+    error.details = {
+      ...(safeDetails || {}),
+      providerMs: toRoundedInt(safeDetails?.providerMs ?? provider?.providerMs, null),
+      totalMs,
+    };
+    throw error;
+  }
 }

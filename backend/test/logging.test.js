@@ -31,8 +31,14 @@ test("insertAiRequestLog uses an idempotent upsert on request_id", async () => {
     mode: "prepare",
     protocolType: "sport",
     providerStatus: "ok",
+    providerMs: 31,
     rejectionStage: null,
     rejectionReason: null,
+    repairedOccurrenceCount: 2,
+    repairedMinutesDelta: -25,
+    activeDays: [4, 5],
+    lightDays: [2, 1],
+    denseDays: [0, 2],
     validationPassed: true,
     richnessPassed: true,
     stepCount: 3,
@@ -55,6 +61,10 @@ test("insertAiRequestLog uses an idempotent upsert on request_id", async () => {
   assert.equal(capturedPayload.route, "/ai/chat");
   assert.equal(capturedPayload.mode, "prepare");
   assert.equal(capturedPayload.protocol_type, "sport");
+  assert.equal(capturedPayload.provider_ms, 31);
+  assert.equal(capturedPayload.repaired_occurrence_count, 2);
+  assert.equal(capturedPayload.repaired_minutes_delta, -25);
+  assert.deepEqual(capturedPayload.active_days, [4, 5]);
   assert.equal(capturedPayload.step_count, 3);
 });
 
