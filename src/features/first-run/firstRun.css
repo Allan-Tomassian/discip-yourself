@@ -283,7 +283,7 @@
 .firstRunSignalsBody .firstRunFormSection {
   --gate-card-padding: clamp(14px, 1.8vw, 18px);
   --gate-card-gap: var(--space-4);
-  --gate-section-body-gap: var(--space-5);
+  --gate-section-body-gap: var(--space-4);
   border-color: color-mix(in srgb, var(--border-subtle) 84%, rgba(255, 255, 255, 0.06));
   background: color-mix(in srgb, var(--surface-1) 88%, var(--background-secondary));
   box-shadow: none;
@@ -312,7 +312,7 @@
 
 .firstRunFormSectionBody {
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-4);
 }
 
 .firstRunField {
@@ -326,14 +326,14 @@
 .firstRunChoiceGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
 .firstRunChoiceCard {
-  min-height: 104px;
+  min-height: 96px;
   align-items: flex-start;
-  gap: var(--space-6);
-  padding: 14px;
+  gap: var(--space-4);
+  padding: 12px;
 }
 
 .firstRunChoiceCard .appChoiceCardText {
@@ -348,11 +348,124 @@
 .firstRunChoiceCard .appChoiceCardDescription {
   max-width: none;
   font-size: var(--font-meta);
-  line-height: 1.5;
+  line-height: 1.35;
 }
 
 .firstRunChoiceCard .appChoiceCardBadge {
   align-self: flex-start;
+}
+
+.firstRunCapacityGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.firstRunCapacityCard {
+  min-height: 82px;
+  gap: var(--space-3);
+  padding: 12px 12px 10px;
+}
+
+.firstRunCapacityCard .appChoiceCardText {
+  gap: 6px;
+}
+
+.firstRunCapacityCard .appChoiceCardTitle {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.firstRunCapacityCard .appChoiceCardDescription {
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.firstRunCapacityCard.isSelected {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.firstRunCategoryGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.firstRunCategoryCard {
+  position: relative;
+  overflow: hidden;
+  min-height: 78px;
+  justify-content: flex-start;
+  gap: var(--space-3);
+  padding: 12px 12px 11px;
+  border-color: color-mix(in srgb, var(--categoryUiBorder, var(--border-subtle)) 92%, transparent);
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--categoryUiTint, rgba(255, 255, 255, 0.04)) 82%, transparent),
+      transparent 72%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-elevated) 94%, transparent),
+      color-mix(in srgb, var(--surface-primary) 98%, transparent)
+    );
+  box-shadow: none;
+}
+
+.firstRunCategoryCard::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--catColor, var(--accent-primary)) 92%, transparent);
+  opacity: 0.92;
+}
+
+.firstRunCategoryCard .appChoiceCardText,
+.firstRunCategoryCard .appChoiceCardBadge {
+  position: relative;
+  z-index: 1;
+}
+
+.firstRunCategoryCard .appChoiceCardText {
+  gap: 0;
+}
+
+.firstRunCategoryCard .appChoiceCardTitle {
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.firstRunCategoryCard.is-idle .appChoiceCardTitle {
+  color: color-mix(in srgb, var(--text-primary) 92%, var(--text-secondary));
+}
+
+.firstRunCategoryCard.isSelected,
+.firstRunCategoryCard.is-selected.isSelected {
+  border-color: color-mix(in srgb, var(--categoryUiBorderStrong, var(--accent-primary)) 96%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px color-mix(in srgb, var(--categoryUiGlow, var(--accent-primary)) 26%, transparent);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--categoryUiFocusStart, var(--categoryUiTint, rgba(255, 255, 255, 0.08))) 100%, transparent),
+      color-mix(in srgb, var(--categoryUiFocusEnd, var(--accent-primary)) 18%, transparent) 62%,
+      transparent
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-elevated) 95%, transparent),
+      color-mix(in srgb, var(--surface-primary) 98%, transparent)
+    );
+}
+
+.firstRunCategoryCard .appChoiceCardBadge {
+  border-color: color-mix(in srgb, var(--categoryUiBorderStrong, var(--accent-primary)) 80%, transparent);
+  background: color-mix(in srgb, var(--categoryUiTint, rgba(255, 255, 255, 0.08)) 92%, transparent);
+  color: var(--text-primary);
 }
 
 .firstRunWindowList {
@@ -364,11 +477,11 @@
 .firstRunWindowCard {
   border: 1px solid color-mix(in srgb, var(--border-subtle) 90%, rgba(255, 255, 255, 0.08));
   border-radius: calc(var(--radius-card) - 2px);
-  padding: var(--space-5);
+  padding: 14px;
   background: color-mix(in srgb, var(--surface-1) 94%, var(--background-secondary));
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-4);
   box-shadow: none;
 }
 
@@ -380,7 +493,7 @@
 }
 
 .firstRunWindowCardTitle {
-  font-size: var(--font-body-strong);
+  font-size: 14px;
   font-weight: var(--font-weight-medium);
   color: var(--text-primary);
 }
@@ -388,11 +501,22 @@
 .firstRunWindowFields {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
+}
+
+.firstRunWindowTopRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(0, 0.82fr));
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.firstRunWindowLabelField {
+  min-width: 0;
 }
 
 .firstRunCompactField {
-  gap: var(--space-3);
+  gap: 6px;
 }
 
 .firstRunWindowTimeRow {
@@ -404,12 +528,13 @@
 .firstRunDayRow {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: 6px;
 }
 
 .firstRunDayChip {
-  min-width: 40px;
-  padding-inline: var(--space-10);
+  min-width: 34px;
+  min-height: 30px;
+  padding-inline: var(--space-8);
 }
 
 .firstRunDayChip.is-active {
@@ -498,6 +623,14 @@
   .firstRunInfoGrid--two {
     grid-template-columns: 1fr;
   }
+
+  .firstRunCapacityGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .firstRunCategoryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
@@ -517,7 +650,17 @@
     flex: 1 1 auto;
   }
 
-  .firstRunWindowTimeRow {
+  .firstRunWindowTopRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .firstRunWindowLabelField {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 420px) {
+  .firstRunCapacityGrid {
     grid-template-columns: 1fr;
   }
 }

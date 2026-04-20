@@ -9,6 +9,7 @@ import {
   PrimaryButton,
 } from "../../shared/ui/app";
 import { USER_AI_CATEGORY_META } from "../../domain/userAiProfile";
+import { getCategoryUiVars } from "../../utils/categoryAccent";
 import FirstRunStepScreen from "./FirstRunStepScreen";
 
 const DAY_OPTIONS = [
@@ -25,17 +26,17 @@ const CAPACITY_OPTIONS = [
   {
     id: "reprise",
     title: "Reprise",
-    description: "Peu de charge, priorité à la tenue dans la durée.",
+    description: "Priorité à la continuité.",
   },
   {
     id: "stable",
     title: "Stable",
-    description: "Un cadre sérieux mais encore respirable.",
+    description: "Sérieux mais respirable.",
   },
   {
     id: "forte",
     title: "Forte",
-    description: "Plus de densité et moins de marge sur la semaine.",
+    description: "Rythme plus dense.",
   },
 ];
 
@@ -64,15 +65,14 @@ function WindowEditorCard({
       </div>
 
       <div className="firstRunWindowFields">
-        <FieldGroup label="Repère" className="firstRunCompactField">
-          <AppInput
-            value={safeWindow.label || ""}
-            placeholder="Ex: Travail, sport, deep work"
-            onChange={(event) => onPatch({ label: event.target.value })}
-          />
-        </FieldGroup>
-
-        <div className="firstRunWindowTimeRow">
+        <div className="firstRunWindowTopRow">
+          <FieldGroup label="Repère" className="firstRunCompactField firstRunWindowLabelField">
+            <AppInput
+              value={safeWindow.label || ""}
+              placeholder="Ex. travail"
+              onChange={(event) => onPatch({ label: event.target.value })}
+            />
+          </FieldGroup>
           <FieldGroup label="Début" className="firstRunCompactField">
             <AppInput
               type="time"
@@ -143,7 +143,7 @@ function WindowSection({
           <div className="firstRunEmptyHint">{emptyLabel}</div>
         )}
       </div>
-      <GhostButton className="firstRunSectionAction" onClick={onAdd}>
+      <GhostButton size="sm" className="firstRunSectionAction" onClick={onAdd}>
         {addLabel}
       </GhostButton>
     </AppFormSection>
@@ -212,11 +212,11 @@ export default function FirstRunSignalsScreen({
           className="firstRunFormSection"
           bodyClassName="firstRunFormSectionBody"
         >
-          <div className="firstRunChoiceGrid">
+          <div className="firstRunChoiceGrid firstRunCapacityGrid">
             {CAPACITY_OPTIONS.map((option) => (
               <ChoiceCard
                 key={option.id}
-                className="firstRunChoiceCard"
+                className="firstRunChoiceCard firstRunCapacityCard"
                 title={option.title}
                 description={option.description}
                 selected={safeDraftAnswers.currentCapacity === option.id}
@@ -232,18 +232,19 @@ export default function FirstRunSignalsScreen({
           className="firstRunFormSection"
           bodyClassName="firstRunFormSectionBody"
         >
-          <div className="firstRunChoiceGrid">
+          <div className="firstRunChoiceGrid firstRunCategoryGrid">
             {Object.values(USER_AI_CATEGORY_META).map((categoryMeta) => {
               const selected = selectedCategoryIds.includes(categoryMeta.id);
               const selectionIndex = selectedCategoryIds.indexOf(categoryMeta.id);
               return (
                 <ChoiceCard
                   key={categoryMeta.id}
-                  className="firstRunChoiceCard"
+                  className={`firstRunChoiceCard firstRunCategoryCard ${selected ? "is-selected" : "is-idle"}`}
                   title={categoryMeta.label}
                   selected={selected}
                   disabled={!selected && selectedCategoryIds.length >= 3}
                   badge={selected ? `#${selectionIndex + 1}` : null}
+                  style={getCategoryUiVars(categoryMeta, { level: selected ? "focus" : "surface" })}
                   onClick={() => onTogglePriorityCategory(categoryMeta.id)}
                 />
               );

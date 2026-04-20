@@ -89,6 +89,83 @@ describe("First-run lot 2 screens", () => {
     expect(html).not.toContain("Utilisé pour structurer la semaine proposée.");
   });
 
+  it("renders category cards with visible selection order and category accent vars", () => {
+    const html = renderToStaticMarkup(
+      <FirstRunSignalsScreen
+        data={{}}
+        draftAnswers={{
+          primaryGoal: "Relancer le projet",
+          currentCapacity: "stable",
+          priorityCategoryIds: ["health", "finance"],
+          unavailableWindows: [],
+          preferredWindows: [],
+        }}
+        canContinue
+        onBack={() => {}}
+        onContinue={() => {}}
+        onPrimaryGoalChange={() => {}}
+        onCapacityChange={() => {}}
+        onTogglePriorityCategory={() => {}}
+        onAddUnavailableWindow={() => {}}
+        onPatchUnavailableWindow={() => {}}
+        onRemoveUnavailableWindow={() => {}}
+        onAddPreferredWindow={() => {}}
+        onPatchPreferredWindow={() => {}}
+        onRemovePreferredWindow={() => {}}
+      />
+    );
+
+    expect(html).toContain("#1");
+    expect(html).toContain("#2");
+    expect(html).toContain("firstRunCategoryCard is-selected");
+    expect(html).toContain("firstRunCategoryCard is-idle");
+    expect(html).toContain("--categoryUiBorder");
+  });
+
+  it("keeps signals block order and compact window controls", () => {
+    const html = renderToStaticMarkup(
+      <FirstRunSignalsScreen
+        data={{}}
+        draftAnswers={{
+          primaryGoal: "",
+          currentCapacity: "stable",
+          priorityCategoryIds: ["health"],
+          unavailableWindows: [
+            {
+              id: "u1",
+              label: "Travail",
+              startTime: "09:00",
+              endTime: "18:00",
+              daysOfWeek: [1, 2, 3],
+            },
+          ],
+          preferredWindows: [],
+        }}
+        canContinue={false}
+        onBack={() => {}}
+        onContinue={() => {}}
+        onPrimaryGoalChange={() => {}}
+        onCapacityChange={() => {}}
+        onTogglePriorityCategory={() => {}}
+        onAddUnavailableWindow={() => {}}
+        onPatchUnavailableWindow={() => {}}
+        onRemoveUnavailableWindow={() => {}}
+        onAddPreferredWindow={() => {}}
+        onPatchPreferredWindow={() => {}}
+        onRemovePreferredWindow={() => {}}
+      />
+    );
+
+    expect(html.indexOf("Objectif principal")).toBeLessThan(html.indexOf("Capacité actuelle"));
+    expect(html.indexOf("Capacité actuelle")).toBeLessThan(html.indexOf("Catégories prioritaires"));
+    expect(html.indexOf("Catégories prioritaires")).toBeLessThan(html.indexOf("Indisponibilités"));
+    expect(html.indexOf("Indisponibilités")).toBeLessThan(html.indexOf("Créneaux favorables"));
+    expect(html).toContain("Repère");
+    expect(html).toContain("Début");
+    expect(html).toContain("Fin");
+    expect(html).toContain("Ajouter une indisponibilité");
+  });
+
   it("maps visible progression to 4/5 and 5/5, then hides it after compare", () => {
     const generateHtml = renderToStaticMarkup(
       <FirstRunGenerateScreen data={{}} isLoading error={null} goalLabel="" onBack={() => {}} onRetry={() => {}} />
