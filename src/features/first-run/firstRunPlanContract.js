@@ -61,7 +61,7 @@ function hasMeaningfulWindowFields(windowLike) {
   );
 }
 
-function normalizeFirstRunWindows(value) {
+function normalizeFirstRunSubmitWindows(value) {
   if (!Array.isArray(value)) return [];
   return value
     .filter((entry) => hasMeaningfulWindowFields(entry))
@@ -88,13 +88,13 @@ function normalizePriorityCategoryIds(value) {
   return out.slice(0, 3);
 }
 
-function normalizeDraftAnswers(value) {
+function normalizeSubmitDraftAnswers(value) {
   const source = isPlainObject(value) ? value : {};
   return {
     whyText: trimString(source.whyText, 1200),
     primaryGoal: trimString(source.primaryGoal, 240),
-    unavailableWindows: normalizeFirstRunWindows(source.unavailableWindows),
-    preferredWindows: normalizeFirstRunWindows(source.preferredWindows),
+    unavailableWindows: normalizeFirstRunSubmitWindows(source.unavailableWindows),
+    preferredWindows: normalizeFirstRunSubmitWindows(source.preferredWindows),
     currentCapacity:
       source.currentCapacity === "reprise" || source.currentCapacity === "stable" || source.currentCapacity === "forte"
         ? source.currentCapacity
@@ -116,7 +116,7 @@ function stableSerialize(value) {
 
 export function normalizeFirstRunPlanRequestPayload(input) {
   const source = isPlainObject(input) ? input : {};
-  const draftAnswers = normalizeDraftAnswers(source);
+  const draftAnswers = normalizeSubmitDraftAnswers(source);
   return {
     whyText: draftAnswers.whyText,
     primaryGoal: draftAnswers.primaryGoal,

@@ -1,5 +1,6 @@
 import React from "react";
 import { AppTextarea, FieldGroup, GhostButton, PrimaryButton } from "../../shared/ui/app";
+import { isFirstRunWhyReady } from "./firstRunModel";
 import FirstRunStepScreen from "./FirstRunStepScreen";
 
 export default function FirstRunWhyScreen({
@@ -20,7 +21,7 @@ export default function FirstRunWhyScreen({
       footer={
         <>
           <GhostButton onClick={onBack}>Retour</GhostButton>
-          <PrimaryButton disabled={!value.trim()} onClick={onContinue}>
+          <PrimaryButton disabled={!isFirstRunWhyReady(value)} onClick={onContinue}>
             Continuer
           </PrimaryButton>
         </>

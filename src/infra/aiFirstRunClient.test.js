@@ -155,13 +155,19 @@ describe("aiFirstRunClient", () => {
     vi.unstubAllGlobals();
   });
 
-  it("normalise le payload first-run et exclut les fenetres incomplètes", () => {
+  it("normalise le payload first-run au submit en trimant le texte et en excluant les fenetres incomplètes", () => {
     expect(
       normalizeAiFirstRunPayloadForTest({
-        whyText: "Reprendre un cadre",
-        primaryGoal: "Relancer le projet",
-        unavailableWindows: [{ id: "u1", daysOfWeek: [1], startTime: "09:00", endTime: "", label: "Travail" }],
-        preferredWindows: [{ id: "p1", daysOfWeek: [2], startTime: "07:00", endTime: "08:00", label: "Matin" }],
+        whyText: "  Reprendre un cadre  ",
+        primaryGoal: "  Relancer le projet  ",
+        unavailableWindows: [
+          { id: "u1", daysOfWeek: [1], startTime: "09:00", endTime: "", label: "  Travail  " },
+          { id: "u2", daysOfWeek: [1, 1, 3], startTime: "09:00", endTime: "18:00", label: "  Bureau  " },
+        ],
+        preferredWindows: [
+          { id: "p1", daysOfWeek: [2], startTime: "07:00", endTime: "08:00", label: "  Matin  " },
+          { id: "p2", daysOfWeek: [4], startTime: "", endTime: "20:00", label: "  Soir  " },
+        ],
         currentCapacity: "stable",
         priorityCategoryIds: ["business", "health"],
         locale: "fr-FR",
@@ -171,7 +177,7 @@ describe("aiFirstRunClient", () => {
     ).toEqual({
       whyText: "Reprendre un cadre",
       primaryGoal: "Relancer le projet",
-      unavailableWindows: [],
+      unavailableWindows: [{ id: "u2", daysOfWeek: [1, 3], startTime: "09:00", endTime: "18:00", label: "Bureau" }],
       preferredWindows: [{ id: "p1", daysOfWeek: [2], startTime: "07:00", endTime: "08:00", label: "Matin" }],
       currentCapacity: "stable",
       priorityCategoryIds: ["business", "health"],

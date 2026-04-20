@@ -14,11 +14,14 @@ import { todayLocalKey } from "../../utils/datetime";
 import { useAuth } from "../../auth/useAuth";
 import { buildAiFirstRunPlanRequest, requestAiFirstRunPlan } from "../../infra/aiFirstRunClient";
 import {
-  createEmptyFirstRunWindow,
+  addFirstRunDraftWindow,
   createInitialFirstRunState,
   getNextFirstRunStatus,
   getPreviousFirstRunStatus,
+  isFirstRunSignalsReady,
   normalizeFirstRunV1,
+  patchFirstRunDraftWindow,
+  removeFirstRunDraftWindow,
 } from "./firstRunModel";
 import {
   applyFirstRunGenerationFailure,
@@ -68,16 +71,6 @@ function toggleOrderedSelection(currentValues, nextValue, max = 3) {
   }
   if (safeValues.length >= max) return safeValues;
   return [...safeValues, nextValue];
-}
-
-function replaceWindowInList(windows, windowId, patch) {
-  return (Array.isArray(windows) ? windows : []).map((windowValue) =>
-    windowValue?.id === windowId ? { ...windowValue, ...(patch && typeof patch === "object" ? patch : {}) } : windowValue
-  );
-}
-
-function removeWindowFromList(windows, windowId) {
-  return (Array.isArray(windows) ? windows : []).filter((windowValue) => windowValue?.id !== windowId);
 }
 
 function buildNextUi(baseUi, nextFirstRun) {
@@ -237,7 +230,7 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
   const patchWindowList = useCallback(
     (key, windowId, patch) => {
       patchDraftAnswers({
-        [key]: replaceWindowInList(firstRun.draftAnswers?.[key], windowId, patch),
+        [key]: patchFirstRunDraftWindow(firstRun.draftAnswers?.[key], windowId, patch),
       });
     },
     [firstRun.draftAnswers, patchDraftAnswers]
@@ -246,7 +239,7 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
   const addWindowToList = useCallback(
     (key) => {
       patchDraftAnswers({
-        [key]: [...(Array.isArray(firstRun.draftAnswers?.[key]) ? firstRun.draftAnswers[key] : []), createEmptyFirstRunWindow()],
+        [key]: addFirstRunDraftWindow(firstRun.draftAnswers?.[key]),
       });
     },
     [firstRun.draftAnswers, patchDraftAnswers]
@@ -255,7 +248,7 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
   const removeWindowFromDraft = useCallback(
     (key, windowId) => {
       patchDraftAnswers({
-        [key]: removeWindowFromList(firstRun.draftAnswers?.[key], windowId),
+        [key]: removeFirstRunDraftWindow(firstRun.draftAnswers?.[key], windowId),
       });
     },
     [firstRun.draftAnswers, patchDraftAnswers]
@@ -411,12 +404,7 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
     return safePlans.find((plan) => plan.id === firstRun.selectedPlanId) || null;
   }, [firstRun.generatedPlans, firstRun.selectedPlanId]);
 
-  const canContinueSignals = Boolean(
-    (firstRun.draftAnswers?.primaryGoal || "").trim() &&
-      firstRun.draftAnswers?.currentCapacity &&
-      Array.isArray(firstRun.draftAnswers?.priorityCategoryIds) &&
-      firstRun.draftAnswers.priorityCategoryIds.length > 0
-  );
+  const canContinueSignals = isFirstRunSignalsReady(firstRun.draftAnswers);
 
   if (planOnly) {
     return (

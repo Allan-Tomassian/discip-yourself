@@ -38,6 +38,11 @@ function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function limitString(value, maxLength = 4000) {
+  if (typeof value !== "string") return "";
+  return value.slice(0, maxLength);
+}
+
 function trimString(value, maxLength = 4000) {
   if (typeof value !== "string") return "";
   return value.trim().slice(0, maxLength);
@@ -73,16 +78,6 @@ function normalizeTime(value) {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(normalized) ? normalized : "";
 }
 
-function hasMeaningfulWindowFields(windowLike) {
-  if (!windowLike || typeof windowLike !== "object") return false;
-  return Boolean(
-    trimString(windowLike.label, 80) ||
-      normalizeTime(windowLike.startTime) ||
-      normalizeTime(windowLike.endTime) ||
-      normalizeDaysOfWeek(windowLike.daysOfWeek).length
-  );
-}
-
 export function createEmptyFirstRunWindow(overrides = {}) {
   return normalizeFirstRunWindow({
     id: uid(),
@@ -101,15 +96,28 @@ export function normalizeFirstRunWindow(rawValue) {
     daysOfWeek: normalizeDaysOfWeek(source.daysOfWeek),
     startTime: normalizeTime(source.startTime),
     endTime: normalizeTime(source.endTime),
-    label: trimString(source.label, 80),
+    label: limitString(source.label, 80),
   };
 }
 
 export function normalizeFirstRunWindows(value) {
   if (!Array.isArray(value)) return [];
-  return value
-    .filter((entry) => hasMeaningfulWindowFields(entry))
-    .map((entry) => normalizeFirstRunWindow(entry));
+  return value.filter((entry) => isPlainObject(entry)).map((entry) => normalizeFirstRunWindow(entry));
+}
+
+export function addFirstRunDraftWindow(windows, overrides = {}) {
+  return [...normalizeFirstRunWindows(windows), createEmptyFirstRunWindow(overrides)];
+}
+
+export function patchFirstRunDraftWindow(windows, windowId, patch = {}) {
+  const safePatch = isPlainObject(patch) ? patch : {};
+  return normalizeFirstRunWindows(windows).map((windowValue) =>
+    windowValue?.id === windowId ? normalizeFirstRunWindow({ ...windowValue, ...safePatch }) : windowValue
+  );
+}
+
+export function removeFirstRunDraftWindow(windows, windowId) {
+  return normalizeFirstRunWindows(windows).filter((windowValue) => windowValue?.id !== windowId);
 }
 
 function normalizePriorityCategoryIds(value) {
@@ -128,13 +136,26 @@ function normalizePriorityCategoryIds(value) {
 export function normalizeFirstRunDraftAnswers(value) {
   const source = isPlainObject(value) ? value : {};
   return {
-    whyText: trimString(source.whyText, 1200),
-    primaryGoal: trimString(source.primaryGoal, 240),
+    whyText: limitString(source.whyText, 1200),
+    primaryGoal: limitString(source.primaryGoal, 240),
     unavailableWindows: normalizeFirstRunWindows(source.unavailableWindows),
     preferredWindows: normalizeFirstRunWindows(source.preferredWindows),
     currentCapacity: FIRST_RUN_CAPACITY_OPTIONS.includes(source.currentCapacity) ? source.currentCapacity : null,
     priorityCategoryIds: normalizePriorityCategoryIds(source.priorityCategoryIds),
   };
+}
+
+export function isFirstRunWhyReady(value) {
+  return Boolean(trimString(value, 1200));
+}
+
+export function isFirstRunSignalsReady(draftAnswers) {
+  const source = isPlainObject(draftAnswers) ? draftAnswers : {};
+  return Boolean(
+    trimString(source.primaryGoal, 240) &&
+      FIRST_RUN_CAPACITY_OPTIONS.includes(source.currentCapacity) &&
+      normalizePriorityCategoryIds(source.priorityCategoryIds).length
+  );
 }
 
 function normalizePlanVariant(value, index = 0) {
@@ -419,7 +440,7 @@ export function hasMeaningfulFirstRunState(value) {
 
   if (firstRun.status === "done") return false;
   if (firstRun.status !== "intro") return true;
-  if (draft.whyText || draft.primaryGoal || draft.currentCapacity) return true;
+  if (trimString(draft.whyText, 1200) || trimString(draft.primaryGoal, 240) || draft.currentCapacity) return true;
   if (draft.priorityCategoryIds.length) return true;
   if (draft.unavailableWindows.length || draft.preferredWindows.length) return true;
   if (firstRun.generatedPlans || firstRun.inputHash || firstRun.generationError || firstRun.selectedPlanId || firstRun.discoveryDone) {

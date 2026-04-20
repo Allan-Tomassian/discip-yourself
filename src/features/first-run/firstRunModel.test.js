@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  addFirstRunDraftWindow,
   createEmptyFirstRunWindow,
   getNextFirstRunStatus,
   hasMeaningfulFirstRunState,
+  isFirstRunSignalsReady,
+  isFirstRunWhyReady,
   isFirstRunDone,
   normalizeFirstRunV1,
+  patchFirstRunDraftWindow,
+  removeFirstRunDraftWindow,
 } from "./firstRunModel";
 
 describe("firstRunModel", () => {
-  it("normalizes the v1 contract with safe defaults", () => {
+  it("normalizes the v1 contract with safe defaults while keeping raw draft text and incomplete windows", () => {
     const normalized = normalizeFirstRunV1({
       status: "signals",
       draftAnswers: {
@@ -19,7 +24,7 @@ describe("firstRunModel", () => {
             id: "w1",
             daysOfWeek: [1, 1, 5, 9],
             startTime: "09:00",
-            endTime: "18:00",
+            endTime: "",
             label: "  Travail  ",
           },
         ],
@@ -28,15 +33,15 @@ describe("firstRunModel", () => {
 
     expect(normalized.version).toBe(1);
     expect(normalized.status).toBe("signals");
-    expect(normalized.draftAnswers.whyText).toBe("Reprendre le controle");
-    expect(normalized.draftAnswers.primaryGoal).toBe("Relancer le projet");
+    expect(normalized.draftAnswers.whyText).toBe("  Reprendre le controle  ");
+    expect(normalized.draftAnswers.primaryGoal).toBe("  Relancer le projet  ");
     expect(normalized.draftAnswers.unavailableWindows).toEqual([
       {
         id: "w1",
         daysOfWeek: [1, 5],
         startTime: "09:00",
-        endTime: "18:00",
-        label: "Travail",
+        endTime: "",
+        label: "  Travail  ",
       },
     ]);
     expect(normalized.generatedPlans).toBeNull();
@@ -65,9 +70,35 @@ describe("firstRunModel", () => {
     expect(getNextFirstRunStatus("compare", { selectedPlanId: "tenable" })).toBe("commit");
   });
 
+  it("keeps trim-based readiness checks separate from raw stored text", () => {
+    expect(isFirstRunWhyReady("   ")).toBe(false);
+    expect(isFirstRunWhyReady("  Avancer vraiment  ")).toBe(true);
+
+    expect(
+      isFirstRunSignalsReady({
+        primaryGoal: "   ",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["business"],
+      }),
+    ).toBe(false);
+
+    expect(
+      isFirstRunSignalsReady({
+        primaryGoal: "  Relancer le projet  ",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["business"],
+      }),
+    ).toBe(true);
+  });
+
   it("treats a non-empty interrupted draft as meaningful local data", () => {
     const emptyState = normalizeFirstRunV1(null, { legacyOnboardingCompleted: false });
     expect(hasMeaningfulFirstRunState(emptyState)).toBe(false);
+
+    const withSpacesOnly = normalizeFirstRunV1({
+      draftAnswers: { whyText: "   " },
+    });
+    expect(hasMeaningfulFirstRunState(withSpacesOnly)).toBe(false);
 
     const withWhy = normalizeFirstRunV1({
       status: "why",
@@ -81,6 +112,35 @@ describe("firstRunModel", () => {
       },
     });
     expect(hasMeaningfulFirstRunState(withWindow)).toBe(true);
+  });
+
+  it("adds, patches, and removes draft windows without dropping incomplete lines", () => {
+    const addedUnavailable = addFirstRunDraftWindow([]);
+    expect(addedUnavailable).toHaveLength(1);
+    expect(addedUnavailable[0]).toMatchObject({
+      daysOfWeek: [],
+      startTime: "",
+      endTime: "",
+      label: "",
+    });
+
+    const patchedUnavailable = patchFirstRunDraftWindow(addedUnavailable, addedUnavailable[0].id, {
+      label: "  Travail  ",
+      daysOfWeek: [1, 1, 3],
+      startTime: "09:00",
+    });
+    expect(patchedUnavailable).toEqual([
+      {
+        id: addedUnavailable[0].id,
+        daysOfWeek: [1, 3],
+        startTime: "09:00",
+        endTime: "",
+        label: "  Travail  ",
+      },
+    ]);
+
+    const removedUnavailable = removeFirstRunDraftWindow(patchedUnavailable, addedUnavailable[0].id);
+    expect(removedUnavailable).toEqual([]);
   });
 
   it("normalizes generatedPlans with commitDraft canonique and legacy variants", () => {
