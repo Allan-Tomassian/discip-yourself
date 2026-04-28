@@ -672,6 +672,11 @@
   --today-surface: rgba(5, 7, 8, 0.9);
   --today-border: rgba(255, 255, 255, 0.14);
   --today-muted: rgba(235, 239, 235, 0.64);
+  --today-motion-fast: 120ms;
+  --today-motion-standard: 180ms;
+  --today-motion-enter: 420ms;
+  --today-ease-out: cubic-bezier(0.2, 0.82, 0.2, 1);
+  --today-ease-press: cubic-bezier(0.2, 0.7, 0.25, 1);
   color: #f7faf7;
   height: 100dvh;
   min-height: 100dvh;
@@ -698,6 +703,41 @@
 .todayCockpitShell {
   display: grid;
   gap: 10px;
+}
+
+.todayCockpitHeader,
+.todayFloatingWelcomeLine,
+.todayDiagnosticHero,
+.todayPrimaryActionCard,
+.todayTimelineCard,
+.todayAiInsightCard {
+  animation: todayCockpitEnter var(--today-motion-enter) var(--today-ease-out) both;
+  transform-origin: 50% 0;
+  will-change: opacity, transform;
+}
+
+.todayCockpitHeader {
+  animation-delay: 20ms;
+}
+
+.todayFloatingWelcomeLine {
+  animation-delay: 70ms;
+}
+
+.todayDiagnosticHero {
+  animation-delay: 115ms;
+}
+
+.todayPrimaryActionCard {
+  animation-delay: 155ms;
+}
+
+.todayTimelineCard {
+  animation-delay: 195ms;
+}
+
+.todayAiInsightCard {
+  animation-delay: 235ms;
 }
 
 .todayCockpitHeader {
@@ -739,6 +779,19 @@
   gap: 12px;
   padding: 0;
   cursor: pointer;
+  transition:
+    color var(--today-motion-fast) var(--today-ease-press),
+    transform var(--today-motion-fast) var(--today-ease-press);
+  transform-origin: center;
+}
+
+.todayCockpitAvatarButton:hover,
+.todayCockpitAvatarButton:focus-visible {
+  color: rgba(245, 247, 242, 0.78);
+}
+
+.todayCockpitAvatarButton:active {
+  transform: translateY(1px) scale(0.985);
 }
 
 .todayCockpitAvatar {
@@ -803,6 +856,10 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 18px 40px rgba(0, 0, 0, 0.42);
+  transition:
+    border-color var(--today-motion-standard) var(--today-ease-out),
+    box-shadow var(--today-motion-standard) var(--today-ease-out),
+    color var(--today-motion-standard) var(--today-ease-out);
 }
 
 .todayCommandSurface::before {
@@ -887,6 +944,9 @@
     0 0 32px rgba(53, 240, 109, 0.32),
     inset 0 0 34px rgba(53, 240, 109, 0.1);
   pointer-events: none;
+  transition:
+    opacity var(--today-motion-standard) var(--today-ease-out),
+    box-shadow var(--today-motion-standard) var(--today-ease-out);
 }
 
 .todayHeroScoreCluster,
@@ -1052,6 +1112,9 @@
 
 .todayPrimaryActionCard {
   padding: 14px 18px 13px;
+  transition:
+    border-color var(--today-motion-standard) var(--today-ease-out),
+    box-shadow var(--today-motion-standard) var(--today-ease-out);
 }
 
 .todayPrimaryBeam {
@@ -1061,6 +1124,21 @@
   background: linear-gradient(180deg, transparent, rgba(53, 240, 109, 0.88), transparent);
   box-shadow: 0 0 22px rgba(53, 240, 109, 0.72);
   pointer-events: none;
+  transition:
+    opacity var(--today-motion-standard) var(--today-ease-out),
+    box-shadow var(--today-motion-standard) var(--today-ease-out);
+}
+
+.todayPrimaryActionCard:has(.todayCommitmentButton:active:not(:disabled)) {
+  border-color: rgba(53, 240, 109, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 20px 44px rgba(0, 0, 0, 0.46),
+    0 0 28px rgba(53, 240, 109, 0.14);
+}
+
+.todayPrimaryActionCard:has(.todayCommitmentButton:active:not(:disabled)) .todayPrimaryBeam {
+  box-shadow: 0 0 28px rgba(53, 240, 109, 0.84);
 }
 
 .todayPrimaryActionBody {
@@ -1116,6 +1194,10 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.86),
     0 0 28px rgba(53, 240, 109, 0.18);
+  transition:
+    box-shadow var(--today-motion-fast) var(--today-ease-press),
+    transform var(--today-motion-fast) var(--today-ease-press);
+  transform-origin: center;
 }
 
 .todayCommitmentButton:disabled {
@@ -1127,7 +1209,13 @@
 .todayPrimarySecondaryRow button:active,
 .todayAiActions button:active,
 .todaySheetActionButton:active {
-  transform: translateY(1px);
+  transform: translateY(1px) scale(0.99);
+}
+
+.todayCommitmentButton:active:not(:disabled) {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 0 34px rgba(53, 240, 109, 0.28);
 }
 
 .todayPrimarySecondaryRow {
@@ -1151,6 +1239,15 @@
   font: inherit;
   font-size: 12px;
   cursor: pointer;
+  transition:
+    color var(--today-motion-fast) var(--today-ease-press),
+    transform var(--today-motion-fast) var(--today-ease-press);
+  transform-origin: center;
+}
+
+.todayPrimarySecondaryRow button:hover,
+.todayPrimarySecondaryRow button:focus-visible {
+  color: rgba(235, 239, 235, 0.82);
 }
 
 .todayTimelineCard {
@@ -1176,6 +1273,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
+  scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   -webkit-mask-image: linear-gradient(
     90deg,
@@ -1233,10 +1331,24 @@
   font: inherit;
   text-align: center;
   cursor: pointer;
+  transition:
+    color var(--today-motion-fast) var(--today-ease-press),
+    transform var(--today-motion-fast) var(--today-ease-press);
+  transform-origin: 50% 76%;
 }
 
 .todayTimelinePoint:disabled {
   cursor: default;
+}
+
+.todayTimelinePoint:not(:disabled):hover,
+.todayTimelinePoint:not(:disabled):focus-visible {
+  transform: translateY(-1px);
+  color: rgba(245, 248, 244, 0.86);
+}
+
+.todayTimelinePoint:not(:disabled):active {
+  transform: translateY(1px) scale(0.985);
 }
 
 .todayTimelinePointTime {
@@ -1266,6 +1378,36 @@
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: #15181a;
   transform: translateX(-50%);
+  transition:
+    background var(--today-motion-fast) var(--today-ease-press),
+    border-color var(--today-motion-fast) var(--today-ease-press),
+    box-shadow var(--today-motion-fast) var(--today-ease-press),
+    transform var(--today-motion-fast) var(--today-ease-press);
+}
+
+.todayTimelinePointMarker::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border-radius: inherit;
+  background: radial-gradient(circle, rgba(53, 240, 109, 0.24), transparent 68%);
+  opacity: 0;
+  transform: scale(0.82);
+  transition:
+    opacity var(--today-motion-fast) var(--today-ease-press),
+    transform var(--today-motion-fast) var(--today-ease-press);
+  pointer-events: none;
+}
+
+.todayTimelinePoint:not(:disabled):hover .todayTimelinePointMarker::after,
+.todayTimelinePoint:not(:disabled):focus-visible .todayTimelinePointMarker::after,
+.todayTimelinePoint:not(:disabled):active .todayTimelinePointMarker::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.todayTimelinePoint:not(:disabled):active .todayTimelinePointMarker {
+  transform: translateX(-50%) scale(0.94);
 }
 
 .todayTimelinePoint.is-done,
@@ -1325,6 +1467,9 @@
     repeating-radial-gradient(ellipse at center, rgba(139, 92, 246, 0.28) 0 1px, transparent 1px 12px);
   opacity: 0.44;
   transform: rotate(-8deg);
+  transition:
+    opacity var(--today-motion-standard) var(--today-ease-out),
+    transform var(--today-motion-standard) var(--today-ease-out);
 }
 
 .todayAiEyebrow {
@@ -1346,6 +1491,23 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    border-color var(--today-motion-fast) var(--today-ease-press),
+    background-color var(--today-motion-fast) var(--today-ease-press),
+    box-shadow var(--today-motion-fast) var(--today-ease-press),
+    transform var(--today-motion-fast) var(--today-ease-press);
+  transform-origin: center;
+}
+
+.todayAiCoachButton:hover,
+.todayAiCoachButton:focus-visible {
+  border-color: rgba(139, 92, 246, 0.42);
+  background: rgba(139, 92, 246, 0.22);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.18);
+}
+
+.todayAiCoachButton:active {
+  transform: translateY(1px) scale(0.99);
 }
 
 .todayAiBody {
@@ -1389,6 +1551,13 @@
   font-weight: 740;
   text-transform: uppercase;
   cursor: pointer;
+  transition:
+    border-color var(--today-motion-fast) var(--today-ease-press),
+    background-color var(--today-motion-fast) var(--today-ease-press),
+    box-shadow var(--today-motion-fast) var(--today-ease-press),
+    color var(--today-motion-fast) var(--today-ease-press),
+    transform var(--today-motion-fast) var(--today-ease-press);
+  transform-origin: center;
 }
 
 .todayAiApplyButton {
@@ -1408,10 +1577,22 @@
   box-shadow: none;
 }
 
+.todayAiApplyButton:not(:disabled):hover,
+.todayAiApplyButton:not(:disabled):focus-visible {
+  box-shadow: 0 0 28px rgba(139, 92, 246, 0.42);
+}
+
 .todayAiWhyButton {
   border: 1px solid rgba(139, 92, 246, 0.22);
   background: rgba(9, 6, 16, 0.72);
   color: #c8a7ff;
+}
+
+.todayAiWhyButton:hover,
+.todayAiWhyButton:focus-visible {
+  border-color: rgba(139, 92, 246, 0.38);
+  color: #d9c4ff;
+  box-shadow: 0 0 18px rgba(139, 92, 246, 0.12);
 }
 
 .todayProfileMenuActions,
@@ -1435,6 +1616,18 @@
   font: inherit;
   font-weight: 620;
   cursor: pointer;
+  transition:
+    border-color var(--today-motion-fast) var(--today-ease-press),
+    background-color var(--today-motion-fast) var(--today-ease-press),
+    color var(--today-motion-fast) var(--today-ease-press),
+    transform var(--today-motion-fast) var(--today-ease-press);
+  transform-origin: center;
+}
+
+.todaySheetActionButton:hover,
+.todaySheetActionButton:focus-visible {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.055);
 }
 
 .todaySheetActionButton.is-ai {
@@ -1446,6 +1639,49 @@
 .todaySheetActionButton.is-danger {
   border-color: rgba(255, 77, 77, 0.26);
   color: #ff9a9a;
+}
+
+.modalBackdrop:has(.todayProfileSheetMotion),
+.modalBackdrop:has(.todayAdjustmentSheetMotion) {
+  animation: todaySheetBackdropIn 180ms var(--today-ease-out) both;
+}
+
+.todayProfileSheetMotion,
+.todayAdjustmentSheetMotion {
+  animation: todaySheetPanelIn 220ms var(--today-ease-out) both;
+  transform-origin: 50% 100%;
+  will-change: opacity, transform;
+}
+
+@keyframes todayCockpitEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes todaySheetBackdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes todaySheetPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.988);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @media (max-width: 520px) {
@@ -1492,5 +1728,32 @@
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .todayCockpitHeader,
+  .todayFloatingWelcomeLine,
+  .todayDiagnosticHero,
+  .todayPrimaryActionCard,
+  .todayTimelineCard,
+  .todayAiInsightCard,
+  .todayProfileSheetMotion,
+  .todayAdjustmentSheetMotion,
+  .modalBackdrop:has(.todayProfileSheetMotion),
+  .modalBackdrop:has(.todayAdjustmentSheetMotion) {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .todayCockpitAvatarButton:active,
+  .todayCommitmentButton:active,
+  .todayPrimarySecondaryRow button:active,
+  .todayAiActions button:active,
+  .todayAiCoachButton:active,
+  .todaySheetActionButton:active,
+  .todayTimelinePoint:not(:disabled):active,
+  .todayTimelinePoint:not(:disabled):hover,
+  .todayTimelinePoint:not(:disabled):focus-visible {
+    transform: none !important;
   }
 }

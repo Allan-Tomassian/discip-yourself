@@ -15,7 +15,7 @@ export default function ProfileMenu({
   onSignOut,
 }) {
   return (
-    <AppSheet open={open} onClose={onClose} maxWidth={420}>
+    <AppSheet open={open} onClose={onClose} maxWidth={420} className="todayProfileSheetMotion">
       <AppSheetContent title="Profil" subtitle="Gérer ton compte et ton accès.">
         <div className="todayProfileMenuActions">
           {PROFILE_ITEMS.map((item) => (

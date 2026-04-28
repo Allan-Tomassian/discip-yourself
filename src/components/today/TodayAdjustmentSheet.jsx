@@ -10,7 +10,7 @@ export default function TodayAdjustmentSheet({
   onAskCoach,
 }) {
   return (
-    <AppSheet open={open} onClose={onClose} maxWidth={440}>
+    <AppSheet open={open} onClose={onClose} maxWidth={440} className="todayAdjustmentSheetMotion">
       <AppSheetContent title="Ajuster" subtitle="Adapter la journée sans recréer un plan à la main.">
         <div className="todayAdjustmentSheetActions">
           <button type="button" className="todaySheetActionButton" onClick={() => onSimplify?.()}>
