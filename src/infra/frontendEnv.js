@@ -74,6 +74,7 @@ function isPlaceholderValue(rawValue) {
     lower.includes("<") ||
     lower.includes(">") ||
     lower.startsWith("your-") ||
+    lower.includes("your-") ||
     lower.startsWith("example") ||
     lower.includes("example-project-ref") ||
     lower.includes("placeholder") ||

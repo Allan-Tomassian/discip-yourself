@@ -2,8 +2,8 @@ import { test, expect } from "@playwright/test";
 import { buildBaseState, seedState } from "./utils/seed.js";
 
 async function openToday(page) {
-  await page.goto("/");
-  await expect(page.locator('[data-tour-id="today-title"]')).toBeVisible();
+  await page.goto("/micro-actions");
+  await expect(page.locator(".pageTitle")).toContainText("Micro-actions");
   await expect(page.locator('[data-tour-id="today-micro-card"]')).toBeVisible();
 }
 

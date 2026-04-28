@@ -38,7 +38,7 @@ export default function TodayTimeline({
   const disabledTimeline = timelineMode === "disabled";
 
   return (
-    <CommandSurface className={className} tone="timeline" data-testid="today-timeline-card">
+    <CommandSurface className={className} tone="timeline" data-testid="today-timeline-card" data-tour-id="today-timeline-card">
       <div className="todayTimelineHeader">
         <span>Timeline du jour</span>
       </div>

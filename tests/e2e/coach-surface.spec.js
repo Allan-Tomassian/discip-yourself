@@ -310,7 +310,7 @@ async function attachScreenshot(page, testInfo, name) {
 async function openCoach(page, state) {
   await seedState(page, state);
   await page.goto("/");
-  await page.getByRole("button", { name: "Coach" }).click();
+  await page.getByRole("button", { name: "Coach IA" }).click();
   await expect(page.getByText("Ton copilote stratégique")).toBeVisible();
 }
 

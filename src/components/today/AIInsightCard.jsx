@@ -25,7 +25,7 @@ export default function AIInsightCard({
   const motionClass = motionIntensity ? ` today-motion-${motionIntensity}` : "";
 
   return (
-    <CommandSurface className={`todayAiInsightCard${statusClass}${applyClass}${stateClass}${toneClass}${motionClass}`} tone="ai" data-testid="today-ai-insight-card">
+    <CommandSurface className={`todayAiInsightCard${statusClass}${applyClass}${stateClass}${toneClass}${motionClass}`} tone="ai" data-testid="today-ai-insight-card" data-tour-id="today-ai-insight-card">
       <div className="todayAiSignal" aria-hidden="true" />
       <div className="todayAiHeader">
         <span className="todayAiEyebrow">

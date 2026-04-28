@@ -30,18 +30,24 @@ describe("main section container contract", () => {
   it("uses the Lovable shell grammar across the five main tabs", () => {
     const home = readSrc("pages/Home.jsx");
     const todayHero = readSrc("components/today/TodayHero.jsx");
-    const todayNextActions = readSrc("components/today/TodayNextActions.jsx");
+    const primaryAction = readSrc("components/today/PrimaryActionCard.jsx");
+    const todayTimeline = readSrc("components/today/TodayTimeline.jsx");
+    const aiInsight = readSrc("components/today/AIInsightCard.jsx");
     const objectives = readSrc("pages/Objectives.jsx");
     const timeline = readSrc("pages/Timeline.jsx");
     const insights = readSrc("pages/Insights.jsx");
     const coach = readSrc("pages/Coach.jsx");
 
-    expect(home).toContain("lovablePage");
-    expect(home).toContain("const todayV2State = useMemo(");
+    expect(home).toContain("todayCockpitScreen");
     expect(home).toContain("<TodayHero");
+    expect(home).toContain("<PrimaryActionCard");
+    expect(home).toContain("<TodayTimeline");
+    expect(home).toContain("<AIInsightCard");
     expect(home).not.toContain("lovableTodayInsight");
-    expect(todayHero).toContain("lovablePriorityCard");
-    expect(todayNextActions).toContain("lovableTodayActionRow");
+    expect(todayHero).toContain("todayDiagnosticHero");
+    expect(primaryAction).toContain("todayPrimaryActionCard");
+    expect(todayTimeline).toContain("todayTimelineCard");
+    expect(aiInsight).toContain("todayAiInsightCard");
     expect(objectives).toContain("lovableObjectiveCard");
     expect(objectives).toContain("ObjectiveRing");
     expect(timeline).toContain("lovableTimelineList");

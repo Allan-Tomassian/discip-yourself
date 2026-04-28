@@ -30,17 +30,18 @@ describe("design system contract", () => {
   });
 
   it("keeps the canonical navigation labels and app-wide theme bootstrapping", () => {
-    const tabBar = readSrc("components/navigation/LovableTabBar.jsx");
+    const bottomNavigation = readSrc("components/navigation/BottomNavigation.jsx");
     const app = readSrc("App.jsx");
     const main = readSrc("main.jsx");
     const tokens = readSrc("styles/tokens.css");
     const themeTokens = readSrc("theme/themeTokens.js");
 
-    expect(tabBar).toContain("label: TAB_COPY.today");
-    expect(tabBar).toContain("label: TAB_COPY.objectives");
-    expect(tabBar).toContain("label: TAB_COPY.timeline");
-    expect(tabBar).toContain("label: TAB_COPY.insights");
-    expect(tabBar).toContain("label: TAB_COPY.coach");
+    expect(bottomNavigation).toContain('label: "Objectifs"');
+    expect(bottomNavigation).toContain('label: "Planning"');
+    expect(bottomNavigation).toContain('label: "Home"');
+    expect(bottomNavigation).toContain('label: "Coach IA"');
+    expect(bottomNavigation).toContain('label: "Ajuster"');
+    expect(bottomNavigation).not.toContain('label: "Analyses"');
     expect(app).toContain("theme: DEFAULT_THEME");
     expect(main).toContain('import "@fontsource-variable/geist";');
     expect(app).toContain("applyThemeTokens(DEFAULT_THEME, BRAND_ACCENT);");

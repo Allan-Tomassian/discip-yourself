@@ -19,7 +19,7 @@ describe("session action protocol contract", () => {
     expect(session).toContain("deriveActionProtocol({");
     expect(session).toContain("actionProtocol={effectiveActionProtocol}");
     expect(session).toContain("guidedPlan={");
-    expect(session).toContain("guidedMode={launchMode === \"guided\" ? guidedMode : \"\"}");
+    expect(session).toContain("guidedMode={effectiveLaunchMode === \"guided\" ? guidedMode : \"\"}");
     expect(session).toContain("showTools={");
     expect(focusView).toContain('data-testid="session-action-protocol"');
     expect(focusView).toContain('data-testid="session-guided-preview-actions"');

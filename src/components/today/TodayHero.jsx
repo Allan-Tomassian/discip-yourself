@@ -48,7 +48,7 @@ export default function TodayHero({
     .join(" ");
 
   return (
-    <CommandSurface className={className} tone="execution" data-testid="today-hero-card">
+    <CommandSurface className={className} tone="execution" data-testid="today-hero-card" data-tour-id="today-hero-card">
       <div className="todayHeroTopline">
         <span className="todaySurfaceEyebrow">
           <span className="todaySurfaceDot" aria-hidden="true" />

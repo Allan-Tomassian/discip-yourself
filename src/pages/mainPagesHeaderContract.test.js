@@ -18,9 +18,9 @@ describe("main pages header contract", () => {
     const coach = readSrc("pages/Coach.jsx");
 
     expect(home).toContain('pageId="today"');
-    expect(home).toContain("className=\"todayWelcomeTitle\"");
-    expect(home).toContain("className=\"todayWelcomeSubtitle\"");
-    expect(home).toContain("greetingPeriod");
+    expect(home).toContain("<TodayHeader");
+    expect(home).toContain("<FloatingWelcomeLine");
+    expect(home).toContain("<TodayHero");
 
     expect(objectives).toContain('pageId="objectives"');
     expect(objectives).toContain("headerTitle={OBJECTIVES_SCREEN_COPY.title}");

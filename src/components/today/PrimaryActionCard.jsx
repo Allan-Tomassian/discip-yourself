@@ -41,7 +41,7 @@ export default function PrimaryActionCard({
   const motionClass = motionIntensity ? ` today-motion-${motionIntensity}` : "";
 
   return (
-    <CommandSurface className={`todayPrimaryActionCard${statusClass}${stateClass}${toneClass}${motionClass}`} tone="execution" data-testid="today-primary-action-card">
+    <CommandSurface className={`todayPrimaryActionCard${statusClass}${stateClass}${toneClass}${motionClass}`} tone="execution" data-testid="today-primary-action-card" data-tour-id="today-primary-action-card">
       <div className="todayPrimaryBeam" aria-hidden="true" />
       <div className="todaySurfaceTopline">
         <span className="todaySurfaceEyebrow">

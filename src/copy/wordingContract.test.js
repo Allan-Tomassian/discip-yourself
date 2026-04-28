@@ -42,7 +42,7 @@ describe("product wording contract", () => {
     expect(UI_COPY.rerunCoachAnalysis).toBe("Actualiser la lecture");
     expect(MAIN_PAGE_COPY.today.orientation).toBe("Ton prochain pas utile, clairement mis en avant.");
     expect(MAIN_PAGE_COPY.planning.orientation).toBe("Ta feuille de route d'exécution.");
-    expect(MAIN_PAGE_COPY.library.orientation).toBe("Une structure par objectifs avec les actions liées en dessous.");
+    expect(MAIN_PAGE_COPY.library.orientation).toBe("Ta salle de contrôle pour protéger l'essentiel.");
     expect(MAIN_PAGE_COPY.pilotage.orientation).toBe("Ta trajectoire cette semaine.");
     expect(TAB_COPY.timeline).toBe("Planning");
     expect(TAB_COPY.insights).toBe("Analyses");
@@ -72,7 +72,6 @@ describe("product wording contract", () => {
       "components/PlusExpander.jsx",
     ];
     const legacyPatterns = [
-      /Coach IA/,
       /Analyse IA/,
       /Analyse du coach/,
       /Proposition structurée/,
@@ -98,8 +97,13 @@ describe("product wording contract", () => {
   });
 
   it("keeps navigation and planning copy aligned with the canon", () => {
-    expect(readSrc("components/navigation/LovableTabBar.jsx")).toContain("label: TAB_COPY.timeline");
-    expect(readSrc("components/navigation/LovableTabBar.jsx")).toContain("label: TAB_COPY.objectives");
+    const bottomNavigation = readSrc("components/navigation/BottomNavigation.jsx");
+    expect(bottomNavigation).toContain('label: "Objectifs"');
+    expect(bottomNavigation).toContain('label: "Planning"');
+    expect(bottomNavigation).toContain('label: "Home"');
+    expect(bottomNavigation).toContain('label: "Coach IA"');
+    expect(bottomNavigation).toContain('label: "Ajuster"');
+    expect(bottomNavigation).not.toContain('label: "Analyses"');
     expect(readSrc("pages/Timeline.jsx")).toContain("headerTitle={TIMELINE_SCREEN_COPY.title}");
   });
 });

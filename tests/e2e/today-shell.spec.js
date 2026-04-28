@@ -17,14 +17,29 @@ async function attachScreenshot(page, testInfo, name) {
   await testInfo.attach(name, { path, contentType: "image/png" });
 }
 
-async function expectPrimaryActionAboveFold(page) {
-  const primaryAction = page.locator('[data-testid="today-hero-card"] .lovablePrimaryButton');
-  await expect(primaryAction).toBeVisible();
-  const box = await primaryAction.boundingBox();
-  const viewport = page.viewportSize();
+async function openToday(page, state) {
+  state.profile = {
+    ...(state.profile || {}),
+    full_name: "Allan",
+    username: "allan",
+  };
+  await seedState(page, state, {
+    profile: buildMockProfile({
+      userId: "e2e-user-id",
+      username: "allan",
+      fullName: "Allan",
+    }),
+  });
+  await page.goto("/");
+  await expect(page.locator(".todayCockpitTitle")).toHaveText("Today");
+}
 
-  expect(box).toBeTruthy();
-  expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThan((viewport?.height ?? 720) - 20);
+async function expectCockpitStack(page) {
+  await expect(page.getByTestId("today-hero-card")).toBeVisible();
+  await expect(page.getByTestId("today-primary-action-card")).toBeVisible();
+  await expect(page.getByTestId("today-timeline-card")).toBeVisible();
+  await expect(page.getByTestId("today-ai-insight-card")).toBeVisible();
+  await expect(page.locator(".todayFloatingWelcomeLine")).toBeVisible();
 }
 
 function buildReadyState() {
@@ -69,36 +84,8 @@ function buildActiveSessionState() {
   return state;
 }
 
-function buildClarifyState() {
+function buildEmptyState() {
   return buildBaseState({ withContent: false });
-}
-
-function buildOverloadState() {
-  const state = buildBaseState({ withContent: true });
-  const today = state.ui.selectedDate;
-
-  state.goals = Array.from({ length: 5 }, (_, index) => ({
-    id: `goal_overload_${index + 1}`,
-    categoryId: "cat_business",
-    title: `Bloc ${index + 1}`,
-    type: "PROCESS",
-    planType: "ONE_OFF",
-    status: "active",
-    oneOffDate: today,
-    timeMode: "FLEXIBLE",
-  }));
-
-  state.occurrences = Array.from({ length: 5 }, (_, index) => ({
-    id: `occ_overload_${index + 1}`,
-    goalId: `goal_overload_${index + 1}`,
-    date: today,
-    start: `${String(9 + index).padStart(2, "0")}:00`,
-    slotKey: `${String(9 + index).padStart(2, "0")}:00`,
-    durationMinutes: 40,
-    status: "planned",
-  }));
-
-  return state;
 }
 
 function buildValidatedState() {
@@ -115,91 +102,49 @@ function buildValidatedState() {
   return state;
 }
 
-async function openToday(page, state) {
-  state.profile = {
-    ...(state.profile || {}),
-    full_name: "Allan",
-    username: "allan",
-  };
-  await seedState(page, state, {
-    profile: buildMockProfile({
-      userId: "e2e-user-id",
-      username: "allan",
-      fullName: "Allan",
-    }),
-  });
-  await page.goto("/");
-  await expect(page.locator(".pageHeader .pageTitle")).toContainText("Allan");
-}
-
-test("today shell reads as a compact home in ready state", async ({ page }, testInfo) => {
+test("today cockpit renders the validated compact stack in ready state", async ({ page }, testInfo) => {
   await openToday(page, buildReadyState());
 
-  await expect(page.getByTestId("today-progress-strip")).toBeVisible();
-  await expect(page.getByTestId("today-hero-card")).toBeVisible();
-  await expect(page.getByTestId("today-secondary-actions")).toBeVisible();
-  await expect(page.locator(".todayShellHeroState")).toHaveText("Prêt");
-  await expect(page.locator(".todayHeaderSessionBadge")).toHaveCount(0);
-  await expect(page.locator(".todayDailyState")).not.toContainText("Progression du jour");
-  await expect(page.locator(".todayWelcomeHint")).not.toContainText(/session/i);
-  await expect(page.locator(".todayWelcomeHint")).toContainText(/cap|essentiel/i);
-  await expectPrimaryActionAboveFold(page);
+  await expectCockpitStack(page);
+  await expect(page.getByTestId("today-primary-action-card").locator(".todayCommitmentButton")).toBeVisible();
+  await expect(page.locator('[data-tour-id="today-micro-card"]')).toHaveCount(0);
+  await expect(page.getByTestId("today-progress-strip")).toHaveCount(0);
+  await expect(page.locator(".lovableTabButton.is-home")).toContainText("Home");
+  await expect(page.locator(".lovableTabButton.is-ai")).toContainText("Coach IA");
+  await expect(page.locator(".lovableTabBar")).not.toContainText("Analyses");
 
-  const heroBox = await page.getByTestId("today-hero-card").boundingBox();
-  expect(heroBox?.y ?? 0).toBeLessThan(560);
-
-  await attachScreenshot(page, testInfo, "today-ready-shell.png");
-  await page.getByTestId("today-secondary-actions").scrollIntoViewIfNeeded();
-  await attachScreenshot(page, testInfo, "today-ready-alternatives.png");
+  await attachScreenshot(page, testInfo, "today-cockpit-ready.png");
 });
 
-test("today shell keeps session state inside the hero", async ({ page }, testInfo) => {
+test("today cockpit keeps active session state in the primary action card", async ({ page }, testInfo) => {
   await openToday(page, buildActiveSessionState());
 
-  await expect(page.getByTestId("today-progress-strip")).toBeVisible();
-  await expect(page.getByTestId("today-hero-card")).toBeVisible();
-  await expect(page.locator(".todayShellHeroState")).toHaveText("Session");
-  await expect(page.getByRole("button", { name: "Reprendre la session" })).toBeVisible();
+  await expectCockpitStack(page);
+  await expect(page.getByTestId("today-primary-action-card")).toContainText("BLOC EN COURS");
+  await expect(page.getByTestId("today-primary-action-card").locator(".todayCommitmentButton")).toContainText(/Reprendre/i);
   await expect(page.locator(".todayHeaderSessionBadge")).toHaveCount(0);
-  await expectPrimaryActionAboveFold(page);
 
-  await attachScreenshot(page, testInfo, "today-session-active-shell.png");
+  await attachScreenshot(page, testInfo, "today-cockpit-session-active.png");
 });
 
-test("today shell keeps a calm clarify state without extra cards", async ({ page }) => {
-  await openToday(page, buildClarifyState());
+test("today cockpit shows the empty-day state without old quick actions", async ({ page }) => {
+  await openToday(page, buildEmptyState());
 
-  await expect(page.getByTestId("today-progress-strip")).toBeVisible();
-  await expect(page.getByTestId("today-hero-card")).toBeVisible();
-  await expect(page.getByText("À clarifier")).toBeVisible();
+  await expectCockpitStack(page);
+  await expect(page.getByTestId("today-primary-action-card")).toContainText(/STRUCTURER LA JOURNÉE|AUCUN BLOC/);
+  await expect(page.getByTestId("today-timeline-card")).toContainText(/Planning à structurer|Aucun bloc structuré/);
+  await expect(page.locator('[data-tour-id="today-micro-card"]')).toHaveCount(0);
   await expect(page.getByTestId("today-secondary-actions")).toHaveCount(0);
 });
 
-test("today shell shows overload without becoming analytical", async ({ page }, testInfo) => {
-  await openToday(page, buildOverloadState());
-
-  await expect(page.getByTestId("today-progress-strip")).toBeVisible();
-  await expect(page.getByTestId("today-hero-card")).toBeVisible();
-  await expect(page.getByTestId("today-hero-card").getByText("À alléger", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Alléger ma journée" })).toBeVisible();
-  await expect(page.locator(".todayHeaderSessionBadge")).toHaveCount(0);
-
-  await attachScreenshot(page, testInfo, "today-overload-shell.png");
-});
-
-test("today shell turns validated into a calm day-closure state", async ({ page }, testInfo) => {
+test("today cockpit turns a completed day into a calm locked state", async ({ page }, testInfo) => {
   await openToday(page, buildValidatedState());
 
-  await expect(page.getByTestId("today-progress-strip")).toBeVisible();
-  await expect(page.getByText("Belle avancée aujourd’hui")).toBeVisible();
-  await expect(page.getByText("L’essentiel est fait. Protège l’élan sans rallonger la journée.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Préparer demain" })).toBeVisible();
+  await expectCockpitStack(page);
+  await expect(page.getByTestId("today-primary-action-card")).toContainText(/JOURNÉE TERMINÉE|JOURNÉE VERROUILLÉE/);
+  await expect(page.getByTestId("today-primary-action-card").locator(".todayCommitmentButton")).toContainText("Voir demain");
   await expect(page.getByTestId("today-value-pulse")).toHaveCount(0);
   await expect(page.locator(".todayShellHeroState")).toHaveCount(0);
-  await expect(page.locator(".todayShellHeroEyebrow")).toHaveCount(0);
-  await expect(page.locator(".todayV2HeroMetaRow")).toHaveCount(0);
-  await expect(page.locator(".todayWelcomeHint")).toContainText("Tu clôtures proprement.");
-  await expectPrimaryActionAboveFold(page);
 
-  await attachScreenshot(page, testInfo, "today-validated-shell.png");
+  await attachScreenshot(page, testInfo, "today-cockpit-locked.png");
 });
