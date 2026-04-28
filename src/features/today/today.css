@@ -1402,6 +1402,12 @@
   box-shadow: 0 0 22px rgba(139, 92, 246, 0.34);
 }
 
+.todayAiApplyButton:disabled {
+  cursor: default;
+  opacity: 0.48;
+  box-shadow: none;
+}
+
 .todayAiWhyButton {
   border: 1px solid rgba(139, 92, 246, 0.22);
   background: rgba(9, 6, 16, 0.72);

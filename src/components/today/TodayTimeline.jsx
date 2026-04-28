@@ -29,7 +29,7 @@ export default function TodayTimeline({
         <div className="todayTimelineTrack" role="list" aria-label="Timeline du jour">
           {displayItems.map((item) => {
             const complete = item.status === "done";
-            const active = item.status === "active";
+            const active = item.status === "active" || item.status === "in_progress";
             const empty = item.status === "empty";
             return (
               <button

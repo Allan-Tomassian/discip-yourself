@@ -6,10 +6,14 @@ export default function AIInsightCard({
   headline = "Insight disponible.",
   recommendation = "Protège le prochain bloc avant de renégocier.",
   reason = "",
+  status = "available",
+  canApply = true,
   onApply,
   onWhy,
   onOpenCoach,
 }) {
+  const applyEnabled = canApply && status === "available";
+
   return (
     <CommandSurface className="todayAiInsightCard" tone="ai" data-testid="today-ai-insight-card">
       <div className="todayAiSignal" aria-hidden="true" />
@@ -31,7 +35,13 @@ export default function AIInsightCard({
       </div>
 
       <div className="todayAiActions">
-        <button type="button" className="todayAiApplyButton" onClick={() => onApply?.()}>
+        <button
+          type="button"
+          className="todayAiApplyButton"
+          onClick={() => onApply?.()}
+          disabled={!applyEnabled}
+          aria-disabled={!applyEnabled}
+        >
           <Sparkles size={15} strokeWidth={2} aria-hidden="true" />
           Appliquer
         </button>

@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+function isTodayVisualSmokeMode() {
+  if (typeof import.meta === "undefined" || !import.meta.env?.DEV) return false;
+  return typeof window !== "undefined" && window.__TODAY_VISUAL_SMOKE__ === true;
+}
+
 export function useTour({ data, setData, steps, tourVersion }) {
   const safeSteps = useMemo(() => (Array.isArray(steps) ? steps.filter(Boolean) : []), [steps]);
   const totalSteps = safeSteps.length;
@@ -18,6 +23,10 @@ export function useTour({ data, setData, steps, tourVersion }) {
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    if (isTodayVisualSmokeMode()) {
+      setIsActive(false);
+      return;
+    }
     if (!onboardingCompleted || totalSteps === 0) {
       setIsActive(false);
       return;
