@@ -39,8 +39,9 @@ import CategoryProgress from "./pages/CategoryProgress";
 import Session from "./pages/Session";
 import Privacy from "./pages/Privacy";
 import Support from "./pages/Support";
-import LovableTabBar from "./components/navigation/LovableTabBar";
+import BottomNavigation from "./components/navigation/BottomNavigation";
 import LovableCreateMenu from "./components/navigation/LovableCreateMenu";
+import TodayAdjustmentSheet from "./components/today/TodayAdjustmentSheet";
 import { applyThemeTokens, BRAND_ACCENT, DEFAULT_THEME } from "./theme/themeTokens";
 import { todayLocalKey } from "./utils/dateKey";
 import { normalizePriorities } from "./logic/priority";
@@ -140,6 +141,7 @@ export default function App() {
     conversationId: null,
     prefill: "",
   });
+  const [adjustmentSheetOpen, setAdjustmentSheetOpen] = useState(false);
   const dataRef = useRef(data);
   const invariantLogRef = useRef(new Set());
   const tour = useTour({ data, setData, steps: FIRST_USE_TOUR_STEPS, tourVersion: TOUR_VERSION });
@@ -277,6 +279,17 @@ export default function App() {
     tab === "session" ||
     tab === "onboarding";
   const showBottomRail = !hideNavigationChrome && new Set(["today", "objectives", "timeline", "insights", "coach"]).has(tab);
+  const globalCreationSurfaceEnabled = false;
+  const handleBottomNavigationSelect = useCallback(
+    (nextTab) => {
+      if (nextTab === "adjust") {
+        setAdjustmentSheetOpen(true);
+        return;
+      }
+      setTab(nextTab);
+    },
+    [setTab]
+  );
   const categories = useMemo(
     () => (Array.isArray(safeData.categories) ? safeData.categories : []),
     [safeData.categories]
@@ -349,7 +362,6 @@ export default function App() {
     plusOpen,
     plusAnchorRect,
     plusContext,
-    openCreateExpander,
     closePlusExpander,
     resumeCreateDraft,
     openCreateOutcome,
@@ -1041,12 +1053,6 @@ export default function App() {
             }));
             setTab("objectives");
           }}
-          onOpenCreateOutcome={() => {
-            launchOutcomeCreate({ sourceSurface: "today" });
-          }}
-          onOpenCreateHabit={() => {
-            launchActionCreate({ sourceSurface: "today" });
-          }}
           onOpenSession={({ categoryId, dateKey, occurrenceId }) =>
             openSessionSurface({
               sourceSurface: "today",
@@ -1146,14 +1152,6 @@ export default function App() {
         <Objectives
           data={data}
           setData={setData}
-          onOpenCreateMenu={({ source, anchorEl, anchorRect }) =>
-            openCreateExpander({
-              source,
-              categoryId: libraryCategoryId || selectedCategoryId || homeActiveCategoryId || null,
-              anchorEl,
-              anchorRect,
-            })
-          }
           onOpenCreateAction={(categoryId, outcomeId) =>
             launchActionCreate({
               sourceSurface: "objectives",
@@ -1389,7 +1387,7 @@ export default function App() {
       ) : null}
       <DiagnosticOverlay data={safeData} tab={tab} />
       <LovableCreateMenu
-        open={plusOpen}
+        open={globalCreationSurfaceEnabled && plusOpen}
         anchorRect={plusAnchorRect}
         onClose={handleUniversalCaptureClose}
         onSubmitCapture={handleUniversalCaptureSubmit}
@@ -1399,6 +1397,41 @@ export default function App() {
         onClearPreview={() => setUniversalCapturePreview(null)}
         onResumeDraft={hasDraft ? resumeCreateDraft : null}
         hasDraft={hasDraft}
+      />
+      <TodayAdjustmentSheet
+        open={adjustmentSheetOpen}
+        onClose={() => setAdjustmentSheetOpen(false)}
+        onSimplify={() => {
+          setAdjustmentSheetOpen(false);
+          setCoachState({
+            mode: "plan",
+            conversationId: null,
+            prefill: "Simplifie ma journée en gardant seulement le prochain bloc utile.",
+          });
+          setTab("coach");
+        }}
+        onReorganize={() => {
+          setAdjustmentSheetOpen(false);
+          setTab("timeline");
+        }}
+        onReduce={() => {
+          setAdjustmentSheetOpen(false);
+          setCoachState({
+            mode: "plan",
+            conversationId: null,
+            prefill: "Réduis la charge de ma journée sans perdre l’action critique.",
+          });
+          setTab("coach");
+        }}
+        onAskCoach={() => {
+          setAdjustmentSheetOpen(false);
+          setCoachState({
+            mode: "free",
+            conversationId: null,
+            prefill: "Aide-moi à ajuster ma journée.",
+          });
+          setTab("coach");
+        }}
       />
       <PaywallModal
         open={paywallOpen}
@@ -1410,7 +1443,9 @@ export default function App() {
         onOpenTerms={() => setTab("legal")}
         onOpenPrivacy={() => setTab("privacy")}
       />
-      {showBottomRail ? <LovableTabBar ref={bottomRailRef} activeTab={tab} onSelect={setTab} /> : null}
+      {showBottomRail ? (
+        <BottomNavigation ref={bottomRailRef} activeTab={tab} onSelect={handleBottomNavigationSelect} />
+      ) : null}
     </>
   );
 }

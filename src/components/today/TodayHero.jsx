@@ -1,105 +1,74 @@
 import React from "react";
-import { TODAY_SCREEN_COPY } from "../../ui/labels";
+import { Check } from "lucide-react";
+import CommandSurface from "./CommandSurface";
 
 export default function TodayHero({
-  title = TODAY_SCREEN_COPY.noPriorityTitle,
-  reason = "",
-  contributionLabel = "",
-  recommendedCategoryLabel = "",
-  categoryColor = "",
-  durationLabel = "",
-  timingLabel = "",
-  stateLabel = "",
-  stateTone = "ready",
-  supportLabel = "",
-  actionProtocolBrief = [],
-  primaryLabel = TODAY_SCREEN_COPY.primaryAction,
-  secondaryLabel = "",
-  onPrimaryAction,
-  onSecondaryAction,
-  canPrimaryAction = false,
-  canSecondaryAction = false,
-  isPreparing = false,
+  modeLabel = "MODE EXÉCUTION",
+  dateLabel = "",
+  scoreLabel = "--%",
+  deltaLabel = "Point de départ",
+  statusTitle = "Tu es en contrôle.",
+  statusDetail = "Ne casse pas le rythme maintenant.",
+  doneBlocksCount = 0,
+  plannedBlocksCount = 0,
 }) {
-  const displayTitle =
-    title || (isPreparing ? TODAY_SCREEN_COPY.preparingTitle : TODAY_SCREEN_COPY.noPriorityTitle);
-  const displayReason =
-    reason ||
-    contributionLabel ||
-    (isPreparing ? TODAY_SCREEN_COPY.preparingReason : TODAY_SCREEN_COPY.noPriorityReason);
-  const displayCategory = recommendedCategoryLabel || TODAY_SCREEN_COPY.priorityCategoryFallback;
-  const displaySupportLabel = supportLabel || "";
-  const isValidated = stateTone === "validated";
-  const briefItems = Array.isArray(actionProtocolBrief)
-    ? actionProtocolBrief
-        .filter((item) => item && typeof item.text === "string" && item.text.trim())
-        .slice(0, 2)
-    : [];
-  const showTopline = !isValidated && Boolean(displayCategory || stateLabel);
-  const showMeta = !isValidated && Boolean(timingLabel || durationLabel);
-  const showReason = Boolean(displayReason) && (
-    isPreparing ||
-    stateTone === "clarify" ||
-    stateTone === "overload" ||
-    stateTone === "validated"
-  );
+  const scoreText = String(scoreLabel || "--%").trim() || "--%";
+  const scoreHasPercent = scoreText.endsWith("%");
+  const scoreMain = scoreHasPercent ? scoreText.slice(0, -1) : scoreText;
+  const safeDone = Number.isFinite(doneBlocksCount) ? Math.max(0, doneBlocksCount) : 0;
+  const safeTotal = Number.isFinite(plannedBlocksCount) ? Math.max(0, plannedBlocksCount) : 0;
+  const progressTotal = Math.min(Math.max(safeTotal, 0), 4);
+  const progressPips = Array.from({ length: progressTotal }, (_, index) => index);
+  const progressCopy = safeTotal
+    ? `${safeDone} / ${safeTotal} blocs terminés`
+    : "Aucun bloc structuré";
 
   return (
-    <div
-      className={`lovableCard lovablePriorityCard todayShellHeroCard${isValidated ? " is-validated" : ""}`}
-      data-testid="today-hero-card"
-      style={!isValidated && categoryColor ? { "--today-hero-category-accent": categoryColor } : undefined}
-    >
-      {showTopline ? (
-        <div className="todayShellHeroTopline">
-          {displayCategory ? <div className="lovablePriorityEyebrow todayShellHeroEyebrow">{displayCategory}</div> : null}
-          {stateLabel ? (
-            <div className={`todayShellHeroState is-${stateTone}`}>
-              {stateLabel}
-            </div>
-          ) : null}
+    <CommandSurface className="todayDiagnosticHero" tone="execution" data-testid="today-hero-card">
+      <div className="todayHeroTopline">
+        <span className="todaySurfaceEyebrow">
+          <span className="todaySurfaceDot" aria-hidden="true" />
+          {modeLabel}
+        </span>
+        {dateLabel ? <span className="todayHeroDateCode">{dateLabel}</span> : null}
+      </div>
+
+      <div className="todayHeroScoreCluster">
+        <div className="todayHeroScore">
+          <span className="todayHeroScoreMain">{scoreMain}</span>
+          {scoreHasPercent ? <span className="todayHeroScorePercent">%</span> : null}
         </div>
-      ) : null}
-      <h2 className="lovablePriorityTitle">{displayTitle}</h2>
-      {showMeta ? (
-        <div className="todayV2HeroMetaRow">
-          {timingLabel ? <span className="todayV2HeroTiming">{timingLabel}</span> : null}
-          {durationLabel ? <span className="todayV2HeroDuration">{durationLabel}</span> : null}
+        <div className="todayHeroScoreLabel">Discipline score</div>
+        <div className="todayHeroDelta">{deltaLabel}</div>
+      </div>
+
+      <div className="todayHeroStatus">
+        <h2>{statusTitle}</h2>
+        {statusDetail ? <p>{statusDetail}</p> : null}
+      </div>
+
+      <div className="todayHeroProgress">
+        <div className="todayHeroProgressText">
+          <span>Progression du jour</span>
+          <strong>{progressCopy}</strong>
         </div>
-      ) : null}
-      {displaySupportLabel ? <div className="todayShellHeroGuide">{displaySupportLabel}</div> : null}
-      {showReason ? <p className="lovablePriorityMeta">{displayReason}</p> : null}
-      {briefItems.length ? (
-        <div className="todayActionProtocol" data-testid="today-action-protocol">
-          {briefItems.map((item) => (
-            <div key={`${item.label}:${item.text}`} className="todayActionProtocolLine">
-              <span className="todayActionProtocolLabel">{item.label}</span>
-              <span className="todayActionProtocolText">{item.text}</span>
-            </div>
-          ))}
-        </div>
-      ) : null}
-      <div className="todayV2HeroActions">
-        <button
-          type="button"
-          className="lovablePrimaryButton"
-          onClick={() => onPrimaryAction?.()}
-          disabled={!canPrimaryAction}
-        >
-          {primaryLabel}
-          <span aria-hidden="true">→</span>
-        </button>
-        {secondaryLabel ? (
-          <button
-            type="button"
-            className="lovableGhostButton todayV2HeroSecondaryButton"
-            onClick={() => onSecondaryAction?.()}
-            disabled={!canSecondaryAction}
-          >
-            {secondaryLabel}
-          </button>
+        {progressPips.length ? (
+          <div className="todayHeroProgressRail" aria-hidden="true">
+            {progressPips.map((index) => {
+              const complete = index < safeDone;
+              const active = index === safeDone && safeDone < safeTotal;
+              return (
+                <span
+                  key={index}
+                  className={`todayHeroProgressPip${complete ? " is-complete" : ""}${active ? " is-active" : ""}`}
+                >
+                  {complete ? <Check size={14} strokeWidth={2.3} /> : index + 1}
+                </span>
+              );
+            })}
+          </div>
         ) : null}
       </div>
-    </div>
+    </CommandSurface>
   );
 }

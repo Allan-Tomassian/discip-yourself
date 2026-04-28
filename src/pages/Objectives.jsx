@@ -334,21 +334,23 @@ export default function Objectives({
       pageId="objectives"
       headerTitle={OBJECTIVES_SCREEN_COPY.title}
       headerRight={
-        <button
-          type="button"
-          className="lovableObjectivesCreate"
-          data-testid="objectives-universal-capture-button"
-          aria-label={OBJECTIVES_SCREEN_COPY.createAriaLabel}
-          onClick={(event) =>
-            onOpenCreateMenu?.({
-              source: "objectives",
-              anchorEl: event.currentTarget,
-              anchorRect: event.currentTarget.getBoundingClientRect(),
-            })
-          }
-        >
-          +
-        </button>
+        typeof onOpenCreateMenu === "function" ? (
+          <button
+            type="button"
+            className="lovableObjectivesCreate"
+            data-testid="objectives-universal-capture-button"
+            aria-label={OBJECTIVES_SCREEN_COPY.createAriaLabel}
+            onClick={(event) =>
+              onOpenCreateMenu?.({
+                source: "objectives",
+                anchorEl: event.currentTarget,
+                anchorRect: event.currentTarget.getBoundingClientRect(),
+              })
+            }
+          >
+            +
+          </button>
+        ) : null
       }
     >
       <div className="lovablePage">

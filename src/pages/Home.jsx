@@ -36,9 +36,15 @@ import {
 } from "../logic/walletV1";
 import { ensureTotemV1 } from "../logic/totemV1";
 import TodayDailyState from "../components/today/TodayDailyState";
+import TodayHeader from "../components/today/TodayHeader";
+import FloatingWelcomeLine from "../components/today/FloatingWelcomeLine";
 import TodayHero from "../components/today/TodayHero";
+import PrimaryActionCard from "../components/today/PrimaryActionCard";
+import TodayTimeline from "../components/today/TodayTimeline";
+import AIInsightCard from "../components/today/AIInsightCard";
 import TodayNextActions from "../components/today/TodayNextActions";
 import TodayValuePulse from "../components/today/TodayValuePulse";
+import ProfileMenu from "../components/today/ProfileMenu";
 import { deriveActionProtocol, deriveTodayActionProtocolBrief } from "../features/action-protocol/actionProtocol";
 import { emitTotemEvent } from "../ui/totem/totemEvents";
 import {
@@ -85,6 +91,78 @@ import { deriveBehaviorFeedbackSignal, deriveTodayBehaviorCue } from "../feedbac
 const DEFAULT_BLOCK_ORDER = getDefaultBlockIds("home");
 const TODAY_COMPLETED_STATUSES = new Set(["done"]);
 const TODAY_HIDDEN_BLOCK_STATUSES = new Set(["canceled", "skipped", "missed", "rescheduled"]);
+const TODAY_EXECUTION_GREEN = "#35f06d";
+
+function formatTodayHeroDateCode(date, fallbackKey = "") {
+  try {
+    const day = new Intl.DateTimeFormat("fr-FR", { day: "2-digit" }).format(date);
+    const month = new Intl.DateTimeFormat("fr-FR", { month: "short" })
+      .format(date)
+      .replace(".", "")
+      .toUpperCase();
+    return `${day} ${month}.`;
+  } catch {
+    return fallbackKey;
+  }
+}
+
+function hasDisciplineScoreSignal({ occurrences, microChecks, goals, localTodayKey }) {
+  const hasOccurrenceHistory = (Array.isArray(occurrences) ? occurrences : []).some(
+    (occurrence) =>
+      occurrence &&
+      typeof occurrence.status === "string" &&
+      typeof occurrence.date === "string" &&
+      occurrence.date < localTodayKey
+  );
+  const hasMicroHistory = Object.keys(microChecks || {}).some((dateKey) => dateKey < localTodayKey);
+  const hasOutcomeHistory = (Array.isArray(goals) ? goals : []).some(
+    (goal) =>
+      goal?.status === "done" &&
+      typeof goal.completedAt === "string" &&
+      goal.completedAt < localTodayKey
+  );
+  return hasOccurrenceHistory || hasMicroHistory || hasOutcomeHistory;
+}
+
+function getTodayVisualSmokeModel() {
+  if (typeof import.meta === "undefined" || !import.meta.env?.DEV) return null;
+  if (typeof window === "undefined" || window.__TODAY_VISUAL_SMOKE__ !== true) return null;
+  return {
+    scoreLabel: "72%",
+    deltaLabel: "+8% vs hier",
+    doneBlocksCount: 2,
+    plannedBlocksCount: 3,
+    timelineProgressLabel: "67%",
+    cockpitStatus: {
+      welcome: "Bon retour — aujourd’hui, on avance bloc par bloc.",
+      mode: "MODE EXÉCUTION",
+      title: "Tu es en contrôle.",
+      detail: "Ne casse pas le rythme maintenant.",
+    },
+    primaryAction: {
+      title: "Deep work",
+      description: "Avancer sur ton objectif principal.",
+      durationLabel: "30 min",
+      timingLabel: "13:00",
+      categoryLabel: "Travail",
+      priorityLabel: "Priorité haute",
+      reason: "C’est le bloc qui débloque ta journée.",
+      ctaLabel: "Verrouiller 30 min",
+    },
+    timelineItems: [
+      { id: "smoke-routine", timeLabel: "07:00", title: "Routine", status: "done" },
+      { id: "smoke-sport", timeLabel: "09:30", title: "Sport", status: "done" },
+      { id: "smoke-deep", timeLabel: "13:00", title: "Deep work", status: "active" },
+      { id: "smoke-learning", timeLabel: "16:00", title: "Apprentissage", status: "future" },
+      { id: "smoke-review", timeLabel: "19:30", title: "Revue", status: "future" },
+    ],
+    ai: {
+      headline: "Tu tiens mieux les blocs courts.",
+      recommendation: "Garde ce bloc à 30 min.",
+      reason: "Tes sessions de 20–40 min ont 67% de taux de complétion ces 7 derniers jours.",
+    },
+  };
+}
 
 function diffDays(anchor, target) {
   if (!(anchor instanceof Date) || !(target instanceof Date)) return 0;
@@ -573,7 +651,6 @@ export default function Home({
   onOpenSecondaryRoute,
   onOpenPlanning,
   onOpenPilotage,
-  onOpenCreateHabit,
   onOpenSession,
   onDayOpen,
   onAddOccurrence,
@@ -610,7 +687,7 @@ export default function Home({
   const [noteDeleteTargetId, setNoteDeleteTargetId] = useState(null);
   const [noteHistoryVersion, setNoteHistoryVersion] = useState(0);
   const [profileSheetOpen, setProfileSheetOpen] = useState(false);
-  const { session } = useAuth();
+  const { session, signOut } = useAuth();
   const legacyOrder = useMemo(() => loadLegacyBlockOrder(), []);
   const blockOrder = useMemo(() => {
     const raw = safeData?.ui?.blocksByPage?.home;
@@ -2275,7 +2352,10 @@ export default function Home({
         return;
       }
       if (action.kind === "open_create_habit") {
-        onOpenCreateHabit?.();
+        onOpenCoachGuided?.({
+          mode: "plan",
+          prefill: "Aide-moi à construire le prochain bloc de ma journée sans créer une action à la main.",
+        });
         return;
       }
       if (action.kind === "open_planning_for_today") {
@@ -2309,7 +2389,6 @@ export default function Home({
       focusCategory?.id,
       handleStartSession,
       onOpenCoachGuided,
-      onOpenCreateHabit,
       onOpenLibrary,
       onOpenPilotage,
       onOpenSession,
@@ -2503,6 +2582,141 @@ export default function Home({
   ]
     .filter(Boolean)
     .join(" ");
+  const visualSmokeModel = getTodayVisualSmokeModel();
+  const hasScoreSignal = useMemo(
+    () =>
+      hasDisciplineScoreSignal({
+        occurrences,
+        microChecks,
+        goals,
+        localTodayKey,
+      }),
+    [goals, localTodayKey, microChecks, occurrences]
+  );
+  const todayDateCode = useMemo(
+    () => formatTodayHeroDateCode(selectedDate, selectedDateKey),
+    [selectedDate, selectedDateKey]
+  );
+  const timelineItems = useMemo(() => {
+    const visibleOccurrences = occurrencesForSelectedDay
+      .filter((occurrence) => {
+        const status = typeof occurrence?.status === "string" ? occurrence.status : "";
+        return !TODAY_HIDDEN_BLOCK_STATUSES.has(status);
+      })
+      .sort(compareTodayOccurrences);
+
+    return visibleOccurrences.map((occurrence) => {
+      const goal = goalsById.get(occurrence?.goalId || "") || null;
+      const status = typeof occurrence?.status === "string" ? occurrence.status : "";
+      const isActive =
+        occurrence?.id &&
+        (occurrence.id === heroOccurrence?.id || occurrence.id === activeSessionForActiveDate?.occurrenceId);
+      return {
+        id: occurrence.id,
+        timeLabel:
+          (typeof occurrence?.start === "string" && occurrence.start) ||
+          (typeof occurrence?.slotKey === "string" && occurrence.slotKey) ||
+          "--:--",
+        title: goal?.title || occurrence?.title || "Bloc",
+        status: status === "done" ? "done" : isActive ? "active" : "future",
+      };
+    });
+  }, [activeSessionForActiveDate?.occurrenceId, goalsById, heroOccurrence?.id, occurrencesForSelectedDay]);
+  const timelineProgressLabel = plannedBlocksCount > 0
+    ? `${Math.min(100, Math.round((doneBlocksCount / plannedBlocksCount) * 100))}%`
+    : "--%";
+  const scoreLabel =
+    hasScoreSignal && Number.isFinite(disciplineBreakdown?.score) && disciplineBreakdown.score > 0
+      ? `${Math.round(disciplineBreakdown.score)}%`
+      : "--%";
+  const actionDurationLabel =
+    heroDurationLabel ||
+    todayShellModel.hero.durationLabel ||
+    (todayV2State.state === "clarify" ? "20 min" : "30 min");
+  const primaryActionTitle =
+    heroGoal?.title ||
+    heroOccurrence?.title ||
+    (todayV2State.state === "overload" ? "Bloc prioritaire" : todayShellModel.hero.title) ||
+    "Bloc prioritaire";
+  const primaryActionTimingLabel =
+    resolveTodayHeroTimingLabel(heroOccurrence) ||
+    todayShellModel.hero.timingLabel ||
+    "À planifier";
+  const hasExecutablePrimaryAction = canHandleTodayHeroAction(todayShellModel.hero.primaryAction);
+  const primaryActionCtaLabel = activeSessionForActiveDate
+    ? "Reprendre"
+    : hasPlannedOccurrencesToday
+      ? `Verrouiller ${actionDurationLabel}`
+      : "Construire avec le Coach IA";
+  const primaryActionDescription =
+    heroImpactText ||
+    todayShellModel.hero.reason ||
+    "Avancer sur ton objectif principal.";
+  const displayScoreLabel = visualSmokeModel?.scoreLabel || scoreLabel;
+  const displayDeltaLabel = visualSmokeModel?.deltaLabel || "Point de départ";
+  const displayDoneBlocksCount = visualSmokeModel?.doneBlocksCount ?? doneBlocksCount;
+  const displayPlannedBlocksCount = visualSmokeModel?.plannedBlocksCount ?? plannedBlocksCount;
+  const displayTimelineProgressLabel = visualSmokeModel?.timelineProgressLabel || timelineProgressLabel;
+  const displayTimelineItems = visualSmokeModel?.timelineItems || timelineItems;
+  const displayPrimaryAction = visualSmokeModel?.primaryAction || null;
+  const displayAiInsight = visualSmokeModel?.ai || null;
+  const cockpitStatus = (() => {
+    if (visualSmokeModel?.cockpitStatus) return visualSmokeModel.cockpitStatus;
+    if (activeSessionForActiveDate) {
+      return {
+        welcome: "Bloc en cours — termine avant de renégocier.",
+        mode: "MODE FOCUS",
+        title: "Bloc en cours.",
+        detail: "Termine ce qui est verrouillé avant d’ajuster la suite.",
+      };
+    }
+    if (todayV2State.state === "validated") {
+      return {
+        welcome: "Journée verrouillée — garde cette preuve pour demain.",
+        mode: "JOURNÉE VERROUILLÉE",
+        title: "Essentiel validé.",
+        detail: "Protège la fin de journée au lieu d’ajouter du bruit.",
+      };
+    }
+    if (!hasPlannedOccurrencesToday) {
+      return {
+        welcome: "Aucun bloc aujourd’hui — sans structure, tu vas improviser.",
+        mode: "SYSTÈME ACTIVÉ",
+        title: "La journée attend sa structure.",
+        detail: "Commence par un bloc simple, puis ajuste le reste.",
+      };
+    }
+    return {
+      welcome: "Bon retour — aujourd’hui, on avance bloc par bloc.",
+      mode: "MODE EXÉCUTION",
+      title: "Tu es en contrôle.",
+      detail: "Ne casse pas le rythme maintenant.",
+    };
+  })();
+  const runPrimaryCockpitAction = useCallback(() => {
+    if (hasExecutablePrimaryAction) {
+      handleTodayHeroAction(todayShellModel.hero.primaryAction);
+      return;
+    }
+    onOpenCoachGuided?.({
+      mode: "plan",
+      prefill: "Aide-moi à construire le prochain bloc de ma journée.",
+    });
+  }, [
+    handleTodayHeroAction,
+    hasExecutablePrimaryAction,
+    onOpenCoachGuided,
+    todayShellModel.hero.primaryAction,
+  ]);
+  const openCoachInsight = useCallback(
+    (prefill = "Explique-moi l’insight de ma journée et le prochain ajustement utile.") => {
+      onOpenCoachGuided?.({
+        mode: "free",
+        prefill,
+      });
+    },
+    [onOpenCoachGuided]
+  );
   const todayHeaderRight = (
     <div className="todayHeaderRightCluster">
       <button
@@ -2522,98 +2736,82 @@ export default function Home({
   return (
     <>
       <AppScreen
-        accent={accent}
-        backgroundImage={backgroundImage}
+        accent={TODAY_EXECUTION_GREEN}
         pageId="today"
-        headerTitle={
-          <span className="todayWelcomeTitle" data-tour-id="today-title">
-            <span>{todayShellModel.welcome.greeting}, </span>
-            <span className="todayWelcomeAccent">{todayShellModel.welcome.name}</span>
-          </span>
-        }
-        headerSubtitle={
-          <span className="todayWelcomeSubtitle">
-            <span className="todayWelcomeDate">{todayShellModel.welcome.dateLabel}</span>
-            <span className="todayWelcomeHint">{todayShellModel.welcome.subtitle}</span>
-          </span>
-        }
-        headerRight={todayHeaderRight}
-        headerRowAlign="start"
+        className="todayCockpitScreen"
       >
-        <div className="lovablePage todayShellPage">
-          {todayV2State.showProgress ? (
-            <TodayDailyState
-              model={todayShellModel.progress}
-            />
-          ) : null}
-
-          <TodayHero
-            title={todayShellModel.hero.title}
-            reason={todayShellModel.hero.reason}
-            contributionLabel={heroContributionLabel}
-            recommendedCategoryLabel={todayShellModel.hero.categoryLabel}
-            durationLabel={todayShellModel.hero.durationLabel}
-            timingLabel={todayShellModel.hero.timingLabel}
-            stateLabel={todayShellModel.hero.stateLabel}
-            stateTone={todayShellModel.hero.stateTone}
-            supportLabel={todayShellModel.hero.supportLabel}
-            actionProtocolBrief={todayShellModel.hero.actionProtocolBrief}
-            categoryColor={todayShellModel.hero.categoryColor}
-            primaryLabel={todayShellModel.hero.primaryLabel}
-            secondaryLabel={todayShellModel.hero.secondaryLabel}
-            onPrimaryAction={() => handleTodayHeroAction(todayShellModel.hero.primaryAction)}
-            onSecondaryAction={() => handleTodayHeroAction(todayShellModel.hero.secondaryAction)}
-            canPrimaryAction={canHandleTodayHeroAction(todayShellModel.hero.primaryAction)}
-            canSecondaryAction={canHandleTodayHeroAction(todayShellModel.hero.secondaryAction)}
-            isPreparing={manualTodayAnalysis.loading}
+        <div className="todayCockpitShell" data-tour-id="today-title">
+          <TodayHeader
+            dateLabel={todayShellModel.welcome.dateLabel}
+            avatarLabel={greetingName}
+            avatarUrl={profile?.avatar_url || profile?.avatarUrl || ""}
+            onOpenProfile={() => setProfileSheetOpen(true)}
           />
 
-          {todayShellModel.secondaryActions.length ? (
-            <TodayNextActions
-              actions={todayShellModel.secondaryActions}
-              onOpenOccurrence={handleStartSession}
-              activeCategory={heroDisplayCategory || focusCategory || null}
-            />
-          ) : null}
+          <FloatingWelcomeLine>{cockpitStatus.welcome}</FloatingWelcomeLine>
 
-          {todayShellModel.valuePulse ? (
-            <TodayValuePulse
-              title={todayShellModel.valuePulse.title}
-              meta={todayShellModel.valuePulse.meta}
-              tone={todayShellModel.valuePulse.tone}
-            />
-          ) : null}
+          <TodayHero
+            modeLabel={cockpitStatus.mode}
+            dateLabel={todayDateCode}
+            scoreLabel={displayScoreLabel}
+            deltaLabel={displayDeltaLabel}
+            statusTitle={cockpitStatus.title}
+            statusDetail={cockpitStatus.detail}
+            doneBlocksCount={displayDoneBlocksCount}
+            plannedBlocksCount={displayPlannedBlocksCount}
+          />
+
+          <PrimaryActionCard
+            durationLabel={displayPrimaryAction?.durationLabel || actionDurationLabel}
+            title={displayPrimaryAction?.title || primaryActionTitle}
+            description={displayPrimaryAction?.description || primaryActionDescription}
+            categoryLabel={displayPrimaryAction?.categoryLabel || todayShellModel.hero.categoryLabel || heroDisplayCategoryName || "Priorité"}
+            timingLabel={displayPrimaryAction?.timingLabel || primaryActionTimingLabel}
+            priorityLabel={displayPrimaryAction?.priorityLabel || "Priorité haute"}
+            reason={displayPrimaryAction?.reason || todayShellModel.hero.reason || "C’est le bloc qui débloque ta journée."}
+            primaryLabel={displayPrimaryAction?.ctaLabel || primaryActionCtaLabel}
+            onPrimary={runPrimaryCockpitAction}
+            onSecondary={openPlanningForToday}
+            onDetail={openPlanningForToday}
+            canPrimary={true}
+          />
+
+          <TodayTimeline
+            items={displayTimelineItems}
+            progressLabel={displayTimelineProgressLabel}
+            onSelectItem={openPlanningForToday}
+          />
+
+          <AIInsightCard
+            headline={displayAiInsight?.headline || manualTodayAnalysis.visibleAnalysis?.headline || "Tu tiens mieux les blocs courts."}
+            recommendation={
+              displayAiInsight?.recommendation ||
+              (hasPlannedOccurrencesToday
+                ? `Garde ce bloc à ${actionDurationLabel}.`
+                : "Construis un bloc court avant d’ajouter du volume.")
+            }
+            reason={
+              displayAiInsight?.reason ||
+              manualTodayAnalysis.visibleAnalysis?.reason ||
+              (plannedBlocksCount > 0
+                ? `Progression actuelle: ${displayTimelineProgressLabel} des blocs du jour.`
+                : "Aucun insight distant n’est requis pour cette première structure statique.")
+            }
+            onApply={runPrimaryCockpitAction}
+            onWhy={() => openCoachInsight()}
+            onOpenCoach={() => openCoachInsight("Aide-moi à ajuster la journée depuis l’insight IA.")}
+          />
         </div>
       </AppScreen>
 
-      <AppSheet open={profileSheetOpen} onClose={() => setProfileSheetOpen(false)} maxWidth={420}>
-        <AppSheetContent
-          title={TODAY_SCREEN_COPY.profileMenuTitle}
-          subtitle={TODAY_SCREEN_COPY.profileMenuSubtitle}
-        >
-          <div className="todayProfileSheetActions">
-            {[
-              { id: "account", label: TODAY_SCREEN_COPY.profileRouteAccount },
-              { id: "billing", label: TODAY_SCREEN_COPY.profileRouteBilling },
-              { id: "settings", label: TODAY_SCREEN_COPY.profileRouteSettings },
-              { id: "faq", label: TODAY_SCREEN_COPY.profileRouteFaq },
-              { id: "legal", label: TODAY_SCREEN_COPY.profileRouteLegal },
-            ].map((item) => (
-              <GhostButton
-                key={item.id}
-                type="button"
-                className="todayProfileSheetAction"
-                onClick={() => {
-                  setProfileSheetOpen(false);
-                  onOpenSecondaryRoute?.(item.id);
-                }}
-              >
-                {item.label}
-              </GhostButton>
-            ))}
-          </div>
-        </AppSheetContent>
-      </AppSheet>
+      <ProfileMenu
+        open={profileSheetOpen}
+        onClose={() => setProfileSheetOpen(false)}
+        onNavigate={(route) => onOpenSecondaryRoute?.(route)}
+        onSignOut={() => {
+          signOut?.().catch(() => {});
+        }}
+      />
     </>
   );
 }
